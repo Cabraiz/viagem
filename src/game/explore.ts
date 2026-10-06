@@ -99,6 +99,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,attacking:()=>attacking||performance.now()<attackQueuedUntil,
+      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);

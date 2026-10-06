@@ -5,15 +5,15 @@ export const STEP = 1 / 20;
 export const MAX_PLAYERS = 6;
 export const GRACE_MS = 30_000;
 export type Input = { seq:number; x:number; y:number; attack:boolean; target?:string };
-export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number };
+export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number };
 export type Enemy = Point & { id:string; hp:number };
 // Fixed tuple fields avoid repeated property names in frequent patches.
-export type PlayerWire = [string,number,number,number,number,boolean,number,string,string];
+export type PlayerWire = [string,number,number,number,number,boolean,number,string,string,number?];
 export type EnemyWire = [string,number,number,number];
 export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean };
-export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),p.hp,p.ack,p.online,p.score,p.name,p.classId];
+export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),p.hp,p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0];
 export const packEnemy = (e:Enemy):EnemyWire => [e.id,round(e.x),round(e.y),e.hp];
-export const unpackPlayer = (p:PlayerWire):Player => ({id:p[0],x:p[1],y:p[2],hp:p[3],ack:p[4],online:p[5],score:p[6],name:p[7],classId:p[8]});
+export const unpackPlayer = (p:PlayerWire):Player => ({id:p[0],x:p[1],y:p[2],hp:p[3],ack:p[4],online:p[5],score:p[6],name:p[7],classId:p[8],attackTick:p[9]??0});
 export const unpackEnemy = (e:EnemyWire):Enemy => ({id:e[0],x:e[1],y:e[2],hp:e[3]});
 const round=(n:number)=>Math.round(n*1000)/1000;
 export function validInput(value:unknown):value is Input {
@@ -61,6 +61,7 @@ export class Simulation {
       if(!input)continue;
       Object.assign(p,simulate(p,input));p.ack=input.seq;
       if(input.attack&&this.tick>=(this.cooldown.get(p.id)??0)){
+        p.attackTick=this.tick;
         this.cooldown.set(p.id,this.tick+12);
         const enemy=this.enemies.filter(e=>e.hp>0&&(!input.target||e.id===input.target)&&Math.hypot(e.x-p.x,e.y-p.y)<=ATTACK_RANGE&&clearSegment(p,e)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
         if(enemy){enemy.hp=Math.max(0,enemy.hp-20);if(!enemy.hp)for(const ally of this.players.values())ally.score+=10;}

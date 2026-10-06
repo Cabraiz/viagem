@@ -17,7 +17,9 @@ Escolha uma classe, confirme o personagem e use **Jogar com amigos → Criar sal
 | Salas autoritativas e WebSocket | Cloudflare Workers + Durable Objects |
 | Dados persistentes | Turso |
 
-O protótipo inclui movimentação, predição local, reconciliação, interpolação de aliados, reconexão e combate básico contra slimes. Cada sala comporta seis participantes e dura até 30 minutos. O progresso da partida ainda não é persistido no banco; login, habilidades específicas e sprites animados continuam em desenvolvimento.
+O protótipo inclui movimentação, predição local, reconciliação, interpolação de aliados, reconexão e combate básico contra slimes. Cada sala comporta seis participantes e dura até 30 minutos. Os 36 personagens usam sprites com repouso, caminhada e ataque; os golpes são sinalizados pelo servidor também para os aliados. Os atlas são carregados conforme as classes entram na sala. O progresso da partida ainda não é persistido no banco; login e habilidades específicas continuam em desenvolvimento.
+
+A arte dos sprites é uma primeira versão: há passos repetidos, variações de desenho e apenas uma direção frontal com espelhamento horizontal. A integração técnica não significa aprovação visual final dos ciclos. Os retratos da seleção permanecem separados dos sprites do mapa.
 
 ## Desenvolvimento
 

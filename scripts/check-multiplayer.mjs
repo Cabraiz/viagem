@@ -31,6 +31,7 @@ try{
   await until(()=>group[0].players.get(group[0].id)[6]>0,'cooperative kill reward',12000);checks.push('server enemies, damage and shared kill reward');
   const common=[...group[0].frames.keys()].reverse().find(t=>group.every(p=>p.frames.has(t)));
   assert.ok(common);assert.equal(new Set(group.map(p=>p.frames.get(common))).size,1);checks.push('all six reconstruct exactly the same players/enemies at one tick');
+  assert.ok(group.every(p=>p.players.get(group[0].id)[9]>0));checks.push('accepted attack animation tick reaches every observer');
   const dropped=group[2],before=[...dropped.players.get(dropped.id)],enemyBefore=[...dropped.enemies.values()].map(e=>[e[0],e[3]]);
   dropped.ws.terminate();await until(()=>group[0].players.get(dropped.id)?.[5]===false,'disconnect visible');
   const returned=connect(code,'Ignored on resume',dropped.token);await until(()=>returned.id,'reconnected');assert.equal(returned.id,dropped.id);assert.equal(returned.players.size,6);assert.equal(returned.players.get(returned.id)[6],before[6]);assert.ok(returned.players.get(returned.id)[3]<=before[3]);

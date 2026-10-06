@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { classes } from '../classes.ts';
 import {ATTACK_RANGE} from './net/shared.ts';
 import {fitIsland,SHORE} from './framing.ts';
+import {CharacterSprites} from './character-sprites.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,isLand,project,unproject,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 
@@ -12,6 +13,7 @@ export interface SceneHooks {
   discovered:(index:number)=>void;
   ready:()=>void;
   message:(text:string)=>void;
+  visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
   attacking?:()=>boolean;
 }
@@ -25,7 +27,8 @@ export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   private position:Point={...SPAWN};
   private route:Point[]=[];
-  private actor!:Phaser.GameObjects.Image;
+  private actor!:Phaser.GameObjects.Sprite;
+  private sprites=new CharacterSprites(this);
   private shadow!:Phaser.GameObjects.Ellipse;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
@@ -40,11 +43,11 @@ export class IslandScene extends Phaser.Scene {
   private attackTarget?:string;
   private chaseTick=0;
   private displayed?:Point;
-  private remoteActors=new Map<string,{image:Phaser.GameObjects.Image;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
+  private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
   private enemyActors=new Map<string,{body:Phaser.GameObjects.Ellipse;label:Phaser.GameObjects.Text}>();
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;}
-  preload(){this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
+  preload(){this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
     this.cameras.main.setBackgroundColor('#8dcecc');
     this.drawGround();
@@ -52,7 +55,7 @@ export class IslandScene extends Phaser.Scene {
     landmarks.forEach((l,i)=>this.drawLandmark(l,i));
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95);
-    this.actor=this.add.image(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
+    this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
     this.destination=this.add.graphics().setDepth(100000);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
@@ -87,7 +90,7 @@ export class IslandScene extends Phaser.Scene {
   }
   private place(){
     const p=project(this.position),depth=(this.position.x+this.position.y)*100;
-    const bob=this.reduced?0:Math.sin(this.distance*10)*1.5;
+    const bob=0;
     this.actor.setPosition(p.x,p.y+bob).setDepth(depth+1);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
@@ -98,6 +101,9 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     if(!this.actor)return;
+    const self=this.hooks.net?.players.get(this.hooks.net.id);
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0);
+    this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
     if(this.hooks.net){this.updateCoop(delta);return;}
     if(this.paused)return;
     const axis=this.hooks.direction();
@@ -148,7 +154,8 @@ export class IslandScene extends Phaser.Scene {
     for(const player of view.players){
       if(player.id===net.id)continue;
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.image(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'11px',color:'#51425e',backgroundColor:'#fff4d9',padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'11px',color:'#51425e',backgroundColor:'#fff4d9',padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online);
       const q=project(player),depth=(player.x+player.y)*100;
       objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);

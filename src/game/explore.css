@@ -37,3 +37,16 @@
 @media(max-width:370px){.explore-controls{grid-template-columns:86px 1fr;gap:8px}.explore-help{display:none}.explore-actions{flex-direction:row}.explore-actions button{flex:1}.explore-title img{width:34px;height:34px}.explore-exit{padding:8px 10px}.explore-map{width:66px;height:66px}.explore-quest{max-width:calc(100% - 96px)}}
 @media(max-height:500px) and (min-width:621px){.explore-top{padding-block:5px}.explore-title img{width:34px;height:34px}.explore-controls{padding-block:5px;grid-template-columns:66px 1fr auto;gap:12px}.explore-stick{width:62px;height:62px}.explore-stick span{width:30px;height:30px;left:14px;top:14px}.explore-stick::before{font-size:45px}.explore-actions{flex-direction:row}.explore-quest{padding:7px 10px}.explore-map{width:62px;height:62px}.explore-notice{bottom:8px}}
 @media(prefers-reduced-motion:reduce){.explore-shell *{scroll-behavior:auto!important}}
+
+/* Thumb controls keep their touch targets in both portrait and landscape. */
+.explore-movement{display:grid;justify-items:center;gap:6px;min-width:0}
+.explore-movement small{font-size:11px;font-weight:700;color:#79648f;white-space:nowrap}
+.explore-stick{width:108px;height:108px;box-sizing:border-box;border:3px solid #b9a4d0;box-shadow:inset 0 2px 8px #83709920,0 3px 0 #d8c7e2;-webkit-user-select:none;-webkit-touch-callout:none}
+.explore-stick span{width:44px;height:44px;box-sizing:border-box;left:calc(50% - 22px);top:calc(50% - 22px);background:radial-gradient(circle at 35% 25%,#bda9da,#8e78b4);box-shadow:0 4px 0 #796293,0 6px 12px #76618b33}
+.explore-stick.is-dragging{cursor:grabbing;border-color:#9273b6}
+.explore-stick.is-dragging span{background:radial-gradient(circle at 35% 25%,#c8b7e2,#a085c4)}
+.explore-stick:not(.is-dragging) span{transition:transform .1s ease-out}
+.explore-controls{grid-template-columns:116px minmax(0,1fr) auto}
+@media(max-width:620px){.explore-controls{grid-template-columns:110px minmax(0,1fr) auto;gap:8px;padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right))}}
+@media(max-width:370px){.explore-controls{grid-template-columns:110px minmax(0,1fr)}}
+@media(max-height:500px) and (min-width:621px){.explore-controls{grid-template-columns:94px minmax(0,1fr) auto}.explore-stick{width:84px;height:84px}.explore-movement{gap:3px}.explore-movement small{font-size:10px}}

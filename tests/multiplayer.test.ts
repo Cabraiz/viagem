@@ -52,6 +52,22 @@ test('delta can reconstruct full state and removes departed players',()=>{
   const players=new Map(before.players.map(p=>[p[0],p]));for(const p of patch.players)players.set(p[0],p);for(const id of patch.removed)players.delete(id);
   assert.deepEqual([...players.values()],after.players);assert.ok(JSON.stringify(patch).length<JSON.stringify(after).length+100);
 });
+
+test('explicit target hits the selected enemy instead of a closer enemy',()=>{
+  const s=new Simulation(),p=s.add('p','Tester','cidadao-comum');
+  s.enemies=[{id:'near',x:p.x+.4,y:p.y,hp:60},{id:'chosen',x:p.x+1,y:p.y,hp:60}];
+  s.input(p.id,{seq:1,x:0,y:0,attack:true,target:'chosen'});s.step();
+  assert.equal(s.enemies[0].hp,60);assert.equal(s.enemies[1].hp,40);
+});
+test('target identifier cannot bypass range or damage an unrelated enemy',()=>{
+  for(const target of ['far','missing']){
+    const s=new Simulation(),p=s.add('p','Tester','cidadao-comum');
+    s.enemies=[{id:'near',x:p.x+.4,y:p.y,hp:60},{id:'far',x:12,y:5,hp:60}];
+    s.input(p.id,{seq:1,x:0,y:0,attack:true,target});s.step();
+    assert.deepEqual(s.enemies.map(e=>e.hp),[60,60]);
+    assert.equal(s.input(p.id,{seq:2,x:0,y:0,attack:true,target:{id:'near'}}),false);
+  }
+});
 test('message flooding and oversized payloads close connection',()=>{
   const r=new Room(1000),a=peer();join(r,a);for(let i=0;i<50;i++)r.receive(a,'{"t":"ping","at":1}',1000);assert.equal(a.closes[0].code,4008);
   const b=peer();join(r,b,'B',1000);r.receive(b,'a'.repeat(1025),1000);assert.equal(b.closes[0].code,1009);

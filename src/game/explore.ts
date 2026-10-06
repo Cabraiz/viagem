@@ -1,15 +1,16 @@
 import './explore.css';
 import type { HeroClass } from '../classes.ts';
-import {landmarks,type Point} from './world.ts';
+import {landmarks} from './world.ts';
 import type { CoopClient } from './net/client.ts';
 import './coop.css';
+import {JoystickInput} from './joystick.ts';
 
 let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
   if(active)return;
   active=true;
   const returnFocus=document.getElementById('confirm');
-  const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v1';
+  const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">← Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
@@ -19,42 +20,43 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       <div class="explore-notice" role="status">Toque na trilha para caminhar.</div>
       <div class="explore-loading" role="status">Preparando um lugar para sua história…</div>
     </section>
-    <footer class="explore-controls"><div class="explore-stick" role="group" tabindex="0" aria-label="Direcional de movimento. Arraste ou use as setas."><span></span></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha ✦</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
+    <footer class="explore-controls"><div class="explore-movement"><div class="explore-stick" role="group" tabindex="0" aria-label="Joystick de movimento. Arraste para andar ou use WASD e as setas."><span aria-hidden="true"></span></div><small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha ✦</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
-  let attacking=false,attackQueuedUntil=0;
+  let attacking=false,attackQueuedUntil=0,attackPointer:number|undefined;
   if(net){
-    shell.classList.add('coop-shell');shell.dataset.build='viagem-coop-v2';shell.dataset.room=net.code;
+    shell.classList.add('coop-shell');shell.dataset.build='viagem-coop-v3';shell.dataset.room=net.code;
+    $('.explore-notice').textContent='Arraste para andar. Toque na gosma ou segure Atacar.';
     $('.explore-title p').innerHTML='COOPERATIVO · <span id="explorer-name"></span>';
     $('.explore-quest').innerHTML='<small>A TURMA CONTRA AS GOSMAS</small><strong id="coop-objective">Protejam a ilha</strong><span id="coop-health"></span><div class="coop-party"></div>';
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
     $('#coop-code').textContent=`Sala ${net.code}`;
-    $('.explore-actions').innerHTML='<button id="coop-attack">Atacar</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
+    $('.explore-actions').innerHTML='<button id="coop-attack" aria-label="Atacar. Segure para repetir."><span aria-hidden="true">✦</span>Atacar</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
-    const attack=$('#coop-attack');attack.addEventListener('pointerdown',e=>{attacking=true;attack.setPointerCapture(e.pointerId);});
-    attack.addEventListener('click',()=>{attackQueuedUntil=performance.now()+120;});
-    for(const event of ['pointerup','pointercancel','lostpointercapture'])attack.addEventListener(event,()=>{attacking=false;});
+    const attack=$('#coop-attack');attack.addEventListener('pointerdown',e=>{if(e.button!==0||attackPointer!==undefined)return;e.preventDefault();pause(false);attackPointer=e.pointerId;attacking=true;attack.setPointerCapture(e.pointerId);});
+    attack.addEventListener('click',()=>{pause(false);attackQueuedUntil=performance.now()+120;});
+    for(const event of ['pointerup','pointercancel','lostpointercapture'])attack.addEventListener(event,e=>{if((e as PointerEvent).pointerId===attackPointer){attacking=false;attackPointer=undefined;}});
     attack.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')attacking=true;});attack.addEventListener('keyup',()=>{attacking=false;});attack.addEventListener('blur',()=>{attacking=false;});
   }
   $('#explorer-name').textContent=name;
   shell.querySelector('img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
   document.body.append(shell);shell.showModal();
   const abort=new AbortController(),signal=abort.signal;
-  const direction:Point={x:0,y:0};
+  const direction=new JoystickInput();
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
-  let closed=false,paused=false,pointer:number|undefined;
+  let closed=false,paused=false;
   const visited=new Set<number>();
-  const reset=()=>{direction.x=direction.y=0;knob.style.transform='';pointer=undefined;};
+  const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();
     net?.leave();controller?.game.destroy(true);shell.close();shell.remove();returnFocus?.focus();
   };
-  const pause=(value:boolean)=>{paused=value;attacking=false;reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
+  const pause=(value:boolean)=>{paused=value;if(value){attacking=false;attackPointer=undefined;attackQueuedUntil=0;reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   $('.explore-exit').addEventListener('click',close,{signal});
   shell.addEventListener('cancel',e=>{e.preventDefault();close();},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true);},{signal});
@@ -63,14 +65,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   if(!net)$('#explore-trail').addEventListener('click',()=>{pause(false);const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
   const updateStick=(event:PointerEvent)=>{
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;
-    const x=event.clientX-rect.left-rect.width/2,y=event.clientY-rect.top-rect.height/2;
-    const length=Math.hypot(x,y),scale=Math.min(1,max/(length||1));
-    direction.x=x*scale/max;direction.y=y*scale/max;
-    knob.style.transform=`translate(${x*scale}px,${y*scale}px)`;
+    if(!direction.move(event.pointerId,event.clientX-rect.left-rect.width/2,event.clientY-rect.top-rect.height/2,max))return;
+    knob.style.transform=`translate(${direction.x*max}px,${direction.y*max}px)`;
   };
-  stick.addEventListener('pointerdown',event=>{if(pointer!==undefined)return;event.preventDefault();pause(false);pointer=event.pointerId;stick.setPointerCapture(pointer);updateStick(event);},{signal});
-  stick.addEventListener('pointermove',event=>{if(event.pointerId===pointer)updateStick(event);},{signal});
-  for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,reset,{signal});
+  stick.addEventListener('pointerdown',event=>{
+    if(event.button!==0||!direction.start(event.pointerId))return;
+    event.preventDefault();pause(false);stick.setPointerCapture(event.pointerId);
+    stick.classList.add('is-dragging');updateStick(event);
+  },{signal});
+  stick.addEventListener('pointermove',updateStick,{signal});
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,event=>{
+    if(direction.end((event as PointerEvent).pointerId))reset();
+  },{signal});
   try{
     const {createIsland}=await import('./scene.ts');
     if(closed)return;

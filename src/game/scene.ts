@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { classes } from '../classes.ts';
+import {ATTACK_RANGE} from './net/shared.ts';
 import { CoopClient, STEP } from './net/client.ts';
-import {SPAWN,landmarks,obstacles,isLand,project,unproject,findPath,moveAlong,moveDirection,type Point,type Obstacle} from './world.ts';
+import {SPAWN,landmarks,obstacles,isLand,project,unproject,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 
 export interface SceneHooks {
   classId:string;
@@ -35,6 +36,8 @@ export class IslandScene extends Phaser.Scene {
   private distance=0;
   private paused=false;
   private accumulator=0;
+  private attackTarget?:string;
+  private chaseTick=0;
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Image;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
   private enemyActors=new Map<string,{body:Phaser.GameObjects.Ellipse;label:Phaser.GameObjects.Text}>();
@@ -51,7 +54,10 @@ export class IslandScene extends Phaser.Scene {
     this.actor=this.add.image(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
     this.destination=this.add.graphics().setDepth(100000);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
+      if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+      const hit=[...this.enemyActors].filter(([id,o])=>o.body.visible&&(this.hooks.net?.enemies.get(id)?.hp??0)>0&&Math.hypot((p.x-o.body.x)/30,(p.y-o.body.y)/27)<=1).sort((a,b)=>Math.hypot(p.x-a[1].body.x,p.y-a[1].body.y)-Math.hypot(p.x-b[1].body.x,p.y-b[1].body.y))[0];
+      if(hit){this.attackTarget=hit[0];this.route=[];this.chaseTick=0;this.hooks.message('Gosma selecionada · aproximando e atacando. Use o joystick para cancelar.');return;}
       this.goTo(unproject(p));
     });
     this.cursors=this.input.keyboard?.createCursorKeys();
@@ -67,9 +73,10 @@ export class IslandScene extends Phaser.Scene {
     this.cameras.main.setSize(this.scale.width,this.scale.height)
       .setZoom(this.scale.width<620? .94 : 1.16).centerOn(p.x,p.y-25);
   }
-  setPaused(paused:boolean){this.paused=paused;this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
+  setPaused(paused:boolean){this.paused=paused;if(paused)this.attackTarget=undefined;this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
     if(this.paused||!this.actor)return;
+    this.attackTarget=undefined;
     this.route=findPath(this.position,target);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
@@ -114,15 +121,24 @@ export class IslandScene extends Phaser.Scene {
     const axis=this.paused?{x:0,y:0}:this.hooks.direction();
     const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
     const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
+    if(this.paused||!net.connected||!net.players.get(net.id)?.hp){this.attackTarget=undefined;this.route=[];}
+    if(this.attackTarget&&(net.enemies.get(this.attackTarget)?.hp??0)<=0){this.attackTarget=undefined;this.route=[];this.hooks.message('Gosma derrotada! Toque em outra para atacar.');}
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
-      if(Math.hypot(sx,sy)>.05){this.route=[];direction={x:sx/2+sy,y:sy-sx/2};}
-      else if(!this.paused&&this.route.length){
+      let autoAttack=false;
+      if(Math.hypot(sx,sy)>.05){this.attackTarget=undefined;this.route=[];direction={x:sx/2+sy,y:sy-sx/2};}
+      else if(!this.paused&&this.attackTarget){
+        const enemy=net.enemies.get(this.attackTarget)!;
+        autoAttack=Math.hypot(enemy.x-net.predicted.x,enemy.y-net.predicted.y)<=ATTACK_RANGE-.15&&clearSegment(net.predicted,enemy);
+        if(autoAttack)this.route=[];
+        else if(this.chaseTick--<=0){this.route=findPath(net.predicted,enemy);this.chaseTick=4;}
+      }
+      if(!this.paused&&Math.hypot(sx,sy)<=.05&&this.route.length){
         while(this.route.length&&Math.hypot(this.route[0].x-net.predicted.x,this.route[0].y-net.predicted.y)<.18)this.route.shift();
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
-      net.input(direction,!this.paused&&!!this.hooks.attacking?.());this.accumulator-=STEP;
+      net.input(direction,!this.paused&&(autoAttack||!!this.hooks.attacking?.()),this.attackTarget);this.accumulator-=STEP;
     }
     const view=net.view(),old=this.position;
     const target=net.predicted,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
@@ -146,6 +162,7 @@ export class IslandScene extends Phaser.Scene {
       let objects=this.enemyActors.get(enemy.id);
       if(!objects){objects={body:this.add.ellipse(0,0,46,33,0xcf94bc).setStrokeStyle(3,0x976c97),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'10px',color:'#633c63',backgroundColor:'#fff4dc',padding:{x:4,y:2}}).setOrigin(.5,0)};this.enemyActors.set(enemy.id,objects);}
       const q=project(enemy),depth=(enemy.x+enemy.y)*100;
+      objects.body.setStrokeStyle(this.attackTarget===enemy.id?4:3,this.attackTarget===enemy.id?0xffef94:0x976c97);
       objects.body.setPosition(q.x,q.y-15).setDepth(depth).setVisible(enemy.hp>0);
       objects.label.setPosition(q.x,q.y+8).setDepth(depth+1).setText(`Gosma · ${enemy.hp}♥`).setVisible(enemy.hp>0);
     }

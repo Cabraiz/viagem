@@ -1,9 +1,10 @@
 import { moveDirection, clearSegment, SPAWN, type Point } from '../world.ts';
 
+export const ATTACK_RANGE = 1.8;
 export const STEP = 1 / 20;
 export const MAX_PLAYERS = 6;
 export const GRACE_MS = 30_000;
-export type Input = { seq:number; x:number; y:number; attack:boolean };
+export type Input = { seq:number; x:number; y:number; attack:boolean; target?:string };
 export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number };
 export type Enemy = Point & { id:string; hp:number };
 // Fixed tuple fields avoid repeated property names in frequent patches.
@@ -18,7 +19,7 @@ const round=(n:number)=>Math.round(n*1000)/1000;
 export function validInput(value:unknown):value is Input {
   if(!value||typeof value!=='object')return false;
   const v=value as Input;
-  return Number.isSafeInteger(v.seq)&&v.seq>0&&v.seq<2**31&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&Math.abs(v.x)<=1&&Math.abs(v.y)<=1&&typeof v.attack==='boolean';
+  return Number.isSafeInteger(v.seq)&&v.seq>0&&v.seq<2**31&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&Math.abs(v.x)<=1&&Math.abs(v.y)<=1&&typeof v.attack==='boolean'&&(v.target===undefined||(typeof v.target==='string'&&/^[a-zA-Z0-9-]{1,40}$/.test(v.target)));
 }
 export function simulate(p:Point,input:Input):Point { return moveDirection(p,{x:input.x,y:input.y},STEP); }
 export function reconcile(authoritative:Point,pending:Input[]):Point { return pending.reduce((p,i)=>simulate(p,i),{...authoritative}); }
@@ -45,7 +46,7 @@ export class Simulation {
   input(id:string,value:unknown){
     const p=this.players.get(id),q=this.queues.get(id);
     if(!p?.online||!q||!validInput(value)||value.seq<=(this.lastReceived.get(id)??0)||value.seq>p.ack+40||q.length>=8)return false;
-    this.lastReceived.set(id,value.seq);q.push({seq:value.seq,x:value.x,y:value.y,attack:value.attack});return true;
+    this.lastReceived.set(id,value.seq);q.push({seq:value.seq,x:value.x,y:value.y,attack:value.attack,target:value.target});return true;
   }
   step(){
     this.tick++;
@@ -61,7 +62,7 @@ export class Simulation {
       Object.assign(p,simulate(p,input));p.ack=input.seq;
       if(input.attack&&this.tick>=(this.cooldown.get(p.id)??0)){
         this.cooldown.set(p.id,this.tick+12);
-        const enemy=this.enemies.filter(e=>e.hp>0&&Math.hypot(e.x-p.x,e.y-p.y)<=1.8&&clearSegment(p,e)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+        const enemy=this.enemies.filter(e=>e.hp>0&&(!input.target||e.id===input.target)&&Math.hypot(e.x-p.x,e.y-p.y)<=ATTACK_RANGE&&clearSegment(p,e)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
         if(enemy){enemy.hp=Math.max(0,enemy.hp-20);if(!enemy.hp)for(const ally of this.players.values())ally.score+=10;}
       }
     }

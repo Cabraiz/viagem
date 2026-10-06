@@ -68,10 +68,10 @@ export class CoopClient {
     this.samples.push({at:performance.now(),players:new Map(this.players),enemies:new Map(this.enemies)});
     if(this.samples.length>12)this.samples.shift();
   }
-  input(direction:Point,attack:boolean){
+  input(direction:Point,attack:boolean,target?:string){
     if(!this.connected||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=20)return;
     const length=Math.max(1,Math.hypot(direction.x,direction.y));
-    const input:Input={seq:++this.seq,x:direction.x/length,y:direction.y/length,attack};
+    const input:Input={seq:++this.seq,x:direction.x/length,y:direction.y/length,attack,target};
     this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input);
     this.socket.send(JSON.stringify({t:'input',...input}));
   }

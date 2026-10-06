@@ -12,6 +12,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
+    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1v4l2 1-2 2v3l3 1 1 3h5l1-3 3-1 2-3-2-2 2-2-2-3-3-1-1-3Z"/><circle cx="11.5" cy="12" r="3"/></svg></button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">← Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
@@ -41,6 +42,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     for(const event of ['pointerup','pointercancel','lostpointercapture'])attack.addEventListener(event,e=>{if((e as PointerEvent).pointerId===attackPointer){attacking=false;attackPointer=undefined;}});
     attack.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')attacking=true;});attack.addEventListener('keyup',()=>{attacking=false;});attack.addEventListener('blur',()=>{attacking=false;});
   }
+  // Only controls overlay the map. All secondary information lives in a native
+  // modal so focus, Escape and touch input cannot leak into the running game.
+  shell.dataset.build=net?'viagem-coop-v4':'viagem-island-v3';
+  const settings=document.createElement('dialog');settings.className='explore-settings';settings.setAttribute('aria-label','Configurações do jogo');
+  settings.innerHTML='<div class="explore-settings-heading"><h2>Configurações</h2><button class="explore-settings-close" aria-label="Voltar ao jogo">✕</button></div><div class="explore-settings-content"></div>';
+  const settingsContent=settings.querySelector('.explore-settings-content')!;
+  for(const selector of ['.explore-top','.explore-quest','.explore-map','.explore-help','.explore-notice','#explore-trail','.explore-pause','.coop-debug']){
+    const element=shell.querySelector(selector);if(element)settingsContent.append(element);
+  }
+  $('.explore-movement small').remove();
+  shell.append(settings);
   $('#explorer-name').textContent=name;
   shell.querySelector('img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
   document.body.append(shell);shell.showModal();
@@ -54,15 +66,20 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();
-    net?.leave();controller?.game.destroy(true);shell.close();shell.remove();returnFocus?.focus();
+    net?.leave();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
   const pause=(value:boolean)=>{paused=value;if(value){attacking=false;attackPointer=undefined;attackQueuedUntil=0;reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
+  const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
+  const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
+  $('.explore-config').addEventListener('click',openSettings,{signal});
+  $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
+  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();closeSettings();},{signal});
   $('.explore-exit').addEventListener('click',close,{signal});
-  shell.addEventListener('cancel',e=>{e.preventDefault();close();},{signal});
+  shell.addEventListener('cancel',e=>{e.preventDefault();openSettings();},{signal});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true);},{signal});
   window.addEventListener('blur',()=>pause(true),{signal});
-  $('.explore-pause').addEventListener('click',()=>pause(!paused),{signal});
-  if(!net)$('#explore-trail').addEventListener('click',()=>{pause(false);const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
+  $('.explore-pause').addEventListener('click',closeSettings,{signal});
+  if(!net)$('#explore-trail').addEventListener('click',()=>{closeSettings();const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
   const updateStick=(event:PointerEvent)=>{
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;
     if(!direction.move(event.pointerId,event.clientX-rect.left-rect.width/2,event.clientY-rect.top-rect.height/2,max))return;
@@ -95,5 +112,6 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       ready:()=>{$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });
+    if(paused)controller.scene.setPaused(true);
   }catch{if(!closed){$('.explore-loading').textContent='Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
 }

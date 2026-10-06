@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { classes } from '../classes.ts';
 import {ATTACK_RANGE} from './net/shared.ts';
+import {fitIsland,SHORE} from './framing.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,isLand,project,unproject,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 
@@ -65,13 +66,12 @@ export class IslandScene extends Phaser.Scene {
     this.scale.on('resize',this.fit,this);
     if(this.hooks.net)this.position={...this.hooks.net.predicted};
     this.fit();this.place();
-    const p=project(this.position);this.cameras.main.centerOn(p.x,p.y-25);
     this.hooks.position(this.position);this.hooks.ready();
   }
   private fit(){
-    const p=project(this.position);
+    const frame=fitIsland(this.scale.width,this.scale.height);
     this.cameras.main.setSize(this.scale.width,this.scale.height)
-      .setZoom(this.scale.width<620? .94 : 1.16).centerOn(p.x,p.y-25);
+      .setZoom(frame.zoom).centerOn(frame.x,frame.y);
   }
   setPaused(paused:boolean){this.paused=paused;if(paused)this.attackTarget=undefined;this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
@@ -108,9 +108,7 @@ export class IslandScene extends Phaser.Scene {
     else this.position=moveAlong(old,this.route,seconds);
     const moved=Math.hypot(this.position.x-old.x,this.position.y-old.y);
     this.distance+=moved;
-    if(moved>0){this.place();const p=project(this.position);const camera=this.cameras.main;
-      const t=1-Math.exp(-seconds*8);camera.centerOn(Phaser.Math.Linear(camera.midPoint.x,p.x,t),Phaser.Math.Linear(camera.midPoint.y,p.y-25,t));
-    }
+    if(moved>0)this.place();
     if(!this.route.length)this.destination.clear();
     for(let i=0;i<landmarks.length;i++)if(!this.discovered.has(i)&&Math.hypot(this.position.x-landmarks[i].x,this.position.y-landmarks[i].y)<1.15){this.discovered.add(i);this.hooks.discovered(i);}
     this.stamp+=delta;
@@ -144,8 +142,6 @@ export class IslandScene extends Phaser.Scene {
     const target=net.predicted,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
-    const p=project(this.position),camera=this.cameras.main,t=1-Math.exp(-Math.min(delta/1000,.1)*9);
-    camera.centerOn(Phaser.Math.Linear(camera.midPoint.x,p.x,t),Phaser.Math.Linear(camera.midPoint.y,p.y-25,t));
     this.actor.setAlpha((net.players.get(net.id)?.hp??100)>0?1:.4);
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
     for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);}
@@ -172,7 +168,7 @@ export class IslandScene extends Phaser.Scene {
   private drawGround(){
     const g=this.add.graphics().setDepth(-10000);
     const center=project({x:12,y:12});
-    g.fillStyle(0xb1e7d7,.6).fillEllipse(center.x,center.y+40,1290,710);
+    g.fillStyle(0xb1e7d7,.6).fillEllipse(SHORE.x,SHORE.y,SHORE.width,SHORE.height);
     g.fillStyle(0xe6f4d7,.5).fillEllipse(center.x,center.y+30,1230,660);
     const tiles:Point[]=[];for(let y=1;y<24;y++)for(let x=1;x<24;x++)if(isLand({x:x+.5,y:y+.5}))tiles.push({x,y});
     tiles.sort((a,b)=>a.x+a.y-b.x-b.y);

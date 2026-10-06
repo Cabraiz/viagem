@@ -1,0 +1,42 @@
+---
+// Página provisória da infraestrutura. A experiência do produto será definida depois.
+---
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Uma nova viagem começa em breve." />
+    <meta name="theme-color" content="#f4f2e9" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://viagem.cyou/" />
+    <title>viagem · Em breve</title>
+  </head>
+  <body>
+    <main id="inicio" data-build="viagem-foundation-v1">
+      <header><span class="brand">viagem<span class="dot">.</span></span><span class="status">Em breve</span></header>
+      <section class="hero" aria-labelledby="title">
+        <span class="eyebrow">O próximo caminho começa aqui</span>
+        <h1 id="title">Uma nova<br />viagem.</h1>
+        <p>Estamos preparando o próximo capítulo.<br />Nos vemos em breve.</p>
+      </section>
+      <footer><span>viagem.cyou</span><span>Um novo começo ↗</span></footer>
+    </main>
+  </body>
+</html>
+<style>
+  :global(*) { box-sizing: border-box; }
+  :global(html) { color-scheme: light; background: #f4f2e9; color: #153c32; font-family: system-ui, sans-serif; }
+  :global(body) { margin: 0; }
+  main { min-height: 100svh; display: flex; flex-direction: column; max-width: 90rem; margin: auto; padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left)); }
+  header, footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .brand { font-size: 1.75rem; font-weight: 800; letter-spacing: -.08em; }
+  .dot { color: #778333; }
+  .status { border: 1px solid #bac6b5; border-radius: 2rem; padding: .5rem .8rem; font-size: .8rem; }
+  .hero { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-block: clamp(4rem, 14svh, 10rem); }
+  .eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; line-height: 1.6; }
+  h1 { font-size: clamp(3.5rem, 12vw, 10rem); line-height: .95; letter-spacing: -.065em; margin: 1.5rem 0; font-weight: 600; }
+  p { font-size: 1rem; line-height: 1.7; color: #506457; margin: 0; }
+  footer { border-top: 1px solid #cbd1c1; padding-top: 1.25rem; font-size: .75rem; line-height: 1.6; }
+  @media (min-width: 48rem) { main { padding-inline: 4rem; } }
+</style>

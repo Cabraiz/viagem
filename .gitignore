@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+.env
+.env.*
+!.env.example
+artifacts/
+*.log
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Originais e evidências locais: publicar somente código e arte exportada.
+/art-source/
+/dns-before.json
+/docs/*
+!/docs/classes.md
+!/docs/art-direction.md
+!/docs/pages-migration-contract.md
+!/docs/github-pages.md
+/scripts/check-multiplayer-artifact.mjs

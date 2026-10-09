@@ -45,7 +45,7 @@ export interface SimWorldOptions {
   /** Shared with the owner (Simulation) so players added outside a tick are visible to systems. */
   players?:Map<string,SimPlayer>;
   enemyIndex?:SpatialIndex<EnemyState>;
-  /** Run order of system ids. Defaults to SYSTEM_ORDER; the prototype prepends its legacy ids. */
+  /** Run order of system ids. Defaults to SYSTEM_ORDER; the run prepends 'players' (RUN_ORDER). */
   order?:readonly string[];
 }
 
@@ -53,7 +53,7 @@ export interface SimWorldOptions {
  * The index snapshots positions on rebuild (D-004). It is rebuilt at the start of each tick and after
  * every system that spawns or moves enemies. It does not track deaths: readers skip hp<=0 or !ctx.enemies.has(id).
  */
-export const REINDEX_AFTER:ReadonlySet<string>=new Set(['director','enemy-ai','boss','legacy-gosmas']);
+export const REINDEX_AFTER:ReadonlySet<string>=new Set(['director','enemy-ai','boss']);
 
 export class SimWorld implements SimContext {
   tick=0;
@@ -112,6 +112,8 @@ export class SimWorld implements SimContext {
     this.systems.set(system.id,system);
     return this;
   }
+  /** Drops every registered system so a new run can register fresh instances (hooks are disposed by their owners). */
+  clearSystems(){this.systems.clear();return this;}
   /** Ids that actually run, in execution order. */
   registered(){return this.order.filter(id=>this.systems.has(id));}
 

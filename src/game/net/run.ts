@@ -1,6 +1,7 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
 export const RUN_HZ=20;
-export const RUN_DURATION_TICKS=10*60*RUN_HZ;
+/** Safety limit only: a full horde run (10 rounds, intermissions and the boss) takes about 13.7 min. */
+export const RUN_DURATION_TICKS=20*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 export type RunPhase='lobby'|'countdown'|'combat'|'result';
 export type RunOutcome='victory'|'defeat'|'timeout';
@@ -64,7 +65,7 @@ export class RunLifecycle {
     }
     return {started:false,finished:false};
   }
-  /** This method accepts simulation output, never a client message. */
+  /** This method accepts simulation output, never a client message. True exactly once per run (the first outcome wins). */
   finish(outcome:RunOutcome){
     if(this.phase!=='combat')return false;
     this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;

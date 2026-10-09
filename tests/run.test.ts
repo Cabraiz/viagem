@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RunLifecycle,RUN_COUNTDOWN_TICKS} from '../src/game/net/run.ts';
+import {RunLifecycle,RUN_COUNTDOWN_TICKS,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 
 function start(run:RunLifecycle,ids=['a']){
   for(const id of ids)run.join(id);
@@ -45,4 +45,18 @@ test('server ticks end duration exactly and snapshots cannot mutate state',()=>{
   for(let i=0;i<4;i++)assert.equal(run.step().finished,false);
   assert.equal(run.step().finished,true);assert.equal(run.snapshot().outcome,'timeout');assert.equal(run.snapshot().remaining,0);
   assert.equal(run.step().finished,false);
+});
+test('finish accepts exactly one outcome per run and nothing outside combat',()=>{
+  const run=new RunLifecycle('room',3);run.join('a');
+  assert.equal(run.finish('victory'),false);run.ready('a',1,true);assert.equal(run.finish('victory'),false);
+  for(let i=0;i<RUN_COUNTDOWN_TICKS;i++)run.step();
+  run.step();run.step();assert.equal(run.step().finished,true);
+  for(const outcome of ['victory','defeat','timeout'] as const)assert.equal(run.finish(outcome),false);
+  assert.equal(run.snapshot().outcome,'timeout');
+  assert.equal(run.rematch('a',1),true);run.ready('a',2,true);for(let i=0;i<RUN_COUNTDOWN_TICKS;i++)run.step();
+  assert.equal(run.finish('defeat'),true);assert.equal(run.finish('victory'),false);assert.equal(run.snapshot().resultId,'room:2');
+});
+test('the safety limit leaves room for a full horde run',()=>{
+  assert.equal(RUN_DURATION_TICKS,20*60*RUN_HZ);assert.ok(RUN_DURATION_TICKS>14*60*RUN_HZ);
+  const run=new RunLifecycle('room');start(run);assert.equal(run.snapshot().remaining,RUN_DURATION_TICKS);
 });

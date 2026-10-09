@@ -28,17 +28,23 @@ test('an attack finishes once, survives movement, then yields to locomotion',()=
   assert.equal(motion.update(1260,false,17,true),'idle');
 });
 
-test('accepted attack events reach observers without changing cooldown or old-wire compatibility',()=>{
-  const room=new Simulation();const p=room.add('sprite-test','Sprite','pedreiro');
-  room.input(p.id,{seq:1,x:0,y:0,attack:true});room.step();
-  const first=p.attackTick;assert.equal(first,1);
-  assert.equal(unpackPlayer(packPlayer(p)).attackTick,first);
-  room.input(p.id,{seq:2,x:0,y:0,attack:true});room.step();
-  assert.equal(p.attackTick,first);
+test('weapon fire events reach observers through attackTick without changing old-wire compatibility',()=>{
+  // Weapons auto-fire now: attackTick is the tick of the player's latest 'fire' event and only moves when one happens.
+  const room=new Simulation();room.add('sprite-test','Sprite','pedreiro');room.resetRun();
+  const p=room.players.get('sprite-test')!;
+  assert.equal(p.attackTick,0);
+  let fired=0,last=0;
+  for(let i=0;i<1200&&fired<3;i++){
+    room.input(p.id,{seq:i+1,x:0,y:0,attack:true});
+    const events=room.step();
+    // A swing lasts ATTACK_ANIMATION_TICKS (12): weapon fire inside it does not restart it; skill casts have their own field.
+    if(events.some(e=>e.type==='fire'&&e.player===p.id&&!e.weapon.startsWith('skill:'))&&room.tick-last>=12){fired++;last=room.tick;assert.equal(p.attackTick,room.tick);}
+    else assert.equal(p.attackTick,last,'no new swing without a weapon fire event');
+  }
+  assert.ok(fired>0,'the starting weapon fires once enemies arrive');
+  assert.equal(unpackPlayer(packPlayer(p)).attackTick,p.attackTick);
   const legacy=packPlayer(p);legacy.length=9;assert.equal(unpackPlayer(legacy).attackTick,0);assert.equal(unpackPlayer(legacy).spectator,false);
 });
-
-
 
 test('all classes hold one idle pose and use half-speed walk and attack clips',()=>{
   assert.deepEqual(SPRITE_CLIPS.idle.frames,[0]);

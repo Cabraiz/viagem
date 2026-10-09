@@ -1,25 +1,38 @@
 import {DEFAULT_SEED} from '../src/game/terrain/field.ts';
 import { Simulation, GRACE_MS, ROOM_PROTOCOL, delta, type Snapshot } from '../src/game/net/shared.ts';
-import {RunLifecycle} from '../src/game/net/run.ts';
+import {RunLifecycle,RUN_DURATION_TICKS} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
 
 export type Peer={ send:(data:string)=>void; close:(code:number,reason:string)=>void };
-type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number};
+/** offers: the pending-offer list (JSON) this peer last received, so each change is pushed once. */
+type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number;offers:string};
 type Session={id:string;token:string;until:number};
+export interface RoomOptions {
+  /** Combat safety limit in server ticks (tests shorten it). */
+  durationTicks?:number;
+}
 const classIds=new Set(classes.map(c=>c.id));
+/** Level ('lvl-<level>-<player>') or round ('rnd-<round>-<player>') offer id, optionally rerolled ('~<tick>'). */
+export const OFFER_ID=/^(lvl|rnd)-\d+-[\w-]{1,40}(~\d+)?$/;
+/** Offers carry at most four cards. */
+const MAX_CHOICE_INDEX=3;
 export class Room {
   sim:Simulation;
-  readonly run=new RunLifecycle(crypto.randomUUID());
+  readonly run:RunLifecycle;
   connections=new Map<Peer,Connection>();
   private sessions=new Map<string,Session>();
   private previous:Snapshot;
   readonly createdAt:number;
-  constructor(createdAt=Date.now(),seed=DEFAULT_SEED){this.createdAt=createdAt;this.sim=new Simulation(seed);this.previous=this.snapshot();}
+  constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
+    this.createdAt=createdAt;this.sim=new Simulation(seed);
+    this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
+    this.previous=this.snapshot();
+  }
   private snapshot():Snapshot{return {...this.sim.snapshot(),run:this.run.snapshot()};}
   connect(peer:Peer,now=Date.now()){
     if(now-this.createdAt>30*60_000){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
     if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
-    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now});
+    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]'});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
     const c=this.connections.get(peer);if(!c)return;
@@ -48,14 +61,37 @@ export class Room {
       this.run.join(session.id);
       this.syncSpectators();
       peer.send(JSON.stringify({t:'welcome',id:session.id,token:session.token,state:this.snapshot()}));
+      // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
+      this.pushOffers(c);
       this.broadcast(true);return;
     }
     if(!c.playerId)return;
     if(m.t==='input'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round)this.sim.input(c.playerId,m);}
+    else if(m.t==='choose')this.choose(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.broadcast(true);}}
     else if(m.t==='rematch'){if(this.run.rematch(c.playerId,m.round)){this.sim.resetRun();this.syncSpectators();this.broadcast(true);}}
     else if(m.t==='ping')peer.send(JSON.stringify({t:'pong',at:m.at}));
     else if(m.t==='leave'){this.sim.remove(c.playerId);this.run.leave(c.playerId);this.syncSpectators();this.sessions.delete(c.playerId);this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.broadcast(true);}
+  }
+  /**
+   * Offer pick. Malformed, stale-round or out-of-combat commands are dropped silently; a command that reaches the
+   * simulation (accepted, or refused there as forged, repeated or out of order) is answered with the peer's queue.
+   */
+  private choose(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
+    if(!Number.isInteger(m.index)||m.index<0||m.index>MAX_CHOICE_INDEX)return;
+    this.sim.choose(c.playerId!,m.offer,m.index);
+    this.pushOffers(c,true);
+  }
+  /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
+  private pushOffers(c:Connection,force=false){
+    if(!c.playerId)return;
+    const offers=this.sim.offers(c.playerId),json=JSON.stringify(offers);
+    if(!force&&json===c.offers)return;
+    c.offers=json;
+    try{c.peer.send(JSON.stringify({t:'offers',offers}));}catch{this.disconnect(c.peer);}
   }
   private reject(peer:Peer,message:string){peer.send(JSON.stringify({t:'error',message}));this.connections.delete(peer);peer.close(4003,message);}
   disconnect(peer:Peer,now=Date.now()){
@@ -69,18 +105,36 @@ export class Room {
       if(now-this.createdAt>30*60_000||(!c.playerId&&now-c.opened>5000)||now-c.seen>12000){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
-    const transition=this.run.step();
-    if(transition.started){this.sim.resetRun();this.syncSpectators();this.broadcast(true);}
+    // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     if(this.run.snapshot().phase==='combat'){
       this.sim.step();
-      const active=[...this.sim.players.values()].filter(p=>!p.spectator);
-      if(active.length&&active.every(p=>p.hp===0))this.run.finish('defeat');
-      else if(this.sim.victory)this.run.finish('victory');
+      const outcome=this.sim.outcome;
+      if(outcome&&this.run.finish(outcome))this.announce();
+      // A new horde round starts with a full snapshot so protocol-3 clients drop old enemy tombstones.
+      else if(this.sim.world.round.index!==this.roundIndex){this.roundIndex=this.sim.world.round.index;this.broadcast(true);}
     }
+    const transition=this.run.step();
+    if(transition.started){this.sim.resetRun();this.roundIndex=this.sim.world.round.index;this.syncSpectators();this.broadcast(true);}
+    if(transition.finished)this.announce();
     // Lobby/countdown/result also need snapshots even while simulation tick is frozen.
-    if(++this.broadcastTick%2===0)this.broadcast(false);
+    if(++this.broadcastTick%2===0){
+      this.broadcast(false);
+      for(const c of [...this.connections.values()])this.pushOffers(c);
+    }
   }
   private broadcastTick=0;
+  /** Horde round (world.round.index) of the last full snapshot sent during combat. */
+  private roundIndex=0;
+  /** Runs once per run, right after RunLifecycle.finish accepted the outcome. */
+  private announce(){
+    const {outcome,resultId,round}=this.run.snapshot();
+    this.broadcast(true);
+    this.send({t:'result',outcome,resultId,round});
+  }
+  private send(message:object){
+    const raw=JSON.stringify(message);
+    for(const c of [...this.connections.values()])if(c.playerId){try{c.peer.send(raw);}catch{this.disconnect(c.peer);}}
+  }
   private broadcast(full:boolean){
     const next=this.snapshot(),message=JSON.stringify(full?next:delta(this.previous,next));this.previous=next;
     for(const c of [...this.connections.values()])if(c.playerId){try{c.peer.send(message);}catch{this.disconnect(c.peer);}}

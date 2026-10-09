@@ -170,7 +170,7 @@ test('telegraph outline covers exactly the zone the server damages (D-015: cone 
 });
 
 // ---------- Legibility (NEW-20261006-ORQ-horde-visual-noise) ----------
-import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,admitNumber,barVisible,canMerge,numberPriority} from '../src/game/render/legibility.ts';
+import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,numberPriority} from '../src/game/render/legibility.ts';
 
 test('health bars only for recently hit, elite, boss or the tapped target',()=>{
   const base={hp:5,maxHp:10,elite:false,boss:false,hitAt:1000};
@@ -220,4 +220,28 @@ test('a merge window of hits on one target shows one summed number',()=>{
   };
   for(let t=0;t<300;t+=50)hit('e1',5,t);
   assert.deepEqual(shown.map(n=>n.total),[15,15],'three hits per 150 ms window');
+});
+
+test('death pops: budget for plain kills, boss and elite jokes always land',()=>{
+  const {pops}=FX_BUDGET.reduced;
+  assert.equal(admitPop(0,pops,false),true);
+  assert.equal(admitPop(pops,pops,false),false,'plain kill over budget');
+  assert.equal(admitPop(pops,pops,true),true,'boss/elite kill');
+});
+
+test('health bars: only the last N distinct enemies hit keep one (hits spread over 300 bichos)',()=>{
+  const recent=new RecentHits(FX_BUDGET.full.bars);
+  for(let i=0;i<300;i++)recent.hit(`e${i}`);
+  assert.equal(recent.size,FX_BUDGET.full.bars);
+  assert.equal(recent.has('e299'),true);assert.equal(recent.has('e0'),false);
+  recent.hit('e270');recent.hit('new');
+  assert.equal(recent.has('e270'),true,'a re-hit moves to the end and survives');
+  assert.equal(recent.has('e271'),false,'oldest is evicted');
+  recent.delete('e299');assert.equal(recent.has('e299'),false,'killed enemies free their slot');
+  recent.setCap(FX_BUDGET.reduced.bars);assert.equal(recent.size,FX_BUDGET.reduced.bars);
+  assert.equal(recent.has('new'),true);
+  const base={hp:5,maxHp:10,elite:false,boss:false,hitAt:1000};
+  assert.equal(barVisible(base,1001,false,false),false,'recent hit but outside the cap');
+  assert.equal(barVisible({...base,elite:true},1001,false,false),true,'elite ignores the cap');
+  assert.equal(barVisible(base,1001,true,false),true,'tapped target ignores the cap');
 });

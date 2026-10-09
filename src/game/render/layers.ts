@@ -13,7 +13,7 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
 import {deathLine,kindStyle,damageLabel} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {OUTLINE_MAX_POINTS,telegraphOutline} from './telegraph-shape.ts';
-import {FX_BUDGET,admitNumber,barVisible,canMerge,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
+import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -99,6 +99,8 @@ export class HordeRenderer{
   private fx:FxBudget;
   /** Latest number per target, for merging hits inside DAMAGE_MERGE_MS. */
   private numberByTarget=new Map<string,NumberFx>();
+  /** The most recently hit enemies: the only plain ones that keep a health bar. */
+  private recentHits:RecentHits;
   private enemies:KeyedPool<EnemyActor>;
   private pickups:KeyedPool<PickupActor>;
   private projectiles:KeyedPool<ProjectileActor>;
@@ -129,7 +131,7 @@ export class HordeRenderer{
 
   constructor(scene:Phaser.Scene,options:HordeRendererOptions){
     this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;
-    this.fx=FX_BUDGET[options.effects??'full'];
+    this.fx=FX_BUDGET[options.effects??'full'];this.recentHits=new RecentHits(this.fx.bars);
     ensureHordeTextures(scene);
     this.ground=this.track(scene.add.graphics().setDepth(-9970));
     this.overlay=this.track(scene.add.graphics().setDepth(95000));
@@ -215,7 +217,7 @@ export class HordeRenderer{
   /** Follows prefers-reduced-motion changes at runtime. */
   setReduced(reduced:boolean){this.reduced=reduced;}
   /** Effects profile at runtime (settings). Live effects above the new budget fade out on their own. */
-  setEffects(profile:EffectsProfile){this.fx=FX_BUDGET[profile];}
+  setEffects(profile:EffectsProfile){this.fx=FX_BUDGET[profile];this.recentHits.setCap(this.fx.bars);}
   /** New run or reconnection to a fresh server: accept event ids from the start again. */
   resetEvents(){this.lastEventId=-1;}
 
@@ -232,7 +234,7 @@ export class HordeRenderer{
 
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
-    this.numberByTarget.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();
+    this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -290,7 +292,7 @@ export class HordeRenderer{
       case 'damage':{
         const enemy=this.enemies.get(event.target);
         if(enemy){
-          enemy.flashAt=this.now;enemy.hitAt=this.now;
+          enemy.flashAt=this.now;enemy.hitAt=this.now;if(!enemy.elite&&!enemy.boss)this.recentHits.hit(event.target);
           const priority=numberPriority({crit:!!event.crit,hostile:false,elite:enemy.elite,boss:enemy.boss});
           this.spawnNumber(event.target,enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,!!event.crit,false,priority,eventId);
         }else{
@@ -299,7 +301,7 @@ export class HordeRenderer{
         }
         break;
       }
-      case 'kill':this.spawnDeath(event.kind,event.enemy,event.x,event.y);break;
+      case 'kill':this.recentHits.delete(event.enemy);this.spawnDeath(event.kind,event.enemy,event.x,event.y);break;
       case 'spawn-warning':{
         const w=this.warnings.spawn();
         w.born=this.now;w.x=event.x;w.y=event.y;w.atTick=event.atTick;w.size=1+Math.min(.5,event.count*.04);
@@ -350,7 +352,8 @@ export class HordeRenderer{
       star.vx=Math.cos(angle)*speed;star.vy=Math.sin(angle)*speed*.8-90;star.spin=(i%2?1:-1)*(4+phase*4);
       star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
     }
-    if(this.pops.active>=this.fx.pops)return;
+    // The death joke of a boss or an elite always shows (recycling the oldest pop); plain kills respect the budget.
+    if(!admitPop(this.pops.active,this.fx.pops,k==='chefe'||!!this.enemies.get(id)?.elite))return;
     const pop=this.pops.spawn();
     pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
@@ -387,7 +390,7 @@ export class HordeRenderer{
     const shadow=art.width*size*(a.kind==='pernilongo'?.45:.66);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
-    if(barVisible(a,now,a.id===this.targetId))this.drawBar(q.x,q.y-this.barLift(a),a);
+    if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8);
   };
@@ -438,10 +441,13 @@ export class HordeRenderer{
     g.fillStyle(0xff4d4d,.14+.16*u).fillPoints(this.pts,true,true,n);
     n=this.outline(t,Math.max(.06,u));
     g.fillStyle(0xff8a3d,.22+.33*u).fillPoints(this.pts,true,true,n);
-    // The outline goes on the top layer so the zone stays readable through the horde.
+    // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
+    // Line widths follow the UI scale: at whole-island zoom (~0.26) a fixed 8px world line is ~2px on the phone.
     n=this.outline(t,1);
-    this.top.lineStyle(8,0xfff1e0,.35+.6*blink).strokePoints(this.pts,true,true,n);
-    this.top.lineStyle(4,0xff3b3b,.75+.25*u).strokePoints(this.pts,true,true,n);
+    const top=this.top,w=this.ui;
+    top.fillStyle(0xff4d4d,.08+.1*u).fillPoints(this.pts,true,true,n);
+    top.lineStyle(8*w,0xfff1e0,.35+.6*blink).strokePoints(this.pts,true,true,n);
+    top.lineStyle(4*w,0xff3b3b,.75+.25*u).strokePoints(this.pts,true,true,n);
   };
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}

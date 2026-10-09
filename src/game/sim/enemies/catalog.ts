@@ -33,9 +33,10 @@ export interface EliteDef extends EnemyLines {name:string;hp:number;speed:number
 export const ENEMY_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const satisfies readonly EnemyKind[];
 
 export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
+  // Gosma hugs more than it hurts: 5 per second of contact (was 8 every 0.8 s, which downed a duo in round 1).
   gosma:{
     id:'gosma',name:'Gosma de Geladeira',behavior:'chase',
-    hp:20,speed:1.4,damage:8,radius:.32,xp:1,contactCooldown:ticks(.8),color:0x9be37a,accent:0x5fae4a,
+    hp:20,speed:1.4,damage:5,radius:.32,xp:1,contactCooldown:ticks(1),color:0x9be37a,accent:0x5fae4a,
     barks:['Me dá um abraço!','Tô grudento de saudade!','Vencido desde 2019!','Sou o pote sem tampa!','Cheiro de pote esquecido!','Vem cá, fofinho!','Eu só quero carinho!','Ninguém me jogou fora!','Gruda, gruda, gruda!'],
     deathLines:['Fui pro ralo!','Me joga no lixo orgânico!','Virei mancha no chão!','Splosh... adeus!','Avisa a mãe que eu mofei!','Volto na próxima faxina!'],
     reactionLines:['Grudei em você!','Agora somos um só!','Não solto mais!','Shlurp!'],

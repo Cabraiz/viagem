@@ -3,9 +3,12 @@
  *
  * Curve (regular enemies per round, no modifier; elite and boss are extra):
  *   round  1   2   3   4   5    6    7    8    9   10
- *   1 P   22  32  34  46  54   76   64   72   82   30 + chefe
- *   6 P   77 112 119 161 189  266  224  252  287  105 + chefe
- * Threat (count x hp x kind weight) climbs 22 -> 246 for one player; round 6 is a fragile swarm breather after the elite.
+ *   1 P   12  26  32  46  54   76   64   72   82   30 + chefe
+ *   6 P   42  91 112 161 189  266  224  252  287  105 + chefe
+ * Threat (count x hp x kind weight) climbs 6 -> 246 for one player; round 6 is a fragile swarm breather after the elite.
+ * Round 1 teaches (BUG-20261009-N1-round1-letal): few gosmas at half hp, so the starting weapon kills each in one or
+ * two hits, arriving slowly enough that walking in circles leaves hp to spare with 1, 2 or 6 players. Rounds 2-3 ramp
+ * the hp back (0.8, 1.1) to meet round 4 where it was.
  * Six players get count x3.5 and hp x1.75 (~6x threat for ~6x damage); groups grow and arrive faster by sqrt(count),
  * so a round lasts about the same 40-55 s for 1 or 6 players. Spawns plus ~20 s intermissions add up to ~11 min.
  */
@@ -52,9 +55,9 @@ export interface RoundDef {
 }
 
 export const ROUNDS:readonly RoundDef[]=[
-  {index:1,budget:22,weights:{gosma:1},group:[3,5],cadence:6,maxDuration:45,hpScale:1},
-  {index:2,budget:32,weights:{gosma:.75,pernilongo:.25},group:[4,6],cadence:5,maxDuration:50,hpScale:1.1},
-  {index:3,budget:34,weights:{gosma:.6,pernilongo:.25,'tio-pave':.15},group:[4,7],cadence:5.5,maxDuration:55,hpScale:1.25},
+  {index:1,budget:12,weights:{gosma:1},group:[2,4],cadence:8,maxDuration:45,hpScale:.5},
+  {index:2,budget:26,weights:{gosma:.75,pernilongo:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
+  {index:3,budget:32,weights:{gosma:.6,pernilongo:.25,'tio-pave':.15},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
   {index:4,budget:46,weights:{gosma:.5,pernilongo:.2,'tio-pave':.15,fiscal:.15},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
   {index:5,budget:54,weights:{gosma:.45,pernilongo:.2,'tio-pave':.2,fiscal:.15},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},

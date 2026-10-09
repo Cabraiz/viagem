@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation,type SimOutcome} from '../src/game/net/shared.ts';
 import type {StampedEvent} from '../src/game/sim/core.ts';
 import {KITS} from '../src/game/sim/kits.ts';
-import {SIM_HZ} from '../src/game/sim/types.ts';
+import {SIM_HZ,ticks} from '../src/game/sim/types.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,MAX_TELEGRAPHS} from '../src/game/sim/budget.ts';
 
 /** Safety cap of a run: 20 minutes of ticks (RUN_DURATION_TICKS). */
@@ -40,6 +40,9 @@ interface RunResult {
   scoresAtEnd:Map<string,number>;
   /** Highest entity counts seen after any tick (budget.ts caps, plan §2 item 8). */
   peak:{enemies:number;pickups:number;projectiles:number;telegraphs:number};
+  /** Lowest hp / maxHp each bot had while a round 1 wave was running. */
+  round1MinHp:Map<string,number>;
+  downs:{player:string;tick:number;round:number}[];
   ms:number;
 }
 
@@ -55,10 +58,10 @@ function setup(seed:number,bots:number,classes:readonly string[]=KIT_CLASSES){
  * Drives bots for up to maxTicks, then `after` more ticks once an outcome appears (the Room would stop there;
  * the extra ticks check that the outcome stays and let the director close round 10).
  */
-function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTicks:number;after?:number;hashEvery?:number}):RunResult{
-  const {maxTicks,after=0,hashEvery=0}=options;
+function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTicks:number;after?:number;hashEvery?:number;stopAfterRound?:number}):RunResult{
+  const {maxTicks,after=0,hashEvery=0,stopAfterRound}=options;
   const seq=new Map(ids.map(id=>[id,0]));
-  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),peak:{enemies:0,pickups:0,projectiles:0,telegraphs:0},ms:0};
+  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),peak:{enemies:0,pickups:0,projectiles:0,telegraphs:0},round1MinHp:new Map(ids.map(id=>[id,1])),downs:[],ms:0};
   const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;if(p.build.weapons.length){p.build.weapons=[];p.weaponReady={};}}};
   if(script.unarmed)disarm();
   const watch=()=>{
@@ -85,6 +88,10 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
       if(e.type==='round'&&e.phase==='end')r.roundEnds.push({index:e.index,tick:sim.tick});
       if(e.type==='round'&&e.phase==='wave')r.roundWaves.push({index:e.index,tick:sim.tick});
       if(e.type==='kill')r.killEvents++;
+      if(e.type==='downed'||e.type==='eliminated')r.downs.push({player:e.player,tick:sim.tick,round:sim.world.round.index});
+    }
+    if(sim.world.round.index===1&&sim.world.round.phase==='wave')for(const id of ids){
+      const p=sim.players.get(id)!;r.round1MinHp.set(id,Math.min(r.round1MinHp.get(id)!,p.hp/p.stats.maxHp));
     }
     watch();
     if(script.choose&&sim.outcome===undefined)for(const id of ids){
@@ -97,6 +104,7 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
     watch();
     if(hashEvery&&t%hashEvery===0)r.hashes.push(sim.stateHash());
     if(r.outcome!==undefined&&stopAt===maxTicks)stopAt=Math.min(maxTicks,t+after);
+    if(stopAfterRound!==undefined&&r.roundEnds.some(e=>e.index===stopAfterRound))break;
   }
   r.ms=performance.now()-started;
   for(const id of ids)r.scoresAtEnd.set(id,sim.players.get(id)!.score);
@@ -249,4 +257,32 @@ test('victory beats defeat when the boss dies in the same tick the last player f
   assert.deepEqual(r.outcomeHistory,['victory']);
   assert.equal(r.outcomeTick,sameTick);
   assert.equal(sim.run.revive.defeated,false,'D-016: the boss killing blow ends the run, so revive never calls a defeat');
+});
+
+// BUG-20261009-N1-round1-letal: round 1 teaches instead of killing. Bots walk the deterministic circle of drive()
+// (each its own loop through the camp, so with 2+ bots every chaser crosses the middle) and take the default offers.
+const ROUND1_SEEDS=[SEED,7,11];
+for(const bots of [1,2,6])test(`round 1 with ${bots} bot(s) walking in circles: nobody falls and hp is left over`,t=>{
+  for(const seed of ROUND1_SEEDS){
+    const {sim,ids}=setup(seed,bots);
+    const r=drive(sim,ids,{move:true,choose:true,killEvery:0},{maxTicks:ticks(3+45+20),stopAfterRound:1});
+    const min=Math.min(...r.round1MinHp.values()),avg=[...r.round1MinHp.values()].reduce((a,b)=>a+b,0)/bots;
+    t.diagnostic(`seed ${seed}: round 1 ended at ${(r.roundEnds[0]?.tick??NaN)/SIM_HZ}s, lowest hp ${(min*100).toFixed(0)}%, team avg lowest ${(avg*100).toFixed(0)}%, kills ${r.killEvents}`);
+    assert.deepEqual(r.roundEnds.map(e=>e.index),[1],`seed ${seed}: round 1 ends`);
+    assert.equal(r.outcome,undefined,`seed ${seed}: no outcome in round 1`);
+    assert.deepEqual(r.downs,[],`seed ${seed}: nobody is downed in round 1`);
+    for(const id of ids){const p=sim.players.get(id)!;assert.ok(!p.downed&&!p.eliminated&&p.hp>0,`seed ${seed}: ${id} standing`);}
+    assert.ok(min>=.25,`seed ${seed}: every bot keeps at least 25% hp through round 1 (lowest ${(min*100).toFixed(0)}%)`);
+    assert.ok(avg>=.5,`seed ${seed}: the team keeps half its hp on average (${(avg*100).toFixed(0)}%)`);
+  }
+});
+
+test('round 1 is not a free pass forever: armed bots standing still can still lose, but not before round 3',t=>{
+  const {sim,ids}=setup(SEED,2);
+  const r=drive(sim,ids,{move:false,choose:true,killEvery:0},{maxTicks:CAP,after:20});
+  report(t,'standing duo',r);
+  t.diagnostic(`downs: ${r.downs.map(d=>`${d.player}@R${d.round}`).join(', ')}`);
+  assert.equal(r.outcome,'defeat','standing still is still punished');
+  assert.ok(sim.world.round.index>=3,`defeat comes in round ${sim.world.round.index}, not before round 3`);
+  assert.ok(r.roundEnds.some(e=>e.index===2),'rounds 1 and 2 end before the defeat');
 });

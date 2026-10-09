@@ -9,6 +9,15 @@ import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
+import {HordeRenderer} from './render/layers.ts';
+import {Projector} from './render/projector.ts';
+import {ENEMY_ART,ELITE_SCALE,enemyKind} from './render/keys.ts';
+import type {RunView} from './sim/view.ts';
+
+/** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
+const PUSH_MS=2*STEP*1000;
+/** Smallest tap radius on an enemy, in CSS px: the whole-island zoom makes a gosma ~13 px tall (D-009: ≥ 44 px targets). */
+const ENEMY_TAP_RADIUS_PX=26;
 
 export interface SceneHooks {
   classId:string;
@@ -21,6 +30,8 @@ export interface SceneHooks {
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
   attacking?:()=>boolean;
+  /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
+  runView?:(view:RunView)=>void;
 }
 type Graphics=Phaser.GameObjects.Graphics;
 const polygon=(g:Graphics,points:Point[],color:number,alpha=1)=>{
@@ -61,7 +72,10 @@ export class IslandScene extends Phaser.Scene {
   private skillEffects?:Graphics;
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
-  private enemyActors=new Map<string,{body:Phaser.GameObjects.Ellipse;label:Phaser.GameObjects.Text}>();
+  /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
+  private horde?:HordeRenderer;
+  private projector?:Projector;
+  private feedVersion=-1;
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
@@ -85,14 +99,23 @@ export class IslandScene extends Phaser.Scene {
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
-      const hit=[...this.enemyActors].filter(([id,o])=>o.body.visible&&(this.hooks.net?.enemies.get(id)?.hp??0)>0&&Math.hypot((p.x-o.body.x)/30,(p.y-o.body.y)/27)<=1).sort((a,b)=>Math.hypot(p.x-a[1].body.x,p.y-a[1].body.y)-Math.hypot(p.x-b[1].body.x,p.y-b[1].body.y))[0];
-      if(hit){this.attackTarget=hit[0];this.hooks.message('Alvo priorizado. O ataque é automático ao entrar no alcance.');return;}
+      const hit=this.enemyAt(p);
+      if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.message('Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
       this.goTo(unprojectView(p,this.view,this.field));
     });
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
-    if(this.hooks.net)this.position={...this.hooks.net.predicted};
+    if(this.hooks.net){
+      this.position={...this.hooks.net.predicted};
+      const net=this.hooks.net;
+      this.projector=new Projector(this.view,this.field);
+      // Whole-island framing zooms out to ~0.26 on a phone: text, bars and markers scale back to a readable size (as in ?sandbox=horda).
+      this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
+        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
+        locate:id=>id===net.id?net.predicted:net.players.get(id)});
+      this.events.once('shutdown',()=>{this.horde?.destroy();this.horde=undefined;});
+    }
     this.fit();this.place();
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
   }
@@ -108,10 +131,11 @@ export class IslandScene extends Phaser.Scene {
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.setPosition(p.x,p.y+28).setDepth(depth+2);}
+    if(this.projector){this.projector.view=this.view;this.horde?.refresh();}
     this.destination.clear();this.fit();this.place();
     return this.view;
   }
-  setPaused(paused:boolean){this.paused=paused;if(paused)this.attackTarget=undefined;this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
+  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
@@ -140,7 +164,7 @@ export class IslandScene extends Phaser.Scene {
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(delta);return;}
+    if(this.hooks.net){this.updateCoop(_time,delta);return;}
     if(this.paused)return;
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
@@ -156,13 +180,34 @@ export class IslandScene extends Phaser.Scene {
     this.stamp+=delta;
     if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
   }
-  private updateCoop(delta:number){
+  /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
+  private enemyAt(p:Point){
+    const feed=this.hooks.net?.feed;if(!feed)return undefined;
+    const floor=ENEMY_TAP_RADIUS_PX/Math.max(.05,this.cameras.main.zoom);
+    let best:string|undefined,bestDistance=Infinity;
+    for(const enemy of feed.enemies.values()){
+      if(enemy.hp<=0)continue;
+      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=enemy.elite&&kind!=='chefe'?ELITE_SCALE:1,q=this.project(enemy);
+      const cy=q.y-(art.hover+art.height*art.originY*.5)*size,distance=Math.hypot(p.x-q.x,p.y-cy);
+      if(distance<=Math.max(floor,art.width*size*.6)&&distance<bestDistance){best=enemy.id;bestDistance=distance;}
+    }
+    return best;
+  }
+  private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
     const axis=this.paused?{x:0,y:0}:this.hooks.direction();
     const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
     const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
     if(this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||net.players.get(net.id)?.spectator){this.attackTarget=undefined;this.route=[];}
-    if(this.attackTarget&&(net.enemies.get(this.attackTarget)?.hp??0)<=0){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. O básico continua automático.');}
+    if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. A arma segue atirando sozinha.');}
+    this.horde?.setTarget(this.attackTarget);
+    if(net.feed.version!==this.feedVersion){
+      this.feedVersion=net.feed.version;
+      const runView=net.feed.take();
+      this.horde?.push(runView);
+      this.hooks.runView?.(runView);
+    }
+    this.horde?.update(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
@@ -196,20 +241,8 @@ export class IslandScene extends Phaser.Scene {
       const q=this.project(player),depth=this.depth(player);
       objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
-      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${player.spectator?'assistindo':player.hp+'♥'}${player.online?'':' · voltando'}`);
-    }
-    for(const enemy of view.enemies){
-      let objects=this.enemyActors.get(enemy.id);
-      if(!objects){objects={body:this.add.ellipse(0,0,46,33,0xcf94bc).setStrokeStyle(3,0x976c97),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'10px',color:'#633c63',backgroundColor:'#fff4dc',padding:{x:4,y:2}}).setOrigin(.5,0)};this.enemyActors.set(enemy.id,objects);}
-      const q=this.project(enemy),depth=this.depth(enemy);
-      objects.body.setStrokeStyle(this.attackTarget===enemy.id?4:3,this.attackTarget===enemy.id?0xffef94:0x976c97);
-      objects.body.setPosition(q.x,q.y-15).setDepth(depth).setVisible(enemy.hp>0);
-      objects.label.setPosition(q.x,q.y+8).setDepth(depth+1).setText(`Gosma · ${enemy.hp}♥`).setVisible(enemy.hp>0);
-    }
-    // Horde enemies get a fresh id each spawn (VGM-042a): drop actors the server no longer sends, or they pile up as ghosts.
-    if(this.enemyActors.size>view.enemies.length){
-      const current=new Set(view.enemies.map(e=>e.id));
-      for(const [id,objects] of this.enemyActors)if(!current.has(id)){objects.body.destroy();objects.label.destroy();this.enemyActors.delete(id);if(this.attackTarget===id)this.attackTarget=undefined;}
+      const downed=player.hp<=0&&!player.spectator;
+      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${player.spectator?'assistindo':downed?'caído':player.hp+'♥'}${player.online?'':' · voltando'}`);
     }
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}

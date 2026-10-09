@@ -64,6 +64,9 @@ export class RunHud {
     this.reset();
   }
 
+  /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
+  rematchRefused(label:string){this.result.refuse(label);}
+
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){
     resetTally(this.tally);

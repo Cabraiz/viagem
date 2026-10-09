@@ -5,8 +5,6 @@
 .coop-lobby button.coop-nick-roll:active{transform:rotate(-8deg) scale(.96)}
 .coop-wait{position:absolute;z-index:6;top:max(122px,calc(env(safe-area-inset-top) + 114px));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100% - 32px));max-height:calc(100% - 300px);overflow:auto;padding:14px;border:2px solid #fff3d1;border-radius:18px;background:#fbf5e7f2;color:#5f4d6e;font:14px system-ui;box-shadow:0 6px 0 #4c3b5a40;pointer-events:auto;text-align:center}
 .coop-wait[hidden]{display:none}
-/* While the waiting room is up it owns the ready button; the run HUD keeps only its status text. */
-.coop-shell:has(.coop-wait:not([hidden])) #run-ready{display:none}
 .coop-wait-code{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}.coop-wait-code small{font-size:10px;letter-spacing:.14em;color:#9b86a8}.coop-wait-code strong{font:700 20px ui-monospace,monospace;letter-spacing:.12em;color:#5d4a86}
 .coop-wait button{min-height:44px;border-radius:12px;font:700 14px system-ui;cursor:pointer}
 .coop-wait-share{padding:0 14px;border:1px solid #c79a52;background:#f2cf7d;color:#6a4d1f}
@@ -31,6 +29,4 @@
 #coop-attack{box-sizing:border-box;width:82px;height:82px;display:grid;place-content:center;gap:2px;padding:0;border:2px solid #fff8e9b0;border-radius:50%;background:#6550807a;color:#fff9ed;box-shadow:0 3px 12px #30253630;font:700 12px system-ui;text-shadow:0 1px 3px #30253666;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:pointer}
 #coop-attack span{font-size:29px;line-height:1}
 #coop-attack:active{background:#8870acb0;transform:translateY(2px)}
-.coop-run{position:absolute;z-index:5;top:max(62px,calc(env(safe-area-inset-top) + 54px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 32px);width:max-content;padding:7px 12px;border-radius:14px;background:#263a347d;color:#fff9e6;font:12px system-ui;text-shadow:0 1px 2px #203329;pointer-events:none}
-.coop-run strong{font-size:13px}.coop-run button{pointer-events:auto;min-height:44px;padding:6px 12px;border:1px solid #fff6bd;border-radius:9px;background:#f2df9b;color:#344732;font:700 12px system-ui;cursor:pointer}.coop-run [hidden]{display:none}.coop-run button:disabled,#coop-attack:disabled{opacity:.5;cursor:default}
-@media(max-height:500px){.coop-run{top:max(8px,env(safe-area-inset-top));max-width:calc(100% - 290px);padding:4px 9px}.coop-run strong{font-size:11px}}
+#coop-attack:disabled{opacity:.5;cursor:default}

@@ -42,7 +42,14 @@ export interface RunExtras {
   events:StampedEvent[];
   /** Deltas only: pickups and projectiles carry just the changed ones, and these ids left since the previous message. */
   gone?:{pickups:string[];projectiles:string[]};
+  /**
+   * HUD state per player (VGM-043), the fields protocol 4 carries in PlayerWireView: maxHp, fall and build.
+   * Diffed by id like pickups; a player that left goes in the top-level `removed`. Optional: older rooms omit it.
+   */
+  players?:PlayerExtraWire[];
 }
+/** id, maxHp, flags (1 downed, 2 eliminated), revive progress 0..1, bleedOutTick, weapons [id,level][], passives [id,level][]. */
+export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][]];
 export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string}; x?:RunExtras };
 // hp goes up rounded (regen and might make fractions): a player or enemy still standing never shows 0.
 export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),wireHp(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
@@ -51,6 +58,10 @@ export const packEnemy = (e:Enemy&Partial<EnemyState>):EnemyWire => e.kind===und
 export const unpackPlayer = (p:PlayerWire):Player => ({id:p[0],x:p[1],y:p[2],hp:p[3],ack:p[4],online:p[5],score:p[6],name:p[7],classId:p[8],attackTick:p[9]??0,spectator:p[10]??false,skillTick:p[11]??0,skillReadyTick:p[12]??0});
 export const unpackEnemy = (e:EnemyWire):Enemy => ({id:e[0],x:e[1],y:e[2],hp:e[3]});
 const round=(n:number)=>Math.round(n*1000)/1000;
+/** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
+const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
+export const packPlayerExtra=(p:ServerPlayer):PlayerExtraWire=>[p.id,wireHp(p.stats.maxHp),(p.downed?1:0)|(p.eliminated?2:0),p.downed?progress(p.downed.progress):0,p.downed?.bleedOutTick??0,
+  p.build.weapons.map(i=>[i.id,i.level]),p.build.passives.map(i=>[i.id,i.level])];
 const wireHp=(hp:number)=>Number.isFinite(hp)&&hp>0?Math.ceil(hp-1e-9):0;
 export function validInput(value:unknown):value is Input {
   if(!value||typeof value!=='object')return false;
@@ -218,7 +229,7 @@ export class Simulation {
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
     return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
-      x:{round:{...w.round},team:{...w.team},
+      x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(packPlayerExtra),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),
         projectiles:[...w.projectiles.values()].map(p=>[p.id,p.source,round(p.x),round(p.y),round(p.vx),round(p.vy),p.radius,p.hostile]),
         telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
@@ -256,9 +267,10 @@ export function delta(previous:Snapshot,next:Snapshot):Snapshot {
   const {terrain:_terrain,...rest}=next;
   const patch:Snapshot={...rest,full:false,players:changed(previous.players,next.players),enemies:changedEnemies(previous.enemies,next.enemies),removed:previous.players.filter(p=>!alive.has(p[0])).map(p=>p[0])};
   if(next.x){
-    const before=previous.x??{pickups:[],projectiles:[]};
+    const before:Partial<RunExtras>&Pick<RunExtras,'pickups'|'projectiles'>=previous.x??{pickups:[],projectiles:[]};
     patch.x={...next.x,pickups:changed(before.pickups,next.x.pickups),projectiles:changed(before.projectiles,next.x.projectiles),
       gone:{pickups:goneIds(before.pickups,next.x.pickups),projectiles:goneIds(before.projectiles,next.x.projectiles)}};
+    if(next.x.players)patch.x.players=changed(before.players??[],next.x.players);
   }
   return patch;
 }
@@ -274,7 +286,8 @@ export function applyDelta(state:Snapshot,patch:Snapshot):Snapshot{
   const merge=<T extends Keyed>(list:readonly T[],update:readonly T[],gone:readonly string[]=[])=>{
     const byId=new Map(list.map(i=>[i[0],i]));for(const i of update)byId.set(i[0],i);for(const id of gone)byId.delete(id);return [...byId.values()];
   };
-  const x=patch.x&&state.x?{...patch.x,pickups:merge(state.x.pickups,patch.x.pickups,patch.x.gone?.pickups),projectiles:merge(state.x.projectiles,patch.x.projectiles,patch.x.gone?.projectiles)}:patch.x;
+  const x=patch.x&&state.x?{...patch.x,pickups:merge(state.x.pickups,patch.x.pickups,patch.x.gone?.pickups),projectiles:merge(state.x.projectiles,patch.x.projectiles,patch.x.gone?.projectiles),
+    ...(patch.x.players?{players:merge(state.x.players??[],patch.x.players,patch.removed)}:{})}:patch.x;
   if(x)delete x.gone;
   return {...patch,full:true,terrain:state.terrain,players:[...players.values()],enemies:[...enemies.values()],removed:[],...(x?{x}:{})};
 }

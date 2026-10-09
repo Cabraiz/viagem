@@ -4,6 +4,13 @@ import {landmarks} from './world.ts';
 import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import {JoystickInput} from './joystick.ts';
+import {RunHud} from './hud/hud.ts';
+import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
+import {DamageTally} from './net/run-feed.ts';
+import type {RunView} from './sim/view.ts';
+
+/** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
+const REMATCH_REFUSED='Criem uma sala nova';
 
 let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
@@ -26,21 +33,24 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   let attacking=false,attackQueuedUntil=0,attackPointer:number|undefined;
+  let hud:RunHud|undefined,resultShown:number|undefined;
+  const damage=new DamageTally();
   if(net){
     shell.classList.add('coop-shell');shell.dataset.build='viagem-coop-v3';shell.dataset.room=net.code;
-    $('.explore-notice').textContent='Arraste para andar. Toque na gosma ou segure Atacar.';
+    $('.explore-notice').textContent='Arraste para andar. A arma atira sozinha; toque num bicho para priorizar o alvo.';
     $('.explore-title p').innerHTML='COOPERATIVO · <span id="explorer-name"></span>';
     $('.explore-quest').innerHTML='<small>A TURMA CONTRA AS GOSMAS</small><strong id="coop-objective">Protejam a ilha</strong><span id="coop-health"></span><div class="coop-party"></div>';
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
     $('#coop-code').textContent=`Sala ${net.code}`;
-    $('.explore-actions').innerHTML='<button id="coop-attack" aria-label="Atacar. Segure para repetir."><span aria-hidden="true">✦</span>Atacar</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
+    // Weapons fire on their own: this slot is the class skill (the old "Atacar" already sent `skill`). Same look as before;
+    // cooldown, icon and line come with NEW-20261006-E7-skill-hud-wiring and the DSG cards.
+    $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill" aria-label="Habilidade da classe">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
-    const runHud=document.createElement('section');runHud.className='coop-run';runHud.setAttribute('aria-label','Estado da partida');
-    runHud.innerHTML='<strong id="run-phase">Aguardando amigos</strong><span id="run-time"></span><button id="run-ready">Estou pronto</button><button id="run-rematch" hidden>Jogar novamente</button>';
-    $('.explore-layout').append(runHud);
-    $('#run-ready').addEventListener('click',()=>net.ready(!net.run?.members.find(p=>p.id===net.id)?.ready));
-    $('#run-rematch').addEventListener('click',()=>net.rematch());
+    // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
+    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close()});
+    hud.el.hidden=true;
     net.onStatus=m=>{$('#coop-network').textContent=m;};
+    net.onNotice=()=>{if(resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     const attack=$('#coop-attack');attack.addEventListener('pointerdown',e=>{if(e.button!==0||attackPointer!==undefined)return;e.preventDefault();pause(false);attackPointer=e.pointerId;attacking=true;attack.setPointerCapture(e.pointerId);});
@@ -69,10 +79,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
   let closed=false,paused=false;
   const visited=new Set<number>();
+  /** Result screen data from the last view: the room sends outcome and duration, the HUD view has round, players and build. */
+  const runResult=(victory:boolean,durationTicks:number):RunResult=>{
+    const view:RunView|undefined=hud?.view;
+    return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
+      players:(view?.players??[]).map(p=>({...p,stats:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}}))};
+  };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();
-    net?.leave();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    net?.leave();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
   const pause=(value:boolean)=>{paused=value;if(value){attacking=false;attackPointer=undefined;attackQueuedUntil=0;reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
@@ -117,15 +133,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
-          $('#coop-health').textContent=`Você: ${self?.hp??0}♥ · ${self?.score??0} pontos na sala`;
+          $('#coop-health').textContent=`Você: ${self?.hp??0}♥`;
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
-            const seconds=Math.ceil(run.remaining/20),minutes=Math.floor(seconds/60);
-            $('#run-phase').textContent=run.phase==='lobby'?'Aguardando amigos':run.phase==='countdown'?'A partida vai começar':run.phase==='combat'?(member?.spectator?'Assistindo à turma':'Protejam a ilha'):run.outcome==='victory'?'Vitória da turma!':run.outcome==='timeout'?'Tempo esgotado':'A turma caiu';
-            $('#run-time').textContent=run.phase==='lobby'?`${run.members.filter(p=>p.ready).length}/${run.members.length} prontos`:run.phase==='countdown'?String(seconds):run.phase==='combat'?`${minutes}:${String(seconds%60).padStart(2,'0')}`:`Rodada ${run.round} · ${self?.score??0} pontos`;
-            const ready=$<HTMLButtonElement>('#run-ready');ready.hidden=run.phase!=='lobby'&&run.phase!=='countdown'||!!member?.spectator;ready.disabled=!net.connected;ready.textContent=member?.ready?'Cancelar prontidão':'Estou pronto';ready.setAttribute('aria-pressed',String(!!member?.ready));
-            $('#run-rematch').hidden=run.phase!=='result';$<HTMLButtonElement>('#run-rematch').disabled=!net.connected;
+            if(hud){
+              hud.el.hidden=run.phase!=='combat'&&run.phase!=='result';
+              if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
+              else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();}
+              shell.dataset.hudResult=String(resultShown!==undefined);
+            }
             $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!net.connected;
           }
           $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
@@ -134,6 +151,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         }
       },
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').textContent='Ilha explorada ✓';},
+      runView:view=>{
+        damage.add(view,id=>net!.players.has(id));
+        const phase=net?.run?.phase;
+        if(hud&&(phase==='combat'||phase==='result'))hud.update(view);
+        shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
+      },
       ready:()=>{for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.disabled=false;$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });

@@ -6,8 +6,8 @@ import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
 import type {SimEvent} from '../sim/types.ts';
 import type {RunResult} from './model.ts';
 
-export type HudScenario='wave'|'prepare'|'offer'|'offer-round'|'downed'|'boss'|'result';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-round','downed','boss','result'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-round'|'offer-heal'|'downed'|'boss'|'result';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-round','offer-heal','downed','boss','result'];
 
 const roster=[
   {id:'p1',name:'Mateus',classId:'cidadao-comum'},
@@ -60,7 +60,9 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     enemies:boss?[{id:'e-boss',kind:'chefe',x:12,y:12,hp:6200,maxHp:9000,boss:true,phase:1}]:[],
     pickups:[],projectiles:[],telegraphs:[],structures:[],
     players:fakePlayers(playerCount,scenario),
-    offers:scenario==='offer'?[fakeOffer('level',tick),fakeOffer('round',tick)]:scenario==='offer-round'?[fakeOffer('round',tick)]:[],
+    offers:scenario==='offer'?[fakeOffer('level',tick),fakeOffer('round',tick)]:scenario==='offer-round'?[fakeOffer('round',tick)]
+      // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
+      :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:tick+ticks(10),defaultIndex:0}]:[],
     events:[],
   };
   return view;

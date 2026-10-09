@@ -16,6 +16,7 @@
 .rh *,.rh *::before,.rh *::after{box-sizing:border-box}
 .rh [hidden]{display:none!important}
 .rh button{font:inherit;color:inherit;touch-action:manipulation}
+.rh .rh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- Top: round chip, XP, boss ---------- */
 .rh-top{position:absolute;top:var(--rh-t);left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -160,6 +161,7 @@
 .rh-card-name{font:700 13px/1.12 Georgia,serif;color:var(--rh-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .rh-card-level{align-self:center;padding:1px 7px;border-radius:8px;font:800 10px/1.3 'Trebuchet MS',system-ui,sans-serif;letter-spacing:.03em;background:#e9e1f5;color:var(--rh-purple)}
 .rh-card[data-kind=new] .rh-card-level{background:#ffe0a3;color:#8a5a00}
+.rh-card[data-kind=snack] .rh-card-level{background:#ffd9c7;color:#9b3b3b}
 .rh-card[data-kind=evo] .rh-card-level{background:linear-gradient(90deg,#ff9ec4,#c8a8ff,#9fd8ff);color:#3e3150}
 .rh-card-blurb{font:600 11px/1.2 'Trebuchet MS',system-ui,sans-serif;color:#5f5573;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .rh-card-joke{font:italic 600 10px/1.2 'Trebuchet MS',system-ui,sans-serif;color:#8a7d9c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}

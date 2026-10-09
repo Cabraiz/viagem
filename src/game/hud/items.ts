@@ -3,7 +3,8 @@
  * the server (VGM-034/035/036) owns the real numbers. Names mirror the server catalogs (a test keeps them in sync,
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
-export type ItemDisplayKind='weapon'|'passive'|'evolution';
+/** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
+export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
 export interface ItemDisplay {id:string;kind:ItemDisplayKind;name:string;icon:string;blurb:string;joke:string}
 
 const items:ItemDisplay[]=[
@@ -24,6 +25,8 @@ const items:ItemDisplay[]=[
   {id:'ima',kind:'passive',name:'Ímã de Geladeira',icon:'🧲',blurb:'Puxa gemas de mais longe.',joke:'Brinde da pizzaria.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'🕶️',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
   {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'💳',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
+  // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
+  {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'🥟',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
 ];
 const byId=new Map(items.map(item=>[item.id,item]));
 
@@ -34,9 +37,11 @@ export function itemDisplay(id:string):ItemDisplay{
   return {id,kind:'weapon',name,icon:'❔',blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
 }
 
-/** "NOVO!" for a first pick, "Nv N" otherwise, "EVOLUÇÃO" for evolved weapons. */
+/** "NOVO!" for a first pick, "Nv N" otherwise, "EVOLUÇÃO" for evolved weapons, "LANCHE" for the coxinha. */
 export function levelTag(id:string,level:number){
-  if(itemDisplay(id).kind==='evolution')return 'EVOLUÇÃO';
+  const kind=itemDisplay(id).kind;
+  if(kind==='evolution')return 'EVOLUÇÃO';
+  if(kind==='snack')return 'LANCHE';
   return level<=1?'NOVO!':`Nv ${level}`;
 }
 

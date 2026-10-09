@@ -97,7 +97,7 @@ export function offerTitle(offer:OfferView){
   return offer.source==='round'?{eyebrow:'FIM DE ROUND',title:'Upgrade do round'}:{eyebrow:`NÍVEL ${offer.level}`,title:'Subiu de nível!'};
 }
 
-/** Remaining fraction of an offer deadline, given the tick the client first saw it. */
+/** Remaining fraction of an offer deadline, given the tick it became the shown (head) offer. */
 export function offerDeadlineFraction(offer:OfferView,tick:number,firstSeenTick:number){
   const span=offer.deadlineTick-Math.min(firstSeenTick,tick);
   return span>0?clamp01((offer.deadlineTick-tick)/span):0;
@@ -120,6 +120,17 @@ export interface PlayerTally {downs:number;revives:number;upgrades:number;evolve
 export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number}
 
 export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1});
+
+/**
+ * Starts a new run's tally in place (rematch). Counters and start tick clear, but lastEventId is kept:
+ * eventIds are monotonic across runs (D-011), so late events of the old run still dedupe instead of
+ * leaking into the new one.
+ */
+export function resetTally(tally:RunTally){
+  tally.players.clear();
+  tally.startTick=undefined;
+  return tally;
+}
 const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0});
 
 export function tallyOf(tally:RunTally,playerId:string){

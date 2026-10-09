@@ -11,7 +11,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 
 export function createTopBar():HudPart{
   const root=el('div','rh-top');
-  const chip=el('div','rh-round',root);chip.setAttribute('role','status');
+  // Not a live region: the countdown changes every second. Round changes are announced by the marquee.
+  const chip=el('div','rh-round',root);
   const label=el('strong','rh-round-label',chip),detail=el('span','rh-round-detail',chip);
   const xp=el('div','rh-xp',root);
   const level=el('span','rh-xp-level',xp);
@@ -20,25 +21,29 @@ export function createTopBar():HudPart{
   const boss=el('div','rh-boss',root);boss.hidden=true;
   const bossName=el('strong','rh-boss-name',boss),bossTrack=el('div','rh-boss-track',boss),bossFill=el('i','rh-boss-fill',bossTrack);
   let lastLevel=-1;
+  // Last written values: update runs for every view, but these change rarely.
+  const last=new Map<string,string>();
+  const put=(key:string,value:string,write:(value:string)=>void)=>{if(last.get(key)!==value){last.set(key,value);write(value);}};
   return {el:root,update(view:RunView){
     const round=roundInfo(view);
     chip.hidden=!round;
     if(round){
-      label.textContent=round.label;detail.textContent=round.detail;
-      chip.dataset.phase=round.phase;
+      put('label',round.label,v=>{label.textContent=v;});
+      put('detail',round.detail,v=>{detail.textContent=v;});
+      put('phase',round.phase,v=>{chip.dataset.phase=v;});
       chip.classList.toggle('rh-urgent',round.phase==='prepare'&&(round.countdown??99)<=5);
     }
     const fraction=xpFraction(view);
-    fill.style.transform=`scaleX(${fraction})`;
-    level.textContent=`Nv ${view.team.level}`;
-    xp.setAttribute('aria-valuenow',String(Math.round(fraction*100)));
+    put('xp',`scaleX(${fraction})`,v=>{fill.style.transform=v;});
+    put('level',`Nv ${view.team.level}`,v=>{level.textContent=v;});
+    put('xpAria',String(Math.round(fraction*100)),v=>xp.setAttribute('aria-valuenow',v));
     if(lastLevel>=0&&view.team.level>lastLevel){xp.classList.remove('rh-pop');void xp.offsetWidth;xp.classList.add('rh-pop');}
     lastLevel=view.team.level;
     const info=bossInfo(view);
     boss.hidden=!info;
     if(info){
-      bossName.textContent=info.enraged?`${info.name} · FURIOSO`:info.name;
-      bossFill.style.transform=`scaleX(${info.fraction})`;
+      put('boss',info.enraged?`${info.name} · FURIOSO`:info.name,v=>{bossName.textContent=v;});
+      put('bossHp',`scaleX(${info.fraction})`,v=>{bossFill.style.transform=v;});
       boss.classList.toggle('rh-enraged',info.enraged);
     }
   }};

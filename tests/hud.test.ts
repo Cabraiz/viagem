@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {ticks} from '../src/game/sim/types.ts';
 import type {RunView} from '../src/game/sim/view.ts';
-import {applyEvents,bossInfo,emptyTally,formatDuration,offerDeadlineFraction,offerTitle,reviveAlerts,roundInfo,teamOrder,xpFraction} from '../src/game/hud/model.ts';
+import {applyEvents,bossInfo,emptyTally,resetTally,formatDuration,offerDeadlineFraction,offerTitle,reviveAlerts,roundInfo,teamOrder,xpFraction} from '../src/game/hud/model.ts';
 import {marqueeFor} from '../src/game/hud/topbar.ts';
 import {memberState} from '../src/game/hud/team.ts';
 import {allItemDisplays,itemDisplay,levelTag} from '../src/game/hud/items.ts';
 import {HUD_SCENARIOS,fakePlayers,fakeResult,fakeView} from '../src/game/hud/fixtures.ts';
 import {classes} from '../src/classes.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards} from '../src/game/hud/awards.ts';
-import {choiceFlags,offerJoke,queueLabel} from '../src/game/hud/offer.ts';
+import {OFFER_TAP_GUARD_MS,OfferTapGuard,choiceFlags,offerJoke,queueLabel,trackShownAt} from '../src/game/hud/offer.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,OFFER_SECONDS} from '../src/game/sim/offers.ts';
 import {BUILD_SLOTS,buildIcons,compactNumber,resultHeadline} from '../src/game/hud/result.ts';
 import {fakeResultEvents} from '../src/game/hud/fixtures.ts';
 import {WEAPON_CATALOG} from '../src/game/sim/weapons/catalog.ts';
@@ -100,7 +101,7 @@ test('round marquee: absurd name and modifier, boss round, interval joke',()=>{
 
 test('item display covers every fixed id with pt-BR copy and falls back for unknown ids',()=>{
   const ids=new Set(allItemDisplays().map(i=>i.id));
-  for(const id of [...WEAPONS,...EVOLUTIONS,...PASSIVES])assert.ok(ids.has(id),id);
+  for(const id of [...WEAPONS,...EVOLUTIONS,...PASSIVES,HEAL_CHOICE])assert.ok(ids.has(id),id);
   for(const item of allItemDisplays())assert.ok(item.name&&item.blurb&&item.joke&&item.icon,item.id);
   // Names must match the server catalogs; blurbs stay short enough for 3 lines on a portrait card.
   for(const [id,def] of WEAPON_CATALOG){assert.equal(itemDisplay(id).name,def.name,id);assert.equal(itemDisplay(id).kind,def.kind,id);}
@@ -181,4 +182,59 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
   assert.deepEqual(buildIcons(five,5).hidden,[]);assert.equal(buildIcons(five,Infinity).items.length,5);
   // Passives sort by level after weapons; ties keep the build order.
   assert.deepEqual(buildIcons({weapons:[],passives:[{id:'ima',level:1},{id:'bone',level:3},{id:'tenis',level:1}]},9).items.map(i=>i.id),['bone','ima','tenis']);
+});
+
+test('full-build coxinha (HEAL_CHOICE) is a known, funny snack card, not "Item misterioso"',()=>{
+  const heal=itemDisplay(HEAL_CHOICE);
+  assert.notEqual(heal.icon,'❔');assert.equal(heal.kind,'snack');
+  assert.match(heal.name,/Coxinha/);assert.ok(heal.blurb.includes(String(HEAL_AMOUNT)),heal.blurb);assert.ok(heal.joke);
+  assert.equal(levelTag(HEAL_CHOICE,1),'LANCHE');
+});
+
+test('queued offers start their deadline bar full when they become the shown offer',()=>{
+  // Server chains deadlines: B waits for A, then gets its own OFFER_SECONDS (progression.ts pushOffer/resolve).
+  const a={id:'a',source:'level' as const,level:5,choices:[{itemId:'boleto',level:1}],deadlineTick:1000+ticks(OFFER_SECONDS),defaultIndex:0};
+  const b={...a,id:'b',level:6,deadlineTick:1000+ticks(2*OFFER_SECONDS)};
+  const shownAt=new Map<string,number>();
+  assert.equal(trackShownAt(shownAt,[a,b],1000),1000);assert.ok(!shownAt.has('b'));
+  // A resolves after 4 s; B becomes head with its chained deadline.
+  const t=1000+ticks(4);
+  const start=trackShownAt(shownAt,[b],t)!;
+  assert.equal(start,t);assert.ok(!shownAt.has('a'));
+  assert.equal(offerDeadlineFraction(b,t,start),1);
+  assert.equal(trackShownAt(shownAt,[],t+1),undefined);assert.equal(shownAt.size,0);
+});
+
+test('tap guard: a second quick tap on the offer that replaced the chosen one is ignored',()=>{
+  const guard=new OfferTapGuard();
+  guard.rendered('a',0);
+  guard.pointerDown('a',1,500);assert.equal(guard.accept('a',1,520),true);
+  // A chosen → B rendered at 520 in the same spot; the finger lands again 120 ms later.
+  guard.rendered('b',520);
+  guard.pointerDown('b',1,640);assert.equal(guard.accept('b',1,660),false);
+  // Deliberate tap after the guard window works.
+  guard.pointerDown('b',2,520+OFFER_TAP_GUARD_MS+10);assert.equal(guard.accept('b',2,520+OFFER_TAP_GUARD_MS+30),true);
+  // Down on one card, click on another, or down on the old offer: rejected.
+  guard.pointerDown('b',0,2000);assert.equal(guard.accept('b',1,2010),false);
+  guard.pointerDown('a',0,2000);assert.equal(guard.accept('b',0,2010),false);
+  assert.equal(guard.accept('b',0,2020),false,'click without pointerdown');
+  // Screen reader / keyboard activation (no pointer) only needs the render delay.
+  assert.equal(guard.accept('b',0,2030,true),true);
+  guard.rendered('c',3000);assert.equal(guard.accept('c',0,3100,true),false);
+});
+
+test('rematch: tally restarts but late events of the old run still dedupe (monotonic eventIds)',()=>{
+  const tally=emptyTally(),view=fakeView('wave',2);
+  view.events=[{type:'downed',player:'p1',eventId:10},{type:'kill',enemy:'e',kind:'gosma',by:'p2',x:0,y:0,eventId:11}];
+  applyEvents(tally,view);
+  assert.equal(tally.players.get('p1')!.downs,1);
+  resetTally(tally);
+  assert.equal(tally.players.size,0);assert.equal(tally.startTick,undefined);
+  // A late resend of run 1 (eventId 11) plus run 2 events.
+  view.events=[{type:'kill',enemy:'e',kind:'gosma',by:'p2',x:0,y:0,eventId:11},{type:'downed',player:'p2',eventId:12}];
+  applyEvents(tally,view);
+  assert.equal(tally.players.get('p2')!.kills,0);assert.equal(tally.players.get('p2')!.downs,1);assert.equal(tally.players.get('p1'),undefined);
+  // Awards of run 2 only see run 2.
+  const awards=computeAwards(fakeResult(2),tally);
+  assert.equal(awards.find(a=>a.id==='mais-caiu')?.playerId,'p2');
 });

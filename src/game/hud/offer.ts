@@ -45,6 +45,43 @@ export function offerJoke(offerId:string,source:OfferSource){
   return lines[hashId(offerId)%lines.length];
 }
 
+/** Clicks are ignored unless the finger went down this long after the shown offer was rendered. */
+export const OFFER_TAP_GUARD_MS=350;
+
+/**
+ * Guards against choosing blind: with "+N na fila", picking offer A renders offer B in the same spot, and a
+ * quick second tap would land on B. A click only counts when its pointerdown hit the same card of the same
+ * offer at least OFFER_TAP_GUARD_MS after that offer appeared. Pure (times injected) so it is unit-tested.
+ */
+export class OfferTapGuard {
+  private offerId?:string;
+  private renderedAt=Number.NEGATIVE_INFINITY;
+  private down?:{offerId:string;index:number;at:number};
+  rendered(offerId:string,now:number){this.offerId=offerId;this.renderedAt=now;this.down=undefined;}
+  pointerDown(offerId:string,index:number,now:number){this.down={offerId,index,at:now};}
+  /** `assistive`: activation without a pointer (screen reader, keyboard); only the render delay applies. */
+  accept(offerId:string,index:number,now:number,assistive=false){
+    const down=this.down;this.down=undefined;
+    if(offerId!==this.offerId)return false;
+    if(assistive)return now-this.renderedAt>=OFFER_TAP_GUARD_MS;
+    return !!down&&down.offerId===offerId&&down.index===index&&down.at-this.renderedAt>=OFFER_TAP_GUARD_MS;
+  }
+}
+
+/**
+ * Tick each offer became the head (offers[0]). Queued offers are not timed yet: the server chains their
+ * deadlines (each one starts when the previous resolves), so timing them from the queue would start the
+ * bar half empty. Returns the head's start tick.
+ */
+export function trackShownAt(shownAt:Map<string,number>,offers:readonly OfferView[],tick:number){
+  const ids=new Set(offers.map(offer=>offer.id));
+  for(const id of shownAt.keys())if(!ids.has(id))shownAt.delete(id);
+  const head=offers[0];
+  if(!head)return undefined;
+  if(!shownAt.has(head.id))shownAt.set(head.id,tick);
+  return shownAt.get(head.id);
+}
+
 export const queueLabel=(queued:number)=>queued>0?`+${queued} na fila`:'';
 
 /** Card flags: the default pick (applied on timeout) and the 4th "luck" slot. */
@@ -63,7 +100,9 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const cards=el('div','rh-offer-cards',root);
 
-  const firstSeen=new Map<string,number>();
+  const shownAt=new Map<string,number>();
+  const guard=new OfferTapGuard();
+  const now=()=>performance.now();
   let shown:OfferView|undefined;
   let pending:{id:string;index:number;atTick?:number}|undefined;
   let lastSeconds=-1,lastQueue=-1,lastUrgent=false;
@@ -77,7 +116,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
     cards.replaceChildren(...offer.choices.map((choice,index)=>{
       const item=itemDisplay(choice.itemId),tag=levelTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);
-      card.dataset.kind=item.kind==='evolution'?'evo':choice.level<=1?'new':'up';
+      card.dataset.kind=item.kind==='evolution'?'evo':item.kind==='snack'?'snack':choice.level<=1?'new':'up';
       card.classList.toggle('rh-card-default',flags.isDefault);card.classList.toggle('rh-card-luck',flags.luck);
       el('span','rh-card-icon',card).textContent=item.icon;
       const body=el('span','rh-card-body',card);
@@ -93,6 +132,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
       card.setAttribute('aria-label',`${item.name}, ${tag}. ${item.blurb}${flags.isDefault?' Escolha padrão quando o tempo acabar.':''}`);
       return card;
     }));
+    guard.rendered(offer.id,now());
     root.classList.remove('rh-offer-pending','rh-offer-in');void root.offsetWidth;root.classList.add('rh-offer-in');
     lastSeconds=-1;
   };
@@ -106,11 +146,17 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
     }
   };
 
+  cards.addEventListener('pointerdown',event=>{
+    const card=(event.target as HTMLElement).closest<HTMLButtonElement>('.rh-card');
+    if(card&&shown)guard.pointerDown(shown.id,Number(card.dataset.index),now());
+  });
   cards.addEventListener('click',event=>{
     const card=(event.target as HTMLElement).closest<HTMLButtonElement>('.rh-card');
     if(!card||!shown||pending)return;
     const index=Number(card.dataset.index);
     if(!(index>=0&&index<shown.choices.length))return;
+    // detail===0: activated without a pointer (screen reader / keyboard).
+    if(!guard.accept(shown.id,index,now(),event.detail===0))return;
     pending={id:shown.id,index};
     markPending();
     options.onChoose(shown.id,index);
@@ -119,8 +165,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
   return {el:root,update(view:RunView){
     const offers=view.offers;
     const ids=new Set(offers.map(offer=>offer.id));
-    for(const offer of offers)if(!firstSeen.has(offer.id))firstSeen.set(offer.id,view.tick);
-    for(const id of firstSeen.keys())if(!ids.has(id))firstSeen.delete(id);
+    const startTick=trackShownAt(shownAt,offers,view.tick);
     if(pending&&!ids.has(pending.id))pending=undefined;
     if(pending){pending.atTick??=view.tick;if(view.tick-pending.atTick>OFFER_RETRY_TICKS)pending=undefined;}
     const offer=offers[0];
@@ -129,7 +174,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
     if(offer.id!==shown?.id){shown=offer;render(offer);markPending();}
     else shown=offer;
     if(root.classList.contains('rh-offer-pending')!==(!!pending&&pending.id===offer.id))markPending();
-    const fraction=offerDeadlineFraction(offer,view.tick,firstSeen.get(offer.id)??view.tick);
+    const fraction=offerDeadlineFraction(offer,view.tick,startTick??view.tick);
     fill.style.transform=`scaleX(${fraction})`;
     const seconds=secondsLeft(offer.deadlineTick,view.tick);
     if(seconds!==lastSeconds){

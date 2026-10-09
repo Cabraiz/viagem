@@ -1,5 +1,5 @@
 /**
- * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-round|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
+ * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
  * `full=1` gives every player a 12-item build (layout stress test).
  * Renders the run HUD over a mock island with the real control positions (camera, gear, joystick, attack)
  * so overlaps are visible. Fake data only; nothing talks to the server.
@@ -73,6 +73,7 @@ function load(next:HudScenario){
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
 }
 load(scenario);
+(window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};
 
 if(!frozen)setInterval(()=>{
   if(scenario==='result')return;

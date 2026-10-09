@@ -5,7 +5,7 @@
  */
 import './hud.css';
 import type {RunView} from '../sim/view.ts';
-import {applyEvents,emptyTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
+import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
@@ -57,9 +57,16 @@ export class RunHud {
     this.result.show(result,this.ctx);
   }
 
+  /** Hides the result and starts a fresh tally: call on rematch so awards and kills do not carry over. */
   hideResult(){
     this.el.classList.remove('rh-ended');
     this.result.hide();
+    this.reset();
+  }
+
+  /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
+  reset(){
+    resetTally(this.tally);
   }
 
   get view(){return this.last;}

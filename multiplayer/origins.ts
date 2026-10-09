@@ -6,7 +6,7 @@
 export const PRODUCTION_ORIGINS:ReadonlySet<string>=new Set(['https://viagem.cyou','https://www.viagem.cyou']);
 /** Legacy local port (npm run preview / single executor). */
 export const LOCAL_PORT=4187;
-/** One vite port range per executor group: PC executors 42NN (4200 + N), cloud executors 43k0..43k9 (N<k>). */
+/** Accepted local vite ports: PC executors 4200–4299 (42NN = 4200 + N), cloud executors 4300–4399 (Executor-N<k> uses 43k0, plus 43k1..43k9 for extra servers). */
 export const EXECUTOR_PORTS={min:4200,max:4299} as const;
 export const CLOUD_EXECUTOR_PORTS={min:4300,max:4399} as const;
 const LOCAL_RANGES=[EXECUTOR_PORTS,CLOUD_EXECUTOR_PORTS] as const;

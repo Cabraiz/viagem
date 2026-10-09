@@ -38,7 +38,7 @@ export interface RunExtras {
   /** id,source,x,y,vx,vy,radius,hostile */
   projectiles:[string,string,number,number,number,number,number,boolean][];
   telegraphs:TelegraphView[];
-  /** Events of the last EVENT_WINDOW ticks; clients de-duplicate by eventId. */
+  /** Events since the previous broadcast (Room passes its last sent eventId), numbers rounded; each event goes out once. */
   events:StampedEvent[];
   /** Deltas only: pickups and projectiles carry just the changed ones, and these ids left since the previous message. */
   gone?:{pickups:string[];projectiles:string[]};
@@ -66,7 +66,15 @@ export type ServerPlayer = Player & RunPlayer & { spectator:boolean };
 export type SimOutcome=RunOutcomeKind;
 const runSeed=(seed:number,run:number)=>(seed^Math.imul(run+1,0x9e3779b9))>>>0;
 /** Ticks a dead enemy keeps being sent as a tombstone, and the event window of RunExtras. */
-const TOMBSTONE_TICKS=10,EVENT_WINDOW=4;
+const TOMBSTONE_TICKS=10;
+/** Events kept for snapshots; the Room's cursor sends each once, this only bounds memory between broadcasts. */
+const EVENT_BUFFER_TICKS=40;
+/** Shallow copy of an event with its non-integer numbers rounded like the rest of the wire (15.600000000000001 → 15.6). */
+export function wireEvent(event:StampedEvent):StampedEvent{
+  const out:Record<string,unknown>={};
+  for(const [k,v] of Object.entries(event))out[k]=typeof v==='number'&&!Number.isInteger(v)?round(v):v;
+  return out as StampedEvent;
+}
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
 const spawnSlot=(slot:number)=>({x:SPAWN.x+(slot%3-1)*.7,y:SPAWN.y+Math.floor(slot/3)*.7});
@@ -164,7 +172,7 @@ export class Simulation {
       if(p&&this.tick-(p.attackTick??0)>=ATTACK_ANIMATION_TICKS)p.attackTick=this.tick;
     }
     this.trackRemovals();
-    this.recent=this.recent.filter(r=>r.tick>this.tick-EVENT_WINDOW);
+    this.recent=this.recent.filter(r=>r.tick>this.tick-EVENT_BUFFER_TICKS);
     for(const event of events)this.recent.push({tick:this.tick,event});
     return events;
   }
@@ -196,7 +204,8 @@ export class Simulation {
       events:[...w.lastEvents],
     };
   }
-  snapshot():Snapshot{
+  /** sinceEventId: only events after it (the Room's broadcast cursor); omitted, the whole buffer. */
+  snapshot(sinceEventId=-1):Snapshot{
     const w=this.world;
     const enemies:EnemyWire[]=[...w.enemies.values()].map(packEnemy);
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
@@ -206,7 +215,7 @@ export class Simulation {
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),
         projectiles:[...w.projectiles.values()].map(p=>[p.id,p.source,round(p.x),round(p.y),round(p.vx),round(p.vy),p.radius,p.hostile]),
         telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
-        events:this.recent.map(r=>r.event)}};
+        events:this.recent.filter(r=>r.event.eventId>sinceEventId).map(r=>wireEvent(r.event))}};
   }
 }
 

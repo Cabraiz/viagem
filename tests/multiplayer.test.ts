@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,STEP,reconcile,simulate,delta,type Input} from '../src/game/net/shared.ts';
-import {Room,type Peer} from '../multiplayer/room.ts';
+import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,type Peer} from '../multiplayer/room.ts';
 import {walkable,SPEED} from '../src/game/world.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
@@ -218,4 +218,78 @@ test('each new horde round is announced with one full snapshot',()=>{
   assert.equal(a.messages.filter(m=>m.t==='state'&&m.full).at(-1).tick,room.sim.tick);
   for(let i=0;i<10;i++)advance();
   assert.equal(room.run.snapshot().phase,'combat');assert.equal(a.closes.length,0);assert.equal(fulls(),startFulls+1);
+});
+
+test('a run with no participant left ends in defeat right away (review 1)',()=>{
+  const room=new Room(1000),a=peer();join(room,a);startRun(room,[a]);
+  const token=a.messages.find(m=>m.t==='welcome').token;
+  room.advance(4200);room.disconnect(a,4250);
+  // The session grace (30 s) runs out: the member leaves the run.
+  room.advance(4250+31_000);
+  assert.equal(room.run.snapshot().phase,'result');assert.equal(room.run.snapshot().outcome,'defeat');
+  assert.deepEqual(results(a),[],'the departed peer gets nothing');
+  // Coming back afterwards is a fresh join into the result screen, not a stuck combat.
+  const b=peer();room.connect(b,36_000);command(room,b,{t:'join',protocol:3,token},36_000);
+  const c=peer();join(room,c,'Atrasado',36_000);
+  room.advance(36_050);assert.equal(room.run.snapshot().phase,'result');
+  assert.equal(room.run.snapshot().outcome,'defeat');
+});
+
+test('a late spectator alone does not keep an empty combat alive (review 1)',()=>{
+  const room=new Room(1000),a=peer(),late=peer();join(room,a);startRun(room,[a]);
+  join(room,late,'Atrasado',4200);assert.equal(room.sim.players.get(idOf(late))!.spectator,true);
+  command(room,a,{t:'leave'},4250);room.advance(4300);
+  assert.equal(room.run.snapshot().outcome,'defeat');assert.deepEqual(results(late).map(m=>m.outcome),['defeat']);
+});
+
+test('no new run starts without time for a whole run; a run near the room end is closed as a timeout (review 2)',()=>{
+  const created=1000,lateAt=created+ROOM_LIFETIME_MS-RUN_START_WINDOW_MS+1;
+  const room=new Room(created),a=peer(),b=peer();join(room,a);join(room,b,'B');
+  command(room,a,{t:'ready',round:1,ready:true},lateAt);
+  assert.ok(room.run.snapshot().members.every(m=>!m.ready),'ready refused');
+  assert.deepEqual(a.messages.filter(m=>m.t==='notice').map(m=>m.message),[ROOM_CLOSING_NOTICE]);
+  assert.equal(a.closes.length,0,'a notice never closes the connection');
+  command(room,a,{t:'ready',round:1,ready:false},lateAt);assert.equal(a.messages.filter(m=>m.t==='notice').length,1,'un-ready is always fine');
+  // Inside the window everything works, and a run still going near the end gets a result before the 4004.
+  const ok=new Room(created),c=peer();join(ok,c);startRun(ok,[c]);
+  // Pings keep the peer fresh across the jump in time (a stale peer would be dropped and the run lost instead).
+  const at=(t:number)=>{command(ok,c,{t:'ping',at:t},t);ok.advance(t);};
+  at(created+ROOM_LIFETIME_MS-60_000);assert.equal(ok.run.snapshot().phase,'combat');
+  at(created+ROOM_LIFETIME_MS-29_000);
+  assert.equal(ok.run.snapshot().outcome,'timeout');assert.deepEqual(results(c).map(m=>m.outcome),['timeout']);
+  command(ok,c,{t:'rematch',round:1},created+ROOM_LIFETIME_MS-28_000);
+  assert.equal(ok.run.snapshot().phase,'result','rematch refused too');
+  assert.equal(c.messages.filter(m=>m.t==='notice').length,1);
+});
+
+test('each event reaches the client exactly once, with rounded numbers (review 3)',()=>{
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
+  const sent:number[]=[],world=room.sim.world,step=world.step.bind(world);
+  world.step=()=>{const events=step();sent.push(...events.map(e=>e.eventId));return events;};
+  const p=room.sim.players.get(idOf(a))!;
+  for(let i=0;i<10;i++)createEnemy(world,'gosma',{x:p.x+.6+i*.1,y:p.y+.4},1);
+  const before=a.messages.length;
+  for(let i=0;i<400;i++)room.advance(4200+i*50);
+  const received=a.messages.slice(before).filter(m=>m.t==='state').flatMap(m=>m.x?.events??[]);
+  const ids=received.map((e:any)=>e.eventId);
+  assert.ok(sent.length>20,`events happened (${sent.length})`);
+  assert.equal(new Set(ids).size,ids.length,'no duplicate');
+  const last=Math.max(...ids),expected=sent.filter(id=>id<=last);
+  assert.deepEqual(ids,expected,'none lost, in order');
+  for(const e of received)for(const v of Object.values(e))if(typeof v==='number')assert.equal(v,Math.round(v*1000)/1000);
+});
+
+test('reconnect drops stale inputs and accepts the client sequence restarting at ack (review 4)',()=>{
+  const room=new Room(1000),a=peer();join(room,a);startRun(room,[a]);
+  const id=idOf(a),token=a.messages.find(m=>m.t==='welcome').token,p=room.sim.players.get(id)!;
+  for(let seq=1;seq<=8;seq++)command(room,a,{t:'input',round:1,seq,x:1,y:0,attack:false},4200);
+  room.advance(4250);const ack=p.ack;assert.equal(ack,1);
+  room.disconnect(a,4300);
+  const again=peer();room.connect(again,4400);command(room,again,{t:'join',protocol:3,token},4400);
+  const welcome=again.messages.find(m=>m.t==='welcome');assert.equal(welcome.id,id);
+  const at={x:p.x,y:p.y};
+  room.advance(4450);assert.deepEqual({x:p.x,y:p.y},at,'no stale input replayed after reconnect');assert.equal(p.ack,ack);
+  // The client restarts at its last ack (client.ts: seq = ack from welcome).
+  command(room,again,{t:'input',round:1,seq:ack+1,x:0,y:1,attack:false},4460);
+  room.advance(4500);assert.equal(p.ack,ack+1,'restarted sequence accepted');assert.notDeepEqual({x:p.x,y:p.y},at);
 });

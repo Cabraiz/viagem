@@ -144,11 +144,12 @@ test('deltas drop unchanged enemy kind/maxHp/flags and diff pickups/projectiles;
   for(let i=0;i<MAX_PROJECTILES;i++)w.projectiles.set(`pr-${i}`,{id:`pr-${i}`,owner:'p0',source:'chinelo',x:10+i*.0123,y:11+i*.0456,vx:3.1,vy:-2.4,radius:.25,damage:5,pierce:0,untilTick:w.tick+1e6,hostile:false,hit:[]});
   for(let i=0;i<MAX_PICKUPS;i++)w.pickups.set(`pk-${i}`,{id:`pk-${i}`,kind:'xp',x:5+i*.0371,y:7+i*.0219,value:3});
   let state=s.snapshot();const fullBytes=JSON.stringify(state).length;
-  let previous=state,deltaBytes=0,n=0;
+  let previous=state,deltaBytes=0,n=0,cursor=state.x!.events.at(-1)?.eventId??-1;
   for(let t=1;t<=20;t++){
     s.step();
     if(t%2)continue;
-    const next=s.snapshot(),patch=delta(previous,next);
+    // Same event cursor as the Room: each event goes out once.
+    const next=s.snapshot(cursor),patch=delta(previous,next);cursor=next.x!.events.at(-1)?.eventId??cursor;
     assert.equal(patch.terrain,undefined,'terrain only travels in full snapshots');
     for(const e of patch.enemies)if(e.length>4)assert.ok(!previous.enemies.some(p=>p[0]===e[0]&&p[4]===e[4]&&p[5]===e[5]&&p[6]===e[6]),'tail resent unchanged');
     deltaBytes+=JSON.stringify(patch).length;n++;

@@ -49,6 +49,7 @@ export class CoopClient {
         clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{if(performance.now()-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'ping',at:performance.now()}));this.saveToken();},2000);
       }else if(m.t==='state')this.apply(m);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
+      else if(m.t==='notice'&&typeof m.message==='string')this.onStatus(m.message);
       else if(m.t==='error'){this.onStatus(m.message);this.stopped=true;this.connected=false;this.forgetToken();this.rejectReady?.(new Error(m.message));ws.close();}
     };
     ws.onclose=()=>{

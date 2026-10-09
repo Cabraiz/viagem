@@ -227,7 +227,7 @@
 }
 /* Short phones / notch insets: when the card area cannot hold two full 2x2 rows (or three rows with
    blurbs), drop the per-card extra line instead of letting it spill past the card border. */
-@container rh-cards (max-height:154px){
+@container rh-cards (max-height:146px){
   .rh-offer-cards[data-count='4'] .rh-card-joke{display:none}
 }
 @container rh-cards (max-height:130px){

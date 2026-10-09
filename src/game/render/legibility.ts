@@ -51,9 +51,24 @@ export class RecentHits {
   get size(){return this.ids.size;}
 }
 
-/** Crits, hits on the boss or an elite, and damage to players are never dropped. */
-export function numberPriority(hit:{crit:boolean;hostile:boolean;elite:boolean;boss:boolean}){
-  return hit.crit||hit.hostile||hit.elite||hit.boss;
+/** Crits, hits on the boss or an elite, and damage to the LOCAL player are never dropped (allies' hits are plain numbers). */
+export function numberPriority(crit:boolean,selfHit:boolean,elite:boolean,boss:boolean){
+  return crit||selfHit||elite||boss;
+}
+
+export interface RankedNumber {priority:boolean;self:boolean}
+/**
+ * Which live number (oldest first) a priority newcomer replaces on a full screen: the oldest plain one; if all are
+ * priority, the oldest that is not damage on the local player; only when every number is local-player damage, the oldest.
+ */
+export function evictionIndex(count:number,at:(i:number)=>RankedNumber|undefined):number{
+  let firstOther=-1;
+  for(let i=0;i<count;i++){
+    const n=at(i);if(!n)continue;
+    if(!n.priority)return i;
+    if(firstOther<0&&!n.self)firstOther=i;
+  }
+  return firstOther>=0?firstOther:0;
 }
 
 export type NumberAdmission='spawn'|'recycle'|'drop';

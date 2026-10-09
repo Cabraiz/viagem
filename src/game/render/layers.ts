@@ -12,8 +12,8 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {deathLine,kindStyle,damageLabel} from './jokes.ts';
 import type {Projector} from './projector.ts';
-import {OUTLINE_MAX_POINTS,telegraphOutline} from './telegraph-shape.ts';
-import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
+import {OUTLINE_MAX_POINTS,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -32,6 +32,8 @@ export interface HordeRendererOptions{
   tickMs?:number;
   /** World position of a player, so hostile damage numbers can appear over them. */
   locate?:(id:string)=>Pt|undefined;
+  /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
+  selfId?:()=>string|undefined;
 }
 
 interface EnemyActor{
@@ -43,7 +45,7 @@ interface PickupActor{image:Image;shadow:Image;kind:string;value:number;born:num
 interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
-interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean}
+interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean;priority:boolean;self:boolean}
 interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:number}
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
 interface StarFx{image:Image;born:number;x:number;y:number;lift:number;vx:number;vy:number;spin:number}
@@ -86,6 +88,8 @@ const SHADOW_W=46,SHADOW_H=16,BAR_W=46,BAR_H=13,FILL_W=40,FILL_H=7;
 export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
 /** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
 export const TELEGRAPH_TOP_DEPTH=99000;
+/** Width of the telegraph's outer (light) stroke at UI scale 1, in world px; the red core is half of it. */
+export const TELEGRAPH_STROKE=8;
 
 export class HordeRenderer{
   private scene:Phaser.Scene;
@@ -125,6 +129,7 @@ export class HordeRenderer{
   private snapNext=false;
   private at:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
+  private ptsIn:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
   private scale2:Scale2={sx:1,sy:1};
   private poofFrame:PoofFrame={scale:0,alpha:0,done:false};
   private textFrame:TextFrame={y:0,scale:1,alpha:1,done:false};
@@ -152,7 +157,7 @@ export class HordeRenderer{
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupTexture('xp'))(),shadow:shadow(),kind:'xp',value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
-    this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false}),showText,CAPS.damage);
+    this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false,priority:false,self:false}),showText,CAPS.damage);
     this.pops=new Ring(()=>({text:text(popStyle('gosma'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
     this.stars=new Ring(()=>({image:image(FX.star)(),born:0,x:0,y:0,lift:0,vx:0,vy:0,spin:0}),showImage,CAPS.stars);
@@ -293,11 +298,14 @@ export class HordeRenderer{
         const enemy=this.enemies.get(event.target);
         if(enemy){
           enemy.flashAt=this.now;enemy.hitAt=this.now;if(!enemy.elite&&!enemy.boss)this.recentHits.hit(event.target);
-          const priority=numberPriority({crit:!!event.crit,hostile:false,elite:enemy.elite,boss:enemy.boss});
-          this.spawnNumber(event.target,enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,!!event.crit,false,priority,eventId);
+          const crit=!!event.crit;
+          this.spawnNumber(event.target,enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,crit,false,false,numberPriority(crit,false,enemy.elite,enemy.boss),eventId);
         }else{
           const p=this.options.locate?.(event.target);
-          if(p)this.spawnNumber(event.target,p.x,p.y,92,event.amount,false,true,true,eventId);
+          if(p){
+            const self=!this.options.selfId||this.options.selfId()===event.target;
+            this.spawnNumber(event.target,p.x,p.y,92,event.amount,false,true,self,numberPriority(false,self,false,false),eventId);
+          }
         }
         break;
       }
@@ -311,26 +319,27 @@ export class HordeRenderer{
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
     }
   }
-  private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,priority:boolean,eventId:number){
+  private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,self:boolean,priority:boolean,eventId:number){
     // Hits on the same target within DAMAGE_MERGE_MS add up into the number already flying.
     const merged=this.numberByTarget.get(target);
     if(canMerge(merged,target,this.now)){
       const fx=merged as NumberFx;
-      fx.total+=amount;fx.crit||=crit;fx.x=x;fx.y=y;
+      fx.total+=amount;fx.crit||=crit;fx.priority||=priority;fx.x=x;fx.y=y;
       this.paintNumber(fx);return;
     }
     const admission=admitNumber(this.numbers.active,this.fx.numbers,this.numbersThisPush,this.fx.numbersPerPush,priority);
     if(admission==='drop')return;
     if(!priority)this.numbersThisPush++;
-    // Over a smaller (reduced) budget the ring would still grow to its own cap, so make room explicitly.
-    if(admission==='recycle'&&this.numbers.active<this.numbers.cap){const oldest=this.numbers.at(0);if(oldest)this.retireNumber(oldest,true);}
+    // Full screen: a priority number replaces the oldest plain one first, and damage on the local player goes last.
+    if(admission==='recycle'){const victim=this.numbers.at(evictionIndex(this.numbers.active,this.numberAt));if(victim)this.retireNumber(victim,true);}
     const fx=this.numbers.spawn();
     if(fx.live)this.retireNumber(fx,false);
-    fx.live=true;fx.target=target;fx.total=amount;fx.crit=crit;fx.hostile=hostile;
+    fx.live=true;fx.target=target;fx.total=amount;fx.crit=crit;fx.hostile=hostile;fx.self=self;fx.priority=priority;
     fx.born=this.now;fx.x=x;fx.y=y;fx.lift=lift;fx.jitter=(eventId*37%29)-14;
     this.numberByTarget.set(target,fx);
     this.paintNumber(fx);
   }
+  private numberAt=(i:number)=>this.numbers.at(i);
   /** Drops a number from the merge map (and from the ring when `release`). */
   private retireNumber(fx:NumberFx,release:boolean){
     fx.live=false;
@@ -443,11 +452,13 @@ export class HordeRenderer{
     g.fillStyle(0xff8a3d,.22+.33*u).fillPoints(this.pts,true,true,n);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
     // Line widths follow the UI scale: at whole-island zoom (~0.26) a fixed 8px world line is ~2px on the phone.
+    // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
     const top=this.top,w=this.ui;
     top.fillStyle(0xff4d4d,.08+.1*u).fillPoints(this.pts,true,true,n);
-    top.lineStyle(8*w,0xfff1e0,.35+.6*blink).strokePoints(this.pts,true,true,n);
-    top.lineStyle(4*w,0xff3b3b,.75+.25*u).strokePoints(this.pts,true,true,n);
+    const half=insetPolygon(this.pts,n,TELEGRAPH_STROKE/2*w,this.ptsIn);
+    top.lineStyle(2*half,0xfff1e0,.35+.6*blink).strokePoints(this.ptsIn,true,true,n);
+    top.lineStyle(half,0xff3b3b,.75+.25*u).strokePoints(this.ptsIn,true,true,n);
   };
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}

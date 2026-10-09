@@ -36,3 +36,33 @@ export function telegraphOutline(t:TelegraphShape,k:number,put:(i:number,x:numbe
   for(let i=0;i<=CONE_SEGMENTS;i++){const a=facing-half+2*half*i/CONE_SEGMENTS;put(1+i,t.x+Math.cos(a)*r,t.y+Math.sin(a)*r);}
   return CONE_SEGMENTS+2;
 }
+
+/** Longest a corner may be pushed in, in multiples of the inset (sharp cone tips; Phaser strokes have no miter joins). */
+export const INSET_MITER_LIMIT=6;
+/**
+ * Offsets the closed polygon src[0..n) inward by d into out (same count): a stroke of width 2d along out lies inside the
+ * zone instead of half outside it, so a player just outside never looks inside (D-015). d is clamped to half the
+ * polygon's inradius estimate (2*area/perimeter) so tiny zones do not flip inside out. Returns the d actually used.
+ */
+export function insetPolygon(src:readonly Pt[],n:number,d:number,out:Pt[]):number{
+  let area=0,perimeter=0;
+  for(let i=0;i<n;i++){const a=src[i],b=src[(i+1)%n];area+=a.x*b.y-b.x*a.y;perimeter+=Math.hypot(b.x-a.x,b.y-a.y);}
+  area/=2;
+  const inradius=perimeter>0?2*Math.abs(area)/perimeter:0;
+  d=Math.max(0,Math.min(d,inradius*.5));
+  const sign=area>0?1:-1; // inward normal of edge (a->b) is sign*(-ey,ex)/|e|
+  for(let i=0;i<n;i++){
+    const prev=src[(i+n-1)%n],cur=src[i],next=src[(i+1)%n];
+    let ax=cur.x-prev.x,ay=cur.y-prev.y,bx=next.x-cur.x,by=next.y-cur.y;
+    const la=Math.hypot(ax,ay)||1,lb=Math.hypot(bx,by)||1;ax/=la;ay/=la;bx/=lb;by/=lb;
+    // Inward normals of the two edges meeting here; the corner moves along their bisector by d/cos(half-angle).
+    const n1x=-ay*sign,n1y=ax*sign,n2x=-by*sign,n2y=bx*sign;
+    let mx=n1x+n2x,my=n1y+n2y;const ml=Math.hypot(mx,my);
+    const o=out[i];
+    if(ml<1e-9){o.x=cur.x+n1x*d;o.y=cur.y+n1y*d;continue;}
+    mx/=ml;my/=ml;
+    const cos=mx*n1x+my*n1y,scale=Math.min(INSET_MITER_LIMIT,1/Math.max(1e-6,cos))*d;
+    o.x=cur.x+mx*scale;o.y=cur.y+my*scale;
+  }
+  return d;
+}

@@ -170,7 +170,9 @@ test('telegraph outline covers exactly the zone the server damages (D-015: cone 
 });
 
 // ---------- Legibility (NEW-20261006-ORQ-horde-visual-noise) ----------
-import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,numberPriority} from '../src/game/render/legibility.ts';
+import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority} from '../src/game/render/legibility.ts';
+import {insetPolygon,telegraphOutline as outlineOf} from '../src/game/render/telegraph-shape.ts';
+import {Ring as NumberRing} from '../src/game/render/pool.ts';
 
 test('health bars only for recently hit, elite, boss or the tapped target',()=>{
   const base={hp:5,maxHp:10,elite:false,boss:false,hitAt:1000};
@@ -190,9 +192,11 @@ test('damage numbers: merge window, priority and per-frame quota',()=>{
   assert.equal(canMerge(live,'e2',101),false);
   assert.equal(canMerge({...live,live:false},'e1',101),false);
   assert.equal(canMerge(undefined,'e1',101),false);
-  for(const hit of [{crit:true},{hostile:true},{elite:true},{boss:true}])
-    assert.equal(numberPriority({crit:false,hostile:false,elite:false,boss:false,...hit}),true);
-  assert.equal(numberPriority({crit:false,hostile:false,elite:false,boss:false}),false);
+  assert.equal(numberPriority(true,false,false,false),true,'crit');
+  assert.equal(numberPriority(false,true,false,false),true,'local player hit');
+  assert.equal(numberPriority(false,false,true,false),true,'elite');
+  assert.equal(numberPriority(false,false,false,true),true,'boss');
+  assert.equal(numberPriority(false,false,false,false),false,'plain hit (or an ally hit)');
   const {numbers:cap,numbersPerPush:quota}=FX_BUDGET.full;
   assert.equal(admitNumber(0,cap,0,quota,false),'spawn');
   assert.equal(admitNumber(cap,cap,0,quota,false),'drop','full screen drops plain hits');
@@ -244,4 +248,66 @@ test('health bars: only the last N distinct enemies hit keep one (hits spread ov
   assert.equal(barVisible(base,1001,false,false),false,'recent hit but outside the cap');
   assert.equal(barVisible({...base,elite:true},1001,false,false),true,'elite ignores the cap');
   assert.equal(barVisible(base,1001,true,false),true,'tapped target ignores the cap');
+});
+
+test('full screen: damage on the local player survives a flood of priority numbers (Ring + admitNumber)',()=>{
+  type N={priority:boolean;self:boolean;id:string};
+  for(const profile of ['full','reduced'] as const){
+    const {numbers:cap,numbersPerPush:quota}=FX_BUDGET[profile];
+    const ring=new NumberRing<N>(()=>({priority:false,self:false,id:''}),()=>{},FX_BUDGET.full.numbers);
+    // Same bookkeeping as HordeRenderer.spawnNumber (merging aside: every hit is a new target).
+    const add=(id:string,priority:boolean,self:boolean,used:number)=>{
+      const admission=admitNumber(ring.active,cap,used,quota,priority);
+      if(admission==='drop')return false;
+      if(admission==='recycle'){const victim=ring.at(evictionIndex(ring.active,i=>ring.at(i)));if(victim)ring.release(victim);}
+      const n=ring.spawn();n.priority=priority;n.self=self;n.id=id;return true;
+    };
+    add('me',true,true,0);
+    for(let i=0;i<3;i++)add(`plain${i}`,false,false,i);
+    for(let i=0;i<cap*3;i++)add(`crit${i}`,true,false,0); // several frames of crits/elite hits, all priority
+    const ids:string[]=[];ring.forEach(n=>ids.push(n.id));
+    assert.equal(ring.active,cap,profile);
+    assert.ok(ids.includes('me'),`${profile}: local player damage kept`);
+    assert.ok(!ids.some(id=>id.startsWith('plain')),`${profile}: plain numbers go first`);
+    // Only local-player numbers left: the oldest of them goes.
+    assert.equal(evictionIndex(2,i=>[{priority:true,self:true},{priority:true,self:true}][i]),0);
+    assert.equal(evictionIndex(3,i=>[{priority:true,self:true},{priority:true,self:false},{priority:false,self:false}][i]),2);
+    assert.equal(evictionIndex(2,i=>[{priority:true,self:true},{priority:true,self:false}][i]),1);
+  }
+});
+
+test('telegraph stroke is inset: its outer edge never leaves the damage zone (D-015)',()=>{
+  const zones=[
+    {shape:'circle' as const,x:3,y:4,radius:1.6,dx:1,dy:0},
+    {shape:'line' as const,x:0,y:0,radius:7,dx:.6,dy:.8,width:1.2},
+    {shape:'cone' as const,x:1,y:1,radius:4,dx:0,dy:1,width:1.1},
+    {shape:'cone' as const,x:1,y:1,radius:4,dx:1,dy:0,width:.5},
+  ];
+  const PX=32; // world px per unit, close to the projector at whole-island zoom
+  const inside=(poly:{x:number;y:number}[],p:{x:number;y:number})=>{
+    let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)c=!c;}return c;
+  };
+  const segDist=(p:{x:number;y:number},a:{x:number;y:number},b:{x:number;y:number})=>{
+    const ex=b.x-a.x,ey=b.y-a.y,l=ex*ex+ey*ey||1,t=Math.max(0,Math.min(1,((p.x-a.x)*ex+(p.y-a.y)*ey)/l));return Math.hypot(a.x+ex*t-p.x,a.y+ey*t-p.y);
+  };
+  for(const zone of zones)for(const ui of [1,2.5]){
+    const src:{x:number;y:number}[]=[];const n=outlineOf(zone,1,(i,x,y)=>{src[i]={x:x*PX,y:y*PX};});
+    const out=Array.from({length:n},()=>({x:0,y:0}));
+    const half=insetPolygon(src,n,8/2*ui,out);
+    assert.ok(half>0);
+    let worstLeak=0,before=0;
+    for(let i=0;i<n;i++){
+      const a=out[i],b=out[(i+1)%n];
+      for(let k=0;k<=8;k++){
+        const t=k/8,px=a.x+(b.x-a.x)*t,py=a.y+(b.y-a.y)*t,ex=b.x-a.x,ey=b.y-a.y,l=Math.hypot(ex,ey)||1;
+        for(const s of [1,-1]){
+          const q={x:px+s*-ey/l*half,y:py+s*ex/l*half}; // both edges of the stroke quad
+          if(!inside(src,q)){let d=Infinity;for(let j=0;j<n;j++)d=Math.min(d,segDist(q,src[j],src[(j+1)%n]));worstLeak=Math.max(worstLeak,d);}
+        }
+      }
+      // Old drawing: stroke centred on the zone edge leaks half its width.
+      before=Math.max(before,8/2*ui);
+    }
+    assert.ok(worstLeak<=.08*half+1e-6,`${zone.shape} w=${zone.width} ui=${ui}: leak ${worstLeak.toFixed(2)}px (was ${before}px = ${(before/PX).toFixed(2)} un)`);
+  }
 });

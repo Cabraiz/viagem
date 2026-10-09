@@ -6,7 +6,7 @@ import {coastalSpawnPoints} from '../sim/director.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../sim/assemble.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../sim/systems/players.ts';
 import {classBonusOf,startingBuild} from '../sim/kits.ts';
-import {resetSkill} from '../sim/skills.ts';
+import {resetSkill,skillReadyTick} from '../sim/skills.ts';
 import {refreshStats} from '../sim/stats.ts';
 import type {ChooseResult} from '../sim/progression.ts';
 import {BASE_STATS} from '../sim/types.ts';
@@ -25,7 +25,10 @@ export type Player = Point & { id:string; name:string; classId:string; hp:number
 export type Enemy = Point & { id:string; hp:number };
 // Fixed tuple fields avoid repeated property names in frequent patches.
 export type PlayerWire = [string,number,number,number,number,boolean,number,string,string,number?,boolean?,number?,number?];
-/** id,x,y,hp, then kind, maxHp and flags (1 elite, 2 boss); protocol 3 clients read only the first four. A dead enemy is sent once with hp 0. */
+/**
+ * id,x,y,hp, then kind, maxHp and flags (1 elite, 2 boss); protocol 3 clients read only the first four. A dead enemy is sent once with hp 0.
+ * In a delta the last three are left out while they did not change (a missing tail means "same as before").
+ */
 export type EnemyWire = [string,number,number,number,string?,number?,number?];
 /** Horde extras on top of protocol 3 (ignored by older clients); protocol 4 (VGM-042b) replaces this JSON. */
 export interface RunExtras {
@@ -37,14 +40,18 @@ export interface RunExtras {
   telegraphs:TelegraphView[];
   /** Events of the last EVENT_WINDOW ticks; clients de-duplicate by eventId. */
   events:StampedEvent[];
+  /** Deltas only: pickups and projectiles carry just the changed ones, and these ids left since the previous message. */
+  gone?:{pickups:string[];projectiles:string[]};
 }
 export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string}; x?:RunExtras };
-export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),round(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
-export const packEnemy = (e:Enemy&Partial<EnemyState>):EnemyWire => e.kind===undefined?[e.id,round(e.x),round(e.y),round(e.hp)]:
-  [e.id,round(e.x),round(e.y),round(e.hp),e.kind,round(e.maxHp??e.hp),(e.elite?1:0)|(e.boss?2:0)];
+// hp goes up rounded (regen and might make fractions): a player or enemy still standing never shows 0.
+export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),wireHp(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
+export const packEnemy = (e:Enemy&Partial<EnemyState>):EnemyWire => e.kind===undefined?[e.id,round(e.x),round(e.y),wireHp(e.hp)]:
+  [e.id,round(e.x),round(e.y),wireHp(e.hp),e.kind,wireHp(e.maxHp??e.hp),(e.elite?1:0)|(e.boss?2:0)];
 export const unpackPlayer = (p:PlayerWire):Player => ({id:p[0],x:p[1],y:p[2],hp:p[3],ack:p[4],online:p[5],score:p[6],name:p[7],classId:p[8],attackTick:p[9]??0,spectator:p[10]??false,skillTick:p[11]??0,skillReadyTick:p[12]??0});
 export const unpackEnemy = (e:EnemyWire):Enemy => ({id:e[0],x:e[1],y:e[2],hp:e[3]});
 const round=(n:number)=>Math.round(n*1000)/1000;
+const wireHp=(hp:number)=>Number.isFinite(hp)&&hp>0?Math.ceil(hp-1e-9):0;
 export function validInput(value:unknown):value is Input {
   if(!value||typeof value!=='object')return false;
   const v=value as Input;
@@ -76,7 +83,8 @@ export class Simulation {
   private pending?:{victory:boolean;defeat:boolean};
   private queues=new Map<string,Input[]>();
   private lastReceived=new Map<string,number>();
-  private alive=new Map<string,{x:number;y:number}>();
+  /** Enemies after the last step plus any added since (references; a removed one keeps its final position). */
+  private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
   constructor(seed=DEFAULT_SEED){
@@ -144,9 +152,13 @@ export class Simulation {
   /** One server tick; returns its events. */
   step(){
     this.pending={victory:false,defeat:false};
+    // Enemies added between ticks (tests, future checkpoints) join the set too, so they also get a tombstone.
+    for(const e of this.world.enemies.values())if(!this.alive.has(e.id))this.alive.set(e.id,e);
     const events=this.world.step();
     if(!this.result)this.result=this.pending.victory?'victory':this.pending.defeat?'defeat':undefined;
     this.pending=undefined;
+    // Refunds (pagodeiro, caça-promoção) move the cooldown after the cast; the wire follows the skill state.
+    for(const p of this.players.values())p.skillReadyTick=skillReadyTick(p);
     for(const e of events)if(e.type==='fire'&&!e.weapon.startsWith('skill:')){
       const p=this.players.get(e.player);
       if(p&&this.tick-(p.attackTick??0)>=ATTACK_ANIMATION_TICKS)p.attackTick=this.tick;
@@ -156,11 +168,11 @@ export class Simulation {
     for(const event of events)this.recent.push({tick:this.tick,event});
     return events;
   }
-  /** Enemies gone since the last step become tombstones ([id,x,y,0]) for a few ticks, so protocol 3 clients hide them. */
+  /** Enemies gone since the last step become tombstones (hp 0, kind kept for the death poof) for a few ticks, so protocol 3 clients hide them. */
   private trackRemovals(){
-    for(const [id,at] of this.alive)if(!this.world.enemies.has(id))this.tombs.set(id,{wire:[id,round(at.x),round(at.y),0],tick:this.tick});
+    for(const [id,e] of this.alive)if(!this.world.enemies.has(id))this.tombs.set(id,{wire:packEnemy({...e,hp:0}),tick:this.tick});
     this.alive.clear();
-    for(const e of this.world.enemies.values())this.alive.set(e.id,{x:e.x,y:e.y});
+    for(const e of this.world.enemies.values())this.alive.set(e.id,e);
     for(const [id,tomb] of this.tombs)if(tomb.tick<=this.tick-TOMBSTONE_TICKS)this.tombs.delete(id);
   }
   /** Hash of everything that decides future ticks (world, run systems, pending inputs, outcome). */
@@ -198,13 +210,56 @@ export class Simulation {
   }
 }
 
-/** Only changed players/enemies (by id) since the previous snapshot; linear in the number of entities. */
+type Keyed=[string,...unknown[]];
+/** Entries of `after` that are new or differ (by id) from `before`. */
+function changed<T extends Keyed>(before:readonly T[],after:readonly T[]):T[]{
+  const old=new Map(before.map(b=>[b[0],JSON.stringify(b)]));
+  return after.filter(a=>JSON.stringify(a)!==old.get(a[0]));
+}
+const goneIds=(before:readonly Keyed[],after:readonly Keyed[])=>{const now=new Set(after.map(a=>a[0]));return before.filter(b=>!now.has(b[0])).map(b=>b[0]);};
+/** Changed enemies; kind/maxHp/flags are dropped when they match the previous message (protocol 3 reads only id,x,y,hp). */
+function changedEnemies(before:readonly EnemyWire[],after:readonly EnemyWire[]):EnemyWire[]{
+  const old=new Map(before.map(b=>[b[0],b]));
+  const tail=(w:EnemyWire|undefined)=>w&&w.length>4?`${w[4]}|${w[5]}|${w[6]}`:'';
+  const out:EnemyWire[]=[];
+  for(const a of after){
+    const b=old.get(a[0]);
+    if(b&&JSON.stringify(a)===JSON.stringify(b))continue;
+    out.push(b&&a.length>4&&tail(a)===tail(b)?[a[0],a[1],a[2],a[3]]:a);
+  }
+  return out;
+}
+
+/**
+ * Only changed players/enemies (by id) since the previous snapshot; linear in the number of entities.
+ * Horde extras: pickups and projectiles are diffed the same way (removed ids in x.gone); terrain is only in full snapshots
+ * (the client checks it on welcome). Protocol 4 (VGM-042b) replaces this JSON.
+ */
 export function delta(previous:Snapshot,next:Snapshot):Snapshot {
-  const changed=<T extends [string,...unknown[]]>(before:T[],after:T[])=>{
-    const old=new Map(before.map(b=>[b[0],JSON.stringify(b)]));
-    return after.filter(a=>JSON.stringify(a)!==old.get(a[0]));
-  };
   const alive=new Set(next.players.map(n=>n[0]));
-  return {...next,full:false,players:changed(previous.players,next.players),enemies:changed(previous.enemies,next.enemies),removed:previous.players.filter(p=>!alive.has(p[0])).map(p=>p[0])};
+  const {terrain:_terrain,...rest}=next;
+  const patch:Snapshot={...rest,full:false,players:changed(previous.players,next.players),enemies:changedEnemies(previous.enemies,next.enemies),removed:previous.players.filter(p=>!alive.has(p[0])).map(p=>p[0])};
+  if(next.x){
+    const before=previous.x??{pickups:[],projectiles:[]};
+    patch.x={...next.x,pickups:changed(before.pickups,next.x.pickups),projectiles:changed(before.projectiles,next.x.projectiles),
+      gone:{pickups:goneIds(before.pickups,next.x.pickups),projectiles:goneIds(before.projectiles,next.x.projectiles)}};
+  }
+  return patch;
+}
+
+/** Applies a delta to the last full state (reference merge for horde clients and tests). */
+export function applyDelta(state:Snapshot,patch:Snapshot):Snapshot{
+  if(patch.full)return patch;
+  const players=new Map(state.players.map(p=>[p[0],p]));
+  for(const p of patch.players)players.set(p[0],p);
+  for(const id of patch.removed)players.delete(id);
+  const enemies=new Map(state.enemies.map(e=>[e[0],e]));
+  for(const e of patch.enemies){const old=enemies.get(e[0]);enemies.set(e[0],e.length===4&&old&&old.length>4?[e[0],e[1],e[2],e[3],old[4],old[5],old[6]]:e);}
+  const merge=<T extends Keyed>(list:readonly T[],update:readonly T[],gone:readonly string[]=[])=>{
+    const byId=new Map(list.map(i=>[i[0],i]));for(const i of update)byId.set(i[0],i);for(const id of gone)byId.delete(id);return [...byId.values()];
+  };
+  const x=patch.x&&state.x?{...patch.x,pickups:merge(state.x.pickups,patch.x.pickups,patch.x.gone?.pickups),projectiles:merge(state.x.projectiles,patch.x.projectiles,patch.x.gone?.projectiles)}:patch.x;
+  if(x)delete x.gone;
+  return {...patch,full:true,terrain:state.terrain,players:[...players.values()],enemies:[...enemies.values()],removed:[],...(x?{x}:{})};
 }
 export type {SimEvent};

@@ -3,10 +3,10 @@
  * Called on every new run; dispose() removes this run's hooks before the next one registers.
  */
 import type {SimWorld} from './core.ts';
-import type {SimContext,SimPlayer} from './types.ts';
+import type {EnemyState,SimContext,SimPlayer,SimSystem} from './types.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from './budget.ts';
 import {createDirector,type Director} from './director.ts';
-import {createEnemy,isEnemyKind} from './enemies/catalog.ts';
+import {ELITE,createEnemy,isEnemyKind} from './enemies/catalog.ts';
 import {createEnemyAi,type EnemyAi} from './enemies/ai.ts';
 import {createBoss,type BossController} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
@@ -31,6 +31,20 @@ export interface RunSystems {
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints. */
   state():unknown;
   dispose():void;
+}
+
+/** JSON-safe marker (D-002) so the elite extras are applied once per enemy. */
+type EliteEnemy=EnemyState&{eliteExtras?:true};
+/**
+ * Plan §2 item 1: the director scales elite hp (×6) and radius (×1.35) itself (D-010); the catalog's damage and xp
+ * extras (ELITE.damage, ELITE.xp) are applied here, once, right after the director spawns the elite.
+ */
+export function applyEliteExtras(ctx:SimContext){
+  for(const e of ctx.enemies.values()){
+    const elite=e as EliteEnemy;
+    if(!e.elite||e.boss||elite.eliteExtras)continue;
+    e.damage=Math.round(e.damage*ELITE.damage);e.xp*=ELITE.xp;elite.eliteExtras=true;
+  }
 }
 
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
@@ -58,7 +72,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    playersSystem(options.takeInput),director,enemyAi,boss,
+    playersSystem(options.takeInput),
+    {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
+    enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},

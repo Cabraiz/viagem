@@ -206,6 +206,11 @@ export class IslandScene extends Phaser.Scene {
       objects.body.setPosition(q.x,q.y-15).setDepth(depth).setVisible(enemy.hp>0);
       objects.label.setPosition(q.x,q.y+8).setDepth(depth+1).setText(`Gosma · ${enemy.hp}♥`).setVisible(enemy.hp>0);
     }
+    // Horde enemies get a fresh id each spawn (VGM-042a): drop actors the server no longer sends, or they pile up as ghosts.
+    if(this.enemyActors.size>view.enemies.length){
+      const current=new Set(view.enemies.map(e=>e.id));
+      for(const [id,objects] of this.enemyActors)if(!current.has(id)){objects.body.destroy();objects.label.destroy();this.enemyActors.delete(id);if(this.attackTarget===id)this.attackTarget=undefined;}
+    }
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
   }

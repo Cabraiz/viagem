@@ -4,6 +4,7 @@ import {Simulation,type SimOutcome} from '../src/game/net/shared.ts';
 import type {StampedEvent} from '../src/game/sim/core.ts';
 import {KITS} from '../src/game/sim/kits.ts';
 import {SIM_HZ} from '../src/game/sim/types.ts';
+import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,MAX_TELEGRAPHS} from '../src/game/sim/budget.ts';
 
 /** Safety cap of a run: 20 minutes of ticks (RUN_DURATION_TICKS). */
 const CAP=20*60*SIM_HZ;
@@ -37,6 +38,8 @@ interface RunResult {
   chooseFailures:string[];
   hashes:string[];
   scoresAtEnd:Map<string,number>;
+  /** Highest entity counts seen after any tick (budget.ts caps, plan §2 item 8). */
+  peak:{enemies:number;pickups:number;projectiles:number;telegraphs:number};
   ms:number;
 }
 
@@ -55,7 +58,7 @@ function setup(seed:number,bots:number,classes:readonly string[]=KIT_CLASSES){
 function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTicks:number;after?:number;hashEvery?:number}):RunResult{
   const {maxTicks,after=0,hashEvery=0}=options;
   const seq=new Map(ids.map(id=>[id,0]));
-  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),ms:0};
+  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),peak:{enemies:0,pickups:0,projectiles:0,telegraphs:0},ms:0};
   const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;if(p.build.weapons.length){p.build.weapons=[];p.weaponReady={};}}};
   if(script.unarmed)disarm();
   const watch=()=>{
@@ -75,6 +78,9 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
     });
     const events:StampedEvent[]=sim.step();
     r.ticks++;
+    const w=sim.world,peak=r.peak;
+    peak.enemies=Math.max(peak.enemies,w.enemies.size);peak.pickups=Math.max(peak.pickups,w.pickups.size);
+    peak.projectiles=Math.max(peak.projectiles,w.projectiles.size);peak.telegraphs=Math.max(peak.telegraphs,w.telegraphs.size);
     for(const e of events){
       if(e.type==='round'&&e.phase==='end')r.roundEnds.push({index:e.index,tick:sim.tick});
       if(e.type==='round'&&e.phase==='wave')r.roundWaves.push({index:e.index,tick:sim.tick});
@@ -122,9 +128,15 @@ const victoryRun=(bots:number,copy='')=>scripted(`victory-${bots}${copy}`,()=>{
   return drive(sim,ids,VICTORY,{maxTicks:CAP,after:200,hashEvery:10});
 });
 const report=(t:{diagnostic(m:string):void},label:string,r:RunResult)=>
-  t.diagnostic(`${label}: outcome=${r.outcome} at tick ${r.outcomeTick} (${((r.outcomeTick??r.ticks)/SIM_HZ/60).toFixed(1)} min), ${r.ticks} ticks in ${r.ms.toFixed(0)} ms = ${(r.ms/r.ticks).toFixed(3)} ms/tick, kills=${r.killEvents}, chosen=${r.chosen}`);
+  t.diagnostic(`${label}: outcome=${r.outcome} at tick ${r.outcomeTick} (${((r.outcomeTick??r.ticks)/SIM_HZ/60).toFixed(1)} min), ${r.ticks} ticks in ${r.ms.toFixed(0)} ms = ${(r.ms/r.ticks).toFixed(3)} ms/tick, kills=${r.killEvents}, chosen=${r.chosen}, peak=${JSON.stringify(r.peak)}`);
 
+function assertWithinBudget(r:RunResult){
+  const {peak}=r;
+  assert.ok(peak.enemies<=MAX_ENEMIES,`enemies ${peak.enemies}`);assert.ok(peak.pickups<=MAX_PICKUPS,`pickups ${peak.pickups}`);
+  assert.ok(peak.projectiles<=MAX_PROJECTILES,`projectiles ${peak.projectiles}`);assert.ok(peak.telegraphs<=MAX_TELEGRAPHS,`telegraphs ${peak.telegraphs}`);
+}
 function assertScriptedVictory(r:RunResult,bots:number){
+  assertWithinBudget(r);
   assert.deepEqual(r.outcomeHistory,['victory'],'outcome is set once and never changes');
   assert.equal(r.sim.outcome,'victory');assert.equal(r.sim.victory,true);
   assert.ok(r.outcomeTick!<=CAP,'ends within the 20 min cap');
@@ -203,6 +215,7 @@ test('unassisted run (bots move and take defaults, no kill helper) ends with exa
   const r=drive(sim,ids,{move:true,choose:true,killEvery:0},{maxTicks:CAP,after:100});
   report(t,'unassisted 3 bots',r);
   assert.deepEqual(r.chooseFailures,[]);
+  assertWithinBudget(r);
   assert.ok(r.outcomeHistory.length<=1,`outcome changed: ${r.outcomeHistory.join(' -> ')}`);
   if(r.outcome===undefined){
     // The Room adds the timeout; the simulation itself must still be consistent.

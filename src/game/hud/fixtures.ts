@@ -66,8 +66,15 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
   return view;
 }
 
-export function fakeResult(playerCount:number,victory=true):RunResult{
-  return {victory,durationTicks:ticks(14*60+37),round:victory?10:7,totalRounds:10,seed:'pave-4271',players:fakePlayers(playerCount,'result')};
+/** Late-run worst case: 6 weapons + 6 passives each (the most a build can hold), for layout stress tests. */
+const FULL_BUILD={
+  weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
+  passives:[{id:'cafe-forte',level:5},{id:'marmita',level:5},{id:'tenis',level:4},{id:'megafone',level:3},{id:'bone',level:2},{id:'ima',level:1}],
+};
+
+export function fakeResult(playerCount:number,victory=true,full=false):RunResult{
+  const players=fakePlayers(playerCount,'result').map(player=>full?{...player,...FULL_BUILD}:player);
+  return {victory,durationTicks:ticks(14*60+37),round:victory?10:7,totalRounds:10,seed:'pave-4271',players};
 }
 
 /** Falls, rescues, coxinhas and chests for the result scenario, so tally-based awards show up. */

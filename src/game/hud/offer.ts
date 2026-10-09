@@ -3,7 +3,7 @@
  * Level-ups read lilac/XP, end-of-round offers read gold/marquee. The DOM is rebuilt only when the
  * shown offer changes; per-tick updates touch just the deadline bar and the countdown text.
  */
-import type {OfferSource} from '../sim/types.ts';
+import {SIM_HZ,type OfferSource} from '../sim/types.ts';
 import type {OfferView,RunView} from '../sim/view.ts';
 import {itemDisplay,levelTag} from './items.ts';
 import {offerDeadlineFraction,offerTitle,secondsLeft,type HudPart} from './model.ts';
@@ -14,6 +14,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 
 /** Seconds left at which the deadline turns coral and pulses. */
 export const OFFER_URGENT_SECONDS=3;
+/** A choice the server has not confirmed (offer still pending) is unlocked after this, so a lost `choose` on 4G can be retried. */
+export const OFFER_RETRY_TICKS=Math.round(2.5*SIM_HZ);
 
 const jokes:Record<OfferSource,readonly string[]>={
   level:[
@@ -63,7 +65,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
 
   const firstSeen=new Map<string,number>();
   let shown:OfferView|undefined;
-  let pending:{id:string;index:number}|undefined;
+  let pending:{id:string;index:number;atTick?:number}|undefined;
   let lastSeconds=-1,lastQueue=-1,lastUrgent=false;
 
   const render=(offer:OfferView)=>{
@@ -120,6 +122,7 @@ export function createOfferPanel(options:{onChoose(offerId:string,index:number):
     for(const offer of offers)if(!firstSeen.has(offer.id))firstSeen.set(offer.id,view.tick);
     for(const id of firstSeen.keys())if(!ids.has(id))firstSeen.delete(id);
     if(pending&&!ids.has(pending.id))pending=undefined;
+    if(pending){pending.atTick??=view.tick;if(view.tick-pending.atTick>OFFER_RETRY_TICKS)pending=undefined;}
     const offer=offers[0];
     if(!offer||!offer.choices.length){shown=undefined;root.hidden=true;return;}
     root.hidden=false;

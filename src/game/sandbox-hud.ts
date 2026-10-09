@@ -1,11 +1,20 @@
 /**
- * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-round|downed|boss|result[&lose=1][&frozen=1]`.
+ * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-round|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
+ * `full=1` gives every player a 12-item build (layout stress test).
  * Renders the run HUD over a mock island with the real control positions (camera, gear, joystick, attack)
  * so overlaps are visible. Fake data only; nothing talks to the server.
+ * `phaser=1` mounts a real Phaser game under the HUD whose scene walks the hero to every tap, exactly like
+ * the island scene (`input.on('pointerdown')` → goTo). It proves taps on HUD panels never reach Phaser,
+ * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
  */
 import {HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
 import {RunHud} from './hud/hud.ts';
 import type {RunView} from './sim/view.ts';
+import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
+
+/** Longest real copy, so the marquee is tested with the worst case the director can draw. */
+const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a,'');
+const ROUND_NAME=longest(ROUND_NAMES),BOSS_NAME=longest(BOSS_ROUND_NAMES),MODIFIER=longest(MODIFIERS.map(modifierLabel));
 
 const params=new URLSearchParams(location.search);
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
@@ -16,7 +25,9 @@ const frozen=params.has('frozen');
 const style=document.createElement('style');
 style.textContent=`
 html,body{margin:0;height:100%;overflow:hidden;background:#8dcecc}
-body>:not(.hs-world):not(.rh):not(.hs-bar){display:none!important}
+body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser){display:none!important}
+.hs-phaser{position:fixed;inset:0;z-index:5}
+.hs-real .hs-world{z-index:4;pointer-events:none}.hs-real .hs-world::after{display:none}
 .hs-world{position:fixed;inset:0;z-index:5;background:radial-gradient(ellipse 46% 30% at 50% 52%,#7cbf6a 0 62%,#e9d79a 63% 70%,#a6e0dc 72%,#8dcecc 100%)}
 .hs-world::after{content:'';position:absolute;left:50%;top:52%;width:22px;height:30px;margin:-15px 0 0 -11px;border-radius:50% 50% 40% 40%;background:#f4c9a8;box-shadow:0 18px 0 -4px #6e5198}
 .hs-mock{position:absolute;border:2px solid #fff8e9aa;background:#55466677;color:#fff9ed;font:700 12px system-ui;display:grid;place-items:center;text-shadow:0 1px 3px #302536}
@@ -54,12 +65,12 @@ let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=fakeView(scenario,players,tick);
-  if(scenario==='wave'||scenario==='boss')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?'A Assembleia Final':'Round do Pavê',modifier:scenario==='boss'?undefined:'Todo mundo é tio',eventId:++eventId}];
+  if(scenario==='wave'||scenario==='boss')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
   hud.hideResult();hud.update(view);
-  if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose')));
+  if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
 }
 load(scenario);
 
@@ -74,3 +85,26 @@ const bar=document.createElement('nav');bar.className='hs-bar';bar.hidden=params
 bar.innerHTML=HUD_SCENARIOS.map(name=>`<button data-s="${name}">${name}</button>`).join('');
 bar.addEventListener('click',event=>{const name=(event.target as HTMLElement).closest<HTMLButtonElement>('[data-s]')?.dataset.s;if(name)load(name as HudScenario);});
 document.body.append(bar);
+
+if(params.has('phaser'))void (async()=>{
+  const Phaser=(await import('phaser')).default;
+  document.body.classList.add('hs-real');
+  const host=document.createElement('div');host.className='hs-phaser';document.body.prepend(host);
+  const hero={x:0,y:0,taps:0};
+  (window as unknown as {__hero:typeof hero}).__hero=hero;
+  class Island extends Phaser.Scene {
+    create(){
+      const {width,height}=this.scale;
+      this.add.ellipse(width/2,height*.52,width*.92,height*.6,0x7cbf6a).setStrokeStyle(10,0xe9d79a);
+      const body=this.add.ellipse(width/2,height*.52,24,32,0xf4c9a8).setStrokeStyle(3,0x6e5198);
+      hero.x=body.x;hero.y=body.y;
+      // Same contract as the island scene: any primary pointerdown on the game walks the hero there.
+      this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
+        hero.taps++;body.setPosition(pointer.x,pointer.y);hero.x=pointer.x;hero.y=pointer.y;
+        document.body.dataset.heroTaps=String(hero.taps);
+      });
+      document.body.dataset.phaserReady='1';
+    }
+  }
+  new Phaser.Game({type:Phaser.CANVAS,parent:host,transparent:true,scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},scene:Island,banner:false,input:{activePointers:3}});
+})();

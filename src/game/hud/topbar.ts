@@ -52,13 +52,15 @@ const intervalLines=[
   'Hora de fingir que tem estratégia',
 ];
 
-export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'}
+/** kicker: small line above the title ("ROUND 3/10"); title: the absurd round name; subtitle: the modifier. */
+export interface Marquee {kicker?:string;title:string;subtitle?:string;tone:'round'|'interval'|'boss'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
 export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10):Marquee|undefined{
   if(event.phase==='wave'){
     const boss=event.index>=total;
-    return {title:event.name?`Round ${event.index} · ${event.name}`:`Round ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
+    const kicker=`ROUND ${event.index}/${total}${boss?' · CHEFE':''}`;
+    return {kicker,title:event.name||`Round ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
   }
   if(event.phase==='prepare')return {title:'Intervalo!',subtitle:intervalLines[Math.abs(event.index)%intervalLines.length],tone:'interval'};
   return undefined;
@@ -66,10 +68,12 @@ export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name
 
 export function createAnnouncer():HudPart{
   const root=el('div','rh-marquee');root.setAttribute('aria-live','polite');root.hidden=true;
-  const title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
+  const kicker=el('span','rh-marquee-kicker',root),title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
   let timer:ReturnType<typeof setTimeout>|undefined;
   const show=(marquee:Marquee)=>{
-    title.textContent=marquee.title;subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
+    kicker.textContent=marquee.kicker??'';kicker.hidden=!marquee.kicker;
+    // Word joiner after hyphens: "E-mail" must never break into "E-" / "mail" on a narrow phone.
+    title.textContent=marquee.title.replace(/-/g,'-\u2060');subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
     root.dataset.tone=marquee.tone;root.hidden=false;
     root.classList.remove('rh-marquee-in');void root.offsetWidth;root.classList.add('rh-marquee-in');
     clearTimeout(timer);timer=setTimeout(()=>{root.hidden=true;},3400);

@@ -46,6 +46,21 @@ export function compactNumber(value:number){
   return `${Math.floor(n/1000)}k`;
 }
 
+/** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip. */
+export const BUILD_SLOTS={portrait:5,landscape:7} as const;
+const LANDSCAPE='(max-height:500px)';
+
+/** Build icons in display order (evolutions, weapons, passives; higher level first). With more items than slots,
+ * the last slot becomes the "+N" chip, so the row never wraps. */
+export function buildIcons(player:Pick<PlayerRunView,'weapons'|'passives'>,slots:number){
+  const rank=(id:string)=>{const kind=itemDisplay(id).kind;return kind==='evolution'?0:kind==='weapon'?1:2;};
+  const all=[...player.weapons,...player.passives].map((item,index)=>({item,index}))
+    .sort((a,b)=>rank(a.item.id)-rank(b.item.id)||b.item.level-a.item.level||a.index-b.index).map(entry=>entry.item);
+  if(all.length<=slots)return {items:all,hidden:[] as typeof all};
+  const keep=Math.max(0,slots-1);
+  return {items:all.slice(0,keep),hidden:all.slice(keep)};
+}
+
 const CONFETTI=18;
 const CONFETTI_COLORS=['#f2c94c','#ed6f72','#75b8a6','#9fd8ff','#c8a8ff','#ffb347'];
 
@@ -89,7 +104,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
   let exited=false;
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 
-  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext,index:number)=>{
+  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
     const node=el('article','rh-rcard');
     node.style.setProperty('--i',String(index));
     const me=player.id===ctx.localId;
@@ -104,12 +119,17 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
 
     const build=el('ul','rh-rcard-build',top);
     build.setAttribute('aria-label','Build');
-    for(const item of [...player.weapons,...player.passives]){
+    const shown=buildIcons(player,ctx.slots);
+    for(const item of shown.items){
       const info=itemDisplay(item.id);
       const li=el('li','rh-rbuild',build);li.dataset.kind=info.kind;
       li.setAttribute('aria-label',`${info.name} nível ${item.level}`);
       const icon=el('span','rh-rbuild-icon',li);icon.textContent=info.icon;
       const level=el('b','rh-rbuild-level',li);level.textContent=info.kind==='evolution'?'★':String(item.level);
+    }
+    if(shown.hidden.length){
+      const more=el('li','rh-rbuild rh-rbuild-more',build);more.textContent=`+${shown.hidden.length}`;
+      more.setAttribute('aria-label',`e mais: ${shown.hidden.map(item=>`${itemDisplay(item.id).name} nível ${item.level}`).join(', ')}`);
     }
 
     const numbers=el('dl','rh-rcard-stats',node);
@@ -118,7 +138,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
     const rows:[string,number][]=[
       ['dano',s?.damage??0],
       ['abates',Math.max(s?.kills??0,tally?.kills??0)],
-      ['resgates',Math.max(s?.revives??0,tally?.revives??0)],
+      ['salvou',Math.max(s?.revives??0,tally?.revives??0)],
       ['coletas',Math.max(s?.pickups??0,tally?.pickups??0)],
     ];
     for(const [label,value] of rows){
@@ -139,6 +159,19 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
     return node;
   };
 
+  // Build slots depend on orientation, so the grid is rebuilt when the phone turns (the cards just fade in again).
+  let shownResult:{result:RunResult;ctx:HudContext}|undefined;
+  const landscape=typeof matchMedia==='function'?matchMedia(LANDSCAPE):undefined;
+  const renderGrid=(result:RunResult,ctx:HudContext)=>{
+    const players=teamOrder(result.players,ctx.localId);
+    const slots=players.length>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
+    const awards=computeAwards(result,ctx.tally);
+    grid.dataset.count=String(players.length);
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)));
+  };
+  const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
+  landscape?.addEventListener('change',onTurn);
+
   return {
     el:root,
     show(result:RunResult,ctx:HudContext){
@@ -149,16 +182,14 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       time.textContent=`⏱ ${formatDuration(result.durationTicks)}`;
       round.textContent=`Round ${result.round}/${result.totalRounds}`;
       seed.textContent=`seed ${result.seed}`;
-      const players=teamOrder(result.players,ctx.localId);
-      const awards=computeAwards(result,ctx.tally);
-      grid.dataset.count=String(players.length);
-      grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),ctx,index)));
+      shownResult={result,ctx};
+      renderGrid(result,ctx);
       resetRematch();exited=false;
       root.hidden=false;
       // Restart the entrance animation on every show.
       root.classList.remove('rh-result-in');void root.offsetWidth;root.classList.add('rh-result-in');
     },
-    hide(){root.hidden=true;root.classList.remove('rh-result-in');},
-    destroy(){root.remove();},
+    hide(){shownResult=undefined;root.hidden=true;root.classList.remove('rh-result-in');},
+    destroy(){landscape?.removeEventListener('change',onTurn);root.remove();},
   };
 }

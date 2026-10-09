@@ -11,8 +11,11 @@ import {HUD_SCENARIOS,fakePlayers,fakeResult,fakeView} from '../src/game/hud/fix
 import {classes} from '../src/classes.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards} from '../src/game/hud/awards.ts';
 import {choiceFlags,offerJoke,queueLabel} from '../src/game/hud/offer.ts';
-import {compactNumber,resultHeadline} from '../src/game/hud/result.ts';
+import {BUILD_SLOTS,buildIcons,compactNumber,resultHeadline} from '../src/game/hud/result.ts';
 import {fakeResultEvents} from '../src/game/hud/fixtures.ts';
+import {WEAPON_CATALOG} from '../src/game/sim/weapons/catalog.ts';
+import {PASSIVES as PASSIVE_DEFS} from '../src/game/sim/passives.ts';
+import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../src/game/sim/waves.ts';
 
 const WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
 const EVOLUTIONS=['chinelo-evo','boleto-evo','cafe-evo'];
@@ -86,8 +89,11 @@ test('event tally counts each eventId once and ignores late or repeated events',
 });
 
 test('round marquee: absurd name and modifier, boss round, interval joke',()=>{
-  assert.deepEqual(marqueeFor({index:3,phase:'wave',name:'Round do Pavê',modifier:'Todo mundo é tio'}),{title:'Round 3 · Round do Pavê',subtitle:'Todo mundo é tio',tone:'round'});
-  assert.equal(marqueeFor({index:10,phase:'wave'})!.tone,'boss');
+  const modifier=modifierLabel(MODIFIERS[0]);
+  assert.deepEqual(marqueeFor({index:3,phase:'wave',name:ROUND_NAMES[0],modifier}),{kicker:'ROUND 3/10',title:ROUND_NAMES[0],subtitle:modifier,tone:'round'});
+  const boss=marqueeFor({index:10,phase:'wave',name:BOSS_ROUND_NAMES[0]})!;
+  assert.equal(boss.tone,'boss');assert.equal(boss.kicker,'ROUND 10/10 · CHEFE');assert.equal(boss.title,BOSS_ROUND_NAMES[0]);assert.ok(boss.subtitle);
+  assert.equal(marqueeFor({index:2,phase:'wave'})!.title,'Round 2');
   assert.equal(marqueeFor({index:4,phase:'prepare'})!.title,'Intervalo!');
   assert.equal(marqueeFor({index:4,phase:'end'}),undefined);
 });
@@ -96,6 +102,10 @@ test('item display covers every fixed id with pt-BR copy and falls back for unkn
   const ids=new Set(allItemDisplays().map(i=>i.id));
   for(const id of [...WEAPONS,...EVOLUTIONS,...PASSIVES])assert.ok(ids.has(id),id);
   for(const item of allItemDisplays())assert.ok(item.name&&item.blurb&&item.joke&&item.icon,item.id);
+  // Names must match the server catalogs; blurbs stay short enough for 3 lines on a portrait card.
+  for(const [id,def] of WEAPON_CATALOG){assert.equal(itemDisplay(id).name,def.name,id);assert.equal(itemDisplay(id).kind,def.kind,id);}
+  for(const def of Object.values(PASSIVE_DEFS)){assert.equal(itemDisplay(def.id).name,def.name,def.id);assert.equal(itemDisplay(def.id).kind,'passive',def.id);}
+  for(const item of allItemDisplays())assert.ok(item.blurb.length<=36&&item.joke.length<=22,`${item.id}: ${item.blurb.length}/${item.joke.length}`);
   assert.equal(itemDisplay('cafe-evo').kind,'evolution');assert.equal(itemDisplay('x-y').name,'X y');
   assert.equal(levelTag('pombo',1),'NOVO!');assert.equal(levelTag('pombo',4),'Nv 4');assert.equal(levelTag('boleto-evo',1),'EVOLUÇÃO');
 });
@@ -133,6 +143,22 @@ test('solo awards skip team-only titles; zero metrics win nothing',()=>{
   assert.deepEqual(computeAwards(idle,emptyTally()).map(a=>a.id),['figurante','figurante']);
 });
 
+test('runners-up get a vice title with their real place, never a first-place title or figurante',()=>{
+  const result=fakeResult(6),awards=computeAwards(result,tallyFor(6));
+  const firsts=new Set(['mais-caiu','rei-do-resgate','carregou','exterminador','build-sem-sentido','ima-humano','turista','coxinha','sortudo-do-bau','bate-nao-mata','evolucao','marombeiro']);
+  // p1 is 2nd in falls (1 × 4) and in damage (18,4k × 21k): consolation states the place, the earlier award wins the tie.
+  const mine=awardsOf(awards,'p1');
+  assert.equal(mine.length,1);assert.equal(mine[0].id,'vice-mais-caiu');assert.equal(mine[0].title,'Vice-campeão de tombo');
+  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].emoji,'🥈');
+  for(const a of awards)if(firsts.has(a.id))assert.ok(!a.id.startsWith('vice-'));
+  assert.ok(!awards.some(a=>a.id==='figurante'));
+  // Ties share a place: two players tied for 2nd are both "2º", nobody is called 3rd.
+  const tie=fakeResult(3);tie.players=tie.players.map((p,i)=>({...p,weapons:[],passives:[],stats:{damage:[30,10,10][i],kills:0,revives:0,pickups:0}}));
+  const tied=computeAwards(tie,emptyTally());
+  assert.deepEqual(tied.map(a=>[a.playerId,a.id]),[['p1','carregou'],['p2','turista'],['p3','vice-turista']]);
+  assert.match(awardsOf(tied,'p3')[0].line,/^Empatou em "Turista"/);
+});
+
 test('offer and result copy helpers are deterministic pt-BR',()=>{
   assert.equal(offerJoke('lvl-12-p1','level'),offerJoke('lvl-12-p1','level'));
   assert.equal(queueLabel(0),'');assert.equal(queueLabel(2),'+2 na fila');
@@ -141,4 +167,18 @@ test('offer and result copy helpers are deterministic pt-BR',()=>{
   assert.equal(resultHeadline({victory:true,seed:'a'}).title,'VITÓRIA!');assert.equal(resultHeadline({victory:false,seed:'a'}).title,'DERROTA…');
   assert.deepEqual(resultHeadline({victory:true,seed:'x'}),resultHeadline({victory:true,seed:'x'}));
   assert.equal(compactNumber(980),'980');assert.equal(compactNumber(18420),'18,4k');assert.equal(compactNumber(21050),'21k');assert.equal(compactNumber(Number.NaN),'0');
+});
+
+test('result build row never wraps: evolutions and weapons first, overflow becomes a +N chip',()=>{
+  const full=fakeResult(6,true,true).players[0];
+  assert.equal(full.weapons.length+full.passives.length,12);
+  const portrait=buildIcons(full,BUILD_SLOTS.portrait);
+  assert.deepEqual(portrait.items.map(i=>i.id),['chinelo-evo','boleto','cafe','guarda-chuva']);
+  assert.equal(portrait.hidden.length,8);assert.equal(portrait.items.length+1,BUILD_SLOTS.portrait);
+  assert.equal(buildIcons(full,BUILD_SLOTS.landscape).items.length,6);
+  // Fits exactly: no chip wasted on a single hidden item.
+  const five={weapons:full.weapons.slice(0,3),passives:full.passives.slice(0,2)};
+  assert.deepEqual(buildIcons(five,5).hidden,[]);assert.equal(buildIcons(five,Infinity).items.length,5);
+  // Passives sort by level after weapons; ties keep the build order.
+  assert.deepEqual(buildIcons({weapons:[],passives:[{id:'ima',level:1},{id:'bone',level:3},{id:'tenis',level:1}]},9).items.map(i=>i.id),['bone','ima','tenis']);
 });

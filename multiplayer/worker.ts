@@ -1,9 +1,9 @@
 import {randomSeed,DEFAULT_SEED} from '../src/game/terrain/field.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer } from './room.ts';
+import { isAllowedOrigin } from './origins.ts';
 interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; }
-const origins=new Set(['https://viagem.cyou','https://www.viagem.cyou']);
-function allowed(request:Request,env:Env){const origin=request.headers.get('Origin')??'';return origins.has(origin)||(env.ALLOW_LOCAL==='true'&&origin==='http://127.0.0.1:4187');}
+function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);

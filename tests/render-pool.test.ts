@@ -168,3 +168,56 @@ test('telegraph outline covers exactly the zone the server damages (D-015: cone 
     assert.ok(checked>1000);
   }
 });
+
+// ---------- Legibility (NEW-20261006-ORQ-horde-visual-noise) ----------
+import {BAR_RECENT_MS,DAMAGE_MERGE_MS,FX_BUDGET,admitNumber,barVisible,canMerge,numberPriority} from '../src/game/render/legibility.ts';
+
+test('health bars only for recently hit, elite, boss or the tapped target',()=>{
+  const base={hp:5,maxHp:10,elite:false,boss:false,hitAt:1000};
+  assert.equal(barVisible(base,1000+BAR_RECENT_MS-1,false),true);
+  assert.equal(barVisible(base,1000+BAR_RECENT_MS,false),false,'old hit fades');
+  assert.equal(barVisible({...base,hp:10},1001,false),false,'full hp never shows');
+  assert.equal(barVisible({...base,hitAt:-1e9},5000,false),false,'damaged long ago');
+  assert.equal(barVisible({...base,hitAt:-1e9,elite:true},5000,false),true);
+  assert.equal(barVisible({...base,hitAt:-1e9,boss:true},5000,false),true);
+  assert.equal(barVisible({...base,hitAt:-1e9,hp:10},5000,true),true,'tapped target');
+});
+
+test('damage numbers: merge window, priority and per-frame quota',()=>{
+  const live={live:true,target:'e1',born:100};
+  assert.equal(canMerge(live,'e1',100+DAMAGE_MERGE_MS-1),true);
+  assert.equal(canMerge(live,'e1',100+DAMAGE_MERGE_MS),false);
+  assert.equal(canMerge(live,'e2',101),false);
+  assert.equal(canMerge({...live,live:false},'e1',101),false);
+  assert.equal(canMerge(undefined,'e1',101),false);
+  for(const hit of [{crit:true},{hostile:true},{elite:true},{boss:true}])
+    assert.equal(numberPriority({crit:false,hostile:false,elite:false,boss:false,...hit}),true);
+  assert.equal(numberPriority({crit:false,hostile:false,elite:false,boss:false}),false);
+  const {numbers:cap,numbersPerPush:quota}=FX_BUDGET.full;
+  assert.equal(admitNumber(0,cap,0,quota,false),'spawn');
+  assert.equal(admitNumber(cap,cap,0,quota,false),'drop','full screen drops plain hits');
+  assert.equal(admitNumber(cap,cap,quota,quota,true),'recycle','priority always gets in');
+  assert.equal(admitNumber(3,cap,quota,quota,false),'drop','per-frame quota');
+  assert.equal(admitNumber(3,cap,quota,quota,true),'spawn');
+});
+
+test('effects budgets: about 25 numbers and at most 3 bubbles; reduced trims everything',()=>{
+  const {full,reduced}=FX_BUDGET;
+  assert.ok(full.numbers<=25&&full.bubbles<=3);
+  for(const key of Object.keys(full) as (keyof typeof full)[])assert.ok(reduced[key]<=full[key],key);
+  assert.ok(reduced.numbers<full.numbers&&reduced.starsPerKill<full.starsPerKill);
+  assert.throws(()=>{(FX_BUDGET.full as {numbers:number}).numbers=99;});
+});
+
+test('a merge window of hits on one target shows one summed number',()=>{
+  // Simulates the renderer's bookkeeping: hits arrive every 50 ms (one push per sim tick).
+  type N={live:boolean;target:string;born:number;total:number};
+  const shown:N[]=[],byTarget=new Map<string,N>();
+  const hit=(target:string,amount:number,now:number)=>{
+    const m=byTarget.get(target);
+    if(canMerge(m,target,now)){(m as N).total+=amount;return;}
+    const n={live:true,target,born:now,total:amount};shown.push(n);byTarget.set(target,n);
+  };
+  for(let t=0;t<300;t+=50)hit('e1',5,t);
+  assert.deepEqual(shown.map(n=>n.total),[15,15],'three hits per 150 ms window');
+});

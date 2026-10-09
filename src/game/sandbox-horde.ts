@@ -1,6 +1,6 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
- * Query: n (enemies, default 300), view (0..3), seed, reduced=1, hud=0.
+ * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -162,7 +162,7 @@ class HordeSandboxScene extends Phaser.Scene {
     this.horde=new FakeHorde(this.field,this.count,this.seed);
     this.projector=new Projector(this.view,this.field);
     // Whole-island framing zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
-    this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,tickMs:1000/SIM_HZ});
+    this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ});
     const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);};
     motion.addEventListener('change',onMotion);
     this.events.once('shutdown',()=>{motion.removeEventListener('change',onMotion);this.scale.off('resize',this.fit,this);this.layers.destroy();});

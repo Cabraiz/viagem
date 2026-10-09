@@ -13,6 +13,7 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
 import {deathLine,kindStyle,damageLabel} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {OUTLINE_MAX_POINTS,telegraphOutline} from './telegraph-shape.ts';
+import {FX_BUDGET,admitNumber,barVisible,canMerge,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -25,6 +26,8 @@ export interface HordeRendererOptions{
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
   reduced?:boolean;
+  /** 'reduced' trims numbers, pops, stars and bubbles (settings, VGM-057). Default 'full'. */
+  effects?:EffectsProfile;
   /** ms per sim tick, default 50 */
   tickMs?:number;
   /** World position of a player, so hostile damage numbers can appear over them. */
@@ -32,7 +35,7 @@ export interface HordeRendererOptions{
 }
 
 interface EnemyActor{
-  image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;
+  image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
   phase:number;flashAt:number;flashing:boolean;screenX:number;flip:boolean;moving:boolean;
 }
@@ -40,19 +43,19 @@ interface PickupActor{image:Image;shadow:Image;kind:string;value:number;born:num
 interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
-interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number}
+interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean}
 interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:number}
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
 interface StarFx{image:Image;born:number;x:number;y:number;lift:number;vx:number;vy:number;spin:number}
 interface BubbleFx{text:Text;born:number;enemy:string;x:number;y:number;lift:number}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 
-export const CAPS={damage:40,pops:7,poofs:24,stars:120,bubbles:3,warnings:16} as const;
+export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16} as const;
 const TAU=Math.PI*2;
 const FONT='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const SNAP_UNITS=3;
-const BUBBLE_MS=2200,BUBBLE_GAP_MS=1950,BUBBLE_VISIBLE=2;
-const STAR_MS=640,STARS_PER_KILL=5;
+const BUBBLE_MS=2200,BUBBLE_GAP_MS=1950;
+const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 
 const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
@@ -79,8 +82,10 @@ const paint=(text:Text,style:TextStyle,label:string)=>{
   if(text.text!==label)text.setText(label);
 };
 const SHADOW_W=46,SHADOW_H=16,BAR_W=46,BAR_H=13,FILL_W=40,FILL_H=7;
-/** New damage numbers per authoritative frame; the rest are dropped to keep text uploads bounded. */
-export const NUMBERS_PER_PUSH=8;
+/** New low-priority damage numbers per authoritative frame; the rest are dropped to keep text uploads bounded. */
+export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
+/** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
+export const TELEGRAPH_TOP_DEPTH=99000;
 
 export class HordeRenderer{
   private scene:Phaser.Scene;
@@ -90,6 +95,10 @@ export class HordeRenderer{
   private objects:Phaser.GameObjects.GameObject[]=[];
   private ground:Phaser.GameObjects.Graphics;
   private overlay:Phaser.GameObjects.Graphics;
+  private top:Phaser.GameObjects.Graphics;
+  private fx:FxBudget;
+  /** Latest number per target, for merging hits inside DAMAGE_MERGE_MS. */
+  private numberByTarget=new Map<string,NumberFx>();
   private enemies:KeyedPool<EnemyActor>;
   private pickups:KeyedPool<PickupActor>;
   private projectiles:KeyedPool<ProjectileActor>;
@@ -120,9 +129,11 @@ export class HordeRenderer{
 
   constructor(scene:Phaser.Scene,options:HordeRendererOptions){
     this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;
+    this.fx=FX_BUDGET[options.effects??'full'];
     ensureHordeTextures(scene);
     this.ground=this.track(scene.add.graphics().setDepth(-9970));
     this.overlay=this.track(scene.add.graphics().setDepth(95000));
+    this.top=this.track(scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH));
     const image=(key:string)=>()=>this.track(scene.add.image(0,0,key).setVisible(false).setActive(false));
     const text=(style:TextStyle,depth:number)=>()=>this.track(scene.add.text(0,0,'',style).setOrigin(.5,1).setDepth(depth).setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{
@@ -134,12 +145,12 @@ export class HordeRenderer{
     const showActor=(o:{image:Image;shadow:Image},active:boolean)=>{showImage(o,active);o.shadow.setVisible(active).setActive(active);};
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('gosma'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'gosma',elite:false,boss:false,hp:1,maxHp:1,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('gosma'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'gosma',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupTexture('xp'))(),shadow:shadow(),kind:'xp',value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
-    this.numbers=new Ring(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0}),showText,CAPS.damage);
+    this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false}),showText,CAPS.damage);
     this.pops=new Ring(()=>({text:text(popStyle('gosma'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
     this.stars=new Ring(()=>({image:image(FX.star)(),born:0,x:0,y:0,lift:0,vx:0,vy:0,spin:0}),showImage,CAPS.stars);
@@ -178,7 +189,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,since);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
-    this.ground.clear();this.overlay.clear();
+    this.ground.clear();this.overlay.clear();this.top.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
@@ -203,6 +214,8 @@ export class HordeRenderer{
   setTarget(enemyId?:string){this.targetId=enemyId;}
   /** Follows prefers-reduced-motion changes at runtime. */
   setReduced(reduced:boolean){this.reduced=reduced;}
+  /** Effects profile at runtime (settings). Live effects above the new budget fade out on their own. */
+  setEffects(profile:EffectsProfile){this.fx=FX_BUDGET[profile];}
   /** New run or reconnection to a fresh server: accept event ids from the start again. */
   resetEvents(){this.lastEventId=-1;}
 
@@ -210,7 +223,7 @@ export class HordeRenderer{
     const byLayer:Record<string,{created:number;active:number}>={
       enemies:this.count(this.enemies),pickups:this.count(this.pickups),projectiles:this.count(this.projectiles),
       damage:this.count(this.numbers),pops:this.count(this.pops),poofs:this.count(this.poofs),stars:this.count(this.stars),
-      bubbles:this.count(this.bubbles),warnings:this.count(this.warnings),graphics:{created:2,active:2},
+      bubbles:this.count(this.bubbles),warnings:this.count(this.warnings),graphics:{created:3,active:3},
     };
     let created=0,active=0;
     for(const key in byLayer){created+=byLayer[key].created;active+=byLayer[key].active;}
@@ -219,7 +232,7 @@ export class HordeRenderer{
 
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
-    this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();
+    this.numberByTarget.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -232,7 +245,7 @@ export class HordeRenderer{
       a.kind=kind;a.elite=elite;
     }
     if(used.fresh){
-      a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;
+      a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
@@ -277,11 +290,12 @@ export class HordeRenderer{
       case 'damage':{
         const enemy=this.enemies.get(event.target);
         if(enemy){
-          enemy.flashAt=this.now;
-          this.spawnNumber(enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,!!event.crit,false,eventId);
+          enemy.flashAt=this.now;enemy.hitAt=this.now;
+          const priority=numberPriority({crit:!!event.crit,hostile:false,elite:enemy.elite,boss:enemy.boss});
+          this.spawnNumber(event.target,enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,!!event.crit,false,priority,eventId);
         }else{
           const p=this.options.locate?.(event.target);
-          if(p)this.spawnNumber(p.x,p.y,92,event.amount,false,true,eventId);
+          if(p)this.spawnNumber(event.target,p.x,p.y,92,event.amount,false,true,true,eventId);
         }
         break;
       }
@@ -295,31 +309,55 @@ export class HordeRenderer{
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
     }
   }
-  private spawnNumber(x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,eventId:number){
-    if(this.numbersThisPush>=NUMBERS_PER_PUSH&&!hostile)return;
-    this.numbersThisPush++;
+  private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,priority:boolean,eventId:number){
+    // Hits on the same target within DAMAGE_MERGE_MS add up into the number already flying.
+    const merged=this.numberByTarget.get(target);
+    if(canMerge(merged,target,this.now)){
+      const fx=merged as NumberFx;
+      fx.total+=amount;fx.crit||=crit;fx.x=x;fx.y=y;
+      this.paintNumber(fx);return;
+    }
+    const admission=admitNumber(this.numbers.active,this.fx.numbers,this.numbersThisPush,this.fx.numbersPerPush,priority);
+    if(admission==='drop')return;
+    if(!priority)this.numbersThisPush++;
+    // Over a smaller (reduced) budget the ring would still grow to its own cap, so make room explicitly.
+    if(admission==='recycle'&&this.numbers.active<this.numbers.cap){const oldest=this.numbers.at(0);if(oldest)this.retireNumber(oldest,true);}
     const fx=this.numbers.spawn();
+    if(fx.live)this.retireNumber(fx,false);
+    fx.live=true;fx.target=target;fx.total=amount;fx.crit=crit;fx.hostile=hostile;
     fx.born=this.now;fx.x=x;fx.y=y;fx.lift=lift;fx.jitter=(eventId*37%29)-14;
-    paint(fx.text,hostile?HURT_STYLE:crit?CRIT_STYLE:DAMAGE_STYLE,hostile?`-${damageLabel(amount)}`:damageLabel(amount,crit));
+    this.numberByTarget.set(target,fx);
+    this.paintNumber(fx);
+  }
+  /** Drops a number from the merge map (and from the ring when `release`). */
+  private retireNumber(fx:NumberFx,release:boolean){
+    fx.live=false;
+    if(this.numberByTarget.get(fx.target)===fx)this.numberByTarget.delete(fx.target);
+    if(release)this.numbers.release(fx);
+  }
+  private paintNumber(fx:NumberFx){
+    paint(fx.text,fx.hostile?HURT_STYLE:fx.crit?CRIT_STYLE:DAMAGE_STYLE,fx.hostile?`-${damageLabel(fx.total)}`:damageLabel(fx.total,fx.crit));
   }
   private spawnDeath(kind:string,id:string,x:number,y:number){
     const k=enemyKind(kind),phase=hashPhase(id),lift=ENEMY_ART[k].height*.35;
     const puff=this.poofs.spawn();
     puff.born=this.now;puff.x=x;puff.y=y;puff.lift=lift;puff.scale=k==='chefe'?2.4:1;
     puff.image.setTint(kindStyle(kind).tint);
-    for(let i=0;i<STARS_PER_KILL;i++){
-      const star=this.stars.spawn(),angle=(i/STARS_PER_KILL+phase)*TAU,speed=170+60*((i*7+phase*10)%3)/3;
+    const starCount=this.fx.starsPerKill;
+    for(let i=0;i<starCount;i++){
+      const star=this.stars.spawn(),angle=(i/starCount+phase)*TAU,speed=170+60*((i*7+phase*10)%3)/3;
       star.born=this.now;star.x=x;star.y=y;star.lift=lift;
       star.vx=Math.cos(angle)*speed;star.vy=Math.sin(angle)*speed*.8-90;star.spin=(i%2?1:-1)*(4+phase*4);
       star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
     }
+    if(this.pops.active>=this.fx.pops)return;
     const pop=this.pops.spawn();
     pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
   }
   private spawnBubble(enemy:string,line:string){
     if(this.now-this.lastBubbleAt<BUBBLE_GAP_MS)return;
-    while(this.bubbles.active>=BUBBLE_VISIBLE){const oldest=this.bubbles.at(0);if(!oldest)break;this.bubbles.release(oldest);}
+    while(this.bubbles.active>=this.fx.bubbles){const oldest=this.bubbles.at(0);if(!oldest)break;this.bubbles.release(oldest);}
     const actor=this.enemies.get(enemy);
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
@@ -348,7 +386,8 @@ export class HordeRenderer{
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
     const shadow=art.width*size*(a.kind==='pernilongo'?.45:.66);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
-    if(a.hp<a.maxHp||a.elite||a.boss)this.drawBar(q.x,q.y-this.barLift(a),a);
+    // Bars only where they matter: recently hit, elite, boss or the tapped target.
+    if(barVisible(a,now,a.id===this.targetId))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8);
   };
@@ -399,9 +438,10 @@ export class HordeRenderer{
     g.fillStyle(0xff4d4d,.14+.16*u).fillPoints(this.pts,true,true,n);
     n=this.outline(t,Math.max(.06,u));
     g.fillStyle(0xff8a3d,.22+.33*u).fillPoints(this.pts,true,true,n);
+    // The outline goes on the top layer so the zone stays readable through the horde.
     n=this.outline(t,1);
-    g.lineStyle(8,0xfff1e0,.35+.6*blink).strokePoints(this.pts,true,true,n);
-    g.lineStyle(4,0xff3b3b,.75+.25*u).strokePoints(this.pts,true,true,n);
+    this.top.lineStyle(8,0xfff1e0,.35+.6*blink).strokePoints(this.pts,true,true,n);
+    this.top.lineStyle(4,0xff3b3b,.75+.25*u).strokePoints(this.pts,true,true,n);
   };
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}
@@ -441,7 +481,7 @@ export class HordeRenderer{
   };
   private drawNumber=(n:NumberFx)=>{
     const frame=damageFloat(this.now-n.born,this.textFrame);
-    if(frame.done)return false;
+    if(frame.done){this.retireNumber(n,false);return false;}
     this.place(n.text,n.x,n.y,n.lift-frame.y,n.jitter);
     n.text.setScale((this.reduced?1:frame.scale)*this.ui).setAlpha(frame.alpha);
     return true;

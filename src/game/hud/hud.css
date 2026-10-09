@@ -200,7 +200,7 @@
   .rh-offer[data-count='4'] .rh-offer-joke{display:none}
   .rh-offer-joke{margin-top:2px;font-size:10px}
   .rh-offer-deadline{height:5px;margin:3px 2px 5px;flex:none}
-  .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:minmax(44px,1fr);gap:5px}
+  .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:minmax(44px,1fr);gap:5px;container:rh-cards/size}
   .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(44px,1fr)}
   .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:flex;flex-direction:row;align-items:center;text-align:left;gap:7px;padding:6px 7px 5px}
   .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{font-size:22px}
@@ -224,6 +224,14 @@
   .rh-offer-cards[data-count='4'] .rh-card-flag-luck{margin-right:auto}
   .rh-offer-cards[data-count='4'] .rh-card-level{align-self:center}
   .rh-offer-cards[data-count='4'] .rh-card-blurb{display:none}
+}
+/* Short phones / notch insets: when the card area cannot hold two full 2x2 rows (or three rows with
+   blurbs), drop the per-card extra line instead of letting it spill past the card border. */
+@container rh-cards (max-height:154px){
+  .rh-offer-cards[data-count='4'] .rh-card-joke{display:none}
+}
+@container rh-cards (max-height:130px){
+  .rh-offer-cards[data-count='3'] .rh-card-blurb{-webkit-line-clamp:1}
 }
 @keyframes rh-offer-in-side{0%{opacity:0;transform:translateX(40px) scale(.94)}100%{opacity:1;transform:none}}
 
@@ -250,7 +258,7 @@
 .rh-result-title{font:700 clamp(28px,9vw,40px)/1 Georgia,serif;letter-spacing:.02em;color:var(--rh-purple);text-shadow:0 2px 0 #fff,0 4px 10px #b9821c55}
 .rh-result[data-outcome=defeat] .rh-result-title{color:#e9def7;text-shadow:0 2px 0 #30253699,0 4px 10px #00000055}
 .rh-result-sub{margin-top:2px;font:700 clamp(13px,3.8vw,16px)/1.15 'Trebuchet MS',system-ui,sans-serif;color:#7a5b2a}
-.rh-result[data-outcome=defeat] .rh-result-sub{color:#ffd0c4}
+.rh-result[data-outcome=defeat] .rh-result-sub{color:#ffd0c4;margin-top:7px}
 .rh-result-stats{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:5px}
 .rh-result-stat{padding:3px 9px;border-radius:999px;background:var(--rh-glass);border:1.5px solid var(--rh-glass-line);color:var(--rh-cream);font:700 clamp(12px,3.3vw,13px)/1.2 'Trebuchet MS',system-ui,sans-serif;white-space:nowrap;text-shadow:var(--rh-text-shadow)}
 .rh-result-seed{font-size:11px;opacity:.7;white-space:nowrap}

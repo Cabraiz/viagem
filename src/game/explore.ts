@@ -12,6 +12,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
+    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>↶</button><span aria-live="polite">1 / 4</span><button data-turn="1" aria-label="Girar câmera para a direita" disabled>↷</button></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1v4l2 1-2 2v3l3 1 1 3h5l1-3 3-1 2-3-2-2 2-2-2-3-3-1-1-3Z"/><circle cx="11.5" cy="12" r="3"/></svg></button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">← Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
@@ -34,6 +35,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('#coop-code').textContent=`Sala ${net.code}`;
     $('.explore-actions').innerHTML='<button id="coop-attack" aria-label="Atacar. Segure para repetir."><span aria-hidden="true">✦</span>Atacar</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
+    const runHud=document.createElement('section');runHud.className='coop-run';runHud.setAttribute('aria-label','Estado da partida');
+    runHud.innerHTML='<strong id="run-phase">Aguardando amigos</strong><span id="run-time"></span><button id="run-ready">Estou pronto</button><button id="run-rematch" hidden>Jogar novamente</button>';
+    $('.explore-layout').append(runHud);
+    $('#run-ready').addEventListener('click',()=>net.ready(!net.run?.members.find(p=>p.id===net.id)?.ready));
+    $('#run-rematch').addEventListener('click',()=>net.rematch());
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
@@ -71,6 +77,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const pause=(value:boolean)=>{paused=value;if(value){attacking=false;attackPointer=undefined;attackQueuedUntil=0;reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
+  shell.dataset.cameraView='0';
+  for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
+    if(!controller)return;reset();attacking=false;attackQueuedUntil=0;pause(false);
+    const view=controller.scene.rotateCamera(Number(button.dataset.turn));
+    shell.dataset.cameraView=String(view);$('.explore-camera span').textContent=`${view+1} / 4`;
+    $('.explore-canvas').focus();
+  },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
   settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();closeSettings();},{signal});
@@ -99,18 +112,29 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,attacking:()=>attacking||performance.now()<attackQueuedUntil,
+      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=`Ilha ${seed} · relevo procedural`;settingsContent.append(info);},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Você: ${self?.hp??0}♥ · ${self?.score??0} pontos na sala`;
+          const run=net.run,member=run?.members.find(p=>p.id===net.id);
+          if(run){
+            shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
+            const seconds=Math.ceil(run.remaining/20),minutes=Math.floor(seconds/60);
+            $('#run-phase').textContent=run.phase==='lobby'?'Aguardando amigos':run.phase==='countdown'?'A partida vai começar':run.phase==='combat'?(member?.spectator?'Assistindo à turma':'Protejam a ilha'):run.outcome==='victory'?'Vitória da turma!':run.outcome==='timeout'?'Tempo esgotado':'A turma caiu';
+            $('#run-time').textContent=run.phase==='lobby'?`${run.members.filter(p=>p.ready).length}/${run.members.length} prontos`:run.phase==='countdown'?String(seconds):run.phase==='combat'?`${minutes}:${String(seconds%60).padStart(2,'0')}`:`Rodada ${run.round} · ${self?.score??0} pontos`;
+            const ready=$<HTMLButtonElement>('#run-ready');ready.hidden=run.phase!=='lobby'&&run.phase!=='countdown'||!!member?.spectator;ready.disabled=!net.connected;ready.textContent=member?.ready?'Cancelar prontidão':'Estou pronto';ready.setAttribute('aria-pressed',String(!!member?.ready));
+            $('#run-rematch').hidden=run.phase!=='result';$<HTMLButtonElement>('#run-rematch').disabled=!net.connected;
+            $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!net.connected;
+          }
           $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name} ${player.hp}♥${player.online?'':' ↻'}`;return tag;}));
           $('#coop-diagnostics').textContent=`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`;
         }
       },
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').textContent='Ilha explorada ✓';},
-      ready:()=>{$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
+      ready:()=>{for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.disabled=false;$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);

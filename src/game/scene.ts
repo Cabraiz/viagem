@@ -1,10 +1,14 @@
+import {TerrainRenderer} from './terrain/renderer.ts';
+import {TerrainField,randomSeed} from './terrain/field.ts';
 import Phaser from 'phaser';
 import { classes } from '../classes.ts';
-import {ATTACK_RANGE} from './net/shared.ts';
-import {fitIsland,SHORE} from './framing.ts';
+import {SKILL_RANGE} from './net/shared.ts';
+import {fitIsland} from './framing.ts';
+import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView} from './projection.ts';
+import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
 import { CoopClient, STEP } from './net/client.ts';
-import {SPAWN,landmarks,obstacles,isLand,project,unproject,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
+import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 
 export interface SceneHooks {
   classId:string;
@@ -12,6 +16,7 @@ export interface SceneHooks {
   position:(point:Point)=>void;
   discovered:(index:number)=>void;
   ready:()=>void;
+  terrain?:(seed:number,signature:string)=>void;
   message:(text:string)=>void;
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
@@ -25,6 +30,12 @@ const random=(x:number,y:number)=>{const n=Math.sin(x*127.1+y*311.7)*43758.5453;
 
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
+  private view=0;
+  private landscape?:TerrainRenderer;
+  private field!:TerrainField;
+  private signs:{point:Point;graphic:Graphics;label:Phaser.GameObjects.Text}[]=[];
+  private project=(p:Point)=>projectView(p,this.view,this.field);
+  private depth=(p:Point)=>viewDepth(p,this.view);
   private position:Point={...SPAWN};
   private route:Point[]=[];
   private actor!:Phaser.GameObjects.Sprite;
@@ -35,23 +46,37 @@ export class IslandScene extends Phaser.Scene {
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
-  private props: {point:Point;object:Graphics}[]=[];
+  private props: {point:Point;object:Graphics|Phaser.GameObjects.Image;tree?:TreeArt}[]=[];
+  private trees:(TreeArt|undefined)[]=[];
+  private treeShadows?:Graphics;
+  private chooseTrees(){return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
+    const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
+    return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
+  });}
   private stamp=0;
   private distance=0;
   private paused=false;
   private accumulator=0;
   private attackTarget?:string;
-  private chaseTick=0;
+  private skillEffects?:Graphics;
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
   private enemyActors=new Map<string,{body:Phaser.GameObjects.Ellipse;label:Phaser.GameObjects.Text}>();
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;}
-  preload(){this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
+  preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
-    this.cameras.main.setBackgroundColor('#8dcecc');
+    this.cameras.main.setBackgroundColor('#142f2d');
     this.drawGround();
-    for(const o of obstacles){const p=project(o),g=this.add.graphics({x:p.x,y:p.y});this.drawProp(g,o);g.setDepth((o.x+o.y)*100);this.props.push({point:o,object:g});}
+    let treeIndex=0;
+    for(const o of obstacles){
+      const p=this.project(o),tree=o.kind==='rock'?undefined:this.trees[treeIndex++];
+      if(tree&&this.textures.exists(`tree:${tree.id}`)){
+        const image=this.add.image(p.x,p.y,`tree:${tree.id}`,this.view).setOrigin(.5,353/384).setScale(tree.height/tree.pixelHeight).setDepth(this.depth(o));
+        image.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);this.props.push({point:o,object:image,tree});
+      }else{const g=this.add.graphics({x:p.x,y:p.y});this.drawProp(g,o);g.setDepth(this.depth(o));this.props.push({point:o,object:g});}
+    }
+    this.drawTreeShadows();
     landmarks.forEach((l,i)=>this.drawLandmark(l,i));
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95);
@@ -61,48 +86,59 @@ export class IslandScene extends Phaser.Scene {
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=[...this.enemyActors].filter(([id,o])=>o.body.visible&&(this.hooks.net?.enemies.get(id)?.hp??0)>0&&Math.hypot((p.x-o.body.x)/30,(p.y-o.body.y)/27)<=1).sort((a,b)=>Math.hypot(p.x-a[1].body.x,p.y-a[1].body.y)-Math.hypot(p.x-b[1].body.x,p.y-b[1].body.y))[0];
-      if(hit){this.attackTarget=hit[0];this.route=[];this.chaseTick=0;this.hooks.message('Gosma selecionada · aproximando e atacando. Use o joystick para cancelar.');return;}
-      this.goTo(unproject(p));
+      if(hit){this.attackTarget=hit[0];this.hooks.message('Alvo priorizado. O ataque é automático ao entrar no alcance.');return;}
+      this.goTo(unprojectView(p,this.view,this.field));
     });
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
     if(this.hooks.net)this.position={...this.hooks.net.predicted};
     this.fit();this.place();
-    this.hooks.position(this.position);this.hooks.ready();
+    this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
   }
   private fit(){
-    const frame=fitIsland(this.scale.width,this.scale.height);
+    const frame=fitIsland(this.scale.width,this.scale.height,this.view,this.field);
     this.cameras.main.setSize(this.scale.width,this.scale.height)
       .setZoom(frame.zoom).centerOn(frame.x,frame.y);
+    this.landscape?.fit();
+  }
+  rotateCamera(turn:number){
+    if(!this.actor)return this.view;
+    this.view=normalizeView(this.view+turn);this.landscape?.view(this.view);
+    for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
+    this.drawTreeShadows();
+    for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.setPosition(p.x,p.y+28).setDepth(depth+2);}
+    this.destination.clear();this.fit();this.place();
+    return this.view;
   }
   setPaused(paused:boolean){this.paused=paused;if(paused)this.attackTarget=undefined;this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
-    this.route=findPath(this.position,target);
+    this.route=findPath(this.position,target,this.field);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
-    const p=project(target);
+    const p=this.project(target);
     this.destination.lineStyle(2,0xfff9d2,.95).strokeEllipse(p.x,p.y,28,14);
     this.destination.fillStyle(0xfff9d2,.9).fillCircle(p.x,p.y,3);
   }
   private place(){
-    const p=project(this.position),depth=(this.position.x+this.position.y)*100;
+    const p=this.project(this.position),depth=this.depth(this.position);
     const bob=0;
     this.actor.setPosition(p.x,p.y+bob).setDepth(depth+1);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
     // Canopies soften only when they cover the hero; feet still define scene depth.
-    for(const prop of this.props){const q=project(prop.point);const front=prop.point.x+prop.point.y>this.position.x+this.position.y;
-      prop.object.setAlpha(front&&Math.abs(q.x-p.x)<58&&q.y>p.y&&q.y-p.y<105?.55:1);
+    for(const prop of this.props){const q=this.project(prop.point);const front=this.depth(prop.point)>this.depth(this.position);
+      prop.object.setAlpha(front&&Math.abs(q.x-p.x)<(prop.tree?128*prop.tree.height/prop.tree.pixelHeight:58)&&q.y>p.y&&q.y-p.y<(prop.tree?.height??105)?.55:1);
     }
   }
   update(_time:number,delta:number){
+    this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     const self=this.hooks.net?.players.get(this.hooks.net.id);
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0);
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
     if(this.hooks.net){this.updateCoop(delta);return;}
     if(this.paused)return;
@@ -110,8 +146,8 @@ export class IslandScene extends Phaser.Scene {
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
     const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
     const old=this.position,seconds=Math.min(delta/1000,.1);
-    if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.position=moveDirection(old,{x:sx/2+sy,y:sy-sx/2},seconds);}
-    else this.position=moveAlong(old,this.route,seconds);
+    if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.position=moveDirection(old,screenDirection(sx,sy,this.view),seconds,this.field);}
+    else this.position=moveAlong(old,this.route,seconds,this.field);
     const moved=Math.hypot(this.position.x-old.x,this.position.y-old.y);
     this.distance+=moved;
     if(moved>0)this.place();
@@ -125,46 +161,47 @@ export class IslandScene extends Phaser.Scene {
     const axis=this.paused?{x:0,y:0}:this.hooks.direction();
     const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
     const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
-    if(this.paused||!net.connected||!net.players.get(net.id)?.hp){this.attackTarget=undefined;this.route=[];}
-    if(this.attackTarget&&(net.enemies.get(this.attackTarget)?.hp??0)<=0){this.attackTarget=undefined;this.route=[];this.hooks.message('Gosma derrotada! Toque em outra para atacar.');}
+    if(this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||net.players.get(net.id)?.spectator){this.attackTarget=undefined;this.route=[];}
+    if(this.attackTarget&&(net.enemies.get(this.attackTarget)?.hp??0)<=0){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. O básico continua automático.');}
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
-      let autoAttack=false;
-      if(Math.hypot(sx,sy)>.05){this.attackTarget=undefined;this.route=[];direction={x:sx/2+sy,y:sy-sx/2};}
-      else if(!this.paused&&this.attackTarget){
-        const enemy=net.enemies.get(this.attackTarget)!;
-        autoAttack=Math.hypot(enemy.x-net.predicted.x,enemy.y-net.predicted.y)<=ATTACK_RANGE-.15&&clearSegment(net.predicted,enemy);
-        if(autoAttack)this.route=[];
-        else if(this.chaseTick--<=0){this.route=findPath(net.predicted,enemy);this.chaseTick=4;}
-      }
+      if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
       if(!this.paused&&Math.hypot(sx,sy)<=.05&&this.route.length){
         while(this.route.length&&Math.hypot(this.route[0].x-net.predicted.x,this.route[0].y-net.predicted.y)<.18)this.route.shift();
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
-      net.input(direction,!this.paused&&(autoAttack||!!this.hooks.attacking?.()),this.attackTarget);this.accumulator-=STEP;
+      net.input(direction,!this.paused&&!!this.hooks.attacking?.(),this.attackTarget);this.accumulator-=STEP;
     }
     const view=net.view(),old=this.position;
+    const effects=this.skillEffects??=this.add.graphics().setDepth(90000);effects.clear();
+    for(const player of view.players){
+      const age=net.tick-(player.skillTick??0);
+      if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
+      const radius=SKILL_RANGE*(this.reduced?1:.3+.7*age/10);
+      const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
+      effects.lineStyle(3,0xffde88,1-age/10).strokePoints(points,true);
+    }
     const target=net.predicted,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
-    this.actor.setAlpha((net.players.get(net.id)?.hp??100)>0?1:.4);
+    this.actor.setAlpha(!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4);
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
     for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);}
     for(const player of view.players){
       if(player.id===net.id)continue;
       let objects=this.remoteActors.get(player.id);
       if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'11px',color:'#51425e',backgroundColor:'#fff4d9',padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online);
-      const q=project(player),depth=(player.x+player.y)*100;
-      objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(player.online&&player.hp?1:.4);
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
+      const q=this.project(player),depth=this.depth(player);
+      objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
-      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${player.hp}♥${player.online?'':' · voltando'}`);
+      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${player.spectator?'assistindo':player.hp+'♥'}${player.online?'':' · voltando'}`);
     }
     for(const enemy of view.enemies){
       let objects=this.enemyActors.get(enemy.id);
       if(!objects){objects={body:this.add.ellipse(0,0,46,33,0xcf94bc).setStrokeStyle(3,0x976c97),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'10px',color:'#633c63',backgroundColor:'#fff4dc',padding:{x:4,y:2}}).setOrigin(.5,0)};this.enemyActors.set(enemy.id,objects);}
-      const q=project(enemy),depth=(enemy.x+enemy.y)*100;
+      const q=this.project(enemy),depth=this.depth(enemy);
       objects.body.setStrokeStyle(this.attackTarget===enemy.id?4:3,this.attackTarget===enemy.id?0xffef94:0x976c97);
       objects.body.setPosition(q.x,q.y-15).setDepth(depth).setVisible(enemy.hp>0);
       objects.label.setPosition(q.x,q.y+8).setDepth(depth+1).setText(`Gosma · ${enemy.hp}♥`).setVisible(enemy.hp>0);
@@ -172,42 +209,22 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
   }
-  private drawGround(){
-    const g=this.add.graphics().setDepth(-10000);
-    const center=project({x:12,y:12});
-    g.fillStyle(0xb1e7d7,.6).fillEllipse(SHORE.x,SHORE.y,SHORE.width,SHORE.height);
-    g.fillStyle(0xe6f4d7,.5).fillEllipse(center.x,center.y+30,1230,660);
-    const tiles:Point[]=[];for(let y=1;y<24;y++)for(let x=1;x<24;x++)if(isLand({x:x+.5,y:y+.5}))tiles.push({x,y});
-    tiles.sort((a,b)=>a.x+a.y-b.x-b.y);
-    for(const t of tiles){
-      const corners=[{x:t.x,y:t.y},{x:t.x+1,y:t.y},{x:t.x+1,y:t.y+1},{x:t.x,y:t.y+1}].map(project);
-      for(const [a,b,n] of [[1,2,{x:t.x+1.5,y:t.y+.5}],[2,3,{x:t.x+.5,y:t.y+1.5}]] as const){
-        if(!isLand(n))polygon(g,[corners[a],corners[b],{x:corners[b].x,y:corners[b].y+30},{x:corners[a].x,y:corners[a].y+30}],a===1?0xbdb17f:0xd2bd84);
-      }
-      const beach=!isLand({x:t.x+.5,y:t.y+.5},1.8);
-      const colors=beach?[0xf1dda6,0xf2dfa9,0xefdaa1]:[0xc4d894,0xc7da96,0xc2d593,0xc8d997];
-      polygon(g,corners,colors[Math.floor(random(t.x,t.y)*colors.length)]);
-    }
-    // Wide connected sand paths climb the same height field as the hero.
-    const segments=[[SPAWN,landmarks[0]],[landmarks[0],landmarks[1]],[landmarks[0],landmarks[2]],[landmarks[2],landmarks[1]]];
-    for(const [a,b] of segments){const n=Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)*8),v={x:b.x-a.x,y:b.y-a.y},len=Math.hypot(v.x,v.y);
-      for(let i=0;i<n;i++){const from={x:a.x+v.x*i/n,y:a.y+v.y*i/n},to={x:a.x+v.x*(i+1)/n,y:a.y+v.y*(i+1)/n};
-        const offset={x:-v.y/len*.42,y:v.x/len*.42};
-        polygon(g,[{x:from.x+offset.x,y:from.y+offset.y},{x:to.x+offset.x,y:to.y+offset.y},{x:to.x-offset.x,y:to.y-offset.y},{x:from.x-offset.x,y:from.y-offset.y}].map(project),0xf0daa0);
+  private drawTreeShadows(){
+    const g=this.treeShadows??=this.add.graphics().setDepth(-9990);g.clear();
+    for(const prop of this.props){
+      if(!prop.tree)continue;
+      const radius=Math.max(.16,Math.min(.48,prop.tree.height/500));
+      // Project each point onto actual terrain, including slopes and camera rotation.
+      for(const [size,alpha] of [[1,.12],[.62,.2]]){
+        const points=Array.from({length:16},(_,i)=>{
+          const angle=i*Math.PI/8;
+          return this.project({x:prop.point.x+Math.cos(angle)*radius*size,y:prop.point.y+Math.sin(angle)*radius*size});
+        });
+        polygon(g,points,0x213d26,alpha);
       }
     }
-    for(let i=0;i<560;i++){
-      const p={x:2+random(i,4)*20,y:2+random(i,8)*20};if(!isLand(p,1.7))continue;
-      if(segments.some(([a,b])=>{const v={x:b.x-a.x,y:b.y-a.y},t=Phaser.Math.Clamp(((p.x-a.x)*v.x+(p.y-a.y)*v.y)/(v.x*v.x+v.y*v.y),0,1);return Math.hypot(p.x-a.x-v.x*t,p.y-a.y-v.y*t)<.62;}))continue;
-      const q=project(p);g.lineStyle(1.2,0x749b64,.48).lineBetween(q.x-3,q.y+1,q.x-5,q.y-4).lineBetween(q.x,q.y,q.x+2,q.y-5);
-      if(i%7===0){g.fillStyle(i%2?0xf8e8a7:0xf4b5a4).fillCircle(q.x,q.y-5,2.6);g.fillStyle(0xfff5cf).fillCircle(q.x,q.y-5,1);}
-    }
-    // Terrain details are created once, with no per-frame allocations for scenery.
-    for(let i=0;i<70;i++){const p={x:random(i,92)*30-3,y:random(i,71)*30-3};if(isLand(p,-1.4))continue;const q=project(p);g.lineStyle(2,0xe3f7e5,.42).lineBetween(q.x,q.y,q.x+15+random(i,61)*22,q.y);}
-    // Bake static geometry once instead of replaying thousands of drawing commands every frame.
-    const terrain=this.add.renderTexture(-1280,-160,2560,1440).setOrigin(0,0).setDepth(-10000);
-    terrain.draw(g,1280,160);g.destroy();
   }
+  private drawGround(){this.landscape=new TerrainRenderer(this,this.field);this.landscape.view(this.view);}
   private drawProp(g:Graphics,o:Obstacle){
     g.fillStyle(0x558973,.15).fillEllipse(8,4,70,26);
     if(o.kind==='rock'){
@@ -234,7 +251,7 @@ export class IslandScene extends Phaser.Scene {
     g.fillStyle(0xe9b783).fillCircle(-31,-76,4).fillCircle(16,-105,4);
   }
   private drawLandmark(l:Point,index:number){
-    const p=project(l),g=this.add.graphics({x:p.x,y:p.y}).setDepth((l.x+l.y)*100-5);
+    const p=this.project(l),g=this.add.graphics({x:p.x,y:p.y}).setDepth(this.depth(l)-5);
     g.fillStyle(0xd5bf8f).fillEllipse(0,6,84,34);
     g.lineStyle(2,0xfff0c4,.8).strokeEllipse(0,6,87,36);
     if(index===0){
@@ -257,14 +274,14 @@ export class IslandScene extends Phaser.Scene {
       polygon(g,[{x:2,y:-88},{x:42,y:-80},{x:31,y:-67},{x:2,y:-70}],0xa28dc5);
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
-    const label=this.add.text(p.x,p.y+28,landmarks[index].name,{fontFamily:'Georgia, serif',fontSize:'13px',color:'#625650',backgroundColor:'#f7edc9',padding:{x:9,y:5}}).setOrigin(.5,0).setDepth((l.x+l.y)*100+2);
-    label.setAlpha(.94);
+    const label=this.add.text(p.x,p.y+28,landmarks[index].name,{fontFamily:'Georgia, serif',fontSize:'13px',color:'#625650',backgroundColor:'#f7edc9',padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(this.depth(l)+2);
+    label.setAlpha(.94);this.signs.push({point:l,graphic:g,label});
   }
 }
 
 export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   const scene=new IslandScene(hooks);
-  const game=new Phaser.Game({type:Phaser.AUTO,parent,backgroundColor:'#8dcecc',
+  const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
     antialias:true,transparent:false,autoFocus:false,
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});

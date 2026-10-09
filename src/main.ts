@@ -1,6 +1,7 @@
 import './style.css';
 import { setupSections } from './sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './classes.ts';
+if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./game/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];
 let selected = classes[0];
@@ -153,3 +154,5 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
 setupSections(()=>{page=0;renderRoster();});
 matchMedia('(max-height:740px)').addEventListener('change',()=>{page=0;renderRoster();});
 renderRoster();renderSelected();
+if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./game/sandbox-horde.ts').then(m=>m.openHordeSandbox());
+if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./game/sandbox-fun.ts');

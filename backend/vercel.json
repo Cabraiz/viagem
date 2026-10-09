@@ -3,5 +3,6 @@
   "framework": null,
   "outputDirectory": "public",
   "regions": ["gru1"],
-  "functions": { "api/*.ts": { "maxDuration": 10 } }
+  "functions": { "api/*.ts": { "maxDuration": 10 } },
+  "rewrites": [{ "source": "/api/results/:runId", "destination": "/api/results?runId=:runId" }]
 }

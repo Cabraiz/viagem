@@ -1,3 +1,4 @@
+import {randomSeed,DEFAULT_SEED} from '../src/game/terrain/field.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer } from './room.ts';
 interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; }
@@ -6,7 +7,7 @@ function allowed(request:Request,env:Env){const origin=request.headers.get('Orig
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
-    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:1});
+    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:3});
     if(!allowed(request,env))return new Response('Origin not allowed',{status:403});
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
@@ -26,11 +27,11 @@ export class GameRoom extends DurableObject<Env>{
   private room?:Room;
   private timer?:ReturnType<typeof setInterval>;
   private peers=new Map<WebSocket,Peer>();
-  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();await this.ctx.storage.put('created',now);this.room=new Room(now);await this.ctx.storage.setAlarm(now+31*60_000);}}
+  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=new Room(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
-    this.room??=new Room(created);
+    this.room??=new Room(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>server.close(code,reason)};
     this.peers.set(server,peer);this.room.connect(peer);

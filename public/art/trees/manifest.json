@@ -1,0 +1,284 @@
+{
+  "trees": [
+    {
+      "id": "carvalho-verde",
+      "name": "Carvalho Verde",
+      "height": 210,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "betula-clara",
+      "name": "Bétula Clara",
+      "height": 135,
+      "pixelHeight": 341,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "bordo-rubi",
+      "name": "Bordo Rubi",
+      "height": 220,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "jacaranda-lilas",
+      "name": "Jacarandá Lilás",
+      "height": 155,
+      "pixelHeight": 320,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "salgueiro-chorao",
+      "name": "Salgueiro Chorão",
+      "height": 190,
+      "pixelHeight": 310,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "pinheiro-esmeralda",
+      "name": "Pinheiro Esmeralda",
+      "height": 190,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "abeto-azul",
+      "name": "Abeto Azul",
+      "height": 135,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "araucaria-alta",
+      "name": "Araucária Alta",
+      "height": 210,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "sequoia-antiga",
+      "name": "Sequoia Antiga",
+      "height": 220,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "cipreste-fino",
+      "name": "Cipreste Fino",
+      "height": 180,
+      "pixelHeight": 341,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "coqueiro-curvo",
+      "name": "Coqueiro curvo",
+      "height": 155,
+      "pixelHeight": 338,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "palmeira-leque",
+      "name": "Palmeira-leque",
+      "height": 135,
+      "pixelHeight": 334,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "bananeira",
+      "name": "Bananeira",
+      "height": 100,
+      "pixelHeight": 313,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "mangueira-frutos",
+      "name": "Mangueira com frutos",
+      "height": 205,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "baoba",
+      "name": "Baobá",
+      "height": 210,
+      "pixelHeight": 326,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "bordo-laranja",
+      "name": "Bordo médio alaranjado",
+      "height": 150,
+      "pixelHeight": 338,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "ginkgo-dourado",
+      "name": "Ginkgo dourado de copa larga",
+      "height": 165,
+      "pixelHeight": 321,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "cerejeira-rosa",
+      "name": "Cerejeira rosada pequena",
+      "height": 102,
+      "pixelHeight": 330,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "ameixeira-roxa",
+      "name": "Ameixeira de folhagem púrpura",
+      "height": 135,
+      "pixelHeight": 309,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "carvalho-cobre",
+      "name": "Carvalho de outono marrom cobre",
+      "height": 202,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "macieira",
+      "name": "Macieira",
+      "height": 100,
+      "pixelHeight": 320,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "laranjeira",
+      "name": "Laranjeira",
+      "height": 140,
+      "pixelHeight": 341,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "limoeiro",
+      "name": "Limoeiro",
+      "height": 130,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "pessegueiro",
+      "name": "Pessegueiro",
+      "height": 150,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "jabuticabeira",
+      "name": "Jabuticabeira",
+      "height": 160,
+      "pixelHeight": 307,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "mangue-raizes",
+      "name": "Mangue com raízes aéreas",
+      "height": 155,
+      "pixelHeight": 312,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "figueira-gigante",
+      "name": "Figueira gigante",
+      "height": 210,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "eucalipto",
+      "name": "Eucalipto",
+      "height": 195,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "acacia",
+      "name": "Acácia de copa plana",
+      "height": 150,
+      "pixelHeight": 264,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "pau-brasil",
+      "name": "Pau-brasil",
+      "height": 155,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-cristal-azul",
+      "name": "Árvore de cristal azul",
+      "height": 180,
+      "pixelHeight": 334,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-lunar",
+      "name": "Árvore lunar",
+      "height": 165,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-musgo",
+      "name": "Árvore de musgo",
+      "height": 100,
+      "pixelHeight": 320,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-violeta",
+      "name": "Árvore violeta",
+      "height": 160,
+      "pixelHeight": 341,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-coracao",
+      "name": "Árvore coração",
+      "height": 140,
+      "pixelHeight": 302,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-seca",
+      "name": "Árvore seca",
+      "height": 155,
+      "pixelHeight": 326,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-torta",
+      "name": "Árvore torta",
+      "height": 105,
+      "pixelHeight": 251,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-oca",
+      "name": "Árvore oca",
+      "height": 210,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-broto",
+      "name": "Árvore broto",
+      "height": 85,
+      "pixelHeight": 341,
+      "status": "perspective-4-5"
+    },
+    {
+      "id": "arvore-nevada",
+      "name": "Árvore nevada",
+      "height": 165,
+      "pixelHeight": 340,
+      "status": "perspective-4-5"
+    }
+  ]
+}

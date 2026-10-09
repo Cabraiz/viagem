@@ -1,13 +1,17 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { createClient } from '@libsql/client/web';
 import { databaseConfig } from '../lib/database.ts';
 
 const client = createClient(databaseConfig(process.env));
 try {
-  const sql = await readFile(new URL('../migrations/001-initial.sql', import.meta.url), 'utf8');
-  // Statements in this migration do not contain semicolons inside strings.
-  const statements = sql.split(';').map(statement => statement.trim()).filter(Boolean);
-  await client.batch(statements, 'write');
+  const folder = new URL('../migrations/', import.meta.url);
+  // Applied in name order; each file is idempotent and runs in its own transaction.
+  for (const name of (await readdir(folder)).filter(file => /^\d{3}-.+\.sql$/.test(file)).sort()) {
+    const sql = await readFile(new URL(name, folder), 'utf8');
+    // Statements in these migrations do not contain semicolons inside strings.
+    const statements = sql.split(';').map(statement => statement.trim()).filter(Boolean);
+    await client.batch(statements, 'write');
+  }
   const result = await client.execute('SELECT version FROM schema_migrations ORDER BY version');
   console.log(JSON.stringify({ status: 'ok', versions: result.rows.map(row => row.version) }));
 } catch {

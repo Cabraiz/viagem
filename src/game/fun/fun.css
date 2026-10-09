@@ -1,0 +1,35 @@
+/* VGM-053A: emotes and speech balloons. Mobile only (D-009): touch targets >= 44 px, no hover dependency. */
+.fun-balloons{position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden}
+.fun-balloon{position:absolute;left:0;top:0;display:flex;align-items:center;gap:5px;max-width:min(190px,60vw);box-sizing:border-box;padding:6px 10px;border:2px solid var(--fun-accent,#a391d4);border-radius:14px;background:#fffdf6;color:#302536;font:800 13px/1.2 system-ui,sans-serif;letter-spacing:.01em;box-shadow:0 3px 0 var(--fun-accent,#a391d4),0 6px 14px #30253633;white-space:normal;overflow-wrap:anywhere;will-change:transform}
+.fun-balloon::after{content:'';position:absolute;left:calc(var(--tail,50%) - 7px);bottom:-9px;width:12px;height:12px;background:#fffdf6;border:2px solid var(--fun-accent,#a391d4);border-top:0;border-left:0;transform:rotate(45deg);border-radius:0 0 4px 0}
+.fun-balloon.fun-below::after{bottom:auto;top:-9px;transform:rotate(-135deg)}
+.fun-balloon-icon{font-size:18px;line-height:1}
+.fun-balloon-text{display:block}
+.fun-balloon>*{animation:fun-pop .32s cubic-bezier(.3,1.6,.5,1) both}
+.fun-balloon-line{--fun-accent:#edc66a;font-weight:700}
+.fun-balloon-help{--fun-accent:#ed8f91}
+.fun-tone-laugh{--fun-accent:#edc66a}.fun-tone-laugh .fun-balloon-icon{animation:fun-shake .5s ease-in-out 2}
+.fun-tone-help{--fun-accent:#ed8f91}.fun-balloon.fun-tone-help{animation:fun-pulse .6s ease-in-out 3}
+.fun-tone-come{--fun-accent:#75b8a6}.fun-tone-come .fun-balloon-icon{animation:fun-nudge .45s ease-in-out 3}
+.fun-tone-sorry{--fun-accent:#a391d4}.fun-tone-sorry .fun-balloon-icon{animation:fun-droop 1.2s ease-in-out both}
+
+/* Emote button sits above the attack button; the fan opens as an arc toward the upper left. */
+.fun-emotes{--size:48px;--radius:132px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + 17px));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + 96px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.fun-emote-toggle{position:relative;width:var(--size);height:var(--size);padding:0;border:2px solid #fff8e9b0;border-radius:50%;background:#6550807a;color:#fff9ed;font-size:22px;line-height:1;box-shadow:0 3px 12px #30253630;pointer-events:auto;cursor:pointer;touch-action:manipulation}
+.fun-emotes.is-open .fun-emote-toggle{background:#8870acd0}
+.fun-emotes.is-cooling .fun-emote-toggle{background:conic-gradient(#30253699 calc(var(--cooldown)*360deg),#6550807a 0)}
+.fun-emote-fan{position:absolute;left:50%;top:50%;width:0;height:0}
+.fun-emote{position:absolute;left:-29px;top:-29px;width:58px;height:58px;display:grid;place-content:center;justify-items:center;gap:1px;padding:0;border:2px solid #fffdf6;border-radius:50%;background:var(--fun-accent,#a391d4);color:#302536;font:800 10px/1 system-ui,sans-serif;box-shadow:0 3px 0 #30253640,0 6px 12px #30253630;pointer-events:none;opacity:0;transform:scale(.3);transition:transform .18s cubic-bezier(.3,1.5,.5,1),opacity .12s;transition-delay:calc(var(--i)*25ms);cursor:pointer;touch-action:manipulation}
+.fun-emote span{font-size:21px;line-height:1}
+.fun-emote b{font-weight:800;white-space:nowrap}
+.fun-emotes.is-open .fun-emote{pointer-events:auto;opacity:1;transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(1)}
+.fun-emotes.is-open .fun-emote:not(:disabled):active{filter:brightness(1.08);transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(.92)}
+.fun-emotes.is-open .fun-emote:disabled{opacity:.45;filter:grayscale(.6);cursor:default}
+@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:128px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + 18px));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + 92px))}}
+
+@keyframes fun-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes fun-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+@keyframes fun-pulse{0%,100%{box-shadow:0 3px 0 #ed8f91,0 0 0 0 #ed8f9188}50%{box-shadow:0 3px 0 #ed8f91,0 0 0 8px #ed8f9100}}
+@keyframes fun-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+@keyframes fun-droop{0%{transform:rotate(0)}60%,100%{transform:rotate(-18deg) translateY(2px)}}
+@media(prefers-reduced-motion:reduce){.fun-balloon,.fun-balloon>*,.fun-balloon-icon{animation:none!important}.fun-emote{transition:none}}

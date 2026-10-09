@@ -1,3 +1,4 @@
+import type {TerrainField} from './terrain/field.ts';
 export type Point = { x: number; y: number };
 export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock' };
 export const SPAWN: Point = { x: 12, y: 17 };
@@ -18,7 +19,8 @@ export const obstacles: Obstacle[] = [
   {x:11,y:12,radius:.5,kind:'rock'}, {x:14,y:14,radius:.48,kind:'rock'},
   {x:8,y:6,radius:.45,kind:'rock'}, {x:18,y:8,radius:.6,kind:'rock'},
 ];
-export function elevation(x: number, y: number) {
+export function elevation(x: number, y: number, terrain?:TerrainField) {
+  if(terrain)return terrain.height(x,y);
   return 12 + 70 * Math.exp(-((x-12)**2 / 35 + (y-6)**2 / 22));
 }
 export function project(p: Point) {
@@ -30,24 +32,25 @@ export function unproject(p: Point): Point {
   for (let i=0;i<24;i++) sum=(p.y+elevation((sum+difference)/2,(sum-difference)/2))/21;
   return {x:(sum+difference)/2,y:(sum-difference)/2};
 }
-export function isLand(p: Point, margin=0) {
+export function isLand(p: Point, margin=0, terrain?:TerrainField) {
+  if(terrain)return terrain.land(p.x,p.y,margin);
   const x=(p.x-12)/(10.6-margin), y=(p.y-12)/(10.3-margin);
   return x*x+y*y < 1;
 }
-export function walkable(p: Point) {
-  return Number.isFinite(p.x) && Number.isFinite(p.y) && isLand(p,RADIUS+.2) &&
+export function walkable(p: Point, terrain?:TerrainField) {
+  return Number.isFinite(p.x) && Number.isFinite(p.y) && isLand(p,RADIUS+.2,terrain) &&
     obstacles.every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+RADIUS);
 }
-export function clearSegment(a:Point,b:Point) {
+export function clearSegment(a:Point,b:Point,terrain?:TerrainField) {
   const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/.08));
-  for(let i=0;i<=n;i++) if(!walkable({x:a.x+(b.x-a.x)*i/n,y:a.y+(b.y-a.y)*i/n})) return false;
+  for(let i=0;i<=n;i++) if(!walkable({x:a.x+(b.x-a.x)*i/n,y:a.y+(b.y-a.y)*i/n},terrain)) return false;
   return true;
 }
 /** Half-tile navigation with swept collision checks, also suitable for server validation. */
-export function findPath(start:Point,target:Point):Point[] {
+export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[] {
   target={x:target.x,y:target.y};
-  if(!walkable(start)||!walkable(target)) return [];
-  if(clearSegment(start,target)) return [target];
+  if(!walkable(start,terrain)||!walkable(target,terrain)) return [];
+  if(clearSegment(start,target,terrain)) return [target];
   const step=.5, size=49;
   const key=(x:number,y:number)=>y*size+x;
   const point=(id:number):Point=>({x:(id%size)*step,y:Math.floor(id/size)*step});
@@ -56,7 +59,7 @@ export function findPath(start:Point,target:Point):Point[] {
     for(let y=-2;y<=2;y++) for(let x=-2;x<=2;x++) {
       const nx=Math.round(p.x/step)+x,ny=Math.round(p.y/step)+y;
       if(nx<0||ny<0||nx>=size||ny>=size)continue;
-      const id=key(nx,ny); if(clearSegment(p,point(id)))candidates.push(id);
+      const id=key(nx,ny); if(clearSegment(p,point(id),terrain))candidates.push(id);
     }
     return candidates.sort((a,b)=>Math.hypot(point(a).x-p.x,point(a).y-p.y)-Math.hypot(point(b).x-p.x,point(b).y-p.y))[0];
   };
@@ -71,7 +74,7 @@ export function findPath(start:Point,target:Point):Point[] {
       const ids=[last];while(came.has(ids[0]))ids.unshift(came.get(ids[0])!);
       const rough=[start,...ids.map(point),target],smooth:Point[]=[];
       let at=0;
-      while(at<rough.length-1){let next=rough.length-1;while(next>at+1&&!clearSegment(rough[at],rough[next]))next--;smooth.push(rough[next]);at=next;}
+      while(at<rough.length-1){let next=rough.length-1;while(next>at+1&&!clearSegment(rough[at],rough[next],terrain))next--;smooth.push(rough[next]);at=next;}
       return smooth;
     }
     open.delete(current);
@@ -81,31 +84,31 @@ export function findPath(start:Point,target:Point):Point[] {
       const nx=current%size+dx,ny=Math.floor(current/size)+dy;
       if(nx<0||ny<0||nx>=size||ny>=size)continue;
       const id=key(nx,ny),b=point(id);
-      if(!clearSegment(a,b))continue;
+      if(!clearSegment(a,b,terrain))continue;
       const next=cost.get(current)!+Math.hypot(dx,dy)*step;
       if(next<(cost.get(id)??Infinity)){cost.set(id,next);came.set(id,current);open.add(id);}
     }
   }
   return [];
 }
-export function moveAlong(position:Point,path:Point[],seconds:number):Point {
+export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:TerrainField):Point {
   let result={...position},remaining=SPEED*Math.min(.1,Math.max(0,seconds));
   while(path.length&&remaining>0){
     const to=path[0],distance=Math.hypot(to.x-result.x,to.y-result.y);
     const amount=Math.min(distance,remaining);
     const next=distance<1e-8?to:{x:result.x+(to.x-result.x)*amount/distance,y:result.y+(to.y-result.y)*amount/distance};
-    if(!clearSegment(result,next)){path.length=0;break;}
+    if(!clearSegment(result,next,terrain)){path.length=0;break;}
     result={...next};remaining-=amount;
     if(distance<=amount+1e-8)path.shift();
   }
   return result;
 }
-export function moveDirection(position:Point,direction:Point,seconds:number):Point {
+export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField):Point {
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return position;
   const distance=SPEED*Math.min(.1,Math.max(0,seconds));
   const next={x:position.x+direction.x/length*distance,y:position.y+direction.y/length*distance};
-  if(clearSegment(position,next))return next;
+  if(clearSegment(position,next,terrain))return next;
   const slideX={x:next.x,y:position.y},slideY={x:position.x,y:next.y};
-  return clearSegment(position,slideX)?slideX:clearSegment(position,slideY)?slideY:position;
+  return clearSegment(position,slideX,terrain)?slideX:clearSegment(position,slideY,terrain)?slideY:position;
 }

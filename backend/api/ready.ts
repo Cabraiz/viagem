@@ -28,7 +28,8 @@ export default {
   fetch(request: Request) {
     return readiness(request, async () => {
       const result = await getDatabase().execute({
-        sql: 'SELECT version FROM schema_migrations WHERE version = ?', args: [1],
+        // Latest migration: deploying before `npm run db:migrate` reports unavailable instead of failing writes.
+        sql: 'SELECT version FROM schema_migrations WHERE version = ?', args: [2],
       });
       if (result.rows.length !== 1) throw new Error('Schema not initialized');
     });

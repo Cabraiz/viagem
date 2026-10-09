@@ -48,3 +48,7 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-error{font-size:13px;color:#99585f;text-align:center}
 @media(max-width:370px),(max-height:500px){.explore-controls{padding:16px max(18px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}.explore-stick{width:96px;height:96px}.explore-config{top:max(12px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right))}.explore-settings{padding:16px}}
 @media(prefers-reduced-motion:reduce){.explore-stick span{transition:none!important}}
+
+.explore-camera{position:absolute;left:max(14px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:3;display:flex;align-items:center;gap:6px;color:#fff9ed;font:12px system-ui;text-shadow:0 1px 3px #302536}
+.explore-camera button{width:44px;height:44px;padding:0;border:2px solid #fff8e9aa;border-radius:15px;background:#55466677;color:#fff9ed;font:30px system-ui;cursor:pointer;touch-action:manipulation}
+.explore-camera button:disabled{opacity:.4;cursor:wait}

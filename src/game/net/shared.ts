@@ -1,5 +1,5 @@
-import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION} from '../terrain/field.ts';
-import { moveDirection, SPAWN, type Point } from '../world.ts';
+import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../terrain/field.ts';
+import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
 import {coastalSpawnPoints} from '../sim/director.ts';
@@ -77,7 +77,7 @@ export function wireEvent(event:StampedEvent):StampedEvent{
 }
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
-const spawnSlot=(slot:number)=>({x:SPAWN.x+(slot%3-1)*.7,y:SPAWN.y+Math.floor(slot/3)*.7});
+const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
 
 export class Simulation {
   readonly terrain:TerrainField;
@@ -95,8 +95,9 @@ export class Simulation {
   private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
-  constructor(seed=DEFAULT_SEED){
-    this.seed=seed;this.terrain=new TerrainField(seed);
+  /** `world` defaults to the island; 'infinito' (D-019) needs the camera, spawn and network cards before going live. */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
+    this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }
@@ -126,7 +127,7 @@ export class Simulation {
     coastalSpawnPoints(this.terrain);
     let slot=0;
     for(const p of this.players.values()){
-      this.equip(p);Object.assign(p,spawnSlot(slot++),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
+      this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
       this.queues.set(p.id,[]);this.lastReceived.set(p.id,0);
     }
   }
@@ -138,8 +139,8 @@ export class Simulation {
   }
   add(id:string,name:string,classId:string){
     if(this.players.size>=MAX_PLAYERS)throw new Error('Sala cheia. Máximo de seis jogadores.');
-    const slots=Array.from({length:6},(_,i)=>spawnSlot(i));
-    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??SPAWN;
+    const slots=Array.from({length:6},(_,i)=>spawnSlot(i,worldSpawn(this.terrain)));
+    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??worldSpawn(this.terrain);
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);
     this.players.set(id,p);this.queues.set(id,[]);this.lastReceived.set(id,0);return p;

@@ -1,13 +1,13 @@
 /** The wall/shelter at the island center: placement, siege contact damage and repairs. */
 import type {TerrainField} from '../../terrain/field.ts';
-import {obstacles as worldObstacles,walkable,type Obstacle,type Point} from '../../world.ts';
+import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../world.ts';
 import type {EnemyState,SimContext} from '../types.ts';
 import {ticks} from '../types.ts';
 import type {StonewardsState,WallState} from './state.ts';
 
 export const WALL_MAX_HP=600;
 export const WALL_RADIUS=.8;
-export const ISLAND_CENTER:Readonly<Point>=Object.freeze({x:12,y:12});
+export const ISLAND_CENTER:Readonly<Point>=ISLAND_BASE;
 /** Enemy memory flag (D-002) set by the director/AI for enemies that besiege the wall. */
 export const SIEGE_FLAG='siege';
 export const SIEGE_HIT_COOLDOWN=ticks(1);
@@ -21,17 +21,21 @@ export const WALL_DOWN_LINES=[
 /** Retreating enemies (D-010, memory.retreat===1) never hit the wall. */
 export const isSiege=(e:EnemyState)=>e.memory?.[SIEGE_FLAG]===1&&e.memory.retreat!==1;
 
-/** Nearest spot to the island center where the wall fits: walkable and clear of obstacles. Deterministic spiral. */
-export function placeWall(terrain?:TerrainField,source:readonly Obstacle[]=worldObstacles):Point{
-  const fits=(p:Point)=>walkable(p,terrain)&&source.every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+WALL_RADIUS);
+/**
+ * Nearest spot to the base (island center, or the origin of the endless world) where the wall fits:
+ * walkable and clear of obstacles. Deterministic spiral.
+ */
+export function placeWall(terrain?:TerrainField,source?:readonly Obstacle[]):Point{
+  const center=worldBase(terrain);
+  const fits=(p:Point)=>walkable(p,terrain)&&(source??obstaclesNear(p,WALL_RADIUS,terrain)).every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+WALL_RADIUS);
   for(let r=0;r<=6;r+=.25){
     const steps=r?Math.max(8,Math.round(r*16)):1;
     for(let i=0;i<steps;i++){
-      const a=i/steps*Math.PI*2,p={x:ISLAND_CENTER.x+Math.cos(a)*r,y:ISLAND_CENTER.y+Math.sin(a)*r};
+      const a=i/steps*Math.PI*2,p={x:center.x+Math.cos(a)*r,y:center.y+Math.sin(a)*r};
       if(fits(p))return {x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100};
     }
   }
-  return {...ISLAND_CENTER};
+  return center;
 }
 
 export function createWall(at:Point,maxHp=WALL_MAX_HP):WallState{

@@ -4,7 +4,7 @@
  * so this module only depends on the shared contract, terrain and collision helpers.
  */
 import type {TerrainField} from '../terrain/field.ts';
-import {SPAWN,clearSegment,walkable,type Point} from '../world.ts';
+import {clearSegment,walkable,worldBase,worldSpawn,type Point} from '../world.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {Rng} from './rng.ts';
 import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimContext,type SimPlayer,type SimSystem} from './types.ts';
@@ -68,7 +68,6 @@ export interface Director extends SimSystem {
   scalePlayers(ctx:SimContext):number;
 }
 
-const ISLAND_CENTER={x:12,y:12};
 const BAND_MAX=2.2;
 const LINE_GAP=ticks(.3);
 const SURROUND_SIDES=4;
@@ -83,13 +82,16 @@ const candidateCache=new WeakMap<TerrainField,Point[]>();
 /**
  * Coastal spawn candidates: half-unit grid nodes that are walkable, lie within BAND_MAX of the shoreline
  * and connect to the island interior (SPAWN) through clear segments. Cached per terrain field.
+ * Endless world (stopgap until NEW-20261009-ORQ-spawn-em-volta): the same 24×24 grid around the base,
+ * and the "coastal band" is the outer BAND_MAX of the ring of radius 12 around it.
  */
 export function coastalSpawnPoints(terrain:TerrainField):Point[]{
   const cached=candidateCache.get(terrain);if(cached)return cached;
-  const step=.5,size=49,at=(id:number):Point=>({x:(id%size)*step,y:Math.floor(id/size)*step});
+  const base=worldBase(terrain),spawn=worldSpawn(terrain),half=12,ox=base.x-half,oy=base.y-half;
+  const step=.5,size=49,at=(id:number):Point=>({x:ox+(id%size)*step,y:oy+Math.floor(id/size)*step});
   const open=new Uint8Array(size*size);
   for(let id=0;id<open.length;id++)open[id]=walkable(at(id),terrain)?1:0;
-  const start=Math.round(SPAWN.y/step)*size+Math.round(SPAWN.x/step);
+  const start=Math.round((spawn.y-oy)/step)*size+Math.round((spawn.x-ox)/step);
   const seen=new Uint8Array(size*size),queue=[start];seen[start]=1;
   for(let head=0;head<queue.length;head++){
     const id=queue[head],x=id%size,y=Math.floor(id/size);
@@ -100,7 +102,8 @@ export function coastalSpawnPoints(terrain:TerrainField):Point[]{
       seen[next]=1;queue.push(next);
     }
   }
-  const points=queue.map(at).filter(p=>terrain.coast(p.x,p.y)<=BAND_MAX);
+  const band=terrain.chunks?(p:Point)=>{const d=Math.hypot(p.x-base.x,p.y-base.y);return d>=half-BAND_MAX&&d<=half;}:(p:Point)=>terrain.coast(p.x,p.y)<=BAND_MAX;
+  const points=queue.map(at).filter(band);
   candidateCache.set(terrain,points);
   return points;
 }
@@ -136,8 +139,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function pickPoint(ctx:SimContext,side?:number):Point{
     const all=coastalSpawnPoints(ctx.terrain);
     if(!all.length)throw new Error('terrain has no coastal spawn point');
+    const center=worldBase(ctx.terrain);
     const inSide=side===undefined?all:all.filter(p=>{
-      const d=Math.atan2(p.y-ISLAND_CENTER.y,p.x-ISLAND_CENTER.x)-side;
+      const d=Math.atan2(p.y-center.y,p.x-center.x)-side;
       return Math.cos(d)>Math.cos(Math.PI/3);
     });
     const pool=inSide.length?inSide:all;
@@ -246,10 +250,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     let barked=false;
     for(const id of state.tracked){
       const e=ctx.enemies.get(id);if(!e||state.retreating.some(r=>r.id===id))continue;
-      const dx=e.x-ISLAND_CENTER.x,dy=e.y-ISLAND_CENTER.y,len=Math.hypot(dx,dy)||1;
+      const center=worldBase(ctx.terrain),dx=e.x-center.x,dy=e.y-center.y,len=Math.hypot(dx,dy)||1;
       // Enemy AI (VGM-031) must leave enemies with memory.retreat alone; the director moves them.
       e.memory={...e.memory,retreat:1};e.damage=0;
-      state.retreating.push({id,x:ISLAND_CENTER.x+dx/len*14,y:ISLAND_CENTER.y+dy/len*14,untilTick:ctx.tick+retreatTicks});
+      state.retreating.push({id,x:center.x+dx/len*14,y:center.y+dy/len*14,untilTick:ctx.tick+retreatTicks});
       if(!barked){barked=true;ctx.emit({type:'bark',enemy:id,line:random().pick(RETREAT_LINES)});save();}
     }
   }

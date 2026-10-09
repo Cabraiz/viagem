@@ -1,0 +1,363 @@
+/* Run HUD (VGM-040). Root ignores pointers; interactive panels opt back in.
+   Zones (portrait): top row between camera (left ~150px) and gear (right ~64px); XP bar full width below;
+   team strip left column; offer panel above the joystick/attack row. Landscape (max-height:500px):
+   team strip bottom-center between joystick and attack, offer panel right column. */
+.rh{
+  --rh-t:max(8px,env(safe-area-inset-top));--rh-b:max(8px,env(safe-area-inset-bottom));
+  --rh-l:max(8px,env(safe-area-inset-left));--rh-r:max(8px,env(safe-area-inset-right));
+  --rh-ink:#574d69;--rh-paper:#fbf5e7;--rh-paper-2:#fff8e5;--rh-line:#bca8d1;--rh-purple:#6e5198;
+  --rh-glass:#3e3150c4;--rh-glass-line:#fff8e9aa;--rh-cream:#fff9ed;--rh-gold:#f2c94c;--rh-gold-deep:#b9821c;
+  --rh-mint:#75b8a6;--rh-coral:#ed6f72;--rh-hp:#7fd18b;--rh-hp-low:#ef6a6a;--rh-xp:#9fd8ff;
+  --rh-shadow:0 3px 12px #30253640;--rh-text-shadow:0 1px 3px #302536;
+  position:fixed;inset:0;z-index:6;pointer-events:none;overflow:hidden;
+  font:600 12px/1.2 'Trebuchet MS',system-ui,sans-serif;color:var(--rh-cream);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.rh *,.rh *::before,.rh *::after{box-sizing:border-box}
+.rh [hidden]{display:none!important}
+.rh button{font:inherit;color:inherit;touch-action:manipulation}
+
+/* ---------- Top: round chip, XP, boss ---------- */
+.rh-top{position:absolute;top:var(--rh-t);left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.rh-round{margin:0 calc(var(--rh-r) + 56px) 0 calc(var(--rh-l) + 142px);align-self:stretch;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:5px 12px;border-radius:16px;background:var(--rh-glass);border:2px solid var(--rh-glass-line);box-shadow:var(--rh-shadow);text-shadow:var(--rh-text-shadow)}
+.rh-round-label{font:700 17px/1.05 Georgia,serif;letter-spacing:.01em;white-space:nowrap}
+.rh-round-detail{font-size:12px;opacity:.95;white-space:nowrap}
+.rh-round[data-phase=prepare]{background:#2f6a5bcc}
+.rh-round.rh-urgent{background:#9b3b3bd9;animation:rh-pulse .6s ease-in-out infinite alternate}
+.rh-xp{position:relative;align-self:stretch;margin:0 var(--rh-r) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
+.rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:10px;background:var(--rh-purple);border:2px solid var(--rh-glass-line);font:700 13px/1 'Trebuchet MS',system-ui,sans-serif;text-align:center;text-shadow:var(--rh-text-shadow);box-shadow:var(--rh-shadow)}
+.rh-xp-track{flex:1;height:12px;border-radius:8px;background:#30253699;border:2px solid var(--rh-glass-line);overflow:hidden;box-shadow:var(--rh-shadow)}
+.rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--rh-xp),#c8a8ff);transition:transform .25s ease-out}
+.rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
+.rh-boss{align-self:center;width:min(560px,calc(100% - 2*var(--rh-l) - 16px));padding:4px 8px 6px;border-radius:12px;background:#4a1f2fd6;border:2px solid #ffb4a8aa;box-shadow:var(--rh-shadow);text-shadow:var(--rh-text-shadow)}
+.rh-boss-name{display:block;text-align:center;font:700 13px/1.1 Georgia,serif;margin-bottom:3px}
+.rh-boss-track{height:10px;border-radius:6px;background:#00000066;overflow:hidden}
+.rh-boss-fill{display:block;height:100%;transform-origin:left;background:linear-gradient(90deg,#ff5a5a,#ffb347);transition:transform .2s}
+.rh-boss.rh-enraged{animation:rh-shake .35s linear infinite}
+
+/* ---------- Center stack (revive alerts) ---------- */
+.rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + 70px);right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
+.rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 150px)}
+
+/* ---------- Round marquee ---------- */
+.rh-marquee{position:absolute;left:50%;top:30%;transform:translateX(-50%);width:min(92vw,560px);padding:12px 18px 14px;border-radius:20px;text-align:center;background:linear-gradient(180deg,#fff8e5,#f6e6c2);color:var(--rh-ink);border:3px solid var(--rh-gold);box-shadow:0 10px 40px #30253660,inset 0 0 0 3px #fff;}
+.rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:6px;bottom:6px;width:10px;background:radial-gradient(circle,var(--rh-gold) 3px,transparent 4px) 0 0/10px 14px repeat-y}
+.rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
+.rh-marquee-title{display:block;font:700 clamp(20px,6vw,30px)/1.1 Georgia,serif;color:var(--rh-purple)}
+.rh-marquee-sub{display:block;margin-top:5px;font-size:clamp(13px,3.6vw,16px);color:#7a5b2a}
+.rh-marquee[data-tone=interval]{border-color:var(--rh-mint)}
+.rh-marquee[data-tone=boss]{background:linear-gradient(180deg,#4a1f2f,#2a1220);border-color:#ff7a6a}
+.rh-marquee[data-tone=boss] .rh-marquee-title{color:#ffd0c4}.rh-marquee[data-tone=boss] .rh-marquee-sub{color:#ffb4a8}
+.rh-marquee-in{animation:rh-marquee 3.4s ease-out both}
+
+/* ---------- Team strip (portrait: left column; landscape: bottom center) ---------- */
+.rh-team{position:absolute;top:calc(var(--rh-t) + 112px);left:var(--rh-l);display:flex;flex-direction:column;gap:6px}
+.rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 150px)}
+.rh-member{position:relative;width:54px;display:flex;flex-direction:column;align-items:center;gap:2px;text-shadow:var(--rh-text-shadow)}
+.rh-member-ring{--rh-rescue:0deg;width:44px;height:44px;padding:3px;border-radius:50%;background:var(--rh-glass-line);box-shadow:var(--rh-shadow)}
+.rh-member-img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 12%;background:var(--rh-paper)}
+.rh-member.rh-me .rh-member-ring{background:var(--rh-gold)}
+.rh-member-hp{width:44px;height:6px;border-radius:4px;background:#30253699;border:1px solid var(--rh-glass-line);overflow:hidden}
+.rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--rh-hp);transition:transform .2s}
+.rh-member-name{max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;line-height:1.1}
+.rh-member-badge{position:absolute;top:-4px;right:0;font-size:15px;line-height:1;filter:drop-shadow(0 1px 1px #302536)}
+.rh-member-timer{position:absolute;top:30px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:6px;background:var(--rh-coral);font:700 10px/14px 'Trebuchet MS',system-ui,sans-serif}
+.rh-member[data-state=low] .rh-member-hp-fill{background:var(--rh-hp-low)}
+.rh-member[data-state=low] .rh-member-ring{background:var(--rh-hp-low)}
+.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--rh-mint) var(--rh-rescue),var(--rh-coral) 0);animation:rh-pulse .7s ease-in-out infinite alternate}
+.rh-member[data-state=downed] .rh-member-img{filter:grayscale(.8) brightness(.85)}
+.rh-member[data-state=downed] .rh-member-hp{visibility:hidden}
+.rh-member[data-state=eliminated] .rh-member-img{filter:grayscale(1) brightness(.6)}
+.rh-member[data-state=eliminated],.rh-member[data-state=offline],.rh-member[data-state=spectator]{opacity:.55}
+
+/* ---------- Revive alerts (center stack) ---------- */
+.rh-alerts{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.rh-alert{width:min(100%,320px);padding:6px 12px 7px;border-radius:14px;background:#2f6a5bdd;border:2px solid var(--rh-glass-line);box-shadow:var(--rh-shadow);text-align:center;text-shadow:var(--rh-text-shadow)}
+.rh-alert-text{display:block;font:700 13px/1.2 'Trebuchet MS',system-ui,sans-serif}
+.rh-alert-track{margin-top:4px;height:5px;border-radius:3px;background:#00000055;overflow:hidden}
+.rh-alert-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--rh-gold);transition:transform .2s}
+.rh-alert[data-kind=self]{background:#9b3b3be6;font-size:14px}
+.rh-alert[data-kind=self] .rh-alert-text{font-size:15px}
+.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear infinite}
+
+@keyframes rh-marquee{0%{opacity:0;transform:translateX(-50%) scale(.6) rotate(-4deg)}12%{opacity:1;transform:translateX(-50%) scale(1.08) rotate(1.5deg)}20%{transform:translateX(-50%) scale(1) rotate(0)}85%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-14px)}}
+@keyframes rh-pop{0%{transform:scale(1)}40%{transform:scale(1.35) rotate(-6deg)}100%{transform:scale(1)}}
+@keyframes rh-pulse{to{transform:scale(1.04)}}
+@keyframes rh-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+
+@media (max-height:500px){
+  .rh-top{gap:4px}
+  .rh-round{min-height:40px;padding:3px 10px;flex-direction:row;gap:8px;align-self:center;margin-inline:auto;max-width:calc(100% - var(--rh-l) - var(--rh-r) - 220px)}
+  .rh-round-label{font-size:16px}
+  .rh-xp{align-self:center;width:min(420px,calc(100% - var(--rh-l) - var(--rh-r) - 220px));margin:0}
+  .rh-boss{width:min(440px,calc(100% - var(--rh-l) - var(--rh-r) - 220px))}
+  .rh-stack{top:calc(var(--rh-t) + 82px);left:calc(var(--rh-l) + 150px);right:calc(var(--rh-r) + 290px)}
+  .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 118px)}
+  .rh-marquee{top:24%}
+  .rh-team{top:auto;bottom:var(--rh-b);left:50%;transform:translateX(-50%);flex-direction:row;gap:4px}
+  .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:auto}
+  .rh-member{width:50px}
+  .rh-member-ring{width:40px;height:40px}
+  .rh-member-hp{width:40px}
+  .rh-member-timer{top:26px}
+  .rh-alert{width:min(100%,300px);padding:4px 10px 5px}
+}
+/* ---------- Offer panel ---------- */
+/* ---------- Offer panel (non-blocking, above the joystick/attack row) ---------- */
+.rh-offer{
+  --of-accent:#9b7fd4;--of-accent-deep:var(--rh-purple);--of-head:linear-gradient(180deg,#efe4ff,#e1d2fb);--of-fill:linear-gradient(90deg,var(--rh-xp),#c8a8ff);
+  position:absolute;left:var(--rh-l);right:var(--rh-r);bottom:calc(var(--rh-b) + 134px);
+  max-width:520px;margin-inline:auto;padding:6px 7px 7px;border-radius:18px;
+  background:var(--rh-paper);color:var(--rh-ink);border:3px solid var(--of-accent);
+  box-shadow:0 6px 0 #30253633,0 10px 28px #30253655,inset 0 0 0 2px #fff;
+  pointer-events:auto;touch-action:manipulation;
+}
+.rh-offer[data-source=round]{--of-accent:var(--rh-gold);--of-accent-deep:var(--rh-gold-deep);--of-head:linear-gradient(180deg,#fff3c4,#f6e2a0);--of-fill:linear-gradient(90deg,var(--rh-gold),#ffb347)}
+.rh-offer-in{animation:rh-offer-in .38s cubic-bezier(.2,1.4,.4,1) both}
+
+.rh-offer-head{position:relative;display:flex;align-items:center;gap:6px;min-height:26px;padding:3px 8px;border-radius:12px;background:var(--of-head);text-shadow:none}
+.rh-offer-eyebrow{flex:none;padding:2px 7px;border-radius:8px;background:var(--of-accent-deep);color:var(--rh-cream);font:800 10px/1.2 'Trebuchet MS',system-ui,sans-serif;letter-spacing:.06em}
+.rh-offer-title{flex:1;min-width:0;font:700 15px/1.1 Georgia,serif;color:var(--of-accent-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh-offer[data-source=level] .rh-offer-title{color:var(--rh-purple)}
+/* Queue badge sits on the panel edge like a sticker so the header keeps its room. */
+.rh-offer-queue{position:absolute;top:-15px;right:16px;z-index:1;padding:2px 7px;border-radius:9px;background:var(--rh-ink);color:var(--rh-cream);border:2px solid var(--rh-cream);font:800 10px/1.2 'Trebuchet MS',system-ui,sans-serif;white-space:nowrap;box-shadow:0 2px 0 #30253633;transform:rotate(3deg)}
+.rh-offer-time{flex:none;min-width:30px;text-align:right;font:800 13px/1 'Trebuchet MS',system-ui,sans-serif;color:var(--of-accent-deep);font-variant-numeric:tabular-nums}
+/* Round offers get marquee bulbs on the header edges. */
+.rh-offer[data-source=round] .rh-offer-head{padding-inline:16px}
+.rh-offer[data-source=round] .rh-offer-head::before,.rh-offer[data-source=round] .rh-offer-head::after{content:'';position:absolute;top:4px;bottom:4px;width:6px;background:radial-gradient(circle,var(--rh-gold-deep) 2px,transparent 2.5px) 0 0/6px 7px repeat-y}
+.rh-offer[data-source=round] .rh-offer-head::before{left:4px}.rh-offer[data-source=round] .rh-offer-head::after{right:4px}
+
+.rh-offer-joke{margin:3px 4px 0;font:italic 600 11px/1.2 'Trebuchet MS',system-ui,sans-serif;color:#7a6a8e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh-offer-deadline{height:7px;margin:4px 2px 6px;border-radius:5px;background:#30253622;overflow:hidden}
+.rh-offer-deadline-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--of-fill);transition:transform .2s linear}
+.rh-offer-urgent .rh-offer-deadline-fill{background:var(--rh-coral)}
+.rh-offer-urgent .rh-offer-deadline{animation:rh-offer-blink .5s ease-in-out infinite alternate}
+.rh-offer-urgent .rh-offer-time{color:var(--rh-coral);animation:rh-pop .5s ease-out infinite}
+
+/* Cards: a row of 3, or 2x2 for 4. */
+.rh-offer-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.rh-offer-cards[data-count='2'],.rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rh-offer-cards[data-count='1']{grid-template-columns:1fr}
+.rh-card{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:44px;padding:8px 6px 7px;
+  border-radius:14px;border:2px solid var(--rh-line);background:linear-gradient(180deg,#fff,var(--rh-paper-2));color:var(--rh-ink);
+  box-shadow:0 3px 0 var(--rh-line);text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:transform .08s ease-out,box-shadow .08s ease-out,opacity .2s;
+}
+.rh-card:active{transform:translateY(2px) scale(.98);box-shadow:0 1px 0 var(--rh-line)}
+.rh-card-default{border-color:var(--rh-mint);box-shadow:0 3px 0 var(--rh-mint)}
+.rh-card-luck{border-color:#7cc96d;background:linear-gradient(180deg,#f3ffe9,#e6f7d6);box-shadow:0 3px 0 #7cc96d}
+.rh-card-icon{font-size:26px;line-height:1.1;filter:drop-shadow(0 2px 0 #30253622)}
+.rh-card-body{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;width:100%}
+.rh-card-name{font:700 13px/1.12 Georgia,serif;color:var(--rh-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.rh-card-level{align-self:center;padding:1px 7px;border-radius:8px;font:800 10px/1.3 'Trebuchet MS',system-ui,sans-serif;letter-spacing:.03em;background:#e9e1f5;color:var(--rh-purple)}
+.rh-card[data-kind=new] .rh-card-level{background:#ffe0a3;color:#8a5a00}
+.rh-card[data-kind=evo] .rh-card-level{background:linear-gradient(90deg,#ff9ec4,#c8a8ff,#9fd8ff);color:#3e3150}
+.rh-card-blurb{font:600 11px/1.2 'Trebuchet MS',system-ui,sans-serif;color:#5f5573;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.rh-card-joke{font:italic 600 10px/1.2 'Trebuchet MS',system-ui,sans-serif;color:#8a7d9c;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rh-card-flags{position:absolute;top:-7px;right:4px;left:4px;display:flex;justify-content:flex-end;gap:3px;pointer-events:none}
+.rh-card-flag{padding:1px 6px;border-radius:7px;font:800 9px/1.35 'Trebuchet MS',system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 0 #30253633}
+.rh-card-flag-default{background:var(--rh-mint);color:#fff}
+.rh-card-flag-luck{background:#7cc96d;color:#fff;margin-right:auto}
+
+/* 2x2: icon (with the level tag under it) on the left; name, blurb and joke on the right. */
+.rh-offer-cards[data-count='4'] .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:'icon name' 'icon blurb' 'tag joke';align-items:center;justify-items:start;column-gap:6px;row-gap:2px;text-align:left;padding:8px 6px 6px}
+.rh-offer-cards[data-count='4'] .rh-card-body,.rh-offer-cards[data-count='2'] .rh-card-body{display:contents}
+.rh-offer-cards[data-count='4'] .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{grid-area:icon;justify-self:center;font-size:26px}
+.rh-offer-cards[data-count='4'] .rh-card-level,.rh-offer-cards[data-count='2'] .rh-card-level{grid-area:tag;justify-self:center;padding-inline:5px;letter-spacing:0}
+.rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='2'] .rh-card-name{grid-area:name;display:block;max-width:100%;font-size:12px;letter-spacing:-.01em;white-space:nowrap;text-overflow:ellipsis}
+.rh-offer-cards[data-count='4'] .rh-card-blurb,.rh-offer-cards[data-count='2'] .rh-card-blurb{grid-area:blurb;-webkit-line-clamp:2}
+.rh-offer-cards[data-count='4'] .rh-card-joke,.rh-offer-cards[data-count='2'] .rh-card-joke{grid-area:joke;-webkit-line-clamp:1}
+
+/* Pending: buttons disabled until the server drops the offer. */
+.rh-offer-pending .rh-card{cursor:default}
+.rh-offer-pending .rh-card:not(.rh-card-chosen){opacity:.45;filter:saturate(.5)}
+.rh-offer-pending .rh-card-chosen{border-color:var(--of-accent-deep);box-shadow:0 0 0 3px var(--of-accent),0 3px 0 var(--of-accent-deep);transform:scale(1.03);opacity:1}
+.rh-offer-pending .rh-offer-deadline-fill{opacity:.4}
+
+@keyframes rh-offer-in{0%{opacity:0;transform:translateY(24px) scale(.92)}100%{opacity:1;transform:none}}
+@keyframes rh-offer-blink{to{background:#ed6f7255}}
+
+/* Landscape: right column between the top bar and the attack button, cards stacked. */
+@media (max-height:500px){
+  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 68px);bottom:calc(var(--rh-b) + 104px);width:280px;max-width:none;margin:0;padding:5px 6px 6px;display:flex;flex-direction:column;border-radius:16px}
+  .rh-offer-in{animation-name:rh-offer-in-side}
+  .rh-offer-head{min-height:22px;padding-block:2px;gap:5px}
+  .rh-offer-eyebrow{font-size:9px;letter-spacing:.03em;padding-inline:5px}
+  .rh-offer-title{font-size:13px}
+  .rh-offer[data-source=round] .rh-offer-head{padding-inline:12px}
+  .rh-offer[data-source=round] .rh-offer-head::before{left:3px}.rh-offer[data-source=round] .rh-offer-head::after{right:3px}
+  .rh-offer-queue{top:-17px;right:12px}
+  .rh-offer[data-source=round] .rh-offer-title{font-size:12px}
+  .rh-offer[data-count='4'] .rh-offer-joke{display:none}
+  .rh-offer-joke{margin-top:2px;font-size:10px}
+  .rh-offer-deadline{height:5px;margin:3px 2px 5px;flex:none}
+  .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:minmax(44px,1fr);gap:5px}
+  .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(44px,1fr)}
+  .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:flex;flex-direction:row;align-items:center;text-align:left;gap:7px;padding:6px 7px 5px}
+  .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{font-size:22px}
+  .rh-offer-cards[data-count='2'] .rh-card-level{justify-self:end;padding-inline:7px}
+  .rh-card-body,.rh-offer-cards[data-count='2'] .rh-card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:5px;row-gap:1px;justify-items:start}
+  .rh-card-name{display:block;max-width:100%;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+  .rh-card-level{align-self:center;justify-self:end}
+  .rh-card-blurb{grid-column:1/-1;-webkit-line-clamp:1;font-size:10px}
+  .rh-card-joke{grid-column:1/-1;-webkit-line-clamp:1;font-size:9.5px}
+  .rh-card{padding-top:7px}
+  .rh-card-flags{top:-6px;justify-content:flex-start;left:3px}
+  .rh-card-flag-luck{margin-right:0}
+  /* 2x2 in the narrow column: icon over name, no blurb. */
+  .rh-offer-cards[data-count='4'] .rh-card{display:flex;flex-direction:column;justify-content:center;text-align:center;gap:1px;padding:7px 4px 4px}
+  .rh-offer-cards[data-count='4'] .rh-card-icon{font-size:20px}
+  .rh-offer-cards[data-count='4'] .rh-card-body{display:flex;flex-direction:column;align-items:center;gap:1px}
+  .rh-offer-cards[data-count='4'] .rh-card-flags{justify-content:flex-end;left:3px;right:3px}
+  .rh-offer-cards[data-count='4'] .rh-card-flag-luck{margin-right:auto}
+  .rh-offer-cards[data-count='4'] .rh-card-level{align-self:center}
+  .rh-offer-cards[data-count='4'] .rh-card-blurb{display:none}
+}
+@keyframes rh-offer-in-side{0%{opacity:0;transform:translateX(40px) scale(.94)}100%{opacity:1;transform:none}}
+
+/* ---------- Result screen ---------- */
+/* ---------- Result screen (VGM-040) ----------
+   Full-screen, pointer-enabled overlay. Portrait: head / player grid (2 cols) / actions.
+   Landscape (max-height:500px): head + actions share the top row, 3×2 grid below.
+   Must fit 6 players without page scroll; the grid may scroll internally as a last resort. */
+.rh-result{
+  position:absolute;inset:0;z-index:10;pointer-events:auto;overflow:hidden;touch-action:manipulation;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"head" "grid" "actions";gap:8px;
+  padding:var(--rh-t) var(--rh-r) var(--rh-b) var(--rh-l);
+  color:var(--rh-ink);
+  background:radial-gradient(120% 70% at 50% 0%,#fff8e5 0,#f6e6c2 45%,#d9c6ee 100%);
+}
+.rh-result[data-outcome=defeat]{color:var(--rh-cream);background:radial-gradient(120% 70% at 50% 0%,#7a6f8e 0,#574d69 50%,#3e3150 100%)}
+.rh-result h2,.rh-result p,.rh-result ul,.rh-result dl,.rh-result dd{margin:0;padding:0}
+.rh-result ul{list-style:none}
+
+/* Head: title, joke subtitle, stats */
+.rh-result-head{grid-area:head;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.rh-result-titles{display:flex;flex-direction:column;align-items:center;min-width:0}
+.rh-result-title{font:700 clamp(28px,9vw,40px)/1 Georgia,serif;letter-spacing:.02em;color:var(--rh-purple);text-shadow:0 2px 0 #fff,0 4px 10px #b9821c55}
+.rh-result[data-outcome=defeat] .rh-result-title{color:#e9def7;text-shadow:0 2px 0 #30253699,0 4px 10px #00000055}
+.rh-result-sub{margin-top:2px;font:700 clamp(13px,3.8vw,16px)/1.15 'Trebuchet MS',system-ui,sans-serif;color:#7a5b2a}
+.rh-result[data-outcome=defeat] .rh-result-sub{color:#ffd0c4}
+.rh-result-stats{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:5px}
+.rh-result-stat{padding:3px 9px;border-radius:999px;background:var(--rh-glass);border:1.5px solid var(--rh-glass-line);color:var(--rh-cream);font:700 clamp(12px,3.3vw,13px)/1.2 'Trebuchet MS',system-ui,sans-serif;white-space:nowrap;text-shadow:var(--rh-text-shadow)}
+.rh-result-seed{font-size:11px;opacity:.7;white-space:nowrap}
+
+/* Player grid */
+.rh-result-grid{grid-area:grid;position:relative;z-index:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;align-content:center;gap:6px}
+.rh-result-grid[data-count="1"],.rh-result-grid[data-count="2"]{grid-template-columns:minmax(0,360px);justify-content:center}
+
+/* Player card */
+.rh-rcard{display:flex;flex-direction:column;gap:5px;min-width:0;padding:7px;border-radius:14px;
+  background:linear-gradient(180deg,var(--rh-paper-2),var(--rh-paper));border:2px solid var(--rh-line);box-shadow:var(--rh-shadow);color:var(--rh-ink)}
+.rh-rcard.rh-me{border-color:var(--rh-gold);box-shadow:0 0 0 2px #f2c94c66,var(--rh-shadow)}
+.rh-rcard[data-state=spectator]{opacity:.75}
+.rh-rcard-top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img id" "build build";column-gap:6px;row-gap:4px;align-items:center;min-width:0}
+.rh-rcard-img{grid-area:img;width:40px;height:40px;border-radius:12px;object-fit:cover;background:#e9def7;border:2px solid #fff}
+.rh-me .rh-rcard-img{border-color:var(--rh-gold)}
+.rh-rcard-id{grid-area:id;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.rh-rcard-name{display:block;max-width:100%;font:700 clamp(13px,3.6vw,14px)/1.1 'Trebuchet MS',system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh-rcard-tag{padding:1px 6px;border-radius:999px;background:var(--rh-gold);color:#5a3d0c;font:700 10px/1.3 'Trebuchet MS',system-ui,sans-serif}
+
+.rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:3px;min-width:0}
+.rh-rbuild{position:relative;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:#efe4f8;border:1px solid #d7c6ea}
+.rh-rbuild[data-kind=passive]{background:#e3f3ee;border-color:#bfe0d5}
+.rh-rbuild[data-kind=evolution]{background:#fff0c2;border-color:var(--rh-gold)}
+.rh-rbuild-icon{font-size:14px;line-height:1}
+.rh-rbuild-level{position:absolute;right:-3px;bottom:-3px;min-width:12px;padding:0 2px;border-radius:6px;background:var(--rh-purple);color:#fff;font:700 9px/12px 'Trebuchet MS',system-ui,sans-serif;text-align:center}
+.rh-rbuild[data-kind=passive] .rh-rbuild-level{background:#2f6a5b}
+.rh-rbuild[data-kind=evolution] .rh-rbuild-level{background:var(--rh-gold-deep)}
+
+.rh-rcard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px 2px;border-radius:9px;background:#efe6d3}
+.rh-rstat{display:flex;flex-direction:column;align-items:center;min-width:0}
+.rh-rstat-value{font:700 clamp(12px,3.4vw,14px)/1.1 'Trebuchet MS',system-ui,sans-serif;color:var(--rh-purple)}
+.rh-rstat-label{font:600 clamp(9px,2.5vw,10px)/1.1 'Trebuchet MS',system-ui,sans-serif;color:#8a7d9c;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+.rh-rcard-awards{display:flex;flex-direction:column;gap:4px}
+.rh-award{display:flex;align-items:flex-start;gap:5px;min-width:0;padding:4px 6px;border-radius:10px;background:#fff;border:1.5px dashed #e3cf95}
+.rh-award-emoji{flex:none;font-size:16px;line-height:1.1}
+.rh-award-text{display:flex;flex-direction:column;min-width:0}
+.rh-award-title{font:700 clamp(11px,3.1vw,12px)/1.15 'Trebuchet MS',system-ui,sans-serif;color:#7a5b2a}
+.rh-award-line{font:600 clamp(9.5px,2.6vw,10.5px)/1.2 'Trebuchet MS',system-ui,sans-serif;color:#6e6380;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+
+/* Solo/duo cards have room for a bigger portrait */
+.rh-result-grid[data-count="1"] .rh-rcard-img,.rh-result-grid[data-count="2"] .rh-rcard-img{width:64px;height:64px;border-radius:16px}
+.rh-result-grid[data-count="1"] .rh-rcard{padding:10px;gap:8px}
+
+/* Actions */
+.rh-result-actions{grid-area:actions;position:relative;z-index:1;display:flex;gap:8px}
+.rh-result .rh-result-btn{min-height:48px;min-width:44px;padding:8px 14px;border-radius:16px;border:2px solid var(--rh-glass-line);font:700 clamp(15px,4.2vw,17px)/1.1 'Trebuchet MS',system-ui,sans-serif;cursor:pointer;box-shadow:var(--rh-shadow)}
+.rh-result .rh-result-rematch{flex:2;background:linear-gradient(180deg,#ffe08a,var(--rh-gold));border-color:#fff3c4;color:#5a3d0c}
+.rh-result .rh-result-rematch:active{transform:translateY(1px) scale(.98)}
+.rh-result .rh-result-rematch.rh-waiting{background:#e8dcc0;color:#8a7a5c;font-size:clamp(13px,3.6vw,15px);box-shadow:none}
+.rh-result .rh-result-exit{flex:1;background:var(--rh-glass);color:var(--rh-cream)}
+
+/* Confetti (victory) / rain (defeat); purely decorative */
+.rh-result-fx{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.rh-confetti{position:absolute;top:-16px;left:var(--x);width:8px;height:12px;border-radius:2px;background:var(--c);opacity:0}
+.rh-result[data-outcome=defeat] .rh-confetti{width:3px;height:14px;border-radius:2px;background:#b9cce6aa}
+
+/* Entrance */
+.rh-result-in{animation:rh-result-fade .3s ease-out both}
+.rh-result-in .rh-rcard{animation:rh-rcard-in .4s ease-out both;animation-delay:calc(.2s + var(--i,0) * 70ms)}
+.rh-result-in[data-outcome=victory] .rh-result-title{animation:rh-result-pop .7s cubic-bezier(.2,1.6,.4,1) both}
+.rh-result-in[data-outcome=victory] .rh-confetti{animation:rh-confetti-fall 2.6s ease-in var(--d) both}
+.rh-result-in[data-outcome=defeat] .rh-result-title{transform-origin:50% 100%;animation:rh-result-droop 1.4s ease-out both}
+.rh-result-in[data-outcome=defeat] .rh-result-sub{animation:rh-result-fade .6s .7s ease-out both}
+.rh-result-in[data-outcome=defeat] .rh-confetti{animation:rh-rain-fall 1.6s linear calc(var(--d) * 3) 2 both}
+
+@keyframes rh-result-fade{from{opacity:0}to{opacity:1}}
+@keyframes rh-rcard-in{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes rh-result-pop{0%{opacity:0;transform:scale(.3) rotate(-10deg)}60%{opacity:1;transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes rh-result-droop{0%{opacity:0;transform:translateY(-24px)}35%{opacity:1;transform:translateY(4px)}60%{transform:translateY(0) rotate(-1deg)}100%{transform:translateY(3px) rotate(-2.5deg)}}
+@keyframes rh-confetti-fall{0%{opacity:1;transform:translateY(0) rotate(0)}85%{opacity:1}100%{opacity:0;transform:translateY(105vh) rotate(var(--r))}}
+@keyframes rh-rain-fall{0%{opacity:.9;transform:translateY(0)}100%{opacity:0;transform:translateY(105vh)}}
+
+/* Landscape: head and actions share the top row; cards in up to 3 columns */
+@media (max-height:500px){
+  .rh-result{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head actions" "grid grid";gap:6px 10px}
+  .rh-result-head{flex-direction:row;align-items:center;gap:10px;text-align:left}
+  .rh-result-titles{align-items:flex-start;flex:none}
+  .rh-result-title{font-size:clamp(22px,6.5vh,28px)}
+  .rh-result-sub{margin-top:5px;font-size:13px}
+  .rh-result-in[data-outcome=defeat] .rh-result-title{transform-origin:0 100%}
+  .rh-result-stats{justify-content:flex-start}
+  .rh-result-actions{align-self:center}
+  .rh-result .rh-result-btn{min-height:44px;font-size:15px;padding:6px 14px}
+  .rh-result .rh-result-rematch{min-width:120px}
+  .rh-result .rh-result-rematch.rh-waiting{font-size:13px}
+  .rh-result-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .rh-result-grid[data-count="1"]{grid-template-columns:minmax(0,440px)}
+  .rh-result-grid[data-count="2"]{grid-template-columns:repeat(2,minmax(0,360px))}
+  .rh-result-grid[data-count="4"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rh-result-grid[data-count="1"] .rh-rcard-img,.rh-result-grid[data-count="2"] .rh-rcard-img{width:52px;height:52px}
+  .rh-rcard{padding:6px;gap:4px}
+  .rh-rcard-top{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img id" "img build";row-gap:3px}
+  .rh-rcard-img{width:44px;height:44px}
+  .rh-rcard-id{flex-direction:row;align-items:center;gap:5px}
+  .rh-rcard-awards{flex-direction:row}
+  .rh-rcard-awards .rh-award{flex:1 1 0}
+  /* Side-by-side chips are narrow: emoji floats beside the title so the joke line gets the full width */
+  .rh-rcard-awards .rh-award{display:block;padding:3px 5px}
+  .rh-award-emoji{float:left;margin-right:3px;font-size:13px}
+  .rh-award-text{display:block}
+  .rh-award-title,.rh-award-line{display:block}
+  .rh-award-line{display:-webkit-box}
+}
+
+/* Portrait with an open offer: the team column shrinks so it ends above the panel. */
+@media (min-height:501px){
+  .rh:has(.rh-offer:not([hidden])) .rh-team{gap:3px}
+  .rh:has(.rh-offer:not([hidden])) .rh-member{width:40px}
+  .rh:has(.rh-offer:not([hidden])) .rh-member-ring{width:34px;height:34px;padding:2px}
+  .rh:has(.rh-offer:not([hidden])) .rh-member-hp{width:34px;height:5px}
+  .rh:has(.rh-offer:not([hidden])) .rh-member-name{display:none}
+  .rh:has(.rh-offer:not([hidden])) .rh-member-timer{top:22px}
+  .rh:has(.rh-offer:not([hidden])) .rh-member-badge{font-size:12px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .rh *,.rh *::before,.rh *::after{animation:none!important;transition:none!important}
+}

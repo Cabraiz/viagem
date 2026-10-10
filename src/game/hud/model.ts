@@ -120,9 +120,18 @@ export function reviveBanner(view:RunView,localId:string,network?:string):Revive
   return {kind:'ally',key:'group',text,seconds,progress:saving?.progress??0,urgent:seconds<=5};
 }
 
-/** Offer header copy: end-of-round upgrades look and read differently from level-ups. */
+/** Offer header copy (DSG-voz): one title, no eyebrow chip. */
 export function offerTitle(offer:OfferView){
-  return offer.source==='round'?{eyebrow:'FIM DE ROUND',title:'Upgrade do round'}:{eyebrow:`NÍVEL ${offer.level}`,title:'Subiu de nível!'};
+  return {title:offer.source==='round'?'Oferta do round':`Nível ${offer.level}!`};
+}
+
+/**
+ * D-021: during a wave the offer waits behind a chip ("combat", opened by a tap); in the intermission (or with no
+ * round info) it opens by itself ("intermission").
+ */
+export type OfferMode='combat'|'intermission';
+export function offerMode(view:RunView):OfferMode{
+  return (view.round?.phase??view.wave?.phase)==='wave'?'combat':'intermission';
 }
 
 /** Remaining fraction of an offer deadline, given the tick it became the shown (head) offer. */

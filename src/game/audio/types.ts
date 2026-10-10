@@ -5,7 +5,7 @@
 
 export const SOUND_IDS=[
   'golpe','gema','nivel','upgrade','queda','resgate','chefe','round-inicio','round-fim',
-  'buzina','boing','risada',
+  'buzina','boing','risada','carimbo',
 ] as const;
 export type SoundId=typeof SOUND_IDS[number];
 

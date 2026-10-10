@@ -102,6 +102,12 @@ const list:SoundRecipe[]=[
     {wave:'noise',from:1300,to:1100,at:0,dur:0.5,gain:0.07,attack:0.02,filter:{type:'bandpass',freq:1300,q:1.5}},
     {wave:'noise',from:1200,to:900,at:0.5,dur:0.5,gain:0.07,attack:0.02,filter:{type:'bandpass',freq:1100,q:1.5}},
   ]),
+  // Rubber stamp "tum" on paper (DSG-oferta-etiqueta): a dull low thump plus a short paper slap. The one show moment.
+  recipe('carimbo','Carimbo',120,2,[
+    {wave:'triangle',from:150,to:58,at:0,dur:0.14,gain:0.5,attack:0.002},
+    {wave:'sine',from:95,to:48,at:0,dur:0.18,gain:0.3,attack:0.002},
+    {wave:'noise',from:900,to:500,at:0,dur:0.06,gain:0.22,attack:0.001,filter:{type:'lowpass',freq:1400}},
+  ],[15]),
 ];
 
 export const RECIPES:Readonly<Record<SoundId,SoundRecipe>>=Object.freeze(
@@ -120,4 +126,6 @@ export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
 export const SOUND_EMOJI:Readonly<Record<SoundId,string>>=Object.freeze({
   golpe:'👊',gema:'💎',nivel:'⭐',upgrade:'✨',queda:'🫠',resgate:'🤝',chefe:'👹',
   'round-inicio':'📣','round-fim':'🎉',buzina:'🤡',boing:'🌀',risada:'😂',
+  // The stamp shows its own word instead of an emoji (D-020: no new emoji).
+  carimbo:'TUM',
 });

@@ -2,12 +2,18 @@
  * Fake RunView/RunResult data for the HUD sandbox and tests (VGM-040). Deterministic, no DOM.
  */
 import {ticks} from '../sim/types.ts';
+import {HELD_DEADLINE} from '../sim/offers.ts';
 import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
 import type {SimEvent} from '../sim/types.ts';
 import type {RunResult} from './model.ts';
 
-export type HudScenario='wave'|'prepare'|'offer'|'offer-round'|'offer-heal'|'downed'|'boss'|'result';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-round','offer-heal','downed','boss','result'];
+/**
+ * offer: 2 level offers held in combat (chip only); offer-open: the same with the compact panel opened from the chip
+ * (the sandbox taps it); offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
+ * round offer alone (4 tags); offer-heal: the full-build coxinha.
+ */
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'downed'|'boss'|'result';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','downed','boss','result'];
 
 const roster=[
   {id:'p1',name:'Mateus',classId:'cidadao-comum'},
@@ -43,26 +49,33 @@ export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunV
   });
 }
 
-function fakeOffer(source:'level'|'round',tick:number):OfferView{
+/** Intermission deadline of the fixtures (round.phaseEndsTick in prepare). */
+export const FIXTURE_INTERMISSION_SECONDS=17;
+function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferView{
   return source==='round'
-    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'chinelo',level:6},{itemId:'bone',level:1}],deadlineTick:tick+ticks(14),defaultIndex:2}
-    :{id:'lvl-12-p1',source,level:12,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'chinelo',level:6}],deadlineTick:tick+ticks(6),defaultIndex:0};
+    ?{id:'rnd-4-p1',source,level:4,choices:[{itemId:'cafe-forte',level:3},{itemId:'pombo',level:1},{itemId:'chinelo',level:6},{itemId:'bone',level:1}],deadlineTick,defaultIndex:2}
+    :level===12?{id:'lvl-12-p1',source,level,choices:[{itemId:'boleto',level:1},{itemId:'megafone',level:2},{itemId:'chinelo',level:6}],deadlineTick,defaultIndex:0}
+    :{id:`lvl-${level}-p1`,source,level,choices:[{itemId:'tenis',level:3},{itemId:'audio',level:1},{itemId:'cartao',level:2}],deadlineTick,defaultIndex:2};
 }
 
 export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunView{
-  const prepare=scenario==='prepare'||scenario==='offer-round';
+  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal';
+  const ends=tick+ticks(prepare?FIXTURE_INTERMISSION_SECONDS:60);
   const boss=scenario==='boss';
   const index=boss?10:prepare?4:3;
   const view:RunView={
     tick,
     team:{xp:37,level:12,nextXp:58},
-    round:{index,total:10,phase:prepare?'prepare':'wave',phaseEndsTick:tick+ticks(prepare?17:60),remaining:prepare?0:boss?6:23},
+    round:{index,total:10,phase:prepare?'prepare':'wave',phaseEndsTick:ends,remaining:prepare?0:boss?6:23},
     enemies:boss?[{id:'e-boss',kind:'chefe',x:12,y:12,hp:6200,maxHp:9000,boss:true,phase:1}]:[],
     pickups:[],projectiles:[],telegraphs:[],structures:[],
     players:fakePlayers(playerCount,scenario),
-    offers:scenario==='offer'?[fakeOffer('level',tick),fakeOffer('round',tick)]:scenario==='offer-round'?[fakeOffer('round',tick)]
+    // Combat: the server holds level offers until the intermission (D-021, HELD_DEADLINE).
+    offers:scenario==='offer'||scenario==='offer-open'?[fakeOffer('level',HELD_DEADLINE),fakeOffer('level',HELD_DEADLINE,13)]
+      :scenario==='offer-prepare'?[fakeOffer('level',ends),fakeOffer('round',ends)]
+      :scenario==='offer-round'?[fakeOffer('round',ends)]
       // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
-      :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:tick+ticks(10),defaultIndex:0}]:[],
+      :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]:[],
     events:[],
   };
   return view;

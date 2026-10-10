@@ -1,5 +1,5 @@
 /**
- * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
+ * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-open|offer-prepare|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
  * `full=1` gives every player a 12-item build (layout stress test).
  * Renders the run HUD over a mock island with the real control positions (camera, gear, joystick, attack)
  * so overlaps are visible. Fake data only; nothing talks to the server.
@@ -71,6 +71,8 @@ function load(next:HudScenario){
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
   hud.hideResult();hud.update(view);
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
+  // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
+  if(scenario==='offer-open'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }
 load(scenario);
 (window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};

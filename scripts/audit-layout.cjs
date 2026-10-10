@@ -33,8 +33,8 @@ function audit(rootsSelector,minFont){
     const hides=v=>v==='hidden'||v==='clip';
     if((hides(s.overflowX)&&e.scrollWidth>e.clientWidth+1)||(hides(s.overflowY)&&e.scrollHeight>e.clientHeight+1))problems.push(`overflow escondendo texto: ${label(e)} (${e.scrollWidth}x${e.scrollHeight} > ${e.clientWidth}x${e.clientHeight})`);
     const box=e.closest('.rh-card,.rh-rcard,.rh-award,.rh-alert,.rh-round,.fun-emote');
-    // Seals (padrão/sorte) and any chip positioned on the border ride it on purpose.
-    if(box&&box!==e&&!e.closest('.rh-card-flags')&&getComputedStyle(e).position!=='absolute'){
+    // Seals (padrão/sorte, the "Novo!" encarte star) and any chip positioned on the border ride it on purpose.
+    if(box&&box!==e&&!e.closest('.rh-card-flags,.rh-card-star')&&getComputedStyle(e).position!=='absolute'){
       const b=box.getBoundingClientRect(),r=e.getBoundingClientRect();
       if(r.left<b.left-1||r.right>b.right+1||r.top<b.top-1||r.bottom>b.bottom+1)problems.push(`texto sai da caixa: ${label(e)} em ${box.className.split(' ')[0]}`);
     }
@@ -64,7 +64,10 @@ function audit(rootsSelector,minFont){
 
 const SCENES=[
   ['hud oferta do round, 6p, 4 cartas','/?sandbox=hud&players=6&state=offer-round&frozen=1','.rh',13],
-  ['hud oferta de nível, 1p, 3 cartas','/?sandbox=hud&players=1&state=offer&frozen=1','.rh',13],
+  ['hud oferta de nível no intervalo, 1p, 3 cartas','/?sandbox=hud&players=1&state=offer-prepare&frozen=1','.rh',13],
+  ['hud oferta de nível no intervalo, 6p','/?sandbox=hud&players=6&state=offer-prepare&frozen=1','.rh',13],
+  ['hud combate com 2 níveis no chip, 6p','/?sandbox=hud&players=6&state=offer&frozen=1','.rh',13],
+  ['hud combate, painel compacto aberto, 6p','/?sandbox=hud&players=6&state=offer-open&frozen=1','.rh',13],
   ['hud oferta de coxinha','/?sandbox=hud&players=6&state=offer-heal&frozen=1','.rh',13],
   ['hud combate, 6p','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13],
   ['hud caído, 6p','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13],
@@ -101,7 +104,11 @@ const SCENES=[
       document.querySelectorAll('.rh-card').forEach((c,i)=>{c.querySelector('.rh-card-name').textContent=longest[i].name;c.querySelector('.rh-card-blurb').textContent=longest[i].blurb;});
     });};
     await run('hud oferta, 4 cartas, textos mais longos','/?sandbox=hud&players=6&state=offer-round&frozen=1','.rh',13,worst);
-    await run('hud oferta, 3 cartas, textos mais longos','/?sandbox=hud&players=1&state=offer&frozen=1','.rh',13,worst);
+    await run('hud oferta, 3 cartas, textos mais longos','/?sandbox=hud&players=1&state=offer-prepare&frozen=1','.rh',13,worst);
+    await run('hud combate, painel compacto, textos mais longos','/?sandbox=hud&players=6&state=offer-open&frozen=1','.rh',13,worst);
+    // The stamp: a picked tag shows "LEVEI" over its own text; nothing may spill (reduced motion makes it instant).
+    await run('hud carimbo LEVEI no intervalo','/?sandbox=hud&players=6&state=offer-round&frozen=1','.rh',13,async()=>{await page.waitForSelector('.rh-card');await page.waitForTimeout(400);await page.evaluate(()=>{const c=document.querySelectorAll('.rh-card')[1];c.closest('.rh-offer').classList.add('rh-offer-pending','rh-offer-stamping');c.classList.add('rh-card-chosen');});});
+    await run('hud carimbo LEVEI em combate','/?sandbox=hud&players=6&state=offer-open&frozen=1','.rh',13,async()=>{await page.waitForSelector('.rh-card');await page.evaluate(()=>{const c=document.querySelectorAll('.rh-card')[1];c.closest('.rh-offer').classList.add('rh-offer-pending','rh-offer-stamping');c.classList.add('rh-card-chosen');});});
     // Real long names: the lobby keeps 20 characters, the team strip shows the first name cut at 9 (team.ts).
     const longNames=async()=>{await page.waitForSelector('.rh-rcard-name,.rh-member-name');await page.evaluate(()=>{
       const names=['Maria Aparecida dos','Seu Jorge do Pastel','Wagner Washington Mo','Tia da Festa Junina','Concurseira Eterna d','Zé do Pix Parcelado'];

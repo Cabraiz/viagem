@@ -37,12 +37,17 @@ export function itemDisplay(id:string):ItemDisplay{
   return {id,kind:'weapon',name,icon:'❔',blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
 }
 
-/** "NOVO!" for a first pick, "Nv N" otherwise, "EVOLUÇÃO" for evolved weapons, "LANCHE" for the coxinha. */
-export function levelTag(id:string,level:number){
+/** Price of an offer card (DSG-oferta-etiqueta): "Novo!" on the encarte star, the level as a price, or a word. */
+export type PriceTag={kind:'new';label:'Novo!'}|{kind:'level';label:string;level:number}|{kind:'evo';label:'Evolução'}|{kind:'snack';label:'Lanche'};
+
+export function priceTag(id:string,level:number):PriceTag{
   const kind=itemDisplay(id).kind;
-  if(kind==='evolution')return 'EVOLUÇÃO';
-  if(kind==='snack')return 'LANCHE';
-  return level<=1?'NOVO!':`Nv ${level}`;
+  if(kind==='evolution')return {kind:'evo',label:'Evolução'};
+  if(kind==='snack')return {kind:'snack',label:'Lanche'};
+  return level<=1?{kind:'new',label:'Novo!'}:{kind:'level',label:`Nv ${level}`,level};
 }
+
+/** Sentence-case seal text: "Novo!" for a first pick, "Nv N" otherwise, "Evolução", "Lanche" for the coxinha. */
+export const levelTag=(id:string,level:number)=>priceTag(id,level).label;
 
 export const allItemDisplays=():readonly ItemDisplay[]=>items;

@@ -93,7 +93,7 @@ function withDocument(run:(doc:EventTarget&{visibilityState:string})=>void){
 
 // ---- 1. recipes ----
 test('recipes cover exactly SOUND_IDS and stay within budget',()=>{
-  assert.equal(SOUND_IDS.length,12);
+  assert.equal(SOUND_IDS.length,13);
   for(const id of ['buzina','boing','risada'] as const)assert.ok(SOUND_IDS.includes(id));
   assert.deepEqual(Object.keys(RECIPES).sort(),[...SOUND_IDS].sort());
   assert.ok(Object.isFrozen(RECIPES));

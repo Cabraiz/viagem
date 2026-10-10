@@ -7,11 +7,13 @@ import {applyEvents,bossInfo,emptyTally,resetTally,formatDuration,offerDeadlineF
 import {marqueeFor} from '../src/game/hud/topbar.ts';
 import {memberState} from '../src/game/hud/team.ts';
 import {allItemDisplays,itemDisplay,levelTag} from '../src/game/hud/items.ts';
-import {HUD_SCENARIOS,fakePlayers,fakeResult,fakeView} from '../src/game/hud/fixtures.ts';
+import {FIXTURE_INTERMISSION_SECONDS,HUD_SCENARIOS,fakePlayers,fakeResult,fakeView} from '../src/game/hud/fixtures.ts';
 import {classes} from '../src/classes.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards} from '../src/game/hud/awards.ts';
-import {OFFER_TAP_GUARD_MS,OfferTapGuard,choiceFlags,offerJoke,queueLabel,trackShownAt} from '../src/game/hud/offer.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,OFFER_SECONDS} from '../src/game/sim/offers.ts';
+import {OFFER_TAP_GUARD_MS,OfferTapGuard,chipText,choiceFlags,offerJoke,offerUiState,queueLabel,trackShownAt} from '../src/game/hud/offer.ts';
+import {offerMode} from '../src/game/hud/model.ts';
+import {priceTag} from '../src/game/hud/items.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,HELD_DEADLINE,OFFER_SECONDS} from '../src/game/sim/offers.ts';
 import {BUILD_SLOTS,buildIcons,compactNumber,resultHeadline} from '../src/game/hud/result.ts';
 import {fakeResultEvents} from '../src/game/hud/fixtures.ts';
 import {WEAPON_CATALOG} from '../src/game/sim/weapons/catalog.ts';
@@ -67,11 +69,11 @@ test('revive alerts: own fall first, then allies by urgency, with rescue progres
 });
 
 test('offer copy distinguishes round upgrades from level-ups; deadline fraction',()=>{
-  const [level,round]=fakeView('offer',1).offers;
-  assert.deepEqual(offerTitle(round),{eyebrow:'FIM DE ROUND',title:'Upgrade do round'});
-  assert.deepEqual(offerTitle(level),{eyebrow:'NÍVEL 12',title:'Subiu de nível!'});
+  const [level,round]=fakeView('offer-prepare',1).offers;
+  assert.deepEqual(offerTitle(round),{title:'Oferta do round'});
+  assert.deepEqual(offerTitle(level),{title:'Nível 12!'});
   assert.equal(offerDeadlineFraction(level,1000,1000),1);
-  assert.equal(offerDeadlineFraction(level,1000+ticks(3),1000),.5);
+  assert.equal(offerDeadlineFraction(level,1000+ticks(FIXTURE_INTERMISSION_SECONDS/2),1000),.5);
   assert.equal(offerDeadlineFraction(level,level.deadlineTick+5,1000),0);
   assert.ok(round.choices.length===4&&level.choices.length===3);
 });
@@ -108,7 +110,7 @@ test('item display covers every fixed id with pt-BR copy and falls back for unkn
   for(const def of Object.values(PASSIVE_DEFS)){assert.equal(itemDisplay(def.id).name,def.name,def.id);assert.equal(itemDisplay(def.id).kind,'passive',def.id);}
   for(const item of allItemDisplays())assert.ok(item.blurb.length<=36&&item.joke.length<=22,`${item.id}: ${item.blurb.length}/${item.joke.length}`);
   assert.equal(itemDisplay('cafe-evo').kind,'evolution');assert.equal(itemDisplay('x-y').name,'X y');
-  assert.equal(levelTag('pombo',1),'NOVO!');assert.equal(levelTag('pombo',4),'Nv 4');assert.equal(levelTag('boleto-evo',1),'EVOLUÇÃO');
+  assert.equal(levelTag('pombo',1),'Novo!');assert.equal(levelTag('pombo',4),'Nv 4');assert.equal(levelTag('boleto-evo',1),'Evolução');
 });
 
 test('fixtures use real classes with approved portraits and cover every scenario',()=>{
@@ -188,7 +190,7 @@ test('full-build coxinha (HEAL_CHOICE) is a known, funny snack card, not "Item m
   const heal=itemDisplay(HEAL_CHOICE);
   assert.notEqual(heal.icon,'❔');assert.equal(heal.kind,'snack');
   assert.match(heal.name,/Coxinha/);assert.ok(heal.blurb.includes(String(HEAL_AMOUNT)),heal.blurb);assert.ok(heal.joke);
-  assert.equal(levelTag(HEAL_CHOICE,1),'LANCHE');
+  assert.equal(levelTag(HEAL_CHOICE,1),'Lanche');
 });
 
 test('queued offers start their deadline bar full when they become the shown offer',()=>{
@@ -237,4 +239,36 @@ test('rematch: tally restarts but late events of the old run still dedupe (monot
   // Awards of run 2 only see run 2.
   const awards=computeAwards(fakeResult(2),tally);
   assert.equal(awards.find(a=>a.id==='mais-caiu')?.playerId,'p2');
+});
+
+test('D-021: in combat a held offer is a chip, opened only by a tap; in the intermission it opens by itself with a clock',()=>{
+  const combat=fakeView('offer',6);
+  assert.equal(offerMode(combat),'combat');
+  assert.ok(combat.offers.every(o=>o.deadlineTick===HELD_DEADLINE),'fixture mirrors the server hold');
+  assert.deepEqual(offerUiState(combat,false),{mode:'combat',pending:2,chip:true,panel:false,clock:false,seconds:undefined});
+  assert.equal(offerUiState(combat,true).panel,true,'the chip opens the compact panel');
+  assert.equal(offerUiState(combat,true).clock,false,'no countdown while the server holds it');
+  const wave=fakeView('wave',6);
+  assert.deepEqual(offerUiState(wave,true),{mode:'combat',pending:0,chip:false,panel:false,clock:false,seconds:undefined});
+  const prep=fakeView('offer-prepare',6);
+  const state=offerUiState(prep,false);
+  assert.equal(state.mode,'intermission');assert.equal(state.panel,true);assert.equal(state.chip,false);
+  assert.equal(state.clock,true);assert.equal(state.seconds,FIXTURE_INTERMISSION_SECONDS);
+  // A round offer the offline freeze carried into a wave keeps its real clock, behind the chip like the rest.
+  const carried={...combat,offers:[{...prep.offers[1],deadlineTick:combat.tick+ticks(4)}]};
+  assert.deepEqual([offerUiState(carried,false).chip,offerUiState(carried,false).panel,offerUiState(carried,true).clock],[true,false,true]);
+  // No round info at all (legacy feed): offers open by themselves.
+  assert.equal(offerMode({...combat,round:undefined,wave:undefined}),'intermission');
+  assert.equal(offerMode({...combat,round:undefined,wave:{index:2,label:'x',phase:'wave'}}),'combat');
+  assert.deepEqual(chipText(1),{label:'+1',aria:'1 melhoria esperando. Toca pra escolher.'});
+  assert.equal(chipText(2).label,'+2');
+});
+
+test('etiqueta price: "Nv" plus the number, "Novo!" on the star, sentence-case words, no caps anywhere',()=>{
+  assert.deepEqual(priceTag('chinelo',6),{kind:'level',label:'Nv 6',level:6});
+  assert.deepEqual(priceTag('pombo',1),{kind:'new',label:'Novo!'});
+  assert.deepEqual(priceTag('chinelo-evo',1),{kind:'evo',label:'Evolução'});
+  assert.deepEqual(priceTag(HEAL_CHOICE,1),{kind:'snack',label:'Lanche'});
+  for(const scenario of ['offer','offer-prepare','offer-round','offer-heal'] as const)for(const offer of fakeView(scenario,1).offers)
+    for(const c of offer.choices){const label=priceTag(c.itemId,c.level).label;assert.notEqual(label,label.toUpperCase(),label);}
 });

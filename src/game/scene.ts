@@ -193,6 +193,17 @@ export class IslandScene extends Phaser.Scene {
     }
     return best;
   }
+  /** Screen (CSS px) points of live critters, the tapped target and the camera view: read by the local acceptance script. */
+  probe(){
+    const cam=this.cameras.main,feed=this.hooks.net?.feed;
+    const enemies=[...(feed?.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
+      const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=e.elite&&kind!=='chefe'?ELITE_SCALE:1,q=this.project(e);
+      return {id:e.id,x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-(art.hover+art.height*art.originY*.5)*size-cam.worldView.y)*cam.zoom};
+    });
+    const hero=this.project(this.position),island=this.project({x:12,y:12});
+    const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
+    return {view:this.view,zoom:cam.zoom,target:this.attackTarget,hero:screen(hero),center:screen(island),enemies,horde:this.horde?.stats()};
+  }
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
     const axis=this.paused?{x:0,y:0}:this.hooks.direction();
@@ -323,5 +334,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
     antialias:true,transparent:false,autoFocus:false,
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
+  // Dev server only (Vite strips it from builds): the local acceptance script reads scene.probe().
+  if(import.meta.env.DEV)(window as unknown as {__island?:unknown}).__island={game,scene};
   return {game,scene};
 }

@@ -16,6 +16,8 @@
 .rh *,.rh *::before,.rh *::after{box-sizing:border-box}
 .rh [hidden]{display:none!important}
 .rh button{font:inherit;color:inherit;touch-action:manipulation}
+/* Readouts hold their own taps (VGM-043); their empty containers stay transparent to the game. */
+.rh-top>*,.rh-member,.rh-alert{pointer-events:auto;touch-action:none}
 .rh .rh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- Top: round chip, XP, boss ---------- */

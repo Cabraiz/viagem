@@ -138,7 +138,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           if(run){
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
             if(hud){
-              hud.el.hidden=run.phase!=='combat'&&run.phase!=='result';
+              // Shown by runView once it holds this run's state; until then the DOM may still show the last run's falls.
+              if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
@@ -154,7 +155,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
         const phase=net?.run?.phase;
-        if(hud&&(phase==='combat'||phase==='result'))hud.update(view);
+        if(hud&&(phase==='combat'||phase==='result')){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       ready:()=>{for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.disabled=false;$('.explore-loading').hidden=true;$('.explore-canvas').focus();},

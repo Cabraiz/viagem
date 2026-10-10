@@ -85,6 +85,8 @@ export function createAnnouncer():HudPart{
   const show=(marquee:Marquee)=>{
     // A notice already in the slot wins (danger over the joke): the round name skips its turn; the chip shows the round.
     if(root.parentElement?.querySelector('.rh-alert:not([hidden])'))return;
+    // An open offer window too (design onda 3 B4): the chip already shows the round.
+    if(root.closest('.rh')?.querySelector('.rh-offer:not([hidden])'))return;
     // Word joiner after hyphens: "E-mail" must never break into "E-" / "mail" on a narrow phone.
     title.textContent=marquee.title.replace(/-/g,'-\u2060');subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
     root.dataset.tone=marquee.tone;root.hidden=false;

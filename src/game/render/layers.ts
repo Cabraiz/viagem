@@ -88,6 +88,8 @@ const paint=(text:Text,style:TextStyle,label:string)=>{
 const SHADOW_W=46,SHADOW_H=16,BAR_W=46,BAR_H=13,FILL_W=40,FILL_H=7;
 /** New low-priority damage numbers per authoritative frame; the rest are dropped to keep text uploads bounded. */
 export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
+/** Hit numbers on a player sit above balloons (96000) and the heroes (96500): damage on you is never under a joke. */
+export const PLAYER_HIT_DEPTH=96600;
 /** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
 export const TELEGRAPH_TOP_DEPTH=99000;
 /** Width of the telegraph's outer (light) stroke at UI scale 1, in world px; the red core is half of it. */
@@ -338,6 +340,7 @@ export class HordeRenderer{
     const fx=this.numbers.spawn();
     if(fx.live)this.retireNumber(fx,false);
     fx.live=true;fx.target=target;fx.total=amount;fx.crit=crit;fx.hostile=hostile;fx.self=self;fx.priority=priority;
+    fx.text.setDepth(hostile?PLAYER_HIT_DEPTH:95500);
     fx.born=this.now;fx.x=x;fx.y=y;fx.lift=lift;fx.jitter=(eventId*37%29)-14;
     this.numberByTarget.set(target,fx);
     this.paintNumber(fx);

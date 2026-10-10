@@ -11,11 +11,11 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {Projector} from './render/projector.ts';
-import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture} from './render/keys.ts';
+import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
 import type {RunView} from './sim/view.ts';
 import {token,whenFontsReady} from '../ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
-import {arrowTrigger,canopyCovers} from './render/you-rules.ts';
+import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -86,6 +86,8 @@ export class IslandScene extends Phaser.Scene {
   private marks:HeroMark[]=[];
   private selfCovered=false;
   private lastPhase?:string;
+  private lastFeet?:Point;
+  private facing=Math.PI/2;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), in CSS px; the follow camera centers on it (D-019). */
   usefulArea?:{x:number;y:number;width:number;height:number};
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
@@ -107,7 +109,7 @@ export class IslandScene extends Phaser.Scene {
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
-    this.you=new YouMarkers(this,this.reduced);this.you.outline(this.actor);this.you.showArrow(this.time.now);
+    this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
@@ -188,7 +190,10 @@ export class IslandScene extends Phaser.Scene {
     if(!this.you||!this.actor)return;
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
-    this.marks.unshift({id:'self',sprite:this.actor,self:true,feet:p,covered:this.selfCovered,
+    // The ring's beak points where the hero last moved on screen.
+    if(this.lastFeet)this.facing=facingFrom(p.x-this.lastFeet.x,p.y-this.lastFeet.y,this.facing);
+    this.lastFeet=p;
+    this.marks.unshift({id:'self',sprite:this.actor,self:true,feet:p,covered:this.selfCovered,facing:this.facing,
       hp:self?.hp??1,maxHp:state?.maxHp??(self?Math.max(self.hp,1):1),downed:!!state?.downed||(!!self&&self.hp<=0)});
     this.you.update(time,this.cameras.main.zoom,this.marks);
     this.marks.length=0;
@@ -200,8 +205,7 @@ export class IslandScene extends Phaser.Scene {
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
     if(this.hooks.net){this.updateCoop(_time,delta);this.drawYou(_time);return;}
-    this.drawYou(_time);
-    if(this.paused)return;
+    if(this.paused){this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
     const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
@@ -215,6 +219,8 @@ export class IslandScene extends Phaser.Scene {
     for(let i=0;i<landmarks.length;i++)if(!this.discovered.has(i)&&Math.hypot(this.position.x-landmarks[i].x,this.position.y-landmarks[i].y)<1.15){this.discovered.add(i);this.hooks.discovered(i);}
     this.stamp+=delta;
     if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
+    // After the move, so the ring is never a frame behind the hero.
+    this.drawYou(_time);
   }
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
   private enemyAt(p:Point){
@@ -232,6 +238,8 @@ export class IslandScene extends Phaser.Scene {
   private icons=new Map<string,string>();
   /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
   critterIcon(kind:string){
+    // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the gosma and name the wrong critter.
+    if(!isEnemyKind(kind))return undefined;
     let url=this.icons.get(kind);
     if(url===undefined){const key=enemyTexture(kind);url=this.textures.exists(key)?this.textures.getBase64(key):'';if(url)this.icons.set(kind,url);}
     return url||undefined;

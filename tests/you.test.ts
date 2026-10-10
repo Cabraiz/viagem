@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ARROW_MS,HP_LINGER_MS,arrowFrame,arrowTrigger,canopyCovers,hpBarStep,hurtStrength} from '../src/game/render/you-rules.ts';
+import {ARROW_BOB_MS,ARROW_MS,HP_LINGER_MS,RING_CSS,arrowFrame,arrowTrigger,beakPoints,canopyCovers,facingFrom,hpBarStep,hurtStrength,ringBands} from '../src/game/render/you-rules.ts';
 import {HURT_MIN_GAP_MS,canFlash,hitsOn} from '../src/game/hud/hurt.ts';
 import {CAUSE_COPY,emptyCauses,recordFall,rememberKill,resolveCause,resultCause,topCause,KILL_MEMORY} from '../src/game/hud/cause.ts';
 import {applyEvents,emptyTally,reviveBanner} from '../src/game/hud/model.ts';
@@ -14,9 +14,10 @@ test('health bar: shown below full, lingers 2 s once full again, hidden when dow
   assert.equal(hpBarStep(.2,undefined,0,true).visible,false);
 });
 
-test('"Você" arrow: 2 s, bobbing only without reduced motion; rounds and own revive bring it back',()=>{
+test('"Você" arrow: 2 s, one bob (not with reduced motion); rounds and own revive bring it back',()=>{
   assert.equal(arrowFrame(0,false).visible,true);assert.equal(arrowFrame(ARROW_MS,false).visible,false);assert.equal(arrowFrame(-1,false).visible,false);
-  assert.ok(arrowFrame(ARROW_MS/6,false).bob>.9);assert.equal(arrowFrame(ARROW_MS/6,true).bob,0);
+  assert.ok(arrowFrame(ARROW_BOB_MS/2,false).bob>.99);assert.equal(arrowFrame(ARROW_BOB_MS/2,true).bob,0);
+  assert.equal(arrowFrame(ARROW_BOB_MS,false).bob,0);assert.equal(arrowFrame(ARROW_MS-1,false).bob,0);
   assert.equal(arrowTrigger([{type:'round',phase:'wave'}],'me'),true);
   assert.equal(arrowTrigger([{type:'round',phase:'prepare'},{type:'revived',player:'zé'}],'me'),false);
   assert.equal(arrowTrigger([{type:'revived',player:'me'}],'me'),true);
@@ -78,4 +79,16 @@ test('result names what downed you, else the team; the own-fall banner carries t
   assert.equal(banner.kind,'self');assert.deepEqual(banner.cause,{kind:'gosma',...CAUSE_COPY.gosma});
   assert.equal(reviveBanner(view,'me')!.cause,undefined);
   for(const copy of Object.values(CAUSE_COPY)){assert.ok(copy.line.length<=40,copy.line);assert.doesNotMatch(copy.line,/[A-ZÀ-Ú]{2}/);}
+});
+
+test('"você" ring: hard bands Papel outside, Lilás body, Breu inside; beak points where the hero faces',()=>{
+  const b=ringBands(),edges=(band:{width:number;offset:number})=>[band.offset-band.width/2,band.offset+band.width/2];
+  const total=RING_CSS.papel+RING_CSS.voce+RING_CSS.breu;
+  assert.deepEqual(edges(b.papel),[-total/2,total/2]);
+  assert.deepEqual(edges(b.voce),[total/2-RING_CSS.papel-RING_CSS.voce,total/2-RING_CSS.papel]);
+  assert.deepEqual(edges(b.breu),[-total/2,-total/2+RING_CSS.breu]);
+  // Facing right: the tip is to the right of the ellipse's right edge; facing down, below the bottom edge.
+  const right=beakPoints(0,0,20,9,0,8,5);assert.ok(Math.abs(right[2].x-28)<1e-9&&Math.abs(right[2].y)<1e-9);
+  const down=beakPoints(0,0,20,9,Math.PI/2,8,5);assert.ok(Math.abs(down[2].y-17)<1e-9);
+  assert.equal(facingFrom(0,0,1.5),1.5);assert.equal(facingFrom(3,0,1.5),0);assert.ok(Math.abs(facingFrom(0,-3,0)+Math.PI/2)<1e-9);
 });

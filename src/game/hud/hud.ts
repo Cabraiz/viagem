@@ -12,7 +12,7 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen} from './result.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,measureZones,veiled,type Rect} from './zones.ts';
+import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
 import './zones.css';
 
 export interface RunHudOptions {
@@ -40,8 +40,16 @@ export class RunHud {
   private last?:RunView;
   private readonly stack:HTMLElement;
   private readonly alerts:HudPart;
+  private readonly hurt:ReturnType<typeof createHurtFrame>;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
+  /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
+  private layoutVersion=0;
+  private rowsKey='';private rowsVersion=-1;private rowsBox?:Rect;
+  private readouts:{el:HTMLElement;rect:Rect}[]=[];private readoutVersion=-1;
+  private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
+  private readonly relayout=()=>{this.layoutVersion++;};
+  private observer?:ResizeObserver;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon};
@@ -53,26 +61,31 @@ export class RunHud {
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     stack.append(announcer.el,alerts.el);this.stack=stack;this.alerts=alerts;
-    this.parts=[hurt,top,announcer,team,alerts,offer];
+    this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,this.result.el);
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
     for(const panel of [offer.el,this.result.el,top.el,team.el,alerts.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
+    addEventListener('resize',this.relayout);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el])this.observer.observe(part);}
   }
 
   update(view:RunView){
     this.last=view;
     applyEvents(this.tally,view);
-    for(const part of this.parts)part.update(view,this.ctx);
+    // On the result the run is over: no damage edge (it would frame the result screen).
+    for(const part of this.parts)if(part!==this.hurt||!this.el.classList.contains('rh-ended'))part.update(view,this.ctx);
     // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
+    if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
   }
 
   showResult(result:RunResult){
-    this.el.classList.add('rh-ended');
+    this.el.classList.add('rh-ended');this.hurt.reset();
     this.result.show(result,this.ctx);
   }
 
@@ -95,35 +108,46 @@ export class RunHud {
    * while its top slot would cross the hero, and comes back when the top slot is clear again.
    */
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden])')];
+    if(!hero)return;
     this.veil(hero,margin);
-    if(!rows.length||!hero)return;
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden])')];
+    if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
-    const box=(list:HTMLElement[]):Rect=>{
-      const r=list.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
-      return {x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
-    };
-    if(!low)this.topSlot=box(rows);
-    else if(this.topSlot){
-      // In the low slot the rows may be taller or fewer now: re-measure them and place that box back in the top slot.
-      const now=box(rows);this.topSlot={...this.topSlot,height:now.height,width:Math.max(this.topSlot.width,now.width)};
+    // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).
+    const key=`${rows.map(r=>r.className).join('|')}:${low}`;
+    if(key!==this.rowsKey||this.rowsVersion!==this.layoutVersion||!this.rowsBox){
+      this.rowsKey=key;this.rowsVersion=this.layoutVersion;
+      const r=rows.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
+      this.rowsBox={x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
+      if(!low)this.topSlot=this.rowsBox;
+      // In the low slot the rows may be taller or fewer now: keep the top slot's place with the rows' size.
+      else if(this.topSlot)this.topSlot={...this.topSlot,height:this.rowsBox.height,width:Math.max(this.topSlot.width,this.rowsBox.width)};
     }
     if(!this.topSlot)return;
-    const lowSlot=low?box(rows):{...this.topSlot,y:innerHeight};
+    const lowSlot=low?this.rowsBox:{...this.topSlot,y:innerHeight};
     const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
-    this.stack.classList.toggle('rh-stack-low',slot===1);
+    if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
   }
   /**
    * While the camera does not follow the hero (whole-island framing), the hero can walk under the top band or the team
    * strip: those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
+   * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
-  private veil(hero:Rect|undefined,margin:number){
+  private veil(hero:Rect,margin:number){
     const readouts=[...this.el.querySelectorAll<HTMLElement>('.rh-round,.rh-xp,.rh-boss,.rh-member')];
-    const boxes=readouts.map(el=>{const r=el.getBoundingClientRect();return {rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});
-    veiled(boxes,hero,margin).forEach((under,i)=>{if(readouts[i].classList.contains('rh-veiled')!==under)readouts[i].classList.toggle('rh-veiled',under);});
+    if(this.readoutVersion!==this.layoutVersion||readouts.length!==this.readouts.length||readouts.some((el,i)=>this.readouts[i]?.el!==el)){
+      this.readoutVersion=this.layoutVersion;
+      this.readouts=readouts.map(el=>{const r=el.getBoundingClientRect();return {el,rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});
+    }
+    veiled(this.readouts,hero,margin).forEach((under,i)=>{const el=this.readouts[i].el;if(el.classList.contains('rh-veiled')!==under)el.classList.toggle('rh-veiled',under);});
   }
-  /** The zones of the current layout (top band, team, thumbs, useful area), for the camera and the audit. */
-  zones(){return measureZones(this.el.ownerDocument);}
+  /** The zones of the current layout (top band, team, thumbs, useful area), for the camera and the audit; cached per layout. */
+  zones(){
+    if(!this.zonesCache||this.zonesVersion!==this.layoutVersion){this.zonesVersion=this.layoutVersion;this.zonesCache=measureZones(this.el.ownerDocument);this.zonesFresh=true;}
+    return this.zonesCache;
+  }
+  /** The zones only when they changed since the last call (resize, rotation, HUD part resized), else undefined. */
+  zonesIfChanged(){const zones=this.zones();if(!this.zonesFresh)return undefined;this.zonesFresh=false;return zones;}
 
   /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
   rematchRefused(label:string){this.result.refuse(label);}
@@ -136,6 +160,7 @@ export class RunHud {
   get view(){return this.last;}
 
   destroy(){
+    removeEventListener('resize',this.relayout);this.observer?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
     this.el.remove();

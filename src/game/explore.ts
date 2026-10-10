@@ -5,7 +5,7 @@ import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
-import {auditBoxes,auditBoxesFromDom,drawZoneOverlay,clearZoneOverlay,measureZones,type Rect} from './hud/zones.ts';
+import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
@@ -58,8 +58,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD (zones audit, boss marquee).
     if(import.meta.env.DEV){
       (window as unknown as {__hud?:RunHud}).__hud=hud;
+      // The overlay module (and its CSS) is loaded on demand, so it never reaches the build.
       (window as unknown as {__zones?:unknown}).__zones={measure:()=>measureZones(),audit:(hero?:Rect)=>auditBoxes(auditBoxesFromDom(),measureZones(),hero),
-        overlay:(on:boolean)=>{zoneOverlay=on;if(!on)clearZoneOverlay();else drawZoneOverlay(measureZones());}};
+        overlay:async(on:boolean)=>{zoneOverlay=on;const debug=await import('./hud/zones-debug.ts');if(!on)debug.clearZoneOverlay();else debug.drawZoneOverlay(measureZones());}};
     }
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
@@ -158,9 +159,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               shell.dataset.hudResult=String(resultShown!==undefined);
               hud.setNetwork(net.connected?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
-              // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue).
-              const zones=hud.zones();if(controller)controller.scene.usefulArea=zones.useful;
-              if(zoneOverlay)drawZoneOverlay(zones);
+              // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
+              const zones=controller?hud.zonesIfChanged():undefined;
+              if(zones&&controller)controller.scene.usefulArea=zones.useful;
+              if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.
             const state=net.feed.players.get(net.id),out=run.phase==='combat'&&(!!state?.eliminated||!!member?.spectator);

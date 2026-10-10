@@ -5,7 +5,7 @@
 const FALLBACK:Readonly<Record<string,string>>={
   '--f-cartaz':"'Londrina Solid',sans-serif",'--f-sistema':"'M PLUS Rounded 1c',sans-serif",
   '--c-breu':'#1E1530','--c-papel':'#EEDDB8','--c-lilas':'#5B3F8C',
-  '--c-amarelo':'#FFD23F','--c-cone':'#FF7A1F','--c-cartolina':'#7ED957',
+  '--c-amarelo':'#FFD23F','--c-cone':'#FF7A1F','--c-cartolina':'#7ED957','--c-voce':'#5B3F8C',
 };
 export function token(name:keyof typeof FALLBACK|string):string{
   const value=typeof document!=='undefined'?getComputedStyle(document.documentElement).getPropertyValue(name).trim():'';

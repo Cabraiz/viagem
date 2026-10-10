@@ -91,7 +91,7 @@ export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
     if(!player.downed||player.eliminated)continue;
     const seconds=secondsLeft(player.downed.bleedOutTick,view.tick);
     const progress=clamp01(player.downed.progress);
-    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro · ${seconds} s`});
+    if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
     else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá · ${seconds} s`});
   }
   return alerts.sort((a,b)=>Number(b.kind==='self')-Number(a.kind==='self')||a.seconds-b.seconds);

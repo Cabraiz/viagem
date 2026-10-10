@@ -29,7 +29,7 @@ export function hitsOn(view:Pick<RunView,'events'>,localId:string,seen:number){
   return {amount,last};
 }
 
-export function createHurtFrame(options:{reduced?:()=>boolean;now?:()=>number}={}):HudPart&{readonly flashes:number}{
+export function createHurtFrame(options:{reduced?:()=>boolean;now?:()=>number}={}):HudPart&{readonly flashes:number;reset():void}{
   const root=document.createElement('div');root.className='rh-hurt';root.setAttribute('aria-hidden','true');
   for(const part of ['rh-hurt-flash','rh-hurt-low']){const edge=document.createElement('i');edge.className=part;root.append(edge);}
   let seen=-1,timer:ReturnType<typeof setTimeout>|undefined,flashes=0,lastAt=-Infinity;
@@ -48,5 +48,8 @@ export function createHurtFrame(options:{reduced?:()=>boolean;now?:()=>number}={
       root.removeAttribute('data-flash');void root.offsetWidth;root.setAttribute('data-flash',reduced()?'static':'flash');
       clearTimeout(timer);timer=setTimeout(()=>root.removeAttribute('data-flash'),reduced()?HURT_STATIC_MS:HURT_FLASH_MS+40);
     }
-  },destroy(){clearTimeout(timer);}};
+  },
+  /** Result screen or a new run: no edge left over (the low edge would otherwise frame the result). */
+  reset(){clearTimeout(timer);root.removeAttribute('data-flash');root.removeAttribute('data-low');seen=Math.max(seen,-1);lastAt=-Infinity;},
+  destroy(){clearTimeout(timer);}};
 }

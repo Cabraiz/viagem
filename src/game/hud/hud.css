@@ -299,7 +299,7 @@
 /* Player card */
 .rh-rcard{display:flex;flex-direction:column;gap:5px;min-width:0;padding:7px;border-radius:var(--r-janela);
   background:var(--c-papel);border:2px solid var(--c-breu);box-shadow:var(--s-1);color:var(--c-breu)}
-.rh-rcard.rh-me{box-shadow:0 0 0 3px var(--c-amarelo),var(--s-1)}
+.rh-rcard.rh-me{box-shadow:0 0 0 2px var(--c-papel),0 0 0 4px var(--c-voce),var(--s-1)} /* "você": borda dupla da janela (Papel por dentro, Lilás por fora), nunca Amarelo (onda 3 §0) */
 .rh-rcard[data-state=spectator]{opacity:.75}
 /* Portrait and landscape: build icons sit beside the portrait, under the name, so 6 cards fit without scrolling. */
 .rh-rcard-top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img id" "img build";column-gap:6px;row-gap:3px;align-items:center;min-width:0}

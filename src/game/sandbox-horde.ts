@@ -1,12 +1,13 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
- * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0.
+ * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0,
+ * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
 import {TerrainField,DEFAULT_SEED} from './terrain/field.ts';
 import {TerrainRenderer} from './terrain/renderer.ts';
-import {fitIsland} from './framing.ts';
+import {fitIsland,FollowCamera,followZoom} from './framing.ts';
 import {projectView,viewDepth,normalizeView} from './projection.ts';
 import {obstacles,walkable,type Point} from './world.ts';
 import {treeCatalog} from './tree-catalog.ts';
@@ -141,6 +142,9 @@ class HordeSandboxScene extends Phaser.Scene {
   paused=false;
   reduced:boolean;
   private projector!:Projector;
+  /** Follow camera on the first fake player (the game camera); `overview` keeps the old whole-island framing. */
+  follow=new FollowCamera();
+  overview=new URLSearchParams(location.search).get('camera')==='ilha';
   /** forced: the ?reduced=1 flag; the OS preference is followed live on top of it. */
   constructor(private field:TerrainField,private count:number,view:number,forced:boolean,private seed:number){super('horde-sandbox');this.view=normalizeView(view);this.forceReduced=forced;this.reduced=forced||matchMedia('(prefers-reduced-motion: reduce)').matches;}
   private forceReduced:boolean;
@@ -161,7 +165,7 @@ class HordeSandboxScene extends Phaser.Scene {
     }
     this.horde=new FakeHorde(this.field,this.count,this.seed);
     this.projector=new Projector(this.view,this.field);
-    // Whole-island framing zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
+    // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ});
     const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);};
     motion.addEventListener('change',onMotion);
@@ -173,9 +177,15 @@ class HordeSandboxScene extends Phaser.Scene {
   project(p:Point){return projectView(p,this.view,this.field);}
   depth(p:Point){return viewDepth(p,this.view);}
   fit(){
-    const frame=fitIsland(this.scale.width,this.scale.height,this.view,this.field);
-    this.cameras.main.setSize(this.scale.width,this.scale.height).setZoom(frame.zoom).centerOn(frame.x,frame.y);
-    this.landscape?.fit();
+    if(this.overview){
+      const frame=fitIsland(this.scale.width,this.scale.height,this.view,this.field);
+      this.cameras.main.setSize(this.scale.width,this.scale.height).setZoom(frame.zoom).centerOn(frame.x,frame.y);
+      this.landscape?.fit();return;
+    }
+    const viewport={width:this.scale.width,height:this.scale.height},zoom=followZoom(viewport);
+    const c=this.follow.snap(this.project(this.horde.players[0]),viewport,zoom);
+    this.cameras.main.setSize(viewport.width,viewport.height).setZoom(zoom).centerOn(c.x,c.y);
+    this.landscape?.fit(.3);
   }
   rotate(turn:number){
     this.view=normalizeView(this.view+turn);this.landscape?.view(this.view);this.projector.view=this.view;
@@ -194,6 +204,12 @@ class HordeSandboxScene extends Phaser.Scene {
       this.sprites.animate(actor,p.classId,p.x,p.y,p.attackTick,true,this.view);
       actor.setPosition(q.x,q.y).setDepth(this.depth(p)+1);
     });
+    if(!this.overview){
+      const viewport={width:this.scale.width,height:this.scale.height};
+      const c=this.follow.step(this.project(this.horde.players[0]),delta/1000,viewport,this.cameras.main.zoom);
+      this.cameras.main.centerOn(c.x,c.y);
+      if(this.landscape&&!this.landscape.covers())this.landscape.fit(.3);
+    }
   }
 }
 

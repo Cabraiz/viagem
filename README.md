@@ -25,7 +25,7 @@ A arte dos sprites é uma primeira versão: há passos repetidos, variações de
 
 ## Câmera e vegetação
 
-Os botões ↶ e ↷ no canto superior esquerdo giram a câmera em passos de 90°, com quatro perspectivas. O terreno elevado é reprojetado; posições, colisões e regras da sala permanecem em coordenadas do mundo. Toques, joystick, profundidade dos objetos e enquadramento acompanham a vista, inclusive ao girar o celular.
+A câmera segue o seu personagem (D-019), com o herói no centro da área livre do HUD, e o zoom é fixo por orientação: o herói tem 56 px num celular de 390 px de lado menor ([contrato](docs/camera-follow-contract.md); o enquadramento da ilha inteira foi substituído). Os botões ↶ e ↷ no canto superior esquerdo giram a vista em passos de 90°, em volta do jogador, fora das ondas. O terreno elevado é reprojetado; posições, colisões e regras da sala permanecem em coordenadas do mundo. Toques, joystick e profundidade dos objetos acompanham a vista.
 
 O catálogo contém 40 tipos de árvores, com 160 vistas no total. As árvores usam atlas transparentes com quatro vistas, em `public/art/trees/`. Apenas as espécies presentes na sala são carregadas. A distribuição visual depende do código da sala e é igual para os participantes; mantém os 12 pontos de vegetação existentes. Os desenhos variam em escala, cor, copa e tronco. São arte candidata: detalhes de galhos ainda podem variar entre ângulos. Personagens e construções continuam como imagens voltadas para a tela. Esta versão tem quatro perspectivas 2.5D; não oferece órbita 3D contínua.
 

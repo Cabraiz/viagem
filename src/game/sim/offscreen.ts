@@ -18,7 +18,11 @@
  *     tio-pavê bar 96 × 1.35 = 130 px), spreads SPRITE_SIDE_PX to each side (boss 150 px wide) and its shadow
  *     hangs SPRITE_DOWN_PX below; the endless relief tops at ~31 px (measured over 10 seeds × 4000 points),
  *     so ELEVATION_PX = 40 bounds the screen-y shift between the player's ground and the enemy's;
- *   - the camera follows smoothly, so it may trail the player by up to CAMERA_LAG_UNITS.
+ *   - the camera follows smoothly, so it may trail the player by up to CAMERA_LAG_UNITS;
+ *   - the camera centres the hero in the HUD's useful area (UX-zonas-tela), not on the screen, and looks ahead
+ *     where the hero walks (UX-camera-segue): the hero's feet may sit up to CAMERA_OFFSET_SHORT_PX off the
+ *     screen centre along the screen's short axis and CAMERA_OFFSET_LONG_PX along its long axis (framing.ts
+ *     followTarget clamps to these). Both sides of each rectangle grow by them, since the offset can go either way.
  * Projection (projection.ts): screen x = 42·(x − y), screen y = 21·(x + y) − height, after rotating the
  * offset by the view. One unit along the screen's x axis is 42·√2 = 59.4 px, along its y axis 29.7 px.
  *
@@ -38,12 +42,14 @@ export const VISIBLE_LONG_PX=VISIBLE_SHORT_PX*MAX_ASPECT;
 export const SPRITE_UP_PX=190,SPRITE_DOWN_PX=12,SPRITE_SIDE_PX=80;
 export const ELEVATION_PX=40;
 export const CAMERA_LAG_UNITS=1;
+/** Hero-to-camera-centre offset budget, world px (useful-area centring + look-ahead), see the header. */
+export const CAMERA_OFFSET_SHORT_PX=130,CAMERA_OFFSET_LONG_PX=150;
 
 const LAG_X=TILE_X*Math.SQRT2*CAMERA_LAG_UNITS,LAG_Y=TILE_Y*Math.SQRT2*CAMERA_LAG_UNITS;
 /** [half width, bottom bound, top bound] of each orientation, margins included (screen y grows downwards). */
 const RECTS:readonly (readonly [number,number,number])[]=[
-  [VISIBLE_SHORT_PX/2,VISIBLE_LONG_PX/2,VISIBLE_LONG_PX/2],
-  [VISIBLE_LONG_PX/2,VISIBLE_SHORT_PX/2,VISIBLE_SHORT_PX/2],
+  [VISIBLE_SHORT_PX/2+CAMERA_OFFSET_SHORT_PX,VISIBLE_LONG_PX/2+CAMERA_OFFSET_LONG_PX],
+  [VISIBLE_LONG_PX/2+CAMERA_OFFSET_LONG_PX,VISIBLE_SHORT_PX/2+CAMERA_OFFSET_SHORT_PX],
 ].map(([w,h])=>[w+SPRITE_SIDE_PX+LAG_X,h+SPRITE_UP_PX+ELEVATION_PX+LAG_Y,h+SPRITE_DOWN_PX+ELEVATION_PX+LAG_Y] as const);
 
 /**

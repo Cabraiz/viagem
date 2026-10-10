@@ -139,8 +139,8 @@ export class RunHud {
     if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
   }
   /**
-   * While the camera does not follow the hero (whole-island framing), the hero can walk under the top band or the team
-   * strip: those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
+   * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or
+   * the team strip (resize, a HUD box that grew): those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
    * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
   private veil(hero:Rect,margin:number){

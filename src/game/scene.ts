@@ -3,8 +3,8 @@ import {TerrainField,randomSeed} from './terrain/field.ts';
 import Phaser from 'phaser';
 import { classes } from '../classes.ts';
 import {SKILL_RANGE} from './net/shared.ts';
-import {fitIsland} from './framing.ts';
-import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView} from './projection.ts';
+import {FollowCamera,followZoom,toScreen,edgeOf,type Rect} from './framing.ts';
+import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
 import { CoopClient, STEP } from './net/client.ts';
@@ -19,8 +19,12 @@ import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
-/** Smallest tap radius on an enemy, in CSS px: the whole-island zoom makes a gosma ~13 px tall (D-009: ≥ 44 px targets). */
+/** Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a gosma is ~33 px tall at the follow zoom. */
 const ENEMY_TAP_RADIUS_PX=26;
+/** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
+const DEPTH_REBASE_UNITS=24;
+/** The water bake covers the view plus this share of it on each side, and is redone only when the view leaves it. */
+const WATER_MARGIN=.3;
 
 export interface SceneHooks {
   classId:string;
@@ -49,7 +53,14 @@ export class IslandScene extends Phaser.Scene {
   private field!:TerrainField;
   private signs:{point:Point;graphic:Graphics;label:Phaser.GameObjects.Text}[]=[];
   private project=(p:Point)=>projectView(p,this.view,this.field);
-  private depth=(p:Point)=>viewDepth(p,this.view);
+  /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
+  private depthOrigin?:Point;
+  private depth=(p:Point)=>viewDepth(p,this.view,this.depthOrigin);
+  /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
+  private follow=new FollowCamera();
+  private zoom=1;
+  private canvasOffset={x:0,y:0};
+  private roundPhase?:string;
   private position:Point={...SPAWN};
   private route:Point[]=[];
   private actor!:Phaser.GameObjects.Sprite;
@@ -88,8 +99,8 @@ export class IslandScene extends Phaser.Scene {
   private lastPhase?:string;
   private lastFeet?:Point;
   private facing=Math.PI/2;
-  /** Screen area left for play once the HUD zones are out (UX-zonas-tela), in CSS px; the follow camera centers on it (D-019). */
-  usefulArea?:{x:number;y:number;width:number;height:number};
+  /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
+  usefulArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
@@ -125,7 +136,7 @@ export class IslandScene extends Phaser.Scene {
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
       this.projector=new Projector(this.view,this.field);
-      // Whole-island framing zooms out to ~0.26 on a phone: text, bars and markers scale back to a readable size (as in ?sandbox=horda).
+      // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1).
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id)});
@@ -133,24 +144,68 @@ export class IslandScene extends Phaser.Scene {
       const release=()=>{this.horde?.destroy();this.horde=undefined;this.you?.destroy();this.you=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
-    this.fit();this.place();
+    this.rebaseDepth(true);this.fit();this.place();
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
   }
-  private fit(){
-    const frame=fitIsland(this.scale.width,this.scale.height,this.view,this.field);
-    this.cameras.main.setSize(this.scale.width,this.scale.height)
-      .setZoom(frame.zoom).centerOn(frame.x,frame.y);
-    this.landscape?.fit();
+  /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
+  private viewport(){return {width:this.scale.width,height:this.scale.height};}
+  /** Useful area in canvas coordinates (the HUD measures it in viewport coordinates). */
+  private useful():Rect|undefined{
+    const u=this.usefulArea;if(!u)return undefined;
+    return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
   }
-  rotateCamera(turn:number){
-    if(!this.actor)return this.view;
-    this.view=normalizeView(this.view+turn);this.landscape?.view(this.view);
+  /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation). */
+  private fit(){
+    const viewport=this.viewport();
+    this.zoom=followZoom(viewport);
+    const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
+    const b=this.actor?this.heroWorldBox():undefined;
+    const c=this.follow.snap(this.project(this.position),viewport,this.zoom,this.useful(),b&&{width:b.width*this.zoom,height:b.height*this.zoom});
+    this.cameras.main.setSize(viewport.width,viewport.height).setZoom(this.zoom).centerOn(c.x,c.y);
+    this.landscape?.fit(WATER_MARGIN);
+  }
+  /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
+  private updateCamera(delta:number){
+    if(!this.actor)return;
+    const b=this.heroWorldBox(),c=this.follow.step(this.project(this.position),delta/1000,this.viewport(),this.zoom,this.useful(),{width:b.width*this.zoom,height:b.height*this.zoom});
+    this.cameras.main.centerOn(c.x,c.y);
+    if(this.landscape&&!this.landscape.covers())this.landscape.fit(WATER_MARGIN);
+  }
+  /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
+  private reproject(){
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.setPosition(p.x,p.y+28).setDepth(depth+2);}
-    if(this.projector){this.projector.view=this.view;this.horde?.refresh();}
+    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();}
+  }
+  /** Endless world only: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen unchanged). */
+  private rebaseDepth(force=false){
+    if(!this.field.chunks)return;
+    const o=this.depthOrigin;
+    if(!force&&o&&Math.max(Math.abs(o.x-this.position.x),Math.abs(o.y-this.position.y))<DEPTH_REBASE_UNITS)return;
+    this.depthOrigin={x:Math.round(this.position.x),y:Math.round(this.position.y)};
+    if(this.actor)this.reproject();
+  }
+  /** Whether the view may turn now (UX-camera-segue 4: never during a wave; the buttons go grey). */
+  rotationLocked(){const net=this.hooks.net;return !!net&&rotationLocked(net.run?.phase,this.roundPhase);}
+  /** Turns the view by 90° steps around the hero: the world turns, the camera snaps back onto the hero. Refused during a wave. */
+  rotateCamera(turn:number){
+    if(!this.actor||this.rotationLocked())return this.view;
+    this.view=normalizeView(this.view+turn);this.landscape?.view(this.view);
+    this.reproject();
     this.destination.clear();this.fit();this.place();
     return this.view;
+  }
+  /**
+   * Off-screen API (UX-bordas-fora-da-tela, ORQ-minimapa build on it): screen point (CSS px, viewport coordinates)
+   * of a world point, whether it is inside the useful area, and where its arrow would sit on the area's edge.
+   */
+  locate(p:Point,inset=0){
+    const viewport=this.viewport();
+    const s=toScreen(this.project(p),this.follow.center,viewport,this.zoom);
+    const screen={x:s.x+this.canvasOffset.x,y:s.y+this.canvasOffset.y};
+    const area=this.usefulArea??{x:this.canvasOffset.x,y:this.canvasOffset.y,width:viewport.width,height:viewport.height};
+    return {screen,...edgeOf(screen,area,inset)};
   }
   setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
@@ -204,8 +259,8 @@ export class IslandScene extends Phaser.Scene {
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(_time,delta);this.drawYou(_time);return;}
-    if(this.paused){this.drawYou(_time);return;}
+    if(this.hooks.net){this.updateCoop(_time,delta);this.rebaseDepth();this.updateCamera(delta);this.drawYou(_time);return;}
+    if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
     const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
@@ -219,7 +274,8 @@ export class IslandScene extends Phaser.Scene {
     for(let i=0;i<landmarks.length;i++)if(!this.discovered.has(i)&&Math.hypot(this.position.x-landmarks[i].x,this.position.y-landmarks[i].y)<1.15){this.discovered.add(i);this.hooks.discovered(i);}
     this.stamp+=delta;
     if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
-    // After the move, so the ring is never a frame behind the hero.
+    // After the move, so the ring and the camera are never a frame behind the hero.
+    this.rebaseDepth();this.updateCamera(delta);
     this.drawYou(_time);
   }
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
@@ -247,8 +303,16 @@ export class IslandScene extends Phaser.Scene {
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
   heroScreenRect(){
     if(!this.actor)return undefined;
-    const cam=this.cameras.main,b=this.actor.getBounds();
+    const cam=this.cameras.main,b=this.heroWorldBox();
     return {x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom};
+  }
+  /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
+  private heroWorldBox(){
+    const a=this.actor,f=a.texture.key.startsWith('sprite:')?this.sprites.figure(this.hooks.classId):undefined;
+    if(!f)return a.getBounds();
+    const sx=Math.abs(a.scaleX),sy=Math.abs(a.scaleY),w=a.frame.width,h=a.frame.height,ox=a.originX*w,oy=a.originY*h;
+    const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;
+    return {x:a.x+(left-ox)*sx,y:a.y+(f.top-oy)*sy,width:(right-left)*sx,height:(f.bottom-f.top)*sy};
   }
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
@@ -266,12 +330,14 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
+      this.roundPhase=runView.round?.phase;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
       this.horde?.push(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
-      this.hooks.runView?.(net.feed.peek());
+      const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
+      this.hooks.runView?.(runView);
     }
     this.horde?.update(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
@@ -394,7 +460,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
   // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
   if(import.meta.env.DEV){
-    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point};
+    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point;follow:FollowCamera;depthOrigin?:Point;useful():Rect|undefined};
     const probe=()=>{
       const cam=s.cameras.main,net=s.hooks.net;
       const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
@@ -404,7 +470,9 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       });
       const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];
       const you=(scene as unknown as {you?:YouMarkers}).you;
-      return {view:s.view,zoom:cam.zoom,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined};
+      const camera={center:{...s.follow.center},look:{...s.follow.look},useful:s.useful(),depthOrigin:s.depthOrigin,locked:scene.rotationLocked(),
+        heroPx:Math.round(96*cam.zoom),scroll:{x:cam.scrollX,y:cam.scrollY}};
+      return {view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

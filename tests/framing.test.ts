@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fitIsland,ISLAND_BOUNDS,SHORE} from '../src/game/framing.ts';
 
-test('the complete island fits both orientations, including very narrow and short screens',()=>{
+// fitIsland is no longer the game camera (D-019: the camera follows the hero, framing.ts FollowCamera);
+// it stays as the ?sandbox=horda&camera=ilha overview, and these tests pin that overview down.
+test('overview: the complete island fits both orientations, including very narrow and short screens',()=>{
   for(const [width,height] of [[320,640],[390,844],[844,390],[1280,720],[1920,1080],[640,320]]){
     const f=fitIsland(width,height),b=ISLAND_BOUNDS;
     for(const x of [b.left,b.right])for(const y of [b.top,b.bottom]){
@@ -15,7 +17,7 @@ test('the complete island fits both orientations, including very narrow and shor
   }
 });
 
-test('framing includes the full shore instead of only the playable center',()=>{
+test('overview framing includes the full shore instead of only the playable center',()=>{
   assert.ok(ISLAND_BOUNDS.left<=SHORE.x-SHORE.width/2);
   assert.ok(ISLAND_BOUNDS.right>=SHORE.x+SHORE.width/2);
   assert.ok(ISLAND_BOUNDS.top<=SHORE.y-SHORE.height/2);

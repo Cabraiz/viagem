@@ -5,7 +5,7 @@
  * - team strip: left column (portrait) or bottom row between the thumbs (landscape);
  * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + THUMB_GAP;
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. The follow camera
- *   (D-019, UX-camera-segue) centers the hero on it; today the scene only receives it (IslandScene.usefulArea).
+ *   (D-019, UX-camera-segue) centres the hero on it (IslandScene.usefulArea, framing.ts FollowCamera).
  * Pure geometry plus one DOM reader (measureZones) and the audit the acceptance scripts run on the real scene.
  */
 
@@ -82,8 +82,8 @@ export function computeZones(input:ZoneInput):ScreenZones{
 
 /**
  * Which announcement slot to use: the first one that stays clear of the hero (± margin), else the one that
- * overlaps it least. Slot 0 is the top band; slot 1 is the fallback above the thumbs, kept only while the camera
- * does not follow the hero (whole-island framing lets the hero walk under the top band).
+ * overlaps it least. Slot 0 is the top band; slot 1 is the fallback above the thumbs. Since the follow camera
+ * (camera-segue) keeps the hero in the useful area, slot 1 is only a safety net (it should never trigger).
  */
 /** Status readouts the hero walked under (± margin): they go see-through instead of covering the hero (fallback). */
 export function veiled(boxes:readonly {rect:Rect}[],hero:Rect|undefined,margin=HERO_MARGIN){
@@ -121,7 +121,7 @@ export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
   /** Offer/result over the hero: allowed by the contract, reported for the offer card (D-021). */
   allowedOverHero:string[];
-  /** Veiled (30%) readouts over the hero: the fallback while the camera does not follow; reported, not failed. */
+  /** Veiled (30%) readouts over the hero: a safety net (the follow camera keeps the hero clear); reported, not failed. */
   veiledOverHero:string[];
   minThumbGap:number;ok:boolean}
 

@@ -32,11 +32,20 @@ export class TerrainRenderer {
     renderer.pipelines.clear();shader.load();shader.flush();renderer.pipelines.rebind();
   }
   view(angle:number){this.land.setUniform('angle.value',angle);this.sea.setUniform('angle.value',angle);this.bake(this.land);this.lastWater=-Infinity;}
-  fit(){
+  /** Water area (world px) of the last bake: the camera view plus `margin` of it on each side. */
+  private area={x:0,y:0,w:0,h:0};
+  private view_(){
     const camera=this.scene.cameras.main,w=camera.width/camera.zoom,h=camera.height/camera.zoom;
-    const x=camera.scrollX+(camera.width-w)/2,y=camera.scrollY+(camera.height-h)/2;
+    return {x:camera.scrollX+(camera.width-w)/2,y:camera.scrollY+(camera.height-h)/2,w,h};
+  }
+  /** Bakes the water over the camera view; the follow camera passes a margin so it can move before a new bake. */
+  fit(margin=0){
+    const v=this.view_(),mx=v.w*margin,my=v.h*margin,x=v.x-mx,y=v.y-my,w=v.w+2*mx,h=v.h+2*my;
+    this.area={x,y,w,h};
     this.water.setPosition(x,y).setDisplaySize(w,h);
     this.sea.setUniform('areaOrigin.value',{x,y});this.sea.setUniform('areaSize.value',{x:w,y:h});this.lastWater=-Infinity;
   }
+  /** Whether the last water bake still covers the whole camera view. */
+  covers(){const v=this.view_(),a=this.area;return v.x>=a.x&&v.y>=a.y&&v.x+v.w<=a.x+a.w&&v.y+v.h<=a.y+a.h;}
   update(time:number,reduced:boolean){if(Number.isFinite(this.lastWater)&&(reduced||time-this.lastWater<160))return;this.lastWater=time;this.sea.setUniform('elapsed.value',reduced?0:time/1000);this.bake(this.sea);}
 }

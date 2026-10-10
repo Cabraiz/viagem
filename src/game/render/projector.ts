@@ -13,7 +13,7 @@ export class Projector {
   terrain?:TerrainField;
   constructor(view=0,terrain?:TerrainField){this.view=view;this.terrain=terrain;}
   get view(){return this.turn;}
-  set view(value:number){this.turn=normalizeView(value);}
+  set view(value:number){this.turn=normalizeView(value);this.rebase();}
   /** Rotated world coordinates around the island center (12,12), written into out. */
   private rotate(x:number,y:number,out:Pt){
     const dx=x-12,dy=y-12;
@@ -32,5 +32,14 @@ export class Projector {
     return out;
   }
   private scratch:Pt={x:0,y:0};
-  depth(x:number,y:number){const q=this.rotate(x,y,this.scratch);return (q.x+q.y)*100;}
+  private base=0;
+  private anchor?:Pt;
+  /** Depth origin (projection.ts viewDepth): undefined on the island; the endless world re-bases it near the hero. */
+  get origin(){return this.anchor;}
+  set origin(value:Pt|undefined){this.anchor=value&&{...value};this.rebase();}
+  private rebase(){
+    if(!this.anchor){this.base=0;return;}
+    const o=this.rotate(this.anchor.x,this.anchor.y,{x:0,y:0});this.base=o.x+o.y-24;
+  }
+  depth(x:number,y:number){const q=this.rotate(x,y,this.scratch);return (q.x+q.y-this.base)*100;}
 }

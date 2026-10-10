@@ -25,7 +25,7 @@ test('four turns restore the view and opposite camera reverses occlusion',()=>{
   assert.ok(viewDepth(a,0)<viewDepth(b,0));assert.ok(viewDepth(a,2)>viewDepth(b,2));
   for(const point of [...obstacles,SPAWN])assert.deepEqual(projectView(point,4),projectView(point,0));
 });
-test('entire island and tall trees fit portrait and landscape at every angle',()=>{
+test('overview (sandbox camera=ilha): entire island and tall trees fit portrait and landscape at every angle',()=>{
   for(let view=0;view<4;view++)for(const [w,h] of [[320,640],[390,844],[844,390],[1280,720],[640,320]]){
     const fit=fitIsland(w,h,view),bounds=ISLAND_VIEWS[view];
     for(const x of [bounds.left,bounds.right])for(const y of [bounds.top,bounds.bottom]){

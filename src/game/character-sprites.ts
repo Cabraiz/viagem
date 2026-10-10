@@ -3,8 +3,37 @@ import {spriteCatalog} from './sprite-catalog.ts';
 import {rotateVector} from './projection.ts';
 import {SpriteMotion,SPRITE_CLIPS,type Motion} from './sprite-motion.ts';
 
+/** Box of the drawn figure inside a 192 px frame (frame px): the union over the sheet's 18 frames. */
+export interface FigureBox {left:number;top:number;right:number;bottom:number}
+
 export class CharacterSprites {
   private requested=new Set<string>();
+  private figures=new Map<string,FigureBox|null>();
+  /**
+   * Where the figure really is in its frame (alpha > 20), all animation frames together, so the hero's screen box is
+   * the character and not the frame's empty margin (UX-zonas-tela audit, follow camera). Read once per class.
+   */
+  figure(id:string):FigureBox|undefined{
+    const key=`sprite:${id}`;
+    if(this.figures.has(id))return this.figures.get(id)??undefined;
+    if(!this.scene.textures.exists(key))return undefined;
+    let box:FigureBox|null=null;
+    try{
+      const image=this.scene.textures.get(key).getSourceImage() as CanvasImageSource&{width:number;height:number};
+      const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      if(ctx){
+        ctx.drawImage(image,0,0);const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+        let left=192,top=192,right=-1,bottom=-1;
+        for(let y=0;y<canvas.height;y++)for(let x=0;x<canvas.width;x++)if(data[(y*canvas.width+x)*4+3]>20){
+          const fx=x%192,fy=y%192;if(fx<left)left=fx;if(fx>right)right=fx;if(fy<top)top=fy;if(fy>bottom)bottom=fy;
+        }
+        if(right>=left)box={left,top,right:right+1,bottom:bottom+1};
+      }
+    }catch{box=null;}
+    this.figures.set(id,box);
+    return box??undefined;
+  }
   private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;x:number;y:number}>();
   constructor(private scene:Phaser.Scene){}
   queue(id:string){

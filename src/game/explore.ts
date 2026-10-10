@@ -108,8 +108,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
+  // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
+  let sceneReady=false;
+  const syncTurn=()=>{
+    const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
+    for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))if(button.disabled!==(!sceneReady||locked))button.disabled=!sceneReady||locked;
+  };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
-    if(!controller)return;reset();attacking=false;attackQueuedUntil=0;pause(false);
+    if(!controller||controller.scene.rotationLocked())return;reset();attacking=false;attackQueuedUntil=0;pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
     shell.dataset.cameraView=String(view);$('.explore-camera span').textContent=`${view+1} / 4`;
     $('.explore-canvas').focus();
@@ -171,6 +177,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           }
           $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name} ${player.hp}♥${player.online?'':' ↻'}`;return tag;}));
+          syncTurn();
           $('#coop-diagnostics').textContent=`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`;
         }
       },
@@ -181,7 +188,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         if(hud&&(phase==='combat'||phase==='result')){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
-      ready:()=>{for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.disabled=false;$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
+      ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);

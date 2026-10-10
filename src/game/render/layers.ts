@@ -457,7 +457,7 @@ export class HordeRenderer{
     n=this.outline(t,Math.max(.06,u));
     g.fillStyle(0xff8a3d,.22+.33*u).fillPoints(this.pts,true,true,n);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
-    // Line widths follow the UI scale: at whole-island zoom (~0.26) a fixed 8px world line is ~2px on the phone.
+    // Line widths follow the UI scale (≥ 1): under ~0.55 zoom (the old whole-island view) a fixed 8px world line got ~2px.
     // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
     const top=this.top,w=this.ui;

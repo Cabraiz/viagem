@@ -17,38 +17,40 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-stick.is-dragging{cursor:grabbing;background:color-mix(in srgb,var(--c-papel-claro) 19%,transparent)}
 .explore-stick.is-dragging span{background:color-mix(in srgb,var(--c-papel-claro) 69%,transparent)}
 .explore-stick:not(.is-dragging) span{transition:transform .1s ease-out}
-.explore-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--c-lilas);background:var(--c-papel-claro);z-index:4;text-align:center;padding:30px}
+.explore-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--c-papel);background:var(--c-lilas);z-index:4;text-align:center;padding:30px}
 .explore-loading[hidden]{display:none}
 .explore-paused::after{content:'Controles pausados. Mexe o joystick pra voltar.';position:absolute;top:20%;left:50%;transform:translateX(-50%);max-width:80%;width:max-content;padding:10px 16px;border-radius:var(--r-ficha);border:2px solid var(--c-papel);background:var(--c-ficha);color:var(--c-papel);font-size:14px;text-align:center;pointer-events:none}
 .settings-open .explore-paused::after{display:none}
-.explore-settings{box-sizing:border-box;width:min(440px,calc(100vw - 28px));max-width:none;max-height:calc(100dvh - 28px);margin:auto;padding:20px;border:2px solid var(--c-lilas);border-radius:var(--r-janela);background:var(--c-papel-claro);color:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);overflow:auto;overscroll-behavior:contain}
+.explore-settings{box-sizing:border-box;width:min(440px,calc(100vw - 28px));max-width:none;max-height:calc(100dvh - 28px);margin:auto;padding:20px;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-lilas);color:var(--c-papel);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);overflow:auto;overscroll-behavior:contain}
 .explore-settings::backdrop{background:var(--c-veu)}
 .explore-settings-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .explore-settings-heading h2{font:24px var(--f-cartaz);margin:0}
-.explore-settings button{min-height:44px;padding:10px 14px;border:2px solid var(--c-lilas);border-radius:var(--r-janela);background:var(--c-papel-claro);color:var(--c-lilas);font:inherit;font-size:14px;cursor:pointer}
+.explore-settings button{min-height:44px;padding:10px 14px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-lilas-escuro);color:var(--c-papel);font:inherit;font-size:14px;cursor:pointer}
 .explore-settings .explore-settings-close{min-width:44px;padding:8px;background:transparent;font-size:20px}
 .explore-settings-content{display:grid;gap:14px}
 .explore-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .explore-title{display:flex;gap:10px;align-items:center;min-width:0}
 .explore-title img{width:42px;height:42px;object-fit:contain;border-radius:50%;background:var(--c-papel);border:2px solid var(--c-lilas)}
-.explore-title h2{font:20px var(--f-cartaz);margin:0;color:var(--c-lilas)}
+.explore-title h2{font:20px var(--f-cartaz);margin:0;color:var(--c-papel)}
 .explore-title p{font-size:11px;margin:4px 0 0;overflow-wrap:anywhere}
-.explore-quest{padding:12px;border:1px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-papel-claro)}
-.explore-quest small{display:block;color:var(--c-lilas);font-size:10px;letter-spacing:.02em;font-weight:800}
+.explore-quest{padding:12px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu)}
+.explore-quest small{display:block;color:var(--c-lilas);font-size:10px;font-weight:800}
 .explore-quest strong{display:block;font:17px var(--f-cartaz);margin-top:5px}
 .explore-quest span{display:block;font-size:12px;color:var(--c-lilas);margin-top:5px}
 .explore-map{width:82px;height:82px;justify-self:center;border:3px solid var(--c-papel-claro);border-radius:50%;background:var(--cena-agua)}
 .explore-map svg{width:100%;height:100%}
 .explore-help{min-width:0;font-size:14px;line-height:1.5}
-.explore-help strong{display:block;font:18px var(--f-cartaz);color:var(--c-lilas);overflow-wrap:anywhere}
-.explore-help p{margin:5px 0;color:var(--c-lilas);font-size:13px}
-.explore-notice{font-size:13px;line-height:1.5;color:var(--c-lilas)}
-.explore-shell button:focus-visible,.explore-stick:focus-visible{outline:3px solid var(--c-lilas);outline-offset:3px}
+.explore-help strong{display:block;font:18px var(--f-cartaz);color:var(--c-papel);overflow-wrap:anywhere}
+.explore-help p{margin:5px 0;color:var(--c-papel);font-size:13px}
+.explore-notice{font-size:13px;line-height:1.5;color:var(--c-papel)}
+.explore-shell button:focus-visible,.explore-stick:focus-visible{outline:3px solid var(--c-amarelo);outline-offset:3px}
 #enter-island{display:block;margin:12px auto;width:100%}
-.explore-error{font-size:13px;color:var(--c-lilas);text-align:center}
+.explore-error{font-size:13px;color:var(--c-papel);text-align:center}
 @media(max-width:370px),(max-height:500px){.explore-controls{padding:16px max(18px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}.explore-stick{width:96px;height:96px}.explore-config{top:max(12px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right))}.explore-settings{padding:16px}}
 @media(prefers-reduced-motion:reduce){.explore-stick span{transition:none!important}}
 
-.explore-camera{position:absolute;left:max(14px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:3;display:flex;align-items:center;gap:6px;color:var(--c-papel);font:700 13px var(--f-sistema);text-shadow:var(--s-texto)}
+.explore-camera{position:absolute;left:max(14px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:3;display:flex;align-items:center;gap:6px;color:var(--c-papel);font:700 13px var(--f-sistema)}
+/* The view counter is a ficha, so "1 / 4" reads on light sand as well as on the dark sea (D-022). */
+.explore-camera span{padding:2px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);font-variant-numeric:tabular-nums}
 .explore-camera button{width:44px;height:44px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:30px var(--f-sistema);cursor:pointer;touch-action:manipulation}
 .explore-camera button:disabled{opacity:.4;cursor:wait}

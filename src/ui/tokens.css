@@ -4,25 +4,31 @@
 
 /* ---------- Fontes servidas pelo próprio site (public/fonts, OFL) ----------
    Subconjunto pt-BR (Latin-1 + pontuação) gerado do @fontsource 5.3.0 com pyftsubset: ~83 KB os 5 pesos.
-   O latin-ext da M PLUS só baixa se aparecer um caractere dele (apelido com ł, ş…). A Londrina não tem latin-ext. */
+   Cada unicode-range é o cmap real do arquivo (sem prometer glifo que não existe).
+   O latin-ext da M PLUS só baixa se aparecer um caractere dele (apelido com ł, ş…). A Londrina não tem latin-ext.
+   A M PLUS desenha a reticência (U+2026) como três pontos no meio da linha, que lê como o "A · B" proibido:
+   a família de sistema pega esse único glifo da Londrina (mesmo arquivo do peso 400, sem download extra). */
 @font-face{font-family:'Londrina Solid';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
-  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+  unicode-range:U+0020-007E,U+00A0-00AE,U+00B0-00FF,U+0152-0153,U+02C6,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122}
 @font-face{font-family:'Londrina Solid';font-style:normal;font-weight:900;font-display:swap;src:url(/fonts/londrina-solid-900.woff2) format('woff2');
-  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+  unicode-range:U+0020-007E,U+00A0-00AE,U+00B0-00FF,U+0152-0153,U+02C6,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400.woff2) format('woff2');
-  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700.woff2) format('woff2');
-  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800.woff2) format('woff2');
-  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400-latin-ext.woff2) format('woff2');
   unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700-latin-ext.woff2) format('woff2');
   unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800-latin-ext.woff2) format('woff2');
   unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
+  unicode-range:U+2026}
 
-:root{
+:root,::backdrop{
+  /* ::backdrop does not inherit custom properties before Safari 17.4 / Chrome 122, so the dialog veil needs its own copy. */
   /* ---------- Paleta: 6 cores nomeadas (§2.1) ---------- */
   --c-lilas:#5B3F8C;      /* Lilás Janela: moldura de sistema, texto sobre papel, tinta de carimbo */
   --c-papel:#EEDDB8;      /* Papel de Pão: suporte de conteúdo (etiqueta, janela, balão); nunca fundo de página */
@@ -33,7 +39,7 @@
 
   /* Misturas das 6 (sem matiz novo). */
   --c-papel-claro:color-mix(in srgb,var(--c-papel) 35%,#FFFFFF); /* "branco-papel": campo de texto, borda de adesivo */
-  --c-lilas-claro:color-mix(in srgb,var(--c-lilas) 55%,var(--c-papel)); /* só preenchimento de barra sobre Breu, nunca texto */
+  --c-lilas-escuro:color-mix(in srgb,var(--c-lilas) 72%,var(--c-breu)); /* fundo de poço e botão secundário dentro da janela lilás */
   --c-ficha:color-mix(in srgb,var(--c-breu) 88%,transparent);   /* corpo das fichas sobre o mapa */
   --c-veu:color-mix(in srgb,var(--c-breu) 62%,transparent);     /* fundo atrás de diálogo */
   --c-sombra:color-mix(in srgb,var(--c-breu) 45%,transparent);  /* sombra dura de janela */
@@ -91,7 +97,7 @@
 
   /* ---------- Aliases legados: saem no próximo ciclo (DSG-tokens) ---------- */
   --purple:var(--c-lilas);
-  --purple-deep:color-mix(in srgb,var(--c-lilas) 75%,var(--c-breu));
+  --purple-deep:var(--c-lilas-escuro);
   --ink:var(--c-breu);
   --paper:var(--c-papel-claro);
   --emblem:var(--c-emblema);

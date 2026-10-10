@@ -9,7 +9,7 @@
   --rh-t:var(--sa-t);--rh-b:var(--sa-b);--rh-l:var(--sa-l);--rh-r:var(--sa-r);
   --rh-ink:var(--c-breu);--rh-paper:var(--c-papel);--rh-paper-2:var(--c-papel-claro);--rh-line:var(--c-breu);--rh-purple:var(--c-lilas);
   --rh-glass:var(--c-ficha);--rh-glass-line:var(--c-papel);--rh-cream:var(--c-papel);--rh-gold:var(--c-amarelo);--rh-gold-deep:var(--c-breu);
-  --rh-mint:var(--c-cartolina);--rh-coral:var(--c-cone);--rh-hp:var(--c-cartolina);--rh-hp-low:var(--c-cone);--rh-xp:var(--c-lilas-claro);
+  --rh-mint:var(--c-cartolina);--rh-coral:var(--c-cone);--rh-hp:var(--c-cartolina);--rh-hp-low:var(--c-cone);--rh-xp:var(--c-lilas);
   --rh-shadow:var(--s-2);--rh-text-shadow:var(--s-texto);
   position:fixed;inset:0;z-index:var(--z-hud);pointer-events:none;overflow:hidden;
   font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);
@@ -27,13 +27,12 @@
 .rh-round{margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 166px);align-self:stretch;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:5px 12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
 .rh-round-label{font:400 var(--t-21)/1 var(--f-cartaz);white-space:nowrap}
 .rh-round-detail{font-size:var(--t-13);white-space:nowrap;font-variant-numeric:tabular-nums}
-.rh-round[data-phase=prepare]{background:var(--c-ficha);border-style:dashed}
 /* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
 .rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .6s ease-in-out infinite alternate}
 .rh-xp{position:relative;align-self:stretch;margin:20px calc(var(--rh-r) + 82px) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
 .rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:var(--s-2)}
 .rh-xp-track{flex:1;height:12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);overflow:hidden;box-shadow:var(--s-2)}
-.rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas-claro);transition:transform .25s ease-out}
+.rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
 .rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
 .rh-boss{align-self:center;width:min(560px,calc(100% - 2*var(--rh-l) - 16px));padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
 .rh-boss-name{display:block;text-align:center;font:400 var(--t-16)/1.05 var(--f-cartaz);margin-bottom:3px}
@@ -73,7 +72,8 @@
 .rh-member.rh-me .rh-member-ring{background:var(--c-lilas);box-shadow:0 0 0 2px var(--c-papel),var(--s-2)}
 .rh-member-hp{width:44px;height:6px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
-.rh-member-name{max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t-13);line-height:1.1}
+/* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
+.rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);text-shadow:none}
 .rh-member-badge{position:absolute;top:-4px;right:0;font-size:15px;line-height:1;filter:drop-shadow(0 1px 0 var(--c-breu))}
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums}
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
@@ -117,40 +117,41 @@
   .rh-marquee-title{font-size:clamp(21px,6.5vh,28px)}
   .rh-team{top:auto;bottom:var(--rh-b);left:50%;transform:translateX(-50%);flex-direction:row;gap:4px}
   .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:auto}
-  .rh-member{width:50px}
+  .rh-member{width:auto;min-width:50px}
   .rh-member-ring{width:40px;height:40px}
   .rh-member-hp{width:40px}
   .rh-member-timer{top:24px}
   .rh-alert{width:min(100%,300px);padding:4px 10px 5px}
 }
 /* ---------- Offer panel (non-blocking, above the joystick/attack row) ----------
-   The panel is a system window (Lilás edge, Papel inside); each choice is an etiqueta (Papel, Breu edge, 4px).
-   Round offers wear the Amarelo of "escolha"; level offers keep the Lilás. */
+   The panel is a system window (Lilás body, Breu edge, Papel inner line); each choice is an etiqueta (Papel, Breu edge,
+   4 px). Round offers get an Amarelo header band (escolha); level offers stay Lilás.
+   Text rule (DSG review): the effect (blurb) is never cut. Space runs out in this order: the card joke goes first,
+   then the seal (padrão/sorte), then the name wraps to two lines; in landscape the header chip goes too. */
 .rh-offer{
-  --of-accent:var(--c-lilas);--of-accent-deep:var(--c-lilas);--of-head:var(--c-papel);--of-fill:var(--c-lilas);
+  --of-head:transparent;--of-ink:var(--c-papel);--of-fill:var(--c-papel);
   position:absolute;left:var(--rh-l);right:var(--rh-r);bottom:calc(var(--rh-b) + 142px);
   max-width:520px;margin-inline:auto;padding:6px 7px 7px;border-radius:var(--r-janela);
-  background:var(--c-papel-claro);color:var(--c-breu);border:3px solid var(--of-accent);
-  box-shadow:var(--s-2),inset 0 0 0 2px var(--c-papel);
+  background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
+  box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
   pointer-events:auto;touch-action:manipulation;
 }
-.rh-offer[data-source=round]{--of-accent:var(--c-amarelo);--of-accent-deep:var(--c-lilas);--of-head:var(--c-amarelo);--of-fill:var(--c-lilas);outline:2px solid var(--c-breu);outline-offset:-1px}
+.rh-offer[data-source=round]{--of-head:var(--c-amarelo);--of-ink:var(--c-breu);--of-fill:var(--c-amarelo)}
 .rh-offer-in{animation:rh-offer-in .38s cubic-bezier(.2,1.4,.4,1) both}
 
-.rh-offer-head{position:relative;display:flex;align-items:center;gap:6px;min-height:26px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--of-head);text-shadow:none}
-.rh-offer-eyebrow{flex:none;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--of-accent-deep);color:var(--c-papel);font:800 var(--t-13)/1.2 var(--f-sistema)}
-.rh-offer-title{flex:1;min-width:0;font:400 var(--t-21)/1 var(--f-cartaz);color:var(--of-accent-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rh-offer[data-source=level] .rh-offer-title{color:var(--c-lilas)}
+.rh-offer-head{position:relative;display:flex;align-items:center;gap:6px;min-height:26px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--of-head);color:var(--of-ink);text-shadow:none}
+.rh-offer-eyebrow{flex:none;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-breu);color:var(--c-papel);font:800 var(--t-13)/1.2 var(--f-sistema)}
+.rh-offer-title{flex:1;min-width:0;font:400 var(--t-21)/1 var(--f-cartaz);color:var(--of-ink)}
 /* Queue badge sits on the panel edge like a sticker so the header keeps its room. */
 .rh-offer-queue{position:absolute;top:-21px;right:16px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-breu);color:var(--c-papel);border:2px solid var(--c-papel);font:800 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;box-shadow:var(--s-2);transform:rotate(3deg)}
-.rh-offer-time{flex:none;min-width:34px;text-align:right;font:800 var(--t-13)/1 var(--f-sistema);color:var(--of-accent-deep);font-variant-numeric:tabular-nums}
+.rh-offer-time{flex:none;min-width:34px;text-align:right;font:800 var(--t-13)/1 var(--f-sistema);color:var(--of-ink);font-variant-numeric:tabular-nums}
 /* Round offers get marquee bulbs on the header edges. */
 .rh-offer[data-source=round] .rh-offer-head{padding-inline:16px}
 .rh-offer[data-source=round] .rh-offer-head::before,.rh-offer[data-source=round] .rh-offer-head::after{content:'';position:absolute;top:4px;bottom:4px;width:6px;background:radial-gradient(circle,var(--c-breu) 2px,transparent 2.5px) 0 0/6px 7px repeat-y}
 .rh-offer[data-source=round] .rh-offer-head::before{left:4px}.rh-offer[data-source=round] .rh-offer-head::after{right:4px}
 
-.rh-offer-joke{margin:3px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rh-offer-deadline{height:7px;margin:4px 2px 6px;border-radius:var(--r-etiqueta);background:var(--c-trilho);overflow:hidden}
+.rh-offer-joke{margin:3px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+.rh-offer-deadline{height:7px;margin:4px 2px 6px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
 .rh-offer-deadline-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--of-fill);transition:transform .2s linear}
 .rh-offer-urgent .rh-offer-deadline-fill{background:var(--c-cone)}
 .rh-offer-urgent .rh-offer-deadline{animation:rh-offer-blink .5s ease-in-out infinite alternate}
@@ -161,37 +162,46 @@
 .rh-offer-cards[data-count='2'],.rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rh-offer-cards[data-count='1']{grid-template-columns:1fr}
 .rh-card{
-  position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:44px;padding:8px 6px 7px;
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:44px;padding:10px 6px 7px;
   border-radius:var(--r-etiqueta);border:2px solid var(--c-breu);background:var(--c-papel);color:var(--c-breu);
   box-shadow:var(--s-1);text-align:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   transition:transform .08s ease-out,box-shadow .08s ease-out,opacity .2s;
 }
 .rh-card:active{transform:translateY(2px) scale(.98);box-shadow:0 1px 0 var(--c-breu)}
-/* The default pick ("padrão") is marked by the flag text and a thicker Lilás edge, not by color alone. */
+/* The default pick ("padrão") is marked by the seal text and a thicker Lilás edge, not by color alone. */
 .rh-card-default{border-color:var(--c-lilas);box-shadow:0 0 0 1px var(--c-lilas),var(--s-1)}
-.rh-card-luck{border-color:var(--c-breu)}
 .rh-card-icon{font-size:26px;line-height:1.1;filter:drop-shadow(0 2px 0 var(--c-trilho))}
 .rh-card-body{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;width:100%}
-.rh-card-name{font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-breu);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.rh-card-level{align-self:center;padding:0 6px;border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.3 var(--f-sistema);background:var(--c-lilas);color:var(--c-papel)}
+.rh-card-name{font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-breu);text-wrap:balance}
+.rh-card-level{align-self:center;padding:0 6px;border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.3 var(--f-sistema);background:var(--c-lilas);color:var(--c-papel);white-space:nowrap}
 .rh-card[data-kind=new] .rh-card-level{background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
 .rh-card[data-kind=snack] .rh-card-level{background:var(--c-cartolina);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
 .rh-card[data-kind=evo] .rh-card-level{background:var(--c-breu);color:var(--c-amarelo)}
-.rh-card-blurb{font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.rh-card-joke{font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.rh-card-flags{position:absolute;top:-8px;right:4px;left:4px;display:flex;justify-content:flex-end;gap:3px;pointer-events:none}
+.rh-card-blurb{font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+.rh-card-joke{font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
+.rh-card-flags{position:absolute;top:-9px;right:4px;left:4px;display:flex;justify-content:flex-end;gap:3px;pointer-events:none}
 .rh-card-flag{padding:0 6px;border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.3 var(--f-sistema);white-space:nowrap;border:1px solid var(--c-breu);box-shadow:0 1px 0 var(--c-breu)}
 .rh-card-flag-default{background:var(--c-lilas);color:var(--c-papel)}
 .rh-card-flag-luck{background:var(--c-cartolina);color:var(--c-breu);margin-right:auto}
 
-/* 2x2: icon (with the level tag under it) on the left; name, blurb and joke on the right. */
-.rh-offer-cards[data-count='4'] .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:'icon name' 'icon blurb' 'tag joke';align-items:center;justify-items:start;column-gap:6px;row-gap:2px;text-align:left;padding:13px 6px 6px}
+/* 2 and 4 cards: icon (with the level tag under it) on the left; name and effect on the right. The joke goes first. */
+.rh-offer-cards[data-count='4'] .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:'icon name' 'icon blurb' 'tag blurb';align-items:start;justify-items:start;column-gap:6px;row-gap:2px;text-align:left;padding:12px 6px 6px}
 .rh-offer-cards[data-count='4'] .rh-card-body,.rh-offer-cards[data-count='2'] .rh-card-body{display:contents}
-.rh-offer-cards[data-count='4'] .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{grid-area:icon;justify-self:center;font-size:26px}
+.rh-offer-cards[data-count='4'] .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{grid-area:icon;justify-self:center}
 .rh-offer-cards[data-count='4'] .rh-card-level,.rh-offer-cards[data-count='2'] .rh-card-level{grid-area:tag;justify-self:center;padding-inline:5px}
-.rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='2'] .rh-card-name{grid-area:name;display:block;max-width:100%;font-size:var(--t-16);white-space:nowrap;text-overflow:ellipsis}
-.rh-offer-cards[data-count='4'] .rh-card-blurb,.rh-offer-cards[data-count='2'] .rh-card-blurb{grid-area:blurb;-webkit-line-clamp:2}
-.rh-offer-cards[data-count='4'] .rh-card-joke,.rh-offer-cards[data-count='2'] .rh-card-joke{grid-area:joke;-webkit-line-clamp:1}
+.rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='2'] .rh-card-name{grid-area:name;text-wrap:balance}
+.rh-offer-cards[data-count='4'] .rh-card-blurb,.rh-offer-cards[data-count='2'] .rh-card-blurb{grid-area:blurb}
+.rh-offer-cards[data-count='4'] .rh-card-joke,.rh-offer-cards[data-count='2'] .rh-card-joke{display:none}
+/* Bigger text (125%), both orientations: the header joke and chip go, then the seals; in the 2x2 the level chip
+   rides the top border in the seals' place, so name and effect get the whole card width. */
+:root[data-texto="125"] .rh-offer-joke,:root[data-texto="125"] .rh-offer-eyebrow,:root[data-texto="125"] .rh-card-flags{display:none}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr);grid-template-areas:'name' 'blurb';padding:11px 6px 3px}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-blurb{line-height:1.12}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-level{position:absolute;top:-11px;right:6px;box-shadow:0 0 0 1px var(--c-breu)}
+:root[data-texto="125"] .rh-offer-cards[data-count='4']{gap:9px 5px;padding-top:6px}
+/* The top bar grows with the text, so the team column and the alerts start lower. */
+@media (min-height:501px){:root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}}
 
 /* Pending: buttons disabled until the server drops the offer. The chosen etiqueta turns Amarelo (escolha). */
 .rh-offer-pending .rh-card{cursor:default}
@@ -202,58 +212,52 @@
 @keyframes rh-offer-in{0%{opacity:0;transform:translateY(24px) scale(.92)}100%{opacity:1;transform:none}}
 @keyframes rh-offer-blink{to{opacity:.45}}
 
-/* Landscape: right column between the top bar and the attack button, cards stacked. */
+/* Landscape: right column between the top bar and the skill button. No header chip and no jokes (VGM-043 keeps
+   3 cards ≥ 24 px above the skill button); rows are icon | name + level / effect. Four cards widen the column to a 2x2
+   that still ends left of the hero box (center ± 40 px). */
 @media (max-height:500px){
-  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 68px);bottom:calc(var(--rh-b) + 112px);width:280px;max-width:none;margin:0;padding:5px 6px 6px;display:flex;flex-direction:column;border-radius:var(--r-janela)}
+  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 68px);bottom:calc(var(--rh-b) + 112px);width:290px;max-width:none;margin:0;padding:5px 6px 6px;display:flex;flex-direction:column}
+  .rh-offer[data-count='4']{top:calc(var(--rh-t) + 52px);width:min(370px,calc(50vw - 44px - var(--rh-r)))}
+  /* Four cards need the column's full height: the XP bar steps left (after the camera) so the panel can rise
+     next to it instead of covering it. */
+  .rh:has(.rh-offer[data-count='4']:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(50vw - 44px - var(--rh-l) - 166px)}
   .rh-offer-in{animation-name:rh-offer-in-side}
-  .rh-offer-head{min-height:22px;padding-block:2px;gap:5px}
-  .rh-offer-eyebrow{padding-inline:5px}
-  .rh-offer-title{font-size:var(--t-16)}
+  .rh-offer-head{min-height:22px;padding-block:2px;gap:5px;flex:none}
+  .rh-offer-eyebrow{display:none}
+  .rh-offer-title{font-size:var(--t-21)}
   .rh-offer[data-source=round] .rh-offer-head{padding-inline:12px}
   .rh-offer[data-source=round] .rh-offer-head::before{left:3px}.rh-offer[data-source=round] .rh-offer-head::after{right:3px}
   .rh-offer-queue{top:-21px;right:12px}
-  .rh-offer[data-count='4'] .rh-offer-joke{display:none}
-  .rh-offer-joke{margin-top:2px}
-  /* VGM-043: the header joke goes in landscape so 3 cards (44 px each) end ≥ 24 px above the skill button. */
+  /* VGM-043: the header joke goes in landscape so 3 cards end ≥ 24 px above the skill button. */
   .rh-offer-joke{display:none}
   .rh-offer-deadline{height:5px;margin:3px 2px 5px;flex:none}
-  .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:minmax(44px,1fr);gap:5px;container:rh-cards/size}
-  .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(44px,1fr)}
-  .rh-card,.rh-offer-cards[data-count='2'] .rh-card{display:flex;flex-direction:row;align-items:center;text-align:left;gap:7px;padding:6px 7px 5px}
-  .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon{font-size:22px}
-  .rh-offer-cards[data-count='2'] .rh-card-level{justify-self:end;padding-inline:7px}
-  .rh-card-body,.rh-offer-cards[data-count='2'] .rh-card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:5px;row-gap:1px;justify-items:start}
-  .rh-card-name{display:block;max-width:100%;white-space:nowrap;text-overflow:ellipsis;font-size:var(--t-16)}
-  .rh-card-level{align-self:center;justify-self:end}
-  .rh-card-blurb{grid-column:1/-1;-webkit-line-clamp:1}
-  .rh-card-joke{grid-column:1/-1;-webkit-line-clamp:1}
-  .rh-card{padding-top:7px}
-  /* A flag rides the top border; the card drops its content below it so the level chip stays visible. */
-  .rh-card:has(.rh-card-flag){padding-top:12px}
-  /* Flags ride the top border after the icon; the level chip keeps the right side. */
-  .rh-card-flags{top:-13px;justify-content:flex-start;left:38px;right:8px}
+  .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:auto;align-content:start;gap:7px}
+  .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto}
+  .rh-card,.rh-offer-cards[data-count='2'] .rh-card,.rh-offer-cards[data-count='4'] .rh-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'icon name tag' 'icon blurb blurb';align-items:center;justify-items:start;column-gap:6px;row-gap:1px;text-align:left;padding:8px 7px 5px}
+  .rh-card-body,.rh-offer-cards[data-count='2'] .rh-card-body{display:contents}
+  .rh-card-icon,.rh-offer-cards[data-count='2'] .rh-card-icon,.rh-offer-cards[data-count='4'] .rh-card-icon{grid-area:icon;font-size:22px;align-self:center}
+  .rh-card-name{grid-area:name}
+  .rh-card-level,.rh-offer-cards[data-count='2'] .rh-card-level,.rh-offer-cards[data-count='4'] .rh-card-level{grid-area:tag;justify-self:end;align-self:start}
+  .rh-card-blurb{grid-area:blurb}
+  .rh-card-joke{display:none}
+  /* Seals ride the top border after the icon; the level chip keeps the right side. */
+  .rh-card-flags{top:-11px;justify-content:flex-start;left:34px;right:8px}
   .rh-card-flag-luck{margin-right:0}
-  /* Three stacked rows only fit name + blurb; the offer joke line above keeps the laugh. */
-  .rh-offer-cards[data-count='3'] .rh-card-joke{display:none}
-  /* 2x2 in the narrow column: icon over name, no blurb. */
-  .rh-offer-cards[data-count='4'] .rh-card{display:flex;flex-direction:column;justify-content:center;text-align:center;gap:1px;padding:7px 4px 4px}
-  .rh-offer-cards[data-count='4'] .rh-card-icon{font-size:20px}
-  .rh-offer-cards[data-count='4'] .rh-card-body{display:flex;flex-direction:column;align-items:center;gap:1px}
-  .rh-offer-cards[data-count='4'] .rh-card-flags{top:-9px;justify-content:flex-end;left:3px;right:3px}
-  .rh-offer-cards[data-count='4'] .rh-card-flag-luck{margin-right:auto}
-  .rh-offer-cards[data-count='4'] .rh-card-level{align-self:center}
-  .rh-offer-cards[data-count='4'] .rh-card-blurb{display:none}
-  /* 13 px text: the narrow 2x2 only holds icon, name and level; the joke stays in the offer line above. */
-  .rh-offer-cards[data-count='4'] .rh-card-joke{display:none}
-  .rh-offer-cards[data-count='4'] .rh-card{padding-top:10px}
-}
-/* Short phones / notch insets: when the card area cannot hold two full 2x2 rows (or three rows with
-   blurbs), drop the per-card extra line instead of letting it spill past the card border. */
-@container rh-cards (max-height:146px){
-  .rh-offer-cards[data-count='4'] .rh-card-joke{display:none}
-}
-@container rh-cards (max-height:130px){
-  .rh-offer-cards[data-count='3'] .rh-card-blurb{-webkit-line-clamp:1}
+  /* 2x2: the icon goes above so name and effect get the whole card width. */
+  .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name tag' 'blurb blurb';padding:9px 6px 5px}
+  .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
+  .rh-offer-cards[data-count='4'] .rh-card-flags{display:none}
+  .rh-offer-cards[data-count='4']{gap:5px}
+  .rh-offer[data-count='4'] .rh-offer-deadline{margin:2px 2px 4px}
+  .rh-offer-cards[data-count='4'] .rh-card{padding:6px 6px 5px}
+  /* 125% text: every offer takes the wide, tall column and the compact cards; the title steps down one size. */
+  :root[data-texto="125"] .rh-offer{top:calc(var(--rh-t) + 52px);width:min(370px,calc(50vw - 44px - var(--rh-r)))}
+  :root[data-texto="125"] .rh:has(.rh-offer:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(50vw - 44px - var(--rh-l) - 166px)}
+  :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
+  :root[data-texto="125"] .rh-offer-cards{gap:5px}
+  :root[data-texto="125"] .rh-offer .rh-offer-deadline{margin:2px 2px 4px}
+  :root[data-texto="125"] .rh-card{padding:5px 6px 4px}
+  :root[data-texto="125"] .rh-card-flags{display:none}
 }
 @keyframes rh-offer-in-side{0%{opacity:0;transform:translateX(40px) scale(.94)}100%{opacity:1;transform:none}}
 
@@ -320,7 +324,7 @@
 .rh-rcard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px 2px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro)}
 .rh-rstat{display:flex;flex-direction:column;align-items:center;min-width:0}
 .rh-rstat-value{font:400 var(--t-16)/1 var(--f-cartaz);color:var(--c-lilas);font-variant-numeric:tabular-nums}
-.rh-rstat-label{font:700 var(--t-13)/1.1 var(--f-sistema);color:var(--c-breu);max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.rh-rstat-label{font:700 var(--t-13)/1.25 var(--f-sistema);color:var(--c-breu)}
 
 .rh-rcard-awards{display:flex;flex-direction:column;gap:4px}
 .rh-award{display:flex;align-items:flex-start;gap:5px;min-width:0;padding:3px 6px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:1px solid var(--c-lilas)}
@@ -353,7 +357,7 @@
 /* Confetti (victory) / rain (defeat); purely decorative */
 .rh-result-fx{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .rh-confetti{position:absolute;top:-16px;left:var(--x);width:8px;height:12px;border-radius:var(--r-etiqueta);background:var(--c);opacity:0}
-.rh-result[data-outcome=defeat] .rh-confetti{width:3px;height:14px;background:var(--c-lilas-claro)}
+.rh-result[data-outcome=defeat] .rh-confetti{width:3px;height:14px;background:var(--c-papel);opacity:.5}
 
 /* Entrance */
 .rh-result-in{animation:rh-result-fade .3s ease-out both}
@@ -424,7 +428,7 @@
   .rh:has(.rh-offer:not([hidden])) .rh-member-badge{font-size:13px}
   /* 3+ players: four stats in a 2x2 ("18,4k dano"), since four 13 px labels do not fit one row. */
   .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-stats{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:1px}
-  .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rstat{flex-direction:row;align-items:baseline;justify-content:center;gap:4px}
+  .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rstat{flex-direction:row;flex-wrap:wrap;align-items:baseline;justify-content:center;column-gap:4px}
 }
 
 @media (prefers-reduced-motion:reduce){

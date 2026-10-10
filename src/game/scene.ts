@@ -13,6 +13,7 @@ import {HordeRenderer} from './render/layers.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind} from './render/keys.ts';
 import type {RunView} from './sim/view.ts';
+import {token,whenFontsReady} from '../ui/tokens.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -250,7 +251,7 @@ export class IslandScene extends Phaser.Scene {
     for(const player of view.players){
       if(player.id===net.id)continue;
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:'system-ui',fontSize:'11px',color:'#51425e',backgroundColor:'#fff4d9',padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'700',color:token('--c-breu'),backgroundColor:token('--c-papel'),padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player);
       objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
@@ -326,7 +327,8 @@ export class IslandScene extends Phaser.Scene {
       polygon(g,[{x:2,y:-88},{x:42,y:-80},{x:31,y:-67},{x:2,y:-70}],0xa28dc5);
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
-    const label=this.add.text(p.x,p.y+28,landmarks[index].name,{fontFamily:'Georgia, serif',fontSize:'13px',color:'#625650',backgroundColor:'#f7edc9',padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(this.depth(l)+2);
+    const label=this.add.text(p.x,p.y+28,landmarks[index].name,{fontFamily:token('--f-cartaz'),fontSize:'16px',color:token('--c-breu'),backgroundColor:token('--c-papel'),padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(this.depth(l)+2);
+    whenFontsReady(()=>label.updateText());
     label.setAlpha(.94);this.signs.push({point:l,graphic:g,label});
   }
 }

@@ -1,8 +1,8 @@
 :root { --section-nav-height: 56px; }
 html { scroll-padding-top: var(--section-nav-height); }
-.section-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; padding: 6px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background: color-mix(in srgb,var(--c-papel-claro) 95%,transparent); border-bottom: 1px solid var(--c-papel); backdrop-filter: blur(12px); }
-.section-nav a { text-decoration: none; font-size: 12px; font-weight: 800; color: var(--c-lilas); border: 1px solid transparent; border-radius: var(--r-janela); padding: 11px 18px; min-height: 40px; }
-.section-nav a[aria-current] { background: var(--c-papel-claro); border-color: var(--c-papel); color: var(--c-lilas); }
+.section-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; padding: 6px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background: var(--c-lilas-escuro); border-bottom: 2px solid var(--c-breu); backdrop-filter: blur(12px); }
+.section-nav a { text-decoration: none; font-size: 12px; font-weight: 800; color: var(--c-papel); border: 1px solid transparent; border-radius: var(--r-janela); padding: 11px 18px; min-height: 40px; }
+.section-nav a[aria-current] { background: var(--c-papel); border-color: var(--c-breu); color: var(--c-lilas); }
 .section-nav .sheet-link { display: none; }
 .world { padding-top: 0; padding-bottom: 0; }
 .journey-screen { min-height: calc(100svh - var(--section-nav-height)); min-height: calc(100dvh - var(--section-nav-height)); padding: 22px 0 12px; display: flex; flex-direction: column; gap: 18px; }
@@ -14,8 +14,8 @@ html { scroll-padding-top: var(--section-nav-height); }
 .journey-screen .portrait { min-height: 180px; aspect-ratio: auto; }
 .journey-screen .character-sheet { display: flex; flex-direction: column; }
 .journey-screen .selection-footer { margin-top: auto; }
-.section-next { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; color: var(--c-lilas); text-decoration: none; font-size: 12px; font-weight: 800; }
-.section-next span { font-size: 20px; color: var(--c-lilas); }
+.section-next { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; color: var(--c-papel); text-decoration: none; font-size: 12px; font-weight: 800; }
+.section-next span { font-size: 20px; color: var(--c-amarelo); }
 .journey-screen .roster { margin-top: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; }
 .journey-screen .roster-tools { margin: 0; }
 .journey-screen .class-list { flex: 1; grid-auto-rows: minmax(114px,1fr); }
@@ -23,7 +23,7 @@ html { scroll-padding-top: var(--section-nav-height); }
 .journey-screen .card-portrait { width: clamp(76px,11vh,150px); height: clamp(76px,11vh,150px); max-width: 100%; }
 .journey-screen .roster-pagination { margin-top: 0; }
 .journey-screen .page-footer { padding-top: 0; }
-.section-heading h2 { font: 400 28px/1.1 var(--f-cartaz); color: var(--c-lilas); margin: 3px 0 0; }
+.section-heading h2 { font: 400 28px/1.1 var(--f-cartaz); color: var(--c-papel); margin: 3px 0 0; }
 @media (min-width:621px) and (max-height:950px) {
   .journey-screen { gap: 10px; padding-top: 12px; }
   .journey-screen .wordmark { font-size: 35px; }
@@ -56,4 +56,4 @@ html { scroll-padding-top: var(--section-nav-height); }
 
 @media(max-width:620px) and (max-height:900px) { #ficha .sprite-preview { min-height:132px; } }
 #enter-island { display:block; width:100%; margin:12px auto; }
-#explore-error { color:var(--c-lilas); font-size:13px; text-align:center; }
+#explore-error { color:var(--c-papel); font-size:13px; text-align:center; }

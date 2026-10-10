@@ -1,9 +1,9 @@
 {
- "note": "Débito de emoji/✦ em código (DSG-icones-sistema, DSG-adesivos-itens). Só pode descer.",
+ "note": "Débito de emoji/✦ em código (DSG-icones-sistema, DSG-adesivos-itens). Tem de bater: subir falha, e descer sem baixar o número aqui também falha.",
  "emoji": {
   "src/game/audio/controls.ts": 5,
   "src/game/audio/recipes.ts": 12,
-  "src/game/explore.ts": 4,
+  "src/game/explore.ts": 3,
   "src/game/fun/emotes.ts": 5,
   "src/game/hud/awards.ts": 18,
   "src/game/hud/items.ts": 19,
@@ -11,8 +11,9 @@
   "src/game/hud/result.ts": 2,
   "src/game/hud/team.ts": 4,
   "src/game/lobby.ts": 3,
-  "src/game/scene.ts": 2,
+  "src/game/scene.ts": 1,
   "src/game/sim/passives.ts": 8,
+  "src/game/terrain/chunks.ts": 1,
   "src/game/world.ts": 1
  }
 }

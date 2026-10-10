@@ -93,9 +93,9 @@ test('event tally counts each eventId once and ignores late or repeated events',
 
 test('round marquee: absurd name and modifier, boss round, interval joke',()=>{
   const modifier=modifierLabel(MODIFIERS[0]);
-  assert.deepEqual(marqueeFor({index:3,phase:'wave',name:ROUND_NAMES[0],modifier}),{kicker:'ROUND 3/10',title:ROUND_NAMES[0],subtitle:modifier,tone:'round'});
+  assert.deepEqual(marqueeFor({index:3,phase:'wave',name:ROUND_NAMES[0],modifier}),{title:ROUND_NAMES[0],subtitle:modifier,tone:'round'});
   const boss=marqueeFor({index:10,phase:'wave',name:BOSS_ROUND_NAMES[0]})!;
-  assert.equal(boss.tone,'boss');assert.equal(boss.kicker,'ROUND 10/10 · CHEFE');assert.equal(boss.title,BOSS_ROUND_NAMES[0]);assert.ok(boss.subtitle);
+  assert.equal(boss.tone,'boss');assert.equal('kicker' in boss,false);assert.equal(boss.title,BOSS_ROUND_NAMES[0]);assert.ok(boss.subtitle);
   assert.equal(marqueeFor({index:2,phase:'wave'})!.title,'Round 2');
   assert.equal(marqueeFor({index:4,phase:'prepare'})!.title,'Intervalo!');
   assert.equal(marqueeFor({index:4,phase:'end'}),undefined);

@@ -16,8 +16,10 @@
 .fun-tone-come{--fun-accent:var(--c-cartolina)}.fun-tone-come .fun-balloon-icon{animation:fun-nudge .45s ease-in-out 3}
 .fun-tone-sorry .fun-balloon-icon{animation:fun-droop 1.2s ease-in-out both}
 
-/* Emote button sits above the attack button; the fan opens as an arc toward the upper left. */
-.fun-emotes{--size:48px;--radius:140px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + 17px));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + 96px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* Emote button sits above the skill button with the 24 px thumb gap (UX-zonas-tela; the skill grows at 125%);
+   the fan opens as an arc toward the upper left. Portrait radius 128: "Foi mal" (straight left) ends ≥ 24 px from the
+   joystick and the 62 px buttons still do not touch (chord 66 px). */
+.fun-emotes{--size:48px;--radius:128px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + 17px));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala,1) + 24px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .fun-emote-toggle{position:relative;width:var(--size);height:var(--size);padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);font-size:22px;line-height:1;box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;touch-action:manipulation}
 .fun-emotes.is-open .fun-emote-toggle{background:var(--c-lilas)}
 .fun-emotes.is-cooling .fun-emote-toggle{background:conic-gradient(var(--c-breu) calc(var(--cooldown)*360deg),var(--c-ficha) 0)}
@@ -28,7 +30,7 @@
 .fun-emotes.is-open .fun-emote{pointer-events:auto;opacity:1;transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(1)}
 .fun-emotes.is-open .fun-emote:not(:disabled):active{background:var(--c-amarelo);transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(.92)}
 .fun-emotes.is-open .fun-emote:disabled{opacity:.45;filter:grayscale(.6);cursor:default}
-@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:136px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + 18px));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + 92px))}}
+@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:136px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + 18px));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala,1) + 24px))}}
 
 @keyframes fun-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes fun-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}

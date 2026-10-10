@@ -11,9 +11,11 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {Projector} from './render/projector.ts';
-import {ENEMY_ART,ELITE_SCALE,enemyKind} from './render/keys.ts';
+import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
 import type {RunView} from './sim/view.ts';
 import {token,whenFontsReady} from '../ui/tokens.ts';
+import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
+import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -79,6 +81,15 @@ export class IslandScene extends Phaser.Scene {
   private stateVersion=-1;
   private offersVersion=-1;
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Ring, contour, mini health bar and "Você" arrow of the local hero; see-through copies over canopies (UX-voce-e-dano). */
+  private you?:YouMarkers;
+  private marks:HeroMark[]=[];
+  private selfCovered=false;
+  private lastPhase?:string;
+  private lastFeet?:Point;
+  private facing=Math.PI/2;
+  /** Screen area left for play once the HUD zones are out (UX-zonas-tela), in CSS px; the follow camera centers on it (D-019). */
+  usefulArea?:{x:number;y:number;width:number;height:number};
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
@@ -95,8 +106,10 @@ export class IslandScene extends Phaser.Scene {
     this.drawTreeShadows();
     landmarks.forEach((l,i)=>this.drawLandmark(l,i));
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
-    this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95);
+    // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
+    this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
+    this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
@@ -117,7 +130,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id)});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
-      const release=()=>{this.horde?.destroy();this.horde=undefined;};
+      const release=()=>{this.horde?.destroy();this.horde=undefined;this.you?.destroy();this.you=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.fit();this.place();
@@ -153,14 +166,37 @@ export class IslandScene extends Phaser.Scene {
   }
   private place(){
     const p=this.project(this.position),depth=this.depth(this.position);
-    const bob=0;
-    this.actor.setPosition(p.x,p.y+bob).setDepth(depth+1);
+    // Canopies soften only when they cover the hero; feet still define scene depth.
+    let covered=false;
+    for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
+    // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
+    // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
+    this.selfCovered=covered;
+    this.actor.setPosition(p.x,p.y).setDepth(covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
-    // Canopies soften only when they cover the hero; feet still define scene depth.
-    for(const prop of this.props){const q=this.project(prop.point);const front=this.depth(prop.point)>this.depth(this.position);
-      prop.object.setAlpha(front&&Math.abs(q.x-p.x)<(prop.tree?128*prop.tree.height/prop.tree.pixelHeight:58)&&q.y>p.y&&q.y-p.y<(prop.tree?.height??105)?.55:1);
-    }
+  }
+  /** Whether a prop drawn in front of the point `p` (screen) at `depth` covers a sprite standing there. */
+  private propCovers(prop:{point:Point;tree?:TreeArt},p:Point,depth:number){
+    const q=this.project(prop.point);
+    return canopyCovers(p,{x:q.x,y:q.y,front:this.depth(prop.point)>depth,halfWidth:prop.tree?128*prop.tree.height/prop.tree.pixelHeight:58,height:prop.tree?.height??105});
+  }
+  private treeCovers(p:Point,depth:number){
+    for(const prop of this.props)if(prop.tree&&this.propCovers(prop,p,depth))return true;
+    return false;
+  }
+  /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
+  private drawYou(time:number){
+    if(!this.you||!this.actor)return;
+    const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
+    const p=this.project(this.position);
+    // The ring's beak points where the hero last moved on screen.
+    if(this.lastFeet)this.facing=facingFrom(p.x-this.lastFeet.x,p.y-this.lastFeet.y,this.facing);
+    this.lastFeet=p;
+    this.marks.unshift({id:'self',sprite:this.actor,self:true,feet:p,covered:this.selfCovered,facing:this.facing,
+      hp:self?.hp??1,maxHp:state?.maxHp??(self?Math.max(self.hp,1):1),downed:!!state?.downed||(!!self&&self.hp<=0)});
+    this.you.update(time,this.cameras.main.zoom,this.marks);
+    this.marks.length=0;
   }
   update(_time:number,delta:number){
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
@@ -168,8 +204,8 @@ export class IslandScene extends Phaser.Scene {
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(_time,delta);return;}
-    if(this.paused)return;
+    if(this.hooks.net){this.updateCoop(_time,delta);this.drawYou(_time);return;}
+    if(this.paused){this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
     const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
@@ -183,6 +219,8 @@ export class IslandScene extends Phaser.Scene {
     for(let i=0;i<landmarks.length;i++)if(!this.discovered.has(i)&&Math.hypot(this.position.x-landmarks[i].x,this.position.y-landmarks[i].y)<1.15){this.discovered.add(i);this.hooks.discovered(i);}
     this.stamp+=delta;
     if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
+    // After the move, so the ring is never a frame behind the hero.
+    this.drawYou(_time);
   }
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
   private enemyAt(p:Point){
@@ -197,6 +235,15 @@ export class IslandScene extends Phaser.Scene {
     }
     return best;
   }
+  private icons=new Map<string,string>();
+  /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
+  critterIcon(kind:string){
+    // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the gosma and name the wrong critter.
+    if(!isEnemyKind(kind))return undefined;
+    let url=this.icons.get(kind);
+    if(url===undefined){const key=enemyTexture(kind);url=this.textures.exists(key)?this.textures.getBase64(key):'';if(url)this.icons.set(kind,url);}
+    return url||undefined;
+  }
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
   heroScreenRect(){
     if(!this.actor)return undefined;
@@ -205,6 +252,9 @@ export class IslandScene extends Phaser.Scene {
   }
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
+    const phase=net.run?.phase;
+    if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
+    this.lastPhase=phase;
     const axis=this.paused?{x:0,y:0}:this.hooks.direction();
     const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
     const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
@@ -216,6 +266,7 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
+      if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
       this.horde?.push(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
@@ -247,17 +298,18 @@ export class IslandScene extends Phaser.Scene {
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     this.actor.setAlpha(!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4);
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
     for(const player of view.players){
       if(player.id===net.id)continue;
       let objects=this.remoteActors.get(player.id);
       if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'700',color:token('--c-breu'),backgroundColor:token('--c-papel'),padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
-      const q=this.project(player),depth=this.depth(player);
-      objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
+      const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
+      objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
+      if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),status=player.spectator?'assistindo':state?.eliminated?'fora':state?.downed?'caído':player.hp+'♥';
-      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${status}${player.online?'':' · voltando'}`);
+      objects.label.setPosition(q.x,q.y+15).setDepth(covered?depth+2:ALLY_DEPTH+1).setText(`${player.name} · ${status}${player.online?'':' · voltando'}`);
     }
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
@@ -351,7 +403,8 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
         return {id:e.id,...screen({x:q.x,y:q.y-(art.hover+art.height*art.originY*.5)*size})};
       });
       const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];
-      return {view:s.view,zoom:cam.zoom,target:s.attackTarget,hero:screen(s.project(s.position)),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats()};
+      const you=(scene as unknown as {you?:YouMarkers}).you;
+      return {view:s.view,zoom:cam.zoom,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

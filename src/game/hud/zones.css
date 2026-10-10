@@ -1,0 +1,3 @@
+/* UX-zonas-tela (game CSS). The debug overlay lives in zones-debug.css, loaded only in dev with ?zonas. */
+/* Fallback while the camera does not follow (UX-zonas-tela): a status readout the hero walked under goes see-through. */
+.rh .rh-veiled{opacity:.3}

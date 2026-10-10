@@ -38,7 +38,9 @@ export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string){
   player.target=undefined;
   player.invulnerableUntil=undefined;
   player.downed={sinceTick:ctx.tick,bleedOutTick:ctx.tick+BLEED_OUT_TICKS,progress:0};
-  ctx.emit(by===undefined?{type:'downed',player:player.id}:{type:'downed',player:player.id,by});
+  // `by` is the enemy id that dealt the last hit (contact, telegraph owner or projectile owner); its kind names the cause.
+  const source=by===undefined?undefined:ctx.enemies.get(by)?.kind;
+  ctx.emit(by===undefined?{type:'downed',player:player.id}:source===undefined?{type:'downed',player:player.id,by}:{type:'downed',player:player.id,by,source});
   return true;
 }
 

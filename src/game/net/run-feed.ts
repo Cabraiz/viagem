@@ -6,7 +6,7 @@
  */
 import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,TelegraphView} from '../sim/view.ts';
 import type {LevelOffer,PickupKind,SimEvent} from '../sim/types.ts';
-import type {EnemyWire,PlayerExtraWire,PlayerWire,Snapshot} from './shared.ts';
+import {unpackStats,type EnemyWire,type PlayerExtraWire,type PlayerWire,type Snapshot} from './shared.ts';
 
 type StampedEvent=SimEvent&{eventId:number};
 
@@ -112,12 +112,14 @@ export class JsonRunFeed implements RunFeed {
   private syncExtra(p:PlayerRunView){
     const extra=this.extras.get(p.id);
     if(!extra)return;
-    const [,maxHp,flags,progress,bleedOutTick,weapons,passives]=extra;
+    const [,maxHp,flags,progress,bleedOutTick,weapons,passives,stats]=extra;
     p.maxHp=Math.max(1,maxHp);
     p.downed=flags&1?{progress,bleedOutTick}:undefined;
     p.eliminated=flags&2?true:undefined;
     p.weapons=weapons.map(([id,level])=>({id,level}));
     p.passives=passives.map(([id,level])=>({id,level}));
+    // Server run counters (award-stats-server): the result screen trusts these over its own event tally.
+    if(Array.isArray(stats)&&stats.length>=9&&stats.every(n=>Number.isFinite(n)))p.stats=unpackStats(stats);
   }
 
   private applyEnemy(w:EnemyWire){

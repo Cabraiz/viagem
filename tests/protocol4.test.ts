@@ -119,7 +119,7 @@ test('a full frame round-trips every field within quantization',()=>{
   assert.equal(res.view.wave?.label,'Round do Boleto Vencido');
   const p1=res.view.players.find(p=>p.id==='uuid-1')!;
   assert.equal(p1.name,'Zé do Pavê 😂');near(p1.downed!.progress,.4,1/255,'progress');assert.equal(p1.downed!.bleedOutTick,1400);
-  assert.deepEqual(p1.stats,{damage:1234,kills:56,revives:2,pickups:90});
+  assert.deepEqual(p1.stats,{damage:1234,kills:56,revives:2,pickups:90,downs:0,heals:0,chests:0,magnets:0,evolves:0},'missing counters travel as 0');
   const p2=res.view.players.find(p=>p.id==='uuid-2')!;assert.equal(p2.eliminated,true);assert.equal(p2.spectator,true);
   // Events keep the server's ids, translate entity ids and round-trip their payloads.
   assert.deepEqual(res.view.events.map(e=>e.eventId),[7,8,9,10,11,12,13,14,15,16,17]);
@@ -372,4 +372,271 @@ test('long strings are clipped the same way on both sides',()=>{
   w.view.tick++;
   const r2=dec.decode(enc.encode(w.view));assert.ok(r2.ok);
   assert.equal(r2.view.players[0].name,name);
+});
+
+// ---------- Wide map and area of interest (NEW-20261009-ORQ-rede-mapa-grande) ----------
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/game/sim/offscreen.ts';
+import {POS_LIMIT,SEND_EVERY,sendSlot,sendsOn,type WorldDescriptor} from '../src/game/net/protocol4.ts';
+
+const q=(v:number)=>Math.round(v*POS_SCALE)/POS_SCALE;
+const ENDLESS:WorldDescriptor={kind:'infinito',terrainVersion:1,generatorVersion:1,seed:4242,signature:'a1b2c3d4'};
+/** A busy round around (cx, cy): the viewer `uuid-0` there, an ally across the map, the base at the origin. */
+function farWorld(rng:Rng,cx:number,cy:number,enemies=120):ServerWorld{
+  const w=busyWorld(rng,enemies),v=w.view;
+  const shift=<T extends {x:number;y:number}>(e:T)=>{e.x+=cx-12;e.y+=cy-12;return e;};
+  v.enemies.forEach(shift);v.pickups.forEach(shift);v.projectiles.forEach(shift);v.telegraphs.forEach(shift);
+  v.players.forEach((p,i)=>{p.x=cx+i*.5;p.y=cy;});
+  v.players[5]={...v.players[5],x:-cx,y:-cy}; // an ally on the other side of the world
+  v.structures=[{id:'muralha',kind:'muralha',x:0,y:0,hp:800,maxHp:1000}];
+  (v as FrameInput).world=ENDLESS;
+  return w;
+}
+function assertExact(decoded:RunView,src:FrameInput,ids:WireIds,msg:string){
+  for(const section of ['enemies','pickups','telegraphs','structures'] as const){
+    const got=new Map((decoded[section] as {id:string;x:number;y:number}[]).map(e=>[e.id,e]));
+    for(const e of src[section] as {id:string;x:number;y:number}[]){
+      const d=got.get(ids.label(section,e.id));
+      if(!d)continue; // out of interest
+      assert.equal(d.x,q(e.x),`${msg} ${section} ${e.id} x`);assert.equal(d.y,q(e.y),`${msg} ${section} ${e.id} y`);
+    }
+  }
+  for(const p of src.players as PlayerWireView[]){
+    const d=decoded.players.find(o=>o.id===p.id) as PlayerWireView;
+    assert.equal(d.x,q(p.x!),`${msg} player ${p.id} x`);assert.equal(d.y,q(p.y!),`${msg} player ${p.id} y`);
+  }
+}
+
+test('wide map: positions round-trip exactly at ±10 000 units, near the viewer and across the world',()=>{
+  for(const [cx,cy] of [[10_000,-10_000],[-10_000,10_000],[10_000,10_000],[-999_990,999_990]]){
+    const rng=new Rng(cx),w=farWorld(rng,cx,cy);
+    const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
+    for(let i=0;i<120;i++){
+      enc.pushEvents(stepWorld(w,rng));
+      w.view.players[0].x=cx+Math.sin(w.tick/20)*5;
+      w.view.players[5].x=-cx+i*.37;
+      if(i%2)continue;
+      const r=dec.decode(enc.encode(w.view));
+      assert.ok(r.ok,!r.ok?r.error:'');
+      assertExact(r.view,w.view,enc.ids,`${cx},${cy} tick ${w.tick}`);
+      assert.equal(r.view.players.length,6,'allies always, even 20 000 units away');
+      assert.deepEqual(r.world,ENDLESS);
+      enc.ack(r.seq,r.ack.event);
+    }
+    // Projectiles extrapolate between frames: within a few quanta, also far away.
+    const r=dec.decode(enc.encode(w.view));assert.ok(r.ok);
+    for(const p of w.view.projectiles){const d=r.view.projectiles.find(o=>o.id===enc.ids.label('projectiles',p.id));if(d)near(d.x,p.x,3*POS_EPS,'projectile x');}
+  }
+  // Positions past the clamp do not wrap: they stick to ±POS_LIMIT.
+  const w=busyWorld(new Rng(1),2);w.view.enemies[0].x=1e12;w.view.enemies[1].x=-1e12;
+  const r=new FrameDecoder().decode(new FrameEncoder().encode(w.view));assert.ok(r.ok);
+  assert.deepEqual(r.view.enemies.map(e=>e.x).sort((a,b)=>a-b),[-POS_LIMIT,POS_LIMIT]);
+});
+
+test('wide map: truncated or corrupted far frames are rejected without throwing',()=>{
+  const rng=new Rng(21),w=farWorld(rng,10_000,-10_000,40);
+  const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
+  enc.pushEvents([{type:'kill',enemy:'e-1',kind:'gosma',x:10_001,y:-9_999},{type:'round',index:1,phase:'wave',name:'Pix Errado'}]);
+  const frame=enc.encode(w.view);
+  for(let n=0;n<frame.length;n++)assert.equal(dec.decode(frame.slice(0,n)).ok,false,`prefix ${n}`);
+  for(let i=0;i<500;i++){const bad=frame.slice();bad[rng.int(2,bad.length-1)]^=1<<rng.int(0,7);assert.doesNotThrow(()=>new FrameDecoder().decode(bad));}
+  const ok=new FrameDecoder().decode(frame);assert.ok(ok.ok);assertExact(ok.view,w.view,enc.ids,'pristine');
+  const kill=ok.view.events.find(e=>e.type==='kill');
+  assert.ok(kill?.type==='kill'&&kill.x===10_001&&kill.y===-9_999,'event positions are exact far from the origin too');
+  // A forged origin far past the limit is refused.
+  const forged=new FrameEncoder().encode({...w.view,players:[]});
+  assert.ok(new FrameDecoder().decode(forged).ok);
+});
+
+test('area of interest: near things, every ally, the base and the boss; leaving is not dying',()=>{
+  const rng=new Rng(31),w=farWorld(rng,5000,-3000,0),v=w.view;
+  const R=INTEREST_RADIUS;
+  v.enemies=[
+    {id:'e-near',kind:'gosma',x:5000+10,y:-3000,hp:20,maxHp:20},
+    {id:'e-walker',kind:'gosma',x:5000+R-1,y:-3000,hp:20,maxHp:20},
+    {id:'e-far',kind:'gosma',x:5000+R+30,y:-3000,hp:20,maxHp:20},
+    {id:'boss-1',kind:'chefe',x:5000+400,y:-3000,hp:4000,maxHp:4000,boss:true},
+  ];
+  v.pickups=[{id:'xp-near',kind:'xp',x:5003,y:-3000,value:1},{id:'xp-far',kind:'xp',x:5000,y:-3000+R+20,value:1}];
+  v.projectiles=[];v.telegraphs=[{id:'t-big',shape:'circle',x:5000+R+5,y:-3000,radius:8,fireTick:v.tick+20}];
+  const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
+  const frame=()=>{const r=dec.decode(enc.encode(v));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);v.tick+=2;return r;};
+  const ids=(r:{view:RunView},s:'enemies'|'pickups'|'telegraphs')=>(r.view[s] as {id:string}[]).map(e=>enc.ids.resolve(e.id)).sort();
+  let r=frame();
+  assert.deepEqual(ids(r,'enemies'),['boss-1','e-near','e-walker']);
+  assert.deepEqual(ids(r,'pickups'),['xp-near']);
+  assert.deepEqual(ids(r,'telegraphs'),['t-big'],'a big telegraph whose edge reaches the area');
+  assert.equal(r.view.players.length,6);assert.equal(r.view.structures.length,1,'the base, 5 800 units away');
+  // Hysteresis: the walker steps just outside and stays; well outside, it leaves (and is not dead).
+  v.enemies[1].x=5000+R+INTEREST_HYSTERESIS-.5;r=frame();
+  assert.ok(ids(r,'enemies').includes('e-walker'));assert.deepEqual(r.left,[]);
+  v.enemies[1].x=5000+R+INTEREST_HYSTERESIS+1;r=frame();
+  assert.ok(!ids(r,'enemies').includes('e-walker'));
+  assert.deepEqual(r.left,[enc.ids.label('enemies','e-walker')],'left the area');
+  assert.ok(!r.view.events.some(e=>e.type==='kill'));
+  // A death inside the area: removed, not "left", and its kill event arrives.
+  enc.pushEvents([{type:'kill',enemy:'e-near',kind:'gosma',x:5010,y:-3000,by:'uuid-0'},{type:'kill',enemy:'e-far',kind:'gosma',x:5000+R+30,y:-3000}]);
+  v.enemies=v.enemies.filter(e=>e.id!=='e-near'&&e.id!=='e-far');r=frame();
+  assert.ok(!ids(r,'enemies').includes('e-near'));assert.deepEqual(r.left,[]);
+  assert.deepEqual(r.view.events.filter(e=>e.type==='kill').map(e=>e.type==='kill'&&enc.ids.resolve(e.enemy)),['e-near'],'the far kill is not sent');
+  // Coming back: the walker returns inside the radius and is sent again.
+  v.enemies.push({id:'e-walker',kind:'gosma',x:5000+R-2,y:-3000,hp:20,maxHp:20});r=frame();
+  assert.ok(ids(r,'enemies').includes('e-walker'));
+  // Global events reach everyone; far damage numbers do not.
+  enc.pushEvents([{type:'downed',player:'uuid-5'},{type:'damage',target:'uuid-5',amount:9,source:'e-x'},{type:'levelup',level:9}]);
+  r=frame();
+  assert.deepEqual(r.view.events.map(e=>e.type).sort(),['downed','levelup']);
+  assert.ok(enc.stats.droppedEvents>=2&&enc.stats.culled>0);
+});
+
+test('the frame carries the world kind and generator version, again after a resync and when it changes',()=>{
+  const w=farWorld(new Rng(41),100,100,5);
+  const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
+  const f1=enc.encode(w.view),r1=dec.decode(f1);assert.ok(r1.ok);assert.deepEqual(r1.world,ENDLESS);enc.ack(r1.seq);
+  w.view.tick++;const f2=enc.encode(w.view),r2=dec.decode(f2);assert.ok(r2.ok);assert.deepEqual(r2.world,ENDLESS,'remembered');
+  assert.ok(f2.length<f1.length);
+  // A fresh client (reconnect) gets it in the next full frame.
+  enc.resync();const late=new FrameDecoder();w.view.tick++;
+  const r3=late.decode(enc.encode(w.view));assert.ok(r3.ok);assert.deepEqual(r3.world,ENDLESS);enc.ack(r3.seq);
+  // A new run on another generator says so at once, even in a delta.
+  const next={...ENDLESS,generatorVersion:2,signature:'ffff0000'};(w.view as FrameInput).world=next;w.view.tick++;
+  const r4=late.decode(enc.encode(w.view));assert.ok(r4.ok);assert.deepEqual(r4.world,next);
+  // The island room without a descriptor keeps working (no world field).
+  const island=new FrameDecoder().decode(new FrameEncoder().encode(busyWorld(new Rng(1),1).view));
+  assert.ok(island.ok);assert.equal(island.world,undefined);
+});
+
+/** Six clusters of play: one per spread player, or one for the whole team. 300 enemies, 150 pickups, 100 shots each. */
+function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
+  const view:FrameInput={tick:1000,team:{xp:340,level:12,nextXp:455},round:{index:7,total:10,phase:'wave',phaseEndsTick:2400,remaining:300},
+    players:playersAt.map((c,i)=>player(`uuid-${i}`,i,{x:centers[c].x+(i%3)*.8,y:centers[c].y+Math.floor(i/3)*.8})),
+    enemies:[],pickups:[],projectiles:[],telegraphs:[],structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:800,maxHp:1000}],world:ENDLESS};
+  let n=0;
+  const enemy=(c:{x:number;y:number}):EnemyView=>{const a=rng.range(0,Math.PI*2),d=rng.range(2,32);
+    return {id:`e-${++n}`,kind:rng.pick(['gosma','pernilongo','tio-pave','fiscal']),x:c.x+Math.cos(a)*d,y:c.y+Math.sin(a)*d,hp:rng.range(5,80),maxHp:80};};
+  for(const c of centers){
+    for(let i=0;i<300;i++)view.enemies.push(enemy(c));
+    for(let i=0;i<150;i++)view.pickups.push({id:`xp-${++n}`,kind:'xp',x:c.x+rng.range(-12,12),y:c.y+rng.range(-12,12),value:rng.int(1,5)});
+    for(let i=0;i<100;i++)view.projectiles.push({id:`p-${++n}`,source:'boleto',x:c.x+rng.range(-8,8),y:c.y+rng.range(-8,8),vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2,hostile:i%10===0});
+  }
+  const home=new Map(view.enemies.map((e,i)=>[e.id,centers[Math.floor(i/300)]]));
+  const shotHome=new Map(view.projectiles.map((p,i)=>[p.id,centers[Math.floor(i/100)]]));
+  /** One server tick of every cluster: chase, 30 hits + kills + respawn on the ring, homing pickups, shots. */
+  const step=():SimEvent[]=>{
+    const events:SimEvent[]=[];view.tick++;
+    for(const e of view.enemies){const c=home.get(e.id)!,dx=c.x-e.x,dy=c.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*1.4/20+rng.range(-.02,.02);e.y+=dy/d*1.4/20+rng.range(-.02,.02);}
+    for(const p of view.projectiles){p.x+=p.vx/20;p.y+=p.vy/20;}
+    centers.forEach((c,ci)=>{
+      const mine=view.enemies.slice(ci*300,ci*300+300);
+      // Hits come from the cluster's own player (one per cluster when spread, uuid-0 when together).
+      const by=view.players.find((_,i)=>playersAt[i]===ci)!.id;
+      for(let i=0;i<30;i++){const e=rng.pick(mine),amount=rng.range(1,9);e.hp-=amount;events.push({type:'damage',target:e.id,amount,source:by,weapon:'chinelo'});}
+    });
+    view.enemies=view.enemies.map(e=>{
+      if(e.hp>0)return e;
+      const c=home.get(e.id)!,ci=centers.indexOf(c);
+      events.push({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y,by:view.players.find((_,i)=>playersAt[i]===ci)!.id});
+      const fresh=enemy(c);home.set(fresh.id,c);return fresh;
+    });
+    view.projectiles=view.projectiles.map(p=>{
+      const c=shotHome.get(p.id)!;if(Math.hypot(p.x-c.x,p.y-c.y)<14)return p;
+      const fresh={...p,id:`p-${++n}`,x:c.x,y:c.y};shotHome.set(fresh.id,c);return fresh;
+    });
+    for(const p of view.pickups.filter((_,i)=>i%15===0)){p.x+=view.tick%40<20?.3:-.3;}
+    view.players.forEach((p,i)=>{p.x!+=Math.sin(view.tick/20+i)*.1;p.ack!++;});
+    return events;
+  };
+  return {view,step};
+}
+/** Bytes/s per client at 10 Hz over 10 s, acks ~150 ms late; `stagger` spreads the clients over both ticks. */
+function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean,stagger=false){
+  const ids=new WireIds();
+  const clients=world.view.players.map((p,i)=>({enc:new FrameEncoder(ids,{viewer:p.id,interest:interest?undefined:false,slot:stagger?sendSlot(i):0}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+  let bytes=0,enemies=0,frames=0,encodeMs=0;
+  const perTick:number[]=[];
+  for(let i=0;i<200;i++){
+    const events=world.step();
+    for(const c of clients)c.enc.pushEvents(events);
+    let tickMs=0;
+    for(const c of clients){
+      if(!c.enc.due(i))continue;
+      const t0=performance.now(),frame=c.enc.encode(world.view),dt=performance.now()-t0;encodeMs+=dt;tickMs+=dt;bytes+=frame.length;
+      const r=c.dec.decode(frame);assert.ok(r.ok,!r.ok?r.error:'');
+      enemies+=r.view.enemies.length;frames++;
+      c.inFlight.push({seq:r.seq,event:r.ack.event,at:i+3});
+      while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+    }
+    if(tickMs>0)perTick.push(tickMs);
+  }
+  perTick.sort((a,b)=>a-b);
+  assert.equal(frames,clients.length*100,'10 Hz for every client');
+  return {encodeTickMsP50:Math.round(perTick[perTick.length>>1]*100)/100,encodeTickMsP95:Math.round(perTick[Math.floor(perTick.length*.95)]*100)/100,bytesPerSecond:Math.round(bytes/clients.length/10),enemiesPerFrame:Math.round(enemies/frames),eventBytes:Math.round(clients[0].enc.stats.eventBytes/10),
+    encodeMsPerFrame:Math.round(encodeMs/frames*100)/100};
+}
+
+test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 enemies around each',t=>{
+  const together=measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true);
+  const atOrigin=measure(clusters(new Rng(51),[{x:12,y:12}],[0,0,0,0,0,0]),true);
+  const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
+  const apart=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true);
+  const apartAll=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),false);
+  const staggered=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true,true);
+  t.diagnostic(`protocol 4, wide map, bytes/s per client at 10 Hz: together ${JSON.stringify(together)}; same at the origin ${JSON.stringify(atOrigin)}; spread 200 u ${JSON.stringify(apart)}; spread without area of interest ${JSON.stringify(apartAll)}; spread, clients staggered over both ticks ${JSON.stringify(staggered)}`);
+  assert.ok(Math.abs(staggered.bytesPerSecond-apart.bytesPerSecond)<apart.bytesPerSecond*.05,'staggering costs no bandwidth');
+  // D-018 budget: the island worst case was 26.7 KB/s per client; the wide map must stay in the same range.
+  assert.ok(together.bytesPerSecond<32_000,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<32_000,`spread ${apart.bytesPerSecond}`);
+  assert.ok(apart.enemiesPerFrame<=300,'each client only gets its own horde');
+  assert.ok(apartAll.bytesPerSecond>apart.bytesPerSecond*3,'the area of interest is what keeps spread players cheap');
+  assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
+});
+
+test('the server world descriptor rebuilds the same terrain on the client, island and endless',async()=>{
+  const {worldDescriptor}=await import('../src/game/net/shared.ts');
+  const {TerrainField}=await import('../src/game/terrain/field.ts');
+  for(const world of ['ilha','infinito'] as const){
+    const server=new TerrainField(777,{world}),d=worldDescriptor(server);
+    const w=busyWorld(new Rng(3),2);(w.view as FrameInput).world=d;
+    const r=new FrameDecoder().decode(new FrameEncoder().encode(w.view));
+    assert.ok(r.ok&&r.world);
+    assert.equal(r.world.kind,world);
+    assert.equal(new TerrainField(r.world.seed,{world:r.world.kind}).signature,d.signature);
+  }
+});
+
+test('area of interest without a body: a spectator follows a player, an empty room the base, never "everything"',()=>{
+  const v=farWorld(new Rng(61),3000,3000,0).view;
+  v.enemies=[{id:'e-a',kind:'gosma',x:3001,y:3000,hp:5,maxHp:5},{id:'e-b',kind:'gosma',x:1,y:1,hp:5,maxHp:5}];
+  const spectator=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r1=new FrameDecoder().decode(spectator.encode(v));assert.ok(r1.ok);
+  assert.deepEqual(r1.view.enemies.map(e=>spectator.ids.resolve(e.id)),['e-a'],'follows the first player with a body');
+  const empty=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r2=new FrameDecoder().decode(empty.encode({...v,players:[]}));assert.ok(r2.ok);
+  assert.deepEqual(r2.view.enemies.map(e=>empty.ids.resolve(e.id)),['e-b'],'nobody left: around the base');
+  // `focus` overrides (a spectator camera parked somewhere).
+  const parked=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r3=new FrameDecoder().decode(parked.encode(v,{focus:{x:0,y:0}}));assert.ok(r3.ok);
+  assert.deepEqual(r3.view.enemies.map(e=>parked.ids.resolve(e.id)),['e-b']);
+});
+
+test('staggered broadcast: half the clients on odd ticks, each still 10 Hz and exact',()=>{
+  assert.equal(SEND_EVERY,2);
+  assert.deepEqual([0,1,2,3,4,5].map(sendSlot),[0,1,0,1,0,1]);
+  assert.ok(sendsOn(10,0)&&!sendsOn(10,1)&&sendsOn(11,1));
+  const rng=new Rng(71),w=farWorld(rng,4000,-4000);
+  const ids=new WireIds();
+  const odd=new FrameEncoder(ids,{viewer:'uuid-1',slot:1}),even=new FrameEncoder(ids,{viewer:'uuid-0',slot:0});
+  const decs=[new FrameDecoder(),new FrameDecoder()];
+  const sent=[0,0];
+  for(let i=0;i<80;i++){
+    const events=stepWorld(w,rng);
+    [even,odd].forEach((enc,k)=>{
+      enc.pushEvents(events);
+      if(!enc.due(w.tick))return;
+      const r=decs[k].decode(enc.encode(w.view));assert.ok(r.ok,!r.ok?r.error:'');
+      assertExact(r.view,w.view,enc.ids,`slot ${k} tick ${w.tick}`);
+      assert.equal(r.view.tick%2,k);
+      enc.ack(r.seq,r.ack.event);sent[k]++;
+    });
+  }
+  assert.deepEqual(sent,[40,40]);
 });

@@ -1,0 +1,20 @@
+/* UX-voce-e-dano: screen edge on damage and low hp, "what got you" line on the own-fall banner and the result.
+   Tokens only (src/ui/tokens.css). Hard edges, no blur: Laranja Cone body with a Breu inner line (double edge). */
+.rh-hurt{position:absolute;inset:0;pointer-events:none}
+.rh-hurt-flash,.rh-hurt-low{position:absolute;inset:0;pointer-events:none;display:none}
+/* Flash: full Cone (no alpha, design onda 3 D3); the bigger the hit (--hurt 0.35..1), the wider. It grows from 6 px to
+   its width and closes to 0 in 150 ms; with reduced motion it stays at its width (static) for 400 ms. */
+.rh-hurt{--hurt-w:calc(6px + 12px*var(--hurt,1))}
+.rh-hurt[data-flash] .rh-hurt-flash{display:block;border:var(--hurt-w) solid var(--c-cone);box-shadow:inset 0 0 0 2px var(--c-breu)}
+.rh-hurt[data-flash=flash] .rh-hurt-flash{animation:rh-hurt-flash .15s ease-out forwards}
+/* Low hp: a thin static edge (no pulse, D-020 §2.5) until the hero is back above 30%. */
+.rh-hurt[data-low] .rh-hurt-low{display:block;border:6px solid var(--c-cone);box-shadow:inset 0 0 0 2px var(--c-breu)}
+@keyframes rh-hurt-flash{0%{border-width:6px}35%{border-width:var(--hurt-w)}100%{border-width:0;box-shadow:none}}
+
+/* Own-fall banner, optional second line: critter sticker + joke. */
+.rh-alert-cause{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-alert-cause-icon{flex:none;width:28px;height:24px;object-fit:contain;padding:1px 2px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:2px solid var(--c-breu)}
+
+/* Result: what downed you (or the team). */
+.rh-result-cause{display:inline-flex;align-items:center;gap:5px}
+.rh-result-cause img{width:22px;height:19px;object-fit:contain;border-radius:var(--r-etiqueta);background:var(--c-papel-claro)}

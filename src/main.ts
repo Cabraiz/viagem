@@ -157,3 +157,4 @@ renderRoster();renderSelected();
 if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./game/sandbox-horde.ts').then(m=>m.openHordeSandbox());
 if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./game/sandbox-fun.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./game/sandbox-hud.ts');
+if(new URLSearchParams(location.search).get('sandbox')==='voce')void import('./game/sandbox-voce.ts');

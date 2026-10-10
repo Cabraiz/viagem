@@ -4,6 +4,7 @@
  */
 import type {RunView} from '../sim/view.ts';
 import {bossInfo,roundInfo,xpFraction,type HudPart} from './model.ts';
+import {MARQUEE_MS} from './zones.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -57,31 +58,43 @@ const intervalLines=[
   'Hora de fingir que tem estratégia',
 ];
 
-/** kicker: small line above the title ("ROUND 3/10"); title: the absurd round name; subtitle: the modifier. */
-export interface Marquee {kicker?:string;title:string;subtitle?:string;tone:'round'|'interval'|'boss'}
+/**
+ * title: the absurd round name; subtitle: the modifier. Two lines at most (UX-zonas-tela): the round number lives in the
+ * chip right above, so the old "ROUND 3/10 · CHEFE" kicker is gone (it was caps and "A · B" too, D-020).
+ */
+export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
 export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10):Marquee|undefined{
   if(event.phase==='wave'){
     const boss=event.index>=total;
-    const kicker=`ROUND ${event.index}/${total}${boss?' · CHEFE':''}`;
-    return {kicker,title:event.name||`Round ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
+    return {title:event.name||`Round ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
   }
   if(event.phase==='prepare')return {title:'Intervalo!',subtitle:intervalLines[Math.abs(event.index)%intervalLines.length],tone:'interval'};
   return undefined;
 }
 
+/**
+ * Round/boss banner (UX-zonas-tela): lives in the top band's announcement slot, two lines at most, MARQUEE_MS on
+ * screen, then shrinks into the round chip. A title that wraps drops the subtitle (the joke goes first).
+ */
 export function createAnnouncer():HudPart{
   const root=el('div','rh-marquee');root.setAttribute('aria-live','polite');root.hidden=true;
-  const kicker=el('span','rh-marquee-kicker',root),title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
+  const title=el('strong','rh-marquee-title',root),subtitle=el('span','rh-marquee-sub',root);
   let timer:ReturnType<typeof setTimeout>|undefined;
   const show=(marquee:Marquee)=>{
-    kicker.textContent=marquee.kicker??'';kicker.hidden=!marquee.kicker;
+    // A notice already in the slot wins (danger over the joke): the round name skips its turn; the chip shows the round.
+    if(root.parentElement?.querySelector('.rh-alert:not([hidden])'))return;
+    // An open offer window too (design onda 3 B4): the chip already shows the round.
+    if(root.closest('.rh')?.querySelector('.rh-offer:not([hidden])'))return;
     // Word joiner after hyphens: "E-mail" must never break into "E-" / "mail" on a narrow phone.
     title.textContent=marquee.title.replace(/-/g,'-\u2060');subtitle.textContent=marquee.subtitle??'';subtitle.hidden=!marquee.subtitle;
     root.dataset.tone=marquee.tone;root.hidden=false;
+    // Two lines at most: a title that needs two lines keeps them and the subtitle goes.
+    const line=parseFloat(getComputedStyle(title).lineHeight)||28;
+    if(!subtitle.hidden&&title.getBoundingClientRect().height>line*1.5)subtitle.hidden=true;
     root.classList.remove('rh-marquee-in');void root.offsetWidth;root.classList.add('rh-marquee-in');
-    clearTimeout(timer);timer=setTimeout(()=>{root.hidden=true;},3400);
+    clearTimeout(timer);timer=setTimeout(()=>{root.hidden=true;root.classList.remove('rh-marquee-in');},MARQUEE_MS);
   };
   let seen=-1;
   return {el:root,update(view:RunView){

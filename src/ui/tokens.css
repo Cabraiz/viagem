@@ -49,6 +49,7 @@
   --c-perigo:var(--c-cone);
   --c-a-favor:var(--c-cartolina);
   --c-escolha:var(--c-amarelo);
+  --c-voce:var(--c-lilas);      /* "você" (anel no chão, retrato, card do resultado): Lilás + forma, nunca Amarelo (onda 3 §0) */
   --c-texto:var(--c-breu);
   --c-texto-papel:var(--c-lilas); /* texto de sistema sobre Papel (6,18:1) */
   --c-texto-mapa:var(--c-papel);  /* texto sobre ficha Breu */

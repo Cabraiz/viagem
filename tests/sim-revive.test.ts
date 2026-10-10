@@ -298,3 +298,27 @@ test('zueira quips are deterministic pt-BR lines from the event alone',()=>{
   const seen=new Set(Array.from({length:60},(_,t)=>reviveQuip('downed','a',t)));
   assert.ok(seen.size>=4,`only ${seen.size} distinct lines`);
 });
+
+test('downed names the kind of the enemy that dealt the last hit (UX-voce-e-dano f); unknown hitters keep only by',()=>{
+  const a=player('a',0,0),b=player('b',1,0),c=player('c',2,0),ctx=fakeCtx([a,b,c]);
+  ctx.enemies.set('e7',{id:'e7',kind:'pernilongo',x:0,y:0,hp:5,maxHp:5} as never);
+  downPlayer(ctx,a,'e7');downPlayer(ctx,b,'gone');downPlayer(ctx,c);
+  assert.deepEqual(ctx.events,[{type:'downed',player:'a',by:'e7',source:'pernilongo'},{type:'downed',player:'b',by:'gone'},{type:'downed',player:'c'}]);
+});
+
+test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceite: 100% of downed)',async()=>{
+  const {Simulation}=await import('../src/game/net/shared.ts');
+  const {CAUSE_KINDS}=await import('../src/game/hud/cause.ts');
+  for(const seed of [7,12345,0x042a5eed]){
+    const sim=new Simulation(seed);
+    const ids=Array.from({length:6},(_,i)=>`bot${i}`);
+    ids.forEach((id,i)=>sim.add(id,`Bot ${i}`,['cidadao-comum','sensei','pedreiro','roqueira','feirante','goleira'][i]));
+    sim.resetRun();
+    // Unarmed and standing still: the horde downs everyone, through contact, telegraphs and projectiles.
+    const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;p.build.weapons=[];p.weaponReady={};}};
+    const downs:{source?:string}[]=[];
+    for(let t=0;t<ticks(240)&&downs.length<6;t++){disarm();for(const e of sim.step())if(e.type==='downed')downs.push(e);}
+    assert.ok(downs.length>=3,`seed ${seed}: only ${downs.length} downed`);
+    for(const d of downs)assert.ok((CAUSE_KINDS as readonly string[]).includes(d.source??''),`seed ${seed}: downed without a kind: ${JSON.stringify(d)}`);
+  }
+});

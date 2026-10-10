@@ -212,7 +212,7 @@ test('coast is the capped distance to a lake shore, and land follows it',()=>{
 });
 
 test('a room on the endless world runs: players spawn by the base, wall at the origin, chunks pruned',()=>{
-  assert.throws(()=>new Simulation(1234,{world:'infinito'}),/não é jogável/,'endless world is gated until spawn-em-volta');
+  assert.throws(()=>new Simulation(1234,{world:'infinito'}),/não é jogável/,'endless world is gated until the Room speaks protocol 4 (042b) and the camera follows');
   const s=new Simulation(1234,{world:'infinito',experimental:true});
   for(let i=0;i<6;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();

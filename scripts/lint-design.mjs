@@ -16,7 +16,7 @@ import {fileURLToPath} from 'node:url';
 
 const TOKENS='src/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
-const MATCH_CSS=new Set(['src/game/hud/hud.css','src/game/fun/fun.css']);
+const MATCH_CSS=new Set(['src/game/hud/hud.css','src/game/fun/fun.css','src/game/hud/you.css','src/game/hud/zones.css','src/game/hud/zones-debug.css']);
 const MIN_MATCH=13,MIN_OTHER=10,ROOT_PX=16;
 const EMOJI=/\p{Extended_Pictographic}|✦/gu;
 const NAMED_COLORS=new Set(('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood '+

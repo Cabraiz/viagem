@@ -1,4 +1,5 @@
 import {TerrainField,defaultTerrain,TERRAIN_VERSION} from '../terrain/field.ts';
+import {CHUNK_VERSION} from '../terrain/chunks.ts';
 import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, unpackPlayer, type Input, type Player, type Snapshot } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
@@ -46,7 +47,10 @@ export class CoopClient {
       if(m.t==='welcome'){
         const terrain=m.state?.terrain;
         if(!m.state?.run||!terrain||terrain.version!==TERRAIN_VERSION||!Number.isInteger(terrain.seed)){this.stopped=true;this.onStatus('Servidor da partida desatualizado.');this.rejectReady?.(new Error('Servidor da partida desatualizado.'));ws.close();return;}
-        this.terrain=new TerrainField(terrain.seed);
+        // An endless room says so (spawn-em-volta/rede-mapa-grande); an island client facing a newer generator
+        // fails the signature check below, so a mismatch is refused, never misdrawn.
+        if(terrain.world==='infinito'&&terrain.generator!==CHUNK_VERSION){this.stopped=true;this.onStatus('Servidor da partida desatualizado.');this.rejectReady?.(new Error('Versões de terreno diferentes. Atualize a página.'));ws.close();return;}
+        this.terrain=new TerrainField(terrain.seed,{world:terrain.world==='infinito'?'infinito':'ilha'});
         if(this.terrain.signature!==terrain.signature){this.stopped=true;this.rejectReady?.(new Error('Versões de terreno diferentes. Atualize a página.'));ws.close();return;}
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
         // Reconnection: start the view over from the welcome's full snapshot (D-018); the room pushes the offers right after.

@@ -4,12 +4,14 @@
  * so tapping the HUD never moves the character or reaches the joystick/canvas.
  */
 import './hud.css';
+import './you.css';
 import type {RunView} from '../sim/view.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen} from './result.ts';
+import {createHurtFrame} from './hurt.ts';
 
 export interface RunHudOptions {
   localId:string;
@@ -18,6 +20,8 @@ export interface RunHudOptions {
   onExit?():void;
   /** Defaults to the approved portraits under /art/portraits. */
   portrait?(classId:string,detailed?:boolean):string;
+  /** Critter sticker for "what got you" (the scene hands the horde atlas texture as a data URL). */
+  critterIcon?(kind:string):string|undefined;
 }
 
 /** Clearance kept between the hero's sprite and the center banner, in CSS px. */
@@ -38,16 +42,16 @@ export class RunHud {
   private topSlot?:DOMRect;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
-    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally};
+    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon};
     this.el=document.createElement('div');
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
-    const top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose});
+    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose});
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     stack.append(alerts.el);this.stack=stack;this.alerts=alerts;
-    this.parts=[top,announcer,team,alerts,offer];
-    this.el.append(top.el,stack,team.el,offer.el,announcer.el,this.result.el);
+    this.parts=[hurt,top,announcer,team,alerts,offer];
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,announcer.el,this.result.el);
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.

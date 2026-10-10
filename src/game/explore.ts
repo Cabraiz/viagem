@@ -50,8 +50,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill" aria-label="Habilidade da classe">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close()});
+    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
     hud.el.hidden=true;
+    // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD.
+    if(import.meta.env.DEV)(window as unknown as {__hud?:RunHud}).__hud=hud;
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());

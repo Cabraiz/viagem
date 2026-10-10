@@ -4,6 +4,7 @@
  */
 import {SIM_HZ} from '../sim/types.ts';
 import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
+import {causeCopy,emptyCauses,recordFall,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 
 export const TOTAL_ROUNDS=10;
 
@@ -17,6 +18,8 @@ export interface HudContext {
   tally:RunTally;
   /** Connection banner text while the socket is down (VGM-043); undefined when connected. */
   network?:string;
+  /** Sticker of a critter kind (data URL of the horde atlas texture), for "what got you"; undefined = text only. */
+  critterIcon?(kind:string):string|undefined;
 }
 
 /** Common shape of every DOM part of the HUD. */
@@ -95,7 +98,9 @@ export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
 }
 
 /** The one banner of the center stack (VGM-043): one line, never a pile of them on top of the field. */
-export interface ReviveBanner {kind:'self'|'ally';key:string;text:string;seconds:number;progress:number;urgent:boolean}
+export interface ReviveBanner {kind:'self'|'ally';key:string;text:string;seconds:number;progress:number;urgent:boolean;
+  /** Own fall: what got you (critter kind, its name and the joke line), shown as the banner's optional second line. */
+  cause?:{kind:string;name:string;line:string}}
 
 export const OUT_TEXT='Você tá fora. Volta na revanche.';
 export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
@@ -104,11 +109,15 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
  * Priority: connection lost > own fall > own elimination / watching > allies down. Allies down at the same time are
  * grouped ("Zé e Bia caíram!", "3 da turma caíram!"); a rescue in progress names who is being saved, plus the rest.
  */
-export function reviveBanner(view:RunView,localId:string,network?:string):ReviveBanner|undefined{
+export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
   const alerts=reviveAlerts(view,localId),self=view.players.find(p=>p.id===localId);
   const own=alerts.find(a=>a.kind==='self');
-  if(own)return {kind:'self',key:`self:${own.playerId}`,text:own.text,seconds:own.seconds,progress:own.progress,urgent:own.seconds<=5};
+  if(own){
+    const kind=causes?.last.get(own.playerId),copy=kind?causeCopy(kind):undefined;
+    return {kind:'self',key:`self:${own.playerId}`,text:own.text,seconds:own.seconds,progress:own.progress,urgent:own.seconds<=5,
+      ...(copy&&kind?{cause:{kind,name:copy.name,line:copy.line}}:{})};
+  }
   if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
   if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
   if(!alerts.length)return undefined;
@@ -145,9 +154,11 @@ export interface RunResult {
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */
 export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;magnets:number;chests:number;pickups:number;kills:number}
-export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number}
+export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number;
+  /** What downed each player (UX-voce-e-dano f). */
+  causes:CauseLog}
 
-export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1});
+export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1,causes:emptyCauses()});
 
 /**
  * Starts a new run's tally in place (rematch). Counters and start tick clear, but lastEventId is kept:
@@ -157,6 +168,7 @@ export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1});
 export function resetTally(tally:RunTally){
   tally.players.clear();
   tally.startTick=undefined;
+  resetCauses(tally.causes);
   return tally;
 }
 const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0});
@@ -170,15 +182,17 @@ export function tallyOf(tally:RunTally,playerId:string){
 /** Applies new events once; repeated or late eventIds are ignored. */
 export function applyEvents(tally:RunTally,view:RunView){
   tally.startTick??=view.tick;
+  // Kills are remembered before the falls are named: the hitter may die on the tick it downed someone.
+  const falls:{player:string;by?:string;source?:string}[]=[];
   for(const event of view.events){
     if(event.eventId<=tally.lastEventId)continue;
     tally.lastEventId=event.eventId;
     switch(event.type){
-      case 'downed':tallyOf(tally,event.player).downs++;break;
+      case 'downed':tallyOf(tally,event.player).downs++;falls.push(event);break;
       case 'revived':if(event.by)tallyOf(tally,event.by).revives++;break;
       case 'upgrade':tallyOf(tally,event.player).upgrades++;break;
       case 'evolve':tallyOf(tally,event.player).evolves++;break;
-      case 'kill':if(event.by)tallyOf(tally,event.by).kills++;break;
+      case 'kill':rememberKill(tally.causes,event.enemy,event.kind);if(event.by)tallyOf(tally,event.by).kills++;break;
       case 'pickup':{
         const entry=tallyOf(tally,event.player);entry.pickups++;
         if(event.kind==='heal')entry.heals++;else if(event.kind==='magnet')entry.magnets++;else if(event.kind==='chest')entry.chests++;
@@ -186,5 +200,6 @@ export function applyEvents(tally:RunTally,view:RunView){
       }
     }
   }
+  for(const fall of falls)recordFall(tally.causes,fall.player,resolveCause(fall,view,tally.causes));
   return tally;
 }

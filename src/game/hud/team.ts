@@ -74,6 +74,10 @@ export function createReviveAlerts():HudPart{
   // One banner only (VGM-043): falls at the same time are grouped instead of stacking over the field.
   const row=el('div','rh-alert',root);row.hidden=true;
   const text=el('span','rh-alert-text',row),track=el('div','rh-alert-track',row),fill=el('i','rh-alert-fill',track);
+  // Own fall: what got you, as an optional second line (critter sticker + joke); the first line stays the instruction.
+  const cause=el('span','rh-alert-cause',row);cause.hidden=true;
+  const causeIcon=el('img','rh-alert-cause-icon',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
+  const causeText=el('span','rh-alert-cause-text',cause);
   return {el:root,update(view:RunView,ctx:HudContext){
     const all=reviveAlerts(view,ctx.localId);
     const down=new Set(all.map(alert=>alert.playerId));
@@ -83,13 +87,20 @@ export function createReviveAlerts():HudPart{
       for(const alert of fresh)announced.add(alert.playerId);
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
-    const banner=reviveBanner(view,ctx.localId,ctx.network);
+    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes);
     row.hidden=!banner;
     if(!banner)return;
     if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;
     row.classList.toggle('rh-alert-urgent',banner.urgent);
     if(text.textContent!==banner.text)text.textContent=banner.text;
     track.hidden=!Number.isFinite(banner.seconds);
+    cause.hidden=!banner.cause;
+    if(banner.cause){
+      if(causeText.textContent!==banner.cause.line)causeText.textContent=banner.cause.line;
+      const src=ctx.critterIcon?.(banner.cause.kind)??'';
+      causeIcon.hidden=!src;if(src&&causeIcon.getAttribute('src')!==src)causeIcon.src=src;
+      cause.dataset.kind=banner.cause.kind;
+    }
     fill.style.transform=`scaleX(${banner.progress})`;
   }};
 }

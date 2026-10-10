@@ -8,6 +8,7 @@ import type {PlayerRunView} from '../sim/view.ts';
 import {awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
+import {resultCause} from './cause.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -84,6 +85,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
   const subtitle=el('p','rh-result-sub',titles);
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);
+  // What downed you (UX-voce-e-dano f): critter sticker + name, one line.
+  const cause=el('span','rh-result-stat rh-result-cause',stats);cause.hidden=true;
+  const causeIcon=el('img','',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
+  const causeText=el('span','',cause);
 
   const grid=el('div','rh-result-grid',root);
 
@@ -182,6 +187,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       time.textContent=`⏱ ${formatDuration(result.durationTicks)}`;
       round.textContent=`Round ${result.round}/${result.totalRounds}`;
       seed.textContent=`seed ${result.seed}`;
+      const fell=resultCause(ctx.tally.causes,ctx.localId);
+      cause.hidden=!fell;
+      if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}
       shownResult={result,ctx};
       renderGrid(result,ctx);
       resetRematch();exited=false;

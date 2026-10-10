@@ -101,7 +101,9 @@ export type SimEvent=
   | {type:'offer';player:string;offer:string}
   | {type:'upgrade';player:string;item:string;level:number}
   | {type:'evolve';player:string;from:string;to:string}
-  | {type:'downed'|'revived'|'eliminated';player:string;by?:string}
+  /** downed.source: kind of the enemy (or boss) that dealt the last hit, for "what got you" (UX-voce-e-dano). */
+  | {type:'downed';player:string;by?:string;source?:string}
+  | {type:'revived'|'eliminated';player:string;by?:string}
   | {type:'telegraph';telegraph:string}
   | {type:'boss-phase';enemy:string;phase:number}
   | {type:'wave';index:number;label:string}

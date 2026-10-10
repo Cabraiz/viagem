@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,STEP,reconcile,simulate,delta,type Input} from '../src/game/net/shared.ts';
-import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,type Peer} from '../multiplayer/room.ts';
+import {Simulation,STEP,reconcile,simulate,delta,ROOM_PROTOCOL,type Input} from '../src/game/net/shared.ts';
+import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../multiplayer/room.ts';
+import {FrameRunFeed} from '../src/game/net/run-feed.ts';
+import {PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
 import {walkable,SPEED} from '../src/game/world.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
-function peer(){const messages:any[]=[],closes:any[]=[];return {messages,closes,send:(s:string)=>messages.push(JSON.parse(s)),close:(code:number,reason:string)=>closes.push({code,reason})};}
-const join=(r:Room,p:Peer,n='Amigo',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:3,name:n,classId:'cidadao-comum'}),now);};
+/** Test peer: JSON control messages parsed in `messages`, protocol 4 frames in `frames` (in arrival order in `log`). */
+function peer(){
+  const messages:any[]=[],frames:Uint8Array[]=[],closes:any[]=[],log:any[]=[];
+  return {messages,frames,closes,log,send:(s:string|Uint8Array)=>{if(typeof s==='string'){const m=JSON.parse(s);messages.push(m);log.push(m);}else{frames.push(s);log.push(s);}},close:(code:number,reason:string)=>closes.push({code,reason})};
+}
+const join=(r:Room,p:Peer,n='Amigo',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:n,classId:'cidadao-comum'}),now);};
 test('six slots, seventh refused, and rooms isolated',()=>{
   const r=new Room(1000),peers=Array.from({length:7},()=>peer());peers.forEach((p,i)=>join(r,p,`Amigo ${i}`));
   assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
@@ -16,15 +22,15 @@ test('reconnect preserves identity, health, score, enemies and refuses stolen di
   const r=new Room(1000),a=peer();join(r,a);const w=a.messages.find(m=>m.t==='welcome');
   const original=r.sim.players.get(w.id)!;original.hp=64;original.score=10;
   const enemy=createEnemy(r.sim.world,'gosma',{x:original.x+8,y:original.y});enemy.hp=2;
-  r.disconnect(a,1500);const b=peer();r.connect(b,1600);r.receive(b,JSON.stringify({t:'join',protocol:3,token:w.token}),1600);
+  r.disconnect(a,1500);const b=peer();r.connect(b,1600);r.receive(b,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);
   assert.equal(b.messages[0].id,w.id);assert.equal(r.sim.players.size,1);assert.equal(original.hp,64);assert.equal(original.score,10);
   assert.equal(r.sim.world.enemies.get(enemy.id)?.hp,2);
-  const duplicate=peer();r.connect(duplicate,1600);r.receive(duplicate,JSON.stringify({t:'join',protocol:3,token:w.token}),1600);assert.equal(duplicate.closes[0].code,4003);
-  const fake=peer();r.connect(fake,1600);r.receive(fake,JSON.stringify({t:'join',protocol:3,token:'invalid',name:'Amigo'}),1600);assert.equal(fake.closes[0].code,4003);
+  const duplicate=peer();r.connect(duplicate,1600);r.receive(duplicate,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);assert.equal(duplicate.closes[0].code,4003);
+  const fake=peer();r.connect(fake,1600);r.receive(fake,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:'invalid',name:'Amigo'}),1600);assert.equal(fake.closes[0].code,4003);
 });
 test('expired token cannot reclaim a slot or create a duplicate',()=>{
   const r=new Room(1000),p=peer();join(r,p);const token=p.messages[0].token;r.disconnect(p,1100);
-  const back=peer();r.connect(back,32100);r.receive(back,JSON.stringify({t:'join',protocol:3,token}),32100);assert.equal(back.closes[0].code,4003);assert.equal(r.sim.players.size,0);
+  const back=peer();r.connect(back,32100);r.receive(back,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token}),32100);assert.equal(back.closes[0].code,4003);assert.equal(r.sim.players.size,0);
 });
 test('movement ignores position/hp/damage fields and is capped per server tick',()=>{
   const s=new Simulation();const p=s.add('p','Tester','cidadao-comum');s.resetRun();const start={...p},maxHp=p.hp;
@@ -65,10 +71,16 @@ test('message flooding and oversized payloads close connection',()=>{
 
 
 test('older clients are rejected before joining a procedural room',()=>{
-  const room=new Room(1000,42),old=peer();room.connect(old,1000);
-  room.receive(old,JSON.stringify({t:'join',protocol:1,name:'Old',classId:'cidadao-comum'}),1000);
-  assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
-  assert.match(old.messages[0].message,/Atualize/);
+  const room=new Room(1000,42);
+  // Protocol 3 is the JSON room before VGM-042b: a tab left open across the release gets a readable refusal, no frames.
+  for(const version of [1,3,5]){
+    const old=peer();room.connect(old,1000);
+    room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
+    assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
+    assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualize a página/);
+    assert.equal(old.frames.length,0,'never a binary frame');
+  }
+  assert.equal(ROOM_PROTOCOL,4);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);
@@ -111,7 +123,7 @@ test('late arrival is spectator; original member reconnects without restarting c
   command(room,late,{t:'input',round:1,seq:1,x:1,y:0,attack:true},4450);room.advance(4500);
   assert.deepEqual({x:spectator.x,y:spectator.y},pos);assert.equal(spectator.ack,0);
   const elapsed=room.run.snapshot().elapsed,back=peer();room.connect(back,4550);
-  command(room,back,{t:'join',protocol:3,token},4550);
+  command(room,back,{t:'join',protocol:ROOM_PROTOCOL,token},4550);
   assert.equal(idOf(back),idOf(a));assert.equal(room.sim.players.get(idOf(a))!.spectator,false);
   assert.equal(room.run.snapshot().elapsed,elapsed);assert.equal(room.sim.players.size,3);
   // Spectators cannot keep an otherwise defeated team alive.
@@ -137,9 +149,9 @@ test('boss kill sends one result message to every player and stays stable',()=>{
   const state=room.run.snapshot();assert.equal(state.phase,'result');assert.equal(state.outcome,'victory');
   for(const viewer of [a,b]){
     assert.deepEqual(results(viewer),[{t:'result',outcome:'victory',resultId:state.resultId,round:1}]);
-    // The full snapshot announcing the result reaches the client before the result message.
-    const at=viewer.messages.findIndex(m=>m.t==='result'),before=viewer.messages.slice(0,at).filter(m=>m.t==='state'&&m.full).at(-1);
-    assert.equal(before?.run?.phase,'result');
+    // The run state announcing the result reaches the client before the result message.
+    const at=viewer.messages.findIndex(m=>m.t==='result'),before=viewer.messages.slice(0,at).filter(m=>m.t==='run').at(-1);
+    assert.equal(before?.run?.phase,'result');assert.equal(before?.run?.outcome,'victory');
   }
 });
 test('victory or defeat on the last tick beats the timeout; otherwise the timeout is announced once',()=>{
@@ -207,17 +219,78 @@ test('choose outside combat is refused (lobby and result)',()=>{
   downAll(room);room.advance(4200);assert.equal(room.run.snapshot().phase,'result');
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);assert.equal(calls,0);
 });
-test('each new horde round is announced with one full snapshot',()=>{
+/** baseSeq of a frame header (magic, version, uvar seq, uvar baseSeq): 0 means a full frame. */
+function baseOf(frame:Uint8Array){
+  let pos=2;const uvar=()=>{let v=0,mul=1;for(;;){const b=frame[pos++];v+=(b&127)*mul;if(b<128)return v;mul*=128;}};
+  uvar();return uvar();
+}
+/** A protocol 4 client for one test peer: decodes its frames in order and acks each, as client.ts does. */
+function client(room:Room,p:ReturnType<typeof peer>){
+  const feed=new FrameRunFeed();let read=0;const decoded:{seq:number;base:number;bytes:number;tick:number}[]=[];
+  // Like client.ts, one ack for whatever arrived since the last one (acks coalesce, they never burst).
+  const pump=(now=1100,ack=true)=>{
+    let last=0;
+    for(;read<p.frames.length;read++){
+      const frame=p.frames[read],r=feed.decode(frame);assert.ok(r.ok,r.ok?'':r.error);
+      decoded.push({seq:r.seq,base:baseOf(frame),bytes:frame.length,tick:r.view.tick});last=r.seq;
+    }
+    if(ack&&last)command(room,p,{t:'ack',seq:last},now);
+  };
+  return {feed,pump,decoded};
+}
+test('protocol 4: full frame on join, deltas against the acked frame, 10 Hz per client in two staggered slots',()=>{
+  const room=new Room(1000),peers=Array.from({length:6},()=>peer());peers.forEach((p,i)=>join(room,p,`Amigo ${i}`));
+  const clients=peers.map(p=>client(room,p));
+  for(const p of peers){assert.equal(p.log[0].t,'welcome');assert.ok(p.log[1] instanceof Uint8Array,'the full frame follows the welcome');}
+  for(const c of clients)c.pump();
+  assert.ok(clients.every(c=>c.decoded[0].base===0),'first frame is full');
+  const slots=[...room.connections.values()].map(c=>c.encoder!.slot).sort();
+  assert.deepEqual(slots,[0,0,0,1,1,1],'three clients per slot');
+  startRun(room,peers);for(const c of clients)c.pump(4150);
+  const before=clients.map(c=>c.decoded.length),perTick:number[]=[];
+  for(let i=0;i<40;i++){
+    const sent=peers.reduce((n,p)=>n+p.frames.length,0);
+    command(room,peers[0],{t:'ping',at:0},4200+i*50);room.advance(4200+i*50);
+    perTick.push(peers.reduce((n,p)=>n+p.frames.length,0)-sent);
+    for(const c of clients)c.pump(4200+i*50);
+  }
+  assert.ok(perTick.every(n=>n===3),`3 encodes per tick, got ${perTick}`);
+  clients.forEach((c,i)=>assert.equal(c.decoded.length-before[i],20,'10 Hz over 2 s'));
+  const later=clients[0].decoded.slice(-10);
+  assert.ok(later.every(d=>d.base!==0),'acked client gets deltas');
+  // Every client knows all six players, their names, classes and positions.
+  for(const c of clients){
+    assert.equal(c.feed.players.size,6);
+    for(const [id,p] of room.sim.players){const mine=c.feed.players.get(id)!;assert.equal(mine.name,p.name);assert.ok(Math.abs(mine.x!-p.x)<.01&&Math.abs(mine.y!-p.y)<.01);}
+  }
+});
+test('protocol 4: deltas go against the last acked frame; without acks they turn full, resync gives a full frame, no run JSON per tick',()=>{
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
+  const ca=client(room,a);ca.pump(4150);
+  const acked=ca.decoded.at(-1)!.seq,runMessages=a.messages.filter(m=>m.t==='run').length;
+  let t=4200;const tick=(ack:boolean)=>{if((t/50)%20===0)command(room,a,{t:'ping',at:0},t);room.advance(t);ca.pump(t,ack);t+=50;};
+  for(let i=0;i<20;i++)tick(false);
+  assert.ok(ca.decoded.slice(-10).every(d=>d.base===acked),'every delta is against the acked frame, not the last one sent');
+  for(let i=0;i<140;i++)tick(false);
+  assert.ok(ca.decoded.slice(-5).every(d=>d.base===0),'the acked frame aged out of the history: full frames');
+  assert.equal(a.messages.filter(m=>m.t==='run').length,runMessages,'combat ticks do not resend the run state');
+  for(let i=0;i<6;i++)tick(true);
+  assert.ok(ca.decoded.at(-1)!.base!==0,'acks bring deltas back');
+  command(room,a,{t:'resync'},t);
+  for(let i=0;i<3;i++)tick(true);
+  assert.ok(ca.decoded.slice(-2).some(d=>d.base===0),'resync answered with a full frame');
+});
+test('protocol 4: tap targets travel as client ids and reach the simulation as server ids',()=>{
   const room=new Room(1000),a=peer();join(room,a);startRun(room,[a]);
-  const fulls=()=>a.messages.filter(m=>m.t==='state'&&m.full).length,startFulls=fulls();
-  let tick=0;const at=()=>4200+tick*50;
-  // Pings keep the connection fresh while the opening runs.
-  const advance=()=>{command(room,a,{t:'ping',at:0},at());room.advance(at());tick++;};
-  while(room.sim.world.round.index===0&&tick<400){advance();if(room.sim.world.round.index===0)assert.equal(fulls(),startFulls);}
-  assert.equal(room.sim.world.round.index,1);assert.equal(fulls(),startFulls+1);
-  assert.equal(a.messages.filter(m=>m.t==='state'&&m.full).at(-1).tick,room.sim.tick);
-  for(let i=0;i<10;i++)advance();
-  assert.equal(room.run.snapshot().phase,'combat');assert.equal(a.closes.length,0);assert.equal(fulls(),startFulls+1);
+  const ca=client(room,a),p=room.sim.players.get(idOf(a))!;
+  const enemy=createEnemy(room.sim.world,'gosma',{x:p.x+3,y:p.y});
+  for(let i=0;i<3;i++){room.advance(4200+i*50);ca.pump(4200+i*50);}
+  const label=[...ca.feed.enemies.keys()].find(id=>room.ids.resolve(id)===enemy.id)!;
+  assert.match(label,/^e\d+$/);assert.notEqual(label,enemy.id);
+  command(room,a,{t:'input',round:1,seq:1,x:0,y:0,attack:false,target:label,ack:ca.decoded.at(-1)!.seq},4400);room.advance(4400);
+  assert.equal(p.target,enemy.id);
+  command(room,a,{t:'input',round:1,seq:2,x:0,y:0,attack:false,target:'e999999'},4450);room.advance(4450);
+  assert.equal(p.ack,2,'an unknown target only drops the target');assert.equal(p.target,undefined);
 });
 
 test('a run with no participant left ends in defeat right away (review 1)',()=>{
@@ -229,7 +302,7 @@ test('a run with no participant left ends in defeat right away (review 1)',()=>{
   assert.equal(room.run.snapshot().phase,'result');assert.equal(room.run.snapshot().outcome,'defeat');
   assert.deepEqual(results(a),[],'the departed peer gets nothing');
   // Coming back afterwards is a fresh join into the result screen, not a stuck combat.
-  const b=peer();room.connect(b,36_000);command(room,b,{t:'join',protocol:3,token},36_000);
+  const b=peer();room.connect(b,36_000);command(room,b,{t:'join',protocol:ROOM_PROTOCOL,token},36_000);
   const c=peer();join(room,c,'Atrasado',36_000);
   room.advance(36_050);assert.equal(room.run.snapshot().phase,'result');
   assert.equal(room.run.snapshot().outcome,'defeat');
@@ -268,15 +341,17 @@ test('each event reaches the client exactly once, with rounded numbers (review 3
   world.step=()=>{const events=step();sent.push(...events.map(e=>e.eventId));return events;};
   const p=room.sim.players.get(idOf(a))!;
   for(let i=0;i<10;i++)createEnemy(world,'gosma',{x:p.x+.6+i*.1,y:p.y+.4},1);
-  const before=a.messages.length;
-  for(let i=0;i<400;i++)room.advance(4200+i*50);
-  const received=a.messages.slice(before).filter(m=>m.t==='state').flatMap(m=>m.x?.events??[]);
+  const ca=client(room,a);ca.pump();ca.feed.take();
+  const received:any[]=[];
+  for(let i=0;i<400;i++){if(i%40===0)command(room,a,{t:'ping',at:0},4200+i*50);room.advance(4200+i*50);ca.pump(4200+i*50);if(i%7===0)received.push(...ca.feed.take().events);}
+  received.push(...ca.feed.take().events);
   const ids=received.map((e:any)=>e.eventId);
   assert.ok(sent.length>20,`events happened (${sent.length})`);
   assert.equal(new Set(ids).size,ids.length,'no duplicate');
   const last=Math.max(...ids),expected=sent.filter(id=>id<=last);
   assert.deepEqual(ids,expected,'none lost, in order');
-  for(const e of received)for(const v of Object.values(e))if(typeof v==='number')assert.equal(v,Math.round(v*1000)/1000);
+  // Protocol 4 quantizes on the wire (positions 1/512, velocities 1/256, counts as integers).
+for(const e of received)for(const v of Object.values(e))if(typeof v==='number')assert.equal(v,Math.round(v*512)/512);
 });
 
 test('reconnect drops stale inputs and accepts the client sequence restarting at ack (review 4)',()=>{
@@ -285,7 +360,7 @@ test('reconnect drops stale inputs and accepts the client sequence restarting at
   for(let seq=1;seq<=8;seq++)command(room,a,{t:'input',round:1,seq,x:1,y:0,attack:false},4200);
   room.advance(4250);const ack=p.ack;assert.equal(ack,1);
   room.disconnect(a,4300);
-  const again=peer();room.connect(again,4400);command(room,again,{t:'join',protocol:3,token},4400);
+  const again=peer();room.connect(again,4400);command(room,again,{t:'join',protocol:ROOM_PROTOCOL,token},4400);
   const welcome=again.messages.find(m=>m.t==='welcome');assert.equal(welcome.id,id);
   const at={x:p.x,y:p.y};
   room.advance(4450);assert.deepEqual({x:p.x,y:p.y},at,'no stale input replayed after reconnect');assert.equal(p.ack,ack);

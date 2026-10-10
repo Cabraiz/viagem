@@ -1,11 +1,26 @@
 import {TerrainField,defaultTerrain,TERRAIN_VERSION} from '../terrain/field.ts';
 import {CHUNK_VERSION} from '../terrain/chunks.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, unpackPlayer, type Input, type Player, type Snapshot } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
-import {JsonRunFeed} from './run-feed.ts';
+import {FrameRunFeed} from './run-feed.ts';
+import type {PlayerWireView,WorldDescriptor} from './protocol4.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
+/** A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, spectator, fallen player). */
+const ACK_FALLBACK_MS=120;
+const OUTDATED='Servidor da partida desatualizado. Atualize a página.';
+const TERRAIN_MISMATCH='Versões de terreno diferentes. Atualize a página.';
+/** Same terrain as the room's (kind, versions, seed and signature), or why not. */
+export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
+  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return OUTDATED;
+  // An endless room says so (spawn-em-volta/rede-mapa-grande); a different generator is refused, never misdrawn.
+  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return TERRAIN_MISMATCH;
+  const terrain=new TerrainField(world.seed,{world:world.kind==='infinito'?'infinito':'ilha'});
+  return terrain.signature===world.signature?terrain:TERRAIN_MISMATCH;
+}
+const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
+  spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
 export class CoopClient {
   terrain=defaultTerrain;
   run?:RunState;
@@ -13,8 +28,10 @@ export class CoopClient {
   players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
   pending:Input[]=[];
-  /** RunView source for the horde renderer and the HUD (protocol 3 JSON today; protocol 4 swaps the feed, VGM-042b). */
-  readonly feed=new JsonRunFeed();
+  /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
+  readonly feed=new FrameRunFeed();
+  /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */
+  bytes=0;
   private socket?:WebSocket;
   private samples:Sample[]=[];
   private stopped=false;
@@ -26,6 +43,11 @@ export class CoopClient {
   private initialized=false;
   private resolveReady?:()=>void;
   private rejectReady?:(error:Error)=>void;
+  /** Run state as the room last pushed it, with the simulation tick it was taken at (elapsed counts from there). */
+  private runBase?:{run:RunState;tick:number};
+  /** Last decoded frame seq, and the last one the room was told about. */
+  private ackSeq=0;private ackSent=0;
+  private ackTimer?:ReturnType<typeof setTimeout>;
   onStatus:(message:string)=>void=()=>{};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -38,35 +60,38 @@ export class CoopClient {
     if(this.stopped)return;
     this.onStatus(this.token?'Reconectando à turma…':'Entrando na sala…');
     const url=new URL(`/room/${this.code}`,this.endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
-    const ws=this.socket=new WebSocket(url);
+    const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
     const timeout=setTimeout(()=>ws.close(),8000);
     ws.onopen=()=>{ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{})}));};
     ws.onmessage=event=>{
-      let m:any;try{m=JSON.parse(event.data);}catch{return;}
       this.lastMessage=performance.now();
+      if(typeof event.data!=='string'){
+        const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
+        if(this.initialized&&ws===this.socket)this.frame(ws,data);
+        return;
+      }
+      this.bytes+=event.data.length;
+      let m:any;try{m=JSON.parse(event.data);}catch{return;}
       if(m.t==='welcome'){
-        const terrain=m.state?.terrain;
-        if(!m.state?.run||!terrain||terrain.version!==TERRAIN_VERSION||!Number.isInteger(terrain.seed)){this.stopped=true;this.onStatus('Servidor da partida desatualizado.');this.rejectReady?.(new Error('Servidor da partida desatualizado.'));ws.close();return;}
-        // An endless room says so (spawn-em-volta/rede-mapa-grande); an island client facing a newer generator
-        // fails the signature check below, so a mismatch is refused, never misdrawn.
-        if(terrain.world==='infinito'&&terrain.generator!==CHUNK_VERSION){this.stopped=true;this.onStatus('Servidor da partida desatualizado.');this.rejectReady?.(new Error('Versões de terreno diferentes. Atualize a página.'));ws.close();return;}
-        this.terrain=new TerrainField(terrain.seed,{world:terrain.world==='infinito'?'infinito':'ilha'});
-        if(this.terrain.signature!==terrain.signature){this.stopped=true;this.rejectReady?.(new Error('Versões de terreno diferentes. Atualize a página.'));ws.close();return;}
+        const terrain=terrainFor(m.world);
+        if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:OUTDATED);return;}
+        this.terrain=terrain;
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
-        // Reconnection: start the view over from the welcome's full snapshot (D-018); the room pushes the offers right after.
-        this.feed.reset();
-        this.apply(m.state);this.seq=this.players.get(this.id)?.ack??0;this.initialized=true;
+        // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
+        this.feed.reset();this.ackSeq=this.ackSent=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
+        this.setRun(m.run,m.tick);this.seq=Number.isSafeInteger(m.ack)?m.ack:0;this.initialized=true;
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
         clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{if(performance.now()-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'ping',at:performance.now()}));this.saveToken();},2000);
-      }else if(m.t==='state')this.apply(m);
+      }
+      else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
       else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){this.onStatus(m.message);this.stopped=true;this.connected=false;this.forgetToken();this.rejectReady?.(new Error(m.message));ws.close();}
     };
     ws.onclose=()=>{
-      clearTimeout(timeout);clearInterval(this.heartbeat);this.connected=false;this.pending=[];
+      clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
       this.lostAt ||= Date.now();
       if(Date.now()-this.lostAt>25_000||(!this.initialized&&this.attempts>=2)){
@@ -77,27 +102,57 @@ export class CoopClient {
     };
     ws.onerror=()=>{};
   }
+  /** A version or terrain the client cannot play: stop for good with a readable reason. */
+  private fail(ws:WebSocket,message:string){
+    this.stopped=true;this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
+  }
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
-  private apply(s:Snapshot){
-    if(s.run&&this.run&&s.run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
-    this.run=s.run;
-    this.feed.apply(s);
-    if(s.full)this.players.clear();
-    for(const p of s.players)this.players.set(p[0],unpackPlayer(p));
-    for(const id of s.removed)this.players.delete(id);
-    this.tick=s.tick;this.victory=s.victory;
+  private setRun(run:RunState,tick:unknown){
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
+    this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
+    this.run={...run,members:run.members.map(m=>({...m}))};
+    this.victory=run.outcome==='victory';
+  }
+  /** One protocol 4 frame: decode, ack, then players, prediction and the run clock. */
+  private frame(ws:WebSocket,data:ArrayBuffer){
+    const result=this.feed.decode(data);
+    if(!result.ok){
+      // A frame we cannot place (lost baseline, garbage): ask for a full one. Stale frames are just dropped.
+      if(result.error!=='stale frame'&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'resync'}));
+      return;
+    }
+    if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,TERRAIN_MISMATCH);return;}
+    this.ackSeq=result.seq;
+    this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_FALLBACK_MS);
+    const view=result.view;
+    this.tick=view.tick;
+    this.players.clear();
+    for(const p of view.players)this.players.set(p.id,toPlayer(p as PlayerWireView));
+    // In combat elapsed/remaining move one per simulation tick; the room only pushes the run when something else changes.
+    const base=this.runBase;
+    if(base&&this.run&&base.run.phase==='combat'){
+      const d=Math.max(0,view.tick-base.tick);
+      this.run.elapsed=base.run.elapsed+d;this.run.remaining=Math.max(0,base.run.remaining-d);
+    }
     const self=this.players.get(this.id);
     if(self){this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
     this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
+  }
+  /** Standalone ack when no input carried it (D-018: deltas go against the last frame the room knows we have). */
+  private flushAck(){
+    if(this.ackSeq<=this.ackSent||this.socket?.readyState!==WebSocket.OPEN)return;
+    this.ackSent=this.ackSeq;this.socket.send(JSON.stringify({t:'ack',seq:this.ackSeq}));
   }
   input(direction:Point,skill:boolean,target?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=20)return;
     const length=Math.max(1,Math.hypot(direction.x,direction.y));
     const input:Input={seq:++this.seq,x:direction.x/length,y:direction.y/length,attack:false,skill,target};
     this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);
-    this.socket.send(JSON.stringify({t:'input',round:this.run.round,...input}));
+    const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
+    if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
+    this.socket.send(JSON.stringify({t:'input',round:this.run.round,...input,...(ack!==undefined?{ack}:{})}));
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   rematch(){this.runCommand({t:'rematch'});}
@@ -114,6 +169,6 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
 }
 export { STEP };

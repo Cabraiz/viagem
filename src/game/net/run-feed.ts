@@ -1,12 +1,14 @@
 /**
  * Client run feed (VGM-043): turns what the room sends into the RunView that the horde renderer (VGM-039)
- * and the run HUD (VGM-040) consume. Today the room speaks protocol 3 JSON plus the horde extras (`x`);
- * protocol 4 (VGM-042b) swaps in a feed backed by FrameDecoder behind the same RunFeed interface, so the
- * scene and the HUD do not change. Pure (no DOM, no Phaser): unit-tested under node.
+ * and the run HUD (VGM-040) consume. The room speaks protocol 4 since VGM-042b: FrameRunFeed decodes its binary
+ * frames behind the RunFeed interface, so the scene and the HUD did not change. JsonRunFeed (protocol 3 JSON plus
+ * the horde extras `x`) stays as the reference the JSON snapshot tests use; no room sends it any more.
+ * Pure (no DOM, no Phaser): unit-tested under node.
  */
 import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,TelegraphView} from '../sim/view.ts';
 import type {LevelOffer,PickupKind,SimEvent} from '../sim/types.ts';
 import {unpackStats,type EnemyWire,type PlayerExtraWire,type PlayerWire,type Snapshot} from './shared.ts';
+import {FrameDecoder,type DecodeResult,type PlayerWireView,type WorldDescriptor} from './protocol4.ts';
 
 type StampedEvent=SimEvent&{eventId:number};
 
@@ -144,6 +146,65 @@ export class JsonRunFeed implements RunFeed {
     }
     this.events.push(event);
     if(this.events.length>MAX_FEED_EVENTS)this.events.splice(0,this.events.length-MAX_FEED_EVENTS);
+  }
+}
+
+const copyOffers=(offers:readonly LevelOffer[]|readonly OfferView[]):OfferView[]=>
+  offers.map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex}));
+
+/**
+ * Protocol 4 (VGM-042b): binary frames through FrameDecoder. Ids are the client-facing ones the frames carry
+ * (`e12` for a critter, real ids for players), the same ids the events and the tap target use. An entity that
+ * left this client's area of interest (`left`) just disappears: no kill event, so no poof (rede-mapa-grande).
+ */
+export class FrameRunFeed implements RunFeed {
+  stateVersion=0;
+  offersVersion=0;
+  readonly enemies=new Map<string,EnemyView>();
+  readonly players=new Map<string,PlayerWireView>();
+  /** The world the frames describe (a full frame always says it); the client checks it against its terrain. */
+  world?:WorldDescriptor;
+  /** Ids that left the area of interest in the last decoded frame (diagnostics and tests). */
+  left:string[]=[];
+  private decoder=new FrameDecoder();
+  private last?:RunView;
+  private offers:OfferView[]=[];
+  private events:StampedEvent[]=[];
+
+  /** Decodes one binary frame; on success the view, the maps and the event queue move forward. */
+  decode(data:ArrayBuffer|Uint8Array):DecodeResult{
+    const result=this.decoder.decode(data);
+    if(!result.ok)return result;
+    const view=result.view;
+    this.enemies.clear();for(const e of view.enemies)this.enemies.set(e.id,e);
+    this.players.clear();for(const p of view.players)this.players.set(p.id,p as PlayerWireView);
+    if(result.world)this.world=result.world;
+    this.left=result.left;
+    for(const event of view.events)this.events.push(event);
+    if(this.events.length>MAX_FEED_EVENTS)this.events.splice(0,this.events.length-MAX_FEED_EVENTS);
+    this.last=view;this.stateVersion++;
+    return result;
+  }
+
+  setOffers(offers:readonly LevelOffer[]|readonly OfferView[]){this.offers=copyOffers(offers);this.offersVersion++;}
+
+  take():RunView{const events=this.events;this.events=[];return this.view(events);}
+
+  peek():RunView{return this.view([]);}
+
+  /** New connection (D-018): the decoder forgets its baselines, but keeps the seen event ids (no replays). */
+  reset(){
+    this.decoder.reset();this.enemies.clear();this.players.clear();this.offers=[];this.events=[];this.last=undefined;this.left=[];
+    this.stateVersion++;this.offersVersion++;
+  }
+
+  private view(events:StampedEvent[]):RunView{
+    const v=this.last;
+    return {
+      tick:v?.tick??0,team:v?{...v.team}:{xp:0,level:1,nextXp:1},round:v?.round?{...v.round}:undefined,...(v?.wave?{wave:{...v.wave}}:{}),
+      enemies:v?.enemies??[],pickups:v?.pickups??[],projectiles:v?.projectiles??[],telegraphs:v?.telegraphs??[],structures:v?.structures??[],
+      players:v?.players??[],offers:this.offers,events,
+    };
   }
 }
 

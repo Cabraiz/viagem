@@ -1,7 +1,7 @@
 /**
  * Protocol 4 (VGM-041, wide map in NEW-20261009-ORQ-rede-mapa-grande): binary server -> client run frames,
  * delta-encoded per entity against the last frame the client acknowledged, plus JSON control messages.
- * Not wired into the Room yet (VGM-042b).
+ * The Room speaks it since VGM-042b (ROOM_PROTOCOL 4): binary frames out, JSON control messages both ways.
  *
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
  *   u8 magic 0x56 'V' | u8 version 4 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
@@ -214,9 +214,10 @@ const contribution=optional<Contribution>({
 
 /**
  * Player record on the wire: the view plus optional position and last processed input seq, so the client
- * can render and reconcile players from protocol 4 alone (view.ts stays unchanged).
+ * can render and reconcile players from protocol 4 alone (view.ts stays unchanged). The three ticks drive the
+ * sprite (attack swing, skill ring, skill cooldown); absent means 0 (never).
  */
-export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number};
+export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number};
 type SectionKey='players'|'enemies'|'pickups'|'projectiles'|'telegraphs'|'structures';
 export const SECTIONS:readonly SectionKey[]=['players','enemies','pickups','projectiles','telegraphs','structures'];
 type AnyCodec=Codec<unknown>;
@@ -228,9 +229,12 @@ interface Schema {
 }
 const c=<V>(codec:Codec<V>)=>codec as unknown as AnyCodec;
 const SCHEMAS:Record<SectionKey,Schema>={
+  // Fields that change every frame come first, so the usual mask (nudge + ack + hp + stats) fits one byte.
   players:{prefix:'',fields:{
-    name:c(str),classId:c(str),hp:c(count),maxHp:c(count),online:c(bool),spectator:c(bool),downed:c(downed),eliminated:c(optional(bool)),
-    weapons:c(items),passives:c(items),stats:c(contribution),x:c(optional(posX)),y:c(optional(posY)),ack:c(optional(count)),
+    ack:c(optional(count)),hp:c(count),stats:c(contribution),downed:c(downed),attackTick:c(optional(tickRel)),
+    x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
+    online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
+    name:c(str),classId:c(str),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -308,7 +312,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['offer',[['player','ref'],['offer','str']]],
   ['upgrade',[['player','ref'],['item','str'],['level','count']]],
   ['evolve',[['player','ref'],['from','str'],['to','str']]],
-  ['downed',[['player','ref'],['by','ref',true]]],
+  // source: kind of the critter behind the fall (UX-voce-e-dano), added with the switch to the room (VGM-042b).
+  ['downed',[['player','ref'],['by','ref',true],['source','str',true]]],
   ['revived',[['player','ref'],['by','ref',true]]],
   ['eliminated',[['player','ref'],['by','ref',true]]],
   ['telegraph',[['telegraph','ref',false,'telegraphs']]],
@@ -644,7 +649,7 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 15 fields per schema, so masks stay well inside 32-bit integers. */
+/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
 const bit=(field:number)=>1<<(field+FIELD_BIT);
 const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
 /**

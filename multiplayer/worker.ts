@@ -1,13 +1,16 @@
 import {randomSeed,DEFAULT_SEED} from '../src/game/terrain/field.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer } from './room.ts';
+import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; }
+/** LAB_WORLD (wrangler dev only, with ALLOW_LOCAL): 'infinito' opens lab rooms in the endless world before it ships. */
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; }
+const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
-    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:3});
+    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL});
     if(!allowed(request,env))return new Response('Origin not allowed',{status:403});
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
@@ -18,6 +21,9 @@ export default {
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
       await stub.init();return Response.json({code},{status:201,headers});
     }
+    // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.
+    const lab=url.pathname.match(/^\/lab\/([A-F0-9]{10})$/);
+    if(lab&&local(env)&&request.method==='GET')return Response.json(await env.ROOMS.get(env.ROOMS.idFromName(lab[1])).lab(),{headers});
     const match=url.pathname.match(/^\/room\/([A-F0-9]{10})$/);
     if(match&&request.method==='GET'&&request.headers.get('Upgrade')?.toLowerCase()==='websocket')return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(request);
     return new Response('Not found',{status:404,headers});
@@ -27,11 +33,13 @@ export class GameRoom extends DurableObject<Env>{
   private room?:Room;
   private timer?:ReturnType<typeof setInterval>;
   private peers=new Map<WebSocket,Peer>();
-  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=new Room(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
+  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
+  private create(created:number,seed:number){return new Room(created,seed,local(this.env)&&this.env.LAB_WORLD==='infinito'?{world:'infinito'}:{});}
+  lab(){return this.room?.lab()??null;}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
-    this.room??=new Room(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
+    this.room??=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>server.close(code,reason)};
     this.peers.set(server,peer);this.room.connect(peer);

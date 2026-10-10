@@ -14,7 +14,16 @@ export interface PlayerRunView {
   downed?:{progress:number;bleedOutTick:number};eliminated?:boolean;
   weapons:{id:string;level:number}[];passives:{id:string;level:number}[];
   /** Contribution counters for the result screen. */
-  stats?:{damage:number;kills:number;revives:number;pickups:number};
+  stats?:PlayerStatsView;
+}
+/**
+ * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,
+ * whatever events it saw (reconnects, protocol 4 area of interest). `downs` present = server counters; the prizes
+ * then use these instead of counting events. Damage is what the player dealt to enemies.
+ */
+export interface PlayerStatsView {
+  damage:number;kills:number;revives:number;pickups:number;
+  downs?:number;heals?:number;chests?:number;magnets?:number;evolves?:number;
 }
 export interface OfferView {id:string;source:OfferSource;level:number;choices:OfferChoice[];deadlineTick:number;defaultIndex:number}
 export interface RunView {

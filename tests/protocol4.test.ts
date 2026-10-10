@@ -119,7 +119,7 @@ test('a full frame round-trips every field within quantization',()=>{
   assert.equal(res.view.wave?.label,'Round do Boleto Vencido');
   const p1=res.view.players.find(p=>p.id==='uuid-1')!;
   assert.equal(p1.name,'Zé do Pavê 😂');near(p1.downed!.progress,.4,1/255,'progress');assert.equal(p1.downed!.bleedOutTick,1400);
-  assert.deepEqual(p1.stats,{damage:1234,kills:56,revives:2,pickups:90});
+  assert.deepEqual(p1.stats,{damage:1234,kills:56,revives:2,pickups:90,downs:0,heals:0,chests:0,magnets:0,evolves:0},'missing counters travel as 0');
   const p2=res.view.players.find(p=>p.id==='uuid-2')!;assert.equal(p2.eliminated,true);assert.equal(p2.spectator,true);
   // Events keep the server's ids, translate entity ids and round-trip their payloads.
   assert.deepEqual(res.view.events.map(e=>e.eventId),[7,8,9,10,11,12,13,14,15,16,17]);
@@ -376,7 +376,7 @@ test('long strings are clipped the same way on both sides',()=>{
 
 // ---------- Wide map and area of interest (NEW-20261009-ORQ-rede-mapa-grande) ----------
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/game/sim/offscreen.ts';
-import {POS_LIMIT,type WorldDescriptor} from '../src/game/net/protocol4.ts';
+import {POS_LIMIT,SEND_EVERY,sendSlot,sendsOn,type WorldDescriptor} from '../src/game/net/protocol4.ts';
 
 const q=(v:number)=>Math.round(v*POS_SCALE)/POS_SCALE;
 const ENDLESS:WorldDescriptor={kind:'infinito',terrainVersion:1,generatorVersion:1,seed:4242,signature:'a1b2c3d4'};
@@ -547,23 +547,29 @@ function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
   };
   return {view,step};
 }
-/** Bytes/s per client at 10 Hz over 10 s, acks ~150 ms late. */
-function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean){
-  const clients=world.view.players.map(p=>({enc:new FrameEncoder(new WireIds(),{viewer:p.id,interest:interest?undefined:false}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+/** Bytes/s per client at 10 Hz over 10 s, acks ~150 ms late; `stagger` spreads the clients over both ticks. */
+function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean,stagger=false){
+  const ids=new WireIds();
+  const clients=world.view.players.map((p,i)=>({enc:new FrameEncoder(ids,{viewer:p.id,interest:interest?undefined:false,slot:stagger?sendSlot(i):0}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
   let bytes=0,enemies=0,frames=0,encodeMs=0;
+  const perTick:number[]=[];
   for(let i=0;i<200;i++){
     const events=world.step();
     for(const c of clients)c.enc.pushEvents(events);
-    if(i%2)continue;
+    let tickMs=0;
     for(const c of clients){
-      const t0=performance.now(),frame=c.enc.encode(world.view);encodeMs+=performance.now()-t0;bytes+=frame.length;
+      if(!c.enc.due(i))continue;
+      const t0=performance.now(),frame=c.enc.encode(world.view),dt=performance.now()-t0;encodeMs+=dt;tickMs+=dt;bytes+=frame.length;
       const r=c.dec.decode(frame);assert.ok(r.ok,!r.ok?r.error:'');
       enemies+=r.view.enemies.length;frames++;
       c.inFlight.push({seq:r.seq,event:r.ack.event,at:i+3});
       while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
     }
+    if(tickMs>0)perTick.push(tickMs);
   }
-  return {bytesPerSecond:Math.round(bytes/clients.length/10),enemiesPerFrame:Math.round(enemies/frames),eventBytes:Math.round(clients[0].enc.stats.eventBytes/10),
+  perTick.sort((a,b)=>a-b);
+  assert.equal(frames,clients.length*100,'10 Hz for every client');
+  return {encodeTickMsP50:Math.round(perTick[perTick.length>>1]*100)/100,encodeTickMsP95:Math.round(perTick[Math.floor(perTick.length*.95)]*100)/100,bytesPerSecond:Math.round(bytes/clients.length/10),enemiesPerFrame:Math.round(enemies/frames),eventBytes:Math.round(clients[0].enc.stats.eventBytes/10),
     encodeMsPerFrame:Math.round(encodeMs/frames*100)/100};
 }
 
@@ -573,7 +579,9 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const apart=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true);
   const apartAll=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),false);
-  t.diagnostic(`protocol 4, wide map, bytes/s per client at 10 Hz: together ${JSON.stringify(together)}; same at the origin ${JSON.stringify(atOrigin)}; spread 200 u ${JSON.stringify(apart)}; spread without area of interest ${JSON.stringify(apartAll)}`);
+  const staggered=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true,true);
+  t.diagnostic(`protocol 4, wide map, bytes/s per client at 10 Hz: together ${JSON.stringify(together)}; same at the origin ${JSON.stringify(atOrigin)}; spread 200 u ${JSON.stringify(apart)}; spread without area of interest ${JSON.stringify(apartAll)}; spread, clients staggered over both ticks ${JSON.stringify(staggered)}`);
+  assert.ok(Math.abs(staggered.bytesPerSecond-apart.bytesPerSecond)<apart.bytesPerSecond*.05,'staggering costs no bandwidth');
   // D-018 budget: the island worst case was 26.7 KB/s per client; the wide map must stay in the same range.
   assert.ok(together.bytesPerSecond<32_000,`together ${together.bytesPerSecond}`);
   assert.ok(apart.bytesPerSecond<32_000,`spread ${apart.bytesPerSecond}`);
@@ -608,4 +616,27 @@ test('area of interest without a body: a spectator follows a player, an empty ro
   const parked=new FrameEncoder(new WireIds(),{viewer:'ghost'});
   const r3=new FrameDecoder().decode(parked.encode(v,{focus:{x:0,y:0}}));assert.ok(r3.ok);
   assert.deepEqual(r3.view.enemies.map(e=>parked.ids.resolve(e.id)),['e-b']);
+});
+
+test('staggered broadcast: half the clients on odd ticks, each still 10 Hz and exact',()=>{
+  assert.equal(SEND_EVERY,2);
+  assert.deepEqual([0,1,2,3,4,5].map(sendSlot),[0,1,0,1,0,1]);
+  assert.ok(sendsOn(10,0)&&!sendsOn(10,1)&&sendsOn(11,1));
+  const rng=new Rng(71),w=farWorld(rng,4000,-4000);
+  const ids=new WireIds();
+  const odd=new FrameEncoder(ids,{viewer:'uuid-1',slot:1}),even=new FrameEncoder(ids,{viewer:'uuid-0',slot:0});
+  const decs=[new FrameDecoder(),new FrameDecoder()];
+  const sent=[0,0];
+  for(let i=0;i<80;i++){
+    const events=stepWorld(w,rng);
+    [even,odd].forEach((enc,k)=>{
+      enc.pushEvents(events);
+      if(!enc.due(w.tick))return;
+      const r=decs[k].decode(enc.encode(w.view));assert.ok(r.ok,!r.ok?r.error:'');
+      assertExact(r.view,w.view,enc.ids,`slot ${k} tick ${w.tick}`);
+      assert.equal(r.view.tick%2,k);
+      enc.ack(r.seq,r.ack.event);sent[k]++;
+    });
+  }
+  assert.deepEqual(sent,[40,40]);
 });

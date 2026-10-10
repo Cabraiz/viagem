@@ -59,7 +59,14 @@ export interface RunExtras {
   players?:PlayerExtraWire[];
 }
 /** id, maxHp, flags (1 downed, 2 eliminated), revive progress 0..1, bleedOutTick, weapons [id,level][], passives [id,level][]. */
-export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][]];
+/** [id, maxHp, flags, revive progress, bleedOutTick, weapons, passives, stats?]; stats is StatsWire (award-stats-server). */
+export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][],StatsWire?];
+/** [damage, kills, revives, pickups, downs, heals, chests, magnets, evolves], integers. */
+export type StatsWire=[number,number,number,number,number,number,number,number,number];
+export interface RunStats {damage:number;kills:number;revives:number;pickups:number;downs:number;heals:number;chests:number;magnets:number;evolves:number}
+export const emptyStats=():RunStats=>({damage:0,kills:0,revives:0,pickups:0,downs:0,heals:0,chests:0,magnets:0,evolves:0});
+export const packStats=(s:RunStats):StatsWire=>[Math.round(s.damage),s.kills,s.revives,s.pickups,s.downs,s.heals,s.chests,s.magnets,s.evolves];
+export const unpackStats=(w:StatsWire)=>({damage:w[0],kills:w[1],revives:w[2],pickups:w[3],downs:w[4],heals:w[5],chests:w[6],magnets:w[7],evolves:w[8]});
 export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string;world?:WorldKind;generator?:number}; x?:RunExtras };
 // hp goes up rounded (regen and might make fractions): a player or enemy still standing never shows 0.
 export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),wireHp(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
@@ -70,8 +77,12 @@ export const unpackEnemy = (e:EnemyWire):Enemy => ({id:e[0],x:e[1],y:e[2],hp:e[3
 const round=(n:number)=>Math.round(n*1000)/1000;
 /** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
 const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
-export const packPlayerExtra=(p:ServerPlayer):PlayerExtraWire=>[p.id,wireHp(p.stats.maxHp),(p.downed?1:0)|(p.eliminated?2:0),p.downed?progress(p.downed.progress):0,p.downed?.bleedOutTick??0,
-  p.build.weapons.map(i=>[i.id,i.level]),p.build.passives.map(i=>[i.id,i.level])];
+export const packPlayerExtra=(p:ServerPlayer,stats?:RunStats):PlayerExtraWire=>{
+  const wire:PlayerExtraWire=[p.id,wireHp(p.stats.maxHp),(p.downed?1:0)|(p.eliminated?2:0),p.downed?progress(p.downed.progress):0,p.downed?.bleedOutTick??0,
+    p.build.weapons.map(i=>[i.id,i.level]),p.build.passives.map(i=>[i.id,i.level])];
+  if(stats)wire.push(packStats(stats));
+  return wire;
+};
 const wireHp=(hp:number)=>Number.isFinite(hp)&&hp>0?Math.ceil(hp-1e-9):0;
 export function validInput(value:unknown):value is Input {
   if(!value||typeof value!=='object')return false;
@@ -116,6 +127,8 @@ export class Simulation {
   private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
+  /** Per-run counters for the prizes; outside stateHash on purpose (they never decide a future tick). */
+  private counters=new Map<string,RunStats>();
   /**
    * `world` defaults to the island. 'infinito' (D-019) spawns around the players (spawn-em-volta) and protocol 4
    * has wide positions and areas of interest (rede-mapa-grande), but it is NOT playable yet: the Room still speaks
@@ -150,7 +163,7 @@ export class Simulation {
     this.world.reset(runSeed(this.seed,++this.runs));
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
-    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];
+    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
@@ -200,10 +213,36 @@ export class Simulation {
       const p=this.players.get(e.player);
       if(p&&this.tick-(p.attackTick??0)>=ATTACK_ANIMATION_TICKS)p.attackTick=this.tick;
     }
+    this.countStats(events);
     this.trackRemovals();
     this.recent=this.recent.filter(r=>r.tick>this.tick-EVENT_BUFFER_TICKS);
     for(const event of events)this.recent.push({tick:this.tick,event});
     return events;
+  }
+  /** Run counters of a player (award-stats-server); zeros before anything happened. */
+  statsOf(id:string):RunStats{
+    let s=this.counters.get(id);
+    if(!s){s=emptyStats();this.counters.set(id,s);}
+    return s;
+  }
+  /** Same rules the HUD tally used on events (hud/model.ts applyEvents, DamageTally), now once, on the server. */
+  private countStats(events:readonly SimEvent[]){
+    const mine=(id:string|undefined)=>id!==undefined&&this.players.has(id)?this.statsOf(id):undefined;
+    for(const e of events){
+      switch(e.type){
+        case 'damage':{const s=mine(e.source);if(s&&!this.players.has(e.target)&&Number.isFinite(e.amount))s.damage+=e.amount;break;}
+        case 'kill':{const s=mine(e.by);if(s)s.kills++;break;}
+        case 'revived':{const s=mine(e.by);if(s)s.revives++;break;}
+        case 'downed':{const s=mine(e.player);if(s)s.downs++;break;}
+        case 'evolve':{const s=mine(e.player);if(s)s.evolves++;break;}
+        case 'pickup':{
+          const s=mine(e.player);if(!s)break;
+          s.pickups++;
+          if(e.kind==='heal')s.heals++;else if(e.kind==='magnet')s.magnets++;else if(e.kind==='chest')s.chests++;
+          break;
+        }
+      }
+    }
   }
   /** Enemies gone since the last step become tombstones (hp 0, kind kept for the death poof) for a few ticks, so protocol 3 clients hide them. */
   private trackRemovals(){
@@ -228,6 +267,7 @@ export class Simulation {
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
+        stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
       })),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
@@ -241,7 +281,7 @@ export class Simulation {
     return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature,
       ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:{})},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
-      x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(packPlayerExtra),
+      x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(p=>packPlayerExtra(p,this.statsOf(p.id))),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),
         projectiles:[...w.projectiles.values()].map(p=>[p.id,p.source,round(p.x),round(p.y),round(p.vx),round(p.vy),p.radius,p.hostile]),
         telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),

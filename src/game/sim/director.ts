@@ -62,7 +62,8 @@ export interface DirectorOptions {
  */
 interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number}
 type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'>;
-interface Retreat {id:string;x:number;y:number;untilTick:number}
+/** capTick (endless): hard end of a flight that keeps being extended while someone sees the enemy. */
+interface Retreat {id:string;x:number;y:number;untilTick:number;capTick?:number}
 /** JSON-safe director state, so a room checkpoint (VGM-047) can store and restore it. */
 export interface DirectorState {
   stage:'idle'|'prepare'|'wave'|'done';
@@ -105,6 +106,10 @@ export const RECYCLE_EVERY=ticks(.5),RECYCLE_PER_STEP=20;
 export const SPAWN_CLEARANCE=.9;
 /** Free disc around the other members of a group (the biggest regular enemy, tio-pavê .48, rounded up). */
 export const MEMBER_CLEARANCE=.5;
+/** Endless: every body is born at least this far past the edge of every legal screen (offscreenDistance + margin). */
+export const SPAWN_MARGIN=.5;
+/** Endless: a fleeing enemy still on someone's screen keeps fleeing; past this it is removed anyway (liveness). */
+export const FLEE_CAP_SECONDS=60;
 /**
  * Endless world: an enemy no one can see walks this much faster towards the nearest player, so a horde born on the
  * off-screen ring (21.6-35.9 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
@@ -215,15 +220,21 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
   /** Units a hero covers during the warning: a spot must stay hidden even if a player walks straight at it. */
   const lead=SPEED*warning/SIM_HZ;
-  function hiddenAhead(ctx:SimContext,p:Point){
+  /**
+   * Hidden from everyone with `margin` to spare: the spot moved `margin` units towards each player is hidden too.
+   * Every legal screen is star-shaped around its player (convex rectangles that contain it), so that is the
+   * closest the edge can be in that direction.
+   */
+  function hiddenBy(ctx:SimContext,p:Point,margin:number){
     for(const pl of ctx.players.values()){
       if(!blocking(pl))continue;
       const hint=options.cameraOf?.(ctx,pl),dx=pl.x-p.x,dy=pl.y-p.y,d=Math.hypot(dx,dy);
       if(visibleFrom(pl,p,hint))return false;
-      if(d>lead&&visibleFrom(pl,{x:p.x+dx/d*lead,y:p.y+dy/d*lead},hint))return false;
+      if(d<=margin||visibleFrom(pl,{x:p.x+dx/d*margin,y:p.y+dy/d*margin},hint))return false;
     }
     return true;
   }
+  const hiddenAhead=(ctx:SimContext,p:Point)=>hiddenBy(ctx,p,lead);
   const spawnable=(ctx:SimContext,p:Point)=>walkable(p,ctx.terrain)&&ctx.terrain.chunks!.clear(p.x,p.y,SPAWN_CLEARANCE);
   function nearestOf(list:readonly SimPlayer[],p:Point){
     let best:SimPlayer|undefined,d2=Infinity;
@@ -316,6 +327,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       // The boss keeps its own arena logic (VGM-038); siege enemies are supposed to be away from players.
       if(!e||e.boss||e.hp<=0||e.memory?.retreat===1||e.memory?.[SIEGE_FLAG]===1)continue;
       if(nearestOf(anchors,e).d2<=far)continue;
+      // Far from everyone standing is not enough: a downed or offline player may still be looking at it.
+      if(!hidden(ctx,e))continue;
       const anchor=chooseAnchor(ctx,anchors),p=ringPoint(ctx,anchor,undefined,options.cameraOf?.(ctx,anchor));
       if(!p)continue;
       e.x=p.x;e.y=p.y;delete e.knock;
@@ -382,7 +395,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(let attempt=0;attempt<4;attempt++){
       const r=.45*Math.sqrt(i+attempt*.5),a=i*2.39996+attempt*1.3;
       const p={x:center.x+Math.cos(a)*r,y:center.y+Math.sin(a)*r};
-      const ok=endless(ctx)?ctx.terrain.chunks!.clear(p.x,p.y,MEMBER_CLEARANCE)&&hidden(ctx,p):nearestPlayer(ctx,p)>=minDistance;
+      const ok=endless(ctx)?ctx.terrain.chunks!.clear(p.x,p.y,MEMBER_CLEARANCE)&&hiddenBy(ctx,p,SPAWN_MARGIN):nearestPlayer(ctx,p)>=minDistance;
       if(walkable(p,ctx.terrain)&&clearSegment(center,p,ctx.terrain)&&ok)return p;
     }
     return center;
@@ -395,7 +408,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{})};
     // Endless: no hidden spot was found earlier, or a player now sees the warned one. Island: a player walked onto it.
     // Either way, warn again somewhere else.
-    if(entry.retry||(endless(ctx)?!hidden(ctx,center):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
+    if(entry.retry||(endless(ctx)?!hiddenBy(ctx,center,SPAWN_MARGIN):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
     if(entry.boss){
       const before=new Set(ctx.enemies.keys());
       // Without VGM-038 the catalog's 'chefe' stands in, so the final round still has a boss to beat.
@@ -459,7 +472,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       }else target={x:from.x+dx/(len||1)*14,y:from.y+dy/(len||1)*14};
       // Enemy AI (VGM-031) must leave enemies with memory.retreat alone; the director moves them.
       e.memory={...e.memory,retreat:1};e.damage=0;
-      state.retreating.push({id,x:target.x,y:target.y,untilTick:until});
+      state.retreating.push({id,x:target.x,y:target.y,untilTick:until,...(isEndless?{capTick:ctx.tick+ticks(FLEE_CAP_SECONDS)}:{})});
       if(!barked){barked=true;ctx.emit({type:'bark',enemy:id,line:random().pick(RETREAT_LINES)});save();}
     }
   }
@@ -471,8 +484,18 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const speed=isEndless?Math.max(e.speed*2.5,FLEE_SPEED):Math.max(e.speed,1.5)*1.5;
       const step=speed/SIM_HZ,dx=r.x-e.x,dy=r.y-e.y,len=Math.hypot(dx,dy);
       if(len>step){e.x+=dx/len*step;e.y+=dy/len*step;}
-      const gone=isEndless?hidden(ctx,e):ctx.terrain.coast(e.x,e.y)<-.3;
-      if(ctx.tick>=r.untilTick||gone){ctx.enemies.delete(r.id);state.retreated++;return false;}
+      if(isEndless){
+        if(hidden(ctx,e)||ctx.tick>=(r.capTick??r.untilTick)){ctx.enemies.delete(r.id);state.retreated++;return false;}
+        // Out of time but on someone's screen: never vanish in view. Keep fleeing, with a fresh target once there.
+        if(len<=step){
+          const anchors=anchorsOf(ctx),from=nearestOf(anchors,e).player;
+          const ax=from?e.x-from.x:1,ay=from?e.y-from.y:0,al=Math.hypot(ax,ay)||1,ux=ax/al,uy=ay/al;
+          const d=offscreenDistance(ux,uy)+RING_OUTER;
+          r.x=(from?.x??e.x)+ux*d;r.y=(from?.y??e.y)+uy*d;
+        }
+        return true;
+      }
+      if(ctx.tick>=r.untilTick||ctx.terrain.coast(e.x,e.y)<-.3){ctx.enemies.delete(r.id);state.retreated++;return false;}
       return true;
     });
   }

@@ -419,7 +419,7 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
 
 // ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
 import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../src/game/sim/offscreen.ts';
-import {RECYCLE_EVERY} from '../src/game/sim/director.ts';
+import {RECYCLE_EVERY,SPAWN_MARGIN} from '../src/game/sim/director.ts';
 import {worldSpawn} from '../src/game/world.ts';
 
 const endlessField=(seed:number)=>new TerrainField(seed,{world:'infinito'});
@@ -461,7 +461,15 @@ test('endless: 20 seeds, walking players, no spawn on anyone\'s screen, in water
     const start=worldSpawn(field);
     for(let i=0;i<4;i++)addPlayer(ctx,`p${i}`,{x:start.x+i*.7,y:start.y});
     const walks=[...ctx.players.values()].map((_,i)=>walker(seed*10+i));
-    const director=createDirector(options(log,{rounds:3}));
+    const base=options(log,{rounds:3});
+    const director=createDirector({...base,createEnemy(c,kind,point,scale){
+      // Born at least SPAWN_MARGIN past every screen edge: the point moved that much towards each player is hidden too.
+      for(const b of bodiesOf(c as FakeCtx)){
+        const dx=b.x-point.x,dy=b.y-point.y,d=Math.hypot(dx,dy);
+        assert.ok(!visibleFrom(b,{x:point.x+dx/d*SPAWN_MARGIN,y:point.y+dy/d*SPAWN_MARGIN}),`seed ${seed}: spawn within ${SPAWN_MARGIN} u of ${b.id}'s screen`);
+      }
+      return base.createEnemy(c,kind,point,scale);
+    }});
     run(ctx,director,ticks(400),c=>{
       for(const e of c.enemies.values())if(e.spawnTick===c.tick){
         spawns++;
@@ -675,4 +683,45 @@ test('endless: a camera hint brings the ring in to that one screen',()=>{
   },()=>director.state.stage==='done');
   assert.ok(Math.min(...dist)<16,`closest ${Math.min(...dist).toFixed(1)}`);
   assert.ok(dist.some(d=>d<21.6),'closer than the no-hint minimum');
+});
+
+test('endless: a downed player still sees: nothing is recycled off their screen',()=>{
+  const ctx=fakeCtx(51,endlessField(51)),log=newLog();
+  addPlayer(ctx,'a',{x:0,y:5});
+  let far={x:200,y:5};while(!walkable(far,ctx.terrain))far={x:far.x+.5,y:far.y};
+  addPlayer(ctx,'b',far);
+  const director=createDirector(options(log,{rounds:1}));
+  run(ctx,director,ticks(4));
+  // A goes down with a few enemies on screen; only B (200 u away) is standing.
+  ctx.players.get('a')!.downed={progress:0,bleedOutTick:ctx.tick+ticks(60)} as SimPlayer['downed'];
+  const a=ctx.players.get('a')!,mates:EnemyState[]=[];
+  for(let i=0;i<5;i++){
+    let p={x:a.x+3+i,y:a.y+1};while(!walkable(p,ctx.terrain))p={x:p.x+.3,y:p.y};
+    const e:EnemyState={id:`near-${i}`,kind:'gosma',x:p.x,y:p.y,hp:9,maxHp:9,speed:1,damage:1,radius:.3,xp:1,spawnTick:ctx.tick,readyTick:ctx.tick};
+    ctx.enemies.set(e.id,e);director.state.tracked.push(e.id);mates.push(e);
+  }
+  const before=mates.map(e=>({x:e.x,y:e.y}));
+  run(ctx,director,RECYCLE_EVERY*4);
+  mates.forEach((e,i)=>{assert.deepEqual({x:e.x,y:e.y},before[i],`${e.id} stayed where A sees it`);assert.ok(visibleFrom(a,e));});
+  // Once A is out (eliminated, no camera) they may be recycled next to B.
+  a.eliminated=true;
+  run(ctx,director,RECYCLE_EVERY*4);
+  assert.ok(mates.every(e=>Math.hypot(e.x-far.x,e.y-far.y)<MAX_OFFSCREEN_DISTANCE+RING_OUTER+12),'recycled next to B');
+});
+
+test('endless: a fleeing enemy that runs out of time on screen keeps fleeing until no one sees it',()=>{
+  const ctx=fakeCtx(53,endlessField(53)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});
+  // A tiny retreat budget: on the island they would vanish wherever they are after 0.2 s.
+  const director=createDirector(options(log,{rounds:1,retreatSeconds:.2}));
+  const vanished:string[]=[];let last=new Map<string,EnemyState>(),longest=0;
+  run(ctx,director,ticks(240),c=>{
+    const p=c.players.get('a')!;
+    if(c.round.phase==='wave'&&c.tick<c.round.phaseEndsTick)for(const e of c.enemies.values()){e.x+=(p.x-e.x)*.08;e.y+=(p.y-e.y)*.08;}
+    for(const [id,e] of last)if(!c.enemies.has(id)&&visibleFrom(p,e))vanished.push(id);
+    last=new Map(c.enemies);
+    longest=Math.max(longest,director.state.retreating.length);
+  },()=>log.ends.length>0);
+  assert.equal(log.ends.length,1);assert.ok(longest>0);
+  assert.deepEqual(vanished,[],'nobody vanished on screen');
+  assert.equal(log.ends[0].retreated,log.ends[0].spawned);
 });

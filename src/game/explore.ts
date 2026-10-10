@@ -86,7 +86,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const runResult=(victory:boolean,durationTicks:number):RunResult=>{
     const view:RunView|undefined=hud?.view;
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
-      players:(view?.players??[]).map(p=>({...p,stats:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}}))};
+      // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
+      players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}}))};
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{

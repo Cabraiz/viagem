@@ -121,6 +121,13 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
   const facts:PlayerFacts[]=players.map(player=>{
     const entry=tally.players.get(player.id)??ZERO;
     const stats=player.stats;
+    // Server counters (award-stats-server: `downs` present) are the same on every client: use only them.
+    if(stats&&stats.downs!==undefined){
+      const n=(v:number|undefined)=>Math.max(0,Number.isFinite(v)?v!:0);
+      const server:PlayerTally={...entry,downs:n(stats.downs),revives:n(stats.revives),heals:n(stats.heals),magnets:n(stats.magnets),
+        chests:n(stats.chests),pickups:n(stats.pickups),kills:n(stats.kills),evolves:n(stats.evolves)};
+      return {player,tally:server,damage:n(stats.damage),kills:server.kills,revives:server.revives,pickups:server.pickups};
+    }
     return {player,tally:entry,damage:Math.max(0,stats?.damage??0),kills:Math.max(stats?.kills??0,entry.kills),revives:Math.max(stats?.revives??0,entry.revives),pickups:Math.max(stats?.pickups??0,entry.pickups)};
   });
   const defs=DEFS.filter(def=>!solo||def.solo);

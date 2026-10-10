@@ -202,12 +202,14 @@ const downed=optional<Downed>({
   norm:v=>({progress:unit.norm(v.progress),bleedOutTick:tickRel.norm(v.bleedOutTick)}),
   eq:(a,b)=>a.progress===b.progress&&a.bleedOutTick===b.bleedOutTick,
 });
-type Contribution={damage:number;kills:number;revives:number;pickups:number};
+/** Run counters (award-stats-server): all nine always travel, so a protocol 4 client has the server's numbers. */
+const STAT_KEYS=['damage','kills','revives','pickups','downs','heals','chests','magnets','evolves'] as const;
+type Contribution=Record<typeof STAT_KEYS[number],number>;
 const contribution=optional<Contribution>({
-  write:(w,v)=>{w.uvar(v.damage);w.uvar(v.kills);w.uvar(v.revives);w.uvar(v.pickups);},
-  read:r=>({damage:r.uvar(),kills:r.uvar(),revives:r.uvar(),pickups:r.uvar()}),
-  norm:v=>({damage:uint(v.damage),kills:uint(v.kills),revives:uint(v.revives),pickups:uint(v.pickups)}),
-  eq:(a,b)=>a.damage===b.damage&&a.kills===b.kills&&a.revives===b.revives&&a.pickups===b.pickups,
+  write:(w,v)=>{for(const k of STAT_KEYS)w.uvar(v[k]);},
+  read:r=>{const out={} as Contribution;for(const k of STAT_KEYS)out[k]=r.uvar();return out;},
+  norm:v=>{const out={} as Contribution;for(const k of STAT_KEYS)out[k]=uint(v[k]);return out;},
+  eq:(a,b)=>STAT_KEYS.every(k=>a[k]===b[k]),
 });
 
 /**
@@ -243,6 +245,17 @@ const SCHEMAS:Record<SectionKey,Schema>={
 const SECTION_BY_PREFIX=new Map(SECTIONS.filter(s=>s!=='players').map(s=>[SCHEMAS[s].prefix,s]));
 /** Server tick rate; kept here so the client module does not import server code. */
 const WIRE_HZ=20;
+/**
+ * Broadcast every SEND_EVERY ticks: 10 Hz on the 20 Hz room (D-018).
+ * Staggered broadcast (for VGM-042b): give each client a slot (`sendSlot(index)`) and encode it only on ticks where
+ * `sendsOn(tick, slot)`, so with 6 clients every tick encodes 3 instead of every other tick encoding 6. Each client
+ * still gets 10 Hz; keep calling `pushEvents` on every encoder every tick. Frame ticks may be odd or even: deltas,
+ * extrapolation and resends work on any tick. Build one FrameInput per tick and hand the same object to every
+ * encoder due that tick (the live-id cache is shared through it).
+ */
+export const SEND_EVERY=2;
+export const sendSlot=(clientIndex:number)=>((Math.floor(clientIndex)%SEND_EVERY)+SEND_EVERY)%SEND_EVERY;
+export const sendsOn=(tick:number,slot:number)=>tick%SEND_EVERY===sendSlot(slot);
 
 // ---------- Wire ids ----------
 /**
@@ -251,34 +264,32 @@ const WIRE_HZ=20;
  */
 export class WireIds {
   private next:Record<string,number>={};
-  private toWire=new Map<string,number>();
+  /** One map per section (no string keys to build on the hot path). */
+  private toWire=Object.fromEntries(SECTIONS.map(s=>[s,new Map<string,number>()])) as Record<SectionKey,Map<string,number>>;
   private toServer=new Map<string,string>();
-  private key(section:SectionKey,id:string){return section+'\u0000'+id;}
   wire(section:SectionKey,serverId:string):number{
-    const key=this.key(section,serverId);
-    let n=this.toWire.get(key);
+    const map=this.toWire[section];
+    let n=map.get(serverId);
     if(n===undefined){
       n=this.next[section]=(this.next[section]??0)+1;
-      this.toWire.set(key,n);
+      map.set(serverId,n);
       if(section!=='players')this.toServer.set(SCHEMAS[section].prefix+n,serverId);
     }
     return n;
   }
-  has(section:SectionKey,serverId:string){return this.toWire.has(this.key(section,serverId));}
+  has(section:SectionKey,serverId:string){return this.toWire[section].has(serverId);}
   label(section:SectionKey,serverId:string){return section==='players'?serverId:SCHEMAS[section].prefix+this.wire(section,serverId);}
   /** Server id for a client-facing id (e.g. a tapped enemy `e12`), or undefined. */
   resolve(clientId:string){return this.toServer.get(clientId);}
   /** New run (server ids restart, e.g. `xp-1` again): forget the map, keep counters so wire ids stay unique. */
-  reset(){this.toWire.clear();this.toServer.clear();}
+  reset(){for(const s of SECTIONS)this.toWire[s].clear();this.toServer.clear();}
   /** Forget ids of entities gone for good (call with the live server ids, e.g. once per second). */
   prune(live:Partial<Record<SectionKey,Iterable<string>>>){
     for(const section of SECTIONS){
       const ids=live[section];
       if(section==='players'||!ids)continue;
-      const keep=new Set(ids),prefix=section+'\u0000';
-      for(const [key,n] of this.toWire)if(key.startsWith(prefix)&&!keep.has(key.slice(prefix.length))){
-        this.toWire.delete(key);this.toServer.delete(SCHEMAS[section].prefix+n);
-      }
+      const keep=new Set(ids),map=this.toWire[section];
+      for(const [id,n] of map)if(!keep.has(id)){map.delete(id);this.toServer.delete(SCHEMAS[section].prefix+n);}
     }
   }
 }
@@ -406,6 +417,18 @@ export interface EncoderOptions {
   viewer?:string;
   /** Area of interest; false sends everything (the island room, tests). Default INTEREST_RADIUS/INTEREST_HYSTERESIS. */
   interest?:Partial<InterestOptions>|false;
+  /** Broadcast slot (0..SEND_EVERY-1, see sendSlot); `due(tick)` says when this client's frame goes. Default 0. */
+  slot?:number;
+}
+/**
+ * Server ids of a section list, built once per list and tick: the encoders of one room share the same FrameInput,
+ * so 6 clients build it once. Rebuilt when the tick or the length changes (a list reused from an older tick).
+ */
+const liveCache=new WeakMap<readonly Entity[],{tick:number;length:number;ids:Set<string>}>();
+function liveIds(list:readonly Entity[],tick:number){
+  let hit=liveCache.get(list);
+  if(!hit||hit.tick!==tick||hit.length!==list.length){hit={tick,length:list.length,ids:new Set(list.map(e=>e.id))};liveCache.set(list,hit);}
+  return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
 const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase']);
@@ -431,9 +454,10 @@ export class FrameEncoder {
   readonly stats:EncoderStats={frames:0,fullFrames:0,bytes:0,eventBytes:0,culled:0,droppedEvents:0};
   readonly ids:WireIds;
   readonly viewer?:string;
+  readonly slot:number;
   private readonly interest?:InterestOptions;
   constructor(ids=new WireIds(),options:EncoderOptions={}){
-    this.ids=ids;this.viewer=options.viewer;
+    this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);
     if(options.viewer!==undefined&&options.interest!==false)
       this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS};
   }
@@ -484,6 +508,8 @@ export class FrameEncoder {
 
   /** Events still waiting for an ack (for monitoring and tests). */
   get pendingEvents(){return this.pending.length;}
+  /** Whether this client's frame goes out on `tick` (staggered broadcast). */
+  due(tick:number){return sendsOn(tick,this.slot);}
 
   /** The client decoded frame `seq`. Old, future or unknown acks are ignored. */
   ack(seq:number,_eventId?:number){
@@ -521,13 +547,13 @@ export class FrameEncoder {
     }
     const before=this.members[section],keep=new Set<string>();
     this.previous[section]=before;
-    const near=interest.radius,stay=interest.radius+interest.hysteresis;
+    const near=interest.radius,stay=interest.radius+interest.hysteresis,near2=near*near,stay2=stay*stay,tele=section==='telegraphs';
     for(const e of list){
-      const x=e.x as number,y=e.y as number;
-      let d=Math.hypot(x-focus.x,y-focus.y);
-      if(section==='telegraphs')d-=Math.max(0,finite(e.radius as number))+Math.max(0,finite((e.width as number|undefined)??0));
-      // The boss is always sent: the arrow to it and its hp bar matter from anywhere.
-      const inside=(section==='enemies'&&e.boss===true)||d<=near||(d<=stay&&!!before?.has(e.id));
+      const dx=(e.x as number)-focus.x,dy=(e.y as number)-focus.y;
+      let d2=dx*dx+dy*dy;
+      if(tele){const d=Math.sqrt(d2)-Math.max(0,finite(e.radius as number))-Math.max(0,finite((e.width as number|undefined)??0));d2=d<0?0:d*d;}
+      // The boss is always sent: the arrow to it and its hp bar matter from anywhere. NaN positions stay out.
+      const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
       if(!inside){this.stats.culled++;continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
     }
@@ -585,11 +611,7 @@ export class FrameEncoder {
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
       const current=this.select(section,list,focus);
       // Removed from this client but still in the world: it left the area of interest (no death poof).
-      let alive:Set<string>|undefined;
-      const exists=this.interest?(label:string)=>{
-        alive??=new Set(list.map(e=>e.id));
-        return alive.has(section==='players'?label:this.ids.resolve(label)??'');
-      }:()=>false;
+      const exists=this.interest?(label:string)=>liveIds(list,view.tick).has(section==='players'?label:this.ids.resolve(label)??''):()=>false;
       world.tables[section]=writeSection(w,schema,current,client,f,(id)=>this.ids.label(section,id),exists);
     }
     const start=w.len;
@@ -622,8 +644,9 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-const bit=(field:number)=>2**(field+FIELD_BIT);
-const has=(mask:number,field:number)=>Math.floor(mask/bit(field))%2===1;
+/** At most 15 fields per schema, so masks stay well inside 32-bit integers. */
+const bit=(field:number)=>1<<(field+FIELD_BIT);
+const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).
@@ -640,13 +663,16 @@ function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:T
   const ups:{id:number;mask:number;e:Entity;nx?:number;ny?:number}[]=[];
   for(const id of [...current.keys()].sort((a,b)=>a-b)){
     const cur=current.get(id)!,prev=client.get(id);
-    const next:Entity=prev?{...prev}:{id:label(cur.id)};
+    // `client` is this frame's own copy (advance), so a known entity is updated in place: no second copy.
+    const next:Entity=prev??{id:label(cur.id)};
+    const px=prev?.x,py=prev?.y;
     let mask=prev?0:NEW;
     keys.forEach((k,j)=>{
       const codec=schema.fields[k],v=codec.norm(cur[k]);
-      if(prev&&(j===xi||j===yi)&&typeof v==='number'&&typeof prev[k]==='number'){
+      const old=j===xi?px:j===yi?py:undefined;
+      if(prev&&(j===xi||j===yi)&&typeof v==='number'&&typeof old==='number'){
         // Positions: the client keeps its own (possibly extrapolated) value until it drifts by a quantum.
-        if(!(Math.abs((prev[k] as number)-finite(cur[k] as number))<=(schema.extrapolate?1:.5)/POS_SCALE)){mask+=bit(j);next[k]=v;}
+        if(!(Math.abs(old-finite(cur[k] as number))<=(schema.extrapolate?1:.5)/POS_SCALE)){mask+=bit(j);next[k]=v;}
         return;
       }
       if(prev?codec.eq(prev[k],v):v===undefined)return;
@@ -654,11 +680,11 @@ function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:T
       if(v===undefined)delete next[k];else next[k]=v;
     });
     let nx:number|undefined,ny:number|undefined;
-    if(prev&&xi>=0&&(has(mask,xi)||has(mask,yi))&&typeof prev.x==='number'&&typeof prev.y==='number'&&typeof cur.x==='number'&&typeof cur.y==='number'){
-      const dx=Math.round((cur.x-prev.x)*POS_SCALE),dy=Math.round((cur.y-prev.y)*POS_SCALE);
+    if(prev&&xi>=0&&(has(mask,xi)||has(mask,yi))&&typeof px==='number'&&typeof py==='number'&&typeof cur.x==='number'&&typeof cur.y==='number'){
+      const dx=Math.round((cur.x-px)*POS_SCALE),dy=Math.round((cur.y-py)*POS_SCALE);
       if(Math.abs(dx)<=127&&Math.abs(dy)<=127){
         mask=mask-(has(mask,xi)?bit(xi):0)-(has(mask,yi)?bit(yi):0)+NUDGE;nx=dx;ny=dy;
-        next.x=prev.x+dx/POS_SCALE;next.y=prev.y+dy/POS_SCALE;
+        next.x=px+dx/POS_SCALE;next.y=py+dy/POS_SCALE;
       }
     }
     client.set(id,next);
@@ -694,7 +720,8 @@ function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[
     if(mask>=bit(keys.length))throw new FrameError('bad field mask');
     const prev=client.get(id);
     if(!(mask&NEW)&&!prev)throw new FrameError('delta for unknown entity');
-    const e:Entity=mask&NEW?{id:schema.prefix?schema.prefix+id:r.str()}:{...prev!};
+    // `client` is this frame's copy (advance): update in place. A bad frame is dropped whole, so nothing leaks.
+    const e:Entity=mask&NEW?{id:schema.prefix?schema.prefix+id:r.str()}:prev!;
     if(mask&NUDGE){
       if(typeof e.x!=='number'||typeof e.y!=='number')throw new FrameError('nudge without position');
       const i8=(b:number)=>b>=128?b-256:b;

@@ -4,7 +4,7 @@
  * and banners telling who fell and how long is left.
  */
 import type {PlayerRunView,RunView} from '../sim/view.ts';
-import {clamp01,hpFraction,reviveAlerts,secondsLeft,teamOrder,type HudContext,type HudPart} from './model.ts';
+import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,teamOrder,type HudContext,type HudPart} from './model.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -67,18 +67,15 @@ export function createTeamStrip():HudPart{
 }
 
 export function createReviveAlerts():HudPart{
-  // The banners tick every second, so they are not a live region; a hidden one announces each new fall once.
+  // The banner ticks every second, so it is not a live region; a hidden one announces each new fall once.
   const root=el('div','rh-alerts');
   const live=el('span','rh-sr',root);live.setAttribute('aria-live','assertive');
   const announced=new Set<string>();
-  const MAX=3;
-  const rows=Array.from({length:MAX},()=>{
-    const row=el('div','rh-alert',root);row.hidden=true;
-    const text=el('span','rh-alert-text',row),track=el('div','rh-alert-track',row),fill=el('i','rh-alert-fill',track);
-    return {row,text,fill};
-  });
+  // One banner only (VGM-043): falls at the same time are grouped instead of stacking over the field.
+  const row=el('div','rh-alert',root);row.hidden=true;
+  const text=el('span','rh-alert-text',row),track=el('div','rh-alert-track',row),fill=el('i','rh-alert-fill',track);
   return {el:root,update(view:RunView,ctx:HudContext){
-    const all=reviveAlerts(view,ctx.localId),alerts=all.slice(0,MAX);
+    const all=reviveAlerts(view,ctx.localId);
     const down=new Set(all.map(alert=>alert.playerId));
     for(const id of announced)if(!down.has(id))announced.delete(id);
     const fresh=all.filter(alert=>!announced.has(alert.playerId));
@@ -86,14 +83,13 @@ export function createReviveAlerts():HudPart{
       for(const alert of fresh)announced.add(alert.playerId);
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
-    rows.forEach((nodes,index)=>{
-      const alert=alerts[index];
-      nodes.row.hidden=!alert;
-      if(!alert)return;
-      if(nodes.row.dataset.kind!==alert.kind)nodes.row.dataset.kind=alert.kind;
-      nodes.row.classList.toggle('rh-alert-urgent',alert.seconds<=5);
-      if(nodes.text.textContent!==alert.text)nodes.text.textContent=alert.text;
-      nodes.fill.style.transform=`scaleX(${alert.progress})`;
-    });
+    const banner=reviveBanner(view,ctx.localId,ctx.network);
+    row.hidden=!banner;
+    if(!banner)return;
+    if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;
+    row.classList.toggle('rh-alert-urgent',banner.urgent);
+    if(text.textContent!==banner.text)text.textContent=banner.text;
+    track.hidden=!Number.isFinite(banner.seconds);
+    fill.style.transform=`scaleX(${banner.progress})`;
   }};
 }

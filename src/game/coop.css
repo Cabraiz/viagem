@@ -8,8 +8,6 @@
 .coop-lobby button.coop-nick-roll:active{transform:rotate(-8deg) scale(.96)}
 .coop-wait{position:absolute;z-index:var(--z-hud);top:max(122px,calc(env(safe-area-inset-top) + 114px));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100% - 32px));max-height:calc(100% - 300px);overflow:auto;padding:14px;border:2px solid var(--c-lilas);border-radius:var(--r-janela);background:var(--c-papel-claro);color:var(--c-breu);font:700 14px var(--f-sistema);box-shadow:inset 0 0 0 2px var(--c-papel),0 0 0 2px var(--c-breu),var(--s-2);pointer-events:auto;text-align:center}
 .coop-wait[hidden]{display:none}
-/* While the waiting room is up it owns the ready button; the run HUD keeps only its status text. */
-.coop-shell:has(.coop-wait:not([hidden])) #run-ready{display:none}
 .coop-wait-code{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}.coop-wait-code small{font-size:var(--t-13);color:var(--c-lilas)}.coop-wait-code strong{font:400 var(--t-28)/1 var(--f-cartaz);letter-spacing:.02em;color:var(--c-lilas);font-variant-numeric:tabular-nums}
 .coop-wait button{min-height:44px;border-radius:var(--r-janela);font:800 14px var(--f-sistema);cursor:pointer}
 .coop-wait-share{padding:0 14px;border:2px solid var(--c-lilas);background:var(--c-papel);color:var(--c-lilas);box-shadow:0 3px 0 var(--c-lilas)}
@@ -35,6 +33,6 @@
 #coop-attack{box-sizing:border-box;width:82px;height:82px;display:grid;place-content:center;gap:2px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:800 var(--t-13) var(--f-sistema);text-shadow:var(--s-texto);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:pointer}
 #coop-attack span{font-size:29px;line-height:1}
 #coop-attack:active{background:var(--c-lilas);transform:translateY(2px)}
-.coop-run{position:absolute;z-index:var(--z-ilha);top:max(62px,calc(env(safe-area-inset-top) + 54px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 32px);width:max-content;padding:7px 12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);color:var(--c-papel);font:700 12px var(--f-sistema);text-shadow:var(--s-texto);pointer-events:none}
-.coop-run strong{font-size:var(--t-13)}.coop-run button{pointer-events:auto;min-height:44px;padding:6px 12px;border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-amarelo);color:var(--c-breu);font:800 12px var(--f-sistema);text-shadow:none;cursor:pointer}.coop-run [hidden]{display:none}.coop-run button:disabled,#coop-attack:disabled{opacity:.5;cursor:default}
-@media(max-height:500px){.coop-run{top:max(8px,env(safe-area-inset-top));max-width:calc(100% - 290px);padding:4px 9px}.coop-run strong{font-size:11px}}
+#coop-attack:disabled{opacity:.5;cursor:default}
+/* Out of the run or watching (VGM-043): the stick looks and acts disabled, like the skill button. */
+.coop-shell[data-out=true] .explore-stick{opacity:.5;pointer-events:none}

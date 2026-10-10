@@ -1,6 +1,8 @@
 import type {TerrainField} from './terrain/field.ts';
+import {BASE,MAX_OBSTACLE_RADIUS} from './terrain/chunks.ts';
 export type Point = { x: number; y: number };
-export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock' };
+/** `art` (tree-catalog id) only comes on obstacles of the endless world; the island picks art in scene.ts. */
+export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock'; art?: string };
 export const SPAWN: Point = { x: 12, y: 17 };
 export const SPEED = 3.1;
 export const RADIUS = .22;
@@ -38,27 +40,64 @@ export function isLand(p: Point, margin=0, terrain?:TerrainField) {
   return x*x+y*y < 1;
 }
 export function walkable(p: Point, terrain?:TerrainField) {
-  return Number.isFinite(p.x) && Number.isFinite(p.y) && isLand(p,RADIUS+.2,terrain) &&
-    obstacles.every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+RADIUS);
+  if(!(Number.isFinite(p.x) && Number.isFinite(p.y) && isLand(p,RADIUS+.2,terrain)))return false;
+  const chunks=terrain?.chunks;
+  // Endless world: only the obstacles of the chunk(s) under the hero, so the cost never grows with the map.
+  if(chunks)return chunks.clear(p.x,p.y,RADIUS);
+  return obstacles.every(o=>Math.hypot(p.x-o.x,p.y-o.y)>o.radius+RADIUS);
+}
+/** The island's 16 obstacles, or the endless world's obstacles whose disc may touch a body of `radius` at `p`. */
+export function obstaclesNear(p:Point,radius:number,terrain?:TerrainField):readonly Obstacle[]{
+  const chunks=terrain?.chunks;
+  return chunks?chunks.obstaclesNear(p.x,p.y,radius+MAX_OBSTACLE_RADIUS):obstacles;
+}
+/** Where the base/wall goes: the island centre, or the origin of the endless world. */
+export const ISLAND_BASE:Readonly<Point>=Object.freeze({x:12,y:12});
+export function worldBase(terrain?:TerrainField):Point{return terrain?.chunks?{x:BASE.x,y:BASE.y}:{...ISLAND_BASE};}
+/** Players' spawn: SPAWN on the island; south of the base in the endless world (same offset as the island). */
+export function worldSpawn(terrain?:TerrainField):Point{
+  return terrain?.chunks?{x:BASE.x+SPAWN.x-ISLAND_BASE.x,y:BASE.y+SPAWN.y-ISLAND_BASE.y}:{...SPAWN};
+}
+/** Gather nodes: every island obstacle; in the endless world the ones within NODE_RADIUS of the base. */
+export const NODE_RADIUS=24;
+export function resourceObstacles(terrain?:TerrainField):readonly Obstacle[]{
+  const chunks=terrain?.chunks;if(!chunks)return obstacles;
+  const base=worldBase(terrain);
+  return chunks.obstaclesNear(base.x,base.y,NODE_RADIUS).map(o=>({...o}))
+    .sort((a,b)=>a.y-b.y||a.x-b.x);
 }
 export function clearSegment(a:Point,b:Point,terrain?:TerrainField) {
   const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/.08));
   for(let i=0;i<=n;i++) if(!walkable({x:a.x+(b.x-a.x)*i/n,y:a.y+(b.y-a.y)*i/n},terrain)) return false;
   return true;
 }
-/** Half-tile navigation with swept collision checks, also suitable for server validation. */
+/** Endless world: the local search box spans at most this many half-unit nodes per side (48 units). */
+export const PATH_MAX_NODES=97;
+const PATH_MARGIN=6;
+/**
+ * Half-tile navigation with swept collision checks, also suitable for server validation.
+ * Island: the fixed 49×49 lattice over 0..24. Endless world: a local box on the same global half-unit
+ * lattice around start and target (PATH_MARGIN around both), so the cost depends on the distance, never
+ * on where in the world the search happens. Targets farther than the box allows return [] (use waypoints).
+ */
 export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[] {
   target={x:target.x,y:target.y};
   if(!walkable(start,terrain)||!walkable(target,terrain)) return [];
   if(clearSegment(start,target,terrain)) return [target];
-  const step=.5, size=49;
-  const key=(x:number,y:number)=>y*size+x;
-  const point=(id:number):Point=>({x:(id%size)*step,y:Math.floor(id/size)*step});
+  const step=.5;
+  let ox=0,oy=0,w=49,h=49;
+  if(terrain?.chunks){
+    ox=Math.floor((Math.min(start.x,target.x)-PATH_MARGIN)/step);oy=Math.floor((Math.min(start.y,target.y)-PATH_MARGIN)/step);
+    w=Math.ceil((Math.max(start.x,target.x)+PATH_MARGIN)/step)-ox+1;h=Math.ceil((Math.max(start.y,target.y)+PATH_MARGIN)/step)-oy+1;
+    if(w>PATH_MAX_NODES||h>PATH_MAX_NODES)return [];
+  }
+  const key=(x:number,y:number)=>y*w+x;
+  const point=(id:number):Point=>({x:(ox+id%w)*step,y:(oy+Math.floor(id/w))*step});
   const nearest=(p:Point)=>{
     const candidates:number[]=[];
     for(let y=-2;y<=2;y++) for(let x=-2;x<=2;x++) {
-      const nx=Math.round(p.x/step)+x,ny=Math.round(p.y/step)+y;
-      if(nx<0||ny<0||nx>=size||ny>=size)continue;
+      const nx=Math.round(p.x/step)-ox+x,ny=Math.round(p.y/step)-oy+y;
+      if(nx<0||ny<0||nx>=w||ny>=h)continue;
       const id=key(nx,ny); if(clearSegment(p,point(id),terrain))candidates.push(id);
     }
     return candidates.sort((a,b)=>Math.hypot(point(a).x-p.x,point(a).y-p.y)-Math.hypot(point(b).x-p.x,point(b).y-p.y))[0];
@@ -81,8 +120,8 @@ export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[]
     const a=point(current);
     for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
       if(!dx&&!dy)continue;
-      const nx=current%size+dx,ny=Math.floor(current/size)+dy;
-      if(nx<0||ny<0||nx>=size||ny>=size)continue;
+      const nx=current%w+dx,ny=Math.floor(current/w)+dy;
+      if(nx<0||ny<0||nx>=w||ny>=h)continue;
       const id=key(nx,ny),b=point(id);
       if(!clearSegment(a,b,terrain))continue;
       const next=cost.get(current)!+Math.hypot(dx,dy)*step;

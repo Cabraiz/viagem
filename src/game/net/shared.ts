@@ -1,8 +1,8 @@
-import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION} from '../terrain/field.ts';
-import { moveDirection, SPAWN, type Point } from '../world.ts';
+import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../terrain/field.ts';
+import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
-import {coastalSpawnPoints} from '../sim/director.ts';
+import {ENDLESS_SPAWN_STOPGAP,coastalSpawnPoints} from '../sim/director.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../sim/assemble.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../sim/systems/players.ts';
 import {classBonusOf,startingBuild} from '../sim/kits.ts';
@@ -14,6 +14,8 @@ import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
 export const ROOM_PROTOCOL=3;
+/** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
+export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 
 /** Client-side ranges for the prototype skill ring (scene.ts). */
 export const ATTACK_RANGE=1.8,BASIC_COOLDOWN_TICKS=12,SKILL_RANGE=2.8,SKILL_COOLDOWN_TICKS=160;
@@ -42,7 +44,14 @@ export interface RunExtras {
   events:StampedEvent[];
   /** Deltas only: pickups and projectiles carry just the changed ones, and these ids left since the previous message. */
   gone?:{pickups:string[];projectiles:string[]};
+  /**
+   * HUD state per player (VGM-043), the fields protocol 4 carries in PlayerWireView: maxHp, fall and build.
+   * Diffed by id like pickups; a player that left goes in the top-level `removed`. Optional: older rooms omit it.
+   */
+  players?:PlayerExtraWire[];
 }
+/** id, maxHp, flags (1 downed, 2 eliminated), revive progress 0..1, bleedOutTick, weapons [id,level][], passives [id,level][]. */
+export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][]];
 export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string}; x?:RunExtras };
 // hp goes up rounded (regen and might make fractions): a player or enemy still standing never shows 0.
 export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),wireHp(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
@@ -51,6 +60,10 @@ export const packEnemy = (e:Enemy&Partial<EnemyState>):EnemyWire => e.kind===und
 export const unpackPlayer = (p:PlayerWire):Player => ({id:p[0],x:p[1],y:p[2],hp:p[3],ack:p[4],online:p[5],score:p[6],name:p[7],classId:p[8],attackTick:p[9]??0,spectator:p[10]??false,skillTick:p[11]??0,skillReadyTick:p[12]??0});
 export const unpackEnemy = (e:EnemyWire):Enemy => ({id:e[0],x:e[1],y:e[2],hp:e[3]});
 const round=(n:number)=>Math.round(n*1000)/1000;
+/** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
+const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
+export const packPlayerExtra=(p:ServerPlayer):PlayerExtraWire=>[p.id,wireHp(p.stats.maxHp),(p.downed?1:0)|(p.eliminated?2:0),p.downed?progress(p.downed.progress):0,p.downed?.bleedOutTick??0,
+  p.build.weapons.map(i=>[i.id,i.level]),p.build.passives.map(i=>[i.id,i.level])];
 const wireHp=(hp:number)=>Number.isFinite(hp)&&hp>0?Math.ceil(hp-1e-9):0;
 export function validInput(value:unknown):value is Input {
   if(!value||typeof value!=='object')return false;
@@ -77,7 +90,7 @@ export function wireEvent(event:StampedEvent):StampedEvent{
 }
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
-const spawnSlot=(slot:number)=>({x:SPAWN.x+(slot%3-1)*.7,y:SPAWN.y+Math.floor(slot/3)*.7});
+const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
 
 export class Simulation {
   readonly terrain:TerrainField;
@@ -95,8 +108,15 @@ export class Simulation {
   private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
-  constructor(seed=DEFAULT_SEED){
-    this.seed=seed;this.terrain=new TerrainField(seed);
+  /**
+   * `world` defaults to the island. 'infinito' (D-019) is NOT playable yet: enemies spawn on a fixed ring by
+   * the base (ENDLESS_SPAWN_STOPGAP, until spawn-em-volta) and protocol 4 saturates positions past ±64 units
+   * (rede-mapa-grande). It needs `experimental: true` (tests, benchmarks) until those cards land.
+   */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;experimental?:boolean}={}){
+    if(options.world==='infinito'&&ENDLESS_SPAWN_STOPGAP&&!options.experimental)
+      throw new Error("Mapa infinito ainda não é jogável (spawn-em-volta e rede-mapa-grande pendentes): use experimental:true só em teste.");
+    this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }
@@ -126,7 +146,7 @@ export class Simulation {
     coastalSpawnPoints(this.terrain);
     let slot=0;
     for(const p of this.players.values()){
-      this.equip(p);Object.assign(p,spawnSlot(slot++),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
+      this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
       this.queues.set(p.id,[]);this.lastReceived.set(p.id,0);
     }
   }
@@ -138,8 +158,8 @@ export class Simulation {
   }
   add(id:string,name:string,classId:string){
     if(this.players.size>=MAX_PLAYERS)throw new Error('Sala cheia. Máximo de seis jogadores.');
-    const slots=Array.from({length:6},(_,i)=>spawnSlot(i));
-    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??SPAWN;
+    const slots=Array.from({length:6},(_,i)=>spawnSlot(i,worldSpawn(this.terrain)));
+    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??worldSpawn(this.terrain);
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);
     this.players.set(id,p);this.queues.set(id,[]);this.lastReceived.set(id,0);return p;
@@ -211,7 +231,7 @@ export class Simulation {
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
     return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
-      x:{round:{...w.round},team:{...w.team},
+      x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(packPlayerExtra),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),
         projectiles:[...w.projectiles.values()].map(p=>[p.id,p.source,round(p.x),round(p.y),round(p.vx),round(p.vy),p.radius,p.hostile]),
         telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
@@ -249,9 +269,10 @@ export function delta(previous:Snapshot,next:Snapshot):Snapshot {
   const {terrain:_terrain,...rest}=next;
   const patch:Snapshot={...rest,full:false,players:changed(previous.players,next.players),enemies:changedEnemies(previous.enemies,next.enemies),removed:previous.players.filter(p=>!alive.has(p[0])).map(p=>p[0])};
   if(next.x){
-    const before=previous.x??{pickups:[],projectiles:[]};
+    const before:Partial<RunExtras>&Pick<RunExtras,'pickups'|'projectiles'>=previous.x??{pickups:[],projectiles:[]};
     patch.x={...next.x,pickups:changed(before.pickups,next.x.pickups),projectiles:changed(before.projectiles,next.x.projectiles),
       gone:{pickups:goneIds(before.pickups,next.x.pickups),projectiles:goneIds(before.projectiles,next.x.projectiles)}};
+    if(next.x.players)patch.x.players=changed(before.players??[],next.x.players);
   }
   return patch;
 }
@@ -267,7 +288,8 @@ export function applyDelta(state:Snapshot,patch:Snapshot):Snapshot{
   const merge=<T extends Keyed>(list:readonly T[],update:readonly T[],gone:readonly string[]=[])=>{
     const byId=new Map(list.map(i=>[i[0],i]));for(const i of update)byId.set(i[0],i);for(const id of gone)byId.delete(id);return [...byId.values()];
   };
-  const x=patch.x&&state.x?{...patch.x,pickups:merge(state.x.pickups,patch.x.pickups,patch.x.gone?.pickups),projectiles:merge(state.x.projectiles,patch.x.projectiles,patch.x.gone?.projectiles)}:patch.x;
+  const x=patch.x&&state.x?{...patch.x,pickups:merge(state.x.pickups,patch.x.pickups,patch.x.gone?.pickups),projectiles:merge(state.x.projectiles,patch.x.projectiles,patch.x.gone?.projectiles),
+    ...(patch.x.players?{players:merge(state.x.players??[],patch.x.players,patch.removed)}:{})}:patch.x;
   if(x)delete x.gone;
   return {...patch,full:true,terrain:state.terrain,players:[...players.values()],enemies:[...enemies.values()],removed:[],...(x?{x}:{})};
 }

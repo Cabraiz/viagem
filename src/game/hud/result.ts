@@ -190,6 +190,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       root.classList.remove('rh-result-in');void root.offsetWidth;root.classList.add('rh-result-in');
     },
     hide(){shownResult=undefined;root.hidden=true;root.classList.remove('rh-result-in');},
+    /** The room refused the rematch (not enough lifetime left): the button stops waiting and says what to do. */
+    refuse(label:string){asked=true;rematch.disabled=true;rematch.classList.remove('rh-waiting');rematch.textContent=label;},
     destroy(){landscape?.removeEventListener('change',onTurn);root.remove();},
   };
 }

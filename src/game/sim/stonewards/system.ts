@@ -2,7 +2,7 @@
  * Stonewards 'structures' system: refills nodes and gathers during the intermission, sounds the
  * return horn, runs towers and wall siege, and reports the wall falling exactly once.
  */
-import {obstacles as worldObstacles,type Obstacle} from '../../world.ts';
+import {resourceObstacles,type Obstacle} from '../../world.ts';
 import type {SimContext,SimSystem} from '../types.ts';
 import {ticks} from '../types.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
@@ -44,11 +44,11 @@ export interface StonewardsSystem extends SimSystem {
 }
 
 export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'>):StonewardsState{
-  const source=options.obstacles??worldObstacles;
+  const source=options.obstacles??resourceObstacles(options.terrain);
   return {
     balance:{coco:0,pedra:0},
     nodes:createNodes(source),
-    wall:createWall(placeWall(options.terrain,source),options.wallMaxHp??WALL_MAX_HP),
+    wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
     towers:[],gathered:{},handled:[],
     refilledRound:-1,hornRound:-1,wallDown:false,defeatReported:false,rng:null,
   };

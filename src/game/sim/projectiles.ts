@@ -169,6 +169,24 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       const {d2,t}=segmentDistance(from.x,from.y,p.x,p.y,e.x,e.y),reach=p.radius+e.radius;
       if(d2<=reach*reach)hits.push({e,t});
     }
+    // Orbiters also sweep the spoke from the owner to the ring: an enemy hugging the owner sits inside the ring
+    // (contact ~0.6 vs ring inner edge ~0.9 for the chinelo) and would otherwise never be hit while standing still.
+    // Only while the orbiter is within the same angular window that its hitbox covers on the ring (asin(reach/r)) of
+    // the enemy's bearing, so a hug is hit once per pass, like the ring. Without it every spoke touched a hugging
+    // enemy, and with five orbiters there was always one in reach: the old blind spot became the deadliest place.
+    const owner=p.motion==='orbit'&&p.anchor?ctx.players.get(p.anchor):undefined;
+    if(owner){
+      candidates.length=0;
+      ctx.enemyIndex.query(owner.x,owner.y,(p.orbitRadius??1)+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
+      const bearing=Math.atan2(p.y-owner.y,p.x-owner.x);
+      for(const e of candidates){
+        if(!isAlive(ctx,e)||hits.some(h=>h.e===e))continue;
+        const reach=p.radius+e.radius,arc=Math.asin(Math.min(1,reach/Math.max(1e-6,p.orbitRadius??1)));
+        if(Math.abs(wrapAngle(Math.atan2(e.y-owner.y,e.x-owner.x)-bearing))>arc)continue;
+        const {d2}=segmentDistance(owner.x,owner.y,p.x,p.y,e.x,e.y);
+        if(d2<=reach*reach)hits.push({e,t:0});
+      }
+    }
     // Deterministic order: along the path, then id.
     hits.sort((a,b)=>a.t-b.t||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
     const area=p.rehit!==undefined;
@@ -181,7 +199,9 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
         p.hit.push(e.id);
       }
       const moving=Math.hypot(p.vx,p.vy)>1e-6&&p.motion!=='orbit';
-      const push={x:moving?p.vx:e.x-p.x,y:moving?p.vy:e.y-p.y,force:p.knockback??0};
+      // Orbit hits push away from the owner, so a spoke hit from inside the ring never pulls the enemy onto the hero.
+      const from=owner??p;
+      const push={x:moving?p.vx:e.x-from.x,y:moving?p.vy:e.y-from.y,force:p.knockback??0};
       hitEnemy(ctx,e,p.damage,p.owner,p.source,push,p.slowTicks);
       if(!area){
         if(p.pierce<=0)return false;

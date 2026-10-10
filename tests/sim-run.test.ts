@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation,type SimOutcome} from '../src/game/net/shared.ts';
 import type {StampedEvent} from '../src/game/sim/core.ts';
 import {KITS} from '../src/game/sim/kits.ts';
-import {SIM_HZ} from '../src/game/sim/types.ts';
+import {SIM_HZ,ticks} from '../src/game/sim/types.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,MAX_TELEGRAPHS} from '../src/game/sim/budget.ts';
 
 /** Safety cap of a run: 20 minutes of ticks (RUN_DURATION_TICKS). */
@@ -20,6 +20,10 @@ interface Script {
   killEvery:number;
   /** Clears every bot's weapons after resetRun and whenever an offer gives one back. */
   unarmed?:boolean;
+  /** Novice: bots stand still until this many ticks after the round 1 wave starts, then walk. */
+  standFirst?:number;
+  /** Novice: a bot stops this many ticks whenever a new offer shows up, then takes the default. */
+  offerPause?:number;
 }
 
 interface RunResult {
@@ -40,6 +44,9 @@ interface RunResult {
   scoresAtEnd:Map<string,number>;
   /** Highest entity counts seen after any tick (budget.ts caps, plan §2 item 8). */
   peak:{enemies:number;pickups:number;projectiles:number;telegraphs:number};
+  /** Lowest hp / maxHp each bot had while a round 1 wave was running. */
+  round1MinHp:Map<string,number>;
+  downs:{player:string;tick:number;round:number}[];
   ms:number;
 }
 
@@ -55,10 +62,11 @@ function setup(seed:number,bots:number,classes:readonly string[]=KIT_CLASSES){
  * Drives bots for up to maxTicks, then `after` more ticks once an outcome appears (the Room would stop there;
  * the extra ticks check that the outcome stays and let the director close round 10).
  */
-function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTicks:number;after?:number;hashEvery?:number}):RunResult{
-  const {maxTicks,after=0,hashEvery=0}=options;
-  const seq=new Map(ids.map(id=>[id,0]));
-  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),peak:{enemies:0,pickups:0,projectiles:0,telegraphs:0},ms:0};
+function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTicks:number;after?:number;hashEvery?:number;stopAfterRound?:number}):RunResult{
+  const {maxTicks,after=0,hashEvery=0,stopAfterRound}=options;
+  const seq=new Map(ids.map(id=>[id,0])),paused=new Map(ids.map(id=>[id,0])),seenOffers=new Set<string>();
+  let waveStart:number|undefined;
+  const r:RunResult={sim,ticks:0,outcomeHistory:[],roundEnds:[],roundWaves:[],killEvents:0,helperKills:0,chosen:0,chooseFailures:[],hashes:[],scoresAtEnd:new Map(),peak:{enemies:0,pickups:0,projectiles:0,telegraphs:0},round1MinHp:new Map(ids.map(id=>[id,1])),downs:[],ms:0};
   const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;if(p.build.weapons.length){p.build.weapons=[];p.weaponReady={};}}};
   if(script.unarmed)disarm();
   const watch=()=>{
@@ -71,7 +79,9 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
   const started=performance.now();
   let stopAt=maxTicks;
   for(let t=1;t<=stopAt;t++){
-    if(script.move)ids.forEach((id,i)=>{
+    const standing=script.standFirst!==undefined&&(waveStart===undefined||sim.tick-waveStart<script.standFirst);
+    if(script.move&&!standing)ids.forEach((id,i)=>{
+      if(paused.get(id)!>0){paused.set(id,paused.get(id)!-1);return;}
       const a=2*Math.PI*(sim.tick/160+i/ids.length),next=seq.get(id)!+1;
       // Only advance seq when accepted, so a downed/stalled bot never runs ahead of ack + 40.
       if(sim.input(id,{seq:next,x:Math.cos(a),y:Math.sin(a),attack:false}))seq.set(id,next);
@@ -84,12 +94,21 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
     for(const e of events){
       if(e.type==='round'&&e.phase==='end')r.roundEnds.push({index:e.index,tick:sim.tick});
       if(e.type==='round'&&e.phase==='wave')r.roundWaves.push({index:e.index,tick:sim.tick});
+      if(e.type==='round'&&e.phase==='wave'&&e.index===1)waveStart??=sim.tick;
       if(e.type==='kill')r.killEvents++;
+      if(e.type==='downed'||e.type==='eliminated')r.downs.push({player:e.player,tick:sim.tick,round:sim.world.round.index});
+    }
+    if(sim.world.round.index===1&&sim.world.round.phase==='wave')for(const id of ids){
+      const p=sim.players.get(id)!;r.round1MinHp.set(id,Math.min(r.round1MinHp.get(id)!,p.hp/p.stats.maxHp));
     }
     watch();
     if(script.choose&&sim.outcome===undefined)for(const id of ids){
       const offer=sim.offers(id)[0];
       if(!offer)continue;
+      if(script.offerPause){
+        if(!seenOffers.has(`${id}:${offer.id}`)){seenOffers.add(`${id}:${offer.id}`);paused.set(id,script.offerPause);continue;}
+        if(paused.get(id)!>0)continue;
+      }
       const res=sim.choose(id,offer.id,offer.defaultIndex);
       if(res.ok)r.chosen++;else r.chooseFailures.push(`${sim.tick}:${id}:${offer.id}:${res.reason}`);
     }
@@ -97,6 +116,7 @@ function drive(sim:Simulation,ids:readonly string[],script:Script,options:{maxTi
     watch();
     if(hashEvery&&t%hashEvery===0)r.hashes.push(sim.stateHash());
     if(r.outcome!==undefined&&stopAt===maxTicks)stopAt=Math.min(maxTicks,t+after);
+    if(stopAfterRound!==undefined&&r.roundEnds.some(e=>e.index===stopAfterRound))break;
   }
   r.ms=performance.now()-started;
   for(const id of ids)r.scoresAtEnd.set(id,sim.players.get(id)!.score);
@@ -249,4 +269,47 @@ test('victory beats defeat when the boss dies in the same tick the last player f
   assert.deepEqual(r.outcomeHistory,['victory']);
   assert.equal(r.outcomeTick,sameTick);
   assert.equal(sim.run.revive.defeated,false,'D-016: the boss killing blow ends the run, so revive never calls a defeat');
+});
+
+// BUG-20261009-N1-round1-letal: round 1 teaches instead of killing. Bots walk the deterministic circle of drive()
+// (each its own loop through the camp, so with 2+ bots every chaser crosses the middle) and take the default offers.
+// Teams mix front line (chinelo, café, guarda-chuva), fragile damage classes (-10 hp) and the cone weapon (Roqueira).
+// Two novice scripts from the UX review: stand still for the first 15 s, and stop 8 s at every new offer.
+const ROUND1_SEEDS=Array.from({length:10},(_,i)=>i?i*7919+1:SEED);
+const ROUND1_TEAMS:readonly (readonly string[])[]=[
+  ['cidadao-comum'],['roqueira'],['viciado-em-bet'],['universitario'],['mendigo'],
+  ['cidadao-comum','mendigo'],['roqueira','viciado-em-bet'],['universitario','pedreiro'],
+  KIT_CLASSES.slice(0,6),['viciado-em-bet','universitario','roqueira','streamer','gamer-mobile','coach'],
+  ['cidadao-comum','pedreiro','passageira','porteiro','goleira','maromba'],
+];
+const NOVICE:Record<string,Script>={
+  'walking in circles':{move:true,choose:true,killEvery:0},
+  'standing 15 s, then walking':{move:true,choose:true,killEvery:0,standFirst:ticks(15)},
+  'stopping 8 s at every offer':{move:true,choose:true,killEvery:0,offerPause:ticks(8)},
+};
+for(const [label,script] of Object.entries(NOVICE))test(`round 1, novice ${label}: nobody falls and hp is left over (1, 2 and 6 bots, mixed classes, 10 seeds)`,t=>{
+  let worst=1,worstAt='';
+  for(const team of ROUND1_TEAMS)for(const seed of ROUND1_SEEDS){
+    const {sim,ids}=setup(seed,team.length,team);
+    const r=drive(sim,ids,script,{maxTicks:ticks(3+45+20),stopAfterRound:1});
+    const at=`${team.join('+')} seed ${seed}`;
+    assert.deepEqual(r.roundEnds.map(e=>e.index),[1],`${at}: round 1 ends`);
+    assert.equal(r.outcome,undefined,`${at}: no outcome in round 1`);
+    assert.deepEqual(r.downs,[],`${at}: nobody is downed in round 1`);
+    const min=Math.min(...r.round1MinHp.values()),avg=[...r.round1MinHp.values()].reduce((a,b)=>a+b,0)/ids.length;
+    if(min<worst){worst=min;worstAt=at;}
+    assert.ok(min>=.25,`${at}: every bot keeps at least 25% hp through round 1 (lowest ${(min*100).toFixed(0)}%)`);
+    assert.ok(avg>=.4,`${at}: the team keeps 40% of its hp on average (${(avg*100).toFixed(0)}%)`);
+  }
+  t.diagnostic(`${ROUND1_TEAMS.length} teams x ${ROUND1_SEEDS.length} seeds; lowest hp ${(worst*100).toFixed(0)}% (${worstAt})`);
+});
+
+test('round 1 is not a free pass forever: armed bots standing still can still lose, but not before round 3',t=>{
+  const {sim,ids}=setup(SEED,2);
+  const r=drive(sim,ids,{move:false,choose:true,killEvery:0},{maxTicks:CAP,after:20});
+  report(t,'standing duo',r);
+  t.diagnostic(`downs: ${r.downs.map(d=>`${d.player}@R${d.round}`).join(', ')}`);
+  assert.equal(r.outcome,'defeat','standing still is still punished');
+  assert.ok(sim.world.round.index>=3,`defeat comes in round ${sim.world.round.index}, not before round 3`);
+  assert.ok(r.roundEnds.some(e=>e.index===2),'rounds 1 and 2 end before the defeat');
 });

@@ -3,7 +3,7 @@
  * neighbor separation, terrain collision, contact damage and rare barks.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,obstacles,walkable,type Point} from '../../world.ts';
+import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../world.ts';
 import type {TerrainField} from '../../terrain/field.ts';
 import {Rng} from '../rng.ts';
 import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSystem} from '../types.ts';
@@ -80,7 +80,7 @@ const probe:Point={x:0,y:0};
 function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:number){
   const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.08));
   for(let i=1;i<=n;i++){probe.x=a.x+dx*i/n;probe.y=a.y+dy*i/n;if(!walkable(probe,terrain))return false;}
-  if(radius>PLAYER_RADIUS)for(const o of obstacles){
+  if(radius>PLAYER_RADIUS)for(const o of obstaclesNear(probe,radius,terrain)){
     const after=Math.hypot(probe.x-o.x,probe.y-o.y);
     if(after<o.radius+radius&&after<Math.hypot(a.x-o.x,a.y-o.y))return false;
   }

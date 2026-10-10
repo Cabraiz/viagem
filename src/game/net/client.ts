@@ -1,15 +1,19 @@
 import {TerrainField,defaultTerrain,TERRAIN_VERSION} from '../terrain/field.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, unpackPlayer, unpackEnemy, type Input, type Player, type Enemy, type Snapshot } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, unpackPlayer, type Input, type Player, type Snapshot } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
-type Sample={at:number;players:Map<string,Player>;enemies:Map<string,Enemy>};
+import {JsonRunFeed} from './run-feed.ts';
+/** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
+type Sample={at:number;players:Map<string,Player>};
 export class CoopClient {
   terrain=defaultTerrain;
   run?:RunState;
   id='';token='';seq=0;tick=0;rtt=0;connected=false;victory=false;
-  players=new Map<string,Player>();enemies=new Map<string,Enemy>();
+  players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
   pending:Input[]=[];
+  /** RunView source for the horde renderer and the HUD (protocol 3 JSON today; protocol 4 swaps the feed, VGM-042b). */
+  readonly feed=new JsonRunFeed();
   private socket?:WebSocket;
   private samples:Sample[]=[];
   private stopped=false;
@@ -22,6 +26,8 @@ export class CoopClient {
   private resolveReady?:()=>void;
   private rejectReady?:(error:Error)=>void;
   onStatus:(message:string)=>void=()=>{};
+  /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
+  onNotice:(message:string)=>void=()=>{};
   constructor(readonly endpoint:string,readonly code:string,readonly name:string,readonly classId:string){}
   async join(){
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
@@ -43,13 +49,16 @@ export class CoopClient {
         this.terrain=new TerrainField(terrain.seed);
         if(this.terrain.signature!==terrain.signature){this.stopped=true;this.rejectReady?.(new Error('Versões de terreno diferentes. Atualize a página.'));ws.close();return;}
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
+        // Reconnection: start the view over from the welcome's full snapshot (D-018); the room pushes the offers right after.
+        this.feed.reset();
         this.apply(m.state);this.seq=this.players.get(this.id)?.ack??0;this.initialized=true;
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
         clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{if(performance.now()-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'ping',at:performance.now()}));this.saveToken();},2000);
       }else if(m.t==='state')this.apply(m);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
-      else if(m.t==='notice'&&typeof m.message==='string')this.onStatus(m.message);
+      else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){this.onStatus(m.message);this.stopped=true;this.connected=false;this.forgetToken();this.rejectReady?.(new Error(m.message));ws.close();}
     };
     ws.onclose=()=>{
@@ -67,16 +76,16 @@ export class CoopClient {
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private apply(s:Snapshot){
-    if(s.run&&this.run&&s.run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;}
+    if(s.run&&this.run&&s.run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
     this.run=s.run;
-    if(s.full){this.players.clear();this.enemies.clear();}
+    this.feed.apply(s);
+    if(s.full)this.players.clear();
     for(const p of s.players)this.players.set(p[0],unpackPlayer(p));
-    for(const e of s.enemies)this.enemies.set(e[0],unpackEnemy(e));
     for(const id of s.removed)this.players.delete(id);
     this.tick=s.tick;this.victory=s.victory;
     const self=this.players.get(this.id);
     if(self){this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
-    this.samples.push({at:performance.now(),players:new Map(this.players),enemies:new Map(this.enemies)});
+    this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
   input(direction:Point,skill:boolean,target?:string){
@@ -88,14 +97,16 @@ export class CoopClient {
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   rematch(){this.runCommand({t:'rematch'});}
+  /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
+  choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
   private runCommand(command:object){if(this.connected&&this.run&&this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({...command,round:this.run.round}));}
   /** A short render buffer smooths remote entities without delaying local controls. */
-  view(now=performance.now()):{players:Player[];enemies:Enemy[]}{
+  view(now=performance.now()):{players:Player[]}{
     const target=now-120;
     let a=this.samples[0],b=a;
     for(const sample of this.samples){b=sample;if(sample.at>=target)break;a=sample;}
     const t=a&&b&&a!==b?(target-a.at)/(b.at-a.at):1;
-    return {players:[...this.players.values()].map(p=>p.id===this.id?{...p,...this.predicted}:{...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)}),enemies:[...this.enemies.values()].map(e=>({...e,...interpolate(a?.enemies.get(e.id)??e,b?.enemies.get(e.id)??e,t)}))};
+    return {players:[...this.players.values()].map(p=>p.id===this.id?{...p,...this.predicted}:{...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)})};
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}

@@ -30,6 +30,8 @@ export interface HordeRendererOptions{
   effects?:EffectsProfile;
   /** ms per sim tick, default 50 */
   tickMs?:number;
+  /** ms between authoritative pushes (the room broadcasts every 2 ticks); enemies and pickups glide over it. Default tickMs. */
+  pushMs?:number;
   /** World position of a player, so hostile damage numbers can appear over them. */
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
@@ -96,6 +98,7 @@ export class HordeRenderer{
   private options:HordeRendererOptions;
   private reduced:boolean;
   private tickMs:number;
+  private pushMs:number;
   private objects:Phaser.GameObjects.GameObject[]=[];
   private ground:Phaser.GameObjects.Graphics;
   private overlay:Phaser.GameObjects.Graphics;
@@ -135,7 +138,7 @@ export class HordeRenderer{
   private textFrame:TextFrame={y:0,scale:1,alpha:1,done:false};
 
   constructor(scene:Phaser.Scene,options:HordeRendererOptions){
-    this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;
+    this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;this.pushMs=Math.max(1,options.pushMs??this.tickMs);
     this.fx=FX_BUDGET[options.effects??'full'];this.recentHits=new RecentHits(this.fx.bars);
     ensureHordeTextures(scene);
     this.ground=this.track(scene.add.graphics().setDepth(-9970));
@@ -193,7 +196,7 @@ export class HordeRenderer{
   update(timeMs:number,_deltaMs:number){
     this.now=timeMs;
     const since=Math.max(0,timeMs-this.pushAt)/this.tickMs;
-    this.frac=this.snapNext?1:Math.min(1,since);
+    this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.ground.clear();this.overlay.clear();this.top.clear();

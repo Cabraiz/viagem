@@ -1,5 +1,5 @@
 import {DEFAULT_SEED} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, delta, type Snapshot } from '../src/game/net/shared.ts';
+import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, delta, type Snapshot } from '../src/game/net/shared.ts';
 import {RunLifecycle,RUN_DURATION_TICKS} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
 
@@ -21,7 +21,8 @@ export const ROOM_LIFETIME_MS=30*60_000;
 export const RUN_START_WINDOW_MS=15*60_000;
 /** A run still going this close to the room's end is closed as a timeout, so the result always reaches the players. */
 export const ROOM_CLOSING_MARGIN_MS=30_000;
-export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
+/** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */
+export {ROOM_CLOSING_NOTICE};
 /** Level ('lvl-<level>-<player>') or round ('rnd-<round>-<player>') offer id, optionally rerolled ('~<tick>'). */
 export const OFFER_ID=/^(lvl|rnd)-\d+-[\w-]{1,40}(~\d+)?$/;
 /** Offers carry at most four cards. */

@@ -34,6 +34,8 @@ export class NaiveIndex<T extends Point&{id:string}> implements SpatialIndex<T> 
   }
 }
 
+/** Ticks between chunk-cache prunes (1 s). */
+const RETAIN_EVERY=20;
 const tickRng=(seed:number,tick:number)=>new Rng(seed).fork(`tick:${tick}`);
 
 export const initialTeam=():TeamProgress=>({xp:0,level:1,nextXp:5});
@@ -144,6 +146,10 @@ export class SimWorld implements SimContext {
       system.step(this);
       if(REINDEX_AFTER.has(id))this.enemyIndex.rebuild(this.enemies.values());
     }
+    // Endless world (pure cache, so neither call ever changes the simulation): build a couple of height
+    // lattices ahead of the players, and drop chunks far from players, base and live enemies.
+    this.terrain.prefetch?.(this.players.values());
+    if(this.tick%RETAIN_EVERY===0)this.terrain.retain?.(this.players.values(),this.enemies.values());
     return this.flush();
   }
 

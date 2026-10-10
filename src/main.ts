@@ -93,6 +93,8 @@ function lazySrc(img: HTMLImageElement, url: string) {
   if(img.dataset.seen) { img.src=url; return; }
   img.dataset.src=url; lazyArt.observe(img);
 }
+// After the first screen is up, the page of thumbs already rendered comes in idle time, so "Classes" opens filled.
+addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 function showPortrait(hero: HeroClass, interactive: boolean) {
   const frame=document.getElementById('portrait')!;

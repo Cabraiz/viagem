@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARROW_MS,HP_LINGER_MS,arrowFrame,arrowTrigger,canopyCovers,hpBarStep,hurtStrength} from '../src/game/render/you-rules.ts';
-import {hitsOn} from '../src/game/hud/hurt.ts';
+import {HURT_MIN_GAP_MS,canFlash,hitsOn} from '../src/game/hud/hurt.ts';
 import {CAUSE_COPY,emptyCauses,recordFall,rememberKill,resolveCause,resultCause,topCause,KILL_MEMORY} from '../src/game/hud/cause.ts';
 import {applyEvents,emptyTally,reviveBanner} from '../src/game/hud/model.ts';
 import type {RunView} from '../src/game/sim/view.ts';
@@ -28,6 +28,9 @@ test('hurt flash strength grows with the share of max hp lost; hits are summed p
   assert.deepEqual(hitsOn(view,'me',-1),{amount:7,last:7});
   assert.deepEqual(hitsOn(view,'me',6),{amount:4,last:7});
   assert.deepEqual(hitsOn(view,'me',7),{amount:0,last:7});
+  // Never more than 3 flashes a second under a stream of hits.
+  assert.equal(canFlash(0,-Infinity),true);assert.equal(canFlash(HURT_MIN_GAP_MS-1,0),false);assert.equal(canFlash(HURT_MIN_GAP_MS,0),true);
+  assert.ok(1000/HURT_MIN_GAP_MS<=3);
 });
 
 test('canopy covers a hero only when the tree is in front, close and tall enough',()=>{
@@ -55,6 +58,10 @@ test('fall causes: source first, then the live hitter, then a hitter killed on t
   assert.equal(tally.causes.last.get('me'),'pernilongo');
   applyEvents(tally,viewOf([{type:'downed',player:'zé',by:'b1',source:'chefe',eventId:3}]));
   assert.equal(tally.causes.last.get('zé'),'chefe');
+  // A fiscal seen in an earlier view, gone when its shot downs someone: still named.
+  applyEvents(tally,viewOf([],[{id:'f9',kind:'fiscal'}]));
+  applyEvents(tally,viewOf([{type:'downed',player:'bia',by:'f9',eventId:4}]));
+  assert.equal(tally.causes.last.get('bia'),'fiscal');
 });
 
 test('result names what downed you, else the team; the own-fall banner carries the joke line',()=>{

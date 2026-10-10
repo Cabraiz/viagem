@@ -63,17 +63,18 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const leftThumb=input.joystick&&inflate(input.joystick,THUMB_GAP);
   const rightThumb=union([input.skill,input.emote]);
   const thumbR=rightThumb&&inflate(rightThumb,THUMB_GAP);
-  // Useful area: below the top band, above the thumbs (and the team row in landscape), right of the team column in portrait.
-  let left=safe.left,rightEdge=viewport.width-safe.right,bottomEdge=viewport.height-safe.bottom;
-  for(const thumb of [leftThumb,thumbR])if(thumb)bottomEdge=Math.min(bottomEdge,thumb.y);
-  const team=input.team;
-  if(team){
-    const column=team.height>team.width;
-    if(column&&team.x<viewport.width/2)left=Math.max(left,right(team)+8);
-    else if(column)rightEdge=Math.min(rightEdge,team.x-8);
-    else bottomEdge=Math.min(bottomEdge,team.y-8);
-  }
-  const useful={x:left,y:bottom(top),width:Math.max(0,rightEdge-left),height:Math.max(0,bottomEdge-bottom(top))};
+  // Useful area: the larger of two rectangles under the top band (team column excluded in portrait):
+  // (a) full width, above both thumbs (and above a team row); (b) between the thumbs, down to the team row or the bottom.
+  const team=input.team,column=!!team&&team.height>team.width;
+  let left=safe.left,rightEdge=viewport.width-safe.right;
+  if(team&&column){if(team.x<viewport.width/2)left=Math.max(left,right(team)+8);else rightEdge=Math.min(rightEdge,team.x-8);}
+  const floor=Math.min(viewport.height-safe.bottom,team&&!column?team.y-8:Infinity);
+  const yTop=bottom(top);
+  let aBottom=floor;for(const thumb of [leftThumb,thumbR])if(thumb)aBottom=Math.min(aBottom,thumb.y);
+  const a={x:left,y:yTop,width:Math.max(0,rightEdge-left),height:Math.max(0,aBottom-yTop)};
+  const bLeft=Math.max(left,leftThumb?right(leftThumb):left),bRight=Math.min(rightEdge,thumbR?thumbR.x:rightEdge);
+  const b={x:bLeft,y:yTop,width:Math.max(0,bRight-bLeft),height:Math.max(0,floor-yTop)};
+  const useful=b.width*b.height>a.width*a.height?b:a;
   return {orientation,viewport,top,announce,team,leftThumb,rightThumb:thumbR,useful};
 }
 

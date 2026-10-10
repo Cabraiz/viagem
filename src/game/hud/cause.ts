@@ -20,15 +20,18 @@ export const CAUSE_COPY:Record<CauseKind|'bichos',{name:string;line:string}>={
 export const causeKind=(kind:string|undefined):CauseKind|undefined=>(CAUSE_KINDS as readonly string[]).includes(kind??'')?kind as CauseKind:undefined;
 export const causeCopy=(kind:string|undefined)=>CAUSE_COPY[causeKind(kind)??'bichos'];
 
-/** Kept kills, to name a hitter that died on the same tick it downed someone (or a projectile whose owner is gone). */
-export const KILL_MEMORY=64;
+/**
+ * Kinds of the latest enemy ids seen (live in a view or in a kill), to name a hitter that is already gone: one that died
+ * on the tick it downed someone, or a fiscal whose shot lands after it died (the sim cannot name it then).
+ */
+export const KILL_MEMORY=1024;
 
 export interface CauseLog {
   /** Kind of each player's latest fall ('bichos' when unknown). */
   last:Map<string,string>;
   /** Falls per player and kind. */
   counts:Map<string,Map<string,number>>;
-  /** Recent kills: enemy id → kind, oldest first, at most KILL_MEMORY. */
+  /** Recently seen enemies (views and kills): id → kind, oldest first, at most KILL_MEMORY. */
   kills:Map<string,string>;
 }
 export const emptyCauses=():CauseLog=>({last:new Map(),counts:new Map(),kills:new Map()});
@@ -49,6 +52,11 @@ export function resolveCause(event:{source?:string;by?:string},view:Pick<RunView
 export function rememberKill(log:CauseLog,enemy:string,kind:string){
   log.kills.delete(enemy);log.kills.set(enemy,kind);
   while(log.kills.size>KILL_MEMORY)log.kills.delete(log.kills.keys().next().value as string);
+}
+
+/** Remembers the kind of enemies not seen before (the common case, an id already known, is one Map lookup). */
+export function rememberEnemies(log:CauseLog,enemies:readonly {id:string;kind:string}[]){
+  for(const e of enemies)if(!log.kills.has(e.id))rememberKill(log,e.id,e.kind);
 }
 
 export function recordFall(log:CauseLog,player:string,kind:string){

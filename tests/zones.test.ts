@@ -13,7 +13,8 @@ test('zones per orientation: top band with the announcement slot, thumbs with 24
   assert.equal(portrait.useful.x,70,'portrait: right of the team column');
   assert.equal(portrait.leftThumb!.x,0);assert.equal(portrait.rightThumb!.y,666-THUMB_GAP,'emote is in the right-thumb zone');
   assert.equal(portrait.useful.y+portrait.useful.height,portrait.rightThumb!.y);
-  assert.equal(landscape.useful.x,0);assert.equal(landscape.useful.y+landscape.useful.height,278-THUMB_GAP,'landscape: above the thumbs');
+  assert.equal(landscape.useful.x,18+96+THUMB_GAP,'landscape: between the thumbs');assert.equal(landscape.useful.x+landscape.useful.width,746-THUMB_GAP);
+  assert.equal(landscape.useful.y+landscape.useful.height,318-8,'landscape: down to the team row');
   for(const z of [portrait,landscape])for(const zone of [z.top,z.leftThumb!,z.rightThumb!])assert.equal(crosses(z.useful,zone),false);
 });
 

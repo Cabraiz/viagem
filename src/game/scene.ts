@@ -81,7 +81,7 @@ export class IslandScene extends Phaser.Scene {
   private stateVersion=-1;
   private offersVersion=-1;
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /** Ring, contour, mini health bar and "Você" arrow of the local hero, silhouettes behind canopies (UX-voce-e-dano). */
+  /** Ring, contour, mini health bar and "Você" arrow of the local hero; see-through copies over canopies (UX-voce-e-dano). */
   private you?:YouMarkers;
   private marks:HeroMark[]=[];
   private selfCovered=false;
@@ -168,7 +168,7 @@ export class IslandScene extends Phaser.Scene {
     let covered=false;
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
-    // depth behind the tree and a silhouette shows on top (UX-voce-e-dano: never hidden behind a canopy).
+    // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
     this.selfCovered=covered;
     this.actor.setPosition(p.x,p.y).setDepth(covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
@@ -183,7 +183,7 @@ export class IslandScene extends Phaser.Scene {
     for(const prop of this.props)if(prop.tree&&this.propCovers(prop,p,depth))return true;
     return false;
   }
-  /** Ring, bar, arrow and silhouettes, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
+  /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');

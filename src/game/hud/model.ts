@@ -4,7 +4,7 @@
  */
 import {SIM_HZ} from '../sim/types.ts';
 import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
-import {causeCopy,emptyCauses,recordFall,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
+import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 
 export const TOTAL_ROUNDS=10;
 
@@ -182,6 +182,7 @@ export function tallyOf(tally:RunTally,playerId:string){
 /** Applies new events once; repeated or late eventIds are ignored. */
 export function applyEvents(tally:RunTally,view:RunView){
   tally.startTick??=view.tick;
+  rememberEnemies(tally.causes,view.enemies);
   // Kills are remembered before the falls are named: the hitter may die on the tick it downed someone.
   const falls:{player:string;by?:string;source?:string}[]=[];
   for(const event of view.events){

@@ -5,6 +5,7 @@
  *   - an ellipsis is active (text-overflow:ellipsis with scrollWidth > clientWidth),
  *   - a line clamp is hiding lines (-webkit-line-clamp with scrollHeight > clientHeight),
  *   - an overflow:hidden/clip box hides its own text (scroll size > client size),
+ *   - a result card out of view (internal scroll) or under Revanche/Sair (long real names included),
  *   - text inside an offer card or a result card pokes out of the card, or a label pokes out of its button,
  * plus text under the minimum size (13 px in the match HUD and emotes), touch targets under 44 px and page scroll.
  * Usage: node scripts/audit-layout.cjs [baseUrl=http://127.0.0.1:4350] [out.json]
@@ -46,6 +47,15 @@ function audit(rootsSelector,minFont){
     // The label must fit inside its own button (round buttons included).
     const range=document.createRange();range.selectNodeContents(b);const t=range.getBoundingClientRect();
     if(t.width>0&&(t.left<r.left-1||t.right>r.right+1))problems.push(`texto sai do botão: ${label(b)}`);
+  }
+  // Result: every card in view (no internal scroll) and none under Revanche/Sair.
+  const grid=document.querySelector('.rh-result:not([hidden]) .rh-result-grid'),actions=document.querySelector('.rh-result:not([hidden]) .rh-result-actions');
+  if(grid&&vis(grid)){
+    const g=grid.getBoundingClientRect(),a=actions?.getBoundingClientRect();
+    const out=[...grid.querySelectorAll('.rh-rcard')].filter(c=>{const r=c.getBoundingClientRect();return r.top<g.top-1||r.bottom>g.bottom+1;}).length;
+    if(out)problems.push(`resultado rola: ${out} card(s) fora da vista`);
+    if(a)for(const c of grid.querySelectorAll('.rh-rcard')){const r=c.getBoundingClientRect(),top=Math.max(r.top,g.top),bottom=Math.min(r.bottom,g.bottom);
+      if(bottom>top&&r.left<a.right&&r.right>a.left&&top<a.bottom&&bottom>a.top)problems.push(`card atrás de Revanche/Sair: ${label(c.querySelector('.rh-rcard-name')||c)}`);}
   }
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   if(rootsSelector.startsWith('.rh')&&(document.documentElement.scrollHeight>innerHeight+1||document.documentElement.scrollWidth>innerWidth+1))problems.push('a página rola');
@@ -92,6 +102,15 @@ const SCENES=[
     });};
     await run('hud oferta, 4 cartas, textos mais longos','/?sandbox=hud&players=6&state=offer-round&frozen=1','.rh',13,worst);
     await run('hud oferta, 3 cartas, textos mais longos','/?sandbox=hud&players=1&state=offer&frozen=1','.rh',13,worst);
+    // Real long names: the lobby keeps 20 characters, the team strip shows the first name cut at 9 (team.ts).
+    const longNames=async()=>{await page.waitForSelector('.rh-rcard-name,.rh-member-name');await page.evaluate(()=>{
+      const names=['Maria Aparecida dos','Seu Jorge do Pastel','Wagner Washington Mo','Tia da Festa Junina','Concurseira Eterna d','Zé do Pix Parcelado'];
+      document.querySelectorAll('.rh-rcard-name').forEach((e,i)=>{e.textContent=names[i%names.length];});
+      document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=names[(i+1)%names.length].split(' ')[0].slice(0,9);});
+    });};
+    await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13,longNames);
+    await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
+    await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
     await run('botão de habilidade','/','.audit-actions',13,async()=>{await page.evaluate(async()=>{await import('/src/game/coop.css');const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack">Habilidade</button>';document.body.append(d);});});
     await ctx.close();

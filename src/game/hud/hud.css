@@ -193,13 +193,13 @@
 .rh-offer-cards[data-count='4'] .rh-card-blurb,.rh-offer-cards[data-count='2'] .rh-card-blurb{grid-area:blurb}
 .rh-offer-cards[data-count='4'] .rh-card-joke,.rh-offer-cards[data-count='2'] .rh-card-joke{display:none}
 /* Bigger text (125%), both orientations: the header joke and chip go, then the seals; in the 2x2 the level chip
-   rides the top border in the seals' place, so name and effect get the whole card width. */
+   (NOVO!/Nv N, also in the card's aria-label) goes before the icon, so name and effect keep the width next to it. */
 :root[data-texto="125"] .rh-offer-joke,:root[data-texto="125"] .rh-offer-eyebrow,:root[data-texto="125"] .rh-card-flags{display:none}
-:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr);grid-template-areas:'name' 'blurb';padding:11px 6px 3px}
-:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'icon name' 'icon blurb';align-items:start;padding:7px 6px 4px}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-icon{display:block;grid-area:icon;align-self:start}
 :root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-blurb{line-height:1.12}
-:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-level{position:absolute;top:-11px;right:6px;box-shadow:0 0 0 1px var(--c-breu)}
-:root[data-texto="125"] .rh-offer-cards[data-count='4']{gap:9px 5px;padding-top:6px}
+:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-level{display:none}
+:root[data-texto="125"] .rh-offer-cards[data-count='4']{gap:5px}
 /* The top bar grows with the text, so the team column and the alerts start lower. */
 @media (min-height:501px){:root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}}
 
@@ -258,6 +258,10 @@
   :root[data-texto="125"] .rh-offer .rh-offer-deadline{margin:2px 2px 4px}
   :root[data-texto="125"] .rh-card{padding:5px 6px 4px}
   :root[data-texto="125"] .rh-card-flags{display:none}
+  /* 2x2 at 125% in the short column: after the level chip, the icon goes too (same order as portrait), so the
+     name and the effect get the whole card width. */
+  :root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr);grid-template-areas:'name' 'blurb';padding:5px 6px 4px}
+  :root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
 }
 @keyframes rh-offer-in-side{0%{opacity:0;transform:translateX(40px) scale(.94)}100%{opacity:1;transform:none}}
 
@@ -287,7 +291,8 @@
 .rh-result[data-outcome=defeat] .rh-result-sub{color:var(--c-papel);margin-top:7px}
 .rh-result-stats{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:5px}
 .rh-result-stat{padding:2px 9px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;font-variant-numeric:tabular-nums}
-.rh-result-seed{font-size:var(--t-13);opacity:.8;white-space:nowrap}
+/* The seed is dev status: kept in the DOM (and in the done/log) but not shown to players. */
+.rh-result-seed{display:none}
 
 /* Player grid */
 .rh-result-grid{grid-area:grid;position:relative;z-index:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
@@ -304,7 +309,8 @@
 .rh-rcard-img{grid-area:img;width:40px;height:40px;border-radius:var(--r-circulo);object-fit:cover;background:var(--c-papel-claro);border:2px solid var(--c-breu)}
 .rh-me .rh-rcard-img{border-color:var(--c-lilas)}
 .rh-rcard-id{grid-area:id;display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0}
-.rh-rcard-name{display:block;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Names wrap (up to 20 characters from the lobby) instead of being cut with an ellipsis. */
+.rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:break-word;text-wrap:balance}
 .rh-rcard-tag{padding:0 6px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/1.3 var(--f-sistema)}
 
 .rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:3px;min-width:0}
@@ -341,6 +347,16 @@
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-title{display:inline}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:inline;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line::before{content:' · '}
+/* 125% text with 3+ players: the award jokes go first (titles stay), so 6 cards still fit without scrolling. */
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:none}
+/* ...and with 5-6 players only each card's first award stays (second sacrifice). */
+:root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}
+/* 3+ players: the "Você" tag sits on the portrait's lower edge (a badge), so the name keeps the whole row. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-top{position:relative}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-tag{position:absolute;left:-3px;top:28px;padding:0 4px;box-shadow:0 0 0 1px var(--c-breu)}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard{padding:5px 6px 6px;gap:4px}
+/* Portrait at 125%: the result joke under the title goes too (jokes are the first sacrifice). */
+@media (min-height:501px){:root[data-texto="125"] .rh-result:has(.rh-result-grid:not([data-count="1"]):not([data-count="2"])) .rh-result-sub{display:none}}
 
 /* Solo/duo cards have room for a bigger portrait */
 .rh-result-grid[data-count="1"] .rh-rcard-img,.rh-result-grid[data-count="2"] .rh-rcard-img{width:64px;height:64px}

@@ -65,7 +65,9 @@ const warmed=new Map<string,HTMLImageElement>();
 function portraitImage(hero: HeroClass, first=false) {
   let img=warmed.get(hero.id);
   if(img) warmed.delete(hero.id);
-  else {
+  // A download that failed (or was dropped) leaves a finished image with no pixels: never reuse it, try again.
+  if(img&&img.complete&&!img.naturalWidth) img=undefined;
+  if(!img) {
     img=new Image(); img.alt=''; img.decoding='async'; img.className='portrait-art'; img.dataset.portraitOf=hero.id;
     if(first) img.fetchPriority='high'; // the first screen's LCP; set before src, or the fetch already left at low priority
     img.sizes=portraitSizes; img.srcset=`/art/portraits/${hero.id}-768.webp 768w, /art/portraits/${hero.id}.webp 1024w`;
@@ -77,11 +79,15 @@ function portraitImage(hero: HeroClass, first=false) {
 }
 const idle=(task: () => void)=>('requestIdleCallback' in window ? requestIdleCallback(task,{timeout:2000}) : setTimeout(task,300));
 // Only once the player touches the carousel: the first screen downloads a single portrait.
+function forget(img: HTMLImageElement) {
+  const id=img.dataset.portraitOf!;
+  if(warmed.get(id)===img) warmed.delete(id);
+}
 function warmNeighbours(hero: HeroClass) {
   if((navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData) return;
   const index=classes.indexOf(hero);
   idle(()=>{
-    for(const step of [1,-1]) portraitImage(classes[(index+step+classes.length)%classes.length]).decode().catch(()=>{});
+    for(const step of [1,-1]) { const img=portraitImage(classes[(index+step+classes.length)%classes.length]); img.decode().catch(()=>forget(img)); }
     portraitImage(selected);
   });
 }
@@ -96,24 +102,32 @@ function lazySrc(img: HTMLImageElement, url: string) {
 // After the first screen is up, the page of thumbs already rendered comes in idle time, so "Classes" opens filled.
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
+const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
   const frame=document.getElementById('portrait')!;
   const current=frame.querySelector('img'), img=portraitImage(hero,!current), token=++portraitToken;
   // Flicking past a class drops its half-downloaded art, so on 4G the bandwidth goes to the one that stays on screen.
-  if(pending&&pending!==img&&pending!==current&&!pending.complete) { warmed.delete(pending.dataset.portraitOf!); pending.removeAttribute('srcset'); pending.src=''; }
+  if(pending&&pending!==img&&pending!==current&&!pending.complete) { forget(pending); pending.removeAttribute('srcset'); pending.src=''; }
   pending=img;
   if(current===img) { frame.removeAttribute('aria-busy'); return; }
-  // The previous art only dims when the new one is really slow (network), never as a one-frame flash.
-  let slow=0;
-  const place=()=>{ if(token!==portraitToken) return; clearTimeout(slow); frame.replaceChildren(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
-  if(!current) { place(); return; }
-  slow=window.setTimeout(()=>{ if(token===portraitToken) frame.setAttribute('aria-busy','true'); },150);
-  img.decode().then(place,place);
+  let placed=false;
+  const place=()=>{ if(token!==portraitToken) return; placed=true; frame.replaceChildren(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
+  // Failed download: forget it (the next tap fetches again) and keep what is on screen, never a blank frame.
+  const failed=()=>{ forget(img); if(token===portraitToken) frame.removeAttribute('aria-busy'); };
+  if(!current) { img.addEventListener('error',()=>{ forget(img); placed=false; showThumb(); },{once:true}); place(); return; }
+  img.decode().then(place,failed);
+  // Not on screen yet: the new class's thumb (17 KB, the sheet preview asks for it anyway) holds the frame right away,
+  // so the name and the art never disagree; the full art replaces it once decoded.
+  if(!(img.complete&&img.naturalWidth)) showThumb();
+  function showThumb() {
+    const thumb=new Image(); thumb.alt=''; thumb.decoding='async'; thumb.className='portrait-art'; thumb.src=thumbUrl(hero);
+    thumb.decode().then(()=>{ if(token!==portraitToken||placed) return; frame.replaceChildren(thumb); frame.setAttribute('aria-busy','true'); },()=>{});
+  }
 }
 function setArt(id: string,hero: HeroClass) {
   if(id==='portrait') return showPortrait(hero,true);
   const element=document.getElementById(id)!;
-  if(element instanceof HTMLImageElement) lazySrc(element,`/art/portraits/${hero.id}-thumb.webp`);
+  if(element instanceof HTMLImageElement) lazySrc(element,thumbUrl(hero));
   else {
     // The dialog reuses the file the portrait already shows (768 or 1024), so confirming never downloads a second copy.
     const shown=document.querySelector<HTMLImageElement>('#portrait img');
@@ -153,6 +167,7 @@ function renderRoster() {
   const pages=Math.max(1,Math.ceil(results.length/pageSize));
   page=Math.max(0,Math.min(page,pages-1));
   const container=document.getElementById('class-list')!;
+  container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazyArt.unobserve(img));
   container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><span class="card-number">${String(hero.art+1).padStart(2,'0')}</span><img class="card-portrait class-art" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong><small>${hero.role}</small></span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
@@ -166,6 +181,9 @@ document.getElementById('class-list')!.addEventListener('click',event=>{
   selected=getClass(button.dataset.hero!)!;
   renderSelected(true);
 });
+// The catalog's pressed-state fade only runs when someone can see it: from the carousel, off-screen, it flips silently.
+let catalogVisible=false;
+new IntersectionObserver(entries=>{ catalogVisible=entries[entries.length-1].isIntersecting; }).observe(document.getElementById('class-list')!);
 function cycle(direction:number) {
   selected=classes[(classes.indexOf(selected)+direction+classes.length)%classes.length];
   const nextPage=Math.floor(classes.indexOf(selected)/rosterPageSize());
@@ -176,6 +194,8 @@ function cycle(direction:number) {
     document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.role==='Todas')));
     renderRoster();
   }
+  const list=document.getElementById('class-list')!;
+  if(!catalogVisible) { list.dataset.quiet=''; requestAnimationFrame(()=>requestAnimationFrame(()=>delete list.dataset.quiet)); }
   renderSelected(true);
 }
 document.querySelector('.portrait-navigation')!.addEventListener('pointerdown',()=>warmNeighbours(selected),{once:true,passive:true});

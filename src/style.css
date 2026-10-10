@@ -9,7 +9,7 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 /* BUG-menu-travando: art as <img> (srcset, async decode) drawn exactly like the old background-size:contain.
    The portrait sits on its own layer, so a class change re-rasters only the art, not the chevron and paper grain under it
-   (carousel raster -60% in the lab). The previous art dims only when the next one is slow to arrive. */
-.portrait{position:relative;will-change:transform}.portrait-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.portrait[aria-busy=true] .portrait-art{opacity:.55}img.class-art{display:block;min-width:0;object-fit:contain}
-/* The catalog's pressed state flips without a fade: off-screen, it cost two 140 ms repaint runs per class change. */
-.class-card{transition:none}
+   (carousel raster -60% in the lab). While the full art decodes, the new class's thumb holds the frame. */
+.portrait{position:relative;will-change:transform}.portrait-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}img.class-art{display:block;min-width:0;object-fit:contain}
+/* Changed from the carousel with the catalog off-screen, the pressed state flips without a fade (two 140 ms repaint runs per class change). */
+.class-list[data-quiet] .class-card{transition:none}

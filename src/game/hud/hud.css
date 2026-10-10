@@ -248,16 +248,18 @@
 .rh-offer-chip[aria-expanded=true]{background:var(--c-papel)}
 .rh-offer-chip:active{transform:translateY(2px);box-shadow:0 0 0 2px var(--c-papel),0 1px 0 var(--c-breu)}
 /* One beat when it appears or its number goes up (the stamp's curve, once: no loop). */
-.rh-offer-chip-beat{animation:rh-chip-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
+/* Grows away from the skill button (origin on its right edge), so the beat never eats the 24 px thumb gap. */
+.rh-offer-chip-beat{transform-origin:100% 50%;animation:rh-chip-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
 @keyframes rh-chip-beat{0%{transform:scale(1.35)}70%{transform:scale(.95)}100%{transform:scale(1)}}
 .rh-ended .rh-offer-chip,.rh-ended .rh-offer-hint{display:none}
-/* First time only: a balloon over the chip, between the thumbs (outside the playfield); gone at the first tap. */
-.rh-offer-hint{position:absolute;z-index:1;margin:0;max-width:180px;padding:6px 10px;
-  right:calc(max(24px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 4px);
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) + 26px + 12px);
+/* First time only (3 s, once per device): a balloon over the chip + skill pair, right-aligned with the skill and no
+   wider than the pair, so it never reaches over the joystick (post-merge zones audit); gone at the first tap. */
+.rh-offer-hint{position:absolute;z-index:1;margin:0;box-sizing:border-box;width:calc(10px + 72px*var(--t-escala) + 24px + 52px);padding:5px 8px;text-align:center;
+  right:max(24px,env(safe-area-inset-right));
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 10px);
   border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);
   font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:none;pointer-events:none}
-.rh-offer-hint::after{content:'';position:absolute;right:28px;bottom:-9px;width:14px;height:8px;background:var(--c-breu);clip-path:polygon(0 0,100% 0,50% 100%)}
+.rh-offer-hint::after{content:'';position:absolute;left:18px;bottom:-9px;width:14px;height:8px;background:var(--c-breu);clip-path:polygon(0 0,100% 0,50% 100%)}
 
 /* Compact strip: a row of tags right-aligned just above the controls band (24 px over the joystick), right of the team
    column and clear of the hero. Combat reading is icon + price + name (UX B5); effect and joke wait for the intermission. */
@@ -323,6 +325,11 @@
 @media (max-height:500px){
   .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;width:min(40vw,360px);max-width:none;margin:0;padding:3px 6px 4px}
   .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0}
+  /* Never closer than 24 px to the skill button: past that the list scrolls inside, as in portrait (zones audit). */
+  .rh-offer[data-mode=intermission]{max-height:calc(100vh - var(--rh-t) - 52px - (max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 24px))}
+  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 8px;margin:-6px -6px 0}
+  .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
+  .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot,.rh-offer-deadline){flex:none}
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(60vw - var(--rh-l) - var(--rh-r) - 166px)}
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(40vw,360px) + 8px)}
   .rh-offer-head{flex:none;min-height:22px}
@@ -338,7 +345,7 @@
   .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) - var(--chip)/2)}
-  .rh-offer-hint{right:calc(max(18px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 4px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) + 26px + 12px)}
+  .rh-offer-hint{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 10px)}
   /* 125%: the right column is 190 px tall. Tags go 2x2 with name and price only; the effect line is the one exception
      to "never hidden", kept in each tag's aria-label and readable with the window folded or in portrait. */
   :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}

@@ -54,3 +54,15 @@ test('veil: only the readouts the hero (± 40) walked under go see-through',()=>
   assert.deepEqual(veiled(boxes,{x:400,y:100,width:60,height:60}),[false,true,false]);
   assert.deepEqual(veiled(boxes,undefined),[false,false,false]);
 });
+
+test('D-021: the offer chip joins the right-thumb zone (24 px left of the skill), and the useful area stays clear of it',()=>{
+  const base={viewport:{width:844,height:390},status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40},{x:212,y:52,width:420,height:20}],team:{x:258,y:318,width:328,height:64},
+    joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}};
+  const chip={x:746-THUMB_GAP-52,y:307,width:52,height:52};
+  const withChip=computeZones({...base,chip});
+  assert.equal(withChip.rightThumb!.x,chip.x-THUMB_GAP);
+  assert.equal(crosses(withChip.useful,withChip.rightThumb!),false);
+  assert.equal(crosses(withChip.useful,chip),false);
+  const audit=auditBoxes([{name:'habilidade',rect:base.skill,thumb:true,target:true},{name:'chip',rect:chip,target:true}],withChip);
+  assert.equal(audit.ok,true);assert.equal(audit.minThumbGap,THUMB_GAP);
+});

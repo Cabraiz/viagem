@@ -3,7 +3,7 @@
  * - top band: camera buttons, round chip, gear, XP, boss bar and the announcement slot (round/boss banner ≤ 2 lines
  *   for ≤ 1.8 s, fall/rescue/connection notices);
  * - team strip: left column (portrait) or bottom row between the thumbs (landscape);
- * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + THUMB_GAP;
+ * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + THUMB_GAP;
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. The follow camera
  *   (D-019, UX-camera-segue) centers the hero on it; today the scene only receives it (IslandScene.usefulArea).
  * Pure geometry plus one DOM reader (measureZones) and the audit the acceptance scripts run on the real scene.
@@ -46,6 +46,8 @@ export interface ZoneInput {
   /** Status rows of the top band (camera buttons, round chip, gear, XP, boss bar). */
   status:readonly (Rect|undefined)[];
   team?:Rect;joystick?:Rect;skill?:Rect;emote?:Rect;
+  /** The "+N" offer chip (D-021): a right-thumb control, 24 px left of the skill button. */
+  chip?:Rect;
   /** Safe-area insets (notch), CSS px. */
   safe?:{top:number;right:number;bottom:number;left:number};
 }
@@ -61,7 +63,7 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const announceTop=bottom(status)+4,announce={x:safe.left,y:announceTop,width:viewport.width-safe.left-safe.right,height:ANNOUNCE_HEIGHT[orientation]};
   const top={x:0,y:0,width:viewport.width,height:bottom(announce)};
   const leftThumb=input.joystick&&inflate(input.joystick,THUMB_GAP);
-  const rightThumb=union([input.skill,input.emote]);
+  const rightThumb=union([input.skill,input.emote,input.chip]);
   const thumbR=rightThumb&&inflate(rightThumb,THUMB_GAP);
   // Useful area: the larger of two rectangles under the top band (team column excluded in portrait):
   // (a) full width, above both thumbs (and above a team row); (b) between the thumbs, down to the team row or the bottom.
@@ -104,7 +106,8 @@ export function chooseSlot(slots:readonly Rect[],hero:Rect|undefined,margin=HERO
 export interface AuditBox {name:string;rect:Rect;
   /** A touch target (≥ THUMB_GAP from the joystick and the skill button). */
   target?:boolean;
-  /** Offer and result: the only ones allowed in the useful area (D-021 moves the level offer to a chip). The open emote fan
+  /** Offer and result: the only ones allowed in the useful area (D-021 moves the level offer to a chip). The chip's
+   * first-time hint (3 s, once per device, never tappable) rides above the chip and the skill, like a label of them. The open emote fan
    * counts as the right-thumb control the player just opened (it closes on any other tap), not as HUD over the field. */
   allowedInPlay?:boolean;
   /** Documented fallbacks while the camera does not follow the hero: the announcement in the low slot, and a status
@@ -159,15 +162,22 @@ export function measureZones(doc:Document=document):ScreenZones{
     viewport:{width:innerWidth,height:innerHeight},
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
     team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack')),
-    emote:rectOf(q('.fun-emote-toggle')),safe:hud?safeInsets(hud):undefined,
+    emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
   });
 }
 
 /** Every HUD box the audit looks at, as laid out now. */
 export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   const boxes:AuditBox[]=[];
+  // A box inside a scroll box (the intermission offer list, capped at 32% of the height) counts only for its visible
+  // part: what is scrolled out is clipped, neither drawn nor tappable.
+  const clipped=(el:Element,rect:Rect|undefined):Rect|undefined=>{
+    const box=rect&&el.parentElement?.closest('.rh-offer-cards');if(!rect||!box||getComputedStyle(box).overflowY==='visible')return rect;
+    const c=box.getBoundingClientRect(),x=Math.max(rect.x,c.left),y=Math.max(rect.y,c.top),r=Math.min(right(rect),c.right),b=Math.min(bottom(rect),c.bottom);
+    return r>x&&b>y?{x,y,width:r-x,height:b-y}:undefined;
+  };
   const add=(selector:string,name:string,flags:Omit<AuditBox,'name'|'rect'>={})=>{
-    doc.querySelectorAll(selector).forEach((el,i)=>{const rect=rectOf(el);if(rect)boxes.push({name:`${name}${i?`#${i+1}`:''}`,rect,...flags,...(el.classList.contains('rh-veiled')?{fallback:true,veiled:true}:{})});});
+    doc.querySelectorAll(selector).forEach((el,i)=>{const rect=clipped(el,rectOf(el));if(rect)boxes.push({name:`${name}${i?`#${i+1}`:''}`,rect,...flags,...(el.classList.contains('rh-veiled')?{fallback:true,veiled:true}:{})});});
   };
   // The result covers the whole screen: what lies under it is neither over the hero nor next to a thumb.
   if(rectOf(doc.querySelector('.rh-result'))){add('.rh-result','resultado',{allowedInPlay:true});add('.rh-result-btn','resultado-botão',{allowedInPlay:true,target:true});return boxes;}
@@ -180,6 +190,7 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
   add('.rh-member','time');
   add('.rh-offer','oferta',{allowedInPlay:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true});
+  add('.rh-offer-chip','chip',{target:true});add('.rh-offer-hint','dica-do-chip',{allowedInPlay:true});
   add('.fun-emote-toggle','emote',{target:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;
 }

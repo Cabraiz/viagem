@@ -108,7 +108,8 @@ export const MEMBER_CLEARANCE=.5;
 /**
  * Endless world: an enemy no one can see walks this much faster towards the nearest player, so a horde born on the
  * off-screen ring (21.6-35.9 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
- * instead of the ~21 s a gosma needs at 1.4 u/s. On screen it is back to its own pace. Never the boss or siege.
+ * instead of the ~21 s a gosma needs at 1.4 u/s. On screen it is back to its own pace. Never siege enemies; the boss
+ * only while walking.
  */
 export const CATCH_UP_SPEED=2.5;
 /** Endless retreat: fleeing is faster and may take longer than walking into the island's sea. */
@@ -290,7 +291,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const step=CATCH_UP_SPEED/SIM_HZ;
     for(const id of state.tracked){
       const e=ctx.enemies.get(id);
-      if(!e||e.boss||e.hp<=0||e.memory?.retreat===1||e.memory?.[SIEGE_FLAG]===1||ctx.tick<e.readyTick)continue;
+      if(!e||e.hp<=0||e.memory?.retreat===1||e.memory?.[SIEGE_FLAG]===1||ctx.tick<e.readyTick)continue;
+      // The boss only while it walks (boss.ts ACT_IDLE = 0); its dash and sweep place it themselves.
+      if(e.boss&&e.memory?.act!==0)continue;
       if(e.frozenUntil!==undefined&&ctx.tick<e.frozenUntil)continue;
       if(!hidden(ctx,e))continue;
       const {player,d2}=nearestOf(anchors,e);

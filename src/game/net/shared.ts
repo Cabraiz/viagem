@@ -1,5 +1,6 @@
 import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../terrain/field.ts';
 import {CHUNK_VERSION} from '../terrain/chunks.ts';
+import type {WorldDescriptor} from './protocol4.ts';
 import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
@@ -17,6 +18,10 @@ import type {RunState} from './run.ts';
 export const ROOM_PROTOCOL=3;
 /** The endless world is playable once the Room speaks protocol 4 (VGM-042b) and the camera follows (camera-segue). */
 export const ENDLESS_WORLD_READY=false;
+/** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
+export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
+  return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
+}
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 

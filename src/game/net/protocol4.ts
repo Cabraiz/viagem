@@ -1,27 +1,39 @@
 /**
- * Protocol 4 (VGM-041): binary server -> client run frames, delta-encoded per entity against the
- * last frame the client acknowledged, plus JSON control messages. Not wired into the Room yet (VGM-042).
+ * Protocol 4 (VGM-041, wide map in NEW-20261009-ORQ-rede-mapa-grande): binary server -> client run frames,
+ * delta-encoded per entity against the last frame the client acknowledged, plus JSON control messages.
+ * Not wired into the Room yet (VGM-042b).
  *
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
- *   u8 magic 0x56 'V' | u8 version 4 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick
+ *   u8 magic 0x56 'V' | u8 version 4 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
  *   team: uvar xp, uvar level, uvar nextXp
- *   u8 flags (bit0 round, bit1 wave) | round? | wave?
+ *   u8 flags (bit0 round, bit1 wave, bit2 world) | round? | wave? | world? (u8 kind, uvar terrain version,
+ *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes)
  *   6 entity sections (players, enemies, pickups, projectiles, telegraphs, structures):
- *     uvar removedCount, (uvar idGap)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
+ *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
+ *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
  *   events: uvar count, (uvar eventIdGap, u8 code, [u8 optional bits], fields*)*
- * Positions are i16 at 1/512 unit, velocities i16 at 1/256 unit/s, radii u16 at 1/256 unit.
+ * Positions are at 1/512 unit everywhere in the endless world: i16 relative to the frame origin (an integer point by
+ * the client's player, so ±64 units around it cost 2 bytes), or the escape i16 -32768 followed by an absolute svar
+ * (allies far away, a far base, up to ±4 194 304 units). Velocities are i16 at 1/256 unit/s, radii u16 at 1/256 unit.
  * Ticks inside a frame are signed offsets from the frame tick. Known strings travel as one-byte
  * dictionary indexes; unknown ones inline as UTF-8.
  * Wire ids are monotonic per entity type and never reused, so a client baseline can never confuse two entities.
  * Events are resent (after resendTicks, or right after a resync) until the client acks a frame that carried them;
  * the decoder drops ids it has seen. Entity references inside events are wire ids, not strings.
+ * Area of interest: an encoder with a `viewer` sends every player (allies always, for the minimap), structures (the
+ * base) and the boss, plus enemies, pickups, projectiles and telegraphs within INTEREST_RADIUS of the viewer (kept
+ * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../sim/types.ts';
 import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
 
 export const PROTOCOL_VERSION=4;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
+/** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
+export const POS_LIMIT=2**22;
+const POS_ESCAPE=-32768;
 /** Hard limits the decoder enforces, so garbage cannot allocate unbounded memory. */
 export const MAX_SECTION_ITEMS=4096,MAX_EVENTS=1024,MAX_STRING_BYTES=256;
 /** Frames the server and the client remember for delta baselines. */
@@ -116,9 +128,11 @@ class Reader {
 }
 
 // ---------- Field codecs ----------
+/** What a field needs from its frame: the tick (relative ticks) and the integer origin (relative positions). */
+interface FrameCtx {tick:number;ox:number;oy:number}
 interface Codec<V> {
-  write(w:Writer,v:V,tick:number):void;
-  read(r:Reader,tick:number):V;
+  write(w:Writer,v:V,f:FrameCtx):void;
+  read(r:Reader,f:FrameCtx):V;
   /** The value the client ends up with after a write/read round trip. */
   norm(v:V):V;
   eq(a:V,b:V):boolean;
@@ -134,13 +148,33 @@ function scaled(scale:number,signed:boolean):Codec<number>{
     eq:same,
   };
 }
-const pos=scaled(POS_SCALE,true),vel=scaled(VEL_SCALE,true),radius=scaled(RADIUS_SCALE,false);
+const vel=scaled(VEL_SCALE,true),radius=scaled(RADIUS_SCALE,false);
+/** Position in 1/512 unit steps, as the integer count the client ends up with. */
+const posQ=(v:number)=>Math.max(-POS_LIMIT*POS_SCALE,Math.min(POS_LIMIT*POS_SCALE,Math.round(finite(v)*POS_SCALE)));
+/** Origin-relative position on one axis; exact at any distance (the escape carries the absolute value). */
+function wide(axis:'ox'|'oy'):Codec<number>{
+  return {
+    write:(w,v,f)=>{
+      const q=posQ(v),rel=q-f[axis]*POS_SCALE;
+      if(rel>POS_ESCAPE&&rel<=32767)w.i16(rel);else{w.i16(POS_ESCAPE);w.svar(q);}
+    },
+    read:(r,f)=>{
+      const rel=r.i16();
+      if(rel!==POS_ESCAPE)return (f[axis]*POS_SCALE+rel)/POS_SCALE;
+      const q=r.svar();if(Math.abs(q)>POS_LIMIT*POS_SCALE)throw new FrameError('position out of range');
+      return q/POS_SCALE;
+    },
+    norm:v=>posQ(v)/POS_SCALE,
+    eq:same,
+  };
+}
+const posX=wide('ox'),posY=wide('oy');
 /** Non-negative quantity rounded up to an integer (hp, xp, values): a sliver of hp still shows. */
 /** Matches Writer.uvar: non-finite -> 0, clamped to safe integers. */
 const uint=(v:number)=>Number.isFinite(v)?Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,Math.floor(v))):0;
 const count:Codec<number>={write:(w,v)=>w.uvar(Math.ceil(v)),read:r=>r.uvar(),norm:v=>uint(Math.ceil(v)),eq:same};
 /** Absolute tick as an offset from the frame tick. */
-const tickRel:Codec<number>={write:(w,v,t)=>w.svar(v-t),read:(r,t)=>t+r.svar(),norm:v=>Math.round(finite(v)),eq:same};
+const tickRel:Codec<number>={write:(w,v,f)=>w.svar(v-f.tick),read:(r,f)=>f.tick+r.svar(),norm:v=>Math.round(finite(v)),eq:same};
 /** 0..1 as a byte. */
 const unitByte=(v:number)=>Math.round(Math.max(0,Math.min(1,finite(v)))*255);
 const unit:Codec<number>={write:(w,v)=>w.u8(unitByte(v)),read:r=>r.u8()/255,norm:v=>unitByte(v)/255,eq:same};
@@ -148,8 +182,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
-    write:(w,v,t)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,t);}},
-    read:(r,t)=>r.u8()?c.read(r,t):undefined,
+    write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
+    read:(r,f)=>r.u8()?c.read(r,f):undefined,
     norm:v=>v===undefined?undefined:c.norm(v),
     eq:(a,b)=>a===undefined||b===undefined?a===b:c.eq(a,b),
   };
@@ -163,8 +197,8 @@ const items:Codec<Item[]>={
 };
 type Downed={progress:number;bleedOutTick:number};
 const downed=optional<Downed>({
-  write:(w,v,t)=>{unit.write(w,v.progress,t);tickRel.write(w,v.bleedOutTick,t);},
-  read:(r,t)=>({progress:unit.read(r,t),bleedOutTick:tickRel.read(r,t)}),
+  write:(w,v,f)=>{unit.write(w,v.progress,f);tickRel.write(w,v.bleedOutTick,f);},
+  read:(r,f)=>({progress:unit.read(r,f),bleedOutTick:tickRel.read(r,f)}),
   norm:v=>({progress:unit.norm(v.progress),bleedOutTick:tickRel.norm(v.bleedOutTick)}),
   eq:(a,b)=>a.progress===b.progress&&a.bleedOutTick===b.bleedOutTick,
 });
@@ -194,17 +228,17 @@ const c=<V>(codec:Codec<V>)=>codec as unknown as AnyCodec;
 const SCHEMAS:Record<SectionKey,Schema>={
   players:{prefix:'',fields:{
     name:c(str),classId:c(str),hp:c(count),maxHp:c(count),online:c(bool),spectator:c(bool),downed:c(downed),eliminated:c(optional(bool)),
-    weapons:c(items),passives:c(items),stats:c(contribution),x:c(optional(pos)),y:c(optional(pos)),ack:c(optional(count)),
+    weapons:c(items),passives:c(items),stats:c(contribution),x:c(optional(posX)),y:c(optional(posY)),ack:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
-    kind:c(str),x:c(pos),y:c(pos),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
+    kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
   }},
-  pickups:{prefix:'k',fields:{kind:c(str),x:c(pos),y:c(pos),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(pos),y:c(pos),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
-    shape:c(str),x:c(pos),y:c(pos),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
+    shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
   }},
-  structures:{prefix:'s',fields:{kind:c(str),x:c(pos),y:c(pos),hp:c(count),maxHp:c(count)}},
+  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count)}},
 };
 const SECTION_BY_PREFIX=new Map(SECTIONS.filter(s=>s!=='players').map(s=>[SCHEMAS[s].prefix,s]));
 /** Server tick rate; kept here so the client module does not import server code. */
@@ -278,7 +312,7 @@ const REF_INLINE=0,REF_PLAYER=1;
 const REF_SECTIONS:SectionKey[]=['enemies','pickups','projectiles','telegraphs','structures'];
 const LABEL=/^([a-z])(\d{1,9})$/;
 
-function writeEvent(w:Writer,e:WireEvent,tick:number,ids:WireIds){
+function writeEvent(w:Writer,e:WireEvent,f:FrameCtx,ids:WireIds){
   const [,fields]=EVENT_SPECS[EVENT_CODE.get(e.type)!];
   const rec=e as unknown as Record<string,unknown>;
   w.u8(EVENT_CODE.get(e.type)!);
@@ -290,10 +324,10 @@ function writeEvent(w:Writer,e:WireEvent,tick:number,ids:WireIds){
     const v=rec[name];
     switch(kind){
       case 'ref':writeRef(w,String(v),ids);return;
-      case 'pos':pos.write(w,Number(v),tick);return;
-      case 'vel':vel.write(w,Number(v),tick);return;
+      case 'pos':(name==='y'?posY:posX).write(w,Number(v),f);return;
+      case 'vel':vel.write(w,Number(v),f);return;
       case 'count':w.uvar(v===true?1:Math.ceil(Number(v)));return;
-      case 'tick':tickRel.write(w,Number(v),tick);return;
+      case 'tick':tickRel.write(w,Number(v),f);return;
       case 'str':w.str(String(v));return;
     }
   });
@@ -304,7 +338,7 @@ function writeRef(w:Writer,label:string,ids:WireIds){
   if(m&&section){w.u8(2+REF_SECTIONS.indexOf(section));w.uvar(Number(m[2]));return;}
   w.u8(REF_INLINE);w.str(label);
 }
-function readEvent(r:Reader,eventId:number,tick:number,players:Table):WireEvent{
+function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   const code=r.u8(),spec=EVENT_SPECS[code];
   if(!spec)throw new FrameError('unknown event type');
   const [type,fields]=spec;
@@ -320,10 +354,10 @@ function readEvent(r:Reader,eventId:number,tick:number,players:Table):WireEvent{
         else{const section=REF_SECTIONS[tag-2];if(!section)throw new FrameError('bad reference');e[name]=SCHEMAS[section].prefix+r.uvar();}
         return;
       }
-      case 'pos':e[name]=pos.read(r,tick);return;
-      case 'vel':e[name]=vel.read(r,tick);return;
+      case 'pos':e[name]=(name==='y'?posY:posX).read(r,f);return;
+      case 'vel':e[name]=vel.read(r,f);return;
       case 'count':e[name]=name==='crit'?r.uvar()>0:r.uvar();return;
-      case 'tick':e[name]=tickRel.read(r,tick);return;
+      case 'tick':e[name]=tickRel.read(r,f);return;
       case 'str':e[name]=r.str();return;
     }
   });
@@ -350,11 +384,32 @@ function advance(schema:Schema,base:Table|undefined,tick:number,baseTick:number)
   return table;
 }
 
+/** Terrain the frames are about (rede-mapa-grande): the client builds the same TerrainField from it. */
+export interface WorldDescriptor {kind:'ilha'|'infinito';terrainVersion:number;generatorVersion:number;seed:number;signature:string}
+const WORLD_KINDS=['ilha','infinito'] as const;
+const sameWorld=(a?:WorldDescriptor,b?:WorldDescriptor)=>!!a&&!!b&&a.kind===b.kind&&a.terrainVersion===b.terrainVersion&&
+  a.generatorVersion===b.generatorVersion&&a.seed===b.seed&&a.signature===b.signature;
+
 /** What the server hands the encoder each frame: a RunView with server ids, minus offers and events. */
-export type FrameInput=Omit<RunView,'offers'|'events'|'players'>&{players:PlayerWireView[]};
-export interface EncoderStats {frames:number;fullFrames:number;bytes:number;eventBytes:number}
+export type FrameInput=Omit<RunView,'offers'|'events'|'players'>&{players:PlayerWireView[];world?:WorldDescriptor};
+export interface EncoderStats {frames:number;fullFrames:number;bytes:number;eventBytes:number;
+  /** Entities left out by the area of interest (summed over frames), and events dropped as out of sight. */
+  culled:number;droppedEvents:number}
 /** firstSeq: earliest frame that carried the event since the last resync; an ack of it or later retires the event. */
 interface Pending {event:WireEvent;firstSeq?:number;sentTick?:number;unresolved?:[field:string,hint?:SectionKey][]}
+export interface InterestOptions {radius:number;hysteresis:number}
+export interface EncoderOptions {
+  /**
+   * The client's player id. With it the encoder sends only that client's area of interest (allies, structures and
+   * the boss always; the rest within `interest.radius` of the viewer) and frames are relative to the viewer.
+   */
+  viewer?:string;
+  /** Area of interest; false sends everything (the island room, tests). Default INTEREST_RADIUS/INTEREST_HYSTERESIS. */
+  interest?:Partial<InterestOptions>|false;
+}
+/** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase']);
+type Point2={x:number;y:number};
 
 /**
  * Per-client encoder. Call `pushEvents` every tick with that tick's events, `encode` at the send rate,
@@ -367,11 +422,21 @@ export class FrameEncoder {
   private acked=0;
   private eventId=0;
   private pending:Pending[]=[];
+  /** Server ids per section sent in this frame and the previous one (hysteresis, event relevance). */
+  private members:Partial<Record<SectionKey,Set<string>>>={};
+  private previous:Partial<Record<SectionKey,Set<string>>>={};
+  private sentWorld?:WorldDescriptor;
   /** Unacked events are sent again after this many ticks (and right after a resync). */
   resendTicks=WIRE_HZ;
-  readonly stats:EncoderStats={frames:0,fullFrames:0,bytes:0,eventBytes:0};
+  readonly stats:EncoderStats={frames:0,fullFrames:0,bytes:0,eventBytes:0,culled:0,droppedEvents:0};
   readonly ids:WireIds;
-  constructor(ids=new WireIds()){this.ids=ids;}
+  readonly viewer?:string;
+  private readonly interest?:InterestOptions;
+  constructor(ids=new WireIds(),options:EncoderOptions={}){
+    this.ids=ids;this.viewer=options.viewer;
+    if(options.viewer!==undefined&&options.interest!==false)
+      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS};
+  }
 
   /**
    * Translates and queues events; call in the same tick they were emitted, while their ids are known.
@@ -430,37 +495,115 @@ export class FrameEncoder {
   /** Client lost its baselines (reconnect or decode error): next frame is full and unacked events go again. */
   resync(){
     // Late acks for frames before the resync must not revive a baseline the client dropped.
-    this.acked=0;this.history.clear();
+    this.acked=0;this.history.clear();this.sentWorld=undefined;
     for(const p of this.pending){p.firstSeq=undefined;p.sentTick=undefined;}
   }
 
-  encode(view:FrameInput):Uint8Array{
+  /** Where this client's frame is centred: `focus`, else the viewer's player, else no area of interest. */
+  private focusOf(view:FrameInput,focus?:Point2):Point2|undefined{
+    if(focus&&Number.isFinite(focus.x)&&Number.isFinite(focus.y))return focus;
+    if(this.viewer===undefined)return undefined;
+    const me=view.players.find(p=>p.id===this.viewer);
+    if(me&&Number.isFinite(me.x)&&Number.isFinite(me.y))return {x:me.x!,y:me.y!};
+    // A spectator without a body: follow the first player who has one.
+    const other=view.players.find(p=>!p.spectator&&!p.eliminated&&Number.isFinite(p.x)&&Number.isFinite(p.y));
+    return other?{x:other.x!,y:other.y!}:undefined;
+  }
+  /** The entities of a section this client gets, as wire id -> server entity. */
+  private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined):Map<number,Entity>{
+    const current=new Map<number,Entity>();
+    const interest=this.interest,always=section==='players'||section==='structures';
+    if(!interest||!focus||always){
+      for(const e of list)current.set(this.ids.wire(section,e.id),e);
+      if(interest){this.previous[section]=this.members[section];this.members[section]=new Set(list.map(e=>e.id));}
+      return current;
+    }
+    const before=this.members[section],keep=new Set<string>();
+    this.previous[section]=before;
+    const near=interest.radius,stay=interest.radius+interest.hysteresis;
+    for(const e of list){
+      const x=e.x as number,y=e.y as number;
+      let d=Math.hypot(x-focus.x,y-focus.y);
+      if(section==='telegraphs')d-=Math.max(0,finite(e.radius as number))+Math.max(0,finite((e.width as number|undefined)??0));
+      // The boss is always sent: the arrow to it and its hp bar matter from anywhere.
+      const inside=(section==='enemies'&&e.boss===true)||d<=near||(d<=stay&&!!before?.has(e.id));
+      if(!inside){this.stats.culled++;continue;}
+      keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
+    }
+    this.members[section]=keep;
+    return current;
+  }
+  /**
+   * Whether a not yet sent event concerns what this client can see: global events always; others when they
+   * happen within the area, involve the viewer or a player in the area, or name an entity this client has (or
+   * had in the previous frame, e.g. the one that just died). Judged on server ids, before resolving labels.
+   */
+  private relevant(p:Pending,focus:Point2|undefined,players:readonly PlayerWireView[]):boolean{
+    const e=p.event;
+    if(!this.interest||!focus||GLOBAL_EVENTS.has(e.type))return true;
+    const rec=e as unknown as Record<string,unknown>,radius=this.interest.radius+this.interest.hysteresis;
+    if(typeof rec.x==='number'&&typeof rec.y==='number'&&Math.hypot(rec.x-focus.x,rec.y-focus.y)<=radius)return true;
+    const [,fields]=EVENT_SPECS[EVENT_CODE.get(e.type)!];
+    for(const [name,kind] of fields){
+      const v=rec[name];
+      if(kind!=='ref'||typeof v!=='string')continue;
+      if(v===this.viewer)return true;
+      const player=players.find(o=>o.id===v);
+      if(player){if(Number.isFinite(player.x)&&Math.hypot(player.x!-focus.x,player.y!-focus.y)<=radius)return true;continue;}
+      const raw=p.unresolved?.some(([n])=>n===name)?v:this.ids.resolve(v);
+      if(raw!==undefined)for(const s of REF_SECTIONS)if(this.members[s]?.has(raw)||this.previous[s]?.has(raw))return true;
+    }
+    return false;
+  }
+
+  /** `focus` overrides where the area of interest is centred (a spectator following someone). */
+  encode(view:FrameInput,options:{focus?:Point2}={}):Uint8Array{
     const seq=++this.seq,base=this.history.get(this.acked);
+    const focus=this.focusOf(view,options.focus);
+    const f:FrameCtx={tick:view.tick,ox:focus?Math.round(focus.x):0,oy:focus?Math.round(focus.y):0};
+    if(!(Math.abs(f.ox)<=POS_LIMIT))f.ox=0;
+    if(!(Math.abs(f.oy)<=POS_LIMIT))f.oy=0;
     const w=new Writer();
-    w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?this.acked:0);w.uvar(view.tick);
+    w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?this.acked:0);w.uvar(view.tick);w.svar(f.ox);w.svar(f.oy);
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
-    w.u8((view.round?1:0)|(view.wave?2:0));
+    const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
+    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0));
     if(view.round){
       const r=view.round;
       w.uvar(r.index);w.uvar(r.total);w.str(r.phase);w.svar(r.phaseEndsTick-view.tick);w.uvar(r.remaining);
     }
     if(view.wave){w.uvar(view.wave.index);w.str(view.wave.label);w.str(view.wave.phase??'');}
+    if(sendWorld){
+      const d=view.world!;
+      w.u8(WORLD_KINDS.indexOf(d.kind)<0?0:WORLD_KINDS.indexOf(d.kind));w.uvar(d.terrainVersion);w.uvar(d.generatorVersion);w.uvar(d.seed);w.str(d.signature);
+      this.sentWorld={...d,signature:clip(d.signature)};
+    }
     const world:World={tick:view.tick,tables:emptyTables()};
     for(const section of SECTIONS){
-      const schema=SCHEMAS[section];
+      const schema=SCHEMAS[section],list=view[section] as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
-      const current=new Map<number,Entity>();
-      for(const entity of view[section] as unknown as Entity[])current.set(this.ids.wire(section,entity.id),entity);
-      world.tables[section]=writeSection(w,schema,current,client,view.tick,(id)=>this.ids.label(section,id));
+      const current=this.select(section,list,focus);
+      // Removed from this client but still in the world: it left the area of interest (no death poof).
+      let alive:Set<string>|undefined;
+      const exists=this.interest?(label:string)=>{
+        alive??=new Set(list.map(e=>e.id));
+        return alive.has(section==='players'?label:this.ids.resolve(label)??'');
+      }:()=>false;
+      world.tables[section]=writeSection(w,schema,current,client,f,(id)=>this.ids.label(section,id),exists);
     }
     const start=w.len;
+    // Events are judged once, on their first frame: those nobody near this client could see are dropped.
+    if(this.interest&&focus)this.pending=this.pending.filter(p=>{
+      if(p.sentTick!==undefined||this.relevant(p,focus,view.players))return true;
+      this.stats.droppedEvents++;return false;
+    });
     const due=this.pending.filter(p=>p.sentTick===undefined||view.tick-p.sentTick>=this.resendTicks);
     w.uvar(due.length);
     let last=0;
     for(const p of due){
       w.uvar(p.event.eventId-last);last=p.event.eventId;
       this.resolve(p);
-      writeEvent(w,p.event,view.tick,this.ids);
+      writeEvent(w,p.event,f,this.ids);
       p.firstSeq??=seq;p.sentTick=view.tick;
     }
     this.stats.eventBytes+=w.len-start;
@@ -481,17 +624,18 @@ const NUDGE=1,NEW=2,FIELD_BIT=2;
 const bit=(field:number)=>2**(field+FIELD_BIT);
 const has=(mask:number,field:number)=>Math.floor(mask/bit(field))%2===1;
 /**
- * Writes one section and returns the client's resulting table. Layout: removed ids, then upserts as
- * (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields). Ids are ascending gaps.
- * Non-player client ids are derived from the wire id (prefix + number), so they never travel as text.
+ * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
+ * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).
+ * Ids are ascending gaps. Non-player client ids are derived from the wire id (prefix + number), so they never
+ * travel as text. `exists`: whether a client id is still in the server world (its removal is a culling).
  */
-function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:Table,tick:number,label:(serverId:string)=>string):Table{
+function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:Table,f:FrameCtx,label:(serverId:string)=>string,exists:(clientId:string)=>boolean):Table{
   const keys=Object.keys(schema.fields);
   const xi=keys.indexOf('x'),yi=keys.indexOf('y');
   const removed=[...client.keys()].filter(id=>!current.has(id)).sort((a,b)=>a-b);
   w.uvar(removed.length);
   let last=0;
-  for(const id of removed){w.uvar(id-last);last=id;client.delete(id);}
+  for(const id of removed){w.uvar((id-last)*2+(exists(client.get(id)!.id)?1:0));last=id;client.delete(id);}
   const ups:{id:number;mask:number;e:Entity;nx?:number;ny?:number}[]=[];
   for(const id of [...current.keys()].sort((a,b)=>a-b)){
     const cur=current.get(id)!,prev=client.get(id);
@@ -525,16 +669,22 @@ function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:T
     w.uvar(u.id-last);last=u.id;w.uvar(u.mask);
     if(u.mask&NEW&&!schema.prefix)w.str(u.e.id);
     if(u.mask&NUDGE){w.u8(u.nx!&255);w.u8(u.ny!&255);}
-    keys.forEach((k,j)=>{if(has(u.mask,j))schema.fields[k].write(w,u.e[k],tick);});
+    keys.forEach((k,j)=>{if(has(u.mask,j))schema.fields[k].write(w,u.e[k],f);});
   }
   return client;
 }
 
-function readSection(r:Reader,schema:Schema,client:Table,tick:number):Table{
+function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[]):Table{
   const keys=Object.keys(schema.fields);
   const removed=r.count(MAX_SECTION_ITEMS);
   let last=0;
-  for(let i=0;i<removed;i++){const gap=r.uvar();if(!gap)throw new FrameError('ids out of order');last+=gap;client.delete(last);}
+  for(let i=0;i<removed;i++){
+    const v=r.uvar(),gap=Math.floor(v/2);if(!gap)throw new FrameError('ids out of order');
+    last+=gap;
+    const gone=client.get(last);
+    if(v%2&&gone)left.push(gone.id);
+    client.delete(last);
+  }
   const n=r.count(MAX_SECTION_ITEMS);
   last=0;
   for(let i=0;i<n;i++){
@@ -551,7 +701,7 @@ function readSection(r:Reader,schema:Schema,client:Table,tick:number):Table{
     }
     keys.forEach((k,j)=>{
       if(!has(mask,j))return;
-      const v=schema.fields[k].read(r,tick);
+      const v=schema.fields[k].read(r,f);
       if(v===undefined)delete e[k];else e[k]=v;
     });
     client.set(id,e);
@@ -560,7 +710,11 @@ function readSection(r:Reader,schema:Schema,client:Table,tick:number):Table{
 }
 
 // ---------- Client decoder ----------
-export type DecodeResult={ok:true;view:RunView;seq:number;ack:AckMessage}|{ok:false;error:string;resync?:boolean};
+export type DecodeResult={ok:true;view:RunView;seq:number;ack:AckMessage;
+  /** Client ids removed because they left this client's area of interest (not dead: no poof, no kill). */
+  left:string[];
+  /** The world the frames describe, once a frame has said it (every full frame does when the server knows it). */
+  world?:WorldDescriptor}|{ok:false;error:string;resync?:boolean};
 /** Event ids the decoder remembers for de-duplication. */
 const SEEN_EVENTS=4096;
 /**
@@ -573,6 +727,7 @@ export class FrameDecoder {
   private seen=new Set<number>();
   private seenOrder:number[]=[];
   private floor=0;
+  private world?:WorldDescriptor;
   offers:OfferView[]=[];
 
   decode(data:ArrayBuffer|Uint8Array):DecodeResult{
@@ -581,14 +736,16 @@ export class FrameDecoder {
       const r=new Reader(bytes);
       if(r.u8()!==MAGIC)return {ok:false,error:'not a protocol 4 frame'};
       if(r.u8()!==PROTOCOL_VERSION)return {ok:false,error:'protocol version mismatch'};
-      const seq=r.uvar(),baseSeq=r.uvar(),tick=r.uvar();
+      const seq=r.uvar(),baseSeq=r.uvar(),tick=r.uvar(),ox=r.svar(),oy=r.svar();
+      if(Math.abs(ox)>POS_LIMIT||Math.abs(oy)>POS_LIMIT)throw new FrameError('origin out of range');
+      const f:FrameCtx={tick,ox,oy};
       if(seq<=this.lastSeq)return {ok:false,error:'stale frame'};
       const base=baseSeq?this.history.get(baseSeq):undefined;
       if(baseSeq&&!base)return {ok:false,error:'missing baseline',resync:true};
       const team={xp:r.uvar(),level:r.uvar(),nextXp:r.uvar()};
       const flags=r.u8();
-      if(flags>3)throw new FrameError('bad flags');
-      let round:RoundState|undefined,wave:RunView['wave'];
+      if(flags>7)throw new FrameError('bad flags');
+      let round:RoundState|undefined,wave:RunView['wave'],world=this.world;
       if(flags&1){
         const index=r.uvar(),total=r.uvar(),phase=r.str(),phaseEndsTick=tick+r.svar(),remaining=r.uvar();
         if(phase!=='wave'&&phase!=='prepare')throw new FrameError('bad round phase');
@@ -598,28 +755,32 @@ export class FrameDecoder {
         const index=r.uvar(),label=r.str(),phase=r.str();
         wave={index,label,...(phase==='wave'||phase==='prepare'?{phase}:{})};
       }
-      const world:World={tick,tables:emptyTables()};
+      if(flags&4){
+        const kind=WORLD_KINDS[r.u8()];if(!kind)throw new FrameError('unknown world');
+        world={kind,terrainVersion:r.uvar(),generatorVersion:r.uvar(),seed:r.uvar(),signature:r.str()};
+      }
+      const next:World={tick,tables:emptyTables()},left:string[]=[];
       for(const section of SECTIONS){
         const schema=SCHEMAS[section];
-        world.tables[section]=readSection(r,schema,advance(schema,base?.tables[section],tick,base?.tick??tick),tick);
+        next.tables[section]=readSection(r,schema,advance(schema,base?.tables[section],tick,base?.tick??tick),f,left);
       }
       const count=r.count(MAX_EVENTS),events:WireEvent[]=[],fresh:number[]=[];
       let eventId=0;
       for(let i=0;i<count;i++){
         const gap=r.uvar();if(!gap)throw new FrameError('event ids out of order');
         eventId+=gap;
-        const e=readEvent(r,eventId,tick,world.tables.players);
+        const e=readEvent(r,eventId,f,next.tables.players);
         if(eventId>this.floor&&!this.seen.has(eventId)&&!fresh.includes(eventId)){events.push(e);fresh.push(eventId);}
       }
       if(r.pos!==bytes.length)throw new FrameError('trailing bytes');
       // Commit only after the whole frame parsed: a bad frame leaves the decoder untouched.
-      this.lastSeq=seq;
+      this.lastSeq=seq;this.world=world;
       for(const id of fresh){this.seen.add(id);this.seenOrder.push(id);}
       while(this.seenOrder.length>SEEN_EVENTS){const old=this.seenOrder.shift()!;this.seen.delete(old);this.floor=Math.max(this.floor,old);}
-      this.history.set(seq,world);
+      this.history.set(seq,next);
       for(const s of this.history.keys())if(s<=seq-HISTORY)this.history.delete(s);
       // Views are copies: the HUD or renderer mutating them must not corrupt the baselines.
-      const list=<T>(s:SectionKey)=>[...world.tables[s].values()].map(e=>structuredClone(e)) as unknown as T[];
+      const list=<T>(s:SectionKey)=>[...next.tables[s].values()].map(e=>structuredClone(e)) as unknown as T[];
       const view:RunView={
         tick,team,...(round?{round}:{}),...(wave?{wave}:{}),
         players:list<PlayerWireView>('players').map(p=>({...p,weapons:p.weapons??[],passives:p.passives??[]})),
@@ -628,7 +789,7 @@ export class FrameDecoder {
         offers:this.offers.map(o=>({...o,choices:o.choices.map(c=>({...c}))})),
         events,
       };
-      return {ok:true,view,seq,ack:{t:'ack',seq,event:Math.max(this.floor,...fresh,0)}};
+      return {ok:true,view,seq,ack:{t:'ack',seq,event:Math.max(this.floor,...fresh,0)},left,...(world?{world:{...world}}:{})};
     }catch(error){
       return {ok:false,error:error instanceof FrameError?error.message:'malformed frame'};
     }

@@ -14,4 +14,4 @@ Regras:
 4. Ticks a 20 Hz (`SIM_HZ`). Durações em ticks; use `ticks(segundos)`.
 5. TypeScript apenas com sintaxe apagável (sem enum, namespace ou parameter properties), porque `npm test` usa `--experimental-strip-types`. Imports com extensão `.ts`.
 6. Textos visíveis em pt-BR; identificadores e comentários em inglês.
-7. A ilha mede cerca de 20 × 20 unidades e a câmera mostra a ilha inteira. Inimigos chegam pela costa e pelo mar raso, com aviso, nunca sobre jogadores.
+7. A ilha mede cerca de 20 × 20 unidades e a câmera mostra a ilha inteira. Inimigos chegam pela costa e pelo mar raso, com aviso, nunca sobre jogadores. No mundo infinito (D-019) eles nascem num anel logo fora da tela de cada jogador ativo, nunca numa tela legal (`offscreen.ts`); bicho largado longe é reaproveitado perto de alguém, sem contar como morto.

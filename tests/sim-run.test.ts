@@ -5,6 +5,7 @@ import type {StampedEvent} from '../src/game/sim/core.ts';
 import {KITS} from '../src/game/sim/kits.ts';
 import {SIM_HZ,ticks} from '../src/game/sim/types.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,MAX_TELEGRAPHS} from '../src/game/sim/budget.ts';
+import {isHeldOffer} from '../src/game/sim/offers.ts';
 
 /** Safety cap of a run: 20 minutes of ticks (RUN_DURATION_TICKS). */
 const CAP=20*60*SIM_HZ;
@@ -312,4 +313,44 @@ test('round 1 is not a free pass forever: armed bots standing still can still lo
   assert.equal(r.outcome,'defeat','standing still is still punished');
   assert.ok(sim.world.round.index>=3,`defeat comes in round ${sim.world.round.index}, not before round 3`);
   assert.ok(r.roundEnds.some(e=>e.index===2),'rounds 1 and 2 end before the defeat');
+});
+
+// D-021 (UX-oferta-em-combate): bots that never pick. Level offers wait through the wave (no default in combat), and the
+// end of each intermission applies every pending default exactly once: nothing is lost, nothing applied twice.
+test('D-021: bots that never pick get no default in combat and every offer resolved once at the end of each intermission',()=>{
+  const {sim,ids}=setup(SEED,3,['cidadao-comum','roqueira','pedreiro']);
+  installKiller(sim,ids,15,()=>{});
+  const granted=new Set<string>(),resolved=new Map<string,number>();
+  let combatResolutions=0,heldInCombat=0,intermissionsChecked=0;
+  const pending=()=>ids.reduce((n,id)=>n+sim.offers(id).length,0);
+  let wasWave=false,lastIndex=0;
+  const seq=new Map(ids.map(id=>[id,0]));
+  for(let t=0;t<ticks(3+3*80)&&sim.outcome===undefined;t++){
+    ids.forEach((id,i)=>{
+      const a=2*Math.PI*(sim.tick/160+i/ids.length),next=seq.get(id)!+1;
+      if(sim.input(id,{seq:next,x:Math.cos(a),y:Math.sin(a),attack:false}))seq.set(id,next);
+    });
+    const before=new Map(ids.map(id=>[id,sim.offers(id).map(o=>o.id.split('~')[0])]));
+    const phaseBefore=sim.world.round.phase;
+    sim.step();
+    const round=sim.world.round;
+    for(const id of ids){
+      const now=new Set(sim.offers(id).map(o=>o.id.split('~')[0]));
+      for(const o of sim.offers(id))granted.add(o.id.split('~')[0]);
+      for(const gone of before.get(id)!)if(!now.has(gone)){
+        resolved.set(gone,(resolved.get(gone)??0)+1);
+        if(phaseBefore==='wave'&&round.phase==='wave')combatResolutions++;
+      }
+      if(round.phase==='wave')for(const o of sim.offers(id))if(o.source==='level'&&isHeldOffer(o))heldInCombat++;
+    }
+    // A wave just started: the intermission before it left nothing pending.
+    if(round.phase==='wave'&&!wasWave&&lastIndex>1){assert.equal(pending(),0,`round ${round.index} starts with an empty queue`);intermissionsChecked++;}
+    wasWave=round.phase==='wave';lastIndex=round.index;
+  }
+  assert.ok(intermissionsChecked>=2,`checked ${intermissionsChecked} intermissions`);
+  assert.ok(resolved.size>=6,`${resolved.size} offers resolved of ${granted.size}`);
+  assert.ok(heldInCombat>0,'the team leveled during a wave');
+  assert.equal(combatResolutions,0,'no offer resolved in the middle of a wave');
+  for(const [id,n] of resolved)assert.equal(n,1,`${id} resolved once`);
+  for(const id of granted)if(!ids.some(p=>sim.offers(p).some(o=>o.id.split('~')[0]===id)))assert.ok(resolved.has(id),`${id} never lost`);
 });

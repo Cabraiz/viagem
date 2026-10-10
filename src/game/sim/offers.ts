@@ -8,8 +8,16 @@ import type {ItemDef,OfferChoice,OwnedItem,PlayerBuild,SimPlayer} from './types.
 
 export interface ItemCatalog {get(id:string):ItemDef|undefined; all():readonly ItemDef[]}
 
-/** Seconds a player has to choose once an offer reaches the head of the queue. */
+/** Without a round director (ctx.round.total 0): seconds a player has once an offer reaches the head (VGM-034). */
 export const OFFER_SECONDS=10;
+/** D-021: a level offer is due at the end of an intermission only when that intermission still has this many seconds left. */
+export const ARM_SECONDS=5;
+/**
+ * deadlineTick of a level offer that waits for the next intermission (D-021): in combat it never expires. JSON-safe
+ * integer (offers travel as JSON); clients read it as "no clock" (isHeldOffer).
+ */
+export const HELD_DEADLINE=2**31-1;
+export const isHeldOffer=(offer:{deadlineTick:number})=>offer.deadlineTick>=HELD_DEADLINE;
 /** Choice offered when the build is full: a coxinha that heals. */
 export const HEAL_CHOICE='heal';
 export const HEAL_AMOUNT=30;

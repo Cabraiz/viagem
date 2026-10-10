@@ -1,14 +1,20 @@
 /**
  * XP, pickups, team levels and the upgrade offer queue (VGM-034).
  * Offers come from two sources: team level (`lvl-…`) and end of round (`rnd-…`, called by the director).
- * Only the oldest offer of each player can be chosen; its clock runs only while it is the head and the player is online.
+ * Only the oldest offer of each player can be chosen. Clocks never run while the player is offline.
+ * Deadlines (D-021, replaces the 10 s head clock of VGM-034 when a round director runs):
+ * - a level offer granted in combat is held (HELD_DEADLINE) and is due at the end of the next intermission that still
+ *   has ARM_SECONDS left; one granted during such an intermission is due at its end;
+ * - a round offer is due at the end of its intermission (grantRoundOffers);
+ * - when the intermission ends, every due offer gets its visible default once, oldest first (stale cards re-rolled).
+ * Without a director (ctx.round.total 0) the old rule applies: OFFER_SECONDS from the moment an offer becomes the head.
  */
 import {Rng} from './rng.ts';
 import {SIM_HZ,ticks} from './types.ts';
 import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimContext,SimPlayer,SimSystem,TeamProgress} from './types.ts';
 import type {Point} from '../world.ts';
 import {isLand} from '../world.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,rollChoices} from './offers.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from './offers.ts';
 import type {ItemCatalog} from './offers.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
@@ -61,6 +67,13 @@ export type ChooseResult={ok:true;itemId:string;level:number}|{ok:false;reason:C
 const canCollect=(p:SimPlayer)=>p.online&&!p.spectator&&!p.eliminated&&!p.downed;
 const receivesOffers=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 const dist2=(a:Point,b:Point)=>(a.x-b.x)**2+(a.y-b.y)**2;
+/** A round director owns ctx.round (VGM-033): offers follow the intermission clock (D-021). */
+const directed=(ctx:SimContext)=>ctx.round.total>0;
+/** End of the current intermission when it still leaves ARM_SECONDS to choose; undefined in combat or too late. */
+function intermissionDeadline(ctx:SimContext){
+  const r=ctx.round;
+  return r.phase==='prepare'&&r.phaseEndsTick-ctx.tick>=ticks(ARM_SECONDS)?r.phaseEndsTick:undefined;
+}
 
 /** Nearest collector within `radius(player)` (ties: lowest id); collectors must be sorted by id. */
 function nearest(collectors:readonly SimPlayer[],point:Point,radius:(p:SimPlayer)=>number){
@@ -156,8 +169,9 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     let queue=ctx.offers.get(player.id);
     if(!queue){queue=[];ctx.offers.set(player.id,queue);}
     if(queue.some(offer=>offer.id===id||offer.id.startsWith(id+REROLL)))return undefined;
+    // Old head clock only: a queued offer never shows a deadline before the one ahead of it has run out.
     const last=queue[queue.length-1];
-    if(last)deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
+    if(last&&!directed(ctx))deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
     const choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
     saveRng();
     const offer:LevelOffer={id,playerId:player.id,source,level,choices,deadlineTick,defaultIndex:defaultIndexFor(player.build,choices)};
@@ -171,11 +185,11 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return out;
   }
 
-  /** One offer per active player for a new team level; repeated levels are ignored. */
+  /** One offer per active player for a new team level; repeated levels are ignored. Held in combat (D-021). */
   function grantLevelOffers(ctx:SimContext,level:number){
     if(!(level>state.lastLevelGranted))return [];
     state.lastLevelGranted=level;
-    const deadline=ctx.tick+ticks(OFFER_SECONDS);
+    const deadline=directed(ctx)?intermissionDeadline(ctx)??HELD_DEADLINE:ctx.tick+ticks(OFFER_SECONDS);
     return grantAll(ctx,p=>pushOffer(ctx,p,'level',level,`lvl-${level}-${p.id}`,deadline));
   }
 
@@ -188,7 +202,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return grantAll(ctx,p=>pushOffer(ctx,p,'round',round,`rnd-${round}-${p.id}`,deadline));
   }
 
-  /** Applies choice `index` of the head offer, then arms the next one. */
+  /** Applies choice `index` of the head offer; without a director the next one gets a fresh head clock. */
   function resolve(ctx:SimContext,player:SimPlayer,queue:LevelOffer[],index:number){
     const offer=queue.shift()!;
     const choice=offer.choices[index];
@@ -200,8 +214,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       }
     }
     const next=queue[0];
-    if(next)next.deadlineTick=Math.max(next.deadlineTick,ctx.tick+ticks(OFFER_SECONDS));
-    else ctx.offers.delete(player.id);
+    if(!next)ctx.offers.delete(player.id);
+    else if(!directed(ctx))next.deadlineTick=Math.max(next.deadlineTick,ctx.tick+ticks(OFFER_SECONDS));
     return choice;
   }
 
@@ -228,21 +242,31 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       ctx.emit({type:'levelup',level:team.level});
       grantLevelOffers(ctx,team.level);
     }
+    const armAt=directed(ctx)?intermissionDeadline(ctx):undefined;
     for(const [playerId,queue] of ctx.offers){
-      const player=ctx.players.get(playerId),head=queue[0];
-      if(!player||!receivesOffers(player)||!head){ctx.offers.delete(playerId);continue;}
-      if(!head.choices.every(choice=>isEligible(catalog,player.build,choice))){
-        // New id so a pick sent against the old cards is refused instead of applying a different item.
-        head.id=head.id.split(REROLL)[0]+REROLL+ctx.tick;
-        head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
-        head.defaultIndex=defaultIndexFor(player.build,head.choices);
-        saveRng();
-        ctx.emit({type:'offer',player:player.id,offer:head.id});
-      }
-      if(!player.online){for(const offer of queue)offer.deadlineTick++;continue;}
-      if(ctx.tick>=head.deadlineTick)resolve(ctx,player,queue,head.defaultIndex);
+      const player=ctx.players.get(playerId);
+      if(!player||!receivesOffers(player)||!queue[0]){ctx.offers.delete(playerId);continue;}
+      reroll(ctx,player,queue[0]);
+      if(armAt!==undefined)for(const offer of queue)if(isHeldOffer(offer))offer.deadlineTick=armAt;
+      if(!player.online){for(const offer of queue)if(!isHeldOffer(offer))offer.deadlineTick++;continue;}
+      // The intermission ends: every offer due now gets its default once, oldest first, each re-rolled if the
+      // previous pick made its cards stale (two offers holding the same next level).
+      while(queue[0]&&ctx.tick>=queue[0].deadlineTick){reroll(ctx,player,queue[0]);resolve(ctx,player,queue,queue[0].defaultIndex);}
+      // A level offer carried into combat by the offline freeze waits for the next intermission like the rest.
+      if(directed(ctx)&&ctx.round.phase==='wave')for(const offer of queue)if(offer.source==='level')offer.deadlineTick=HELD_DEADLINE;
     }
   }};
+
+  /** Re-rolls a head whose cards went stale (build changed since the roll). */
+  function reroll(ctx:SimContext,player:SimPlayer,head:LevelOffer){
+    if(head.choices.every(choice=>isEligible(catalog,player.build,choice)))return;
+    // New id so a pick sent against the old cards is refused instead of applying a different item.
+    head.id=head.id.split(REROLL)[0]+REROLL+ctx.tick;
+    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.defaultIndex=defaultIndexFor(player.build,head.choices);
+    saveRng();
+    ctx.emit({type:'offer',player:player.id,offer:head.id});
+  }
 
   return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose};
 }

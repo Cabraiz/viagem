@@ -499,15 +499,16 @@ export class FrameEncoder {
     for(const p of this.pending){p.firstSeq=undefined;p.sentTick=undefined;}
   }
 
-  /** Where this client's frame is centred: `focus`, else the viewer's player, else no area of interest. */
+  /**
+   * Where this client's frame is centred: `focus`, else the viewer's player, else (a spectator without a body)
+   * the first player who has one, else the base, else the origin. Undefined only without a viewer (no interest).
+   */
   private focusOf(view:FrameInput,focus?:Point2):Point2|undefined{
     if(focus&&Number.isFinite(focus.x)&&Number.isFinite(focus.y))return focus;
     if(this.viewer===undefined)return undefined;
-    const me=view.players.find(p=>p.id===this.viewer);
-    if(me&&Number.isFinite(me.x)&&Number.isFinite(me.y))return {x:me.x!,y:me.y!};
-    // A spectator without a body: follow the first player who has one.
-    const other=view.players.find(p=>!p.spectator&&!p.eliminated&&Number.isFinite(p.x)&&Number.isFinite(p.y));
-    return other?{x:other.x!,y:other.y!}:undefined;
+    const at=(p?:{x?:number;y?:number})=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)?{x:p.x!,y:p.y!}:undefined;
+    return at(view.players.find(p=>p.id===this.viewer))??at(view.players.find(p=>!p.spectator&&!p.eliminated&&Number.isFinite(p.x)))??
+      at(view.structures[0])??{x:0,y:0};
   }
   /** The entities of a section this client gets, as wire id -> server entity. */
   private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined):Map<number,Entity>{

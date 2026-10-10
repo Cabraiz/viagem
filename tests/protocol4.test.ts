@@ -594,3 +594,18 @@ test('the server world descriptor rebuilds the same terrain on the client, islan
     assert.equal(new TerrainField(r.world.seed,{world:r.world.kind}).signature,d.signature);
   }
 });
+
+test('area of interest without a body: a spectator follows a player, an empty room the base, never "everything"',()=>{
+  const v=farWorld(new Rng(61),3000,3000,0).view;
+  v.enemies=[{id:'e-a',kind:'gosma',x:3001,y:3000,hp:5,maxHp:5},{id:'e-b',kind:'gosma',x:1,y:1,hp:5,maxHp:5}];
+  const spectator=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r1=new FrameDecoder().decode(spectator.encode(v));assert.ok(r1.ok);
+  assert.deepEqual(r1.view.enemies.map(e=>spectator.ids.resolve(e.id)),['e-a'],'follows the first player with a body');
+  const empty=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r2=new FrameDecoder().decode(empty.encode({...v,players:[]}));assert.ok(r2.ok);
+  assert.deepEqual(r2.view.enemies.map(e=>empty.ids.resolve(e.id)),['e-b'],'nobody left: around the base');
+  // `focus` overrides (a spectator camera parked somewhere).
+  const parked=new FrameEncoder(new WireIds(),{viewer:'ghost'});
+  const r3=new FrameDecoder().decode(parked.encode(v,{focus:{x:0,y:0}}));assert.ok(r3.ok);
+  assert.deepEqual(r3.view.enemies.map(e=>parked.ids.resolve(e.id)),['e-b']);
+});

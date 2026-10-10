@@ -19,4 +19,6 @@ artifacts/
 !/docs/art-direction.md
 !/docs/pages-migration-contract.md
 !/docs/github-pages.md
+!/docs/camera-follow-contract.md
+!/docs/whole-island-contract.md
 /scripts/check-multiplayer-artifact.mjs

@@ -45,6 +45,8 @@ test('zones audit: HUD over the hero, a target too close to a thumb, or a box in
   assert.deepEqual(bad.thumbGaps,[{a:'emote',b:'habilidade',gap:10}]);assert.deepEqual(bad.allowedOverHero,['oferta']);
   const fallback=auditBoxes([...thumbs,{name:'aviso',rect:{x:150,y:600,width:200,height:30},fallback:true}],portrait,hero);
   assert.equal(fallback.ok,true);assert.deepEqual(fallback.fallbackInPlay,['aviso']);
+  const veil=auditBoxes([...thumbs,{name:'xp',rect:{x:150,y:380,width:200,height:20},veiled:true,fallback:true},{name:'round',rect:{x:150,y:440,width:100,height:20}}],portrait,hero);
+  assert.deepEqual(veil.veiledOverHero,['xp']);assert.deepEqual(veil.heroCrossed,['round']);assert.equal(veil.ok,false);
 });
 
 test('veil: only the readouts the hero (± 40) walked under go see-through',()=>{

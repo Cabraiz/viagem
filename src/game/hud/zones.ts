@@ -111,19 +111,23 @@ export interface AuditBox {name:string;rect:Rect;
    * readout veiled (30% opacity) because the hero walked under it. */
   fallback?:boolean;
   /** The joystick or the skill button itself. */
-  thumb?:boolean}
+  thumb?:boolean;
+  /** A status readout made see-through because the hero is under it (RunHud.veil): over the hero by design, not hiding it. */
+  veiled?:boolean}
 export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
   /** Offer/result over the hero: allowed by the contract, reported for the offer card (D-021). */
   allowedOverHero:string[];
+  /** Veiled (30%) readouts over the hero: the fallback while the camera does not follow; reported, not failed. */
+  veiledOverHero:string[];
   minThumbGap:number;ok:boolean}
 
 /** The zones audit: fails on a HUD box over the hero (± margin), a target closer than THUMB_GAP to a thumb control, or a box in the useful area. */
 export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rect,margin=HERO_MARGIN):AuditResult{
-  const heroCrossed:string[]=[],allowedOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
+  const heroCrossed:string[]=[],allowedOverHero:string[]=[],veiledOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
   let minThumbGap=Infinity;
   for(const box of boxes){
-    if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay?allowedOverHero:heroCrossed).push(box.name);
+    if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay?allowedOverHero:box.veiled?veiledOverHero:heroCrossed).push(box.name);
     if(!box.allowedInPlay&&!box.thumb&&crosses(box.rect,zones.useful))(box.fallback?fallbackInPlay:inPlay).push(box.name);
   }
   const thumbs=boxes.filter(b=>b.thumb);
@@ -131,7 +135,7 @@ export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rec
     const g=gap(box.rect,thumb.rect);minThumbGap=Math.min(minThumbGap,g);
     if(g<THUMB_GAP)thumbGaps.push({a:box.name,b:thumb.name,gap:Math.round(g)});
   }
-  return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
+  return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,veiledOverHero,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
     ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length};
 }
 
@@ -163,7 +167,7 @@ export function measureZones(doc:Document=document):ScreenZones{
 export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   const boxes:AuditBox[]=[];
   const add=(selector:string,name:string,flags:Omit<AuditBox,'name'|'rect'>={})=>{
-    doc.querySelectorAll(selector).forEach((el,i)=>{const rect=rectOf(el);if(rect)boxes.push({name:`${name}${i?`#${i+1}`:''}`,rect,...flags,...(el.classList.contains('rh-veiled')?{fallback:true}:{})});});
+    doc.querySelectorAll(selector).forEach((el,i)=>{const rect=rectOf(el);if(rect)boxes.push({name:`${name}${i?`#${i+1}`:''}`,rect,...flags,...(el.classList.contains('rh-veiled')?{fallback:true,veiled:true}:{})});});
   };
   // The result covers the whole screen: what lies under it is neither over the hero nor next to a thumb.
   if(rectOf(doc.querySelector('.rh-result'))){add('.rh-result','resultado',{allowedInPlay:true});add('.rh-result-btn','resultado-botão',{allowedInPlay:true,target:true});return boxes;}

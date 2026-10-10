@@ -1,4 +1,4 @@
-name: Publish viagem frontend
+name: Publish viagem (rooms Worker + frontend)
 on:
   workflow_dispatch:
   push:
@@ -26,8 +26,44 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
-  deploy:
+  # The client and the rooms Worker speak the same room protocol, so the Worker
+  # goes first and the frontend is only published if the Worker deploy succeeded.
+  # Needs the repository secret CLOUDFLARE_API_TOKEN (template "Edit Cloudflare
+  # Workers") and, if the token sees more than one account, CLOUDFLARE_ACCOUNT_ID.
+  deploy-rooms:
     needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: cloudflare-workers
+    steps:
+      - name: Require the Cloudflare token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Secret CLOUDFLARE_API_TOKEN ausente: nada foi publicado (nem salas nem site)."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --include=optional
+      - name: Deploy rooms Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config multiplayer/wrangler.jsonc
+      - name: Smoke test (origin guard answers, no 5xx)
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' https://viagem-salas.viagem.workers.dev/)
+          echo "rooms Worker answered $code"
+          test "$code" -lt 500
+  deploy:
+    needs: [build, deploy-rooms]
     runs-on: ubuntu-latest
     permissions:
       pages: write

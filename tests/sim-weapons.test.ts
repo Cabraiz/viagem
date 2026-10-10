@@ -693,3 +693,39 @@ test('cone: with nobody in the facing cone, the audio wave turns to the nearest 
   const f=fires(ctx,'audio')[0].event as {dx:number;dy:number};
   assert.ok(f.dx<-.99,'the wave points at the nearest enemy');
 });
+
+/** Hits per second on one still enemy at `dist` from a still chinelo owner (its own context, so no crowding). */
+function orbitRate(weapon:string,dist:number,seconds=20){
+  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[[weapon,weapon==='chinelo'?1:1]]);
+  addEnemy(ctx,'e',12+dist,12,{radius:.32});
+  run(ctx,systems(),Math.round(seconds*SIM_HZ));
+  return hitsOn(ctx,'e').filter(h=>h.weapon===weapon).length/seconds;
+}
+test('orbit: hugging the owner is no safer and no deadlier than standing on the ring (L1 and evolution)',t=>{
+  const rates=['chinelo','chinelo-evo'].map(id=>({id,hug:orbitRate(id,.59),ring:orbitRate(id,R(id,1).area)}));
+  for(const r of rates)t.diagnostic(`${r.id}: hugging ${r.hug.toFixed(2)} hits/s, on the ring ${r.ring.toFixed(2)} hits/s`);
+  for(const {id,hug,ring} of rates){
+    assert.ok(hug>0,`${id}: the hug is never answered`);
+    assert.ok(hug<=ring*1.25&&hug>=ring*.6,`${id}: hug ${hug.toFixed(2)} vs ring ${ring.toFixed(2)} hits/s`);
+  }
+});
+test('orbit: every chinelo hit pushes the enemy away from the owner, also from inside the ring',()=>{
+  for(const [x,y] of [[.59,0],[0,-.59],[-.4,.4]] as const){
+    const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['chinelo',1]]);
+    const e=addEnemy(ctx,'e',12+x,12+y,{radius:.32});
+    let knock:{x:number;y:number}|undefined;
+    run(ctx,systems(),Math.round(3*SIM_HZ),()=>{if(e.knock&&!knock)knock={...e.knock};});
+    assert.ok(knock,'never pushed');
+    assert.ok(knock.x*x+knock.y*y>0,`pushed toward the hero from (${x},${y}): ${JSON.stringify(knock)}`);
+  }
+});
+test('cone: a tapped target in reach but outside the facing cone is the one the turned wave hits',()=>{
+  const ctx=makeCtx();const w=R('audio',1);
+  addPlayer(ctx,'p1',12,12,[['audio',1]],{facing:{x:1,y:0},target:'tapped'});
+  addEnemy(ctx,'near',12-w.area*.3,12);addEnemy(ctx,'tapped',12,12+w.area*.8);
+  run(ctx,systems(),1);
+  assert.equal(hitsOn(ctx,'tapped').length,1,'the tapped target is ignored');
+  assert.equal(hitsOn(ctx,'near').length,0,'the wave went to the nearest instead of the tap');
+  const f=fires(ctx,'audio')[0].event as {dx:number;dy:number};
+  assert.ok(f.dy>.99,'the wave points at the tapped target');
+});

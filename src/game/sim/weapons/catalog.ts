@@ -15,7 +15,8 @@ export type WeaponId=typeof WEAPON_IDS[number]|typeof EVOLUTION_IDS[number];
  * zone: ground puddles on enemies (or, evolved, following the owner).
  * shield: aura around the owner that blocks hostile projectiles and pushes enemies.
  * homing: projectiles that steer toward an enemy.
- * cone: instant wave in front of the owner (`facing`), extra amount adds directions.
+ * cone: instant wave in front of the owner (`facing`); when nobody is there, toward the tap target or the nearest
+ *   enemy in reach. Extra amount adds directions.
  */
 export type WeaponPattern='orbit'|'pierce'|'zone'|'shield'|'homing'|'cone';
 
@@ -191,7 +192,7 @@ const defs:WeaponDef[]=[
       lv(12,1.8,2,3.2,0,.2,INF,.5,.2,3.2),
       lv(12,1.8,3,3.5,0,.2,INF,.6,.2,3.5),
     ],
-  },'Manda um áudio de 5 minutos na sua frente. Todo bicho no caminho escuta tudo.',['direção','direções']),
+  },'Manda um áudio de 5 minutos na sua frente. Se ali não tem ninguém, vira pro bicho mais perto. Todo bicho no caminho escuta tudo.',['direção','direções']),
   withDescribe({
     id:'chinelo-evo',kind:'evolution',name:'Havaianas do Caos',icon:'chinelo-evo',maxLevel:1,pattern:'orbit',
     base:'chinelo',passive:'tenis',evolved:{flingOnCycle:true},

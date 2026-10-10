@@ -13,7 +13,7 @@ const items:ItemDisplay[]=[
   {id:'cafe',kind:'weapon',name:'Café Derramado',icon:'☕',blurb:'Poça quente que queima quem pisa.',joke:'Sem açúcar, sem dó.'},
   {id:'guarda-chuva',kind:'weapon',name:'Guarda-chuva da Vó',icon:'☂️',blurb:'Empurra bichos e bloqueia tiros.',joke:'Abriu dentro de casa.'},
   {id:'pombo',kind:'weapon',name:'Pombo da Praça',icon:'🐦',blurb:'Persegue o bicho mais perto.',joke:'Veio do nada.'},
-  {id:'audio',kind:'weapon',name:'Áudio de 5 Minutos',icon:'🔊',blurb:'Onda em cone que empurra e fere.',joke:'"Oi, sumida…"'},
+  {id:'audio',kind:'weapon',name:'Áudio de 5 Minutos',icon:'🔊',blurb:'Onda que acha o bicho e empurra.',joke:'"Oi, sumida…"'},
   {id:'chinelo-evo',kind:'evolution',name:'Havaianas do Caos',icon:'🌪️',blurb:'Chinelos em dobro, sem parar.',joke:'Todo mundo usa.'},
   {id:'boleto-evo',kind:'evolution',name:'Carnê Infinito',icon:'📚',blurb:'Boletos que nunca acabam.',joke:'Parcela 1 de 999.'},
   {id:'cafe-evo',kind:'evolution',name:'Cafeteira Industrial',icon:'🏭',blurb:'Poças enormes e constantes.',joke:'Expediente eterno.'},

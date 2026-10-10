@@ -57,7 +57,7 @@ export class RunHud {
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     stack.append(alerts.el);this.stack=stack;this.alerts=alerts;
     this.parts=[top,announcer,team,alerts,offer];
-    this.el.append(top.el,stack,team.el,offer.el,offer.chip,announcer.el,this.result.el);
+    this.el.append(top.el,stack,team.el,offer.el,offer.chip,offer.hint,announcer.el,this.result.el);
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.

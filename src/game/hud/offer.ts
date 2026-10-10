@@ -103,16 +103,29 @@ export function chipText(pending:number){
 
 /**
  * Pure view state of the offer UI, so the D-021 rules are unit-tested without a DOM:
- * the chip shows in combat whenever something waits; the panel shows in the intermission by itself, in combat only
- * while opened from the chip; the clock (bar, seconds, "automático" note) only when the server set a real deadline.
+ * - the chip shows whenever something waits (combat and intermission): in combat it opens the compact strip, in the
+ *   intermission it folds the window away (`collapsed`) and back, so the island and the fallen stay reachable;
+ * - the panel shows in the intermission by itself unless folded, in combat only while opened from the chip;
+ * - the clock (bar, seconds, "automático" note) only when the server set a real deadline.
  */
-export function offerUiState(view:RunView,open:boolean){
+export function offerUiState(view:RunView,open:boolean,collapsed=false){
   const mode:OfferMode=offerMode(view),offer=view.offers[0];
   const pending=view.offers.length;
   const clock=!!offer&&!isHeldOffer(offer);
-  return {mode,pending,chip:mode==='combat'&&pending>0,panel:!!offer&&(mode==='intermission'||open),clock,
+  return {mode,pending,chip:pending>0,panel:!!offer&&(mode==='intermission'?!collapsed:open),clock,
     seconds:clock&&offer?secondsLeft(offer.deadlineTick,view.tick):undefined};
 }
+
+/** Every card is a first pick: the title says it ("Tudo novo!") and the stars shrink to a mark (DSG review D2). */
+export const isAllNew=(offer:OfferView)=>offer.choices.length>1&&offer.choices.every(choice=>priceTag(choice.itemId,choice.level).kind==='new');
+
+/** "Levar os indicados" shows when at least this many offers wait in the intermission. */
+export const TAKE_ALL_MIN=2;
+export const TAKE_ALL_LABEL='Levar os indicados';
+/** First-time hint next to the chip, stored per device (never comes back once the chip was tapped). */
+export const CHIP_HINT_TEXT='Toca pra escolher melhoria';
+export const CHIP_HINT_KEY='viagem:hint:offer-chip';
+export const CHIP_HINT_MS=3000;
 
 export interface OfferPanelOptions {
   onChoose(offerId:string,index:number):void;
@@ -120,9 +133,12 @@ export interface OfferPanelOptions {
   onStamp?():void;
 }
 
-export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
+const hintSeen=()=>{try{return localStorage.getItem(CHIP_HINT_KEY)==='1';}catch{return true;}};
+const markHintSeen=()=>{try{localStorage.setItem(CHIP_HINT_KEY,'1');}catch{/* private mode */}};
+
+export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement;hint:HTMLElement}{
   const root=el('section','rh-offer');root.hidden=true;
-  root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');
+  root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
   const head=el('header','rh-offer-head',root);
   const title=el('strong','rh-offer-title',head);
   const queue=el('span','rh-offer-queue',head),time=el('span','rh-offer-time',head);
@@ -130,11 +146,14 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const track=el('div','rh-offer-deadline',root),fill=el('i','rh-offer-deadline-fill',track);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const cards=el('div','rh-offer-cards',root);
-  const note=el('p','rh-offer-auto',root);note.textContent=AUTO_NOTE;
+  const foot=el('footer','rh-offer-foot',root);
+  const note=el('p','rh-offer-auto',foot);note.textContent=AUTO_NOTE;
+  const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
 
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
   const chipCount=el('span','rh-offer-chip-count',chip);
+  const hint=el('p','rh-offer-hint');hint.hidden=true;hint.textContent=CHIP_HINT_TEXT;hint.setAttribute('aria-hidden','true');
 
   const shownAt=new Map<string,number>();
   const guard=new OfferTapGuard();
@@ -143,12 +162,14 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   let pending:{id:string;index:number;atTick?:number}|undefined;
   /** The stamped offer stays on screen for STAMP_HOLD_MS, even after the server dropped it. */
   let stamp:{offer:OfferView;until:number}|undefined;
-  let open=false,lastMode:OfferMode|undefined,last:RunView|undefined;
-  let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false;
+  let open=false,collapsed=false,takingAll=false,lastMode:OfferMode|undefined,last:RunView|undefined;
+  let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
 
   const render=(offer:OfferView)=>{
     root.dataset.source=offer.source;
-    title.textContent=offerTitle(offer).title;
+    const allNew=isAllNew(offer);const titleNew=allNew&&offer.source==='level';
+    root.classList.toggle('rh-offer-all-new',allNew);
+    title.textContent=titleNew?'Tudo novo!':offerTitle(offer).title;
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
@@ -161,6 +182,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       el('strong','rh-card-name',body).textContent=item.name;
       el('span','rh-card-blurb',body).textContent=item.blurb;
       el('em','rh-card-joke',body).textContent=item.joke;
+      // "Novo!" lives in the price slot, like "Nv N" (the price of a launch); never floating over the icon.
       if(price.kind==='level'){
         const tag=el('span','rh-card-price',card);
         el('small','rh-card-price-unit',tag).textContent='Nv';
@@ -184,6 +206,19 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     }
   };
 
+  /** Picks `index` of the shown offer: stamp, sound, and the server command. */
+  const pick=(index:number)=>{
+    if(!shown)return;
+    pending={id:shown.id,index};
+    markPending();
+    root.classList.add('rh-offer-stamping');
+    stamp={offer:shown,until:now()+STAMP_HOLD_MS};
+    try{options.onStamp?.();}catch{/* feedback is best effort */}
+    options.onChoose(shown.id,index);
+    // The chip counts down at once (≤ 100 ms feedback), without waiting for the next view.
+    if(last)update(last);
+  };
+
   cards.addEventListener('pointerdown',event=>{
     const card=(event.target as HTMLElement).closest<HTMLButtonElement>('.rh-card');
     if(card&&shown)guard.pointerDown(shown.id,Number(card.dataset.index),now());
@@ -195,21 +230,34 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(!(index>=0&&index<shown.choices.length))return;
     // detail===0: activated without a pointer (screen reader / keyboard).
     if(!guard.accept(shown.id,index,now(),event.detail===0))return;
-    pending={id:shown.id,index};
-    markPending();
-    root.classList.add('rh-offer-stamping');
-    stamp={offer:shown,until:now()+STAMP_HOLD_MS};
-    try{options.onStamp?.();}catch{/* feedback is best effort */}
-    options.onChoose(shown.id,index);
-    // The chip counts down at once (≤ 100 ms feedback), without waiting for the next view.
-    if(last)update(last);
+    pick(index);
+  });
+  // "Levar os indicados": the whole queue gets its defaults, one at a time, each with its own stamp and in order
+  // (the server applies each once and refuses a stale one; the next head is picked when it shows up).
+  takeAll.addEventListener('click',()=>{
+    if(!shown||pending)return;
+    takingAll=true;
+    pick(shown.defaultIndex);
   });
   chip.addEventListener('click',()=>{
-    open=!open;
+    if(lastMode==='intermission'){collapsed=!collapsed;}
+    else open=!open;
     // Opening counts as a new render for the tap guard: the finger that opened it cannot pick blind.
-    if(open&&shown)guard.rendered(shown.id,now());
+    if((open||!collapsed)&&shown)guard.rendered(shown.id,now());
+    if(!hint.hidden||!hintSeen()){markHintSeen();hint.hidden=true;}
     if(last)update(last);
   });
+  // Pressing the skill closes the compact strip: the thumb went back to fighting (DSG/UX review).
+  const onSkill=(event:Event)=>{if(open&&(event.target as Element|null)?.closest?.('#coop-attack')){open=false;if(last)update(last);}};
+  document.addEventListener('pointerdown',onSkill,true);
+
+  /** One stamp-like beat on the chip when it appears or its number goes up (no loop: D-020). */
+  const beat=()=>{chip.classList.remove('rh-offer-chip-beat');void chip.offsetWidth;chip.classList.add('rh-offer-chip-beat');};
+  const showHint=()=>{
+    if(hintSeen()||hintTimer)return;
+    hint.hidden=false;
+    hintTimer=setTimeout(()=>{hint.hidden=true;},CHIP_HINT_MS);
+  };
 
   function update(view:RunView){
     last=view;
@@ -218,30 +266,40 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     const startTick=trackShownAt(shownAt,offers,view.tick);
     if(pending&&!ids.has(pending.id))pending=undefined;
     if(pending){pending.atTick??=view.tick;if(view.tick-pending.atTick>OFFER_RETRY_TICKS){pending=undefined;stamp=undefined;shown=undefined;}}
-    if(stamp&&now()>=stamp.until)stamp=undefined;
-    const state=offerUiState(view,open);
-    if(state.mode!==lastMode){
-      // A wave starting closes whatever was open: in combat the panel only shows after a tap on the chip.
-      if(state.mode==='combat')open=false;
-      lastMode=state.mode;root.dataset.mode=state.mode;
+    if(stamp&&now()>=stamp.until){stamp=undefined;root.classList.remove('rh-offer-stamping');}
+    if(lastMode!==offerMode(view)){
+      // A wave starting closes whatever was open (in combat the strip only shows after a tap on the chip); each
+      // intermission opens the window again, and "levar os indicados" only runs inside the intermission it began in.
+      const mode=offerMode(view);
+      open=false;collapsed=false;takingAll=false;
+      lastMode=mode;root.dataset.mode=mode;
     }
-    if(!state.pending)open=false;
+    const state=offerUiState(view,open,collapsed);
+    if(!state.pending){open=false;takingAll=false;}
     // The chosen offer is no longer "waiting", even before the server drops it.
     const waiting=offers.filter(offer=>offer.id!==pending?.id).length;
-    chip.hidden=!(state.mode==='combat'&&waiting>0);
+    const chipWas=chip.hidden;
+    chip.hidden=waiting<=0;
+    chip.dataset.mode=state.mode;
     if(waiting!==lastPending&&waiting>0){
+      if(chipWas||waiting>lastPending)beat();
       lastPending=waiting;const text=chipText(waiting);
       chipCount.textContent=text.label;chip.setAttribute('aria-label',text.aria);
     }
-    chip.setAttribute('aria-expanded',String(open||!!stamp));
+    if(waiting<=0)lastPending=0;
+    if(!chip.hidden&&state.mode==='combat')showHint();
     const offer=stamp?.offer??offers[0];
-    const visible=!!stamp||(!!offer&&offer.choices.length>0&&(state.mode==='intermission'||open));
+    const visible=!!stamp||(!!offer&&offer.choices.length>0&&state.panel);
+    chip.setAttribute('aria-expanded',String(visible));
     if(!visible||!offer){if(!offer)shown=undefined;root.hidden=true;return;}
     root.hidden=false;
     if(offer.id!==shown?.id){shown=offer;render(offer);markPending();}
     else if(!stamp)shown=offer;
     if(stamp)return;
     if(root.classList.contains('rh-offer-pending')!==(!!pending&&pending.id===offer.id))markPending();
+    // Taking all: the next head gets its default as soon as the previous stamp is done.
+    if(takingAll&&!pending&&state.mode==='intermission'){pick(offer.defaultIndex);return;}
+    takeAll.hidden=!(state.mode==='intermission'&&offers.length>=TAKE_ALL_MIN);
     root.classList.toggle('rh-offer-clock',state.clock);
     if(state.clock){
       const fraction=offerDeadlineFraction(offer,view.tick,startTick??view.tick);
@@ -258,5 +316,5 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,update};
+  return {el:root,chip,hint,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);if(hintTimer)clearTimeout(hintTimer);}};
 }

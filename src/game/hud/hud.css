@@ -123,173 +123,238 @@
   .rh-member-timer{top:24px}
   .rh-alert{width:min(100%,300px);padding:4px 10px 5px}
 }
-/* ---------- Offer (D-021 + DSG-oferta-etiqueta) ----------
+/* ---------- Offer (D-021 + DSG-oferta-etiqueta, wave-3 reviews) ----------
    System window (Lilás body, Breu edge, Papel inner line) holding price tags from the corner shop: each choice is an
-   etiqueta (Papel, Breu edge 2 px, 4 px corners, punched hole, slight alternating tilt). The picked tag turns Amarelo and
-   gets the "LEVEI" stamp, the HUD's only show animation. Two modes (offer.ts offerUiState):
-   - intermission: opens by itself above the controls, with title, joke, flat clock and the "automático" note;
-   - combat: a "+N" chip left of the skill button; a tap opens the compact panel above the right thumb (cards only).
-   Text rule: the effect (blurb) is never cut. Space runs out in this order: card joke, header joke, then the name wraps. */
+   etiqueta (Papel, Breu edge 2 px, 4 px corners, the punched hole always in the top-left corner, alternating tilt).
+   The picked tag turns Amarelo and gets the "LEVEI" ink stamp, the HUD's only show animation. Modes (offer.ts):
+   - intermission: a list window anchored at the bottom, right of the team column, at most 32% of the screen
+     (portrait) or 40% of the width (landscape); the chip folds it away; "Levar os indicados" takes every default;
+   - combat: the "+N" chip left of the skill button; a tap opens the compact strip above the joystick (cards only).
+   Text rule: the effect (blurb) is never cut. Space runs out in this order: card joke, header joke, the "automático"
+   note, then (landscape at 125% only) the effect line, which stays in the tag's aria-label. */
 .rh-offer{
   --of-tilt-a:-1deg;--of-tilt-b:.8deg;
-  /* Portrait: right of the team column (never over who is down), 24 px above the joystick. */
-  position:absolute;left:calc(var(--rh-l) + 62px);right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
-  max-width:460px;margin-left:auto;padding:6px 8px 8px;border-radius:var(--r-janela);
+  position:absolute;z-index:1;left:calc(var(--rh-l) + 62px);right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  max-width:460px;margin-left:auto;padding:6px 8px 7px;border-radius:var(--r-janela);
+  display:flex;flex-direction:column;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
   box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);text-align:left;
   pointer-events:auto;touch-action:manipulation;
-  /* Above the round marquee: the "Intervalo!" sign is passing news, the tags are the action (and have a deadline). */
-  z-index:1;
 }
-.rh-offer-head{display:flex;align-items:baseline;gap:8px;padding:2px 4px 0}
+.rh-offer-head{display:flex;align-items:center;gap:8px;min-height:24px;padding:0 4px}
 .rh-offer-title{flex:1;min-width:0;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-papel)}
 .rh-offer-queue{flex:none;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);white-space:nowrap}
 .rh-offer-time{flex:none;min-width:3.2em;padding:1px 4px;border-radius:var(--r-etiqueta);text-align:right;font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);font-variant-numeric:tabular-nums}
-.rh-offer-joke{margin:2px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+.rh-offer-joke{margin:1px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* Flat clock: Papel on a Breu track; the last 3 s turn it (and the number) Laranja Cone, statically. */
-.rh-offer-deadline{height:6px;margin:5px 4px 8px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
+.rh-offer-deadline{flex:none;height:6px;margin:4px 4px 6px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
 .rh-offer-deadline-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--c-papel);transition:transform .2s linear}
 .rh-offer-urgent .rh-offer-deadline-fill{background:var(--c-cone)}
 .rh-offer-urgent .rh-offer-time{background:var(--c-cone);color:var(--c-breu)}
 .rh-offer:not(.rh-offer-clock) .rh-offer-time,.rh-offer:not(.rh-offer-clock) .rh-offer-deadline,.rh-offer:not(.rh-offer-clock) .rh-offer-auto{display:none}
-.rh-offer-auto{display:flex;align-items:center;gap:6px;margin:8px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+/* Footer: the "automático" note and "Levar os indicados" (Amarelo: a choice). */
+.rh-offer-foot{display:flex;align-items:center;gap:8px;margin-top:6px;padding:0 2px 0 4px}
+.rh-offer-foot:not(:has(.rh-offer-auto:not([hidden]))):has(.rh-offer-all[hidden]),.rh-offer:not(.rh-offer-clock) .rh-offer-foot:has(.rh-offer-all[hidden]){display:none}
+.rh-offer-auto{flex:1;min-width:0;display:flex;align-items:center;gap:6px;margin:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* The note points up at the default tag, which carries the same Lilás notch on its lower edge. */
 .rh-offer-auto::before{content:'';flex:none;width:12px;height:8px;background:var(--c-papel);clip-path:polygon(50% 0,100% 100%,0 100%)}
+/* "Levar os indicados" rides in the header (top right) whenever two or more offers wait: the queue count and the
+   note go (the button says it), and the window stays within 32% of a portrait screen. */
+.rh .rh-offer-all{position:absolute;top:5px;right:6px;min-height:44px;margin:0;padding:0 12px;border:2px solid var(--c-breu);border-radius:var(--r-janela);
+  background:var(--c-amarelo);color:var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);box-shadow:var(--s-1);cursor:pointer;touch-action:manipulation;white-space:nowrap}
+.rh .rh-offer-all:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{min-height:44px;padding-right:156px}
+.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{font-size:min(var(--t-21),21px);white-space:nowrap}
+:root[data-texto="125"] .rh .rh-offer-all{font-size:13px;padding:0 10px}
+.rh-offer:has(.rh-offer-all:not([hidden])) :is(.rh-offer-queue,.rh-offer-joke,.rh-offer-auto){display:none}
+.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-foot{margin:0}
 
-/* Tags: one per row (it reads diagonally with the thumb); a 2x2 when four would not fit. */
-.rh-offer-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:0 2px}
+/* Tags: list lines (icon column, name and effect, price on the right); a 2x2 for four. */
+.rh-offer-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:0 2px}
+.rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon . price' 'name name name' 'blurb blurb blurb';align-content:start;padding:4px 6px 5px 26px}
+.rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:-18px}
+.rh-offer[data-count='4'] .rh-offer-joke{display:none}
 .rh-card{
   --tilt:var(--of-tilt-a);
-  position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'icon name price' 'blurb blurb blurb' 'joke joke joke';
-  align-items:center;column-gap:8px;row-gap:1px;min-width:0;min-height:44px;padding:6px 8px 6px 26px;
+  position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb blurb' 'icon joke joke';
+  align-items:center;column-gap:6px;row-gap:0;min-width:0;min-height:44px;padding:5px 8px 5px 26px;
   border-radius:var(--r-etiqueta);border:2px solid var(--c-breu);background:var(--c-papel);color:var(--c-breu);
   box-shadow:var(--s-1);text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-  transform:rotate(var(--tilt));transition:transform .08s ease-out,box-shadow .08s ease-out,opacity .16s ease-out;
+  transform:rotate(var(--tilt));transition:transform .08s ease-out,box-shadow .08s ease-out;
 }
 .rh-card:nth-child(even){--tilt:var(--of-tilt-b)}
-/* Punched hole: the window shows through it (Lilás) inside a Breu ring. */
-.rh-card::before{content:'';position:absolute;left:8px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
+/* Punched hole, always in the top-left corner (8 px from both edges): the window shows through it inside a Breu ring.
+   Nothing sits beside it, so it never reads as a radio button. */
+.rh-card::before{content:'';position:absolute;left:6px;top:6px;width:10px;height:10px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
 .rh-card:active{transform:rotate(var(--tilt)) translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-.rh-card-icon{grid-area:icon;font-size:24px;line-height:1}
+.rh-card-icon{grid-area:icon;width:24px;text-align:center;font-size:20px;line-height:1}
 .rh-card-body{display:contents}
-.rh-card-name{grid-area:name;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-breu);text-wrap:balance}
-.rh-card-blurb{grid-area:blurb;font:400 var(--t-16)/1.2 var(--f-sistema);color:var(--c-breu)}
-.rh-card-joke{grid-area:joke;font:400 var(--t-13)/1.2 var(--f-sistema);font-style:normal;color:var(--c-lilas)}
+.rh-card-name{grid-area:name;min-width:0;font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-breu);text-wrap:balance;overflow-wrap:anywhere;hyphens:auto}
+.rh-card-blurb{grid-area:blurb;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+.rh-card-joke{display:none}
 /* Level as a price: small "Nv", big number (Londrina, tabular so it never dances). */
 .rh-card-price{grid-area:price;display:flex;align-items:baseline;gap:2px;color:var(--c-lilas)}
 .rh-card-price-unit{font:800 var(--t-13)/1 var(--f-sistema)}
-.rh-card-price-value{font:400 var(--t-28)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
-/* "Novo!" on the 12-point encarte star: Amarelo with a Breu edge, turned 8°, one per tag at most. */
-.rh-card-star{position:absolute;right:5px;top:-12px;z-index:1;display:grid;place-items:center;width:48px;height:48px;transform:rotate(8deg);pointer-events:none}
-.rh-card[data-kind=new]{padding-right:40px}
+.rh-card-price-value{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+/* "Novo!" sits in the price slot, the size of the price (a launch's price): Amarelo star with a Breu edge, 8°.
+   When every tag is new the title says "Tudo novo!" and the stars shrink to a mark (the word stays in aria-label). */
+.rh-card-star{grid-area:price;position:relative;display:grid;place-items:center;width:38px;height:38px;margin:-6px 0;transform:rotate(8deg)}
 .rh-card-star::before,.rh-card-star::after{content:'';position:absolute;clip-path:polygon(50% 0%,60.1% 12.3%,75% 6.7%,77.6% 22.4%,93.3% 25%,87.7% 39.9%,100% 50%,87.7% 60.1%,93.3% 75%,77.6% 77.6%,75% 93.3%,60.1% 87.7%,50% 100%,39.9% 87.7%,25% 93.3%,22.4% 77.6%,6.7% 75%,12.3% 60.1%,0% 50%,12.3% 39.9%,6.7% 25%,22.4% 22.4%,25% 6.7%,39.9% 12.3%)}
 .rh-card-star::before{inset:0;background:var(--c-breu)}
 .rh-card-star::after{inset:3px;background:var(--c-amarelo)}
-.rh-card-star>span{position:relative;z-index:1;font:400 var(--t-13)/1 var(--f-cartaz);color:var(--c-breu)}
+.rh-card-star>span{position:relative;z-index:1;font:400 13px/1 var(--f-cartaz);color:var(--c-breu)}
+.rh-offer-all-new .rh-card-star{width:22px;height:22px;margin:0}
+.rh-offer-all-new .rh-card-star>span{display:none}
 .rh-card-tag{grid-area:price;padding:1px 5px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap}
 .rh-card[data-kind=snack] .rh-card-tag{border-color:var(--c-breu);background:var(--c-cartolina);color:var(--c-breu)}
 /* The default tag: thicker Lilás edge plus the notch the "automático" note points at (shape, not only color). */
 .rh-offer-clock .rh-card-default{border-color:var(--c-lilas);box-shadow:0 0 0 1px var(--c-breu),var(--s-1)}
 .rh-offer-clock .rh-card-default::after{content:'';position:absolute;left:4px;bottom:-9px;width:14px;height:8px;background:var(--c-lilas);clip-path:polygon(0 0,100% 0,50% 100%)}
 
-/* The stamp: Lilás ink, caps (a stamp is an object, not a label). Hidden until the tag is picked. */
-.rh-card-stamp{position:absolute;left:50%;top:50%;z-index:2;padding:1px 10px 2px;border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);
-  font:900 var(--t-28)/1 var(--f-cartaz);color:var(--c-lilas);white-space:nowrap;pointer-events:none;opacity:0;
+/* The stamp is ink, not text: a government-office stamp (3 px edge, a 1 px line 2 px inside) in Lilás at 90%, multiplied
+   onto the paper, about 80% of the tag and bigger than the name it covers. The paper under it drops to 40%. */
+.rh-card-stamp{position:absolute;left:50%;top:50%;z-index:2;box-sizing:border-box;width:80%;padding:3px 6px 4px;text-align:center;
+  border:3px solid var(--of-ink);border-radius:var(--r-etiqueta);color:var(--of-ink);mix-blend-mode:multiply;
+  font:900 var(--t-36)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;
   transform:translate(-50%,-50%) rotate(-8deg)}
-.rh-card-chosen{background:var(--c-amarelo);opacity:1}
+.rh-offer{--of-ink:color-mix(in srgb,var(--c-lilas) 90%,transparent)}
+.rh-card-stamp::after{content:'';position:absolute;inset:2px;border:1px solid var(--of-ink);border-radius:var(--r-etiqueta)}
+.rh-card-chosen{background:var(--c-amarelo)}
+.rh-card-chosen :is(.rh-card-icon,.rh-card-name,.rh-card-blurb,.rh-card-price,.rh-card-star,.rh-card-tag){opacity:.4}
 .rh-card-chosen .rh-card-stamp{opacity:1;animation:rh-stamp 140ms cubic-bezier(.2,.9,.3,1.25) both,rh-stamp-ink 160ms steps(2,end) 140ms both}
 @keyframes rh-stamp{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(-12deg)}70%{opacity:1;transform:translate(-50%,-50%) scale(.95) rotate(-8deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-8deg)}}
 /* Two frames of ink spreading on the paper. */
-@keyframes rh-stamp-ink{0%{box-shadow:0 0 0 1px var(--c-lilas)}50%{box-shadow:0 0 0 2px color-mix(in srgb,var(--c-lilas) 45%,transparent)}100%{box-shadow:none}}
-/* The rest step aside in 160 ms; nothing else moves. */
-/* A disabled tag keeps full ink (the page-wide disabled look would dim the stamped one); the others dim below. */
+@keyframes rh-stamp-ink{0%{box-shadow:0 0 0 1px var(--of-ink)}50%{box-shadow:0 0 0 2px color-mix(in srgb,var(--c-lilas) 45%,transparent)}100%{box-shadow:none}}
+/* A disabled tag keeps full ink (the page-wide disabled look would dim it); the others step aside in 160 ms, same ink. */
 .rh-offer .rh-card:disabled{opacity:1;cursor:default}
-.rh-offer-stamping .rh-card:not(.rh-card-chosen){opacity:.35;transform:rotate(var(--tilt)) translateX(8px)}
-.rh-offer-pending:not(.rh-offer-stamping) .rh-card:not(.rh-card-chosen){opacity:.45}
-.rh-offer-pending .rh-offer-deadline-fill{opacity:.4}
+.rh-offer-stamping .rh-card:not(.rh-card-chosen){transform:rotate(var(--tilt)) translateX(8px);transition:transform .16s ease-out}
 
-/* ---------- Combat: the chip and the compact panel (D-021) ----------
+/* ---------- Combat: the chip and the compact strip (D-021) ----------
    Chip: a thumb control, so a circle; Amarelo (escolha) with a Breu edge and a Papel ring, 24 px left of the skill
-   button and vertically centered on it. The skill button is 10 + 72 × escala px (coop.css). */
+   button and vertically centered on it. The skill button is 10 + 72 × escala px (coop.css). It stays in the
+   intermission too, where it folds the window away and back. */
 .rh-offer-chip{
   --chip:52px;
   position:absolute;z-index:1;
   right:calc(max(24px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 24px);
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) - var(--chip)/2);
-  width:var(--chip);height:var(--chip);display:grid;place-content:center;justify-items:center;gap:1px;padding:0;
+  width:var(--chip);height:var(--chip);display:grid;place-content:center;justify-items:center;gap:2px;padding:0;
   border:2px solid var(--c-breu);border-radius:var(--r-circulo);background:var(--c-amarelo);color:var(--c-breu);
   box-shadow:0 0 0 2px var(--c-papel),var(--s-1);cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
-.rh-offer-chip::before{content:'';width:14px;height:8px;background:var(--c-breu);clip-path:polygon(50% 0,100% 100%,0 100%)}
+/* A mini price tag (Papel, Breu edge, hole) instead of an arrow: it ties the chip to the tags it opens. */
+.rh-offer-chip::before{content:'';width:18px;height:11px;transform:rotate(-8deg);clip-path:polygon(32% 0,100% 0,100% 100%,32% 100%,0 50%);
+  background:radial-gradient(circle at 35% 50%,var(--c-amarelo) 1.6px,var(--c-breu) 2.2px)}
+.rh-offer-chip[aria-expanded=true]::before{background:radial-gradient(circle at 35% 50%,var(--c-papel) 1.6px,var(--c-breu) 2.2px)}
 .rh-offer-chip-count{font:400 var(--t-21)/1 var(--f-cartaz);color:var(--c-breu);font-variant-numeric:tabular-nums}
 .rh-offer-chip[aria-expanded=true]{background:var(--c-papel)}
 .rh-offer-chip:active{transform:translateY(2px);box-shadow:0 0 0 2px var(--c-papel),0 1px 0 var(--c-breu)}
+/* One beat when it appears or its number goes up (the stamp's curve, once: no loop). */
+.rh-offer-chip-beat{animation:rh-chip-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
+@keyframes rh-chip-beat{0%{transform:scale(1.35)}70%{transform:scale(.95)}100%{transform:scale(1)}}
+.rh-ended .rh-offer-chip,.rh-ended .rh-offer-hint{display:none}
+/* First time only: a balloon over the chip, between the thumbs (outside the playfield); gone at the first tap. */
+.rh-offer-hint{position:absolute;z-index:1;margin:0;max-width:180px;padding:6px 10px;
+  right:calc(max(24px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 4px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) + 26px + 12px);
+  border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);
+  font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:none;pointer-events:none}
+.rh-offer-hint::after{content:'';position:absolute;right:28px;bottom:-9px;width:14px;height:8px;background:var(--c-breu);clip-path:polygon(0 0,100% 0,50% 100%)}
 
-/* Compact panel: a strip of tags right-aligned just above the controls band (24 px over the joystick), clear of the
-   hero. Combat reading is icon + price + name (UX B5); effect and joke wait for the intermission window, where the
-   same offers open by themselves. The effect stays in each tag's aria-label. */
+/* Compact strip: a row of tags right-aligned just above the controls band (24 px over the joystick), right of the team
+   column and clear of the hero. Combat reading is icon + price + name (UX B5); effect and joke wait for the intermission. */
 .rh-offer[data-mode=combat]{
-  left:auto;right:var(--rh-r);width:min(300px,calc(100vw - var(--rh-l) - var(--rh-r)));max-width:none;margin:0;padding:5px;
+  left:auto;right:var(--rh-r);width:min(300px,calc(100vw - var(--rh-l) - 70px - var(--rh-r)));max-width:none;margin:0;padding:5px;
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
 }
-.rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(100vw - var(--rh-l) - 62px - var(--rh-r)))}
-.rh-offer[data-mode=combat] .rh-offer-head,.rh-offer[data-mode=combat] .rh-offer-joke,.rh-offer[data-mode=combat] .rh-card-blurb,.rh-offer[data-mode=combat] .rh-card-joke{display:none}
+.rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(100vw - var(--rh-l) - 70px - var(--rh-r)))}
+.rh-offer[data-mode=combat] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-deadline,.rh-offer-foot,.rh-card-blurb,.rh-card-joke){display:none}
 .rh-offer[data-mode=combat] .rh-offer-cards{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;padding:0}
-/* Four tags (luck): two rows of two, so no name has to be squeezed (a row of four cut "Fidelidade" at 125%). */
-.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4']{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:0}
-.rh-offer[data-mode=combat] .rh-card,.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4'] .rh-card{
-  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'hole icon price' 'name name name';align-items:center;align-content:start;
-  column-gap:4px;row-gap:1px;padding:4px 5px 5px}
-.rh-offer[data-mode=combat] .rh-card::before{position:static;grid-area:hole;margin:0}
-.rh-offer[data-mode=combat] .rh-card-icon{font-size:20px}
-.rh-offer[data-mode=combat] .rh-card-name{font-size:var(--t-16)}
-.rh-offer[data-mode=combat] .rh-card-price,.rh-offer[data-mode=combat] .rh-card-tag{justify-self:end}
-.rh-offer[data-mode=combat] .rh-card-price-value{font-size:var(--t-21)}
-.rh-offer[data-mode=combat] .rh-card-star{width:40px;height:40px;top:-14px;right:0}
-.rh-offer[data-mode=combat] .rh-card[data-kind=new]{padding-right:6px}
+/* Four tags (luck): two rows of two, so no name has to be squeezed. */
+.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4']{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}
+.rh-offer[data-mode=combat] .rh-card,.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:12px 24px minmax(0,1fr) auto;grid-template-areas:'. icon . price' 'name name name name';
+  align-items:center;align-content:start;column-gap:4px;row-gap:1px;padding:4px 5px 5px 5px}
+.rh-offer[data-mode=combat] .rh-card::before{left:6px;top:8px}
+.rh-offer[data-mode=combat] .rh-card-name{font-size:min(var(--t-16),16px)}
+/* 34 px is the smallest star whose body holds "Novo!" at 13 px (the audit checks 80% of its width). */
+.rh-offer[data-mode=combat] .rh-card-star{width:34px;height:34px;margin:-6px 0}
+.rh-offer[data-mode=combat] .rh-card-stamp{width:84%;font-size:var(--t-21);padding:1px 4px 2px}
+.rh-offer[data-mode=combat] .rh-card-icon{font-size:18px}
+/* The strip never scales past 16 px (B2): at 125% the tags are no wider, and the icon and the price must not touch. */
+.rh-offer[data-mode=combat] .rh-card-price-value{font-size:min(var(--t-21),21px)}
+.rh-offer[data-mode=combat] .rh-card-price-unit{font-size:13px}
+:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card-price-value{font-size:16px}
+:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card-name{font-size:15px}
+:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card{grid-template-columns:10px 20px minmax(0,1fr) auto;column-gap:3px;padding:4px 4px 5px}
 .rh-offer-stamping[data-mode=combat] .rh-card:not(.rh-card-chosen){transform:rotate(var(--tilt)) translateY(4px) scale(.96)}
-.rh-offer[data-mode=combat] .rh-card-stamp{font-size:var(--t-16);padding:1px 4px 2px}
 
-/* Bigger text (125%): the header joke goes first, then the 2x2 drops the icon so name and effect keep the width. */
+/* The intermission window always wins over the round sign: the sign folds into the round chip at once. And the
+   "caiu!" banners never go under the window. */
+.rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-marquee{display:none}
+.rh-stack{z-index:2}
+
+/* Bigger text (125%): the window's header joke and the "automático" note go, and the strip and the window step right
+   of the wider team column (names and SOS badges are larger). */
 :root[data-texto="125"] .rh-offer-joke{display:none}
-:root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card-joke{display:none}
-/* The top bar grows with the text, so the team column and the alerts start lower. */
-@media (min-height:501px){:root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}}
+@media (min-height:501px){
+  /* Never more than 32% of the height (UX review): when the tags do not fit (125%, short phones, 4 cards) the list
+     scrolls inside the window, header and "Levar os indicados" stay put, and the next tag peeks to show there is more.
+     The vertical padding keeps the stars and the stamp (they ride the tag's edge) inside the scroll box. */
+  .rh-offer[data-mode=intermission]{max-height:32vh;max-height:32svh}
+  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 10px;margin:-6px -8px 0}
+  .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
+  .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot){flex:none}
+  /* 125%: four tags in two columns break names into three lines; one column of list tags reads better (it scrolls). */
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb blurb' 'icon joke joke';padding:5px 8px 5px 26px}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
+  .rh-offer-cards[data-count='4'] .rh-offer-joke,.rh-offer[data-count='4'] .rh-offer-joke{display:none}
+  :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + 86px)}
+  :root[data-texto="125"] .rh-offer[data-mode=combat]{width:min(300px,calc(100vw - var(--rh-l) - 94px - var(--rh-r)))}
+  :root[data-texto="125"] .rh-offer-title,:root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{font-size:var(--t-16)}
+  :root[data-texto="125"] .rh-offer-auto{display:none}
+  /* 125%: beside "Levar os indicados" there is no room for title and clock on one line, so the clock goes under it. */
+  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{flex-direction:column;align-items:flex-start;justify-content:center;gap:0}
+  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{flex:none}
+  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-time{min-width:0;padding:0;text-align:left}
+  /* The top bar grows with the text, so the team column and the alerts start lower. */
+  :root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}
+}
 
-/* Landscape: the intermission window takes the right column between the top bar and the skill button; the compact
-   panel sits above the emote button. No joke in the header (the column is short). */
+/* Landscape: the window takes the right column, above the skill button (its top - 24 px), at most 40% of the width,
+   so the middle (hero, island, the fallen) stays clear; "Levar os indicados" rides in the header. */
 @media (max-height:500px){
-  /* The middle column between the joystick and the skill button (24 px from each), under the XP bar and above the
-     team strip: the right column alone is too short for three tags (no bichos in the intermission, so it may pass
-     over the hero; in combat only the chip and the strip show). */
-  .rh-offer{left:calc(max(18px,env(safe-area-inset-left)) + 96px + 24px);right:calc(max(18px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 24px);
-    top:calc(var(--rh-t) + 76px);bottom:auto;width:auto;max-width:460px;margin:0 auto;padding:5px 6px 6px;display:flex;flex-direction:column}
-  .rh-offer-head{flex:none}
+  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;width:min(40vw,360px);max-width:none;margin:0;padding:3px 6px 4px}
+  .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0}
+  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(60vw - var(--rh-l) - var(--rh-r) - 166px)}
+  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(40vw,360px) + 8px)}
+  .rh-offer-head{flex:none;min-height:22px}
   .rh-offer-joke{display:none}
-  .rh-offer-deadline{flex:none;margin:4px 4px 6px}
-  .rh-offer-cards{align-content:start;gap:4px}
-  .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .rh-card{grid-template-areas:'icon name price' 'icon blurb blurb';padding:3px 8px 3px 24px;row-gap:0}
-  .rh-card-joke{display:none}
-  .rh-card-name{font-size:var(--t-16)}
-  .rh-card-blurb{font-size:var(--t-13)}
-  .rh-card-price-value{font-size:var(--t-21)}
-  .rh-card-star{width:40px;height:40px;top:-9px;right:0}
-  .rh-card[data-kind=new]{padding-right:34px}
-  .rh-offer-auto{margin-top:6px;flex:none}
-  /* Four in the short column: no icon, the price beside the name, so name and effect get the whole tag. */
-  .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price' 'blurb blurb';padding:3px 6px 4px 22px}
-  .rh-offer-cards[data-count='4'] .rh-card::before{top:13px}
+  .rh-offer-deadline{margin:2px 4px 3px}
+  .rh-offer-cards{gap:4px}
+  .rh-offer-foot{margin-top:5px}
+  .rh-card{padding:2px 8px 2px 26px}
+  .rh .rh-offer-all{top:4px}
+  .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price' 'blurb blurb';padding:3px 6px 3px 22px}
+  .rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:0}
   .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
-  .rh-offer-cards[data-count='4'] .rh-card-star{width:36px;height:36px;top:-8px;right:0}
-  .rh-offer-cards[data-count='4'] .rh-card[data-kind=new]{padding-right:30px}
+  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
+  .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) - var(--chip)/2)}
-  /* Compact strip: above the skill button (its top − 24 px), right of the hero. */
-  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 10px + 72px*var(--t-escala) + 24px)}
+  .rh-offer-hint{right:calc(max(18px,env(safe-area-inset-right)) + 10px + 72px*var(--t-escala) + 4px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 5px + 36px*var(--t-escala) + 26px + 12px)}
+  /* 125%: the right column is 190 px tall. Tags go 2x2 with name and price only; the effect line is the one exception
+     to "never hidden", kept in each tag's aria-label and readable with the window folded or in portrait. */
   :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
   :root[data-texto="125"] .rh-offer .rh-offer-auto,:root[data-texto="125"] .rh-offer .rh-card-default::after{display:none}
-  :root[data-texto="125"] .rh-offer-deadline{margin:3px 4px 5px}
-  :root[data-texto="125"] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price' 'blurb blurb'}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price';padding:4px 6px 4px 22px}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-name{margin-left:0;font-size:min(var(--t-16),16px)}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-deadline{display:none}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-icon{display:none}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-blurb{display:none}
+  :root[data-texto="125"] .rh .rh-offer-all{font-size:13px}
+  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{padding-right:150px}
 }
 
 /* ---------- Result screen (VGM-040) ----------

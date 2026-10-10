@@ -10,7 +10,7 @@ import {allItemDisplays,itemDisplay,levelTag} from '../src/game/hud/items.ts';
 import {FIXTURE_INTERMISSION_SECONDS,HUD_SCENARIOS,fakePlayers,fakeResult,fakeView} from '../src/game/hud/fixtures.ts';
 import {classes} from '../src/classes.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards} from '../src/game/hud/awards.ts';
-import {OFFER_TAP_GUARD_MS,OfferTapGuard,chipText,choiceFlags,offerJoke,offerUiState,queueLabel,trackShownAt} from '../src/game/hud/offer.ts';
+import {OFFER_TAP_GUARD_MS,OfferTapGuard,TAKE_ALL_MIN,chipText,choiceFlags,isAllNew,offerJoke,offerUiState,queueLabel,trackShownAt} from '../src/game/hud/offer.ts';
 import {offerMode} from '../src/game/hud/model.ts';
 import {priceTag} from '../src/game/hud/items.ts';
 import {HEAL_AMOUNT,HEAL_CHOICE,HELD_DEADLINE,OFFER_SECONDS} from '../src/game/sim/offers.ts';
@@ -252,7 +252,11 @@ test('D-021: in combat a held offer is a chip, opened only by a tap; in the inte
   assert.deepEqual(offerUiState(wave,true),{mode:'combat',pending:0,chip:false,panel:false,clock:false,seconds:undefined});
   const prep=fakeView('offer-prepare',6);
   const state=offerUiState(prep,false);
-  assert.equal(state.mode,'intermission');assert.equal(state.panel,true);assert.equal(state.chip,false);
+  assert.equal(state.mode,'intermission');assert.equal(state.panel,true);
+  assert.equal(state.chip,true,'the chip stays in the intermission: it folds the window away');
+  assert.equal(offerUiState(prep,false,true).panel,false,'folded: the island and the fallen are visible');
+  assert.equal(offerUiState(prep,false,true).chip,true,'and one tap brings it back');
+  assert.ok(prep.offers.length>=TAKE_ALL_MIN,'two waiting: "Levar os indicados" shows');
   assert.equal(state.clock,true);assert.equal(state.seconds,FIXTURE_INTERMISSION_SECONDS);
   // A round offer the offline freeze carried into a wave keeps its real clock, behind the chip like the rest.
   const carried={...combat,offers:[{...prep.offers[1],deadlineTick:combat.tick+ticks(4)}]};
@@ -271,4 +275,11 @@ test('etiqueta price: "Nv" plus the number, "Novo!" on the star, sentence-case w
   assert.deepEqual(priceTag(HEAL_CHOICE,1),{kind:'snack',label:'Lanche'});
   for(const scenario of ['offer','offer-prepare','offer-round','offer-heal'] as const)for(const offer of fakeView(scenario,1).offers)
     for(const c of offer.choices){const label=priceTag(c.itemId,c.level).label;assert.notEqual(label,label.toUpperCase(),label);}
+});
+
+test('DSG review D2: an offer where every card is new says so in the title; mixed offers keep the price slot',()=>{
+  const allNew={id:'lvl-2-p1',source:'level' as const,level:2,choices:[{itemId:'pombo',level:1},{itemId:'tenis',level:1},{itemId:'boleto',level:1}],deadlineTick:9,defaultIndex:0};
+  assert.equal(isAllNew(allNew),true);
+  assert.equal(isAllNew({...allNew,choices:[{itemId:'pombo',level:1},{itemId:'chinelo',level:3}]}),false);
+  assert.equal(isAllNew({...allNew,choices:[{itemId:'heal',level:1}]}),false,'the lone coxinha is not "tudo novo"');
 });

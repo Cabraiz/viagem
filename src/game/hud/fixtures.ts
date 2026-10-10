@@ -10,10 +10,12 @@ import type {RunResult} from './model.ts';
 /**
  * offer: 2 level offers held in combat (chip only); offer-open: the same with the compact panel opened from the chip
  * (the sandbox taps it); offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
- * round offer alone (4 tags); offer-heal: the full-build coxinha.
+ * round offer alone (4 tags); offer-heal: the full-build coxinha;
+ * offer-downed / offer-open-downed: the same intermission window / combat strip with two allies down, the last of
+ * the team column among them (the window and the strip must never cover SOS, the timer or the "caiu!" banner).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'downed'|'boss'|'result';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','downed','boss','result'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-downed','offer-open-downed','downed','boss','result'];
 
 const roster=[
   {id:'p1',name:'Mateus',classId:'cidadao-comum'},
@@ -45,6 +47,7 @@ export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunV
     const maxHp=100+index*10;
     const player:PlayerRunView={...entry,hp:Math.round(maxHp*[0.92,0.55,0.18,0.74,1,0.33][index]),maxHp,online:index!==4||count<6,spectator:false,weapons:builds[index].weapons,passives:builds[index].passives,stats:stats[index]};
     if(scenario==='downed'&&(index===0||index===2)){player.hp=0;player.downed={progress:index===2?0.45:0,bleedOutTick:1000+ticks(index===0?21:12)};}
+    if((scenario==='offer-downed'||scenario==='offer-open-downed')&&(index===2||index===count-1)&&index>0){player.hp=0;player.online=true;player.downed={progress:0,bleedOutTick:1000+ticks(index===2?13:17)};}
     return player;
   });
 }
@@ -59,7 +62,7 @@ function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferVie
 }
 
 export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunView{
-  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal';
+  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal'||scenario==='offer-downed';
   const ends=tick+ticks(prepare?FIXTURE_INTERMISSION_SECONDS:60);
   const boss=scenario==='boss';
   const index=boss?10:prepare?4:3;
@@ -71,8 +74,8 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     pickups:[],projectiles:[],telegraphs:[],structures:[],
     players:fakePlayers(playerCount,scenario),
     // Combat: the server holds level offers until the intermission (D-021, HELD_DEADLINE).
-    offers:scenario==='offer'||scenario==='offer-open'?[fakeOffer('level',HELD_DEADLINE),fakeOffer('level',HELD_DEADLINE,13)]
-      :scenario==='offer-prepare'?[fakeOffer('level',ends),fakeOffer('round',ends)]
+    offers:scenario==='offer'||scenario==='offer-open'||scenario==='offer-open-downed'?[fakeOffer('level',HELD_DEADLINE),fakeOffer('level',HELD_DEADLINE,13)]
+      :scenario==='offer-prepare'||scenario==='offer-downed'?[fakeOffer('level',ends),fakeOffer('round',ends)]
       :scenario==='offer-round'?[fakeOffer('round',ends)]
       // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
       :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]:[],

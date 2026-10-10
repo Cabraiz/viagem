@@ -792,6 +792,69 @@ test('D-021: choosing in combat works on held offers, oldest first, and the rest
   assert.ok(isHeldOffer(queue(ctx,'a')[0]),'no fresh head clock in combat');
 });
 
+test('D-021 review: offline across the intermission, back in combat: the round offer behind the level one waits too',()=>{
+  const {ctx,sim,tick}=setup();
+  const b=addPlayer(ctx,'b');
+  const ends=intermission(ctx,20);
+  sim.grantLevelOffers(ctx,2);sim.grantRoundOffers(ctx,1,ends);
+  assert.deepEqual(queue(ctx,'b').map(o=>[o.id,o.deadlineTick]),[['lvl-2-b',ends],['rnd-1-b',ends]]);
+  b.online=false;
+  while(ctx.tick<ends+ticks(3))tick(1);
+  wave(ctx);
+  b.online=true;tick(1);
+  assert.ok(queue(ctx,'b').every(isHeldOffer),'both held in combat, whatever the source');
+  const before=eventsOf(ctx,'upgrade').length+eventsOf(ctx,'pickup').filter(e=>e.kind==='heal').length;
+  assert.ok(sim.choose(ctx,'b','lvl-2-b',0).ok);
+  tick(1);
+  const after=eventsOf(ctx,'upgrade').length+eventsOf(ctx,'pickup').filter(e=>e.kind==='heal').length;
+  assert.equal(after-before,1,'one pick, one upgrade: the round offer did not expire behind it');
+  assert.deepEqual(queue(ctx,'b').map(o=>o.id),['rnd-1-b']);
+  assert.ok(isHeldOffer(queue(ctx,'b')[0]));
+  tick(ticks(OFFER_SECONDS)*3);
+  assert.equal(eventsOf(ctx,'upgrade').length+eventsOf(ctx,'pickup').filter(e=>e.kind==='heal').length,after,'still waiting in combat');
+  const next=intermission(ctx,20);tick(1);
+  assert.equal(queue(ctx,'b')[0].deadlineTick,next,'armed by the next intermission');
+});
+
+test('D-021 review: an intermission shorter than ARM_SECONDS still arms what waited in combat; its own late levels wait',()=>{
+  const {ctx,sim,tick}=setup();
+  addPlayer(ctx,'a');
+  ctx.team.xp=5;tick(1);
+  assert.ok(isHeldOffer(queue(ctx,'a')[0]));
+  const ends=intermission(ctx,3);
+  tick(1);
+  assert.equal(queue(ctx,'a')[0].deadlineTick,ends,'3 s intermission arms the held offer');
+  sim.grantLevelOffers(ctx,3);
+  assert.ok(isHeldOffer(queue(ctx,'a')[1]),'a level granted inside it is late');
+  while(ctx.tick<ends)tick(1);
+  assert.equal(eventsOf(ctx,'upgrade').length,1,'the armed one got its default once');
+  assert.deepEqual(queue(ctx,'a').map(o=>o.id),['lvl-3-a']);
+  wave(ctx);tick(ticks(20));
+  assert.ok(isHeldOffer(queue(ctx,'a')[0]));
+  assert.equal(sim.state.lateHeld,undefined,'late list cleared when the wave starts');
+  const next=intermission(ctx,3);tick(1);
+  assert.equal(queue(ctx,'a')[0].deadlineTick,next,'armed by the next one');
+});
+
+test('D-023: in the boss wave (last round) level offers use the 10 s head clock and nothing waits forever',()=>{
+  const {ctx,sim,tick}=setup();
+  addPlayer(ctx,'a');
+  sim.grantLevelOffers(ctx,2);
+  assert.ok(isHeldOffer(queue(ctx,'a')[0]),'round 1 wave: held');
+  Object.assign(ctx.round,{index:10,total:10,phase:'wave',phaseEndsTick:ctx.tick+ticks(120)});
+  tick(1);
+  assert.equal(queue(ctx,'a')[0].deadlineTick,ctx.tick+ticks(OFFER_SECONDS),'held offer gets the head clock in the boss wave');
+  sim.grantLevelOffers(ctx,3);
+  const [first,second]=queue(ctx,'a');
+  assert.ok(second.deadlineTick>=first.deadlineTick+ticks(OFFER_SECONDS),'queued level offer chained after the head');
+  tick(ticks(OFFER_SECONDS));
+  assert.equal(eventsOf(ctx,'upgrade').length,1,'default after 10 s, in combat, because no intermission follows');
+  assert.ok(queue(ctx,'a')[0].deadlineTick>=ctx.tick+ticks(OFFER_SECONDS)-1,'next one rearmed with a fresh head clock');
+  tick(ticks(OFFER_SECONDS)+1);
+  assert.equal(eventsOf(ctx,'upgrade').length,2);
+  assert.equal(ctx.offers.has('a'),false);
+});
+
 test('offline player deadline is frozen and resumes after reconnection with the same queue',()=>{
   const {ctx,tick}=setup();
   const b=addPlayer(ctx,'b',{online:false});

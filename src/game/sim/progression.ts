@@ -3,11 +3,13 @@
  * Offers come from two sources: team level (`lvl-…`) and end of round (`rnd-…`, called by the director).
  * Only the oldest offer of each player can be chosen. Clocks never run while the player is offline.
  * Deadlines (D-021, replaces the 10 s head clock of VGM-034 when a round director runs):
- * - a level offer granted in combat is held (HELD_DEADLINE) and is due at the end of the next intermission that still
- *   has ARM_SECONDS left; one granted during such an intermission is due at its end;
+ * - a level offer granted in combat is held (HELD_DEADLINE) and is due at the end of the next intermission, however
+ *   short; one granted during an intermission is due at its end when ARM_SECONDS are left, else at the end of the next;
  * - a round offer is due at the end of its intermission (grantRoundOffers);
+ * - in combat every pending offer is held, whatever its source (an offline freeze may carry armed ones into a wave);
  * - when the intermission ends, every due offer gets its visible default once, oldest first (stale cards re-rolled).
- * Without a director (ctx.round.total 0) the old rule applies: OFFER_SECONDS from the moment an offer becomes the head.
+ * The last round (the boss wave, D-023) has no intermission after it, and without a director (ctx.round.total 0)
+ * there is none at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
  */
 import {Rng} from './rng.ts';
 import {SIM_HZ,ticks} from './types.ts';
@@ -57,7 +59,9 @@ export interface ProgressionOptions {
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
   /** First tick this run's pickups ran; chest 2:00 gate fallback until ctx.runStartTick exists (never open early). */
-  runStartTick?:number}
+  runStartTick?:number;
+  /** D-021: level offers granted too late in the current intermission (base ids); they wait for the next one. */
+  lateHeld?:string[]}
 export const createProgressionState=():ProgressionState=>({lastLevelGranted:1,lastRoundGranted:0});
 /** Pickup homing target meaning "nearest collector as soon as one exists" (drops that nobody can walk to). */
 export const HOME_ANY='*';
@@ -69,6 +73,11 @@ const receivesOffers=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 const dist2=(a:Point,b:Point)=>(a.x-b.x)**2+(a.y-b.y)**2;
 /** A round director owns ctx.round (VGM-033): offers follow the intermission clock (D-021). */
 const directed=(ctx:SimContext)=>ctx.round.total>0;
+/** D-023: the boss wave (last round) has no intermission after it, so its offers keep the old head clock. */
+const finalWave=(ctx:SimContext)=>directed(ctx)&&ctx.round.phase==='wave'&&ctx.round.index>=ctx.round.total;
+/** OFFER_SECONDS head clock (VGM-034): no director, or the boss wave. */
+const clocked=(ctx:SimContext)=>!directed(ctx)||finalWave(ctx);
+const baseOf=(id:string)=>id.split('~')[0];
 /** End of the current intermission when it still leaves ARM_SECONDS to choose; undefined in combat or too late. */
 function intermissionDeadline(ctx:SimContext){
   const r=ctx.round;
@@ -97,7 +106,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -171,7 +180,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     if(queue.some(offer=>offer.id===id||offer.id.startsWith(id+REROLL)))return undefined;
     // Old head clock only: a queued offer never shows a deadline before the one ahead of it has run out.
     const last=queue[queue.length-1];
-    if(last&&!directed(ctx))deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
+    if(last&&clocked(ctx)&&!isHeldOffer(last))deadlineTick=Math.max(deadlineTick,last.deadlineTick+ticks(OFFER_SECONDS));
     const choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
     saveRng();
     const offer:LevelOffer={id,playerId:player.id,source,level,choices,deadlineTick,defaultIndex:defaultIndexFor(player.build,choices)};
@@ -189,8 +198,12 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   function grantLevelOffers(ctx:SimContext,level:number){
     if(!(level>state.lastLevelGranted))return [];
     state.lastLevelGranted=level;
-    const deadline=directed(ctx)?intermissionDeadline(ctx)??HELD_DEADLINE:ctx.tick+ticks(OFFER_SECONDS);
-    return grantAll(ctx,p=>pushOffer(ctx,p,'level',level,`lvl-${level}-${p.id}`,deadline));
+    if(clocked(ctx))return grantAll(ctx,p=>pushOffer(ctx,p,'level',level,`lvl-${level}-${p.id}`,ctx.tick+ticks(OFFER_SECONDS)));
+    const due=intermissionDeadline(ctx);
+    const offers=grantAll(ctx,p=>pushOffer(ctx,p,'level',level,`lvl-${level}-${p.id}`,due??HELD_DEADLINE));
+    // Too late in this intermission: they wait for the next one instead of being armed now.
+    if(due===undefined&&ctx.round.phase==='prepare')(state.lateHeld??=[]).push(...offers.map(o=>o.id));
+    return offers;
   }
 
   /** End-of-round offer for every active player, due by the end of the intermission; once per round. */
@@ -215,7 +228,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     }
     const next=queue[0];
     if(!next)ctx.offers.delete(player.id);
-    else if(!directed(ctx))next.deadlineTick=Math.max(next.deadlineTick,ctx.tick+ticks(OFFER_SECONDS));
+    else if(clocked(ctx))next.deadlineTick=isHeldOffer(next)?ctx.tick+ticks(OFFER_SECONDS):Math.max(next.deadlineTick,ctx.tick+ticks(OFFER_SECONDS));
     return choice;
   }
 
@@ -242,18 +255,26 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       ctx.emit({type:'levelup',level:team.level});
       grantLevelOffers(ctx,team.level);
     }
-    const armAt=directed(ctx)?intermissionDeadline(ctx):undefined;
+    const r=ctx.round;
+    // Held offers are armed by any intermission (even one shorter than ARM_SECONDS), except the late ones of this one.
+    const armAt=directed(ctx)&&r.phase==='prepare'&&r.phaseEndsTick>ctx.tick?r.phaseEndsTick:undefined;
+    const late=new Set(state.lateHeld??[]);
+    if(directed(ctx)&&r.phase==='wave'&&state.lateHeld)delete state.lateHeld;
+    const holding=directed(ctx)&&r.phase==='wave'&&!finalWave(ctx);
     for(const [playerId,queue] of ctx.offers){
       const player=ctx.players.get(playerId);
       if(!player||!receivesOffers(player)||!queue[0]){ctx.offers.delete(playerId);continue;}
       reroll(ctx,player,queue[0]);
-      if(armAt!==undefined)for(const offer of queue)if(isHeldOffer(offer))offer.deadlineTick=armAt;
+      if(armAt!==undefined)for(const offer of queue)if(isHeldOffer(offer)&&!late.has(baseOf(offer.id)))offer.deadlineTick=armAt;
+      // Boss wave: nothing comes after it, so whatever was held gets the head clock (chained like VGM-034).
+      if(finalWave(ctx))queue.forEach((offer,i)=>{if(isHeldOffer(offer))offer.deadlineTick=(i?queue[i-1].deadlineTick:ctx.tick)+ticks(OFFER_SECONDS);});
       if(!player.online){for(const offer of queue)if(!isHeldOffer(offer))offer.deadlineTick++;continue;}
       // The intermission ends: every offer due now gets its default once, oldest first, each re-rolled if the
       // previous pick made its cards stale (two offers holding the same next level).
       while(queue[0]&&ctx.tick>=queue[0].deadlineTick){reroll(ctx,player,queue[0]);resolve(ctx,player,queue,queue[0].defaultIndex);}
-      // A level offer carried into combat by the offline freeze waits for the next intermission like the rest.
-      if(directed(ctx)&&ctx.round.phase==='wave')for(const offer of queue)if(offer.source==='level')offer.deadlineTick=HELD_DEADLINE;
+      // In combat everything waits, whatever its source: an offline freeze may carry a level offer and the round offer
+      // behind it into a wave, and a pick on the first must never let the second expire in the same tick.
+      if(holding)for(const offer of queue)offer.deadlineTick=HELD_DEADLINE;
     }
   }};
 

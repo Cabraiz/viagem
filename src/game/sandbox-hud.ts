@@ -72,7 +72,7 @@ function load(next:HudScenario){
   hud.hideResult();hud.update(view);
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
-  if(scenario==='offer-open'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
+  if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }
 load(scenario);
 (window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};

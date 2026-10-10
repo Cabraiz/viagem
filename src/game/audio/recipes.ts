@@ -127,5 +127,5 @@ export const SOUND_EMOJI:Readonly<Record<SoundId,string>>=Object.freeze({
   golpe:'👊',gema:'💎',nivel:'⭐',upgrade:'✨',queda:'🫠',resgate:'🤝',chefe:'👹',
   'round-inicio':'📣','round-fim':'🎉',buzina:'🤡',boing:'🌀',risada:'😂',
   // The stamp shows its own word instead of an emoji (D-020: no new emoji).
-  carimbo:'TUM',
+  carimbo:'tum',
 });

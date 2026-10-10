@@ -7,6 +7,7 @@
  *   - an overflow:hidden/clip box hides its own text (scroll size > client size),
  *   - a result card out of view (internal scroll) or under Revanche/Sair (long real names included),
  *   - text inside an offer card or a result card pokes out of the card, or a label pokes out of its button,
+ * a glyph of a tag's text outside the tag, an offer over a fallen ally or over a "caiu!" banner,
  * plus text under the minimum size (13 px in the match HUD and emotes), touch targets under 44 px and page scroll.
  * Usage: node scripts/audit-layout.cjs [baseUrl=http://127.0.0.1:4350] [out.json]
  * Needs Playwright: PLAYWRIGHT=/path/to/node_modules/playwright (cloud: /home/claude/tools/node_modules/playwright).
@@ -38,6 +39,26 @@ function audit(rootsSelector,minFont){
       const b=box.getBoundingClientRect(),r=e.getBoundingClientRect();
       if(r.left<b.left-1||r.right>b.right+1||r.top<b.top-1||r.bottom>b.bottom+1)problems.push(`texto sai da caixa: ${label(e)} em ${box.className.split(' ')[0]}`);
     }
+    // Glyphs, not boxes: a text squeezed by min-width:0 keeps its box inside the tag while the letters spill out.
+    const tag=e.closest('.rh-card');
+    if(tag&&!e.closest('.rh-card-stamp,.rh-card-star')){
+      const t=tag.getBoundingClientRect();
+      if(e.scrollWidth>e.clientWidth+1&&getComputedStyle(e).display!=='inline')problems.push(`texto mais largo que a caixa: ${label(e)}`);
+      for(const n of e.childNodes){if(n.nodeType!==3||!n.textContent.trim())continue;
+        const range=document.createRange();range.selectNodeContents(n);
+        for(const r of range.getClientRects())if(r.width&&(r.left<t.left-1||r.right>t.right+1||r.top<t.top-1||r.bottom>t.bottom+1)){problems.push(`letra sai da etiqueta: ${label(e)}`);break;}}
+    }
+    // The "Novo!" word must sit inside the star's body (the burst's points leave ~80% of its width usable).
+    if(e.parentElement&&e.parentElement.classList.contains('rh-card-star')&&e.offsetWidth>e.parentElement.clientWidth*.8+.5)
+      problems.push(`letra sai da estrela: ${label(e)} (${e.offsetWidth} > 80% de ${e.parentElement.clientWidth})`);
+    // Window header: the title's letters must not run into the clock or the "Levar os indicados" button.
+    if(e.classList.contains('rh-offer-title')){
+      const range=document.createRange();range.selectNodeContents(e);const tr=range.getBoundingClientRect();
+      for(const o of e.closest('.rh-offer').querySelectorAll('.rh-offer-time,.rh-offer-queue,.rh-offer-all')){
+        if(!vis(o))continue;const r=o.getBoundingClientRect();
+        if(tr.width&&tr.right>r.left+1&&tr.left<r.right-1&&tr.bottom>r.top+1&&tr.top<r.bottom-1){problems.push(`título da oferta encosta em ${o.className.split(' ')[0]}`);break;}
+      }
+    }
     const fs=parseFloat(s.fontSize);
     if(ownText(e)&&fs<minFont-.01)problems.push(`texto de ${fs}px (< ${minFont}): ${label(e)}`);
   }
@@ -57,7 +78,19 @@ function audit(rootsSelector,minFont){
     if(a)for(const c of grid.querySelectorAll('.rh-rcard')){const r=c.getBoundingClientRect(),top=Math.max(r.top,g.top),bottom=Math.min(r.bottom,g.bottom);
       if(bottom>top&&r.left<a.right&&r.right>a.left&&top<a.bottom&&bottom>a.top)problems.push(`card atrás de Revanche/Sair: ${label(c.querySelector('.rh-rcard-name')||c)}`);}
   }
+  // The offer (window or strip) never covers a fallen ally (portrait, SOS badge and timer) or a "caiu!" banner.
+  const offer=document.querySelector('.rh-offer:not([hidden])');
+  if(offer&&vis(offer)){
+    const o=offer.getBoundingClientRect();
+    const hit=r=>r.width&&r.right>o.left+1&&r.left<o.right-1&&r.bottom>o.top+1&&r.top<o.bottom-1;
+    for(const m of document.querySelectorAll('.rh-member[data-state=downed]'))if(vis(m)&&hit(m.getBoundingClientRect()))problems.push(`oferta cobre aliado caído: ${label(m)}`);
+    for(const a of document.querySelectorAll('.rh-alert:not([hidden])'))if(vis(a)){const z=+getComputedStyle(a.closest('.rh-stack')||a).zIndex||0,zo=+getComputedStyle(offer).zIndex||0;
+      if(hit(a.getBoundingClientRect())&&z<=zo)problems.push(`aviso de queda atrás da oferta: ${label(a)}`);}
+  }
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
+  // UX review: in portrait the intermission window never takes more than 32% of the height.
+  for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)
+    problems.push(`janela do intervalo com ${Math.round(w.getBoundingClientRect().height/innerHeight*100)}% da altura (> 32%)`);
   if(rootsSelector.startsWith('.rh')&&(document.documentElement.scrollHeight>innerHeight+1||document.documentElement.scrollWidth>innerWidth+1))problems.push('a página rola');
   return [...new Set(problems)];
 }
@@ -68,6 +101,8 @@ const SCENES=[
   ['hud oferta de nível no intervalo, 6p','/?sandbox=hud&players=6&state=offer-prepare&frozen=1','.rh',13],
   ['hud combate com 2 níveis no chip, 6p','/?sandbox=hud&players=6&state=offer&frozen=1','.rh',13],
   ['hud combate, painel compacto aberto, 6p','/?sandbox=hud&players=6&state=offer-open&frozen=1','.rh',13],
+  ['hud intervalo com 2 caídos (o último do time)','/?sandbox=hud&players=6&state=offer-downed&frozen=1','.rh',13],
+  ['hud combate, faixa aberta com 2 caídos','/?sandbox=hud&players=6&state=offer-open-downed&frozen=1','.rh',13],
   ['hud oferta de coxinha','/?sandbox=hud&players=6&state=offer-heal&frozen=1','.rh',13],
   ['hud combate, 6p','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13],
   ['hud caído, 6p','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13],

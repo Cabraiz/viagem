@@ -14,6 +14,8 @@ import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
 export const ROOM_PROTOCOL=3;
+/** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
+export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 
 /** Client-side ranges for the prototype skill ring (scene.ts). */
 export const ATTACK_RANGE=1.8,BASIC_COOLDOWN_TICKS=12,SKILL_RANGE=2.8,SKILL_COOLDOWN_TICKS=160;

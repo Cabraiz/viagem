@@ -1,6 +1,6 @@
 import {TerrainField,defaultTerrain,TERRAIN_VERSION} from '../terrain/field.ts';
 import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, unpackPlayer, type Input, type Player, type Snapshot } from './shared.ts';
-import type {RunState,RunOutcome} from './run.ts';
+import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {JsonRunFeed} from './run-feed.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
@@ -14,8 +14,6 @@ export class CoopClient {
   pending:Input[]=[];
   /** RunView source for the horde renderer and the HUD (protocol 3 JSON today; protocol 4 swaps the feed, VGM-042b). */
   readonly feed=new JsonRunFeed();
-  /** Last {t:'result'} of this connection (outcome, rematch counter). The run state's phase is the source of truth. */
-  result?:{outcome:RunOutcome;round:number};
   private socket?:WebSocket;
   private samples:Sample[]=[];
   private stopped=false;
@@ -61,7 +59,6 @@ export class CoopClient {
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
       else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
-      else if(m.t==='result'&&typeof m.outcome==='string')this.result={outcome:m.outcome,round:m.round};
       else if(m.t==='error'){this.onStatus(m.message);this.stopped=true;this.connected=false;this.forgetToken();this.rejectReady?.(new Error(m.message));ws.close();}
     };
     ws.onclose=()=>{
@@ -79,7 +76,7 @@ export class CoopClient {
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private apply(s:Snapshot){
-    if(s.run&&this.run&&s.run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.result=undefined;this.feed.setOffers([]);}
+    if(s.run&&this.run&&s.run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
     this.run=s.run;
     this.feed.apply(s);
     if(s.full)this.players.clear();

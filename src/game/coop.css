@@ -30,3 +30,5 @@
 #coop-attack span{font-size:29px;line-height:1}
 #coop-attack:active{background:#8870acb0;transform:translateY(2px)}
 #coop-attack:disabled{opacity:.5;cursor:default}
+/* Out of the run or watching (VGM-043): the stick looks and acts disabled, like the skill button. */
+.coop-shell[data-out=true] .explore-stick{opacity:.5;pointer-events:none}

@@ -119,10 +119,14 @@ test('a restarted room (older full snapshot) accepts event ids from the start ag
   feed.apply(snap(4,true,3));assert.equal(feed.take().events.length,1,'restarted room: ids start over');
 });
 
-test('offers map to the HUD view and bump the version; the event buffer is bounded',()=>{
-  const feed=new JsonRunFeed(),v=feed.version;
+test('offers map to the HUD view and bump only the offers version (no horde push); the event buffer is bounded',()=>{
+  const feed=new JsonRunFeed(),state=feed.stateVersion,offers=feed.offersVersion;
+  feed.apply({t:'state',tick:5,full:true,players:[],enemies:[],removed:[],victory:false,x:{round:{} as any,team:{xp:0,level:1,nextXp:5},pickups:[],projectiles:[],telegraphs:[],events:[{eventId:1,type:'levelup',level:2} as any]}});
+  assert.equal(feed.stateVersion,state+1);assert.equal(feed.offersVersion,offers);
   feed.setOffers([{id:'lvl-2-p',playerId:'p',source:'level',level:2,choices:[{itemId:'chinelo',level:2}],deadlineTick:300,defaultIndex:0} as any]);
-  assert.ok(feed.version>v);
+  assert.equal(feed.stateVersion,state+1,'an offers push is not a new tick');assert.equal(feed.offersVersion,offers+1);
+  assert.equal(feed.peek().events.length,0,'peek leaves the events for the next take');assert.equal(feed.peek().offers.length,1);
+  assert.equal(feed.take().events.length,1);
   const offer=feed.take().offers[0];
   assert.deepEqual(offer,{id:'lvl-2-p',source:'level',level:2,choices:[{itemId:'chinelo',level:2}],deadlineTick:300,defaultIndex:0});
   const events=Array.from({length:MAX_FEED_EVENTS+50},(_,i)=>({eventId:i+1,type:'levelup',level:2}));

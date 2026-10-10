@@ -12,12 +12,18 @@ type StampedEvent=SimEvent&{eventId:number};
 
 /** What the scene and the HUD need from the network, whatever the wire format. */
 export interface RunFeed {
-  /** Bumps whenever there is something new to show (state, offers). */
-  readonly version:number;
+  /** Bumps on each new authoritative state (a tick): the horde renderer is pushed only then. */
+  readonly stateVersion:number;
+  /** Bumps when the local player's offers change; the HUD refreshes without a horde push (no tick moved). */
+  readonly offersVersion:number;
   /** Live enemies by id (latest authoritative positions), for tap targeting. */
   readonly enemies:ReadonlyMap<string,EnemyView>;
+  /** HUD state of each player (fall, elimination, build) by id. */
+  readonly players:ReadonlyMap<string,PlayerRunView>;
   /** Latest view; `events` holds the ones received since the previous take, each once and in eventId order. */
   take():RunView;
+  /** Latest view without consuming events (offer-only refresh). */
+  peek():RunView;
   /** Pending offers for the local player (the room pushes them on change). */
   setOffers(offers:readonly LevelOffer[]|readonly OfferView[]):void;
   /** Reconnection to a fresh room or a new run: entities and offers start over (D-018: decoder.reset()). */
@@ -31,9 +37,10 @@ const KIND_FALLBACK='gosma';
 
 /** Protocol 3 + horde extras (JSON). */
 export class JsonRunFeed implements RunFeed {
-  version=0;
+  stateVersion=0;
+  offersVersion=0;
   readonly enemies=new Map<string,EnemyView>();
-  private players=new Map<string,PlayerRunView>();
+  readonly players=new Map<string,PlayerRunView>();
   private extras=new Map<string,PlayerExtraWire>();
   private pickups=new Map<string,PickupView>();
   private projectiles=new Map<string,ProjectileView>();
@@ -48,7 +55,7 @@ export class JsonRunFeed implements RunFeed {
 
   reset(){
     this.enemies.clear();this.players.clear();this.extras.clear();this.pickups.clear();this.projectiles.clear();
-    this.telegraphs=[];this.bossPhase.clear();this.offers=[];this.events=[];this.round=undefined;this.version++;
+    this.telegraphs=[];this.bossPhase.clear();this.offers=[];this.events=[];this.round=undefined;this.stateVersion++;this.offersVersion++;
   }
 
   apply(s:Snapshot){
@@ -71,16 +78,22 @@ export class JsonRunFeed implements RunFeed {
       this.telegraphs=x.telegraphs;
       for(const event of x.events)this.pushEvent(event as StampedEvent);
     }
-    this.version++;
+    this.stateVersion++;
   }
 
   setOffers(offers:readonly LevelOffer[]|readonly OfferView[]){
     this.offers=offers.map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex}));
-    this.version++;
+    this.offersVersion++;
   }
 
   take():RunView{
     const events=this.events;this.events=[];
+    return this.view(events);
+  }
+
+  peek():RunView{return this.view([]);}
+
+  private view(events:StampedEvent[]):RunView{
     return {
       tick:this.tick,team:{...this.team},round:this.round?{...this.round}:undefined,
       enemies:[...this.enemies.values()],pickups:[...this.pickups.values()],projectiles:[...this.projectiles.values()],

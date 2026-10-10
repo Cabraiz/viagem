@@ -7,10 +7,13 @@ import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
+import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
 import type {RunView} from './sim/view.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
+/** Center banner while the socket is down (the client retries on its own). */
+const RECONNECTING='Reconectando à turma…';
 
 let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
@@ -50,7 +53,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close()});
     hud.el.hidden=true;
     net.onStatus=m=>{$('#coop-network').textContent=m;};
-    net.onNotice=()=>{if(resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
+    net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     const attack=$('#coop-attack');attack.addEventListener('pointerdown',e=>{if(e.button!==0||attackPointer!==undefined)return;e.preventDefault();pause(false);attackPointer=e.pointerId;attacking=true;attack.setPointerCapture(e.pointerId);});
@@ -115,7 +118,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     knob.style.transform=`translate(${direction.x*max}px,${direction.y*max}px)`;
   };
   stick.addEventListener('pointerdown',event=>{
-    if(event.button!==0||!direction.start(event.pointerId))return;
+    if(event.button!==0||shell.dataset.out==='true'||!direction.start(event.pointerId))return;
     event.preventDefault();pause(false);stick.setPointerCapture(event.pointerId);
     stick.classList.add('is-dragging');updateStick(event);
   },{signal});
@@ -143,8 +146,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
+              hud.setNetwork(net.connected?undefined:RECONNECTING);
+              hud.avoidHero(controller?.scene.heroScreenRect());
             }
-            $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!net.connected;
+            // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.
+            const state=net.feed.players.get(net.id),out=run.phase==='combat'&&(!!state?.eliminated||!!member?.spectator);
+            if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
+            $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!!state?.eliminated||!!state?.downed||!net.connected;
           }
           $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name} ${player.hp}♥${player.online?'':' ↻'}`;return tag;}));

@@ -75,7 +75,8 @@ export class IslandScene extends Phaser.Scene {
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
   private projector?:Projector;
-  private feedVersion=-1;
+  private stateVersion=-1;
+  private offersVersion=-1;
   private reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
@@ -114,7 +115,9 @@ export class IslandScene extends Phaser.Scene {
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id)});
-      this.events.once('shutdown',()=>{this.horde?.destroy();this.horde=undefined;});
+      // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
+      const release=()=>{this.horde?.destroy();this.horde=undefined;};
+      this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.fit();this.place();
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
@@ -193,16 +196,11 @@ export class IslandScene extends Phaser.Scene {
     }
     return best;
   }
-  /** Screen (CSS px) points of live critters, the tapped target and the camera view: read by the local acceptance script. */
-  probe(){
-    const cam=this.cameras.main,feed=this.hooks.net?.feed;
-    const enemies=[...(feed?.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
-      const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=e.elite&&kind!=='chefe'?ELITE_SCALE:1,q=this.project(e);
-      return {id:e.id,x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-(art.hover+art.height*art.originY*.5)*size-cam.worldView.y)*cam.zoom};
-    });
-    const hero=this.project(this.position),island=this.project({x:12,y:12});
-    const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
-    return {view:this.view,zoom:cam.zoom,target:this.attackTarget,hero:screen(hero),center:screen(island),enemies,horde:this.horde?.stats()};
+  /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
+  heroScreenRect(){
+    if(!this.actor)return undefined;
+    const cam=this.cameras.main,b=this.actor.getBounds();
+    return {x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom};
   }
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
@@ -212,11 +210,16 @@ export class IslandScene extends Phaser.Scene {
     if(this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||net.players.get(net.id)?.spectator){this.attackTarget=undefined;this.route=[];}
     if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. A arma segue atirando sozinha.');}
     this.horde?.setTarget(this.attackTarget);
-    if(net.feed.version!==this.feedVersion){
-      this.feedVersion=net.feed.version;
+    // Only a new tick moves the horde: an offers-only change (push from the room) refreshes the HUD alone,
+    // or the renderer would restart its interpolation and stutter on every offer.
+    if(net.feed.stateVersion!==this.stateVersion){
+      this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
       this.horde?.push(runView);
       this.hooks.runView?.(runView);
+    }else if(net.feed.offersVersion!==this.offersVersion){
+      this.offersVersion=net.feed.offersVersion;
+      this.hooks.runView?.(net.feed.peek());
     }
     this.horde?.update(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
@@ -252,8 +255,8 @@ export class IslandScene extends Phaser.Scene {
       const q=this.project(player),depth=this.depth(player);
       objects.image.setPosition(q.x,q.y).setDepth(depth+1).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
-      const downed=player.hp<=0&&!player.spectator;
-      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${player.spectator?'assistindo':downed?'caído':player.hp+'♥'}${player.online?'':' · voltando'}`);
+      const state=net.feed.players.get(player.id),status=player.spectator?'assistindo':state?.eliminated?'fora':state?.downed?'caído':player.hp+'♥';
+      objects.label.setPosition(q.x,q.y+15).setDepth(depth+2).setText(`${player.name} · ${status}${player.online?'':' · voltando'}`);
     }
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
@@ -334,7 +337,21 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
     antialias:true,transparent:false,autoFocus:false,
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
-  // Dev server only (Vite strips it from builds): the local acceptance script reads scene.probe().
-  if(import.meta.env.DEV)(window as unknown as {__island?:unknown}).__island={game,scene};
+  // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
+  // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
+  if(import.meta.env.DEV){
+    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point};
+    const probe=()=>{
+      const cam=s.cameras.main,net=s.hooks.net;
+      const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
+      const enemies=[...(net?.feed.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
+        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=e.elite&&kind!=='chefe'?ELITE_SCALE:1,q=s.project(e);
+        return {id:e.id,...screen({x:q.x,y:q.y-(art.hover+art.height*art.originY*.5)*size})};
+      });
+      const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];
+      return {view:s.view,zoom:cam.zoom,target:s.attackTarget,hero:screen(s.project(s.position)),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats()};
+    };
+    (window as unknown as {__island?:unknown}).__island={game,scene,probe};
+  }
   return {game,scene};
 }

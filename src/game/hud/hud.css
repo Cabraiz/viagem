@@ -22,12 +22,12 @@
 
 /* ---------- Top: round chip, XP, boss ---------- */
 .rh-top{position:absolute;top:var(--rh-t);left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px}
-.rh-round{margin:0 calc(var(--rh-r) + 56px) 0 calc(var(--rh-l) + 142px);align-self:stretch;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:5px 12px;border-radius:16px;background:var(--rh-glass);border:2px solid var(--rh-glass-line);box-shadow:var(--rh-shadow);text-shadow:var(--rh-text-shadow)}
+.rh-round{margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 166px);align-self:stretch;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:5px 12px;border-radius:16px;background:var(--rh-glass);border:2px solid var(--rh-glass-line);box-shadow:var(--rh-shadow);text-shadow:var(--rh-text-shadow)}
 .rh-round-label{font:700 17px/1.05 Georgia,serif;letter-spacing:.01em;white-space:nowrap}
 .rh-round-detail{font-size:12px;opacity:.95;white-space:nowrap}
 .rh-round[data-phase=prepare]{background:#2f6a5bcc}
 .rh-round.rh-urgent{background:#9b3b3bd9;animation:rh-pulse .6s ease-in-out infinite alternate}
-.rh-xp{position:relative;align-self:stretch;margin:0 var(--rh-r) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
+.rh-xp{position:relative;align-self:stretch;margin:20px calc(var(--rh-r) + 82px) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
 .rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:10px;background:var(--rh-purple);border:2px solid var(--rh-glass-line);font:700 13px/1 'Trebuchet MS',system-ui,sans-serif;text-align:center;text-shadow:var(--rh-text-shadow);box-shadow:var(--rh-shadow)}
 .rh-xp-track{flex:1;height:12px;border-radius:8px;background:#30253699;border:2px solid var(--rh-glass-line);overflow:hidden;box-shadow:var(--rh-shadow)}
 .rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--rh-xp),#c8a8ff);transition:transform .25s ease-out}
@@ -41,6 +41,8 @@
 /* ---------- Center stack (revive alerts) ---------- */
 .rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + 70px);right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
 .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 150px)}
+/* Low slot (VGM-043): the banner leaves the top when it would cover the hero; above the joystick row. */
+.rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 140px)}
 
 /* ---------- Round marquee ---------- */
 .rh-marquee{position:absolute;left:50%;top:30%;transform:translateX(-50%);width:min(92vw,560px);padding:12px 18px 14px;border-radius:20px;text-align:center;background:linear-gradient(180deg,#fff8e5,#f6e6c2);color:var(--rh-ink);border:3px solid var(--rh-gold);box-shadow:0 10px 40px #30253660,inset 0 0 0 3px #fff;}
@@ -102,6 +104,7 @@
   .rh-boss{width:min(440px,calc(100% - var(--rh-l) - var(--rh-r) - 220px))}
   .rh-stack{top:calc(var(--rh-t) + 82px);left:calc(var(--rh-l) + 150px);right:calc(var(--rh-r) + 290px)}
   .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 118px)}
+  .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 84px)}
   .rh-marquee{top:24%}
   .rh-top:has(.rh-boss:not([hidden]))~.rh-marquee{top:calc(var(--rh-t) + 112px)}
   .rh-marquee-title{font-size:clamp(20px,6.5vh,28px)}
@@ -117,7 +120,7 @@
 /* ---------- Offer panel (non-blocking, above the joystick/attack row) ---------- */
 .rh-offer{
   --of-accent:#9b7fd4;--of-accent-deep:var(--rh-purple);--of-head:linear-gradient(180deg,#efe4ff,#e1d2fb);--of-fill:linear-gradient(90deg,var(--rh-xp),#c8a8ff);
-  position:absolute;left:var(--rh-l);right:var(--rh-r);bottom:calc(var(--rh-b) + 134px);
+  position:absolute;left:var(--rh-l);right:var(--rh-r);bottom:calc(var(--rh-b) + 142px);
   max-width:520px;margin-inline:auto;padding:6px 7px 7px;border-radius:18px;
   background:var(--rh-paper);color:var(--rh-ink);border:3px solid var(--of-accent);
   box-shadow:0 6px 0 #30253633,0 10px 28px #30253655,inset 0 0 0 2px #fff;
@@ -192,7 +195,7 @@
 
 /* Landscape: right column between the top bar and the attack button, cards stacked. */
 @media (max-height:500px){
-  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 68px);bottom:calc(var(--rh-b) + 104px);width:280px;max-width:none;margin:0;padding:5px 6px 6px;display:flex;flex-direction:column;border-radius:16px}
+  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 68px);bottom:calc(var(--rh-b) + 112px);width:280px;max-width:none;margin:0;padding:5px 6px 6px;display:flex;flex-direction:column;border-radius:16px}
   .rh-offer-in{animation-name:rh-offer-in-side}
   .rh-offer-head{min-height:22px;padding-block:2px;gap:5px}
   .rh-offer-eyebrow{font-size:10px;letter-spacing:.02em;padding-inline:5px}
@@ -203,6 +206,8 @@
   .rh-offer[data-source=round] .rh-offer-title{font-size:12px}
   .rh-offer[data-count='4'] .rh-offer-joke{display:none}
   .rh-offer-joke{margin-top:2px;font-size:10px}
+  /* VGM-043: the header joke goes in landscape so 3 cards (44 px each) end ≥ 24 px above the skill button. */
+  .rh-offer-joke{display:none}
   .rh-offer-deadline{height:5px;margin:3px 2px 5px;flex:none}
   .rh-offer-cards,.rh-offer-cards[data-count='2']{flex:1;min-height:0;grid-template-columns:1fr;grid-auto-rows:minmax(44px,1fr);gap:5px;container:rh-cards/size}
   .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(44px,1fr)}

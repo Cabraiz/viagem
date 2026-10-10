@@ -15,6 +15,8 @@ export interface HudContext {
   portrait(classId:string,detailed?:boolean):string;
   /** Running tallies accumulated from view events. */
   tally:RunTally;
+  /** Connection banner text while the socket is down (VGM-043); undefined when connected. */
+  network?:string;
 }
 
 /** Common shape of every DOM part of the HUD. */
@@ -90,6 +92,32 @@ export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
     else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá · ${seconds} s`});
   }
   return alerts.sort((a,b)=>Number(b.kind==='self')-Number(a.kind==='self')||a.seconds-b.seconds);
+}
+
+/** The one banner of the center stack (VGM-043): one line, never a pile of them on top of the field. */
+export interface ReviveBanner {kind:'self'|'ally';key:string;text:string;seconds:number;progress:number;urgent:boolean}
+
+export const OUT_TEXT='Você tá fora. Volta na revanche.';
+export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
+
+/**
+ * Priority: connection lost > own fall > own elimination / watching > allies down. Allies down at the same time are
+ * grouped ("Zé e Bia caíram!", "3 da turma caíram!"); a rescue in progress names who is being saved, plus the rest.
+ */
+export function reviveBanner(view:RunView,localId:string,network?:string):ReviveBanner|undefined{
+  if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
+  const alerts=reviveAlerts(view,localId),self=view.players.find(p=>p.id===localId);
+  const own=alerts.find(a=>a.kind==='self');
+  if(own)return {kind:'self',key:`self:${own.playerId}`,text:own.text,seconds:own.seconds,progress:own.progress,urgent:own.seconds<=5};
+  if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
+  if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
+  if(!alerts.length)return undefined;
+  const seconds=Math.min(...alerts.map(a=>a.seconds));
+  if(alerts.length===1){const a=alerts[0];return {kind:'ally',key:`ally:${a.playerId}`,text:a.text,seconds,progress:a.progress,urgent:seconds<=5};}
+  const saving=alerts.find(a=>a.progress>0),rest=alerts.length-1;
+  const who=alerts.length===2?`${alerts[0].name} e ${alerts[1].name}`:`${alerts.length} da turma`;
+  const text=saving?`Salvando ${saving.name}… ${Math.round(saving.progress*100)}% · +${rest} ${rest===1?'caído':'caídos'}`:`${who} caíram! Corre lá · ${seconds} s`;
+  return {kind:'ally',key:'group',text,seconds,progress:saving?.progress??0,urgent:seconds<=5};
 }
 
 /** Offer header copy: end-of-round upgrades look and read differently from level-ups. */

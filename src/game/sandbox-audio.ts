@@ -12,15 +12,15 @@ const CSS=`
   grid-template:"head" auto "grid" minmax(0,1fr) "panel" auto/minmax(0,1fr);
   padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
   background:radial-gradient(circle at 18% 12%,#fbdcd8 0 9%,transparent 9.5%),radial-gradient(circle at 88% 82%,#d6eee4 0 12%,transparent 12.5%),#f4eedc;
-  color:#514464;font-family:'Trebuchet MS',system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  color:#514464;font-family:var(--f-sistema);-webkit-user-select:none;user-select:none}
 .audio-lab *{box-sizing:border-box}
 .audio-lab-head{grid-area:head;display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 10px;min-width:0}
 .audio-lab-head div{flex:1;min-width:0}
 .audio-lab h1{margin:0;font-size:24px;line-height:1.1;font-weight:1000;letter-spacing:-.5px;color:#fffef4;text-shadow:2px 3px 0 #776399,-1.5px -1.5px 0 #776399,1.5px -1.5px 0 #776399,-1.5px 1.5px 0 #776399}
-.audio-lab-head>div>p{margin:5px 0 0;font:italic 13px Georgia,serif;color:#76645e}
+.audio-lab-head>div>p{margin:5px 0 0;font:italic 13px var(--f-cartaz);color:#76645e}
 .audio-lab-close{flex:none;width:44px;height:44px;border:2px solid #b4a4cd;border-radius:50%;background:#fffdf5;color:#7563ae;font-size:22px;line-height:1;cursor:pointer}
 .audio-lab-grid{grid-area:grid;min-height:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));grid-auto-rows:minmax(44px,1fr)}
-.audio-lab-sound{position:relative;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;border:2px solid var(--ink);border-radius:18px;background:var(--bg);color:#514464;font:800 13px/1.15 'Trebuchet MS',system-ui,sans-serif;text-align:center;box-shadow:0 4px 0 var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.audio-lab-sound{position:relative;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;border:2px solid var(--ink);border-radius:18px;background:var(--bg);color:#514464;font:800 13px/1.15 var(--f-sistema);text-align:center;box-shadow:0 4px 0 var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .audio-lab-sound b{font-size:clamp(22px,5.2vmin,34px);line-height:1}
 .audio-lab-sound span{overflow-wrap:anywhere}
 .audio-lab-sound:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
@@ -33,7 +33,7 @@ const CSS=`
 .audio-lab-voices{flex:1;min-width:0;font-size:12px;line-height:1.35;color:#6d609e}
 .audio-lab-voices strong{font-size:15px;color:#514464;font-variant-numeric:tabular-nums}
 .audio-lab-voices small{display:block;color:#8b7865}
-.audio-lab-chaos{flex:none;min-height:48px;padding:8px 18px;border:2px solid #bc664a;border-radius:24px;background:#ed8f91;color:#fffdf5;font:900 16px 'Trebuchet MS',system-ui,sans-serif;text-shadow:0 1px 0 #bc664a;box-shadow:0 4px 0 #bc664a;cursor:pointer}
+.audio-lab-chaos{flex:none;min-height:48px;padding:8px 18px;border:2px solid #bc664a;border-radius:24px;background:#ed8f91;color:#fffdf5;font:900 16px var(--f-sistema);text-shadow:0 1px 0 #bc664a;box-shadow:0 4px 0 #bc664a;cursor:pointer}
 .audio-lab-chaos:active{transform:translateY(3px);box-shadow:0 1px 0 #bc664a}
 .audio-lab-hint{flex:1 1 100%;margin:0;padding:8px 14px;border-radius:16px;background:#564580e6;color:#fffdf5;font-size:14px;font-weight:800;line-height:1.25;text-align:center;pointer-events:none;box-shadow:0 4px 12px #3e344e40;animation:audio-breathe 1.4s ease-in-out infinite}
 .audio-lab-hint[hidden]{display:none}

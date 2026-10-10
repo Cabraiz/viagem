@@ -1,0 +1,99 @@
+/* Tokens de design (D-020 "Janela & Etiqueta", board/design/revisao-visual.md §2).
+   Único arquivo com hex, nome de fonte, raio e sombra: o lint de design (scripts/lint-design.mjs) barra o resto.
+   Funciona sobre fundo claro e escuro (D-022) pela regra da borda dupla: corpo claro + contorno Breu. */
+
+/* ---------- Fontes servidas pelo próprio site (public/fonts, OFL) ----------
+   Subconjunto pt-BR (Latin-1 + pontuação) gerado do @fontsource 5.3.0 com pyftsubset: ~83 KB os 5 pesos.
+   O latin-ext da M PLUS só baixa se aparecer um caractere dele (apelido com ł, ş…). A Londrina não tem latin-ext. */
+@font-face{font-family:'Londrina Solid';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'Londrina Solid';font-style:normal;font-weight:900;font-display:swap;src:url(/fonts/londrina-solid-900.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+:root{
+  /* ---------- Paleta: 6 cores nomeadas (§2.1) ---------- */
+  --c-lilas:#5B3F8C;      /* Lilás Janela: moldura de sistema, texto sobre papel, tinta de carimbo */
+  --c-papel:#EEDDB8;      /* Papel de Pão: suporte de conteúdo (etiqueta, janela, balão); nunca fundo de página */
+  --c-amarelo:#FFD23F;    /* Amarelo Encarte: só escolha, CTA e "Novo!" */
+  --c-cone:#FF7A1F;       /* Laranja Cone: só perigo e urgência */
+  --c-cartolina:#7ED957;  /* Verde Cartolina: só "a favor" (cura, pronto, resgate) */
+  --c-breu:#1E1530;       /* Breu da Ilha: contorno de tudo sobre o mapa, sombra dura e texto principal */
+
+  /* Misturas das 6 (sem matiz novo). */
+  --c-papel-claro:color-mix(in srgb,var(--c-papel) 35%,#FFFFFF); /* "branco-papel": campo de texto, borda de adesivo */
+  --c-lilas-claro:color-mix(in srgb,var(--c-lilas) 55%,var(--c-papel)); /* só preenchimento de barra sobre Breu, nunca texto */
+  --c-ficha:color-mix(in srgb,var(--c-breu) 88%,transparent);   /* corpo das fichas sobre o mapa */
+  --c-veu:color-mix(in srgb,var(--c-breu) 62%,transparent);     /* fundo atrás de diálogo */
+  --c-sombra:color-mix(in srgb,var(--c-breu) 45%,transparent);  /* sombra dura de janela */
+  --c-trilho:color-mix(in srgb,var(--c-breu) 18%,transparent);  /* trilho de barra sobre papel */
+
+  /* Usos semânticos. */
+  --c-perigo:var(--c-cone);
+  --c-a-favor:var(--c-cartolina);
+  --c-escolha:var(--c-amarelo);
+  --c-texto:var(--c-breu);
+  --c-texto-papel:var(--c-lilas); /* texto de sistema sobre Papel (6,18:1) */
+  --c-texto-mapa:var(--c-papel);  /* texto sobre ficha Breu */
+  --c-moldura:var(--c-lilas);
+  --c-emblema:#75B8A6; /* emblema padrão do jogador: identidade, fora da paleta de UI (§2.1) */
+  /* Fora da paleta de UI, por serem cenário ou identidade e não sistema: */
+  --c-retrato-a:#F5D1C8;--c-retrato-b:#FBE4DA; /* chevron rosa atrás do retrato ("deve ficar", §1.7) */
+  --cena-agua:#8DCECC; /* fundo do palco da ilha antes do Phaser pintar (D-022, tropical claro) */
+
+  /* ---------- Tipo (§2.2) ---------- */
+  --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
+  --f-sistema:'M PLUS Rounded 1c',sans-serif;  /* voz de sistema: instrução, botão, apelido, timer */
+  /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
+  --t-escala:1;
+  --t-13:calc(13px * var(--t-escala));
+  --t-16:calc(16px * var(--t-escala));
+  --t-21:calc(21px * var(--t-escala));
+  --t-28:calc(28px * var(--t-escala));
+  --t-36:calc(36px * var(--t-escala));
+  --t-48:calc(48px * var(--t-escala));
+
+  /* ---------- Formas (§2.3) ---------- */
+  --r-etiqueta:4px;  /* escolha ou evento: oferta, prêmio, faixa */
+  --r-ficha:6px;     /* contador sobre o mapa (nunca pílula no HUD) */
+  --r-balao:10px;    /* falas e emotes */
+  --r-janela:12px;   /* sistema persistente */
+  --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
+
+  /* ---------- Sombras duras e contorno ---------- */
+  --s-1:0 3px 0 var(--c-breu);
+  --s-2:0 4px 0 var(--c-sombra);
+  --s-texto:0 1px 0 var(--c-breu);
+  --borda-mapa:2px solid var(--c-breu);
+
+  /* ---------- Espaço ---------- */
+  --e-4:4px;--e-8:8px;--e-12:12px;--e-16:16px;--e-24:24px;
+
+  /* ---------- Safe areas (eram --rh-t/r/b/l) ---------- */
+  --sa-t:max(8px,env(safe-area-inset-top));
+  --sa-r:max(8px,env(safe-area-inset-right));
+  --sa-b:max(8px,env(safe-area-inset-bottom));
+  --sa-l:max(8px,env(safe-area-inset-left));
+
+  /* ---------- Camadas ---------- */
+  --z-mundo:0;--z-ilha:5;--z-hud:6;--z-painel:8;--z-resultado:10;--z-dialogo:20;
+
+  /* ---------- Aliases legados: saem no próximo ciclo (DSG-tokens) ---------- */
+  --purple:var(--c-lilas);
+  --purple-deep:color-mix(in srgb,var(--c-lilas) 75%,var(--c-breu));
+  --ink:var(--c-breu);
+  --paper:var(--c-papel-claro);
+  --emblem:var(--c-emblema);
+}
+:root[data-texto="125"]{--t-escala:1.25}

@@ -205,11 +205,19 @@ export function createBoss(options:BossOptions={}):BossController {
     return boss;
   }
 
-  /** Walkable point near the island center, at least SAFE_SPAWN_DISTANCE from every player when possible. */
+  /**
+   * Walkable point near the island center (endless world: near the team's centre, spawn-em-volta), at least
+   * SAFE_SPAWN_DISTANCE from every player when possible. Only a fallback: the director passes a spawn point.
+   */
   function spawnPoint(ctx:SimContext,players:readonly Point[]):Point {
-    let best:Point=ISLAND_CENTER,bestDistance=-1;
+    let center:Point=ISLAND_CENTER;
+    if(ctx.terrain.chunks&&players.length){
+      let x=0,y=0;for(const p of players){x+=p.x;y+=p.y;}
+      center={x:x/players.length,y:y/players.length};
+    }
+    let best:Point=center,bestDistance=-1;
     for(const r of [0,2,4,6,8])for(let i=0;i<(r?16:1);i++){
-      const a=i/16*Math.PI*2,p={x:ISLAND_CENTER.x+Math.cos(a)*r,y:ISLAND_CENTER.y+Math.sin(a)*r};
+      const a=i/16*Math.PI*2,p={x:center.x+Math.cos(a)*r,y:center.y+Math.sin(a)*r};
       if(!walkable(p,ctx.terrain))continue;
       const d=minDistance(p,players);
       if(d>=SAFE_SPAWN_DISTANCE)return p;

@@ -1,8 +1,9 @@
 import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../terrain/field.ts';
+import {CHUNK_VERSION} from '../terrain/chunks.ts';
 import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
-import {ENDLESS_SPAWN_STOPGAP,coastalSpawnPoints} from '../sim/director.ts';
+import {coastalSpawnPoints} from '../sim/director.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../sim/assemble.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../sim/systems/players.ts';
 import {classBonusOf,startingBuild} from '../sim/kits.ts';
@@ -14,6 +15,8 @@ import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
 export const ROOM_PROTOCOL=3;
+/** The endless world is playable once the Room speaks protocol 4 (VGM-042b) and the camera follows (camera-segue). */
+export const ENDLESS_WORLD_READY=false;
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 
@@ -52,7 +55,7 @@ export interface RunExtras {
 }
 /** id, maxHp, flags (1 downed, 2 eliminated), revive progress 0..1, bleedOutTick, weapons [id,level][], passives [id,level][]. */
 export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][]];
-export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string}; x?:RunExtras };
+export type Snapshot = { t:'state'; tick:number; full:boolean; players:PlayerWire[]; enemies:EnemyWire[]; removed:string[]; victory:boolean; run?:RunState; terrain?:{seed:number;version:number;signature:string;world?:WorldKind;generator?:number}; x?:RunExtras };
 // hp goes up rounded (regen and might make fractions): a player or enemy still standing never shows 0.
 export const packPlayer = (p:Player):PlayerWire => [p.id,round(p.x),round(p.y),wireHp(p.hp),p.ack,p.online,p.score,p.name,p.classId,p.attackTick??0,p.spectator??false,p.skillTick??0,p.skillReadyTick??0];
 export const packEnemy = (e:Enemy&Partial<EnemyState>):EnemyWire => e.kind===undefined?[e.id,round(e.x),round(e.y),wireHp(e.hp)]:
@@ -109,13 +112,14 @@ export class Simulation {
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
   /**
-   * `world` defaults to the island. 'infinito' (D-019) is NOT playable yet: enemies spawn on a fixed ring by
-   * the base (ENDLESS_SPAWN_STOPGAP, until spawn-em-volta) and protocol 4 saturates positions past ±64 units
-   * (rede-mapa-grande). It needs `experimental: true` (tests, benchmarks) until those cards land.
+   * `world` defaults to the island. 'infinito' (D-019) spawns around the players (spawn-em-volta) and protocol 4
+   * has wide positions and areas of interest (rede-mapa-grande), but it is NOT playable yet: the Room still speaks
+   * protocol 3 (VGM-042b) and the client still frames the island (camera-segue). It needs `experimental: true`
+   * (tests, benchmarks) until ENDLESS_WORLD_READY.
    */
   constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;experimental?:boolean}={}){
-    if(options.world==='infinito'&&ENDLESS_SPAWN_STOPGAP&&!options.experimental)
-      throw new Error("Mapa infinito ainda não é jogável (spawn-em-volta e rede-mapa-grande pendentes): use experimental:true só em teste.");
+    if(options.world==='infinito'&&!ENDLESS_WORLD_READY&&!options.experimental)
+      throw new Error("Mapa infinito ainda não é jogável (sala no protocolo 4 e câmera que segue pendentes): use experimental:true só em teste.");
     this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -143,7 +147,7 @@ export class Simulation {
     this.systems=this.assemble();
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
-    coastalSpawnPoints(this.terrain);
+    coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
     for(const p of this.players.values()){
       this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
@@ -229,7 +233,8 @@ export class Simulation {
     const w=this.world;
     const enemies:EnemyWire[]=[...w.enemies.values()].map(packEnemy);
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
-    return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature},t:'state',tick:this.tick,full:true,
+    return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature,
+      ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:{})},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
       x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(packPlayerExtra),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),

@@ -189,9 +189,11 @@ export function drawTheme(index:number,rng:Rng,used:readonly string[]):RoundThem
 export interface SpawnGroup {
   /** Ticks after the round start. */
   at:number;
-  /** Enemy kind per member; a group arrives together at one coastal point. */
+  /** Enemy kind per member; a group arrives together at one point (island coast, or off screen in the endless world). */
   members:string[];
   elite?:boolean;boss?:boolean;
+  /** Besieges the base (memory.siege); the director may also flag groups through its siegeShare option. */
+  siege?:boolean;
   formation?:Formation;
 }
 export interface RoundPlan {

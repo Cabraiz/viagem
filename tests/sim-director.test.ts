@@ -416,3 +416,263 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
   assert.ok(ROUND_NAMES.length>=60);
   assert.ok(RETREAT_LINES.length>=12);
 });
+
+// ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
+import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../src/game/sim/offscreen.ts';
+import {RECYCLE_EVERY} from '../src/game/sim/director.ts';
+import {worldSpawn} from '../src/game/world.ts';
+
+const endlessField=(seed:number)=>new TerrainField(seed,{world:'infinito'});
+const bodiesOf=(ctx:FakeCtx)=>[...ctx.players.values()].filter(p=>!p.spectator&&!p.eliminated);
+const seenBy=(ctx:FakeCtx,p:Point)=>bodiesOf(ctx).filter(b=>visibleFrom(b,p)).map(b=>b.id);
+/** Moves a player like a hero with a joystick: SPEED-ish units per second, turning every few seconds. */
+function walker(seed:number){
+  const r=new Rng(seed);let a=r.range(0,Math.PI*2);
+  return (ctx:FakeCtx,p:SimPlayer)=>{
+    if(ctx.tick%ticks(3)===0)a=r.range(0,Math.PI*2);
+    const next={x:p.x+Math.cos(a)*3.1/SIM_HZ,y:p.y+Math.sin(a)*3.1/SIM_HZ};
+    if(walkable(next,ctx.terrain))Object.assign(p,next);else a+=Math.PI/2;
+  };
+}
+
+test('endless: the off-screen ring follows the camera floor (56 px hero) and every orientation and view',t=>{
+  let lo=Infinity,hi=0;
+  for(let i=0;i<720;i++){
+    const a=i/720*Math.PI*2,ux=Math.cos(a),uy=Math.sin(a),d=offscreenDistance(ux,uy);
+    lo=Math.min(lo,d);hi=Math.max(hi,d);
+    assert.ok(visibleOffset(ux*(d-.05),uy*(d-.05)),`just inside at ${i}`);
+    for(const k of [0,.5,3,20])assert.ok(!visibleOffset(ux*(d+k),uy*(d+k)),`outside at ${i}+${k}`);
+  }
+  t.diagnostic(`off-screen distance ${lo.toFixed(1)}..${hi.toFixed(1)} u, interest ${INTEREST_RADIUS} u, recycle ${RECYCLE_DISTANCE} u`);
+  assert.ok(lo>20&&hi<37,`${lo} ${hi}`);
+  assert.ok(MAX_OFFSCREEN_DISTANCE>=hi);
+  assert.ok(INTEREST_RADIUS>=MAX_OFFSCREEN_DISTANCE+RING_OUTER,'the client has every enemy before it can walk on screen');
+  assert.ok(RECYCLE_DISTANCE>INTEREST_RADIUS,'recycling only takes what no client is drawing');
+  // The 4 views are 90° turns around the player: the region is symmetric under them.
+  for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
+  // A camera hint (portrait, view 0) shows much less to the side.
+  assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12);
+});
+
+test('endless: 20 seeds, walking players, no spawn on anyone\'s screen, in water or in an obstacle',t=>{
+  let spawns=0,warnings=0,rewarns=0;
+  for(let seed=0;seed<20;seed++){
+    const field=endlessField(seed*7919+3),ctx=fakeCtx(seed,field),log=newLog();
+    const start=worldSpawn(field);
+    for(let i=0;i<4;i++)addPlayer(ctx,`p${i}`,{x:start.x+i*.7,y:start.y});
+    const walks=[...ctx.players.values()].map((_,i)=>walker(seed*10+i));
+    const director=createDirector(options(log,{rounds:3}));
+    run(ctx,director,ticks(400),c=>{
+      for(const e of c.enemies.values())if(e.spawnTick===c.tick){
+        spawns++;
+        assert.ok(walkable(e,field),`seed ${seed}: walkable spawn`);
+        assert.ok(field.land(e.x,e.y)&&field.bed(e.x,e.y)>0,`seed ${seed}: not in a lake`);
+        assert.ok(field.chunks!.clear(e.x,e.y,e.radius*.99),`seed ${seed}: not inside a tree or rock`);
+        assert.deepEqual(seenBy(c,e),[],`seed ${seed}: ${e.id} spawned on screen`);
+      }
+      [...c.players.values()].forEach((p,i)=>walks[i](c,p));
+      killAfter(ticks(4))(c);
+    },()=>director.state.stage==='done');
+    assert.equal(director.state.stage,'done',`seed ${seed} finished`);
+    assert.deepEqual(log.ends.map(r=>r.index),[1,2,3]);
+    // A warning nobody spawned at was abandoned for a re-warn (a player walked towards the spot).
+    for(const e of ctx.events)if(e.type==='spawn-warning'){
+      warnings++;
+      if(!log.created.some(c=>c.tick>=e.atTick&&c.tick<=e.atTick+ticks(2)&&Math.hypot(c.x-e.x,c.y-e.y)<3))rewarns++;
+    }
+  }
+  t.diagnostic(`endless, 4 walking players, 20 seeds x 3 rounds: ${spawns} spawns, ${warnings} warnings, ${rewarns} abandoned for a re-warn`);
+  assert.ok(rewarns<warnings*.25,`${rewarns} re-warns of ${warnings}`);
+  assert.ok(spawns>20*40);
+});
+
+test('endless: 6 players 200 units apart each get their own horde; one round-end per round',()=>{
+  const field=endlessField(77),ctx=fakeCtx(77,field),log=newLog();
+  const spots:Point[]=[];
+  for(let i=0;i<6;i++){
+    const a=i/6*Math.PI*2;let p={x:Math.round(Math.cos(a)*200),y:Math.round(Math.sin(a)*200)};
+    for(let k=0;!walkable(p,field);k++)p={x:p.x+.5,y:p.y+(k%2?.5:0)};
+    spots.push(p);addPlayer(ctx,`p${i}`,p);
+  }
+  for(let i=0;i<6;i++)for(let j=0;j<i;j++)assert.ok(Math.hypot(spots[i].x-spots[j].x,spots[i].y-spots[j].y)>=199);
+  const director=createDirector(options(log,{rounds:4}));
+  const near=new Map(spots.map((_,i)=>[`p${i}`,0]));
+  run(ctx,director,ticks(600),c=>{
+    for(const e of c.enemies.values())if(e.spawnTick===c.tick){
+      const owner=[...c.players.values()].find(p=>Math.hypot(p.x-e.x,p.y-e.y)<=INTEREST_RADIUS);
+      assert.ok(owner,`${e.id} spawned near a player`);near.set(owner.id,near.get(owner.id)!+1);
+    }
+    killAfter(ticks(3))(c);
+  },()=>director.state.stage==='done');
+  assert.deepEqual(log.ends.map(r=>r.index),[1,2,3,4]);
+  const counts=[...near.values()],total=counts.reduce((a,b)=>a+b,0);
+  assert.equal(total,log.created.length);
+  for(const [id,n] of near)assert.ok(n>=total/6*.5,`${id} got ${n} of ${total}`);
+  const ends=ctx.events.filter(e=>e.type==='round'&&e.phase==='end').length;
+  assert.equal(ends,4);
+});
+
+test('endless: the same seed replays the same spawns; another seed differs',()=>{
+  const once=(seed:number)=>{
+    const ctx=fakeCtx(seed,endlessField(5)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});addPlayer(ctx,'b',{x:60,y:-20});
+    const walk=walker(seed);
+    const director=createDirector(options(log,{rounds:4}));
+    run(ctx,director,ticks(500),c=>{walk(c,c.players.get('a')!);killAfter(ticks(3))(c);},()=>director.state.stage==='done');
+    return JSON.stringify({events:ctx.events,created:log.created,ends:log.ends,state:director.state});
+  };
+  assert.equal(once(11),once(11));
+  assert.notEqual(once(11),once(12));
+});
+
+test('endless: enemies left far behind are recycled next to the players, with no kill and no xp',()=>{
+  const ctx=fakeCtx(9,endlessField(9)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});
+  const director=createDirector(options(log,{rounds:1}));
+  // Let round 1 spawn part of its horde, then the player dashes 150 units away.
+  run(ctx,director,ticks(25));
+  const before=new Map([...ctx.enemies.values()].map(e=>[e.id,{hp:e.hp,x:e.x,y:e.y}]));
+  assert.ok(before.size>=2,`${before.size} enemies`);
+  const p=ctx.players.get('a')!;
+  let to={x:150,y:5};while(!walkable(to,ctx.terrain))to={x:to.x+.5,y:to.y};
+  Object.assign(p,to);
+  const kills=ctx.events.filter(e=>e.type==='kill').length;
+  run(ctx,director,RECYCLE_EVERY*2);
+  for(const [id,old] of before){
+    const e=ctx.enemies.get(id);assert.ok(e,`${id} still alive (recycled, not removed)`);
+    assert.equal(e.hp,old.hp);
+    assert.ok(Math.hypot(e.x-p.x,e.y-p.y)<=MAX_OFFSCREEN_DISTANCE+RING_OUTER+12,`${id} back near the player`);
+    assert.deepEqual(seenBy(ctx,e),[],'recycled off screen');
+  }
+  assert.equal(ctx.events.filter(e=>e.type==='kill').length,kills,'no kill event');
+  assert.ok((director.state.recycled??0)>=before.size);
+  run(ctx,director,ticks(120),killAfter(ticks(1)),()=>log.ends.length>0);
+  assert.equal(log.ends.length,1);
+  assert.ok((log.ends[0].recycled??0)>=before.size);
+});
+
+test('endless: on timeout the horde flees off screen; round-end once',()=>{
+  const ctx=fakeCtx(3,endlessField(3)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});
+  const director=createDirector(options(log,{rounds:1}));
+  // Nobody fights; enemies are pulled next to the player so some are on screen when the time runs out.
+  let fleeing=0;
+  run(ctx,director,ticks(200),c=>{
+    const p=c.players.get('a')!;
+    if(c.round.phase==='wave'&&c.tick<c.round.phaseEndsTick)for(const e of c.enemies.values()){e.x+=(p.x-e.x)*.05;e.y+=(p.y-e.y)*.05;}
+    fleeing=Math.max(fleeing,director.state.retreating.length);
+    for(const r of director.state.retreating){
+      const e=c.enemies.get(r.id);
+      // Fleeing enemies always move away from the player.
+      if(e)assert.ok(Math.hypot(e.x-p.x,e.y-p.y)>0);
+    }
+  },()=>log.ends.length>0);
+  assert.equal(log.ends.length,1);
+  const [end]=log.ends;
+  assert.ok(end.timedOut);assert.equal(end.retreated,end.spawned);assert.ok(fleeing>0);
+  assert.equal(ctx.enemies.size,0);
+  assert.equal(ctx.events.filter(e=>e.type==='kill').length,0,'fleeing is not dying');
+  assert.ok(ctx.events.some(e=>e.type==='bark'));
+});
+
+test('endless: fleeing enemies leave the screen before they are removed',()=>{
+  const ctx=fakeCtx(4,endlessField(4)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});
+  const director=createDirector(options(log,{rounds:1}));
+  const vanished:string[]=[];
+  // References, not copies: a removed enemy keeps the position it was removed at.
+  let last=new Map<string,EnemyState>();
+  run(ctx,director,ticks(200),c=>{
+    const p=c.players.get('a')!;
+    if(c.round.phase==='wave'&&c.tick<c.round.phaseEndsTick)for(const e of c.enemies.values()){e.x+=(p.x-e.x)*.05;e.y+=(p.y-e.y)*.05;}
+    for(const [id,e] of last)if(!c.enemies.has(id)&&visibleFrom(p,e))vanished.push(id);
+    last=new Map(c.enemies);
+  },()=>log.ends.length>0);
+  assert.ok(log.ends[0].retreated>=5,`${log.ends[0].retreated} fled`);
+  assert.deepEqual(vanished,[],'nobody vanished on screen');
+});
+
+test('endless: siege groups spawn off screen around the base, flagged memory.siege',()=>{
+  const ctx=fakeCtx(6,endlessField(6)),log=newLog();
+  let far={x:120,y:0};while(!walkable(far,ctx.terrain))far={x:far.x+.5,y:far.y};
+  addPlayer(ctx,'a',far);addPlayer(ctx,'b',{x:0,y:5});
+  const director=createDirector(options(log,{rounds:2,siegeShare:.5}));
+  let siege=0,regular=0;
+  run(ctx,director,ticks(300),c=>{
+    for(const e of c.enemies.values())if(e.spawnTick===c.tick){
+      assert.deepEqual(seenBy(c,e),[]);
+      if(e.memory?.siege===1){siege++;assert.ok(Math.hypot(e.x,e.y)<=MAX_OFFSCREEN_DISTANCE+RING_OUTER+12,'siege by the base');}
+      else regular++;
+    }
+    killAfter(ticks(3))(c);
+  },()=>director.state.stage==='done');
+  assert.ok(siege>0&&regular>0,`${siege} siege, ${regular} regular`);
+  // Default share is 0: nothing besieges.
+  const plain=fakeCtx(6,endlessField(6)),plog=newLog();addPlayer(plain,'b',{x:0,y:5});
+  const d2=createDirector(options(plog,{rounds:1}));
+  run(plain,d2,ticks(80),killAfter(ticks(3)));
+  assert.ok([...plain.enemies.values()].every(e=>e.memory?.siege===undefined));
+});
+
+test('endless: the round-10 boss appears just off screen near the team, not at the base',()=>{
+  const ctx=fakeCtx(14,endlessField(14)),log=newLog();
+  const team:Point[]=[];
+  for(let i=0;i<3;i++){let p={x:300+i*3,y:-80};while(!walkable(p,ctx.terrain))p={x:p.x+.5,y:p.y};team.push(p);addPlayer(ctx,`p${i}`,p);}
+  let bossAt:Point|undefined;
+  const director=createDirector(options(log,{spawnBoss:(c,point)=>{
+    bossAt=point;assert.deepEqual(seenBy(c as FakeCtx,point),[],'boss spawn off screen');
+    const e:EnemyState={id:c.nextId('boss'),kind:'chefe',boss:true,x:point.x,y:point.y,hp:500,maxHp:500,speed:1,damage:10,radius:.8,xp:50,spawnTick:c.tick,readyTick:c.tick};
+    c.enemies.set(e.id,e);return e;
+  }}));
+  run(ctx,director,ticks(1500),killAfter(ticks(2)),()=>director.state.stage==='done');
+  assert.ok(bossAt);
+  const cx=team.reduce((a,p)=>a+p.x,0)/3,cy=team.reduce((a,p)=>a+p.y,0)/3;
+  assert.ok(Math.hypot(bossAt.x-cx,bossAt.y-cy)<=MAX_OFFSCREEN_DISTANCE+RING_OUTER+12,`boss ${bossAt.x},${bossAt.y}`);
+  assert.equal(log.ends.length,10);
+});
+
+test('endless: a whole 10-round run with 6 players keeps the VGM-033 shape',()=>{
+  const ctx=fakeCtx(21,endlessField(21)),log=newLog();
+  for(let i=0;i<6;i++)addPlayer(ctx,`p${i}`,{x:i*.7-2,y:5});
+  const director=createDirector(options(log));
+  const elites:EnemyState[]=[];
+  run(ctx,director,ticks(1500),c=>{
+    for(const e of c.enemies.values())if(e.elite&&!elites.includes(e))elites.push(e);
+    killAfter(ticks(2))(c);
+  },()=>director.state.stage==='done');
+  assert.deepEqual(log.ends.map(r=>r.index),[1,2,3,4,5,6,7,8,9,10]);
+  assert.equal(log.bosses,1);assert.equal(elites.length,1);assert.equal(elites[0].memory?.round,5);
+  assert.equal(director.scalePlayers(ctx),6);
+  const six=log.created.filter(c=>c.round===2).length;
+  assert.ok(six>=planRound(2,6,{name:'x'},new Rng(1)).total*.9,`round 2 with 6 players: ${six}`);
+});
+
+test('endless: spawn cost stays small (laboratory numbers)',t=>{
+  const ctx=fakeCtx(31,endlessField(31)),log=newLog();
+  for(let i=0;i<6;i++)addPlayer(ctx,`p${i}`,{x:i*40,y:5+(i%2)*30});
+  const director=createDirector(options(log,{rounds:6}));
+  const costs:number[]=[];
+  run(ctx,director,ticks(900),c=>{killAfter(ticks(3))(c);},()=>{return director.state.stage==='done';});
+  // Time director steps of a fresh run on the busiest round, per tick.
+  const ctx2=fakeCtx(32,endlessField(32)),log2=newLog();
+  for(let i=0;i<6;i++)addPlayer(ctx2,`p${i}`,{x:i*40,y:5+(i%2)*30});
+  const d2=createDirector(options(log2,{rounds:6}));
+  for(let i=0;i<ticks(500)&&d2.state.stage!=='done';i++){
+    ctx2.tick++;const t0=performance.now();d2.step(ctx2);costs.push(performance.now()-t0);killAfter(ticks(6))(ctx2);
+  }
+  costs.sort((a,b)=>a-b);
+  const q=(f:number)=>costs[Math.min(costs.length-1,Math.floor(costs.length*f))].toFixed(3);
+  t.diagnostic(`director step, endless, 6 spread players: median ${q(.5)} ms, p99 ${q(.99)} ms, max ${costs[costs.length-1].toFixed(2)} ms over ${costs.length} ticks; ${log2.created.length} spawns, ${d2.state.recycled??0} recycled`);
+  assert.ok(Number(q(.99))<5,'p99 under 5 ms');
+  assert.ok(log.ends.length===6);
+});
+
+test('endless: a camera hint brings the ring in to that one screen',()=>{
+  const ctx=fakeCtx(41,endlessField(41)),log=newLog();addPlayer(ctx,'a',{x:0,y:5});
+  const hint={landscape:false,view:0};
+  const director=createDirector(options(log,{rounds:2,cameraOf:()=>hint}));
+  const dist:number[]=[];
+  run(ctx,director,ticks(200),c=>{
+    const p=c.players.get('a')!;
+    for(const e of c.enemies.values())if(e.spawnTick===c.tick){assert.ok(!visibleFrom(p,e,hint));dist.push(Math.hypot(e.x-p.x,e.y-p.y));}
+    killAfter(ticks(2))(c);
+  },()=>director.state.stage==='done');
+  assert.ok(Math.min(...dist)<16,`closest ${Math.min(...dist).toFixed(1)}`);
+  assert.ok(dist.some(d=>d<21.6),'closer than the no-hint minimum');
+});

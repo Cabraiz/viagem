@@ -12,6 +12,8 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen} from './result.ts';
 import {createHurtFrame} from './hurt.ts';
+import {chooseSlot,measureZones,veiled,type Rect} from './zones.ts';
+import './zones.css';
 
 export interface RunHudOptions {
   localId:string;
@@ -39,7 +41,7 @@ export class RunHud {
   private readonly stack:HTMLElement;
   private readonly alerts:HudPart;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
-  private topSlot?:DOMRect;
+  private topSlot?:Rect;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon};
@@ -49,9 +51,10 @@ export class RunHud {
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose});
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
-    stack.append(alerts.el);this.stack=stack;this.alerts=alerts;
+    // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
+    stack.append(announcer.el,alerts.el);this.stack=stack;this.alerts=alerts;
     this.parts=[hurt,top,announcer,team,alerts,offer];
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,announcer.el,this.result.el);
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,this.result.el);
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
@@ -63,6 +66,9 @@ export class RunHud {
     this.last=view;
     applyEvents(this.tally,view);
     for(const part of this.parts)part.update(view,this.ctx);
+    // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
+    const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
   }
 
   showResult(result:RunResult){
@@ -88,15 +94,36 @@ export class RunHud {
    * Keeps the center banner off the hero (UX checklist B2: hero rect ±40 px). The banner moves to the low slot
    * while its top slot would cross the hero, and comes back when the top slot is clear again.
    */
-  avoidHero(hero:{x:number;y:number;width:number;height:number}|undefined,margin=HERO_MARGIN_PX){
-    const row=this.stack.querySelector<HTMLElement>('.rh-alert:not([hidden])');
-    if(!row||!hero)return;
+  avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden])')];
+    this.veil(hero,margin);
+    if(!rows.length||!hero)return;
     const low=this.stack.classList.contains('rh-stack-low');
-    if(!low)this.topSlot=row.getBoundingClientRect();
-    const hits=(r?:DOMRect)=>!!r&&r.right>hero.x-margin&&r.left<hero.x+hero.width+margin&&r.bottom>hero.y-margin&&r.top<hero.y+hero.height+margin;
-    if(!low&&hits(this.topSlot))this.stack.classList.add('rh-stack-low');
-    else if(low&&!hits(this.topSlot))this.stack.classList.remove('rh-stack-low');
+    const box=(list:HTMLElement[]):Rect=>{
+      const r=list.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
+      return {x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
+    };
+    if(!low)this.topSlot=box(rows);
+    else if(this.topSlot){
+      // In the low slot the rows may be taller or fewer now: re-measure them and place that box back in the top slot.
+      const now=box(rows);this.topSlot={...this.topSlot,height:now.height,width:Math.max(this.topSlot.width,now.width)};
+    }
+    if(!this.topSlot)return;
+    const lowSlot=low?box(rows):{...this.topSlot,y:innerHeight};
+    const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
+    this.stack.classList.toggle('rh-stack-low',slot===1);
   }
+  /**
+   * While the camera does not follow the hero (whole-island framing), the hero can walk under the top band or the team
+   * strip: those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
+   */
+  private veil(hero:Rect|undefined,margin:number){
+    const readouts=[...this.el.querySelectorAll<HTMLElement>('.rh-round,.rh-xp,.rh-boss,.rh-member')];
+    const boxes=readouts.map(el=>{const r=el.getBoundingClientRect();return {rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});
+    veiled(boxes,hero,margin).forEach((under,i)=>{if(readouts[i].classList.contains('rh-veiled')!==under)readouts[i].classList.toggle('rh-veiled',under);});
+  }
+  /** The zones of the current layout (top band, team, thumbs, useful area), for the camera and the audit. */
+  zones(){return measureZones(this.el.ownerDocument);}
 
   /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
   rematchRefused(label:string){this.result.refuse(label);}

@@ -1,0 +1,9 @@
+/* UX-zonas-tela debug overlay (dev only: ?zonas in the URL or __zones.overlay(true)). Tokens only. */
+.rh-zones-debug{position:fixed;inset:0;z-index:var(--z-dialogo);pointer-events:none}
+.rh-zone{--zc:var(--c-papel);position:absolute;box-sizing:border-box;border:2px solid var(--zc);background:color-mix(in srgb,var(--zc) 14%,transparent);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:var(--s-texto);padding:2px 4px}
+.rh-zone[data-tone=cartolina]{--zc:var(--c-cartolina)}
+.rh-zone[data-tone=lilas]{--zc:var(--c-lilas)}
+.rh-zone[data-tone=amarelo]{--zc:var(--c-amarelo)}
+.rh-zone[data-tone=cone]{--zc:var(--c-cone)}
+/* Fallback while the camera does not follow (UX-zonas-tela): a status readout the hero walked under goes see-through. */
+.rh .rh-veiled{opacity:.3}

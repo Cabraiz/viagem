@@ -5,6 +5,7 @@ import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
+import {auditBoxes,auditBoxesFromDom,drawZoneOverlay,clearZoneOverlay,measureZones,type Rect} from './hud/zones.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
@@ -37,6 +38,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   let attacking=false,attackQueuedUntil=0,attackPointer:number|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
+  // Dev overlay of the screen zones (UX-zonas-tela): ?zonas in the URL.
+  let zoneOverlay=import.meta.env.DEV&&new URLSearchParams(location.search).has('zonas');
   const damage=new DamageTally();
   if(net){
     shell.classList.add('coop-shell');shell.dataset.build='viagem-coop-v3';shell.dataset.room=net.code;
@@ -52,8 +55,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
     hud.el.hidden=true;
-    // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD.
-    if(import.meta.env.DEV)(window as unknown as {__hud?:RunHud}).__hud=hud;
+    // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD (zones audit, boss marquee).
+    if(import.meta.env.DEV){
+      (window as unknown as {__hud?:RunHud}).__hud=hud;
+      (window as unknown as {__zones?:unknown}).__zones={measure:()=>measureZones(),audit:(hero?:Rect)=>auditBoxes(auditBoxesFromDom(),measureZones(),hero),
+        overlay:(on:boolean)=>{zoneOverlay=on;if(!on)clearZoneOverlay();else drawZoneOverlay(measureZones());}};
+    }
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
@@ -151,6 +158,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               shell.dataset.hudResult=String(resultShown!==undefined);
               hud.setNetwork(net.connected?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
+              // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue).
+              const zones=hud.zones();if(controller)controller.scene.usefulArea=zones.useful;
+              if(zoneOverlay)drawZoneOverlay(zones);
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.
             const state=net.feed.players.get(net.id),out=run.phase==='combat'&&(!!state?.eliminated||!!member?.spectator);

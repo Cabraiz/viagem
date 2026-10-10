@@ -21,7 +21,7 @@ for (const hero of classes) {
   }
   if ((await sharp(sourceBytes).stats()).isOpaque) throw new Error(`Opaque background: ${hero.id}`);
   const item = { id: hero.id, width: metadata.width, height: metadata.height, alpha: true, sourceBytes: sourceStat.size, variants: [] };
-  for (const [suffix, size, quality] of [['', 1024, 90], ['-thumb', 256, 86]]) {
+  for (const [suffix, size, quality] of [['', 1024, 90], ['-768', 768, 88], ['-thumb', 256, 86]]) {
     const path = new URL(`${hero.id}${suffix}.webp`, output);
     let current = false;
     try { current = (await stat(path)).mtimeMs > sourceStat.mtimeMs; } catch { /* first export */ }

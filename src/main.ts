@@ -33,14 +33,14 @@ app.innerHTML = `
     <div class="window-content">
       <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
         <span class="portrait-index" id="portrait-index"></span><span class="portrait-star" aria-hidden="true">✧</span>
-        <div id="portrait" class="portrait class-art" role="img"></div>
+        <div id="portrait" class="portrait" role="img"></div>
         <div class="portrait-caption"><span id="portrait-role"></span><blockquote id="quote"></blockquote></div>
         <nav class="portrait-navigation" aria-label="Trocar personagem"><button id="previous" class="round-button" aria-label="Classe anterior">‹</button><div><strong id="portrait-name"></strong><small id="portrait-counter"></small></div><button id="next" class="round-button" aria-label="Próxima classe">›</button></nav>
       </section>
       <div class="character-sheet">
         <div class="sheet-heading"><span class="eyebrow">GENTE COMO A GENTE. MAIS OU MENOS.</span><h2 id="class-name"></h2><p id="class-subtitle"></p></div>
         <div class="identity-row">
-          <div class="sprite-preview"><span class="tiny-label">PRÉVIA</span><div id="sprite" class="class-art" aria-hidden="true"></div><span class="sprite-shadow"></span></div>
+          <div class="sprite-preview"><span class="tiny-label">PRÉVIA</span><img id="sprite" class="class-art" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="sprite-shadow"></span></div>
           <div class="identity-fields"><label for="nickname">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" /><div class="class-meta"><span>Especialidade</span><strong id="role-name"></strong></div><fieldset class="palette"><legend>Cor do emblema</legend><div>${colors.map((value,index)=>`<button type="button" class="swatch" data-color="${value}" style="--swatch:${value}" aria-label="Cor ${['menta','coral','lilás','dourado','azul','rosa'][index]}" aria-pressed="false"></button>`).join('')}</div></fieldset></div>
         </div>
         <div class="stats-and-story"><section class="stats-box" aria-labelledby="stats-title"><h3 id="stats-title">Seu jeitinho de jogar</h3><div class="radar-wrap"><svg viewBox="0 0 220 180" aria-hidden="true"><path d="M110 20 187 90 110 160 33 90Z" class="radar-grid"/><path d="M110 40 165 90 110 140 55 90Z M110 63 140 90 110 117 80 90Z" class="radar-grid"/><path d="M110 20V160 M33 90H187" class="radar-axis"/><polygon id="radar-shape"/><circle cx="110" cy="90" r="4" fill="#6d609e"/></svg><span class="stat-label power">FORÇA <b id="stat-0"></b></span><span class="stat-label agility">AGILIDADE <b id="stat-1"></b></span><span class="stat-label wits">MALÍCIA <b id="stat-2"></b></span><span class="stat-label charm">CARISMA <b id="stat-3"></b></span></div><p class="stats-note">Cada um tem seu talento.</p></section><div class="story"><p id="class-description"></p><div class="skill-box"><span class="skill-icon" aria-hidden="true">✹</span><div><span class="tiny-label">HABILIDADE DA CLASSE · CONCEITO</span><h3 id="skill-name"></h3><p id="skill-description"></p></div></div></div></div>
@@ -58,8 +58,65 @@ function text(id: string,value: string) { document.getElementById(id)!.textConte
 function artStyle(hero: HeroClass, detailed=false) {
   return `background-image:url('/art/portraits/${hero.id}${detailed?'':'-thumb'}.webp')`;
 }
+// BUG-menu-travando: the big portrait is an <img> with srcset (768/1024 for the real DPR), decoded off-screen before it
+// swaps in, so a class change never waits on a decode inside a frame. Neighbours are warmed so the next tap is instant.
+const portraitSizes='(orientation: landscape) 34vw, calc(100vw - 48px)';
+const warmed=new Map<string,HTMLImageElement>();
+function portraitImage(hero: HeroClass, first=false) {
+  let img=warmed.get(hero.id);
+  if(img) warmed.delete(hero.id);
+  else {
+    img=new Image(); img.alt=''; img.decoding='async'; img.className='portrait-art'; img.dataset.portraitOf=hero.id;
+    if(first) img.fetchPriority='high'; // the first screen's LCP; set before src, or the fetch already left at low priority
+    img.sizes=portraitSizes; img.srcset=`/art/portraits/${hero.id}-768.webp 768w, /art/portraits/${hero.id}.webp 1024w`;
+    img.src=`/art/portraits/${hero.id}.webp`;
+  }
+  warmed.set(hero.id,img);
+  for(const key of warmed.keys()) { if(warmed.size<=4) break; if(key!==hero.id) warmed.delete(key); }
+  return img;
+}
+const idle=(task: () => void)=>('requestIdleCallback' in window ? requestIdleCallback(task,{timeout:2000}) : setTimeout(task,300));
+// Only once the player touches the carousel: the first screen downloads a single portrait.
+function warmNeighbours(hero: HeroClass) {
+  if((navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData) return;
+  const index=classes.indexOf(hero);
+  idle(()=>{
+    for(const step of [1,-1]) portraitImage(classes[(index+step+classes.length)%classes.length]).decode().catch(()=>{});
+    portraitImage(selected);
+  });
+}
+// Catalog thumbs and the sheet preview live two screens down: they load when they get near the viewport.
+const lazyArt=new IntersectionObserver(entries=>{
+  for(const entry of entries) if(entry.isIntersecting) { const img=entry.target as HTMLImageElement; img.dataset.seen='1'; if(img.dataset.src) img.src=img.dataset.src; lazyArt.unobserve(img); }
+},{rootMargin:'300px 0px'});
+function lazySrc(img: HTMLImageElement, url: string) {
+  if(img.dataset.seen) { img.src=url; return; }
+  img.dataset.src=url; lazyArt.observe(img);
+}
+let portraitToken=0, pending: HTMLImageElement|null=null;
+function showPortrait(hero: HeroClass, interactive: boolean) {
+  const frame=document.getElementById('portrait')!;
+  const current=frame.querySelector('img'), img=portraitImage(hero,!current), token=++portraitToken;
+  // Flicking past a class drops its half-downloaded art, so on 4G the bandwidth goes to the one that stays on screen.
+  if(pending&&pending!==img&&pending!==current&&!pending.complete) { warmed.delete(pending.dataset.portraitOf!); pending.removeAttribute('srcset'); pending.src=''; }
+  pending=img;
+  if(current===img) { frame.removeAttribute('aria-busy'); return; }
+  // The previous art only dims when the new one is really slow (network), never as a one-frame flash.
+  let slow=0;
+  const place=()=>{ if(token!==portraitToken) return; clearTimeout(slow); frame.replaceChildren(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
+  if(!current) { place(); return; }
+  slow=window.setTimeout(()=>{ if(token===portraitToken) frame.setAttribute('aria-busy','true'); },150);
+  img.decode().then(place,place);
+}
 function setArt(id: string,hero: HeroClass) {
-  document.getElementById(id)!.style.cssText=artStyle(hero,id!=='sprite');
+  if(id==='portrait') return showPortrait(hero,true);
+  const element=document.getElementById(id)!;
+  if(element instanceof HTMLImageElement) lazySrc(element,`/art/portraits/${hero.id}-thumb.webp`);
+  else {
+    // The dialog reuses the file the portrait already shows (768 or 1024), so confirming never downloads a second copy.
+    const shown=document.querySelector<HTMLImageElement>('#portrait img');
+    element.style.cssText=shown?.currentSrc.includes(`/${hero.id}`)?`background-image:url('${shown.currentSrc}')`:artStyle(hero,true);
+  }
 }
 function renderSelected(announce=false) {
   const index=classes.indexOf(selected);
@@ -74,12 +131,13 @@ function renderSelected(announce=false) {
   text('class-description',selected.description);
   text('skill-name',selected.skill);
   text('skill-description',selected.skillDescription);
-  setArt('portrait',selected); setArt('sprite',selected);
+  showPortrait(selected,announce); setArt('sprite',selected);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   selected.stats.forEach((value,index)=>text(`stat-${index}`,String(value)));
   const [power,agility,wits,charm]=selected.stats;
   document.getElementById('radar-shape')!.setAttribute('points',`110,${90-power*14} ${110+agility*15.4},90 110,${90+wits*14} ${110-charm*15.4},90`);
-  document.documentElement.style.setProperty('--emblem',color);
+  // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
+  if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
   document.querySelectorAll<HTMLButtonElement>('.swatch').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.color===color)));
   document.querySelectorAll<HTMLButtonElement>('[data-hero]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.hero===selected.id)));
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}`);
@@ -93,7 +151,8 @@ function renderRoster() {
   const pages=Math.max(1,Math.ceil(results.length/pageSize));
   page=Math.max(0,Math.min(page,pages-1));
   const container=document.getElementById('class-list')!;
-  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><span class="card-number">${String(hero.art+1).padStart(2,'0')}</span><span class="card-portrait class-art" style="${artStyle(hero)}" aria-hidden="true"></span><span class="card-label"><strong>${hero.name}</strong><small>${hero.role}</small></span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
+  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><span class="card-number">${String(hero.art+1).padStart(2,'0')}</span><img class="card-portrait class-art" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong><small>${hero.role}</small></span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
+  container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
   text('page-count',`${page+1} / ${pages}`);
   (document.getElementById('page-prev') as HTMLButtonElement).disabled=page===0;
@@ -107,11 +166,17 @@ document.getElementById('class-list')!.addEventListener('click',event=>{
 });
 function cycle(direction:number) {
   selected=classes[(classes.indexOf(selected)+direction+classes.length)%classes.length];
-  query=''; role='Todas'; page=Math.floor(classes.indexOf(selected)/rosterPageSize());
-  (document.getElementById('search') as HTMLInputElement).value='';
-  document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.role==='Todas')));
-  renderRoster(); renderSelected(true);
+  const nextPage=Math.floor(classes.indexOf(selected)/rosterPageSize());
+  // Rebuilding the catalog on every tap re-created its images and re-laid the page: only when the page or filter moves.
+  if(query!==''||role!=='Todas'||nextPage!==page) {
+    query=''; role='Todas'; page=nextPage;
+    (document.getElementById('search') as HTMLInputElement).value='';
+    document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.role==='Todas')));
+    renderRoster();
+  }
+  renderSelected(true);
 }
+document.querySelector('.portrait-navigation')!.addEventListener('pointerdown',()=>warmNeighbours(selected),{once:true,passive:true});
 document.getElementById('previous')!.addEventListener('click',()=>cycle(-1));
 document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;

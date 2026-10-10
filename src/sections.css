@@ -1,6 +1,6 @@
 :root { --section-nav-height: 56px; }
 html { scroll-padding-top: var(--section-nav-height); }
-.section-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; padding: 6px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background: var(--c-lilas-escuro); border-bottom: 2px solid var(--c-breu); backdrop-filter: blur(12px); }
+.section-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; padding: 6px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background: var(--c-lilas-escuro); border-bottom: 2px solid var(--c-breu); }
 .section-nav a { text-decoration: none; font-size: 12px; font-weight: 800; color: var(--c-papel); border: 1px solid transparent; border-radius: var(--r-janela); padding: 11px 18px; min-height: 40px; }
 .section-nav a[aria-current] { background: var(--c-papel); border-color: var(--c-breu); color: var(--c-lilas); }
 .section-nav .sheet-link { display: none; }

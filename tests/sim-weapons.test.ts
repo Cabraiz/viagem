@@ -668,3 +668,28 @@ test('regression: chinelo-evo spawns all orbiters before flings when near the ca
   assert.equal(all.filter(q=>q.motion==='linear').length,2);
   assert.equal(ctx.projectiles.size,cap);
 });
+
+// ---------- BUG-20261009-N5-chinelo-buraco-orbita: the starting weapons answer a hug ----------
+test('orbit: a chinelo hits an enemy hugging a player who stands still (inside the ring), and still skips the far one',()=>{
+  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['chinelo',1]]);
+  const w=R('chinelo',1);
+  // Gosma contact distance: enemy radius .32 + player radius .22 + .05.
+  addEnemy(ctx,'hug',12+.59,12,{radius:.32});
+  addEnemy(ctx,'far',12,12+w.area+1.5,{radius:.32});
+  run(ctx,systems(),Math.round(2.5*SIM_HZ));
+  assert.ok(hitsOn(ctx,'hug').length>=1,'the hugging enemy is never hit');
+  assert.equal(hitsOn(ctx,'far').length,0,'the spoke must not reach past the ring');
+  assertGap(ctx,'hug','chinelo',w.rehitTicks);
+  noDeadHits(ctx);
+});
+
+test('cone: with nobody in the facing cone, the audio wave turns to the nearest enemy in reach (a hug from behind)',()=>{
+  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['audio',1]],{facing:{x:1,y:0}});
+  const w=R('audio',1);
+  addEnemy(ctx,'behind',12-w.area*.5,12);addEnemy(ctx,'further',12,12-w.area*.9);
+  run(ctx,systems(),1);
+  assert.equal(hitsOn(ctx,'behind').length,1,'the enemy behind is answered');
+  assert.equal(hitsOn(ctx,'further').length,0,'only the cone toward the nearest one fires');
+  const f=fires(ctx,'audio')[0].event as {dx:number;dy:number};
+  assert.ok(f.dx<-.99,'the wave points at the nearest enemy');
+});

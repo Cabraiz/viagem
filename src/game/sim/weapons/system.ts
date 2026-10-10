@@ -164,12 +164,22 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     const near=scratch.filter(e=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=w.area+e.radius)
       .sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
     if(!near.length)return false;
-    const dirs=Array.from({length:w.amount},(_,i)=>rotate(face,2*Math.PI*i/w.amount));
-    for(const e of near){
+    let dirs=Array.from({length:w.amount},(_,i)=>rotate(face,2*Math.PI*i/w.amount));
+    const inCone=(e:EnemyState)=>{
       const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);
       // Enemies overlapping the player are inside every cone.
-      const inside=dist<=Math.max(e.radius,1e-9)||dirs.some(d=>Math.acos(Math.max(-1,Math.min(1,(dx*d.x+dy*d.y)/dist)))<=half);
-      if(!inside||!isAlive(ctx,e))continue;
+      return dist<=Math.max(e.radius,1e-9)||dirs.some(d=>Math.acos(Math.max(-1,Math.min(1,(dx*d.x+dy*d.y)/dist)))<=half);
+    };
+    // A player standing still keeps an old facing, so a hug from behind was never answered: when the facing
+    // cones would hit nobody, the wave turns to the nearest enemy in reach (ties by id) instead of shouting at the air.
+    if(!near.some(inCone)){
+      const target=near.reduce((best,e)=>Math.hypot(e.x-player.x,e.y-player.y)<Math.hypot(best.x-player.x,best.y-player.y)?e:best);
+      const dx=target.x-player.x,dy=target.y-player.y,dist=Math.hypot(dx,dy)||1;
+      dirs=Array.from({length:w.amount},(_,i)=>rotate({x:dx/dist,y:dy/dist},2*Math.PI*i/w.amount));
+    }
+    for(const e of near){
+      if(!inCone(e)||!isAlive(ctx,e))continue;
+      const dx=e.x-player.x,dy=e.y-player.y;
       hitEnemy(ctx,e,w.damage,player.id,w.def.id,{x:dx,y:dy,force:w.knockback});
     }
     for(const d of dirs)ctx.emit({type:'fire',player:player.id,weapon:w.def.id,x:player.x,y:player.y,dx:d.x,dy:d.y});

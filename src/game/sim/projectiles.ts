@@ -169,6 +169,18 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       const {d2,t}=segmentDistance(from.x,from.y,p.x,p.y,e.x,e.y),reach=p.radius+e.radius;
       if(d2<=reach*reach)hits.push({e,t});
     }
+    // Orbiters also sweep the spoke from the owner to the ring: an enemy hugging the owner sits inside the ring
+    // (contact ~0.6 vs ring inner edge ~0.9 for the chinelo) and would otherwise never be hit while standing still.
+    const owner=p.motion==='orbit'&&p.anchor?ctx.players.get(p.anchor):undefined;
+    if(owner){
+      candidates.length=0;
+      ctx.enemyIndex.query(owner.x,owner.y,(p.orbitRadius??1)+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
+      for(const e of candidates){
+        if(!isAlive(ctx,e)||hits.some(h=>h.e===e))continue;
+        const {d2}=segmentDistance(owner.x,owner.y,p.x,p.y,e.x,e.y),reach=p.radius+e.radius;
+        if(d2<=reach*reach)hits.push({e,t:0});
+      }
+    }
     // Deterministic order: along the path, then id.
     hits.sort((a,b)=>a.t-b.t||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
     const area=p.rehit!==undefined;

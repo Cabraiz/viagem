@@ -146,8 +146,10 @@ export class SimWorld implements SimContext {
       system.step(this);
       if(REINDEX_AFTER.has(id))this.enemyIndex.rebuild(this.enemies.values());
     }
-    // Endless world: drop chunks far from every player (pure cache, so this never changes the simulation).
-    if(this.tick%RETAIN_EVERY===0)this.terrain.retain?.(this.players.values());
+    // Endless world (pure cache, so neither call ever changes the simulation): build a couple of height
+    // lattices ahead of the players, and drop chunks far from players, base and live enemies.
+    this.terrain.prefetch?.(this.players.values());
+    if(this.tick%RETAIN_EVERY===0)this.terrain.retain?.(this.players.values(),this.enemies.values());
     return this.flush();
   }
 

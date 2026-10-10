@@ -78,12 +78,17 @@ export function activePlayers(ctx:SimContext){
 }
 const blocking=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 
+/** True while the endless world spawns on the fixed ring by the base (see coastalSpawnPoints): not playable. */
+export const ENDLESS_SPAWN_STOPGAP=true;
+
 const candidateCache=new WeakMap<TerrainField,Point[]>();
 /**
  * Coastal spawn candidates: half-unit grid nodes that are walkable, lie within BAND_MAX of the shoreline
  * and connect to the island interior (SPAWN) through clear segments. Cached per terrain field.
  * Endless world (stopgap until NEW-20261009-ORQ-spawn-em-volta): the same 24×24 grid around the base,
  * and the "coastal band" is the outer BAND_MAX of the ring of radius 12 around it.
+ * **This makes the endless world NOT playable**: enemies only ever spawn by the base, so a player who runs
+ * away is never reached. `Simulation` refuses 'infinito' unless `experimental: true` (ENDLESS_SPAWN_STOPGAP).
  */
 export function coastalSpawnPoints(terrain:TerrainField):Point[]{
   const cached=candidateCache.get(terrain);if(cached)return cached;
@@ -102,7 +107,9 @@ export function coastalSpawnPoints(terrain:TerrainField):Point[]{
       seen[next]=1;queue.push(next);
     }
   }
-  const band=terrain.chunks?(p:Point)=>{const d=Math.hypot(p.x-base.x,p.y-base.y);return d>=half-BAND_MAX&&d<=half;}:(p:Point)=>terrain.coast(p.x,p.y)<=BAND_MAX;
+  // ENDLESS_SPAWN_STOPGAP: a fixed ring around the base, so whoever runs away is never reached.
+  const inner=(half-BAND_MAX)*(half-BAND_MAX),outer=half*half;
+  const band=terrain.chunks?(p:Point)=>{const dx=p.x-base.x,dy=p.y-base.y,d2=dx*dx+dy*dy;return d2>=inner&&d2<=outer;}:(p:Point)=>terrain.coast(p.x,p.y)<=BAND_MAX;
   const points=queue.map(at).filter(band);
   candidateCache.set(terrain,points);
   return points;

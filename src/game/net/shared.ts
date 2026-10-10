@@ -2,7 +2,7 @@ import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind}
 import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
-import {coastalSpawnPoints} from '../sim/director.ts';
+import {ENDLESS_SPAWN_STOPGAP,coastalSpawnPoints} from '../sim/director.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../sim/assemble.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../sim/systems/players.ts';
 import {classBonusOf,startingBuild} from '../sim/kits.ts';
@@ -95,8 +95,14 @@ export class Simulation {
   private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
   private recent:{tick:number;event:StampedEvent}[]=[];
-  /** `world` defaults to the island; 'infinito' (D-019) needs the camera, spawn and network cards before going live. */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
+  /**
+   * `world` defaults to the island. 'infinito' (D-019) is NOT playable yet: enemies spawn on a fixed ring by
+   * the base (ENDLESS_SPAWN_STOPGAP, until spawn-em-volta) and protocol 4 saturates positions past ±64 units
+   * (rede-mapa-grande). It needs `experimental: true` (tests, benchmarks) until those cards land.
+   */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;experimental?:boolean}={}){
+    if(options.world==='infinito'&&ENDLESS_SPAWN_STOPGAP&&!options.experimental)
+      throw new Error("Mapa infinito ainda não é jogável (spawn-em-volta e rede-mapa-grande pendentes): use experimental:true só em teste.");
     this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();

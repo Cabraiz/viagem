@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_SEED,TerrainField} from '../src/game/terrain/field.ts';
 import {
-  BASE,BASE_CLEAR,CHUNK_SAMPLES,CHUNK_SIZE,COAST_CAP,ChunkWorld,KEEP_CHUNKS,MAX_LIVE_CHUNKS,generateChunk,
+  BASE,BASE_CLEAR,CHUNK_SAMPLES,CHUNK_SIZE,COAST_CAP,ChunkWorld,KEEP_CHUNKS,MAX_BUILDS_PER_TICK,MAX_LIVE_CHUNKS,generateChunk,
 } from '../src/game/terrain/chunks.ts';
 import {
   PATH_MAX_NODES,RADIUS,SPAWN,clearSegment,findPath,isLand,obstacles,obstaclesNear,resourceObstacles,walkable,
@@ -31,12 +31,12 @@ test('same seed → same chunks (hash per chunk on 20 seeds), in any order and a
   const all=new Set<string>();
   for(const seed of SEEDS){
     const forward=new ChunkWorld(seed),backward=new ChunkWorld(seed,{maxLive:9});
-    const a=coords.map(([x,y])=>forward.chunk(x,y).hash);
-    const b=[...coords].reverse().map(([x,y])=>backward.chunk(x,y).hash).reverse();
+    const a=coords.map(([x,y])=>forward.ready(x,y).hash);
+    const b=[...coords].reverse().map(([x,y])=>backward.ready(x,y).hash).reverse();
     assert.deepEqual(b,a,`seed ${seed}: order/eviction changed a chunk`);
     assert.ok(backward.evicted>0,'the small cache really evicted');
     // Rebuilt after eviction: same content.
-    assert.deepEqual(coords.map(([x,y])=>backward.chunk(x,y).hash),a);
+    assert.deepEqual(coords.map(([x,y])=>backward.ready(x,y).hash),a);
     assert.deepEqual(coords.map(([x,y])=>generateChunk(seed,x,y).hash),a);
     assert.equal(infinite(seed).signature,infinite(seed).signature);
     for(const h of a)all.add(`${seed}:${h}`);
@@ -64,7 +64,7 @@ test('no seams: heights agree across chunk borders and slopes stay under the isl
       assert.ok(Math.abs(w.bed(y,edge-1e-7)-w.bed(y,edge))<1e-3,`seed ${seed}: seam at y=${edge}, x=${y}`);
     }
     for(const [cx,cy] of [[0,0],[5,-3],[-40,12]]){
-      const c=w.chunk(cx,cy),h=c.heights,decode=(v:number)=>v/255*160-32;
+      const c=w.ready(cx,cy),h=c.heights,decode=(v:number)=>v/255*160-32;
       for(let j=0;j<CHUNK_SAMPLES;j++)for(let k=0;k<CHUNK_SAMPLES-1;k++){
         // Island bound: 3 per 0.25 → 6 per half-unit sample.
         assert.ok(Math.abs(decode(h[j*CHUNK_SAMPLES+k+1])-decode(h[j*CHUNK_SAMPLES+k]))<=6,`seed ${seed}: steep x`);
@@ -104,7 +104,7 @@ test('walk 2 000 units straight in any direction: no border, no hole, no repeate
       assert.ok(t.bed(p.x,p.y)>-13,'no bottomless hole');
       samples++;if(isLand(p,0,t))land++;
       const key=`${c.cx},${c.cy}`;
-      if(!seen.has(key)){for(const [other,hash] of seen)assert.notEqual(c.hash,hash,`${key} repeats ${other}`);seen.set(key,c.hash);}
+      if(!seen.has(key)){const hash=chunks.ready(c.cx,c.cy).hash;for(const [other,h] of seen)assert.notEqual(hash,h,`${key} repeats ${other}`);seen.set(key,hash);}
     }
     assert.ok(land/samples>.95,`mostly dry ground (${(land/samples*100).toFixed(1)}%)`);
     // And a hero really gets there: findPath hops of 12 units, every segment swept clear.
@@ -113,10 +113,10 @@ test('walk 2 000 units straight in any direction: no border, no hole, no repeate
       const route=findPath(at,next,t);
       assert.ok(route.length,`angle ${angle.toFixed(2)}: blocked at ${d}`);
       for(const p of route){assert.ok(clearSegment(at,p,t));at=p;}
-      t.retain([at]);
+      t.retain([at]);t.prefetch([at]);
     }
     assert.ok(Math.hypot(at.x,at.y)>=1990,`reached ${Math.hypot(at.x,at.y).toFixed(0)}`);
-    assert.ok(chunks.liveCount<=(2*KEEP_CHUNKS+1)**2+9,`live chunks while walking: ${chunks.liveCount}`);
+    assert.ok(chunks.liveCount<=2*(2*KEEP_CHUNKS+1)**2+9,`live chunks while walking: ${chunks.liveCount}`);
   }
 });
 
@@ -147,10 +147,10 @@ test('six players spread out: live chunks stay under a measured cap',()=>{
     }
     if(tick%20===0){t.retain(players);peakAfterRetain=Math.max(peakAfterRetain,chunks.liveCount);}
   }
-  const perPlayer=(2*KEEP_CHUNKS+1)**2;
-  assert.ok(peakAfterRetain<=6*perPlayer,`after retain: ${peakAfterRetain} > ${6*perPlayer}`);
+  const perPlayer=(2*KEEP_CHUNKS+1)**2;// six players plus the base
+  assert.ok(peakAfterRetain<=7*perPlayer,`after retain: ${peakAfterRetain} > ${7*perPlayer}`);
   assert.ok(chunks.peakLive<=MAX_LIVE_CHUNKS,`peak ${chunks.peakLive}`);
-  console.log(`# blocos vivos: pico ${chunks.peakLive}, depois do retain ${peakAfterRetain} (teto ${6*perPlayer}), gerados ${chunks.generated}, descartados ${chunks.evicted}`);
+  console.log(`# blocos vivos: pico ${chunks.peakLive}, depois do retain ${peakAfterRetain} (teto ${7*perPlayer}), gerados ${chunks.generated}, descartados ${chunks.evicted}`);
   // A hard LRU cap holds even when nobody calls retain, and results do not depend on it.
   const small=new ChunkWorld(SEEDS[7],{maxLive:32}),big=new ChunkWorld(SEEDS[7]);
   for(let i=0;i<400;i++){
@@ -161,13 +161,16 @@ test('six players spread out: live chunks stay under a measured cap',()=>{
 });
 
 function median(values:number[]){const s=[...values].sort((a,b)=>a-b);return s[Math.floor(s.length/2)];}
-function bench(t:TerrainField,cx:number,cy:number){
+function bench(t:TerrainField,cx0:number,cy0:number){
+  const cx=cx0,cy=cy0;
   let seed=99;const r=()=>{seed=(Math.imul(seed,1103515245)+12345)>>>0;return seed/4294967296;};
   // A wide area (5×5 chunks) so the local layout (how many detours) averages out between places.
   const points:Point[]=[];while(points.length<3000)points.push({x:cx+(r()-.5)*160,y:cy+(r()-.5)*160});
   const pairs:[Point,Point][]=[];
   for(const a of points){if(pairs.length>=250)break;const b={x:a.x+(r()-.5)*16,y:a.y+(r()-.5)*16};if(walkable(a,t)&&walkable(b,t))pairs.push([a,b]);}
-  for(const p of points)walkable(p,t);for(const [a,b] of pairs)findPath(a,b,t);// warm chunks and JIT
+  // As in a room: the area around the players is prefetched (the lazy path is measured apart).
+  for(let cy=Math.floor((cy0-90)/CHUNK_SIZE);cy<=Math.floor((cy0+90)/CHUNK_SIZE);cy++)for(let cx=Math.floor((cx0-90)/CHUNK_SIZE);cx<=Math.floor((cx0+90)/CHUNK_SIZE);cx++)t.chunks!.ready(cx,cy);
+  for(const p of points)walkable(p,t);for(const [a,b] of pairs)findPath(a,b,t);// warm JIT
   const w:number[]=[],c:number[]=[],f:number[]=[];
   for(let round=0;round<5;round++){
     let s=performance.now();for(const p of points)walkable(p,t);w.push((performance.now()-s)/points.length);
@@ -179,7 +182,14 @@ function bench(t:TerrainField,cx:number,cy:number){
 
 test('walkable/clearSegment/findPath cost the same at the origin and 10 000 units away (lab, 2 cores)',()=>{
   const t=infinite(SEEDS[5]);
+  bench(t,300,300);// JIT warm-up, discarded
   const origin=bench(t,0,0),far=bench(t,10000,0),diagonal=bench(t,-7071,7071);
+  // Lazy path (chunk not prefetched yet): four samples straight from the generator per height query.
+  const cold=infinite(SEEDS[5]);let seed=7;const r=()=>{seed=(Math.imul(seed,1103515245)+12345)>>>0;return seed/4294967296;};
+  const pts=Array.from({length:3000},()=>({x:20000+(r()-.5)*160,y:(r()-.5)*160}));
+  for(const p of pts)cold.chunks!.chunk(Math.floor(p.x/CHUNK_SIZE),Math.floor(p.y/CHUNK_SIZE));
+  let s=performance.now();for(const p of pts)walkable(p,cold);const lazy=(performance.now()-s)/pts.length*1000;
+  console.log(`# walkable num bloco ainda sem malha: ${lazy.toFixed(2)} µs`);
   const fmt=(b:ReturnType<typeof bench>)=>`walkable ${b.walkable.toFixed(3)} µs, clearSegment ${b.clearSegment.toFixed(2)} µs, findPath ${b.findPath.toFixed(1)} µs`;
   console.log(`# origem: ${fmt(origin)}\n# x=10 000: ${fmt(far)}\n# (-7071,7071): ${fmt(diagonal)}`);
   // Same algorithm and data per query anywhere; only the local layout varies. Loose band against CI noise.
@@ -202,7 +212,8 @@ test('coast is the capped distance to a lake shore, and land follows it',()=>{
 });
 
 test('a room on the endless world runs: players spawn by the base, wall at the origin, chunks pruned',()=>{
-  const s=new Simulation(1234,{world:'infinito'});
+  assert.throws(()=>new Simulation(1234,{world:'infinito'}),/não é jogável/,'endless world is gated until spawn-em-volta');
+  const s=new Simulation(1234,{world:'infinito',experimental:true});
   for(let i=0;i<6;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();
   // Stonewards is not in the run yet (VGM-046B); its state already builds on the endless world.
@@ -217,4 +228,61 @@ test('a room on the endless world runs: players spawn by the base, wall at the o
   }
   for(const p of players){assert.ok(walkable(p,s.terrain),`${p.id} at ${p.x},${p.y}`);}
   assert.ok(s.terrain.chunks!.liveCount<=MAX_LIVE_CHUNKS);
+});
+
+test('a chunk not prefetched answers bit-identically to a built one (safe and deterministic)',()=>{
+  for(const seed of SEEDS.slice(0,5)){
+    const lazy=infinite(seed),eager=infinite(seed);
+    let r=seed;const rnd=()=>{r=(Math.imul(r,1103515245)+12345)>>>0;return r/4294967296;};
+    const points:Point[]=[];for(let i=0;i<3000;i++)points.push({x:5000+(rnd()-.5)*200,y:-3000+(rnd()-.5)*200});
+    for(const p of points)eager.chunks!.ready(Math.floor(p.x/CHUNK_SIZE),Math.floor(p.y/CHUNK_SIZE));
+    const before=lazy.chunks!.built;
+    for(const p of points){
+      assert.equal(lazy.bed(p.x,p.y),eager.bed(p.x,p.y));assert.equal(lazy.coast(p.x,p.y),eager.coast(p.x,p.y));
+      assert.equal(walkable(p,lazy),walkable(p,eager));
+    }
+    assert.equal(lazy.chunks!.built,before,'queries never build a lattice');
+    assert.ok(lazy.chunks!.misses>0);
+    // Prefetching afterwards changes nothing either.
+    for(let i=0;i<40;i++)lazy.prefetch(points.slice(i*50,i*50+6));
+    for(const p of points.slice(0,500))assert.equal(lazy.bed(p.x,p.y),eager.bed(p.x,p.y));
+  }
+});
+
+test('prefetch: at most one lattice per player per tick, MAX_BUILDS_PER_TICK in all, nearest first',()=>{
+  const t=infinite(SEEDS[4]),chunks=t.chunks!;
+  const players=[0,1,2,3,4,5].map(i=>({x:2000*(i+1),y:-1500*i}));
+  const ready=(p:Point,r:number)=>{let n=0;for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(chunks.chunk(Math.floor(p.x/CHUNK_SIZE)+dx,Math.floor(p.y/CHUNK_SIZE)+dy).heights)n++;return n;};
+  let ticks=0;
+  while(players.some(p=>ready(p,KEEP_CHUNKS)<(2*KEEP_CHUNKS+1)**2)){
+    const before=chunks.built,built=t.prefetch(players);ticks++;
+    assert.ok(built<=MAX_BUILDS_PER_TICK&&chunks.built-before===built);
+    assert.ok(ticks<400,'prefetch converges');
+  }
+  // 6 players + base, 25 chunks each (the base's 3×3 is already built by the signature).
+  assert.ok(ticks<=Math.ceil((7*25)/MAX_BUILDS_PER_TICK)+2,`ticks ${ticks}`);
+  // Nearest first and in turn: after one round of turns every player already has its own chunk.
+  const fresh=infinite(SEEDS[4]);for(let i=0;i<Math.ceil(7/MAX_BUILDS_PER_TICK);i++)fresh.prefetch(players);
+  for(const p of players)assert.ok(fresh.chunks!.chunk(Math.floor(p.x/CHUNK_SIZE),Math.floor(p.y/CHUNK_SIZE)).heights,'own chunk first');
+});
+
+test('retain keeps the base and the chunks under live enemies: no regeneration loop with players far away',()=>{
+  const t=infinite(SEEDS[6]),chunks=t.chunks!;
+  const players=[0,1,2,3,4,5].map(i=>({x:Math.cos(i)*200,y:Math.sin(i)*200}));
+  const ring=Array.from({length:40},(_,i)=>({x:Math.cos(i/40*Math.PI*2)*12,y:Math.sin(i/40*Math.PI*2)*12}));
+  const stray=[{x:600,y:600}];// an enemy alone far from everyone
+  let warm=0;
+  for(let tick=1;tick<=600;tick++){
+    for(const e of [...ring,...stray])walkable({x:e.x+.1,y:e.y},t);
+    for(const p of players)walkable(p,t);
+    t.prefetch(players);
+    if(tick%20===0)t.retain(players,[...ring,...stray]);
+    if(tick===200)warm=chunks.generated;// prefetch has covered every anchor's 5×5 by then
+  }
+  assert.equal(chunks.generated,warm,'nothing regenerated once warm');
+  assert.ok(chunks.chunk(0,0).heights&&chunks.chunk(-1,-1).heights,'base lattices kept');
+  // Without the bodies the stray enemy's chunk goes, but the base stays.
+  t.retain(players);
+  const before=chunks.generated;walkable(ring[0],t);assert.equal(chunks.generated,before,'base kept without bodies');
+  walkable(stray[0],t);assert.equal(chunks.generated,before+1,'stray chunk was dropped');
 });

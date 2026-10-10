@@ -4,7 +4,7 @@ export const DEFAULT_SEED=0x4c8f2a17;
 export const FIELD_SIZE=129,FIELD_MIN=-4,FIELD_STEP=.25;
 export {clamp,mix,smooth,hash2d,hash2u,noise,fbm,seedFrom} from './noise.ts';
 import {clamp,mix,smooth,hash2d,fbm} from './noise.ts';
-import {ChunkWorld,CHUNK_VERSION} from './chunks.ts';
+import {BASE,ChunkWorld,endlessSignature} from './chunks.ts';
 /** 'ilha': the ~24×24 island (default). 'infinito': endless chunked map (D-019), base at the origin. */
 export type WorldKind='ilha'|'infinito';
 export interface TerrainOptions {world?:WorldKind;maxLiveChunks?:number}
@@ -22,15 +22,13 @@ export class TerrainField {
     this.world=options.world??'ilha';
     if(this.world==='infinito'){
       const chunks=this.chunks=new ChunkWorld(this.seed,{maxLive:options.maxLiveChunks});
+      // Builds the 3×3 lattices around the base, which also serve the window below.
+      this.signature=endlessSignature(this.seed,(cx,cy)=>chunks.ready(cx,cy));
       // The legacy 129×129 window (-4..28) keeps the island renderer drawing something sane around the base.
       for(let y=0;y<FIELD_SIZE;y++)for(let x=0;x<FIELD_SIZE;x++){
         const gx=FIELD_MIN+x*FIELD_STEP,gy=FIELD_MIN+y*FIELD_STEP,i=y*FIELD_SIZE+x;
         this.heights[i]=chunks.bed(gx,gy);this.moisture[i]=chunks.wetness(gx,gy);
       }
-      for(const c of 'infinito')signature=Math.imul(signature^c.charCodeAt(0),0x01000193);
-      signature=Math.imul(signature^CHUNK_VERSION,0x01000193);
-      for(let cy=-1;cy<=1;cy++)for(let cx=-1;cx<=1;cx++)for(const c of chunks.chunk(cx,cy).hash)signature=Math.imul(signature^c.charCodeAt(0),0x01000193);
-      this.signature=(signature>>>0).toString(16).padStart(8,'0');
       return;
     }
     this.chunks=undefined;
@@ -72,8 +70,15 @@ export class TerrainField {
   wetness(x:number,y:number){return this.chunks?this.chunks.wetness(x,y):this.sample(this.moisture,x,y);}
   slope(x:number,y:number){return Math.hypot(this.height(x+.125,y)-this.height(x-.125,y),this.height(x,y+.125)-this.height(x,y-.125))/.25;}
   land(x:number,y:number,margin=0){return Number.isFinite(x)&&Number.isFinite(y)&&this.coast(x,y)>margin&&this.bed(x,y)>0;}
-  /** Drops chunks far from every point (endless world); no-op on the island. Returns how many went. */
-  retain(points:Iterable<{x:number;y:number}>){return this.chunks?this.chunks.retain(points):0;}
+  /**
+   * Endless world: drops chunks far from every player and from the base, and not next to any body (enemies).
+   * No-op on the island. Returns how many went.
+   */
+  retain(players:Iterable<{x:number;y:number}>,bodies:Iterable<{x:number;y:number}>=[]){
+    return this.chunks?this.chunks.retain([BASE,...players],bodies):0;
+  }
+  /** Endless world: builds a few height lattices ahead of the players and the base (MAX_BUILDS_PER_TICK). No-op on the island. */
+  prefetch(players:Iterable<{x:number;y:number}>){return this.chunks?this.chunks.prefetch([...players,BASE]):0;}
 }
 // Instances belong to a session/room. No mutable global seed shared by rooms.
 export const defaultTerrain=new TerrainField(DEFAULT_SEED);

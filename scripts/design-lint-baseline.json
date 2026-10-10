@@ -7,7 +7,7 @@
   "src/game/fun/emotes.ts": 5,
   "src/game/hud/awards.ts": 18,
   "src/game/hud/items.ts": 19,
-  "src/game/hud/result.ts": 2,
+  "src/game/hud/result.ts": 1,
   "src/game/hud/team.ts": 4,
   "src/game/lobby.ts": 3,
   "src/game/scene.ts": 1,

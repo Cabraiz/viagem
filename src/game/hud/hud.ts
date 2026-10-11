@@ -13,7 +13,7 @@ import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
+import {chooseSlot,crosses,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
 import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
@@ -232,6 +232,17 @@ export class RunHud {
     const lowSlot=low?this.rowsBox:{...this.topSlot,y:innerHeight};
     const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
     if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
+    this.coachYield(hero,margin);
+  }
+  /**
+   * The first-run hint never sits on the hero (VGM-056): if neither slot clears it (a camera still catching up after a
+   * jump), the hint steps aside (visibility only, it keeps its place in the slot) until the hero is clear again.
+   */
+  private coachYield(hero:Rect,margin:number){
+    const row=this.coachRow.el;
+    if(row.hidden){row.classList.remove('rh-coach-yield');return;}
+    const r=row.getBoundingClientRect();
+    row.classList.toggle('rh-coach-yield',crosses({x:r.left,y:r.top,width:r.width,height:r.height},hero,margin));
   }
   /**
    * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or

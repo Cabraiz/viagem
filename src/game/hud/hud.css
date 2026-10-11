@@ -681,6 +681,8 @@
   background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
 .rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
 .rh-ended .rh-coach{display:none}
+/* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */
+.rh-coach.rh-coach-yield{visibility:hidden}
 @media (max-height:500px){
   .rh-coach{width:min(100%,300px);padding:3px 10px 4px 6px}
 }

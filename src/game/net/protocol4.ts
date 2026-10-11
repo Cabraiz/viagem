@@ -6,9 +6,10 @@
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
  *   u8 magic 0x56 'V' | u8 version 5 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
  *   team: uvar xp, uvar level, uvar nextXp
- *   u8 flags (bit0 round, bit1 wave, bit2 world) | round? | wave? | world? (u8 kind, uvar terrain version,
- *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes)
- *   6 entity sections (players, enemies, pickups, projectiles, telegraphs, structures):
+ *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
+ *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar coco, uvar pedra; svar hornEndsTick-tick if horn)
+ *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
  *   events: uvar count, (uvar eventIdGap, uvar byteLength, u8 code, [u8 optional bits], fields*)*
@@ -23,18 +24,20 @@
  * Events are resent (after resendTicks, or right after a resync) until the client acks a frame that carried them;
  * the decoder drops ids it has seen. Entity references inside events are wire ids, not strings.
  * Area of interest: an encoder with a `viewer` sends every player (allies always, for the minimap), structures (the
- * base) and the boss, plus enemies, pickups, projectiles and telegraphs within INTEREST_RADIUS of the viewer (kept
+ * base) and the boss, plus enemies, pickups, projectiles, telegraphs and nodes within INTEREST_RADIUS of the viewer (kept
  * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../sim/types.ts';
-import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
+import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
- * would misread any frame with events. The join handshake refuses other versions with the update message.
+ * would misread any frame with events. 6 since VGM-046B (Stonewards): the camp block (flag bit 3), a seventh section
+ * (gather nodes) and the towers' `untilTick`; a 5 decoder would refuse the flags or misread the sections. The join
+ * handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=5;
+export const PROTOCOL_VERSION=6;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -64,6 +67,8 @@ export const DICT:readonly string[]=[
   'downed','revived','eliminated',
   // legacy weapons, heal offer choice
   'basico','habilidade','heal',
+  // Stonewards (protocol 6): tower kind, forge recipes and node `say` keys
+  'torre-chinelo','reparo','gambiarra','no-coco','no-pedra',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -224,8 +229,8 @@ const contribution=optional<Contribution>({
  * sprite (attack swing, skill ring, skill cooldown); absent means 0 (never).
  */
 export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number};
-type SectionKey='players'|'enemies'|'pickups'|'projectiles'|'telegraphs'|'structures';
-export const SECTIONS:readonly SectionKey[]=['players','enemies','pickups','projectiles','telegraphs','structures'];
+type SectionKey='players'|'enemies'|'pickups'|'projectiles'|'telegraphs'|'structures'|'nodes';
+export const SECTIONS:readonly SectionKey[]=['players','enemies','pickups','projectiles','telegraphs','structures','nodes'];
 type AnyCodec=Codec<unknown>;
 interface Schema {
   prefix:string;
@@ -250,7 +255,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
   }},
-  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count)}},
+  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel))}},
+  // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
+  nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
 const SECTION_BY_PREFIX=new Map(SECTIONS.filter(s=>s!=='players').map(s=>[SCHEMAS[s].prefix,s]));
 /** Server tick rate; kept here so the client module does not import server code. */
@@ -333,12 +340,15 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['structure',[['id','ref',false,'structures'],['hp','count'],['maxHp','count']]],
   // Class skill cast (E7-skill-hud-wiring): balloon line, dice result and landing spot (x, y only when the skill moved the caster).
   ['skill',[['player','ref'],['skill','str'],['line','str'],['outcome','str',true],['x','pos',true],['y','pos',true]]],
+  // D-013 (VGM-046B): the return horn (when the round starts, its joke) and lines from things that are not enemies.
+  ['horn',[['endsTick','tick'],['line','str',true]]],
+  ['say',[['source','ref'],['key','str'],['line','str']]],
 ];
 const EVENT_CODE=new Map<string,number>(EVENT_SPECS.map(([type],i)=>[type,i]));
 /** Upper bound of one event's body (a few refs, numbers and strings of at most MAX_STRING_BYTES). */
 const MAX_EVENT_BYTES=4096;
 const REF_INLINE=0,REF_PLAYER=1;
-const REF_SECTIONS:SectionKey[]=['enemies','pickups','projectiles','telegraphs','structures'];
+const REF_SECTIONS:SectionKey[]=['enemies','pickups','projectiles','telegraphs','structures','nodes'];
 const LABEL=/^([a-z])(\d{1,9})$/;
 
 function writeEvent(w:Writer,e:WireEvent,f:FrameCtx,ids:WireIds){
@@ -450,7 +460,11 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase']);
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn']);
+/** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
+const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
+/** Camp block bits. */
+const CAMP_HORN=1,CAMP_WALL_DOWN=2;
 type Point2={x:number;y:number};
 
 /**
@@ -619,7 +633,7 @@ export class FrameEncoder {
     w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?this.acked:0);w.uvar(view.tick);w.svar(f.ox);w.svar(f.oy);
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
     const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
-    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0));
+    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0));
     if(view.round){
       const r=view.round;
       w.uvar(r.index);w.uvar(r.total);w.str(r.phase);w.svar(r.phaseEndsTick-view.tick);w.uvar(r.remaining);
@@ -630,9 +644,14 @@ export class FrameEncoder {
       w.u8(WORLD_KINDS.indexOf(d.kind)<0?0:WORLD_KINDS.indexOf(d.kind));w.uvar(d.terrainVersion);w.uvar(d.generatorVersion);w.uvar(d.seed);w.str(d.signature);
       this.sentWorld={...d,signature:clip(d.signature)};
     }
+    if(view.camp){
+      const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(camp.coco);w.uvar(camp.pedra);
+      if(horn)w.svar(camp.hornEndsTick!-view.tick);
+    }
     const world:World={tick:view.tick,tables:emptyTables()};
     for(const section of SECTIONS){
-      const schema=SCHEMAS[section],list=view[section] as unknown as Entity[];
+      const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
       const current=this.select(section,list,focus);
       // Removed from this client but still in the world: it left the area of interest (no death poof).
@@ -798,8 +817,8 @@ export class FrameDecoder {
       if(baseSeq&&!base)return {ok:false,error:'missing baseline',resync:true};
       const team={xp:r.uvar(),level:r.uvar(),nextXp:r.uvar()};
       const flags=r.u8();
-      if(flags>7)throw new FrameError('bad flags');
-      let round:RoundState|undefined,wave:RunView['wave'],world=this.world;
+      if(flags>15)throw new FrameError('bad flags');
+      let round:RoundState|undefined,wave:RunView['wave'],world=this.world,camp:CampView|undefined;
       if(flags&1){
         const index=r.uvar(),total=r.uvar(),phase=r.str(),phaseEndsTick=tick+r.svar(),remaining=r.uvar();
         if(phase!=='wave'&&phase!=='prepare')throw new FrameError('bad round phase');
@@ -812,6 +831,12 @@ export class FrameDecoder {
       if(flags&4){
         const kind=WORLD_KINDS[r.u8()];if(!kind)throw new FrameError('unknown world');
         world={kind,terrainVersion:r.uvar(),generatorVersion:r.uvar(),seed:r.uvar(),signature:r.str()};
+      }
+      if(flags&8){
+        const bits=r.u8();if(bits>3)throw new FrameError('bad camp bits');
+        camp={coco:r.uvar(),pedra:r.uvar()};
+        if(bits&CAMP_HORN)camp.hornEndsTick=tick+r.svar();
+        if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }
       const next:World={tick,tables:emptyTables()},left:string[]=[];
       for(const section of SECTIONS){
@@ -844,6 +869,7 @@ export class FrameDecoder {
         players:list<PlayerWireView>('players').map(p=>({...p,weapons:p.weapons??[],passives:p.passives??[]})),
         enemies:list<EnemyView>('enemies'),pickups:list<PickupView>('pickups'),
         projectiles:list<ProjectileView>('projectiles'),telegraphs:list<TelegraphView>('telegraphs'),structures:list<StructureView>('structures'),
+        nodes:list<NodeView>('nodes'),...(camp?{camp}:{}),
         offers:this.offers.map(o=>({...o,choices:o.choices.map(c=>({...c}))})),
         events,
       };

@@ -104,6 +104,21 @@ export class CoopClient {
   onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
   /** Last answer to a skill tap. */
   lastCast?:{seq:number;ok:boolean;readyTick:number};
+  /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
+  onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
+  /**
+   * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
+   * point: a reloaded page keeps its seat (token) but not this counter, and a restarted count would read as a resend.
+   */
+  private forgeId=Math.floor(Math.random()*2**30);
+  /**
+   * Forge tap (VGM-046B): {t:'forge',round,recipe,req} at once; the room answers {t:'forged'} (onForged). Returns the
+   * request id, or undefined when the tap cannot reach the room (offline, not in a run).
+   */
+  forge(recipe:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.socket.send(JSON.stringify({t:'forge',round:this.run.round,recipe,req}));return req;
+  }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
   readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
@@ -150,6 +165,7 @@ export class CoopClient {
       else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='replaced')this.replaced(ws);
       else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
+      else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };

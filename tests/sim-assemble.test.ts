@@ -28,10 +28,10 @@ test('single item catalog covers weapons, evolutions and passives with the same 
 
 test('every horde system is registered once per run, and a rematch replaces them without stacking hooks',()=>{
   const s=sim(2);
-  assert.deepEqual(s.world.registered(),RUN_ORDER.filter(id=>id!=='structures'));
+  assert.deepEqual(s.world.registered(),[...RUN_ORDER]);
   for(let run=0;run<3;run++){
     s.resetRun();
-    assert.deepEqual(s.world.registered(),RUN_ORDER.filter(id=>id!=='structures'));
+    assert.deepEqual(s.world.registered(),[...RUN_ORDER]);
     const enemy=createEnemy(s.world,'gosma',{x:12,y:12},1);
     const before=[...s.players.values()].map(p=>p.score);
     assert.ok(s.world.damageEnemy(enemy.id,1e6,'p0'));
@@ -178,6 +178,8 @@ test('plan §2 item 8: a 2-minute boss fight against 6 players (both phases) sta
   for(let t=0;t<2400;t++){
     // Players never fall and never shoot, so the boss keeps casting through phase 1 and 2.
     for(const p of s.players.values()){p.hp=p.stats.maxHp;delete p.downed;p.build.weapons=[];}
+    // ...and the wall holds (nobody defends it here: the siege would end the run, VGM-046B).
+    s.run.stonewards.state.wall.hp=s.run.stonewards.state.wall.maxHp;
     const boss=s.run.boss.boss(s.world);if(boss&&t===600)boss.hp=boss.maxHp*.4;
     s.step();peak=Math.max(peak,s.world.telegraphs.size);
   }

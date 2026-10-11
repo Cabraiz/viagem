@@ -10,7 +10,12 @@ import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSyst
 import {ELITE,FISCAL_SHOT,TIO_JOKE,enemyDef,hashUnit,type EnemyDef} from './catalog.ts';
 import type {TauntedEnemy} from '../skills.ts';
 
-/** Optional non-player target (wall/shelter, VGM-046). Enemies go for whichever is closer: player or structure edge. */
+/**
+ * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
+ * consider it, and go for whichever is closer: a player or the structure's edge (NEW-20261006-E8-wall-siege-single-path).
+ * Everyone else ignores structures. Against a structure every kind walks up and hits it (the fiscal too: a fine does
+ * not hurt a wall).
+ */
 export interface StructureTarget extends Point {id:string;radius:number}
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
@@ -38,6 +43,8 @@ export const SEPARATION=.5,SEPARATION_MAX=.12;
 const NEIGHBOR_REACH=.9;
 const MAX_STEP=.25;
 const TAU=Math.PI*2;
+/** Enemy memory flag of the besiegers (stonewards/wall.ts SIEGE_FLAG; not imported, to keep this module off Stonewards). */
+const SIEGE='siege';
 /** memory.state values. */
 export const STATE={walk:0,joke:1,charge:2,aim:3} as const;
 
@@ -128,7 +135,7 @@ export class EnemyAi implements SimSystem {
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else{
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        for(const s of structures){const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
+        if(memory[SIEGE]===1)for(const s of structures){const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone.
@@ -138,7 +145,7 @@ export class EnemyAi implements SimSystem {
         const tx=target.x-e.x,ty=target.y-e.y,d=Math.max(1e-6,Math.hypot(tx,ty)),ux=tx/d,uy=ty/d;
         const touching=best<=e.radius+PLAYER_RADIUS+.05;
         const def=enemyDef(e.kind);
-        switch(def.behavior){
+        switch(structure?'chase':def.behavior){
           case 'swarm':{
             const wave=Math.sin(ctx.tick*.45+memory.seed*TAU)*.9;
             dirX=ux-uy*wave;dirY=uy+ux*wave;
@@ -177,8 +184,8 @@ export class EnemyAi implements SimSystem {
           }
           default:{dirX=ux;dirY=uy;}
         }
-        // Melee kinds stop at contact; the fiscal keeps backing off. Tio does not hit mid-joke.
-        if(touching&&def.behavior!=='ranged'){dirX=0;dirY=0;}
+        // Melee kinds stop at contact; the fiscal keeps backing off (from players). Tio does not hit mid-joke.
+        if(touching&&(def.behavior!=='ranged'||structure)){dirX=0;dirY=0;}
         if(touching&&memory.state!==STATE.joke&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           if(player){

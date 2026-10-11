@@ -186,7 +186,8 @@ export function measureZones(doc:Document=document):ScreenZones{
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
     team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
-    offer:rectOf(q('.rh-offer')),
+    // The forge (VGM-046B) is an intermission window in the offer's place; they are never open together.
+    offer:rectOf(q('.rh-offer'))??rectOf(q('.rh-forge')),
   });
 }
 
@@ -209,12 +210,15 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('#coop-attack','habilidade',{thumb:true,target:true});
   add('.explore-camera button','câmera',{target:true});add('.explore-camera span','câmera-vista');
   add('.explore-config','engrenagem',{target:true});
-  add('.rh-round','round');add('.rh-xp','xp');add('.rh-boss','chefe');
+  add('.rh-round','round');add('.rh-xp','xp');add('.rh-boss','chefe');add('.rh-camp','base');
   const low=!!doc.querySelector('.rh-stack.rh-stack-low');
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
   add('.rh-member','time');
   // The open window may sit in the field but never on the hero: the camera moves the hero beside it (UX onda 4).
   add('.rh-offer','oferta',{allowedInPlay:true,overHeroFails:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true,overHeroFails:true});
+  // The forge window (VGM-046B): an intermission window like the offer, in the field but never on the hero.
+  add('.rh-forge','forja',{allowedInPlay:true,overHeroFails:true});add('.rh-forge .rh-forge-tag','forja-etiqueta',{allowedInPlay:true,target:true,overHeroFails:true});
+  add('.rh-forge .rh-forge-close','forja-fechar',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-offer-chip','chip',{target:true});add('.rh-offer-hint','dica-do-chip',{allowedInPlay:true});
   add('.fun-emote-toggle','emote',{target:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;

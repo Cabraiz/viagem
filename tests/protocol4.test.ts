@@ -677,3 +677,67 @@ test('an event code this client does not know is skipped, the frame and the othe
   assert.deepEqual(known.view.events.map(e=>(e as {level:number}).level),[2,3]);
   assert.equal(frame[frame.length-2],levelup);
 });
+
+// ---------- Protocol 6: Stonewards (VGM-046B) ----------
+
+function campWorld():FrameInput{
+  return {
+    tick:500,team:{xp:1,level:2,nextXp:9},round:{index:3,total:10,phase:'prepare',phaseEndsTick:900,remaining:0},
+    players:[player('me',0,{x:0,y:5}),player('far',1,{x:200,y:0})],
+    enemies:[],pickups:[],projectiles:[],telegraphs:[],
+    structures:[{id:'muralha',kind:'muralha',x:.25,y:0,hp:430,maxHp:600},{id:'torre-1',kind:'torre-chinelo',x:1,y:4,hp:80,maxHp:80,untilTick:1400}],
+    nodes:[
+      {id:'no-0_0-1',kind:'coco',x:10.5,y:3.25,remaining:4,capacity:4,value:1,progress:0},
+      {id:'no-0_0-2',kind:'pedra',x:-20,y:12,remaining:2,capacity:6,value:2,progress:.5},
+      {id:'no-6_0-0',kind:'pedra',x:201,y:3,remaining:6,capacity:6,value:4,progress:0},
+    ],
+    camp:{coco:7,pedra:12,hornEndsTick:900},
+  };
+}
+
+test('protocol 6: camp block, towers with their end and nodes in the area of interest round-trip',()=>{
+  const ids=new WireIds(),enc=new FrameEncoder(ids,{viewer:'me'}),dec=new FrameDecoder();
+  const w=campWorld();
+  const r=dec.decode(enc.encode(w));assert.ok(r.ok);
+  assert.equal(PROTOCOL_VERSION,6);
+  assert.deepEqual(r.view.camp,{coco:7,pedra:12,hornEndsTick:900});
+  const tower=r.view.structures.find(s=>s.kind==='torre-chinelo')!;
+  assert.equal(tower.untilTick,1400);assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.hp,430);
+  // The far player's node (200 units away) stays out of this client's area.
+  assert.deepEqual(r.view.nodes!.map(n=>[n.kind,n.remaining,n.capacity,n.value,Math.round(n.progress*100)/100]).sort(),[['coco',4,4,1,0],['pedra',2,6,2,.5]]);
+  assert.ok(r.view.nodes!.every(n=>/^n\d+$/.test(n.id)),'client ids for nodes');
+  // A unit comes out: only that node changes, and the delta is small.
+  enc.ack(r.seq);
+  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={coco:8,pedra:12,hornEndsTick:900};
+  const bytes=enc.encode(w),r2=dec.decode(bytes);assert.ok(r2.ok);
+  assert.ok(bytes.length<64,`delta ${bytes.length} B`);
+  assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.coco,8);
+  // The wave: no nodes, no horn; the wall falls.
+  enc.ack(r2.seq);
+  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={coco:8,pedra:12,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
+  const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
+  assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{coco:8,pedra:12,wallDown:true});
+});
+
+test('protocol 6: horn and say events; horn reaches everyone, say only who is near the source',()=>{
+  const ids=new WireIds(),me=new FrameEncoder(ids,{viewer:'me'}),far=new FrameEncoder(ids,{viewer:'far'});
+  const dm=new FrameDecoder(),df=new FrameDecoder();
+  const w=campWorld();
+  const events:SimEvent[]=[{type:'horn',endsTick:900,line:'Fim do recreio! Os bichos tão chegando!'},{type:'say',source:'me',key:'gambiarra',line:'Se tá funcionando, não mexe.'}];
+  me.pushEvents(events);far.pushEvents(events);
+  const a=dm.decode(me.encode(w)),b=df.decode(far.encode(w));
+  assert.ok(a.ok&&b.ok);
+  assert.deepEqual(a.view.events.map(e=>e.type),['horn','say']);
+  const horn=a.view.events[0],sayEvent=a.view.events[1];
+  assert.ok(horn.type==='horn'&&horn.endsTick===900&&horn.line==='Fim do recreio! Os bichos tão chegando!');
+  assert.ok(sayEvent.type==='say'&&sayEvent.source==='me'&&sayEvent.key==='gambiarra');
+  assert.deepEqual(b.view.events.map(e=>e.type),['horn'],'the far player only hears the horn');
+});
+
+test('protocol 6: a 5 decoder byte is refused, and a frame without Stonewards still decodes',()=>{
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const bytes=enc.encode(busyWorld(new Rng(3),5).view);
+  const old=bytes.slice();old[1]=5;
+  assert.deepEqual(new FrameDecoder().decode(old),{ok:false,error:'protocol version mismatch'});
+  const r=dec.decode(bytes);assert.ok(r.ok);assert.equal(r.view.camp,undefined);assert.deepEqual(r.view.nodes,[]);
+});

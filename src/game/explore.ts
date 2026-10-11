@@ -66,7 +66,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
+    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
+      onForge:recipe=>net.forge(recipe)});
+    net.onForged=answer=>hud?.forged(answer);
     hud.el.hidden=true;
     // Out or watching: a tap on a teammate's portrait makes the camera follow them (UX onda 4).
     // Capture phase: the HUD panels stop their own events from leaking into the game (VGM-040).
@@ -115,7 +117,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const view:RunView|undefined=hud?.view;
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
       // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
-      players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}}))};
+      players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}})),
+      ...(!victory&&view?.camp?.wallDown?{wall:true}:{})};
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
@@ -203,6 +206,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               shell.dataset.hudResult=String(resultShown!==undefined);
               hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
+              // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
+              const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
+              let bearing:number|undefined;
+              if(wall&&heroBox&&controller){const at=controller.scene.locate(wall).screen;bearing=Math.atan2(at.y-(heroBox.y+heroBox.height*.85),at.x-(heroBox.x+heroBox.width/2))*180/Math.PI;}
+              hud.setHero({x:net.predicted.x,y:net.predicted.y,bearing});
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.

@@ -109,6 +109,10 @@ const SCENES=[
   ['hud chefe, 6p','/?sandbox=hud&players=6&state=boss&frozen=1','.rh',13],
   ['hud resultado, 6p','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13],
   ['hud resultado, 1p','/?sandbox=hud&players=1&state=result&frozen=1','.rh',13],
+  // Stonewards (VGM-046B): the forge window in the camp, the horn far from it, the wall low in a wave.
+  ['hud forja no acampamento, 6p','/?sandbox=hud&players=6&state=camp-forge&frozen=1','.rh',13],
+  ['hud corneta longe da base, 6p','/?sandbox=hud&players=6&state=camp-horn&frozen=1','.rh',13],
+  ['hud muralha baixa no round, 6p','/?sandbox=hud&players=6&state=camp-wave&frozen=1','.rh',13],
   ['emotes abertos','/?sandbox=fun&players=6&state=open&frozen=1','.fun-emotes,.fun-balloons',13],
   ['balões','/?sandbox=fun&players=6&state=balloons&frozen=1','.fun-balloons',13],
 ];

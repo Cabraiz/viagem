@@ -1,4 +1,7 @@
-/** The wall/shelter at the island center: placement, siege contact damage and repairs. */
+/**
+ * The wall/shelter at the base (island centre, or the origin of the endless world): placement, damage and the 046A
+ * contact siege. In the run only the enemy-ai hits the wall (D-017): hitStructure -> damageWall, siegeStep stays off.
+ */
 import type {TerrainField} from '../../terrain/field.ts';
 import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../world.ts';
 import type {EnemyState,SimContext} from '../types.ts';
@@ -12,11 +15,7 @@ export const ISLAND_CENTER:Readonly<Point>=ISLAND_BASE;
 export const SIEGE_FLAG='siege';
 export const SIEGE_HIT_COOLDOWN=ticks(1);
 
-export const WALL_DOWN_LINES=[
-  'A muralha caiu. Foi feita de isopor, admitimos.',
-  'Abrigo derrubado. O síndico vai cobrar a obra.',
-  'Caiu a muralha e a dignidade junto.',
-] as const;
+export {WALL_DOWN_LINES} from './rules.ts';
 
 /** Retreating enemies (D-010, memory.retreat===1) never hit the wall. */
 export const isSiege=(e:EnemyState)=>e.memory?.[SIEGE_FLAG]===1&&e.memory.retreat!==1;

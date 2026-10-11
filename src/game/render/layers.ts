@@ -365,6 +365,8 @@ export class HordeRenderer{
       }
       case 'bark':this.spawnBubble(event.enemy,event.line);break;
       case 'skill':this.spawnSkillBubble(event.player,skillBubbleLine(event));break;
+      // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
+      case 'say':this.spawnSkillBubble(event.source,event.line);break;
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
     }
   }

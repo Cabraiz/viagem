@@ -165,6 +165,8 @@ export interface RunResult {
   totalRounds:number;
   seed:string;
   players:PlayerRunView[];
+  /** The defeat came from the wall falling (VGM-046B), not from the whole team down. */
+  wall?:boolean;
 }
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */

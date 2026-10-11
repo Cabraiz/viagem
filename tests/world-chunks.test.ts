@@ -219,10 +219,11 @@ test('a room on the endless world runs: players spawn by the base, wall at the o
   const s=new Simulation(1234,{world:'infinito'});
   for(let i=0;i<6;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();
-  // Stonewards is not in the run yet (VGM-046B); its state already builds on the endless world.
+  // Stonewards runs in the room (VGM-046B): wall at the origin, nodes are the chunks' obstacles (sparse, none touched yet).
   const stone=createStonewardsState({terrain:s.terrain});
   assert.ok(Math.hypot(stone.wall.x,stone.wall.y)<1,`wall at ${stone.wall.x},${stone.wall.y}`);
-  assert.ok(stone.nodes.length>0&&stone.nodes.every(n=>Math.hypot(n.x,n.y)<=24));
+  assert.equal(stone.nodes.length,0);
+  assert.deepEqual(s.run.stonewards.state.wall,stone.wall);
   const players=[...s.players.values()];
   for(const p of players)assert.ok(walkable(p,s.terrain)&&Math.hypot(p.x,p.y)<BASE_CLEAR);
   for(let tick=0;tick<400;tick++){

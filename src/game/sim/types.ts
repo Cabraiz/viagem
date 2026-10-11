@@ -115,7 +115,14 @@ export type SimEvent=
    * One event per cast, next to the `fire` with weapon `skill:<classId>` that the sprites already use.
    */
   | {type:'skill';player:string;skill:string;line:string;outcome?:'flop'|'hit'|'miracle';x?:number;y?:number}
-  | {type:'structure';id:string;hp:number;maxHp:number};
+  | {type:'structure';id:string;hp:number;maxHp:number}
+  /**
+   * D-013 (VGM-046B): the return horn of the intermission. endsTick is when the next round starts (the horn may have
+   * stretched the intermission so the farthest hero gets back, base-stonewards-mapa); line is its pt-BR joke.
+   */
+  | {type:'horn';endsTick:number;line?:string}
+  /** D-013: a line from something that is not an enemy (forge recipes, a node running dry), at most one per ~2 s per source. */
+  | {type:'say';source:string;key:string;line:string};
 
 // ---------- Spatial query (VGM-032 implements a hash; tests may use naive) ----------
 export interface SpatialIndex<T extends Point&{id:string}> {

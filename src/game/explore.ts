@@ -69,7 +69,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
-      onForge:recipe=>net.forge(recipe)});
+      onForge:recipe=>net.forge(recipe),
+      // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
+      onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id)});
     net.onForged=answer=>hud?.forged(answer);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
@@ -205,7 +207,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
           shell.dataset.offline=String(!net.connected&&!net.fatal);
           showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';
+          // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
@@ -217,6 +220,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
+              // Owner, bots and who is still here on the result screen (D-025): crown, robot, "Arrumar turma".
+              if(run.phase==='result'){
+                const ids=run.members.map(m=>m.id);
+                hud.setRoster({owner:run.owner,canManage:net.isOwner,members:ids,bots:run.members.filter(m=>m.bot).map(m=>m.id),seatsLeft:Math.max(0,6-ids.length),
+                  extra:[...net.players.values()].filter(p=>ids.includes(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.hp,online:p.online,spectator:false,weapons:[],passives:[],
+                    ...(run.members.find(m=>m.id===p.id)?.bot?{bot:true}:{})}))});
+              }
               hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).

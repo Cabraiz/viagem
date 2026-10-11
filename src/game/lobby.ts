@@ -46,7 +46,8 @@ export function countdownJoke(seconds:number){
 /** Invite link, same format the island uses (`?room=` prefills the lobby). */
 export const shareLink=(origin:string,code:string)=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}#personagem`;
 
-export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean}
+/** `bot`: a room bot; `owner`: the chefe da sala (D-025). */
+export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean;bot:boolean;owner:boolean}
 export interface WaitingView {
   visible:boolean;
   phase:'lobby'|'countdown'|'hidden';
@@ -59,22 +60,31 @@ export interface WaitingView {
   seconds?:number;
   /** Headline: who we wait for, or the countdown joke. */
   headline:string;
+  /** This player owns the room and may kick and add/remove bots now (lobby or countdown, D-025). */
+  canManage:boolean;
+  /** Seats left (six in all, bots count): "Adicionar bot" only while there is one. */
+  seatsLeft:number;
 }
+/** What the owner's one-tap confirmation says on a chip (D-025): the name stays, the verb comes first. */
+export const confirmText=(m:Pick<WaitingMember,'name'|'bot'>)=>m.bot?`Tirar ${m.name}?`:`Expulsar ${m.name}?`;
+/** The owner's hint in place of the waiting joke (the joke is optional; this line says what the chips do). */
+export const OWNER_HINT='Você é o chefe da sala. Toca num nome pra tirar.';
 
 /** View model of the waiting room from the polled run state. Spectators are not counted. */
 export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,{name:string}>,selfId:string,hz=20):WaitingView{
   const phase=run?.phase==='lobby'||run?.phase==='countdown'?run.phase:'hidden';
   const members:WaitingMember[]=(run?.members??[]).filter(m=>!m.spectator).map(m=>({
-    id:m.id,name:names.get(m.id)?.name||'Alguém',ready:m.ready,online:m.online,self:m.id===selfId,
-  })).sort((a,b)=>Number(b.self)-Number(a.self)||a.name.localeCompare(b.name,'pt-BR')||(a.id<b.id?-1:1));
+    id:m.id,name:names.get(m.id)?.name||'Alguém',ready:m.ready,online:m.online,self:m.id===selfId,bot:!!m.bot,owner:!!run?.owner&&m.id===run.owner,
+  })).sort((a,b)=>Number(b.self)-Number(a.self)||Number(a.bot)-Number(b.bot)||a.name.localeCompare(b.name,'pt-BR')||(a.id<b.id?-1:1));
+  const canManage=phase!=='hidden'&&!!selfId&&run?.owner===selfId,seatsLeft=Math.max(0,6-(run?.members.length??0));
   const readyCount=members.filter(m=>m.ready&&m.online).length,total=members.length;
   const selfReady=!!members.find(m=>m.self)?.ready;
   const selfSpectator=!!run?.members.find(m=>m.id===selfId)?.spectator;
   if(phase==='countdown'){
     const seconds=Math.max(0,Math.ceil((run?.remaining??0)/hz));
-    return {visible:true,phase,members,readyCount,total,selfReady,selfSpectator,seconds,headline:countdownJoke(seconds)};
+    return {visible:true,phase,members,readyCount,total,selfReady,selfSpectator,seconds,headline:countdownJoke(seconds),canManage,seatsLeft};
   }
-  if(phase!=='hidden'&&selfSpectator)return {visible:true,phase,members,readyCount,total,selfReady,selfSpectator,headline:'Você assiste esta rodada. Pipoca liberada!'};
+  if(phase!=='hidden'&&selfSpectator)return {visible:true,phase,members,readyCount,total,selfReady,selfSpectator,headline:'Você assiste esta rodada. Pipoca liberada!',canManage,seatsLeft};
   const missing=members.filter(m=>!m.ready||!m.online);
   // Who is here but not ready apart from who is away (fell off the network, or not back after a restart, VGM-047).
   const here=missing.filter(m=>m.online),away=missing.filter(m=>!m.online);
@@ -87,7 +97,7 @@ export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,
     :away.length?`${here.length===1?"Falta":"Faltam"} ${who(here)}. ${awayText}`
     :missing.length===1?(missing[0].self?'Só falta você. Sem pressão.':`Só falta ${missing[0].name}. Sem pressão.`)
     :`Faltam ${missing.length}. Alguém foi ao banheiro.`;
-  return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline};
+  return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline,canManage,seatsLeft};
 }
 
 // ---------- DOM ----------
@@ -98,7 +108,9 @@ const escapeHtml=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
  * Waiting room panel inside the island shell (a modal dialog, so it must live inside it).
  * Polls client.run, shows while the run is in lobby/countdown and removes itself when the island closes.
  */
-export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'>>,options:{origin?:string;now?:()=>number}={}){
+/** How long a chip waits for the confirming tap (ms) before it goes back to the name. */
+export const CONFIRM_MS=3000;
+export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'>>,options:{origin?:string;now?:()=>number}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
@@ -107,7 +119,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     <p class="coop-wait-headline" role="status" aria-live="polite"></p>
     <ul class="coop-wait-members"></ul>
     <p class="coop-wait-line"></p>
-    <button class="coop-wait-ready" type="button" aria-pressed="false">Tô pronto!</button>
+    <div class="coop-wait-actions"><button class="coop-wait-ready" type="button" aria-pressed="false">Tô pronto!</button><button class="coop-wait-bot" type="button" hidden>${icon('robo')}<span>Adicionar bot</span></button></div>
     <p class="coop-wait-count" aria-hidden="true"></p>`;
   const $=<T extends HTMLElement>(s:string)=>panel.querySelector<T>(s)!;
   $('.coop-wait-code strong').textContent=client.code;
@@ -126,14 +138,33 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   const readyButton=$<HTMLButtonElement>('.coop-wait-ready');
   let lastView:WaitingView|undefined;
   readyButton.addEventListener('click',()=>client.ready(!lastView?.selfReady));
+  const botButton=$<HTMLButtonElement>('.coop-wait-bot');
+  botButton.addEventListener('click',()=>{client.addBot?.();botButton.disabled=true;setTimeout(()=>{botButton.disabled=false;},400);});
+  // The owner's chips (D-025): first tap asks ("Expulsar Bia?"), the second within CONFIRM_MS does it.
+  let armed:{id:string;until:number}|undefined,disarm:ReturnType<typeof setTimeout>|undefined;
+  const list=$('.coop-wait-members');
+  list.addEventListener('click',event=>{
+    const chip=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
+    if(!chip||!lastView?.canManage)return;
+    const id=chip.dataset.id!,m=lastView.members.find(x=>x.id===id);
+    if(!m||m.self)return;
+    if(armed?.id===id&&now()<=armed.until){
+      armed=undefined;clearTimeout(disarm);
+      if(m.bot)client.removeBot?.(id);else client.kick?.(id);
+      chip.disabled=true;return;
+    }
+    armed={id,until:now()+CONFIRM_MS};clearTimeout(disarm);disarm=setTimeout(()=>{armed=undefined;membersKey='';update();},CONFIRM_MS);
+    membersKey='';update();
+  });
   host.append(panel);
   let membersKey='';
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
-    panel.hidden=!view.visible;
+    // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
+    panel.hidden=!view.visible||!!client.fatal;
     if(!view.visible)return;
     panel.dataset.phase=view.phase;
     // After a restart of the room the run is gone (VGM-047, UX onda 5): the news goes on top, as a ficha, in place of
@@ -144,7 +175,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(news){setText($('.coop-wait-news strong'),news.title);setText($('.coop-wait-news span'),news.body);}
     $('.coop-wait-headline').hidden=!!news&&view.phase!=='countdown';
     setText($('.coop-wait-headline'),view.headline);
-    setText($('.coop-wait-line'),view.phase==='countdown'||news?'':waitingLine((now()-started)/1000));
+    const hint=view.canManage&&(view.members.length>1||view.seatsLeft>0);
+    setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint?OWNER_HINT:waitingLine((now()-started)/1000));
+    botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
+    panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
     readyButton.hidden=view.selfSpectator;
@@ -152,10 +186,22 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     setText(readyButton,view.selfReady?'Ops, peraí':'Tô pronto!');
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
     readyButton.classList.toggle('is-ready',view.selfReady);
-    const key=JSON.stringify(view.members);
+    if(armed&&!view.members.some(m=>m.id===armed!.id&&!m.self))armed=undefined;
+    const key=JSON.stringify([view.members,view.canManage,armed?.id]);
     if(key!==membersKey){
       membersKey=key;
-      $('.coop-wait-members').innerHTML=view.members.map(m=>`<li class="${m.ready?'is-ready':''}${m.online?'':' is-away'}">${icon(m.ready?'pronto':'relogio')}${escapeHtml(m.name)}${m.self?' <small>(você)</small>':''}<span class="sr-only">${m.ready?' pronto':' ainda não'}</span></li>`).join('');
+      list.innerHTML=view.members.map(m=>{
+        // Bots: the robot sticker (always ready); people: ready or waiting. The crown marks the owner for everyone.
+        const status=m.bot?icon('robo'):icon(m.ready?'pronto':'relogio');
+        const said=`${m.bot?' bot':''}${m.owner?', chefe da sala':''}${m.ready?', pronto':', ainda não'}`;
+        const crown=m.owner?icon('coroa',{className:'coop-wait-crown'}):'';
+        const cls=`${m.ready?'is-ready':''}${m.online?'':' is-away'}${m.bot?' is-bot':''}`;
+        if(view.canManage&&!m.self){
+          const ask=armed?.id===m.id;
+          return `<li class="${cls}${ask?' is-asking':''}"><button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(ask?`${confirmText(m)} Toca de novo pra confirmar.`:`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`)}">${ask?icon('saiu'):status}<span>${escapeHtml(ask?confirmText(m):m.name)}</span>${ask?'':crown+icon('saiu',{className:'coop-wait-out'})}</button></li>`;
+        }
+        return `<li class="${cls}">${status}<span>${escapeHtml(m.name)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
+      }).join('');
     }
   };
   const timer=setInterval(update,200);update();

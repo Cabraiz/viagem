@@ -28,6 +28,8 @@ export interface PlayerRunView {
   skillTick?:number;skillReadyTick?:number;
   /** Contribution counters for the result screen. */
   stats?:PlayerStatsView;
+  /** A room bot (D-025): the client sets it from the run state; the HUD shows the robot sticker, people-only prizes skip it. */
+  bot?:boolean;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

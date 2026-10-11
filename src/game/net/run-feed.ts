@@ -187,6 +187,9 @@ export class FrameRunFeed implements RunFeed {
   }
 
   setOffers(offers:readonly LevelOffer[]|readonly OfferView[]){this.offers=copyOffers(offers);this.offersVersion++;}
+  /** Room bots (D-025, from the run state's members): their players come out with `bot: true`. */
+  private bots:ReadonlySet<string>=new Set();
+  setBots(ids:readonly string[]){if(ids.length!==this.bots.size||ids.some(id=>!this.bots.has(id)))this.bots=new Set(ids);}
 
   take():RunView{const events=this.events;this.events=[];return this.view(events);}
 
@@ -204,7 +207,7 @@ export class FrameRunFeed implements RunFeed {
       tick:v?.tick??0,team:v?{...v.team}:{xp:0,level:1,nextXp:1},round:v?.round?{...v.round}:undefined,...(v?.wave?{wave:{...v.wave}}:{}),
       enemies:v?.enemies??[],pickups:v?.pickups??[],projectiles:v?.projectiles??[],telegraphs:v?.telegraphs??[],structures:v?.structures??[],
       nodes:v?.nodes??[],...(v?.camp?{camp:{...v.camp}}:{}),
-      players:v?.players??[],offers:this.offers,events,
+      players:this.bots.size&&v?v.players.map(p=>this.bots.has(p.id)?{...p,bot:true}:p):v?.players??[],offers:this.offers,events,
     };
   }
 }

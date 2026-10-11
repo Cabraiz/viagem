@@ -77,3 +77,20 @@
 #coop-sos .sos-ring circle{fill:none;stroke-width:6px;stroke:var(--c-breu);stroke-dasharray:var(--sos-left,0) 100}
 #coop-sos[aria-disabled=true]{background:color-mix(in srgb,var(--c-cone) 55%,var(--c-papel))}
 .coop-shell:has(#coop-sos:not([hidden])) #coop-attack{visibility:hidden}
+/* Dono da sala e bots (D-025). Para o chefe, cada nome (menos o dele) vira um botão de ficha com o adesivo de porta à
+   direita ("tirar"); o 1º toque pergunta em Amarelo (escolha) e o 2º, em até 3 s, confirma. Bot leva o adesivo de robô
+   no lugar do relógio/pronto; a coroa de papel marca o chefe para todo mundo. */
+.coop-wait-actions{display:flex;gap:8px}
+.coop-wait-actions .coop-wait-ready{flex:2 1 0}
+.coop-wait-bot{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;border:2px solid var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel);box-shadow:var(--s-1);white-space:nowrap}
+.coop-wait-bot[hidden]{display:none}
+.coop-wait-bot:active,.coop-wait-members button:active{transform:translateY(2px)}
+.coop-wait-bot:disabled{opacity:.6}
+.coop-wait-members li:has(>button){padding:0;min-height:44px}
+.coop-wait.is-owner .coop-wait-members{gap:8px}
+.coop-wait .coop-wait-members button{display:flex;align-items:center;gap:4px;min-height:44px;margin:0;padding:4px 6px 4px 9px;border:0;border-radius:var(--r-ficha);background:transparent;color:inherit;font:inherit;font-weight:700;box-shadow:none}
+.coop-wait-members li.is-asking{background:var(--c-amarelo);border:2px solid var(--c-breu);animation:none}
+.coop-wait-members li.is-asking button{font-weight:800}
+.coop-wait-members li .coop-wait-crown{margin:-4px -2px -4px 2px}
+.coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
+.coop-wait-members li.is-bot{background:var(--c-cartolina)}

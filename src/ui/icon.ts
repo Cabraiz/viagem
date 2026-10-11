@@ -8,7 +8,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // Fora da tela e minimapa (UX-bordas-fora-da-tela, ORQ-minimapa): base, chefe, bichos chegando e baú.
   'base','chefe','onda','bau',
   // Stonewards (VGM-046B): resources, the wall, the return horn and the forge's recipes.
-  'coco','pedra','muralha','corneta','fita','chinelo'] as const;
+  'coco','pedra','muralha','corneta','fita','chinelo',
+  // Dono da sala e bots (D-025): a coroa de papel do chefe e o robô dos bots da sala.
+  'robo','coroa'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

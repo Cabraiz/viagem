@@ -12,12 +12,15 @@ export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 export const LOBBY_AWAY_TICKS=10*RUN_HZ;
 export type RunPhase='lobby'|'countdown'|'combat'|'result';
 export type RunOutcome='victory'|'defeat'|'timeout';
-export interface RunMember {id:string;online:boolean;ready:boolean;spectator:boolean}
+/** `bot`: a room bot (D-025): played by the room itself, always online and ready, never holds the start. */
+export interface RunMember {id:string;online:boolean;ready:boolean;spectator:boolean;bot?:true}
 export interface RunState {
   round:number;phase:RunPhase;elapsed:number;remaining:number;
   members:RunMember[];outcome?:RunOutcome;resultId?:string;
   /** Result only (VGM-053B): the run's most embarrassing moment, from the simulation. */
   shame?:ShameMoment;
+  /** The room's owner ("chefe da sala", D-025): the only one whose kick and bot commands the room accepts. */
+  owner?:string;
 }
 
 export class RunLifecycle {
@@ -31,20 +34,28 @@ export class RunLifecycle {
   private outcome?:RunOutcome;
   private resultId?:string;
   private shame?:ShameMoment;
+  private owner?:string;
   private readonly roomId:string;
   private readonly durationTicks:number;
   constructor(roomId:string,durationTicks=RUN_DURATION_TICKS){
     if(!roomId||!Number.isSafeInteger(durationTicks)||durationTicks<1)throw new Error('Invalid run configuration');
     this.roomId=roomId;this.durationTicks=durationTicks;
   }
-  join(id:string){
+  /**
+   * A person joins (or comes back); `{bot:true}` seats a room bot (D-025): online and ready for good, and a player of
+   * the coming run even during the countdown (the owner only adds bots out of combat).
+   */
+  join(id:string,options:{bot?:boolean}={}){
     const existing=this.members.get(id);
-    if(existing){this.setOnline(id,true);return;}
+    if(existing){if(!existing.bot)this.setOnline(id,true);return;}
     if(!id||this.members.size>=6)throw new Error('Run has six slots');
+    if(options.bot){this.members.set(id,{id,online:true,ready:true,spectator:this.phase==='combat',bot:true});this.refreshCountdown();return;}
     this.members.set(id,{id,online:true,ready:false,spectator:this.phase==='combat'||this.phase==='countdown'});
   }
+  /** Who the room says owns it (Room decides; the lifecycle only carries it to the clients). */
+  setOwner(id:string|undefined){this.owner=id;}
   setOnline(id:string,online:boolean){
-    const member=this.members.get(id);if(!member)return;
+    const member=this.members.get(id);if(!member||member.bot)return;
     member.online=online;
     if(online)this.away.delete(id);else this.away.set(id,0);
     if(!online&&this.phase!=='combat')member.ready=false;
@@ -53,7 +64,7 @@ export class RunLifecycle {
   leave(id:string){this.members.delete(id);this.away.delete(id);this.refreshCountdown();}
   ready(id:string,round:number,ready:boolean){
     const member=this.members.get(id);
-    if(round!==this.round||!member?.online||member.spectator||this.phase==='combat'||this.phase==='result')return false;
+    if(round!==this.round||!member?.online||member.spectator||member.bot||this.phase==='combat'||this.phase==='result')return false;
     member.ready=ready;this.refreshCountdown();return true;
   }
   /** Who the start waits for: in the run, and online or only briefly away (LOBBY_AWAY_TICKS). */
@@ -61,7 +72,8 @@ export class RunLifecycle {
   private refreshCountdown(){
     if(this.phase!=='lobby'&&this.phase!=='countdown')return;
     const players=this.candidates();
-    const allReady=players.length>0&&players.every(p=>p.online&&p.ready);
+    // Bots are always ready: a start needs at least one person who said so.
+    const allReady=players.some(p=>!p.bot)&&players.every(p=>p.online&&p.ready);
     if(allReady&&this.phase==='lobby'){this.phase='countdown';this.countdown=RUN_COUNTDOWN_TICKS;}
     else if(!allReady&&this.phase==='countdown'){
       this.phase='lobby';this.countdown=RUN_COUNTDOWN_TICKS;
@@ -93,7 +105,7 @@ export class RunLifecycle {
   finish(outcome:RunOutcome,shame?:ShameMoment){
     if(this.phase!=='combat')return false;
     this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;this.shame=shame&&{...shame};
-    for(const member of this.members.values())member.ready=false;
+    for(const member of this.members.values())member.ready=!!member.bot;
     return true;
   }
   /** Guard with the round from the request so duplicate clicks cannot reset twice. */
@@ -101,13 +113,13 @@ export class RunLifecycle {
     if(this.phase!=='result'||round!==this.round||!this.members.get(id)?.online)return false;
     this.round++;this.phase='lobby';this.elapsed=0;this.countdown=RUN_COUNTDOWN_TICKS;
     this.outcome=undefined;this.resultId=undefined;this.shame=undefined;
-    for(const member of this.members.values()){member.ready=false;member.spectator=false;}
+    for(const member of this.members.values()){member.ready=!!member.bot;member.spectator=false;}
     return true;
   }
   snapshot():RunState{
     return {round:this.round,phase:this.phase,elapsed:this.elapsed,
       remaining:this.phase==='countdown'?this.countdown:Math.max(0,this.durationTicks-this.elapsed),
       members:[...this.members.values()].map(m=>({...m})),outcome:this.outcome,resultId:this.resultId,
-      ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{})};
+      ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{}),...(this.owner?{owner:this.owner}:{})};
   }
 }

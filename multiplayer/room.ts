@@ -1,5 +1,7 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor,
+  KICK_BAN_MS, kickedMessage, OWNER_ONLY, OWNER_NOT_NOW, ROOM_FULL_BOTS } from '../src/game/net/shared.ts';
+import {RoomBots,botIdentity} from '../src/game/sim/room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
@@ -59,8 +61,17 @@ export interface RoomRoster {
   running:boolean;lost?:{round:number;level:number};
   /** tokenHash = sha256(token); until = seat expiry of an offline player (null: connected when saved). */
   players:{id:string;name:string;classId:string;tokenHash:string;until:number|null}[];
+  /** D-025 (optional, older rows have none): the owner, the room bots (seat slot), bots added so far, kicked seats. */
+  owner?:string;
+  bots?:{id:string;name:string;classId:string;slot:number}[];
+  botsAdded?:number;
+  bans?:{hash:string;until:number}[];
 }
 const classIds=new Set(classes.map(c=>c.id));
+/** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
+const BOT_CLASSES=classes.map(c=>c.id);
+/** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
+const PLAYER_ID=/^[\w-]{1,64}$/;
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
@@ -113,6 +124,17 @@ export class Room {
   private rosterKey='';
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
   private lostRun=new Map<string,{round:number;level:number}>();
+  /**
+   * The owner ("chefe da sala", D-025): the first person seated, then the oldest person left when the owner leaves for
+   * good (leave, seat expired). A short drop changes nothing. Only the owner's kick and bot commands are accepted.
+   */
+  owner?:string;
+  /** Kicked seats: sha256(token) → until (ms). A join presenting that token (as `token` or `kicked`) is refused. */
+  private bans=new Map<string,number>();
+  /** The room's bots (D-025): played inside the tick, no socket. */
+  readonly bots=new RoomBots();
+  /** Bots ever added in this room (their names and classes follow the seed and this count). */
+  private botsAdded=0;
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
@@ -124,9 +146,11 @@ export class Room {
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
     const running=this.run.snapshot().phase==='combat',w=this.sim.world;
+    const bans=[...this.bans].map(([hash,until])=>({hash,until}));
+    const bots=[...this.sim.players.values()].filter(p=>this.sim.bots.has(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,slot:this.bots.slotOf(p.id)}));
     return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
       const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
-    })};
+    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{})};
   }
   /**
    * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
@@ -144,6 +168,14 @@ export class Room {
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);
       if(lost)this.lostRun.set(r.id,lost);
     }
+    // D-025: kicked seats still out, the owner if still seated (else the oldest person), and the bots (only with people).
+    for(const b of Array.isArray(roster.bans)?roster.bans:[])if(typeof b?.hash==='string'&&/^[0-9a-f]{64}$/.test(b.hash)&&Number.isFinite(b.until)&&b.until>now)this.bans.set(b.hash,b.until);
+    this.botsAdded=Number.isSafeInteger(roster.botsAdded)&&roster.botsAdded!>0?roster.botsAdded!:0;
+    if(this.sessions.size)for(const b of Array.isArray(roster.bots)?roster.bots:[]){
+      if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
+      this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
+    }
+    this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
     this.syncSpectators();this.rosterKey=JSON.stringify(this.roster());this.rosterDirty=false;
   }
   /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
@@ -178,6 +210,9 @@ export class Room {
     if(m.t==='join'&&!c.playerId){
       if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED);return;}
       this.expire(now);
+      // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
+      const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);
+      if(banned!==undefined){this.sendKicked(peer,banned,now);return;}
       let session:Session|undefined;
       if(m.token!==undefined){
         const hash=typeof m.token==='string'&&m.token.length<=200?sha256Hex(m.token):'';
@@ -197,6 +232,7 @@ export class Room {
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.');return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
+        if(!this.owner)this.setOwner(id);
       }
       session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;
       this.run.join(session.id);
@@ -250,8 +286,83 @@ export class Room {
     // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
     // acceptance shots of the off-screen and rescue cards (six players spread over the map, one caído far away).
     else if(m.t==='lab'&&this.labOn&&this.run.snapshot().phase==='combat')this.labCommand(c.playerId,m);
-    else if(m.t==='leave'){this.rosterDirty=true;this.sim.remove(c.playerId);this.run.leave(c.playerId);this.syncSpectators();this.sessions.delete(c.playerId);this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
+    else if(m.t==='kick')this.kick(c,m,now);
+    else if(m.t==='bot-add')this.addBot(c,m);
+    else if(m.t==='bot-remove')this.removeBotCommand(c,m);
+    else if(m.t==='leave'){this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
+  /** sha256(token) is kicked and still out at `now`: until when; else undefined. */
+  private banOf(token:unknown,now:number){
+    if(typeof token!=='string'||token.length>200||!this.bans.size)return undefined;
+    const until=this.bans.get(sha256Hex(token));
+    if(until===undefined)return undefined;
+    if(until<=now){this.bans.delete(sha256Hex(token));this.rosterDirty=true;return undefined;}
+    return until;
+  }
+  /** Says why and closes (4003: the client stops); the client keeps the token to show the same answer next time. */
+  private sendKicked(peer:Peer,until:number,now:number){
+    const message=kickedMessage(until,now);
+    try{peer.send(JSON.stringify({t:'kicked',message,until}));}catch{}
+    this.connections.delete(peer);
+    try{peer.close(4003,'Expulso da sala.');}catch{}
+  }
+  /**
+   * The owner's commands (D-025) go through here: from the owner only, out of combat only (lobby, countdown, result),
+   * for this run's round. A refusal is a notice to the sender (its buttons were stale).
+   */
+  private ownerCommand(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(m.round!==state.round)return false;
+    if(c.playerId!==this.owner){this.notice(c,OWNER_ONLY);return false;}
+    if(state.phase==='combat'){this.notice(c,OWNER_NOT_NOW);return false;}
+    return true;
+  }
+  /** {t:'kick',id,round}: the person leaves the room and stays out for KICK_BAN_MS; a bot id just removes the bot. */
+  private kick(c:Connection,m:any,now:number){
+    if(!this.ownerCommand(c,m))return;
+    const id=m.id;
+    if(typeof id!=='string'||id===c.playerId)return;
+    if(this.sim.bots.has(id)){this.removeBot(id);return;}
+    const session=this.sessions.get(id);
+    if(!session)return;
+    const until=now+KICK_BAN_MS;
+    this.bans.set(session.hash,until);
+    for(const other of [...this.connections.values()])if(other.playerId===id)this.sendKicked(other.peer,until,now);
+    this.dropPerson(id);this.syncSpectators();this.pushRun();
+  }
+  /** {t:'bot-add',round}: one more bot, while the room has fewer than six (bots count). */
+  private addBot(c:Connection,m:any){
+    if(!this.ownerCommand(c,m))return;
+    if(this.sim.players.size>=6){this.notice(c,ROOM_FULL_BOTS);return;}
+    const n=this.botsAdded++,taken=new Set([...this.sim.players.values()].map(p=>p.name));
+    const {name,classId}=botIdentity(this.sim.seed,n,BOT_CLASSES,taken);
+    this.seatBot(`bot-${n+1}`,name,classId,this.bots.freeSlot());
+    this.syncSpectators();this.pushRun();
+  }
+  /** {t:'bot-remove',round,id?}: that bot, or the last one added. */
+  private removeBotCommand(c:Connection,m:any){
+    if(!this.ownerCommand(c,m))return;
+    const id=typeof m.id==='string'?m.id:this.bots.ids.at(-1);
+    if(id&&this.sim.bots.has(id)){this.removeBot(id);this.pushRun();}
+  }
+  private seatBot(id:string,name:string,classId:string,slot:number){
+    this.sim.addBot(id,name,classId);this.run.join(id,{bot:true});this.bots.add(id,slot);this.rosterDirty=true;
+  }
+  private removeBot(id:string){
+    this.sim.remove(id);this.run.leave(id);this.bots.remove(id);this.sosAt.delete(id);this.rosterDirty=true;this.syncSpectators();
+  }
+  /**
+   * A person leaves for good (leave, kicked, seat expired): out of the run and the room; the owner's post goes to the
+   * oldest person left; with nobody left, the bots go too (a room of bots alone plays for no one).
+   */
+  private dropPerson(id:string){
+    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.sosAt.delete(id);this.lostRun.delete(id);
+    if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
+    if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
+  }
+  /** The person seated longest (sessions keep the join order; a restore keeps the roster's). */
+  private oldestPerson(){return this.sessions.keys().next().value as string|undefined;}
+  private setOwner(id:string|undefined){if(this.owner!==id){this.owner=id;this.rosterDirty=true;}this.run.setOwner(id);}
   /**
    * Offer pick. Malformed, stale-round or out-of-combat commands are dropped silently; a command that reaches the
    * simulation (accepted, or refused there as forged, repeated or out of order) is answered with the peer's queue.
@@ -298,6 +409,15 @@ export class Room {
     if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS-SOS_SLACK_MS)return;
     this.sosAt.set(p.id,now);
     this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
+  }
+  /** "Me salva" of a fallen bot: the same relay and anti-spam as a person's (UX-resgate-e-ping). */
+  private botSos(id:string,now:number){
+    const p=this.sim.players.get(id);
+    if(!p?.downed||p.eliminated||p.spectator)return;
+    const last=this.sosAt.get(id);
+    if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS)return;
+    this.sosAt.set(id,now);
+    this.send({t:'sos',id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
   }
   /**
    * Forge tap (VGM-046B): {t:'forge',round,recipe,req}. The simulation validates everything (phase, standing, in the
@@ -348,10 +468,14 @@ export class Room {
     if(c?.playerId){this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
   }
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
-  expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.rosterDirty=true;this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
+  expire(now:number){
+    for(const s of [...this.sessions.values()])if(s.until<now)this.dropPerson(s.id);
+    for(const [hash,until] of this.bans)if(until<=now){this.bans.delete(hash);this.rosterDirty=true;}
+    this.syncSpectators();
+  }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
-    this.sim.resetRun();this.ids.reset();this.sosAt.clear();
+    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.bots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
     for(const p of this.sim.players.values()){
@@ -366,13 +490,16 @@ export class Room {
       if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>12000){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
-    // Nobody left to play (the last participant's session expired; late arrivals are spectators): a defeat, not ~18 min of empty combat.
-    if(this.run.snapshot().phase==='combat'&&!this.run.snapshot().members.some(m=>!m.spectator)){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();}
+    // Nobody left to play (the last participant's session expired; late arrivals are spectators; bots do not play for
+    // no one): a defeat, not ~18 min of empty combat.
+    if(this.run.snapshot().phase==='combat'&&!this.run.snapshot().members.some(m=>!m.spectator&&!m.bot)){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();}
     // The room is about to close: end the run now so the result is announced before the 4004.
     else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout',this.sim.shameMoment()))this.announce();}
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     if(this.run.snapshot().phase==='combat'){
       if(this.labHorde)this.fillHorde();
+      // Room bots decide before the step (their stick is this tick's input); a fallen one calls for help like a phone.
+      for(const id of this.bots.think(this.sim))this.botSos(id,now);
       const events=this.sim.step(now);
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
       for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});
@@ -430,7 +557,7 @@ export class Room {
   lab(){
     const pct=(list:number[],q:number)=>{if(!list.length)return 0;const sorted=[...list].sort((a,b)=>a-b);return sorted[Math.min(sorted.length-1,Math.floor(q*sorted.length))];};
     const {samples,encodeSamples,...totals}=this.perf;
-    return {...totals,tick:this.sim.tick,phase:this.run.snapshot().phase,round:this.sim.world.round.index,enemies:this.sim.world.enemies.size,
+    return {...totals,bots:{count:this.bots.size,thinkMs:Math.round(this.bots.thinkMs*1000)/1000,thinks:this.bots.thinks,forged:this.bots.forged},tick:this.sim.tick,phase:this.run.snapshot().phase,round:this.sim.world.round.index,enemies:this.sim.world.enemies.size,
       tickP50:pct(samples,.5),tickP95:pct(samples,.95),encodeP50:pct(encodeSamples,.5),encodeP95:pct(encodeSamples,.95),
       tickSamples:samples.map(ms=>Math.round(ms*1000)/1000),
       connections:[...this.connections.values()].map(c=>({player:c.playerId,slot:c.encoder?.slot,frames:c.frames,bytes:c.bytes,received:c.received,

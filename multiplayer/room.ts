@@ -225,7 +225,6 @@ export class Room {
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
     else if(m.t==='sos')this.sos(c,m,now);
-    // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, for the rescue acceptance shots.
     // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
     // acceptance shots of the off-screen and rescue cards (six players spread over the map, one caído far away).
     else if(m.t==='lab'&&this.labOn&&this.run.snapshot().phase==='combat')this.labCommand(c.playerId,m);

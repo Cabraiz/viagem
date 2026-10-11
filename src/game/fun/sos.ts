@@ -5,7 +5,7 @@
 /** "Me salva" ping with position (UX-resgate-e-ping): one per caído every 3 s, on the button and in the room. */
 export const SOS_COOLDOWN_MS=3000;
 /** How long a ping lights the caído's edge arrow and minimap dot on every phone. */
-export const SOS_SHOW_MS=4000;
+export const SOS_SHOW_MS=5000;
 /** A ping as the room relays it: who, where (room position, world units) and the tick it was sent. */
 export interface SosPing {id:string;x:number;y:number;tick:number}
 /** Validates a {t:'sos'} relay from the room (anything malformed is dropped, never thrown). */

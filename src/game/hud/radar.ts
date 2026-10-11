@@ -25,7 +25,8 @@ export interface RadarInput {
   players:readonly RadarPlayer[];
   states:ReadonlyMap<string,PlayerRunView>;
   base?:Point;
-  enemies?:readonly EnemyView[];
+  /** Live enemies (any iterable: the client passes its map's values, no copy per frame). */
+  enemies?:Iterable<EnemyView>;
   telegraphs?:readonly TelegraphView[];
   pickups?:readonly PickupView[];
   warnings?:readonly SpawnWarning[];

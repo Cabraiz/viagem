@@ -21,6 +21,10 @@ export const MAX_ARROWS=6;
 export const MERGE_PX=52;
 /** Gap (CSS px) between an arrow ficha and the useful area's edge. */
 export const RIM_PAD=4;
+/** Extra gap (CSS px) past the hero's keep-out when an arrow slides out of its way. */
+export const SLIDE_SLACK=8;
+/** Room a caído's tag takes above (or below) its ficha, so stacked arrows never cover the seconds. */
+export const TAG_ROOM=16;
 
 export interface EdgeTarget {
   /** Stable id (player id, 'base', enemy id, 'spawn:<tick>'), so a DOM arrow keeps following the same target. */
@@ -84,14 +88,15 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
   const box=(x:number,y:number)=>({x:x-half.w,y:y-half.h,width:2*half.w,height:2*half.h});
   const clear=(x:number,y:number)=>!hero||!crosses(box(x,y),hero,margin);
   const onRim=(x:number,y:number)=>x>=inner.x-.5&&x<=inner.x+inner.width+.5&&y>=inner.y-.5&&y<=inner.y+inner.height+.5;
-  const crowded=(x:number,y:number)=>out.find(a=>Math.abs(a.x-x)<2*half.w+4&&Math.abs(a.y-y)<2*half.h+4&&Math.hypot(a.x-x,a.y-y)<Math.max(merge,2*half.w+4));
+  const crowded=(x:number,y:number)=>out.find(a=>Math.abs(a.x-x)<2*half.w+4&&Math.abs(a.y-y)<2*half.h+TAG_ROOM&&Math.hypot(a.x-x,a.y-y)<Math.max(merge,2*half.w+4));
   for(const t of sorted){
     const e=edgeOf(t.screen,inner);
     let x=e.edge.x,y=e.edge.y;
     const side=sideOf(x,y,inner),along=side==='top'||side==='bottom';
     if(!clear(x,y)){
       // Slide along the side, to whichever end of the hero's keep-out is nearer and still on the rim.
-      const ends=along?[hero!.x-margin-half.w-1,hero!.x+hero!.width+margin+half.w+1]:[hero!.y-margin-half.h-1,hero!.y+hero!.height+margin+half.h+1];
+      // A few px past the keep-out, so a camera that eases by a pixel does not put the arrow back over the hero.
+      const k=margin+SLIDE_SLACK,ends=along?[hero!.x-k-half.w,hero!.x+hero!.width+k+half.w]:[hero!.y-k-half.h,hero!.y+hero!.height+k+half.h];
       const options=ends.filter(v=>along?onRim(v,y):onRim(x,v));
       if(!options.length)continue;
       const cur=along?x:y,pick=options.reduce((best,v)=>Math.abs(v-cur)<Math.abs(best-cur)?v:best);
@@ -100,7 +105,7 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
     }
     // Another arrow already there: step along the side to the nearest free spot; merge ("+1") only when none is left.
     if(crowded(x,y)){
-      const step=along?2*half.w+6:2*half.h+6;let placed=false;
+      const step=along?2*half.w+6:2*half.h+TAG_ROOM+2;let placed=false;
       for(let k=1;k<=3&&!placed;k++)for(const sign of [1,-1]){
         const nx=along?x+sign*k*step:x,ny=along?y:y+sign*k*step;
         if(onRim(nx,ny)&&clear(nx,ny)&&!crowded(nx,ny)){x=nx;y=ny;placed=true;break;}

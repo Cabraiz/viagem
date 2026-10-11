@@ -16,7 +16,8 @@ import type {RunView} from './sim/view.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
-import {MapLabel,allyLabelText,mapLabelVisible} from './render/map-labels.ts';
+import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
+import {secondsLeft} from './hud/model.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -91,6 +92,9 @@ export class IslandScene extends Phaser.Scene {
   private lastPhase?:string;
   /** Wave or interval of the current round: map labels come back in the interval. */
   private roundPhase?:string;
+  /** Tick of the last authoritative view (seconds left on a caído ficha). */
+  private viewTick=0;
+  private sosScreens:{x:number;y:number}[]=[];
   private lastFeet?:Point;
   private facing=Math.PI/2;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), in CSS px; the follow camera centers on it (D-019). */
@@ -274,7 +278,7 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
-      this.roundPhase=runView.round?.phase;
+      this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
       this.horde?.push(runView);
       this.hooks.runView?.(runView);
@@ -319,8 +323,8 @@ export class IslandScene extends Phaser.Scene {
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
-      // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído (DSG-cenario-coerencia).
-      objects.label.setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online}))
+      // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
+      objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     if(!this.route.length)this.destination.clear();
@@ -328,8 +332,10 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Map labels as fichas at 13 px CSS; place names leave the screen during a round (DSG-cenario-coerencia). */
   private drawLabels(){
-    const zoom=this.cameras.main.zoom,phase=this.labelPhase();
-    for(const sign of this.signs)sign.label.draw(zoom,mapLabelVisible('place',phase));
+    const zoom=this.cameras.main.zoom,phase=this.labelPhase(),sos=this.sosScreens;
+    // Place fichas near a caído ficha step aside (last frame's positions), so who fell stands out.
+    sos.length=0;for(const a of this.remoteActors.values())if(a.label.screen.sos)sos.push(a.label.screen);
+    for(const sign of this.signs){const show=mapLabelVisible('place',phase);sign.label.draw(zoom,show&&!(sos.length&&placeYieldsToSos(sign.label.screen,sos)));}
   }
   /** 'combat' only while a wave runs: the interval between waves counts as a pause for the labels. */
   private labelPhase(){const phase=this.hooks.net?.run?.phase;return phase==='combat'&&this.roundPhase==='prepare'?'interval':phase;}

@@ -23,10 +23,23 @@ export function shortName(name:string,max=MAX_NAME){
   const chars=[...name.trim()];
   return chars.length<=max?chars.join(''):chars.slice(0,max-1).join('').trimEnd()+'…';
 }
-/** Ally ficha text: name, plus one glossary word for the state ("caído", "fora", "assistindo", "voltando"). No "A · B". */
-export function allyLabelText(name:string,s:AllyStatus){
-  const state=s.spectator?'assistindo':s.eliminated?'fora':s.downed?'caído':s.online===false?'voltando':'';
+/** The team rail's short name (first word, up to 9 letters): the same player has one name on the rail and on the map. */
+export const railName=(name:string)=>[...(name.trim().split(/\s+/)[0]??'')].slice(0,9).join('');
+/**
+ * Ally ficha text. Caído: rail name and the seconds left ("Tia, 18 s"); the SOS tag on the ficha already says caído.
+ * Otherwise (waiting room) the name, plus one glossary word for the state ("fora", "assistindo", "voltando"). No "A · B".
+ */
+export function allyLabelText(name:string,s:AllyStatus,secondsLeft?:number){
+  if(s.downed&&!s.eliminated&&!s.spectator)return secondsLeft===undefined?railName(name):`${railName(name)}, ${secondsLeft} s`;
+  const state=s.spectator?'assistindo':s.eliminated?'fora':s.online===false?'voltando':'';
   return state?`${shortName(name,12)}, ${state}`:shortName(name);
+}
+/** Place fichas this close (CSS px) to a caído ficha step aside, so the eye finds who fell in 200 ms (UX onda 4, D1). */
+export const SOS_CLEAR_CSS=160;
+/** Whether a place ficha at `place` (screen CSS px) must hide because some caído ficha is near. */
+export function placeYieldsToSos(place:{x:number;y:number},sos:readonly {x:number;y:number}[],clear=SOS_CLEAR_CSS){
+  for(const p of sos){const dx=p.x-place.x,dy=p.y-place.y;if(dx*dx+dy*dy<clear*clear)return true;}
+  return false;
 }
 /** World units per CSS px at a camera zoom (never below the floor, so a zoomed-in camera keeps 13 px too). */
 export const labelScale=(zoom:number)=>1/Math.max(.05,zoom);

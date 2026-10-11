@@ -24,7 +24,8 @@ vec2 materialUV(vec2 p){return clamp(1.0-abs(fract(p*0.5)*2.0-1.0),0.001,0.999);
 vec3 material(sampler2D tex,vec2 p){vec2 q=mat2(0.8,-0.6,0.6,0.8)*p*1.37+vec2(3.27,8.41);float blend=smoothstep(0.30,0.70,fbm(p*1.7))*0.55;return mix(texture2D(tex,materialUV(p)).rgb,texture2D(tex,materialUV(q)).rgb,blend);}
 float lum(vec3 c){return dot(c,vec3(.299,.587,.114));}
 // Scene palette (D-022, docs/art-direction.md): warm sand, vivid green, turquoise water. Linear-ish sRGB 0..1.
-const vec3 GRASS_DARK=vec3(.29,.56,.22),GRASS_LIGHT=vec3(.50,.76,.30),GRASS_SUN=vec3(.62,.82,.34);
+// Grass median ~#559848 (onda 4): still vivid, but 2:1 from Verde Cartolina (the "a favor" color) and 5:1 from Breu.
+const vec3 GRASS_DARK=vec3(.22,.45,.18),GRASS_LIGHT=vec3(.33,.60,.27),GRASS_SUN=vec3(.42,.66,.29);
 const vec3 SAND_DARK=vec3(.86,.74,.52),SAND_LIGHT=vec3(.97,.89,.68);
 const vec3 TRAIL_DARK=vec3(.74,.58,.38),TRAIL_LIGHT=vec3(.88,.74,.52);
 const vec3 ROCK_DARK=vec3(.58,.60,.58),ROCK_LIGHT=vec3(.80,.80,.74);
@@ -55,7 +56,9 @@ void main(){
  float trail=1.0-smoothstep(0.26,0.56,path+(macro-0.5)*0.12);
  color=mix(color,mix(TRAIL_DARK,TRAIL_LIGHT,stone),trail*.85);
  // Warm sand on the shore band, darker where the waves wet it.
- float beach=1.0-smoothstep(2.6,6.2,ground+(macro-0.5)*2.2);
+ // Its width follows a low-frequency noise (about ×0.3 to ×2.1): coves, points and sand banks, not a ring.
+ float reach=mix(.3,2.1,smoothstep(.3,.7,fbm(g*.42+vec2(7.1,3.3))));
+ float beach=1.0-smoothstep(2.6*reach,6.2*reach,ground+(macro-0.5)*2.2);
  vec3 sand=mix(SAND_DARK,SAND_LIGHT,stone);
  sand=mix(sand,sand*vec3(0.86,0.86,0.84),1.0-smoothstep(0.25,1.4,ground));
  color=mix(color,sand,beach);
@@ -71,9 +74,13 @@ void main(){
  float waterHeight=fbm(flow);
  vec2 waveGrad=vec2(fbm(flow+vec2(.07,0))-fbm(flow-vec2(.07,0)),fbm(flow+vec2(0,.07))-fbm(flow-vec2(0,.07)));
  vec3 riverBed=mix(SAND_DARK,SAND_LIGHT,clamp((lum(material(iChannel2,(g+waveGrad*.16)/4.2))-0.30)/0.22,0.0,1.0));
- float transmission=exp(-depth*.16);
+ // The shallows reach farther over sand banks and less at drop-offs (a low-frequency noise on the depth), and the open
+ // sea darkens a little in broad patches: no uniform halo around the island.
+ float bank=mix(.5,1.7,smoothstep(.25,.75,fbm(g*.38+vec2(2.7,9.1))));
+ float transmission=exp(-depth*bank*.16);
  // Turquoise: sandy bed through shallow water, clear teal far out (never the old near-black sea).
- vec3 water=mix(SEA_DEEP,SEA_SHALLOW,smoothstep(0.0,0.55,transmission));
+ vec3 deep=SEA_DEEP*mix(.86,1.04,fbm(g*.11+vec2(31.0,5.0)));
+ vec3 water=mix(deep,SEA_SHALLOW,smoothstep(0.0,0.55,transmission));
  water=mix(water,riverBed*vec3(.80,.97,.93),transmission*.55);
  vec3 wn=normalize(vec3(-waveGrad*3.2,1.0));
  float fresnel=.02+.08*pow(1.0-max(0.0,dot(wn,normalize(vec3(.5,.5,.75)))),3.0);

@@ -276,9 +276,12 @@ function drawFx(make:(key:string,w:number,h:number,draw:(g:G)=>void)=>void){
   make(FX.bar,46,13,bar(0x2b2233));
   make(FX.barElite,46,13,bar(0xe0a93a));
   make(FX.barFill,40,7,g=>{g.fillStyle(0xffffff).fillRoundedRect(0,0,40,7,3.5);});
+  // Spawn warning in the palette (onda 4): Laranja Cone disc, Breu edge and "!" (the white icon tinted red was the
+  // worst pair for deuteranopia on the green). Drawn in its own colors: the renderer no longer tints it.
+  const breu=tokenColor('--c-breu'),cone=tokenColor('--c-cone');
   make(FX.warning,40,40,g=>{
-    g.fillStyle(0xffffff,.28).fillCircle(20,20,17);g.lineStyle(3.5,0xffffff).strokeCircle(20,20,17);
-    g.fillStyle(0xffffff).fillRoundedRect(17,8,6,16,3).fillCircle(20,30,3.4);
+    g.fillStyle(papel,1).fillCircle(20,20,19);g.fillStyle(breu,1).fillCircle(20,20,17);g.fillStyle(cone,1).fillCircle(20,20,14);
+    g.fillStyle(breu).fillRoundedRect(17,9,6,14,3).fillCircle(20,29,3.4);
   });
 }
 

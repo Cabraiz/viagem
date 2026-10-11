@@ -5,6 +5,7 @@
  */
 import type {PlayerRunView,RunView} from '../sim/view.ts';
 import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,teamOrder,type HudContext,type HudPart} from './model.ts';
+import {railName} from '../render/map-label-rules.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -20,7 +21,8 @@ export function memberState(player:PlayerRunView):MemberState{
   return hpFraction(player)<=.3?'low':'ok';
 }
 const BADGES:Record<MemberState,string>={ok:'',low:'',downed:'🆘',eliminated:'💀',offline:'📵',spectator:'👀'};
-const firstName=(name:string)=>name.trim().split(/\s+/)[0]?.slice(0,9)??'';
+// One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
+const firstName=railName;
 
 interface MemberNodes {root:HTMLElement;img:HTMLImageElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
 

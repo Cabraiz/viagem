@@ -12,7 +12,7 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {deathLine,kindStyle,damageLabel} from './jokes.ts';
 import type {Projector} from './projector.ts';
-import {OUTLINE_MAX_POINTS,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {token,tokenColor} from '../../ui/tokens.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
@@ -110,8 +110,18 @@ export const NUMBERS_PER_PUSH=FX_BUDGET.full.numbersPerPush;
 export const PLAYER_HIT_DEPTH=96600;
 /** Telegraph outlines sit above every enemy, bar, number and bubble: danger is never hidden. */
 export const TELEGRAPH_TOP_DEPTH=99000;
+/** Balloon bodies: one step under the balloon text, so nothing falls between a balloon's body and its words. */
+export const BALLOON_BODY_DEPTH=95990;
 /** Width of the telegraph's outer (light) stroke at UI scale 1, in world px; the red core is half of it. */
 export const TELEGRAPH_STROKE=8;
+/**
+ * Telegraph edge bands in CSS px (onda 4: every band ≥ 1,5 px on screen at the follow camera's 0,583 zoom):
+ * Breu 2 | Papel 2 | Cone 3 | Papel 2 | Breu 2, so the full edge is 11 px wide, inside the zone (D-015).
+ */
+export const TELEGRAPH_BANDS_CSS={breu:2,papel:2,cone:3} as const;
+const TELEGRAPH_EDGE_CSS=2*TELEGRAPH_BANDS_CSS.breu+2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone;
+/** Hatch of the zone: Breu diagonals, 1,5 px CSS wide every 9 px CSS, at 18%. */
+const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
 
 export class HordeRenderer{
   private scene:Phaser.Scene;
@@ -122,6 +132,8 @@ export class HordeRenderer{
   private objects:Phaser.GameObjects.GameObject[]=[];
   private ground:Phaser.GameObjects.Graphics;
   private overlay:Phaser.GameObjects.Graphics;
+  /** Balloon bodies, right under their text (96000) and above numbers (95500), pops (95800) and bars. */
+  private balloons:Phaser.GameObjects.Graphics;
   private top:Phaser.GameObjects.Graphics;
   private fx:FxBudget;
   /** Latest number per target, for merging hits inside DAMAGE_MERGE_MS. */
@@ -164,6 +176,7 @@ export class HordeRenderer{
     ensureHordeTextures(scene);
     this.ground=this.track(scene.add.graphics().setDepth(-9970));
     this.overlay=this.track(scene.add.graphics().setDepth(95000));
+    this.balloons=this.track(scene.add.graphics().setDepth(BALLOON_BODY_DEPTH));
     this.top=this.track(scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH));
     const image=(key:string)=>()=>this.track(scene.add.image(0,0,key).setVisible(false).setActive(false));
     const text=(style:TextStyle,depth:number)=>()=>this.track(scene.add.text(0,0,'',style).setOrigin(.5,1).setDepth(depth).setVisible(false).setActive(false));
@@ -220,7 +233,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
-    this.ground.clear();this.overlay.clear();this.top.clear();
+    this.ground.clear();this.overlay.clear();this.balloons.clear();this.top.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
@@ -254,7 +267,7 @@ export class HordeRenderer{
     const byLayer:Record<string,{created:number;active:number}>={
       enemies:this.count(this.enemies),pickups:this.count(this.pickups),projectiles:this.count(this.projectiles),
       damage:this.count(this.numbers),pops:this.count(this.pops),poofs:this.count(this.poofs),stars:this.count(this.stars),
-      bubbles:this.count(this.bubbles),warnings:this.count(this.warnings),graphics:{created:3,active:3},
+      bubbles:this.count(this.bubbles),warnings:this.count(this.warnings),graphics:{created:4,active:4},
     };
     let created=0,active=0;
     for(const key in byLayer){created+=byLayer[key].created;active+=byLayer[key].active;}
@@ -337,7 +350,7 @@ export class HordeRenderer{
       case 'spawn-warning':{
         const w=this.warnings.spawn();
         w.born=this.now;w.x=event.x;w.y=event.y;w.atTick=event.atTick;w.size=1+Math.min(.5,event.count*.04);
-        w.image.setTint(0xff5a5a);break;
+        w.image.clearTint();break; // the texture carries the palette (Cone, Breu, Papel)
       }
       case 'bark':this.spawnBubble(event.enemy,event.line);break;
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
@@ -484,10 +497,14 @@ export class HordeRenderer{
     top.fillStyle(c.cone,.08+.1*u).fillPoints(this.pts,true,true,n);
     // Three hard bands on the zone's edge (Laranja Cone = danger only): Breu outside, Papel, Cone core. Breu holds on
     // sand, grass and water; Papel holds on the dark trees and the horde; the blink stays on the Papel band only.
-    const half=insetPolygon(this.pts,n,TELEGRAPH_STROKE/2*w,this.ptsIn);
+    // Hatch over the fill, so the zone reads by shape too (Cone on the grass is close in luminance; deuteranopia).
+    const css=this.css(),hatch=hatchSegments(this.pts,n,HATCH_CSS.spacing*css,this.hatch,this.hatchXs);
+    if(hatch){top.lineStyle(HATCH_CSS.width*css,c.breu,HATCH_CSS.alpha);for(let i=0;i<hatch;i++){const o=i*4;top.lineBetween(this.hatch[o],this.hatch[o+1],this.hatch[o+2],this.hatch[o+3]);}}
+    // Bands in CSS px (never thinner on screen when the camera zooms in); never below the old UI-scaled width either.
+    const want=Math.max(TELEGRAPH_EDGE_CSS*css,TELEGRAPH_STROKE*w)/2,half=insetPolygon(this.pts,n,want,this.ptsIn),k=2*half/TELEGRAPH_EDGE_CSS;
     top.lineStyle(2*half,c.breu,.95).strokePoints(this.ptsIn,true,true,n);
-    top.lineStyle(1.4*half,c.papel,.55+.45*blink).strokePoints(this.ptsIn,true,true,n);
-    top.lineStyle(.8*half,c.cone,1).strokePoints(this.ptsIn,true,true,n);
+    top.lineStyle(k*(2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone),c.papel,.55+.45*blink).strokePoints(this.ptsIn,true,true,n);
+    top.lineStyle(k*TELEGRAPH_BANDS_CSS.cone,c.cone,1).strokePoints(this.ptsIn,true,true,n);
   };
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}
@@ -502,8 +519,10 @@ export class HordeRenderer{
     const q=this.project(this.at),pulse=this.reduced?1:1+.16*Math.sin((this.now-w.born)*.012);
     w.image.setPosition(q.x,q.y-26).setDepth(this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
       .setAlpha(this.reduced?.9:.65+.35*Math.abs(Math.sin((this.now-w.born)*.006)));
-    this.ground.lineStyle(7,PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
-      .lineStyle(3,PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse);
+    // Breu 2 | Cone 3 | Breu 2 px CSS at any zoom.
+    const css=this.css();
+    this.ground.lineStyle(Math.max(7,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
+      .lineStyle(Math.max(3,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse);
     return true;
   };
   private drawPoof=(p:PoofFx)=>{
@@ -548,7 +567,7 @@ export class HordeRenderer{
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;
     b.text.setVisible(true).setAlpha(alpha).setScale((this.reduced||age>=160?1:.7+.3*age/160)*this.ui);
-    const t=8*this.ui,e=2*this.ui,o=this.overlay,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
+    const t=8*this.ui,e=2*this.css(),o=this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
     // Balloon: Papel body with a 2 px Breu edge (it vanished on the light sand), then the Papel tail over it.
     o.fillStyle(PALETTE.breu,alpha).fillRoundedRect(tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,10*this.ui)
       .fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
@@ -557,6 +576,10 @@ export class HordeRenderer{
     return true;
   };
 
+  /** World px per CSS px at the current camera zoom: hard edges keep a minimum width on screen (onda 4: ≥ 1,5 px CSS). */
+  private css(){return 1/Math.max(.05,this.scene.cameras.main.zoom);}
+  private hatch=new Float64Array(HATCH_MAX_LINES*4);
+  private hatchXs=new Float64Array(OUTLINE_MAX_POINTS);
   private project(p:Pt){return this.options.projector.project(p.x,p.y,this.q);}
   private depth(p:Pt){return this.options.projector.depth(p.x,p.y);}
   private count(pool:{created:number;active:number}){return {created:pool.created,active:pool.active};}

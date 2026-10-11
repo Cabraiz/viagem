@@ -250,3 +250,11 @@ test('waiting room: the free band stops above the thumb zones',()=>{
   const b=freeAround(PORTRAIT,{x:15,y:122,width:360,height:367},684);
   assert.deepEqual(b,{x:0,y:489,width:390,height:195});
 });
+
+test('zones: in landscape with the offer chip the useful area is the tall band between the thumbs, not a 100 px strip',async()=>{
+  const {computeZones,MIN_PLAY_SIDE}=await import('../src/game/hud/zones.ts');
+  const z=computeZones({viewport:{width:844,height:390},status:[{x:0,y:0,width:844,height:78}],team:{x:252,y:317,width:340,height:65},
+    joystick:{x:18,y:278,width:96,height:96},skill:{x:744,y:292,width:82,height:82},chip:{x:668,y:300,width:56,height:56}});
+  assert.ok(z.useful.height>=MIN_PLAY_SIDE,`${JSON.stringify(z.useful)}`);
+  assert.equal(z.useful.x,138);
+});

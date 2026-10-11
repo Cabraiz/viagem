@@ -13,6 +13,9 @@
 
 /* Own-fall banner, optional second line: critter sticker + joke. */
 .rh-alert-cause{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema)}
+/* Landscape: the announcement slot is 72 px, so the fall notice keeps one line; what got you stays on the result
+   ("Te derrubou: …"). Two lines spilled into the useful area (camera-segue, UX onda 4 D4). */
+@media (max-height:500px){.rh-alert-cause{display:none}}
 .rh-alert-cause-icon{flex:none;width:28px;height:24px;object-fit:contain;padding:1px 2px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:2px solid var(--c-breu)}
 
 /* Result: what downed you (or the team). */

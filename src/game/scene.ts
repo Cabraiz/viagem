@@ -327,12 +327,16 @@ export class IslandScene extends Phaser.Scene {
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
   heroScreenRect(){
     if(!this.actor)return undefined;
-    const cam=this.cameras.main,b=this.heroWorldBox();
+    // Out or watching: the HUD keeps clear of the teammate the camera follows, not of one's own body far away.
+    const watched=this.watchPoint&&this.watchId?this.remoteActors.get(this.watchId):undefined;
+    const classId=watched?this.hooks.net?.players.get(this.watchId!)?.classId:this.hooks.classId;
+    const cam=this.cameras.main,b=this.figureWorldBox(watched?.image??this.actor,classId??this.hooks.classId);
     return {x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom};
   }
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
-  private heroWorldBox(){
-    const a=this.actor,f=a.texture.key.startsWith('sprite:')?this.sprites.figure(this.hooks.classId):undefined;
+  private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
+  private figureWorldBox(a:Phaser.GameObjects.Sprite,classId:string){
+    const f=a.texture.key.startsWith('sprite:')?this.sprites.figure(classId):undefined;
     if(!f)return a.getBounds();
     const sx=Math.abs(a.scaleX),sy=Math.abs(a.scaleY),w=a.frame.width,h=a.frame.height,ox=a.originX*w,oy=a.originY*h;
     const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;

@@ -16,6 +16,8 @@ export type Orientation='portrait'|'landscape';
 export const THUMB_GAP=24;
 /** Clearance kept around the hero's sprite (UX checklist B2). */
 export const HERO_MARGIN=40;
+/** Smallest useful-area side that holds the hero (56 px at the follow zoom) with HERO_MARGIN on both sides. */
+export const MIN_PLAY_SIDE=56+2*HERO_MARGIN;
 /** Height reserved under the status rows for the announcement slot: the two-line round banner, or one notice with its optional second line. */
 export const ANNOUNCE_HEIGHT={portrait:88,landscape:72} as const;
 /** The round/boss banner shows this long in the top band, then shrinks into the round chip. */
@@ -76,7 +78,10 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const a={x:left,y:yTop,width:Math.max(0,rightEdge-left),height:Math.max(0,aBottom-yTop)};
   const bLeft=Math.max(left,leftThumb?right(leftThumb):left),bRight=Math.min(rightEdge,thumbR?thumbR.x:rightEdge);
   const b={x:bLeft,y:yTop,width:Math.max(0,bRight-bLeft),height:Math.max(0,floor-yTop)};
-  const useful=b.width*b.height>a.width*a.height?b:a;
+  // The follow camera centres the hero (~56 px) ± HERO_MARGIN in it: a rectangle shorter than that cannot hold the hero
+  // (landscape with the offer chip: the full-width band above the thumbs is ~98 px), so one that fits wins, then area.
+  const fits=(r:Rect)=>r.height>=MIN_PLAY_SIDE&&r.width>=MIN_PLAY_SIDE;
+  const useful=fits(a)!==fits(b)?(fits(a)?a:b):b.width*b.height>a.width*a.height?b:a;
   return {orientation,viewport,top,announce,team,leftThumb,rightThumb:thumbR,useful};
 }
 

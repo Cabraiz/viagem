@@ -79,16 +79,16 @@ test('message flooding and oversized payloads close connection',()=>{
 
 test('older clients are rejected before joining a procedural room',()=>{
   const room=new Room(1000,42);
-  // Protocol 3 is the JSON room before VGM-042b and 4 the frames without event sizes (before E7): a tab left open
-  // across the release gets a readable refusal, no frames.
-  for(const version of [1,3,4,6]){
+  // Protocol 3 is the JSON room before VGM-042b, 4 the frames without event sizes (before E7) and 5 the frames without
+  // Stonewards (before VGM-046B): a tab left open across the release gets a readable refusal, no frames.
+  for(const version of [1,3,4,5,7]){
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
     assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
-  assert.equal(ROOM_PROTOCOL,5);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
+  assert.equal(ROOM_PROTOCOL,6);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);
@@ -387,4 +387,35 @@ test('the client accepts only the room\'s exact terrain from the welcome descrip
   assert.match(String(terrainFor({...welcome.world,signature:'x'})),/Atualiza a página/);
   assert.match(String(terrainFor({...welcome.world,terrainVersion:999})),/Atualiza a página/);
   assert.match(String(terrainFor(undefined)),/Atualiza a página/);
+});
+
+test('VGM-046B: forge taps through the room respect the balance, the camp and a resent request; frames carry the camp',()=>{
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');
+  startRun(room,[a,b]);
+  const sw=room.sim.run.stonewards.state,round=room.run.snapshot().round;
+  assert.equal(room.sim.world.round.phase,'prepare','the opening countdown is an intermission too');
+  sw.balance={coco:3,pedra:4};sw.wall.hp=100;
+  const forged=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='forged');
+  // Two taps in the same tick, money for one repair: the first one wins, the second hears why.
+  command(room,a,{t:'forge',round,recipe:'reparo',req:1});command(room,b,{t:'forge',round,recipe:'reparo',req:1});
+  assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:true});
+  assert.deepEqual(forged(b).at(-1),{t:'forged',req:1,recipe:'reparo',ok:false,reason:'balance'});
+  assert.deepEqual(sw.balance,{coco:1,pedra:1});assert.equal(sw.wall.hp,100+150);
+  // The same request again (a resend after a reconnect) applies once.
+  sw.balance={coco:9,pedra:9};
+  command(room,a,{t:'forge',round,recipe:'reparo',req:1});
+  assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:false,reason:'duplicate'});
+  // Forged or stale commands never reach the forge.
+  const before=forged(a).length;
+  for(const bad of [{recipe:'__proto__',req:2},{recipe:'reparo',req:-1},{recipe:'reparo',req:'x'},{recipe:'reparo',req:3,round:round+1}])command(room,a,{t:'forge',round,...bad});
+  assert.equal(forged(a).length,before);
+  // Out of the camp: refused with the reason.
+  const pa=room.sim.players.get(idOf(a))!;pa.x=sw.wall.x+20;
+  command(room,a,{t:'forge',round,recipe:'reparo',req:4});
+  assert.equal(forged(a).at(-1).reason,'away');
+  // The next frames carry the camp block and the wall.
+  const c=client(room,a);room.advance(5000);room.advance(5050);c.pump();
+  const view=c.feed.peek();
+  assert.deepEqual(view.camp,{coco:9,pedra:9});
+  assert.equal(view.structures.find(s=>s.kind==='muralha')!.hp,250);
 });

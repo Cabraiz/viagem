@@ -10,6 +10,7 @@ import {CharacterSprites} from './character-sprites.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
+import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
 import type {RunView} from './sim/view.ts';
@@ -98,6 +99,8 @@ export class IslandScene extends Phaser.Scene {
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
+  /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
+  private stone?:StonewardsRenderer;
   private projector?:Projector;
   private stateVersion=-1;
   private offersVersion=-1;
@@ -158,7 +161,8 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id)});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
-      const release=()=>{this.horde?.destroy();this.horde=undefined;this.you?.destroy();this.you=undefined;};
+      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced});
+      const release=()=>{this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -198,7 +202,7 @@ export class IslandScene extends Phaser.Scene {
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
-    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();}
+    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();}
   }
   /** Endless world only: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen unchanged). */
   private rebaseDepth(force=false){
@@ -361,14 +365,14 @@ export class IslandScene extends Phaser.Scene {
       const runView=net.feed.take();
       this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);
+      this.horde?.push(runView);this.stone?.push(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.horde?.update(time,delta);
+    this.horde?.update(time,delta);this.stone?.update(time);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){

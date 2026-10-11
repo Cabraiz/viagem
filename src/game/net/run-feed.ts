@@ -203,6 +203,7 @@ export class FrameRunFeed implements RunFeed {
     return {
       tick:v?.tick??0,team:v?{...v.team}:{xp:0,level:1,nextXp:1},round:v?.round?{...v.round}:undefined,...(v?.wave?{wave:{...v.wave}}:{}),
       enemies:v?.enemies??[],pickups:v?.pickups??[],projectiles:v?.projectiles??[],telegraphs:v?.telegraphs??[],structures:v?.structures??[],
+      nodes:v?.nodes??[],...(v?.camp?{camp:{...v.camp}}:{}),
       players:v?.players??[],offers:this.offers,events,
     };
   }

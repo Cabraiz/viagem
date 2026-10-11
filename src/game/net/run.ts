@@ -1,6 +1,6 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
 export const RUN_HZ=20;
-/** Safety limit only: a full horde run (10 rounds, intermissions and the boss) takes about 13.7 min. */
+/** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 /**

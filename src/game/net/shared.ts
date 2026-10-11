@@ -13,12 +13,15 @@ import {refreshStats} from '../sim/stats.ts';
 import type {ChooseResult} from '../sim/progression.ts';
 import {BASE_STATS} from '../sim/types.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
-import type {RunView,TelegraphView} from '../sim/view.ts';
+import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
+import {nodesNear,remainingOf,WORK_PER_UNIT} from '../sim/stonewards/resources.ts';
+import type {BuyResult} from '../sim/stonewards/forge.ts';
 import type {RunState} from './run.ts';
 import {InputTrack,STEP_MS} from './input-track.ts';
 /**
- * Room protocol (join handshake). 5 since E7-skill-hud-wiring (4 was VGM-042b): binary run frames (protocol4.ts,
- * every event with its byte length) plus JSON control messages.
+ * Room protocol (join handshake). 6 since VGM-046B (5 was E7-skill-hud-wiring, 4 VGM-042b): binary run frames
+ * (protocol4.ts: camp block and gather nodes) plus JSON control messages (`forge` asks the forge for a recipe).
  * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
  * refused at join with a readable message, never fed frames it cannot parse.
  */
@@ -259,6 +262,46 @@ export class Simulation {
     return this.systems.progression.choose(this.world,id,offerId,index);
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
+  /**
+   * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
+   * balance). `requestId` makes a resent tap apply once. Refused once the run is decided.
+   */
+  forge(id:string,recipeId:string,requestId?:string):BuyResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.buy(this.world,id,recipeId,requestId);
+  }
+  /** Node ids of the last frame (the Room prunes the wire ids of the rest). */
+  nodeIds:string[]=[];
+  /** The wall and the towers as the client sees them. */
+  private structureViews():StructureView[]{
+    const st=this.systems.stonewards.state,w=st.wall;
+    return [{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp},...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
+  }
+  /**
+   * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area
+   * of interest (each encoder keeps its own part). Untouched nodes are full.
+   */
+  private nodeViews():NodeView[]{
+    const w=this.world,st=this.systems.stonewards.state;
+    if(w.round.phase!=='prepare'||w.round.index<1||st.wallDown){this.nodeIds=[];return [];}
+    const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
+    for(const p of this.players.values()){
+      if(p.spectator||p.eliminated)continue;
+      for(const n of nodesNear(this.terrain,p,reach)){
+        if(out.has(n.id))continue;
+        const touched=st.nodes.find(t=>t.id===n.id);
+        out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,
+          progress:touched?Math.min(1,touched.work/WORK_PER_UNIT[n.kind]):0});
+      }
+    }
+    this.nodeIds=[...out.keys()];
+    return [...out.values()];
+  }
+  private campView():CampView{
+    const st=this.systems.stonewards.state;
+    return {coco:st.balance.coco,pedra:st.balance.pedra,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+  }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){
     this.clock=now;
@@ -327,7 +370,7 @@ export class Simulation {
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
-      structures:[],
+      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
@@ -353,7 +396,7 @@ export class Simulation {
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
-      structures:[],
+      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>{
         const stats=this.statsOf(p.id);
         return {

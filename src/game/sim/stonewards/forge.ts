@@ -6,10 +6,10 @@ import {ticks} from '../types.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';
 import type {StonewardsState} from './state.ts';
-import {CAMP_RADIUS,RECIPES,canPay,type RecipeId} from './rules.ts';
+import {CAMP_RADIUS,RECIPES,TOWER_SECONDS,canPay,type RecipeId} from './rules.ts';
 
 export const REPAIR_FRACTION=.25;
-export const TOWER_DURATION=ticks(45);
+export const TOWER_DURATION=ticks(TOWER_SECONDS);
 export const TOWER_RANGE=3;
 export const TOWER_DAMAGE=12;
 export const TOWER_COOLDOWN=ticks(.6);

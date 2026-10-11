@@ -26,6 +26,9 @@ export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
 export const canPay=(b:Balance,c:Balance)=>b.coco>=c.coco&&b.pedra>=c.pedra;
 
+/** How long a chinelo tower stays (the forge's third recipe). */
+export const TOWER_SECONDS=45;
+
 /**
  * The camp around the wall (base-stonewards-mapa): the forge only works inside it. 6 units holds the players' spawn
  * (5 units from the base on both maps), so a run starts with everyone in the camp.

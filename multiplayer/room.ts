@@ -6,6 +6,7 @@ import { classes } from '../src/classes.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {walkable} from '../src/game/world.ts';
 import {sha256Hex} from '../src/game/net/sha256.ts';
+import {isRecipeId} from '../src/game/sim/stonewards/rules.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -49,10 +50,11 @@ const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
- * A new run only starts when the room still has this long to live: a full horde run takes ~13.7 min (plan §1).
+ * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
+ * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min, and the horn may stretch one for a hero far away, so 17.
  * Starting later would end with the room closing (4004) instead of a result. The 20 min tick cap stays a safety net.
  */
-export const RUN_START_WINDOW_MS=15*60_000;
+export const RUN_START_WINDOW_MS=17*60_000;
 /** A run still going this close to the room's end is closed as a timeout, so the result always reaches the players. */
 export const ROOM_CLOSING_MARGIN_MS=30_000;
 /** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */
@@ -209,6 +211,7 @@ export class Room {
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
+    else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -231,6 +234,18 @@ export class Room {
     if(!Number.isInteger(m.index)||m.index<0||m.index>MAX_CHOICE_INDEX)return;
     this.sim.choose(c.playerId!,m.offer,m.index);
     this.pushOffers(c,true);
+  }
+  /**
+   * Forge tap (VGM-046B): {t:'forge',round,recipe,req}. The simulation validates everything (phase, standing, in the
+   * camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once, everyone
+   * sees the balance in the next frame and the recipe's line as a `say` event.
+   */
+  private forge(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(!isRecipeId(m.recipe)||!Number.isSafeInteger(m.req)||m.req<1)return;
+    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req));
+    this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){
@@ -340,7 +355,9 @@ export class Room {
   /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
-    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs)});
+    const st=this.sim.run.stonewards.state;
+    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
+      structures:[st.wall.id,...st.towers.map(t=>t.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

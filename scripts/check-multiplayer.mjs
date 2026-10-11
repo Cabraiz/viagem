@@ -1,4 +1,4 @@
-// Manual check of a rooms Worker with six protocol clients (room protocol 5: JSON control + binary frames).
+// Manual check of a rooms Worker with six protocol clients (room protocol 6: JSON control + binary frames).
 // Usage: node --experimental-strip-types scripts/check-multiplayer.mjs <https endpoint> [origin]
 // Ported from the protocol 3 JSON script (E7-skill-hud-wiring, rodada 4): the run no longer ends in seconds, so
 // the old "shared victory" and "rematch" checks are gone; the frames are decoded with the client's own decoder.

@@ -4,10 +4,20 @@ import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from './protocol4.ts';
+import {InputBatcher} from './input-track.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
-/** A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, spectator, fallen player). */
-const ACK_FALLBACK_MS=120;
+/**
+ * A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, standing still, fallen, watching).
+ * input-10hz: every message the room receives counts toward the free plan (20 messages = 1 request), and a still
+ * player sends no input any more, so the ack goes on its own at most this often (deltas stay against a baseline at
+ * most ~1 s old, well inside the encoder's 64-frame history).
+ */
+export const ACK_EVERY_MS=1000;
+/** RTT ping (diagnostics line); the acks already keep the connection alive (the room drops a peer silent for 12 s). */
+const PING_EVERY_MS=5000;
+/** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
+const MAX_PENDING=40;
 /** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
 const MAX_BAD_FULL_FRAMES=3;
 /** At most one resync request this often (frames already in flight fail the same way). */
@@ -23,10 +33,16 @@ const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classI
 export class CoopClient {
   terrain=defaultTerrain;
   run?:RunState;
-  id='';token='';seq=0;tick=0;rtt=0;connected=false;victory=false;
+  id='';token='';tick=0;rtt=0;connected=false;victory=false;
   players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
   pending:Input[]=[];
+  /** Change segments and the 10 Hz send slot (input-10hz). */
+  private readonly batcher=new InputBatcher();
+  private flushTimer?:ReturnType<typeof setTimeout>;
+  private pingAt=-Infinity;
+  /** Client step counter (the room acks these). */
+  get seq(){return this.batcher.seq;}
   /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
   readonly feed=new FrameRunFeed();
   /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */
@@ -85,10 +101,10 @@ export class CoopClient {
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
-        this.setRun(m.run,m.tick);this.seq=Number.isSafeInteger(m.ack)?m.ack:0;this.initialized=true;
+        this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
-        clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{if(performance.now()-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'ping',at:performance.now()}));this.saveToken();},2000);
+        clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{const now=performance.now();if(now-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;ws.send(JSON.stringify({t:'ping',at:now}));}this.saveToken();},2000);
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
@@ -97,7 +113,7 @@ export class CoopClient {
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
     ws.onclose=()=>{
-      clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;this.connected=false;this.pending=[];
+      clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
       this.lostAt ||= Date.now();
       if(Date.now()-this.lostAt>25_000||(!this.initialized&&this.attempts>=2)){
@@ -119,7 +135,7 @@ export class CoopClient {
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
     this.victory=run.outcome==='victory';
@@ -139,7 +155,7 @@ export class CoopClient {
     this.badFullFrames=0;
     if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,UPDATE_NEEDED);return;}
     this.ackSeq=result.seq;
-    this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_FALLBACK_MS);
+    this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
     this.tick=view.tick;
     this.players.clear();
@@ -151,7 +167,7 @@ export class CoopClient {
       this.run.elapsed=base.run.elapsed+d;this.run.remaining=Math.max(0,base.run.remaining-d);
     }
     const self=this.players.get(this.id);
-    if(self){this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
+    if(self){this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
     this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
@@ -160,14 +176,31 @@ export class CoopClient {
     if(this.ackSeq<=this.ackSent||this.socket?.readyState!==WebSocket.OPEN)return;
     this.ackSent=this.ackSeq;this.socket.send(JSON.stringify({t:'ack',seq:this.ackSeq}));
   }
+  /**
+   * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
+   * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
+   */
   input(direction:Point,skill:boolean,target?:string){
-    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=20)return;
-    const length=Math.max(1,Math.hypot(direction.x,direction.y));
-    const input:Input={seq:++this.seq,x:direction.x/length,y:direction.y/length,attack:false,skill,target};
-    this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);
-    const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
-    if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
-    this.socket.send(JSON.stringify({t:'input',round:this.run.round,...input,...(ack!==undefined?{ack}:{})}));
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
+    const {input,active}=this.batcher.step(direction,skill,target);
+    // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);}
+    this.flushInput();
+  }
+  /** Sends what the batcher allows now; changes still waiting for the 10 Hz slot go out on a timer. */
+  private flushInput(){
+    const socket=this.socket;
+    if(!socket||socket.readyState!==WebSocket.OPEN||!this.run)return;
+    const batch=this.batcher.take(performance.now());
+    if(batch){
+      clearTimeout(this.flushTimer);this.flushTimer=undefined;
+      const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
+      if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
+      socket.send(JSON.stringify({t:'input',round:this.run.round,seq:batch.seq,steps:batch.steps,...(ack!==undefined?{ack}:{})}));
+      return;
+    }
+    const until=this.batcher.waitingUntil;
+    if(until!==undefined&&!this.flushTimer)this.flushTimer=setTimeout(()=>{this.flushTimer=undefined;this.flushInput();},Math.max(0,until-performance.now()));
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   rematch(){this.runCommand({t:'rematch'});}
@@ -184,6 +217,6 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
 }
 export { STEP };

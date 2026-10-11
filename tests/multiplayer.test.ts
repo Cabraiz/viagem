@@ -39,7 +39,8 @@ test('movement ignores position/hp/damage fields and is capped per server tick',
   assert.equal(s.input('p',{seq:1,x:0,y:0,attack:false,target:{id:'forged'}}),false);
   for(let seq=1;seq<=30;seq++)s.input('p',{seq,x:1,y:1,attack:false,hp:99999,position:{x:50,y:50},damage:100000});
   s.step();assert.ok(Math.hypot(p.x-start.x,p.y-start.y)<=SPEED*STEP+.000001);assert.ok(Math.hypot(p.x-start.x,p.y-start.y)>0);
-  assert.equal(p.hp,maxHp);assert.equal(p.ack,1);
+  // A burst far ahead of the room is not queued for later (input-10hz): the room skips to the latest steps, still one per tick.
+  assert.equal(p.hp,maxHp);assert.ok(p.ack>=1&&p.ack<=30);
   assert.equal(s.input('p',{seq:1,x:1,y:0,attack:false}),false);
   for(let i=0;i<400;i++){s.input('p',{seq:Math.max(p.ack+1,i+31),x:1,y:1,attack:false});s.step();assert.ok(walkable(p));}
 });

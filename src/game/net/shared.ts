@@ -15,6 +15,7 @@ import {BASE_STATS} from '../sim/types.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
+import {InputTrack,STEP_MS} from './input-track.ts';
 /**
  * Room protocol (join handshake). 4 since VGM-042b: binary run frames (protocol4.ts) plus JSON control messages.
  * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
@@ -142,8 +143,8 @@ export class Simulation {
   private runs=0;
   private result?:SimOutcome;
   private pending?:{victory:boolean;defeat:boolean};
-  private queues=new Map<string,Input[]>();
-  private lastReceived=new Map<string,number>();
+  /** Per player: the client's change segments and the held state, one step per tick (input-10hz). */
+  private tracks=new Map<string,InputTrack>();
   /** Enemies after the last step plus any added since (references; a removed one keeps its final position). */
   private alive=new Map<string,EnemyState>();
   private tombs=new Map<string,{wire:EnemyWire;tick:number}>();
@@ -174,7 +175,7 @@ export class Simulation {
   get run():RunSystems{return this.systems;}
   private assemble(){
     return createRunSystems(this.world,{
-      takeInput:id=>this.queues.get(id)?.shift(),
+      takeInput:id=>{const p=this.players.get(id);return p?this.tracks.get(id)?.next(p,this.clock):undefined;},
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
     });
@@ -190,7 +191,7 @@ export class Simulation {
     let slot=0;
     for(const p of this.players.values()){
       this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
-      this.queues.set(p.id,[]);this.lastReceived.set(p.id,0);
+      this.track(p.id).reset(0);
     }
   }
   /** Fresh run kit: class bonus and starting weapon (VGM-044A), stats, full hp, cleared fall/skill state. */
@@ -205,15 +206,25 @@ export class Simulation {
     const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??worldSpawn(this.terrain);
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);
-    this.players.set(id,p);this.queues.set(id,[]);this.lastReceived.set(id,0);return p;
+    this.players.set(id,p);this.track(id).reset(0);return p;
   }
-  remove(id:string){this.players.delete(id);this.queues.delete(id);this.lastReceived.delete(id);}
-  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.queues.set(id,[]);this.lastReceived.set(id,p.ack);delete p.target;}}
-  input(id:string,value:unknown){
-    const p=this.players.get(id),q=this.queues.get(id);
-    if(!p?.online||p.spectator||!q||!validInput(value)||value.seq<=(this.lastReceived.get(id)??0)||value.seq>p.ack+40||q.length>=8)return false;
-    this.lastReceived.set(id,value.seq);q.push({seq:value.seq,x:value.x,y:value.y,attack:value.attack,target:value.target,skill:value.skill});return true;
+  remove(id:string){this.players.delete(id);this.tracks.delete(id);}
+  private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
+  /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
+  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);delete p.target;}}
+  /**
+   * A batch of change segments `{seq,steps}` (input-10hz) or one legacy step `{seq,x,y,attack,skill?,target?}`.
+   * Refused (false) for offline or spectating players and for anything malformed or out of order; see InputTrack.
+   */
+  input(id:string,value:unknown,now=this.tick*STEP_MS){
+    const p=this.players.get(id),t=this.tracks.get(id);
+    if(!p?.online||p.spectator||!t)return false;
+    return t.accept(value,p,this.terrain,now);
   }
+  /** Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones. */
+  confirmed(id:string){return this.tracks.get(id)?.confirmed();}
+  /** Clock of the step being taken (ms): the Room's wall clock, or tick × STEP_MS (tests, replays). */
+  private clock=0;
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};
@@ -221,7 +232,8 @@ export class Simulation {
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
   /** One server tick; returns its events. */
-  step(){
+  step(now=this.tick*STEP_MS){
+    this.clock=now;
     this.pending={victory:false,defeat:false};
     // Enemies added between ticks (tests, future checkpoints) join the set too, so they also get a tombstone.
     for(const e of this.world.enemies.values())if(!this.alive.has(e.id))this.alive.set(e.id,e);
@@ -273,7 +285,7 @@ export class Simulation {
     for(const [id,tomb] of this.tombs)if(tomb.tick<=this.tick-TOMBSTONE_TICKS)this.tombs.delete(id);
   }
   /** Hash of everything that decides future ticks (world, run systems, pending inputs, outcome). */
-  stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),queues:[...this.queues],lastReceived:[...this.lastReceived],outcome:this.result??null});}
+  stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),outcome:this.result??null});}
   /** Pure client view for one player (protocol 4 encodes this in VGM-042b). */
   view(playerId:string):RunView{
     const w=this.world;

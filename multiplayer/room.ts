@@ -12,7 +12,7 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  * offers: the pending-offer list (JSON) this peer last received, so each change is pushed once.
  * encoder: this client's protocol 4 encoder (VGM-042b), created on join; a reconnect gets a fresh one.
  */
-type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number};
+type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number};
 type Session={id:string;token:string;until:number};
 export interface RoomOptions {
   /** Combat safety limit in server ticks (tests shorten it). */
@@ -75,10 +75,11 @@ export class Room {
   connect(peer:Peer,now=Date.now()){
     if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
     if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
-    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0});
+    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
     const c=this.connections.get(peer);if(!c)return;
+    c.received++;
     if(raw.length>1024){peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
     if(now-c.window>=1000){c.window=now;c.count=0;}
     if(++c.count>45){peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
@@ -121,8 +122,10 @@ export class Room {
       const state=this.run.snapshot();
       if(state.phase==='combat'&&m.round===state.round){
         // Tap targets are client ids (e12); the simulation knows server ids. Unknown ones only drop the target.
-        const target=typeof m.target==='string'?this.ids.resolve(m.target):undefined;
-        this.sim.input(c.playerId,{...m,target});
+        const target=(label:unknown)=>typeof label==='string'?this.ids.resolve(label):undefined;
+        // input-10hz: change segments [from,x,y,flags,target?]; a legacy single step still works.
+        if(Array.isArray(m.steps))this.sim.input(c.playerId,{seq:m.seq,steps:m.steps.map((w:unknown)=>Array.isArray(w)&&w.length===5?[...w.slice(0,4),...(target(w[4])!==undefined?[target(w[4])]:[])]:w)},now);
+        else this.sim.input(c.playerId,{...m,target:target(m.target)},now);
       }
     }
     else if(m.t==='ack')c.encoder?.ack(m.seq);
@@ -204,7 +207,7 @@ export class Room {
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     if(this.run.snapshot().phase==='combat'){
       if(this.labHorde)this.fillHorde();
-      const events=this.sim.step();
+      const events=this.sim.step(now);
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
       const outcome=this.sim.outcome;
@@ -243,7 +246,7 @@ export class Room {
     const {samples,encodeSamples,...totals}=this.perf;
     return {...totals,tick:this.sim.tick,phase:this.run.snapshot().phase,enemies:this.sim.world.enemies.size,
       tickP50:pct(samples,.5),tickP95:pct(samples,.95),encodeP50:pct(encodeSamples,.5),encodeP95:pct(encodeSamples,.95),
-      connections:[...this.connections.values()].map(c=>({player:c.playerId,slot:c.encoder?.slot,frames:c.frames,bytes:c.bytes,
+      connections:[...this.connections.values()].map(c=>({player:c.playerId,slot:c.encoder?.slot,frames:c.frames,bytes:c.bytes,received:c.received,
         pending:c.encoder?.pendingEvents,stats:c.encoder?.stats}))};
   }
   private measure(ms:number){
@@ -262,7 +265,10 @@ export class Room {
     this.send({t:'result',outcome,resultId,round});
   }
   private sendFrame(c:Connection,input:FrameInput){
-    const started=performance.now(),bytes=c.encoder!.encode(input),ms=performance.now()-started;
+    // The owner sees itself at the last step it reported (input-10hz): its prediction replays only its own steps.
+    const own=c.playerId?this.sim.confirmed(c.playerId):undefined;
+    const view=own?{...input,players:input.players.map(p=>p.id===c.playerId?{...p,...own}:p)}:input;
+    const started=performance.now(),bytes=c.encoder!.encode(view),ms=performance.now()-started;
     this.perf.encodeMs+=ms;
     if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;

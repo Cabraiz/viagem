@@ -49,6 +49,8 @@ export function playStamp(){
   audio.play('carimbo');
 }
 
+/** The intermission offer shows this long after the kill-cam opened: FEITO (700 ms + 140 ms) first, then LEVEI. */
+export const OFFER_AFTER_KILLCAM_MS=1000;
 /** Clearance kept between the hero's sprite and the center banner, in CSS px. */
 export const HERO_MARGIN_PX=40;
 
@@ -123,6 +125,9 @@ export class RunHud {
     const notice=!!this.stack.querySelector('.rh-alert:not([hidden])');
     this.killcam.el.classList.toggle('rh-killcam-yield',notice);
     if(this.killcam.shown&&!notice&&marquee&&!marquee.hidden&&marquee.dataset.tone==='interval')marquee.hidden=true;
+    // The intermission offer opens after the FEITO stamp (design review D2): never two stamps in the same second.
+    const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
+    if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
   }
   /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
   killcamRect(){return this.el.classList.contains('rh-ended')?undefined:this.killcam.rect();}

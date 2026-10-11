@@ -102,7 +102,7 @@ test('rain and sale drop what they say: boletos are XP, coxinhas heal and go awa
         coxinhas=fresh.length;coxinhaLife=Math.max(...fresh.map(p=>p.expiresTick!-p.spawnTick));
       }
     }
-    for(const p of sim.world.pickups.values())if(p.resource===BOLETO&&p.spawnTick===sim.tick){boletos++;assert.equal(p.kind,'xp');assert.ok(p.value>=1);maxBoletoLife=Math.max(maxBoletoLife,p.expiresTick!-p.spawnTick);}
+    for(const p of sim.world.pickups.values())if(p.resource===BOLETO&&p.spawnTick===sim.tick){boletos++;assert.equal(p.kind,'xp');assert.ok(p.value>0);maxBoletoLife=Math.max(maxBoletoLife,p.expiresTick!-p.spawnTick);}
     for(const id of ['b0','b1']){const o=sim.offers(id)[0];if(o)sim.choose(id,o.id,o.defaultIndex);}
     for(const e of [...sim.world.enemies.values()])if(sim.tick-e.spawnTick>60)sim.world.enemies.delete(e.id);
   }
@@ -125,18 +125,22 @@ test('seed plan in a real run: each planned event fires in its round (no lab)', 
     for(const e of [...sim.world.enemies.values()])if(!e.boss&&sim.tick-e.spawnTick>40)sim.world.damageEnemy(e.id,1e6,'a');
     const o=sim.offers('a')[0];if(o)sim.choose('a',o.id,o.defaultIndex);
   }
-  assert.deepEqual(fired,plan);
+  // Same kinds in the same order; each one in its planned round or later (the blackout waits for critters around).
+  assert.deepEqual(fired.map(f=>f.kind),plan.slice(0,fired.length).map(p=>p.kind));
+  assert.ok(fired.length>=plan.length-1,`${fired.length} of ${plan.length}`);
+  fired.forEach((f,i)=>{assert.ok(f.round>=plan[i].round);if(i)assert.ok(f.round-fired[i-1].round>=2);});
 });
 
 import {defaultTerrain} from '../src/game/terrain/field.ts';
 import {createZueira} from '../src/game/sim/zueira.ts';
 import {BASE_STATS} from '../src/game/sim/types.ts';
 /** A bare context for the zueira system alone: one hero on the island, a round we drive by hand. */
-function fakeCtx(){
+function fakeCtx(heroes=1,nextXp=25){
   const emitted:SimEvent[]=[];let n=0;
+  const players=new Map(Array.from({length:heroes},(_,i)=>[`h${i}`,{id:`h${i}`,x:12+(i%3)*.8,y:12+Math.floor(i/3)*.8,hp:100,online:true,spectator:false,stats:{...BASE_STATS}} as Record<string,unknown>]));
   const ctx={tick:0,terrain:defaultTerrain,round:{index:0,total:10,phase:'prepare' as 'prepare'|'wave',phaseEndsTick:0,remaining:0},
-    team:{xp:0,level:3,nextXp:25},players:new Map([['a',{id:'a',x:12,y:12,hp:100,online:true,spectator:false,stats:{...BASE_STATS}}]]),
-    pickups:new Map(),nextId:(p:string)=>`${p}-${++n}`,emit:(e:SimEvent)=>{emitted.push(e);}};
+    team:{xp:0,level:2,nextXp},players,enemies:new Map(),
+    pickups:new Map<string,{kind:string;value:number;resource?:string}>(),nextId:(p:string)=>`${p}-${++n}`,emit:(e:SimEvent)=>{emitted.push(e);}};
   return {ctx:ctx as never as Parameters<ReturnType<typeof createZueira>['step']>[0]&typeof ctx,emitted};
 }
 function play(z:ReturnType<typeof createZueira>,c:ReturnType<typeof fakeCtx>,index:number,waveTicks:number){
@@ -148,19 +152,56 @@ function play(z:ReturnType<typeof createZueira>,c:ReturnType<typeof fakeCtx>,ind
 }
 
 test('a round that ends before its event passes it on; never two rounds in a row', ()=>{
-  const z=createZueira(1,{lab:{plan:[{round:2,kind:'apagao'},{round:3,kind:'promo'}],minGap:EVENT_GAP[0]}}),c=fakeCtx();
+  const z=createZueira(1,{lab:{plan:[{round:2,kind:'boletos'},{round:3,kind:'promo'}],minGap:EVENT_GAP[0]}}),c=fakeCtx();
   play(z,c,2,ticks(EVENT_DELAY[0])-1);
   assert.deepEqual(c.emitted.filter(e=>e.type==='happening'),[],'round 2 ended before 8 s');
   play(z,c,3,ticks(EVENT_DELAY[1])+1);
-  assert.deepEqual(c.emitted.filter(e=>e.type==='happening').map(e=>e.type==='happening'&&e.kind),['apagao'],'carried to round 3');
+  assert.deepEqual(c.emitted.filter(e=>e.type==='happening').map(e=>e.type==='happening'&&e.kind),['boletos'],'carried to round 3');
   play(z,c,4,ticks(EVENT_DELAY[1])+1);
   assert.equal(c.emitted.filter(e=>e.type==='happening').length,1,'round 4 is right after: the sale waits');
   play(z,c,5,ticks(EVENT_DELAY[1])+1);
-  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'apagao'],[5,'promo']]);
+  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'boletos'],[5,'promo']]);
   // The boss round never gets one.
   const b=createZueira(1,{lab:{plan:[{round:10,kind:'boletos'}],minGap:1}}),d=fakeCtx();
   play(b,d,10,ticks(30));
   assert.equal(b.state.fired.length,0);
+});
+
+/** XP of the boletos on the ground (the fake context has no pickups step: nothing is collected). */
+const rainXp=(ctx:{pickups:Map<string,{kind:string;value:number;resource?:string}>})=>[...ctx.pickups.values()].filter(p=>p.resource===BOLETO).reduce((a,p)=>a+p.value,0);
+function runRain(heroes:number,nextXp:number,during?:(ctx:ReturnType<typeof fakeCtx>['ctx'],tick:number)=>void){
+  const z=createZueira(3,{lab:{plan:[{round:2,kind:'boletos'}],minGap:1}}),c=fakeCtx(heroes,nextXp),{ctx}=c;
+  Object.assign(ctx.round,{index:2,phase:'wave',remaining:50});
+  while(!z.state.active){ctx.tick++;z.step(ctx);}
+  for(let i=1;i<=ticks(HAPPENING_SECONDS.boletos)+5;i++){ctx.tick++;during?.(ctx,i);z.step(ctx);}
+  return {ctx,z};
+}
+
+test('the rain never gives more than 45% of the level: 6 heroes at level 2, 1 hero, and rescues in the middle', ()=>{
+  for(const [heroes,nextXp] of [[6,15],[1,15],[6,95],[3,4]] as const){
+    const {ctx}=runRain(heroes,nextXp),total=Math.round(.45*nextXp),xp=rainXp(ctx);
+    assert.ok(Math.abs(xp-total)<1e-6,`${heroes} heroes, nextXp ${nextXp}: ${xp} of ${total}`);
+    const count=[...ctx.pickups.values()].filter(p=>p.resource===BOLETO).length;
+    assert.ok(count<=16*heroes,`${count} boletos`);
+  }
+  // Two of six heroes are down when it starts and get up in the middle: the total does not grow.
+  const total=Math.round(.45*15);
+  const {ctx}=runRain(6,15,(c,i)=>{
+    const ps=[...(c.players as Map<string,Record<string,unknown>>).values()];
+    if(i===1){ps[4].downed={sinceTick:0,bleedOutTick:999,progress:0};ps[5].downed={sinceTick:0,bleedOutTick:999,progress:0};}
+    if(i===20){delete ps[4].downed;delete ps[5].downed;}
+  });
+  assert.ok(rainXp(ctx)<=total+1e-6,`${rainXp(ctx)} of ${total}`);
+});
+
+test('the blackout waits for critters around (eyes to see), and passes on when none come', ()=>{
+  const z=createZueira(4,{lab:{plan:[{round:2,kind:'apagao'},{round:3,kind:'promo'}],minGap:1}}),c=fakeCtx(),{ctx}=c;
+  play(z,c,2,ticks(EVENT_DELAY[1])+40);
+  assert.equal(z.state.fired.length,0,'no critter near the hero: no blackout in round 2');
+  Object.assign(ctx.round,{index:3,phase:'wave',remaining:5});
+  for(let i=0;i<4;i++)(ctx.enemies as Map<string,unknown>).set(`e${i}`,{id:`e${i}`,kind:'gosma',x:13+i*.3,y:12,hp:5});
+  for(let i=0;i<ticks(EVENT_DELAY[1])+2;i++){ctx.tick++;z.step(ctx);}
+  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'apagao']]);
 });
 
 test('the blackout and the rain stop when the wave ends early', ()=>{
@@ -183,7 +224,9 @@ test('kill-cam: the round\'s last critter goes out to everyone, where it fell an
   const ends=events.filter(e=>e.type==='round'&&e.phase==='end');
   const cams=events.filter((e):e is StampedEvent&Extract<SimEvent,{type:'last-bicho'}>=>e.type==='last-bicho');
   assert.ok(ends.length>=3);
-  assert.deepEqual(cams.map(c=>c.round),ends.map(e=>e.type==='round'?e.index:0).filter(i=>i<10));
+  const ended=ends.map(e=>e.type==='round'?e.index:0);
+  assert.ok(cams.length>=1&&cams.length<=4,`${cams.length} kill-cams`);
+  for(const [i,c] of cams.entries()){assert.ok(ended.includes(c.round)&&c.round<10);if(i)assert.ok(c.round-cams[i-1].round>=2,'never two rounds in a row');}
   for(const cam of cams){
     const kill=events.findLast(e=>e.type==='kill'&&e.eventId<cam.eventId);
     assert.ok(kill&&kill.type==='kill');

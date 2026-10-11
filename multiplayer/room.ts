@@ -3,7 +3,8 @@ import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
-import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
+import {createEnemy,isEnemyKind} from '../src/game/sim/enemies/catalog.ts';
+import {addTelegraph} from '../src/game/sim/telegraphs.ts';
 import {walkable,worldBase} from '../src/game/world.ts';
 import {sha256Hex} from '../src/game/net/sha256.ts';
 import {downPlayer} from '../src/game/sim/revive.ts';
@@ -244,6 +245,8 @@ export class Room {
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
     else if(m.t==='sos')this.sos(c,m,now);
+    // Consent for the result's "momento mais vergonhoso" (VGM-053B): {t:'pref',shame:false} leaves this player out.
+    else if(m.t==='pref'&&typeof m.shame==='boolean')this.sim.setShamePref(c.playerId,m.shame);
     // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
     // acceptance shots of the off-screen and rescue cards (six players spread over the map, one caído far away).
     else if(m.t==='lab'&&this.labOn&&this.run.snapshot().phase==='combat')this.labCommand(c.playerId,m);
@@ -267,6 +270,13 @@ export class Room {
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);
+    // VGM-053B proofs (design review D3): a harmless telegraph (0 damage) and a critter at a point near the base reach,
+    // so the blackout is photographed with danger on screen.
+    const lab=(v:unknown)=>v&&typeof v==='object'&&Number.isFinite((v as {x:number}).x)&&Number.isFinite((v as {y:number}).y)&&
+      Math.hypot((v as {x:number}).x-worldBase(this.sim.terrain).x,(v as {y:number}).y-worldBase(this.sim.terrain).y)<=LAB_REACH?v as {x:number;y:number}:undefined;
+    const tg=lab(m.telegraph);if(tg)addTelegraph(this.sim.world,{shape:'circle',x:tg.x,y:tg.y,radius:1.8,damage:0,owner:'env:lab'},50);
+    const at=lab(m.spawn),kind=typeof m.kind==='string'?m.kind:'';
+    if(at&&isEnemyKind(kind)&&kind!=='chefe'&&walkable(at,this.sim.terrain))createEnemy(this.sim.world,kind,at);
     const to=m.to;
     // Within LAB_REACH of the base (the endless world is walkable almost everywhere: no lab jump to the far chunks).
     // Measured from where the lab put the team (LAB_OFFSET moves everyone away from the world's base).

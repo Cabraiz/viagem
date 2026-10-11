@@ -30,8 +30,17 @@ export const MAX_EVENTS_PER_RUN=4;
 export const EVENT_GAP:readonly [number,number]=[2,3];
 /** Seconds after the wave starts. */
 export const EVENT_DELAY:readonly [number,number]=[8,16];
-/** Rain: one boleto per standing hero every RAIN_EVERY ticks for the whole event (16 each); the rain is worth this share of nextXp. */
-export const RAIN_EVERY=5,RAIN_SHARE=.45,RAIN_RADIUS:readonly [number,number]=[1.4,5.5],BOLETO_LIFETIME_SECONDS=12;
+/**
+ * Rain: RAIN_FIRST boletos per standing hero fall with the banner, then one per hero every RAIN_EVERY ticks until each
+ * got RAIN_PER_HERO. The whole rain is worth RAIN_SHARE of the level the team is on (round(0.45 × nextXp)), fixed when it
+ * starts and split among the boletos planned for the heroes standing then: more heroes = more boletos worth less each,
+ * and a hero rescued in the middle only gets what is left (the drops stop when the total is out).
+ */
+export const RAIN_EVERY=5,RAIN_SHARE=.45,RAIN_FIRST=3,RAIN_PER_HERO=16,RAIN_RADIUS:readonly [number,number]=[1.4,5.5],BOLETO_LIFETIME_SECONDS=12;
+/** The blackout waits (inside its 8–16 s window) for critters to look at: at least this many within this distance of most standing heroes. */
+export const APAGAO_CROWD=4,APAGAO_REACH=8;
+/** Kill-cam: never two rounds in a row, at most this many per run (VGM-053B design review D5). */
+export const KILLCAM_MAX_PER_RUN=4;
 /** Sale: coxinhas per standing hero, how far from them. */
 export const PROMO_COXINHAS=3,PROMO_RADIUS:readonly [number,number]=[1.4,3];
 /** Marks an XP pickup as a boleto of the rain (PickupState.resource; the client draws a boleto, D-002). */
@@ -40,7 +49,8 @@ export const BOLETO='boleto';
 export const PROMO='promo';
 
 export interface PlannedHappening {round:number;kind:HappeningKind}
-export interface ActiveHappening {kind:HappeningKind;round:number;startTick:number;endsTick:number;value?:number}
+/** value: XP per boleto; left: XP of the rain not dropped yet (the rain never gives more than its total). */
+export interface ActiveHappening {kind:HappeningKind;round:number;startTick:number;endsTick:number;value?:number;left?:number}
 export interface ZueiraState {
   rng:number;
   /** Still to happen, oldest first. */
@@ -52,6 +62,10 @@ export interface ZueiraState {
   wave?:number;triggerTick?:number;
   /** Last kill of the run (kill-cam). */
   lastKill?:{kind:string;x:number;y:number;by?:string;tick:number};
+  /** Rounds that got a kill-cam (spacing and cap). */
+  killcams?:number[];
+  /** Tick the watched wave started (the blackout's window). */
+  waveTick?:number;
 }
 
 /** The run's plan, from its seed: rounds and kinds (pure, tested). `total` is the round count (the last one is the boss). */
@@ -109,7 +123,8 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
     return undefined;
   }
   function drop(ctx:SimContext,kind:'xp'|'heal',value:number,at:{x:number;y:number},lifetime:number,resource?:string){
-    if(!hasRoom(ctx.pickups,MAX_PICKUPS))return;
+    // A boleto over the pickup cap still drops: the pickups step merges XP over the cap into gems (mergeXpGems keeps it).
+    if(kind!=='xp'&&!hasRoom(ctx.pickups,MAX_PICKUPS))return;
     const pickup:PickupState={id:ctx.nextId(kind),kind,value,x:at.x,y:at.y,spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(lifetime)};
     if(resource)pickup.resource=resource;
     ctx.pickups.set(pickup.id,pickup);
@@ -122,15 +137,33 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
     const active:ActiveHappening={kind:next.kind,round:index,startTick:ctx.tick,endsTick};
     const team=heroes(ctx);
     if(next.kind==='boletos'){
-      const drops=Math.ceil(ticks(HAPPENING_SECONDS.boletos)/RAIN_EVERY)*Math.max(1,team.length);
-      active.value=Math.max(1,Math.round(RAIN_SHARE*ctx.team.nextXp/drops));
-      // The first boletos fall with the banner; then one per hero every RAIN_EVERY ticks (16 each in all).
-      for(const p of team){const at=around(ctx,p,RAIN_RADIUS);if(at)drop(ctx,'xp',active.value,at,BOLETO_LIFETIME_SECONDS,BOLETO);}
+      const total=Math.round(RAIN_SHARE*ctx.team.nextXp),drops=RAIN_PER_HERO*Math.max(1,team.length);
+      active.value=total/drops;active.left=total;
+      // The first boletos fall with the banner (RAIN_FIRST per hero), then one per hero every RAIN_EVERY ticks.
+      for(let i=0;i<RAIN_FIRST;i++)rain(ctx,active,team);
     }
     if(next.kind==='promo')for(const p of team)for(let i=0;i<PROMO_COXINHAS;i++){const at=around(ctx,p,PROMO_RADIUS);if(at)drop(ctx,'heal',HEAL_AMOUNT,at,HAPPENING_SECONDS.promo,PROMO);}
     state.active=active;state.fired.push({round:index,kind:next.kind,tick:ctx.tick});
     state.triggerTick=undefined;
     ctx.emit({type:'happening',kind:next.kind,endsTick});
+  }
+
+  /** One boleto per hero, never past the rain's total (a rescued hero joins with what is left). */
+  function rain(ctx:SimContext,active:ActiveHappening,team:readonly SimPlayer[]){
+    for(const p of team){
+      if(!((active.left??0)>1e-9))return;
+      const value=Math.min(active.value??0,active.left!),at=around(ctx,p,RAIN_RADIUS);
+      if(!at)continue;
+      active.left=active.left!-value;
+      drop(ctx,'xp',value,at,BOLETO_LIFETIME_SECONDS,BOLETO);
+    }
+  }
+  /** Most standing heroes have APAGAO_CROWD critters within APAGAO_REACH: there are eyes to see in the dark. */
+  function crowded(ctx:SimContext){
+    const team=heroes(ctx);if(!team.length)return false;
+    let ok=0;
+    for(const p of team){let n=0;for(const e of ctx.enemies.values())if((e.x-p.x)**2+(e.y-p.y)**2<=APAGAO_REACH**2&&++n>=APAGAO_CROWD)break;if(n>=APAGAO_CROWD)ok++;}
+    return ok*2>team.length;
   }
 
   return {
@@ -139,8 +172,11 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
     roundEnded(ctx,round,roundStartTick){
       // A wave cut short by its own end never keeps raining (or dark) into the intermission.
       if(state.active)state.active=undefined;
-      const kill=state.lastKill;
+      const kill=state.lastKill,cams=state.killcams??=[];
       if(round.timedOut||round.index>=round.total||!kill||kill.tick<roundStartTick)return;
+      // Not every round (design review D5): never right after another kill-cam, at most KILLCAM_MAX_PER_RUN a run.
+      if(cams.length>=KILLCAM_MAX_PER_RUN||cams.includes(round.index-1))return;
+      cams.push(round.index);
       ctx.emit({type:'last-bicho',kind:kill.kind,x:kill.x,y:kill.y,round:round.index,...(kill.by?{by:kill.by}:{})});
     },
     activeAt(tick){const a=state.active;return a&&tick>=a.startTick&&tick<a.endsTick?a:undefined;},
@@ -148,19 +184,21 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
       const round=ctx.round,active=state.active;
       if(active){
         if(ctx.tick>=active.endsTick||round.phase!=='wave'){state.active=undefined;}
-        else if(active.kind==='boletos'&&(ctx.tick-active.startTick)%RAIN_EVERY===0){
-          for(const p of heroes(ctx)){const at=around(ctx,p,RAIN_RADIUS);if(at)drop(ctx,'xp',active.value??1,at,BOLETO_LIFETIME_SECONDS,BOLETO);}
-        }
+        else if(active.kind==='boletos'&&(ctx.tick-active.startTick)%RAIN_EVERY===0)rain(ctx,active,heroes(ctx));
       }
       if(round.phase!=='wave'){state.wave=undefined;state.triggerTick=undefined;save();return;}
       // A new wave: does the next planned event belong here (its round, or carried over), and when?
       if(state.wave!==round.index){
-        state.wave=round.index;state.triggerTick=undefined;
+        state.wave=round.index;state.triggerTick=undefined;state.waveTick=ctx.tick;
         const next=state.plan[0],last=state.fired[state.fired.length-1];
         const eligible=next&&next.round<=round.index&&round.index<round.total&&(!last||round.index-last.round>=minGap);
         if(eligible)state.triggerTick=ctx.tick+ticks(rngOf().range(EVENT_DELAY[0],EVENT_DELAY[1]));
       }
-      if(state.triggerTick!==undefined&&ctx.tick>=state.triggerTick&&!state.active&&round.remaining>0&&heroes(ctx).length)fire(ctx,round.index);
+      if(state.triggerTick!==undefined&&ctx.tick>=state.triggerTick&&!state.active&&round.remaining>0&&heroes(ctx).length){
+        // The blackout waits for critters around (eyes to see); past the window it passes to the next eligible round.
+        if(state.plan[0]?.kind!=='apagao'||crowded(ctx))fire(ctx,round.index);
+        else if(ctx.tick>(state.waveTick??ctx.tick)+ticks(EVENT_DELAY[1]))state.triggerTick=undefined;
+      }
       save();
     },
   };

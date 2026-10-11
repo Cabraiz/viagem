@@ -121,7 +121,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 
   /** The chip of the shamed player's card (used when the notice on top does not fit the six cards). */
-  let shameChip:{playerId:string;line:string;key:string;source?:string}|undefined;
+  let shameChip:{playerId:string;line:string;aria:string;key:string;source?:string}|undefined;
   /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
   let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
   const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
@@ -169,7 +169,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
 
     const list=el('ul','rh-rcard-awards',node);
     if(shameChip&&shameChip.playerId===player.id){
-      const chip=el('li','rh-award rh-award-shame');chip.dataset.key=shameChip.key;chipEl={chip,list};
+      const chip=el('li','rh-award rh-award-shame');chip.dataset.key=shameChip.key;chip.setAttribute('aria-label',shameChip.aria);chipEl={chip,list};
       const mark=el('span','rh-award-emoji',chip);mark.setAttribute('aria-hidden','true');
       const sticker=shameChip.source?ctx.critterIcon?.(shameChip.source):undefined;
       if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;mark.replaceChildren(img);}else mark.innerHTML=icon('suor');
@@ -234,7 +234,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       shame.hidden=!moment||!who;shameChip=undefined;
       if(moment&&who){
         const copy=shameText(moment,who.id===ctx.localId?'Você':who.name);
-        shameChip={playerId:who.id,line:copy.line,key:moment.key,...(moment.source?{source:moment.source}:{})};
+        // On the card the joke goes (design review D8): the sticker and the card already say who and what.
+        shameChip={playerId:who.id,line:copy.joke,aria:`Momento mais vergonhoso: ${copy.text} ${copy.joke}`,key:moment.key,...(moment.source?{source:moment.source}:{})};
         shameLine.textContent=copy.text;shameJoke.textContent=copy.joke;
         const sticker=moment.source?ctx.critterIcon?.(moment.source):undefined;
         if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;shameIcon.replaceChildren(img);}

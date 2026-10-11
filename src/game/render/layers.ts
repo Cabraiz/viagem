@@ -291,7 +291,7 @@ export class HordeRenderer{
   setBlackout(level:number){this.dark=Math.max(0,Math.min(1,level));}
   /** Depths of what must stay visible in the dark, for the blackout audit (dev probe and tests). */
   blackoutLayers(){
-    const out:{name:string;depth:number;visible?:boolean}[]=[{name:'telegraphs',depth:this.top.depth},{name:'eyes',depth:this.eyes.depth},{name:'warnings',depth:this.lifted.depth}];
+    const out:{name:string;depth:number;visible?:boolean;count?:number}[]=[{name:'telegraphs',depth:this.top.depth,visible:this.telegraphs.size>0,count:this.telegraphs.size},{name:'eyes',depth:this.eyes.depth},{name:'warnings',depth:this.lifted.depth}];
     this.projectiles.forEach(p=>{if(p.hostile)out.push({name:'hostile projectile',depth:p.image.depth,visible:p.image.visible});});
     this.warnings.forEach(w=>{out.push({name:'warning',depth:w.image.depth,visible:w.image.visible});});
     return out;

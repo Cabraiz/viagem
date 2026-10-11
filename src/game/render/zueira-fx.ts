@@ -14,6 +14,7 @@ import {BLACKOUT_DEPTH,blackoutAlpha} from './blackout-rules.ts';
 import {KILLCAM_MS} from '../fun/zueira.ts';
 import {ENEMY_ART,FX,enemyKind,enemyTexture} from './keys.ts';
 import {deathLine,kindStyle} from './jokes.ts';
+import {killcamFrame} from './killcam-rules.ts';
 import {token,tokenColor} from '../../ui/tokens.ts';
 
 type Pt={x:number;y:number};
@@ -31,10 +32,6 @@ export interface ZueiraFxOptions {
   tickMs:number;
 }
 
-/** Kill-cam camera zoom over the main camera's: the same size the critter has on screen (the picture is small). */
-export const KILLCAM_ZOOM=1;
-/** Phases of the knock-out (share of KILLCAM_MS): it reels, then it is launched spinning off the top of the picture. */
-export const KO_HIT=.3;
 /** Depth of the knocked-out copy, its poof and its line (seen only by the kill-cam camera). */
 export const KILLCAM_DEPTH=97000;
 
@@ -47,6 +44,7 @@ export class ZueiraFx {
   private blackout?:{start:number;end:number};
   private killcam?:Killcam;
   private lastEventId=-1;
+  private viewTick=0;
   private now=0;
   /** Last frame, for the acceptance probe (dev) and tests of the wiring. */
   readonly last={dark:0,happening:undefined as HappeningKind|undefined,killcam:false,killcamKind:'' as string,killcamCamera:false};
@@ -58,7 +56,9 @@ export class ZueiraFx {
   setReduced(reduced:boolean){this.options.reduced=reduced;}
 
   push(view:RunView){
-    if(view.tick<0)return;
+    // A new run (rematch) or a fresh server: event ids may start over, and nothing of the old run stays on screen.
+    if(view.tick<this.viewTick){this.lastEventId=-1;this.blackout=undefined;this.stopKillcam();}
+    this.viewTick=view.tick;
     for(const e of view.events){
       if(e.eventId<=this.lastEventId)continue;
       this.lastEventId=e.eventId;
@@ -71,7 +71,7 @@ export class ZueiraFx {
     if(this.blackout&&view.round?.phase!=='wave')this.blackout.end=Math.min(this.blackout.end,this.now);
   }
   /** New run or a fresh server: event ids start over. */
-  resetEvents(){this.lastEventId=-1;}
+  resetEvents(){this.lastEventId=-1;this.viewTick=0;this.blackout=undefined;this.stopKillcam();}
 
   update(now:number){
     this.now=now;
@@ -90,11 +90,11 @@ export class ZueiraFx {
     this.stopKillcam();
     // Only the kill-cam camera draws these, so they go over trees and canopies there (the main camera ignores them).
     const k=enemyKind(kind),s=this.scene,feet=this.options.project(at),depth=KILLCAM_DEPTH;
-    const ghost=s.add.image(feet.x,feet.y,enemyTexture(kind)).setOrigin(.5,ENEMY_ART[k].originY).setDepth(depth);
+    const ghost=s.add.image(feet.x,feet.y,enemyTexture(kind)).setOrigin(.5,.5).setDepth(depth);
     const puff=s.add.image(feet.x,feet.y-ENEMY_ART[k].height*.4,FX.puff).setDepth(depth+1).setVisible(false).setTint(kindStyle(kind).tint);
     const style=kindStyle(kind);
     const pop=s.add.text(feet.x,feet.y,deathLine(kind,id),{fontFamily:token('--f-cartaz'),fontSize:'28px',fontStyle:'900',color:style.fill,stroke:style.stroke,strokeThickness:8})
-      .setOrigin(.5,1).setDepth(depth+2).setVisible(false);
+      .setOrigin(.5,.5).setDepth(depth+2).setVisible(false);
     // Only the kill-cam sees the copy: on the main screen the critter already went poof.
     this.scene.cameras.main.ignore([ghost,puff,pop]);
     this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop};
@@ -119,22 +119,19 @@ export class ZueiraFx {
     }
     const cam=k.cam;
     if(cam.x!==rect.x||cam.y!==rect.y||cam.width!==rect.width||cam.height!==rect.height)cam.setViewport(rect.x,rect.y,rect.width,rect.height);
-    cam.setVisible(true).setZoom(this.scene.cameras.main.zoom*KILLCAM_ZOOM);
+    // Only the knocked-out copy, its poof and its line: the map, the camp, the trees and the horde are not drawn twice
+    // (code review: the second camera stays cheap). New objects (pools growing) are caught every frame.
+    const mine=new Set<Phaser.GameObjects.GameObject>([k.ghost,k.puff,k.pop]);
+    for(const o of this.scene.children.list)if(!mine.has(o)&&!((o as unknown as {cameraFilter:number}).cameraFilter&cam.id))cam.ignore(o);
     this.last.killcamCamera=true;
-    // The knock-out, in slow motion: it reels (squash), then flies up spinning and shrinking; poof and its line.
-    const t=Math.min(1,(now-k.start)/KILLCAM_MS),feet=this.options.project(k.at),art=ENEMY_ART[enemyKind(k.kind)];
-    const reduced=this.options.reduced;
-    let x=feet.x,y=feet.y,rot=0,scale=1;
-    if(reduced){rot=Math.PI/2;}
-    else if(t<KO_HIT){const w=Math.sin(t/KO_HIT*Math.PI*3);scale=1+.08*w;rot=.12*w;}
-    else{const u=(t-KO_HIT)/(1-KO_HIT),e=u*u;y-=420*e;x+=60*u;rot=u*Math.PI*5;scale=1-.45*u;}
-    k.ghost.setPosition(x,y).setRotation(rot).setScale(scale).setAlpha(reduced?1:t>.92?(1-t)/.08:1);
-    const hit=reduced||t>=KO_HIT;
-    k.puff.setVisible(hit&&(reduced||t<KO_HIT+.25)).setScale(reduced?1.2:1+2*(t-KO_HIT)).setAlpha(reduced?.9:Math.max(0,1-(t-KO_HIT)*4));
-    // The line takes the place where it stood (the critter flies off the top; with reduced motion it lies there).
-    k.pop.setVisible(hit).setPosition(feet.x,feet.y-(reduced?art.height*.3:8+10*Math.min(1,(t-KO_HIT)*4))).setRotation(-.06);
-    // A still picture on the spot (the critter leaves it), framed on its body.
-    cam.centerOn(feet.x,feet.y-art.height*.45);
+    // The knock-out (render/killcam-rules.ts): reels, hops tilted as high as the picture allows, poof, and its line.
+    const t=Math.min(1,(now-k.start)/KILLCAM_MS),art=ENEMY_ART[enemyKind(k.kind)];
+    const f=killcamFrame({tv:{width:rect.width,height:rect.height},mainZoom:this.scene.cameras.main.zoom,art,feet:this.options.project(k.at),t,
+      reduced:this.options.reduced,pop:{width:k.pop.width,height:k.pop.height}});
+    cam.setVisible(true).setZoom(f.zoom).centerOn(f.center.x,f.center.y);
+    k.ghost.setVisible(f.ghost.visible).setPosition(f.ghost.x,f.ghost.y).setRotation(f.ghost.rotation).setScale(f.ghost.scale);
+    k.puff.setVisible(f.puff.visible).setPosition(f.center.x,f.center.y).setScale(f.puff.scale).setAlpha(f.puff.alpha);
+    k.pop.setVisible(f.pop.visible).setPosition(f.pop.x,f.pop.y).setScale(f.pop.scale).setRotation(-.06);
   }
 
   /** Depth of the blackout and what it covers now (audit, dev probe). */

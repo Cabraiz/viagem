@@ -338,7 +338,11 @@ export class Simulation {
     return events;
   }
   /** The run's most embarrassing moment so far (VGM-053B), for the result; undefined when nobody did anything silly. */
-  shameMoment(){return this.shame.moment;}
+  shameMoment(){return this.shame.momentWithout(this.shameOptOut);}
+  /** Players who turned "my embarrassing moment" off (a preference: it survives rematches). */
+  readonly shameOptOut=new Set<string>();
+  /** The player's choice from the settings ({t:'pref',shame}); false = never pick their moment. */
+  setShamePref(id:string,allow:boolean){if(allow)this.shameOptOut.delete(id);else this.shameOptOut.add(id);}
   /** Run counters of a player (award-stats-server); zeros before anything happened. */
   statsOf(id:string):RunStats{
     let s=this.counters.get(id);

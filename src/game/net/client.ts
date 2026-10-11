@@ -159,6 +159,8 @@ export class CoopClient {
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
+        // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
+        if(!this.shamePref)ws.send(JSON.stringify({t:'pref',shame:false}));
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
         clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{const now=performance.now();if(now-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;ws.send(JSON.stringify({t:'ping',at:now}));}this.saveToken();},2000);
@@ -295,6 +297,13 @@ export class CoopClient {
    * "Me salva" from a caído (UX-resgate-e-ping): {t:'sos',round}. The room checks the fall and the 3 s anti-spam and
    * relays the position to everyone. False when there is nothing to send it on (offline, out of combat).
    */
+  /** Whether this player's embarrassing moment may show on the result (settings, saved on this device). */
+  private shamePref=readShamePref();
+  setShamePref(allow:boolean){
+    this.shamePref=allow;writeShamePref(allow);
+    if(this.socket?.readyState===WebSocket.OPEN&&this.connected)this.socket.send(JSON.stringify({t:'pref',shame:allow}));
+  }
+  get allowsShame(){return this.shamePref;}
   sos(){
     if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
     this.socket.send(JSON.stringify({t:'sos',round:this.run.round}));return true;
@@ -317,3 +326,8 @@ export class CoopClient {
   leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
 }
 export { STEP };
+
+/** "Meu momento vergonhoso pode aparecer" (VGM-053B, D7): on unless the player turned it off on this device. */
+const SHAME_KEY='viagem:momento-vergonhoso';
+function readShamePref(){try{return localStorage.getItem(SHAME_KEY)!=='off';}catch{return true;}}
+function writeShamePref(allow:boolean){try{localStorage.setItem(SHAME_KEY,allow?'on':'off');}catch{/* private window: this session only */}}

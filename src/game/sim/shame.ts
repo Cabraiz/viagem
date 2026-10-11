@@ -14,6 +14,8 @@
  *   coxinha-cheia 15 ate a coxinha with full life
  *   caiu 10      any other fall
  * Ties: higher score, then the earlier tick, then the smaller player id.
+ * Consent (design review D7): a player who turned "my embarrassing moment" off never is the moment; the run's moment is
+ * the worst among the others. The tracker keeps each player's worst so that choice can be made at the end.
  */
 import type {PickupState,SimContext,SimEvent} from './types.ts';
 import {BOLETO,type ActiveHappening} from './zueira.ts';
@@ -39,15 +41,22 @@ export function worse(a:ShameMoment,b:ShameMoment|undefined){
 }
 
 export class ShameTracker {
-  private best?:ShameMoment;
+  /** Each player's worst moment of the run. */
+  private best=new Map<string,ShameMoment>();
   private revivedAt=new Map<string,number>();
   private hp=new Map<string,{hp:number;max:number}>();
   private boletos=new Set<string>();
   private rain?:{endsTick:number;caught:Map<string,number>;standing:Set<string>};
 
-  get moment(){return this.best&&{...this.best};}
-  reset(){this.best=undefined;this.revivedAt.clear();this.hp.clear();this.boletos.clear();this.rain=undefined;}
-  private offer(m:ShameMoment){if(worse(m,this.best))this.best=m;}
+  get moment(){return this.momentWithout();}
+  /** The run's moment, leaving out the players who did not want theirs shown. */
+  momentWithout(optOut?:ReadonlySet<string>){
+    let pick:ShameMoment|undefined;
+    for(const m of this.best.values())if(!optOut?.has(m.player)&&worse(m,pick))pick=m;
+    return pick&&{...pick};
+  }
+  reset(){this.best.clear();this.revivedAt.clear();this.hp.clear();this.boletos.clear();this.rain=undefined;}
+  private offer(m:ShameMoment){if(worse(m,this.best.get(m.player)))this.best.set(m.player,m);}
 
   /** After every step: that step's events, the world after it and the zueira event on now (if any). */
   observe(ctx:Pick<SimContext,'tick'|'round'|'players'|'pickups'>,events:readonly SimEvent[],active?:ActiveHappening){

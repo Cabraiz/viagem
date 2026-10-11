@@ -15,6 +15,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 };
 
 /** Name for the caption: "Você" for the local player, the nickname otherwise (always through textContent). */
+/** A caído this close to bleeding out (ticks) takes the moment instead of the kill-cam. */
+export const RESCUE_FIRST_TICKS=100;
 export function closerName(view:Pick<RunView,'players'>,by:string|undefined,localId:string){
   if(!by)return undefined;
   if(by===localId)return 'Você';
@@ -25,6 +27,7 @@ export interface KillcamPart extends HudPart {
   /** The picture's box (viewport CSS px) while the window shows, for the scene's kill-cam camera. */
   rect():Rect|undefined;
   readonly shown:boolean;
+  readonly age:number;
 }
 
 export function createKillcam(now:()=>number=()=>performance.now()):KillcamPart{
@@ -33,19 +36,29 @@ export function createKillcam(now:()=>number=()=>performance.now()):KillcamPart{
   const caption=el('div','rh-killcam-caption',root);
   const title=el('strong','rh-killcam-title',caption),line=el('span','rh-killcam-line',caption);
   const stamp=el('span','rh-killcam-stamp',caption);stamp.textContent='FEITO';stamp.setAttribute('aria-hidden','true');
-  let seen=-1,until=0,timer:ReturnType<typeof setTimeout>|undefined;
+  let seen=-1,until=0,timer:ReturnType<typeof setTimeout>|undefined,lastRound=0;
+  /** Captions already shown this run (they never repeat inside a run). */
+  const used=new Set<string>();
+  let shownAt=-Infinity;
   const hide=()=>{root.hidden=true;root.classList.remove('rh-killcam-in');};
   return {
     el:root,
     get shown(){return !root.hidden;},
+    /** ms since the window opened (the intermission offer waits for the stamp, design review D2). */
+    get age(){return root.hidden?Infinity:now()-shownAt;},
     update(view:RunView,ctx:HudContext){
       for(const event of view.events){
         if(event.eventId<=seen)continue;
         seen=event.eventId;
         if(event.type!=='last-bicho')continue;
-        const copy=killcamCaption(event.round,closerName(view,event.by,ctx.localId));
+        // Someone about to bleed out (≤ 5 s): the eye goes to the rescue, not to the TV (design review D5).
+        if(view.players.some(p=>p.downed&&!p.eliminated&&p.downed.bleedOutTick-view.tick<=RESCUE_FIRST_TICKS))continue;
+        if(event.round<lastRound)used.clear();
+        lastRound=event.round;
+        const copy=killcamCaption(closerName(view,event.by,ctx.localId),event.kind,event.eventId,used);
+        used.add(copy.template);
         title.textContent=copy.title;line.textContent=copy.line;
-        root.dataset.kind=event.kind;root.hidden=false;
+        root.dataset.kind=event.kind;root.hidden=false;shownAt=now();
         root.classList.remove('rh-killcam-in');void root.offsetWidth;root.classList.add('rh-killcam-in');
         until=now()+KILLCAM_MS;clearTimeout(timer);timer=setTimeout(hide,KILLCAM_MS);
       }

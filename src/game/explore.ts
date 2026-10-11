@@ -169,6 +169,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true);},{signal});
   window.addEventListener('blur',()=>pause(true),{signal});
   $('.explore-pause').addEventListener('click',closeSettings,{signal});
+  // Consent (VGM-053B, D7): whether this player's embarrassing moment may show on the result, for everyone in the room.
+  if(net){
+    const shame=document.createElement('button');shame.type='button';shame.className='explore-shame';
+    const sync=()=>{shame.setAttribute('aria-pressed',String(net.allowsShame));shame.textContent=net.allowsShame?'Meu momento vergonhoso: pode aparecer':'Meu momento vergonhoso: fica de fora';};
+    sync();shame.addEventListener('click',()=>{net.setShamePref(!net.allowsShame);sync();},{signal});
+    settingsContent.append(shame);
+  }
   if(!net)$('#explore-trail').addEventListener('click',()=>{closeSettings();const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
   const updateStick=(event:PointerEvent)=>{
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;

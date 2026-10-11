@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {BLACKOUT_ALPHA,BLACKOUT_ALPHA_REDUCED,BLACKOUT_DEPTH,EYES_DEPTH,FADE_IN_MS,FADE_OUT_MS,LIFTED_DEPTH,auditBlackout,blackoutAlpha,eyesOpen} from '../src/game/render/blackout-rules.ts';
-import {HAPPENING_COPY,KILLCAM_MS,killcamCaption,shameText} from '../src/game/fun/zueira.ts';
+import {HAPPENING_COPY,KILLCAM_ALONE,KILLCAM_LINES,KILLCAM_MS,killcamCaption,shameText} from '../src/game/fun/zueira.ts';
+import {killcamBoxes,killcamFrame,KILLCAM_MIN_CRITTER_CSS,KILLCAM_SAFE_CSS} from '../src/game/render/killcam-rules.ts';
+import {ENEMY_ART} from '../src/game/render/keys.ts';
 import {SHAME_SCORE,type ShameKey} from '../src/game/sim/shame.ts';
 import {closerName} from '../src/game/hud/killcam.ts';
 import {pickupLook,pickupTexture,FX} from '../src/game/render/keys.ts';
@@ -68,15 +70,26 @@ test('copy: every event has a banner, the kill-cam names who closed the round, e
     assert.notEqual(c.title,c.title.toUpperCase());
   }
   assert.ok(KILLCAM_MS>=2000&&KILLCAM_MS<=3000,'short');
-  assert.deepEqual(killcamCaption(3,'Tia'),{title:'Último bicho!',line:'Tia fechou a conta do Round 3.'});
-  assert.deepEqual(killcamCaption(4),{title:'Último bicho!',line:'Caiu sozinho no Round 4.'});
+  // Kill-cam captions never repeat inside a run, never carry the round number (M1), and name who closed it.
+  const used=new Set<string>(),lines:string[]=[];
+  for(let i=0;i<4;i++){const c=killcamCaption('Tia','gosma',i*7+1,used);used.add(c.template);lines.push(c.line);assert.equal(c.title,'Último bicho!');assert.doesNotMatch(c.line,/Round|\d/);}
+  assert.equal(new Set(lines).size,4);
+  assert.ok(lines.every(l=>l.includes('Tia')));
+  assert.ok(KILLCAM_ALONE.includes(killcamCaption(undefined,'fiscal',3).line));
+  assert.ok(KILLCAM_LINES.length>=4);
   for(const key of Object.keys(SHAME_SCORE) as ShameKey[]){
     const t=shameText({player:'a',key,round:3,tick:1,source:'pernilongo',seconds:4},'Tia Cleide');
     assert.ok(t.text.startsWith('Tia Cleide')&&t.joke.length>0,key);
   }
   assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'gosma'},'Zé').text,'Zé caiu no Round 1 pra uma gosma.');
-  assert.equal(shameText({player:'a',key:'recaida',round:5,tick:1,seconds:3},'Você').text,'Você foi resgatado e caiu de novo em 3 s.');
+  assert.equal(shameText({player:'a',key:'recaida',round:5,tick:1,seconds:3},'Tia').text,'Tia levantou e caiu de novo em 3 s.');
   assert.match(shameText({player:'a',key:'caiu',round:2,tick:1,source:'??'},'X').text,/um bicho/);
+  // The room reads it: never "você", no gendered participles, no attack on the person (design review B1/D6).
+  for(const key of Object.keys(SHAME_SCORE) as ShameKey[]){
+    const t=shameText({player:'a',key,round:3,tick:1,source:'gosma',seconds:2},'Kim');
+    assert.doesNotMatch(`${t.text} ${t.joke}`,/\bvoc[eê]\b/i,key);
+    assert.doesNotMatch(t.text,/\b(resgatad[oa]|derrubad[oa]|sozinh[oa])\b/i,key);
+  }
 });
 
 test('kill-cam name: "Você" for the local player, the nickname for the others, nothing for a tower', ()=>{
@@ -90,4 +103,18 @@ test('a boleto of the rain looks like a boleto; any other XP stays a gem', ()=>{
   assert.equal(pickupLook('xp','boleto'),FX.boleto);
   assert.equal(pickupLook('xp'),pickupTexture('xp'));
   assert.equal(pickupLook('heal','promo'),pickupTexture('heal'));
+});
+
+test('kill-cam framing: the critter (≥ 40 px CSS when it fits) and its line stay inside the TV, portrait and landscape', ()=>{
+  for(const tv of [{width:100,height:76},{width:82,height:64}])for(const kind of ['gosma','pernilongo','tio-pave','fiscal'] as const)for(const reduced of [false,true]){
+    const art=ENEMY_ART[kind];
+    for(const t of [0,.1,.2,.35,.46,.55,.6,.7,.9,1]){
+      const input={tv,mainZoom:.58,art,feet:{x:300,y:500},t,reduced,pop:{width:180,height:36}};
+      const f=killcamFrame(input),b=killcamBoxes(input,f);
+      const inside=(r:{left:number;right:number;top:number;bottom:number})=>r.left>=KILLCAM_SAFE_CSS-1&&r.right<=tv.width-KILLCAM_SAFE_CSS+1&&r.top>=KILLCAM_SAFE_CSS-1.5&&r.bottom<=tv.height-KILLCAM_SAFE_CSS+1.5;
+      if(f.ghost.visible)assert.ok(inside(b.ghost),`${kind} ${JSON.stringify(tv)} t=${t} reduced=${reduced}: ${JSON.stringify(b.ghost)}`);
+      if(f.pop.visible)assert.ok(inside(b.pop),`${kind} line t=${t}: ${JSON.stringify(b.pop)}`);
+      if(art.height*f.zoom<KILLCAM_MIN_CRITTER_CSS-.5)assert.ok(tv.height<70,'only the short landscape TV may shrink the critter');
+    }
+  }
 });

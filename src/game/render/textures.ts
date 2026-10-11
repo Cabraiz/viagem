@@ -276,18 +276,6 @@ function drawFx(make:(key:string,w:number,h:number,draw:(g:G)=>void)=>void){
   make(FX.bar,46,13,bar(0x2b2233));
   make(FX.barElite,46,13,bar(0xe0a93a));
   make(FX.barFill,40,7,g=>{g.fillStyle(0xffffff).fillRoundedRect(0,0,40,7,3.5);});
-  // Boleto of the rain (VGM-053B): a Papel slip with a Breu edge (double-edge rule on sand and grass), the Lilás bank
-  // band and the bar code. It is XP: a different object from the cyan gem so the rain reads as an event, not a drop.
-  const lilas=tokenColor('--c-lilas');
-  make(FX.boleto,32,24,g=>{
-    g.fillStyle(tokenColor('--c-breu'),1).fillRoundedRect(1,2,30,21,3);
-    g.fillStyle(papel,1).fillRoundedRect(3,4,26,17,2);
-    g.fillStyle(lilas,1).fillRect(3,4,26,5);
-    g.fillStyle(papel,1).fillRect(5,5.5,9,2);
-    const bars=[1,2,1,1,3,1,2,1,1,2,1,3,1,1,2];let x=5;
-    g.fillStyle(tokenColor('--c-breu'),1);
-    for(const [i,w] of bars.entries()){if(i%2===0)g.fillRect(x,11,w*.8,7);x+=w*.8+.6;if(x>27)break;}
-  });
   // Spawn warning in the palette (onda 4): Laranja Cone disc, Breu edge and "!" (the white icon tinted red was the
   // worst pair for deuteranopia on the green). Drawn in its own colors: the renderer no longer tints it.
   const breu=tokenColor('--c-breu'),cone=tokenColor('--c-cone');
@@ -314,4 +302,25 @@ export function ensureHordeTextures(scene:Phaser.Scene):void {
   }
   drawFx(make);
   g.destroy();
+  drawBoleto(scene);
+}
+
+/**
+ * Boleto of the rain (VGM-053B): a Papel slip with a Breu edge (double-edge rule on sand and grass), the Lilás bank band
+ * with "R$" in Papel and the bar code. 1.4× the gem (~24 px CSS at the follow zoom, the smallest sticker size of §2.4),
+ * so the rain reads as boletos and not as gems or cards. Drawn on a canvas for the "R$".
+ */
+export const BOLETO_SIZE={width:46,height:34} as const;
+function drawBoleto(scene:Phaser.Scene){
+  if(scene.textures.exists(FX.boleto))return;
+  const tex=scene.textures.createCanvas(FX.boleto,BOLETO_SIZE.width,BOLETO_SIZE.height);if(!tex)return;
+  const c=tex.getContext(),k=1.4,hex=(v:number)=>`#${v.toString(16).padStart(6,'0')}`;
+  const breu=hex(tokenColor('--c-breu')),papel=hex(tokenColor('--c-papel')),lilas=hex(tokenColor('--c-lilas'));
+  c.save();c.scale(k,k);
+  const box=(x:number,y:number,w:number,h:number,r:number,fill:string)=>{c.fillStyle=fill;c.beginPath();c.roundRect(x,y,w,h,r);c.fill();};
+  box(1,2,30,21,3,breu);box(3,4,26,17,2,papel);c.fillStyle=lilas;c.fillRect(3,4,26,6);
+  c.fillStyle=papel;c.font='900 6.5px "Londrina Solid", sans-serif';c.textBaseline='middle';c.fillText('R$',5,7.4);
+  const bars=[1,2,1,1,3,1,2,1,1,2,1,3,1,1,2];let x=5;c.fillStyle=breu;
+  for(const [i,w] of bars.entries()){if(i%2===0)c.fillRect(x,12,w*.8,7);x+=w*.8+.6;if(x>27)break;}
+  c.restore();tex.refresh();
 }

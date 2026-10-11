@@ -405,12 +405,17 @@ export class Room {
       createEnemy(w,kinds[(w.tick+n)%kinds.length],at);n++;
     }
   }
-  /** Lab report: tick and encode cost (p50/p95/max over the last minute) and bytes per connection. */
+  /**
+   * Lab report: tick and encode cost (p50/p95/max over the last minute) and bytes per connection. `tickSamples` is
+   * that last minute raw (oldest first; the newest is tick number `ticks`), so a poller (the VGM-045 bots) can stitch
+   * a whole run together.
+   */
   lab(){
     const pct=(list:number[],q:number)=>{if(!list.length)return 0;const sorted=[...list].sort((a,b)=>a-b);return sorted[Math.min(sorted.length-1,Math.floor(q*sorted.length))];};
     const {samples,encodeSamples,...totals}=this.perf;
-    return {...totals,tick:this.sim.tick,phase:this.run.snapshot().phase,enemies:this.sim.world.enemies.size,
+    return {...totals,tick:this.sim.tick,phase:this.run.snapshot().phase,round:this.sim.world.round.index,enemies:this.sim.world.enemies.size,
       tickP50:pct(samples,.5),tickP95:pct(samples,.95),encodeP50:pct(encodeSamples,.5),encodeP95:pct(encodeSamples,.95),
+      tickSamples:samples.map(ms=>Math.round(ms*1000)/1000),
       connections:[...this.connections.values()].map(c=>({player:c.playerId,slot:c.encoder?.slot,frames:c.frames,bytes:c.bytes,received:c.received,
         pending:c.encoder?.pendingEvents,stats:c.encoder?.stats}))};
   }

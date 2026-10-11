@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "check": "tsc --noEmit && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json",
+    "check": "tsc --noEmit && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json && tsc -p scripts/bots/tsconfig.json",
     "preview": "node scripts/serve.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "prepare:art": "node scripts/prepare-portraits.mjs",
     "test:multiplayer:local": "node scripts/check-multiplayer-local.mjs",
     "test:multiplayer:production": "node --experimental-strip-types scripts/check-multiplayer.mjs https://viagem-salas.viagem.workers.dev",
-    "deploy:rooms": "wrangler deploy --config multiplayer/wrangler.jsonc"
+    "deploy:rooms": "wrangler deploy --config multiplayer/wrangler.jsonc",
+    "bots": "node --experimental-strip-types scripts/bots/run.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261005.1",

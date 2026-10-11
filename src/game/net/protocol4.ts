@@ -285,8 +285,11 @@ export class WireIds {
   label(section:SectionKey,serverId:string){return section==='players'?serverId:SCHEMAS[section].prefix+this.wire(section,serverId);}
   /** Server id for a client-facing id (e.g. a tapped enemy `e12`), or undefined. */
   resolve(clientId:string){return this.toServer.get(clientId);}
-  /** New run (server ids restart, e.g. `xp-1` again): forget the map, keep counters so wire ids stay unique. */
-  reset(){for(const s of SECTIONS)this.toWire[s].clear();this.toServer.clear();}
+  /**
+   * New run (server ids restart, e.g. `xp-1` again): forget the map, keep counters so wire ids stay unique.
+   * Players keep theirs: their ids survive the rematch, and a new wire id would resend (and "leave") every player.
+   */
+  reset(){for(const s of SECTIONS)if(s!=='players')this.toWire[s].clear();this.toServer.clear();}
   /** Forget ids of entities gone for good (call with the live server ids, e.g. once per second). */
   prune(live:Partial<Record<SectionKey,Iterable<string>>>){
     for(const section of SECTIONS){

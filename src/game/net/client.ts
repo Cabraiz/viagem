@@ -1,24 +1,13 @@
-import {TerrainField,defaultTerrain,TERRAIN_VERSION} from '../terrain/field.ts';
-import {CHUNK_VERSION} from '../terrain/chunks.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, type Input, type Player } from './shared.ts';
+import {defaultTerrain} from '../terrain/field.ts';
+import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, terrainFor, OUTDATED, TERRAIN_MISMATCH, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
-import type {PlayerWireView,WorldDescriptor} from './protocol4.ts';
+import type {PlayerWireView} from './protocol4.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
 /** A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, spectator, fallen player). */
 const ACK_FALLBACK_MS=120;
-const OUTDATED='Servidor da partida desatualizado. Atualize a página.';
-const TERRAIN_MISMATCH='Versões de terreno diferentes. Atualize a página.';
-/** Same terrain as the room's (kind, versions, seed and signature), or why not. */
-export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
-  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return OUTDATED;
-  // An endless room says so (spawn-em-volta/rede-mapa-grande); a different generator is refused, never misdrawn.
-  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return TERRAIN_MISMATCH;
-  const terrain=new TerrainField(world.seed,{world:world.kind==='infinito'?'infinito':'ilha'});
-  return terrain.signature===world.signature?terrain:TERRAIN_MISMATCH;
-}
 const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
   spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
 export class CoopClient {
@@ -104,7 +93,7 @@ export class CoopClient {
   }
   /** A version or terrain the client cannot play: stop for good with a readable reason. */
   private fail(ws:WebSocket,message:string){
-    this.stopped=true;this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
+    this.stopped=true;this.connected=false;this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}

@@ -368,3 +368,14 @@ test('reconnect drops stale inputs and accepts the client sequence restarting at
   command(room,again,{t:'input',round:1,seq:ack+1,x:0,y:1,attack:false},4460);
   room.advance(4500);assert.equal(p.ack,ack+1,'restarted sequence accepted');assert.notDeepEqual({x:p.x,y:p.y},at);
 });
+
+test('the client accepts only the room\'s exact terrain from the welcome descriptor',async()=>{
+  const {worldDescriptor,terrainFor}=await import('../src/game/net/shared.ts');
+  const room=new Room(1000,4242),a=peer();join(room,a);
+  const welcome=a.messages.find(m=>m.t==='welcome');
+  assert.equal(welcome.protocol,ROOM_PROTOCOL);assert.deepEqual(welcome.world,worldDescriptor(room.sim.terrain));
+  const terrain=terrainFor(welcome.world);assert.ok(typeof terrain!=='string');assert.equal(terrain.signature,room.sim.terrain.signature);
+  assert.match(String(terrainFor({...welcome.world,signature:'x'})),/terreno diferentes/);
+  assert.match(String(terrainFor({...welcome.world,terrainVersion:999})),/desatualizado/);
+  assert.match(String(terrainFor(undefined)),/desatualizado/);
+});

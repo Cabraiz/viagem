@@ -27,6 +27,17 @@ export const ENDLESS_WORLD_READY=false;
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
 }
+/** Client side of the welcome (VGM-042b): the TerrainField a descriptor names, or why the client cannot play it. */
+export const OUTDATED='Servidor da partida desatualizado. Atualize a página.';
+export const TERRAIN_MISMATCH='Versões de terreno diferentes. Atualize a página.';
+/** Same terrain as the room's (kind, versions, seed and signature), or why not. */
+export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
+  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return OUTDATED;
+  // An endless room says so (spawn-em-volta/rede-mapa-grande); a different generator is refused, never misdrawn.
+  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return TERRAIN_MISMATCH;
+  const terrain=new TerrainField(world.seed,{world:world.kind==='infinito'?'infinito':'ilha'});
+  return terrain.signature===world.signature?terrain:TERRAIN_MISMATCH;
+}
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 

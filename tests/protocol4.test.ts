@@ -242,6 +242,8 @@ test('wire ids are never reused, even when server ids restart on a rematch',()=>
   assert.equal(ids.resolve(b),'xp-1');assert.equal(ids.resolve(a),undefined);
   assert.equal(ids.label('players','uuid-9'),'uuid-9');
   ids.prune({pickups:[]});assert.equal(ids.resolve(b),undefined);
+  // Players keep their wire id across the reset (VGM-042b): a rematch does not resend every player as new.
+  const p=ids.wire('players','uuid-9');ids.reset();assert.equal(ids.wire('players','uuid-9'),p);assert.ok(ids.has('players','uuid-9'));
 });
 
 test('control messages: forged or oversized input is refused',()=>{

@@ -3,8 +3,11 @@ import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
-/** LAB_WORLD (wrangler dev only, with ALLOW_LOCAL): 'infinito' opens lab rooms in the endless world before it ships. */
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; }
+/**
+ * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'infinito' opens rooms in the endless world before it
+ * ships; LAB_HORDE n keeps n critters on the players (stress measure, see RoomOptions.labHorde).
+ */
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
@@ -34,7 +37,10 @@ export class GameRoom extends DurableObject<Env>{
   private timer?:ReturnType<typeof setInterval>;
   private peers=new Map<WebSocket,Peer>();
   async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
-  private create(created:number,seed:number){return new Room(created,seed,local(this.env)&&this.env.LAB_WORLD==='infinito'?{world:'infinito'}:{});}
+  private create(created:number,seed:number){
+    if(!local(this.env))return new Room(created,seed);
+    return new Room(created,seed,{...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+  }
   lab(){return this.room?.lab()??null;}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');

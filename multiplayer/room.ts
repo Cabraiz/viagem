@@ -3,6 +3,8 @@ import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, worldDescript
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
+import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
+import {walkable} from '../src/game/world.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -17,6 +19,11 @@ export interface RoomOptions {
   durationTicks?:number;
   /** Lab only (tests, wrangler dev with ALLOW_LOCAL): the endless world before it is playable (ENDLESS_WORLD_READY). */
   world?:WorldKind;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_HORDE): keeps this many critters chasing the players and keeps the
+   * players standing, to measure a full horde (bytes/s, tick and encode cost) without playing ten rounds.
+   */
+  labHorde?:number;
 }
 const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
@@ -53,10 +60,12 @@ export class Room {
   readonly perf:RoomPerf={ticks:0,tickMs:0,maxTickMs:0,encodeMs:0,frames:0,bytes:0,jsonBytes:0,samples:[],encodeSamples:[]};
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
+  private readonly labHorde:number;
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
+    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
   }
   connect(peer:Peer,now=Date.now()){
@@ -190,6 +199,7 @@ export class Room {
     else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout'))this.announce();}
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     if(this.run.snapshot().phase==='combat'){
+      if(this.labHorde)this.fillHorde();
       const events=this.sim.step();
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
@@ -209,6 +219,19 @@ export class Room {
       this.pushOffers(c);
     }
     this.measure(performance.now()-started);
+  }
+  /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick; nobody falls. */
+  private fillHorde(){
+    const w=this.sim.world,players=[...this.sim.players.values()].filter(p=>!p.spectator);
+    if(!players.length)return;
+    for(const p of players){p.invulnerableUntil=w.tick+40;if(p.downed){delete p.downed;p.hp=p.stats.maxHp;}}
+    const kinds=['gosma','pernilongo','fiscal','tio-pave'];
+    for(let n=0,tries=0;n<25&&tries<100&&w.enemies.size<this.labHorde;tries++){
+      const p=players[Math.floor(Math.random()*players.length)],a=Math.random()*Math.PI*2,d=8+Math.random()*22;
+      const at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};
+      if(!walkable(at,this.sim.terrain))continue;
+      createEnemy(w,kinds[(w.tick+n)%kinds.length],at);n++;
+    }
   }
   /** Lab report: tick and encode cost (p50/p95/max over the last minute) and bytes per connection. */
   lab(){

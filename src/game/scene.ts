@@ -378,7 +378,13 @@ export class IslandScene extends Phaser.Scene {
     const dark=this.zueira?.blackoutDepth()??0,layers:{name:string;depth:number;visible?:boolean}[]=[...(this.horde?.blackoutLayers()??[])];
     const self=this.selfCovered?(this.you as unknown as {ghosts:Map<string,Phaser.GameObjects.Sprite>}|undefined)?.ghosts.get('self'):this.actor;
     layers.push({name:'hero',depth:this.selfCovered?SELF_DEPTH:this.actor.depth,visible:self?.visible??true},{name:'hero marks',depth:MARK_DEPTH});
-    for(const [id,a] of this.remoteActors){const st=this.hooks.net?.feed.players.get(id);if(st?.downed&&!st.eliminated)layers.push({name:`caído ${id}`,depth:a.image.depth},{name:`ficha ${id}`,depth:ALLY_DEPTH+1});}
+    // An ally behind a canopy keeps its world depth; what shows is its 85% copy over the canopy (YouMarkers), at ALLY_DEPTH.
+    const ghosts=(this.you as unknown as {ghosts:Map<string,Phaser.GameObjects.Sprite>}|undefined)?.ghosts;
+    for(const [id,a] of this.remoteActors){
+      const st=this.hooks.net?.feed.players.get(id);if(!st?.downed||st.eliminated)continue;
+      const ghost=ghosts?.get(id),shown=ghost?.visible&&ghost.depth>a.image.depth?ghost:a.image;
+      layers.push({name:`caído ${id}${shown===ghost?' (cópia sobre a copa)':''}`,depth:shown.depth},{name:`ficha ${id}`,depth:ALLY_DEPTH+1});
+    }
     if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
     return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
   }

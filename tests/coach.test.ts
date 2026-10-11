@@ -31,7 +31,7 @@ test('copy: house voice, short, sentence case, no "A · B", no emoji, one sticke
     }
   }
   assert.match(LESSONS.walk.sub!,/atira sozinha/,'the walk hint says the weapons fire by themselves');
-  assert.match(LESSONS.rescue.text,/caído/);assert.match(LESSONS.rescue.text,/resgatar/);
+  assert.match(LESSONS.rescue.text,/caído/);assert.match(LESSONS.rescue.sub!,/resgatar/);
 });
 
 test('round 1: walk first; it stays while the novice stands 15 s and goes (with a check) once the hero walks',()=>{
@@ -150,6 +150,12 @@ test('"andar" from the first second (round 1 prepare too) and over the street ba
   assert.equal(walked.step(input(drops,{banner:true}),0),undefined,'the round name first');
   assert.equal(walked.step(input(drops),100)?.lesson,'xp');
   assert.equal(wants('xp',input(round1({pickups:[{...xpDrop,x:XP_NEAR+5}]})),true),false,'a drop off screen does not call the hint');
+  // From round 2 on the banner may be a zueira event or the boss: even "andar" waits for it.
+  resetSessionMemory();
+  const late=new Coach(memory());
+  const wave2:RunView={...round1(),round:{...round1().round!,index:2}};
+  assert.equal(late.step(input(wave2,{banner:true}),0),undefined,'round 2: the zueira banner keeps its turn');
+  assert.equal(late.step(input(wave2),100)?.lesson,'walk');
 });
 
 test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk is measured from where it landed',()=>{

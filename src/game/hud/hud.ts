@@ -158,7 +158,7 @@ export class RunHud {
     const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked,banner},now);
     // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
     // does for a notice or the offer window.
-    if(show&&banner&&LESSONS[show.lesson].overBanner)marquee!.hidden=true;
+    if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
     this.coachShow=show;
     this.coachRow.render(show,view.offers.length);
     const lesson=show&&!show.done?show.lesson:'';
@@ -280,6 +280,8 @@ export class RunHud {
   get view(){return this.last;}
 
   destroy(){
+    // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
+    this.coach.endRun();
     removeEventListener('resize',this.relayout);this.observer?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();

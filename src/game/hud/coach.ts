@@ -24,14 +24,16 @@ export const LESSON_ORDER:readonly Lesson[]=['rescue','walk','chip','xp','gather
 export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
   /** Most time this hint may stay on screen in one run (ms); undefined: while it makes sense. */
   maxMs?:number;
-  /** Takes the slot from the street banner (round name, "Intervalo!", a zueira event): the first thing a novice needs. */
+  /** Takes the slot from the street banner (round name, "Intervalo!") in round 1 only: the first thing a novice needs.
+   * From round 2 on the banner may be a zueira event or the boss, and those keep their turn. */
   overBanner?:boolean}
 /** House voice (revisao-visual §2.6): short, informal imperative, sentence case; the instruction is dry. */
 export const LESSONS:Readonly<Record<Lesson,LessonCopy>>={
   walk:{text:'Arrasta o dedão pra andar',sub:'A arma atira sozinha',icon:'dedao',overBanner:true},
   xp:{text:'Passa nas gotinhas de XP',sub:'Elas sobem o seu nível',icon:'gota',maxMs:9000},
   chip:{text:'Toca pra escolher melhoria',icon:'chip',maxMs:9000},
-  rescue:{text:'Encosta no caído pra resgatar',sub:'Leva 3 s',icon:'boia'},
+  // Two short lines: one line plus "Leva 3 s" wrapped to three rows in portrait at 125%.
+  rescue:{text:'Encosta no caído',sub:'Fica 3 s pra resgatar',icon:'boia'},
   gather:{text:'Encosta num coqueiro ou numa pedra pra catar',icon:'coco',maxMs:10000},
 };
 /** The check after the action, then the row goes. */
@@ -163,7 +165,8 @@ export class Coach {
       if(this.walkOrigin&&last&&Math.hypot(hero.x-last.x,hero.y-last.y)>=SNAP_DISTANCE)this.walkOrigin={...hero};
       if(!this.walkOrigin&&wants('walk',input,false))this.walkOrigin={...hero};
     }
-    const held=(lesson:Lesson)=>input.blocked||(!!input.banner&&!LESSONS[lesson].overBanner);
+    const overBanner=(lesson:Lesson)=>!!LESSONS[lesson].overBanner&&input.view.round?.index===1;
+    const held=(lesson:Lesson)=>input.blocked||(!!input.banner&&!overBanner(lesson));
     for(const lesson of LESSON_ORDER)if(!this.done.has(lesson)&&didAction(lesson,input,this.walkOrigin))this.learn(lesson,now);
     const cur=this.current;
     if(cur){

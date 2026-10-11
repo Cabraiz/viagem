@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {LABEL_CSS,allyLabelText,labelScale,mapLabelVisible,shortName} from '../src/game/render/map-label-rules.ts';
+
+test('place names leave the screen during a wave; ally names stay before the run and for who is caído',()=>{
+  for(const phase of [undefined,'lobby','countdown','interval','result'])assert.equal(mapLabelVisible('place',phase),true,String(phase));
+  assert.equal(mapLabelVisible('place','combat'),false);
+  for(const phase of [undefined,'lobby','countdown'])assert.equal(mapLabelVisible('ally',phase),true,String(phase));
+  for(const phase of ['combat','interval','result'])assert.equal(mapLabelVisible('ally',phase),false,phase);
+  for(const phase of ['combat','interval'])assert.equal(mapLabelVisible('ally',phase,true),true,phase);
+});
+
+test('ally fichas use one glossary word, no "A · B", and long names are cut',()=>{
+  assert.equal(allyLabelText('Zé',{}),'Zé');
+  assert.equal(allyLabelText('Zé',{downed:true}),'Zé, caído');
+  assert.equal(allyLabelText('Zé',{eliminated:true,downed:true}),'Zé, fora');
+  assert.equal(allyLabelText('Zé',{spectator:true}),'Zé, assistindo');
+  assert.equal(allyLabelText('Zé',{online:false}),'Zé, voltando');
+  const long=allyLabelText('Tia da Festa Junina',{downed:true});
+  assert.ok(!long.includes('·')&&!long.includes('♥'));
+  assert.equal(long,'Tia da Fest…, caído');
+  assert.equal(shortName('Maria Aparecida dos Santos'),'Maria Aparecida…');
+  assert.equal([...shortName('Maria Aparecida dos Santos')].length<=16,true);
+  assert.equal(shortName('  Rainha da Bateria '),'Rainha da Bater…');assert.equal(shortName(' Zé do Pix '),'Zé do Pix');
+});
+
+test('fichas keep 13 px CSS at any zoom (the whole-island zoom made the old labels ~4 px)',()=>{
+  for(const zoom of [.26,.5,1,2])assert.ok(Math.abs(LABEL_CSS*labelScale(zoom)*zoom-13)<1e-9,String(zoom));
+  assert.ok(Number.isFinite(labelScale(0)));
+});

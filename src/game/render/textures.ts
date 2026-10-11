@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {tokenColor} from '../../ui/tokens.ts';
 import {ENEMY_ART,ELITE_SCALE,ENEMY_KINDS,FX,PICKUP_KINDS,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from './keys.ts';
 
 type G=Phaser.GameObjects.Graphics;
@@ -269,7 +270,9 @@ function drawFx(make:(key:string,w:number,h:number,draw:(g:G)=>void)=>void){
     sil(g,[['p',starPts(10,10,9,5.2,8,0)]],0xe0306a,0x4a0f2a,1.2);
     g.fillStyle(0xff6f9a).fillCircle(10,10,4);g.fillStyle(0xffd0de).fillCircle(9,9,1.8);
   });
-  const bar=(border:number)=>(g:G)=>{g.fillStyle(border,.92).fillRoundedRect(0,0,46,13,6.5);g.fillStyle(0x5a4a66,1).fillRoundedRect(3,3,40,7,3.5);};
+  // 1 px Papel edge outside the dark frame: the frame alone vanished on dark canopies (DSG-contraste-mapa, D-022).
+  const papel=tokenColor('--c-papel');
+  const bar=(border:number)=>(g:G)=>{g.fillStyle(papel,1).fillRoundedRect(0,0,46,13,6.5);g.fillStyle(border,1).fillRoundedRect(1,1,44,11,5.5);g.fillStyle(0x5a4a66,1).fillRoundedRect(3,3,40,7,3.5);};
   make(FX.bar,46,13,bar(0x2b2233));
   make(FX.barElite,46,13,bar(0xe0a93a));
   make(FX.barFill,40,7,g=>{g.fillStyle(0xffffff).fillRoundedRect(0,0,40,7,3.5);});

@@ -29,7 +29,16 @@ export class TerrainRenderer {
     // Phaser 3.90 renders framebuffer shaders even when visible=false.
     // Keep them outside the display list and repaint only when requested.
     const renderer=this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;
-    renderer.pipelines.clear();shader.load();shader.flush();renderer.pipelines.rebind();
+    renderer.pipelines.clear();shader.load();
+    // Phaser binds a shader's own framebuffer with the *canvas* viewport (that framebuffer has no renderTexture), so on
+    // a phone canvas smaller than the 1024×768 cache only a corner of the island was painted and the rest showed sea.
+    // Bind it first with the cache's viewport; flush() then finds it bound and keeps the viewport.
+    // The canvas-sized scissor box clips it the same way, so the scissor test is off for this one draw.
+    const gl=renderer.gl,scissor=gl.isEnabled(gl.SCISSOR_TEST);
+    renderer.setFramebuffer(shader.framebuffer);gl.viewport(0,0,shader.width,shader.height);gl.disable(gl.SCISSOR_TEST);
+    shader.flush();
+    gl.viewport(0,0,renderer.width,renderer.height);if(scissor)gl.enable(gl.SCISSOR_TEST);
+    renderer.pipelines.rebind();
   }
   view(angle:number){this.land.setUniform('angle.value',angle);this.sea.setUniform('angle.value',angle);this.bake(this.land);this.lastWater=-Infinity;}
   fit(){

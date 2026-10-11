@@ -16,6 +16,7 @@ import {Rng} from './sim/rng.ts';
 import {SIM_HZ,type SimEvent,type PickupKind} from './sim/types.ts';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from './sim/view.ts';
 import {HordeRenderer} from './render/layers.ts';
+import {token} from '../ui/tokens.ts';
 import {Projector} from './render/projector.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
@@ -150,7 +151,7 @@ class HordeSandboxScene extends Phaser.Scene {
     for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(classes[(i*5)%classes.length].id);
   }
   create(){
-    this.cameras.main.setBackgroundColor('#142f2d');
+    this.cameras.main.setBackgroundColor(token('--cena-mar'));
     this.landscape=new TerrainRenderer(this,this.field);this.landscape.view(this.view);
     const trees=treeCatalog.slice(0,6);let i=0;
     for(const o of obstacles){
@@ -205,7 +206,7 @@ export function openHordeSandbox(){
   const seed=Number(params.get('seed'))||DEFAULT_SEED;
   const reduced=params.get('reduced')==='1';
   const root=document.createElement('div');
-  root.style.cssText='position:fixed;inset:0;z-index:10000;background:#142f2d;overflow:hidden;touch-action:none';
+  root.style.cssText=`position:fixed;inset:0;z-index:10000;background:${token('--cena-mar')};overflow:hidden;touch-action:none`;
   const stage=document.createElement('div');stage.style.cssText='position:absolute;inset:0';
   const meter=document.createElement('div');
   meter.setAttribute('aria-live','off');

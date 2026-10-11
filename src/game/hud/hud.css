@@ -570,22 +570,37 @@
   /* The announcement slot starts under the top band, which now ends under the minimap (RunHud sets --rh-anuncio). */
   /* Doubled classes: it must also beat the base ficha's fixed slot rules (camp.css, with and without the boss bar). */
   .rh.rh:has(>.rh-minimap) .rh-top~.rh-stack.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 144px))}
-  /* The base ficha (VGM-046B) becomes one row under the XP bar, left of the minimap (design onda 6 B2): one owner for the
-     corner (the minimap), the top band grows by one short row only. It stays clear of the team column on the left. */
-  .rh:has(>.rh-minimap) .rh-camp{position:static;align-self:stretch;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:36px;
+  /* The base ficha (VGM-046B) is one row of the top band's flow under the XP bar (and the boss bar), left of the minimap
+     (design onda 6 B2): the gear's corner has one owner, the band grows by one short row, and no ficha of the band can
+     cover another (the audits check it). It stays clear of the team column on the left. */
+  .rh .rh-camp{position:static;align-self:stretch;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:36px;
     margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 62px);padding:3px 8px}
   /* The wall bar takes what is left (it shrinks first at 125%), the numbers never get cut. */
-  .rh:has(>.rh-minimap) .rh-camp-wall{flex:1 1 auto;min-width:0}
-  .rh:has(>.rh-minimap) .rh-camp-track{flex:1 1 auto;width:auto;min-width:20px}
-  .rh:has(>.rh-minimap) .rh-camp-res{flex:none;gap:6px}
-  .rh:has(>.rh-minimap) .rh-top:has(.rh-camp:not([hidden])) .rh-xp{margin-right:calc(var(--rh-r) + 82px)}
+  .rh .rh-camp-wall{flex:1 1 auto;min-width:0}
+  .rh .rh-camp-track{flex:1 1 auto;width:auto;min-width:20px}
+  .rh .rh-camp-res{flex:none;gap:6px}
+  .rh .rh-top:has(.rh-camp:not([hidden])) :is(.rh-xp,.rh-boss){margin-right:calc(var(--rh-r) + 82px)}
+  .rh .rh-top:has(.rh-camp:not([hidden])) .rh-boss{align-self:stretch;width:auto;margin-left:var(--rh-l)}
+  /* The announcement slot starts under the band (RunHud sets --rh-anuncio from the zones; the fallbacks cover pages
+     that never measure, like the sandbox). */
+  .rh .rh-top:has(.rh-camp:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 152px))}
+  .rh .rh-top:has(.rh-camp:not([hidden])):has(.rh-boss:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 200px))}
 }
 @media (max-height:500px){
   .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
   /* The offer and the forge (VGM-046B) take the right column: the minimap steps aside while one is open (the arrows stay). */
   .rh:has(.rh-offer:not([hidden])) .rh-minimap,.rh:has(.rh-forge:not([hidden])) .rh-minimap{visibility:hidden}
-  /* With the base ficha (VGM-046B) right of the round chip, the XP bar moves left and stops before it (soma, onda 6). */
-  .rh-top:has(.rh-camp:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(100vw - var(--rh-l) - var(--rh-r) - 480px)}
+  /* With the base ficha (VGM-046B) the top band is a grid, so the ficha is in the band's flow and can never cover the
+     round chip (soma, 125%): row 1 = round chip + base ficha side by side between the camera buttons and the gear;
+     row 2 = XP; row 3 = boss bar. The camp.css absolute placement is undone here. */
+  .rh-top:has(.rh-camp:not([hidden])){display:grid;grid-template-columns:calc(var(--rh-l) + 150px) minmax(0,1fr) auto auto minmax(0,1fr) calc(var(--rh-r) + 64px);
+    grid-auto-rows:auto;column-gap:8px;row-gap:4px;align-items:start}
+  .rh-top:has(.rh-camp:not([hidden]))>.rh-round{grid-column:3;grid-row:1;margin:0;max-width:none}
+  .rh-top:has(.rh-camp:not([hidden]))>.rh-camp{position:static;grid-column:4;grid-row:1;justify-self:start}
+  .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{grid-column:2/6;grid-row:2;justify-self:center;width:min(420px,100%);margin:0}
+  .rh-top:has(.rh-camp:not([hidden]))>.rh-boss{grid-column:2/6;grid-row:3;justify-self:center;width:min(440px,100%)}
+  /* The intermission window or the forge takes the right column: the XP bar keeps to the left of it. */
+  .rh:is(:has(.rh-offer[data-mode=intermission]:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{justify-self:start;width:min(316px,100%);margin:0}
 }
 
 /* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------

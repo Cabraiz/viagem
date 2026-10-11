@@ -151,7 +151,9 @@ export interface AuditBox {name:string;rect:Rect;
   /** A status readout made see-through because the hero is under it (RunHud.veil): over the hero by design, not hiding it. */
   veiled?:boolean;
   /** Must stay inside the useful area (the edge arrows, their tag and their "+N"): poking into the top band or a thumb fails. */
-  withinUseful?:boolean}
+  withinUseful?:boolean;
+  /** A ficha of the top band (round, XP, boss, base, minimap): two of them crossing fails (soma N15 + 046B). */
+  topReadout?:boolean}
 export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
   /** Offer/result over the hero: allowed by the contract, reported for the offer card (D-021). */
@@ -160,6 +162,8 @@ export interface AuditResult {
   veiledOverHero:string[];
   /** Boxes that must stay in the useful area and left it (an arrow's tag in the top band, code review onda 6). */
   escaped:string[];
+  /** Top-band fichas that cross each other ("round×base"). */
+  topCrossed:string[];
   minThumbGap:number;ok:boolean}
 
 /** The zones audit: fails on a HUD box over the hero (± margin), a target closer than THUMB_GAP to a thumb control, or a box in the useful area. */
@@ -172,13 +176,15 @@ export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rec
     const u=zones.useful;
     if(box.withinUseful&&(box.rect.x<u.x-1||box.rect.y<u.y-1||right(box.rect)>right(u)+1||bottom(box.rect)>bottom(u)+1))escaped.push(box.name);
   }
+  const tops=boxes.filter(b=>b.topReadout),topCrossed:string[]=[];
+  for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++)if(crosses(tops[i].rect,tops[j].rect,-.5))topCrossed.push(`${tops[i].name}×${tops[j].name}`);
   const thumbs=boxes.filter(b=>b.thumb);
   for(const box of boxes)if(box.target&&!box.thumb)for(const thumb of thumbs){
     const g=gap(box.rect,thumb.rect);minThumbGap=Math.min(minThumbGap,g);
     if(g<THUMB_GAP)thumbGaps.push({a:box.name,b:thumb.name,gap:Math.round(g)});
   }
   return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,veiledOverHero,escaped,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
-    ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length};
+    topCrossed,ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length&&!topCrossed.length};
 }
 
 // ---------- DOM (browser only) ----------
@@ -210,10 +216,10 @@ export function measureZones(doc:Document=document):ScreenZones{
 /** Every HUD box the audit looks at, as laid out now. */
 export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   const boxes:AuditBox[]=[];
-  // A box inside a scroll box (the intermission offer list, capped at 32% of the height) counts only for its visible
+  // A box inside a scroll box (the intermission offer list or the forge's tags, capped in height) counts only for its visible
   // part: what is scrolled out is clipped, neither drawn nor tappable.
   const clipped=(el:Element,rect:Rect|undefined):Rect|undefined=>{
-    const box=rect&&el.parentElement?.closest('.rh-offer-cards');if(!rect||!box||getComputedStyle(box).overflowY==='visible')return rect;
+    const box=rect&&el.parentElement?.closest('.rh-offer-cards,.rh-forge-tags');if(!rect||!box||getComputedStyle(box).overflowY==='visible')return rect;
     const c=box.getBoundingClientRect(),x=Math.max(rect.x,c.left),y=Math.max(rect.y,c.top),r=Math.min(right(rect),c.right),b=Math.min(bottom(rect),c.bottom);
     return r>x&&b>y?{x,y,width:r-x,height:b-y}:undefined;
   };
@@ -226,7 +232,8 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('#coop-attack','habilidade',{thumb:true,target:true});
   add('.explore-camera button','câmera',{target:true});add('.explore-camera span','câmera-vista');
   add('.explore-config','engrenagem',{target:true});
-  add('.rh-round','round');add('.rh-xp','xp');add('.rh-boss','chefe');add('.rh-camp','base');
+  const top={topReadout:true};
+  add('.rh-round','round',top);add('.rh-xp','xp',top);add('.rh-boss','chefe',top);add('.rh-camp','base',top);
   const low=!!doc.querySelector('.rh-stack.rh-stack-low');
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
   add('.rh-member','time');
@@ -239,7 +246,7 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('.fun-emote-toggle','emote',{target:true});
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
   add('#coop-sos','me-salva',{thumb:true,target:true});
-  add('.rh-minimap','minimapa',{target:true});
+  add('.rh-minimap','minimapa',{target:true,topReadout:true});
   // Edge arrows ride the useful area's inner rim by contract, never over the hero.
   const arrow={allowedInPlay:true,overHeroFails:true,withinUseful:true};
   add('.rh-edge:not([hidden])','seta',arrow);add('.rh-edge:not([hidden]) .rh-edge-tag:not([hidden])','seta-etiqueta',arrow);

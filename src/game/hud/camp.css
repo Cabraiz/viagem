@@ -37,6 +37,8 @@
 .rh-horn[data-kind=hint] .rh-horn-icon[data-for=horn]{display:none}
 .rh-horn-text{font:700 var(--t-13)/1.2 var(--f-sistema)}
 .rh-horn-time{min-width:2.6em;text-align:left;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+/* The tip and the wall notice have no clock: no empty slot eating the line (it pushed the tip to 3 lines at 125%). */
+.rh-horn-time:empty{display:none}
 /* The arrow to the base: the "voltar" sticker turned towards it (--rumo from explore.ts, the base's bearing on screen). */
 .rh-horn-arrow{display:inline-flex;transform:rotate(var(--rumo,0deg))}
 .rh-horn-joke{display:block;margin-top:2px;font:400 var(--t-13)/1.2 var(--f-sistema)}

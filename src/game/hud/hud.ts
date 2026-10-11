@@ -195,8 +195,8 @@ export class RunHud {
   zones(){
     if(!this.zonesCache||this.zonesVersion!==this.layoutVersion){
       this.zonesVersion=this.layoutVersion;this.zonesCache=measureZones(this.el.ownerDocument);this.zonesFresh=true;
-      // Portrait with the minimap: the announcement slot starts where the zones say (under the minimap or the boss bar).
-      if(this.minimap){const y=`${Math.round(this.zonesCache.announce.y)}px`;if(this.el.style.getPropertyValue('--rh-anuncio')!==y)this.el.style.setProperty('--rh-anuncio',y);}
+      // The announcement slot starts where the zones say (under the minimap, the base ficha or the boss bar).
+      {const y=`${Math.round(this.zonesCache.announce.y)}px`;if(this.el.style.getPropertyValue('--rh-anuncio')!==y)this.el.style.setProperty('--rh-anuncio',y);}
     }
     return this.zonesCache;
   }

@@ -66,3 +66,10 @@ test('D-021: the offer chip joins the right-thumb zone (24 px left of the skill)
   const audit=auditBoxes([{name:'habilidade',rect:base.skill,thumb:true,target:true},{name:'chip',rect:chip,target:true}],withChip);
   assert.equal(audit.ok,true);assert.equal(audit.minThumbGap,THUMB_GAP);
 });
+test('soma: two top-band fichas crossing (round × base) fail the audit',async()=>{
+  const z=computeZones({viewport:{width:844,height:390},status:[{x:330,y:8,width:180,height:40}],joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}});
+  const ok=auditBoxes([{name:'round',rect:{x:330,y:8,width:180,height:40},topReadout:true},{name:'base',rect:{x:520,y:8,width:200,height:40},topReadout:true}],z);
+  assert.deepEqual(ok.topCrossed,[]);assert.equal(ok.ok,true);
+  const bad=auditBoxes([{name:'round',rect:{x:330,y:8,width:200,height:40},topReadout:true},{name:'base',rect:{x:520,y:8,width:200,height:40},topReadout:true}],z);
+  assert.deepEqual(bad.topCrossed,['round×base']);assert.equal(bad.ok,false);
+});

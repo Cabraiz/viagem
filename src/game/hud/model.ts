@@ -60,7 +60,7 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
     const label=`Round ${round.index}/${total}`;
     if(round.phase==='prepare'){
       const countdown=secondsLeft(round.phaseEndsTick,view.tick);
-      return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo · ${countdown} s`};
+      return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo ${countdown} s`};
     }
     const remaining=Math.max(0,round.remaining);
     return {index:round.index,total,label,phase:'wave',remaining,detail:remaining===1?'falta 1 bicho':`${remaining} bichos`};

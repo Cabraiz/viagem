@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,STEP,reconcile,simulate,delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../src/game/net/shared.ts';
-import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../multiplayer/room.ts';
+import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../multiplayer/room.ts';
 import {FrameRunFeed} from '../src/game/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
-import {walkable,SPEED} from '../src/game/world.ts';
+import {walkable,worldBase,SPEED} from '../src/game/world.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
@@ -451,4 +451,14 @@ test('VGM-046B: forge taps through the room respect the balance, the camp and a 
   const view=c.feed.peek();
   assert.deepEqual(view.camp,{coco:9,pedra:9});
   assert.equal(view.structures.find(s=>s.kind==='muralha')!.hp,250);
+});
+test('lab move reach is measured from the lab base (base + LAB_OFFSET): 199 u accepted, 201 u refused',()=>{
+  const room=new Room(1000,undefined,{lab:true,labOffset:{x:1000,y:0}}),a=peer();join(room,a);startRun(room,[a]);
+  const p=room.sim.players.get(idOf(a))!,b=worldBase(room.sim.terrain),c={x:b.x+1000,y:b.y};
+  assert.equal(LAB_REACH,200);
+  // An angle where both spots are walkable ground (the endless world has lakes).
+  let angle=0;for(let i=0;i<72;i++){const a2=i*Math.PI/36,at=(r:number)=>({x:c.x+Math.cos(a2)*r,y:c.y+Math.sin(a2)*r});if(walkable(at(199),room.sim.terrain)&&walkable(at(201),room.sim.terrain)){angle=a2;break;}}
+  const at=(r:number)=>({x:c.x+Math.cos(angle)*r,y:c.y+Math.sin(angle)*r});
+  command(room,a,{t:'lab',to:at(199)},4000);assert.ok(Math.hypot(p.x-at(199).x,p.y-at(199).y)<1e-9,'199 u from the lab base: accepted');
+  command(room,a,{t:'lab',to:at(201)},4000);assert.ok(Math.hypot(p.x-at(199).x,p.y-at(199).y)<1e-9,'201 u: refused');
 });

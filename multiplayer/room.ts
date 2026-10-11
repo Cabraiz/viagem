@@ -5,11 +5,12 @@ import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {walkable,worldBase} from '../src/game/world.ts';
-/** Lab moves ({t:'lab',to}) stay this close to the base (world units). */
-const LAB_REACH=200;
 import {sha256Hex} from '../src/game/net/sha256.ts';
 import {downPlayer} from '../src/game/sim/revive.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
+
+/** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
+export const LAB_REACH=200;
 import {isRecipeId} from '../src/game/sim/stonewards/rules.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
@@ -261,7 +262,8 @@ export class Room {
     if(m.down===true)downPlayer(this.sim.world,p);
     const to=m.to;
     // Within LAB_REACH of the base (the endless world is walkable almost everywhere: no lab jump to the far chunks).
-    const base=worldBase(this.sim.terrain);
+    // Measured from where the lab put the team (LAB_OFFSET moves everyone away from the world's base).
+    const b=worldBase(this.sim.terrain),o=this.labOffset,base={x:b.x+(o?.x??0),y:b.y+(o?.y??0)};
     if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&Math.hypot(to.x-base.x,to.y-base.y)<=LAB_REACH&&walkable(to,this.sim.terrain)){p.x=to.x;p.y=to.y;this.sim.setOnline(id,true);}
   }
   /**

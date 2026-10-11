@@ -7,7 +7,6 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   'balao','sacola','risada','chamar','suor','dado','coracao','cadeado','voltar','som','mudo','vibrar','sem-vibrar','letra-n',
   // Fora da tela e minimapa (UX-bordas-fora-da-tela, ORQ-minimapa): base, chefe, bichos chegando e baú.
   'base','chefe','onda','bau',
-
   // Stonewards (VGM-046B): resources, the wall, the return horn and the forge's recipes.
   'coco','pedra','muralha','corneta','fita','chinelo'] as const;
 export type IconName=typeof ICON_NAMES[number];

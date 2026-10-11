@@ -29,7 +29,7 @@ test('round chip shows Round N/10 with critters in a wave and a countdown in the
   assert.deepEqual(roundInfo(wave),{index:3,total:10,label:'Round 3/10',phase:'wave',remaining:23,detail:'23 bichos'});
   wave.round!.remaining=1;assert.equal(roundInfo(wave)!.detail,'falta 1 bicho');
   const prepare=fakeView('prepare',1);
-  assert.equal(roundInfo(prepare)!.countdown,17);assert.equal(roundInfo(prepare)!.detail,'Intervalo · 17 s');
+  assert.equal(roundInfo(prepare)!.countdown,17);assert.equal(roundInfo(prepare)!.detail,'Intervalo 17 s');
   prepare.tick=prepare.round!.phaseEndsTick+40;assert.equal(roundInfo(prepare)!.countdown,0);
   const legacy:RunView={...fakeView('wave',1),round:undefined,wave:{index:2,label:'Onda 2'}};
   assert.equal(roundInfo(legacy)!.label,'Round 2/10');

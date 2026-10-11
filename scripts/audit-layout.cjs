@@ -87,6 +87,10 @@ function audit(rootsSelector,minFont){
     for(const a of document.querySelectorAll('.rh-alert:not([hidden])'))if(vis(a)){const z=+getComputedStyle(a.closest('.rh-stack')||a).zIndex||0,zo=+getComputedStyle(offer).zIndex||0;
       if(hit(a.getBoundingClientRect())&&z<=zo)problems.push(`aviso de queda atrás da oferta: ${label(a)}`);}
   }
+  // The top band's fichas never cross each other (soma N15 + 046B, 125%): round chip, XP, boss bar, base ficha, minimap.
+  {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
+    for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++){const a=tops[i].r,b=tops[j].r;
+      if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`fichas do topo se cruzam: ${tops[i].e.className.split(' ')[0]} × ${tops[j].e.className.split(' ')[0]}`);}}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)

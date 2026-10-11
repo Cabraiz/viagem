@@ -516,6 +516,9 @@ export class HordeRenderer{
    * critter's head; they blink now and then (never with reduced motion). The body goes dark, where it is does not.
    */
   private drawEyes(a:EnemyActor,x:number,feetY:number,size:number){
+    // Only the critters on screen (the pool keeps the whole area of interest): at most a few dozen pairs per frame.
+    const v=this.scene.cameras.main.worldView;
+    if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
     // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
     const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pernilongo'?.55:.62)*size;
     const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;

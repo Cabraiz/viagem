@@ -124,6 +124,8 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
     if(next.kind==='boletos'){
       const drops=Math.ceil(ticks(HAPPENING_SECONDS.boletos)/RAIN_EVERY)*Math.max(1,team.length);
       active.value=Math.max(1,Math.round(RAIN_SHARE*ctx.team.nextXp/drops));
+      // The first boletos fall with the banner; then one per hero every RAIN_EVERY ticks (16 each in all).
+      for(const p of team){const at=around(ctx,p,RAIN_RADIUS);if(at)drop(ctx,'xp',active.value,at,BOLETO_LIFETIME_SECONDS,BOLETO);}
     }
     if(next.kind==='promo')for(const p of team)for(let i=0;i<PROMO_COXINHAS;i++){const at=around(ctx,p,PROMO_RADIUS);if(at)drop(ctx,'heal',HEAL_AMOUNT,at,HAPPENING_SECONDS.promo,PROMO);}
     state.active=active;state.fired.push({round:index,kind:next.kind,tick:ctx.tick});

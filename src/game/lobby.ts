@@ -168,9 +168,9 @@ export async function openLobby(hero:HeroClass,name:string){
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
   codeInput.value=new URL(location.href).searchParams.get('room')?.toUpperCase()??'';
-  let busy=false;
+  let busy=false,outdated=false;
   async function enter(create:boolean){
-    if(busy||closed)return;
+    if(busy||closed||outdated)return;
     if(!endpoint){status.textContent='As salas ainda não estão disponíveis neste endereço. Tente novamente após a publicação.';return;}
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
@@ -187,8 +187,20 @@ export async function openLobby(hero:HeroClass,name:string){
       const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
       if(layout)mountWaitingRoom(layout,joined);
       await opening;
-    }catch(e){client?.leave();if(!closed)status.textContent=e instanceof Error?e.message:'A conexão falhou. Tente novamente.';}
-    finally{busy=false;for(const b of dialog.querySelectorAll<HTMLButtonElement>('button'))b.disabled=false;}
+    }catch(e){
+      const fatal=client?.fatal;client?.leave();
+      if(closed)return;
+      // Page and rooms disagree on the version: trying again gives the same refusal, so the doors close and the
+      // reason shows right under them, in view in landscape too, with the reload button (UX onda 4).
+      const panel=fatal?await import('./net-fatal.ts'):undefined;
+      if(fatal&&panel?.needsUpdate(fatal)){
+        outdated=true;status.textContent='';
+        panel.showFatal(dialog.querySelector<HTMLElement>('form')!,fatal,{inline:true}).scrollIntoView({block:'center'});
+        return;
+      }
+      status.textContent=e instanceof Error?e.message:'A conexão falhou. Tente novamente.';
+    }
+    finally{busy=false;for(const b of dialog.querySelectorAll<HTMLButtonElement>('button'))b.disabled=outdated&&!b.matches('.coop-close,.net-fatal-reload');}
   }
   dialog.querySelector('#create-room')!.addEventListener('click',()=>void enter(true));
   dialog.querySelector('form')!.addEventListener('submit',e=>{e.preventDefault();void enter(false);});

@@ -457,8 +457,12 @@ export class FrameEncoder {
   private members:Partial<Record<SectionKey,Set<string>>>={};
   private previous:Partial<Record<SectionKey,Set<string>>>={};
   private sentWorld?:WorldDescriptor;
-  /** Unacked events are sent again after this many ticks (and right after a resync). */
-  resendTicks=WIRE_HZ;
+  /**
+   * Unacked events are sent again after this many ticks (and right after a resync, which is what a reconnect or a
+   * lost baseline does). 5 s, not 1 s: on a bad network the acks come late, and resending every second doubled the
+   * bytes exactly when the link was worst (review of VGM-042b: 492 KB against 79 KB with acks held back).
+   */
+  resendTicks=5*WIRE_HZ;
   readonly stats:EncoderStats={frames:0,fullFrames:0,bytes:0,eventBytes:0,culled:0,droppedEvents:0};
   readonly ids:WireIds;
   readonly viewer?:string;

@@ -39,9 +39,10 @@ export class GameRoom extends DurableObject<Env>{
   async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
   private create(created:number,seed:number){
     if(!local(this.env))return new Room(created,seed);
-    return new Room(created,seed,{...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+    return new Room(created,seed,{lab:true,...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
   }
-  lab(){return this.room?.lab()??null;}
+  /** Lab report (RPC from the /lab route); null on the deployed Worker even if something calls it. */
+  lab(){return local(this.env)?this.room?.lab()??null:null;}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});

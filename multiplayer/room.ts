@@ -1,5 +1,5 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
@@ -24,6 +24,8 @@ export interface RoomOptions {
    * players standing, to measure a full horde (bytes/s, tick and encode cost) without playing ten rounds.
    */
   labHorde?:number;
+  /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
+  lab?:boolean;
 }
 const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
@@ -38,7 +40,7 @@ export const ROOM_CLOSING_MARGIN_MS=30_000;
 /** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */
 export {ROOM_CLOSING_NOTICE};
 /** Answer to a join with another room protocol (an old tab after a release): readable, and the old client stops retrying. */
-export const VERSION_REFUSED='Saiu versão nova do jogo. Atualize a página para entrar na sala.';
+export const VERSION_REFUSED=UPDATE_NEEDED;
 /** Level ('lvl-<level>-<player>') or round ('rnd-<round>-<player>') offer id, optionally rerolled ('~<tick>'). */
 export const OFFER_ID=/^(lvl|rnd)-\d+-[\w-]{1,40}(~\d+)?$/;
 /** Offers carry at most four cards. */
@@ -61,11 +63,13 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
+  private readonly sampling:boolean;
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
-    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
   }
   connect(peer:Peer,now=Date.now()){
@@ -244,7 +248,7 @@ export class Room {
   }
   private measure(ms:number){
     const p=this.perf;p.ticks++;p.tickMs+=ms;p.maxTickMs=Math.max(p.maxTickMs,ms);
-    p.samples.push(ms);if(p.samples.length>PERF_SAMPLES)p.samples.shift();
+    if(this.sampling){p.samples.push(ms);if(p.samples.length>PERF_SAMPLES)p.samples.shift();}
   }
   /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
   private prune(){
@@ -259,7 +263,8 @@ export class Room {
   }
   private sendFrame(c:Connection,input:FrameInput){
     const started=performance.now(),bytes=c.encoder!.encode(input),ms=performance.now()-started;
-    this.perf.encodeMs+=ms;this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();
+    this.perf.encodeMs+=ms;
+    if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;
     try{c.peer.send(bytes);}catch{this.disconnect(c.peer);}
   }

@@ -77,7 +77,7 @@ test('older clients are rejected before joining a procedural room',()=>{
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
-    assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualize a página/);
+    assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
   assert.equal(ROOM_PROTOCOL,4);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
@@ -375,7 +375,7 @@ test('the client accepts only the room\'s exact terrain from the welcome descrip
   const welcome=a.messages.find(m=>m.t==='welcome');
   assert.equal(welcome.protocol,ROOM_PROTOCOL);assert.deepEqual(welcome.world,worldDescriptor(room.sim.terrain));
   const terrain=terrainFor(welcome.world);assert.ok(typeof terrain!=='string');assert.equal(terrain.signature,room.sim.terrain.signature);
-  assert.match(String(terrainFor({...welcome.world,signature:'x'})),/terreno diferentes/);
-  assert.match(String(terrainFor({...welcome.world,terrainVersion:999})),/desatualizado/);
-  assert.match(String(terrainFor(undefined)),/desatualizado/);
+  assert.match(String(terrainFor({...welcome.world,signature:'x'})),/Atualiza a página/);
+  assert.match(String(terrainFor({...welcome.world,terrainVersion:999})),/Atualiza a página/);
+  assert.match(String(terrainFor(undefined)),/Atualiza a página/);
 });

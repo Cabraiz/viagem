@@ -1,5 +1,5 @@
 import {defaultTerrain} from '../terrain/field.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, terrainFor, OUTDATED, TERRAIN_MISMATCH, type Input, type Player } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
@@ -8,6 +8,16 @@ import type {PlayerWireView} from './protocol4.ts';
 type Sample={at:number;players:Map<string,Player>};
 /** A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, spectator, fallen player). */
 const ACK_FALLBACK_MS=120;
+/** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
+const MAX_BAD_FULL_FRAMES=3;
+/** At most one resync request this often (frames already in flight fail the same way). */
+const RESYNC_EVERY_MS=500;
+/** baseSeq of a protocol 4 header (magic, version, uvar seq, uvar baseSeq); -1 when it cannot be read. */
+function frameBase(bytes:Uint8Array){
+  let pos=2;
+  const uvar=()=>{let v=0,mul=1;for(let i=0;i<8;i++){if(pos>=bytes.length)return -1;const b=bytes[pos++];v+=(b&127)*mul;if(b<128)return v;mul*=128;}return -1;};
+  return uvar()<0?-1:uvar();
+}
 const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
   spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
 export class CoopClient {
@@ -37,6 +47,13 @@ export class CoopClient {
   /** Last decoded frame seq, and the last one the room was told about. */
   private ackSeq=0;private ackSent=0;
   private ackTimer?:ReturnType<typeof setTimeout>;
+  /**
+   * Set once the client stopped for good (refused version, other terrain, frames that never decode, error from the
+   * room, gave up reconnecting): the screen shows it with a reload button instead of "Reconectando…" forever.
+   */
+  fatal?:string;
+  private badFullFrames=0;
+  private resyncAt=-Infinity;
   onStatus:(message:string)=>void=()=>{};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -63,11 +80,11 @@ export class CoopClient {
       let m:any;try{m=JSON.parse(event.data);}catch{return;}
       if(m.t==='welcome'){
         const terrain=terrainFor(m.world);
-        if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:OUTDATED);return;}
+        if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
         this.terrain=terrain;
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
-        this.feed.reset();this.ackSeq=this.ackSent=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
+        this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.seq=Number.isSafeInteger(m.ack)?m.ack:0;this.initialized=true;
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
@@ -77,23 +94,27 @@ export class CoopClient {
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
       else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
-      else if(m.t==='error'){this.onStatus(m.message);this.stopped=true;this.connected=false;this.forgetToken();this.rejectReady?.(new Error(m.message));ws.close();}
+      else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
     ws.onclose=()=>{
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
       this.lostAt ||= Date.now();
       if(Date.now()-this.lostAt>25_000||(!this.initialized&&this.attempts>=2)){
-        this.stopped=true;this.forgetToken();this.onStatus('Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
+        this.stopped=true;this.forgetToken();
+        // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
+        if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
+        this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
       this.retry=setTimeout(()=>this.connect(),Math.min(3000,500*2**this.attempts++));
     };
     ws.onerror=()=>{};
   }
-  /** A version or terrain the client cannot play: stop for good with a readable reason. */
+  /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
   private fail(ws:WebSocket,message:string){
-    this.stopped=true;this.connected=false;this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
+    this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
+    this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
@@ -107,11 +128,16 @@ export class CoopClient {
   private frame(ws:WebSocket,data:ArrayBuffer){
     const result=this.feed.decode(data);
     if(!result.ok){
-      // A frame we cannot place (lost baseline, garbage): ask for a full one. Stale frames are just dropped.
-      if(result.error!=='stale frame'&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'resync'}));
+      if(result.error==='stale frame')return;
+      // Even a full frame does not decode, again and again: the page and the room speak different formats.
+      if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.fail(ws,UPDATE_NEEDED);return;}
+      // A frame we cannot place (lost baseline, garbage): ask for a full one, once per RESYNC_EVERY_MS.
+      const now=performance.now();
+      if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;ws.send(JSON.stringify({t:'resync'}));}
       return;
     }
-    if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,TERRAIN_MISMATCH);return;}
+    this.badFullFrames=0;
+    if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,UPDATE_NEEDED);return;}
     this.ackSeq=result.seq;
     this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_FALLBACK_MS);
     const view=result.view;

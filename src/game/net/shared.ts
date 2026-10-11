@@ -27,16 +27,21 @@ export const ENDLESS_WORLD_READY=false;
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
 }
-/** Client side of the welcome (VGM-042b): the TerrainField a descriptor names, or why the client cannot play it. */
-export const OUTDATED='Servidor da partida desatualizado. Atualize a página.';
-export const TERRAIN_MISMATCH='Versões de terreno diferentes. Atualize a página.';
-/** Same terrain as the room's (kind, versions, seed and signature), or why not. */
+/**
+ * The one text for "this page and the room do not match" (UX onda 4, B15): version refused, terrain or generator
+ * differs, frames that never decode. In the house voice, with what to do and what to do if it comes back (the
+ * site may lag the Worker for a minute during a release, pages.yml).
+ */
+export const UPDATE_NEEDED='Saiu versão nova do jogo. Atualiza a página pra entrar. Se voltar esta mensagem, espera 1 minuto.';
+/** Whether a terminal message asks for a reload (also older rooms' wording, "Atualize a página"). */
+export const needsUpdate=(message:string)=>message===UPDATE_NEEDED||/Atualiz[ae] a página/.test(message);
+/** Client side of the welcome (VGM-042b): the room's exact terrain (kind, versions, seed, signature), or the text why not. */
 export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
-  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return OUTDATED;
+  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return UPDATE_NEEDED;
   // An endless room says so (spawn-em-volta/rede-mapa-grande); a different generator is refused, never misdrawn.
-  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return TERRAIN_MISMATCH;
+  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return UPDATE_NEEDED;
   const terrain=new TerrainField(world.seed,{world:world.kind==='infinito'?'infinito':'ilha'});
-  return terrain.signature===world.signature?terrain:TERRAIN_MISMATCH;
+  return terrain.signature===world.signature?terrain:UPDATE_NEEDED;
 }
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';

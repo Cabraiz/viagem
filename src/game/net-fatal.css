@@ -1,0 +1,10 @@
+/* Mensagem terminal de conexão (VGM-042b, UX onda 4): janela lilás no centro, texto Papel, CTA Amarelo "Atualizar". */
+.net-fatal{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);z-index:60;width:min(340px,calc(100% - 32px));
+  display:grid;gap:12px;padding:16px;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-lilas);
+  box-shadow:0 0 0 2px var(--c-papel),var(--s-1);color:var(--c-papel);text-align:center}
+.net-fatal-text{margin:0;font:700 16px/1.35 var(--f-sistema)}
+.net-fatal-reload{min-height:48px;padding:8px 14px;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-amarelo);
+  color:var(--c-breu);font:800 17px/1.1 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
+.net-fatal-reload:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+/* Na janela da sala (lobby): no fluxo, logo abaixo do "Entrar na sala". */
+.net-fatal.net-fatal-inline{position:static;transform:none;width:auto;margin:8px 0 0}

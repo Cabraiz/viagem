@@ -106,6 +106,19 @@ export class RunHud {
     this.reset();
   }
 
+  private watchName?:string;private watchSince=0;
+  /**
+   * Out or watching (camera-segue): the teammate the camera follows. The "Você tá fora" notice stays 3 s, then the
+   * banner says "Assistindo: Tia" (a tap on a team portrait changes who).
+   */
+  setWatching(name?:string,now=performance.now()){
+    if(name!==this.watchName){if(!this.watchName&&name)this.watchSince=now;this.watchName=name;}
+    const show=name&&now-this.watchSince>=3000?name:undefined;
+    if(this.ctx.watching===show)return;
+    this.ctx.watching=show;
+    if(this.last)this.alerts.update(this.last,this.ctx);
+  }
+
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){
     if(this.ctx.network===text)return;

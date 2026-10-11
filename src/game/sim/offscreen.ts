@@ -26,9 +26,9 @@
  * Projection (projection.ts): screen x = 42·(x − y), screen y = 21·(x + y) − height, after rotating the
  * offset by the view. One unit along the screen's x axis is 42·√2 = 59.4 px, along its y axis 29.7 px.
  *
- * Result (tests print it): with no camera hint the off-screen distance goes from 21.6 units (near the world
- * axes, bound by landscape) to 35.9 units (the screen axes of the views, bound by the long side of a 21:9
- * portrait phone). With a camera hint (one orientation and view) a portrait phone gets 11.3 units sideways.
+ * Result (tests print it): with no camera hint the off-screen distance goes from 25.5 units (near the world
+ * axes, bound by landscape) to 41.4 units (the screen axes of the views, bound by the long side of a 21:9
+ * portrait phone), camera offset budget included. With a camera hint (one orientation and view) a portrait phone gets 10.2 units sideways.
  */
 import type {Point} from '../world.ts';
 
@@ -108,7 +108,7 @@ export const RING_INNER=5,RING_OUTER=8,RING_SLACK=3;
 /**
  * Protocol 4 area of interest (rede-mapa-grande): a client gets enemies, pickups, projectiles and telegraphs
  * within this radius of its player, so everything that can walk onto its screen is already there.
- * It covers the farthest visible point (35.9 u) and the whole spawn ring with its slack.
+ * It covers the farthest visible point (41.4 u) and the whole spawn ring with its slack.
  */
 export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SLACK+1);
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */

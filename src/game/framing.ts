@@ -176,16 +176,55 @@ export class FollowCamera {
  * Out of the round (waiting room, between runs) the waiting panel covers the middle of the screen: the hero goes to
  * the roomiest free band around it (above, below, left or right), so the player still sees the hero turning the view.
  */
-export function freeAround(viewport:Viewport,blocker:Rect):Rect{
+export function freeAround(viewport:Viewport,blocker:Rect,floor=viewport.height):Rect{
+  // `floor`: the top of the thumb zones, so the hero never stands on the joystick (UX onda 4 D2).
+  const h=Math.max(0,Math.min(viewport.height,floor));
   const bands:Rect[]=[
-    {x:0,y:0,width:viewport.width,height:Math.max(0,blocker.y)},
-    {x:0,y:blocker.y+blocker.height,width:viewport.width,height:Math.max(0,viewport.height-blocker.y-blocker.height)},
-    {x:0,y:0,width:Math.max(0,blocker.x),height:viewport.height},
-    {x:blocker.x+blocker.width,y:0,width:Math.max(0,viewport.width-blocker.x-blocker.width),height:viewport.height},
+    {x:0,y:0,width:viewport.width,height:Math.max(0,Math.min(blocker.y,h))},
+    {x:0,y:blocker.y+blocker.height,width:viewport.width,height:Math.max(0,h-blocker.y-blocker.height)},
+    {x:0,y:0,width:Math.max(0,blocker.x),height:h},
+    {x:blocker.x+blocker.width,y:0,width:Math.max(0,viewport.width-blocker.x-blocker.width),height:h},
   ];
   // The roomiest band for a standing hero: the largest smaller side (a thin full-width strip loses to a side column).
   const fit=(r:Rect)=>Math.min(r.width,r.height);
   return bands.reduce((a,b)=>fit(b)>fit(a)?b:a);
+}
+
+/**
+ * The local prediction moves in 20 Hz steps (net.input every STEP). Drawing it as is makes the follow camera step
+ * too (1.7-2.4 px per frame at 30 fps). The scene pushes each new predicted point and draws the point between the
+ * last two at the accumulator's fraction: one step (50 ms) behind, and smooth at any frame rate.
+ */
+export class StepLerp {
+  private prev?:Point;private cur?:Point;
+  /** A new simulated step (after net.input). */
+  push(p:Point){this.prev=this.cur?{...this.cur}:{...p};this.cur={...p};}
+  /** The prediction moved outside a step (server reconcile, respawn): a jump over `snap` units is not interpolated. */
+  sync(p:Point,snap=3){
+    if(!this.cur||!this.prev){this.prev={...p};this.cur={...p};return;}
+    if(p.x===this.cur.x&&p.y===this.cur.y)return;
+    if(Math.hypot(p.x-this.cur.x,p.y-this.cur.y)>snap)this.prev={...p};
+    this.cur={...p};
+  }
+  at(fraction:number):Point{
+    if(!this.cur||!this.prev)return {x:0,y:0};
+    const t=clamp(fraction,0,1);
+    return {x:this.prev.x+(this.cur.x-this.prev.x)*t,y:this.prev.y+(this.cur.y-this.prev.y)*t};
+  }
+}
+
+/** A teammate as the spectator camera sees it. */
+export interface Watchable {id:string;x:number;y:number;standing:boolean;inRun:boolean}
+/**
+ * Who the camera follows when the local player is out (eliminated) or watching (joined mid-run) (UX onda 4): the
+ * current pick while it is still standing; else the nearest standing teammate to where the camera is; else the
+ * nearest one still in the run (downed); else nobody (the camera stays where it was until the result).
+ */
+export function chooseWatched(players:readonly Watchable[],from:Point,current?:string):string|undefined{
+  const cur=players.find(p=>p.id===current);
+  if(cur?.standing)return cur.id;
+  const pick=(list:readonly Watchable[])=>list.reduce<Watchable|undefined>((best,p)=>!best||Math.hypot(p.x-from.x,p.y-from.y)<Math.hypot(best.x-from.x,best.y-from.y)?p:best,undefined)?.id;
+  return pick(players.filter(p=>p.standing))??pick(players.filter(p=>p.inRun));
 }
 
 /** Screen point (CSS px, canvas) of a projected world point under a camera centred at `center`. */

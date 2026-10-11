@@ -13,10 +13,10 @@ export class CharacterSprites {
    * Where the figure really is in its frame (alpha > 20), all animation frames together, so the hero's screen box is
    * the character and not the frame's empty margin (UX-zonas-tela audit, follow camera). Read once per class.
    */
-  figure(id:string):FigureBox|undefined{
+  figure(id:string):FigureBox|undefined{return this.figures.get(id)??undefined;}
+  private measure(id:string){
     const key=`sprite:${id}`;
-    if(this.figures.has(id))return this.figures.get(id)??undefined;
-    if(!this.scene.textures.exists(key))return undefined;
+    if(this.figures.has(id)||!this.scene.textures.exists(key))return;
     let box:FigureBox|null=null;
     try{
       const image=this.scene.textures.get(key).getSourceImage() as CanvasImageSource&{width:number;height:number};
@@ -32,13 +32,16 @@ export class CharacterSprites {
       }
     }catch{box=null;}
     this.figures.set(id,box);
-    return box??undefined;
   }
   private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;x:number;y:number}>();
   constructor(private scene:Phaser.Scene){}
   queue(id:string){
-    if(!spriteCatalog[id]||this.requested.has(id)||this.scene.textures.exists(`sprite:${id}`))return;
+    if(!spriteCatalog[id]||this.requested.has(id))return;
     this.requested.add(id);
+    if(this.scene.textures.exists(`sprite:${id}`)){this.measure(id);return;}
+    // The figure box is read when the sheet arrives (loading time), never in the middle of a frame (review onda 4).
+    this.scene.load.once(`filecomplete-spritesheet-sprite:${id}`,()=>this.measure(id));
+    this.scene.load.once('complete',()=>this.measure(id));
     this.scene.load.spritesheet(`sprite:${id}`,`/art/sprites/${id}.webp`,{frameWidth:192,frameHeight:192});
   }
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0){

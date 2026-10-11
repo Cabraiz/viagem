@@ -3,7 +3,7 @@ import {TerrainField,randomSeed} from './terrain/field.ts';
 import Phaser from 'phaser';
 import { classes } from '../classes.ts';
 import {SKILL_RANGE} from './net/shared.ts';
-import {FollowCamera,followZoom,toScreen,edgeOf,type Rect} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
@@ -61,6 +61,13 @@ export class IslandScene extends Phaser.Scene {
   private zoom=1;
   private canvasOffset={x:0,y:0};
   private roundPhase?:string;
+  /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
+  private steps=new StepLerp();
+  private smooth?:Point;
+  /** Out or watching (UX onda 4): the teammate the camera follows, and where it last was. */
+  private watchId?:string;
+  private watchPinned=false;
+  private watchPoint?:Point;
   private position:Point={...SPAWN};
   private route:Point[]=[];
   private actor!:Phaser.GameObjects.Sprite;
@@ -160,17 +167,20 @@ export class IslandScene extends Phaser.Scene {
   private fit(){
     const viewport=this.viewport();
     this.zoom=followZoom(viewport);
+    const at=this.watchPoint??this.smooth??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
-    const c=this.follow.snap(this.project(this.position),viewport,this.zoom,this.useful(),b&&{width:b.width*this.zoom,height:b.height*this.zoom});
+    const c=this.follow.snap(this.project(at),viewport,this.zoom,this.useful(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(this.zoom).centerOn(c.x,c.y);
     this.landscape?.fit(WATER_MARGIN);
   }
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
     if(!this.actor)return;
-    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&run!=='combat';
-    const b=this.heroWorldBox(),c=this.follow.step(this.project(this.position),delta/1000,this.viewport(),this.zoom,this.useful(),{width:b.width*this.zoom,height:b.height*this.zoom});
+    // Out of the round, and while following a teammate, nothing spawns against this screen: no contract budget.
+    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint);
+    const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
+    const c=this.follow.step(this.project(this.watchPoint??this.smooth??this.position),delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     if(this.landscape&&!this.landscape.covers())this.landscape.fit(WATER_MARGIN);
   }
@@ -344,6 +354,7 @@ export class IslandScene extends Phaser.Scene {
     }
     this.horde?.update(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
+    this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
       if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
@@ -352,7 +363,10 @@ export class IslandScene extends Phaser.Scene {
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       net.input(direction,!this.paused&&!!this.hooks.attacking?.(),this.attackTarget);this.accumulator-=STEP;
+      this.steps.push(net.predicted);
     }
+    // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
+    const smooth=this.smooth=this.steps.at(this.accumulator/STEP);
     const view=net.view(),old=this.position;
     const effects=this.skillEffects??=this.add.graphics().setDepth(90000);effects.clear();
     for(const player of view.players){
@@ -362,7 +376,7 @@ export class IslandScene extends Phaser.Scene {
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
       effects.lineStyle(3,0xffde88,1-age/10).strokePoints(points,true);
     }
-    const target=net.predicted,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
+    const target=smooth,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     this.actor.setAlpha(!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4);
@@ -380,9 +394,35 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),status=player.spectator?'assistindo':state?.eliminated?'fora':state?.downed?'caído':player.hp+'♥';
       objects.label.setPosition(q.x,q.y+15).setDepth(covered?depth+2:ALLY_DEPTH+1).setText(`${player.name} · ${status}${player.online?'':' · voltando'}`);
     }
+    this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
   }
+  /** Out (eliminated) or watching mid-run: follow a teammate instead of one's own body (UX onda 4). */
+  private updateWatch(players:readonly {id:string;x:number;y:number;hp:number;online:boolean;spectator?:boolean}[]){
+    const net=this.hooks.net!,me=net.players.get(net.id),mine=net.feed.players.get(net.id);
+    const out=net.run?.phase==='combat'&&(!!mine?.eliminated||!!me?.spectator);
+    if(!out){this.watchId=undefined;this.watchPinned=false;this.watchPoint=undefined;return;}
+    const list:Watchable[]=players.filter(p=>p.id!==net.id).map(p=>{const st=net.feed.players.get(p.id);
+      return {id:p.id,x:p.x,y:p.y,standing:p.online&&!p.spectator&&!st?.eliminated&&!st?.downed&&p.hp>0,inRun:!p.spectator&&!st?.eliminated};});
+    // A teammate picked by a tap stays while still in the run (even downed: watching the rescue); else the nearest standing.
+    const pinned=this.watchPinned?list.find(p=>p.id===this.watchId&&p.inRun):undefined;
+    const id=pinned?.id??chooseWatched(list,this.watchPoint??this.position,this.watchId);
+    if(id!==this.watchId)this.watchPinned=false;
+    this.watchId=id;
+    const w=list.find(p=>p.id===id);if(w)this.watchPoint={x:w.x,y:w.y};
+    // Nobody left: the camera stays where it last was until the result.
+    else this.watchPoint??={...this.position};
+  }
+  /** Tap on a team portrait while out: follow that teammate. False when not watching or not a teammate in the run. */
+  watch(id:string){
+    const net=this.hooks.net;if(!net||!this.watchPoint||id===net.id)return false;
+    const p=net.players.get(id),st=net.feed.players.get(id);
+    if(!p||p.spectator||st?.eliminated)return false;
+    this.watchId=id;this.watchPinned=true;return true;
+  }
+  /** Who the camera follows while out or watching (for the HUD's "Assistindo: Tia"). */
+  watching(){const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name}:undefined;}
   private drawTreeShadows(){
     const g=this.treeShadows??=this.add.graphics().setDepth(-9990);g.clear();
     for(const prop of this.props){

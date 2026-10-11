@@ -50,7 +50,7 @@ export function createTeamStrip():HudPart{
     root.dataset.count=String(ordered.length);
     ordered.forEach((player,index)=>{
       let nodes=members.get(player.id);
-      if(!nodes){nodes=make(player,ctx);members.set(player.id,nodes);}
+      if(!nodes){nodes=make(player,ctx);nodes.root.dataset.id=player.id;members.set(player.id,nodes);}
       if(nodes.classId!==player.classId){nodes.classId=player.classId;nodes.img.src=ctx.portrait(player.classId);}
       if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
       const state=memberState(player),n=nodes;
@@ -87,7 +87,7 @@ export function createReviveAlerts():HudPart{
       for(const alert of fresh)announced.add(alert.playerId);
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
-    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes);
+    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching);
     row.hidden=!banner;
     if(!banner)return;
     if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;

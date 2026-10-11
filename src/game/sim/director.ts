@@ -112,7 +112,7 @@ export const SPAWN_MARGIN=.5;
 export const FLEE_CAP_SECONDS=60;
 /**
  * Endless world: an enemy no one can see walks this much faster towards the nearest player, so a horde born on the
- * off-screen ring (21.6-35.9 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
+ * off-screen ring (25.5-41.4 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
  * instead of the ~21 s a gosma needs at 1.4 u/s. On screen it is back to its own pace. Never siege enemies; the boss
  * only while walking.
  */

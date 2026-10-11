@@ -18,6 +18,8 @@ export interface HudContext {
   tally:RunTally;
   /** Connection banner text while the socket is down (VGM-043); undefined when connected. */
   network?:string;
+  /** Out or watching: the teammate the camera follows ("Assistindo: Tia"), set 3 s after the out notice (camera-segue). */
+  watching?:string;
   /** Sticker of a critter kind (data URL of the horde atlas texture), for "what got you"; undefined = text only. */
   critterIcon?(kind:string):string|undefined;
 }
@@ -109,7 +111,10 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
  * Priority: connection lost > own fall > own elimination / watching > allies down. Allies down at the same time are
  * grouped ("Zé e Bia caíram!", "3 da turma caíram!"); a rescue in progress names who is being saved, plus the rest.
  */
-export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>):ReviveBanner|undefined{
+/** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
+export const watchingText=(name:string)=>`Assistindo: ${name.trim().split(/\s+/)[0]?.slice(0,9)??''}`;
+
+export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
   const alerts=reviveAlerts(view,localId),self=view.players.find(p=>p.id===localId);
   const own=alerts.find(a=>a.kind==='self');
@@ -118,6 +123,7 @@ export function reviveBanner(view:RunView,localId:string,network?:string,causes?
     return {kind:'self',key:`self:${own.playerId}`,text:own.text,seconds:own.seconds,progress:own.progress,urgent:own.seconds<=5,
       ...(copy&&kind?{cause:{kind,name:copy.name,line:copy.line}}:{})};
   }
+  if((self?.eliminated||self?.spectator)&&watching)return {kind:'ally',key:`watching:${watching}`,text:watchingText(watching),seconds:Infinity,progress:0,urgent:false};
   if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
   if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
   if(!alerts.length)return undefined;

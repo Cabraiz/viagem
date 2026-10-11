@@ -24,7 +24,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
-    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>↶</button><span aria-live="polite">1 / 4</span><button data-turn="1" aria-label="Girar câmera para a direita" disabled>↷</button></div>
+    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>↶</button><span class="explore-view" aria-live="polite">1 / 4</span><i class="explore-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><path d="M12 14.5v2.5"/></svg></i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>↷</button><span class="explore-camera-hint" role="status" hidden>Gira no intervalo</span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1v4l2 1-2 2v3l3 1 1 3h5l1-3 3-1 2-3-2-2 2-2-2-3-3-1-1-3Z"/><circle cx="11.5" cy="12" r="3"/></svg></button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">← Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
@@ -56,6 +56,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
     hud.el.hidden=true;
+    // Out or watching: a tap on a teammate's portrait makes the camera follow them (UX onda 4).
+    // Capture phase: the HUD panels stop their own events from leaking into the game (VGM-040).
+    hud.el.addEventListener('click',event=>{const member=(event.target as HTMLElement).closest<HTMLElement>('.rh-member[data-id]');if(member?.dataset.id)controller?.scene.watch(member.dataset.id);},true);
     // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD (zones audit, boss marquee).
     if(import.meta.env.DEV){
       (window as unknown as {__hud?:RunHud}).__hud=hud;
@@ -110,15 +113,27 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
-  let sceneReady=false;
+  // Locked is not disabled: the button still answers a tap with the lock's stamp beat and "Gira no intervalo" (UX onda 4 D3).
+  let sceneReady=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
+  const cameraGroup=$('.explore-camera'),lock=$('.explore-lock'),hint=$('.explore-camera-hint');
   const syncTurn=()=>{
     const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
-    for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))if(button.disabled!==(!sceneReady||locked))button.disabled=!sceneReady||locked;
+    if(cameraGroup.dataset.locked!==String(locked))cameraGroup.dataset.locked=String(locked);
+    for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]')){
+      if(button.disabled!==!sceneReady)button.disabled=!sceneReady;
+      if(button.getAttribute('aria-disabled')!==String(locked))button.setAttribute('aria-disabled',String(locked));
+    }
+    if(!locked&&!hint.hidden){hint.hidden=true;if(hintTimer)clearTimeout(hintTimer);}
+  };
+  const lockedTap=()=>{
+    lock.classList.remove('is-beat');void lock.offsetWidth;lock.classList.add('is-beat');
+    hint.hidden=false;if(hintTimer)clearTimeout(hintTimer);hintTimer=setTimeout(()=>{hint.hidden=true;},1500);
   };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
-    if(!controller||controller.scene.rotationLocked())return;reset();attacking=false;attackQueuedUntil=0;pause(false);
+    if(controller?.scene.rotationLocked()){lockedTap();return;}
+    if(!controller)return;reset();attacking=false;attackQueuedUntil=0;pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
-    shell.dataset.cameraView=String(view);$('.explore-camera span').textContent=`${view+1} / 4`;
+    shell.dataset.cameraView=String(view);$('.explore-view').textContent=`${view+1} / 4`;
     $('.explore-canvas').focus();
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
@@ -170,7 +185,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.
               const wait=run.phase!=='combat'?document.querySelector<HTMLElement>('.coop-wait:not([hidden])')?.getBoundingClientRect():undefined;
-              if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0?freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height}):hud.zones().useful;
+              const z=hud.zones(),thumbs=Math.min(z.leftThumb?.y??innerHeight,z.rightThumb?.y??innerHeight);
+              if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0?freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs):z.useful;
+              // Out or watching: the camera follows a teammate; the banner names who (a tap on a portrait changes it).
+              hud.setWatching(controller?.scene.watching()?.name);
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.

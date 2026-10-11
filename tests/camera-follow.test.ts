@@ -1,7 +1,7 @@
 // Follow camera (D-019): NEW-20261009-ORQ-camera-segue + NEW-20261009-UX-camera-segue.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FollowCamera,followZoom,followTarget,anchorOf,lookLimit,offsetBudget,toScreen,edgeOf,freeAround,
+import {FollowCamera,followZoom,followTarget,anchorOf,lookLimit,offsetBudget,toScreen,edgeOf,freeAround,StepLerp,chooseWatched,
   VS_HERO_SHORT_RATIO,LAG_X_PX,LAG_Y_PX,FOLLOW_TAU_S,type Rect} from '../src/game/framing.ts';
 import {projectView,unprojectView,viewDepth,rotationLocked,screenDirection,rotateVector} from '../src/game/projection.ts';
 import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset,TILE_X,TILE_Y} from '../src/game/sim/offscreen.ts';
@@ -197,4 +197,56 @@ test('out of the round the budget is lifted (waiting panel); back in the round t
   const s=toScreen(hero,cam.center,vp,z);assert.ok(Math.abs(s.y-HERO.height/2-(602+121))<1e-6,'body centred in the band');
   cam.free=false;const c=cam.step(hero,1/60,vp,z,USEFUL_P,HERO),budget=offsetBudget(vp);
   assert.ok(Math.abs(hero.y-c.y)<=budget.y+LAG_Y_PX+1e-6);
+});
+
+/** The scene's coop loop: the prediction advances in 20 Hz steps; returns the camera's hero screen positions per frame. */
+function coopFrames(fps:number,seconds:number,smooth:boolean,jitter=0){
+  const vp=PORTRAIT,z=followZoom(vp),cam=new FollowCamera(),steps=new StepLerp(),STEP=1/20;
+  let pred={x:12,y:17},acc=0,seed=7;const rnd=()=>((seed=seed*16807%2147483647)/2147483647);
+  steps.sync(pred);cam.snap(projectView(pred,0),vp,z,USEFUL_P,HERO);
+  const out:{x:number;y:number}[]=[];
+  for(let i=0;i<Math.round(seconds*fps);i++){
+    const dt=1/fps*(1+(rnd()*2-1)*jitter);acc=Math.min(acc+dt,.2);steps.sync(pred);
+    while(acc>=STEP){pred={x:pred.x+SPEED*STEP,y:pred.y};acc-=STEP;steps.push(pred);}
+    const p=smooth?steps.at(acc/STEP):pred,hero=projectView(p,0),c=cam.step(hero,dt,vp,z,USEFUL_P,HERO);
+    out.push(toScreen(hero,c,vp,z));
+  }
+  return out;
+}
+const maxStep=(f:{x:number;y:number}[],from:number)=>{let m=0;for(let i=from+1;i<f.length;i++)m=Math.max(m,Math.hypot(f[i].x-f[i-1].x,f[i].y-f[i-1].y));return m;};
+
+test('coop: the camera follows the 20 Hz prediction interpolated between steps, so the hero does not shake (30/60 fps, uneven frames)',t=>{
+  for(const fps of [30,60])for(const jitter of [0,.25]){
+    const raw=maxStep(coopFrames(fps,4,false,jitter),fps*2),lerp=maxStep(coopFrames(fps,4,true,jitter),fps*2);
+    t.diagnostic(`${fps} fps, frames ±${jitter*100}%: hero step on screen ${raw.toFixed(2)} px raw → ${lerp.toFixed(2)} px interpolated`);
+    assert.ok(lerp<.35,`${fps}/${jitter}: ${lerp}`);
+    if(jitter===0&&fps===30)assert.ok(raw>1,'the raw 20 Hz prediction does step (the test has teeth)');
+  }
+  // A server correction over 3 u is not interpolated (no slide across the map).
+  const s=new StepLerp();s.sync({x:0,y:0});s.push({x:.1,y:0});s.sync({x:10,y:0});assert.deepEqual(s.at(.5),{x:10,y:0});
+});
+
+test('out or watching: follow the nearest standing teammate; when it falls, the next one; nobody left: stay put',()=>{
+  const mk=(id:string,x:number,standing=true,inRun=true)=>({id,x,y:0,standing,inRun});
+  let team=[mk('a',10),mk('b',3),mk('c',-20)];
+  let id=chooseWatched(team,{x:0,y:0});assert.equal(id,'b','nearest standing');
+  team=[mk('a',10),mk('b',0,false),mk('c',-20)];
+  id=chooseWatched(team,{x:3,y:0},id);assert.equal(id,'a','b fell: the next nearest from where the camera is');
+  assert.equal(chooseWatched([mk('a',10),mk('c',-20)],{x:3,y:0},'a'),'a','keeps the current while standing');
+  assert.equal(chooseWatched([mk('a',10,false),mk('c',-20,false,false)],{x:0,y:0},'x'),'a','only a downed one left: watch the rescue');
+  assert.equal(chooseWatched([mk('c',-20,false,false)],{x:0,y:0}),undefined,'nobody in the run: the camera stays');
+});
+
+test('out or watching banner: "Assistindo: Tia" replaces the out notice once the camera follows a teammate',async()=>{
+  const {reviveBanner,OUT_TEXT}=await import('../src/game/hud/model.ts');
+  const {fakeView}=await import('../src/game/hud/fixtures.ts');
+  const view=fakeView('wave',4),me=view.players[0];me.eliminated=true;
+  assert.equal(reviveBanner(view,me.id)?.text,OUT_TEXT);
+  assert.equal(reviveBanner(view,me.id,undefined,undefined,'Tia Cleide')?.text,'Assistindo: Tia');
+});
+
+test('waiting room: the free band stops above the thumb zones',()=>{
+  // The real portrait waiting room: panel 122..489, joystick zone from 684.
+  const b=freeAround(PORTRAIT,{x:15,y:122,width:360,height:367},684);
+  assert.deepEqual(b,{x:0,y:489,width:390,height:195});
 });

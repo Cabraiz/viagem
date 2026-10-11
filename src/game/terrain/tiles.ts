@@ -39,7 +39,6 @@ export interface Box {x0:number;y0:number;x1:number;y1:number}
 export interface TileRange {ix0:number;iy0:number;ix1:number;iy1:number}
 export interface TileId {ix:number;iy:number}
 
-export const tileKey=(ix:number,iy:number)=>`${ix},${iy}`;
 /** Tiles overlapping a rect (world px), grown by `ring` tiles on every side. */
 export function tileRange(r:Rect,ring=0):TileRange{
   return {ix0:Math.floor(r.x/TILE_PX)-ring,iy0:Math.floor(r.y/TILE_PX)-ring,ix1:Math.floor((r.x+r.w)/TILE_PX)+ring,iy1:Math.floor((r.y+r.h)/TILE_PX)+ring};

@@ -54,9 +54,11 @@ type Prop={point:Point;object:Graphics|Phaser.GameObjects.Image;tree?:TreeArt;ar
 type Sign={point:Point;graphic:Graphics;label:MapLabel};
 const TREES=new Map(treeCatalog.map(t=>[t.id,t]));
 /** Endless world: tree sheets kept in memory with no tree of theirs around (each ~1.5 MB of texture); older ones go. */
-const TREE_TEXTURES_IDLE=6;
+const TREE_TEXTURES_IDLE=12;
 /** Endless world: tree sheets loaded before the first frame, for the obstacles this close to the spawn. */
-const TREE_PRELOAD_UNITS=40;
+const TREE_PRELOAD_UNITS=24;
+/** Endless world: a tree whose sheet arrives on screen fades in over this long (instant with reduced motion). */
+const TREE_FADE_MS=220;
 
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
@@ -132,7 +134,8 @@ export class IslandScene extends Phaser.Scene {
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
-    this.cameras.main.setBackgroundColor(token('--cena-mar'));
+    // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
+    this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;
     this.drawGround();
@@ -201,9 +204,11 @@ export class IslandScene extends Phaser.Scene {
     // The intermission has no spawns either, so the hero may go far from the centre (beside the round offer window).
     const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
     const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
-    const c=this.follow.step(this.project(this.watchPoint??this.smooth??this.position),delta/1000,this.viewport(),this.zoom,this.useful(),size);
+    const focus=this.project(this.watchPoint??this.smooth??this.position);
+    const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
-    this.landscape?.follow(WATER_MARGIN);this.syncProps();
+    // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
+    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
@@ -479,14 +484,22 @@ export class IslandScene extends Phaser.Scene {
     }
   }
   private drawGround(){this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);}
-  /** A tree as its sheet (one frame per view) when loaded, else the vector sketch; rocks are always sketches. */
-  private makeProp(o:Obstacle,tree?:TreeArt):Prop{
+  /**
+   * A tree as its sheet (one frame per view) when loaded. Island: else the vector sketch. Endless world: else only its
+   * shadow on the ground until the sheet arrives (design onda 6 D1: a sketch read as "failed to load"), then the tree
+   * fades in. Rocks are always drawn as vectors.
+   */
+  private makeProp(o:Obstacle,tree?:TreeArt,fade=false):Prop{
     const p=this.project(o);
     if(tree&&this.textures.exists(`tree:${tree.id}`)){
       const image=this.add.image(p.x,p.y,`tree:${tree.id}`,this.view).setOrigin(.5,353/384).setScale(tree.height/tree.pixelHeight).setDepth(this.depth(o));
-      image.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);return {point:o,object:image,tree,art:tree.id};
+      image.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if(fade&&!this.reduced){image.setAlpha(0);this.tweens.add({targets:image,alpha:1,duration:TREE_FADE_MS});}
+      return {point:o,object:image,tree,art:tree.id};
     }
-    const g=this.add.graphics({x:p.x,y:p.y});this.drawProp(g,o);g.setDepth(this.depth(o));
+    const g=this.add.graphics({x:p.x,y:p.y});g.setDepth(this.depth(o));
+    if(tree&&this.field.chunks)g.fillStyle(tokenColor('--c-breu'),.22).fillEllipse(4,2,Math.min(120,tree.height*.55),Math.min(44,tree.height*.2));
+    else this.drawProp(g,o);
     return {point:o,object:g,art:tree?.id};
   }
   private loadTree(id:string){
@@ -507,7 +520,7 @@ export class IslandScene extends Phaser.Scene {
     const chunks=this.field.chunks;if(!chunks)return;
     const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
     const v={x:cam.scrollX+(cam.width-w)/2,y:cam.scrollY+(cam.height-h)/2,w,h};
-    const want=propChunks(v,this.view),keep=propChunks(v,this.view,1);
+    const want=propChunks(v,this.view),keep=propChunks(v,this.view,1),ahead=propChunks(v,this.view,2);
     let changed=false;
     for(const [key,entry] of this.chunkProps){
       if(entry.cx>=keep.ix0&&entry.cx<=keep.ix1&&entry.cy>=keep.iy0&&entry.cy<=keep.iy1)continue;
@@ -526,6 +539,11 @@ export class IslandScene extends Phaser.Scene {
       }
       for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,p.name));}
       this.chunkProps.set(key,{cx,cy,props,signs});changed=true;
+    }
+    // Sheets of the next ring of chunks start loading before their trees can show (fewer shadows waiting on screen).
+    if(changed)for(let cy=ahead.iy0;cy<=ahead.iy1;cy++)for(let cx=ahead.ix0;cx<=ahead.ix1;cx++){
+      if(cx>=want.ix0&&cx<=want.ix1&&cy>=want.iy0&&cy<=want.iy1)continue;
+      for(const o of chunks.chunk(cx,cy).obstacles)if(o.art&&!this.textures.exists(`tree:${o.art}`)&&TREES.has(o.art)){this.loadTree(o.art);loads=true;}
     }
     if(loads&&!this.load.isLoading())this.load.start();
     if(!changed)return;
@@ -552,7 +570,7 @@ export class IslandScene extends Phaser.Scene {
     let changed=false;
     for(const entry of this.chunkProps.values())entry.props.forEach((prop,i)=>{
       if(prop.art!==id||prop.tree)return;
-      prop.object.destroy();const next=this.makeProp(prop.point as Obstacle,tree);
+      prop.object.destroy();const next=this.makeProp(prop.point as Obstacle,tree,true);
       entry.props[i]=next;changed=true;
     });
     if(!changed)return;

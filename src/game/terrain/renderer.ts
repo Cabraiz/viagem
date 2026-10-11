@@ -3,8 +3,9 @@ import {FIELD_MIN,FIELD_SIZE,FIELD_STEP,TerrainField,clamp} from './field.ts';
 import {landShader,waterShader} from './shaders.ts';
 import {waterCacheSize} from './water-size.ts';
 import type {ChunkWorld} from './chunks.ts';
-import {ENDLESS_MAX_HEIGHT,FIELD_STEP as TILE_FIELD_STEP,FIELD_TEXELS,KEEP_TILES,PREFETCH_TILES,TILE_PX,TILE_TEXELS,WATER_TEXELS,
-  fieldChunks,fieldOrigin,fillField,inRange,tileKey,tileRange,tilesByDistance,type Rect,type TileId} from './tiles.ts';
+import {ENDLESS_MAX_HEIGHT,FIELD_STEP as TILE_FIELD_STEP,FIELD_TEXELS,TILE_PX,TILE_TEXELS,WATER_TEXELS,
+  fieldChunks,fieldOrigin,fillField,inRange,tileRange,type Rect,type TileId} from './tiles.ts';
+import {BANDS,TilePool,type PoolBackend,type PoolSlot,type PoolStats} from './tile-pool.ts';
 
 type Renderer=Phaser.Renderer.WebGL.WebGLRenderer;
 type GLTexture=Phaser.Renderer.WebGL.Wrappers.WebGLTextureWrapper;
@@ -16,8 +17,11 @@ export interface TerrainLayer {
   view(angle:number):void;
   /** After a resize or a turn: cover the camera now. `margin`: share of the view baked around it (island water). */
   fit(margin?:number):void;
-  /** Every frame after the camera moved: keep the camera covered (cheap when nothing changes). */
-  follow(margin?:number):void;
+  /**
+   * Every frame after the camera moved: keep the camera covered (cheap when nothing changes). `focus`: where the hero
+   * (or the followed teammate) stands, in world px: its ground is never left for a later frame.
+   */
+  follow(margin?:number,focus?:{x:number;y:number}):void;
   /** Every frame: the water animation. */
   update(time:number,reduced:boolean):void;
 }
@@ -133,17 +137,12 @@ export class TerrainRenderer implements TerrainLayer {
   update(time:number,reduced:boolean){if(Number.isFinite(this.lastWater)&&(reduced||time-this.lastWater<WATER_MS))return;this.lastWater=time;this.sea.setUniform('elapsed.value',reduced?0:time/1000);this.baker.bake(this.sea);}
 }
 
-/** A render target from the pool: its texture (in the Texture Manager under `key`), framebuffer and image. */
+/** A render target: its texture (in the Texture Manager under `key`), framebuffer and image. */
 interface Target {key:string;texture:GLTexture;framebuffer:GLFramebuffer;image:Phaser.GameObjects.Image}
-interface Slot extends Target {
-  tile?:TileId;
-  /** View the tile was baked in; -1 when it must be baked again (new tile, view turn, context restored). */
-  baked:number;
-  /** Height texture of the tile (kept for the water re-bakes) and its origin on the global lattice. */
-  field:Uint8Array;origin:{x:number;y:number};
+interface Slot extends Target,PoolSlot {
+  /** Height texture of the tile (kept for the water re-bakes), its origin on the global lattice, whether it holds a lake. */
+  field:Uint8Array;origin:{x:number;y:number};wet:boolean;
   water?:Target;
-  /** A ring bake in progress: the view it is for (-1: none), the next band, and whether the tile holds a lake. */
-  pending:number;band:number;wet:boolean;
 }
 /**
  * Render targets made with the scene: making one later means a framebuffer status check, a full round trip to the GPU
@@ -154,43 +153,31 @@ interface Slot extends Target {
 const POOL_TILES=60,POOL_WATER=24;
 /** Bisection steps over ENDLESS_MAX_HEIGHT: 40/2¹² ≈ 0.01 px of height, the island's 128/2¹⁸ is 0.0005. */
 const ENDLESS_STEPS=12;
-/**
- * A tile of the ring is baked in this many horizontal bands, one per frame (a whole tile is ~16k fragments of the relief
- * shader: one frame of a software GPU in the lab). Visible tiles that are missing are baked whole at once.
- */
-const BANDS=4;
-/** Missing ring tiles per extra band in a frame (see follow): 1-3 missing → 1 band, a whole missing row (6-9) → 2-3. */
-const RING_PER_BAND=3;
 /** Measurements for the lab and the done/ report (probe in dev). */
-export interface TerrainStats {slots:number;live:number;water:number;bakes:number;urgent:number;lattices:number;waterBakes:number;followMs:number;maxFollowMs:number;maxFillMs:number;maxBakeMs:number;maxLatticeMs:number;grown:number}
+export interface TerrainStats extends PoolStats {water:number;waterBakes:number;followMs:number;maxFollowMs:number;maxFillMs:number;maxBakeMs:number;maxLatticeMs:number}
 
 /**
  * Endless world (D-019, terreno-em-blocos): the ground in TILE_PX tiles of screen around the camera, each baked once into
- * a TILE_TEXELS² render target from a pool, with a water layer (WATER_TEXELS²) only under the tiles that hold a lake.
- * Visible tiles that are missing are baked at once; the ring around the view (PREFETCH_TILES) is baked ahead, one chunk
- * lattice or a few bands of a tile per frame (BANDS), so walking across a tile border costs nothing visible. A view turn
- * bakes the new view around the hero.
+ * a TILE_TEXELS² render target from a pool (tile-pool.ts decides which tile, when and how many bands), with a water layer
+ * (WATER_TEXELS²) only under the tiles that hold a lake.
  */
-export class ChunkTerrainRenderer implements TerrainLayer {
+export class ChunkTerrainRenderer implements TerrainLayer,PoolBackend<Slot> {
   private land:Phaser.GameObjects.Shader;
   private sea:Phaser.GameObjects.Shader;
   private baker:Baker;
-  private angle=0;
-  private slots:Slot[]=[];
-  private byTile=new Map<string,Slot>();
+  private pool:TilePool<Slot>;
   private spareWater:Target[]=[];
   private waterCount=0;
   private lastWater=-Infinity;
-  /** `elapsed` of the last water bake (0 with reduced motion): a tile baked in between joins the same frame of water. */
+  /** `elapsed` of the last water bake (0 with reduced motion): every water layer on screen shows the same instant. */
   private waterElapsed=0;
   private fieldData=new Uint8Array(FIELD_TEXELS*FIELD_TEXELS*4);
   private ownLand:GLFramebuffer;
   private ownSea:GLFramebuffer;
   private counter=0;
-  private viewRect:Rect={x:0,y:0,w:1,h:1};
-  private wanted={ix0:0,iy0:0,ix1:-1,iy1:-1};
-  readonly stats:TerrainStats={slots:0,live:0,water:0,bakes:0,urgent:0,lattices:0,waterBakes:0,followMs:0,maxFollowMs:0,maxFillMs:0,maxBakeMs:0,maxLatticeMs:0,grown:0};
+  private timing={followMs:0,maxFollowMs:0,maxFillMs:0,maxBakeMs:0,maxLatticeMs:0,waterBakes:0};
   private readonly textures=['terrain-tile-field','terrain-soil','terrain-bed'];
+  get stats():TerrainStats{return {...this.pool.stats,...this.timing,water:this.waterCount};}
   private uniforms(){
     return {angle:{type:'1f',value:0},elapsed:{type:'1f',value:0},areaOrigin:{type:'2f',value:{x:0,y:0}},areaSize:{type:'2f',value:{x:TILE_PX,y:TILE_PX}},
       fieldOrigin:{type:'2f',value:{x:0,y:0}},fieldStep:{type:'1f',value:TILE_FIELD_STEP},fieldSize:{type:'1f',value:FIELD_TEXELS},maxHeight:{type:'1f',value:ENDLESS_MAX_HEIGHT},endless:{type:'1f',value:1},steps:{type:'1f',value:ENDLESS_STEPS}};
@@ -204,14 +191,15 @@ export class ChunkTerrainRenderer implements TerrainLayer {
     this.sea.setRenderToTexture('terrain-tile-water-own');
     // The shaders' own framebuffers are only swapped out while a tile is baked; they go back before destroy().
     this.ownLand=this.land.framebuffer!;this.ownSea=this.sea.framebuffer!;
-    for(let i=0;i<POOL_TILES;i++)this.slots.push(this.newSlot());
+    this.pool=new TilePool<Slot>(this,POOL_TILES);
     for(let i=0;i<POOL_WATER;i++)this.spareWater.push(this.target(WATER_TEXELS,-11000,'terrain-tile-water'));
-    const renderer=scene.game.renderer as Renderer,restore=()=>{for(const s of this.slots){s.baked=-1;s.pending=-1;}this.lastWater=-Infinity;};
+    const renderer=scene.game.renderer as Renderer,restore=()=>{this.pool.invalidate();this.lastWater=-Infinity;};
     renderer.on?.(Phaser.Renderer.Events.RESTORE_WEBGL,restore);
     scene.events.once('shutdown',()=>{
       renderer.off?.(Phaser.Renderer.Events.RESTORE_WEBGL,restore);
-      for(const t of [...this.slots,...this.slots.flatMap(s=>s.water?[s.water]:[]),...this.spareWater])this.dropTarget(t);
-      this.slots=[];this.spareWater=[];this.byTile.clear();
+      for(const s of this.pool.destroy())this.dropTarget(s);
+      for(const t of this.spareWater)this.dropTarget(t);
+      this.spareWater=[];
       this.land.framebuffer=this.ownLand;this.sea.framebuffer=this.ownSea;
       this.land.destroy();this.sea.destroy();scene.textures.remove('terrain-tile-field');
     });
@@ -228,90 +216,54 @@ export class ChunkTerrainRenderer implements TerrainLayer {
   private dropTarget(t:Target){
     t.image.destroy();(this.scene.game.renderer as Renderer).deleteFramebuffer(t.framebuffer);this.scene.textures.remove(t.key);
   }
-  /** A turn: every tile is stale; the scene's fit() right after (camera back on the hero) bakes the new view. */
-  view(angle:number){this.angle=angle;for(const s of this.slots){s.baked=-1;s.pending=-1;}this.land.setUniform('angle.value',angle);this.sea.setUniform('angle.value',angle);this.lastWater=-Infinity;}
-  fit(){this.follow();}
-  /** Keeps every visible tile baked for the current view and bakes ahead in the ring around it (see the class comment). */
-  follow(){
-    const start=performance.now(),v=cameraView(this.scene);
-    const visible=tileRange(v),wanted=tileRange(v,PREFETCH_TILES),keep=tileRange(v,KEEP_TILES);
-    this.viewRect=v;this.wanted=wanted;
-    for(const s of this.slots)if(s.tile&&!inRange(s.tile,keep))this.release(s);
-    if(this.missing(wanted)){
-      // Visible and not baked for this view: now, whatever it costs (only at start, after a turn or a teleport).
-      const urgent=this.missing(visible)?tilesByDistance(visible,v).filter(t=>!this.ready(t)):[];
-      if(urgent.length)this.baker.batch(()=>{for(const t of urgent){this.bakeTile(t,BANDS);this.stats.urgent++;}});
-      // The ring: one chunk lattice or a few bands of one tile per frame, nearest first. One band while the ring keeps
-      // up; when the camera crosses a border a whole row of the ring is missing, and more bands go per frame (up to a
-      // whole tile) so a slow frame rate never lets the view catch up with unbaked tiles.
-      const order=tilesByDistance(wanted,v),next=order.find(t=>!this.ready(t));
-      if(next){
-        const started=this.byTile.get(tileKey(next.ix,next.iy)),behind=order.reduce((n,t)=>n+(this.ready(t)?0:1),0);
-        const bands=Math.max(1,Math.min(BANDS,Math.ceil(behind/RING_PER_BAND)));
-        if(started&&started.pending===this.angle)this.bakeTile(next,bands);
-        else{
-          const origin=fieldOrigin(next,this.angle),missing=fieldChunks(origin).find(c=>!this.world.hasLattice(c.ix,c.iy));
-          if(missing){const t0=performance.now();this.world.lattice(missing.ix,missing.iy);this.stats.lattices++;this.stats.maxLatticeMs=Math.max(this.stats.maxLatticeMs,performance.now()-t0);}
-          else this.bakeTile(next,bands,origin);
-        }
-      }
+  // ---- PoolBackend ----
+  create():Slot{return {...this.target(TILE_TEXELS,-10000,'terrain-tile'),baked:-1,pending:-1,band:0,shown:false,field:new Uint8Array(FIELD_TEXELS*FIELD_TEXELS*4),origin:{x:0,y:0},wet:false};}
+  ready(t:TileId,angle:number,urgent:boolean){
+    for(const c of fieldChunks(fieldOrigin(t,angle)))if(!this.world.hasLattice(c.ix,c.iy)){
+      const t0=performance.now();this.world.lattice(c.ix,c.iy);this.timing.maxLatticeMs=Math.max(this.timing.maxLatticeMs,performance.now()-t0);
+      if(!urgent)return false;
     }
-    // Only the visible tiles go to the batch (the ring stays baked, hidden): fewer texture switches per frame.
-    for(const s of this.slots){
-      const show=!!s.tile&&s.baked===this.angle&&inRange(s.tile,visible);
-      if(s.image.visible!==show)s.image.setVisible(show);
-      if(s.water&&s.water.image.visible!==show)s.water.image.setVisible(show);
-    }
-    const ms=performance.now()-start;this.stats.followMs=ms;this.stats.maxFollowMs=Math.max(this.stats.maxFollowMs,ms);
-    this.stats.live=this.byTile.size;this.stats.slots=this.slots.length;this.stats.water=this.waterCount;
+    return true;
   }
-  private missing(r:{ix0:number;iy0:number;ix1:number;iy1:number}){
-    for(let iy=r.iy0;iy<=r.iy1;iy++)for(let ix=r.ix0;ix<=r.ix1;ix++)if(!this.ready({ix,iy}))return true;
-    return false;
+  start(s:Slot,t:TileId,angle:number){
+    const o=fieldOrigin(t,angle),t0=performance.now();
+    s.origin={x:o.x,y:o.y};s.wet=fillField(this.world,s.origin,s.field);
+    this.timing.maxFillMs=Math.max(this.timing.maxFillMs,performance.now()-t0);
   }
-  private ready(t:TileId){const s=this.byTile.get(tileKey(t.ix,t.iy));return !!s&&s.baked===this.angle;}
-  private newSlot():Slot{return {...this.target(TILE_TEXELS,-10000,'terrain-tile'),baked:-1,field:new Uint8Array(FIELD_TEXELS*FIELD_TEXELS*4),origin:{x:0,y:0},pending:-1,band:0,wet:false};}
-  private release(s:Slot){
-    if(s.tile)this.byTile.delete(tileKey(s.tile.ix,s.tile.iy));
-    s.tile=undefined;s.baked=-1;s.pending=-1;s.image.setVisible(false);
-    if(s.water){s.water.image.setVisible(false);this.spareWater.push(s.water);s.water=undefined;this.waterCount--;}
+  bands(s:Slot,from:number,to:number){
+    const t=s.tile!,rows=TILE_TEXELS/BANDS,t0=performance.now();
+    this.baker.bake(this.land,()=>this.prepare(this.land,s,t.ix*TILE_PX,t.iy*TILE_PX),from===0&&to===BANDS?undefined:{from:from*rows,to:to*rows});
+    this.land.framebuffer=this.ownLand;
+    this.timing.maxBakeMs=Math.max(this.timing.maxBakeMs,performance.now()-t0);
   }
-  /** Slot of a tile: its own, a free one, the farthest one outside the prefetch ring, or (a bigger screen) a new one. */
-  private slotFor(t:TileId):Slot{
-    const key=tileKey(t.ix,t.iy);
-    let s=this.byTile.get(key)??this.slots.find(x=>!x.tile);
-    if(!s){
-      const v=this.viewRect,cx=v.x+v.w/2,cy=v.y+v.h/2,d=(x:Slot)=>Math.hypot((x.tile!.ix+.5)*TILE_PX-cx,(x.tile!.iy+.5)*TILE_PX-cy);
-      for(const x of this.slots)if(x.tile&&!inRange(x.tile,this.wanted)&&(!s||d(x)>d(s)))s=x;
-    }
-    if(!s){s=this.newSlot();this.slots.push(s);this.stats.grown++;}
-    if(s.tile&&tileKey(s.tile.ix,s.tile.iy)!==key)this.release(s);
-    s.tile={ix:t.ix,iy:t.iy};this.byTile.set(key,s);
-    return s;
-  }
-  /**
-   * Bakes `bands` more bands of a tile (BANDS: the whole tile). The first band of a bake fills the tile's height
-   * texture; the tile counts as baked (and gets its water) after the last band. Until then it stays hidden.
-   */
-  private bakeTile(t:TileId,bands:number,origin?:{x:number;y:number}){
-    const s=this.slotFor(t),x=t.ix*TILE_PX,y=t.iy*TILE_PX;
-    if(s.pending!==this.angle){
-      const o=origin??fieldOrigin(t,this.angle);
-      s.origin={x:o.x,y:o.y};s.pending=this.angle;s.band=0;s.baked=-1;
-      const t0=performance.now();s.wet=fillField(this.world,s.origin,s.field);
-      this.stats.maxFillMs=Math.max(this.stats.maxFillMs,performance.now()-t0);
-    }
-    const t1=performance.now(),rows=TILE_TEXELS/BANDS,from=s.band,to=Math.min(BANDS,s.band+bands);
-    this.baker.bake(this.land,()=>this.prepare(this.land,s,x,y),from===0&&to===BANDS?undefined:{from:from*rows,to:to*rows});
-    this.stats.maxBakeMs=Math.max(this.stats.maxBakeMs,performance.now()-t1);
-    this.land.framebuffer=this.ownLand;s.band=to;
-    if(to<BANDS)return;
-    s.pending=-1;s.baked=this.angle;s.image.setPosition(x,y);this.stats.bakes++;
+  finish(s:Slot){
+    const x=s.tile!.ix*TILE_PX,y=s.tile!.iy*TILE_PX;
+    s.image.setPosition(x,y);
     if(s.wet){
       if(!s.water){s.water=this.spareWater.pop()??this.target(WATER_TEXELS,-11000,'terrain-tile-water');this.waterCount++;}
-      s.water.image.setPosition(x,y);
+      s.water.image.setPosition(x,y).setVisible(s.shown);
       this.bakeWater(s,this.waterElapsed);
-    }else if(s.water){s.water.image.setVisible(false);this.spareWater.push(s.water);s.water=undefined;this.waterCount--;}
+    }else this.dropWater(s);
+  }
+  release(s:Slot){this.dropWater(s);}
+  show(s:Slot,on:boolean){
+    s.image.setVisible(on);
+    if(!s.water)return;
+    s.water.image.setVisible(on);
+    // A ring tile baked a while ago comes into view: its water joins the neighbours' instant now, not 160 ms later.
+    if(on)this.bakeWater(s,this.waterElapsed);
+  }
+  private dropWater(s:Slot){if(s.water){s.water.image.setVisible(false);this.spareWater.push(s.water);s.water=undefined;this.waterCount--;}}
+  // ---- TerrainLayer ----
+  /** A turn: every tile is stale; the scene's fit() right after (camera back on the hero) bakes the new view. */
+  view(angle:number){this.pool.invalidate(angle);this.land.setUniform('angle.value',angle);this.sea.setUniform('angle.value',angle);this.lastWater=-Infinity;}
+  /** First frame, resize, turn: every visible tile now. */
+  fit(){this.run(true);}
+  follow(_margin?:number,focus?:{x:number;y:number}){this.run(false,focus);}
+  private run(whole:boolean,focus?:{x:number;y:number}){
+    const start=performance.now();
+    this.pool.update(cameraView(this.scene),{whole,focus});
+    const ms=performance.now()-start;this.timing.followMs=ms;this.timing.maxFollowMs=Math.max(this.timing.maxFollowMs,ms);
   }
   /** Uniforms and height texture of one tile, with the pipelines cleared (Baker.bake). */
   private prepare(shader:Phaser.GameObjects.Shader,s:Slot,x:number,y:number){
@@ -325,13 +277,13 @@ export class ChunkTerrainRenderer implements TerrainLayer {
     if(!s.water||!s.tile)return;
     this.sea.setUniform('elapsed.value',elapsed);
     this.baker.bake(this.sea,()=>this.prepare(this.sea,s,s.tile!.ix*TILE_PX,s.tile!.iy*TILE_PX));
-    this.sea.framebuffer=this.ownSea;this.stats.waterBakes++;
+    this.sea.framebuffer=this.ownSea;this.timing.waterBakes++;
   }
-  /** Water animation: only the visible tiles with a lake, every WATER_MS (once with reduced motion). */
+  /** Water animation: only the tiles on screen with a lake, every WATER_MS (once with reduced motion). */
   update(time:number,reduced:boolean){
     if(!this.waterCount||(Number.isFinite(this.lastWater)&&(reduced||time-this.lastWater<WATER_MS)))return;
     this.lastWater=time;
     const visible=tileRange(cameraView(this.scene)),at=this.waterElapsed=reduced?0:time/1000;
-    this.baker.batch(()=>{for(const s of this.slots)if(s.water&&s.tile&&s.baked===this.angle&&inRange(s.tile,visible))this.bakeWater(s,at);});
+    this.baker.batch(()=>{for(const s of this.pool.slots)if(s.water&&s.tile&&s.baked===this.pool.angle&&inRange(s.tile,visible))this.bakeWater(s,at);});
   }
 }

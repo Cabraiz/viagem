@@ -26,6 +26,11 @@ export interface RoomOptions {
    * players standing, to measure a full horde (bytes/s, tick and encode cost) without playing ten rounds.
    */
   labHorde?:number;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_OFFSET "x,y"): each run starts this far from the base, to look at
+   * the map 100 or 3 000 units out (terreno-em-blocos prints) without walking there.
+   */
+  labOffset?:{x:number;y:number};
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -81,6 +86,7 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  private readonly labOffset?:{x:number;y:number};
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
@@ -92,7 +98,8 @@ export class Room {
   private lostRun=new Map<string,{round:number;level:number}>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
-    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
+    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;
   }
@@ -271,7 +278,16 @@ export class Room {
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
   expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.rosterDirty=true;this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
-  private resetRun(){this.sim.resetRun();this.ids.reset();}
+  private resetRun(){
+    this.sim.resetRun();this.ids.reset();
+    const o=this.labOffset;if(!o)return;
+    // Lab: the whole team moves out together, each onto the nearest walkable spot.
+    for(const p of this.sim.players.values()){
+      const at={x:p.x+o.x,y:p.y+o.y};
+      for(let r=0;r<20&&!walkable(at,this.sim.terrain);r++){at.x+=.7;at.y+=.3;}
+      p.x=at.x;p.y=at.y;
+    }
+  }
   advance(now=Date.now()){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
@@ -311,12 +327,22 @@ export class Room {
     this.flushRoster();
     this.measure(performance.now()-started);
   }
-  /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick; nobody falls. */
+  /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick (and stragglers come back); nobody falls. */
   private fillHorde(){
     const w=this.sim.world,players=[...this.sim.players.values()].filter(p=>!p.spectator);
     if(!players.length)return;
     for(const p of players){p.invulnerableUntil=w.tick+40;if(p.downed){delete p.downed;p.hp=p.stats.maxHp;}}
     const kinds=['gosma','pernilongo','fiscal','tio-pave'];
+    // A team that runs away (the 2-minute straight walk of terreno-em-blocos) keeps its 300: critters left over 40 u
+    // behind every player come back 8–30 u around one, so the measure always has the whole horde near the screen.
+    let moved=0;
+    for(const e of w.enemies.values()){
+      if(moved>=25)break;
+      if(players.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<1600))continue;
+      const p=players[Math.floor(Math.random()*players.length)],a=Math.random()*Math.PI*2,d=8+Math.random()*22;
+      const at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};
+      if(walkable(at,this.sim.terrain)){e.x=at.x;e.y=at.y;moved++;}
+    }
     for(let n=0,tries=0;n<25&&tries<100&&w.enemies.size<this.labHorde;tries++){
       const p=players[Math.floor(Math.random()*players.length)],a=Math.random()*Math.PI*2,d=8+Math.random()*22;
       const at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};

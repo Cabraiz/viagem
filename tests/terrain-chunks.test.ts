@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TerrainField} from '../src/game/terrain/field.ts';
-import {CHUNK_SIZE,generateChunk,type ChunkWorld} from '../src/game/terrain/chunks.ts';
+import {BASE_CLEAR,CHUNK_SIZE,generateChunk,generateFeatures,trailAt,type ChunkWorld} from '../src/game/terrain/chunks.ts';
 import {
   ENDLESS_MAX_HEIGHT,FIELD_MARGIN,FIELD_STEP,FIELD_TEXELS,KEEP_TILES,PREFETCH_TILES,TILE_PX,fieldChunks,fieldOrigin,fillField,
   groundBox,inRange,propChunks,tileRange,tileRect,tilesByDistance,type Rect,
@@ -15,7 +15,7 @@ import {projectView,unprojectView} from '../src/game/projection.ts';
 import {landShader,waterShader} from '../src/game/terrain/shaders.ts';
 import {DEFAULT_WORLD,Simulation,ROOM_PROTOCOL,terrainFor,worldDescriptor} from '../src/game/net/shared.ts';
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {findPath,walkable,worldBase,worldSpawn} from '../src/game/world.ts';
+import {RADIUS,findPath,walkable,worldBase,worldSpawn} from '../src/game/world.ts';
 import {Rng} from '../src/game/sim/rng.ts';
 
 const endless=(seed:number)=>new TerrainField(seed,{world:'infinito'});
@@ -178,4 +178,112 @@ test('pathfinding around the base and far out works on the default world',()=>{
     assert.deepEqual(path.at(-1),b);
   }
   assert.ok(found>20);
+});
+
+// ---------- Pool of tiles (tile-pool.ts): which slot, when, how many bands ----------
+import {BANDS,TilePool,URGENT_PER_FRAME,tileKey,type PoolBackend,type PoolSlot} from '../src/game/terrain/tile-pool.ts';
+type FakeSlot=PoolSlot&{id:number};
+function fakeBackend(){
+  const log={created:0,starts:0,bands:[] as [number,number,number][],finished:0,released:0,shows:0,lattice:new Set<number>()};
+  let id=0;
+  const backend:PoolBackend<FakeSlot>&{log:typeof log;missing:Set<number>}={log,missing:new Set(),
+    create(){log.created++;return {id:id++,baked:-1,pending:-1,band:0,shown:false};},
+    ready(t,_a,urgent){const k=tileKey(t.ix,t.iy);if(this.missing.has(k)){this.missing.delete(k);log.lattice.add(k);return urgent;}return true;},
+    start(){log.starts++;},bands(s,from,to){log.bands.push([s.id,from,to]);},finish(){log.finished++;},release(){log.released++;},show(){log.shows++;}};
+  return backend;
+}
+const PORTRAIT={w:669,h:1446};
+const viewAt=(x:number,y:number)=>({x,y,...PORTRAIT});
+test('pool: the first frame bakes every visible tile, then the ring one band at a time, never growing the pool',()=>{
+  const b=fakeBackend(),pool=new TilePool(b,60),v=viewAt(100,-300),vis=tileRange(v);
+  pool.update(v,{whole:true});
+  const visible=(vis.ix1-vis.ix0+1)*(vis.iy1-vis.iy0+1);
+  assert.equal(pool.stats.urgent,visible);assert.ok(pool.stats.bakes>=visible&&pool.stats.bakes<=visible+1,"plus at most one ring tile");
+  for(let iy=vis.iy0;iy<=vis.iy1;iy++)for(let ix=vis.ix0;ix<=vis.ix1;ix++)assert.ok(pool.ready({ix,iy}));
+  // The ring (a whole row missing: more than one band per frame), never past BANDS per tile.
+  for(let f=0;f<200;f++)pool.update(v);
+  const ring=tileRange(v,1);assert.equal(pool.stats.live,(ring.ix1-ring.ix0+1)*(ring.iy1-ring.iy0+1));
+  assert.equal(pool.stats.grown,0);assert.equal(b.log.created,60);
+  const perTile=new Map<number,number>();for(const [id,from,to] of b.log.bands)perTile.set(id,(perTile.get(id)??0)+to-from);
+  assert.ok([...perTile.values()].every(n=>n%BANDS===0),'each bake covers exactly BANDS bands');
+  assert.equal(b.log.starts,b.log.finished,'one fill per finished bake');
+  // Once everything is there, a frame does nothing.
+  const before=b.log.bands.length;pool.update(v);assert.equal(b.log.bands.length,before);
+});
+test('pool: a jump of the camera bakes the focus and centre tiles now and spreads the rest (no whole screen in one frame)',()=>{
+  const b=fakeBackend(),pool=new TilePool(b,60);
+  pool.update(viewAt(0,0),{whole:true});for(let f=0;f<300;f++)pool.update(viewAt(0,0));
+  const far=viewAt(40000,-25000),focus={x:far.x+far.w/2+200,y:far.y+far.h/2+300};
+  const urgent=pool.stats.urgent;pool.update(far,{focus});
+  const now=pool.stats.urgent-urgent;
+  assert.ok(now>=1&&now<=2+URGENT_PER_FRAME,`${now} tiles baked in the jump frame`);
+  assert.ok(pool.ready({ix:Math.floor(focus.x/TILE_PX),iy:Math.floor(focus.y/TILE_PX)}),'the ground under the hero is ready');
+  assert.ok(pool.ready({ix:Math.floor((far.x+far.w/2)/TILE_PX),iy:Math.floor((far.y+far.h/2)/TILE_PX)}),'the centre tile is ready');
+  assert.ok(pool.stats.deferred>0);
+  for(let f=0;f<20;f++)pool.update(far,{focus});
+  const vis=tileRange(far);
+  for(let iy=vis.iy0;iy<=vis.iy1;iy++)for(let ix=vis.ix0;ix<=vis.ix1;ix++)assert.ok(pool.ready({ix,iy}),'caught up in a few frames');
+  assert.equal(pool.stats.grown,0,'old tiles far behind gave their slots');
+});
+test('pool: slot choice keeps the prefetch ring, takes the farthest tile outside it, grows only on a bigger screen',()=>{
+  const b=fakeBackend(),pool=new TilePool(b,60);
+  pool.update(viewAt(0,0),{whole:true});for(let f=0;f<300;f++)pool.update(viewAt(0,0));
+  // Walk right one tile at a time: the pool never grows and the visible tiles are always ready.
+  for(let step=1;step<=12;step++){
+    const v=viewAt(step*TILE_PX,0);
+    for(let f=0;f<40;f++)pool.update(v);
+    const vis=tileRange(v);
+    for(let iy=vis.iy0;iy<=vis.iy1;iy++)for(let ix=vis.ix0;ix<=vis.ix1;ix++)assert.ok(pool.ready({ix,iy}));
+  }
+  assert.equal(pool.stats.grown,0);assert.ok(b.log.released>0);
+  // A tablet-sized view does not fit in 60 slots: the pool grows instead of evicting a visible tile.
+  pool.update({x:0,y:0,w:2600,h:2600},{whole:true});
+  assert.ok(pool.stats.grown>0);
+  const vis=tileRange({x:0,y:0,w:2600,h:2600});
+  for(let iy=vis.iy0;iy<=vis.iy1;iy++)for(let ix=vis.ix0;ix<=vis.ix1;ix++)assert.ok(pool.ready({ix,iy}));
+});
+test('pool: a missing chunk lattice costs the ring a frame; a turn or a lost context re-bakes; shutdown gives every slot back',()=>{
+  const b=fakeBackend(),pool=new TilePool(b,60),v=viewAt(500,500);
+  pool.update(v,{whole:true});
+  const order=tilesByDistance(tileRange(v,1),v),next=order.find(t=>!pool.ready(t))!;
+  b.missing.add(tileKey(next.ix,next.iy));
+  const bands=b.log.bands.length;pool.update(v);
+  assert.equal(b.log.bands.length,bands,'built a lattice instead of drawing');assert.equal(pool.stats.lattices,1);
+  pool.update(v);assert.ok(b.log.bands.length>bands);
+  // View turn / context restored: every slot stale, the visible ones baked again on the next whole update.
+  pool.invalidate(2);
+  assert.ok(pool.slots.every(s=>s.baked===-1&&s.pending===-1));
+  const vis=tileRange(v);assert.ok(!pool.ready({ix:vis.ix0,iy:vis.iy0}));
+  pool.update(v,{whole:true});assert.ok(pool.ready({ix:vis.ix0,iy:vis.iy0}));assert.equal(pool.angle,2);
+  // Visibility changes only on transitions.
+  const shows=b.log.shows;pool.update(v);assert.equal(b.log.shows-shows,0);
+  const all=pool.destroy();assert.equal(all.length,60);assert.equal(pool.slots.length,0);
+  assert.equal(pool.stats.live,pool.stats.live);
+});
+test('pool keys are numbers that never collide inside the world limit',()=>{
+  const seen=new Set<number>();
+  for(const ix of [-163000,-1,0,1,163000])for(const iy of [-163000,-1,0,1,163000]){const k=tileKey(ix,iy);assert.ok(Number.isSafeInteger(k));assert.ok(!seen.has(k));seen.add(k);}
+});
+
+// ---------- Generator v2 (design onda 6, B1) ----------
+test('generator v2: groves of every species, a landmark per chunk, every gap passable, trails and the base clear',()=>{
+  const seed=4242,species=new Set<string>();let obstacles=0,landmarks=0,n=0;
+  for(let cy=-8;cy<8;cy++)for(let cx=-8;cx<8;cx++){
+    const f=generateFeatures(seed,cx,cy);n++;obstacles+=f.obstacles.length;
+    if(f.lakes.length||f.pois.length||f.obstacles.filter(o=>o.kind==='rock'&&o.radius>=.52).length>=2)landmarks++;
+    for(const o of f.obstacles){
+      if(o.art)species.add(o.art);
+      assert.ok(Math.hypot(o.x,o.y)>=BASE_CLEAR,'nothing in the base clearing');
+      assert.equal(trailAt(seed,o.x,o.y),0,'nothing on a trail');
+    }
+    for(let i=0;i<f.obstacles.length;i++)for(let j=i+1;j<f.obstacles.length;j++){
+      const a=f.obstacles[i],b=f.obstacles[j];
+      assert.ok(Math.hypot(a.x-b.x,a.y-b.y)-a.radius-b.radius>=2*RADIUS,'a hero fits between any two');
+    }
+  }
+  // A portrait screen at the follow zoom shows ~548 u² of ground (669×1446 px / 1764 px² per u²): about half a chunk.
+  const perScreen=obstacles/n*548/(CHUNK_SIZE*CHUNK_SIZE);
+  assert.ok(perScreen>=6,`${perScreen.toFixed(1)} obstacles per portrait screen`);
+  assert.ok(landmarks/n>=.75,`landmarks in ${(landmarks/n*100).toFixed(0)}% of chunks`);
+  assert.ok(species.size>=35&&!species.has('arvore-nevada'),`${species.size} species`);
 });

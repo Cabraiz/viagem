@@ -36,6 +36,9 @@ float lum(vec3 c){return dot(c,vec3(.299,.587,.114));}
 // Scene palette (D-022, docs/art-direction.md): warm sand, vivid green, turquoise water. Linear-ish sRGB 0..1.
 // Grass median ~#559848 (onda 4): still vivid, but 2:1 from Verde Cartolina (the "a favor" color) and 5:1 from Breu.
 const vec3 GRASS_DARK=vec3(.22,.45,.18),GRASS_LIGHT=vec3(.33,.60,.27),GRASS_SUN=vec3(.42,.66,.29);
+// Endless map only (design onda 6, B1): big patches of tall dark capim where it is moist and dry grass going to sand where
+// it is not, so a screen is never one flat green. Both keep the Breu contrast of the HUD's double edge (D-022).
+const vec3 CAPIM_DARK=vec3(.13,.32,.13),CAPIM_LIGHT=vec3(.20,.43,.17),DRY_DARK=vec3(.52,.56,.27),DRY_LIGHT=vec3(.66,.67,.36);
 const vec3 SAND_DARK=vec3(.86,.74,.52),SAND_LIGHT=vec3(.97,.89,.68);
 const vec3 TRAIL_DARK=vec3(.74,.58,.38),TRAIL_LIGHT=vec3(.88,.74,.52);
 const vec3 ROCK_DARK=vec3(.58,.60,.58),ROCK_LIGHT=vec3(.80,.80,.74);
@@ -60,11 +63,18 @@ void main(){
  // D-022 tropical claro: the approved materials keep only their detail (luminance); color comes from the scene palette.
  float leaf=clamp((lum(material(iChannel1,g/4.0))-0.17)/0.26,0.0,1.0);
  vec3 color=mix(mix(GRASS_DARK,GRASS_LIGHT,leaf),mix(GRASS_DARK,GRASS_SUN,leaf),patches);
+ if(endless>0.5){
+  // Wetness (green channel) plus a slow noise: patches tens of units wide, edges broken by the grass clumps.
+  float wet=data.g+(fbm(g*.045+vec2(13.0,71.0))-.5)*.4+(clumps-.5)*.08;
+  color=mix(color,mix(CAPIM_DARK,CAPIM_LIGHT,leaf),smoothstep(.56,.64,wet));
+  color=mix(color,mix(DRY_DARK,DRY_LIGHT,leaf),smoothstep(.42,.34,wet));
+ }
  float rock=smoothstep(0.2,0.8,length(grad)*0.9)*smoothstep(0.38,0.58,clumps);
  float stone=clamp((lum(material(iChannel2,g/3.1))-0.30)/0.22,0.0,1.0);
  color=mix(color,mix(ROCK_DARK,ROCK_LIGHT,stone),rock);
  float trail;
- if(endless>0.5)trail=smoothstep(.18,.72,data.b+(macro-0.5)*.28);
+ // Endless: a crisp edge with a pixel stipple (cells of 0.2 u), not the blur of a texel every half unit.
+ if(endless>0.5)trail=step(.5+(hash(floor(g*5.0))-.5)*.4,data.b+(macro-0.5)*.12);
  else{float path=min(min(segment(g,vec2(12,17),vec2(8,11)),segment(g,vec2(8,11),vec2(17,11))),min(segment(g,vec2(8,11),vec2(12,5)),segment(g,vec2(12,5),vec2(17,11))));
   trail=1.0-smoothstep(0.26,0.56,path+(macro-0.5)*0.12);}
  color=mix(color,mix(TRAIL_DARK,TRAIL_LIGHT,stone),trail*.85);

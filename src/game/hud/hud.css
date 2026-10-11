@@ -61,6 +61,22 @@
 .rh-marquee[data-tone=boss]::before,.rh-marquee[data-tone=boss]::after{background-image:radial-gradient(circle,var(--c-cone) 3px,transparent 4px)}
 .rh-marquee-in{animation:rh-faixa 1.8s ease-out both}
 
+/* ---------- Kill-cam (VGM-053B): the round's last critter, in the announcement slot ----------
+   A small picture (the scene's second camera draws inside .rh-killcam-tv, which stays transparent) beside a street-banner
+   caption; "FEITO" is stamped on it (the stamp, the one show moment). Gives way to any notice (.rh-killcam-yield). */
+.rh-killcam{display:flex;align-items:stretch;width:min(100%,380px);height:82px}
+.rh-killcam[hidden],.rh-killcam.rh-killcam-yield{display:none}
+.rh-killcam-tv{flex:none;width:106px;box-sizing:border-box;border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:0 0 0 2px var(--c-papel),var(--s-1)}
+.rh-killcam-caption{position:relative;flex:1;min-width:0;margin-left:8px;padding:6px 40px 7px 12px;display:flex;flex-direction:column;justify-content:center;
+  border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro);text-align:left}
+.rh-killcam-title{display:block;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-lilas)}
+.rh-killcam-line{display:block;margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu);overflow-wrap:anywhere}
+.rh-killcam-stamp{position:absolute;right:-8px;top:-12px;padding:1px 6px 2px;border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);background:var(--c-papel);
+  color:var(--c-lilas);font:900 var(--t-21)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;transform:rotate(-8deg)}
+.rh-killcam-in .rh-killcam-stamp{animation:rh-killcam-stamp 140ms cubic-bezier(.2,.9,.3,1.25) .7s both}
+@keyframes rh-killcam-stamp{0%{opacity:0;transform:scale(1.8) rotate(-12deg)}70%{opacity:1;transform:scale(.95) rotate(-8deg)}100%{opacity:1;transform:rotate(-8deg)}}
+@media (prefers-reduced-motion:reduce){.rh-killcam-in .rh-killcam-stamp{opacity:1}}
+
 /* ---------- Team strip (portrait: left column; landscape: bottom center) ---------- */
 .rh-team{position:absolute;top:calc(var(--rh-t) + 112px);left:var(--rh-l);display:flex;flex-direction:column;gap:6px}
 .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 150px)}
@@ -112,6 +128,8 @@
   .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 118px)}
   .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 84px)}
   .rh-marquee{padding:4px 16px 5px}
+  .rh-killcam{height:66px}
+  .rh-killcam-tv{width:88px}
   .rh-team{top:auto;bottom:var(--rh-b);left:50%;transform:translateX(-50%);flex-direction:row;gap:4px}
   .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:auto}
   .rh-member{width:auto;min-width:50px}
@@ -367,8 +385,8 @@
    Skin: Lilás Janela page (screens outside the island), Papel cards; defeat goes Breu. */
 .rh-result{
   position:absolute;inset:0;z-index:var(--z-resultado);pointer-events:auto;overflow:hidden;touch-action:manipulation;
-  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
-  grid-template-areas:"head" "grid" "actions";gap:8px;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;
+  grid-template-areas:"head" "shame" "grid" "actions";gap:8px;
   padding:var(--rh-t) var(--rh-r) var(--rh-b) var(--rh-l);
   color:var(--c-papel);
   background:var(--c-lilas);
@@ -388,6 +406,18 @@
 .rh-result-stat{padding:2px 9px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;font-variant-numeric:tabular-nums}
 /* The seed is dev status: kept in the DOM (and in the done/log) but not shown to players. */
 .rh-result-seed{display:none}
+
+/* "Momento mais vergonhoso" (VGM-053B): a notice pinned on the condo board, an etiqueta (Papel, Breu edge, 4 px, the
+   punched hole), the critter's sticker or the sweat sticker; the joke is the optional second line. */
+.rh-result-shame{grid-area:shame;position:relative;z-index:1;justify-self:center;display:flex;align-items:center;gap:8px;width:min(100%,560px);box-sizing:border-box;
+  padding:5px 12px 6px 26px;border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1);transform:rotate(-.6deg)}
+.rh-result-shame[hidden]{display:none}
+.rh-result-shame::before{content:'';position:absolute;left:8px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:var(--r-circulo);background:var(--c-breu)}
+.rh-result-shame-icon{flex:none;display:grid;place-items:center;width:32px;height:32px}
+.rh-result-shame-icon img{max-width:32px;max-height:32px;object-fit:contain}
+.rh-result-shame-body{min-width:0;font:700 var(--t-13)/1.25 var(--f-sistema);color:var(--c-breu)}
+.rh-result-shame-title{font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-lilas);margin-right:6px}
+.rh-result-shame-joke{display:block;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
 
 /* Player grid */
 .rh-result-grid{grid-area:grid;position:relative;z-index:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
@@ -488,7 +518,9 @@
 
 /* Landscape: head and actions share the top row; cards in up to 3 columns */
 @media (max-height:500px){
-  .rh-result{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head actions" "grid grid";gap:4px 10px}
+  .rh-result{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"head actions" "shame shame" "grid grid";gap:4px 10px}
+  .rh-result-shame{padding:3px 10px 4px 24px}
+  .rh-result-shame-joke{display:inline;margin-left:6px}
   .rh-result-head{flex-direction:row;align-items:center;gap:10px;text-align:left}
   .rh-result-titles{align-items:flex-start;flex:none}
   .rh-result-title{font-size:clamp(28px,8vh,36px)}

@@ -11,6 +11,7 @@ import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.t
 import {resultCause} from './cause.ts';
 import {icon} from '../../ui/icon.ts';
 import {WALL_DOWN_LINES} from '../sim/stonewards/rules.ts';
+import {shameText} from '../fun/zueira.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -92,6 +93,13 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
   const cause=el('span','rh-result-stat rh-result-cause',stats);cause.hidden=true;
   const causeIcon=el('img','',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
   const causeText=el('span','',cause);
+
+  // "Momento mais vergonhoso" (VGM-053B): a notice on the condo board, from the server's moment; hidden without one.
+  const shame=el('aside','rh-result-shame',root);shame.hidden=true;
+  const shameIcon=el('span','rh-result-shame-icon',shame);shameIcon.setAttribute('aria-hidden','true');
+  const shameBody=el('p','rh-result-shame-body',shame);
+  const shameTitle=el('strong','rh-result-shame-title',shameBody);shameTitle.textContent='Momento mais vergonhoso';
+  const shameLine=el('span','rh-result-shame-text',shameBody),shameJoke=el('small','rh-result-shame-joke',shameBody);
 
   const grid=el('div','rh-result-grid',root);
 
@@ -193,6 +201,16 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;
       if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}
+      const moment=result.shame,who=moment&&result.players.find(p=>p.id===moment.player);
+      shame.hidden=!moment||!who;
+      if(moment&&who){
+        const copy=shameText(moment,who.id===ctx.localId?'Você':who.name);
+        shameLine.textContent=copy.text;shameJoke.textContent=copy.joke;
+        const sticker=moment.source?ctx.critterIcon?.(moment.source):undefined;
+        if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;shameIcon.replaceChildren(img);}
+        else shameIcon.innerHTML=icon('suor',{size:32});
+        shame.dataset.key=moment.key;
+      }
       shownResult={result,ctx};
       renderGrid(result,ctx);
       resetRematch();exited=false;

@@ -13,6 +13,8 @@ export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readon
 export const enemyKind=(kind:string):EnemyKind=>isEnemyKind(kind)?kind:'gosma';
 export const enemyTexture=(kind:string,elite=false)=>`horde:enemy:${enemyKind(kind)}${elite&&kind!=='chefe'?':elite':''}`;
 export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'xp'}`;
+/** What a pickup looks like: its kind's texture, or a boleto for the XP of the boleto rain (resource 'boleto', VGM-053B). */
+export const pickupLook=(kind:string,resource?:string)=>kind==='xp'&&resource==='boleto'?FX.boleto:pickupTexture(kind);
 
 export const FX={
   shadow:'horde:fx:shadow',
@@ -24,6 +26,8 @@ export const FX={
   bar:'horde:fx:bar',
   barElite:'horde:fx:bar-elite',
   barFill:'horde:fx:bar-fill',
+  /** XP of the boleto rain (VGM-053B). */
+  boleto:'horde:pickup:boleto',
 } as const;
 
 /**

@@ -276,6 +276,18 @@ function drawFx(make:(key:string,w:number,h:number,draw:(g:G)=>void)=>void){
   make(FX.bar,46,13,bar(0x2b2233));
   make(FX.barElite,46,13,bar(0xe0a93a));
   make(FX.barFill,40,7,g=>{g.fillStyle(0xffffff).fillRoundedRect(0,0,40,7,3.5);});
+  // Boleto of the rain (VGM-053B): a Papel slip with a Breu edge (double-edge rule on sand and grass), the Lilás bank
+  // band and the bar code. It is XP: a different object from the cyan gem so the rain reads as an event, not a drop.
+  const lilas=tokenColor('--c-lilas');
+  make(FX.boleto,32,24,g=>{
+    g.fillStyle(tokenColor('--c-breu'),1).fillRoundedRect(1,2,30,21,3);
+    g.fillStyle(papel,1).fillRoundedRect(3,4,26,17,2);
+    g.fillStyle(lilas,1).fillRect(3,4,26,5);
+    g.fillStyle(papel,1).fillRect(5,5.5,9,2);
+    const bars=[1,2,1,1,3,1,2,1,1,2,1,3,1,1,2];let x=5;
+    g.fillStyle(tokenColor('--c-breu'),1);
+    for(const [i,w] of bars.entries()){if(i%2===0)g.fillRect(x,11,w*.8,7);x+=w*.8+.6;if(x>27)break;}
+  });
   // Spawn warning in the palette (onda 4): Laranja Cone disc, Breu edge and "!" (the white icon tinted red was the
   // worst pair for deuteranopia on the green). Drawn in its own colors: the renderer no longer tints it.
   const breu=tokenColor('--c-breu'),cone=tokenColor('--c-cone');

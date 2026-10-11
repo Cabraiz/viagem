@@ -23,8 +23,11 @@ export class DownedLayer {
     this.project=project;this.depth=depth;
     this.ground=scene.add.graphics();this.light=scene.add.graphics();
   }
-  /** One frame with every caído (any view, any zoom): `css` = world px per CSS px, for edges that stay ≥ 2 px. */
-  update(marks:readonly DownedMark[],view:number,css:number){
+  /**
+   * One frame with every caído (any view, any zoom): `css` = world px per CSS px, for edges that stay ≥ 2 px.
+   * `lift`: a depth to draw at instead of the world's (the blackout, VGM-053B: a caído is never hidden by the dark).
+   */
+  update(marks:readonly DownedMark[],view:number,css:number,lift?:number){
     const g=this.ground.clear(),l=this.light.clear();
     if(!marks.length)return;
     let low=Infinity,high=-Infinity;
@@ -41,7 +44,9 @@ export class DownedLayer {
       l.fillStyle(this.colors.breu,.35).fillEllipse(feet.x,feet.y,w*1.6,w*.6);
     }
     // Ground ring under every body; the column in the world's depth order (behind what stands in front of it).
-    g.setDepth(low-3);l.setDepth(high+.5);
+    if(lift!==undefined){g.setDepth(lift);l.setDepth(lift+.5);}else{g.setDepth(low-3);l.setDepth(high+.5);}
   }
+  /** Depths now (blackout audit). */
+  depths(){return {ring:this.ground.depth,column:this.light.depth};}
   destroy(){this.ground.destroy();this.light.destroy();}
 }

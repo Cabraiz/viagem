@@ -122,7 +122,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
       // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
       players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}})),
-      ...(!victory&&view?.camp?.wallDown?{wall:true}:{})};
+      ...(!victory&&view?.camp?.wallDown?{wall:true}:{}),
+      // The run's most embarrassing moment comes with the result state (VGM-053B).
+      ...(net?.run?.shame?{shame:{...net.run.shame}}:{})};
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
@@ -245,6 +247,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         if(phase==='combat')rescue?.view(view);
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
+      // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
+      killcamRect:()=>hud?.killcamRect(),
       ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });

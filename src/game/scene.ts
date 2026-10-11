@@ -21,6 +21,9 @@ import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
+import {ZueiraFx} from './render/zueira-fx.ts';
+import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
+import {MARK_DEPTH} from './render/you.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -46,6 +49,8 @@ export interface SceneHooks {
   attacking?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
   runView?:(view:RunView)=>void;
+  /** The HUD's kill-cam picture (CSS px, viewport coordinates) while it shows, VGM-053B. */
+  killcamRect?:()=>Rect|undefined;
 }
 type Graphics=Phaser.GameObjects.Graphics;
 const polygon=(g:Graphics,points:Point[],color:number,alpha=1)=>{
@@ -136,6 +141,8 @@ export class IslandScene extends Phaser.Scene {
   /** Caídos in the world: rescue ring, progress and light column (UX-resgate-e-ping). */
   private downedLayer?:DownedLayer;
   private downedMarks:DownedMark[]=[];
+  /** Blackout and kill-cam of the zueira events (VGM-053B). */
+  private zueira?:ZueiraFx;
   /** The local caído's own ficha ("Você, 18 s") under its body: the counter left the top banner. */
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
@@ -184,7 +191,10 @@ export class IslandScene extends Phaser.Scene {
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});
-      const release=()=>{this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,
+        setBlackout:level=>this.horde?.setBlackout(level),
+        killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
+      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -359,6 +369,21 @@ export class IslandScene extends Phaser.Scene {
     if(url===undefined){const key=enemyTexture(kind);url=this.textures.exists(key)?this.textures.getBase64(key):'';if(url)this.icons.set(kind,url);}
     return url||undefined;
   }
+  /**
+   * Blackout audit (VGM-053B): every layer that must stay visible in the dark against the dark's depth. Empty
+   * `failures` = nothing dangerous and no hero hidden. Read by the acceptance script during a real blackout.
+   */
+  blackoutAudit(){
+    if(!this.actor)return {dark:0,darkDepth:0,layers:[],failures:['scene not ready']};
+    const dark=this.zueira?.blackoutDepth()??0,layers:{name:string;depth:number;visible?:boolean}[]=[...(this.horde?.blackoutLayers()??[])];
+    const self=this.selfCovered?(this.you as unknown as {ghosts:Map<string,Phaser.GameObjects.Sprite>}|undefined)?.ghosts.get('self'):this.actor;
+    layers.push({name:'hero',depth:this.selfCovered?SELF_DEPTH:this.actor.depth,visible:self?.visible??true},{name:'hero marks',depth:MARK_DEPTH});
+    for(const [id,a] of this.remoteActors){const st=this.hooks.net?.feed.players.get(id);if(st?.downed&&!st.eliminated)layers.push({name:`caído ${id}`,depth:a.image.depth},{name:`ficha ${id}`,depth:ALLY_DEPTH+1});}
+    if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
+    return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
+  }
+  /** Zueira FX state (dev probe). */
+  zueiraState(){return this.zueira?{...this.zueira.last}:undefined;}
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */
   heroScreenRect(){
     if(!this.actor)return undefined;
@@ -395,14 +420,14 @@ export class IslandScene extends Phaser.Scene {
       const runView=net.feed.take();
       this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.horde?.update(time,delta);this.stone?.update(time);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){
@@ -453,7 +478,8 @@ export class IslandScene extends Phaser.Scene {
       objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
-    this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom));
+    // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
+    this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
     // Own caído ficha: same SOS ficha as an ally's, with "Você" and the seconds left.
     if(selfDown||this.selfLabel){
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
@@ -685,7 +711,8 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
         heroPx:Math.round(96*cam.zoom),scroll:{x:cam.scrollX,y:cam.scrollY}};
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
-      return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined};
+      return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,
+        zueira:scene.zueiraState(),blackout:scene.blackoutAudit()};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

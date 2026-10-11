@@ -36,6 +36,8 @@ export const RAIN_EVERY=5,RAIN_SHARE=.45,RAIN_RADIUS:readonly [number,number]=[1
 export const PROMO_COXINHAS=3,PROMO_RADIUS:readonly [number,number]=[1.4,3];
 /** Marks an XP pickup as a boleto of the rain (PickupState.resource; the client draws a boleto, D-002). */
 export const BOLETO='boleto';
+/** Marks a coxinha of the flash sale (the client draws it bigger, with its short life). */
+export const PROMO='promo';
 
 export interface PlannedHappening {round:number;kind:HappeningKind}
 export interface ActiveHappening {kind:HappeningKind;round:number;startTick:number;endsTick:number;value?:number}
@@ -123,7 +125,7 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
       const drops=Math.ceil(ticks(HAPPENING_SECONDS.boletos)/RAIN_EVERY)*Math.max(1,team.length);
       active.value=Math.max(1,Math.round(RAIN_SHARE*ctx.team.nextXp/drops));
     }
-    if(next.kind==='promo')for(const p of team)for(let i=0;i<PROMO_COXINHAS;i++){const at=around(ctx,p,PROMO_RADIUS);if(at)drop(ctx,'heal',HEAL_AMOUNT,at,HAPPENING_SECONDS.promo);}
+    if(next.kind==='promo')for(const p of team)for(let i=0;i<PROMO_COXINHAS;i++){const at=around(ctx,p,PROMO_RADIUS);if(at)drop(ctx,'heal',HEAL_AMOUNT,at,HAPPENING_SECONDS.promo,PROMO);}
     state.active=active;state.fired.push({round:index,kind:next.kind,tick:ctx.tick});
     state.triggerTick=undefined;
     ctx.emit({type:'happening',kind:next.kind,endsTick});

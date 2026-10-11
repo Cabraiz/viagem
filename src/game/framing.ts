@@ -110,8 +110,8 @@ export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size)
  * anchor, shifted by the look-ahead (world px, towards where the hero walks), with the hero-to-centre offset kept
  * inside the off-screen contract budget.
  */
-export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,look:Point={x:0,y:0},size?:Size):Point{
-  const anchor=anchorOf(viewport,zoom,useful,size),budget=offsetBudget(viewport);
+export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,look:Point={x:0,y:0},size?:Size,free=false):Point{
+  const anchor=anchorOf(viewport,zoom,useful,size),budget=free?{x:Infinity,y:Infinity}:offsetBudget(viewport);
   // Feet minus centre, in world px: positive x means the hero sits right of the screen centre.
   const dx=clamp((anchor.x-viewport.width/2)/zoom-look.x,-budget.x,budget.x);
   const dy=clamp((anchor.y-viewport.height/2)/zoom-look.y,-budget.y,budget.y);
@@ -129,12 +129,17 @@ export class FollowCamera {
   look:Point={x:0,y:0};
   /** Off with prefers-reduced-motion: the camera still follows, without the extra sway of looking ahead. */
   lookAhead=true;
+  /**
+   * Out of the round (waiting room, result) nothing spawns, so the off-screen budget does not apply and the hero can go
+   * to a band far from the screen centre (beside the waiting panel). Back in the round the camera cuts into the budget.
+   */
+  free=false;
   private last?:Point;
   private ready=false;
   get placed(){return this.ready;}
   snap(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     this.look={x:0,y:0};this.last={...hero};this.ready=true;
-    this.center=followTarget(hero,viewport,zoom,useful,this.look,size);
+    this.center=followTarget(hero,viewport,zoom,useful,this.look,size,this.free);
     return this.center;
   }
   /** Moves the whole frame by (dx, dy) world px (a re-based projection): no visible change on screen. */
@@ -155,16 +160,32 @@ export class FollowCamera {
     // A smaller useful area (offer opened, rotation) shrinks the limit at once, the easing only applies inside it.
     this.look.x=clamp(this.look.x,-limit.x,limit.x);this.look.y=clamp(this.look.y,-limit.y,limit.y);
     this.last={...hero};
-    const target=followTarget(hero,viewport,zoom,useful,this.look,size);
+    const target=followTarget(hero,viewport,zoom,useful,this.look,size,this.free);
     const blend=1-Math.exp(-dt/FOLLOW_TAU_S);
     let x=this.center.x+(target.x-this.center.x)*blend,y=this.center.y+(target.y-this.center.y)*blend;
     // The off-screen contract: the hero is never farther from the camera centre than the offset budget plus
     // CAMERA_LAG_UNITS of trailing. A target that moves inside the budget (useful area changed) is still eased.
-    const budget=offsetBudget(viewport);
+    const budget=this.free?{x:Infinity,y:Infinity}:offsetBudget(viewport);
     x=clamp(x,hero.x-budget.x-LAG_X_PX,hero.x+budget.x+LAG_X_PX);y=clamp(y,hero.y-budget.y-LAG_Y_PX,hero.y+budget.y+LAG_Y_PX);
     this.center={x,y};
     return this.center;
   }
+}
+
+/**
+ * Out of the round (waiting room, between runs) the waiting panel covers the middle of the screen: the hero goes to
+ * the roomiest free band around it (above, below, left or right), so the player still sees the hero turning the view.
+ */
+export function freeAround(viewport:Viewport,blocker:Rect):Rect{
+  const bands:Rect[]=[
+    {x:0,y:0,width:viewport.width,height:Math.max(0,blocker.y)},
+    {x:0,y:blocker.y+blocker.height,width:viewport.width,height:Math.max(0,viewport.height-blocker.y-blocker.height)},
+    {x:0,y:0,width:Math.max(0,blocker.x),height:viewport.height},
+    {x:blocker.x+blocker.width,y:0,width:Math.max(0,viewport.width-blocker.x-blocker.width),height:viewport.height},
+  ];
+  // The roomiest band for a standing hero: the largest smaller side (a thin full-width strip loses to a side column).
+  const fit=(r:Rect)=>Math.min(r.width,r.height);
+  return bands.reduce((a,b)=>fit(b)>fit(a)?b:a);
 }
 
 /** Screen point (CSS px, canvas) of a projected world point under a camera centred at `center`. */

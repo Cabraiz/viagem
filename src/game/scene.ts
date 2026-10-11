@@ -169,6 +169,7 @@ export class IslandScene extends Phaser.Scene {
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
     if(!this.actor)return;
+    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&run!=='combat';
     const b=this.heroWorldBox(),c=this.follow.step(this.project(this.position),delta/1000,this.viewport(),this.zoom,this.useful(),{width:b.width*this.zoom,height:b.height*this.zoom});
     this.cameras.main.centerOn(c.x,c.y);
     if(this.landscape&&!this.landscape.covers())this.landscape.fit(WATER_MARGIN);

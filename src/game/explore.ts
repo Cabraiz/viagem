@@ -6,6 +6,7 @@ import './coop.css';
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
+import {freeAround} from './framing.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
@@ -167,7 +168,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               hud.avoidHero(controller?.scene.heroScreenRect());
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
-              if(zones&&controller)controller.scene.usefulArea=zones.useful;
+              // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.
+              const wait=run.phase!=='combat'?document.querySelector<HTMLElement>('.coop-wait:not([hidden])')?.getBoundingClientRect():undefined;
+              if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0?freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height}):hud.zones().useful;
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.

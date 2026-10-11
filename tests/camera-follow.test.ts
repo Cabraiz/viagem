@@ -1,7 +1,7 @@
 // Follow camera (D-019): NEW-20261009-ORQ-camera-segue + NEW-20261009-UX-camera-segue.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FollowCamera,followZoom,followTarget,anchorOf,lookLimit,offsetBudget,toScreen,edgeOf,
+import {FollowCamera,followZoom,followTarget,anchorOf,lookLimit,offsetBudget,toScreen,edgeOf,freeAround,
   VS_HERO_SHORT_RATIO,LAG_X_PX,LAG_Y_PX,FOLLOW_TAU_S,type Rect} from '../src/game/framing.ts';
 import {projectView,unprojectView,viewDepth,rotationLocked,screenDirection,rotateVector} from '../src/game/projection.ts';
 import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset,TILE_X,TILE_Y} from '../src/game/sim/offscreen.ts';
@@ -180,4 +180,21 @@ test('reduced motion: no look-ahead, the hero stays on the anchor while walking'
   cam.snap(projectView({x:12,y:17},0),vp,z,USEFUL_P,HERO);
   walk(cam,vp,USEFUL_P,{x:12,y:17},{x:1,y:-1},3,60);
   assert.deepEqual(cam.look,{x:0,y:0});
+});
+
+test('waiting room: the hero goes to the roomiest free band around the waiting panel',()=>{
+  // Portrait: the panel spans 122..~600 in the middle; the band below it is the largest.
+  const b=freeAround(PORTRAIT,{x:15,y:122,width:360,height:480});
+  assert.deepEqual(b,{x:0,y:602,width:390,height:242});
+  // Landscape: the panel is a centred column; a side column beats the 126 px strip above it.
+  const l=freeAround(LANDSCAPE,{x:224,y:126,width:396,height:254});
+  assert.equal(l.height,390);assert.ok(l.width>=224);
+});
+
+test('out of the round the budget is lifted (waiting panel); back in the round the camera is inside the contract at once',()=>{
+  const vp=PORTRAIT,z=followZoom(vp),band:Rect={x:0,y:602,width:390,height:242},cam=new FollowCamera(),hero=projectView({x:12,y:17},0);
+  cam.free=true;cam.snap(hero,vp,z,band,HERO);
+  const s=toScreen(hero,cam.center,vp,z);assert.ok(Math.abs(s.y-HERO.height/2-(602+121))<1e-6,'body centred in the band');
+  cam.free=false;const c=cam.step(hero,1/60,vp,z,USEFUL_P,HERO),budget=offsetBudget(vp);
+  assert.ok(Math.abs(hero.y-c.y)<=budget.y+LAG_Y_PX+1e-6);
 });

@@ -66,3 +66,30 @@ export function insetPolygon(src:readonly Pt[],n:number,d:number,out:Pt[]):numbe
   }
   return d;
 }
+
+/** Most hatch lines one telegraph draws (the spacing grows past it, so a huge zone stays bounded). */
+export const HATCH_MAX_LINES=64;
+/**
+ * Diagonal hatch (lines x − y = c, `spacing` apart) clipped to the closed polygon src[0..n): writes segments as
+ * x0,y0,x1,y1 into out and returns how many. Even-odd pairing of the crossings, so it works for any simple polygon
+ * (circle, line and cone outlines alike). Allocation-free with a caller scratch `xs` (≥ n numbers).
+ * The fill then reads by shape, not only by Laranja Cone (onda 4: Cone on the new grass is 1,02:1; deuteranopia).
+ */
+export function hatchSegments(src:readonly Pt[],n:number,spacing:number,out:Float64Array,xs:Float64Array):number{
+  if(n<3||!(spacing>0))return 0;
+  let lo=Infinity,hi=-Infinity;
+  for(let i=0;i<n;i++){const v=src[i].x-src[i].y;if(v<lo)lo=v;if(v>hi)hi=v;}
+  const step=Math.max(spacing,(hi-lo)/HATCH_MAX_LINES),max=out.length>>2;
+  let count=0;
+  for(let c=Math.ceil(lo/step)*step;c<=hi&&count<max;c+=step){
+    let k=0;
+    for(let i=0;i<n&&k<xs.length;i++){
+      const a=src[i],b=src[(i+1)%n],fa=a.x-a.y-c,fb=b.x-b.y-c;
+      if((fa<0)!==(fb<0)){const t=fa/(fa-fb);xs[k++]=a.x+(b.x-a.x)*t;}
+    }
+    // Insertion sort of the few crossings by x (y follows: y = x − c).
+    for(let i=1;i<k;i++){const v=xs[i];let j=i-1;while(j>=0&&xs[j]>v){xs[j+1]=xs[j];j--;}xs[j+1]=v;}
+    for(let i=0;i+1<k&&count<max;i+=2){const o=count*4;out[o]=xs[i];out[o+1]=xs[i]-c;out[o+2]=xs[i+1];out[o+3]=xs[i+1]-c;count++;}
+  }
+  return count;
+}

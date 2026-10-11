@@ -1,6 +1,6 @@
 import {TerrainField,defaultTerrain,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../terrain/field.ts';
 import {CHUNK_VERSION} from '../terrain/chunks.ts';
-import type {WorldDescriptor} from './protocol4.ts';
+import {PROTOCOL_VERSION,type FrameInput,type WorldDescriptor} from './protocol4.ts';
 import { moveDirection, worldSpawn, type Point } from '../world.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../sim/core.ts';
 import {SpatialHash} from '../sim/spatial.ts';
@@ -15,12 +15,33 @@ import {BASE_STATS} from '../sim/types.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
-export const ROOM_PROTOCOL=3;
-/** The endless world is playable once the Room speaks protocol 4 (VGM-042b) and the camera follows (camera-segue). */
+/**
+ * Room protocol (join handshake). 4 since VGM-042b: binary run frames (protocol4.ts) plus JSON control messages.
+ * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
+ * refused at join with a readable message, never fed frames it cannot parse.
+ */
+export const ROOM_PROTOCOL=PROTOCOL_VERSION;
+/** The Room speaks protocol 4 (VGM-042b); the endless world still waits for the camera that follows (camera-segue). */
 export const ENDLESS_WORLD_READY=false;
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
+}
+/**
+ * The one text for "this page and the room do not match" (UX onda 4, B15): version refused, terrain or generator
+ * differs, frames that never decode. In the house voice, with what to do and what to do if it comes back (the
+ * site may lag the Worker for a minute during a release, pages.yml).
+ */
+export const UPDATE_NEEDED='Saiu versão nova do jogo. Atualiza a página pra entrar. Se voltar esta mensagem, espera 1 minuto.';
+/** Whether a terminal message asks for a reload (also older rooms' wording, "Atualize a página"). */
+export const needsUpdate=(message:string)=>message===UPDATE_NEEDED||/Atualiz[ae] a página/.test(message);
+/** Client side of the welcome (VGM-042b): the room's exact terrain (kind, versions, seed, signature), or the text why not. */
+export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
+  if(!world||world.terrainVersion!==TERRAIN_VERSION||!Number.isInteger(world.seed))return UPDATE_NEEDED;
+  // An endless room says so (spawn-em-volta/rede-mapa-grande); a different generator is refused, never misdrawn.
+  if(world.kind==='infinito'&&world.generatorVersion!==CHUNK_VERSION)return UPDATE_NEEDED;
+  const terrain=new TerrainField(world.seed,{world:world.kind==='infinito'?'infinito':'ilha'});
+  return terrain.signature===world.signature?terrain:UPDATE_NEEDED;
 }
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
@@ -271,6 +292,32 @@ export class Simulation {
       })),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
+    };
+  }
+  private descriptor?:WorldDescriptor;
+  /**
+   * What every protocol 4 encoder of the room gets this tick (VGM-042b): build it once per tick and hand the same
+   * object to each encoder that is due (their live-id cache is shared through it). Server ids; offers go as JSON.
+   */
+  frame():FrameInput{
+    const w=this.world;
+    this.descriptor??=worldDescriptor(this.terrain);
+    return {
+      tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
+      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase})),
+      pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
+      projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
+      telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
+      structures:[],
+      players:[...this.players.values()].map(p=>{
+        const stats=this.statsOf(p.id);
+        return {
+          id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
+          downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
+          weapons:p.build.weapons,passives:p.build.passives,stats:{...stats,damage:Math.round(stats.damage)},
+          x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
+        };
+      }),
     };
   }
   /** sinceEventId: only events after it (the Room's broadcast cursor); omitted, the whole buffer. */

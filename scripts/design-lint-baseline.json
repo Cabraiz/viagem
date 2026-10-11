@@ -10,7 +10,6 @@
   "src/game/hud/result.ts": 1,
   "src/game/hud/team.ts": 4,
   "src/game/lobby.ts": 3,
-  "src/game/scene.ts": 1,
   "src/game/sim/passives.ts": 8,
   "src/game/terrain/chunks.ts": 1,
   "src/game/world.ts": 1

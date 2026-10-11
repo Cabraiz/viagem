@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {JsonRunFeed,DamageTally,MAX_FEED_EVENTS} from '../src/game/net/run-feed.ts';
-import {delta,applyDelta,type Snapshot} from '../src/game/net/shared.ts';
+import {JsonRunFeed,FrameRunFeed,DamageTally,MAX_FEED_EVENTS} from '../src/game/net/run-feed.ts';
+import {delta,applyDelta,ROOM_PROTOCOL,type Snapshot} from '../src/game/net/shared.ts';
+import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
 
-function peer(){const messages:any[]=[],closes:any[]=[];return {messages,closes,send:(s:string)=>messages.push(JSON.parse(s)),close:(code:number,reason:string)=>closes.push({code,reason})};}
+/** JSON control messages in `messages`, protocol 4 frames in `frames`. */
+function peer(){
+  const messages:any[]=[],frames:Uint8Array[]=[],closes:any[]=[];
+  return {messages,frames,closes,read:0,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));else frames.push(s);},close:(code:number,reason:string)=>closes.push({code,reason})};
+}
 type TestPeer=ReturnType<typeof peer>;
-const join=(r:Room,p:Peer,n='Amigo',classId='cidadao-comum',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:3,name:n,classId}),now);};
+const join=(r:Room,p:Peer,n='Amigo',classId='cidadao-comum',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:n,classId}),now);};
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);
 const idOf=(p:TestPeer)=>p.messages.find(m=>m.t==='welcome').id as string;
 let clock=1200;
@@ -24,71 +29,84 @@ function startRun(room:Room,peers:TestPeer[]){
   for(let i=0;i<60;i++)step(room);
   assert.equal(room.run.snapshot().phase,'combat');
 }
-/** Feeds every state message of one peer into a feed, from `from` on; returns the next index. */
-function pump(feed:JsonRunFeed,p:TestPeer,from=0){
-  for(let i=from;i<p.messages.length;i++){
-    const m=p.messages[i];
-    if(m.t==='welcome')feed.apply(m.state);else if(m.t==='state')feed.apply(m);else if(m.t==='offers')feed.setOffers(m.offers);
-  }
-  return p.messages.length;
+/** Decodes the peer's new frames into the feed and acks the last one, as client.ts does; offers go to setOffers. */
+function pump(room:Room,feed:FrameRunFeed,p:TestPeer,offersFrom={n:0}){
+  let last=0;
+  for(;p.read<p.frames.length;p.read++){const r=feed.decode(p.frames[p.read]);assert.ok(r.ok,r.ok?'':r.error);last=r.seq;}
+  if(last)command(room,p,{t:'ack',seq:last},clock);
+  for(;offersFrom.n<p.messages.length;offersFrom.n++){const m=p.messages[offersFrom.n];if(m.t==='offers')feed.setOffers(m.offers);}
 }
-/** Advances until the last message the peer got is a broadcast taken after this tick's step. */
-function advanceToBroadcast(room:Room,p:TestPeer){
-  for(let i=0;i<3;i++){const before=p.messages.length;step(room);if(p.messages.slice(before).some(m=>m.t==='state'))return;}
-  assert.fail('no broadcast');
+/** Advances until the peer got a frame taken after this tick's step. */
+function advanceToFrame(room:Room,p:TestPeer){
+  for(let i=0;i<3;i++){const before=p.frames.length;step(room);if(p.frames.length>before)return;}
+  assert.fail('no frame');
 }
-const near=(a:number,b:number)=>Math.abs(a-b)<=.002;
+const near=(a:number,b:number,q=.002)=>Math.abs(a-b)<=q;
 
-test('the feed rebuilds the server run view from protocol 3 snapshots and deltas',()=>{
+test('the protocol 4 feed rebuilds the server run view from the room frames',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
-  const feed=new JsonRunFeed();let seen=pump(feed,a);
-  for(let i=0;i<220;i++){step(room);seen=pump(feed,a,seen);}
-  advanceToBroadcast(room,a);pump(feed,a,seen);
-  const id=idOf(a),server=room.sim.view(id),view=feed.take();
+  const feed=new FrameRunFeed();pump(room,feed,a);
+  for(let i=0;i<220;i++){step(room);pump(room,feed,a);}
+  advanceToFrame(room,a);pump(room,feed,a);
+  const id=idOf(a),server=room.sim.view(id),view=feed.take(),server_=(clientId:string)=>room.ids.resolve(clientId);
   assert.ok(server.enemies.length>0,'the director spawned critters');
   assert.equal(view.tick,server.tick);
   assert.deepEqual(view.round,server.round);assert.deepEqual(view.team,server.team);
-  assert.deepEqual(view.enemies.map(e=>e.id).sort(),server.enemies.map(e=>e.id).sort());
+  assert.deepEqual(view.enemies.map(e=>server_(e.id)).sort(),server.enemies.map(e=>e.id).sort(),'every critter, under its client id');
   for(const e of server.enemies){
-    const mine=feed.enemies.get(e.id)!;
+    const mine=view.enemies.find(m=>server_(m.id)===e.id)!;
+    assert.match(mine.id,/^e\d+$/);assert.equal(feed.enemies.get(mine.id),mine);
     assert.equal(mine.kind,e.kind);assert.equal(mine.hp,Math.ceil(e.hp-1e-9));assert.equal(mine.maxHp,Math.ceil(e.maxHp-1e-9));
     assert.ok(near(mine.x,e.x)&&near(mine.y,e.y));assert.equal(!!mine.elite,!!e.elite);assert.equal(!!mine.boss,!!e.boss);
   }
-  assert.deepEqual(view.pickups.map(p=>p.id).sort(),server.pickups.map(p=>p.id).sort());
-  assert.deepEqual(view.projectiles.map(p=>p.id).sort(),server.projectiles.map(p=>p.id).sort());
-  assert.deepEqual(view.telegraphs,server.telegraphs);
+  assert.deepEqual(view.pickups.map(p=>server_(p.id)).sort(),server.pickups.map(p=>p.id).sort());
+  assert.deepEqual(view.projectiles.map(p=>server_(p.id)).sort(),server.projectiles.map(p=>p.id).sort());
+  assert.equal(view.telegraphs.length,server.telegraphs.length);
   for(const p of server.players){
-    const mine=view.players.find(q=>q.id===p.id)!;
+    const mine=view.players.find(q=>q.id===p.id)! as any,sp=room.sim.players.get(p.id)!;
     assert.equal(mine.name,p.name);assert.equal(mine.classId,p.classId);assert.equal(mine.maxHp,Math.ceil(p.maxHp-1e-9));
     assert.deepEqual(mine.weapons,p.weapons);assert.deepEqual(mine.passives,p.passives);
     assert.equal(!!mine.downed,!!p.downed);assert.equal(!!mine.eliminated,!!p.eliminated);
+    assert.ok(near(mine.x,sp.x)&&near(mine.y,sp.y));assert.equal(mine.ack,sp.ack);
+    assert.equal(mine.attackTick??0,sp.attackTick??0,'attack swing tick');assert.equal(mine.skillReadyTick??0,sp.skillReadyTick??0);
   }
 });
 
-test('events reach the view once each, in order, also across the welcome replay',()=>{
+test('events reach the view once each, in order, also across a reconnection',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
-  const feed=new JsonRunFeed();let seen=pump(feed,a);
+  const feed=new FrameRunFeed();pump(room,feed,a);
   const ids:number[]=[];
-  for(let i=0;i<500;i++){step(room);seen=pump(feed,a,seen);if(i%7===0)ids.push(...feed.take().events.map(e=>e.eventId));}
+  for(let i=0;i<500;i++){step(room);pump(room,feed,a);if(i%7===0)ids.push(...feed.take().events.map(e=>e.eventId));}
   ids.push(...feed.take().events.map(e=>e.eventId));
   assert.ok(ids.length>10,`only ${ids.length} events`);
   assert.deepEqual(ids,[...new Set(ids)].sort((x,y)=>x-y),'no repeats and ascending');
-  // Reconnection: the welcome carries the recent event buffer again; nothing is replayed.
-  const welcome=JSON.parse(JSON.stringify(a.messages.find(m=>m.t==='welcome').state));
-  feed.reset();feed.apply({...welcome,x:{...welcome.x,events:[...welcome.x.events]}});
-  assert.ok(feed.take().events.every(e=>e.eventId>ids.at(-1)!));
+  // Reconnection: a new socket, a fresh encoder; the client resets its decoder (D-018) and nothing is replayed.
+  const token=a.messages.find(m=>m.t==='welcome').token;room.disconnect(a,clock);
+  const again=peer();room.connect(again,clock);command(room,again,{t:'join',protocol:ROOM_PROTOCOL,token},clock);rooms.get(room)![0]=again;
+  feed.reset();pump(room,feed,again);
+  for(let i=0;i<60;i++){step(room);pump(room,feed,again);}
+  const after=feed.take().events.map(e=>e.eventId);
+  assert.ok(after.length>0,'events flow again');assert.ok(after.every(e=>e>ids.at(-1)!),'nothing old comes back');
+  assert.deepEqual(after,[...new Set(after)].sort((x,y)=>x-y));
   assert.equal(feed.take().events.length,0,'a second take has nothing new');
 });
 
-test('a downed player shows its fall, revive progress and build to every client',()=>{
+test('a downed player shows its fall, the critter behind it, revive progress and build to every client',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
-  const feed=new JsonRunFeed();let seen=pump(feed,b);
-  const victim=room.sim.players.get(idOf(a))!;victim.invulnerableUntil=0;room.sim.world.damagePlayer(victim.id,1e6,'test');
-  advanceToBroadcast(room,b);seen=pump(feed,b,seen);
-  const fallen=feed.take().players.find(p=>p.id===victim.id)!;
+  const feed=new FrameRunFeed();pump(room,feed,b);
+  const victim=room.sim.players.get(idOf(a))!;victim.invulnerableUntil=0;
+  // Sturdy, so the starting weapon does not kill it before it hits.
+  const hitter=createEnemy(room.sim.world,'pernilongo',{x:victim.x+1,y:victim.y});hitter.hp=hitter.maxHp=1e6;
+  advanceToFrame(room,b);pump(room,feed,b);feed.take();
+  room.sim.world.damagePlayer(victim.id,1e6,hitter.id);
+  advanceToFrame(room,b);pump(room,feed,b);
+  const view=feed.take(),fallen=view.players.find(p=>p.id===victim.id)!;
   assert.ok(fallen.downed,'downed reaches the ally');assert.equal(fallen.downed!.bleedOutTick,victim.downed!.bleedOutTick);
   assert.equal(fallen.hp,0);assert.ok(fallen.maxHp>0);assert.ok(fallen.weapons.length>0,'starting weapon');
-  // Deltas carry the extras only when they change: an idle tick sends no player extras.
+  const downed=view.events.find(e=>e.type==='downed') as any;
+  assert.ok(downed,'downed event');assert.equal(downed.player,victim.id);assert.equal(downed.source,'pernilongo','what got you travels in protocol 4');
+  assert.equal(room.ids.resolve(downed.by),hitter.id,'by is the client id of the hitter');
+  // JSON reference (protocol 3, tests only): deltas carry the extras only when they change.
   const before=room.sim.snapshot(),after=room.sim.snapshot();
   assert.deepEqual(delta(before,after).x!.players,[]);
   assert.deepEqual(applyDelta(before,delta(before,after)).x!.players,after.x!.players);
@@ -149,13 +167,43 @@ test('damage tally counts hits on critters once and ignores hits taken',()=>{
 test('a choose command shaped like the client\'s reaches the simulation',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
   room.sim.run.progression.grantLevelOffers(room.sim.world,2);
-  // Offers go out on the regular broadcast ticks (every other tick).
+  // Offers go out with each client's frame (every other tick).
   step(room);step(room);
-  const feed=new JsonRunFeed();pump(feed,a);
+  const feed=new FrameRunFeed();pump(room,feed,a);
   const offer=feed.take().offers[0];assert.ok(offer,'offer pushed to the client');
   const before=a.messages.length;
   command(room,a,{t:'choose',offer:offer.id,index:offer.defaultIndex,round:room.run.snapshot().round},clock);
   const answer=a.messages.slice(before).find(m=>m.t==='offers');
   assert.ok(answer);assert.ok(!answer.offers.some((o:any)=>o.id===offer.id),'the picked offer is gone');
+});
 
+test('an entity that leaves the area of interest disappears without a kill (no poof)',()=>{
+  const room=new Room(1000,undefined,{world:'infinito'}),a=peer();join(room,a);startRun(room,[a]);
+  const feed=new FrameRunFeed();pump(room,feed,a);
+  const p=room.sim.players.get(idOf(a))!;
+  const far=createEnemy(room.sim.world,'gosma',{x:p.x+20,y:p.y});
+  advanceToFrame(room,a);pump(room,feed,a);
+  const label=[...feed.enemies.keys()].find(id=>room.ids.resolve(id)===far.id)!;assert.ok(label,'sent while near');
+  feed.take();
+  far.x=p.x+200;
+  advanceToFrame(room,a);pump(room,feed,a);
+  assert.equal(feed.enemies.has(label),false,'gone from the view');assert.ok(room.sim.world.enemies.has(far.id),'it still exists');
+  assert.ok(feed.left.includes(label),'reported as left');
+  assert.ok(!feed.take().events.some(e=>e.type==='kill'),'no kill, so the renderer plays no poof');
+});
+
+test('a rematch keeps the players on their wire ids: nobody "leaves", critters of the old run are gone',()=>{
+  const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
+  const feed=new FrameRunFeed();pump(room,feed,a);
+  for(let i=0;i<200;i++){step(room);pump(room,feed,a);}
+  for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
+  for(let i=0;i<4;i++){step(room);pump(room,feed,a);}
+  assert.equal(room.run.snapshot().phase,'result');
+  command(room,b,{t:'rematch',round:1},clock);
+  const left:string[]=[];
+  for(let i=0;i<4;i++){step(room);pump(room,feed,a);left.push(...feed.left);}
+  assert.equal(room.run.snapshot().phase,'lobby');
+  assert.deepEqual(left.filter(id=>room.sim.players.has(id)),[],'players are not re-sent as new');
+  assert.equal(feed.players.size,2);assert.equal(feed.enemies.size,room.sim.world.enemies.size);
+  assert.ok([...feed.players.values()].every(p=>!p.downed&&p.hp>0),'the fresh run state reached the client');
 });

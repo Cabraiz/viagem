@@ -242,6 +242,8 @@ test('wire ids are never reused, even when server ids restart on a rematch',()=>
   assert.equal(ids.resolve(b),'xp-1');assert.equal(ids.resolve(a),undefined);
   assert.equal(ids.label('players','uuid-9'),'uuid-9');
   ids.prune({pickups:[]});assert.equal(ids.resolve(b),undefined);
+  // Players keep their wire id across the reset (VGM-042b): a rematch does not resend every player as new.
+  const p=ids.wire('players','uuid-9');ids.reset();assert.equal(ids.wire('players','uuid-9'),p);assert.ok(ids.has('players','uuid-9'));
 });
 
 test('control messages: forged or oversized input is refused',()=>{
@@ -323,6 +325,23 @@ test('events retire even when acks take longer than the resend interval',()=>{
   assert.equal(enc.pendingEvents,0,'queue drained');
   // 200 empty event sections (1 byte each) plus a few resends of the 2 events, not one resend per second forever.
   assert.ok(enc.stats.eventBytes<200+40,`${enc.stats.eventBytes} event bytes`);
+});
+
+test('without acks an event goes again only every 5 s, not every second (bad network, VGM-042b review)',()=>{
+  const w=busyWorld(new Rng(11),5);
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  enc.pushEvents(Array.from({length:50},(_,i)=>({type:'levelup',level:i+2} as SimEvent)));
+  let sent=0;
+  for(let i=0;i<100;i++){w.view.tick+=2;const r=dec.decode(enc.encode(w.view));assert.ok(r.ok);}
+  // 10 s of frames with no ack: the first send plus one resend at 5 s (and at most one more at the edge).
+  const frames=enc.stats.frames;assert.equal(frames,100);
+  sent=enc.stats.eventBytes;
+  const once=(()=>{const e=new FrameEncoder();e.pushEvents(Array.from({length:50},(_,i)=>({type:'levelup',level:i+2} as SimEvent)));e.encode(w.view);return e.stats.eventBytes;})();
+  assert.ok(sent<=once*3+100,`${sent} event bytes for ${once} per full send`);
+  assert.ok(sent>=once*2,'still resent while unacked');
+  // A resync (reconnect, lost baseline) sends them again right away.
+  enc.resync();w.view.tick+=2;const before=enc.stats.eventBytes;enc.encode(w.view);
+  assert.ok(enc.stats.eventBytes-before>=once-5,'resent after resync');
 });
 
 test('decoded views are copies; mutating them does not corrupt the next frame',()=>{

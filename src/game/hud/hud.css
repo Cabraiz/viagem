@@ -30,7 +30,7 @@
 /* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
 .rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .6s ease-in-out infinite alternate}
 .rh-xp{position:relative;align-self:stretch;margin:20px calc(var(--rh-r) + 82px) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
-.rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:var(--s-2)}
+.rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
 .rh-xp-track{flex:1;height:12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);overflow:hidden;box-shadow:var(--s-2)}
 .rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
 .rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
@@ -68,11 +68,11 @@
 /* Portrait ring: Papel with a Breu edge, so it reads on sand and on sea. */
 .rh-member-ring{--rh-rescue:0deg;width:44px;height:44px;padding:3px;border-radius:var(--r-circulo);background:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
 .rh-member-img{display:block;width:100%;height:100%;border-radius:var(--r-circulo);object-fit:cover;object-position:50% 12%;background:var(--c-papel-claro)}
-.rh-member.rh-me .rh-member-ring{background:var(--c-lilas);box-shadow:0 0 0 2px var(--c-papel),var(--s-2)}
+.rh-member.rh-me .rh-member-ring{background:var(--c-lilas);box-shadow:0 0 0 2px var(--c-papel),0 0 0 4px var(--c-breu),var(--s-2)} /* D-022: Breu por fora no mar turquesa claro (Lilás 2,5:1 e Papel 2,7:1 lá) */
 .rh-member-hp{width:44px;height:6px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
 /* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
-.rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);text-shadow:none}
+.rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
 .rh-member-badge{position:absolute;top:-4px;right:0;font-size:15px;line-height:1;filter:drop-shadow(0 1px 0 var(--c-breu))}
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums}
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}

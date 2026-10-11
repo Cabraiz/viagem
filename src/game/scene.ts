@@ -13,9 +13,11 @@ import {HordeRenderer} from './render/layers.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
 import type {RunView} from './sim/view.ts';
-import {token,whenFontsReady} from '../ui/tokens.ts';
+import {token,tokenColor} from '../ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
+import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
+import {secondsLeft} from './hud/model.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -24,7 +26,9 @@ const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
 /** The water bake covers the view plus this share of it on each side, and is redone only when the view leaves it. */
-const WATER_MARGIN=.3;
+const WATER_MARGIN=.2;
+/** Place fichas: above canopies and the horde's numbers and balloons, below allies (96400) and telegraphs. */
+const LABEL_DEPTH=96300;
 
 export interface SceneHooks {
   classId:string;
@@ -51,7 +55,7 @@ export class IslandScene extends Phaser.Scene {
   private view=0;
   private landscape?:TerrainRenderer;
   private field!:TerrainField;
-  private signs:{point:Point;graphic:Graphics;label:Phaser.GameObjects.Text}[]=[];
+  private signs:{point:Point;graphic:Graphics;label:MapLabel}[]=[];
   private project=(p:Point)=>projectView(p,this.view,this.field);
   /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
   private depthOrigin?:Point;
@@ -60,7 +64,6 @@ export class IslandScene extends Phaser.Scene {
   private follow=new FollowCamera();
   private zoom=1;
   private canvasOffset={x:0,y:0};
-  private roundPhase?:string;
   /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
   private steps=new StepLerp();
   private smooth?:Point;
@@ -92,7 +95,7 @@ export class IslandScene extends Phaser.Scene {
   private attackTarget?:string;
   private skillEffects?:Graphics;
   private displayed?:Point;
-  private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:Phaser.GameObjects.Text;ring:Phaser.GameObjects.Ellipse}>();
+  private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
   private projector?:Projector;
@@ -104,6 +107,11 @@ export class IslandScene extends Phaser.Scene {
   private marks:HeroMark[]=[];
   private selfCovered=false;
   private lastPhase?:string;
+  /** Wave or interval of the current round: map labels come back in the interval. */
+  private roundPhase?:string;
+  /** Tick of the last authoritative view (seconds left on a caído ficha). */
+  private viewTick=0;
+  private sosScreens:{x:number;y:number}[]=[];
   private lastFeet?:Point;
   private facing=Math.PI/2;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
@@ -111,7 +119,7 @@ export class IslandScene extends Phaser.Scene {
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
-    this.cameras.main.setBackgroundColor('#142f2d');
+    this.cameras.main.setBackgroundColor(token('--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;
     this.drawGround();
@@ -188,7 +196,7 @@ export class IslandScene extends Phaser.Scene {
   private reproject(){
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
-    for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.setPosition(p.x,p.y+28).setDepth(depth+2);}
+    for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
     if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();}
   }
   /** Endless world only: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen unchanged). */
@@ -229,8 +237,10 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
     const p=this.project(target);
-    this.destination.lineStyle(2,0xfff9d2,.95).strokeEllipse(p.x,p.y,28,14);
-    this.destination.fillStyle(0xfff9d2,.9).fillCircle(p.x,p.y,3);
+    // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
+    const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
+    this.destination.lineStyle(5,breu,.9).strokeEllipse(p.x,p.y,28,14).lineStyle(2,papel,1).strokeEllipse(p.x,p.y,28,14);
+    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5).fillStyle(papel,1).fillCircle(p.x,p.y,3);
   }
   private place(){
     const p=this.project(this.position),depth=this.depth(this.position);
@@ -269,6 +279,7 @@ export class IslandScene extends Phaser.Scene {
   update(_time:number,delta:number){
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
+    this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
@@ -343,7 +354,7 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
-      this.roundPhase=runView.round?.phase;
+      this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
       this.horde?.push(runView);
       this.hooks.runView?.(runView);
@@ -384,15 +395,18 @@ export class IslandScene extends Phaser.Scene {
     for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
     for(const player of view.players){
       if(player.id===net.id)continue;
+      // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:this.add.text(0,0,'',{fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'700',color:token('--c-breu'),backgroundColor:token('--c-papel'),padding:{x:5,y:3}}).setOrigin(.5,0),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,0xb7dfe3)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
-      const state=net.feed.players.get(player.id),status=player.spectator?'assistindo':state?.eliminated?'fora':state?.downed?'caído':player.hp+'♥';
-      objects.label.setPosition(q.x,q.y+15).setDepth(covered?depth+2:ALLY_DEPTH+1).setText(`${player.name} · ${status}${player.online?'':' · voltando'}`);
+      const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
+      // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
+      objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
+        .anchor(q.x,q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();
@@ -423,6 +437,15 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Who the camera follows while out or watching (for the HUD's "Assistindo: Tia"). */
   watching(){const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name}:undefined;}
+  /** Map labels as fichas at 13 px CSS; place names leave the screen during a round (DSG-cenario-coerencia). */
+  private drawLabels(){
+    const zoom=this.cameras.main.zoom,phase=this.labelPhase(),sos=this.sosScreens;
+    // Place fichas near a caído ficha step aside (last frame's positions), so who fell stands out.
+    sos.length=0;for(const a of this.remoteActors.values())if(a.label.screen.sos)sos.push(a.label.screen);
+    for(const sign of this.signs){const show=mapLabelVisible('place',phase);sign.label.draw(zoom,show&&!(sos.length&&placeYieldsToSos(sign.label.screen,sos)));}
+  }
+  /** 'combat' only while a wave runs: the interval between waves counts as a pause for the labels. */
+  private labelPhase(){const phase=this.hooks.net?.run?.phase;return phase==='combat'&&this.roundPhase==='prepare'?'interval':phase;}
   private drawTreeShadows(){
     const g=this.treeShadows??=this.add.graphics().setDepth(-9990);g.clear();
     for(const prop of this.props){
@@ -488,9 +511,9 @@ export class IslandScene extends Phaser.Scene {
       polygon(g,[{x:2,y:-88},{x:42,y:-80},{x:31,y:-67},{x:2,y:-70}],0xa28dc5);
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
-    const label=this.add.text(p.x,p.y+28,landmarks[index].name,{fontFamily:token('--f-cartaz'),fontSize:'16px',color:token('--c-breu'),backgroundColor:token('--c-papel'),padding:{x:9,y:5}}).setOrigin(.5,0).setDepth(this.depth(l)+2);
-    whenFontsReady(()=>label.updateText());
-    label.setAlpha(.94);this.signs.push({point:l,graphic:g,label});
+    // Above trees and critters (a canopy used to cut the name), under the heroes and the danger layers.
+    const label=new MapLabel(this,landmarks[index].name).anchor(p.x,p.y+28,LABEL_DEPTH);
+    this.signs.push({point:l,graphic:g,label});
   }
 }
 

@@ -10,6 +10,7 @@ import {freeAround} from './framing.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
+import {showFatal} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
@@ -39,6 +40,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   let attacking=false,attackQueuedUntil=0,attackPointer:number|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
+  /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
+  let fatalShown:string|undefined;
   // Dev overlay of the screen zones (UX-zonas-tela): ?zonas in the URL.
   let zoneOverlay=import.meta.env.DEV&&new URLSearchParams(location.search).has('zonas');
   const damage=new DamageTally();
@@ -170,6 +173,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Você: ${self?.hp??0}♥`;
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
@@ -179,7 +183,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
-              hud.setNetwork(net.connected?undefined:RECONNECTING);
+              hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

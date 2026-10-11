@@ -42,7 +42,12 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
       if(input?.skill){
         const cast=castSkill(ctx,p);
-        if(cast){p.skillTick=ctx.tick;p.skillReadyTick=cast.readyTick;}
+        if(cast){
+          p.skillTick=ctx.tick;p.skillReadyTick=cast.readyTick;
+          // What the client needs besides the cooldown (E7-skill-hud-wiring): the line, the dice and where the caster landed.
+          ctx.emit({type:'skill',player:p.id,skill:cast.classId,line:cast.line,...(cast.outcome?{outcome:cast.outcome}:{}),
+            ...(cast.movedTo?{x:cast.movedTo.x,y:cast.movedTo.y}:{})});
+        }
       }
     }
   }};

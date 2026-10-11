@@ -1,6 +1,8 @@
 import './style.css';
 import { setupSections } from './sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './classes.ts';
+import { mountIcons } from './ui/icon-sprite.ts';
+mountIcons();
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./game/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];

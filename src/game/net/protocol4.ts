@@ -325,6 +325,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['round',[['index','count'],['phase','str'],['name','str',true],['modifier','str',true]]],
   ['bark',[['enemy','ref',false,'enemies'],['line','str']]],
   ['structure',[['id','ref',false,'structures'],['hp','count'],['maxHp','count']]],
+  // Class skill cast (E7-skill-hud-wiring): balloon line, dice result and landing spot (x, y only when the skill moved the caster).
+  ['skill',[['player','ref'],['skill','str'],['line','str'],['outcome','str',true],['x','pos',true],['y','pos',true]]],
 ];
 const EVENT_CODE=new Map<string,number>(EVENT_SPECS.map(([type],i)=>[type,i]));
 const REF_INLINE=0,REF_PLAYER=1;
@@ -381,6 +383,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
     }
   });
   if(type==='round'&&e.phase!=='wave'&&e.phase!=='prepare'&&e.phase!=='end')throw new FrameError('bad round phase');
+  if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
 }
 

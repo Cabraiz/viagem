@@ -38,3 +38,10 @@ export const kindStyle=(kind:string):KindStyle=>isEnemyKind(kind)?KIND_STYLES[ki
 export const CRIT_LABEL='CRÍTICO!';
 /** Damage number text; crits get the comic "!" suffix. */
 export const damageLabel=(amount:number,crit=false)=>`${Math.max(0,Math.round(amount))}${crit?'!':''}`;
+
+/** D-013: at most one line per source (here: per caster) every ~2 s, whatever the cooldowns and refunds do. */
+export const SKILL_BUBBLE_GAP_MS=2000;
+/** Second line of the dice skill (Odd Impossível): what the dice said. */
+export const DICE_LINE={flop:'Deu ruim.',hit:'Acertou!',miracle:'Milagre!'} as const;
+/** Balloon text of a skill cast (E7-skill-hud-wiring): the kit line, plus the dice on a second line. */
+export const skillBubbleLine=(e:{line:string;outcome?:keyof typeof DICE_LINE})=>e.outcome?`${e.line}\n${DICE_LINE[e.outcome]}`:e.line;

@@ -12,6 +12,7 @@ import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
 import {showFatal} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
+import {SkillButton} from './hud/skill.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -38,7 +39,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     <footer class="explore-controls"><div class="explore-movement"><div class="explore-stick" role="group" tabindex="0" aria-label="Joystick de movimento. Arraste para andar ou use WASD e as setas."><span aria-hidden="true"></span></div><small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha ✦</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
-  let attacking=false,attackQueuedUntil=0,attackPointer:number|undefined;
+  /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
+  let skill:SkillButton|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
@@ -52,9 +54,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('.explore-quest').innerHTML='<small>A TURMA CONTRA AS GOSMAS</small><strong id="coop-objective">Protejam a ilha</strong><span id="coop-health"></span><div class="coop-party"></div>';
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
     $('#coop-code').textContent=`Sala ${net.code}`;
-    // Weapons fire on their own: this slot is the class skill (the old "Atacar" already sent `skill`). Same look as before;
-    // cooldown, icon and line come with NEW-20261006-E7-skill-hud-wiring and the DSG cards.
-    $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill" aria-label="Habilidade da classe">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
+    // Weapons fire on their own: this slot is the class skill. One tap sends one `skill` input (E7-skill-hud-wiring);
+    // the button shows the cooldown from the frames and the caster's line comes as a balloon (renderer, `skill` event).
+    $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
+    skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
@@ -73,10 +76,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
-    const attack=$('#coop-attack');attack.addEventListener('pointerdown',e=>{if(e.button!==0||attackPointer!==undefined)return;e.preventDefault();pause(false);attackPointer=e.pointerId;attacking=true;attack.setPointerCapture(e.pointerId);});
-    attack.addEventListener('click',()=>{pause(false);attackQueuedUntil=performance.now()+120;});
-    for(const event of ['pointerup','pointercancel','lostpointercapture'])attack.addEventListener(event,e=>{if((e as PointerEvent).pointerId===attackPointer){attacking=false;attackPointer=undefined;}});
-    attack.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')attacking=true;});attack.addEventListener('keyup',()=>{attacking=false;});attack.addEventListener('blur',()=>{attacking=false;});
+    // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
+    const attack=$<HTMLButtonElement>('#coop-attack');
+    attack.addEventListener('pointerdown',e=>{if(e.button!==0||attack.disabled)return;e.preventDefault();pause(false);skill?.press.press(performance.now());});
+    attack.addEventListener('click',e=>{if(e.detail===0&&!attack.disabled){pause(false);skill?.press.press(performance.now());}});
   }
   // Only controls overlay the map. All secondary information lives in a native
   // modal so focus, Escape and touch input cannot leak into the running game.
@@ -111,7 +114,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;closed=true;active=false;abort.abort();reset();
     net?.leave();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
-  const pause=(value:boolean)=>{paused=value;if(value){attacking=false;attackPointer=undefined;attackQueuedUntil=0;reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
+  const pause=(value:boolean)=>{paused=value;if(value){skill?.press.clear();reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
@@ -134,7 +137,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
     if(controller?.scene.rotationLocked()){lockedTap();return;}
-    if(!controller)return;reset();attacking=false;attackQueuedUntil=0;pause(false);
+    if(!controller)return;reset();skill?.press.clear();pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
     shell.dataset.cameraView=String(view);$('.explore-view').textContent=`${view+1} / 4`;
     $('.explore-canvas').focus();
@@ -166,7 +169,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const {createIsland}=await import('./scene.ts');
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
-      classId:hero.id,direction:()=>direction,net,attacking:()=>attacking||performance.now()<attackQueuedUntil,
+      classId:hero.id,direction:()=>direction,net,
+      // Asked once per input step: yes once per tap, only when the input can go out (connected, in combat).
+      attacking:()=>!!skill&&!!net&&skill.press.take(performance.now(),net.connected&&net.run?.phase==='combat'),
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=`Ilha ${seed} · relevo procedural`;settingsContent.append(info);},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
@@ -181,7 +186,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // Shown by runView once it holds this run's state; until then the DOM may still show the last run's falls.
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
-              else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();}
+              else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
               hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
@@ -209,6 +214,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').textContent='Ilha explorada ✓';},
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
+        skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
         if(hud&&(phase==='combat'||phase==='result')){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);

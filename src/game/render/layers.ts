@@ -10,7 +10,7 @@ import {ensureHordeTextures} from './textures.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {deathLine,kindStyle,damageLabel} from './jokes.ts';
+import {deathLine,kindStyle,damageLabel,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {token,tokenColor} from '../../ui/tokens.ts';
@@ -52,7 +52,8 @@ interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:nu
 interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:number}
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
 interface StarFx{image:Image;born:number;x:number;y:number;lift:number;vx:number;vy:number;spin:number}
-interface BubbleFx{text:Text;born:number;enemy:string;x:number;y:number;lift:number}
+/** enemy: the barking critter; player: the skill caster (E7-skill-hud-wiring), followed through options.locate. */
+interface BubbleFx{text:Text;born:number;enemy:string;player:string;x:number;y:number;lift:number}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16} as const;
@@ -60,6 +61,8 @@ const TAU=Math.PI*2;
 const FONT='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const SNAP_UNITS=3;
 const BUBBLE_MS=2200,BUBBLE_GAP_MS=1950;
+/** Lift of a player's balloon over their feet, in world px at ui scale 1: above the head of the 100 px hero sprite. */
+const PLAYER_BUBBLE_LIFT=104;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 
@@ -198,7 +201,7 @@ export class HordeRenderer{
     this.pops=new Ring(()=>({text:text(popStyle('gosma'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
     this.stars=new Ring(()=>({image:image(FX.star)(),born:0,x:0,y:0,lift:0,vx:0,vy:0,spin:0}),showImage,CAPS.stars);
-    this.bubbles=new Ring(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',x:0,y:0,lift:0}),showText,CAPS.bubbles);
+    this.bubbles=new Ring(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',player:'',x:0,y:0,lift:0}),showText,CAPS.bubbles);
     this.warnings=new Ring(()=>({image:image(FX.warning)(),born:0,x:0,y:0,atTick:0,size:1}),showImage,CAPS.warnings);
   }
 
@@ -353,6 +356,7 @@ export class HordeRenderer{
         w.image.clearTint();break; // the texture carries the palette (Cone, Breu, Papel)
       }
       case 'bark':this.spawnBubble(event.enemy,event.line);break;
+      case 'skill':this.spawnSkillBubble(event.player,skillBubbleLine(event));break;
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
     }
   }
@@ -411,7 +415,29 @@ export class HordeRenderer{
     const actor=this.enemies.get(enemy);
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
-    b.born=this.now;b.enemy=enemy;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
+    b.born=this.now;b.enemy=enemy;b.player='';b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
+    paint(b.text,BUBBLE_STYLE,line);
+  }
+  /**
+   * The caster's line over their head (E7-skill-hud-wiring). It is the answer to a tap, so it does not wait for the
+   * critters' bark gap; when the budget is full it takes a critter's balloon first (then the oldest one).
+   * One per caster every SKILL_BUBBLE_GAP_MS (D-013); a newer line from the same caster replaces theirs.
+   */
+  private skillBubbleAt=new Map<string,number>();
+  private spawnSkillBubble(player:string,line:string){
+    const last=this.skillBubbleAt.get(player)??-Infinity;
+    if(this.now-last<SKILL_BUBBLE_GAP_MS)return;
+    const p=this.options.locate?.(player);if(!p)return;
+    this.skillBubbleAt.set(player,this.now);
+    let own:BubbleFx|undefined;this.bubbles.forEach(b=>{if(b.player===player)own=b;});
+    if(own)this.bubbles.release(own);
+    while(this.bubbles.active>=this.fx.bubbles){
+      let victim:BubbleFx|undefined;this.bubbles.forEach(b=>{if(!victim&&!b.player)victim=b;});
+      victim??=this.bubbles.at(0);if(!victim)break;this.bubbles.release(victim);
+    }
+    const b=this.bubbles.spawn();
+    this.lastBubbleAt=this.now;
+    b.born=this.now;b.enemy='';b.player=player;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
     paint(b.text,BUBBLE_STYLE,line);
   }
 
@@ -561,8 +587,8 @@ export class HordeRenderer{
   };
   private drawBubble=(b:BubbleFx)=>{
     const age=this.now-b.born;if(age>=BUBBLE_MS)return false;
-    const enemy=this.enemies.get(b.enemy);
-    if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18;}
+    if(b.player){const p=this.options.locate?.(b.player);if(p){b.x=p.x;b.y=p.y;}b.lift=PLAYER_BUBBLE_LIFT*this.ui;}
+    else{const enemy=this.enemies.get(b.enemy);if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18;}}
     if(Number.isNaN(b.x)){b.text.setVisible(false);return true;}
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;

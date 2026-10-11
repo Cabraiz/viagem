@@ -109,6 +109,12 @@ export type SimEvent=
   | {type:'wave';index:number;label:string}
   | {type:'round';index:number;phase:RoundPhase|'end';name?:string;modifier?:string}
   | {type:'bark';enemy:string;line:string}
+  /**
+   * Class skill cast (NEW-20261006-E7-skill-hud-wiring): the line for the caster's speech balloon, the dice result
+   * (Odd Impossível) and, when the skill moved the caster (Motogirl, Cidadão Comum…), where they landed (x, y).
+   * One event per cast, next to the `fire` with weapon `skill:<classId>` that the sprites already use.
+   */
+  | {type:'skill';player:string;skill:string;line:string;outcome?:'flop'|'hit'|'miracle';x?:number;y?:number}
   | {type:'structure';id:string;hp:number;maxHp:number};
 
 // ---------- Spatial query (VGM-032 implements a hash; tests may use naive) ----------

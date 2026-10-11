@@ -1,0 +1,26 @@
+/* Ícones-adesivo (NEW-20261009-DSG-icones-sistema, revisao-visual.md §2.4): o sprite src/ui/icons.svg fica no DOM uma
+   vez (icon-sprite.ts) e cada ícone é <svg class="ic"><use href="#i-nome"/></svg>. As cores vêm só dos tokens.
+   Adesivo = sombra dura Breu + borda papel (3 px a 32 px) + contorno Breu (2 px a 32 px) + cor chapada + um brilho. */
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.ic{display:inline-block;flex:none;width:24px;height:24px;vertical-align:middle;overflow:visible;pointer-events:none}
+.ic-32{width:32px;height:32px}
+.ic-40{width:40px;height:40px}
+.ic-48{width:48px;height:48px}
+.ik-sombra{fill:var(--c-breu);stroke:var(--c-breu);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round;transform:translateY(3px)}
+.ik-papel{fill:var(--c-papel-claro);stroke:var(--c-papel-claro);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round}
+.ik-arte{fill:none;stroke:var(--c-breu);stroke-width:3px;stroke-linejoin:round;stroke-linecap:round}
+.ik-linha,.f-nada{fill:none}
+.ik-brilho{fill:none;stroke:var(--c-papel-claro);stroke-width:2.5px;opacity:.85}
+.f-lilas{fill:var(--c-lilas)}
+.f-lilas-escuro{fill:var(--c-lilas-escuro)}
+.f-papel{fill:var(--c-papel)}
+.f-claro{fill:var(--c-papel-claro)}
+.f-amarelo{fill:var(--c-amarelo)}
+.f-cone{fill:var(--c-cone)}
+.f-cartolina{fill:var(--c-cartolina)}
+.f-breu{fill:var(--c-breu)}
+/* Espelhado: girar para a esquerda é o mesmo adesivo virado. */
+.ic-espelho{transform:scaleX(-1)}
+/* Agulha da bússola: gira com a vista atual (--vista em graus, explore.ts). */
+.ic-agulha{transform-box:view-box;transform-origin:center;transform:rotate(var(--vista,0deg))}
+@media(prefers-reduced-motion:no-preference){.ic-agulha{transition:transform .16s ease-out}}

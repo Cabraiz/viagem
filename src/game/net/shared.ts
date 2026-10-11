@@ -288,6 +288,7 @@ export class Simulation {
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
+        skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
       })),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),

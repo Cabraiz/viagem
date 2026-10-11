@@ -150,8 +150,8 @@ export class RunHud {
   private updateCoach(view:RunView,now=performance.now()){
     if(this.coach.finished&&!this.coachShow)return;
     const ended=this.el.classList.contains('rh-ended');
-    // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no new hint while the
-    // offer window is open (the LEVEI stamp is the moment there).
+    // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no hint while the
+    // intermission window is open or a LEVEI stamp hits (one moment at a time).
     const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen();
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
@@ -164,7 +164,8 @@ export class RunHud {
     const lesson=show&&!show.done?show.lesson:'';
     if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
   }
-  private offerOpen(){return !this.offerEl.hidden;}
+  /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */
+  private offerOpen(){return !this.offerEl.hidden&&(this.offerEl.dataset.mode!=='combat'||this.offerEl.classList.contains('rh-offer-stamping'));}
   /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
   killcamRect(){return this.el.classList.contains('rh-ended')?undefined:this.killcam.rect();}
 

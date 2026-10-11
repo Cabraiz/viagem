@@ -18,13 +18,13 @@ const PAD_X=7,PAD_Y=3,BORDER=2,RADIUS=6;
 export class MapLabel {
   readonly text:Phaser.GameObjects.Text;
   readonly plate:Phaser.GameObjects.Graphics;
-  private drawn='';
+  private drawnText='';private drawnW=-1;private drawnH=-1;
   private x=0;private y=0;private depth=0;
   private readonly colors={breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel')};
   constructor(scene:Phaser.Scene,label:string){
     this.text=scene.add.text(0,0,label,{fontFamily:token('--f-sistema'),fontSize:`${LABEL_CSS*RASTER}px`,fontStyle:'700',color:token('--c-papel')}).setOrigin(.5,0);
     this.plate=scene.add.graphics();
-    whenFontsReady(()=>{this.text.updateText();this.drawn='';});
+    whenFontsReady(()=>{this.text.updateText();this.drawnW=-1;});
   }
   setText(label:string){if(this.text.text!==label)this.text.setText(label);return this;}
   /** World anchor (top center of the ficha) and depth; the ficha hangs below the anchor. */
@@ -37,9 +37,9 @@ export class MapLabel {
     const w=this.text.width*k+2*PAD_X*s,h=this.text.height*k+2*PAD_Y*s;
     this.text.setScale(k).setPosition(this.x,this.y+PAD_Y*s).setDepth(this.depth+1);
     this.plate.setPosition(this.x,this.y).setDepth(this.depth);
-    const key=`${this.text.text}|${w.toFixed(2)}|${h.toFixed(2)}`;
-    if(key===this.drawn)return;
-    this.drawn=key;
+    // Repaint the plate only when the text or the size changes (no per-frame string or triangulation).
+    if(this.text.text===this.drawnText&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
+    this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;
     const g=this.plate.clear();
     g.fillStyle(this.colors.breu,.88).fillRoundedRect(-w/2,0,w,h,RADIUS*s);
     g.lineStyle(BORDER*s,this.colors.papel,1).strokeRoundedRect(-w/2+BORDER*s/2,BORDER*s/2,w-BORDER*s,h-BORDER*s,(RADIUS-1)*s);

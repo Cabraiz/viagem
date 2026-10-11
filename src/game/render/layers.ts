@@ -70,7 +70,7 @@ const BUBBLE_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'700',co
 /**
  * Palette of the comic layer on the light tropical scene (D-022, DSG-contraste-mapa): every number and balloon is a
  * light body with a Breu edge (double-edge rule). Read from src/ui/tokens.css once the first renderer exists, since
- * Phaser cannot read CSS variables; the hex above are only the pre-token look kept for tests without a DOM.
+ * Phaser cannot read CSS variables; the hex in PALETTE are the same token values, kept for a page without the stylesheet.
  */
 const PALETTE={breu:0x1e1530,papel:0xeeddb8,cone:0xff7a1f};
 let paletteReady=false;

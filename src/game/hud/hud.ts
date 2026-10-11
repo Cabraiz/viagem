@@ -15,6 +15,8 @@ import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
 import './zones.css';
+import {EdgeArrows} from './edges.ts';
+import {Minimap} from './minimap.ts';
 
 export interface RunHudOptions {
   localId:string;
@@ -25,6 +27,11 @@ export interface RunHudOptions {
   portrait?(classId:string,detailed?:boolean):string;
   /** Critter sticker for "what got you" (the scene hands the horde atlas texture as a data URL). */
   critterIcon?(kind:string):string|undefined;
+  /**
+   * Real game (explore.ts): falls and rescues are read in the world, so the HUD mounts the edge arrows and the minimap
+   * (driven every frame by the caller) and the fall/rescue banners leave the top band (UX-resgate-e-ping).
+   */
+  worldRescue?:boolean;
   /** Stamp feedback when an offer is picked; defaults to the "carimbo" sound (with its 15 ms buzz). */
   onStamp?():void;
 }
@@ -60,9 +67,12 @@ export class RunHud {
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
+  /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
+  readonly edges?:EdgeArrows;
+  readonly minimap?:Minimap;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
-    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon};
+    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue};
     this.el=document.createElement('div');
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
@@ -73,13 +83,15 @@ export class RunHud {
     stack.append(announcer.el,alerts.el);this.stack=stack;this.alerts=alerts;
     this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,offer.chip,offer.hint,this.result.el);
+    // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
+    if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.minimap.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el])this.observer.observe(part);}
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);}
   }
 
   update(view:RunView){
@@ -166,7 +178,11 @@ export class RunHud {
   }
   /** The zones of the current layout (top band, team, thumbs, useful area), for the camera and the audit; cached per layout. */
   zones(){
-    if(!this.zonesCache||this.zonesVersion!==this.layoutVersion){this.zonesVersion=this.layoutVersion;this.zonesCache=measureZones(this.el.ownerDocument);this.zonesFresh=true;}
+    if(!this.zonesCache||this.zonesVersion!==this.layoutVersion){
+      this.zonesVersion=this.layoutVersion;this.zonesCache=measureZones(this.el.ownerDocument);this.zonesFresh=true;
+      // Portrait with the minimap: the announcement slot starts where the zones say (under the minimap or the boss bar).
+      if(this.minimap){const y=`${Math.round(this.zonesCache.announce.y)}px`;if(this.el.style.getPropertyValue('--rh-anuncio')!==y)this.el.style.setProperty('--rh-anuncio',y);}
+    }
     return this.zonesCache;
   }
   /** The zones only when they changed since the last call (resize, rotation, HUD part resized), else undefined. */

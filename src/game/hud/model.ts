@@ -20,6 +20,11 @@ export interface HudContext {
   network?:string;
   /** Out or watching: the teammate the camera follows ("Assistindo: Tia"), set 3 s after the out notice (camera-segue). */
   watching?:string;
+  /**
+   * The real game draws falls and rescues in the world and on the edge arrows (UX-resgate-e-ping): the fall/rescue
+   * banners leave the top band; connection, out and watching notices stay. The sandbox keeps the banners.
+   */
+  worldRescue?:boolean;
   /** Sticker of a critter kind (data URL of the horde atlas texture), for "what got you"; undefined = text only. */
   critterIcon?(kind:string):string|undefined;
 }
@@ -114,8 +119,17 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
 /** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
 export const watchingText=(name:string)=>`Assistindo: ${name.trim().split(/\s+/)[0]?.slice(0,9)??''}`;
 
-export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string):ReviveBanner|undefined{
+export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
+  if(worldRescue){
+    // Falls and rescues live in the world now (ring, column, "Você, 18 s" ficha, Me salva button, edge arrows).
+    const self=view.players.find(p=>p.id===localId);
+    if(self?.downed&&!self.eliminated)return undefined;
+    if((self?.eliminated||self?.spectator)&&watching)return {kind:'ally',key:`watching:${watching}`,text:watchingText(watching),seconds:Infinity,progress:0,urgent:false};
+    if(self?.eliminated)return {kind:'self',key:'out',text:OUT_TEXT,seconds:Infinity,progress:0,urgent:false};
+    if(self?.spectator)return {kind:'ally',key:'watch',text:WATCH_TEXT,seconds:Infinity,progress:0,urgent:false};
+    return undefined;
+  }
   const alerts=reviveAlerts(view,localId),self=view.players.find(p=>p.id===localId);
   const own=alerts.find(a=>a.kind==='self');
   if(own){

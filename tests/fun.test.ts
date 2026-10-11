@@ -136,3 +136,20 @@ test('line throttle keeps balloons rare but never mutes falls and rescues',()=>{
   // Clock stepping back does not mute anyone.
   const back=new LineThrottle();assert.ok(back.allow(line('a','levelUp'),1e6));assert.ok(back.allow(line('a','levelUp'),10));
 });
+import {SOS_COOLDOWN_MS,SOS_SHOW_MS,SosBoard,parseSos} from '../src/game/fun/sos.ts';
+test('"Me salva" pings: strict parsing, one ping per caído, the same relay counted once, lit for a few seconds',()=>{
+  assert.equal(SOS_COOLDOWN_MS,3000);
+  assert.deepEqual(parseSos({t:'sos',id:'a',x:1.5,y:2,tick:40}),{id:'a',x:1.5,y:2,tick:40});
+  for(const bad of [null,{t:'sos'},{t:'sos',id:'',x:1,y:1,tick:1},{t:'sos',id:'a',x:NaN,y:1,tick:1},{t:'sos',id:'a',x:1,y:1,tick:1.5},{t:'cast',id:'a',x:1,y:1,tick:1},{t:'sos',id:'x'.repeat(65),x:1,y:1,tick:1}])
+    assert.equal(parseSos(bad),undefined);
+  const board=new SosBoard();
+  assert.equal(board.add({id:'a',x:1,y:1,tick:10},0),true);
+  assert.equal(board.add({id:'a',x:1,y:1,tick:10},50),false,'a resend of the same ping is not news');
+  assert.ok(board.get('a',SOS_SHOW_MS-1));assert.equal(board.get('a',SOS_SHOW_MS),undefined,'goes out after SOS_SHOW_MS');
+  assert.equal(board.add({id:'a',x:2,y:1,tick:90},5000),true);assert.equal(board.get('a',5001)?.x,2,'a newer ping replaces it');
+  board.forget('a');assert.equal(board.get('a',5002),undefined);
+});
+test('the button gate uses the same 3 s as the room (EmoteGate)',()=>{
+  const gate=new EmoteGate(SOS_COOLDOWN_MS);
+  assert.equal(gate.tryUse('me',0),true);assert.equal(gate.tryUse('me',2999),false);assert.equal(gate.tryUse('me',3000),true);
+});

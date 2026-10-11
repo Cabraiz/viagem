@@ -71,7 +71,7 @@ export class YouMarkers {
         live.add(mark.id);this.last.covered.push(mark.id);
         const ghost=this.ghost(mark.id,sprite);
         ghost.setTexture(sprite.texture.key,sprite.frame.name).setOrigin(sprite.originX,sprite.originY).setPosition(sprite.x,sprite.y)
-          .setScale(sprite.scaleX,sprite.scaleY).setFlipX(sprite.flipX).setDepth(mark.self?SELF_DEPTH:ALLY_DEPTH).setVisible(sprite.visible).setAlpha(.85*sprite.alpha);
+          .setScale(sprite.scaleX,sprite.scaleY).setFlipX(sprite.flipX).setRotation(sprite.rotation).setDepth(mark.self?SELF_DEPTH:ALLY_DEPTH).setVisible(sprite.visible).setAlpha(.85*sprite.alpha);
         top=ghost;
       }
       if(!mark.self)continue;
@@ -128,7 +128,7 @@ export class YouMarkers {
     const depth=top.depth;
     for(let i=0;i<16;i++){
       const copy=this.contour[i],dir=OUTLINE_DIRS[i%8],r=(i<8?STICKER_CSS.breu:STICKER_CSS.papel)*s;
-      copy.setTexture(top.texture.key,top.frame.name).setOrigin(top.originX,top.originY).setScale(top.scaleX,top.scaleY).setFlipX(top.flipX)
+      copy.setTexture(top.texture.key,top.frame.name).setOrigin(top.originX,top.originY).setScale(top.scaleX,top.scaleY).setFlipX(top.flipX).setRotation(top.rotation)
         .setPosition(top.x+dir.x*r,top.y+dir.y*r).setDepth(depth-(i<8?.2:.1)).setAlpha(top.alpha).setVisible(top.visible);
     }
     this.last.contour=top.visible;

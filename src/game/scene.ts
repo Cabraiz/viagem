@@ -18,6 +18,7 @@ import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,facingFrom} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
 import {secondsLeft} from './hud/model.ts';
+import {DownedLayer,type DownedMark} from './render/downed.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -114,6 +115,11 @@ export class IslandScene extends Phaser.Scene {
   private sosScreens:{x:number;y:number}[]=[];
   private lastFeet?:Point;
   private facing=Math.PI/2;
+  /** Caídos in the world: rescue ring, progress and light column (UX-resgate-e-ping). */
+  private downedLayer?:DownedLayer;
+  private downedMarks:DownedMark[]=[];
+  /** The local caído's own ficha ("Você, 18 s") under its body: the counter left the top banner. */
+  private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
@@ -158,7 +164,8 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id)});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
-      const release=()=>{this.horde?.destroy();this.horde=undefined;this.you?.destroy();this.you=undefined;};
+      this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
+      const release=()=>{this.horde?.destroy();this.horde=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -229,6 +236,12 @@ export class IslandScene extends Phaser.Scene {
     const area=this.usefulArea??{x:this.canvasOffset.x,y:this.canvasOffset.y,width:viewport.width,height:viewport.height};
     return {screen,...edgeOf(screen,area,inset)};
   }
+  /** The current view (0..3), for the minimap and the edge arrows. */
+  get cameraView(){return this.view;}
+  /** What the camera follows (world units): the hero, or the teammate watched while out. Distances count from here. */
+  focusPoint():Point{return this.watchPoint??this.position;}
+  /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
+  say(id:string,line:string){this.horde?.say(id,line);}
   setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
   goTo(target:Point){
     if(this.paused||!this.actor)return;
@@ -395,7 +408,11 @@ export class IslandScene extends Phaser.Scene {
     const target=smooth,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
-    this.actor.setAlpha(!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4);
+    const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
+    // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
+    this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
+    const marks=this.downedMarks;marks.length=0;
+    if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
     for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
     for(const player of view.players){
@@ -405,13 +422,22 @@ export class IslandScene extends Phaser.Scene {
       if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
-      objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(!player.spectator&&player.online&&player.hp?1:.4);
+      const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
+      objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
+      if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+    }
+    this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom));
+    // Own caído ficha: same SOS ficha as an ally's, with "Você" and the seconds left.
+    if(selfDown||this.selfLabel){
+      const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
+      label.setSos(selfDown).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
+        .anchor(q.x,q.y+15,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
     this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();

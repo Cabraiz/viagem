@@ -388,3 +388,33 @@ test('the client accepts only the room\'s exact terrain from the welcome descrip
   assert.match(String(terrainFor({...welcome.world,terrainVersion:999})),/Atualiza a página/);
   assert.match(String(terrainFor(undefined)),/Atualiza a página/);
 });
+test('"Me salva" (UX-resgate-e-ping): only a caído pings, the room relays its own position once to everyone, 3 s anti-spam',()=>{
+  const room=new Room(1000),peers=[peer(),peer(),peer()];peers.forEach((p,i)=>join(room,p,`P${i}`));
+  const sos=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='sos');
+  const id=idOf(peers[0]);
+  command(room,peers[0],{t:'sos',round:1},1150);assert.equal(sos(peers[1]).length,0,'no ping in the lobby');
+  startRun(room,peers);
+  const me=room.sim.players.get(id)!;
+  command(room,peers[0],{t:'sos',round:1},5000);assert.equal(sos(peers[1]).length,0,'standing players do not ping');
+  me.invulnerableUntil=0;room.sim.world.damagePlayer(id,1e6,'test');assert.ok(me.downed);
+  command(room,peers[0],{t:'sos',round:999,x:99,y:99},5000);assert.equal(sos(peers[1]).length,0,'stale round dropped');
+  command(room,peers[0],{t:'sos',round:1,x:99,y:99},5000);
+  for(const p of peers){const got=sos(p);assert.equal(got.length,1,'once on every client, the sender included');
+    assert.equal(got[0].id,id);assert.equal(got[0].x,Math.round(me.x*100)/100);assert.equal(got[0].y,Math.round(me.y*100)/100);assert.ok(Number.isSafeInteger(got[0].tick));}
+  command(room,peers[0],{t:'sos',round:1},6000);command(room,peers[0],{t:'sos',round:1},7999);
+  assert.equal(sos(peers[2]).length,1,'anti-spam: nothing inside 3 s');
+  command(room,peers[0],{t:'sos',round:1},8000);assert.equal(sos(peers[2]).length,2,'again after 3 s');
+  // Another player's fall has its own clock; a non-caído never relays.
+  command(room,peers[1],{t:'sos',round:1},8001);assert.equal(sos(peers[2]).length,2);
+});
+test('lab commands (down, move) only work in a lab room and only in combat',()=>{
+  const prod=new Room(1000),a=peer();join(prod,a);startRun(prod,[a]);
+  const p=prod.sim.players.get(idOf(a))!,at={x:p.x,y:p.y};
+  command(prod,a,{t:'lab',down:true,to:{x:p.x+1,y:p.y}},4000);assert.equal(p.downed,undefined);assert.deepEqual({x:p.x,y:p.y},at);
+  const lab=new Room(1000,undefined,{lab:true}),b=peer();join(lab,b);
+  command(lab,b,{t:'lab',down:true},1150);assert.equal(lab.sim.players.get(idOf(b))!.downed,undefined,'not in the lobby');
+  startRun(lab,[b]);const q=lab.sim.players.get(idOf(b))!,start={x:q.x,y:q.y};
+  command(lab,b,{t:'lab',to:{x:start.x+.5,y:start.y}},4000);assert.ok(Math.abs(q.x-(start.x+.5))<1e-9);
+  command(lab,b,{t:'lab',to:{x:1e6,y:0}},4000);assert.ok(q.x<100,'never into the void');
+  command(lab,b,{t:'lab',down:true},4000);assert.ok(q.downed);
+});

@@ -6,6 +6,8 @@ import { classes } from '../src/classes.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {walkable} from '../src/game/world.ts';
 import {sha256Hex} from '../src/game/net/sha256.ts';
+import {downPlayer} from '../src/game/sim/revive.ts';
+import {SOS_COOLDOWN_MS} from '../src/game/fun/sos.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -83,6 +85,10 @@ export class Room {
   private readonly labHorde:number;
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
+  /** wrangler dev with ALLOW_LOCAL (and tests): lab commands such as {t:'lab',down:true} are accepted. */
+  private readonly labOn:boolean;
+  /** Last "Me salva" ping per player (wall clock), for the room-side anti-spam (UX-resgate-e-ping). */
+  private readonly sosAt=new Map<string,number>();
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   private readonly onRoster?:(roster:RoomRoster)=>void;
@@ -92,7 +98,7 @@ export class Room {
   private lostRun=new Map<string,{round:number;level:number}>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
-    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
+    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;
   }
@@ -218,6 +224,11 @@ export class Room {
       if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();this.pushRun();}
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
+    else if(m.t==='sos')this.sos(c,m,now);
+    // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, for the rescue acceptance shots.
+    // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
+    // acceptance shots of the off-screen and rescue cards (six players spread over the map, one caído far away).
+    else if(m.t==='lab'&&this.labOn&&this.run.snapshot().phase==='combat')this.labCommand(c.playerId,m);
     else if(m.t==='leave'){this.rosterDirty=true;this.sim.remove(c.playerId);this.run.leave(c.playerId);this.syncSpectators();this.sessions.delete(c.playerId);this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
   /**
@@ -231,6 +242,27 @@ export class Room {
     if(!Number.isInteger(m.index)||m.index<0||m.index>MAX_CHOICE_INDEX)return;
     this.sim.choose(c.playerId!,m.offer,m.index);
     this.pushOffers(c,true);
+  }
+  private labCommand(id:string,m:any){
+    const p=this.sim.players.get(id);if(!p)return;
+    if(m.down===true)downPlayer(this.sim.world,p);
+    const to=m.to;
+    if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&walkable(to,this.sim.terrain)){p.x=to.x;p.y=to.y;this.sim.setOnline(id,true);}
+  }
+  /**
+   * "Me salva" (UX-resgate-e-ping): a caído in combat asks for help; the room relays {t:'sos',id,x,y,tick} once to
+   * everyone in the room (the sender included, as its confirmation), at most once per SOS_COOLDOWN_MS per player.
+   * The position is the room's, never the client's. Anything else (standing, out, stale round, flood) is dropped.
+   */
+  private sos(c:Connection,m:any,now:number){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    const p=this.sim.players.get(c.playerId!);
+    if(!p||!p.downed||p.eliminated||p.spectator)return;
+    const last=this.sosAt.get(p.id);
+    if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS)return;
+    this.sosAt.set(p.id,now);
+    this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){
@@ -271,7 +303,7 @@ export class Room {
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
   expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.rosterDirty=true;this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
-  private resetRun(){this.sim.resetRun();this.ids.reset();}
+  private resetRun(){this.sim.resetRun();this.ids.reset();this.sosAt.clear();}
   advance(now=Date.now()){
     const started=performance.now();
     for(const c of [...this.connections.values()]){

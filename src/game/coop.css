@@ -66,3 +66,14 @@
 .coop-wait-news span{font:600 var(--t-13)/1.3 var(--f-sistema)}
 .coop-wait-news[hidden]{display:none}
 @media(max-height:500px){.coop-wait-news{margin:4px 0;padding:6px 10px}}
+/* "Me salva" (UX-resgate-e-ping): while caído the skill button's place becomes a big ping button, same circle (thumb),
+   Laranja Cone body (urgência) with the boia sticker and the word; the ring is the 3 s anti-spam. */
+.explore-actions{position:relative}
+#coop-sos{position:absolute;right:0;bottom:0;box-sizing:border-box;width:var(--botao-habilidade);height:var(--botao-habilidade);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;border:2px solid var(--c-breu);border-radius:var(--r-circulo);background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel),var(--s-2);font:800 var(--t-13)/1.05 var(--f-sistema);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:pointer}
+#coop-sos[hidden]{display:none}
+#coop-sos .ic{width:40px;height:40px}
+#coop-sos:active{transform:translateY(2px)}
+#coop-sos .sos-ring{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);transform:rotate(-90deg);overflow:visible;pointer-events:none}
+#coop-sos .sos-ring circle{fill:none;stroke-width:6px;stroke:var(--c-breu);stroke-dasharray:var(--sos-left,0) 100}
+#coop-sos[aria-disabled=true]{background:color-mix(in srgb,var(--c-cone) 55%,var(--c-papel))}
+.coop-shell:has(#coop-sos:not([hidden])) #coop-attack{visibility:hidden}

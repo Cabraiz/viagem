@@ -5,6 +5,7 @@ import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from './protocol4.ts';
 import {InputBatcher} from './input-track.ts';
+import {parseSos,type SosPing} from '../fun/emotes.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
 /**
@@ -104,6 +105,8 @@ export class CoopClient {
   onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
   /** Last answer to a skill tap. */
   lastCast?:{seq:number;ok:boolean;readyTick:number};
+  /** "Me salva" pings relayed by the room (UX-resgate-e-ping), the local player's own included. */
+  onSos:(ping:SosPing)=>void=()=>{};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
   readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
@@ -150,6 +153,7 @@ export class CoopClient {
       else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='replaced')this.replaced(ws);
       else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
+      else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
@@ -270,6 +274,14 @@ export class CoopClient {
     }
     const until=this.batcher.waitingUntil;
     if(until!==undefined&&!this.flushTimer)this.flushTimer=setTimeout(()=>{this.flushTimer=undefined;this.flushInput();},Math.max(0,until-performance.now()));
+  }
+  /**
+   * "Me salva" from a caído (UX-resgate-e-ping): {t:'sos',round}. The room checks the fall and the 3 s anti-spam and
+   * relays the position to everyone. False when there is nothing to send it on (offline, out of combat).
+   */
+  sos(){
+    if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.socket.send(JSON.stringify({t:'sos',round:this.run.round}));return true;
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   rematch(){this.runCommand({t:'rematch'});}

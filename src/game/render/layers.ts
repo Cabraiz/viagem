@@ -433,6 +433,8 @@ export class HordeRenderer{
    * One per caster every SKILL_BUBBLE_GAP_MS (D-013); a newer line from the same caster replaces theirs.
    */
   private skillBubbleAt=new Map<string,number>();
+  /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
+  say(player:string,line:string){this.spawnSkillBubble(player,line);}
   private spawnSkillBubble(player:string,line:string){
     const last=this.skillBubbleAt.get(player)??-Infinity;
     if(this.now-last<SKILL_BUBBLE_GAP_MS)return;

@@ -6,6 +6,10 @@
  * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + THUMB_GAP;
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. The follow camera
  *   (D-019, UX-camera-segue) centres the hero on it (IslandScene.usefulArea, framing.ts FollowCamera).
+ * - minimap (ORQ-minimapa): portrait, a status readout of the top band under the gear (the band grows by it);
+ *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there).
+ * - edge arrows (UX-bordas-fora-da-tela): the only HUD besides the offer and the result allowed inside the useful area,
+ *   on its inner rim and never over the hero (± HERO_MARGIN); not touch targets.
  * Pure geometry plus one DOM reader (measureZones) and the audit the acceptance scripts run on the real scene.
  */
 
@@ -52,6 +56,8 @@ export interface ZoneInput {
   chip?:Rect;
   /** Safe-area insets (notch), CSS px. */
   safe?:{top:number;right:number;bottom:number;left:number};
+  /** The minimap ficha (ORQ-minimapa): part of the top band in portrait; in landscape it only trims the useful area. */
+  minimap?:Rect;
   /** The open offer window (round offer in the intermission, or a level offer opened from the chip). */
   offer?:Rect;
 }
@@ -63,7 +69,8 @@ export interface ScreenZones {
 /** The zones for one layout (all CSS px, viewport coordinates). */
 export function computeZones(input:ZoneInput):ScreenZones{
   const {viewport}=input,orientation=orientationOf(viewport),safe=input.safe??{top:0,right:0,bottom:0,left:0};
-  const status=union(input.status)??{x:0,y:0,width:viewport.width,height:safe.top};
+  const portrait=orientation==='portrait';
+  const status=union([...input.status,portrait?input.minimap:undefined])??{x:0,y:0,width:viewport.width,height:safe.top};
   const announceTop=bottom(status)+4,announce={x:safe.left,y:announceTop,width:viewport.width-safe.left-safe.right,height:ANNOUNCE_HEIGHT[orientation]};
   const top={x:0,y:0,width:viewport.width,height:bottom(announce)};
   const leftThumb=input.joystick&&inflate(input.joystick,THUMB_GAP);
@@ -74,6 +81,9 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const team=input.team,column=!!team&&team.height>team.width;
   let left=safe.left,rightEdge=viewport.width-safe.right;
   if(team&&column){if(team.x<viewport.width/2)left=Math.max(left,right(team)+8);else rightEdge=Math.min(rightEdge,team.x-8);}
+  // Landscape minimap below the top band on the right: the field stops before it (it normally already sits past the right thumb).
+  const mm=!portrait&&input.minimap&&bottom(input.minimap)>bottom(top)?input.minimap:undefined;
+  if(mm&&mm.x>viewport.width/2)rightEdge=Math.min(rightEdge,mm.x-8);
   const floor=Math.min(viewport.height-safe.bottom,team&&!column?team.y-8:Infinity);
   const yTop=bottom(top);
   let aBottom=floor;for(const thumb of [leftThumb,thumbR])if(thumb)aBottom=Math.min(aBottom,thumb.y);
@@ -184,9 +194,9 @@ export function measureZones(doc:Document=document):ScreenZones{
   return computeZones({
     viewport:{width:innerWidth,height:innerHeight},
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
-    team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack')),
+    team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
-    offer:rectOf(q('.rh-offer')),
+    offer:rectOf(q('.rh-offer')),minimap:rectOf(q('.rh-minimap')),
   });
 }
 
@@ -216,6 +226,11 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   // The open window may sit in the field but never on the hero: the camera moves the hero beside it (UX onda 4).
   add('.rh-offer','oferta',{allowedInPlay:true,overHeroFails:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-offer-chip','chip',{target:true});add('.rh-offer-hint','dica-do-chip',{allowedInPlay:true});
-  add('.fun-emote-toggle','emote',{target:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
+  add('.fun-emote-toggle','emote',{target:true});
+  // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
+  add('#coop-sos','me-salva',{thumb:true,target:true});
+  add('.rh-minimap','minimapa',{target:true});
+  // Edge arrows ride the useful area's inner rim by contract, never over the hero.
+  add('.rh-edge:not([hidden])','seta',{allowedInPlay:true,overHeroFails:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;
 }

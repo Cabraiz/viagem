@@ -17,10 +17,12 @@ export const EMOTES:readonly EmoteDef[]=Object.freeze([
   {id:'foimal',label:'Foi mal',icon:'suor',tone:'sorry'},
 ]);
 export const EMOTE_COOLDOWN_MS=2000;
+export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from './sos.ts';
 /** Balloon lifetime on screen. */
 export const BALLOON_MS=2200;
 export const isEmoteId=(value:unknown):value is EmoteId=>typeof value==='string'&&EMOTES.some(e=>e.id===value);
 export const emoteDef=(id:EmoteId)=>EMOTES.find(e=>e.id===id)!;
+
 
 /** Per-player anti-spam (2 s). The client greys the button; the room (VGM-043) can drop floods with the same rule. */
 export class EmoteGate {

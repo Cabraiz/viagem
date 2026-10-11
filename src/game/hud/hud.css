@@ -539,3 +539,58 @@
 /* Resultado de 5-6 na paisagem a 100%: com 2 prêmios por card a grade 3×2 passava 4 px e rolava (audit-layout, também na
    main 5d94f26). Mesma regra que o DSG-tokens já usa a 125%: fica o 1º prêmio. */
 @media(max-height:500px){.rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}}
+
+/* ---------- Minimapa (ORQ-minimapa) ----------
+   A ficha (contador sobre o mapa: Breu 88%, borda Papel, raio 6), tocável (alterna perto/longe). Retrato: debaixo da
+   engrenagem, à direita da barra de XP, e a faixa de cima cresce até ela (zones.ts). Paisagem: debaixo da engrenagem,
+   fora da área útil e longe do botão de habilidade. Formas com sentido além da cor (UX B8). */
+.rh-minimap{position:absolute;top:calc(var(--rh-t) + 64px);right:var(--rh-r);width:76px;height:76px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;overflow:hidden}
+.rh-minimap svg{display:block;width:100%;height:100%}
+.rh-minimap:active{transform:translateY(2px)}
+.rh-minimap .mm-land{fill:color-mix(in srgb,var(--c-papel) 20%,transparent);stroke:color-mix(in srgb,var(--c-papel) 50%,transparent);stroke-width:1}
+.rh-minimap .mm-range{fill:none;stroke:color-mix(in srgb,var(--c-papel) 28%,transparent);stroke-width:.8}
+.rh-minimap-far .mm-range{stroke-width:.5}
+.mm-voce circle{fill:var(--c-voce);stroke:var(--c-papel);stroke-width:1.6}
+.mm-aliado circle{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
+.mm-caido circle{fill:none;stroke:var(--c-cone);stroke-width:2.6}
+.mm-caido .mm-dot{fill:var(--c-papel);stroke:none}
+.mm-ping circle:first-child{stroke:var(--c-papel);stroke-width:3.2}
+.mm-base path{fill:var(--c-papel);stroke:var(--c-lilas);stroke-width:1.4}
+.mm-chefe path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1.2}
+.mm-spawn path{fill:var(--c-cone);stroke:var(--c-breu);stroke-width:1}
+.mm-bau rect{fill:none;stroke:var(--c-papel);stroke-width:1.6}
+.mm-rim{opacity:.75}
+@media (min-height:501px){
+  /* The XP bar already stops 82 px from the right; the boss bar does the same so the minimap has its corner. */
+  .rh:has(>.rh-minimap) .rh-boss{align-self:stretch;width:auto;margin:0 calc(var(--rh-r) + 82px) 0 var(--rh-l)}
+  /* The announcement slot starts under the top band, which now ends under the minimap (RunHud sets --rh-anuncio). */
+  .rh:has(>.rh-minimap) .rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 144px))}
+}
+@media (max-height:500px){
+  .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
+  /* The offer window takes the right column: the minimap steps aside while it is open (the arrows stay). */
+  .rh:has(.rh-offer:not([hidden])) .rh-minimap{visibility:hidden}
+}
+
+/* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------
+   Fichas na borda de dentro da área útil, com adesivo e distância e um bico que aponta o alvo. Nenhuma recebe toque.
+   Caído e perigo levam o anel Laranja Cone por fora (como a ficha SOS do mapa); o resto é ficha comum. */
+.rh-edges{position:absolute;inset:0;pointer-events:none}
+.rh-edge{position:absolute;left:0;top:0;width:calc(44px + 32px * var(--t-escala));height:36px;display:flex;align-items:center;gap:4px;padding:0 6px 0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);font:700 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:var(--s-texto);white-space:nowrap}
+.rh-edge-face{flex:none;width:26px;height:26px;display:grid;place-items:center}
+.rh-edge-face .ic{width:26px;height:26px}
+.rh-edge-face img{width:26px;height:26px;border-radius:var(--r-circulo);border:2px solid var(--c-papel);background:var(--c-papel);object-fit:cover;box-shadow:0 0 0 1px var(--c-breu)}
+.rh-edge-num{flex:1;text-align:center;font-size:var(--t-13)}
+.rh-edge-tip{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0}
+.rh-edge-tip::before,.rh-edge-tip::after{content:'';position:absolute;width:0;height:0;border-style:solid;border-color:transparent}
+.rh-edge-tip::before{left:-1px;top:-9px;border-width:9px 0 9px 13px;border-left-color:var(--c-breu)}
+.rh-edge-tip::after{left:-1px;top:-6px;border-width:6px 0 6px 9px;border-left-color:var(--c-papel)}
+.rh-edge:is([data-kind=caido],[data-kind=chefe],[data-kind=spawn]){box-shadow:0 0 0 2px var(--c-cone),var(--s-2)}
+.rh-edge-danger{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+.rh-edge-tag{position:absolute;left:-4px;top:-15px;padding:1px 5px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+.rh-edge[data-side=top] .rh-edge-tag{top:auto;bottom:-15px}
+.rh-edge-count{position:absolute;right:-8px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+/* A fresh "Me salva": two short bumps, then still (no infinite loop, design §2.5). */
+.rh-edge-ping{animation:rh-edge-bump .22s ease-out 2}
+@keyframes rh-edge-bump{50%{scale:1.14}}
+@media (prefers-reduced-motion:reduce){.rh-edge-ping{animation:none}}

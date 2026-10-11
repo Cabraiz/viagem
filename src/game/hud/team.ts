@@ -92,7 +92,7 @@ export function createReviveAlerts():HudPart{
       for(const alert of fresh)announced.add(alert.playerId);
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
-    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching);
+    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching,ctx.worldRescue);
     row.hidden=!banner;
     if(!banner)return;
     if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;

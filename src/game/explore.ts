@@ -14,6 +14,7 @@ import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from '../ui/icon.ts';
+import {RescueBoard} from './hud/rescue.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -43,6 +44,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
   let skill:SkillButton|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
+  let rescue:RescueBoard|undefined;
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   // Dev overlay of the screen zones (UX-zonas-tela): ?zonas in the URL.
@@ -61,7 +63,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
+    // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
+    rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     hud.el.hidden=true;
     // Out or watching: a tap on a teammate's portrait makes the camera follow them (UX onda 4).
     // Capture phase: the HUD panels stop their own events from leaking into the game (VGM-040).
@@ -115,7 +119,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();
-    net?.leave();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
   const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
@@ -225,6 +229,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
         if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(phase==='combat')rescue?.view(view);
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},

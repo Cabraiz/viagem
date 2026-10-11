@@ -109,6 +109,8 @@ const SCENES=[
   ['hud chefe, 6p','/?sandbox=hud&players=6&state=boss&frozen=1','.rh',13],
   ['hud resultado, 6p','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13],
   ['hud resultado, 1p','/?sandbox=hud&players=1&state=result&frozen=1','.rh',13],
+  ['hud setas na borda e minimapa (bordas), 6p','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13],
+  ['hud setas na borda, vista 2','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas&vista=1','.rh',13],
   ['emotes abertos','/?sandbox=fun&players=6&state=open&frozen=1','.fun-emotes,.fun-balloons',13],
   ['balões','/?sandbox=fun&players=6&state=balloons&frozen=1','.fun-balloons',13],
 ];

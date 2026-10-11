@@ -12,6 +12,7 @@ import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
 import {isRecipeId} from '../src/game/sim/stonewards/rules.ts';
+import type {ZueiraLab} from '../src/game/sim/zueira.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -37,6 +38,8 @@ export interface RoomOptions {
    * the map 100 or 3 000 units out (terreno-em-blocos prints) without walking there.
    */
   labOffset?:{x:number;y:number};
+  /** Lab only (wrangler dev with ALLOW_LOCAL and LAB_ZUEIRA "apagao,boletos,promo"): those zueira events, one per round from round 2 (VGM-053B). */
+  labZueira?:ZueiraLab;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -113,6 +116,7 @@ export class Room {
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
+    if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;
   }
@@ -350,9 +354,9 @@ export class Room {
     }
     this.expire(now);
     // Nobody left to play (the last participant's session expired; late arrivals are spectators): a defeat, not ~18 min of empty combat.
-    if(this.run.snapshot().phase==='combat'&&!this.run.snapshot().members.some(m=>!m.spectator)){if(this.run.finish('defeat'))this.announce();}
+    if(this.run.snapshot().phase==='combat'&&!this.run.snapshot().members.some(m=>!m.spectator)){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();}
     // The room is about to close: end the run now so the result is announced before the 4004.
-    else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout'))this.announce();}
+    else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout',this.sim.shameMoment()))this.announce();}
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
     if(this.run.snapshot().phase==='combat'){
       if(this.labHorde)this.fillHorde();
@@ -362,9 +366,9 @@ export class Room {
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
       const outcome=this.sim.outcome;
-      if(outcome&&this.run.finish(outcome))this.announce();
+      if(outcome&&this.run.finish(outcome,this.sim.shameMoment()))this.announce();
     }
-    const transition=this.run.step();
+    const transition=this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
     if(transition.started){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();
     if(++this.ticks%PRUNE_EVERY===0)this.prune();

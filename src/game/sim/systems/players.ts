@@ -9,7 +9,11 @@ import type {SimPlayer,SimSystem} from '../types.ts';
 import {castSkill} from '../skills.ts';
 
 /** 'players' runs before the contract systems, so enemies react to this tick's positions. */
-export const RUN_ORDER=['players',...SYSTEM_ORDER] as const;
+/**
+ * Systems of a horde run: the players' moves first, then SYSTEM_ORDER with the zueira events (VGM-053B) right after
+ * the director (the round it just moved) and before the pickups (the boletos and coxinhas it drops are live this tick).
+ */
+export const RUN_ORDER=['players',SYSTEM_ORDER[0],'zueira',...SYSTEM_ORDER.slice(1)] as const;
 
 /** Protocol 3 input. `attack` is accepted for compatibility but weapons fire automatically. */
 export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}

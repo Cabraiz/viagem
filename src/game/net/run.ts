@@ -1,4 +1,5 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
+import type {ShameMoment} from '../sim/shame.ts';
 export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
@@ -15,6 +16,8 @@ export interface RunMember {id:string;online:boolean;ready:boolean;spectator:boo
 export interface RunState {
   round:number;phase:RunPhase;elapsed:number;remaining:number;
   members:RunMember[];outcome?:RunOutcome;resultId?:string;
+  /** Result only (VGM-053B): the run's most embarrassing moment, from the simulation. */
+  shame?:ShameMoment;
 }
 
 export class RunLifecycle {
@@ -27,6 +30,7 @@ export class RunLifecycle {
   private countdown=RUN_COUNTDOWN_TICKS;
   private outcome?:RunOutcome;
   private resultId?:string;
+  private shame?:ShameMoment;
   private readonly roomId:string;
   private readonly durationTicks:number;
   constructor(roomId:string,durationTicks=RUN_DURATION_TICKS){
@@ -65,8 +69,8 @@ export class RunLifecycle {
       for(const member of this.members.values())member.spectator=false;
     }
   }
-  /** One call per server tick, independent of packet arrivals or rendering rate. */
-  step():{started:boolean;finished:boolean}{
+  /** One call per server tick, independent of packet arrivals or rendering rate. `shame` goes with a timeout result. */
+  step(shame?:ShameMoment):{started:boolean;finished:boolean}{
     if(this.phase==='lobby'||this.phase==='countdown'){
       let crossed=false;
       for(const m of this.members.values())if(!m.online){const n=(this.away.get(m.id)??0)+1;this.away.set(m.id,n);crossed||=n===LOBBY_AWAY_TICKS;}
@@ -81,14 +85,14 @@ export class RunLifecycle {
       }
     }else if(this.phase==='combat'){
       this.elapsed++;
-      if(this.elapsed>=this.durationTicks)return {started:false,finished:this.finish('timeout')};
+      if(this.elapsed>=this.durationTicks)return {started:false,finished:this.finish('timeout',shame)};
     }
     return {started:false,finished:false};
   }
   /** This method accepts simulation output, never a client message. True exactly once per run (the first outcome wins). */
-  finish(outcome:RunOutcome){
+  finish(outcome:RunOutcome,shame?:ShameMoment){
     if(this.phase!=='combat')return false;
-    this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;
+    this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;this.shame=shame&&{...shame};
     for(const member of this.members.values())member.ready=false;
     return true;
   }
@@ -96,13 +100,14 @@ export class RunLifecycle {
   rematch(id:string,round:number){
     if(this.phase!=='result'||round!==this.round||!this.members.get(id)?.online)return false;
     this.round++;this.phase='lobby';this.elapsed=0;this.countdown=RUN_COUNTDOWN_TICKS;
-    this.outcome=undefined;this.resultId=undefined;
+    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;
     for(const member of this.members.values()){member.ready=false;member.spectator=false;}
     return true;
   }
   snapshot():RunState{
     return {round:this.round,phase:this.phase,elapsed:this.elapsed,
       remaining:this.phase==='countdown'?this.countdown:Math.max(0,this.durationTicks-this.elapsed),
-      members:[...this.members.values()].map(m=>({...m})),outcome:this.outcome,resultId:this.resultId};
+      members:[...this.members.values()].map(m=>({...m})),outcome:this.outcome,resultId:this.resultId,
+      ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{})};
   }
 }

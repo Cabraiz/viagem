@@ -4,7 +4,7 @@
  * The Room speaks it since VGM-042b (ROOM_PROTOCOL 4): binary frames out, JSON control messages both ways.
  *
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
- *   u8 magic 0x56 'V' | u8 version 4 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
+ *   u8 magic 0x56 'V' | u8 version 5 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes)
@@ -30,7 +30,11 @@ import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../si
 import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
 
-export const PROTOCOL_VERSION=4;
+/**
+ * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
+ * would misread any frame with events. The join handshake refuses other versions with the update message.
+ */
+export const PROTOCOL_VERSION=5;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

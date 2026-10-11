@@ -135,6 +135,7 @@ test('SkillTaps: a tap during the cooldown sends nothing; a tap that cannot go o
   assert.equal(t.tap(true,send,0),'cooling','cooling: "ainda não", no message');assert.equal(sent,0);
   assert.equal(t.tap(false,()=>undefined,0),'off','offline, out of combat or watching (CoopClient.cast refused)');assert.ok(!t.pending);
   assert.equal(t.tap(false,send,10),'sent');assert.equal(sent,1);
+  assert.equal(t.tap(false,send,15),'waiting','a second tap before the answer sends nothing');assert.equal(sent,1);
   assert.equal(t.answer({seq:0,ok:false,readyTick:0},20),undefined,'an answer to an older tap is not ours');
   assert.equal(t.answer({seq:1,ok:false,readyTick:0},30),'none','ok:false: "sem alvo"');
   assert.equal(t.answer({seq:1,ok:false,readyTick:0},40),undefined,'answered once');

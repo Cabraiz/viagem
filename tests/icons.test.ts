@@ -18,6 +18,7 @@ test('the sprite paints only through token classes: no hex, rgb or named colors 
   assert.doesNotMatch(svg,/\b(rgba?|hsla?)\(/i);
   assert.doesNotMatch(svg,/(fill|stroke)="(?!none")[^"]+"/,'no paint attributes besides none');
   assert.doesNotMatch(svg,/\p{Extended_Pictographic}|✦/u);
+  assert.doesNotMatch(svg,/style=/,'no inline style: one contour for every sticker (design onda 5)');
 });
 
 test('icon() is a decorative <use> unless labelled; compass carries the view angle',()=>{

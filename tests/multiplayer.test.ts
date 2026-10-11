@@ -79,15 +79,16 @@ test('message flooding and oversized payloads close connection',()=>{
 
 test('older clients are rejected before joining a procedural room',()=>{
   const room=new Room(1000,42);
-  // Protocol 3 is the JSON room before VGM-042b: a tab left open across the release gets a readable refusal, no frames.
-  for(const version of [1,3,5]){
+  // Protocol 3 is the JSON room before VGM-042b and 4 the frames without event sizes (before E7): a tab left open
+  // across the release gets a readable refusal, no frames.
+  for(const version of [1,3,4,6]){
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
     assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
-  assert.equal(ROOM_PROTOCOL,4);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
+  assert.equal(ROOM_PROTOCOL,5);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);

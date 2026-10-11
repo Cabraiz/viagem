@@ -536,3 +536,6 @@
 }
 /* DSG-icones-sistema: o relógio-adesivo de 24 px no tempo não aumenta a linha (o resultado de 6 na paisagem não pode rolar). */
 .rh-result-stat .ic{margin:-6px 2px -6px 0}
+/* Resultado de 5-6 na paisagem a 100%: com 2 prêmios por card a grade 3×2 passava 4 px e rolava (audit-layout, também na
+   main 5d94f26). Mesma regra que o DSG-tokens já usa a 125%: fica o 1º prêmio. */
+@media(max-height:500px){.rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}}

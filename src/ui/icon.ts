@@ -24,5 +24,5 @@ export function compass(view:number,options:Omit<IconOptions,'className'>={}):st
   const size=options.size??24,v=((view%4)+4)%4,angle=v*Math.PI/2;
   const nx=+(Math.sin(angle)*15).toFixed(2),ny=+(-Math.cos(angle)*15).toFixed(2);
   const a11y=options.label?`role="img" aria-label="${escape(options.label)}"`:'aria-hidden="true"';
-  return `<svg class="ic${size===24?'':` ic-${size}`} ic-bussola" viewBox="0 0 48 48" ${a11y} focusable="false" data-icon="bussola" data-vista="${v}" style="--vista:${v*90}deg"><use href="#i-bussola"/><g class="ic-agulha"><use href="#i-agulha"/></g><use href="#i-letra-n" transform="translate(${nx} ${ny}) scale(.9)" transform-origin="24 24"/></svg>`;
+  return `<svg class="ic${size===24?'':` ic-${size}`} ic-bussola" viewBox="0 0 48 48" ${a11y} focusable="false" data-icon="bussola" data-vista="${v}" style="--vista:${v*90}deg"><use href="#i-bussola"/><g class="ic-agulha"><use href="#i-agulha"/></g><use href="#i-letra-n" transform="translate(${nx} ${ny}) scale(.62)" transform-origin="24 24"/></svg>`;
 }

@@ -16,7 +16,8 @@ export const NOTE_MS=1200;
 export const ANSWER_MS=5000;
 
 export interface CastAnswer {seq:number;ok:boolean;readyTick:number}
-export type TapResult='sent'|'cooling'|'off';
+/** 'waiting': the last tap is still unanswered; nothing is sent again until the room answers (or ANSWER_MS passes). */
+export type TapResult='sent'|'cooling'|'waiting'|'off';
 /**
  * One tap = one {t:'cast'} with a growing id. A tap during the cooldown sends nothing (the room would only answer
  * ok:false): the button says "ainda não" at once. `send` is CoopClient.cast: it returns undefined when the tap cannot
@@ -26,6 +27,7 @@ export class SkillTaps {
   private waiting?:{id:number;at:number};
   tap(cooling:boolean,send:()=>number|undefined,now:number):TapResult{
     if(cooling)return 'cooling';
+    if(this.waiting&&now-this.waiting.at<=ANSWER_MS)return 'waiting';
     const id=send();
     if(id===undefined)return 'off';
     this.waiting={id,at:now};return 'sent';
@@ -86,7 +88,7 @@ export class SkillButton {
     el.dataset.state='ready';
     // The weapon icon of each class comes with the item stickers (DSG-adesivos-itens); the bread bag is the generic one (§2.4).
     el.innerHTML=`<svg class="skillbtn-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="skillbtn-track" cx="50" cy="50" r="46"/><circle class="skillbtn-fill" cx="50" cy="50" r="46" pathLength="${RING}"/></svg>`
-      +`<span class="skillbtn-face" aria-hidden="true">${icon('sacola',{size:32,className:'skillbtn-icon'})}<span class="skillbtn-time"></span></span><span class="skillbtn-word" aria-hidden="true">${SKILL_WORD}</span>`;
+      +`<span class="skillbtn-face" aria-hidden="true">${icon('sacola',{size:40,className:'skillbtn-icon'})}<span class="skillbtn-time"></span></span><span class="skillbtn-word" aria-hidden="true">${SKILL_WORD}</span>`;
     this.fill=el.querySelector('.skillbtn-fill')!;this.time=el.querySelector('.skillbtn-time')!;this.word=el.querySelector('.skillbtn-word')!;
     this.paint();
   }
@@ -112,6 +114,8 @@ export class SkillButton {
   /** Run reset (rematch): ready, nothing pending. */
   reset(){this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.paint();}
   private flash(note:string,now:number){this.note=note;this.noteUntil=now+NOTE_MS;this.refresh(now,true);}
+  /** The note on screen right now ('' none): CSS reads it to drop the green "ready" ring under "sem alvo". */
+  get shownNote(){return this.el.dataset.note??'';}
   private refresh(now:number,force=false){
     const next=skillState(this.player,this.tick,this.answered);
     const note=now<this.noteUntil?this.note:'';
@@ -121,6 +125,7 @@ export class SkillButton {
   private paint(){
     const s=this.state,note=this.el.dataset.note??'';
     this.el.dataset.state=s.mode;
+    this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
     this.word.textContent=note||SKILL_WORD;

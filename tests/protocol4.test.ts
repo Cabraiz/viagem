@@ -175,7 +175,7 @@ test('truncated, corrupted and random frames are rejected without throwing and w
     assert.doesNotThrow(()=>dec.decode(bad));
   }
   assert.equal(dec.decode(new Uint8Array([1,2,3])).ok,false);
-  assert.equal(dec.decode(Uint8Array.of(0x56,3)).ok,false,'other version');
+  assert.equal(dec.decode(Uint8Array.of(0x56,3)).ok,false,'other version');assert.equal(dec.decode(Uint8Array.of(0x56,4,1,0,0,0,0)).ok,false,'protocol 4 frames (no event sizes) are refused');
   // Flipped bytes may decode to plausible values, but a pristine decoder still accepts the real frame.
   const fresh=new FrameDecoder(),ok=fresh.decode(frame);
   assert.ok(ok.ok);assertSameWorld(ok.view,w.view,enc.ids,'after garbage');

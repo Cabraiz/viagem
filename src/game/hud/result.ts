@@ -82,7 +82,7 @@ export interface ResultRoster {
 /** The owner's buttons on a card: the verb, and the one-tap confirmation with the name. */
 export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},asking:boolean)=>
   asking?(player.bot?`Tirar ${player.name}?`:`Expulsar ${player.name}?`):(player.bot?'Tirar bot':'Expulsar');
-const CONFIRM_MS=3000;
+const CONFIRM_MS=3000,REARM_MS=1500;
 
 const CONFETTI=18;
 const CONFETTI_COLORS=['#f2c94c','#ed6f72','#75b8a6','#9fd8ff','#c8a8ff','#ffb347'];
@@ -227,6 +227,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
         if(armed?.id===player.id&&Date.now()<=armed.until){
           armed=undefined;clearTimeout(disarm);button.disabled=true;
           if(bot)options.onRemoveBot?.(player.id);else options.onKick?.(player.id);
+          // The card goes with the next room state; if it is still here (bad network, refused), the button comes back.
+          disarm=setTimeout(()=>{if(shownResult)renderGrid(shownResult.result,shownResult.ctx);},REARM_MS);
           return;
         }
         armed={id:player.id,until:Date.now()+CONFIRM_MS};clearTimeout(disarm);

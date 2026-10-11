@@ -110,6 +110,8 @@ const escapeHtml=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
  */
 /** How long a chip waits for the confirming tap (ms) before it goes back to the name. */
 export const CONFIRM_MS=3000;
+/** A confirmed chip waits this long for the room before it is tappable again (lost on a bad network, refused). */
+export const REARM_MS=1500;
 export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'>>,options:{origin?:string;now?:()=>number}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
@@ -151,7 +153,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(armed?.id===id&&now()<=armed.until){
       armed=undefined;clearTimeout(disarm);
       if(m.bot)client.removeBot?.(id);else client.kick?.(id);
-      chip.disabled=true;return;
+      // Gone at the next state; still there (offline, refused) after REARM_MS: the chip comes back, never a dead button.
+      chip.disabled=true;clearTimeout(disarm);disarm=setTimeout(()=>{membersKey='';update();},REARM_MS);return;
     }
     armed={id,until:now()+CONFIRM_MS};clearTimeout(disarm);disarm=setTimeout(()=>{armed=undefined;membersKey='';update();},CONFIRM_MS);
     membersKey='';update();

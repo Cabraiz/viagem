@@ -85,7 +85,14 @@ export class RoomBots {
       if(!p)continue;
       view??=sim.botView();
       if(forger===undefined)forger=this.forger(view,minds);
-      const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger});
+      // The person to walk with: the nearest one standing (bots follow people, never each other).
+      let escort:{x:number;y:number}|undefined,near=Infinity;
+      for(const q of view.players){
+        if(sim.bots.has(q.id)||!q.online||q.spectator||q.downed||q.eliminated||q.hp<=0)continue;
+        const at=q as typeof q&{x:number;y:number},d=Math.hypot(at.x-p.x,at.y-p.y);
+        if(d<near){near=d;escort={x:at.x,y:at.y};}
+      }
+      const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort});
       sim.setBotInput(mind.id,d.direction,d.cast);
       if(d.choose)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){

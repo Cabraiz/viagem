@@ -39,6 +39,8 @@ export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 export const SIEGE_REACH=4;
 /** Bots with an even index guard the wall (shorter leash); the others roam. */
 export const GUARD_LEASH=3.5;
+/** A roamer walking with a person (room bots) stays this close to them. */
+export const ESCORT_LEASH=3;
 
 export interface BrainMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
@@ -63,11 +65,16 @@ export interface BrainInput {
    * room bots (D-025) pass their own pick (a bot, never a person) or null when no bot may buy now.
    */
   forger?:string|null;
+  /**
+   * The person this bot walks with (room bots, D-025: the nearest standing person). In combat a roamer (odd index)
+   * follows them once they leave the wall's leash; guards (even index) keep the wall. Unset: wall only (protocol bots).
+   */
+  escort?:Point;
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'dodge'|'unstick';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'dodge'|'unstick'|'escort';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -181,7 +188,10 @@ export function decide(input:BrainInput):Decision{
     return finish(decision,input);
   }
   // Combat.
-  const boss=view.enemies.some(e=>e.boss),guard=index%2===0,leash=boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
+  const boss=view.enemies.some(e=>e.boss),guard=index%2===0;
+  // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
+  const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH,anchor=escorting?input.escort!:home;
+  const leash=escorting?ESCORT_LEASH:boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
   const close=view.enemies.filter(e=>dist(e,at)<DANGER);
   // Skill: something close and it is ready (the room answers whether it went off).
   if(close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
@@ -206,20 +216,21 @@ export function decide(input:BrainInput):Decision{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
     const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
-    const target=siege??nearest(view.enemies.filter(e=>dist(e,home)<leash+3&&dist(e,at)<ENGAGE),at);
+    const target=siege??nearest(view.enemies.filter(e=>dist(e,anchor)<leash+3&&dist(e,at)<ENGAGE),at);
     if(target&&dist(target,at)>DANGER+(siege?.2:.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.
-    const pickup=nearest(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,home)<leash+4),at);
+    const pickup=nearest(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<leash+4),at);
     if(pickup&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
-    // Keep moving around the wall (a still target gets surrounded).
-    const r=dist(at,home);
-    if(r>.5){const t={x:-(at.y-home.y)/r*memory.orbit,y:(at.x-home.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
+    // Keep moving around the wall, or the person walked with (a still target gets surrounded).
+    const r=dist(at,anchor);
+    if(r>.5){const t={x:-(at.y-anchor.y)/r*memory.orbit,y:(at.x-anchor.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
     else want=add(want,{x:.3*memory.orbit,y:0});
   }
   // Home pulls harder the farther out we are.
-  const out=dist(at,home)-leash;
-  if(out>0)want=add(want,toward(at,home,Math.min(3,.5+out*.6)));
-  if(decision.mode==='fight'&&dist(at,home)>leash+2)decision.mode='home';
+  const out=dist(at,anchor)-leash;
+  if(out>0)want=add(want,toward(at,anchor,Math.min(3,.5+out*.6)));
+  if(decision.mode==='fight'&&escorting)decision.mode='escort';
+  else if(decision.mode==='fight'&&dist(at,home)>leash+2)decision.mode='home';
   decision.direction=norm(want);
   return finish(decision,input);
 }

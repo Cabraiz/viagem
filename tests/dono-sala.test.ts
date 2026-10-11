@@ -262,3 +262,19 @@ test('the feed marks the room bots on the players it hands out',()=>{
     players:[{id:'ana',name:'Ana'},{id:'bot-1',name:'Bot'}]};
   assert.deepEqual(feed.peek().players.map(p=>[p.id,!!p.bot]),[['ana',false],['bot-1',true]]);
 });
+
+test('brain (room bots): a roamer walks with the person who left the wall, a guard keeps the wall',async()=>{
+  const {decide,newMemory,ESCORT_LEASH,LEASH}=await import('../src/game/sim/bot-brain.ts');
+  const person={id:'ana',name:'Ana',classId:'cidadao-comum',hp:100,maxHp:100,online:true,spectator:false,weapons:[],passives:[],x:20,y:0};
+  const me={...person,id:'bot-1',name:'Pamonha 3000',x:2,y:0};
+  const view:any={tick:1000,team:{xp:0,level:1,nextXp:5},round:{index:2,total:10,phase:'wave',phaseEndsTick:2000,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],players:[person,me],offers:[],events:[],camp:{coco:0,pedra:0}};
+  const roamer=decide({view,selfId:'bot-1',at:{x:2,y:0},index:1,memory:newMemory(1),escort:{x:20,y:0}});
+  assert.equal(roamer.mode,'escort');assert.ok(roamer.direction.x>.8,`goes to Ana (x ${roamer.direction.x})`);
+  const guard=decide({view,selfId:'bot-1',at:{x:2,y:0},index:0,memory:newMemory(0),escort:{x:20,y:0}});
+  assert.notEqual(guard.mode,'escort');assert.ok(guard.direction.x<.5,'the guard does not leave the wall');
+  // Next to Ana the roamer stops pulling; with Ana back at the wall it is a plain fighter again.
+  const beside=decide({view,selfId:'bot-1',at:{x:20-ESCORT_LEASH/2,y:0},index:1,memory:newMemory(1),escort:{x:20,y:0}});
+  assert.ok(Math.abs(beside.direction.x)<.9,'no straight run once beside her');
+  assert.equal(decide({view,selfId:'bot-1',at:{x:2,y:0},index:1,memory:newMemory(1),escort:{x:LEASH-1,y:0}}).mode,'fight');
+});

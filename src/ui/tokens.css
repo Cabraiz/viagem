@@ -72,6 +72,10 @@
   --t-36:calc(36px * var(--t-escala));
   --t-48:calc(48px * var(--t-escala));
 
+  /* Botão de habilidade (polegar direito): adesivo + "Habilidade" cabem dentro do anel; o chip, a dica e a oferta
+     se medem por ele. Cresce com a escala de texto (UX-acessibilidade). */
+  --botao-habilidade:calc(14px + 80px * var(--t-escala));
+
   /* ---------- Formas (§2.3) ---------- */
   --r-etiqueta:4px;  /* escolha ou evento: oferta, prêmio, faixa */
   --r-ficha:6px;     /* contador sobre o mapa (nunca pílula no HUD) */

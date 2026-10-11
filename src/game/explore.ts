@@ -10,7 +10,7 @@ import {freeAround} from './framing.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
-import {showFatal} from './net-fatal.ts';
+import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from '../ui/icon.ts';
@@ -55,8 +55,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('.explore-quest').innerHTML='<small>A TURMA CONTRA AS GOSMAS</small><strong id="coop-objective">Protejam a ilha</strong><span id="coop-health"></span><div class="coop-party"></div>';
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
     $('#coop-code').textContent=`Sala ${net.code}`;
-    // Weapons fire on their own: this slot is the class skill. One tap sends one `skill` input (E7-skill-hud-wiring);
-    // the button shows the cooldown from the frames and the caster's line comes as a balloon (renderer, `skill` event).
+    // Weapons fire on their own: this slot is the class skill. One tap sends one {t:'cast'} (net.cast, input-10hz),
+    // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
     $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
@@ -79,8 +79,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
-    attack.addEventListener('pointerdown',e=>{if(e.button!==0||attack.disabled)return;e.preventDefault();pause(false);skill?.press.press(performance.now());});
-    attack.addEventListener('click',e=>{if(e.detail===0&&!attack.disabled){pause(false);skill?.press.press(performance.now());}});
+    const tapSkill=()=>{pause(false);skill?.tap(()=>net.cast(),performance.now());};
+    attack.addEventListener('pointerdown',e=>{if(e.button!==0||attack.disabled)return;e.preventDefault();tapSkill();});
+    attack.addEventListener('click',e=>{if(e.detail===0&&!attack.disabled)tapSkill();});
+    net.onCast=result=>skill?.answer(result,performance.now());
   }
   // Only controls overlay the map. All secondary information lives in a native
   // modal so focus, Escape and touch input cannot leak into the running game.
@@ -115,7 +117,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;closed=true;active=false;abort.abort();reset();
     net?.leave();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
-  const pause=(value:boolean)=>{paused=value;if(value){skill?.press.clear();reset();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
+  const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
@@ -138,11 +140,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
     if(controller?.scene.rotationLocked()){lockedTap();return;}
-    if(!controller)return;reset();skill?.press.clear();pause(false);
+    if(!controller)return;reset();pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
     shell.dataset.cameraView=String(view);
     // The compass needle turns with the view (the "1 / 4" left, DSG-icones-sistema); the text stays for screen readers.
-    $('.explore-view .ic-bussola').style.setProperty('--vista',`${view*90}deg`);$('.explore-view .sr-only').textContent=`Vista ${view+1} de 4`;
+    $('.explore-view .ic-bussola').outerHTML=compass(view,{size:32});$('.explore-view .sr-only').textContent=`Vista ${view+1} de 4`;
     $('.explore-canvas').focus();
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
@@ -173,16 +175,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
-      // Asked once per input step: yes once per tap, only when the input can go out (connected, in combat, the
-      // client's input buffer not full: net.input drops it then). That input will carry seq net.seq+1 ("sem alvo").
-      attacking:()=>!!skill&&!!net&&skill.press.take(performance.now(),net.connected&&net.run?.phase==='combat'&&net.pending.length<20,net.seq+1),
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=`Ilha ${seed} · relevo procedural`;settingsContent.append(info);},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';}
+          // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
+          shell.dataset.offline=String(!net.connected&&!net.fatal);
+          showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';
+            // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
+            if(hud)hud.el.hidden=true;}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
@@ -220,7 +224,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         damage.add(view,id=>net!.players.has(id));
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
-        if(hud&&(phase==='combat'||phase==='result')){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},

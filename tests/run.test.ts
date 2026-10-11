@@ -60,3 +60,18 @@ test('the safety limit leaves room for a full horde run',()=>{
   assert.equal(RUN_DURATION_TICKS,20*60*RUN_HZ);assert.ok(RUN_DURATION_TICKS>14*60*RUN_HZ);
   const run=new RunLifecycle('room');start(run);assert.equal(run.snapshot().remaining,RUN_DURATION_TICKS);
 });
+test('a member away from the lobby for LOBBY_AWAY_TICKS stops holding the start and watches that run (VGM-047)',async()=>{
+  const {LOBBY_AWAY_TICKS}=await import('../src/game/net/run.ts');
+  const run=new RunLifecycle('room');run.join('a');run.join('b');run.ready('a',1,true);
+  run.setOnline('b',false);
+  for(let i=0;i<LOBBY_AWAY_TICKS-1;i++)run.step();
+  assert.equal(run.snapshot().phase,'lobby','still waiting for b');
+  run.step();assert.equal(run.snapshot().phase,'countdown');
+  for(let i=0;i<RUN_COUNTDOWN_TICKS;i++)run.step();
+  const state=run.snapshot();assert.equal(state.phase,'combat');
+  assert.equal(state.members.find(m=>m.id==='b')?.spectator,true);assert.equal(state.members.find(m=>m.id==='a')?.spectator,false);
+  // Back during the run: watching, seat kept; the rematch brings b back in.
+  run.join('b');assert.equal(run.snapshot().members.find(m=>m.id==='b')?.online,true);
+  run.finish('defeat');assert.equal(run.rematch('a',1),true);
+  assert.equal(run.snapshot().members.find(m=>m.id==='b')?.spectator,false);
+});

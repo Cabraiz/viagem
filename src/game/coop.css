@@ -32,22 +32,24 @@
 .coop-debug{margin:0;border:0;padding:12px;border-radius:var(--r-janela);background:var(--c-papel);font:400 12px var(--f-sistema);color:var(--c-lilas);overflow-wrap:anywhere}.coop-debug summary{cursor:pointer;min-height:44px;display:flex;align-items:center}.coop-debug button{margin-top:10px}
 /* Attack is a thumb control: circle, Breu body and Papel edge like every chip over the map. */
 /* Grows with the text scale so "Habilidade" never spills out of the circle at 125%. */
-#coop-attack{box-sizing:border-box;width:calc(10px + 72px*var(--t-escala,1));height:calc(10px + 72px*var(--t-escala,1));display:grid;place-content:center;gap:2px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:800 var(--t-13) var(--f-sistema);text-shadow:var(--s-texto);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:pointer}
-/* E7-skill-hud-wiring: sticker icon in the middle, cooldown ring on the edge and the seconds over a dimmed icon.
-   Ready = Verde Cartolina ring (a favor) AND no number; cooling = Papel ring filling up AND the number (never color alone). */
-#coop-attack{position:relative;place-items:center}
-#coop-attack>*{grid-area:1/1}
-#coop-attack .skillbtn-ring{width:100%;height:100%;transform:rotate(-90deg);overflow:visible;pointer-events:none}
+#coop-attack{box-sizing:border-box;width:var(--botao-habilidade);height:var(--botao-habilidade);display:grid;place-content:center;gap:2px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:800 var(--t-13) var(--f-sistema);text-shadow:var(--s-texto);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;pointer-events:auto;cursor:pointer}
+/* E7-skill-hud-wiring: sticker + the word "Habilidade" (the sticker alone read as a gift, UX onda 5), cooldown ring on
+   the edge and the seconds over the dimmed sticker. Ready = Verde Cartolina ring AND no number; cooling = Papel ring
+   filling up AND the number (never color alone). "ainda não" / "sem alvo" take the word's place for 1.2 s. */
+#coop-attack{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+#coop-attack .skillbtn-ring{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);transform:rotate(-90deg);overflow:visible;pointer-events:none}
 #coop-attack .skillbtn-ring circle{fill:none;stroke-width:6px}
 #coop-attack .skillbtn-track{stroke:transparent}
 #coop-attack .skillbtn-fill{stroke:var(--c-cartolina);stroke-dasharray:100 100}
 #coop-attack[data-state=ready] .skillbtn-fill{stroke-dasharray:none}
 #coop-attack[data-state=cooling] .skillbtn-track{stroke:var(--c-lilas-escuro)}
 #coop-attack[data-state=cooling] .skillbtn-fill{stroke:var(--c-papel)}
-#coop-attack .skillbtn-icon{width:calc(40px*var(--t-escala,1));height:calc(40px*var(--t-escala,1))}
-#coop-attack[data-state=cooling] .skillbtn-icon,#coop-attack[data-note=true] .skillbtn-icon{opacity:.3}
-#coop-attack .skillbtn-time{font:900 var(--t-28)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;color:var(--c-papel);text-shadow:var(--s-texto);pointer-events:none}
-#coop-attack[data-note=true] .skillbtn-time{font:800 var(--t-13)/1.1 var(--f-sistema)}
+#coop-attack .skillbtn-face{display:grid;place-items:center;pointer-events:none}
+#coop-attack .skillbtn-face>*{grid-area:1/1}
+#coop-attack .skillbtn-icon{width:calc(26px*var(--t-escala,1));height:calc(26px*var(--t-escala,1))}
+#coop-attack[data-state=cooling] .skillbtn-icon{opacity:.3}
+#coop-attack .skillbtn-time{font:900 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;color:var(--c-papel);text-shadow:var(--s-texto)}
+#coop-attack .skillbtn-word{font:700 var(--t-13)/1.05 var(--f-sistema);white-space:nowrap;pointer-events:none}
 #coop-attack:active{background:var(--c-lilas);transform:translateY(2px)}
 #coop-attack:disabled{opacity:.5;cursor:default}
 #coop-attack:disabled .skillbtn-fill,#coop-attack:disabled .skillbtn-track{stroke:transparent} /* fora do combate ou caído: nada de anel "pronto" num botão que não responde */
@@ -56,3 +58,9 @@
 /* DSG-icones-sistema: adesivos no lugar de emoji (sortear, pronto/esperando da sala). */
 .coop-lobby button.coop-nick-roll{display:inline-flex;align-items:center;gap:6px}
 .coop-wait-members li .ic{margin:-4px 0 -4px -5px}
+/* VGM-047 (UX onda 5): a sala reiniciou e a partida se perdeu. Notícia em ficha acima da lista, no lugar do título. */
+.coop-wait-news{display:grid;gap:4px;margin:8px 0 6px;padding:10px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);text-align:center}
+.coop-wait-news strong{font:800 var(--t-16)/1.25 var(--f-sistema)}
+.coop-wait-news span{font:600 var(--t-13)/1.3 var(--f-sistema)}
+.coop-wait-news[hidden]{display:none}
+@media(max-height:500px){.coop-wait-news{margin:4px 0;padding:6px 10px}}

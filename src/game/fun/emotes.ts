@@ -3,16 +3,18 @@
  * Pure parts (catalog, EmoteGate, balloon placement) are shared by client and server; the DOM parts are mobile-only
  * (touch targets >= 44 px, no keyboard or hover requirement, D-009).
  */
-import {icon} from '../../ui/icon.ts';
+import {icon,type IconName} from '../../ui/icon.ts';
 export type EmoteId='kkkk'|'salva'|'vem'|'foimal';
-export interface EmoteDef {id:EmoteId;label:string;icon:string;
+export interface EmoteDef {id:EmoteId;label:string;
+  /** Sticker from src/ui/icons.svg (DSG-icones-sistema): the catalog is plain data, the DOM builds it with icon(). */
+  icon:IconName;
   /** Balloon flavor: laugh shakes, help pulses red, come bounces, sorry droops. */
   tone:'laugh'|'help'|'come'|'sorry'}
 export const EMOTES:readonly EmoteDef[]=Object.freeze([
-  {id:'kkkk',label:'KKKK',icon:'😂',tone:'laugh'},
-  {id:'salva',label:'Me salva',icon:'🆘',tone:'help'},
-  {id:'vem',label:'Vem',icon:'👉',tone:'come'},
-  {id:'foimal',label:'Foi mal',icon:'🙏',tone:'sorry'},
+  {id:'kkkk',label:'KKKK',icon:'risada',tone:'laugh'},
+  {id:'salva',label:'Me salva',icon:'boia',tone:'help'},
+  {id:'vem',label:'Vem',icon:'chamar',tone:'come'},
+  {id:'foimal',label:'Foi mal',icon:'suor',tone:'sorry'},
 ]);
 export const EMOTE_COOLDOWN_MS=2000;
 /** Balloon lifetime on screen. */
@@ -77,12 +79,12 @@ export class BalloonLayer {
     this.root=document.createElement('div');this.root.className='fun-balloons';this.root.setAttribute('aria-hidden','true');
     parent.append(this.root);
   }
-  show(speaker:string,text:string,x:number,y:number,options:{kind?:BalloonKind;tone?:EmoteDef['tone'];icon?:string;ms?:number}={}){
+  show(speaker:string,text:string,x:number,y:number,options:{kind?:BalloonKind;tone?:EmoteDef['tone'];icon?:IconName;ms?:number}={}){
     this.remove(speaker);
     const el=document.createElement('div');
     el.className=`fun-balloon fun-balloon-${options.kind??'line'}${options.tone?` fun-tone-${options.tone}`:''}`;
     el.dataset.speaker=speaker;
-    if(options.icon){const icon=document.createElement('span');icon.className='fun-balloon-icon';icon.textContent=options.icon;el.append(icon);}
+    if(options.icon){const holder=document.createElement('span');holder.className='fun-balloon-icon';holder.innerHTML=icon(options.icon);el.append(holder);}
     const label=document.createElement('span');label.className='fun-balloon-text';label.textContent=text;el.append(label);
     this.root.append(el);
     this.measureView();
@@ -147,7 +149,7 @@ export class EmoteBar {
       const angle=(90+index*30)*Math.PI/180;
       button.style.setProperty('--ux',Math.cos(angle).toFixed(3));button.style.setProperty('--uy',(-Math.sin(angle)).toFixed(3));
       button.dataset.emote=emote.id;button.setAttribute('role','menuitem');
-      button.innerHTML=`<span aria-hidden="true">${emote.icon}</span><b>${emote.label}</b>`;
+      button.innerHTML=`${icon(emote.icon)}<b>${emote.label}</b>`;
       button.addEventListener('click',()=>this.send(emote.id));
       fan.append(button);this.buttons.push(button);
     });

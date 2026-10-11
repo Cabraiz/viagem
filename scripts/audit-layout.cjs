@@ -154,7 +154,13 @@ const SCENES=[
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
-    await run('botão de habilidade','/','.audit-actions',13,async()=>{await page.evaluate(async()=>{await import('/src/game/coop.css');const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack">Habilidade</button>';document.body.append(d);});});
+    // The real SkillButton (sticker + "Habilidade", E7-skill-hud-wiring), ready and cooling with the widest note.
+    for(const [label,setup] of [['botão de habilidade','ready'],['botão de habilidade, recarga','cooling'],['botão de habilidade, nota','note']])
+      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/game/coop.css');const {SkillButton}=await import('/src/game/hud/skill.ts');
+        const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack"></button>';document.body.append(d);
+        const b=new SkillButton(d.querySelector('#coop-attack'),'cidadao-comum');
+        if(state==='cooling')b.update({skillTick:1,skillReadyTick:300},100,0);
+        if(state==='note'){b.update({skillTick:1,skillReadyTick:300},100,0);b.tap(()=>1,0);}},setup);});
     await ctx.close();
   }
   await browser.close();

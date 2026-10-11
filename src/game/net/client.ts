@@ -1,13 +1,32 @@
 import {defaultTerrain} from '../terrain/field.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, GRACE_MS, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from './protocol4.ts';
+import {InputBatcher} from './input-track.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
-/** A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, spectator, fallen player). */
-const ACK_FALLBACK_MS=120;
+/**
+ * A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, standing still, fallen, watching).
+ * input-10hz: every message the room receives counts toward the free plan (20 messages = 1 request), and a still
+ * player sends no input any more, so the ack goes on its own at most this often (deltas stay against a baseline at
+ * most ~1 s old, well inside the encoder's 64-frame history).
+ */
+export const ACK_EVERY_MS=1000;
+/** RTT ping (diagnostics line); the acks already keep the connection alive (the room drops a peer silent for 12 s). */
+const PING_EVERY_MS=5000;
+/** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
+const MAX_PENDING=40;
+/** The room closes a connection whose character went to a newer one (another tab or network) with this code: never retried. */
+export const REPLACED_CLOSE=4009;
+/**
+ * Reconnection keeps trying while the seat can still be there (VGM-047): the room's grace since the last message heard,
+ * plus a margin (a restarted room seats everyone again with a fresh grace). Backoff up to RETRY_MAX_MS.
+ */
+const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=4000;
+/** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
+const WAKE_SILENCE_MS=3000;
 /** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
 const MAX_BAD_FULL_FRAMES=3;
 /** At most one resync request this often (frames already in flight fail the same way). */
@@ -23,10 +42,16 @@ const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classI
 export class CoopClient {
   terrain=defaultTerrain;
   run?:RunState;
-  id='';token='';seq=0;tick=0;rtt=0;connected=false;victory=false;
+  id='';token='';tick=0;rtt=0;connected=false;victory=false;
   players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
   pending:Input[]=[];
+  /** Change segments and the 10 Hz send slot (input-10hz). */
+  private readonly batcher=new InputBatcher();
+  private flushTimer?:ReturnType<typeof setTimeout>;
+  private pingAt=-Infinity;
+  /** Client step counter (the room acks these). */
+  get seq(){return this.batcher.seq;}
   /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
   readonly feed=new FrameRunFeed();
   /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */
@@ -35,7 +60,27 @@ export class CoopClient {
   private samples:Sample[]=[];
   private stopped=false;
   private attempts=0;
-  private lostAt=0;
+  /** Date.now() of the last message from the room (the reconnection window counts from it, across app switches). */
+  private lastSeenAt=0;
+  /** Date.now() when the joined connection dropped (0 while connected). */
+  private droppedAt=0;
+  /** How long this client has been trying to get back (0 while connected or before joining). */
+  offlineMs(now=Date.now()){return this.connected||!this.initialized||this.stopped||!this.droppedAt?0:now-this.droppedAt;}
+  /** "Tentar de novo" (UX onda 5): a fresh attempt now, backoff reset. */
+  retryNow(){
+    if(this.stopped||this.connected)return;
+    this.attempts=0;
+    const ws=this.socket;
+    // An attempt already on its way (connecting, or open and joining): let it finish.
+    if(ws&&(ws.readyState===WebSocket.CONNECTING||ws.readyState===WebSocket.OPEN))return;
+    clearTimeout(this.retry);this.retry=undefined;this.connect();
+  }
+  private wake?:()=>void;
+  /**
+   * News for the waiting room: the room restarted and the run was lost (VGM-047), title and body; cleared when the
+   * next run starts.
+   */
+  roomNotice?:{title:string;body:string};
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
@@ -55,11 +100,19 @@ export class CoopClient {
   private badFullFrames=0;
   private resyncAt=-Infinity;
   onStatus:(message:string)=>void=()=>{};
+  /** The room's answer to a skill tap (cast): `ok` false = not cast (cooldown, fallen, no target...). */
+  onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
+  /** Last answer to a skill tap. */
+  lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
-  constructor(readonly endpoint:string,readonly code:string,readonly name:string,readonly classId:string){}
+  readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
+  // Plain fields, not parameter properties: node's type stripping loads this file, so the client has unit tests.
+  constructor(endpoint:string,code:string,name:string,classId:string){this.endpoint=endpoint;this.code=code;this.name=name;this.classId=classId;}
   async join(){
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
+    // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
+    if(typeof document!=='undefined'&&!this.wake){this.wake=()=>{if(!document.hidden)this.resume();};document.addEventListener('visibilitychange',this.wake);}
     return new Promise<void>((resolve,reject)=>{this.resolveReady=resolve;this.rejectReady=reject;this.connect();});
   }
   private connect(){
@@ -70,7 +123,9 @@ export class CoopClient {
     const timeout=setTimeout(()=>ws.close(),8000);
     ws.onopen=()=>{ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{})}));};
     ws.onmessage=event=>{
-      this.lastMessage=performance.now();
+      // A socket this client already replaced (or gave up on) says nothing any more.
+      if(ws!==this.socket)return;
+      this.lastMessage=performance.now();this.lastSeenAt=Date.now();
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         if(this.initialized&&ws===this.socket)this.frame(ws,data);
@@ -82,47 +137,67 @@ export class CoopClient {
         const terrain=terrainFor(m.world);
         if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
         this.terrain=terrain;
-        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
+        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
-        this.setRun(m.run,m.tick);this.seq=Number.isSafeInteger(m.ack)?m.ack:0;this.initialized=true;
+        this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
-        clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{if(performance.now()-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({t:'ping',at:performance.now()}));this.saveToken();},2000);
+        clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{const now=performance.now();if(now-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;ws.send(JSON.stringify({t:'ping',at:now}));}this.saveToken();},2000);
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
-      else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='replaced')this.replaced(ws);
+      else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
-    ws.onclose=()=>{
-      clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;this.connected=false;this.pending=[];
+    ws.onclose=event=>{
+      if(ws!==this.socket)return;
+      clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
-      this.lostAt ||= Date.now();
-      if(Date.now()-this.lostAt>25_000||(!this.initialized&&this.attempts>=2)){
+      if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
+      // A newer connection took the character: stop here, keep the token (the reload button takes it back on purpose).
+      if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
+      if(this.initialized&&Date.now()-this.lastSeenAt>RETRY_WINDOW_MS||(!this.initialized&&this.attempts>=2)){
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
         if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      this.retry=setTimeout(()=>this.connect(),Math.min(3000,500*2**this.attempts++));
+      this.retry=setTimeout(()=>this.connect(),Math.min(RETRY_MAX_MS,500*2**this.attempts++));
     };
     ws.onerror=()=>{};
+  }
+  /** The character went to a newer connection (REPLACED_CLOSE): terminal here, token kept, no retry, so no tab ping-pong. */
+  private replaced(ws:WebSocket){
+    if(this.stopped)return;
+    this.stopped=true;this.connected=false;this.fatal=REPLACED_MESSAGE;clearTimeout(this.retry);
+    this.onStatus(REPLACED_MESSAGE);this.rejectReady?.(new Error(REPLACED_MESSAGE));
+    try{ws.close();}catch{}
+  }
+  /** Visible again: a socket silent for WAKE_SILENCE_MS is dropped now, and a waiting retry goes at once. */
+  private resume(){
+    if(this.stopped)return;
+    const ws=this.socket;
+    if(ws?.readyState===WebSocket.OPEN&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
+    if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
   private fail(ws:WebSocket,message:string){
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
+  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+GRACE_MS}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.seq=0;this.feed.setOffers([]);}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
     this.victory=run.outcome==='victory';
+    if(run.phase==='combat')this.roomNotice=undefined;
   }
   /** One protocol 4 frame: decode, ack, then players, prediction and the run clock. */
   private frame(ws:WebSocket,data:ArrayBuffer){
@@ -139,7 +214,7 @@ export class CoopClient {
     this.badFullFrames=0;
     if(result.world&&result.world.signature!==this.terrain.signature){this.fail(ws,UPDATE_NEEDED);return;}
     this.ackSeq=result.seq;
-    this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_FALLBACK_MS);
+    this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
     this.tick=view.tick;
     this.players.clear();
@@ -151,7 +226,7 @@ export class CoopClient {
       this.run.elapsed=base.run.elapsed+d;this.run.remaining=Math.max(0,base.run.remaining-d);
     }
     const self=this.players.get(this.id);
-    if(self){this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
+    if(self){this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
     this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
@@ -160,14 +235,41 @@ export class CoopClient {
     if(this.ackSeq<=this.ackSent||this.socket?.readyState!==WebSocket.OPEN)return;
     this.ackSent=this.ackSeq;this.socket.send(JSON.stringify({t:'ack',seq:this.ackSeq}));
   }
+  /**
+   * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
+   * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
+   */
   input(direction:Point,skill:boolean,target?:string){
-    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=20)return;
-    const length=Math.max(1,Math.hypot(direction.x,direction.y));
-    const input:Input={seq:++this.seq,x:direction.x/length,y:direction.y/length,attack:false,skill,target};
-    this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);
-    const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
-    if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
-    this.socket.send(JSON.stringify({t:'input',round:this.run.round,...input,...(ack!==undefined?{ack}:{})}));
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
+    const {input,active}=this.batcher.step(direction,skill,target);
+    // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);}
+    this.flushInput();
+  }
+  /**
+   * Skill tap (one-shot, no held state): {t:'cast',round,id} at once, outside the 10 Hz slot. The room answers
+   * {t:'cast',seq:id,ok,readyTick} (onCast). Returns the tap id, or undefined when there is nothing to tap into.
+   */
+  cast(){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const id=++this.castId;this.socket.send(JSON.stringify({t:'cast',round:this.run.round,id}));return id;
+  }
+  /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */
+  private castId=0;
+  /** Sends what the batcher allows now; changes still waiting for the 10 Hz slot go out on a timer. */
+  private flushInput(){
+    const socket=this.socket;
+    if(!socket||socket.readyState!==WebSocket.OPEN||!this.run)return;
+    const batch=this.batcher.take(performance.now());
+    if(batch){
+      clearTimeout(this.flushTimer);this.flushTimer=undefined;
+      const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
+      if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
+      socket.send(JSON.stringify({t:'input',round:this.run.round,seq:batch.seq,steps:batch.steps,...(ack!==undefined?{ack}:{})}));
+      return;
+    }
+    const until=this.batcher.waitingUntil;
+    if(until!==undefined&&!this.flushTimer)this.flushTimer=setTimeout(()=>{this.flushTimer=undefined;this.flushInput();},Math.max(0,until-performance.now()));
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   rematch(){this.runCommand({t:'rematch'});}
@@ -184,6 +286,6 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
 }
 export { STEP };

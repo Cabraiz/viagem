@@ -624,6 +624,8 @@ test('300 enemies step well under budget',()=>{
   const fmt=(r:{avg:number;median:number;p95:number})=>`avg ${r.avg.toFixed(3)} ms, median ${r.median.toFixed(3)} ms, p95 ${r.p95.toFixed(3)} ms`;
   console.log(`[bench] 300 enemies, grid index: ${fmt(grid)}`);
   console.log(`[bench] 300 enemies, naive index: ${fmt(naive)}`);
-  // Median resists load spikes from other processes on the machine; the card budget is 4 ms.
-  assert.ok(grid.median<4,`grid median ${grid.median} ms`);
+  // The card budget is 4 ms. BUG-20261011-ORQ-teste-instavel: even the median went over it (4.9 ms) on the shared
+  // 2-core box with another `npm test` running, so the wall clock only gates with BENCH=1, like world-chunks; the
+  // deterministic part (every critter still on walkable ground after 200 steps) always runs inside bench().
+  if(process.env.BENCH==='1')assert.ok(grid.median<4,`grid median ${grid.median} ms`);
 });

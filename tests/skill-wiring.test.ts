@@ -6,7 +6,7 @@ import {ROOM_PROTOCOL,reconcile,type Input} from '../src/game/net/shared.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {kitFor} from '../src/game/sim/kits.ts';
 import {SIM_HZ} from '../src/game/sim/types.ts';
-import {SkillPress,skillState,skillLabel,PRESS_TTL_MS,NO_ACK_MS} from '../src/game/hud/skill.ts';
+import {SkillTaps,skillState,skillLabel,ANSWER_MS} from '../src/game/hud/skill.ts';
 import {DICE_LINE,SKILL_BUBBLE_GAP_MS,skillBubbleLine} from '../src/game/render/jokes.ts';
 
 // Same harness as run-feed.test.ts: JSON control messages, protocol 4 frames, a 50 ms clock.
@@ -38,14 +38,19 @@ function settle(room:Room,feed:FrameRunFeed,p:TestPeer,peers:TestPeer[],ticks=4)
   return events;
 }
 const input=(room:Room,p:TestPeer,seq:number,extra:Partial<Input>={})=>command(room,p,{t:'input',round:room.run.snapshot().round,seq,x:0,y:0,attack:false,...extra});
+/** A skill tap as CoopClient.cast sends it (input-10hz): {t:'cast',round,id}, answered with {t:'cast',seq,ok,readyTick}. */
+const tap=(room:Room,p:TestPeer,id:number)=>command(room,p,{t:'cast',round:room.run.snapshot().round,id});
+const answers=(p:TestPeer)=>p.messages.filter(m=>m.t==='cast');
 
-test('a skill input casts inside the tick and the caster line, dice and cooldown reach the client (protocol 4)',()=>{
+test('a skill tap casts inside the tick; the line, dice, cooldown and the tap answer reach the client (protocol 4)',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
-  input(room,a,1,{skill:true});
+  tap(room,a,1);
   const events=settle(room,feed,a,[a,b]);
+  assert.deepEqual(answers(a).map(m=>[m.seq,m.ok]),[[1,true]],'the room answers the tap once');
+  assert.equal(answers(a)[0].readyTick,me.skillReadyTick,'with the readyTick the button can show at once');
   const cast=events.filter(e=>e.type==='skill');
   assert.equal(cast.length,1,'one cast, one event');
   const e=cast[0];
@@ -71,7 +76,7 @@ test('a dash lands where the server says: the event carries the landing and the 
   // The ally may stand on water after the nudge; only a walkable spot counts for the landing check below.
   ally.hp=10;
   const before={x:moto.x,y:moto.y};
-  input(room,a,1,{skill:true});
+  tap(room,a,1);
   const events=settle(room,feed,a,[a,b]);
   const e=events.find(x=>x.type==='skill');
   assert.ok(e,'the dash cast');
@@ -79,29 +84,31 @@ test('a dash lands where the server says: the event carries the landing and the 
   assert.ok(Math.abs(e.x-moto.x)<.01&&Math.abs(e.y-moto.y)<.01,'landing spot in the event');
   const self=feed.players.get(idOf(a))!;
   assert.ok(Math.abs(self.x!-moto.x)<.01&&Math.abs(self.y!-moto.y)<.01,'authoritative position in the frame');
-  // client.ts: predicted = reconcile(frame position, inputs the frame did not ack). The dash input is acked, so the
-  // pre-dash prediction is gone; only later inputs replay on top of the landing spot.
-  assert.equal(self.ack,1);
-  const later:Input[]=[{seq:2,x:1,y:0,attack:false}];
-  const predicted=reconcile({x:self.x!,y:self.y!},later.filter(i=>i.seq>self.ack!),room.sim.terrain);
+  // client.ts: predicted = reconcile(frame position, inputs the frame did not ack). The tap moves no step (it is its
+  // own message), so the prediction restarts from the landing; only inputs after the frame's ack replay on top of it.
+  const acked=self.ack??0;
+  const later:Input[]=[{seq:acked+1,x:1,y:0,attack:false}];
+  const predicted=reconcile({x:self.x!,y:self.y!},later.filter(i=>i.seq>acked),room.sim.terrain);
   assert.ok(Math.hypot(predicted.x-moto.x,predicted.y-moto.y)<.2,'prediction starts from the landing, not from before the dash');
   assert.ok(Math.hypot(predicted.x-before.x,predicted.y-before.y)>3);
 });
 
-test('one tap is one cast: inputs without the flag never recast, even when the cooldown is over',()=>{
+test('one tap is one cast: walking afterwards never recasts, even when the cooldown is over',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
-  const press=new SkillPress();press.press(0);
+  const taps=new SkillTaps();let id=0;
+  assert.equal(taps.tap(false,()=>{tap(room,a,++id);return id;},0),'sent');
   let seq=0,casts=0;
   for(let i=0;i<20*SIM_HZ;i++){
     me.hp=me.stats.maxHp;me.invulnerableUntil=room.sim.tick+100;
-    input(room,a,++seq,{skill:press.take(i*50,true,seq)});
+    if(i%2===0)input(room,a,++seq,{x:i%40<20?.3:-.3});
     step(room,[a,b]);pump(room,feed,a);
     casts+=feed.take().events.filter(e=>e.type==='skill').length;
   }
   assert.equal(casts,1,'20 s of walking after one tap: one cast');
+  assert.deepEqual(answers(a).map(m=>m.ok),[true]);
 });
 
 test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
@@ -109,7 +116,7 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
   createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y}).hp=1e6;
-  input(room,a,1,{skill:true});settle(room,feed,a,[a,b]);
+  tap(room,a,1);settle(room,feed,a,[a,b]);
   assert.ok(me.skillReadyTick!>room.sim.tick);
   for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
   settle(room,feed,a,[a,b]);
@@ -119,31 +126,20 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   assert.equal(me.skillReadyTick,0,'wire cooldown cleared');assert.equal((me as any).skillReady,undefined,'skill state cleared (resetSkill)');
   startRun(room,[a,b]);pump(room,feed,a);
   const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
-  input(room,a,1,{skill:true});
+  tap(room,a,2);
   assert.equal(settle(room,feed,a,[a,b]).filter(e=>e.type==='skill').length,1,'casts at once in the new run');
 });
 
-test('SkillPress: once per tap, only when the input can go out; "sem alvo" only when the server ran that input',()=>{
-  const p=new SkillPress();
-  assert.equal(p.take(0,true,1),false,'nothing pressed');
-  p.press(0);
-  assert.equal(p.take(10,false,1),false,'not connected: kept');assert.ok(p.pending);
-  assert.equal(p.take(20,true,5),true);assert.equal(p.take(70,true,6),false,'one input per tap');
-  assert.equal(p.settle(4,false,80),undefined,'an older input acked: still in flight');
-  assert.equal(p.settle(5,false,100),'none','the tap input ran and no cast came: sem alvo');
-  assert.equal(p.settle(9,false,200),undefined,'reported once');
-  p.press(300);p.take(300,true,10);
-  assert.equal(p.settle(10,true,4000),'cast','cast and ack in the same frame: the cast wins');
-  p.press(500);p.take(500,true,11);assert.equal(p.settle(undefined,false,500+NO_ACK_MS+1),undefined,'a lost input is forgotten quietly');
-  assert.equal(p.settle(11,false,600+NO_ACK_MS),undefined);
-  p.press(1000);assert.equal(p.take(1000+PRESS_TTL_MS+1,false,12),false);assert.equal(p.take(1000+PRESS_TTL_MS+2,true,12),false,'a tap that waited out a reconnect never fires');
-  p.press(2000);assert.equal(p.take(2000+PRESS_TTL_MS*3,true,12),true,'a slow frame still sends the tap');
-});
-
-test('SkillButton logic on a slow link: a cast that arrives 3 s after the tap never shows "sem alvo" first',()=>{
-  const p=new SkillPress();p.press(0);p.take(0,true,7);
-  for(let t=100;t<3000;t+=100)assert.equal(p.settle(6,false,t),undefined,`still in flight at ${t} ms`);
-  assert.equal(p.settle(7,true,3000),'cast');
+test('SkillTaps: a tap during the cooldown sends nothing; a tap that cannot go out sends nothing; answers by id',()=>{
+  const t=new SkillTaps();let sent=0;const send=()=>++sent;
+  assert.equal(t.tap(true,send,0),'cooling','cooling: "ainda não", no message');assert.equal(sent,0);
+  assert.equal(t.tap(false,()=>undefined,0),'off','offline, out of combat or watching (CoopClient.cast refused)');assert.ok(!t.pending);
+  assert.equal(t.tap(false,send,10),'sent');assert.equal(sent,1);
+  assert.equal(t.answer({seq:0,ok:false,readyTick:0},20),undefined,'an answer to an older tap is not ours');
+  assert.equal(t.answer({seq:1,ok:false,readyTick:0},30),'none','ok:false: "sem alvo"');
+  assert.equal(t.answer({seq:1,ok:false,readyTick:0},40),undefined,'answered once');
+  t.tap(false,send,100);assert.equal(t.answer({seq:2,ok:true,readyTick:500},3100),'cast','a slow answer still counts');
+  t.tap(false,send,200);assert.equal(t.answer({seq:3,ok:false,readyTick:0},200+ANSWER_MS+1),undefined,'a lost tap is forgotten quietly');
 });
 
 test('skillState: ready without a number, then whole seconds counting down and the share paid',()=>{
@@ -152,6 +148,9 @@ test('skillState: ready without a number, then whole seconds counting down and t
   const s=skillState({skillTick:100,skillReadyTick:100+15*SIM_HZ},100+5*SIM_HZ+1);
   assert.equal(s.mode,'cooling');assert.equal(s.seconds,10,'rounded up: 9.95 s left shows 10');
   assert.ok(Math.abs(s.progress-(5*SIM_HZ+1)/(15*SIM_HZ))<1e-9);
+  const answered=skillState({skillTick:0,skillReadyTick:0},100,{castTick:100,readyTick:100+12*SIM_HZ});
+  assert.equal(answered.mode,'cooling','the tap answer starts the ring before the frame');assert.equal(answered.seconds,12);
+  assert.equal(skillState({skillTick:100,skillReadyTick:100+6*SIM_HZ},101,{castTick:100,readyTick:100+12*SIM_HZ}).seconds,12,'the later readyTick wins');
   assert.equal(skillLabel('motogirl'),'Habilidade: Entrega Expressa');assert.equal(skillLabel('nobody'),'Habilidade da classe');
   assert.ok(SKILL_BUBBLE_GAP_MS>=2000,'D-013: one line per caster every ~2 s');
   assert.equal(skillBubbleLine({line:'Calculei tudo de cabeça.',outcome:'miracle'}),'Calculei tudo de cabeça.\nMilagre!');

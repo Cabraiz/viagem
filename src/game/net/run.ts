@@ -3,6 +3,12 @@ export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, intermissions and the boss) takes about 13.7 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
+/**
+ * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,
+ * but the others do not wait two minutes for a phone that went quiet. A drop still cancels a countdown at once; the
+ * one who missed the start watches that run and plays the rematch.
+ */
+export const LOBBY_AWAY_TICKS=10*RUN_HZ;
 export type RunPhase='lobby'|'countdown'|'combat'|'result';
 export type RunOutcome='victory'|'defeat'|'timeout';
 export interface RunMember {id:string;online:boolean;ready:boolean;spectator:boolean}
@@ -13,6 +19,8 @@ export interface RunState {
 
 export class RunLifecycle {
   private members=new Map<string,RunMember>();
+  /** Ticks each member has been offline before a run (not on the wire). */
+  private away=new Map<string,number>();
   private phase:RunPhase='lobby';
   private round=1;
   private elapsed=0;
@@ -34,16 +42,18 @@ export class RunLifecycle {
   setOnline(id:string,online:boolean){
     const member=this.members.get(id);if(!member)return;
     member.online=online;
+    if(online)this.away.delete(id);else this.away.set(id,0);
     if(!online&&this.phase!=='combat')member.ready=false;
     this.refreshCountdown();
   }
-  leave(id:string){this.members.delete(id);this.refreshCountdown();}
+  leave(id:string){this.members.delete(id);this.away.delete(id);this.refreshCountdown();}
   ready(id:string,round:number,ready:boolean){
     const member=this.members.get(id);
     if(round!==this.round||!member?.online||member.spectator||this.phase==='combat'||this.phase==='result')return false;
     member.ready=ready;this.refreshCountdown();return true;
   }
-  private candidates(){return [...this.members.values()].filter(m=>!m.spectator);}
+  /** Who the start waits for: in the run, and online or only briefly away (LOBBY_AWAY_TICKS). */
+  private candidates(){return [...this.members.values()].filter(m=>!m.spectator&&(m.online||(this.away.get(m.id)??0)<LOBBY_AWAY_TICKS));}
   private refreshCountdown(){
     if(this.phase!=='lobby'&&this.phase!=='countdown')return;
     const players=this.candidates();
@@ -57,8 +67,18 @@ export class RunLifecycle {
   }
   /** One call per server tick, independent of packet arrivals or rendering rate. */
   step():{started:boolean;finished:boolean}{
+    if(this.phase==='lobby'||this.phase==='countdown'){
+      let crossed=false;
+      for(const m of this.members.values())if(!m.online){const n=(this.away.get(m.id)??0)+1;this.away.set(m.id,n);crossed||=n===LOBBY_AWAY_TICKS;}
+      if(crossed)this.refreshCountdown();
+    }
     if(this.phase==='countdown'){
-      if(--this.countdown===0){this.phase='combat';this.elapsed=0;return {started:true,finished:false};}
+      if(--this.countdown===0){
+        this.phase='combat';this.elapsed=0;
+        // Away at the start: they watch this run (their seat stays) and play the rematch.
+        for(const m of this.members.values())if(!m.online)m.spectator=true;
+        return {started:true,finished:false};
+      }
     }else if(this.phase==='combat'){
       this.elapsed++;
       if(this.elapsed>=this.durationTicks)return {started:false,finished:this.finish('timeout')};

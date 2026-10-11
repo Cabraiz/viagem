@@ -659,3 +659,21 @@ test('staggered broadcast: half the clients on odd ticks, each still 10 Hz and e
   }
   assert.deepEqual(sent,[40,40]);
 });
+
+test('an event code this client does not know is skipped, the frame and the other events still count (newer room)',()=>{
+  const rng=new Rng(5),w=busyWorld(rng,10);
+  const enc=new FrameEncoder();
+  enc.pushEvents([{type:'levelup',level:2},{type:'levelup',level:3}]);
+  const frame=enc.encode(w.view);
+  // Layout at the end: count=2, (gap, size=2, code, level)×2. Turn the last event into an unknown code.
+  assert.equal(frame[frame.length-3],2,'byte length of the last event');
+  const levelup=frame[frame.length-2];
+  const newer=frame.slice();newer[newer.length-2]=250;
+  const res=new FrameDecoder().decode(newer);
+  assert.ok(res.ok,res.ok?'':res.error);
+  assert.deepEqual(res.view.events.map(e=>e.type==='levelup'?e.level:e.type),[2],'only the known event');
+  assertSameWorld(res.view,w.view,enc.ids,'world intact');
+  const known=new FrameDecoder().decode(frame);assert.ok(known.ok);
+  assert.deepEqual(known.view.events.map(e=>(e as {level:number}).level),[2,3]);
+  assert.equal(frame[frame.length-2],levelup);
+});

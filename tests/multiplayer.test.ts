@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,STEP,reconcile,simulate,delta,ROOM_PROTOCOL,type Input} from '../src/game/net/shared.ts';
+import {Simulation,STEP,reconcile,simulate,delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../src/game/net/shared.ts';
 import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../multiplayer/room.ts';
 import {FrameRunFeed} from '../src/game/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
@@ -25,12 +25,18 @@ test('reconnect preserves identity, health, score, enemies and refuses stolen di
   r.disconnect(a,1500);const b=peer();r.connect(b,1600);r.receive(b,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);
   assert.equal(b.messages[0].id,w.id);assert.equal(r.sim.players.size,1);assert.equal(original.hp,64);assert.equal(original.score,10);
   assert.equal(r.sim.world.enemies.get(enemy.id)?.hp,2);
-  const duplicate=peer();r.connect(duplicate,1600);r.receive(duplicate,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);assert.equal(duplicate.closes[0].code,4003);
+  // Same token again while b is still connected: the newest connection takes the character (VGM-047), b is told and closed with 4009.
+  const duplicate=peer();r.connect(duplicate,1600);r.receive(duplicate,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);
+  assert.equal(duplicate.messages[0].t,'welcome');assert.equal(duplicate.messages[0].id,w.id);assert.deepEqual(duplicate.closes,[]);
+  assert.equal(b.closes[0].code,4009);assert.equal(b.messages.at(-1).t,'replaced');assert.equal(r.sim.players.size,1);assert.equal(original.online,true);
+  // b's socket closing afterwards does not take the character offline.
+  r.disconnect(b,1650);assert.equal(original.online,true);
   const fake=peer();r.connect(fake,1600);r.receive(fake,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:'invalid',name:'Amigo'}),1600);assert.equal(fake.closes[0].code,4003);
 });
 test('expired token cannot reclaim a slot or create a duplicate',()=>{
   const r=new Room(1000),p=peer();join(r,p);const token=p.messages[0].token;r.disconnect(p,1100);
-  const back=peer();r.connect(back,32100);r.receive(back,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token}),32100);assert.equal(back.closes[0].code,4003);assert.equal(r.sim.players.size,0);
+  const late=1100+GRACE_MS+1000;
+  const back=peer();r.connect(back,late);r.receive(back,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token}),late);assert.equal(back.closes[0].code,4003);assert.equal(r.sim.players.size,0);
 });
 test('movement ignores position/hp/damage fields and is capped per server tick',()=>{
   const s=new Simulation();const p=s.add('p','Tester','cidadao-comum');s.resetRun();const start={...p},maxHp=p.hp;
@@ -39,7 +45,8 @@ test('movement ignores position/hp/damage fields and is capped per server tick',
   assert.equal(s.input('p',{seq:1,x:0,y:0,attack:false,target:{id:'forged'}}),false);
   for(let seq=1;seq<=30;seq++)s.input('p',{seq,x:1,y:1,attack:false,hp:99999,position:{x:50,y:50},damage:100000});
   s.step();assert.ok(Math.hypot(p.x-start.x,p.y-start.y)<=SPEED*STEP+.000001);assert.ok(Math.hypot(p.x-start.x,p.y-start.y)>0);
-  assert.equal(p.hp,maxHp);assert.equal(p.ack,1);
+  // A burst far ahead of the room is not queued for later (input-10hz): the room skips to the latest steps, still one per tick.
+  assert.equal(p.hp,maxHp);assert.ok(p.ack>=1&&p.ack<=30);
   assert.equal(s.input('p',{seq:1,x:1,y:0,attack:false}),false);
   for(let i=0;i<400;i++){s.input('p',{seq:Math.max(p.ack+1,i+31),x:1,y:1,attack:false});s.step();assert.ok(walkable(p));}
 });
@@ -135,7 +142,7 @@ test('disconnect cancels countdown and explicitly leaving the room needs no host
   command(room,a,{t:'ready',round:1,ready:true});command(room,b,{t:'ready',round:1,ready:true});
   room.advance(1200);room.disconnect(a,1250);assert.equal(room.run.snapshot().phase,'lobby');
   // Expired participant frees its slot; the remaining ready player can start.
-  command(room,b,{t:'ping'},32000);room.advance(32000);
+  command(room,b,{t:'ping'},1250+GRACE_MS+750);room.advance(1250+GRACE_MS+750);
   assert.equal(room.run.snapshot().phase,'countdown');assert.equal(room.sim.players.size,1);
 });
 test('boss kill sends one result message to every player and stays stable',()=>{
@@ -297,14 +304,15 @@ test('a run with no participant left ends in defeat right away (review 1)',()=>{
   const room=new Room(1000),a=peer();join(room,a);startRun(room,[a]);
   const token=a.messages.find(m=>m.t==='welcome').token;
   room.advance(4200);room.disconnect(a,4250);
-  // The session grace (30 s) runs out: the member leaves the run.
-  room.advance(4250+31_000);
+  // The session grace (GRACE_MS) runs out: the member leaves the run.
+  room.advance(4250+GRACE_MS+1000);
   assert.equal(room.run.snapshot().phase,'result');assert.equal(room.run.snapshot().outcome,'defeat');
   assert.deepEqual(results(a),[],'the departed peer gets nothing');
   // Coming back afterwards is a fresh join into the result screen, not a stuck combat.
-  const b=peer();room.connect(b,36_000);command(room,b,{t:'join',protocol:ROOM_PROTOCOL,token},36_000);
-  const c=peer();join(room,c,'Atrasado',36_000);
-  room.advance(36_050);assert.equal(room.run.snapshot().phase,'result');
+  const after=4250+GRACE_MS+6000;
+  const b=peer();room.connect(b,after);command(room,b,{t:'join',protocol:ROOM_PROTOCOL,token},after);
+  const c=peer();join(room,c,'Atrasado',after);
+  room.advance(after+50);assert.equal(room.run.snapshot().phase,'result');
   assert.equal(room.run.snapshot().outcome,'defeat');
 });
 

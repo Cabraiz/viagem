@@ -11,7 +11,9 @@
  *   6 entity sections (players, enemies, pickups, projectiles, telegraphs, structures):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
- *   events: uvar count, (uvar eventIdGap, u8 code, [u8 optional bits], fields*)*
+ *   events: uvar count, (uvar eventIdGap, uvar byteLength, u8 code, [u8 optional bits], fields*)*
+ *     byteLength covers code, bits and fields: a decoder skips event codes it does not know (a newer room) and
+ *     ignores fields appended after the ones it knows, instead of throwing the whole frame away.
  * Positions are at 1/512 unit everywhere in the endless world: i16 relative to the frame origin (an integer point by
  * the client's player, so ±64 units around it cost 2 bytes), or the escape i16 -32768 followed by an absolute svar
  * (allies far away, a far base, up to ±4 194 304 units). Velocities are i16 at 1/256 unit/s, radii u16 at 1/256 unit.
@@ -329,6 +331,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['skill',[['player','ref'],['skill','str'],['line','str'],['outcome','str',true],['x','pos',true],['y','pos',true]]],
 ];
 const EVENT_CODE=new Map<string,number>(EVENT_SPECS.map(([type],i)=>[type,i]));
+/** Upper bound of one event's body (a few refs, numbers and strings of at most MAX_STRING_BYTES). */
+const MAX_EVENT_BYTES=4096;
 const REF_INLINE=0,REF_PLAYER=1;
 const REF_SECTIONS:SectionKey[]=['enemies','pickups','projectiles','telegraphs','structures'];
 const LABEL=/^([a-z])(\d{1,9})$/;
@@ -455,6 +459,8 @@ export class FrameEncoder {
   private history=new Map<number,World>();
   private acked=0;
   private eventId=0;
+  /** Reused buffer for one event body (its byte length goes first on the wire). */
+  private readonly scratch=new Writer();
   private pending:Pending[]=[];
   /** Server ids per section sent in this frame and the previous one (hysteresis, event relevance). */
   private members:Partial<Record<SectionKey,Set<string>>>={};
@@ -641,7 +647,8 @@ export class FrameEncoder {
     for(const p of due){
       w.uvar(p.event.eventId-last);last=p.event.eventId;
       this.resolve(p);
-      writeEvent(w,p.event,f,this.ids);
+      const body=this.scratch;body.len=0;writeEvent(body,p.event,f,this.ids);
+      w.uvar(body.len);w.raw(body.buf.subarray(0,body.len));
       p.firstSeq??=seq;p.sentTick=view.tick;
     }
     this.stats.eventBytes+=w.len-start;
@@ -812,7 +819,11 @@ export class FrameDecoder {
       for(let i=0;i<count;i++){
         const gap=r.uvar();if(!gap)throw new FrameError('event ids out of order');
         eventId+=gap;
-        const e=readEvent(r,eventId,f,next.tables.players);
+        const size=r.uvar();if(size<1||size>MAX_EVENT_BYTES)throw new FrameError('bad event size');
+        const body=new Reader(r.take(size));
+        // Unknown code (a newer room): skipped, the rest of the frame still counts. Its id is not marked as seen.
+        if(!EVENT_SPECS[body.buf[0]])continue;
+        const e=readEvent(body,eventId,f,next.tables.players);
         if(eventId>this.floor&&!this.seen.has(eventId)&&!fresh.includes(eventId)){events.push(e);fresh.push(eventId);}
       }
       if(r.pos!==bytes.length)throw new FrameError('trailing bytes');

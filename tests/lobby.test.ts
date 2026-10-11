@@ -148,3 +148,17 @@ test('waitingRoomView: a spectator watches, cannot ready, and non-finite elapsed
   assert.equal(waitingRoomView({...run,members:[{id:'me',online:true,ready:false,spectator:false}]},new Map(),'me').selfSpectator,false);
   for(const v of [NaN,Infinity,-Infinity])assert.ok(WAITING_LINES.includes(waitingLine(v)));
 });
+test('waitingRoomView: who is away is counted apart from who is here and not ready (VGM-047, UX onda 5)',()=>{
+  const names=new Map([['me',{name:'Ana'}],['g',{name:'Goleira'}],['a',{name:'Zé'}],['b',{name:'Tia'}],['c',{name:'Rainha'}]]);
+  const view=waitingRoomView(state('lobby',[member('me'),member('g'),member('a',false,false),member('b',false,false),member('c',false,false)]),names,'me');
+  assert.equal(view.headline,'Faltam você e Goleira. 3 ainda não voltaram.');
+  const onlyAway=waitingRoomView(state('lobby',[member('me',true),member('a',false,false)]),names,'me');
+  assert.equal(onlyAway.headline,'Só falta Zé voltar.');
+  const one=waitingRoomView(state('lobby',[member('me'),member('g',true),member('a',false,false)]),names,'me');
+  assert.equal(one.headline,'Falta você. Zé ainda não voltou.');
+});
+test('sha256Hex matches node:crypto (token hashes in the room storage, VGM-047)',async()=>{
+  const {sha256Hex}=await import('../src/game/net/sha256.ts');const {createHash}=await import('node:crypto');
+  for(const text of ['','abc','a'.repeat(55),'a'.repeat(56),'a'.repeat(64),'ção🎉'.repeat(40),crypto.randomUUID()+crypto.randomUUID()])
+    assert.equal(sha256Hex(text),createHash('sha256').update(text).digest('hex'));
+});

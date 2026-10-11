@@ -127,6 +127,8 @@ export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Re
 export class FollowCamera {
   center:Point={x:0,y:0};
   look:Point={x:0,y:0};
+  /** Off with prefers-reduced-motion: the camera still follows, without the extra sway of looking ahead. */
+  lookAhead=true;
   private last?:Point;
   private ready=false;
   get placed(){return this.ready;}
@@ -140,7 +142,7 @@ export class FollowCamera {
   step(hero:Point,seconds:number,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     if(!this.ready||!this.last)return this.snap(hero,viewport,zoom,useful,size);
     const dt=clamp(seconds,0,.25);
-    const limit=lookLimit(viewport,zoom,useful,size);
+    const limit=this.lookAhead?lookLimit(viewport,zoom,useful,size):{x:0,y:0};
     if(dt>0){
       // Look-ahead from the hero's screen velocity; a jump (teleport, respawn) does not count as walking.
       // Speed as a share of walking speed per screen axis (isometric: 1 u is 59.4 px across, 29.7 px down).

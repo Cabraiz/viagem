@@ -105,6 +105,8 @@ export class IslandScene extends Phaser.Scene {
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set(this.trees))if(tree)this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
     this.cameras.main.setBackgroundColor('#142f2d');
+    // Reduced motion: the camera still follows, without the sway of the look-ahead.
+    this.follow.lookAhead=!this.reduced;
     this.drawGround();
     let treeIndex=0;
     for(const o of obstacles){

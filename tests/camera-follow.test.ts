@@ -174,3 +174,10 @@ test('off-screen API: inside the useful area, or the point on its edge towards i
   const right=edgeOf({x:900,y:400},area);assert.equal(right.inside,false);assert.ok(Math.abs(right.edge.x-300)<1e-9&&Math.abs(right.edge.y-400)<1e-9);
   const up=edgeOf({x:200,y:-1000},area,10);assert.ok(Math.abs(up.edge.y-210)<1e-9&&Math.abs(up.angle+Math.PI/2)<1e-9);
 });
+
+test('reduced motion: no look-ahead, the hero stays on the anchor while walking',()=>{
+  const vp=PORTRAIT,z=followZoom(vp),cam=new FollowCamera();cam.lookAhead=false;
+  cam.snap(projectView({x:12,y:17},0),vp,z,USEFUL_P,HERO);
+  walk(cam,vp,USEFUL_P,{x:12,y:17},{x:1,y:-1},3,60);
+  assert.deepEqual(cam.look,{x:0,y:0});
+});

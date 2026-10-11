@@ -52,6 +52,8 @@ export interface ZoneInput {
   chip?:Rect;
   /** Safe-area insets (notch), CSS px. */
   safe?:{top:number;right:number;bottom:number;left:number};
+  /** The open offer window (round offer in the intermission, or a level offer opened from the chip). */
+  offer?:Rect;
 }
 export interface ScreenZones {
   orientation:Orientation;viewport:{width:number;height:number};
@@ -81,8 +83,22 @@ export function computeZones(input:ZoneInput):ScreenZones{
   // The follow camera centres the hero (~56 px) ± HERO_MARGIN in it: a rectangle shorter than that cannot hold the hero
   // (landscape with the offer chip: the full-width band above the thumbs is ~98 px), so one that fits wins, then area.
   const fits=(r:Rect)=>r.height>=MIN_PLAY_SIDE&&r.width>=MIN_PLAY_SIDE;
-  const useful=fits(a)!==fits(b)?(fits(a)?a:b):b.width*b.height>a.width*a.height?b:a;
+  const playable=fits(a)!==fits(b)?(fits(a)?a:b):b.width*b.height>a.width*a.height?b:a;
+  // An open offer window takes its part of the field: the camera centres the hero in what is left (UX onda 4).
+  const useful=input.offer?besideOffer(playable,input.offer,fits):playable;
   return {orientation,viewport,top,announce,team,leftThumb,rightThumb:thumbR,useful};
+}
+
+/** The largest part of `area` left beside an open window (above, below, left or right of it), preferring one that fits. */
+function besideOffer(area:Rect,offer:Rect,fits:(r:Rect)=>boolean):Rect{
+  if(!crosses(area,offer))return area;
+  const bands:Rect[]=[
+    {x:area.x,y:area.y,width:area.width,height:Math.max(0,offer.y-area.y)},
+    {x:area.x,y:bottom(offer),width:area.width,height:Math.max(0,bottom(area)-bottom(offer))},
+    {x:area.x,y:area.y,width:Math.max(0,offer.x-area.x),height:area.height},
+    {x:right(offer),y:area.y,width:Math.max(0,right(area)-right(offer)),height:area.height},
+  ];
+  return bands.reduce((best,r)=>fits(r)!==fits(best)?(fits(r)?r:best):r.width*r.height>best.width*best.height?r:best);
 }
 
 /**
@@ -120,6 +136,8 @@ export interface AuditBox {name:string;rect:Rect;
   fallback?:boolean;
   /** The joystick or the skill button itself. */
   thumb?:boolean;
+  /** Allowed in the field, but over the hero (± margin) it still fails (the offer window). */
+  overHeroFails?:boolean;
   /** A status readout made see-through because the hero is under it (RunHud.veil): over the hero by design, not hiding it. */
   veiled?:boolean}
 export interface AuditResult {
@@ -135,7 +153,7 @@ export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rec
   const heroCrossed:string[]=[],allowedOverHero:string[]=[],veiledOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
   let minThumbGap=Infinity;
   for(const box of boxes){
-    if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay?allowedOverHero:box.veiled?veiledOverHero:heroCrossed).push(box.name);
+    if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay&&!box.overHeroFails?allowedOverHero:box.veiled?veiledOverHero:heroCrossed).push(box.name);
     if(!box.allowedInPlay&&!box.thumb&&crosses(box.rect,zones.useful))(box.fallback?fallbackInPlay:inPlay).push(box.name);
   }
   const thumbs=boxes.filter(b=>b.thumb);
@@ -168,6 +186,7 @@ export function measureZones(doc:Document=document):ScreenZones{
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
     team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
+    offer:rectOf(q('.rh-offer')),
   });
 }
 
@@ -194,7 +213,8 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   const low=!!doc.querySelector('.rh-stack.rh-stack-low');
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
   add('.rh-member','time');
-  add('.rh-offer','oferta',{allowedInPlay:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true});
+  // The open window may sit in the field but never on the hero: the camera moves the hero beside it (UX onda 4).
+  add('.rh-offer','oferta',{allowedInPlay:true,overHeroFails:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-offer-chip','chip',{target:true});add('.rh-offer-hint','dica-do-chip',{allowedInPlay:true});
   add('.fun-emote-toggle','emote',{target:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;

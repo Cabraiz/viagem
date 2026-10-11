@@ -185,8 +185,9 @@ export class IslandScene extends Phaser.Scene {
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
     if(!this.actor)return;
-    // Out of the round, and while following a teammate, nothing spawns against this screen: no contract budget.
-    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint);
+    // Out of the round, in the intermission and while following a teammate, nothing spawns against this screen: no budget.
+    // The intermission has no spawns either, so the hero may go far from the centre (beside the round offer window).
+    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
     const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
     const c=this.follow.step(this.project(this.watchPoint??this.smooth??this.position),delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);

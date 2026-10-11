@@ -258,3 +258,19 @@ test('zones: in landscape with the offer chip the useful area is the tall band b
   assert.ok(z.useful.height>=MIN_PLAY_SIDE,`${JSON.stringify(z.useful)}`);
   assert.equal(z.useful.x,138);
 });
+
+test('an open offer window takes its part of the useful area, and over the hero it fails the audit (UX onda 4)',async()=>{
+  const {computeZones,auditBoxes,MIN_PLAY_SIDE}=await import('../src/game/hud/zones.ts');
+  // Portrait intermission: the round offer window covers the lower part of the field.
+  const base={viewport:{width:390,height:844},status:[{x:0,y:0,width:390,height:110}],team:{x:8,y:120,width:54,height:444},
+    joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82}};
+  const open=computeZones({...base,offer:{x:70,y:420,width:310,height:260}}),closed=computeZones(base);
+  assert.ok(open.useful.y+open.useful.height<=420&&open.useful.height>=MIN_PLAY_SIDE,`${JSON.stringify(open.useful)}`);
+  assert.ok(closed.useful.height>open.useful.height);
+  const vp=base.viewport,z=followZoom(vp),hero={x:0,y:0},c=followTarget(hero,vp,z,open.useful,{x:0,y:0},HERO,true),feet=toScreen(hero,c,vp,z);
+  assert.ok(feet.y+HERO_MARGIN<=420+1e-6,'the hero ± 40 stays above the window');
+  // The audit: the window over the hero fails now (before it was only reported).
+  const heroRect={x:180,y:450,width:56,height:56},boxes=[{name:'oferta',rect:{x:70,y:420,width:310,height:260},allowedInPlay:true,overHeroFails:true}];
+  assert.deepEqual(auditBoxes(boxes,open,heroRect).heroCrossed,['oferta']);
+  assert.equal(auditBoxes(boxes,open,{x:180,y:250,width:56,height:56}).ok,true);
+});

@@ -51,6 +51,9 @@ export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,so
     list.forEach((o,i)=>{const dx=o.x-p.x,dy=o.y-p.y;if(dx*dx+dy*dy<=r2)out.push(info(`no-${nodeKind(o)}-${i}`,o,base));});
     return out;
   }
+  // The camp's own piles first (review onda 6): the endless clearing has no tree or rock for BASE_CLEAR units, so
+  // without them nothing to gather is in sight from the camp.
+  for(const n of campNodes(terrain!)){const dx=n.x-p.x,dy=n.y-p.y;if(dx*dx+dy*dy<=r2)out.push(n);}
   const cx0=Math.max(-CHUNK_LIMIT,Math.floor((p.x-reach)/CHUNK_SIZE)),cx1=Math.min(CHUNK_LIMIT,Math.floor((p.x+reach)/CHUNK_SIZE));
   const cy0=Math.max(-CHUNK_LIMIT,Math.floor((p.y-reach)/CHUNK_SIZE)),cy1=Math.min(CHUNK_LIMIT,Math.floor((p.y+reach)/CHUNK_SIZE));
   for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){
@@ -59,15 +62,45 @@ export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,so
   return out;
 }
 
+/**
+ * Id index of the touched nodes (review onda 6: no linear find per node per player per tick). A cache only: rebuilt
+ * whenever the list is another array (checkpoint restore) or its length moved (refill, a push from elsewhere).
+ */
+const index=new WeakMap<ResourceNode[],{len:number;map:Map<string,ResourceNode>}>();
+export function touchedNode(state:StonewardsState,id:string){
+  const list=state.nodes;let c=index.get(list);
+  if(!c||c.len!==list.length){c={len:list.length,map:new Map(list.map(n=>[n.id,n]))};index.set(list,c);}
+  return c.map.get(id);
+}
+/**
+ * Endless world: CAMP_PILES piles (coco and pedra alternating) on a ring CAMP_PILE_RING units from the base, a few
+ * steps out of the camp, turned by the seed. The base clearing (chunks.ts BASE_CLEAR) keeps them on open ground.
+ * Value 1: the quick run of the first intermission; the richer nodes are still out in the blocks.
+ */
+export const CAMP_PILES=6,CAMP_PILE_RING=8,CAMP_PILE_RADIUS=.35;
+const pileCache=new WeakMap<TerrainField,NodeInfo[]>();
+export function campNodes(terrain:TerrainField):NodeInfo[]{
+  let list=pileCache.get(terrain);
+  if(list)return list;
+  const base=worldBase(terrain),turn=((terrain.seed>>>0)%360)*Math.PI/180;
+  list=Array.from({length:CAMP_PILES},(_,i)=>{
+    const a=turn+i*2*Math.PI/CAMP_PILES,kind:ResourceKind=i%2?'pedra':'coco';
+    return {id:`no-base-${i}`,kind,x:Math.round((base.x+Math.cos(a)*CAMP_PILE_RING)*100)/100,y:Math.round((base.y+Math.sin(a)*CAMP_PILE_RING)*100)/100,
+      radius:CAMP_PILE_RADIUS,value:1,capacity:NODE_CAPACITY[kind]};
+  });
+  pileCache.set(terrain,list);
+  return list;
+}
+
 /** Units of work left on a node this round (full when nobody touched it). */
 export function remainingOf(state:StonewardsState,node:NodeInfo){
-  const touched=state.nodes.find(n=>n.id===node.id);
+  const touched=touchedNode(state,node.id);
   return touched?touched.remaining:node.capacity;
 }
 /** The node's round state, created on first touch. */
 export function touch(state:StonewardsState,node:NodeInfo):ResourceNode{
-  let n=state.nodes.find(t=>t.id===node.id);
-  if(!n){n={...node,remaining:node.capacity,work:0,workBy:{}};state.nodes.push(n);}
+  let n=touchedNode(state,node.id);
+  if(!n){n={...node,remaining:node.capacity,work:0,workBy:{}};state.nodes.push(n);const c=index.get(state.nodes);if(c){c.map.set(n.id,n);c.len++;}}
   return n;
 }
 

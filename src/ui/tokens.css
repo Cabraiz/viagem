@@ -44,6 +44,8 @@
   --c-veu:color-mix(in srgb,var(--c-breu) 62%,transparent);     /* fundo atrás de diálogo */
   --c-sombra:color-mix(in srgb,var(--c-breu) 45%,transparent);  /* sombra dura de janela */
   --c-trilho:color-mix(in srgb,var(--c-breu) 18%,transparent);  /* trilho de barra sobre papel */
+  --c-pedra:color-mix(in srgb,var(--c-papel) 55%,var(--c-breu));  /* pedra cinza do Stonewards (nó, muralha), VGM-046B */
+  --c-casca:color-mix(in srgb,var(--c-cone) 45%,var(--c-breu));   /* casca de coco, VGM-046B */
 
   /* Usos semânticos. */
   --c-perigo:var(--c-cone);

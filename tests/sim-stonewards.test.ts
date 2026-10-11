@@ -5,7 +5,14 @@ import {BASE_STATS,ticks} from '../src/game/sim/types.ts';
 import type {EnemyState,RoundPhase,SimContext,SimEvent,SimPlayer} from '../src/game/sim/types.ts';
 import {DEFAULT_SEED,defaultTerrain,TerrainField} from '../src/game/terrain/field.ts';
 import {moveDirection,obstacles,walkable} from '../src/game/world.ts';
-import {createStonewardsSystem,HORN_LEAD,HORN_LINES,MAX_PREPARE_TICKS,SAY_GAP,type StonewardsSystem} from '../src/game/sim/stonewards/system.ts';
+import {createStonewardsSystem,HORN_LEAD,HORN_LINES,MAX_PREPARE_TICKS,MAX_STRETCH_PER_RUN,SAY_GAP,type StonewardsSystem} from '../src/game/sim/stonewards/system.ts';
+import {campNodes,CAMP_PILES} from '../src/game/sim/stonewards/resources.ts';
+import {ROUNDS} from '../src/game/sim/waves.ts';
+import {STONEWARDS_INTERMISSION_SECONDS} from '../src/game/sim/assemble.ts';
+import {RUN_DURATION_TICKS} from '../src/game/net/run.ts';
+import {ROOM_CLOSING_MARGIN_MS,RUN_START_WINDOW_MS} from '../multiplayer/room.ts';
+import {PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
+import {readFileSync} from 'node:fs';
 import {CAMP_RADIUS,FORGE_REFUSALS,returnTicks} from '../src/game/sim/stonewards/rules.ts';
 import {Simulation} from '../src/game/net/shared.ts';
 import {createEnemy,enemyDef} from '../src/game/sim/enemies/catalog.ts';
@@ -71,7 +78,7 @@ test('endless nodes: deterministic per seed and chunk, and worth more far from t
     const far=new TerrainField(seed,{world:'infinito'});nodesNear(far,{x:5000,y:5000},40);
     assert.deepEqual(nodesNear(far,{x:0,y:0},70),a);
     for(const n of a){
-      assert.match(n.id,/^no--?\d+_-?\d+-\d+$/);
+      assert.match(n.id,/^no-(-?\d+_-?\d+-\d+|base-\d)$/);
       assert.equal(n.value,nodeValue(Math.hypot(n.x,n.y)));
     }
     assert.ok(a.some(n=>n.value===1)&&a.some(n=>n.value>=3),'near and far nodes');
@@ -509,4 +516,63 @@ test('the wall falling is a defeat exactly once, and the D-016 boss blow still w
   for(let t=0;t<60;t++){const before=s2.outcome;s2.step();if(s2.outcome&&!before)outcomes++;}
   assert.equal(s2.outcome,'defeat');assert.equal(outcomes,1);
   assert.equal(s2.run.revive.defeated,false,'not a team wipe: the wall');
+});
+
+test('review onda 6: the stretches of a run share one budget, and a stretched intermission carries its offers',()=>{
+  const terrain=new TerrainField(4242,{world:'infinito'});
+  const sys=createStonewardsSystem({terrain,extendPrepare:(c,endsTick)=>{c.round.phaseEndsTick=endsTick;}});
+  const far=player('far',300,300),ctx=fakeCtx([far]);(ctx as {terrain:TerrainField}).terrain=terrain;
+  let total=0;
+  for(let round=2;round<=10;round++){
+    ctx.round.phase='wave';run(ctx,sys,2);
+    ctx.round.index=round;ctx.round.phase='prepare';const planned=ctx.tick+ticks(30);ctx.round.phaseEndsTick=planned;
+    run(ctx,sys,2);total+=ctx.round.phaseEndsTick-planned;
+  }
+  assert.equal(total,MAX_STRETCH_PER_RUN,'nine far heroes stretch 90 s in all, not 9 × 45 s');
+  assert.equal(sys.state.stretched,MAX_STRETCH_PER_RUN);
+});
+
+test('a stretched intermission moves the round offer due at its old end (assemble wiring)',()=>{
+  const s=new Simulation(4242,{world:'infinito',experimental:true});s.add('p0','P0','cidadao-comum');s.resetRun();
+  const w=s.world;
+  // Director frozen in the intermission of round 3; the only hero 150 units out (the horn must stretch it).
+  (s.run.director as {step:(c:unknown)=>void}).step=()=>{};
+  s.run.director.state.stage='prepare';
+  const old=w.tick+ticks(10);Object.assign(w.round,{index:3,total:10,phase:'prepare',phaseEndsTick:old,remaining:0});
+  const p=s.players.get('p0')!;
+  for(let a=0;a<360;a+=10){const q={x:Math.cos(a*Math.PI/180)*150,y:Math.sin(a*Math.PI/180)*150};if(walkable(q,s.terrain)){Object.assign(p,q);break;}}
+  w.offers.set('p0',[{id:'rnd-2-p0',playerId:'p0',source:'round',level:2,choices:[{itemId:'tenis',level:1}],deadlineTick:old,defaultIndex:0},
+    {id:'lvl-5-p0',playerId:'p0',source:'level',level:5,choices:[{itemId:'ima',level:1}],deadlineTick:old+ticks(10),defaultIndex:0}]);
+  s.step();
+  assert.ok(w.round.phaseEndsTick>old,'stretched');
+  assert.equal(s.run.director.state.round.phaseEndsTick,w.round.phaseEndsTick,'the director knows the new end');
+  assert.equal(w.offers.get('p0')![0].deadlineTick,w.round.phaseEndsTick,'the round offer follows the new end');
+  assert.equal(w.offers.get('p0')![1].deadlineTick,old+ticks(10),'others keep their own clock');
+});
+
+test('the camp piles: six nodes a few steps out of the camp on every endless seed, on open ground',()=>{
+  for(const seed of [1,7,42,4242,0xdeadbeef]){
+    const terrain=new TerrainField(seed,{world:'infinito'});
+    const piles=campNodes(terrain);
+    assert.equal(piles.length,CAMP_PILES);
+    assert.deepEqual(piles.map(n=>n.kind).sort(),['coco','coco','coco','pedra','pedra','pedra']);
+    for(const n of piles){
+      const d=Math.hypot(n.x,n.y);assert.ok(d>CAMP_RADIUS&&d<CAMP_RADIUS+3,`${seed}: ${d}`);
+      assert.ok(walkable({x:n.x+.6,y:n.y},terrain)||walkable({x:n.x-.6,y:n.y},terrain),'a hero can stand by it');
+    }
+    assert.ok(nodesNear(terrain,{x:0,y:5},12).some(n=>n.id.startsWith('no-base-')),'seen from the spawn');
+  }
+});
+
+test('a worst-case run fits the room: every round to its timeout, every horn stretched, boss at its nominal time',()=>{
+  const opening=3,rounds=ROUNDS.reduce((sum,r)=>sum+r.maxDuration,0);
+  const worst=opening+rounds+9*STONEWARDS_INTERMISSION_SECONDS+MAX_STRETCH_PER_RUN/20;
+  assert.ok(worst*20<=RUN_DURATION_TICKS,`${worst} s under the 20 min safety cap`);
+  assert.ok(worst*1000+ROOM_CLOSING_MARGIN_MS<=RUN_START_WINDOW_MS,`${(worst/60).toFixed(1)} min + margin within the start window`);
+});
+
+test('the release workflow checks the protocol this client speaks',()=>{
+  const yml=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
+  assert.ok(yml.includes(`grep -q '"protocol":${PROTOCOL_VERSION}'`));
+  assert.ok(yml.includes(`protocolo ${PROTOCOL_VERSION}:`));
 });

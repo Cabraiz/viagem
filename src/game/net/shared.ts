@@ -15,7 +15,7 @@ import {BASE_STATS} from '../sim/types.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
-import {nodesNear,remainingOf,WORK_PER_UNIT} from '../sim/stonewards/resources.ts';
+import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../sim/stonewards/resources.ts';
 import type {BuyResult} from '../sim/stonewards/forge.ts';
 import type {RunState} from './run.ts';
 import {InputTrack,STEP_MS} from './input-track.ts';
@@ -290,7 +290,7 @@ export class Simulation {
       if(p.spectator||p.eliminated)continue;
       for(const n of nodesNear(this.terrain,p,reach)){
         if(out.has(n.id))continue;
-        const touched=st.nodes.find(t=>t.id===n.id);
+        const touched=touchedNode(st,n.id);
         out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,
           progress:touched?Math.min(1,touched.work/WORK_PER_UNIT[n.kind]):0});
       }

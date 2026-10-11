@@ -31,6 +31,11 @@ export {RECIPES,RECIPE_IDS,HORN_LINES} from './rules.ts';
 export const HORN_LEAD=ticks(5);
 /** Longest an intermission may get when the horn stretches it (150 units out needs ~55 s, rules.ts returnTicks). */
 export const MAX_PREPARE_TICKS=ticks(75);
+/**
+ * Total stretch a whole run may take (review onda 6): two full stretches would already push a worst-case run past the
+ * room's window. Past it the horn still sounds at once, but the round starts on time; who is that far fights there.
+ */
+export const MAX_STRETCH_PER_RUN=ticks(90);
 /** D-013: one `say` per source every this many ticks; a purchase still applies, only its line is skipped. */
 export const SAY_GAP=ticks(2);
 
@@ -64,7 +69,7 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
     towers:[],gathered:{},handled:[],
-    refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,sayReady:{},wallDown:false,defeatReported:false,rng:null,
+    refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,stretched:0,sayReady:{},wallDown:false,defeatReported:false,rng:null,
   };
 }
 
@@ -93,8 +98,13 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     if(left>lead)return;
     state.hornRound=round.index;
     if(left<lead&&options.extendPrepare){
-      const endsTick=Math.min(ctx.tick+lead,state.prepareStart+MAX_PREPARE_TICKS);
-      if(endsTick>round.phaseEndsTick)options.extendPrepare(ctx,endsTick);
+      const budget=Math.max(0,MAX_STRETCH_PER_RUN-state.stretched);
+      const endsTick=Math.min(ctx.tick+lead,state.prepareStart+MAX_PREPARE_TICKS,round.phaseEndsTick+budget);
+      if(endsTick>round.phaseEndsTick){
+        const before=round.phaseEndsTick;
+        options.extendPrepare(ctx,endsTick);
+        state.stretched+=Math.max(0,round.phaseEndsTick-before);
+      }
     }
     const line=draw(ctx,state,HORN_LINES);
     state.hornEndsTick=round.phaseEndsTick;

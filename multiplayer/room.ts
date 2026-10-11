@@ -51,10 +51,12 @@ const classIds=new Set(classes.map(c=>c.id));
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
- * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min, and the horn may stretch one for a hero far away, so 17.
- * Starting later would end with the room closing (4004) instead of a result. The 20 min tick cap stays a safety net.
+ * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
+ * (MAX_STRETCH_PER_RUN). The worst case on paper (every round to its timeout, every stretch, boss at its nominal 90 s)
+ * is 16.6 min, so 18 (tests/sim-stonewards.test.ts). Starting later would end with the room closing (4004) instead of a
+ * result. The 20 min tick cap stays a safety net.
  */
-export const RUN_START_WINDOW_MS=17*60_000;
+export const RUN_START_WINDOW_MS=18*60_000;
 /** A run still going this close to the room's end is closed as a timeout, so the result always reaches the players. */
 export const ROOM_CLOSING_MARGIN_MS=30_000;
 /** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */

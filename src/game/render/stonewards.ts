@@ -20,14 +20,16 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 
 /** A unit gathered: "+N" rises this long over its node. */
 const POP_MS=900;
-/** Node markers: ficha size in CSS px. */
-const MARK_W=46,MARK_H=24;
+/** Nodes are marked only this close to the hero (review onda 6, D9). */
+export const NODE_SIGHT=12;
 const RING_SEGMENTS=56;
 
 interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
-export interface StonewardsRendererOptions {projector:Projector;reduced:boolean}
+export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
+  /** The local hero (client prediction): nodes are marked only near it. */
+  hero?:()=>Pt|undefined}
 
 export class StonewardsRenderer {
   private scene:Phaser.Scene;
@@ -46,7 +48,7 @@ export class StonewardsRenderer {
   private now=0;
   private q:Pt={x:0,y:0};
   private ringPts=Array.from({length:RING_SEGMENTS},()=>({x:0,y:0}));
-  private readonly c={breu:0,papel:0,lilas:0,cartolina:0,cone:0,escuro:0};
+  private readonly c={breu:0,papel:0,lilas:0,cartolina:0,cone:0,pedra:0,casca:0,claro:0};
   private labelStyle:Phaser.Types.GameObjects.Text.TextStyle;
 
   constructor(scene:Phaser.Scene,options:StonewardsRendererOptions){
@@ -56,8 +58,8 @@ export class StonewardsRenderer {
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.lilas=tokenColor('--c-lilas');
     c.cartolina=tokenColor('--c-cartolina');c.cone=tokenColor('--c-cone');
-    // Lilás escuro (a mix in tokens.css): the same 72/28 blend of Lilás and Breu, for the stones.
-    c.escuro=mix(c.lilas,c.breu,.72);
+    // The same mixes as tokens.css --c-pedra, --c-casca and --c-papel-claro (no new hue).
+    c.pedra=mix(c.papel,c.breu,.55);c.casca=mix(c.cone,c.breu,.45);c.claro=mix(c.papel,0xffffff,.35);
     this.labelStyle={fontFamily:token('--f-cartaz'),fontSize:'16px',color:token('--c-papel'),stroke:token('--c-breu'),strokeThickness:4};
     whenFontsReady(()=>{for(const m of this.marks.values())m.label.setStyle(this.labelStyle);});
   }
@@ -119,34 +121,41 @@ export class StonewardsRenderer {
     this.ground.lineStyle(2.5*k,this.c.papel,.95).strokePoints(pts,true);
   }
 
-  /** Node: a ficha on the ground in front of its tree or rock, with its kind, "×value", units left and progress. */
+  /**
+   * Node (review onda 6, D9): the resource's own sticker on the ground in front of its tree or rock, no box. "x2" only
+   * when a unit is worth more than 1; the units left (pips) and the Cartolina progress bar only while someone gathers
+   * there. Only nodes within NODE_SIGHT units of the hero are marked; an empty one fades.
+   */
   private drawNode(m:NodeMark,k:number){
-    const n=m.view,g=this.ground,c=this.c;
-    const p=this.project(n.x,n.y),x=p.x,y=p.y+18*k;
-    const w=MARK_W*k,h=MARK_H*k,empty=n.remaining<=0,alpha=empty?.45:1;
-    g.fillStyle(c.breu,.88*alpha).fillRoundedRect(x-w/2,y-h/2,w,h,6*k);
-    g.lineStyle(2*k,c.papel,alpha).strokeRoundedRect(x-w/2,y-h/2,w,h,6*k);
-    // Kind glyph on the left: a coconut (Papel with three Breu eyes) or a stone (Lilás escuro with a Papel edge).
-    const gx=x-w/2+11*k,gy=y;
+    const n=m.view,g=this.ground,c=this.c,hero=this.options.hero?.();
+    const near=!hero||Math.hypot(n.x-hero.x,n.y-hero.y)<=NODE_SIGHT;
+    m.label.setVisible(near&&n.value>1&&n.remaining>0);
+    if(!near)return;
+    const p=this.project(n.x,n.y),x=p.x,y=p.y+14*k,empty=n.remaining<=0,alpha=empty?.35:1;
     if(n.kind==='pedra'){
-      const pts=[{x:gx-7*k,y:gy+5*k},{x:gx-6*k,y:gy-3*k},{x:gx,y:gy-7*k},{x:gx+7*k,y:gy-3*k},{x:gx+7*k,y:gy+5*k}];
-      g.fillStyle(c.escuro,alpha).fillPoints(pts,true).lineStyle(1.5*k,c.papel,alpha).strokePoints(pts,true);
+      // A flat grey stone with a chipped face (never the lilac gem of the XP, never the base's little house).
+      const pts=[[-11,4],[-9,-3],[-3,-7],[6,-6],[11,-1],[9,5],[-5,7]].map(([a,b])=>({x:x+a*k,y:y+b*k}));
+      g.lineStyle(6*k,c.claro,alpha).strokePoints(pts,true);
+      g.fillStyle(c.pedra,alpha).fillPoints(pts,true).lineStyle(2*k,c.breu,alpha).strokePoints(pts,true);
+      g.fillStyle(c.claro,alpha).fillTriangle(x-3*k,y-7*k,x+6*k,y-6*k,x+1*k,y-1*k);
+      g.lineStyle(1.5*k,c.breu,alpha).lineBetween(x+1*k,y-1*k,x-2*k,y+5*k);
     }else{
-      g.fillStyle(c.papel,alpha).fillCircle(gx,gy,7*k).lineStyle(1.5*k,c.breu,alpha).strokeCircle(gx,gy,7*k);
-      g.fillStyle(c.breu,alpha).fillCircle(gx-2.5*k,gy-2*k,1.3*k).fillCircle(gx+2.5*k,gy-2*k,1.3*k).fillCircle(gx,gy+2.5*k,1.3*k);
+      // Half a coconut: brown husk ring, white flesh (never three holes: that read as the boss's skull).
+      g.fillStyle(c.claro,alpha).fillCircle(x,y,11*k);
+      g.fillStyle(c.casca,alpha).fillCircle(x,y,8.5*k).lineStyle(2*k,c.breu,alpha).strokeCircle(x,y,8.5*k);
+      // The flesh sits high in the shell (a coconut cut open, seen from above-front), never a centred ring (a life buoy).
+      g.fillStyle(c.claro,alpha).fillEllipse(x,y-2.5*k,11*k,8*k).lineStyle(1.5*k,c.breu,alpha).strokeEllipse(x,y-2.5*k,11*k,8*k);
     }
-    m.label.setPosition(x+8*k,y).setScale(k).setAlpha(alpha).setDepth(-9970);
-    // Units left as pips under the ficha: Papel = still there, Breu outline = gathered. Shape, not only color.
+    m.label.setPosition(x+19*k,y).setScale(k).setAlpha(alpha).setDepth(-9970);
+    if(!(n.progress>0)||empty)return;
     const cap=Math.max(1,Math.min(8,n.capacity)),pip=4*k,gap=2*k,total=cap*pip+(cap-1)*gap;
     for(let i=0;i<cap;i++){
-      const px=x-total/2+i*(pip+gap),py=y+h/2+3*k,full=i<n.remaining;
-      g.fillStyle(full?c.papel:c.breu,alpha).fillRect(px,py,pip,pip);
-      g.lineStyle(1*k,c.breu,alpha).strokeRect(px,py,pip,pip);
+      const px=x-total/2+i*(pip+gap),py=y+13*k,full=i<n.remaining;
+      g.fillStyle(full?c.papel:c.breu,1).fillRect(px,py,pip,pip);
+      g.lineStyle(1*k,c.breu,1).strokeRect(px,py,pip,pip);
     }
-    // The unit being gathered right now: a Cartolina bar along the bottom edge (feedback while standing there).
-    if(n.progress>0&&!empty){
-      g.fillStyle(c.cartolina,1).fillRect(x-w/2+3*k,y+h/2-5*k,(w-6*k)*Math.min(1,n.progress),3*k);
-    }
+    g.fillStyle(c.breu,1).fillRect(x-total/2-k,y+19*k,total+2*k,5*k);
+    g.fillStyle(c.cartolina,1).fillRect(x-total/2,y+20*k,total*Math.min(1,n.progress),3*k);
   }
 
   /** The wall/shelter: a ring of stones with a lona tent and its flag, plus the life bar above it. */
@@ -161,7 +170,7 @@ export class StonewardsRenderer {
     const stones=down?7:14;
     for(let i=0;i<stones;i++){
       const a=Math.PI*(1+i/(stones-1)),sx=x+Math.cos(a)*62,sy=y+Math.sin(a)*24-4;
-      g.fillStyle(c.escuro,1).fillRoundedRect(sx-11,sy-10,22,16,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-11,sy-10,22,16,5);
+      g.fillStyle(c.pedra,1).fillRoundedRect(sx-11,sy-10,22,16,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-11,sy-10,22,16,5);
     }
     if(!down){
       const tent=[{x:x-40,y:y+6},{x:x,y:y-62},{x:x+40,y:y+6}];
@@ -173,7 +182,7 @@ export class StonewardsRenderer {
     }
     for(let i=0;i<stones;i++){
       const a=Math.PI*(i/(stones-1)),sx=x+Math.cos(a)*62,sy=y+Math.sin(a)*24-2;
-      g.fillStyle(c.escuro,1).fillRoundedRect(sx-12,sy-11,24,18,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-12,sy-11,24,18,5);
+      g.fillStyle(c.pedra,1).fillRoundedRect(sx-12,sy-11,24,18,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-12,sy-11,24,18,5);
     }
     if(down)return;
     // Life bar (CSS px): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch.

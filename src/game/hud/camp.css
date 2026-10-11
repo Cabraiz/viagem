@@ -34,6 +34,7 @@
 .rh-horn-row{display:flex;align-items:center;justify-content:center;gap:6px}
 .rh-horn-icon{display:inline-flex}
 .rh-horn:not([data-kind=wall]) .rh-horn-icon[data-for=wall],.rh-horn[data-kind=wall] .rh-horn-icon[data-for=horn]{display:none}
+.rh-horn[data-kind=hint] .rh-horn-icon[data-for=horn]{display:none}
 .rh-horn-text{font:700 var(--t-13)/1.2 var(--f-sistema)}
 .rh-horn-time{min-width:2.6em;text-align:left;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 /* The arrow to the base: the "voltar" sticker turned towards it (--rumo from explore.ts, the base's bearing on screen). */
@@ -42,6 +43,11 @@
 .rh-horn-joke:empty{display:none}
 /* Urgency is a static switch to Laranja Cone (the last 5 s out of the camp, or the wall in danger), never a loop. */
 .rh-horn.rh-horn-urgent,.rh-horn[data-kind=wall]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+/* One urgency at a time in the top band (review onda 6, D8): while the horn speaks, the round chip stays a plain ficha. */
+.rh:has(.rh-horn:not([hidden])) .rh-round.rh-urgent{background:var(--c-ficha);color:var(--c-papel);border-color:var(--c-papel);text-shadow:var(--s-texto);animation:none}
+/* The gathering tip of the first intermission (once per phone): a calm ficha, not an alarm. */
+.rh-horn[data-kind=hint] .rh-horn-text{font-weight:400}
+.rh-horn:not([data-kind=hint]) .rh-horn-icon[data-for=hint],.rh-horn[data-kind=hint] .rh-horn-icon:not([data-for=hint]){display:none}
 
 /* ---------- Forge window ----------
    The round offer's place and frame (system window: Lilás body, Breu edge, Papel inner line), holding price tags. */
@@ -73,13 +79,13 @@
 /* Not buyable now: the sticker and the price step back (the text keeps full ink) and, short of money, a padlock rides
    the price; a tap still says why. */
 .rh-forge-blocked :is(.rh-forge-icon,.rh-forge-price){opacity:.5}
-.rh-forge-lock{position:absolute;right:2px;top:-12px}
+.rh-forge-lock,.rh-forge-full{position:absolute;right:2px;top:-12px}
 /* Bought: Amarelo tag and the "LEVEI" ink stamp (the HUD's one show animation, hud.css keyframes). */
 .rh-forge-stamp{position:absolute;left:50%;top:50%;z-index:2;box-sizing:border-box;width:70%;padding:2px 6px 3px;text-align:center;
-  border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);color:var(--c-lilas);mix-blend-mode:multiply;
+  border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);color:var(--c-lilas);
   font:900 var(--t-28)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%,-50%) rotate(-8deg)}
 .rh .rh-forge-done{background:var(--c-amarelo)}
-.rh-forge-done :is(.rh-forge-icon,.rh-forge-name,.rh-forge-desc,.rh-forge-price){opacity:.4}
+.rh-forge-done :is(.rh-forge-icon,.rh-forge-desc,.rh-forge-price){opacity:.4}
 .rh-forge-done .rh-forge-stamp{opacity:1;animation:rh-stamp 140ms cubic-bezier(.2,.9,.3,1.25) both}
 .rh-forge-note{margin:0;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* The note (what a tap did, or why not) rides in the header between the title and the close button, so the three

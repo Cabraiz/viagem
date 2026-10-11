@@ -1,7 +1,7 @@
 /** Stonewards HUD and renderer rules (VGM-046B): what the forge allows, what is missing, the wall bar, gather pops. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {blockedReason,inCamp,missing,MAX_TOWERS} from '../src/game/hud/camp.ts';
+import {blockedReason,inCamp,missing,MAX_TOWERS,GATHER_TIP,markTipSeen,tipSeen} from '../src/game/hud/camp.ts';
 import {gatheredSince,wallBar,WALL_LOW} from '../src/game/render/stonewards-rules.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPE_IDS,RECIPES,returnTicks,nodeValue} from '../src/game/sim/stonewards/rules.ts';
 import {MAX_TOWERS as SERVER_MAX_TOWERS} from '../src/game/sim/stonewards/forge.ts';
@@ -51,4 +51,13 @@ test('return time and node value bands (base-stonewards-mapa)',()=>{
   assert.equal(returnTicks(150),Math.ceil((144/3.1*1.1+2)*20));
   assert.equal(returnTicks(Number.NaN),0);
   assert.ok([10,20,40,80].map(nodeValue).every((v,i,a)=>i===0||v>=a[i-1]));
+});
+
+test('the gathering tip: once per phone, and a storage that throws never breaks the HUD',()=>{
+  const store=new Map<string,string>();
+  const ok={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);}};
+  assert.equal(tipSeen(ok),false);markTipSeen(ok);assert.equal(tipSeen(ok),true);
+  const broken={getItem:()=>{throw new Error('private');},setItem:()=>{throw new Error('quota');}};
+  assert.equal(tipSeen(broken),false);assert.doesNotThrow(()=>markTipSeen(broken));
+  assert.ok(GATHER_TIP.length<=48&&!/[A-Z]{2}/.test(GATHER_TIP));
 });

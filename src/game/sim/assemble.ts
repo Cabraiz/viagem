@@ -78,7 +78,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const stonewards=createStonewardsSystem({
     terrain:world.terrain,siegeContact:false,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
-    extendPrepare:(ctx,endsTick)=>director!.extendPrepare(ctx,endsTick),
+    // The horn stretched the intermission: the offers due at its old end (the round offer, level offers armed for it)
+    // move with it, so nobody's default is picked while the intermission still runs.
+    extendPrepare:(ctx,endsTick)=>{
+      const before=ctx.round.phaseEndsTick;
+      director!.extendPrepare(ctx,endsTick);
+      const after=ctx.round.phaseEndsTick;
+      if(after>before)for(const queue of ctx.offers.values())for(const offer of queue)if(offer.deadlineTick===before)offer.deadlineTick=after;
+    },
   });
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},

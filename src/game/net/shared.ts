@@ -17,7 +17,8 @@ import type {RunView,TelegraphView} from '../sim/view.ts';
 import type {RunState} from './run.ts';
 import {InputTrack,STEP_MS} from './input-track.ts';
 /**
- * Room protocol (join handshake). 4 since VGM-042b: binary run frames (protocol4.ts) plus JSON control messages.
+ * Room protocol (join handshake). 5 since E7-skill-hud-wiring (4 was VGM-042b): binary run frames (protocol4.ts,
+ * every event with its byte length) plus JSON control messages.
  * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
  * refused at join with a readable message, never fed frames it cannot parse.
  */

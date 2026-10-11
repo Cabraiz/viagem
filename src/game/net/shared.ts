@@ -47,11 +47,21 @@ export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 
+/** The room's Durable Object restarted (deploy, eviction) in the middle of a run (VGM-047, D-024 proposed): honest end. */
+export const ROOM_RESTARTED_NOTICE='O servidor da sala reiniciou e a run se perdeu no caminho. A turma continua aqui: toca em Tô pronto pra começar outra.';
+/** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
+export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
+
 /** Client-side ranges for the prototype skill ring (scene.ts). */
 export const ATTACK_RANGE=1.8,BASIC_COOLDOWN_TICKS=12,SKILL_RANGE=2.8,SKILL_COOLDOWN_TICKS=160;
 export const STEP = 1 / 20;
 export const MAX_PLAYERS = 6;
-export const GRACE_MS = 30_000;
+/**
+ * A dropped player keeps the seat this long (VGM-047, definitive for phones, D-009/D-016): switching apps, answering a
+ * message or changing networks is normal. Costs nothing on the free plan (an offline player sends nothing); the
+ * standing character can still be hit, so a long absence ends in a fall like any other.
+ */
+export const GRACE_MS = 120_000;
 export type Input = PlayerInput;
 export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number; spectator?:boolean; skillTick?:number; skillReadyTick?:number };
 export type Enemy = Point & { id:string; hp:number };
@@ -178,6 +188,9 @@ export class Simulation {
       takeInput:id=>{const p=this.players.get(id);return p?this.tracks.get(id)?.next(p,this.clock):undefined;},
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
+      // The run waits for its last player standing who dropped exactly as long as the room keeps the seat (VGM-047);
+      // after that the session expires and the Room ends an empty run (042a R1).
+      reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
     });
   }
   resetRun(){

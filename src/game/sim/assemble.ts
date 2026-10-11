@@ -25,6 +25,8 @@ export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
+  /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
+  reconnectGraceTicks?:number;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -68,7 +70,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // D-016: once the director is done (boss down), a same-tick wipe is not a defeat. D-017: no structures until 046B.
   // The director only reaches 'done' on its next step, so the boss's killing blow also ends the run right away.
   let bossDown=false;
-  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded:()=>bossDown||director!.state.stage==='done'});
+  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded:()=>bossDown||director!.state.stage==='done',reconnectGraceTicks:options.reconnectGraceTicks});
 
   world.clearSystems();
   for(const system of [

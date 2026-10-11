@@ -91,7 +91,7 @@ const escapeHtml=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
  * Waiting room panel inside the island shell (a modal dialog, so it must live inside it).
  * Polls client.run, shows while the run is in lobby/countdown and removes itself when the island closes.
  */
-export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>,options:{origin?:string;now?:()=>number}={}){
+export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'>>,options:{origin?:string;now?:()=>number}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
@@ -129,7 +129,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(!view.visible)return;
     panel.dataset.phase=view.phase;
     setText($('.coop-wait-headline'),view.headline);
-    setText($('.coop-wait-line'),view.phase==='countdown'?'':waitingLine((now()-started)/1000));
+    // After a restart of the room the run is gone (VGM-047): the line says so instead of the waiting joke.
+    panel.classList.toggle('has-notice',!!client.roomNotice);
+    setText($('.coop-wait-line'),view.phase==='countdown'?'':client.roomNotice??waitingLine((now()-started)/1000));
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
     readyButton.hidden=view.selfSpectator;

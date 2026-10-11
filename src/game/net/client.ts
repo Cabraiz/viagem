@@ -1,5 +1,5 @@
 import {defaultTerrain} from '../terrain/field.ts';
-import { STEP, ROOM_PROTOCOL, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, GRACE_MS, ROOM_RESTARTED_NOTICE, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
@@ -18,6 +18,15 @@ export const ACK_EVERY_MS=1000;
 const PING_EVERY_MS=5000;
 /** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
 const MAX_PENDING=40;
+/** The room closes a connection whose character went to a newer one (another tab or network) with this code: never retried. */
+export const REPLACED_CLOSE=4009;
+/**
+ * Reconnection keeps trying while the seat can still be there (VGM-047): the room's grace since the last message heard,
+ * plus a margin (a restarted room seats everyone again with a fresh grace). Backoff up to RETRY_MAX_MS.
+ */
+const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=4000;
+/** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
+const WAKE_SILENCE_MS=3000;
 /** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
 const MAX_BAD_FULL_FRAMES=3;
 /** At most one resync request this often (frames already in flight fail the same way). */
@@ -51,7 +60,14 @@ export class CoopClient {
   private samples:Sample[]=[];
   private stopped=false;
   private attempts=0;
-  private lostAt=0;
+  /** Date.now() of the last message from the room (the reconnection window counts from it, across app switches). */
+  private lastSeenAt=0;
+  private wake?:()=>void;
+  /**
+   * Last room notice that belongs on the waiting room (the room restarted and the run was lost, VGM-047); cleared
+   * when the next run starts.
+   */
+  roomNotice?:string;
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
@@ -73,9 +89,13 @@ export class CoopClient {
   onStatus:(message:string)=>void=()=>{};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
-  constructor(readonly endpoint:string,readonly code:string,readonly name:string,readonly classId:string){}
+  readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
+  // Plain fields, not parameter properties: node's type stripping loads this file, so the client has unit tests.
+  constructor(endpoint:string,code:string,name:string,classId:string){this.endpoint=endpoint;this.code=code;this.name=name;this.classId=classId;}
   async join(){
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
+    // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
+    if(typeof document!=='undefined'&&!this.wake){this.wake=()=>{if(!document.hidden)this.resume();};document.addEventListener('visibilitychange',this.wake);}
     return new Promise<void>((resolve,reject)=>{this.resolveReady=resolve;this.rejectReady=reject;this.connect();});
   }
   private connect(){
@@ -86,7 +106,9 @@ export class CoopClient {
     const timeout=setTimeout(()=>ws.close(),8000);
     ws.onopen=()=>{ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{})}));};
     ws.onmessage=event=>{
-      this.lastMessage=performance.now();
+      // A socket this client already replaced (or gave up on) says nothing any more.
+      if(ws!==this.socket)return;
+      this.lastMessage=performance.now();this.lastSeenAt=Date.now();
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         if(this.initialized&&ws===this.socket)this.frame(ws,data);
@@ -98,7 +120,7 @@ export class CoopClient {
         const terrain=terrainFor(m.world);
         if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
         this.terrain=terrain;
-        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.lostAt=0;
+        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -108,37 +130,55 @@ export class CoopClient {
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
-      else if(m.t==='notice'&&typeof m.message==='string'){this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='notice'&&typeof m.message==='string'){if(m.message===ROOM_RESTARTED_NOTICE)this.roomNotice=m.message;this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='replaced')this.replaced(ws);
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
-    ws.onclose=()=>{
+    ws.onclose=event=>{
+      if(ws!==this.socket)return;
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
-      this.lostAt ||= Date.now();
-      if(Date.now()-this.lostAt>25_000||(!this.initialized&&this.attempts>=2)){
+      // A newer connection took the character: stop here, keep the token (the reload button takes it back on purpose).
+      if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
+      if(this.initialized&&Date.now()-this.lastSeenAt>RETRY_WINDOW_MS||(!this.initialized&&this.attempts>=2)){
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
         if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      this.retry=setTimeout(()=>this.connect(),Math.min(3000,500*2**this.attempts++));
+      this.retry=setTimeout(()=>this.connect(),Math.min(RETRY_MAX_MS,500*2**this.attempts++));
     };
     ws.onerror=()=>{};
+  }
+  /** The character went to a newer connection (REPLACED_CLOSE): terminal here, token kept, no retry, so no tab ping-pong. */
+  private replaced(ws:WebSocket){
+    if(this.stopped)return;
+    this.stopped=true;this.connected=false;this.fatal=REPLACED_MESSAGE;clearTimeout(this.retry);
+    this.onStatus(REPLACED_MESSAGE);this.rejectReady?.(new Error(REPLACED_MESSAGE));
+    try{ws.close();}catch{}
+  }
+  /** Visible again: a socket silent for WAKE_SILENCE_MS is dropped now, and a waiting retry goes at once. */
+  private resume(){
+    if(this.stopped)return;
+    const ws=this.socket;
+    if(ws?.readyState===WebSocket.OPEN&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
+    if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
   private fail(ws:WebSocket,message:string){
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+30_000}));}catch{}}
+  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+GRACE_MS}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
     this.victory=run.outcome==='victory';
+    if(run.phase==='combat')this.roomNotice=undefined;
   }
   /** One protocol 4 frame: decode, ack, then players, prediction and the run clock. */
   private frame(ws:WebSocket,data:ArrayBuffer){
@@ -217,6 +257,6 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
 }
 export { STEP };

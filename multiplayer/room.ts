@@ -1,5 +1,5 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, ROOM_RESTARTED_NOTICE, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
@@ -26,7 +26,17 @@ export interface RoomOptions {
   labHorde?:number;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
+  /**
+   * VGM-047: called (at most once per receive/advance) when the roster changed, so the Durable Object can keep it in
+   * storage (one row) and a restarted object can seat everyone again. See RoomRoster.
+   */
+  onRoster?:(roster:RoomRoster)=>void;
 }
+/**
+ * What survives a restart of the Durable Object (deploy, eviction, crash), VGM-047. Not the run: the policy is to
+ * end it honestly (D-024, proposed), so only who sits in the room and where the room was.
+ */
+export interface RoomRoster {v:1;/** A run was in combat (its loss is announced after a restart). */running:boolean;players:{id:string;name:string;classId:string;token:string}[]}
 const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
@@ -50,7 +60,7 @@ const PRUNE_EVERY=RUN_HZ;
 /** Tick durations kept for the lab report (one minute at 20 Hz). */
 const PERF_SAMPLES=1200;
 /** Server-side cost of the room, for the lab (wrangler dev): tick and encode times, frames and bytes sent. */
-export interface RoomPerf {ticks:number;tickMs:number;maxTickMs:number;encodeMs:number;frames:number;bytes:number;jsonBytes:number;samples:number[];encodeSamples:number[]}
+export interface RoomPerf {ticks:number;tickMs:number;maxTickMs:number;encodeMs:number;frames:number;bytes:number;jsonBytes:number;rosterWrites:number;samples:number[];encodeSamples:number[]}
 export class Room {
   sim:Simulation;
   readonly run:RunLifecycle;
@@ -59,7 +69,7 @@ export class Room {
   /** One per room (D-018): every encoder maps server ids to the same wire ids; reset with each new run. */
   readonly ids=new WireIds();
   readonly createdAt:number;
-  readonly perf:RoomPerf={ticks:0,tickMs:0,maxTickMs:0,encodeMs:0,frames:0,bytes:0,jsonBytes:0,samples:[],encodeSamples:[]};
+  readonly perf:RoomPerf={ticks:0,tickMs:0,maxTickMs:0,encodeMs:0,frames:0,bytes:0,jsonBytes:0,rosterWrites:0,samples:[],encodeSamples:[]};
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
@@ -67,10 +77,44 @@ export class Room {
   private readonly sampling:boolean;
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
+  private readonly onRoster?:(roster:RoomRoster)=>void;
+  /** Roster as last handed to onRoster (JSON), so only real changes are written. */
+  private rosterKey='';
+  /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
+  private lostRun=new Set<string>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
+    this.onRoster=options.onRoster;
+  }
+  /** Who sits in the room (and the run phase), for storage. */
+  roster():RoomRoster{
+    return {v:1,running:this.run.snapshot().phase==='combat',players:[...this.sim.players.values()].flatMap(p=>{
+      const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,token:s.token}]:[];
+    })};
+  }
+  /**
+   * A restarted Durable Object seats the stored roster again (VGM-047): same ids and tokens, everyone offline with a
+   * fresh grace, the room in the lobby. A run that was going is lost, and each player is told so when back (D-024).
+   */
+  restore(roster:RoomRoster,now=Date.now()){
+    if(roster?.v!==1||!Array.isArray(roster.players))return;
+    for(const r of roster.players.slice(0,6)){
+      if(typeof r?.id!=='string'||typeof r.token!=='string'||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
+      this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,token:r.token,until:now+GRACE_MS});
+      this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);
+      if(roster.running===true)this.lostRun.add(r.id);
+    }
+    this.syncSpectators();this.rosterKey=JSON.stringify(this.roster());
+  }
+  /** Hands the roster to storage when it changed (joins, leaves, expiries, combat start and end): one row each. */
+  private flushRoster(){
+    if(!this.onRoster)return;
+    const roster=this.roster(),key=JSON.stringify(roster);
+    if(key===this.rosterKey)return;
+    this.rosterKey=key;this.perf.rosterWrites++;
+    try{this.onRoster(roster);}catch{}
   }
   connect(peer:Peer,now=Date.now()){
     if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
@@ -78,6 +122,9 @@ export class Room {
     this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
+    this.handle(peer,raw,now);this.flushRoster();
+  }
+  private handle(peer:Peer,raw:string,now:number){
     const c=this.connections.get(peer);if(!c)return;
     c.received++;
     if(raw.length>1024){peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
@@ -93,7 +140,14 @@ export class Room {
       if(m.token!==undefined){
         session=[...this.sessions.values()].find(s=>s.token===m.token);
         if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.');return;}
-        if([...this.connections.values()].some(other=>other!==c&&other.playerId===session!.id)){this.reject(peer,'Personagem já conectado em outra aba.');return;}
+        // The newest connection takes the character (BUG-20261009-N1-reconexao-socket-velho): a phone back from another
+        // network while the room still holds its dead socket, or a second tab. The old one hears why and is closed with
+        // 4009, which the client never retries, so two real tabs cannot keep knocking each other out.
+        for(const other of [...this.connections.values()])if(other!==c&&other.playerId===session.id){
+          this.connections.delete(other.peer);
+          try{other.peer.send(JSON.stringify({t:'replaced',message:REPLACED_MESSAGE}));}catch{}
+          try{other.peer.close(4009,'Personagem entrou por outra conexão.');}catch{}
+        }
         this.sim.setOnline(session.id,true);
       }else{
         if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.');return;}
@@ -113,6 +167,8 @@ export class Room {
       this.sendFrame(c,this.sim.frame());
       // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
       this.pushOffers(c);
+      // Back after the room restarted in the middle of a run (VGM-047): say what happened, once.
+      if(this.lostRun.delete(session.id))this.notice(c,ROOM_RESTARTED_NOTICE);
       this.pushRun();return;
     }
     if(!c.playerId)return;
@@ -185,6 +241,7 @@ export class Room {
   canStartRun(now=Date.now()){return this.createdAt+ROOM_LIFETIME_MS-now>=RUN_START_WINDOW_MS;}
   /** Non-fatal message for one peer (a client stops on 'error'; 'notice' only shows). */
   private notice(c:Connection,message:string){this.sendJson(c,{t:'notice',message});}
+  /** Tells the peer why and closes it (4003: the client stops and forgets the token). */
   private reject(peer:Peer,message:string){peer.send(JSON.stringify({t:'error',message}));this.connections.delete(peer);peer.close(4003,message);}
   disconnect(peer:Peer,now=Date.now()){
     const c=this.connections.get(peer);this.connections.delete(peer);
@@ -225,6 +282,7 @@ export class Room {
       this.sendFrame(c,input??=this.sim.frame());
       this.pushOffers(c);
     }
+    this.flushRoster();
     this.measure(performance.now()-started);
   }
   /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick; nobody falls. */

@@ -173,7 +173,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Você: ${self?.hp??0}♥`;
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';}
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';
+            // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
+            if(hud)hud.el.hidden=true;}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
@@ -210,7 +212,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
         const phase=net?.run?.phase;
-        if(hud&&(phase==='combat'||phase==='result')){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},

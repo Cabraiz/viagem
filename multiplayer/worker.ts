@@ -1,6 +1,6 @@
 import {randomSeed,DEFAULT_SEED} from '../src/game/terrain/field.ts';
 import { DurableObject } from 'cloudflare:workers';
-import { Room, type Peer } from './room.ts';
+import { Room, type Peer, type RoomRoster } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
 /**
@@ -34,27 +34,40 @@ export default {
 };
 export class GameRoom extends DurableObject<Env>{
   private room?:Room;
+  /** The room being built from storage (a restarted object): concurrent reconnects wait for the same one. */
+  private loading?:Promise<Room>;
   private timer?:ReturnType<typeof setInterval>;
   private peers=new Map<WebSocket,Peer>();
-  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);await this.ctx.storage.setAlarm(now+31*60_000);}}
+  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);this.loading=Promise.resolve(this.room);await this.ctx.storage.setAlarm(now+31*60_000);}}
   private create(created:number,seed:number){
-    if(!local(this.env))return new Room(created,seed);
-    return new Room(created,seed,{lab:true,...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+    // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
+    const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
+    if(!local(this.env))return new Room(created,seed,{onRoster});
+    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+  }
+  /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
+  private load(created:number){
+    return this.loading??=(async()=>{
+      const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
+      const roster=await this.ctx.storage.get<RoomRoster>('roster');
+      if(roster)room.restore(roster);
+      return this.room=room;
+    })();
   }
   /** Lab report (RPC from the /lab route); null on the deployed Worker even if something calls it. */
   lab(){return local(this.env)?this.room?.lab()??null:null;}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
-    this.room??=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
+    const room=this.room??await this.load(created);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>server.close(code,reason)};
-    this.peers.set(server,peer);this.room.connect(peer);
+    this.peers.set(server,peer);room.connect(peer);
     server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else server.close(1003,'Texto esperado.');});
     const close=()=>{this.room?.disconnect(peer);this.peers.delete(server);if(!this.peers.size&&this.timer){clearInterval(this.timer);this.timer=undefined;}};
     server.addEventListener('close',close);server.addEventListener('error',close);
     this.timer??=setInterval(()=>this.room?.advance(),50);
     return new Response(null,{status:101,webSocket:client});
   }
-  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');if(this.timer)clearInterval(this.timer);this.timer=undefined;this.room=undefined;await this.ctx.storage.deleteAll();}
+  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');if(this.timer)clearInterval(this.timer);this.timer=undefined;this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

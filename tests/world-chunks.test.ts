@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_SEED,TerrainField} from '../src/game/terrain/field.ts';
 import {
-  BASE,BASE_CLEAR,CHUNK_SAMPLES,CHUNK_SIZE,COAST_CAP,ChunkWorld,KEEP_CHUNKS,MAX_BUILDS_PER_TICK,MAX_LIVE_CHUNKS,generateChunk,
+  BASE,BASE_CLEAR,CHUNK_SAMPLES,CHUNK_SIZE,CHUNK_VERSION,COAST_CAP,ChunkWorld,KEEP_CHUNKS,MAX_BUILDS_PER_TICK,MAX_LIVE_CHUNKS,generateChunk,
 } from '../src/game/terrain/chunks.ts';
 import {
   PATH_MAX_NODES,RADIUS,SPAWN,clearSegment,findPath,isLand,obstacles,obstaclesNear,resourceObstacles,walkable,
@@ -47,13 +47,14 @@ test('same seed → same chunks (hash per chunk on 20 seeds), in any order and a
 });
 
 test('golden chunk hashes: changing the generator must bump CHUNK_VERSION (server and client meet in one room)',()=>{
-  // If this fails on purpose, bump CHUNK_VERSION in chunks.ts and update the values.
-  const featured=generateChunk(DEFAULT_SEED,51,2);
-  assert.ok(featured.lakes.length&&featured.pois.length&&featured.obstacles.length,'golden covers lake, POI and obstacles');
-  const golden=[generateChunk(DEFAULT_SEED,0,0).hash,generateChunk(DEFAULT_SEED,3,-7).hash,generateChunk(1,-100,250).hash,featured.hash];
+  // If this fails on purpose, bump CHUNK_VERSION in chunks.ts and update the values. v2: groves, one landmark per chunk.
+  assert.equal(CHUNK_VERSION,2);
+  const lake=generateChunk(DEFAULT_SEED,42,2),poi=generateChunk(DEFAULT_SEED,49,2),outcrop=generateChunk(DEFAULT_SEED,41,2);
+  assert.ok(lake.lakes.length&&poi.pois.length&&outcrop.obstacles.filter(o=>o.kind==='rock').length>=3,'golden covers lake, POI and an outcrop');
+  const golden=[generateChunk(DEFAULT_SEED,0,0).hash,generateChunk(DEFAULT_SEED,3,-7).hash,generateChunk(1,-100,250).hash,lake.hash,poi.hash,outcrop.hash];
   assert.deepEqual(golden,GOLDEN);
 });
-const GOLDEN=['2aaba17d','a01218c5','4ef91b60','b84b2a9c'];
+const GOLDEN=['a94c5c1c','aad8ba52','ddf881dc','f0e2be01','449b3e0c','a4b1a439'];
 
 test('no seams: heights agree across chunk borders and slopes stay under the island bound',()=>{
   for(const seed of SEEDS.slice(0,6)){
@@ -214,14 +215,15 @@ test('coast is the capped distance to a lake shore, and land follows it',()=>{
 });
 
 test('a room on the endless world runs: players spawn by the base, wall at the origin, chunks pruned',()=>{
-  assert.throws(()=>new Simulation(1234,{world:'infinito'}),/não é jogável/,'endless world is gated until the Room speaks protocol 4 (042b) and the camera follows');
-  const s=new Simulation(1234,{world:'infinito',experimental:true});
+  // No gate any more (terreno-em-blocos): rooms default to the endless world.
+  const s=new Simulation(1234,{world:'infinito'});
   for(let i=0;i<6;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();
-  // Stonewards is not in the run yet (VGM-046B); its state already builds on the endless world.
+  // Stonewards runs in the room (VGM-046B): wall at the origin, nodes are the chunks' obstacles (sparse, none touched yet).
   const stone=createStonewardsState({terrain:s.terrain});
   assert.ok(Math.hypot(stone.wall.x,stone.wall.y)<1,`wall at ${stone.wall.x},${stone.wall.y}`);
-  assert.ok(stone.nodes.length>0&&stone.nodes.every(n=>Math.hypot(n.x,n.y)<=24));
+  assert.equal(stone.nodes.length,0);
+  assert.deepEqual(s.run.stonewards.state.wall,stone.wall);
   const players=[...s.players.values()];
   for(const p of players)assert.ok(walkable(p,s.terrain)&&Math.hypot(p.x,p.y)<BASE_CLEAR);
   for(let tick=0;tick<400;tick++){

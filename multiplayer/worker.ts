@@ -4,11 +4,14 @@ import { Room, type Peer, type RoomRoster } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
 /**
- * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'infinito' opens rooms in the endless world before it
- * ships; LAB_HORDE n keeps n critters on the players (stress measure, see RoomOptions.labHorde).
+ * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
+ * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
+ * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints).
  */
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; }
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
+/** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
+const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
 function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
@@ -43,7 +46,7 @@ export class GameRoom extends DurableObject<Env>{
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
     const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
     if(!local(this.env))return new Room(created,seed,{onRoster});
-    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET)});
   }
   /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
   private load(created:number){

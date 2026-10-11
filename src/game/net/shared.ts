@@ -13,18 +13,25 @@ import {refreshStats} from '../sim/stats.ts';
 import type {ChooseResult} from '../sim/progression.ts';
 import {BASE_STATS} from '../sim/types.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../sim/types.ts';
-import type {RunView,TelegraphView} from '../sim/view.ts';
+import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
+import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../sim/stonewards/resources.ts';
+import type {BuyResult} from '../sim/stonewards/forge.ts';
 import type {RunState} from './run.ts';
 import {InputTrack,STEP_MS} from './input-track.ts';
 /**
- * Room protocol (join handshake). 5 since E7-skill-hud-wiring (4 was VGM-042b): binary run frames (protocol4.ts,
- * every event with its byte length) plus JSON control messages.
+ * Room protocol (join handshake). 6 since VGM-046B (5 was E7-skill-hud-wiring, 4 VGM-042b): binary run frames
+ * (protocol4.ts: camp block and gather nodes) plus JSON control messages (`forge` asks the forge for a recipe).
  * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
  * refused at join with a readable message, never fed frames it cannot parse.
  */
 export const ROOM_PROTOCOL=PROTOCOL_VERSION;
-/** The Room speaks protocol 4 (VGM-042b); the endless world still waits for the camera that follows (camera-segue). */
-export const ENDLESS_WORLD_READY=false;
+/**
+ * The world every room plays on (D-019: rounds on a giant map). The endless world shipped once the room spoke protocol
+ * 4+ with areas of interest (VGM-042b), the camera followed the hero (camera-segue) and the ground was drawn in tiles
+ * around the camera (terreno-em-blocos). The island stays as an internal test world (Simulation default, LAB_WORLD=ilha).
+ */
+export const DEFAULT_WORLD:WorldKind='infinito';
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
@@ -173,14 +180,11 @@ export class Simulation {
   /** Per-run counters for the prizes; outside stateHash on purpose (they never decide a future tick). */
   private counters=new Map<string,RunStats>();
   /**
-   * `world` defaults to the island. 'infinito' (D-019) spawns around the players (spawn-em-volta) and protocol 4
-   * has wide positions and areas of interest (rede-mapa-grande), but it is NOT playable yet: the Room still speaks
-   * protocol 3 (VGM-042b) and the client still frames the island (camera-segue). It needs `experimental: true`
-   * (tests, benchmarks) until ENDLESS_WORLD_READY.
+   * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
+   * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
+   * interest in the frames (rede-mapa-grande), base at the origin.
    */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;experimental?:boolean}={}){
-    if(options.world==='infinito'&&!ENDLESS_WORLD_READY&&!options.experimental)
-      throw new Error("Mapa infinito ainda não é jogável (sala no protocolo 4 e câmera que segue pendentes): use experimental:true só em teste.");
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
     this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -259,6 +263,46 @@ export class Simulation {
     return this.systems.progression.choose(this.world,id,offerId,index);
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
+  /**
+   * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
+   * balance). `requestId` makes a resent tap apply once. Refused once the run is decided.
+   */
+  forge(id:string,recipeId:string,requestId?:string):BuyResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.buy(this.world,id,recipeId,requestId);
+  }
+  /** Node ids of the last frame (the Room prunes the wire ids of the rest). */
+  nodeIds:string[]=[];
+  /** The wall and the towers as the client sees them. */
+  private structureViews():StructureView[]{
+    const st=this.systems.stonewards.state,w=st.wall;
+    return [{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp},...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
+  }
+  /**
+   * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area
+   * of interest (each encoder keeps its own part). Untouched nodes are full.
+   */
+  private nodeViews():NodeView[]{
+    const w=this.world,st=this.systems.stonewards.state;
+    if(w.round.phase!=='prepare'||w.round.index<1||st.wallDown){this.nodeIds=[];return [];}
+    const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
+    for(const p of this.players.values()){
+      if(p.spectator||p.eliminated)continue;
+      for(const n of nodesNear(this.terrain,p,reach)){
+        if(out.has(n.id))continue;
+        const touched=touchedNode(st,n.id);
+        out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,
+          progress:touched?Math.min(1,touched.work/WORK_PER_UNIT[n.kind]):0});
+      }
+    }
+    this.nodeIds=[...out.keys()];
+    return [...out.values()];
+  }
+  private campView():CampView{
+    const st=this.systems.stonewards.state;
+    return {coco:st.balance.coco,pedra:st.balance.pedra,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+  }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){
     this.clock=now;
@@ -327,7 +371,7 @@ export class Simulation {
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
-      structures:[],
+      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
@@ -353,7 +397,7 @@ export class Simulation {
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
-      structures:[],
+      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>{
         const stats=this.statsOf(p.id);
         return {

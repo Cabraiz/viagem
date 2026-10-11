@@ -89,7 +89,8 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
   const hw=Math.min(half.w+RIM_PAD,area.width/2),hh=Math.min(half.h+RIM_PAD,area.height/2),top=Math.min(TAG_ROOM,Math.max(0,area.height-2*hh));
   const inner={x:area.x+hw,y:area.y+hh+top,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh-top)};
   const sorted=[...targets].filter(t=>Number.isFinite(t.screen.x)&&Number.isFinite(t.screen.y)&&!edgeOf(t.screen,area).inside&&!(options.seen&&inView(t.screen,options.seen)))
-    .sort((a,b)=>EDGE_PRIORITY[a.kind]-EDGE_PRIORITY[b.kind]||a.distance-b.distance||(a.key<b.key?-1:1));
+    .sort((a,b)=>EDGE_PRIORITY[a.kind]-EDGE_PRIORITY[b.kind]||(a.seconds??Infinity)-(b.seconds??Infinity)||a.distance-b.distance||(a.key<b.key?-1:1));
+  // (Among caídos the one with fewer seconds left goes first: a "+1" never hides the most urgent clock.)
   const out:EdgeArrow[]=[];
   // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Me salva: 24 s").
   const scale=Math.max(1,(2*half.w-44)/32);

@@ -6,7 +6,7 @@ import {walkable,type Point} from '../src/game/world.ts';
 import {INTEREST_RADIUS,visibleFrom} from '../src/game/sim/offscreen.ts';
 
 test('room simulation, endless world: 6 players 200 units apart, every horde off screen and next to its player',t=>{
-  const s=new Simulation(4242,{world:'infinito',experimental:true});
+  const s=new Simulation(4242,{world:'infinito'});
   for(let i=0;i<6;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();
   const players=[...s.players.values()];

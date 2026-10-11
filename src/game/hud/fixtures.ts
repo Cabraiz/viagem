@@ -13,9 +13,16 @@ import type {RunResult} from './model.ts';
  * round offer alone (4 tags); offer-heal: the full-build coxinha;
  * offer-downed / offer-open-downed: the same intermission window / combat strip with two allies down, the last of
  * the team column among them (the window and the strip must never cover SOS, the timer or the "caiu!" banner).
+ * Stonewards (VGM-046B): camp-forge: the intermission with the hero in the camp (forge open, one tag short of pedra);
+ * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-downed','offer-open-downed','downed','boss','result'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave'];
+/** Where the fixtures put the wall, and the hero spots the sandbox hands the HUD (in the camp / far away). */
+export const FIXTURE_WALL={x:12,y:12};
+export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?:number}>>={
+  'camp-forge':{x:12,y:15},'camp-horn':{x:40,y:52,bearing:-120},'camp-wave':{x:12,y:15},
+};
 
 const roster=[
   {id:'p1',name:'Mateus',classId:'cidadao-comum'},
@@ -62,7 +69,7 @@ function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferVie
 }
 
 export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunView{
-  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal'||scenario==='offer-downed';
+  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal'||scenario==='offer-downed'||scenario==='camp-forge'||scenario==='camp-horn';
   const ends=tick+ticks(prepare?FIXTURE_INTERMISSION_SECONDS:60);
   const boss=scenario==='boss';
   const index=boss?10:prepare?4:3;
@@ -71,7 +78,11 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     team:{xp:37,level:12,nextXp:58},
     round:{index,total:10,phase:prepare?'prepare':'wave',phaseEndsTick:ends,remaining:prepare?0:boss?6:23},
     enemies:boss?[{id:'e-boss',kind:'chefe',x:12,y:12,hp:6200,maxHp:9000,boss:true,phase:1}]:[],
-    pickups:[],projectiles:[],telegraphs:[],structures:[],
+    pickups:[],projectiles:[],telegraphs:[],
+    structures:[{id:'s1',kind:'muralha',...FIXTURE_WALL,hp:scenario==='camp-wave'?132:scenario==='camp-forge'?410:540,maxHp:600},
+      ...(scenario==='camp-forge'?[{id:'s2',kind:'torre-chinelo',x:13,y:14,hp:80,maxHp:80,untilTick:tick+ticks(30)}]:[])],
+    camp:{coco:scenario==='camp-forge'?5:12,pedra:scenario==='camp-forge'?3:9,
+      ...(scenario==='camp-horn'?{hornEndsTick:tick+ticks(4)}:{})},
     players:fakePlayers(playerCount,scenario),
     // Combat: the server holds level offers until the intermission (D-021, HELD_DEADLINE).
     offers:scenario==='offer'||scenario==='offer-open'||scenario==='offer-open-downed'?[fakeOffer('level',HELD_DEADLINE),fakeOffer('level',HELD_DEADLINE,13)]

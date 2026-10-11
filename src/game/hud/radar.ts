@@ -3,7 +3,7 @@
  * players (interpolated positions + run state), the base of the world, the last RunView (boss, telegraphs, chests),
  * the spawn warnings still pending and the lit "Me salva" pings. Pure: the scene's `locate` is passed in.
  */
-import type {EnemyView,PickupView,PlayerRunView,TelegraphView} from '../sim/view.ts';
+import type {EnemyView,NodeView,PickupView,PlayerRunView,TelegraphView} from '../sim/view.ts';
 import type {EdgeTarget} from './edges.ts';
 import type {MinimapItem} from './minimap.ts';
 import {secondsLeft} from './model.ts';
@@ -30,6 +30,8 @@ export interface RadarInput {
   telegraphs?:readonly TelegraphView[];
   pickups?:readonly PickupView[];
   warnings?:readonly SpawnWarning[];
+  /** Gather nodes of the intermission (VGM-046B): on the minimap only, and only the near ones (NODE_NEAR). */
+  nodes?:readonly NodeView[];
   /** A "Me salva" ping of this player is lit. */
   pinged?:(id:string)=>boolean;
   /** Screen point (CSS px, viewport) of a world point. */
@@ -38,6 +40,8 @@ export interface RadarInput {
 }
 /** A spawn warning keeps its arrow until this long after the critters arrive. */
 export const SPAWN_TAIL_TICKS=SIM_HZ;
+/** Gather nodes show on the minimap within this many units of the followed hero (no flood of dots, design onda 6 D9). */
+export const NODE_NEAR=14;
 /** A telegraph this close to the boss and this close to firing marks the boss arrow as danger. */
 export const BOSS_TELEGRAPH={units:8,ticks:SIM_HZ*1.5};
 
@@ -68,6 +72,7 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
     if(input.tick>w.atTick+SPAWN_TAIL_TICKS)return;
     const key=`spawn:${w.atTick}:${i}`;items.push({key,kind:'spawn',x:w.x,y:w.y});add({key,kind:'spawn',name:'Bichos chegando'},w);
   });
+  for(const n of input.nodes??[])if(n.remaining>0&&(n.kind==='coco'||n.kind==='pedra')&&far(n)<=NODE_NEAR)items.push({key:`node:${n.id}`,kind:n.kind,x:n.x,y:n.y});
   for(const p of input.pickups??[]){
     if(p.kind!=='chest')continue;
     items.push({key:p.id,kind:'bau',x:p.x,y:p.y});// minimap only, like the allies on their feet

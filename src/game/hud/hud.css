@@ -561,17 +561,31 @@
 .mm-chefe .mm-eye{fill:var(--c-breu);stroke:none}
 .mm-spawn path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1}
 .mm-bau rect{fill:none;stroke:var(--c-papel);stroke-width:1.6}
+.mm-coco circle{fill:var(--c-casca);stroke:var(--c-papel);stroke-width:1.1}
+.mm-pedra path{fill:var(--c-pedra);stroke:var(--c-papel);stroke-width:1}
 .mm-rim{opacity:.75}
 @media (min-height:501px){
   /* The XP bar already stops 82 px from the right; the boss bar does the same so the minimap has its corner. */
   .rh:has(>.rh-minimap) .rh-boss{align-self:stretch;width:auto;margin:0 calc(var(--rh-r) + 82px) 0 var(--rh-l)}
   /* The announcement slot starts under the top band, which now ends under the minimap (RunHud sets --rh-anuncio). */
-  .rh:has(>.rh-minimap) .rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 144px))}
+  /* Doubled classes: it must also beat the base ficha's fixed slot rules (camp.css, with and without the boss bar). */
+  .rh.rh:has(>.rh-minimap) .rh-top~.rh-stack.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 144px))}
+  /* The base ficha (VGM-046B) becomes one row under the XP bar, left of the minimap (design onda 6 B2): one owner for the
+     corner (the minimap), the top band grows by one short row only. It stays clear of the team column on the left. */
+  .rh:has(>.rh-minimap) .rh-camp{position:static;align-self:stretch;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:36px;
+    margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 62px);padding:3px 8px}
+  /* The wall bar takes what is left (it shrinks first at 125%), the numbers never get cut. */
+  .rh:has(>.rh-minimap) .rh-camp-wall{flex:1 1 auto;min-width:0}
+  .rh:has(>.rh-minimap) .rh-camp-track{flex:1 1 auto;width:auto;min-width:20px}
+  .rh:has(>.rh-minimap) .rh-camp-res{flex:none;gap:6px}
+  .rh:has(>.rh-minimap) .rh-top:has(.rh-camp:not([hidden])) .rh-xp{margin-right:calc(var(--rh-r) + 82px)}
 }
 @media (max-height:500px){
   .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
-  /* The offer window takes the right column: the minimap steps aside while it is open (the arrows stay). */
-  .rh:has(.rh-offer:not([hidden])) .rh-minimap{visibility:hidden}
+  /* The offer and the forge (VGM-046B) take the right column: the minimap steps aside while one is open (the arrows stay). */
+  .rh:has(.rh-offer:not([hidden])) .rh-minimap,.rh:has(.rh-forge:not([hidden])) .rh-minimap{visibility:hidden}
+  /* With the base ficha (VGM-046B) right of the round chip, the XP bar moves left and stops before it (soma, onda 6). */
+  .rh-top:has(.rh-camp:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(100vw - var(--rh-l) - var(--rh-r) - 480px)}
 }
 
 /* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------

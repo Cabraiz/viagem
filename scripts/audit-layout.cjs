@@ -111,6 +111,14 @@ const SCENES=[
   ['hud resultado, 1p','/?sandbox=hud&players=1&state=result&frozen=1','.rh',13],
   ['hud setas na borda e minimapa (bordas), 6p','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13],
   ['hud setas na borda, vista 2','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas&vista=1','.rh',13],
+  // The soma (N15 + 046B): minimap, base ficha and arrows with the forge open, the horn, and the round offer.
+  ['soma: minimapa + base + setas + forja aberta','/?sandbox=hud&players=6&state=camp-forge&frozen=1&cenario=bordas','.rh',13],
+  ['soma: minimapa + base + setas + corneta','/?sandbox=hud&players=6&state=camp-horn&frozen=1&cenario=bordas','.rh',13],
+  ['soma: minimapa + base + setas + oferta do round','/?sandbox=hud&players=6&state=offer-round&frozen=1&cenario=bordas','.rh',13],
+  // Stonewards (VGM-046B): the forge window in the camp, the horn far from it, the wall low in a wave.
+  ['hud forja no acampamento, 6p','/?sandbox=hud&players=6&state=camp-forge&frozen=1','.rh',13],
+  ['hud corneta longe da base, 6p','/?sandbox=hud&players=6&state=camp-horn&frozen=1','.rh',13],
+  ['hud muralha baixa no round, 6p','/?sandbox=hud&players=6&state=camp-wave&frozen=1','.rh',13],
   ['emotes abertos','/?sandbox=fun&players=6&state=open&frozen=1','.fun-emotes,.fun-balloons',13],
   ['balões','/?sandbox=fun&players=6&state=balloons&frozen=1','.fun-balloons',13],
 ];

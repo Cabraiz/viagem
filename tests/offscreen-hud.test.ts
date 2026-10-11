@@ -226,3 +226,16 @@ test('a caído arrow with a wide tag finds a clear corner when its side is block
   // Squeezed: the clock stays, the word goes (the ficha keeps the ping ring).
   assert.equal(caidoTag(a),a.compact?'27 s':'Me salva: 27 s');
 });
+test('soma (046B): near gather nodes go on the minimap only, as coco and pedra; far or empty ones do not',async()=>{
+  const {NODE_NEAR}=await import('../src/game/hud/radar.ts');
+  const node=(id:string,kind:string,x:number,remaining=3)=>({id,kind,x,y:0,remaining,capacity:3,value:1,progress:0});
+  const {targets,items}=radar({selfId:'me',focus:{x:0,y:0},self:{x:0,y:0},tick:0,players:[],states:new Map(),
+    nodes:[node('a','coco',5),node('b','pedra',NODE_NEAR-1),node('c','coco',NODE_NEAR+5),node('d','pedra',3,0)],locate:p=>p});
+  assert.deepEqual(items.filter(i=>i.kind==='coco'||i.kind==='pedra').map(i=>i.key).sort(),['node:a','node:b']);
+  assert.equal(targets.length,0,'no arrow for a node');
+});
+test('two caídos on one arrow: the one bleeding out sooner owns it, the other is the "+1"',()=>{
+  const tight:Rect={x:0,y:0,width:100,height:60};
+  const [a]=layoutEdges([t('far-urgent','caido',900,30,40,{seconds:5}),t('near-calm','caido',905,32,10,{seconds:28})],tight);
+  assert.equal(a.key,'far-urgent');assert.equal(a.count,2);
+});

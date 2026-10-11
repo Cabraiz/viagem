@@ -1,13 +1,16 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
-import {walkable} from '../src/game/world.ts';
+import {walkable,worldBase} from '../src/game/world.ts';
+/** Lab moves ({t:'lab',to}) stay this close to the base (world units). */
+const LAB_REACH=200;
 import {sha256Hex} from '../src/game/net/sha256.ts';
 import {downPlayer} from '../src/game/sim/revive.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
+import {isRecipeId} from '../src/game/sim/stonewards/rules.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -21,13 +24,18 @@ type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
   /** Combat safety limit in server ticks (tests shorten it). */
   durationTicks?:number;
-  /** Lab only (tests, wrangler dev with ALLOW_LOCAL): the endless world before it is playable (ENDLESS_WORLD_READY). */
+  /** World of the room: DEFAULT_WORLD (the endless map) unless a test or the lab (LAB_WORLD=ilha) asks for the island. */
   world?:WorldKind;
   /**
    * Lab only (wrangler dev with ALLOW_LOCAL and LAB_HORDE): keeps this many critters chasing the players and keeps the
    * players standing, to measure a full horde (bytes/s, tick and encode cost) without playing ten rounds.
    */
   labHorde?:number;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_OFFSET "x,y"): each run starts this far from the base, to look at
+   * the map 100 or 3 000 units out (terreno-em-blocos prints) without walking there.
+   */
+  labOffset?:{x:number;y:number};
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -51,10 +59,13 @@ const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
- * A new run only starts when the room still has this long to live: a full horde run takes ~13.7 min (plan §1).
- * Starting later would end with the room closing (4004) instead of a result. The 20 min tick cap stays a safety net.
+ * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
+ * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
+ * (MAX_STRETCH_PER_RUN). The worst case on paper (every round to its timeout, every stretch, boss at its nominal 90 s)
+ * is 16.6 min, so 18 (tests/sim-stonewards.test.ts). Starting later would end with the room closing (4004) instead of a
+ * result. The 20 min tick cap stays a safety net.
  */
-export const RUN_START_WINDOW_MS=15*60_000;
+export const RUN_START_WINDOW_MS=18*60_000;
 /** A run still going this close to the room's end is closed as a timeout, so the result always reaches the players. */
 export const ROOM_CLOSING_MARGIN_MS=30_000;
 /** Lives in shared.ts so the client can recognise it (VGM-043) without bundling the Room. */
@@ -83,6 +94,7 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  private readonly labOffset?:{x:number;y:number};
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
   /** wrangler dev with ALLOW_LOCAL (and tests): lab commands such as {t:'lab',down:true} are accepted. */
@@ -97,8 +109,9 @@ export class Room {
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
   private lostRun=new Map<string,{round:number;level:number}>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
-    this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
-    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
+    this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;
   }
@@ -215,6 +228,7 @@ export class Room {
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
+    else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -246,7 +260,9 @@ export class Room {
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
     const to=m.to;
-    if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&walkable(to,this.sim.terrain)){p.x=to.x;p.y=to.y;this.sim.setOnline(id,true);}
+    // Within LAB_REACH of the base (the endless world is walkable almost everywhere: no lab jump to the far chunks).
+    const base=worldBase(this.sim.terrain);
+    if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&Math.hypot(to.x-base.x,to.y-base.y)<=LAB_REACH&&walkable(to,this.sim.terrain)){p.x=to.x;p.y=to.y;this.sim.setOnline(id,true);}
   }
   /**
    * "Me salva" (UX-resgate-e-ping): a caído in combat asks for help; the room relays {t:'sos',id,x,y,tick} once to
@@ -263,6 +279,18 @@ export class Room {
     if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS-SOS_SLACK_MS)return;
     this.sosAt.set(p.id,now);
     this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
+  }
+  /**
+   * Forge tap (VGM-046B): {t:'forge',round,recipe,req}. The simulation validates everything (phase, standing, in the
+   * camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once, everyone
+   * sees the balance in the next frame and the recipe's line as a `say` event.
+   */
+  private forge(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(!isRecipeId(m.recipe)||!Number.isSafeInteger(m.req)||m.req<1)return;
+    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req));
+    this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){
@@ -303,7 +331,16 @@ export class Room {
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
   expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.rosterDirty=true;this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
-  private resetRun(){this.sim.resetRun();this.ids.reset();this.sosAt.clear();}
+  private resetRun(){
+    this.sim.resetRun();this.ids.reset();this.sosAt.clear();
+    const o=this.labOffset;if(!o)return;
+    // Lab: the whole team moves out together, each onto the nearest walkable spot.
+    for(const p of this.sim.players.values()){
+      const at={x:p.x+o.x,y:p.y+o.y};
+      for(let r=0;r<20&&!walkable(at,this.sim.terrain);r++){at.x+=.7;at.y+=.3;}
+      p.x=at.x;p.y=at.y;
+    }
+  }
   advance(now=Date.now()){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
@@ -343,12 +380,22 @@ export class Room {
     this.flushRoster();
     this.measure(performance.now()-started);
   }
-  /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick; nobody falls. */
+  /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick (and stragglers come back); nobody falls. */
   private fillHorde(){
     const w=this.sim.world,players=[...this.sim.players.values()].filter(p=>!p.spectator);
     if(!players.length)return;
     for(const p of players){p.invulnerableUntil=w.tick+40;if(p.downed){delete p.downed;p.hp=p.stats.maxHp;}}
     const kinds=['gosma','pernilongo','fiscal','tio-pave'];
+    // A team that runs away (the 2-minute straight walk of terreno-em-blocos) keeps its 300: critters left over 40 u
+    // behind every player come back 8–30 u around one, so the measure always has the whole horde near the screen.
+    let moved=0;
+    for(const e of w.enemies.values()){
+      if(moved>=25)break;
+      if(players.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<1600))continue;
+      const p=players[Math.floor(Math.random()*players.length)],a=Math.random()*Math.PI*2,d=8+Math.random()*22;
+      const at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};
+      if(walkable(at,this.sim.terrain)){e.x=at.x;e.y=at.y;moved++;}
+    }
     for(let n=0,tries=0;n<25&&tries<100&&w.enemies.size<this.labHorde;tries++){
       const p=players[Math.floor(Math.random()*players.length)],a=Math.random()*Math.PI*2,d=8+Math.random()*22;
       const at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};
@@ -372,7 +419,9 @@ export class Room {
   /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
-    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs)});
+    const st=this.sim.run.stonewards.state;
+    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
+      structures:[st.wall.id,...st.towers.map(t=>t.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

@@ -9,7 +9,7 @@
 import {rotateVector} from '../projection.ts';
 
 export interface Point {x:number;y:number}
-export type MinimapKind='voce'|'aliado'|'caido'|'base'|'chefe'|'spawn'|'bau';
+export type MinimapKind='voce'|'aliado'|'caido'|'base'|'chefe'|'spawn'|'bau'|'coco'|'pedra';
 export interface MinimapItem {key:string;kind:MinimapKind;x:number;y:number;ping?:boolean}
 /** Half side of the drawing in SVG units (the ficha's inside is 2 × MINIMAP_RADIUS). */
 export const MINIMAP_RADIUS=36;
@@ -38,7 +38,7 @@ export function islandOutline(steps=28):Point[]{
 
 // ---------- DOM (browser only) ----------
 const SVG='http://www.w3.org/2000/svg';
-const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={bau:0,spawn:1,base:2,aliado:3,chefe:4,caido:5,voce:6};
+const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={coco:0,pedra:0,bau:1,spawn:2,base:3,aliado:4,chefe:5,caido:6,voce:7};
 /**
  * Each mark is the arrow's sticker simplified to its silhouette (design onda 6 D5: one symbol per thing): base = the tent
  * with its flag, chefe = the skull, spawn = the three-crest wave, caído = the boia; allies are people (dots), you the Lilás disc.
@@ -49,6 +49,9 @@ const shape=(kind:MinimapKind)=>{
     case 'chefe':return '<circle cy="-1" r="4.6"/><rect x="-2.8" y="1.6" width="5.6" height="4" rx="1"/><circle class="mm-eye" cx="-1.7" cy="-1.2" r="1.2"/><circle class="mm-eye" cx="1.7" cy="-1.2" r="1.2"/>';
     case 'spawn':return '<path d="M-6 3.5L-6 1Q-4.5 -3.5 -2.3 -.6Q-1 -4.5 1.2 -1Q2.6 -5 5 -1.3Q6.3 .5 6 1.5L6 3.5Z"/>';
     case 'bau':return '<rect x="-3.5" y="-3" width="7" height="6" rx="1"/>';
+    // Gather nodes (VGM-046B), only the near ones: the coco and the pedra stickers as dots.
+    case 'coco':return '<circle r="3"/>';
+    case 'pedra':return '<path d="M-3.5 1.5L-2.5 -1.5L.5 -2.8L3.5 -1L3 1.8L-.5 2.6Z"/>';
     case 'caido':return '<circle r="5"/><circle class="mm-dot" r="1.6"/>';
     case 'voce':return '<circle r="4.5"/>';
     default:return '<circle r="3.5"/>';

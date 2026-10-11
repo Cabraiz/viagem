@@ -44,6 +44,8 @@
   --c-veu:color-mix(in srgb,var(--c-breu) 62%,transparent);     /* fundo atrás de diálogo */
   --c-sombra:color-mix(in srgb,var(--c-breu) 45%,transparent);  /* sombra dura de janela */
   --c-trilho:color-mix(in srgb,var(--c-breu) 18%,transparent);  /* trilho de barra sobre papel */
+  --c-pedra:color-mix(in srgb,var(--c-papel) 55%,var(--c-breu));  /* pedra cinza do Stonewards (nó, muralha), VGM-046B */
+  --c-casca:color-mix(in srgb,var(--c-cone) 45%,var(--c-breu));   /* casca de coco, VGM-046B */
 
   /* Usos semânticos. */
   --c-perigo:var(--c-cone);
@@ -59,6 +61,7 @@
   --c-retrato-a:#F5D1C8;--c-retrato-b:#FBE4DA; /* chevron rosa atrás do retrato ("deve ficar", §1.7) */
   --cena-agua:#8DCECC; /* água rasa turquesa: fundo do palco e do minimapa antes do Phaser pintar (D-022, tropical claro) */
   --cena-mar:#14859E;  /* mar turquesa ao longe: fundo da câmera da cena (D-022; mesmo tom do SEA_DEEP do shader do terreno) */
+  --cena-grama:#538F3F; /* grama mediana do mapa sem fim: fundo da câmera onde um bloco do chão ainda não foi assado (terreno-em-blocos) */
 
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */

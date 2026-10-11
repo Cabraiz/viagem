@@ -20,7 +20,7 @@ import {treeCatalog} from '../tree-catalog.ts';
 import {fbm,hash2u,mix,noise,smooth} from './noise.ts';
 
 /** Bump when the generator changes: old and new chunks must never meet in one room. */
-export const CHUNK_VERSION=1;
+export const CHUNK_VERSION=2;
 export const CHUNK_SIZE=32;
 /** Height samples every half unit, borders shared with the neighbour (65×65 per chunk). */
 export const CHUNK_STEP=.5,CHUNK_SAMPLES=CHUNK_SIZE/CHUNK_STEP+1;
@@ -74,11 +74,14 @@ const POIS=[
   {name:'Mirante da Turma',detail:'Um lugar para reunir histórias. E, depois, os amigos.',icon:'△'},
 ] as const;
 const PALM_ART=['coqueiro-curvo','palmeira-leque','bananeira'];
-const TREE_ART=treeCatalog.map(t=>t.id).filter(id=>!PALM_ART.includes(id));
+/** Not tropical claro (D-022, design onda 6 D3): never drawn on the endless map. */
+const OFF_PALETTE=['arvore-nevada'];
+/** Every other species of the catalog, in catalog order (the order is part of the generator: CHUNK_VERSION). */
+const TREE_ART=treeCatalog.map(t=>t.id).filter(id=>!PALM_ART.includes(id)&&!OFF_PALETTE.includes(id));
 const DECODE=Float32Array.from({length:256},(_v,i)=>i/255*160-32);
 const encode=(h:number)=>Math.max(0,Math.min(255,Math.round((h+32)/160*255)));
 
-const SALT={relief:0x51ed270b,ridge:0x9e3779b9,wet:0x85ebca6b,trail:0x2c1b3c6d,chunk:0x6a09e667} as const;
+const SALT={relief:0x51ed270b,ridge:0x9e3779b9,wet:0x85ebca6b,trail:0x2c1b3c6d,warp:0x3c6ef372,chunk:0x6a09e667} as const;
 
 /** Signed distance from a lake's shore (positive on land), uncapped. */
 function lakeDistance(l:Lake,x:number,y:number){
@@ -92,52 +95,106 @@ function dryHeight(seed:number,x:number,y:number){
   const ridge=1-Math.abs(fbm(seed^SALT.ridge,x*.05,y*.05,3)*2-1);
   return 9+22*smooth((broad*.8+ridge*.2-.3)/.45);
 }
-/** 0..1: about 1 on a dirt trail (a narrow band of a low-frequency noise level set), 0 off it. */
+/** Trail level set before the band: a noise level set, its domain bent by a slower noise so the trails wind. */
+function trailField(seed:number,x:number,y:number){
+  const wx=(fbm(seed^SALT.warp,x*.011,y*.011,2)-.5)*TRAIL_WARP,wy=(fbm((seed^SALT.warp)+7919,x*.011,y*.011,2)-.5)*TRAIL_WARP;
+  return fbm(seed^SALT.trail,(x+wx)*.026,(y+wy)*.026,2);
+}
+/** How far (units) the trail noise is bent: trails curve within a screen and meet in forks. */
+const TRAIL_WARP=60;
+/** 0..1: about 1 on a dirt trail (a narrow band of a winding noise level set), 0 off it. */
 export function trailAt(seed:number,x:number,y:number){
-  const t=fbm(seed^SALT.trail,x*.018,y*.018,2);
-  return 1-smooth(Math.abs(t-.5)/.025);
+  return 1-smooth(Math.abs(trailField(seed,x,y)-.5)/.022);
 }
 
 export function chunkSeed(seed:number,cx:number,cy:number){return hash2u((seed^SALT.chunk)>>>0,cx,cy);}
 
-/** Lakes, POIs and obstacles of a chunk: pure, independent of any other chunk, and cheap. */
+/**
+ * Lakes, POIs and obstacles of a chunk: pure, independent of any other chunk, and cheap.
+ *
+ * Version 2 (design onda 6, B1): every chunk (about two portrait screens) gets one landmark, so "where am I" comes from
+ * the scenery: a lake with its beach, a place of the neighbourhood (Praça do Improviso, Fonte dos Palpites, Mirante da
+ * Turma) in its clearing, or an outcrop of big rocks; landmarks sit beside a trail, so the winding trails link them.
+ * Trees grow in groves of 3 to 5 of one species (all the catalog's species but the snowy one), 3 to 4 groves per chunk,
+ * palms by the water. Every gap between two obstacles still fits a hero, and nothing grows in the base clearing.
+ */
 export function generateFeatures(seed:number,cx:number,cy:number):ChunkFeatures{
   seed>>>=0;
   const rng=new Rng(chunkSeed(seed,cx,cy)),x0=cx*CHUNK_SIZE,y0=cy*CHUNK_SIZE;
   const baseDistance=(x:number,y:number)=>{const dx=x-BASE.x,dy=y-BASE.y;return Math.sqrt(dx*dx+dy*dy);};
   const near=(ax:number,ay:number,bx:number,by:number,r:number)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy<r*r;};
-  // Lakes: at most one per chunk, fully inside it together with their influence on relief and coast.
-  const lakes:Lake[]=[];
-  if(rng.chance(.32)){
-    const radius=rng.range(2.2,4.2),wobble=rng.range(.2,.45),inset=radius+wobble+LAKE_INFLUENCE+.01;
-    const x=rng.range(x0+inset,x0+CHUNK_SIZE-inset),y=rng.range(y0+inset,y0+CHUNK_SIZE-inset);
-    const lakeSeed=rng.int(0,0x7fffffff);
-    if(baseDistance(x,y)>BASE_CLEAR+radius+wobble+LAKE_INFLUENCE)lakes.push({x,y,radius,wobble,seed:lakeSeed});
+  /** Of a few random spots inside the chunk (inset), the one closest to a trail without being on it. */
+  const byTrail=(inset:number,ok:(x:number,y:number)=>boolean)=>{
+    let best:{x:number;y:number}|undefined,score=Infinity;
+    for(let i=0;i<LANDMARK_TRIES;i++){
+      const x=rng.range(x0+inset,x0+CHUNK_SIZE-inset),y=rng.range(y0+inset,y0+CHUNK_SIZE-inset);
+      if(!ok(x,y))continue;
+      const d=Math.abs(trailField(seed,x,y)-.5);
+      if(d<score){score=d;best={x,y};}
+    }
+    return best;
+  };
+  const lakes:Lake[]=[],pois:PointOfInterest[]=[],obstacles:ChunkObstacle[]=[];
+  const roll=rng.next();
+  // Landmark. Lakes stay fully inside the chunk together with their influence on relief and coast.
+  if(roll<.36){
+    const radius=rng.range(2.2,4.2),wobble=rng.range(.2,.45),inset=radius+wobble+LAKE_INFLUENCE+.01,lakeSeed=rng.int(0,0x7fffffff);
+    const reach=radius+wobble;
+    const at=byTrail(inset,(x,y)=>baseDistance(x,y)>BASE_CLEAR+reach+LAKE_INFLUENCE&&trailAt(seed,x,y)===0&&
+      trailAt(seed,x+reach,y)===0&&trailAt(seed,x-reach,y)===0&&trailAt(seed,x,y+reach)===0&&trailAt(seed,x,y-reach)===0);
+    if(at)lakes.push({x:at.x,y:at.y,radius,wobble,seed:lakeSeed});
+  }else if(roll<.74){
+    const kind=POIS[rng.int(0,POIS.length-1)];
+    const at=byTrail(4,(x,y)=>baseDistance(x,y)>BASE_CLEAR+3&&trailAt(seed,x,y)===0);
+    if(at)pois.push({x:at.x,y:at.y,...kind});
   }
   const lakeCoast=(x:number,y:number)=>{let c=COAST_CAP;for(const l of lakes)c=Math.min(c,lakeDistance(l,x,y));return c;};
-  // A point of interest now and then, in its own small clearing.
-  const pois:PointOfInterest[]=[];
-  if(rng.chance(.18)){
-    const x=rng.range(x0+4,x0+CHUNK_SIZE-4),y=rng.range(y0+4,y0+CHUNK_SIZE-4),kind=POIS[rng.int(0,POIS.length-1)];
-    if(baseDistance(x,y)>BASE_CLEAR+3&&lakeCoast(x,y)>=COAST_CAP)pois.push({x,y,...kind});
+  const inset=MAX_OBSTACLE_RADIUS+1;
+  /** Room for an obstacle: inside the chunk, off the base, the shore, the trails and the clearings; a hero passes every gap. */
+  const fits=(x:number,y:number,radius:number)=>{
+    if(x<x0+inset||x>x0+CHUNK_SIZE-inset||y<y0+inset||y>y0+CHUNK_SIZE-inset)return false;
+    if(baseDistance(x,y)<BASE_CLEAR||lakeCoast(x,y)<1.6+radius||trailAt(seed,x,y)>0)return false;
+    if(pois.some(p=>near(p.x,p.y,x,y,POI_CLEAR)))return false;
+    return !obstacles.some(o=>near(o.x,o.y,x,y,o.radius+radius+GAP));
+  };
+  // Outcrop landmark: 2 to 4 big rocks together, beside a trail.
+  if(roll>=.74&&roll<.9){
+    const at=byTrail(4,(x,y)=>baseDistance(x,y)>BASE_CLEAR+3&&trailAt(seed,x,y)===0);
+    const n=rng.int(2,4);
+    for(let i=0,tries=0;at&&i<n&&tries<n*8;tries++){
+      const x=at.x+rng.range(-2,2),y=at.y+rng.range(-2,2),radius=rng.range(.52,MAX_OBSTACLE_RADIUS);
+      if(fits(x,y,radius)){obstacles.push({x,y,radius,kind:'rock'});i++;}
+    }
   }
-  // Sparse blockers (VS map: for running from the horde, not for getting stuck). Every gap fits a hero.
-  const obstacles:ChunkObstacle[]=[];
-  const wanted=3+rng.int(0,5),inset=MAX_OBSTACLE_RADIUS+1;
-  for(let tries=0;obstacles.length<wanted&&tries<wanted*12;tries++){
-    const x=rng.range(x0+inset,x0+CHUNK_SIZE-inset),y=rng.range(y0+inset,y0+CHUNK_SIZE-inset),roll=rng.next();
-    const kind:ObstacleKind=roll<.38?'palm':roll<.72?'tree':'rock';
-    const radius=kind==='rock'?rng.range(.42,MAX_OBSTACLE_RADIUS):kind==='tree'?rng.range(.4,.48):rng.range(.38,.44);
-    const pick=rng.next();
-    if(baseDistance(x,y)<BASE_CLEAR)continue;
-    if(lakeCoast(x,y)<1.6+radius||trailAt(seed,x,y)>0)continue;
-    if(pois.some(p=>near(p.x,p.y,x,y,2.5)))continue;
-    if(obstacles.some(o=>near(o.x,o.y,x,y,2.2)))continue;
-    const art=kind==='rock'?undefined:kind==='palm'?PALM_ART[Math.floor(pick*PALM_ART.length)]:TREE_ART.length?TREE_ART[Math.floor(pick*TREE_ART.length)]:undefined;
-    obstacles.push(art?{x,y,radius,kind,art}:{x,y,radius,kind});
+  // Groves: one species each, 3 to 5 trees around a centre; palms when the grove stands by the water.
+  const groves=rng.int(3,4);
+  for(let g=0;g<groves;g++){
+    const gx=rng.range(x0+inset+1,x0+CHUNK_SIZE-inset-1),gy=rng.range(y0+inset+1,y0+CHUNK_SIZE-inset-1);
+    const wet=lakes.length>0&&lakeCoast(gx,gy)<COAST_CAP;
+    const palm=wet||rng.chance(.22),art=palm?PALM_ART[rng.int(0,PALM_ART.length-1)]:TREE_ART.length?TREE_ART[rng.int(0,TREE_ART.length-1)]:undefined;
+    const kind:ObstacleKind=palm?'palm':'tree',size=rng.int(3,5);
+    for(let i=0,tries=0;i<size&&tries<size*6;tries++){
+      const x=gx+rng.range(-GROVE_SPREAD,GROVE_SPREAD),y=gy+rng.range(-GROVE_SPREAD,GROVE_SPREAD);
+      const radius=palm?rng.range(.38,.44):rng.range(.4,.48);
+      if(!fits(x,y,radius))continue;
+      obstacles.push(art?{x,y,radius,kind,art}:{x,y,radius,kind});i++;
+    }
+  }
+  // A stray rock or two.
+  for(let i=0,n=rng.int(1,2),tries=0;i<n&&tries<12;tries++){
+    const x=rng.range(x0+inset,x0+CHUNK_SIZE-inset),y=rng.range(y0+inset,y0+CHUNK_SIZE-inset),radius=rng.range(.42,MAX_OBSTACLE_RADIUS);
+    if(fits(x,y,radius)){obstacles.push({x,y,radius,kind:'rock'});i++;}
   }
   return {cx,cy,obstacles,lakes,pois};
 }
+/** Spots tried per landmark (the one nearest a trail wins). */
+const LANDMARK_TRIES=10;
+/** Free ground around a point of interest. */
+const POI_CLEAR=2.8;
+/** Extra space between two obstacles beyond their radii: a hero (2 × RADIUS = 0.44) always fits through. */
+const GAP=.62;
+/** Half side of the square a grove grows in. */
+const GROVE_SPREAD=2.6;
 /** 8-bit height code of lattice sample (i, j) of a chunk: the one function behind both the lattice and lazy queries. */
 function heightCode(seed:number,f:ChunkFeatures,i:number,j:number){
   const x=f.cx*CHUNK_SIZE+i*CHUNK_STEP,y=f.cy*CHUNK_SIZE+j*CHUNK_STEP,dry=dryHeight(seed,x,y);
@@ -246,6 +303,17 @@ export class ChunkWorld {
     if(!c.heights){c.heights=buildHeights(this.seed,c);this.built++;}
     return {cx,cy,obstacles:c.obstacles,lakes:c.lakes,pois:c.pois,heights:c.heights,hash:chunkHash(c,c.heights)};
   }
+  /**
+   * Height lattice of a chunk, built now when missing (the ground renderer, terreno-em-blocos, budgets these calls
+   * itself; the tick path uses prefetch). Same bytes as `ready(cx, cy).heights`, without the hash.
+   */
+  lattice(cx:number,cy:number):Uint8Array{
+    const c=this.chunk(cx,cy);
+    if(!c.heights){c.heights=buildHeights(this.seed,c);this.built++;this.missed.delete(c);}
+    return c.heights;
+  }
+  /** Whether a chunk is cached with its lattice (no generation, no LRU touch). */
+  hasLattice(cx:number,cy:number){return !!this.live.get(keyOf(cx,cy))?.heights;}
   /** Chunk holding (x, y), or undefined beyond WORLD_LIMIT / for non-finite input. */
   at(x:number,y:number):Chunk|undefined{
     const cx=Math.floor(x/CHUNK_SIZE),cy=Math.floor(y/CHUNK_SIZE);

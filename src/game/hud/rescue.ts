@@ -138,7 +138,7 @@ export class RescueBoard {
     if(hold)scene.say(net.id,hold.line);
     const {targets,items}=radar({selfId:net.id,focus,self:self??focus,tick:this.last.tick,players:view.players,states:this.states,
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,pickups:this.last.pickups,
-      warnings:this.warnings,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
+      warnings:this.warnings,nodes:this.last.nodes,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
     const area=scene.usefulArea??zones.useful;
     if(now-this.coveredAt>500){this.coveredAt=now;this.covered=coveredBoxes(hud.el.ownerDocument);}
     hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen:{viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered}}));

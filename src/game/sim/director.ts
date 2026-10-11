@@ -52,6 +52,8 @@ export interface DirectorOptions {
    * off screen around the base. Default 0 (no structures until 046B, D-017); a plan may also flag groups itself.
    */
   siegeShare?:number;
+  /** First round whose groups may besiege through siegeShare (default 1). Groups a plan flags itself always do. */
+  siegeFromRound?:number;
   /** Endless world: the camera a client reported (042b/camera-segue). Without it every orientation and view counts. */
   cameraOf?:(ctx:SimContext,player:SimPlayer)=>CameraHint|undefined;
 }
@@ -94,6 +96,11 @@ export interface Director extends SimSystem {
   readonly state:DirectorState;
   /** Highest active player count of the last minute (1..6), used for budget and hp. */
   scalePlayers(ctx:SimContext):number;
+  /**
+   * Moves the end of the current intermission later (the Stonewards horn, so the farthest hero gets back before the
+   * round, VGM-046B). Ignored outside an intermission and for an earlier tick.
+   */
+  extendPrepare(ctx:SimContext,endsTick:number):void;
 }
 
 const BAND_MAX=2.2;
@@ -364,7 +371,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
 
   /** Regular groups flagged by the plan or picked by siegeShare (every 1/share-th group, no rng). */
-  const isSiege=(group:SpawnGroup,index:number)=>!!group.siege||(siegeShare>0&&Math.floor((index+1)*siegeShare)>Math.floor(index*siegeShare));
+  const siegeFrom=options.siegeFromRound??1;
+  const isSiege=(group:SpawnGroup,index:number)=>!!group.siege||(siegeShare>0&&(state.plan?.index??0)>=siegeFrom&&Math.floor((index+1)*siegeShare)>Math.floor(index*siegeShare));
 
   function dispatch(ctx:SimContext,group:SpawnGroup,index:number){
     const side=sideFor(index),special=!group.boss&&!group.elite,siege=special&&isSiege(group,index);
@@ -537,6 +545,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   return {
     id:'director',state,scalePlayers,
+    extendPrepare(ctx,endsTick){
+      if(state.stage!=='prepare'||ctx.round.phase!=='prepare'||!Number.isSafeInteger(endsTick)||endsTick<=ctx.round.phaseEndsTick)return;
+      ctx.round.phaseEndsTick=endsTick;state.round={...ctx.round};
+    },
     step(ctx){
       if(restored){restored=false;Object.assign(ctx.round,state.round);}
       if(state.stage==='done')return;

@@ -10,7 +10,7 @@
  * points are projected with the real camera math (projection.ts, framing.ts) in the chosen view. It proves taps on HUD panels never reach Phaser,
  * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
  */
-import {HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
+import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
 import {RunHud} from './hud/hud.ts';
 import type {RunView} from './sim/view.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
@@ -52,10 +52,12 @@ document.body.append(world);
 let moved=0;
 world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTaps=String(moved);});
 
-let tick=1000;
+let tick=1000,forgeReq=0;
 let view:RunView=fakeView(scenario,players,tick);
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas,
+  // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
+  onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
@@ -73,7 +75,9 @@ function load(next:HudScenario){
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
-  hud.hideResult();hud.update(view);
+  hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
+  // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
+  if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
@@ -144,12 +148,16 @@ if(bordas)void (async()=>{
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     hud.edges!.render(layoutEdges(targets,area,heroBox,{seen:{viewport:{x:0,y:0,...viewport},covered}}));
     hud.minimap!.render(hero,view,MINIMAP_RANGE.ilha[hud.minimap!.far?1:0],items,islandOutline());
+    hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
   };
   // 5 allies, two of them caídos (p3 pinging), every one far from the hero.
-  const view0={...fakeView('wave',6,1000)};
+  // The chosen state underneath (wave by default; camp-forge, camp-horn, offer-round… for the soma scenes of the audit),
+  // always with the base ficha (VGM-046B) so the minimap and the ficha share the corner as in the real game.
+  const base=fakeView(scenario,6,1000),camp=fakeView('camp-wave',6,1000);
+  const view0={...base,camp:base.camp??camp.camp,structures:base.structures.length?base.structures:camp.structures};
   view0.players=view0.players.map((p,i)=>i===2?{...p,hp:0,downed:{progress:0,bleedOutTick:1000+20*14}}:i===4?{...p,hp:0,online:true,downed:{progress:.45,bleedOutTick:1000+20*6}}:{...p,online:true});
-  hud.update(view0);
+  hud.setHero(FIXTURE_HERO[scenario]??FIXTURE_HERO['camp-wave']);hud.update(view0);
   draw();addEventListener('resize',draw);hud.minimap!.el.addEventListener('click',()=>requestAnimationFrame(draw));
   document.body.dataset.bordas='1';
 })();

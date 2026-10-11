@@ -53,8 +53,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   if(net){
     shell.classList.add('coop-shell');shell.dataset.build='viagem-coop-v3';shell.dataset.room=net.code;
     $('.explore-notice').textContent='Arraste para andar. A arma atira sozinha; toque num bicho para priorizar o alvo.';
-    $('.explore-title p').innerHTML='COOPERATIVO · <span id="explorer-name"></span>';
-    $('.explore-quest').innerHTML='<small>A TURMA CONTRA AS GOSMAS</small><strong id="coop-objective">Protejam a ilha</strong><span id="coop-health"></span><div class="coop-party"></div>';
+    // The room plays on the endless map (D-019, terreno-em-blocos): no island words here; the island tour is solo only.
+    shell.setAttribute('aria-label','Mapa da turma');$('.explore-title h2').textContent='Mapa da turma';
+    $('.explore-stage').setAttribute('aria-label','Mapa sem fim da turma');
+    $('.explore-title p').innerHTML='Jogando como <span id="explorer-name"></span>';
+    $('.explore-quest').innerHTML='<small>A turma contra as gosmas</small><strong id="coop-objective">Segurem a muralha</strong><span id="coop-health"></span><div class="coop-party"></div>';
+    // The island's little map (and its dot) has no meaning on the endless map: the HUD's minimap does that job.
+    shell.querySelector('.explore-map')?.remove();
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';
     $('#coop-code').textContent=`Sala ${net.code}`;
     // Weapons fire on their own: this slot is the class skill. One tap sends one {t:'cast'} (net.cast, input-10hz),
@@ -63,7 +68,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind)});
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
+      onForge:recipe=>net.forge(recipe)});
+    net.onForged=answer=>hud?.forged(answer);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     hud.el.hidden=true;
@@ -114,7 +121,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const view:RunView|undefined=hud?.view;
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
       // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
-      players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}}))};
+      players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}})),
+      ...(!victory&&view?.camp?.wallDown?{wall:true}:{})};
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
@@ -179,9 +187,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
-      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=`Ilha ${seed} · relevo procedural`;settingsContent.append(info);},
+      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=net?.terrain.chunks?`Mapa ${seed}`:`Ilha ${seed}, relevo procedural`;settingsContent.append(info);},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
-      position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
+      position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
@@ -202,6 +210,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               shell.dataset.hudResult=String(resultShown!==undefined);
               hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
               hud.avoidHero(controller?.scene.heroScreenRect());
+              // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
+              const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
+              let bearing:number|undefined;
+              if(wall&&heroBox&&controller){const at=controller.scene.locate(wall).screen;bearing=Math.atan2(at.y-(heroBox.y+heroBox.height*.85),at.x-(heroBox.x+heroBox.width/2))*180/Math.PI;}
+              hud.setHero({x:net.predicted.x,y:net.predicted.y,bearing});
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.
@@ -217,7 +230,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
             $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!!state?.eliminated||!!state?.downed||!net.connected;
           }
-          $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
+          $('#coop-objective').textContent=net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`;return tag;}));
           syncTurn();
           $('#coop-diagnostics').textContent=`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`;
@@ -236,5 +249,5 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);
-  }catch{if(!closed){$('.explore-loading').textContent='Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
+  }catch{if(!closed){$('.explore-loading').textContent=net?'Não foi possível carregar o mapa. Volte às classes e tente novamente.':'Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
 }

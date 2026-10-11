@@ -93,13 +93,48 @@ test('no speed from forged batches: one step per tick, each at most one step lon
   for(let i=0;i<40;i++)s.input('p',{seq:2**31-1,steps:[]});
   for(let t=0;t<60;t++){const before={x:p.x,y:p.y};s.step();assert.ok(dist(p,before)<=SPEED*STEP+1e-9,'one step per tick');}
   assert.ok(dist(p,start)<=60*SPEED*STEP+1e-9);
-  // Late segments rewind the player's own walk over the same number of steps: no gain either.
-  const t2=new Simulation(),q=t2.add('q','T','cidadao-comum');t2.resetRun();
-  t2.input('q',{seq:1,steps:[[1,0,1,0]]});const s0={x:q.x,y:q.y};
-  for(let t=0;t<LEAD_STEPS+6;t++)t2.step();
-  const walked=dist(q,s0);
-  assert.equal(t2.input('q',{seq:8,steps:[[2,1,0,0],[3,0,1,0],[4,1,0,0],[5,0,1,0]]}),true);
-  assert.ok(dist(q,s0)<=walked+1e-9,'a rewind never adds distance');
+});
+
+test('fuzz: no forged sequence moves a player more than one step in a tick (review onda 5: no rewind, no rewriting reported steps)',()=>{
+  for(let seed=1;seed<=40;seed++){
+    let r=seed;const rnd=()=>{r=(r*1103515245+12345)%2147483648;return r/2147483648;};
+    const s=new Simulation(),p=s.add('p','T','cidadao-comum');s.resetRun();
+    let now=0,maxSeq=1;
+    for(let t=0;t<300;t++){
+      // Anything goes: late or early `from`, reversed directions, tiny or huge seq, legacy steps (skills move by design: left out).
+      for(let k=Math.floor(rnd()*4);k>0;k--){
+        const seq=Math.max(1,Math.floor(rnd()<.3?maxSeq+rnd()*60:maxSeq*rnd()));maxSeq=Math.max(maxSeq,seq);
+        const n=Math.floor(rnd()*MAX_SEGMENTS),froms=Array.from({length:n},()=>Math.max(1,Math.floor(seq-rnd()*40))).sort((a,b)=>a-b);
+        const steps=froms.map(f=>{const a=rnd()*7;return [f,Math.round(Math.cos(a)*1e4)/1e4,Math.round(Math.sin(a)*1e4)/1e4,0];});
+        if(rnd()<.2)s.input('p',{seq,x:rnd()*2-1,y:rnd()*2-1,attack:false},now);
+        else s.input('p',{seq,steps},now);
+      }
+      const before={x:p.x,y:p.y};now+=50;s.step(now);
+      assert.ok(dist(p,before)<=SPEED*STEP+1e-9,`seed ${seed}, tick ${t}: ${dist(p,before).toFixed(3)} u`);
+    }
+  }
+});
+
+test('a segment may not rewrite steps the client already reported',()=>{
+  const s=new Simulation(),p=s.add('p','T','cidadao-comum');s.resetRun();
+  assert.equal(s.input('p',{seq:10,steps:[[1,1,0,0]]},0),true);
+  for(let t=1;t<=12;t++)s.step(t*50);
+  // The client said it was at step 10 walking east; a change "from step 5" contradicts it.
+  assert.equal(s.input('p',{seq:12,steps:[[5,-1,0,0]]},600),false);
+  assert.equal(s.input('p',{seq:12,steps:[[10,-1,0,0]]},600),false);
+  assert.equal(s.input('p',{seq:12,steps:[[11,-1,0,0]]},600),true);
+});
+
+test('skill tap: one-shot, cast on the next step (in place when standing), answered once, ids only grow',()=>{
+  const s=new Simulation(),p=s.add('p','T','cidadao-comum');s.resetRun();
+  assert.equal(s.tap('p',1),true);s.step(50);
+  assert.deepEqual(s.casts.map(c=>[c.id,c.seq,c.ok]),[['p',1,true]]);assert.ok(p.skillTick);
+  assert.equal(p.ack,0,'standing: cast in place, no step spent');
+  s.step(100);assert.deepEqual(s.casts,[]);
+  assert.equal(s.tap('p',1),false,'a repeated id is refused');
+  // On cooldown: answered with ok false (the button never guesses).
+  assert.equal(s.tap('p',2),true);s.step(150);
+  assert.deepEqual(s.casts.map(c=>[c.seq,c.ok]),[[2,false]]);assert.ok(s.casts[0].readyTick>s.tick);
 });
 
 test('malformed or out-of-order batches are refused whole',()=>{
@@ -163,12 +198,14 @@ test('a skill press that arrives after its steps still casts once; tap targets r
   const enemy=createEnemy(room.sim.world,'gosma',{x:p.x+3,y:p.y});
   room.advance(4700);room.advance(4750);
   const label=room.ids.label('enemies',enemy.id);
-  room.receive(a,JSON.stringify({t:'input',round:1,seq:p.ack+2,steps:[[p.ack+1,0,0,0,label]]}),4800);
-  room.advance(4850);room.advance(4900);
+  // Segments start after the last step reported (`applied` above): the room reaches them on the client's clock.
+  let next=applied+1;
+  room.receive(a,JSON.stringify({t:'input',round:1,seq:next,steps:[[next,0,0,0,label]]}),4800);
+  for(let t=4850;t<=5000;t+=50)room.advance(t);
   assert.equal(p.target,enemy.id);
   // An unknown label only drops the target, the step still counts.
-  room.receive(a,JSON.stringify({t:'input',round:1,seq:p.ack+2,steps:[[p.ack+1,0,1,0,'e999999']]}),4950);
-  const ack=p.ack;room.advance(5000);room.advance(5050);
+  next+=1;room.receive(a,JSON.stringify({t:'input',round:1,seq:next,steps:[[next,0,1,0,'e999999']]}),5050);
+  const ack=p.ack;for(let t=5100;t<=5250;t+=50)room.advance(t);
   assert.equal(p.target,undefined);assert.ok(p.ack>ack);
 });
 

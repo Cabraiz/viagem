@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer,type RoomRoster} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL,GRACE_MS,ROOM_RESTARTED_NOTICE,REPLACED_MESSAGE} from '../src/game/net/shared.ts';
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice} from '../src/game/net/shared.ts';
+import {sha256Hex} from '../src/game/net/sha256.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
 function peer(){
@@ -109,17 +110,23 @@ test('restart of the room: the roster comes back from storage, the run is lost h
   assert.equal(writes.length,2,'one row per join');
   let t=combat(room,[a,b]);
   assert.equal(writes.at(-1)!.running,true);
-  const before=writes.length;
-  for(let i=0;i<100;i++)room.advance(t+=50);
-  assert.equal(writes.length,before,'combat ticks write nothing');
+  const before=writes.length,rounds=new Set<number>([room.sim.world.round.index]);
+  for(let i=0;i<100;i++){room.advance(t+=50);rounds.add(room.sim.world.round.index);}
+  assert.equal(writes.length-before,rounds.size-1,'combat ticks write nothing; only a new round does');
   // The object restarts (deploy, eviction): a new Room from the same storage.
   const roster=writes.at(-1)!,restarted=new Room(1000,4242,{onRoster:r=>writes.push(structuredClone(r))});
+  // Storage never sees a token: only its hash. What was lost (round, level) goes with it.
+  assert.ok(!JSON.stringify(writes).includes(welcome(a).token),'no plain token in storage');
+  assert.equal(roster.players.find(p=>p.id===welcome(a).id)!.tokenHash,sha256Hex(welcome(a).token));
+  assert.equal(roster.lost?.round,room.sim.world.round.index);assert.equal(roster.lost?.level,room.sim.world.team.level);
   restarted.restore(roster,t);
   assert.equal(restarted.sim.players.size,2);assert.equal(restarted.run.snapshot().phase,'lobby');
   assert.ok([...restarted.sim.players.values()].every(p=>!p.online));
   const back=peer();join(restarted,back,'Ana',t+100,welcome(a).token);
   assert.equal(welcome(back).id,welcome(a).id);assert.equal(welcome(back).run.phase,'lobby');
-  assert.deepEqual(back.messages.filter(m=>m.t==='notice').map(m=>m.message),[ROOM_RESTARTED_NOTICE]);
+  const news=back.messages.filter(m=>m.t==='notice');
+  assert.deepEqual(news.map(m=>[m.kind,m.title,m.body]),[['restarted',restartedNotice(roster.lost).title,restartedNotice(roster.lost).body]]);
+  assert.match(news[0].title,/Round \d+ se perdeu/);assert.match(news[0].body,/Não foi ninguém da turma/);assert.doesNotMatch(news[0].message,/servidor/i);
   // Back again later (another drop): no second notice.
   restarted.disconnect(back,t+200);const again=peer();join(restarted,again,'Ana',t+300,welcome(a).token);
   assert.deepEqual(again.messages.filter(m=>m.t==='notice'),[]);
@@ -149,11 +156,34 @@ test('roster rows per run stay small (free plan: 100k rows written per day)',()=
 
 test('a restored roster ignores junk and never seats more than six',()=>{
   const room=new Room(1000);
-  room.restore({v:1,running:true,players:[
-    ...Array.from({length:8},(_,i)=>({id:`p${i}`,name:`P${i}`,classId:'cidadao-comum',token:`t${i}`})),
+  room.restore({v:2,running:true,players:[
+    ...Array.from({length:8},(_,i)=>({id:`p${i}`,name:`P${i}`,classId:'cidadao-comum',tokenHash:sha256Hex(`t${i}`),until:null})),
   ]},1000);
   assert.equal(room.sim.players.size,6);
   const other=new Room(1000);
-  other.restore({v:2} as unknown as RoomRoster,1000);other.restore({v:1,running:true,players:[{id:'x',name:'X',classId:'nada',token:'t'}]},1000);
+  other.restore({v:2} as unknown as RoomRoster,1000);other.restore({v:1,running:true,players:[]} as unknown as RoomRoster,1000);
+  other.restore({v:2,running:true,players:[{id:'x',name:'X',classId:'nada',tokenHash:sha256Hex('t'),until:null},{id:'y',name:'Y',classId:'cidadao-comum',tokenHash:'plain-token',until:null}]},1000);
   assert.equal(other.sim.players.size,0);
+});
+
+test('restore keeps the seat expiry a player already had, and the restored seat accepts only the right token',()=>{
+  const room=new Room(1000);
+  room.restore({v:2,running:false,players:[
+    {id:'away',name:'Away',classId:'cidadao-comum',tokenHash:sha256Hex('tok-away'),until:5000},
+    {id:'gone',name:'Gone',classId:'cidadao-comum',tokenHash:sha256Hex('tok-gone'),until:500},
+    {id:'here',name:'Here',classId:'cidadao-comum',tokenHash:sha256Hex('tok-here'),until:null},
+  ]},1000);
+  assert.deepEqual([...room.sim.players.keys()].sort(),['away','here'],'an already expired seat is not restored');
+  // 'away' keeps its old deadline (5 s), 'here' gets a fresh grace from the restart.
+  const late=peer();join(room,late,'Away',6000,'tok-away');assert.equal(late.closes[0]?.code,4003);
+  const ok=peer();join(room,ok,'Here',1000+GRACE_MS-100,'tok-here');assert.equal(welcome(ok).id,'here');assert.equal(welcome(ok).token,'tok-here');
+  const wrong=peer();join(room,wrong,'X',1100,'tok-gone');assert.equal(wrong.closes[0].code,4003);
+});
+
+test('the roster is written only when it changes, never per message or tick',()=>{
+  let rows=0;const room=new Room(1000,undefined,{onRoster:()=>{rows++;}}),a=peer();join(room,a,'Ana',1000);
+  assert.equal(rows,1);
+  let t=1100;for(let i=0;i<100;i++){say(room,a,{t:'ping',at:i},t);room.advance(t+=50);}
+  assert.equal(rows,1,'pings and lobby ticks write nothing');
+  room.disconnect(a,t);room.advance(t+=50);assert.equal(rows,2,'the seat expiry changed');
 });

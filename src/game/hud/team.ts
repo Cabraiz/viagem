@@ -16,8 +16,9 @@ export type MemberState='ok'|'low'|'downed'|'eliminated'|'offline'|'spectator';
 export function memberState(player:PlayerRunView):MemberState{
   if(player.eliminated)return 'eliminated';
   if(player.downed)return 'downed';
-  if(player.spectator)return 'spectator';
+  // Away beats watching (UX onda 5): someone not back after a restart is offline, not a spectator.
   if(!player.online)return 'offline';
+  if(player.spectator)return 'spectator';
   return hpFraction(player)<=.3?'low':'ok';
 }
 const BADGES:Record<MemberState,string>={ok:'',low:'',downed:'🆘',eliminated:'💀',offline:'📵',spectator:'👀'};

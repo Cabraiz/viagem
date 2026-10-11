@@ -75,9 +75,15 @@ export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,
   }
   if(phase!=='hidden'&&selfSpectator)return {visible:true,phase,members,readyCount,total,selfReady,selfSpectator,headline:'Você assiste esta rodada. Pipoca liberada!'};
   const missing=members.filter(m=>!m.ready||!m.online);
+  // Who is here but not ready apart from who is away (fell off the network, or not back after a restart, VGM-047).
+  const here=missing.filter(m=>m.online),away=missing.filter(m=>!m.online);
+  const who=(list:WaitingMember[])=>list.length===1?(list[0].self?'você':list[0].name):list.length===2?`${list[0].self?'você':list[0].name} e ${list[1].self?'você':list[1].name}`:String(list.length);
+  const awayText=away.length===1?`${away[0].name} ainda não voltou.`:`${away.length} ainda não voltaram.`;
   const headline=phase==='hidden'?''
     :total<=1?'Só você aqui. Chama a turma!'
     :!missing.length?'Todo mundo pronto. Milagre!'
+    :away.length&&!here.length?(away.length===1?`Só falta ${away[0].name} voltar.`:awayText)
+    :away.length?`${here.length===1?"Falta":"Faltam"} ${who(here)}. ${awayText}`
     :missing.length===1?(missing[0].self?'Só falta você. Sem pressão.':`Só falta ${missing[0].name}. Sem pressão.`)
     :`Faltam ${missing.length}. Alguém foi ao banheiro.`;
   return {visible:phase!=='hidden',phase,members,readyCount,total,selfReady,selfSpectator,headline};
@@ -96,6 +102,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   const started=now();
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
   panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button">Chamar a turma</button></div>
+    <div class="coop-wait-news" role="alert" hidden><strong></strong><span></span></div>
     <p class="coop-wait-headline" role="status" aria-live="polite"></p>
     <ul class="coop-wait-members"></ul>
     <p class="coop-wait-line"></p>
@@ -128,10 +135,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     panel.hidden=!view.visible;
     if(!view.visible)return;
     panel.dataset.phase=view.phase;
+    // After a restart of the room the run is gone (VGM-047, UX onda 5): the news goes on top, as a ficha, in place of
+    // the headline, and the waiting joke is suspended until the next run starts.
+    const news=client.roomNotice;
+    panel.classList.toggle('has-notice',!!news);
+    $('.coop-wait-news').hidden=!news;
+    if(news){setText($('.coop-wait-news strong'),news.title);setText($('.coop-wait-news span'),news.body);}
+    $('.coop-wait-headline').hidden=!!news&&view.phase!=='countdown';
     setText($('.coop-wait-headline'),view.headline);
-    // After a restart of the room the run is gone (VGM-047): the line says so instead of the waiting joke.
-    panel.classList.toggle('has-notice',!!client.roomNotice);
-    setText($('.coop-wait-line'),view.phase==='countdown'?'':client.roomNotice??waitingLine((now()-started)/1000));
+    setText($('.coop-wait-line'),view.phase==='countdown'||news?'':waitingLine((now()-started)/1000));
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
     readyButton.hidden=view.selfSpectator;

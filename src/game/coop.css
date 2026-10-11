@@ -38,3 +38,9 @@
 #coop-attack:disabled{opacity:.5;cursor:default}
 /* Out of the run or watching (VGM-043): the stick looks and acts disabled, like the skill button. */
 .coop-shell[data-out=true] .explore-stick{opacity:.5;pointer-events:none}
+/* VGM-047 (UX onda 5): a sala reiniciou e a partida se perdeu. Notícia em ficha acima da lista, no lugar do título. */
+.coop-wait-news{display:grid;gap:4px;margin:8px 0 6px;padding:10px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);text-align:center}
+.coop-wait-news strong{font:800 var(--t-16)/1.25 var(--f-sistema)}
+.coop-wait-news span{font:600 var(--t-13)/1.3 var(--f-sistema)}
+.coop-wait-news[hidden]{display:none}
+@media(max-height:500px){.coop-wait-news{margin:4px 0;padding:6px 10px}}

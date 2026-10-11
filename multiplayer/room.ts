@@ -1,10 +1,11 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, ROOM_RESTARTED_NOTICE, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {walkable} from '../src/game/world.ts';
+import {sha256Hex} from '../src/game/net/sha256.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -13,7 +14,8 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  * encoder: this client's protocol 4 encoder (VGM-042b), created on join; a reconnect gets a fresh one.
  */
 type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number};
-type Session={id:string;token:string;until:number};
+/** `hash` is sha256(token): storage only ever sees hashes; `token` is known in memory once issued or presented. */
+type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
   /** Combat safety limit in server ticks (tests shorten it). */
   durationTicks?:number;
@@ -36,7 +38,13 @@ export interface RoomOptions {
  * What survives a restart of the Durable Object (deploy, eviction, crash), VGM-047. Not the run: the policy is to
  * end it honestly (D-024, proposed), so only who sits in the room and where the room was.
  */
-export interface RoomRoster {v:1;/** A run was in combat (its loss is announced after a restart). */running:boolean;players:{id:string;name:string;classId:string;token:string}[]}
+export interface RoomRoster {
+  v:2;
+  /** A run was in combat (its loss is announced after a restart), and how far it got. */
+  running:boolean;lost?:{round:number;level:number};
+  /** tokenHash = sha256(token); until = seat expiry of an offline player (null: connected when saved). */
+  players:{id:string;name:string;classId:string;tokenHash:string;until:number|null}[];
+}
 const classIds=new Set(classes.map(c=>c.id));
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
@@ -81,36 +89,45 @@ export class Room {
   /** Roster as last handed to onRoster (JSON), so only real changes are written. */
   private rosterKey='';
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
-  private lostRun=new Set<string>();
+  private lostRun=new Map<string,{round:number;level:number}>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;
   }
-  /** Who sits in the room (and the run phase), for storage. */
+  /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
-    return {v:1,running:this.run.snapshot().phase==='combat',players:[...this.sim.players.values()].flatMap(p=>{
-      const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,token:s.token}]:[];
+    const running=this.run.snapshot().phase==='combat',w=this.sim.world;
+    return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
+      const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
     })};
   }
   /**
-   * A restarted Durable Object seats the stored roster again (VGM-047): same ids and tokens, everyone offline with a
-   * fresh grace, the room in the lobby. A run that was going is lost, and each player is told so when back (D-024).
+   * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
+   * (a player already away keeps the grace it had; the ones connected at the restart get a fresh one), the room in
+   * the lobby. A run that was going is lost, and each player is told what was lost when back (D-024).
    */
   restore(roster:RoomRoster,now=Date.now()){
-    if(roster?.v!==1||!Array.isArray(roster.players))return;
+    if(roster?.v!==2||!Array.isArray(roster.players))return;
+    const lost=roster.running===true?{round:Number(roster.lost?.round)||0,level:Number(roster.lost?.level)||0}:undefined;
     for(const r of roster.players.slice(0,6)){
-      if(typeof r?.id!=='string'||typeof r.token!=='string'||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
-      this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,token:r.token,until:now+GRACE_MS});
+      if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
+      const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
+      if(until<now)continue;
+      this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);
-      if(roster.running===true)this.lostRun.add(r.id);
+      if(lost)this.lostRun.set(r.id,lost);
     }
-    this.syncSpectators();this.rosterKey=JSON.stringify(this.roster());
+    this.syncSpectators();this.rosterKey=JSON.stringify(this.roster());this.rosterDirty=false;
   }
-  /** Hands the roster to storage when it changed (joins, leaves, expiries, combat start and end): one row each. */
+  /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
+  private rosterDirty=false;
+  private rosterRound=-1;
+  /** Hands the roster to storage when it changed: one row each time. */
   private flushRoster(){
-    if(!this.onRoster)return;
+    if(!this.onRoster||!this.rosterDirty)return;
+    this.rosterDirty=false;
     const roster=this.roster(),key=JSON.stringify(roster);
     if(key===this.rosterKey)return;
     this.rosterKey=key;this.perf.rosterWrites++;
@@ -138,7 +155,8 @@ export class Room {
       this.expire(now);
       let session:Session|undefined;
       if(m.token!==undefined){
-        session=[...this.sessions.values()].find(s=>s.token===m.token);
+        const hash=typeof m.token==='string'&&m.token.length<=200?sha256Hex(m.token):'';
+        session=[...this.sessions.values()].find(s=>s.hash===hash);
         if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.');return;}
         // The newest connection takes the character (BUG-20261009-N1-reconexao-socket-velho): a phone back from another
         // network while the room still holds its dead socket, or a second tab. The old one hears why and is closed with
@@ -148,14 +166,14 @@ export class Room {
           try{other.peer.send(JSON.stringify({t:'replaced',message:REPLACED_MESSAGE}));}catch{}
           try{other.peer.close(4009,'Personagem entrou por outra conexão.');}catch{}
         }
-        this.sim.setOnline(session.id,true);
+        this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
         if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.');return;}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.');return;}
-        const id=crypto.randomUUID();session={id,token:crypto.randomUUID()+crypto.randomUUID(),until:Infinity};
+        const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
       }
-      session.until=Infinity;c.playerId=session.id;
+      session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
@@ -168,7 +186,8 @@ export class Room {
       // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
       this.pushOffers(c);
       // Back after the room restarted in the middle of a run (VGM-047): say what happened, once.
-      if(this.lostRun.delete(session.id))this.notice(c,ROOM_RESTARTED_NOTICE);
+      const lost=this.lostRun.get(session.id);
+      if(lost){this.lostRun.delete(session.id);this.sendJson(c,{t:'notice',kind:'restarted',...restartedNotice(lost)});}
       this.pushRun();return;
     }
     if(!c.playerId)return;
@@ -185,6 +204,8 @@ export class Room {
       }
     }
     else if(m.t==='ack')c.encoder?.ack(m.seq);
+    // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
+    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round)this.sim.tap(c.playerId,m.id);}
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
@@ -197,7 +218,7 @@ export class Room {
       if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();this.pushRun();}
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
-    else if(m.t==='leave'){this.sim.remove(c.playerId);this.run.leave(c.playerId);this.syncSpectators();this.sessions.delete(c.playerId);this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
+    else if(m.t==='leave'){this.rosterDirty=true;this.sim.remove(c.playerId);this.run.leave(c.playerId);this.syncSpectators();this.sessions.delete(c.playerId);this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
   /**
    * Offer pick. Malformed, stale-round or out-of-combat commands are dropped silently; a command that reaches the
@@ -245,10 +266,10 @@ export class Room {
   private reject(peer:Peer,message:string){peer.send(JSON.stringify({t:'error',message}));this.connections.delete(peer);peer.close(4003,message);}
   disconnect(peer:Peer,now=Date.now()){
     const c=this.connections.get(peer);this.connections.delete(peer);
-    if(c?.playerId){this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
+    if(c?.playerId){this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
   }
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
-  expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
+  expire(now:number){for(const s of this.sessions.values())if(s.until<now){this.rosterDirty=true;this.sim.remove(s.id);this.run.leave(s.id);this.sessions.delete(s.id);}this.syncSpectators();}
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){this.sim.resetRun();this.ids.reset();}
   advance(now=Date.now()){
@@ -265,6 +286,8 @@ export class Room {
     if(this.run.snapshot().phase==='combat'){
       if(this.labHorde)this.fillHorde();
       const events=this.sim.step(now);
+      // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
+      for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
       const outcome=this.sim.outcome;
@@ -282,6 +305,9 @@ export class Room {
       this.sendFrame(c,input??=this.sim.frame());
       this.pushOffers(c);
     }
+    // Combat start/end and each new round go to storage (what a restart reports as lost).
+    const round=this.run.snapshot().phase==='combat'?this.sim.world.round.index:-1;
+    if(round!==this.rosterRound){this.rosterRound=round;this.rosterDirty=true;}
     this.flushRoster();
     this.measure(performance.now()-started);
   }

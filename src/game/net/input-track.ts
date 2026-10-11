@@ -6,12 +6,14 @@
  *
  * Steps keep their client sequence numbers, so prediction and reconciliation stay exact: the room applies one step
  * per tick, in order, holding the last state between changes (InputTrack), never faster than the client's own clock
- * allows (the time since its last report, LEAD_STEPS behind). A change that arrives after the room already guessed
- * past it rewinds only this player's own walk over those few steps (REWIND_STEPS), never the world, and the owner's
- * frames carry the position at the last step it reported (`confirmed`), so its prediction never sees a guess.
- * Nothing in a batch can buy speed: one step per tick, each at most one step long.
+ * allows (the time since its last report, LEAD_STEPS behind), and the owner's frames carry the position at the last
+ * step it reported (`confirmed`), so its prediction never sees a guess. A change that arrives after the room already
+ * guessed past it takes effect from the next step: nothing is ever rewound (review onda 5: a rewind let a forged
+ * client move several steps in one tick), so one tick moves a player at most one step, whatever the client sends.
+ * A skill tap is a separate one-shot message {t:'cast',round,id} (no held state, outside the 10 Hz slot), answered
+ * with {t:'cast',seq:id,ok,readyTick} after the step that carried it.
  */
-import {moveDirection,type Point} from '../world.ts';
+import type {Point} from '../world.ts';
 import type {TerrainField} from '../terrain/field.ts';
 import type {PlayerInput} from '../sim/systems/players.ts';
 import type {SimPlayer} from '../sim/types.ts';
@@ -27,8 +29,6 @@ export const SEND_MIN_MS=100;
 export const KEEPALIVE_MS=1000;
 /** The room keeps applying the held state this many steps past the last step the client reported (1.5 s). */
 export const HORIZON_STEPS=Math.round(1.5*SIM_HZ);
-/** A late change rewinds the player's own walk at most this far back (400 ms). */
-export const REWIND_STEPS=8;
 /** More than this many steps behind the client (the room ticks slower than 20 Hz): drop steps, never two per tick. */
 export const MAX_LAG_STEPS=10;
 /**
@@ -44,7 +44,6 @@ export const STEP_MS=1000/SIM_HZ;
 /** Segments per message and segments waiting in the room per player. */
 export const MAX_SEGMENTS=8;
 const MAX_QUEUED=32;
-const STEP=1/SIM_HZ;
 
 const round4=(v:number)=>Math.round(v*1e4)/1e4||0;
 export const DIRECTIONS:readonly Readonly<Point>[]=Object.freeze(Array.from({length:DIRECTION_BUCKETS},(_,i)=>{
@@ -91,6 +90,7 @@ export class InputBatcher {
   private lastSend=-Infinity;
   /** Starts over at `seq` (welcome ack, new run), standing still like the room's fresh track. */
   reset(seq=0){this.seq=seq;this.bucket=-1;this.skill=false;this.target=undefined;this.unsent=[];this.lastSend=-Infinity;}
+
   /** The room is already past our steps (it held our last state longer than we stepped): continue from its ack. */
   catchUp(ack:number){if(ack>this.seq)this.seq=ack;}
   /** One fixed step: the input the prediction applies (quantized), and whether it moves or casts (pending until acked). */
@@ -117,10 +117,10 @@ export class InputBatcher {
   get waitingUntil():number|undefined{return this.unsent.length?this.lastSend+SEND_MIN_MS:undefined;}
 }
 
-/** One applied step, for a late correction: where the player stood before it, the facing then, the direction used. */
-interface Applied {seq:number;x:number;y:number;facing:Point;dir:Point;movable:boolean}
+/** One applied step: where the player stood before it (the owner's confirmed position is read from here). */
+interface Applied {seq:number;x:number;y:number}
 /** Serializable part of a track (stateHash; replay). */
-export interface InputTrackState {applied:number;lastFrom:number;known:number;held:InputSegment;queue:InputSegment[];skillPress:boolean;batched:boolean;knownAt:number;appliedTarget?:string}
+export interface InputTrackState {applied:number;lastFrom:number;known:number;held:InputSegment;queue:InputSegment[];skillPress:boolean;batched:boolean;knownAt:number;casts:number[];lastCast:number;appliedTarget?:string}
 const STOP:InputSegment=Object.freeze({from:0,x:0,y:0,skill:false});
 
 /**
@@ -136,7 +136,7 @@ export class InputTrack {
   private known=0;
   private held:InputSegment={...STOP};
   private queue:InputSegment[]=[];
-  /** A skill press that arrived after its steps were already applied: cast on the next step. */
+  /** A held-skill press that arrived after its steps were already applied: cast on the next step. */
   private skillPress=false;
   /** Target last handed to the simulation (a stop with a new target still needs one step to set it). */
   private appliedTarget?:string;
@@ -145,18 +145,24 @@ export class InputTrack {
   private knownAt=0;
   /** Batches follow the client's clock; a legacy client sends every step unthrottled, so its steps go at once. */
   private batched=false;
+  /** Skill taps waiting for the next steps (client tap ids, one per tick), and the last accepted (ids only grow). */
+  private castQueue:number[]=[];
+  private lastCast=0;
+  /** Set by next() on the step that carries a tap: Simulation reads it after the step to answer the client. */
+  tapped?:number;
   /** Starts over at `ack` (join, reconnect, new run): nothing held, nothing queued. */
-  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;}
+  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;}
   /**
    * A batch from the client, or one legacy step `{seq,x,y,skill,target}` (protocol 4 before input-10hz, tests): the
-   * whole message is refused when anything in it is malformed or out of order.
+   * whole message is refused when anything in it is malformed or out of order. A segment may only start after the
+   * last step the client already reported (`known`): rewriting reported steps is a contradiction, so it is refused.
    */
-  accept(value:unknown,player?:SimPlayer,terrain?:TerrainField,now=0):boolean{
+  accept(value:unknown,_player?:SimPlayer,_terrain?:TerrainField,now=0):boolean{
     const batch=toBatch(value);
     if(!batch)return false;
     const batched=!!value&&Array.isArray((value as {steps?:unknown}).steps);
     const segments:InputSegment[]=[];
-    let last=this.lastFrom;
+    let last=Math.max(this.lastFrom,this.known);
     for(const w of batch.steps){
       const s=segmentOf(w);
       if(!s||s.from<=last||s.from>batch.seq)return false;
@@ -168,41 +174,27 @@ export class InputTrack {
     for(const s of segments){
       this.lastFrom=s.from;
       if(s.from>this.applied){this.queue.push(s);continue;}
-      // Late: the room already stepped past `from` with the old state. Rewind the player's own walk when it can.
+      // Late: the room already guessed past `from` with the old state. From the next step on, the new state; no rewind.
       if(s.skill&&!this.held.skill)this.skillPress=true;
-      if(player&&terrain)this.rewind(s,player,terrain);
-      this.held={...s,from:this.applied};
+      this.queue=[];this.held={...s,from:this.applied};
     }
     return true;
   }
-  /** Redo the steps from..applied with the corrected direction, if nothing but walking moved the player meanwhile. */
-  private rewind(s:InputSegment,p:SimPlayer,terrain:TerrainField){
-    const start=this.history.findIndex(h=>h.seq===s.from);
-    if(start<0||this.applied-s.from>=REWIND_STEPS||!movable(p))return false;
-    const steps=this.history.slice(start);
-    for(let i=0;i<steps.length;i++){
-      const h=steps[i],after=h.movable?moveDirection(h,h.dir,STEP,terrain):{x:h.x,y:h.y};
-      const next=i+1<steps.length?steps[i+1]:p;
-      if(!h.movable||after.x!==next.x||after.y!==next.y)return false;
-    }
-    let at:Point={x:steps[0].x,y:steps[0].y},facing:Point={...steps[0].facing};
-    const dir={x:s.x,y:s.y},length=Math.hypot(dir.x,dir.y);
-    for(const h of steps){
-      h.x=at.x;h.y=at.y;h.facing=facing;h.dir=dir;
-      at=moveDirection(at,dir,STEP,terrain);
-      if(length>=.01)facing={x:dir.x/length,y:dir.y/length};
-    }
-    p.x=at.x;p.y=at.y;p.facing=facing;
-    return true;
+  /** A skill tap (client tap id, increasing): carried by the next step, or cast in place while standing or waiting. */
+  tap(id:unknown):boolean{
+    if(!validSeq(id)||id<=this.lastCast||this.castQueue.length>=4)return false;
+    this.castQueue.push(id);this.lastCast=id;return true;
   }
   /**
    * The next step for the players system (seq = the client's), or undefined when standing still, waiting for the
    * client's clock, or out of guesses. `now` is the same clock as accept's.
    */
   next(p:SimPlayer,now=0):PlayerInput|undefined{
+    this.tapped=undefined;
     let seq=this.applied+1;
     while(this.queue.length&&this.queue[0].from<=seq)this.held=this.queue.shift()!;
-    if(this.inert()&&!this.skillPress){
+    const press=this.skillPress||this.castQueue.length>0;
+    if(this.inert()&&!press){
       // Standing still costs no steps: jump straight to the next change (the idle stretch moves nobody).
       if(!this.queue.length)return undefined;
       this.applied=this.queue[0].from-1;seq=this.applied+1;this.held=this.queue.shift()!;this.history=[];
@@ -213,21 +205,27 @@ export class InputTrack {
       this.applied++;seq=this.applied+1;this.history=[];
       while(this.queue.length&&this.queue[0].from<=seq)this.held=this.queue.shift()!;
     }
-    if(seq>this.known+HORIZON_STEPS||this.batched&&seq>this.known+Math.floor((now-this.knownAt)/STEP_MS)-LEAD_STEPS){
-      // Waiting for the client's clock. A late skill press still casts now, in place, without spending a step.
-      if(!this.skillPress)return undefined;
-      this.skillPress=false;
-      return {seq:this.applied,x:0,y:0,attack:false,skill:true,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{})};
+    if(seq>this.known+HORIZON_STEPS||this.batched&&seq>this.known+Math.floor((now-this.knownAt)/STEP_MS)-LEAD_STEPS||this.inert()&&press){
+      // Waiting for the client's clock (or standing): a skill press still casts now, in place, without spending a step.
+      if(!press)return undefined;
+      return this.press({seq:this.applied,x:0,y:0,attack:false,skill:true,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{})});
     }
     this.applied=seq;
-    this.history.push({seq,x:p.x,y:p.y,facing:{...p.facing},dir:{x:this.held.x,y:this.held.y},movable:movable(p)});
+    this.history.push({seq,x:p.x,y:p.y});
     if(this.history.length>HISTORY_STEPS)this.history.shift();
-    const skill=this.held.skill||this.skillPress;this.skillPress=false;this.appliedTarget=this.held.target;
-    return {seq,x:this.held.x,y:this.held.y,attack:false,skill,...(this.held.target!==undefined?{target:this.held.target}:{})};
+    this.appliedTarget=this.held.target;
+    const input:PlayerInput={seq,x:this.held.x,y:this.held.y,attack:false,skill:this.held.skill,...(this.held.target!==undefined?{target:this.held.target}:{})};
+    return press?this.press({...input,skill:true}):input;
+  }
+  /** Consumes the pending press (tap or late hold) on this step. */
+  private press(input:PlayerInput){
+    this.tapped=this.castQueue.shift();
+    this.skillPress=false;
+    return input;
   }
   /**
    * What the owner's frames carry for itself when the room walked past the last step the client reported: that
-   * step and the position after it (guesses beyond it may still be rewound). Undefined: send the live position.
+   * step and the position after it. Undefined: send the live position.
    */
   confirmed():{ack:number;x:number;y:number}|undefined{
     const c=Math.min(this.applied,this.known);
@@ -244,7 +242,7 @@ export class InputTrack {
   }
   private inert(){return !moving(this.held)&&!this.held.skill&&this.held.target===this.appliedTarget;}
   state():InputTrackState{
-    return {applied:this.applied,lastFrom:this.lastFrom,known:this.known,held:{...this.held},queue:this.queue.map(s=>({...s})),skillPress:this.skillPress,batched:this.batched,knownAt:this.knownAt,
+    return {applied:this.applied,lastFrom:this.lastFrom,known:this.known,held:{...this.held},queue:this.queue.map(s=>({...s})),skillPress:this.skillPress,batched:this.batched,knownAt:this.knownAt,lastCast:this.lastCast,casts:[...this.castQueue],
       ...(this.appliedTarget!==undefined?{appliedTarget:this.appliedTarget}:{})};
   }
 }

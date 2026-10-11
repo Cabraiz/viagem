@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {REPLACED_MESSAGE,ROOM_RESTARTED_NOTICE} from '../src/game/net/shared.ts';
+import {REPLACED_MESSAGE} from '../src/game/net/shared.ts';
 
 const store=new Map<string,string>();
 (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
@@ -89,7 +89,7 @@ test('client: after a restart of the room the player is seated again and the wai
     net.room=new Room(created,4242);net.room.restore(roster);stop=ticking(net.room);net.down=false;
     for(let i=0;i<80&&!ana.connected;i++)await sleep(50);
     await sleep(100);
-    assert.equal(ana.connected,true);assert.equal(ana.run?.phase,'lobby');assert.equal(ana.roomNotice,ROOM_RESTARTED_NOTICE);
+    assert.equal(ana.connected,true);assert.equal(ana.run?.phase,'lobby');assert.match(ana.roomNotice?.title??'',/A sala caiu e voltou/);assert.match(ana.roomNotice?.body??'',/Tô pronto/);
     ana.ready(true);
     for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
     assert.equal(ana.run?.phase,'combat');assert.equal(ana.roomNotice,undefined,'gone once the next run starts');
@@ -115,5 +115,32 @@ test('client: walking sends at most 10 input messages per second, standing still
     assert.ok(still<=1,`${still} inputs standing still (the stop itself)`);
     assert.ok(acks<=4,`${acks} acks in 3 s`);
     ana.leave();
+  }finally{stop();cleanup();}
+});
+
+test('client: a skill tap goes at once as {t:cast} and the room answers whether it went off',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();ana.ready(true);
+    for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+    const answers:{seq:number;ok:boolean}[]=[];ana.onCast=r=>answers.push(r);
+    net.sent.length=0;const first=ana.cast()!,second=ana.cast()!;
+    assert.deepEqual(net.sent.map(s=>s.t),['cast','cast'],'sent at once, not waiting for the 10 Hz slot');
+    for(let i=0;i<40&&answers.length<2;i++)await sleep(50);
+    assert.deepEqual(answers.map(a=>[a.seq,a.ok]),[[first,true],[second,false]],'the second tap lands on the cooldown');
+  }finally{stop();cleanup();}
+});
+
+test('client: offline time for the slow-link line, and "Tentar de novo" tries at once',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();assert.equal(ana.offlineMs(),0);
+    net.down=true;sockets(ana).vanish();
+    for(let i=0;i<40&&ana.connected;i++)await sleep(10);
+    await sleep(1200);
+    assert.ok(ana.offlineMs()>=1000,`${ana.offlineMs()} ms offline`);
+    net.down=false;const opened=net.opened;ana.retryNow();
+    for(let i=0;i<40&&!ana.connected;i++)await sleep(25);
+    assert.equal(ana.connected,true);assert.ok(net.opened>opened);assert.equal(ana.offlineMs(),0);
   }finally{stop();cleanup();}
 });

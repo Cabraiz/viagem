@@ -1,5 +1,5 @@
 import {defaultTerrain} from '../terrain/field.ts';
-import { STEP, ROOM_PROTOCOL, GRACE_MS, ROOM_RESTARTED_NOTICE, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
+import { STEP, ROOM_PROTOCOL, GRACE_MS, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from './shared.ts';
 import type {RunState} from './run.ts';
 import type { Point } from '../world.ts';
 import {FrameRunFeed} from './run-feed.ts';
@@ -62,12 +62,25 @@ export class CoopClient {
   private attempts=0;
   /** Date.now() of the last message from the room (the reconnection window counts from it, across app switches). */
   private lastSeenAt=0;
+  /** Date.now() when the joined connection dropped (0 while connected). */
+  private droppedAt=0;
+  /** How long this client has been trying to get back (0 while connected or before joining). */
+  offlineMs(now=Date.now()){return this.connected||!this.initialized||this.stopped||!this.droppedAt?0:now-this.droppedAt;}
+  /** "Tentar de novo" (UX onda 5): a fresh attempt now, backoff reset. */
+  retryNow(){
+    if(this.stopped||this.connected)return;
+    this.attempts=0;
+    const ws=this.socket;
+    // An attempt already on its way (connecting, or open and joining): let it finish.
+    if(ws&&(ws.readyState===WebSocket.CONNECTING||ws.readyState===WebSocket.OPEN))return;
+    clearTimeout(this.retry);this.retry=undefined;this.connect();
+  }
   private wake?:()=>void;
   /**
-   * Last room notice that belongs on the waiting room (the room restarted and the run was lost, VGM-047); cleared
-   * when the next run starts.
+   * News for the waiting room: the room restarted and the run was lost (VGM-047), title and body; cleared when the
+   * next run starts.
    */
-  roomNotice?:string;
+  roomNotice?:{title:string;body:string};
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
@@ -87,6 +100,10 @@ export class CoopClient {
   private badFullFrames=0;
   private resyncAt=-Infinity;
   onStatus:(message:string)=>void=()=>{};
+  /** The room's answer to a skill tap (cast): `ok` false = not cast (cooldown, fallen, no target...). */
+  onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
+  /** Last answer to a skill tap. */
+  lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
   readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
@@ -120,7 +137,7 @@ export class CoopClient {
         const terrain=terrainFor(m.world);
         if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
         this.terrain=terrain;
-        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;
+        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -130,8 +147,9 @@ export class CoopClient {
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
-      else if(m.t==='notice'&&typeof m.message==='string'){if(m.message===ROOM_RESTARTED_NOTICE)this.roomNotice=m.message;this.onStatus(m.message);this.onNotice(m.message);}
+      else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='replaced')this.replaced(ws);
+      else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
@@ -139,6 +157,7 @@ export class CoopClient {
       if(ws!==this.socket)return;
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
+      if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
       // A newer connection took the character: stop here, keep the token (the reload button takes it back on purpose).
       if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
       if(this.initialized&&Date.now()-this.lastSeenAt>RETRY_WINDOW_MS||(!this.initialized&&this.attempts>=2)){
@@ -227,6 +246,16 @@ export class CoopClient {
     if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);}
     this.flushInput();
   }
+  /**
+   * Skill tap (one-shot, no held state): {t:'cast',round,id} at once, outside the 10 Hz slot. The room answers
+   * {t:'cast',seq:id,ok,readyTick} (onCast). Returns the tap id, or undefined when there is nothing to tap into.
+   */
+  cast(){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const id=++this.castId;this.socket.send(JSON.stringify({t:'cast',round:this.run.round,id}));return id;
+  }
+  /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */
+  private castId=0;
   /** Sends what the batcher allows now; changes still waiting for the 10 Hz slot go out on a timer. */
   private flushInput(){
     const socket=this.socket;

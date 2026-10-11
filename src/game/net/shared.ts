@@ -47,8 +47,18 @@ export function terrainFor(world:WorldDescriptor|undefined):TerrainField|string{
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
 export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
 
-/** The room's Durable Object restarted (deploy, eviction) in the middle of a run (VGM-047, D-024 proposed): honest end. */
-export const ROOM_RESTARTED_NOTICE='O servidor da sala reiniciou e a run se perdeu no caminho. A turma continua aqui: toca em Tô pronto pra começar outra.';
+/**
+ * The room's Durable Object restarted (deploy, eviction) in the middle of a run (VGM-047, D-024): honest end, as news
+ * on top of the waiting room (UX onda 5): what happened and what was lost, that nobody in the group caused it, and
+ * what to do. `message` is both lines for the status text.
+ */
+export function restartedNotice(lost?:{round:number;level:number}){
+  const title=lost&&lost.round>0
+    ?`A sala caiu e voltou. A partida do Round ${lost.round} se perdeu${lost.level>0?`: vocês estavam no Nv ${lost.level}`:''}.`
+    :'A sala caiu e voltou, e a partida se perdeu.';
+  const body='Não foi ninguém da turma. Toca em Tô pronto pra começar outra.';
+  return {title,body,message:`${title} ${body}`};
+}
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
 
@@ -234,8 +244,12 @@ export class Simulation {
     if(!p?.online||p.spectator||!t)return false;
     return t.accept(value,p,this.terrain,now);
   }
+  /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
+  tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
   /** Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones. */
   confirmed(id:string){return this.tracks.get(id)?.confirmed();}
+  /** Skill taps answered by the last step: seq is the client's, ok whether it was cast, readyTick the next ready tick. */
+  casts:{id:string;seq:number;ok:boolean;readyTick:number}[]=[];
   /** Clock of the step being taken (ms): the Room's wall clock, or tick × STEP_MS (tests, replays). */
   private clock=0;
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
@@ -250,7 +264,11 @@ export class Simulation {
     this.pending={victory:false,defeat:false};
     // Enemies added between ticks (tests, future checkpoints) join the set too, so they also get a tombstone.
     for(const e of this.world.enemies.values())if(!this.alive.has(e.id))this.alive.set(e.id,e);
+    const castBefore=new Map([...this.players.values()].map(p=>[p.id,p.skillTick]));
     const events=this.world.step();
+    // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.
+    this.casts=[];
+    for(const [id,t] of this.tracks)if(t.tapped!==undefined){const p=this.players.get(id);if(p)this.casts.push({id,seq:t.tapped,ok:p.skillTick!==castBefore.get(id),readyTick:skillReadyTick(p)});}
     if(!this.result)this.result=this.pending.victory?'victory':this.pending.defeat?'defeat':undefined;
     this.pending=undefined;
     // Refunds (pagodeiro, caça-promoção) move the cooldown after the cast; the wire follows the skill state.

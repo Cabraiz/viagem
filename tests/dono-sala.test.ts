@@ -8,6 +8,7 @@ import {RoomBots,botIdentity,BOT_NAMES,BOT_THINK_EVERY} from '../src/game/sim/ro
 import {downPlayer} from '../src/game/sim/revive.ts';
 import {classes} from '../src/classes.ts';
 import {NICK_MAX} from '../src/game/lobby.ts';
+import {railName} from '../src/game/render/map-label-rules.ts';
 import {waitingRoomView,confirmText,OWNER_HINT} from '../src/game/lobby.ts';
 import {computeAwards} from '../src/game/hud/awards.ts';
 import {emptyTally} from '../src/game/hud/model.ts';
@@ -122,6 +123,11 @@ test('six with bots: the seventh person and a seventh bot are refused',()=>{
 
 test('bots: funny names that fit, a class of the 36, marked as bot, ready, never holding the start alone',()=>{
   for(const name of BOT_NAMES){assert.ok(name.length<=NICK_MAX,name);assert.doesNotMatch(name,/\p{Extended_Pictographic}/u);}
+  // The rail and the caído ficha show the first word only: each bot keeps its own there (and none is just "Bot").
+  const rails=BOT_NAMES.map(name=>railName(name));
+  assert.equal(new Set(rails).size,BOT_NAMES.length,rails.join());assert.ok(rails.every(r=>!/^(bot|robô)$/i.test(r)));
+  assert.notEqual(railName(botIdentity(1,0,['x'],new Set(['Pamonha da Silva','Parafuso','Geladeira'])).name).toLowerCase(),'pamonha');
+  for(let n=0;n<6;n++){const taken=new Set(BOT_NAMES.filter((_,i)=>i!==n));assert.equal(botIdentity(9,0,['x'],taken).name,BOT_NAMES[n],'the only free name');}
   const ids=classes.map(c=>c.id),picked=new Set<string>();
   for(let n=0;n<40;n++){const b=botIdentity(1234,n,ids,new Set());assert.ok(ids.includes(b.classId));picked.add(b.classId);}
   assert.ok(picked.size>8,'classes spread');

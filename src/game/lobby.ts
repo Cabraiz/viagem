@@ -157,7 +157,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     membersKey='';update();
   });
   host.append(panel);
-  let membersKey='';
+  let membersKey='',wasReady=new Set<string>();
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
@@ -195,13 +195,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         const status=m.bot?icon('robo'):icon(m.ready?'pronto':'relogio');
         const said=`${m.bot?' bot':''}${m.owner?', chefe da sala':''}${m.ready?', pronto':', ainda não'}`;
         const crown=m.owner?icon('coroa',{className:'coop-wait-crown'}):'';
-        const cls=`${m.ready?'is-ready':''}${m.online?'':' is-away'}${m.bot?' is-bot':''}`;
+        // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
+        const cls=`${m.ready?'is-ready':''}${m.ready&&!wasReady.has(m.id)?' just-ready':''}${m.online?'':' is-away'}${m.bot?' is-bot':''}`;
         if(view.canManage&&!m.self){
           const ask=armed?.id===m.id;
           return `<li class="${cls}${ask?' is-asking':''}"><button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(ask?`${confirmText(m)} Toca de novo pra confirmar.`:`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`)}">${ask?icon('saiu'):status}<span>${escapeHtml(ask?confirmText(m):m.name)}</span>${ask?'':crown+icon('saiu',{className:'coop-wait-out'})}</button></li>`;
         }
         return `<li class="${cls}">${status}<span>${escapeHtml(m.name)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
+      wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }
   };
   const timer=setInterval(update,200);update();

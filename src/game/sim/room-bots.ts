@@ -11,6 +11,7 @@
 import {decide,newMemory,HZ,type BrainMemory} from './bot-brain.ts';
 import type {Simulation} from '../net/shared.ts';
 import type {RecipeId} from './stonewards/rules.ts';
+import {railName} from '../render/map-label-rules.ts';
 
 /** A bot looks at the world this often (ticks): 200 ms, like a thumb (VGM-045 DECISION_MS). Slots are staggered. */
 export const BOT_THINK_EVERY=4;
@@ -19,11 +20,14 @@ export const BOT_THINK_EVERY=4;
  * (ticks), so a person who wants the tower gets there first ("compra na forja de vez em quando").
  */
 export const BOT_FORGE_LEFT=15*HZ;
-/** Funny names, all within NICK_MAX (20) and marked as bot on screen anyway. */
+/**
+ * Funny names, all within NICK_MAX (20). The HUD rail and the caído ficha show only the first word (railName, 9
+ * letters), so every first word is its own and none is "Bot": the robot sticker already says bot.
+ */
 export const BOT_NAMES:readonly string[]=Object.freeze([
-  'Robô do Gás','Bot da Firma','Robozinho Carente','Bot Sem Bateria','Robô Estagiário','Bot Pamonha',
-  'Robô do Churrasco','Bot Pé de Pano','Robô Tio do Zap','Bot Mil Grau','Robô Sem Wi-Fi','Bot do Bairro',
-  'Robô Cansado','Bot Fujão','Robô de Feira','Bot Lendário',
+  'Parafuso Solto','Pamonha 3000','Geladeira Fofa','Fusquinha Turbo','Trainee 2.0','Wi-Fi Fraco',
+  'Chaleira Elétrica','Robozinho Carente','Bateria 1%','Pisca Alerta','Cafeteira Mil Grau','Controle Sem Pilha',
+  'Antena de Bombril','Fujão 3000','Rodinho Turbo','Zapeiro 2.0',
 ]);
 /** Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). */
 const RECIPE_REFUSALS=new Set(['no-weapon','full','balance','recipe']);
@@ -34,12 +38,16 @@ export function botHash(seed:number,n:number){
   h=Math.imul(h^(h>>>16),0x85ebca6b)>>>0;h=Math.imul(h^(h>>>13),0xc2b2ae35)>>>0;
   return (h^(h>>>16))>>>0;
 }
-/** Name and class of the n-th bot of a room: a name nobody in the room uses, any class. */
+/**
+ * Name and class of the n-th bot of a room: a name whose short form (railName) nobody seated has, any class.
+ * `taken`: the names already seated.
+ */
 export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>){
-  const h=botHash(seed,n);
+  const h=botHash(seed,n),short=(name:string)=>railName(name).toLocaleLowerCase('pt-BR');
+  const shorts=new Set([...taken].map(short)),free=(name:string)=>!taken.has(name)&&!shorts.has(short(name));
   let name=BOT_NAMES[h%BOT_NAMES.length];
-  for(let i=1;i<=BOT_NAMES.length&&taken.has(name);i++)name=BOT_NAMES[(h+i)%BOT_NAMES.length];
-  if(taken.has(name))name=`Bot ${n+1}`;
+  for(let i=1;i<=BOT_NAMES.length&&!free(name);i++)name=BOT_NAMES[(h+i)%BOT_NAMES.length];
+  if(!free(name))name=`Robô${n+1}`;
   return {name,classId:classIds[(h>>>8)%classIds.length]};
 }
 

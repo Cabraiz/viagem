@@ -15,8 +15,9 @@
 .coop-wait-headline{margin:10px 0 6px;font-weight:800;font-size:15px}
 .coop-wait-members{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0;padding:0;list-style:none}
 .coop-wait-members li{display:flex;align-items:center;gap:4px;min-height:32px;padding:4px 9px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font-size:var(--t-13);transition:background .2s}
-.coop-wait-members li.is-ready{background:var(--c-cartolina);border-color:var(--c-breu);color:var(--c-breu);animation:coop-ready-pop .45s cubic-bezier(.3,1.6,.5,1)}
-.coop-wait-members li.is-away{opacity:.55}.coop-wait-members small{color:var(--c-lilas)}
+.coop-wait-members li.is-ready{background:var(--c-cartolina);border-color:var(--c-breu);color:var(--c-breu)}
+.coop-wait-members li.just-ready{animation:coop-ready-pop .45s cubic-bezier(.3,1.6,.5,1)}
+.coop-wait-members li.is-away{opacity:.55}.coop-wait-members small{color:var(--c-lilas);font-size:var(--t-13)}
 .coop-wait-line{min-height:2.6em;margin:8px 0;font-weight:400;font-size:var(--t-13);color:var(--c-papel)}
 .coop-wait-ready{width:100%;border:2px solid var(--c-breu);background:var(--c-amarelo);color:var(--c-breu);box-shadow:var(--s-1)}
 .coop-wait-ready.is-ready{border-color:var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel)}
@@ -27,7 +28,7 @@
 @keyframes coop-ready-pop{0%{transform:scale(.6) rotate(-6deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:none}}
 @keyframes coop-count-beat{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
 @media(max-height:500px){.coop-wait{top:auto;bottom:max(8px,calc(env(safe-area-inset-bottom) + 8px));width:min(400px,calc(100% - 300px));max-height:calc(100% - 64px);padding:10px}.coop-wait-headline{margin:6px 0 4px}.coop-wait-line{min-height:0;margin:4px 0}.coop-wait-count{font-size:var(--t-48)}}
-@media(prefers-reduced-motion:reduce){.coop-wait-members li.is-ready,.coop-wait[data-phase=countdown] .coop-wait-count{animation:none}.coop-lobby button.coop-nick-roll:active{transform:none}}
+@media(prefers-reduced-motion:reduce){.coop-wait-members li.just-ready,.coop-wait[data-phase=countdown] .coop-wait-count{animation:none}.coop-lobby button.coop-nick-roll:active{transform:none}}
 .coop-party{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.coop-party span{font-size:11px;padding:4px 6px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu)}
 .coop-debug{margin:0;border:0;padding:12px;border-radius:var(--r-janela);background:var(--c-papel);font:400 12px var(--f-sistema);color:var(--c-lilas);overflow-wrap:anywhere}.coop-debug summary{cursor:pointer;min-height:44px;display:flex;align-items:center}.coop-debug button{margin-top:10px}
 /* Attack is a thumb control: circle, Breu body and Papel edge like every chip over the map. */
@@ -80,7 +81,7 @@
 /* Dono da sala e bots (D-025). Para o chefe, cada nome (menos o dele) vira um botão de ficha com o adesivo de porta à
    direita ("tirar"); o 1º toque pergunta em Amarelo (escolha) e o 2º, em até 3 s, confirma. Bot leva o adesivo de robô
    no lugar do relógio/pronto; a coroa de papel marca o chefe para todo mundo. */
-.coop-wait-actions{display:flex;gap:8px}
+.coop-wait-actions{display:flex;gap:8px;margin-top:8px}
 .coop-wait-actions .coop-wait-ready{flex:2 1 0}
 .coop-wait-bot{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;border:2px solid var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel);box-shadow:var(--s-1);white-space:nowrap}
 .coop-wait-bot[hidden]{display:none}
@@ -94,3 +95,9 @@
 .coop-wait-members li .coop-wait-crown{margin:-4px -2px -4px 2px}
 .coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
 .coop-wait-members li.is-bot{background:var(--c-cartolina)}
+/* Paisagem: a janela do chefe fica mais larga (os nomes viram botões de 44 px) e a dica sai, para "Tô pronto!" nunca
+   rolar para fora; continua entre o joystick e a habilidade (150 px livres de cada lado em 844). */
+@media(max-height:500px){.coop-wait.is-owner{width:min(560px,calc(100% - 300px))}.coop-wait.is-owner .coop-wait-line{display:none}.coop-wait.is-owner .coop-wait-members{gap:6px}}
+/* Texto a 125% no retrato: a dica do chefe sai também (os adesivos de porta já dizem "tirar"), para os seis nomes e
+   "Tô pronto!" caberem sem rolar. */
+:root[data-texto="125"] .coop-wait.is-owner .coop-wait-line{display:none}

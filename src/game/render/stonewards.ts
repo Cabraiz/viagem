@@ -13,10 +13,11 @@ import type {NodeView,RunView,StructureView} from '../sim/view.ts';
 import {CAMP_RADIUS,TOWER_SECONDS} from '../sim/stonewards/rules.ts';
 import {SIM_HZ} from '../sim/types.ts';
 import type {Projector,Pt} from './projector.ts';
+import {WALL_LOW,gatheredSince,wallBar} from './stonewards-rules.ts';
+
+export {WALL_LOW,gatheredSince,wallBar};
 import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 
-/** Life share under which the wall's bar turns Laranja Cone (and gains its notch). */
-export const WALL_LOW=.3;
 /** A unit gathered: "+N" rises this long over its node. */
 const POP_MS=900;
 /** Node markers: ficha size in CSS px. */
@@ -27,21 +28,6 @@ interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean}
-
-/** What the wall bar shows: fraction and whether it is low (pure, tested). */
-export function wallBar(hp:number,maxHp:number){
-  const fraction=maxHp>0&&Number.isFinite(hp)?Math.max(0,Math.min(1,hp/maxHp)):0;
-  return {fraction,low:fraction>0&&fraction<WALL_LOW};
-}
-/** Units that came out of each node between two views: remaining dropped by n → n × value (pure, tested). */
-export function gatheredSince(before:ReadonlyMap<string,NodeView>,after:readonly NodeView[]){
-  const out:{node:NodeView;amount:number}[]=[];
-  for(const n of after){
-    const old=before.get(n.id);
-    if(old&&n.remaining<old.remaining)out.push({node:n,amount:(old.remaining-n.remaining)*n.value});
-  }
-  return out;
-}
 
 export class StonewardsRenderer {
   private scene:Phaser.Scene;
@@ -89,7 +75,8 @@ export class StonewardsRenderer {
       let m=this.marks.get(n.id);
       if(!m){m={view:n,label:this.scene.add.text(0,0,'',this.labelStyle).setOrigin(.5,.5)};this.marks.set(n.id,m);}
       m.view=n;
-      const text=`×${n.value}`;
+      // Plain x: the served Londrina subset draws the multiplication sign as a missing glyph on the canvas.
+      const text=`x${n.value}`;
       if(m.label.text!==text)m.label.setText(text);
     }
     for(const [id,m] of this.marks)if(!seen.has(id)){m.label.destroy();this.marks.delete(id);}

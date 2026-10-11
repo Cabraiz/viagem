@@ -19,7 +19,7 @@ export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
     describe:'+1 nível numa arma aleatória sua',
     lines:['Gambiarra aprovada pelo INMETRO, confia.','Prendeu com elástico de dinheiro. Funcionou.','Se tá funcionando, não mexe.']},
   'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:{coco:3,pedra:4},
-    describe:'Torre que arremessa chinelos por 45 s',
+    describe:'Arremessa chinelos por 45 s',
     lines:['A vó tá de olho. E de chinelo na mão.','Torre armada: chinelada teleguiada liberada.','Ninguém escapa da Havaiana voadora.']},
 });
 export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];

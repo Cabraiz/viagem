@@ -106,8 +106,11 @@ export class CoopClient {
   lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
-  /** Forge request ids only grow (the room applies a repeated one once), across reconnections too. */
-  private forgeId=0;
+  /**
+   * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
+   * point: a reloaded page keeps its seat (token) but not this counter, and a restarted count would read as a resend.
+   */
+  private forgeId=Math.floor(Math.random()*2**30);
   /**
    * Forge tap (VGM-046B): {t:'forge',round,recipe,req} at once; the room answers {t:'forged'} (onForged). Returns the
    * request id, or undefined when the tap cannot reach the room (offline, not in a run).

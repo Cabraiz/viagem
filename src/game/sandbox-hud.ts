@@ -7,7 +7,7 @@
  * the island scene (`input.on('pointerdown')` → goTo). It proves taps on HUD panels never reach Phaser,
  * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
  */
-import {HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
+import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
 import {RunHud} from './hud/hud.ts';
 import type {RunView} from './sim/view.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
@@ -48,10 +48,12 @@ document.body.append(world);
 let moved=0;
 world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTaps=String(moved);});
 
-let tick=1000;
+let tick=1000,forgeReq=0;
 let view:RunView=fakeView(scenario,players,tick);
 const hud=new RunHud(document.body,{
   localId:'p1',
+  // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
+  onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
@@ -69,7 +71,9 @@ function load(next:HudScenario){
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
-  hud.hideResult();hud.update(view);
+  hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
+  // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
+  if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}

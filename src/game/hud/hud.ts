@@ -14,7 +14,10 @@ import {createResultScreen} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
+import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
+import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
+import './camp.css';
 
 export interface RunHudOptions {
   localId:string;
@@ -27,6 +30,8 @@ export interface RunHudOptions {
   critterIcon?(kind:string):string|undefined;
   /** Stamp feedback when an offer is picked; defaults to the "carimbo" sound (with its 15 ms buzz). */
   onStamp?():void;
+  /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
+  onForge?(recipe:RecipeId):number|undefined;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -51,6 +56,8 @@ export class RunHud {
   private readonly stack:HTMLElement;
   private readonly alerts:HudPart;
   private readonly hurt:ReturnType<typeof createHurtFrame>;
+  /** Base ficha, forge window and horn notice (VGM-046B, hud/camp.ts). */
+  private readonly camp:CampPart;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
   /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
@@ -69,17 +76,20 @@ export class RunHud {
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp});
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
+    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
+    // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
+    top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
-    stack.append(announcer.el,alerts.el);this.stack=stack;this.alerts=alerts;
-    this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer];
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,offer.chip,offer.hint,this.result.el);
+    stack.append(announcer.el,alerts.el,camp.notice);this.stack=stack;this.alerts=alerts;
+    this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer,camp];
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,offer.hint,this.result.el);
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el])this.observer.observe(part);}
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout])this.observer.observe(part);}
   }
 
   update(view:RunView){
@@ -93,6 +103,11 @@ export class RunHud {
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
   }
+
+  /** The room's answer to a forge tap (VGM-046B). */
+  forged(answer:ForgeAnswer){this.camp.forged(answer);}
+  /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
+  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);}
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
@@ -157,7 +172,7 @@ export class RunHud {
    * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
   private veil(hero:Rect,margin:number){
-    const readouts=[...this.el.querySelectorAll<HTMLElement>('.rh-round,.rh-xp,.rh-boss,.rh-member')];
+    const readouts=[...this.el.querySelectorAll<HTMLElement>('.rh-round,.rh-xp,.rh-boss,.rh-member,.rh-camp')];
     if(this.readoutVersion!==this.layoutVersion||readouts.length!==this.readouts.length||readouts.some((el,i)=>this.readouts[i]?.el!==el)){
       this.readoutVersion=this.layoutVersion;
       this.readouts=readouts.map(el=>{const r=el.getBoundingClientRect();return {el,rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});

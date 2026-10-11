@@ -266,6 +266,7 @@ export function summaryMarkdown(reports:any[]){
       `- Partida inteira medida (média de ${full.length} runs completas com 6 bots, da criação da sala à saída): ${cost.incomingMessages} mensagens recebidas, ${cost.connections} conexões, ${cost.activeSeconds} s de sala ativa, ${cost.rowsWritten} linhas escritas.`,
       `- Requisições: ${plan.requests} por partida → ${plan.byRequests} partidas/dia. Duração: ${plan.gbSeconds} GB-s por partida → ${plan.byDuration} partidas/dia. Linhas: ${plan.byRows} partidas/dia.`,
       `- **Estimativa: ${plan.matchesPerDay} partidas inteiras de 6 por dia (limite: ${plan.limit==='duration'?'duração':plan.limit==='requests'?'requisições':'linhas'}).** A duração não depende de quantos jogam: com 2 jogadores as mensagens caem, as partidas/dia quase não sobem.`,
+      `- Cota do Worker (Free: 100 000 requisições/dia, separada da do Durable Object, https://developers.cloudflare.com/workers/platform/pricing/): o POST /rooms (mais o preflight OPTIONS no navegador) e cada upgrade de WebSocket passam pelo Worker antes da sala, ~${cost.connections+2} por partida → ~${Math.floor(100_000/(cost.connections+2))} partidas/dia; não é ela que limita.`,
       `- Teto do input-10hz (todo mundo mexendo o dedo o tempo todo, 10 mensagens/s em combate): ${ceiling.requests} requisições por partida → ${ceiling.matchesPerDay} partidas/dia (limite: ${ceiling.limit==='duration'?'duração':'requisições'}).`);
   }
   for(const r of reports){

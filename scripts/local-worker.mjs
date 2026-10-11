@@ -3,6 +3,8 @@
 //   log: MULTIPLAYER_LOG (default multiplayer-local-runtime.log). ALLOW_LOCAL is on (local origins, /lab).
 // - Stopping without taskkill: on POSIX wrangler runs in its own process group and the whole group gets SIGTERM
 //   (SIGKILL after 5 s); on Windows child.kill() ends wrangler and libuv's job object takes its workerd with it.
+// - Ctrl+C / SIGTERM / SIGHUP on the caller: on POSIX wrangler sits in its own group and would not get the terminal's
+//   signal, so the caller's signal stops it here (port freed) and the process exits with 128 + the signal number.
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
 import {createWriteStream,rmSync} from 'node:fs';
@@ -28,13 +30,18 @@ export async function startLocalWorker({port=localPort(),persist=process.env.MUL
   server.stdout.pipe(log);server.stderr.pipe(log);
   let exited=false;const gone=new Promise(r=>server.once('exit',()=>{exited=true;r();}));
   const signal=sig=>{try{if(posix)process.kill(-server.pid,sig);else server.kill(sig);}catch{}};
-  const stop=async()=>{
+  let stopping;
+  const stop=()=>stopping??=(async()=>{
+    for(const [sig,handler] of handlers)process.off(sig,handler);
     if(!exited){signal('SIGTERM');await Promise.race([gone,sleep(5000)]);}
     if(!exited&&posix){signal('SIGKILL');await Promise.race([gone,sleep(2000)]);}
     // Children of the group that outlived wrangler (POSIX): the group signal reaches them even after wrangler is gone.
     if(posix)try{process.kill(-server.pid,'SIGKILL');}catch{}
     await new Promise(r=>log.end(r));
-  };
+  })();
+  const SIGNALS={SIGINT:2,SIGTERM:15,SIGHUP:1};
+  const handlers=Object.entries(SIGNALS).map(([sig,n])=>[sig,()=>{void stop().finally(()=>process.exit(128+n));}]);
+  for(const [sig,handler] of handlers)process.on(sig,handler);
   const endpoint=`http://127.0.0.1:${port}`;
   try{
     let ready=false;

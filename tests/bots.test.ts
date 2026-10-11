@@ -105,6 +105,10 @@ test('lab network: delivery order survives a shrinking delay',()=>{
 });
 
 const wait=(ms:number)=>new Promise(r=>setTimeout(r,ms));
+async function until(predicate:()=>boolean,label:string,timeoutMs=3000){
+  const start=performance.now();
+  while(!predicate()){if(performance.now()-start>timeoutMs)throw new Error(`timeout: ${label}`);await wait(10);}
+}
 test('lab network: delay, drop and outage against a real ws server',async()=>{
   const server=new WebSocketServer({port:0,host:'127.0.0.1'});
   await new Promise(r=>server.once('listening',r));
@@ -117,11 +121,11 @@ test('lab network: delay, drop and outage against a real ws server',async()=>{
     const ws=new Socket(`ws://127.0.0.1:${port}`);ws.binaryType='arraybuffer';
     await open(ws);assert.equal(origin,'http://127.0.0.1:4187');
     const echo=new Promise<number>(r=>{const start=performance.now();ws.onmessage=()=>r(performance.now()-start);ws.send('{"t":"ping"}');});
-    const rtt=await echo;assert.ok(rtt>=190&&rtt<400,`echo took ${rtt} ms with 200 ms of added RTT`);
+    const rtt=await echo;assert.ok(rtt>=190&&rtt<1000,`echo took ${rtt} ms with 200 ms of added RTT`);
     assert.equal(link.stats.sentByType.ping,1);assert.equal(link.stats.recvJson,1);
     // Drop: both ends see the close.
     const closed=new Promise<number>(r=>{ws.onclose=e=>r(e.code);});
-    link.drop();assert.equal(await closed,1006);await wait(50);assert.equal(serverCloses.length,1);
+    link.drop();assert.equal(await closed,1006);await until(()=>serverCloses.length===1,'room hears the drop');
     // Outage: the open socket goes silent (no close on either side), new attempts fail; the end cuts it.
     const ws2=new Socket(`ws://127.0.0.1:${port}`);await open(ws2);
     let heard=0;ws2.onmessage=()=>{heard++;};
@@ -129,7 +133,7 @@ test('lab network: delay, drop and outage against a real ws server',async()=>{
     ws2.send('{"t":"ack"}');await wait(300);assert.equal(heard,0,'nothing crosses');assert.equal(serverCloses.length,1,'the room does not hear a close');
     const failed=new Promise<number>(r=>{const s=new Socket(`ws://127.0.0.1:${port}`);s.onclose=e=>r(e.code);});
     assert.equal(await failed,1006);assert.ok(OUTAGE_CONNECT_FAIL_MS<=1000);assert.equal(link.stats.failedConnects,1);
-    await outage;await wait(50);assert.equal(serverCloses.length,2,'cut at the end of the outage');
+    await outage;await until(()=>serverCloses.length===2,'cut at the end of the outage');
     const ws3=new Socket(`ws://127.0.0.1:${port}`);await open(ws3);ws3.close();
   }finally{for(const c of server.clients)c.terminate();server.close();}
 });

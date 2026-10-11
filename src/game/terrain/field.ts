@@ -22,13 +22,9 @@ export class TerrainField {
     this.world=options.world??'ilha';
     if(this.world==='infinito'){
       const chunks=this.chunks=new ChunkWorld(this.seed,{maxLive:options.maxLiveChunks});
-      // Builds the 3×3 lattices around the base, which also serve the window below.
+      // Builds the 3×3 lattices around the base (the first tiles the client draws).
       this.signature=endlessSignature(this.seed,(cx,cy)=>chunks.ready(cx,cy));
-      // The legacy 129×129 window (-4..28) keeps the island renderer drawing something sane around the base.
-      for(let y=0;y<FIELD_SIZE;y++)for(let x=0;x<FIELD_SIZE;x++){
-        const gx=FIELD_MIN+x*FIELD_STEP,gy=FIELD_MIN+y*FIELD_STEP,i=y*FIELD_SIZE+x;
-        this.heights[i]=chunks.bed(gx,gy);this.moisture[i]=chunks.wetness(gx,gy);
-      }
+      // `heights`/`moisture` stay empty: the endless world is drawn in tiles straight from the chunks (terreno-em-blocos).
       return;
     }
     this.chunks=undefined;

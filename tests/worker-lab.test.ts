@@ -14,7 +14,7 @@ register('data:text/javascript,'+encodeURIComponent(hooks));
 const {default:worker,GameRoom}=await import('../multiplayer/worker.ts');
 
 let called=0;
-const env=(local:string)=>({ALLOW_LOCAL:local,LAB_HORDE:'300',LAB_WORLD:'infinito',
+const env=(local:string)=>({ALLOW_LOCAL:local,LAB_HORDE:'300',LAB_WORLD:'ilha',
   ROOMS:{idFromName:(n:string)=>n,get:()=>({lab:async()=>{called++;return {secret:1};}})}}) as any;
 const lab=(origin?:string)=>new Request('https://viagem-salas.viagem.workers.dev/lab/ABCDEF0123',{headers:origin?{Origin:origin}:{}});
 
@@ -31,10 +31,10 @@ test('local Worker (ALLOW_LOCAL): /lab answers',async()=>{
 });
 test('deployed Worker: rooms ignore LAB_HORDE and LAB_WORLD, and the lab RPC answers nothing',()=>{
   const g=new GameRoom({storage:{}} as any,env('false')) as any,room=g.create(Date.now(),1);
-  assert.equal(room.labHorde,0);assert.equal(room.sampling,false);assert.equal(room.sim.terrain.chunks,undefined,'island, not the endless world');
+  assert.equal(room.labHorde,0);assert.equal(room.sampling,false);assert.ok(room.sim.terrain.chunks,'deployed rooms are on the endless world, LAB_WORLD or not');
   g.room=room;assert.equal(g.lab(),null);
   const local=new GameRoom({storage:{}} as any,env('true')) as any,labRoom=local.create(Date.now(),1);
-  assert.equal(labRoom.labHorde,300);assert.equal(labRoom.sampling,true);assert.ok(labRoom.sim.terrain.chunks,'lab room in the endless world');
+  assert.equal(labRoom.labHorde,300);assert.equal(labRoom.sampling,true);assert.equal(labRoom.sim.terrain.chunks,undefined,'LAB_WORLD=ilha: the island test world, local only');
 });
 test('/health says protocol 5 to anyone',async()=>{
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env('false'));

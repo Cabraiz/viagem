@@ -4,8 +4,9 @@ import { Room, type Peer, type RoomRoster } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
 /**
- * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'infinito' opens rooms in the endless world before it
- * ships; LAB_HORDE n keeps n critters on the players (stress measure, see RoomOptions.labHorde).
+ * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
+ * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
+ * RoomOptions.labHorde).
  */
 interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
@@ -43,7 +44,7 @@ export class GameRoom extends DurableObject<Env>{
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
     const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
     if(!local(this.env))return new Room(created,seed,{onRoster});
-    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='infinito'?{world:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
+    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0});
   }
   /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
   private load(created:number){

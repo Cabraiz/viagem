@@ -1,5 +1,5 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
+import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor } from '../src/game/net/shared.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
 import { classes } from '../src/classes.ts';
@@ -19,7 +19,7 @@ type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
   /** Combat safety limit in server ticks (tests shorten it). */
   durationTicks?:number;
-  /** Lab only (tests, wrangler dev with ALLOW_LOCAL): the endless world before it is playable (ENDLESS_WORLD_READY). */
+  /** World of the room: DEFAULT_WORLD (the endless map) unless a test or the lab (LAB_WORLD=ilha) asks for the island. */
   world?:WorldKind;
   /**
    * Lab only (wrangler dev with ALLOW_LOCAL and LAB_HORDE): keeps this many critters chasing the players and keeps the
@@ -91,7 +91,7 @@ export class Room {
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
   private lostRun=new Map<string,{round:number;level:number}>();
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
-    this.createdAt=createdAt;this.sim=new Simulation(seed,options.world?{world:options.world,experimental:true}:{});
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));this.sampling=!!options.lab||this.labHorde>0;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;

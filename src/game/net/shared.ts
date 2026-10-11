@@ -23,8 +23,12 @@ import {InputTrack,STEP_MS} from './input-track.ts';
  * refused at join with a readable message, never fed frames it cannot parse.
  */
 export const ROOM_PROTOCOL=PROTOCOL_VERSION;
-/** The Room speaks protocol 4 (VGM-042b); the endless world still waits for the camera that follows (camera-segue). */
-export const ENDLESS_WORLD_READY=false;
+/**
+ * The world every room plays on (D-019: rounds on a giant map). The endless world shipped once the room spoke protocol
+ * 4+ with areas of interest (VGM-042b), the camera followed the hero (camera-segue) and the ground was drawn in tiles
+ * around the camera (terreno-em-blocos). The island stays as an internal test world (Simulation default, LAB_WORLD=ilha).
+ */
+export const DEFAULT_WORLD:WorldKind='infinito';
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
@@ -173,14 +177,11 @@ export class Simulation {
   /** Per-run counters for the prizes; outside stateHash on purpose (they never decide a future tick). */
   private counters=new Map<string,RunStats>();
   /**
-   * `world` defaults to the island. 'infinito' (D-019) spawns around the players (spawn-em-volta) and protocol 4
-   * has wide positions and areas of interest (rede-mapa-grande), but it is NOT playable yet: the Room still speaks
-   * protocol 3 (VGM-042b) and the client still frames the island (camera-segue). It needs `experimental: true`
-   * (tests, benchmarks) until ENDLESS_WORLD_READY.
+   * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
+   * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
+   * interest in the frames (rede-mapa-grande), base at the origin.
    */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;experimental?:boolean}={}){
-    if(options.world==='infinito'&&!ENDLESS_WORLD_READY&&!options.experimental)
-      throw new Error("Mapa infinito ainda não é jogável (sala no protocolo 4 e câmera que segue pendentes): use experimental:true só em teste.");
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
     this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();

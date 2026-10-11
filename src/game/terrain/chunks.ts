@@ -246,6 +246,17 @@ export class ChunkWorld {
     if(!c.heights){c.heights=buildHeights(this.seed,c);this.built++;}
     return {cx,cy,obstacles:c.obstacles,lakes:c.lakes,pois:c.pois,heights:c.heights,hash:chunkHash(c,c.heights)};
   }
+  /**
+   * Height lattice of a chunk, built now when missing (the ground renderer, terreno-em-blocos, budgets these calls
+   * itself; the tick path uses prefetch). Same bytes as `ready(cx, cy).heights`, without the hash.
+   */
+  lattice(cx:number,cy:number):Uint8Array{
+    const c=this.chunk(cx,cy);
+    if(!c.heights){c.heights=buildHeights(this.seed,c);this.built++;this.missed.delete(c);}
+    return c.heights;
+  }
+  /** Whether a chunk is cached with its lattice (no generation, no LRU touch). */
+  hasLattice(cx:number,cy:number){return !!this.live.get(keyOf(cx,cy))?.heights;}
   /** Chunk holding (x, y), or undefined beyond WORLD_LIMIT / for non-finite input. */
   at(x:number,y:number):Chunk|undefined{
     const cx=Math.floor(x/CHUNK_SIZE),cy=Math.floor(y/CHUNK_SIZE);

@@ -5,6 +5,7 @@
 import type {RunView} from '../sim/view.ts';
 import {bossInfo,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
+import {HAPPENING_COPY} from '../fun/zueira.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -62,7 +63,7 @@ const intervalLines=[
  * title: the absurd round name; subtitle: the modifier. Two lines at most (UX-zonas-tela): the round number lives in the
  * chip right above, so the old "ROUND 3/10 · CHEFE" kicker is gone (it was caps and "A · B" too, D-020).
  */
-export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'}
+export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'|'evento'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
 export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10):Marquee|undefined{
@@ -99,7 +100,10 @@ export function createAnnouncer():HudPart{
   let seen=-1;
   return {el:root,update(view:RunView){
     for(const event of view.events){
-      if(event.eventId<=seen||event.type!=='round')continue;
+      if(event.eventId<=seen)continue;
+      // A zueira event (VGM-053B) takes the same street banner: its name and one dry line.
+      if(event.type==='happening'){seen=event.eventId;const copy=HAPPENING_COPY[event.kind];if(copy)show({...copy,tone:'evento'});continue;}
+      if(event.type!=='round')continue;
       seen=event.eventId;
       const marquee=marqueeFor(event,view.round?.total);
       if(marquee)show(marquee);

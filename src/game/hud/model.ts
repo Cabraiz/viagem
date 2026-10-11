@@ -2,6 +2,7 @@
  * Pure HUD model (VGM-040): derives display data from RunView without touching the DOM,
  * so it can be unit-tested under node. DOM parts in this folder consume these helpers.
  */
+import type {ShameMoment} from '../sim/shame.ts';
 import {SIM_HZ} from '../sim/types.ts';
 import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
@@ -183,6 +184,8 @@ export interface RunResult {
   players:PlayerRunView[];
   /** The defeat came from the wall falling (VGM-046B), not from the whole team down. */
   wall?:boolean;
+  /** The run's most embarrassing moment, from the server (VGM-053B, RunState.shame). */
+  shame?:ShameMoment;
 }
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */

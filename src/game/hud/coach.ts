@@ -151,7 +151,8 @@ export class Coach {
     const cur=this.current;
     if(cur){
       if(cur.doneAt!==undefined){
-        if(now-cur.doneAt<DONE_MS)return {lesson:cur.lesson,done:true};
+        // The check keeps its clock but gives the slot away at once to any other row (one row at a time).
+        if(now-cur.doneAt<DONE_MS)return input.blocked?undefined:{lesson:cur.lesson,done:true};
         // The gap runs from the end of the check, however seldom the views come.
         this.current=undefined;this.quietUntil=cur.doneAt+DONE_MS+GAP_MS;
       }else{

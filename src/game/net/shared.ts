@@ -19,9 +19,12 @@ import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../sim/stonewards
 import type {BuyResult} from '../sim/stonewards/forge.ts';
 import type {RunState} from './run.ts';
 import {InputTrack,STEP_MS} from './input-track.ts';
+import {ShameTracker} from '../sim/shame.ts';
+import type {ZueiraLab} from '../sim/zueira.ts';
 /**
- * Room protocol (join handshake). 6 since VGM-046B (5 was E7-skill-hud-wiring, 4 VGM-042b): binary run frames
- * (protocol4.ts: camp block and gather nodes) plus JSON control messages (`forge` asks the forge for a recipe).
+ * Room protocol (join handshake). 7 since VGM-053B (zueira events and the kill-cam), 6 was VGM-046B (5 E7-skill-hud-wiring,
+ * 4 VGM-042b): binary run frames (protocol4.ts: camp block, gather nodes, zueira events) plus JSON control messages
+ * (`forge` asks the forge for a recipe).
  * The site and the rooms Worker publish together (pages.yml, Worker first); a client with another version is
  * refused at join with a readable message, never fed frames it cannot parse.
  */
@@ -179,6 +182,10 @@ export class Simulation {
   private recent:{tick:number;event:StampedEvent}[]=[];
   /** Per-run counters for the prizes; outside stateHash on purpose (they never decide a future tick). */
   private counters=new Map<string,RunStats>();
+  /** "Momento mais vergonhoso" of the run (VGM-053B); outside stateHash too (it never decides a future tick). */
+  private shame=new ShameTracker();
+  /** Lab only (LAB_ZUEIRA): the zueira plan every run of this simulation uses instead of the seed's. */
+  zueiraLab?:ZueiraLab;
   /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
@@ -206,6 +213,7 @@ export class Simulation {
       // The run waits for its last player standing who dropped exactly as long as the room keeps the seat (VGM-047);
       // after that the session expires and the Room ends an empty run (042a R1).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
+      zueiraLab:this.zueiraLab,
     });
   }
   resetRun(){
@@ -213,7 +221,7 @@ export class Simulation {
     this.world.reset(runSeed(this.seed,++this.runs));
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
-    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();
+    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
@@ -323,11 +331,18 @@ export class Simulation {
       if(p&&this.tick-(p.attackTick??0)>=ATTACK_ANIMATION_TICKS)p.attackTick=this.tick;
     }
     this.countStats(events);
+    this.shame.observe(this.world,events,this.systems.zueira.activeAt(this.tick));
     this.trackRemovals();
     this.recent=this.recent.filter(r=>r.tick>this.tick-EVENT_BUFFER_TICKS);
     for(const event of events)this.recent.push({tick:this.tick,event});
     return events;
   }
+  /** The run's most embarrassing moment so far (VGM-053B), for the result; undefined when nobody did anything silly. */
+  shameMoment(){return this.shame.momentWithout(this.shameOptOut);}
+  /** Players who turned "my embarrassing moment" off (a preference: it survives rematches). */
+  readonly shameOptOut=new Set<string>();
+  /** The player's choice from the settings ({t:'pref',shame}); false = never pick their moment. */
+  setShamePref(id:string,allow:boolean){if(allow)this.shameOptOut.delete(id);else this.shameOptOut.add(id);}
   /** Run counters of a player (award-stats-server); zeros before anything happened. */
   statsOf(id:string):RunStats{
     let s=this.counters.get(id);

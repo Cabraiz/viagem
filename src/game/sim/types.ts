@@ -122,7 +122,15 @@ export type SimEvent=
    */
   | {type:'horn';endsTick:number;line?:string}
   /** D-013: a line from something that is not an enemy (forge recipes, a node running dry), at most one per ~2 s per source. */
-  | {type:'say';source:string;key:string;line:string};
+  | {type:'say';source:string;key:string;line:string}
+  /**
+   * VGM-053B: a zueira event in the middle of a round (sim/zueira.ts), decided by the server from the run seed:
+   * boleto rain (XP), flash sale (coxinhas) or a blackout. endsTick: when it stops (the client's banner and the dark).
+   */
+  | {type:'happening';kind:HappeningKind;endsTick:number}
+  /** VGM-053B: the last critter of a round fell (kill-cam): kind, where, who closed the bill and which round. */
+  | {type:'last-bicho';kind:string;x:number;y:number;round:number;by?:string};
+export type HappeningKind='boletos'|'promo'|'apagao';
 
 // ---------- Spatial query (VGM-032 implements a hash; tests may use naive) ----------
 export interface SpatialIndex<T extends Point&{id:string}> {

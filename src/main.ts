@@ -2,6 +2,7 @@ import './style.css';
 import { setupSections } from './sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './classes.ts';
 import { mountIcons } from './ui/icon-sprite.ts';
+import { icon } from './ui/icon.ts';
 mountIcons();
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./game/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
@@ -26,12 +27,12 @@ app.innerHTML = `
 <main class="world" data-build="viagem-island-v1">
   <div class="leaf leaf-left" aria-hidden="true"></div><div class="leaf leaf-right" aria-hidden="true"></div>
   <header class="masthead">
-    <a class="wordmark" href="#" aria-label="viagem, início">viagem<span class="star">✦</span><small>UMA AVENTURA FORA DO COMUM</small></a>
+    <a class="wordmark" href="#" aria-label="viagem, início">viagem<small>UMA AVENTURA FORA DO COMUM</small></a>
     <div class="chapter"><span>PRIMEIRO CAPÍTULO</span><strong>Todo herói começa em algum lugar.</strong></div>
     <span class="version-badge">PRÉVIA · 36 CLASSES</span>
   </header>
   <section class="creation-window" aria-labelledby="screen-title">
-    <div class="window-title"><div><span class="window-spark">✦</span><h1 id="screen-title">Crie seu personagem</h1></div><span class="step">01 <i>/</i> 02 <i>—</i> ESCOLHA SUA CLASSE</span></div>
+    <div class="window-title"><div><h1 id="screen-title">Crie seu personagem</h1></div><span class="step">01 <i>/</i> 02 <i>—</i> ESCOLHA SUA CLASSE</span></div>
     <div class="window-content">
       <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
         <span class="portrait-index" id="portrait-index"></span><span class="portrait-star" aria-hidden="true">✧</span>
@@ -46,14 +47,14 @@ app.innerHTML = `
           <div class="identity-fields"><label for="nickname">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" /><div class="class-meta"><span>Especialidade</span><strong id="role-name"></strong></div><fieldset class="palette"><legend>Cor do emblema</legend><div>${colors.map((value,index)=>`<button type="button" class="swatch" data-color="${value}" style="--swatch:${value}" aria-label="Cor ${['menta','coral','lilás','dourado','azul','rosa'][index]}" aria-pressed="false"></button>`).join('')}</div></fieldset></div>
         </div>
         <div class="stats-and-story"><section class="stats-box" aria-labelledby="stats-title"><h3 id="stats-title">Seu jeitinho de jogar</h3><div class="radar-wrap"><svg viewBox="0 0 220 180" aria-hidden="true"><path d="M110 20 187 90 110 160 33 90Z" class="radar-grid"/><path d="M110 40 165 90 110 140 55 90Z M110 63 140 90 110 117 80 90Z" class="radar-grid"/><path d="M110 20V160 M33 90H187" class="radar-axis"/><polygon id="radar-shape"/><circle cx="110" cy="90" r="4" fill="#6d609e"/></svg><span class="stat-label power">FORÇA <b id="stat-0"></b></span><span class="stat-label agility">AGILIDADE <b id="stat-1"></b></span><span class="stat-label wits">MALÍCIA <b id="stat-2"></b></span><span class="stat-label charm">CARISMA <b id="stat-3"></b></span></div><p class="stats-note">Cada um tem seu talento.</p></section><div class="story"><p id="class-description"></p><div class="skill-box"><span class="skill-icon" aria-hidden="true">✹</span><div><span class="tiny-label">HABILIDADE DA CLASSE · CONCEITO</span><h3 id="skill-name"></h3><p id="skill-description"></p></div></div></div></div>
-        <div class="selection-footer"><p>Uma turma de até <strong>6 amigos.</strong><br/>Uma boa dose de falta de juízo.</p><button id="confirm" class="primary-button">Esse sou eu! <span aria-hidden="true">➜</span></button></div>
+        <div class="selection-footer"><p>Uma turma de até <strong>6 amigos.</strong><br/>Uma boa dose de falta de juízo.</p><button id="confirm" class="primary-button">Esse sou eu!</button></div>
       </div>
     </div>
   </section>
   <section class="roster" aria-labelledby="roster-title"><div class="roster-heading"><div><span class="eyebrow">ESCOLHA SEU TIPO DE CAOS</span><h2 id="roster-title">Tem lugar pra todo mundo.</h2></div><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label></div><div class="roster-tools"><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div><div id="class-list" class="class-list"></div><div class="roster-pagination"><span>Personagens improváveis. Aventuras inesquecíveis.</span><nav aria-label="Páginas de classes"><button id="page-prev" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" aria-label="Próxima página">›</button></nav></div></section>
-  <footer class="page-footer"><span>viagem.cyou <i>✦</i> feito pra jogar junto</span><span>Seleção local · o multiplayer ainda está em desenvolvimento</span></footer>
+  <footer class="page-footer"><span>viagem.cyou, feito pra jogar junto</span><span>Seleção local · o multiplayer ainda está em desenvolvimento</span></footer>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">×</button><span class="eyebrow">PRONTO PARA A PRÓXIMA ETAPA</span><h2 id="confirmation-title">Seu personagem está escolhido!</h2><div id="chosen-art" class="class-art" aria-hidden="true"></div><strong id="chosen-name"></strong><p id="chosen-class"></p><p id="save-status"></p><p class="coming-next">Sua primeira parada: a Ilha do Começo.<br/>Para se verem, entrem na mesma sala em Jogar com amigos.</p><button id="enter-island" class="primary-button">Explorar a ilha ✦</button><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="primary-button">Voltar às classes</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><span class="eyebrow">PRONTO PARA A PRÓXIMA ETAPA</span><h2 id="confirmation-title">Seu personagem está escolhido!</h2><div id="chosen-art" class="class-art" aria-hidden="true"></div><strong id="chosen-name"></strong><p id="chosen-class"></p><p id="save-status"></p><p class="coming-next">Sua primeira parada: a Ilha do Começo.<br/>Para se verem, entrem na mesma sala em Jogar com amigos.</p><button id="enter-island" class="primary-button">Explorar a ilha</button><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="primary-button">Voltar às classes</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }

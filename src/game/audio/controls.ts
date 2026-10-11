@@ -1,5 +1,6 @@
 /** Compact mobile sound settings: mute, volume and optional vibration (VGM-050). */
 import type { AudioEngine } from './engine.ts';
+import { icon } from '../../ui/icon.ts';
 
 const CSS=`
 .audio-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border:2px solid var(--c-lilas);border-radius:var(--r-janela);background:var(--c-papel-claro);color:var(--c-lilas);font:700 13px var(--f-sistema);box-shadow:var(--s-2)}
@@ -39,7 +40,7 @@ export function mountAudioControls(container:HTMLElement,engine:AudioEngine):()=
   root.innerHTML=`<button type="button" class="audio-mute" aria-label="Som mudo"></button>`
     +`<label class="audio-volume"><input type="range" min="0" max="100" step="1" aria-label="Volume" /><output aria-hidden="true"></output></label>`
     +(canVibrate
-      ?`<button type="button" class="audio-vibe"><span aria-hidden="true">📳</span> Vibrar</button>`
+      ?`<button type="button" class="audio-vibe"><span aria-hidden="true">${icon('vibrar')}</span> Vibrar</button>`
       :`<span class="audio-note">Vibração indisponível neste aparelho.</span>`);
   const mute=root.querySelector<HTMLButtonElement>('.audio-mute')!;
   const range=root.querySelector<HTMLInputElement>('input')!;
@@ -49,7 +50,7 @@ export function mountAudioControls(container:HTMLElement,engine:AudioEngine):()=
   const render=()=>{
     const {volume,muted,vibration}=engine.settings;
     const pct=Math.round(Math.max(0,Math.min(1,volume))*100);
-    mute.textContent=muted?'🔇':'🔊';
+    mute.innerHTML=icon(muted?'mudo':'som');
     mute.setAttribute('aria-pressed',String(muted));
     if(document.activeElement!==range||range.value!==String(pct))range.value=String(pct);
     range.style.setProperty('--audio-fill',`${pct}%`);
@@ -57,7 +58,7 @@ export function mountAudioControls(container:HTMLElement,engine:AudioEngine):()=
     output.textContent=muted?'mudo':`${pct}%`;
     if(vibe){
       vibe.setAttribute('aria-pressed',String(vibration));
-      vibe.firstElementChild!.textContent=vibration?'📳':'📴';
+      vibe.firstElementChild!.innerHTML=icon(vibration?'vibrar':'sem-vibrar');
     }
   };
 

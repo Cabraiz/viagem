@@ -6,7 +6,7 @@ import {ROOM_PROTOCOL,reconcile,type Input} from '../src/game/net/shared.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {kitFor} from '../src/game/sim/kits.ts';
 import {SIM_HZ} from '../src/game/sim/types.ts';
-import {SkillPress,skillState,skillLabel,PRESS_TTL_MS,NO_CAST_MS} from '../src/game/hud/skill.ts';
+import {SkillPress,skillState,skillLabel,PRESS_TTL_MS,NO_ACK_MS} from '../src/game/hud/skill.ts';
 import {DICE_LINE,SKILL_BUBBLE_GAP_MS,skillBubbleLine} from '../src/game/render/jokes.ts';
 
 // Same harness as run-feed.test.ts: JSON control messages, protocol 4 frames, a 50 ms clock.
@@ -97,7 +97,7 @@ test('one tap is one cast: inputs without the flag never recast, even when the c
   let seq=0,casts=0;
   for(let i=0;i<20*SIM_HZ;i++){
     me.hp=me.stats.maxHp;me.invulnerableUntil=room.sim.tick+100;
-    input(room,a,++seq,{skill:press.take(i*50,true)});
+    input(room,a,++seq,{skill:press.take(i*50,true,seq)});
     step(room,[a,b]);pump(room,feed,a);
     casts+=feed.take().events.filter(e=>e.type==='skill').length;
   }
@@ -123,16 +123,27 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   assert.equal(settle(room,feed,a,[a,b]).filter(e=>e.type==='skill').length,1,'casts at once in the new run');
 });
 
-test('SkillPress: once per tap, only when the input can go out, stale taps expire, a silent tap is reported once',()=>{
+test('SkillPress: once per tap, only when the input can go out; "sem alvo" only when the server ran that input',()=>{
   const p=new SkillPress();
-  assert.equal(p.take(0,true),false,'nothing pressed');
+  assert.equal(p.take(0,true,1),false,'nothing pressed');
   p.press(0);
-  assert.equal(p.take(10,false),false,'not connected: kept');assert.ok(p.pending);
-  assert.equal(p.take(20,true),true);assert.equal(p.take(70,true),false,'one input per tap');
-  assert.equal(p.unanswered(20+NO_CAST_MS-1),false);assert.equal(p.unanswered(20+NO_CAST_MS),true,'no cast came back');
-  assert.equal(p.unanswered(20+NO_CAST_MS+50),false,'reported once');
-  p.press(1000);assert.equal(p.take(1000+PRESS_TTL_MS+1,true),false,'a tap from a second ago never fires');
-  p.press(3000);p.take(3000,true);p.answered();assert.equal(p.unanswered(9000),false,'answered taps are quiet');
+  assert.equal(p.take(10,false,1),false,'not connected: kept');assert.ok(p.pending);
+  assert.equal(p.take(20,true,5),true);assert.equal(p.take(70,true,6),false,'one input per tap');
+  assert.equal(p.settle(4,false,80),undefined,'an older input acked: still in flight');
+  assert.equal(p.settle(5,false,100),'none','the tap input ran and no cast came: sem alvo');
+  assert.equal(p.settle(9,false,200),undefined,'reported once');
+  p.press(300);p.take(300,true,10);
+  assert.equal(p.settle(10,true,4000),'cast','cast and ack in the same frame: the cast wins');
+  p.press(500);p.take(500,true,11);assert.equal(p.settle(undefined,false,500+NO_ACK_MS+1),undefined,'a lost input is forgotten quietly');
+  assert.equal(p.settle(11,false,600+NO_ACK_MS),undefined);
+  p.press(1000);assert.equal(p.take(1000+PRESS_TTL_MS+1,false,12),false);assert.equal(p.take(1000+PRESS_TTL_MS+2,true,12),false,'a tap that waited out a reconnect never fires');
+  p.press(2000);assert.equal(p.take(2000+PRESS_TTL_MS*3,true,12),true,'a slow frame still sends the tap');
+});
+
+test('SkillButton logic on a slow link: a cast that arrives 3 s after the tap never shows "sem alvo" first',()=>{
+  const p=new SkillPress();p.press(0);p.take(0,true,7);
+  for(let t=100;t<3000;t+=100)assert.equal(p.settle(6,false,t),undefined,`still in flight at ${t} ms`);
+  assert.equal(p.settle(7,true,3000),'cast');
 });
 
 test('skillState: ready without a number, then whole seconds counting down and the share paid',()=>{

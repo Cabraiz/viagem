@@ -6,8 +6,7 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-stage{position:absolute;inset:0;isolation:isolate;background:var(--cena-agua);overflow:hidden}
 .explore-canvas{position:absolute;inset:0;touch-action:none}
 .explore-canvas canvas{display:block!important;width:100%!important;height:100%!important}
-.explore-config{position:absolute;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));z-index:3;display:grid;place-items:center;width:48px;height:48px;padding:11px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);cursor:pointer}
-.explore-config svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.explore-config{position:absolute;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));z-index:3;display:grid;place-items:center;width:48px;height:48px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);cursor:pointer}
 /* The entire bottom strip stays transparent and passes clicks to the map. */
 .explore-controls{position:absolute;inset:auto 0 0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:transparent;border:0;pointer-events:none}
 .explore-movement,.explore-actions{pointer-events:none}
@@ -26,7 +25,7 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-settings-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .explore-settings-heading h2{font:24px var(--f-cartaz);margin:0}
 .explore-settings button{min-height:44px;padding:10px 14px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-lilas-escuro);color:var(--c-papel);font:inherit;font-size:14px;cursor:pointer}
-.explore-settings .explore-settings-close{min-width:44px;padding:8px;background:transparent;font-size:20px}
+.explore-settings .explore-settings-close{display:grid;place-items:center;min-width:48px;min-height:48px;padding:0;background:transparent}
 .explore-settings-content{display:grid;gap:14px}
 .explore-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .explore-title{display:flex;gap:10px;align-items:center;min-width:0}
@@ -51,16 +50,16 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 
 .explore-camera{position:absolute;left:max(14px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:3;display:flex;align-items:center;gap:6px;color:var(--c-papel);font:700 13px var(--f-sistema)}
 /* The view counter is a ficha, so "1 / 4" reads on light sand as well as on the dark sea (D-022). */
-.explore-camera span{padding:2px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);font-variant-numeric:tabular-nums}
-.explore-camera button{width:44px;height:44px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:30px var(--f-sistema);cursor:pointer;touch-action:manipulation}
+.explore-camera .explore-view{display:grid;place-items:center;line-height:0} /* bússola-adesivo da vista atual (o "1 / 4" saiu, DSG-icones-sistema) */
+.explore-camera button{display:grid;place-items:center;width:48px;height:48px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);cursor:pointer;touch-action:manipulation}
 .explore-camera button:disabled{opacity:.4;cursor:wait}
 /* Locked during a wave (camera-segue, UX onda 4 D3): dimmed arrows + the lock sticker over "1 / 4"; a tap still answers. */
 .explore-camera[data-locked="true"] button{opacity:.4}
-.explore-lock{display:none;position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;place-items:center;box-sizing:border-box;border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);pointer-events:none}
+.explore-lock{display:none;position:absolute;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;place-items:center;line-height:0;pointer-events:none} /* cadeado-adesivo: contorno, borda e sombra vêm do ícone */
 .explore-camera[data-locked="true"] .explore-lock{display:grid}
 .explore-camera[data-locked="true"] .explore-view{visibility:hidden}
-.explore-lock svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .explore-lock.is-beat{animation:explore-lock-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
 @keyframes explore-lock-beat{0%{transform:scale(1.35)}100%{transform:scale(1)}}
 .explore-camera .explore-camera-hint{position:absolute;left:0;top:calc(100% + 8px);padding:4px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 13px/1.3 var(--f-sistema);white-space:nowrap;pointer-events:none}
 .explore-camera .explore-camera-hint[hidden]{display:none}
+.explore-exit .ic{margin-right:4px}

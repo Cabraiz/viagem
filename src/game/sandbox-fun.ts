@@ -36,7 +36,7 @@ body>:not(.fs-world){display:none!important}
 document.head.append(style);
 
 const world=document.createElement('div');world.className='fs-world';
-world.innerHTML='<div class="fs-mock fs-stick">●</div><div class="fs-mock fs-attack">✦ Atacar</div>';
+world.innerHTML='<div class="fs-mock fs-stick">●</div><div class="fs-mock fs-attack">Habilidade</div>';
 document.body.append(world);
 const heroes=new Map(crew.map(p=>{
   const el=document.createElement('div');el.className=`fs-hero${p.id==='me'?' me':''}`;

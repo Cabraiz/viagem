@@ -13,6 +13,7 @@ import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
 import {showFatal} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
+import {icon,compass} from '../ui/icon.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -26,9 +27,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
-    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>↶</button><span class="explore-view" aria-live="polite">1 / 4</span><i class="explore-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><path d="M12 14.5v2.5"/></svg></i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>↷</button><span class="explore-camera-hint" role="status" hidden>Gira no intervalo</span></div>
-    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1v4l2 1-2 2v3l3 1 1 3h5l1-3 3-1 2-3-2-2 2-2-2-3-3-1-1-3Z"/><circle cx="11.5" cy="12" r="3"/></svg></button>
-    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">← Classes</button></header>
+    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>Gira no intervalo</span></div>
+    <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
       <div class="explore-quest"><small>PRIMEIROS PASSOS</small><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
@@ -36,7 +37,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       <div class="explore-notice" role="status">Toque na trilha para caminhar.</div>
       <div class="explore-loading" role="status">Preparando um lugar para sua história…</div>
     </section>
-    <footer class="explore-controls"><div class="explore-movement"><div class="explore-stick" role="group" tabindex="0" aria-label="Joystick de movimento. Arraste para andar ou use WASD e as setas."><span aria-hidden="true"></span></div><small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha ✦</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
+    <footer class="explore-controls"><div class="explore-movement"><div class="explore-stick" role="group" tabindex="0" aria-label="Joystick de movimento. Arraste para andar ou use WASD e as setas."><span aria-hidden="true"></span></div><small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
@@ -85,7 +86,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // modal so focus, Escape and touch input cannot leak into the running game.
   shell.dataset.build=net?'viagem-coop-v4':'viagem-island-v3';
   const settings=document.createElement('dialog');settings.className='explore-settings';settings.setAttribute('aria-label','Configurações do jogo');
-  settings.innerHTML='<div class="explore-settings-heading"><h2>Configurações</h2><button class="explore-settings-close" aria-label="Voltar ao jogo">✕</button></div><div class="explore-settings-content"></div>';
+  settings.innerHTML=`<div class="explore-settings-heading"><h2>Configurações</h2><button class="explore-settings-close" aria-label="Voltar ao jogo">${icon('fechar',{size:32})}</button></div><div class="explore-settings-content"></div>`;
   const settingsContent=settings.querySelector('.explore-settings-content')!;
   for(const selector of ['.explore-top','.explore-quest','.explore-map','.explore-help','.explore-notice','#explore-trail','.explore-pause','.coop-debug']){
     const element=shell.querySelector(selector);if(element)settingsContent.append(element);
@@ -139,7 +140,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(controller?.scene.rotationLocked()){lockedTap();return;}
     if(!controller)return;reset();skill?.press.clear();pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
-    shell.dataset.cameraView=String(view);$('.explore-view').textContent=`${view+1} / 4`;
+    shell.dataset.cameraView=String(view);
+    // The compass needle turns with the view (the "1 / 4" left, DSG-icones-sistema); the text stays for screen readers.
+    $('.explore-view .ic-bussola').style.setProperty('--vista',`${view*90}deg`);$('.explore-view .sr-only').textContent=`Vista ${view+1} de 4`;
     $('.explore-canvas').focus();
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
@@ -170,14 +173,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
-      // Asked once per input step: yes once per tap, only when the input can go out (connected, in combat).
-      attacking:()=>!!skill&&!!net&&skill.press.take(performance.now(),net.connected&&net.run?.phase==='combat'),
+      // Asked once per input step: yes once per tap, only when the input can go out (connected, in combat, the
+      // client's input buffer not full: net.input drops it then). That input will carry seq net.seq+1 ("sem alvo").
+      attacking:()=>!!skill&&!!net&&skill.press.take(performance.now(),net.connected&&net.run?.phase==='combat'&&net.pending.length<20,net.seq+1),
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=`Ilha ${seed} · relevo procedural`;settingsContent.append(info);},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));
         if(net){
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
-          $('#coop-health').textContent=`Você: ${self?.hp??0}♥`;
+          $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
           if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal);shell.dataset.fatal='true';}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
@@ -206,12 +210,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!!state?.eliminated||!!state?.downed||!net.connected;
           }
           $('#coop-objective').textContent=net.victory?'A ilha é da turma!':self?.hp===0?'Recuperando o fôlego…':'Protejam a ilha';
-          $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name} ${player.hp}♥${player.online?'':' ↻'}`;return tag;}));
+          $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`;return tag;}));
           syncTurn();
           $('#coop-diagnostics').textContent=`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`;
         }
       },
-      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').textContent='Ilha explorada ✓';},
+      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());

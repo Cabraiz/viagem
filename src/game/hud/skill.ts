@@ -8,36 +8,44 @@ import {kitFor} from '../sim/kits.ts';
 import type {PlayerRunView} from '../sim/view.ts';
 import {icon} from '../../ui/icon.ts';
 
-/** A tap not yet sent is dropped after this long (a reconnect, a long pause): it never fires a cast much later. */
+/**
+ * A tap that could not go out (socket down, not in combat) is dropped after this long, so a reconnect never fires a
+ * cast much later. A tap that can go out always does, however late the next input step is (a slow frame).
+ */
 export const PRESS_TTL_MS=1000;
-/** A sent tap with no cast within this long had nothing to act on ("sem alvo"); covers ~300 ms of lag both ways. */
-export const NO_CAST_MS=900;
+/** A sent tap whose input was never acked (dropped on the way) is forgotten quietly after this long. */
+export const NO_ACK_MS=5000;
 /** How long the "sem alvo" note stays on the button. */
 export const NOTE_MS=1200;
 
 /**
  * One tap = one input with `skill: true` (the old button sent it while held, so a held thumb kept recasting).
- * `take` is asked once per input step and says yes once per tap, only when the input can actually go out.
+ * `take` is asked once per input step and says yes once per tap, only when the input can actually go out; it keeps
+ * the seq of that input. A frame that acks that seq without a new cast means the skill had nothing to act on
+ * ("sem alvo"); the cast and the ack come in the same frame (same server tick), so this never guesses by time.
  */
 export class SkillPress {
   private queuedAt?:number;
-  private sentAt?:number;
+  private sent?:{seq:number;at:number};
   press(now:number){this.queuedAt=now;}
-  /** The input step: true once per tap when `canSend` (connected, in combat); stale taps expire. */
-  take(now:number,canSend:boolean):boolean{
+  /** The input step (`seq`: the seq this input will carry): true once per tap when `canSend`; a tap that cannot go out expires. */
+  take(now:number,canSend:boolean,seq:number):boolean{
     if(this.queuedAt===undefined)return false;
-    if(now-this.queuedAt>PRESS_TTL_MS){this.queuedAt=undefined;return false;}
-    if(!canSend)return false;
-    this.queuedAt=undefined;this.sentAt=now;return true;
+    if(!canSend){if(now-this.queuedAt>PRESS_TTL_MS)this.queuedAt=undefined;return false;}
+    this.queuedAt=undefined;this.sent={seq,at:now};return true;
   }
-  /** A cast arrived (skillTick moved): the last tap was answered. */
-  answered(){this.sentAt=undefined;}
-  /** True once when a sent tap got no cast within NO_CAST_MS. */
-  unanswered(now:number):boolean{
-    if(this.sentAt===undefined||now-this.sentAt<NO_CAST_MS)return false;
-    this.sentAt=undefined;return true;
+  /**
+   * A frame of the local player: `cast` = its skillTick moved, `ack` = last input seq the server ran.
+   * 'cast' or 'none' (the server ran the tap's input and nothing was cast) once per sent tap; undefined otherwise.
+   */
+  settle(ack:number|undefined,cast:boolean,now:number):'cast'|'none'|undefined{
+    if(!this.sent)return undefined;
+    if(cast){this.sent=undefined;return 'cast';}
+    if(ack!==undefined&&ack>=this.sent.seq){this.sent=undefined;return 'none';}
+    if(now-this.sent.at>NO_ACK_MS)this.sent=undefined;
+    return undefined;
   }
-  clear(){this.queuedAt=this.sentAt=undefined;}
+  clear(){this.queuedAt=this.sent=undefined;}
   get pending(){return this.queuedAt!==undefined;}
 }
 
@@ -82,10 +90,10 @@ export class SkillButton {
     this.paint();
   }
   /** Each authoritative view: the local player's cooldown and whether the last tap was answered. */
-  update(player:PlayerRunView|undefined,tick:number,now:number){
-    const cast=player?.skillTick??0;
-    if(cast&&cast!==this.lastCast){this.press.answered();this.lastCast=cast;}
-    if(this.press.unanswered(now))this.noteUntil=now+NOTE_MS;
+  update(player:(PlayerRunView&{ack?:number})|undefined,tick:number,now:number){
+    const cast=player?.skillTick??0,fresh=!!cast&&cast!==this.lastCast;
+    if(fresh)this.lastCast=cast;
+    if(this.press.settle(player?.ack,fresh,now)==='none')this.noteUntil=now+NOTE_MS;
     const next=skillState(player,tick);
     const note=now<this.noteUntil;
     if(next.mode===this.state.mode&&next.seconds===this.state.seconds&&Math.abs(next.progress-this.state.progress)<.01&&note===(this.el.dataset.note==='true'))return;

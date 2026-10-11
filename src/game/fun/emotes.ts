@@ -3,6 +3,7 @@
  * Pure parts (catalog, EmoteGate, balloon placement) are shared by client and server; the DOM parts are mobile-only
  * (touch targets >= 44 px, no keyboard or hover requirement, D-009).
  */
+import {icon} from '../../ui/icon.ts';
 export type EmoteId='kkkk'|'salva'|'vem'|'foimal';
 export interface EmoteDef {id:EmoteId;label:string;icon:string;
   /** Balloon flavor: laugh shakes, help pulses red, come bounces, sorry droops. */
@@ -137,7 +138,7 @@ export class EmoteBar {
     this.toggleButton=document.createElement('button');
     this.toggleButton.type='button';this.toggleButton.className='fun-emote-toggle';
     this.toggleButton.setAttribute('aria-label','Emotes');this.toggleButton.setAttribute('aria-expanded','false');
-    this.toggleButton.textContent='💬';
+    this.toggleButton.innerHTML=icon('balao',{size:32});
     const fan=this.fan=document.createElement('div');fan.className='fun-emote-fan';fan.setAttribute('role','menu');fan.inert=true;
     EMOTES.forEach((emote,index)=>{
       const button=document.createElement('button');

@@ -1,6 +1,7 @@
 import type { HeroClass } from '../classes.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from './net/run.ts';
+import { icon } from '../ui/icon.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -140,7 +141,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const key=JSON.stringify(view.members);
     if(key!==membersKey){
       membersKey=key;
-      $('.coop-wait-members').innerHTML=view.members.map(m=>`<li class="${m.ready?'is-ready':''}${m.online?'':' is-away'}"><span aria-hidden="true">${m.ready?'✔':'💤'}</span>${escapeHtml(m.name)}${m.self?' <small>(você)</small>':''}<span class="sr-only">${m.ready?' pronto':' ainda não'}</span></li>`).join('');
+      $('.coop-wait-members').innerHTML=view.members.map(m=>`<li class="${m.ready?'is-ready':''}${m.online?'':' is-away'}">${icon(m.ready?'pronto':'relogio')}${escapeHtml(m.name)}${m.self?' <small>(você)</small>':''}<span class="sr-only">${m.ready?' pronto':' ainda não'}</span></li>`).join('');
     }
   };
   const timer=setInterval(update,200);update();
@@ -151,7 +152,7 @@ export async function openLobby(hero:HeroClass,name:string){
   // Loaded together (CSS stays dynamic so the pure helpers above import in node tests).
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const dialog=document.createElement('dialog');dialog.className='coop-lobby';dialog.setAttribute('aria-label','Jogar com amigos');
-  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">×</button><small>ILHA DO COMEÇO · COOPERATIVO</small><h2>Chama a turma.</h2><p>Até seis personagens na mesma ilha. Compartilhe o código, encontre os amigos e enfrentem as gosmas.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">🎲 Sortear</button></div></div><button id="create-room">Criar sala</button><div class="coop-divider">ou entre na sala de alguém</div><form><label for="room-code">Código da sala</label><input id="room-code" maxlength="10" pattern="[a-fA-F0-9]{10}" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="10 letras e números"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p><small>Partidas de até 30 minutos. Pontos desta versão valem só na sala. As classes ainda compartilham o mesmo ataque básico.</small>`;
+  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><small>ILHA DO COMEÇO · COOPERATIVO</small><h2>Chama a turma.</h2><p>Até seis personagens na mesma ilha. Compartilhe o código, encontre os amigos e enfrentem as gosmas.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button><div class="coop-divider">ou entre na sala de alguém</div><form><label for="room-code">Código da sala</label><input id="room-code" maxlength="10" pattern="[a-fA-F0-9]{10}" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="10 letras e números"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p><small>Partidas de até 30 minutos. Pontos desta versão valem só na sala. As classes ainda compartilham o mesmo ataque básico.</small>`;
   document.body.append(dialog);dialog.showModal();
   const status=dialog.querySelector<HTMLElement>('.coop-status')!;
   const nickInput=dialog.querySelector<HTMLInputElement>('#coop-nick')!;

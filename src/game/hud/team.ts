@@ -6,6 +6,7 @@
 import type {PlayerRunView,RunView} from '../sim/view.ts';
 import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
+import {icon,type IconName} from '../../ui/icon.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -20,7 +21,8 @@ export function memberState(player:PlayerRunView):MemberState{
   if(!player.online)return 'offline';
   return hpFraction(player)<=.3?'low':'ok';
 }
-const BADGES:Record<MemberState,string>={ok:'',low:'',downed:'🆘',eliminated:'💀',offline:'📵',spectator:'👀'};
+/** Status stickers (DSG-icones-sistema, §2.4): boia caído, band-aid fora, orelhão sem fio offline, pipoca assistindo. */
+export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',eliminated:'curativo',offline:'orelhao',spectator:'pipoca'};
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
@@ -56,7 +58,7 @@ export function createTeamStrip():HudPart{
       if(nodes.classId!==player.classId){nodes.classId=player.classId;nodes.img.src=ctx.portrait(player.classId);}
       if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
       const state=memberState(player),n=nodes;
-      put(n,'state',state,v=>{n.root.dataset.state=v;n.badge.textContent=BADGES[v as MemberState];n.badge.hidden=!BADGES[v as MemberState];n.timer.hidden=v!=='downed';});
+      put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});
       put(n,'me',String(player.id===ctx.localId),v=>n.root.classList.toggle('rh-me',v==='true'));
       put(n,'name',player.id===ctx.localId?'Você':firstName(player.name),v=>{n.name.textContent=v;});
       put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});

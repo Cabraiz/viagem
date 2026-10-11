@@ -69,7 +69,7 @@ export interface Chunk extends ChunkFeatures {
 
 /** The island landmarks become points of interest scattered over the map. */
 const POIS=[
-  {name:'Praça do Improviso',detail:'Todo mundo começa com o que tem.',icon:'✦'},
+  {name:'Praça do Improviso',detail:'Todo mundo começa com o que tem.',icon:'○'},
   {name:'Fonte dos Palpites',detail:'Nem todo palpite merece uma aposta.',icon:'◇'},
   {name:'Mirante da Turma',detail:'Um lugar para reunir histórias. E, depois, os amigos.',icon:'△'},
 ] as const;

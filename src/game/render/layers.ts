@@ -62,7 +62,7 @@ const FONT='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 const SNAP_UNITS=3;
 const BUBBLE_MS=2200,BUBBLE_GAP_MS=1950;
 /** Lift of a player's balloon over their feet, in world px at ui scale 1: above the head of the 100 px hero sprite. */
-const PLAYER_BUBBLE_LIFT=104;
+const PLAYER_BUBBLE_LIFT=116;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 
@@ -115,6 +115,12 @@ export const PLAYER_HIT_DEPTH=96600;
 export const TELEGRAPH_TOP_DEPTH=99000;
 /** Balloon bodies: one step under the balloon text, so nothing falls between a balloon's body and its words. */
 export const BALLOON_BODY_DEPTH=95990;
+/**
+ * A hero's skill balloon (E7-skill-hud-wiring) sits above the allies (96400) and the local hero (96500), so a teammate
+ * walking by never hides the line; still under the hit number on a player (96600) and the telegraphs (99000).
+ * It floats over the head (PLAYER_BUBBLE_LIFT), not over the body.
+ */
+export const HERO_BALLOON_DEPTH=96550;
 /** Width of the telegraph's outer (light) stroke at UI scale 1, in world px; the red core is half of it. */
 export const TELEGRAPH_STROKE=8;
 /**
@@ -137,6 +143,7 @@ export class HordeRenderer{
   private overlay:Phaser.GameObjects.Graphics;
   /** Balloon bodies, right under their text (96000) and above numbers (95500), pops (95800) and bars. */
   private balloons:Phaser.GameObjects.Graphics;
+  private heroBalloons:Phaser.GameObjects.Graphics;
   private top:Phaser.GameObjects.Graphics;
   private fx:FxBudget;
   /** Latest number per target, for merging hits inside DAMAGE_MERGE_MS. */
@@ -180,6 +187,7 @@ export class HordeRenderer{
     this.ground=this.track(scene.add.graphics().setDepth(-9970));
     this.overlay=this.track(scene.add.graphics().setDepth(95000));
     this.balloons=this.track(scene.add.graphics().setDepth(BALLOON_BODY_DEPTH));
+    this.heroBalloons=this.track(scene.add.graphics().setDepth(HERO_BALLOON_DEPTH));
     this.top=this.track(scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH));
     const image=(key:string)=>()=>this.track(scene.add.image(0,0,key).setVisible(false).setActive(false));
     const text=(style:TextStyle,depth:number)=>()=>this.track(scene.add.text(0,0,'',style).setOrigin(.5,1).setDepth(depth).setVisible(false).setActive(false));
@@ -236,7 +244,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
-    this.ground.clear();this.overlay.clear();this.balloons.clear();this.top.clear();
+    this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
@@ -415,6 +423,7 @@ export class HordeRenderer{
     const actor=this.enemies.get(enemy);
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
+    b.text.setDepth(96000);
     b.born=this.now;b.enemy=enemy;b.player='';b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
     paint(b.text,BUBBLE_STYLE,line);
   }
@@ -437,6 +446,7 @@ export class HordeRenderer{
     }
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
+    b.text.setDepth(HERO_BALLOON_DEPTH+1);
     b.born=this.now;b.enemy='';b.player=player;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
     paint(b.text,BUBBLE_STYLE,line);
   }
@@ -593,7 +603,7 @@ export class HordeRenderer{
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;
     b.text.setVisible(true).setAlpha(alpha).setScale((this.reduced||age>=160?1:.7+.3*age/160)*this.ui);
-    const t=8*this.ui,e=2*this.css(),o=this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
+    const t=8*this.ui,e=2*this.css(),o=b.player?this.heroBalloons:this.balloons,tx=b.text,bw=tx.displayWidth,bh=tx.displayHeight,by=q.y-b.lift;
     // Balloon: Papel body with a 2 px Breu edge (it vanished on the light sand), then the Papel tail over it.
     o.fillStyle(PALETTE.breu,alpha).fillRoundedRect(tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,10*this.ui)
       .fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);

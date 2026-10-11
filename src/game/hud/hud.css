@@ -73,7 +73,7 @@
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
 /* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
 .rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
-.rh-member-badge{position:absolute;top:-4px;right:0;font-size:15px;line-height:1;filter:drop-shadow(0 1px 0 var(--c-breu))}
+.rh-member-badge{position:absolute;top:-6px;right:-4px;display:flex;line-height:0} /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums}
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
 .rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}
@@ -81,7 +81,7 @@
 .rh-member[data-state=downed] .rh-member-img{filter:grayscale(.8) brightness(.85)}
 .rh-member[data-state=downed] .rh-member-hp{visibility:hidden}
 .rh-member[data-state=eliminated] .rh-member-img{filter:grayscale(1) brightness(.6)}
-.rh-member[data-state=eliminated],.rh-member[data-state=offline],.rh-member[data-state=spectator]{opacity:.55}
+.rh-member:is([data-state=eliminated],[data-state=offline],[data-state=spectator])>:not(.rh-member-badge){opacity:.55} /* o adesivo de status fica inteiro: é ele que diz o estado */
 
 /* ---------- Revive alerts (center stack) ---------- */
 .rh-alerts{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}

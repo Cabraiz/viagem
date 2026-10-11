@@ -38,3 +38,5 @@
 @keyframes fun-nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
 @keyframes fun-droop{0%{transform:rotate(0)}60%,100%{transform:rotate(-18deg) translateY(2px)}}
 @media(prefers-reduced-motion:reduce){.fun-balloon,.fun-balloon>*,.fun-balloon-icon{animation:none!important}.fun-emote{transition:none}}
+/* DSG-icones-sistema: o 💬 virou o balão-adesivo de 32 px (os 4 emotes ilustrados são do DSG-adesivos-itens). */
+.fun-emote-toggle{display:grid;place-items:center}

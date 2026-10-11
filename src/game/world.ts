@@ -7,7 +7,7 @@ export const SPAWN: Point = { x: 12, y: 17 };
 export const SPEED = 3.1;
 export const RADIUS = .22;
 export const landmarks = [
-  { x: 8, y: 11, name: 'Praça do Improviso', detail: 'Todo mundo começa com o que tem.', icon: '✦' },
+  { x: 8, y: 11, name: 'Praça do Improviso', detail: 'Todo mundo começa com o que tem.', icon: '○' },
   { x: 17, y: 11, name: 'Fonte dos Palpites', detail: 'Nem todo palpite merece uma aposta.', icon: '◇' },
   { x: 12, y: 5, name: 'Mirante da Turma', detail: 'Um lugar para reunir histórias. E, depois, os amigos.', icon: '△' },
 ];

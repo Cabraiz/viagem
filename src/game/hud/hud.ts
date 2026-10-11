@@ -18,6 +18,7 @@ import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts
 import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
+import {Coach,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
 import './camp.css';
 
@@ -39,6 +40,8 @@ export interface RunHudOptions {
   onStamp?():void;
   /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
   onForge?(recipe:RecipeId):number|undefined;
+  /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
+  coachStorage?:Pick<Storage,'getItem'|'setItem'>;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -74,6 +77,12 @@ export class RunHud {
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
+  /** First-run coach (VGM-056): one hint at a time in the announcement slot. */
+  readonly coach:Coach;
+  private readonly coachRow:CoachPart;
+  private coachShow?:CoachShow;
+  private hero?:{x:number;y:number};
+  private readonly chip:HTMLButtonElement;
   /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
@@ -84,21 +93,23 @@ export class RunHud {
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
-    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp});
+    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,onChipTap:()=>this.coach.did('chip')});
+    this.coach=new Coach(options.coachStorage);this.coachRow=createCoachRow();this.chip=offer.chip;
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
-    stack.append(announcer.el,alerts.el,camp.notice);this.stack=stack;this.alerts=alerts;
+    // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056).
+    stack.append(announcer.el,alerts.el,camp.notice,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer,camp];
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,offer.hint,this.result.el);
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.minimap.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
-    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
+    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
     if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);}
@@ -114,15 +125,33 @@ export class RunHud {
     // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
+    this.updateCoach(view);
+  }
+
+  /**
+   * The first-run coach (VGM-056): it waits while any other row holds the announcement slot, the HUD is hidden (out of
+   * the round) or the result is up; the joystick wears the hint's Amarelo while "andar" shows (data-coach on the root).
+   */
+  private updateCoach(view:RunView,now=performance.now()){
+    if(this.coach.finished&&!this.coachShow)return;
+    const ended=this.el.classList.contains('rh-ended');
+    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-marquee:not([hidden]),.rh-alert:not([hidden])');
+    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked},now);
+    this.coachShow=show;
+    this.coachRow.render(show,view.offers.length);
+    const lesson=show&&!show.done?show.lesson:'';
+    if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
   }
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
-  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);}
+  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
+    // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
+    this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;
     this.result.show(result,this.ctx);
   }
 
@@ -160,7 +189,7 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden]),.rh-coach:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).

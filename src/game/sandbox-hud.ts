@@ -9,10 +9,14 @@
  * (one pinging "Me salva"), the boss with a telegraph about to go off and a spawn warning, all off screen; the world
  * points are projected with the real camera math (projection.ts, framing.ts) in the chosen view. It proves taps on HUD panels never reach Phaser,
  * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
+ * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
+ * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
+ * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from './hud/fixtures.ts';
 import {RunHud} from './hud/hud.ts';
 import type {RunView} from './sim/view.ts';
+import {LESSON_ORDER,COACH_KEY,type Lesson} from './hud/coach.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
@@ -25,6 +29,9 @@ const requested=params.get('state') as HudScenario|null;
 let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:'wave';
 const frozen=params.has('frozen');
 const bordas=params.get('cenario')==='bordas';
+const dica=(LESSON_ORDER as readonly string[]).includes(params.get('dica')??'')?params.get('dica') as Lesson:undefined;
+/** The coach's memory for this page: everything learned but the requested hint. */
+const coachStore=new Map([[COACH_KEY,JSON.stringify(LESSON_ORDER.filter(l=>l!==dica))]]);
 
 const style=document.createElement('style');
 style.textContent=`
@@ -64,6 +71,7 @@ const hud=new RunHud(document.body,{
     hud.update(view);
   },
   onRematch(){document.body.dataset.rematch='1';},
+  coachStorage:{getItem:k=>coachStore.get(k)??null,setItem:(k,v)=>{coachStore.set(k,v);}},
 });
 (window as unknown as {__hud:RunHud}).__hud=hud;
 
@@ -75,6 +83,12 @@ function load(next:HudScenario){
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
+  // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
+  if(dica){
+    view.events=[];
+    if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
+    if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
+  }
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}

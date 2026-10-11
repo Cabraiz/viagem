@@ -123,6 +123,9 @@ const SCENES=[
   ['hud forja no acampamento, 6p','/?sandbox=hud&players=6&state=camp-forge&frozen=1','.rh',13],
   ['hud corneta longe da base, 6p','/?sandbox=hud&players=6&state=camp-horn&frozen=1','.rh',13],
   ['hud muralha baixa no round, 6p','/?sandbox=hud&players=6&state=camp-wave&frozen=1','.rh',13],
+  // Zueira events (VGM-053B): an event's banner in a wave, and the kill-cam window at the round's end.
+  ['hud faixa do apagão, 6p','/?sandbox=hud&players=6&state=wave&frozen=1&zueira=apagao','.rh',13],
+  ['hud kill-cam do último bicho, 6p','/?sandbox=hud&players=6&state=prepare&frozen=1&zueira=killcam','.rh',13],
   ['emotes abertos','/?sandbox=fun&players=6&state=open&frozen=1','.fun-emotes,.fun-balloons',13],
   ['balões','/?sandbox=fun&players=6&state=balloons&frozen=1','.fun-balloons',13],
 ];

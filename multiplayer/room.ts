@@ -264,6 +264,9 @@ export class Room {
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
+    // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
+    // (and its kill-cam) without waiting for stragglers on the endless map.
+    if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);
     const to=m.to;
     // Within LAB_REACH of the base (the endless world is walkable almost everywhere: no lab jump to the far chunks).
     // Measured from where the lab put the team (LAB_OFFSET moves everyone away from the world's base).

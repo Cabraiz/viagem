@@ -28,18 +28,22 @@ export function killcamCaption(round:number,byName?:string){
   return {title:'Último bicho!',line:byName?`${byName} fechou a conta do Round ${round}.`:`Caiu sozinho no Round ${round}.`};
 }
 
-/** "Momento mais vergonhoso": one sentence with the name, and a one-line joke (second line, optional to read). */
-export function shameText(m:ShameMoment,name:string):{text:string;joke:string}{
+/**
+ * "Momento mais vergonhoso": the sentence with the name (the notice on top of the result), the same sentence without it
+ * (the chip on that player's card, when the notice does not fit) and a one-line joke (second line, optional to read).
+ */
+export function shameText(m:ShameMoment,name:string):{text:string;line:string;joke:string}{
   const the=critter(m.source),r=`no Round ${m.round}`;
-  const lines:Record<ShameKey,()=>{text:string;joke:string}>={
-    recaida:()=>({text:`${name} foi resgatado e caiu de novo em ${m.seconds??1} s.`,joke:'O SAMU pediu reembolso.'}),
-    apagao:()=>({text:`${name} caiu no apagão ${r}.`,joke:'Disse que tropeçou no fio.'}),
-    coxinha:()=>({text:`${name} caiu com uma coxinha do lado ${r}.`,joke:'Tava ali. Do ladinho.'}),
-    pernilongo:()=>({text:`${name} caiu pra um pernilongo ${r}.`,joke:'Um pernilongo. Unzinho.'}),
-    cedo:()=>({text:`${name} caiu no Round 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
-    'sem-boleto':()=>({text:`${name} não pegou nenhum boleto da chuva ${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
-    'coxinha-cheia':()=>({text:`${name} comeu coxinha de vida cheia ${r}.`,joke:'Era só fome mesmo.'}),
-    caiu:()=>({text:`${name} caiu pra ${the.one} ${r}.`,joke:'Acontece. Com você, mais.'}),
+  const lines:Record<ShameKey,()=>{verb:string;joke:string}>={
+    recaida:()=>({verb:`foi resgatado e caiu de novo em ${m.seconds??1} s.`,joke:'O SAMU pediu reembolso.'}),
+    apagao:()=>({verb:`caiu no apagão ${r}.`,joke:'Disse que tropeçou no fio.'}),
+    coxinha:()=>({verb:`caiu com uma coxinha do lado ${r}.`,joke:'Tava ali. Do ladinho.'}),
+    pernilongo:()=>({verb:`caiu pra um pernilongo ${r}.`,joke:'Um pernilongo. Unzinho.'}),
+    cedo:()=>({verb:`caiu no Round 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
+    'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva ${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
+    'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia ${r}.`,joke:'Era só fome mesmo.'}),
+    caiu:()=>({verb:`caiu pra ${the.one} ${r}.`,joke:'Acontece. Com você, mais.'}),
   };
-  return (lines[m.key]??lines.caiu)();
+  const {verb,joke}=(lines[m.key]??lines.caiu)();
+  return {text:`${name} ${verb}`,line:verb.charAt(0).toUpperCase()+verb.slice(1),joke};
 }

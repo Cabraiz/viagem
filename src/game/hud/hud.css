@@ -418,6 +418,17 @@
 .rh-result-shame-body{min-width:0;font:700 var(--t-13)/1.25 var(--f-sistema);color:var(--c-breu)}
 .rh-result-shame-title{font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-lilas);margin-right:6px}
 .rh-result-shame-joke{display:block;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
+/* The same moment as the first chip of that player's card, when the notice would make the six cards scroll. */
+.rh-award-shame{background:var(--c-papel);border-color:var(--c-breu)}
+.rh-award-shame .rh-award-emoji :is(img,svg){width:18px;height:18px;vertical-align:-4px;object-fit:contain}
+/* Portrait with 5-6 cards (and any big text): the joke is the optional line, it goes so the six cards keep fitting. */
+@media (min-height:501px){
+  .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-shame-joke{display:none}
+  .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-shame{padding-block:3px 4px}
+  .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-shame-icon{width:24px;height:24px}
+  .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-shame-icon :is(img,svg){max-width:24px;max-height:24px;width:24px;height:24px}
+}
+:root[data-texto="125"] .rh-result:has(.rh-result-grid:not([data-count="1"]):not([data-count="2"])) .rh-result-shame-joke{display:none}
 
 /* Player grid */
 .rh-result-grid{grid-area:grid;position:relative;z-index:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;

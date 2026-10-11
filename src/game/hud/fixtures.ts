@@ -103,7 +103,9 @@ const FULL_BUILD={
 
 export function fakeResult(playerCount:number,victory=true,full=false):RunResult{
   const players=fakePlayers(playerCount,'result').map(player=>full?{...player,...FULL_BUILD}:player);
-  return {victory,durationTicks:ticks(14*60+37),round:victory?10:7,totalRounds:10,seed:'pave-4271',players};
+  // The run's most embarrassing moment (VGM-053B), on the longest sentence: a recaída needs the most words.
+  const shame=players.length?{player:players[Math.min(2,players.length-1)].id,key:'recaida' as const,round:7,tick:7000,seconds:3}:undefined;
+  return {victory,durationTicks:ticks(14*60+37),round:victory?10:7,totalRounds:10,seed:'pave-4271',players,...(shame?{shame}:{})};
 }
 
 /** Falls, rescues, coxinhas and chests for the result scenario, so tally-based awards show up. */

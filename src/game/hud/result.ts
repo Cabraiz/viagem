@@ -5,7 +5,7 @@
  * Player names always go through textContent.
  */
 import type {PlayerRunView} from '../sim/view.ts';
-import {awardsOf,computeAwards,type Award} from './awards.ts';
+import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
@@ -120,6 +120,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
   let exited=false;
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 
+  /** The chip of the shamed player's card (used when the notice on top does not fit the six cards). */
+  let shameChip:{playerId:string;line:string;key:string;source?:string}|undefined;
+  /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
+  let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
   const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
     const node=el('article','rh-rcard');
     node.style.setProperty('--i',String(index));
@@ -164,6 +168,15 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
     }
 
     const list=el('ul','rh-rcard-awards',node);
+    if(shameChip&&shameChip.playerId===player.id){
+      const chip=el('li','rh-award rh-award-shame');chip.dataset.key=shameChip.key;chipEl={chip,list};
+      const mark=el('span','rh-award-emoji',chip);mark.setAttribute('aria-hidden','true');
+      const sticker=shameChip.source?ctx.critterIcon?.(shameChip.source):undefined;
+      if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;mark.replaceChildren(img);}else mark.innerHTML=icon('suor');
+      const text=el('span','rh-award-text',chip);
+      const name=el('strong','rh-award-title',text);name.textContent='Momento mais vergonhoso';
+      const line=el('small','rh-award-line',text);line.textContent=shameChip.line;
+    }
     for(const award of awards){
       const chip=el('li','rh-award',list);
       const emoji=el('span','rh-award-emoji',chip);emoji.textContent=award.emoji;emoji.setAttribute('aria-hidden','true');
@@ -182,8 +195,24 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
     const players=teamOrder(result.players,ctx.localId);
     const slots=players.length>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
     const awards=computeAwards(result,ctx.tally);
-    grid.dataset.count=String(players.length);
+    grid.dataset.count=String(players.length);chipEl=undefined;
     grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)));
+    fitShame();
+  };
+  /**
+   * The notice on top when the cards still fit under it (up to four players); otherwise it moves into the shamed
+   * player's card as its first chip (that card keeps two chips at most), so six cards never scroll (VGM-053B).
+   */
+  const fitShame=()=>{
+    if(!chipEl||!shameChip){shame.hidden=true;return;}
+    const {chip,list}=chipEl,extra=[...list.querySelectorAll<HTMLElement>('.rh-award:not(.rh-award-shame)')].slice(MAX_AWARDS_PER_PLAYER-1);
+    chip.remove();for(const a of extra)a.hidden=false;list.hidden=!list.children.length;
+    shame.hidden=false;
+    // Five or six cards (four in landscape: two rows) never have room for the notice (measured at 390×844 and 844×390,
+    // 100% and 125%, long names); fewer only move it when they would scroll.
+    const crowded=grid.children.length>=(landscape?.matches?4:5);
+    if(!crowded&&(root.hidden||grid.scrollHeight<=grid.clientHeight+1))return;
+    shame.hidden=true;list.prepend(chip);list.hidden=false;for(const a of extra)a.hidden=true;
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
@@ -202,9 +231,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       cause.hidden=!fell;
       if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}
       const moment=result.shame,who=moment&&result.players.find(p=>p.id===moment.player);
-      shame.hidden=!moment||!who;
+      shame.hidden=!moment||!who;shameChip=undefined;
       if(moment&&who){
         const copy=shameText(moment,who.id===ctx.localId?'Você':who.name);
+        shameChip={playerId:who.id,line:copy.line,key:moment.key,...(moment.source?{source:moment.source}:{})};
         shameLine.textContent=copy.text;shameJoke.textContent=copy.joke;
         const sticker=moment.source?ctx.critterIcon?.(moment.source):undefined;
         if(sticker){const img=document.createElement('img');img.src=sticker;img.alt='';img.decoding='async';img.draggable=false;shameIcon.replaceChildren(img);}
@@ -215,6 +245,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       renderGrid(result,ctx);
       resetRematch();exited=false;
       root.hidden=false;
+      fitShame();
       // Restart the entrance animation on every show.
       root.classList.remove('rh-result-in');void root.offsetWidth;root.classList.add('rh-result-in');
     },

@@ -90,8 +90,8 @@ export class ZueiraFx {
     const ghost=s.add.image(feet.x,feet.y,enemyTexture(kind)).setOrigin(.5,ENEMY_ART[k].originY).setDepth(depth);
     const puff=s.add.image(feet.x,feet.y-ENEMY_ART[k].height*.4,FX.puff).setDepth(depth+1).setVisible(false).setTint(kindStyle(kind).tint);
     const style=kindStyle(kind);
-    const pop=s.add.text(feet.x,feet.y,deathLine(kind,id),{fontFamily:token('--f-cartaz'),fontSize:'40px',fontStyle:'900',color:style.fill,stroke:style.stroke,strokeThickness:9})
-      .setOrigin(.5,1).setDepth(depth+2).setVisible(false);
+    const pop=s.add.text(feet.x,feet.y,deathLine(kind,id),{fontFamily:token('--f-cartaz'),fontSize:'30px',fontStyle:'900',color:style.fill,stroke:style.stroke,strokeThickness:8})
+      .setOrigin(.5,0).setDepth(depth+2).setVisible(false);
     // Only the kill-cam sees the copy: on the main screen the critter already went poof.
     this.scene.cameras.main.ignore([ghost,puff,pop]);
     this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop};
@@ -128,8 +128,8 @@ export class ZueiraFx {
     k.ghost.setPosition(x,y).setRotation(rot).setScale(scale).setAlpha(reduced?1:t>.92?(1-t)/.08:1);
     const hit=reduced||t>=KO_HIT;
     k.puff.setVisible(hit&&(reduced||t<KO_HIT+.25)).setScale(reduced?1.2:1+2*(t-KO_HIT)).setAlpha(reduced?.9:Math.max(0,1-(t-KO_HIT)*4));
-    // The line takes the critter's place once it flies off the top of the picture.
-    k.pop.setVisible(hit).setPosition(feet.x,feet.y-art.height*.2-(reduced?0:18*Math.min(1,(t-KO_HIT)*2))).setRotation(-.08);
+    // The line lands on the ground where it stood, under the critter flying off the top of the picture.
+    k.pop.setVisible(hit).setPosition(feet.x,feet.y+4+(reduced?0:6*(1-Math.min(1,(t-KO_HIT)*4)))).setRotation(-.06);
     // A still picture on the spot (the critter leaves it), framed on its body.
     cam.centerOn(feet.x,feet.y-art.height*.45);
   }

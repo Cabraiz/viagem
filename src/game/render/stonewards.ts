@@ -177,7 +177,7 @@ export class StonewardsRenderer {
     }
     if(down)return;
     // Life bar (CSS px): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch.
-    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=96*k,bh=10*k,bx=x-bw/2,by=y-104-24*k;
+    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=72*k,bh=8*k,bx=x-bw/2,by=y-100-12*k;
     g.fillStyle(c.breu,1).fillRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*fraction,bh);
     g.lineStyle(2*k,c.papel,1).strokeRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);

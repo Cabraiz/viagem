@@ -7,7 +7,7 @@ import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 import {walkable} from '../src/game/world.ts';
 import {sha256Hex} from '../src/game/net/sha256.ts';
 import {downPlayer} from '../src/game/sim/revive.ts';
-import {SOS_COOLDOWN_MS} from '../src/game/fun/sos.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -250,7 +250,8 @@ export class Room {
   }
   /**
    * "Me salva" (UX-resgate-e-ping): a caído in combat asks for help; the room relays {t:'sos',id,x,y,tick} once to
-   * everyone in the room (the sender included, as its confirmation), at most once per SOS_COOLDOWN_MS per player.
+   * everyone in the room (the sender included, as its confirmation), at most once per SOS_COOLDOWN_MS − SOS_SLACK_MS
+   * per player (the button already waits the full 3 s; the slack absorbs network jitter between two honest taps).
    * The position is the room's, never the client's. Anything else (standing, out, stale round, flood) is dropped.
    */
   private sos(c:Connection,m:any,now:number){
@@ -259,7 +260,7 @@ export class Room {
     const p=this.sim.players.get(c.playerId!);
     if(!p||!p.downed||p.eliminated||p.spectator)return;
     const last=this.sosAt.get(p.id);
-    if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS)return;
+    if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS-SOS_SLACK_MS)return;
     this.sosAt.set(p.id,now);
     this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
   }

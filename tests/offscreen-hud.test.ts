@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {layoutEdges,inView,arrowHalf,beakRadius,caidoTag,distanceText,MAX_ARROWS,EDGE_PRIORITY,type EdgeTarget} from '../src/game/hud/edges.ts';
+import {layoutEdges,inView,arrowHalf,beakRadius,caidoTag,distanceText,tagWidth,MAX_ARROWS,EDGE_PRIORITY,type EdgeTarget} from '../src/game/hud/edges.ts';
 import {minimapPoint,islandOutline,MINIMAP_RADIUS,MINIMAP_RANGE} from '../src/game/hud/minimap.ts';
 import {radar,keepWarnings,holdLine,sosButton,SPAWN_TAIL_TICKS} from '../src/game/hud/radar.ts';
 import {computeZones,crosses,HERO_MARGIN,type Rect} from '../src/game/hud/zones.ts';
@@ -105,7 +105,9 @@ test('the offer window shrinks the useful area and the arrows move inside what i
 
 test('ficha texts and the beak radius',()=>{
   assert.equal(distanceText(12.4),'12 m');assert.equal(distanceText(4321),'999 m');assert.equal(distanceText(-3),'0 m');
-  assert.equal(caidoTag({seconds:18}),'18 s');assert.equal(caidoTag({seconds:18,ping:true}),'Me salva');
+  assert.equal(caidoTag({seconds:18}),'18 s');
+  // The ping never hides the clock of the most urgent caído (UX onda 6, aresta 2).
+  assert.equal(caidoTag({seconds:7,ping:true}),'Me salva: 7 s');assert.equal(caidoTag({ping:true}),'Me salva');
   const half={w:38,h:18};
   assert.equal(beakRadius(0,half),38);assert.equal(beakRadius(Math.PI/2,half),18);assert.ok(beakRadius(Math.PI/4,half)<=Math.hypot(38,18));
   assert.deepEqual(arrowHalf(1.25),{w:42,h:18});
@@ -133,10 +135,11 @@ test('radar: caído with seconds and ping, base, boss with an imminent telegraph
   const by=(k:string)=>targets.find(x=>x.key===k);
   assert.equal(by('b')?.kind,'caido');assert.equal(by('b')?.seconds,10);assert.equal(by('b')?.ping,true);
   assert.equal(by('c'),undefined,'eliminated: no arrow');assert.equal(by('d'),undefined,'offline and standing: no arrow');
-  assert.equal(by('e')?.kind,'aliado');assert.equal(by('me'),undefined);
+  assert.equal(by('e'),undefined,'an ally on its feet is on the minimap only (design onda 6 D4)');assert.equal(by('me'),undefined);
+  assert.equal(items.find(i=>i.key==='e')?.kind,'aliado');
   assert.equal(by('base')?.kind,'base');assert.equal(by('boss')?.danger,true);assert.equal(by('g'),undefined);
   assert.equal(targets.filter(x=>x.kind==='spawn').length,1,'the old warning is gone');
-  assert.equal(by('ch')?.kind,'bau');assert.equal(by('xp'),undefined);
+  assert.equal(by('ch'),undefined,'chests: minimap only');assert.equal(items.find(i=>i.key==='ch')?.kind,'bau');assert.equal(by('xp'),undefined);
   assert.ok(Math.abs(by('base')!.distance-Math.hypot(2,2))<1e-9);
   assert.deepEqual(items.find(i=>i.kind==='voce'),{key:'self',kind:'voce',x:10,y:10});
   assert.equal(items.find(i=>i.key==='b')?.ping,true);
@@ -193,4 +196,33 @@ test('the rescue ring is the real revive range and starts at the top of the scre
   const ring=ringPoints({x:0,y:0},0);
   assert.deepEqual(progressPoints(ring,0),[]);assert.equal(progressPoints(ring,1).length,ring.length);
   assert.equal(progressPoints(ring,.001).length,2);assert.equal(progressPoints(ring,NaN).length,0);
+});
+
+test('code review onda 6: the tag row is kept inside the area, and targets past the limit join a "+N"',()=>{
+  const half=arrowHalf();
+  // A caído straight up: the ficha sits TAG_ROOM lower, so its tag (15 px above it) stays inside the useful area.
+  const [up]=layoutEdges([t('up','caido',230,-500,20,{seconds:9})],AREA);
+  assert.ok(up.y-half.h-15>=AREA.y,'tag inside the area');
+  // Nine caídos all around: six arrows, and the three left over are counted on them, none lost.
+  const ring=Array.from({length:9},(_,i)=>{const a=i/9*Math.PI*2;return t(`c${i}`,'caido',230+Math.cos(a)*900,464+Math.sin(a)*900,10+i,{seconds:20});});
+  const arrows=layoutEdges(ring,AREA);
+  assert.equal(arrows.length,MAX_ARROWS);assert.equal(arrows.reduce((n,a)=>n+a.count,0),9);
+});
+test('the hero keep-out counts the caído tag ("Me salva: 24 s" is wider than the ficha)',()=>{
+  const area:Rect={x:138,y:154,width:570,height:155},hero:Rect={x:395,y:215,width:56,height:56},half=arrowHalf();
+  const [a]=layoutEdges([t('up','caido',423,-300,10,{seconds:24,ping:true})],area,hero);
+  assert.ok(a);const w=Math.max(2*half.w,tagWidth('Me salva: 24 s'));
+  const tag={x:a.x-half.w-4,y:a.y-half.h-16,width:w,height:16};
+  assert.equal(crosses(tag,hero,HERO_MARGIN),false);
+});
+test('a caído arrow with a wide tag finds a clear corner when its side is blocked by the hero',()=>{
+  // Portrait with the intermission window: the field above it is ~190 px tall, the hero in its middle.
+  const area:Rect={x:70,y:244,width:320,height:190},hero:Rect={x:202,y:300,width:56,height:56};
+  const arrows=layoutEdges([t('down','caido',230,900,9,{seconds:27,ping:true})],area,hero);
+  assert.equal(arrows.length,1,'never dropped');
+  const half=arrowHalf(),a=arrows[0];
+  assert.equal(crosses({x:a.x-half.w,y:a.y-half.h,width:2*half.w,height:2*half.h},hero,HERO_MARGIN),false);
+  assert.ok(a.angle>0,'the beak still points down, at the caído');
+  // Squeezed: the clock stays, the word goes (the ficha keeps the ping ring).
+  assert.equal(caidoTag(a),a.compact?'27 s':'Me salva: 27 s');
 });

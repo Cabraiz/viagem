@@ -30,7 +30,7 @@ export const railName=(name:string)=>[...(name.trim().split(/\s+/)[0]??'')].slic
  * Otherwise (waiting room) the name, plus one glossary word for the state ("fora", "assistindo", "voltando"). No "A · B".
  */
 export function allyLabelText(name:string,s:AllyStatus,secondsLeft?:number){
-  if(s.downed&&!s.eliminated&&!s.spectator)return secondsLeft===undefined?railName(name):`${railName(name)}, ${secondsLeft} s`;
+  if(s.downed&&!s.eliminated&&!s.spectator)return secondsLeft===undefined?railName(name):`${railName(name)}, ${secondsLeft} s`; // same "27 s" as hud/model.ts secondsText
   const state=s.spectator?'assistindo':s.eliminated?'fora':s.online===false?'voltando':'';
   return state?`${shortName(name,12)}, ${state}`:shortName(name);
 }

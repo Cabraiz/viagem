@@ -149,30 +149,36 @@ export interface AuditBox {name:string;rect:Rect;
   /** Allowed in the field, but over the hero (± margin) it still fails (the offer window). */
   overHeroFails?:boolean;
   /** A status readout made see-through because the hero is under it (RunHud.veil): over the hero by design, not hiding it. */
-  veiled?:boolean}
+  veiled?:boolean;
+  /** Must stay inside the useful area (the edge arrows, their tag and their "+N"): poking into the top band or a thumb fails. */
+  withinUseful?:boolean}
 export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
   /** Offer/result over the hero: allowed by the contract, reported for the offer card (D-021). */
   allowedOverHero:string[];
   /** Veiled (30%) readouts over the hero: a safety net (the follow camera keeps the hero clear); reported, not failed. */
   veiledOverHero:string[];
+  /** Boxes that must stay in the useful area and left it (an arrow's tag in the top band, code review onda 6). */
+  escaped:string[];
   minThumbGap:number;ok:boolean}
 
 /** The zones audit: fails on a HUD box over the hero (± margin), a target closer than THUMB_GAP to a thumb control, or a box in the useful area. */
 export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rect,margin=HERO_MARGIN):AuditResult{
-  const heroCrossed:string[]=[],allowedOverHero:string[]=[],veiledOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
+  const heroCrossed:string[]=[],allowedOverHero:string[]=[],veiledOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],escaped:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
   let minThumbGap=Infinity;
   for(const box of boxes){
     if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay&&!box.overHeroFails?allowedOverHero:box.veiled?veiledOverHero:heroCrossed).push(box.name);
     if(!box.allowedInPlay&&!box.thumb&&crosses(box.rect,zones.useful))(box.fallback?fallbackInPlay:inPlay).push(box.name);
+    const u=zones.useful;
+    if(box.withinUseful&&(box.rect.x<u.x-1||box.rect.y<u.y-1||right(box.rect)>right(u)+1||bottom(box.rect)>bottom(u)+1))escaped.push(box.name);
   }
   const thumbs=boxes.filter(b=>b.thumb);
   for(const box of boxes)if(box.target&&!box.thumb)for(const thumb of thumbs){
     const g=gap(box.rect,thumb.rect);minThumbGap=Math.min(minThumbGap,g);
     if(g<THUMB_GAP)thumbGaps.push({a:box.name,b:thumb.name,gap:Math.round(g)});
   }
-  return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,veiledOverHero,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
-    ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length};
+  return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,veiledOverHero,escaped,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
+    ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length};
 }
 
 // ---------- DOM (browser only) ----------
@@ -231,6 +237,8 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('#coop-sos','me-salva',{thumb:true,target:true});
   add('.rh-minimap','minimapa',{target:true});
   // Edge arrows ride the useful area's inner rim by contract, never over the hero.
-  add('.rh-edge:not([hidden])','seta',{allowedInPlay:true,overHeroFails:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
+  const arrow={allowedInPlay:true,overHeroFails:true,withinUseful:true};
+  add('.rh-edge:not([hidden])','seta',arrow);add('.rh-edge:not([hidden]) .rh-edge-tag:not([hidden])','seta-etiqueta',arrow);
+  add('.rh-edge:not([hidden]) .rh-edge-count:not([hidden])','seta-mais',arrow);add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;
 }

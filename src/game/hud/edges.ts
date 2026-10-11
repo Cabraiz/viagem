@@ -2,13 +2,14 @@
  * Edge arrows (NEW-20261009-UX-bordas-fora-da-tela, D-019): what matters and left the screen gets an arrow on the
  * inner rim of the useful area (UX-zonas-tela), never on the screen edge, so it never lands on the HUD, the thumbs or
  * the team strip. Each arrow is a ficha (Breu body, Papel edge) with a sticker and the distance; a beak points at the
- * target. Priority when it fills up: caído > chefe > spawn > base > aliado > baú, at most MAX_ARROWS, arrows that
- * would overlap merge into the more urgent one ("+1"). An arrow never covers the hero (± HERO_MARGIN): it slides along
+ * target. Priority when it fills up: caído > chefe > spawn > base (> aliado > baú, which the game leaves to the minimap,
+ * design onda 6 D4), at most MAX_ARROWS; arrows that would overlap step aside, and what does not fit joins a "+N". An arrow never covers the hero (± HERO_MARGIN): it slides along
  * its side out of the way. Pure layout (node tests) plus a small DOM part with a fixed pool of elements.
  */
 import {crosses,HERO_MARGIN,type Rect} from './zones.ts';
 import {edgeOf} from '../framing.ts';
 import {icon,type IconName} from '../../ui/icon.ts';
+import {secondsText} from './model.ts';
 
 export interface Point {x:number;y:number}
 export type EdgeKind='caido'|'chefe'|'spawn'|'base'|'aliado'|'bau';
@@ -20,7 +21,7 @@ export const MAX_ARROWS=6;
 /** Arrows closer than this (CSS px) step aside along their side; when no spot is left they become one ("+N"). */
 export const MERGE_PX=52;
 /** Gap (CSS px) between an arrow ficha and the useful area's edge. */
-export const RIM_PAD=4;
+export const RIM_PAD=8;
 /** Extra gap (CSS px) past the hero's keep-out when an arrow slides out of its way. */
 export const SLIDE_SLACK=8;
 /** Room a caído's tag takes above (or below) its ficha, so stacked arrows never cover the seconds. */
@@ -52,6 +53,10 @@ export interface EdgeArrow extends EdgeTarget {
   angle:number;side:Side;
   /** Targets merged into this arrow (1 = only itself). */
   count:number;
+  /** A lit ping squeezed next to the hero: the tag shows only the seconds (the ping ring stays on the ficha). */
+  compact?:boolean;
+  /** Which edge of the ficha the caído's tag hangs from (right: it grows leftwards, on the area's right half). */
+  tagEnd:'left'|'right';
 }
 export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:number;margin?:number;
   /**
@@ -80,12 +85,23 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
   if(area.width<=0||area.height<=0)return [];
   // The ficha's centre runs on the rim shrunk by its half size, so the whole ficha stays inside the useful area.
   // (plus RIM_PAD, so the ficha, its beak and its tag do not touch the HUD beyond the area's edge).
-  const hw=Math.min(half.w+RIM_PAD,area.width/2),hh=Math.min(half.h+RIM_PAD,area.height/2);
-  const inner={x:area.x+hw,y:area.y+hh,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh)};
+  // The caído's tag and the "+N" ride TAG_ROOM above the ficha: that room is kept inside the area too.
+  const hw=Math.min(half.w+RIM_PAD,area.width/2),hh=Math.min(half.h+RIM_PAD,area.height/2),top=Math.min(TAG_ROOM,Math.max(0,area.height-2*hh));
+  const inner={x:area.x+hw,y:area.y+hh+top,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh-top)};
   const sorted=[...targets].filter(t=>Number.isFinite(t.screen.x)&&Number.isFinite(t.screen.y)&&!edgeOf(t.screen,area).inside&&!(options.seen&&inView(t.screen,options.seen)))
     .sort((a,b)=>EDGE_PRIORITY[a.kind]-EDGE_PRIORITY[b.kind]||a.distance-b.distance||(a.key<b.key?-1:1));
   const out:EdgeArrow[]=[];
-  const box=(x:number,y:number)=>({x:x-half.w,y:y-half.h,width:2*half.w,height:2*half.h});
+  // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Me salva: 24 s").
+  const scale=Math.max(1,(2*half.w-44)/32);
+  let current:EdgeTarget|undefined,compact=false;
+  // On the right half of the area the tag grows leftwards, so a wide one never leaves the area.
+  const tagFromRight=(x:number)=>x>area.x+area.width/2;
+  const box=(x:number,y:number):Rect=>{
+    const tag=current?.kind==='caido'?caidoTag({...current,compact}):'';
+    if(!tag)return {x:x-half.w,y:y-half.h,width:2*half.w,height:2*half.h};
+    const w=Math.max(2*half.w,tagWidth(tag,scale)),left=tagFromRight(x)?x+half.w+4-w:x-half.w-4;
+    return {x:left,y:y-half.h-TAG_ROOM,width:w+4,height:2*half.h+TAG_ROOM};
+  };
   const clear=(x:number,y:number)=>!hero||!crosses(box(x,y),hero,margin);
   const onRim=(x:number,y:number)=>x>=inner.x-.5&&x<=inner.x+inner.width+.5&&y>=inner.y-.5&&y<=inner.y+inner.height+.5;
   const crowded=(x:number,y:number)=>out.find(a=>Math.abs(a.x-x)<2*half.w+4&&Math.abs(a.y-y)<2*half.h+TAG_ROOM&&Math.hypot(a.x-x,a.y-y)<Math.max(merge,2*half.w+4));
@@ -93,27 +109,36 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
     const e=edgeOf(t.screen,inner);
     let x=e.edge.x,y=e.edge.y;
     const side=sideOf(x,y,inner),along=side==='top'||side==='bottom';
+    current=t;compact=false;
     if(!clear(x,y)){
       // Slide along the side, to whichever end of the hero's keep-out is nearer and still on the rim.
       // A few px past the keep-out, so a camera that eases by a pixel does not put the arrow back over the hero.
-      const k=margin+SLIDE_SLACK,ends=along?[hero!.x-k-half.w,hero!.x+hero!.width+k+half.w]:[hero!.y-k-half.h,hero!.y+hero!.height+k+half.h];
-      const options=ends.filter(v=>along?onRim(v,y):onRim(x,v));
-      if(!options.length)continue;
-      const cur=along?x:y,pick=options.reduce((best,v)=>Math.abs(v-cur)<Math.abs(best-cur)?v:best);
-      if(along)x=pick;else y=pick;
-      if(!clear(x,y))continue;
+      // Measured from the whole box (ficha + tag), whose sides are not symmetric around the arrow's centre.
+      const b=box(x,y),k=margin+SLIDE_SLACK,ends=along?[hero!.x-k-(b.x+b.width-x),hero!.x+hero!.width+k+(x-b.x)]:[hero!.y-k-(b.y+b.height-y),hero!.y+hero!.height+k+(y-b.y)];
+      const options=ends.filter(v=>along?onRim(v,y):onRim(x,v)).map(v=>along?{x:v,y}:{x,y:v});
+      // No room on its own side (a short area, a wide tag): the nearest corner of the rim that is clear. A caído's arrow
+      // must never vanish because the hero stands in the way (UX onda 6).
+      const corners=[{x:inner.x,y:inner.y},{x:inner.x+inner.width,y:inner.y},{x:inner.x,y:inner.y+inner.height},{x:inner.x+inner.width,y:inner.y+inner.height}];
+      const spot=[...options.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y)),...corners.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y))]
+        .find(p=>clear(p.x,p.y));
+      let found=spot;
+      // Still no room: the lit ping keeps only its clock ("27 s", as wide as the ficha) and the arrow keeps its ring.
+      if(!found&&t.kind==='caido'&&t.ping){compact=true;found=[...options,...corners].find(p=>clear(p.x,p.y));}
+      if(!found)continue;
+      x=found.x;y=found.y;
     }
     // Another arrow already there: step along the side to the nearest free spot; merge ("+1") only when none is left.
     if(crowded(x,y)){
-      const step=along?2*half.w+6:2*half.h+TAG_ROOM+2;let placed=false;
+      const step=along?Math.max(2*half.w,box(x,y).width)+6:2*half.h+TAG_ROOM+2;let placed=false;
       for(let k=1;k<=3&&!placed;k++)for(const sign of [1,-1]){
         const nx=along?x+sign*k*step:x,ny=along?y:y+sign*k*step;
         if(onRim(nx,ny)&&clear(nx,ny)&&!crowded(nx,ny)){x=nx;y=ny;placed=true;break;}
       }
       if(!placed){crowded(x,y)!.count++;continue;}
     }
-    if(out.length>=max)continue;
-    out.push({...t,x,y,side,count:1,angle:Math.atan2(t.screen.y-y,t.screen.x-x)});
+    // Past the limit, the target still counts: it joins the nearest arrow's "+N" (same side first).
+    if(out.length>=max){out.reduce((best,a)=>(a.side===side?0:1e6)+Math.hypot(a.x-x,a.y-y)<(best.side===side?0:1e6)+Math.hypot(best.x-x,best.y-y)?a:best).count++;continue;}
+    out.push({...t,...(compact?{compact}:{}),x,y,side,count:1,tagEnd:tagFromRight(x)?'right':'left',angle:Math.atan2(t.screen.y-y,t.screen.x-x)});
   }
   return out;
 }
@@ -125,8 +150,13 @@ function sideOf(x:number,y:number,r:Rect):Side{
 
 /** Distance on the ficha: whole metres, capped so the ficha never grows ("999 m"). */
 export const distanceText=(units:number)=>`${Math.min(999,Math.max(0,Math.round(units)))} m`;
-/** The caído's tag: the ping wins for its few seconds ("Me salva"), else the seconds left. */
-export const caidoTag=(a:Pick<EdgeTarget,'seconds'|'ping'>)=>a.ping?'Me salva':a.seconds!==undefined?`${a.seconds} s`:'';
+/** The caído's tag: the seconds left, always (the most urgent number never hides); a lit ping adds "Me salva:" before them. */
+export const caidoTag=(a:Pick<EdgeTarget,'seconds'|'ping'>&{compact?:boolean})=>{
+  const s=a.seconds!==undefined?secondsText(a.seconds):'';
+  return a.ping&&!(a.compact&&s)?(s?`Me salva: ${s}`:'Me salva'):s;
+};
+/** Width (CSS px) of a caído's tag at a text scale: M PLUS 800 at 13 px ≈ 0.62 em per character, plus its padding. */
+export const tagWidth=(text:string,scale=1)=>Math.ceil(text.length*13*.62*scale+12);
 /** Where the beak sits: on the ficha's border along the pointing direction (radius from the centre, CSS px). */
 export function beakRadius(angle:number,half:{w:number;h:number}){
   const c=Math.abs(Math.cos(angle)),s=Math.abs(Math.sin(angle));
@@ -154,9 +184,15 @@ export class EdgeArrows {
       this.slots.push({el,face,num,tag,count,tip,key:'',last:new Map()});
     }
     parent.append(this.el);
+    // The text scale (100/125%, <html data-texto>) is read once and again only when the layout can have changed.
+    addEventListener('resize',this.invalidate);
+    if(typeof MutationObserver!=='undefined'){this.observer=new MutationObserver(this.invalidate);this.observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-texto']});}
   }
-  /** Text scale of the page (100% or 125%), for the layout's half size. */
-  scale(){return parseFloat(getComputedStyle(this.el).getPropertyValue('--t-escala'))||1;}
+  private scaleCache?:number;
+  private observer?:MutationObserver;
+  readonly invalidate=()=>{this.scaleCache=undefined;};
+  /** Text scale of the page (100% or 125%), for the layout's half size; cached until a resize or a text-size change. */
+  scale(){return this.scaleCache??=parseFloat(getComputedStyle(this.el).getPropertyValue('--t-escala'))||1;}
   render(arrows:readonly EdgeArrow[],half=arrowHalf(this.scale())){
     // Keep each target in the slot it had, so a ping's one-shot bump does not jump to another arrow.
     const free=this.slots.filter(s=>!arrows.some(a=>a.key===s.key));
@@ -166,11 +202,11 @@ export class EdgeArrows {
     for(const [a,slot] of assigned){
       if(!slot)continue;
       slot.key=a.key;slot.el.hidden=false;
-      slot.el.style.transform=`translate(${Math.round(a.x-half.w)}px,${Math.round(a.y-half.h)}px)`;
-      slot.tip.style.transform=`rotate(${a.angle.toFixed(3)}rad) translateX(${Math.round(beakRadius(a.angle,half))}px)`;
+      put(slot,'at',`translate(${Math.round(a.x-half.w)}px,${Math.round(a.y-half.h)}px)`,v=>{slot.el.style.transform=v;});
+      put(slot,'tip',`rotate(${a.angle.toFixed(2)}rad) translateX(${Math.round(beakRadius(a.angle,half))}px)`,v=>{slot.tip.style.transform=v;});
       put(slot,'kind',a.kind,v=>{slot.el.dataset.kind=v;});
-      // On the top side the caído's tag hangs under the ficha, so it never reaches the top band.
       put(slot,'side',a.side,v=>{slot.el.dataset.side=v;});
+      put(slot,'tagEnd',a.tagEnd,v=>{slot.el.dataset.tag=v;});
       put(slot,'face',`${a.kind}:${a.portrait??''}`,()=>{
         const sticker=EDGE_ICON[a.kind];
         slot.face.innerHTML=a.kind==='aliado'?`<img alt="" decoding="async" draggable="false" src="${(a.portrait??'').replace(/"/g,'&quot;')}">`:sticker?icon(sticker):'';
@@ -184,5 +220,5 @@ export class EdgeArrows {
     }
   }
   clear(){for(const s of this.slots){s.el.hidden=true;s.key='';}}
-  destroy(){this.el.remove();}
+  destroy(){removeEventListener('resize',this.invalidate);this.observer?.disconnect();this.el.remove();}
 }

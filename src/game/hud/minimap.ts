@@ -39,11 +39,15 @@ export function islandOutline(steps=28):Point[]{
 // ---------- DOM (browser only) ----------
 const SVG='http://www.w3.org/2000/svg';
 const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={bau:0,spawn:1,base:2,aliado:3,chefe:4,caido:5,voce:6};
+/**
+ * Each mark is the arrow's sticker simplified to its silhouette (design onda 6 D5: one symbol per thing): base = the tent
+ * with its flag, chefe = the skull, spawn = the three-crest wave, caído = the boia; allies are people (dots), you the Lilás disc.
+ */
 const shape=(kind:MinimapKind)=>{
   switch(kind){
-    case 'base':return '<path d="M-5 1L0 -4L5 1L5 5L-5 5Z"/>';
-    case 'chefe':return '<path d="M0 -6L6 0L0 6L-6 0Z"/>';
-    case 'spawn':return '<path d="M0 -5L5 4L-5 4Z"/>';
+    case 'base':return '<path class="mm-flag" d="M0 -7L5 -5.6L0 -4.2Z"/><path d="M-5.5 4.5L0 -4.5L5.5 4.5Z"/>';
+    case 'chefe':return '<circle cy="-1" r="4.6"/><rect x="-2.8" y="1.6" width="5.6" height="4" rx="1"/><circle class="mm-eye" cx="-1.7" cy="-1.2" r="1.2"/><circle class="mm-eye" cx="1.7" cy="-1.2" r="1.2"/>';
+    case 'spawn':return '<path d="M-6 3.5L-6 1Q-4.5 -3.5 -2.3 -.6Q-1 -4.5 1.2 -1Q2.6 -5 5 -1.3Q6.3 .5 6 1.5L6 3.5Z"/>';
     case 'bau':return '<rect x="-3.5" y="-3" width="7" height="6" rx="1"/>';
     case 'caido':return '<circle r="5"/><circle class="mm-dot" r="1.6"/>';
     case 'voce':return '<circle r="4.5"/>';

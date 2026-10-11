@@ -4,6 +4,11 @@
  */
 /** "Me salva" ping with position (UX-resgate-e-ping): one per caído every 3 s, on the button and in the room. */
 export const SOS_COOLDOWN_MS=3000;
+/**
+ * The room's gate is this much shorter than the button's: two taps 3 s apart on the phone can reach the room closer than
+ * that (network jitter), and the second, legitimate one must not be dropped (code review onda 6). Floods still are.
+ */
+export const SOS_SLACK_MS=300;
 /** How long a ping lights the caído's edge arrow and minimap dot on every phone. */
 export const SOS_SHOW_MS=5000;
 /** A ping as the room relays it: who, where (room position, world units) and the tick it was sent. */

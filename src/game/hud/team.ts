@@ -4,7 +4,7 @@
  * and banners telling who fell and how long is left.
  */
 import type {PlayerRunView,RunView} from '../sim/view.ts';
-import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,teamOrder,type HudContext,type HudPart} from './model.ts';
+import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../../ui/icon.ts';
 
@@ -65,7 +65,7 @@ export function createTeamStrip():HudPart{
       put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});
       const progress=player.downed?clamp01(player.downed.progress):0;
       put(n,'rescue',`${Math.round(progress*360)}deg`,v=>n.ring.style.setProperty('--rh-rescue',v));
-      if(player.downed)put(n,'timer',`${secondsLeft(player.downed.bleedOutTick,view.tick)}s`,v=>{n.timer.textContent=v;});
+      if(player.downed)put(n,'timer',secondsText(secondsLeft(player.downed.bleedOutTick,view.tick)),v=>{n.timer.textContent=v;});
       put(n,'aria',`${player.name}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
     });
   }};

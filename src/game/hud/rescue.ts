@@ -11,7 +11,8 @@
  */
 import type {CoopClient} from '../net/client.ts';
 import type {RunHud} from './hud.ts';
-import type {RunView} from '../sim/view.ts';
+import type {RunView,PlayerRunView} from '../sim/view.ts';
+import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges} from './edges.ts';
 import type {Rect} from './zones.ts';
@@ -39,6 +40,13 @@ export interface RescueOptions {net:CoopClient;hud:RunHud;actions:HTMLElement;sc
   /** A tap on the button also wakes the controls (the explore shell's pause(false)). */
   onTap?:()=>void}
 
+/** The caller's own confirmation, on the room's echo of its "Me salva". */
+export const SOS_HEARD='Turma avisada!';
+/** The one back on their feet thanks the rescuer: the end of a rescue reads on both bodies. */
+export const thanks=(name:string)=>`Valeu, ${railName(name)}!`;
+/** The thanks waits for the rescuer's balloon to go (horde balloons live 2.2 s). */
+export const THANKS_AFTER_MS=2300;
+
 export class RescueBoard {
   private readonly net:CoopClient;private readonly hud:RunHud;private readonly scene:()=>IslandScene|undefined;
   private readonly button:HTMLButtonElement;
@@ -47,7 +55,7 @@ export class RescueBoard {
   private warnings:SpawnWarning[]=[];
   private last?:RunView;
   private said=new Set<string>();
-  private frame=0;private minimapAt=0;
+  private frame=0;private minimapAt=0;private timers=new Set<ReturnType<typeof setTimeout>>();
   /** HUD boxes over the map, read twice a second: a target under them is not in view. */
   private covered:Rect[]=[];private coveredAt=-Infinity;
   private readonly outline=islandOutline();
@@ -70,22 +78,26 @@ export class RescueBoard {
     if(this.gate.remaining(this.net.id,now)>0)return false;
     if(!this.net.sos())return false;
     this.gate.tryUse(this.net.id,now);
-    // Instant answer on the caller's own body (≤ 100 ms, UX B11); the room's relay lights everyone else's screen.
-    this.say(this.net.id,'down',`sos:${Math.round(now)}`);
+    // The button answers at once (its 3 s ring); "Turma avisada!" waits for the room's echo, so it never claims a
+    // ping the room dropped (code review onda 6).
     return true;
   }
   private ping(ping:SosPing){
-    if(!this.pings.add(ping,performance.now())||ping.id===this.net.id)return;
+    if(!this.pings.add(ping,performance.now()))return;
+    // The caller's own echo: the room took it and every phone now shows the arrow (UX onda 6: confirm to the caído).
+    if(ping.id===this.net.id){this.scene()?.say(this.net.id,SOS_HEARD);return;}
     const audio=getAudio();if(audio.unlocked)audio.play('queda');
     this.say(ping.id,'down',ping.tick);
   }
+  /** The view the HUD shows: one clock for the arrows, the team strip and the map fichas (UX onda 6, aresta 1). */
+  private states=new Map<string,PlayerRunView>();
   private say(id:string,situation:'down'|'revive',seed:string|number){
     const classId=this.net.players.get(id)?.classId;if(!classId)return;
     this.scene()?.say(id,pickLine(classId,situation,seed));
   }
   /** Each authoritative view (after the HUD took it): spawn warnings, fall and rescue lines, the rescuer's buzz. */
   view(view:RunView){
-    this.last=view;
+    this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
     keepWarnings(this.warnings,view.events,view.tick);
     for(const e of view.events){
       if(e.type==='downed'){
@@ -94,9 +106,18 @@ export class RescueBoard {
         if(line)this.scene()?.say(e.player,line);else this.say(e.player,'down',e.eventId);
       }else if(e.type==='revived'){
         this.pings.forget(e.player);
-        if(e.by){this.say(e.by,'revive',e.eventId);if(e.by===this.net.id){const audio=getAudio();if(audio.unlocked)audio.play('resgate');}}
+        if(e.by){
+          this.say(e.by,'revive',e.eventId);
+          // The end of a rescue reads on both bodies: the rescuer's class line and the one back on their feet thanks them.
+          // Right after the rescuer's balloon (they stand side by side): one balloon at a time, never one over the other.
+          const by=this.net.players.get(e.by)?.name;
+          if(by&&e.player!==e.by){const who=e.player,t=setTimeout(()=>{this.timers.delete(t);this.scene()?.say(who,thanks(by));},THANKS_AFTER_MS);this.timers.add(t);}
+          if(e.by===this.net.id){const audio=getAudio();if(audio.unlocked)audio.play('resgate');}
+        }
       }
     }
+    // Same frame as the team strip (it took this view a moment ago): the arrows never show the other clock.
+    this.tick();
   }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
@@ -108,12 +129,14 @@ export class RescueBoard {
       this.button.setAttribute('aria-disabled',String(sos.cooling));
       this.button.style.setProperty('--sos-left',String(Math.round(sos.left*100)));
     }
+    // Out of the wave the run's leftovers go (an old view, spawn warnings, lit pings, "Segura aí" already said).
+    if(run?.phase!=='combat'&&this.last){this.last=undefined;this.states.clear();this.warnings.length=0;this.pings.clear();this.said.clear();}
     if(!scene||!combat||!this.last){hud.edges?.clear();return;}
     const view=net.view(now),focus=scene.focusPoint(),zones=hud.zones();
     const self=view.players.find(p=>p.id===net.id);
-    const hold=holdLine(self,me,view.players,net.feed.players,this.said);
+    const hold=holdLine(self,this.states.get(net.id),view.players,this.states,this.said);
     if(hold)scene.say(net.id,hold.line);
-    const {targets,items}=radar({selfId:net.id,focus,self:self??focus,tick:net.tick,players:view.players,states:net.feed.players,
+    const {targets,items}=radar({selfId:net.id,focus,self:self??focus,tick:this.last.tick,players:view.players,states:this.states,
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,pickups:this.last.pickups,
       warnings:this.warnings,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
     const area=scene.usefulArea??zones.useful;
@@ -126,5 +149,5 @@ export class RescueBoard {
       hud.minimap.render(focus,scene.cameraView,range,items,endless?undefined:this.outline);
     }
   }
-  destroy(){cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
+  destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

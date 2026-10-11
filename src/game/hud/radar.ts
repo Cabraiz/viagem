@@ -55,8 +55,8 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
     if(!caido&&!p.online)continue;
     const ping=caido&&!!input.pinged?.(p.id);
     items.push({key:p.id,kind:caido?'caido':'aliado',x:p.x,y:p.y,ping});
-    add({key:p.id,kind:caido?'caido':'aliado',name:p.name,portrait:input.portrait?.(p.classId),
-      ...(caido?{seconds:secondsLeft(st!.downed!.bleedOutTick,input.tick),ping}:{})},p);
+    // Allies on their feet live on the minimap only (design onda 6 D4): an arrow each repeated it and crowded the rim.
+    if(caido)add({key:p.id,kind:'caido',name:p.name,portrait:input.portrait?.(p.classId),seconds:secondsLeft(st!.downed!.bleedOutTick,input.tick),ping},p);
   }
   if(input.base){items.push({key:'base',kind:'base',x:input.base.x,y:input.base.y});add({key:'base',kind:'base',name:'Base'},input.base);}
   for(const e of input.enemies??[]){
@@ -70,7 +70,7 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
   });
   for(const p of input.pickups??[]){
     if(p.kind!=='chest')continue;
-    items.push({key:p.id,kind:'bau',x:p.x,y:p.y});add({key:p.id,kind:'bau',name:'Baú'},p);
+    items.push({key:p.id,kind:'bau',x:p.x,y:p.y});// minimap only, like the allies on their feet
   }
   return {targets,items};
 }

@@ -5,6 +5,7 @@ import {Room,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_RE
 import {FrameRunFeed} from '../src/game/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
 import {walkable,SPEED} from '../src/game/world.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
 import {createEnemy} from '../src/game/sim/enemies/catalog.ts';
 
 /** Test peer: JSON control messages parsed in `messages`, protocol 4 frames in `frames` (in arrival order in `log`). */
@@ -401,9 +402,11 @@ test('"Me salva" (UX-resgate-e-ping): only a caído pings, the room relays its o
   command(room,peers[0],{t:'sos',round:1,x:99,y:99},5000);
   for(const p of peers){const got=sos(p);assert.equal(got.length,1,'once on every client, the sender included');
     assert.equal(got[0].id,id);assert.equal(got[0].x,Math.round(me.x*100)/100);assert.equal(got[0].y,Math.round(me.y*100)/100);assert.ok(Number.isSafeInteger(got[0].tick));}
-  command(room,peers[0],{t:'sos',round:1},6000);command(room,peers[0],{t:'sos',round:1},7999);
-  assert.equal(sos(peers[2]).length,1,'anti-spam: nothing inside 3 s');
-  command(room,peers[0],{t:'sos',round:1},8000);assert.equal(sos(peers[2]).length,2,'again after 3 s');
+  command(room,peers[0],{t:'sos',round:1},6000);command(room,peers[0],{t:'sos',round:1},5000+SOS_COOLDOWN_MS-SOS_SLACK_MS-1);
+  assert.equal(sos(peers[2]).length,1,'anti-spam: a flood inside the window is dropped');
+  // Two honest taps 3 s apart on the phone may land 2.75 s apart in the room (jitter): the second one goes through.
+  command(room,peers[0],{t:'sos',round:1},7750);assert.equal(sos(peers[2]).length,2,'the second honest tap is not lost');
+  command(room,peers[0],{t:'sos',round:1},8000);assert.equal(sos(peers[2]).length,2,'and the window starts again from it');
   // Another player's fall has its own clock; a non-caído never relays.
   command(room,peers[1],{t:'sos',round:1},8001);assert.equal(sos(peers[2]).length,2);
 });

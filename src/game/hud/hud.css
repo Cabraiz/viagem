@@ -74,7 +74,7 @@
 /* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
 .rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
 .rh-member-badge{position:absolute;top:-6px;right:-4px;display:flex;line-height:0} /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
-.rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums}
+.rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
 .rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}
 .rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .7s ease-in-out infinite alternate}
@@ -555,9 +555,11 @@
 .mm-caido circle{fill:none;stroke:var(--c-cone);stroke-width:2.6}
 .mm-caido .mm-dot{fill:var(--c-papel);stroke:none}
 .mm-ping circle:first-child{stroke:var(--c-papel);stroke-width:3.2}
-.mm-base path{fill:var(--c-papel);stroke:var(--c-lilas);stroke-width:1.4}
-.mm-chefe path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1.2}
-.mm-spawn path{fill:var(--c-cone);stroke:var(--c-breu);stroke-width:1}
+.mm-base path{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
+.mm-base .mm-flag{fill:var(--c-lilas);stroke:var(--c-papel);stroke-width:.8}
+.mm-chefe :is(circle,rect){fill:var(--c-papel);stroke:var(--c-cone);stroke-width:1.4}
+.mm-chefe .mm-eye{fill:var(--c-breu);stroke:none}
+.mm-spawn path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1}
 .mm-bau rect{fill:none;stroke:var(--c-papel);stroke-width:1.6}
 .mm-rim{opacity:.75}
 @media (min-height:501px){
@@ -588,9 +590,9 @@
 .rh-edge:is([data-kind=caido],[data-kind=chefe],[data-kind=spawn]){box-shadow:0 0 0 2px var(--c-cone),var(--s-2)}
 .rh-edge-danger{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
 .rh-edge-tag{position:absolute;left:-4px;top:-15px;padding:1px 5px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
-.rh-edge[data-side=top] .rh-edge-tag{top:auto;bottom:-15px}
+.rh-edge[data-tag=right] :is(.rh-edge-tag){left:auto;right:-4px} /* always on top (TAG_ROOM is reserved there); on the area's right half it grows leftwards */
 .rh-edge-count{position:absolute;right:-8px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
 /* A fresh "Me salva": two short bumps, then still (no infinite loop, design §2.5). */
-.rh-edge-ping{animation:rh-edge-bump .22s ease-out 2}
+.rh-edge-ping{animation:rh-edge-bump .22s ease-out 2;box-shadow:0 0 0 2px var(--c-cone),0 0 0 4px var(--c-papel),var(--s-2)} /* lit "Me salva": a second Papel ring, also when the tag is squeezed to its clock */
 @keyframes rh-edge-bump{50%{scale:1.14}}
 @media (prefers-reduced-motion:reduce){.rh-edge-ping{animation:none}}

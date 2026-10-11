@@ -34,10 +34,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
  * would misread any frame with events. 6 since VGM-046B (Stonewards): the camp block (flag bit 3), a seventh section
- * (gather nodes) and the towers' `untilTick`; a 5 decoder would refuse the flags or misread the sections. The join
- * handshake refuses other versions with the update message.
+ * (gather nodes) and the towers' `untilTick`; a 5 decoder would refuse the flags or misread the sections. 7 since
+ * VGM-053B: the zueira events (`happening`: boleto rain, flash sale, blackout) and the round's last critter
+ * (`last-bicho`, the kill-cam); a 6 decoder would skip them silently (no blackout, no kill-cam), so the version moves.
+ * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=6;
+export const PROTOCOL_VERSION=7;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -69,6 +71,8 @@ export const DICT:readonly string[]=[
   'basico','habilidade','heal',
   // Stonewards (protocol 6): tower kind, forge recipes and node `say` keys
   'torre-chinelo','reparo','gambiarra','no-coco','no-pedra',
+  // Zueira events (protocol 7, VGM-053B); the boleto marker on rain pickups is 'boleto' (already above)
+  'boletos','promo','apagao',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -343,6 +347,9 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   // D-013 (VGM-046B): the return horn (when the round starts, its joke) and lines from things that are not enemies.
   ['horn',[['endsTick','tick'],['line','str',true]]],
   ['say',[['source','ref'],['key','str'],['line','str']]],
+  // VGM-053B (protocol 7): a zueira event in the round (kind, when it stops) and the round's last critter (kill-cam).
+  ['happening',[['kind','str'],['endsTick','tick']]],
+  ['last-bicho',[['kind','str'],['x','pos'],['y','pos'],['round','count'],['by','ref',true]]],
 ];
 const EVENT_CODE=new Map<string,number>(EVENT_SPECS.map(([type],i)=>[type,i]));
 /** Upper bound of one event's body (a few refs, numbers and strings of at most MAX_STRING_BYTES). */
@@ -401,6 +408,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
     }
   });
   if(type==='round'&&e.phase!=='wave'&&e.phase!=='prepare'&&e.phase!=='end')throw new FrameError('bad round phase');
+  if(type==='happening'&&e.kind!=='boletos'&&e.kind!=='promo'&&e.kind!=='apagao')throw new FrameError('bad happening');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
 }
@@ -460,7 +468,9 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn']);
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
+  // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
+  'happening','last-bicho']);
 /** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
 const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
 /** Camp block bits. */

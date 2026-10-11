@@ -19,6 +19,7 @@ import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Minimap} from './minimap.ts';
+import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
 
 export interface RunHudOptions {
@@ -48,6 +49,8 @@ export function playStamp(){
   audio.play('carimbo');
 }
 
+/** The intermission offer shows this long after the kill-cam opened: FEITO (700 ms + 140 ms) first, then LEVEI. */
+export const OFFER_AFTER_KILLCAM_MS=1000;
 /** Clearance kept between the hero's sprite and the center banner, in CSS px. */
 export const HERO_MARGIN_PX=40;
 
@@ -65,6 +68,8 @@ export class RunHud {
   private readonly hurt:ReturnType<typeof createHurtFrame>;
   /** Base ficha, forge window and horn notice (VGM-046B, hud/camp.ts). */
   private readonly camp:CampPart;
+  /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
+  private readonly killcam:KillcamPart;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
   /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
@@ -87,11 +92,12 @@ export class RunHud {
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp});
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
+    const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
-    stack.append(announcer.el,alerts.el,camp.notice);this.stack=stack;this.alerts=alerts;
-    this.hurt=hurt;this.parts=[hurt,top,announcer,team,alerts,offer,camp];
+    stack.append(announcer.el,killcam.el,alerts.el,camp.notice);this.stack=stack;this.alerts=alerts;
+    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,offer.hint,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.minimap.el,offer.el);}
@@ -114,7 +120,17 @@ export class RunHud {
     // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
+    // The kill-cam (VGM-053B) gives way to any notice (danger over the joke) and takes the round banner's turn
+    // ("Intervalo!": the round chip already says it).
+    const notice=!!this.stack.querySelector('.rh-alert:not([hidden])');
+    this.killcam.el.classList.toggle('rh-killcam-yield',notice);
+    if(this.killcam.shown&&!notice&&marquee&&!marquee.hidden&&marquee.dataset.tone==='interval')marquee.hidden=true;
+    // The intermission offer opens after the FEITO stamp (design review D2): never two stamps in the same second.
+    const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
+    if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
   }
+  /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
+  killcamRect(){return this.el.classList.contains('rh-ended')?undefined:this.killcam.rect();}
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
@@ -160,7 +176,7 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-alert:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).

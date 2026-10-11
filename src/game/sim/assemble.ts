@@ -19,6 +19,7 @@ import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
 import {WALL_RADIUS} from './stonewards/wall.ts';
+import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -41,11 +42,15 @@ export interface RunSystemsOptions {
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
   reconnectGraceTicks?:number;
+  /** Lab only (LAB_ZUEIRA): replaces the seed's plan of zueira events (VGM-053B). */
+  zueiraLab?:ZueiraLab;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
   /** Gathering, forge, wall and towers (VGM-046B). */
   stonewards:StonewardsSystem;
+  /** Zueira events in the middle of a round and the last critter's kill-cam (VGM-053B). */
+  zueira:ZueiraSystem;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints. */
   state():unknown;
   dispose():void;
@@ -68,6 +73,7 @@ export function applyEliteExtras(ctx:SimContext){
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
   const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}});
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab});
   let director:Director|undefined;
   // D-016: once the director is done (boss down), a same-tick wipe is not a defeat. The director only reaches 'done'
   // on its next step, so the boss's killing blow also ends the run right away.
@@ -102,7 +108,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // Unknown kinds are skipped instead of throwing; elites are scaled by the director itself (D-010).
     createEnemy:(ctx,kind,point,scale)=>isEnemyKind(kind)?createEnemy(ctx,kind,point,scale):undefined,
     spawnBoss:(ctx,point)=>boss.spawnBoss(ctx,point),
-    onRoundEnd:(ctx,summary)=>{progression.grantRoundOffers(ctx,summary.index,summary.intermissionEndsTick);},
+    onRoundEnd:(ctx,summary)=>{
+      progression.grantRoundOffers(ctx,summary.index,summary.intermissionEndsTick);
+      zueira.roundEnded(ctx,summary,director!.state.roundStart);
+    },
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
@@ -111,7 +120,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   for(const system of [
     playersSystem(options.takeInput),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
-    enemyAi,boss,
+    zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
@@ -120,6 +129,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   const offKill=world.onKill((enemy,by,ctx)=>{
     progression.dropLoot(ctx,enemy,by);
+    zueira.noteKill(enemy,by,ctx.tick);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss){bossDown=true;onOutcome('victory');}
@@ -127,8 +137,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,
-    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,
+    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state}),
     dispose(){offKill();offZero();},
   };
 }

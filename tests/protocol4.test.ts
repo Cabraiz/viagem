@@ -699,7 +699,7 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   const ids=new WireIds(),enc=new FrameEncoder(ids,{viewer:'me'}),dec=new FrameDecoder();
   const w=campWorld();
   const r=dec.decode(enc.encode(w));assert.ok(r.ok);
-  assert.equal(PROTOCOL_VERSION,6);
+  assert.ok(PROTOCOL_VERSION>=6);
   assert.deepEqual(r.view.camp,{coco:7,pedra:12,hornEndsTick:900});
   const tower=r.view.structures.find(s=>s.kind==='torre-chinelo')!;
   assert.equal(tower.untilTick,1400);assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.hp,430);
@@ -740,4 +740,27 @@ test('protocol 6: a 5 decoder byte is refused, and a frame without Stonewards st
   const old=bytes.slice();old[1]=5;
   assert.deepEqual(new FrameDecoder().decode(old),{ok:false,error:'protocol version mismatch'});
   const r=dec.decode(bytes);assert.ok(r.ok);assert.equal(r.view.camp,undefined);assert.deepEqual(r.view.nodes,[]);
+});
+
+test('protocol 7: zueira events and the kill-cam reach every client, wherever they happened (VGM-053B)',()=>{
+  assert.equal(PROTOCOL_VERSION,7);
+  const ids=new WireIds(),me=new FrameEncoder(ids,{viewer:'me'}),far=new FrameEncoder(ids,{viewer:'far'});
+  const dm=new FrameDecoder(),df=new FrameDecoder();
+  const w=campWorld();
+  const events:SimEvent[]=[{type:'happening',kind:'apagao',endsTick:560},{type:'last-bicho',kind:'tio-pave',x:-180.25,y:40.5,round:3,by:'me'},
+    {type:'happening',kind:'boletos',endsTick:580},{type:'happening',kind:'promo',endsTick:660}];
+  me.pushEvents(events);far.pushEvents(events);
+  const a=dm.decode(me.encode(w)),b=df.decode(far.encode(w));
+  assert.ok(a.ok&&b.ok);
+  for(const r of [a,b]){
+    assert.deepEqual(r.view.events.map(e=>e.type==='happening'?e.kind:e.type),['apagao','last-bicho','boletos','promo']);
+    const cam=r.view.events[1];
+    assert.ok(cam.type==='last-bicho');
+    assert.equal(cam.kind,'tio-pave');assert.equal(cam.round,3);assert.equal(cam.by,'me');
+    near(cam.x,-180.25,POS_EPS,'x');near(cam.y,40.5,POS_EPS,'y');
+    const dark=r.view.events[0];assert.ok(dark.type==='happening'&&dark.endsTick===560);
+  }
+  // A 6 room's frame is refused at the version byte (the handshake already sent the update message).
+  const old=me.encode(w).slice();old[1]=6;
+  assert.deepEqual(new FrameDecoder().decode(old),{ok:false,error:'protocol version mismatch'});
 });

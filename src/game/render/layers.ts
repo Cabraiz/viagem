@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../sim/view.ts';
 import type {SimEvent} from '../sim/types.ts';
-import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
@@ -14,6 +14,7 @@ import {deathLine,kindStyle,damageLabel,skillBubbleLine,SKILL_BUBBLE_GAP_MS} fro
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {token,tokenColor} from '../../ui/tokens.ts';
+import {EYES_DEPTH,LIFTED_DEPTH,eyesOpen} from './blackout-rules.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
 type Pt={x:number;y:number};
@@ -44,7 +45,8 @@ interface EnemyActor{
   px:number;py:number;nx:number;ny:number;x:number;y:number;
   phase:number;flashAt:number;flashing:boolean;screenX:number;flip:boolean;moving:boolean;
 }
-interface PickupActor{image:Image;shadow:Image;kind:string;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number}
+/** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
+interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number}
 interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
@@ -65,6 +67,12 @@ const BUBBLE_MS=2200,BUBBLE_GAP_MS=1950;
 const PLAYER_BUBBLE_LIFT=116;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
+/** Eyes in the dark, CSS px at the follow zoom: 9×12 Papel with a 2 px Breu edge, 4 px pupils looking at the hero. */
+export const EYES_CSS={width:9,height:12,gap:7,edge:2,pupil:2.2,look:1.8} as const;
+/** A boleto of the rain falls from this high (world px) in BOLETO_FALL_MS, swaying (VGM-053B); reduced motion: it is just there. */
+export const BOLETO_FALL_PX=220,BOLETO_FALL_MS=420;
+/** The flash sale's coxinhas are drawn this much bigger: the event reads at a glance (VGM-053B). */
+export const PROMO_SCALE=1.6;
 
 const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
 const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
@@ -145,6 +153,11 @@ export class HordeRenderer{
   private balloons:Phaser.GameObjects.Graphics;
   private heroBalloons:Phaser.GameObjects.Graphics;
   private top:Phaser.GameObjects.Graphics;
+  /** Blackout (VGM-053B): the critters' eyes over the dark, and the spawn warnings lifted above it. */
+  private eyes!:Phaser.GameObjects.Graphics;
+  private lifted!:Phaser.GameObjects.Graphics;
+  /** How dark the blackout is now (0 = no blackout); set by the scene every frame. */
+  private dark=0;
   private fx:FxBudget;
   /** Latest number per target, for merging hits inside DAMAGE_MERGE_MS. */
   private numberByTarget=new Map<string,NumberFx>();
@@ -202,7 +215,9 @@ export class HordeRenderer{
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('gosma'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'gosma',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false}),showEnemy);
-    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupTexture('xp'))(),shadow:shadow(),kind:'xp',value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
+    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
+    this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
+    this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
     this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false,priority:false,self:false}),showText,CAPS.damage);
@@ -244,7 +259,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
-    this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();
+    this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
@@ -269,6 +284,18 @@ export class HordeRenderer{
   setTarget(enemyId?:string){this.targetId=enemyId;}
   /** Follows prefers-reduced-motion changes at runtime. */
   setReduced(reduced:boolean){this.reduced=reduced;}
+  /**
+   * Blackout level now (0..1, VGM-053B): above 0 the critters show their eyes over the dark, and spawn warnings and
+   * hostile projectiles are drawn above it (render/blackout-rules.ts; telegraphs are always on the top layer).
+   */
+  setBlackout(level:number){this.dark=Math.max(0,Math.min(1,level));}
+  /** Depths of what must stay visible in the dark, for the blackout audit (dev probe and tests). */
+  blackoutLayers(){
+    const out:{name:string;depth:number;visible?:boolean;count?:number}[]=[{name:'telegraphs',depth:this.top.depth,visible:this.telegraphs.size>0,count:this.telegraphs.size},{name:'eyes',depth:this.eyes.depth},{name:'warnings',depth:this.lifted.depth}];
+    this.projectiles.forEach(p=>{if(p.hostile)out.push({name:'hostile projectile',depth:p.image.depth,visible:p.image.visible});});
+    this.warnings.forEach(w=>{out.push({name:'warning',depth:w.image.depth,visible:w.image.visible});});
+    return out;
+  }
   /** Effects profile at runtime (settings). Live effects above the new budget fade out on their own. */
   setEffects(profile:EffectsProfile){this.fx=FX_BUDGET[profile];this.recentHits.setCap(this.fx.bars);}
   /** New run or reconnection to a fresh server: accept event ids from the start again. */
@@ -308,12 +335,12 @@ export class HordeRenderer{
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';
   }
   private syncPickup(view:PickupView){
-    const used=this.pickups.use(view.id),a=used.item;
-    if(used.fresh||a.kind!==view.kind){a.image.setTexture(pickupTexture(view.kind)).setOrigin(.5,.92);a.kind=view.kind;}
-    if(used.fresh){a.born=this.now;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;}
+    const used=this.pickups.use(view.id),a=used.item,look=pickupLook(view.kind,view.resource);
+    if(used.fresh||a.look!==look){a.image.setTexture(look).setOrigin(.5,.92);a.kind=view.kind;a.look=look;}
+    if(used.fresh){a.born=this.now;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;}
     else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
-    a.nx=view.x;a.ny=view.y;a.value=view.value;
+    a.nx=view.x;a.ny=view.y;a.value=view.value;a.promo=view.kind==='heal'&&view.resource==='promo';
   }
   private syncProjectile(view:ProjectileView){
     const used=this.projectiles.use(view.id),a=used.item;
@@ -472,6 +499,7 @@ export class HordeRenderer{
     let sx=s.sx,sy=s.sy,rotation=0;
     if(a.boss&&!this.reduced){const w=Math.sin(now*.0032+a.phase*TAU);sx*=1+.035*w;sy*=1-.03*w;rotation=w*.035;}
     a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx,sy).setRotation(rotation).setFlipX(a.flip);
+    const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
     const shadow=art.width*size*(a.kind==='pernilongo'?.45:.66);
@@ -480,7 +508,32 @@ export class HordeRenderer{
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8);
+    // Last: drawEyes projects the hero through the shared scratch point (q).
+    if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size);
   };
+  /**
+   * Eyes in the dark (VGM-053B): two Papel eyes with a Breu edge and pupils that look at the local hero, at the
+   * critter's head; they blink now and then (never with reduced motion). The body goes dark, where it is does not.
+   */
+  private drawEyes(a:EnemyActor,x:number,feetY:number,size:number){
+    // Only the critters on screen (the pool keeps the whole area of interest): at most a few dozen pairs per frame.
+    const v=this.scene.cameras.main.worldView;
+    if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
+    // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
+    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pernilongo'?.55:.62)*size;
+    const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;
+    const open=eyesOpen(this.now,a.phase,this.reduced);
+    const me=this.options.selfId?.(),hero=me?this.options.locate?.(me):undefined;
+    let lx=0,ly=0;
+    if(hero){this.at.x=hero.x;this.at.y=hero.y;const q=this.project(this.at),d=Math.hypot(q.x-x,q.y-head)||1;lx=(q.x-x)/d*EYES_CSS.look*c;ly=(q.y-head)/d*EYES_CSS.look*c;}
+    for(const side of [-1,1]){
+      const ex=x+side*gap;
+      if(!open){g.fillStyle(PALETTE.breu,alpha).fillRect(ex-w/2-edge,head-edge*1.5,w+2*edge,edge*3);g.fillStyle(PALETTE.papel,alpha).fillRect(ex-w/2,head-edge*.5,w,edge);continue;}
+      g.fillStyle(PALETTE.breu,alpha).fillEllipse(ex,head,w+2*edge,h+2*edge);
+      g.fillStyle(PALETTE.papel,alpha).fillEllipse(ex,head,w,h);
+      g.fillStyle(PALETTE.breu,alpha).fillCircle(ex+lx,head+ly,EYES_CSS.pupil*c);
+    }
+  }
   private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1);}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
@@ -505,7 +558,13 @@ export class HordeRenderer{
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
     let y=0,scale=1,rotation=0;
-    if(a.kind==='xp'){y=gemBounce(now-a.born,reduced);scale=1+Math.min(.7,Math.log2(Math.max(1,a.value))*.14);}
+    if(a.look===FX.boleto){
+      // The rain: falls from the sky, swaying like paper, then lies on the ground slightly turned.
+      const k=a.fall?Math.min(1,(now-a.born)/BOLETO_FALL_MS):1;
+      y=-BOLETO_FALL_PX*(1-k)*(1-k);rotation=(a.phase-.5)*.5+(1-k)*Math.sin(now*.02+a.phase*TAU)*.6;
+      if(k>=1)a.fall=false;
+    }else if(a.kind==='xp'){y=gemBounce(now-a.born,reduced);scale=1+Math.min(.7,Math.log2(Math.max(1,a.value))*.14);}
+    if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
       if(a.kind==='chest'){scale=1+.07*Math.sin(now*.007+a.phase*TAU);rotation=Math.sin(now*.013+a.phase)*.04;}
       else if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
@@ -519,7 +578,8 @@ export class HordeRenderer{
     const lead=Math.min(2,Math.max(0,(this.now-this.pushAt)/this.tickMs));
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
     const q=this.project(this.at),depth=this.depth(this.at);
-    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT).setDepth(depth+2).setRotation(a.angle);
+    // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
+    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
     a.shadow.setPosition(q.x,q.y).setScale(a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
   };
   private drawTelegraph=(t:TelegraphState)=>{
@@ -557,11 +617,12 @@ export class HordeRenderer{
     if(this.nowTick>=w.atTick||this.now-w.born>8000)return false;
     this.at.x=w.x;this.at.y=w.y;
     const q=this.project(this.at),pulse=this.reduced?1:1+.16*Math.sin((this.now-w.born)*.012);
-    w.image.setPosition(q.x,q.y-26).setDepth(this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
+    const dark=this.dark>0;
+    w.image.setPosition(q.x,q.y-26).setDepth(dark?LIFTED_DEPTH+1:this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
       .setAlpha(this.reduced?.9:.65+.35*Math.abs(Math.sin((this.now-w.born)*.006)));
     // Breu 2 | Cone 3 | Breu 2 px CSS at any zoom.
     const css=this.css();
-    this.ground.lineStyle(Math.max(7,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
+    (dark?this.lifted:this.ground).lineStyle(Math.max(7,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
       .lineStyle(Math.max(3,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse);
     return true;
   };

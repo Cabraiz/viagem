@@ -1,5 +1,5 @@
 /**
- * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-open|offer-prepare|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1]`.
+ * HUD sandbox (VGM-040): `?sandbox=hud&players=1..6&state=wave|prepare|offer|offer-open|offer-prepare|offer-round|offer-heal|downed|boss|result[&lose=1][&full=1][&frozen=1][&phaser=1][&zueira=boletos|promo|apagao|killcam]`.
  * `full=1` gives every player a 12-item build (layout stress test).
  * Renders the run HUD over a mock island with the real control positions (camera, gear, joystick, attack)
  * so overlaps are visible. Fake data only; nothing talks to the server.
@@ -83,6 +83,19 @@ function load(next:HudScenario){
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }
 load(scenario);
+/**
+ * Zueira events (VGM-053B): `&zueira=boletos|promo|apagao` shows that event's banner, `&zueira=killcam` the kill-cam
+ * window (as after a round's last kill). Re-sent every 1.5 s so a frozen page keeps it on screen for the audit.
+ */
+const zueira=params.get('zueira');
+if(zueira){
+  const send=()=>{
+    const e=zueira==='killcam'?{type:'last-bicho' as const,kind:'tio-pave',x:4,y:6,round:view.round?.index??3,by:view.players[1]?.id}
+      :{type:'happening' as const,kind:zueira as 'boletos'|'promo'|'apagao',endsTick:tick+60};
+    hud.update({...view,events:[{...e,eventId:++eventId}]});
+  };
+  send();setInterval(send,1500);
+}
 (window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};
 
 if(!frozen)setInterval(()=>{

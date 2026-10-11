@@ -536,17 +536,31 @@ test('wide bodies do not sink into rocks or trees',()=>{
   const stuck={x:rock.x-rock.radius-.3,y:rock.y};
   if(walkable(stuck,TERRAIN)){const d0=dist(stuck,rock);moveSafely(stuck,-.2,0,TERRAIN,radius);assert.ok(dist(stuck,rock)>d0);}
 });
-test('structures are targeted when closer and hit through the callback',()=>{
+test('siege enemies target structures when closer and hit through the callback; the rest ignore them (E8)',()=>{
   const c=corridor(6),ctx=new FakeCtx(19);
   addPlayer(ctx,'far',c.at(6));
   const wall={id:'muralha',...c.at(0),radius:.3};
   const hits:{id:string;amount:number;enemy:string}[]=[];
-  const g=createEnemy(ctx,'gosma',c.at(1.5));
+  const g=createEnemy(ctx,'gosma',c.at(1.5));g.memory={siege:1};
+  const plain=createEnemy(ctx,'gosma',c.at(3));
   const ai=new EnemyAi({structures:()=>[wall],hitStructure:(_ctx,id,amount,enemy)=>hits.push({id,amount,enemy:enemy.id})});
+  const start=dist(plain,c.at(6));
   run(ctx,ai,60);
-  assert.ok(hits.length>=1,'wall was hit');
-  assert.equal(hits[0].id,'muralha');assert.equal(hits[0].amount,g.damage);assert.equal(hits[0].enemy,g.id);
-  assert.equal(ctx.hits.length,0,'player far away was not hit');
+  assert.ok(hits.length>=1,`wall was hit (${hits.length}); plain at ${dist(plain,c.at(6)).toFixed(2)} from ${start.toFixed(2)}`);
+  assert.equal(hits[0].id,'muralha');assert.equal(hits[0].amount,g.damage);
+  assert.ok(hits.every(h=>h.enemy===g.id),'only the siege enemy hits the wall');
+  assert.ok(dist(plain,c.at(6))<start-1.5,`the plain gosma walks past the wall to the player: ${dist(plain,c.at(6)).toFixed(2)} from ${start.toFixed(2)}`);
+});
+
+test('a siege fiscal walks up to the wall and hits it instead of fining it from afar',()=>{
+  const c=corridor(8),ctx=new FakeCtx(23);
+  addPlayer(ctx,'far',c.at(8));
+  const wall={id:'muralha',...c.at(0),radius:.5};
+  const hits:string[]=[];
+  const f=createEnemy(ctx,'fiscal',c.at(4));f.memory={siege:1};
+  run(ctx,new EnemyAi({structures:()=>[wall],hitStructure:(_ctx,_id,_a,enemy)=>hits.push(enemy.id)}),200);
+  assert.ok(hits.length>=2&&hits.every(id=>id===f.id));
+  assert.equal(ctx.projectiles.size,0,'no fine thrown at the wall');
 });
 test('Hora Extra taunt pulls enemies to the CLT until it expires or the CLT goes down',()=>{
   type Taunted=EnemyState&{taunt?:{player:string;untilTick:number}};

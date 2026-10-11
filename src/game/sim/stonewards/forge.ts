@@ -5,10 +5,8 @@ import type {SimContext} from '../types.ts';
 import {ticks} from '../types.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';
-import type {Balance,StonewardsState} from './state.ts';
-
-export type RecipeId='reparo'|'gambiarra'|'torre-chinelo';
-export interface Recipe {id:RecipeId;name:string;cost:Balance;describe:string;lines:readonly string[]}
+import type {StonewardsState} from './state.ts';
+import {CAMP_RADIUS,RECIPES,canPay,type RecipeId} from './rules.ts';
 
 export const REPAIR_FRACTION=.25;
 export const TOWER_DURATION=ticks(45);
@@ -20,24 +18,11 @@ export const MAX_TOWERS=3;
 /** Remembered purchase ids; older ones fall off (a resend that late is a new purchase). */
 export const HANDLED_LIMIT=256;
 
-export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
-  reparo:{id:'reparo',name:'Massa Corrida e Fé',cost:{coco:2,pedra:3},
-    describe:'Conserta 25% da muralha',
-    lines:['Passou massa corrida, tá novinha (de longe).','Reparo feito com fita silver tape e oração.','O pedreiro sumiu, mas a parede voltou.']},
-  gambiarra:{id:'gambiarra',name:'Gambiarra',cost:{coco:4,pedra:2},
-    describe:'+1 nível numa arma aleatória sua',
-    lines:['Gambiarra aprovada pelo INMETRO, confia.','Prendeu com elástico de dinheiro. Funcionou.','Se tá funcionando, não mexe.']},
-  'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:{coco:3,pedra:4},
-    describe:'Torre que arremessa chinelos por 45 s',
-    lines:['A vó tá de olho. E de chinelo na mão.','Torre armada: chinelada teleguiada liberada.','Ninguém escapa da Havaiana voadora.']},
-});
-export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
+export {RECIPES,RECIPE_IDS,type Recipe,type RecipeId} from './rules.ts';
 
 export type BuyResult=
   | {ok:true;recipe:RecipeId;line:string;item?:string;level?:number;tower?:string}
-  | {ok:false;reason:'phase'|'player'|'recipe'|'balance'|'full'|'no-weapon'|'duplicate'|'wall-down'};
-
-const canPay=(b:Balance,c:Balance)=>b.coco>=c.coco&&b.pedra>=c.pedra;
+  | {ok:false;reason:'phase'|'player'|'recipe'|'balance'|'full'|'no-weapon'|'duplicate'|'wall-down'|'away'};
 
 /**
  * Buys a recipe for the team, validated on the server. Commands are applied one at a time, so two
@@ -69,6 +54,8 @@ function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:str
   const player=ctx.players.get(playerId);
   if(!player||!isStanding(player))return {ok:false,reason:'player'};
   if(!Object.hasOwn(RECIPES,recipeId))return {ok:false,reason:'recipe'};
+  // The forge stands in the camp (base-stonewards-mapa): what was gathered out there is spent back home.
+  if(!(Math.hypot(player.x-state.wall.x,player.y-state.wall.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
   const recipe=RECIPES[recipeId as RecipeId];
   if(!canPay(state.balance,recipe.cost))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.

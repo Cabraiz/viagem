@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {Rng} from '../src/game/sim/rng.ts';
 import {BASE_STATS,ticks} from '../src/game/sim/types.ts';
 import type {EnemyState,RoundPhase,SimContext,SimEvent,SimPlayer} from '../src/game/sim/types.ts';
-import {defaultTerrain,TerrainField} from '../src/game/terrain/field.ts';
-import {obstacles,walkable} from '../src/game/world.ts';
-import {createStonewardsSystem,HORN_LEAD,HORN_LINES,type StonewardsSystem} from '../src/game/sim/stonewards/system.ts';
-import {NODE_CAPACITY,WORK_PER_UNIT,DEPLETED_LINES} from '../src/game/sim/stonewards/resources.ts';
+import {DEFAULT_SEED,defaultTerrain,TerrainField} from '../src/game/terrain/field.ts';
+import {moveDirection,obstacles,walkable} from '../src/game/world.ts';
+import {createStonewardsSystem,HORN_LEAD,HORN_LINES,MAX_PREPARE_TICKS,SAY_GAP,type StonewardsSystem} from '../src/game/sim/stonewards/system.ts';
+import {CAMP_RADIUS,FORGE_REFUSALS,returnTicks} from '../src/game/sim/stonewards/rules.ts';
+import {Simulation} from '../src/game/net/shared.ts';
+import {createEnemy,enemyDef} from '../src/game/sim/enemies/catalog.ts';
+import {NODE_CAPACITY,WORK_PER_UNIT,DEPLETED_LINES,nodesNear,nodeValue} from '../src/game/sim/stonewards/resources.ts';
 import {RECIPES,MAX_TOWERS,TOWER_DURATION,TOWER_DAMAGE,TOWER_COOLDOWN} from '../src/game/sim/stonewards/forge.ts';
 import {damageWall,placeWall,SIEGE_FLAG,SIEGE_HIT_COOLDOWN,WALL_RADIUS,WALL_DOWN_LINES} from '../src/game/sim/stonewards/wall.ts';
 
@@ -47,13 +50,34 @@ const run=(ctx:FakeCtx,sys:StonewardsSystem,n:number)=>{for(let i=0;i<n;i++){ctx
 const system=(extra:Partial<Parameters<typeof createStonewardsSystem>[0]>={})=>createStonewardsSystem({terrain:defaultTerrain,...extra});
 const near=(i:number)=>({x:obstacles[i].x+obstacles[i].radius+.3,y:obstacles[i].y});
 
-test('nodes come from the island obstacles: coco on palms/trees, pedra on rocks',()=>{
+test('nodes come from the island obstacles: coco on palms/trees, pedra on rocks, value 1 near the base',()=>{
   const {state}=system();
-  assert.equal(state.nodes.length,obstacles.length);
-  state.nodes.forEach((n,i)=>{
+  assert.equal(state.nodes.length,0,'sparse: nothing touched yet');
+  const all=nodesNear(defaultTerrain,{x:12,y:12},50);
+  assert.equal(all.length,obstacles.length);
+  all.forEach((n,i)=>{
+    assert.equal(n.id,`no-${n.kind}-${i}`);
     assert.equal(n.kind,obstacles[i].kind==='rock'?'pedra':'coco');
-    assert.equal(n.remaining,NODE_CAPACITY[n.kind]);
+    assert.equal(n.capacity,NODE_CAPACITY[n.kind]);assert.equal(n.value,1);
   });
+});
+
+test('endless nodes: deterministic per seed and chunk, and worth more far from the base',()=>{
+  const pick=(seed:number,p:{x:number;y:number},r:number)=>nodesNear(new TerrainField(seed,{world:'infinito'}),p,r);
+  for(const seed of [7,4242]){
+    const a=pick(seed,{x:0,y:0},70),b=pick(seed,{x:0,y:0},70);
+    assert.ok(a.length>20);assert.deepEqual(b,a,'same seed, same nodes');
+    // Built from another spot first (another chunk order): the nodes of a chunk do not change.
+    const far=new TerrainField(seed,{world:'infinito'});nodesNear(far,{x:5000,y:5000},40);
+    assert.deepEqual(nodesNear(far,{x:0,y:0},70),a);
+    for(const n of a){
+      assert.match(n.id,/^no--?\d+_-?\d+-\d+$/);
+      assert.equal(n.value,nodeValue(Math.hypot(n.x,n.y)));
+    }
+    assert.ok(a.some(n=>n.value===1)&&a.some(n=>n.value>=3),'near and far nodes');
+    assert.notDeepEqual(pick(seed+1,{x:0,y:0},70).map(n=>n.id+n.x),a.map(n=>n.id+n.x),'another seed, other nodes');
+  }
+  assert.deepEqual([0,15.9,16,31.9,32,56,500].map(nodeValue),[1,1,2,2,3,4,4]);
 });
 
 test('gathering works only in the intermission and only for standing players',()=>{
@@ -69,6 +93,7 @@ test('gathering works only in the intermission and only for standing players',()
   assert.deepEqual(sys.state.gathered,{a:2});
 });
 function downedish(p:SimPlayer){p.hp=0;p.downed={sinceTick:0,bleedOutTick:600,progress:0};}
+const nodeAt=(sys:StonewardsSystem,i:number)=>sys.state.nodes.find(n=>n.id===`no-${obstacles[i].kind==='rock'?'pedra':'coco'}-${i}`);
 
 test('two players on the same node gather faster but never more than its capacity',()=>{
   const rock=obstacles.findIndex(o=>o.kind==='rock');
@@ -79,7 +104,23 @@ test('two players on the same node gather faster but never more than its capacit
   run(ctx,sys,ticks(15));
   assert.equal(sys.state.balance.pedra,NODE_CAPACITY.pedra);
   assert.equal((sys.state.gathered.a??0)+(sys.state.gathered.b??0),NODE_CAPACITY.pedra);
-  assert.equal(sys.state.nodes[rock].remaining,0);
+  assert.equal(nodeAt(sys,rock)!.remaining,0);
+  assert.equal(sys.state.nodes.length,1,'one node touched, one record');
+});
+
+test('a far node pays its value per unit, and running dry says a joke once',()=>{
+  const terrain=new TerrainField(4242,{world:'infinito'});
+  const far=nodesNear(terrain,{x:0,y:0},80).find(n=>n.kind==='coco'&&n.value>=3)!;
+  assert.ok(far,'a value-3 coco within 80 units');
+  const a=player('a',far.x+far.radius+.3,far.y),ctx=fakeCtx([a]);
+  (ctx as {terrain:TerrainField}).terrain=terrain;ctx.round.phaseEndsTick=ticks(999);
+  const sys=createStonewardsSystem({terrain});
+  run(ctx,sys,WORK_PER_UNIT.coco*NODE_CAPACITY.coco+5);
+  assert.equal(sys.state.balance.coco,far.value*NODE_CAPACITY.coco);
+  assert.ok(Math.abs(sys.state.gathered.a-far.value*NODE_CAPACITY.coco)<1e-9);
+  const says=ctx.events.filter(e=>e.type==='say');
+  assert.equal(says.length,1);
+  assert.ok(says[0].type==='say'&&says[0].key==='no-coco'&&(DEPLETED_LINES.coco as readonly string[]).includes(says[0].line)&&says[0].source==='a');
 });
 
 test('nodes refill once per intermission',()=>{
@@ -87,13 +128,13 @@ test('nodes refill once per intermission',()=>{
   const a=player('a',near(rock).x,near(rock).y);
   const ctx=fakeCtx([a]),sys=system();
   run(ctx,sys,ticks(10));
-  assert.equal(sys.state.nodes[rock].remaining,0);
+  assert.equal(nodeAt(sys,rock)!.remaining,0);
   run(ctx,sys,ticks(5));
-  assert.equal(sys.state.nodes[rock].remaining,0,'no refill inside the same intermission');
+  assert.equal(nodeAt(sys,rock)!.remaining,0,'no refill inside the same intermission');
   ctx.round.phase='wave';run(ctx,sys,5);
   ctx.round.index=2;ctx.round.phase='prepare';ctx.round.phaseEndsTick=ctx.tick+ticks(20);
-  run(ctx,sys,1);
-  assert.equal(sys.state.nodes[rock].remaining,NODE_CAPACITY.pedra);
+  a.x=40;run(ctx,sys,1);
+  assert.equal(nodeAt(sys,rock),undefined,'full again: no record');
 });
 
 test('simultaneous purchases respect the team balance',()=>{
@@ -142,7 +183,8 @@ test('gambiarra raises one weapon below max and never touches evolutions',()=>{
   a.build.weapons[2].level=8;
   assert.deepEqual(sys.buy(ctx,'a','gambiarra'),{ok:false,reason:'no-weapon'});
   assert.deepEqual(sys.state.balance,{coco:4,pedra:2});
-  assert.deepEqual(ctx.events,[{type:'upgrade',player:'a',item:'cafe',level:4}]);
+  assert.deepEqual(ctx.events.filter(e=>e.type!=='say'),[{type:'upgrade',player:'a',item:'cafe',level:4}]);
+  assert.deepEqual(ctx.events.filter(e=>e.type==='say').map(e=>e.type==='say'&&[e.source,e.key]),[['a','gambiarra']],'D-013: the forge talks once');
 });
 
 test('chinelo towers shoot the nearest live enemy, respect the cap and expire',()=>{
@@ -326,4 +368,145 @@ test('zueira: every recipe, horn and fall has pt-BR jokes',()=>{
   assert.ok(RECIPES.gambiarra.lines.includes('Gambiarra aprovada pelo INMETRO, confia.'));
   assert.ok(HORN_LINES.length>=3&&WALL_DOWN_LINES.length>=3);
   assert.ok(DEPLETED_LINES.coco.length>=3&&DEPLETED_LINES.pedra.length>=3);
+});
+
+// ---------- VGM-046B / base-stonewards-mapa / E8 ----------
+
+test('the horn sounds as early as the farthest hero needs to walk back, never later than 5 s before the end',()=>{
+  const out=player('out',12,12+CAMP_RADIUS+24),home=player('home',12,17);
+  const ctx=fakeCtx([out,home]),sys=system();
+  ctx.round.index=3;ctx.round.phaseEndsTick=ticks(30);
+  const lead=returnTicks(Math.hypot(out.x-sys.state.wall.x,out.y-sys.state.wall.y));
+  assert.ok(lead>HORN_LEAD&&lead<ticks(30),`lead ${lead}`);
+  run(ctx,sys,ticks(30)-lead-1);
+  assert.equal(ctx.events.filter(e=>e.type==='horn').length,0);
+  run(ctx,sys,1);
+  const horns=ctx.events.filter(e=>e.type==='horn');
+  assert.equal(horns.length,1);
+  assert.ok(horns[0].type==='horn'&&horns[0].endsTick===ticks(30)&&(HORN_LINES as readonly string[]).includes(horns[0].line!));
+  assert.equal(sys.state.hornEndsTick,ticks(30));
+  // Nobody out: plain HORN_LEAD.
+  const ctx2=fakeCtx([home]),sys2=system();ctx2.round.index=2;ctx2.round.phaseEndsTick=ticks(30);
+  run(ctx2,sys2,ticks(30)-HORN_LEAD-1);assert.equal(ctx2.events.filter(e=>e.type==='horn').length,0);
+  run(ctx2,sys2,1);assert.equal(ctx2.events.filter(e=>e.type==='horn').length,1);
+});
+
+test('a hero 150 units out who leaves on the horn is back in the camp before the round (endless map)',()=>{
+  const terrain=new TerrainField(4242,{world:'infinito'});
+  const sys=createStonewardsSystem({terrain,extendPrepare:(c,endsTick)=>{c.round.phaseEndsTick=endsTick;}});
+  const w=sys.state.wall;
+  // A straight way home (no lake on the line), so the test measures the horn, not the pathing.
+  let start:{x:number;y:number}|undefined;
+  for(let deg=0;deg<360&&!start;deg+=5){
+    const a=deg*Math.PI/180,ok=Array.from({length:600},(_,i)=>({x:w.x+Math.cos(a)*(150-i*.25),y:w.y+Math.sin(a)*(150-i*.25)})).every(p=>walkable(p,terrain));
+    if(ok)start={x:w.x+Math.cos(a)*150,y:w.y+Math.sin(a)*150};
+  }
+  assert.ok(start,'a clear line home');
+  const hero=player('far',start!.x,start!.y),ctx=fakeCtx([hero]);
+  (ctx as {terrain:TerrainField}).terrain=terrain;
+  ctx.round.index=4;ctx.round.phaseEndsTick=ticks(30);
+  let hornTick=-1;
+  for(let t=0;t<ticks(90)&&ctx.tick<ctx.round.phaseEndsTick;t++){
+    ctx.tick++;sys.step(ctx);
+    if(hornTick<0&&ctx.events.some(e=>e.type==='horn'))hornTick=ctx.tick;
+    if(hornTick>=0)Object.assign(hero,moveDirection(hero,{x:w.x-hero.x,y:w.y-hero.y},1/20,terrain));
+  }
+  assert.equal(hornTick,1,'sounds at once: 20 s were never enough');
+  assert.ok(ctx.round.phaseEndsTick>ticks(48),`stretched to ${ctx.round.phaseEndsTick/20} s`);
+  assert.ok(ctx.round.phaseEndsTick<=MAX_PREPARE_TICKS,'never past the cap');
+  assert.ok(Math.hypot(hero.x-w.x,hero.y-w.y)<=CAMP_RADIUS,`home with ${(Math.hypot(hero.x-w.x,hero.y-w.y)).toFixed(1)} u to go`);
+});
+
+test('the horn never stretches past the cap, nor in the opening, nor twice',()=>{
+  const sys=createStonewardsSystem({terrain:defaultTerrain,extendPrepare:(c,endsTick)=>{c.round.phaseEndsTick=endsTick;}});
+  const far=player('far',12,12+400),ctx=fakeCtx([far]);
+  ctx.round.index=1;ctx.round.phaseEndsTick=ticks(3);
+  run(ctx,sys,ticks(3));
+  assert.equal(ctx.round.phaseEndsTick,ticks(3),'opening countdown: no horn, no stretch');
+  ctx.round.phase='wave';run(ctx,sys,2);
+  ctx.round.index=2;ctx.round.phase='prepare';ctx.round.phaseEndsTick=ctx.tick+ticks(30);
+  const start=ctx.tick+1;
+  run(ctx,sys,1);
+  assert.equal(ctx.round.phaseEndsTick,start+MAX_PREPARE_TICKS,'capped from the first tick of the intermission');
+  run(ctx,sys,ticks(10));
+  assert.equal(ctx.events.filter(e=>e.type==='horn').length,1);
+});
+
+test('the forge works only inside the camp',()=>{
+  const sys=system(),w=sys.state.wall;
+  const out=player('out',w.x,w.y+CAMP_RADIUS+.5),in_=player('in',w.x,w.y+CAMP_RADIUS-.5);
+  const ctx=fakeCtx([out,in_]);
+  sys.state.balance={coco:20,pedra:20};w.hp=10;
+  assert.deepEqual(sys.buy(ctx,'out','reparo'),{ok:false,reason:'away'});
+  assert.deepEqual(sys.state.balance,{coco:20,pedra:20});
+  assert.equal(sys.buy(ctx,'in','reparo').ok,true);
+  assert.ok(FORGE_REFUSALS.away&&FORGE_REFUSALS.balance);
+});
+
+test('D-013: the forge says one line per player every 2 s; purchases still apply',()=>{
+  const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:1}],passives:[]}}),b=player('b',12.4,17);
+  const ctx=fakeCtx([a,b]),sys=system();
+  sys.state.balance={coco:99,pedra:99};sys.state.wall.hp=10;
+  assert.ok(sys.buy(ctx,'a','reparo').ok);assert.ok(sys.buy(ctx,'a','gambiarra').ok);assert.ok(sys.buy(ctx,'b','torre-chinelo').ok);
+  let says=ctx.events.filter(e=>e.type==='say');
+  assert.deepEqual(says.map(e=>e.type==='say'&&e.source),['a','b']);
+  run(ctx,sys,SAY_GAP);
+  assert.ok(sys.buy(ctx,'a','reparo').ok);
+  says=ctx.events.filter(e=>e.type==='say');assert.equal(says.length,3);
+});
+
+test('siegeContact:false: the 046A contact siege never hurts the wall (D-017)',()=>{
+  const ctx=fakeCtx([player('a',12,17)],'wave'),sys=system({siegeContact:false});
+  const w=sys.state.wall;
+  ctx.enemies.set('s1',enemy('s1',w.x+WALL_RADIUS,w.y,{memory:{[SIEGE_FLAG]:1}}));
+  run(ctx,sys,SIEGE_HIT_COOLDOWN*5);
+  assert.equal(w.hp,w.maxHp);
+});
+
+/** Island room simulation with the whole run wired (assemble.ts), in the wave of round 2. */
+function runSim(players=1){
+  const s=new Simulation(DEFAULT_SEED);
+  for(let i=0;i<players;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
+  s.resetRun();
+  return s;
+}
+
+test('E8 integrated: a siege enemy on the wall deals exactly its damage per contact cooldown, never double; others ignore it',()=>{
+  const s=runSim(1),w=s.world,wall=s.run.stonewards.state.wall;
+  // Keep the director out (no waves), the only player far on the island and unhurt.
+  s.run.director.state.stage='done';
+  const p=s.players.get('p0')!;Object.assign(p,{x:4,y:12});
+  const siege=createEnemy(w,'gosma',{x:wall.x+WALL_RADIUS+.3,y:wall.y},1);siege.memory={[SIEGE_FLAG]:1};
+  const plain=createEnemy(w,'gosma',{x:wall.x,y:wall.y-WALL_RADIUS-.3},1);
+  const def=enemyDef('gosma'),hits:number[]=[];
+  for(let t=0;t<def.contactCooldown*6+10;t++){
+    p.hp=p.stats.maxHp;p.invulnerableUntil=w.tick+5;p.build.weapons=[];
+    const before=wall.hp;s.step();if(wall.hp<before)hits.push(before-wall.hp);
+  }
+  assert.ok(hits.length>=6,`hits ${hits.length}`);
+  assert.ok(hits.every(h=>h===siege.damage),`each hit is one gosma bite: ${hits.join(',')}`);
+  assert.ok(hits.length<=Math.ceil((def.contactCooldown*6+10)/def.contactCooldown),'one hit per contact cooldown, never two paths');
+  assert.ok(Math.hypot(plain.x-wall.x,plain.y-wall.y)>WALL_RADIUS+plain.radius+.5,'the plain gosma left the wall for the player');
+});
+
+test('the wall falling is a defeat exactly once, and the D-016 boss blow still wins a same-tick tie',()=>{
+  const s=runSim(2),wall=s.run.stonewards.state.wall;
+  s.run.director.state.stage='done';
+  wall.hp=3;
+  const siege=createEnemy(s.world,'tio-pave',{x:wall.x+WALL_RADIUS+.3,y:wall.y},1);siege.memory={[SIEGE_FLAG]:1};
+  for(const p of s.players.values())Object.assign(p,{x:4,y:12});
+  for(let t=0;t<40&&!s.outcome;t++)s.step();
+  // The director is 'done' here (runEnded): the D-016 rule blocks the defeat, like a boss already down.
+  assert.equal(s.outcome,undefined);assert.equal(s.run.stonewards.state.wallDown,true);
+  const s2=runSim(2),wall2=s2.run.stonewards.state.wall;
+  let outcomes=0;
+  // A wave of round 3 with the director frozen (no spawns): only the siege enemy and the wall matter.
+  (s2.run.director as {step:(ctx:unknown)=>void}).step=()=>{};
+  s2.run.director.state.stage='wave';Object.assign(s2.world.round,{index:3,phase:'wave',phaseEndsTick:99999});
+  wall2.hp=3;
+  const e=createEnemy(s2.world,'tio-pave',{x:wall2.x+WALL_RADIUS+.3,y:wall2.y},1);e.memory={[SIEGE_FLAG]:1};
+  for(const p of s2.players.values())Object.assign(p,{x:4,y:12});
+  for(let t=0;t<60;t++){const before=s2.outcome;s2.step();if(s2.outcome&&!before)outcomes++;}
+  assert.equal(s2.outcome,'defeat');assert.equal(outcomes,1);
+  assert.equal(s2.run.revive.defeated,false,'not a team wipe: the wall');
 });

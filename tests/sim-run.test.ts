@@ -246,7 +246,7 @@ test('unassisted run (bots move and take defaults, no kill helper) ends with exa
     assert.ok(r.outcome==='victory'||r.outcome==='defeat');
     assert.equal(sim.outcome,r.outcome);
     if(r.outcome==='victory')assert.ok(sim.run.boss.bossDefeated(sim.world));
-    else assert.equal(sim.run.revive.defeated,true);
+    else assert.ok(sim.run.revive.defeated||sim.run.stonewards.state.wallDown,'a defeat is the team down or the wall down (VGM-046B)');
   }
 });
 

@@ -1,59 +1,106 @@
-/** Gather nodes from the island's obstacles and proximity gathering during the intermission. */
-import type {Obstacle} from '../../world.ts';
+/**
+ * Gather nodes (base-stonewards-mapa): every obstacle of the map is a node, coco on palms and trees, pedra on rocks.
+ * - Island: its 16 obstacles (ids `no-<kind>-<i>`, as in 046A).
+ * - Endless world: the obstacles of each chunk, a pure function of (seed, cx, cy) (chunks.ts), with ids
+ *   `no-<cx>_<cy>-<i>`: deterministic per seed and chunk, and free until somebody stands next to one.
+ * A node's value (units per unit of work) grows with its distance from the base (rules.ts nodeValue). Only nodes
+ * somebody worked this round live in the state; refilling at each intermission is clearing that list.
+ */
+import {obstacles as ISLAND_OBSTACLES,worldBase,type Obstacle,type Point} from '../../world.ts';
+import {CHUNK_SIZE,MAX_OBSTACLE_RADIUS} from '../../terrain/chunks.ts';
+import type {TerrainField} from '../../terrain/field.ts';
 import type {SimContext} from '../types.ts';
 import {ticks} from '../types.ts';
 import {isStanding} from '../revive.ts';
+import {nodeValue} from './rules.ts';
 import {bump,type ResourceKind,type ResourceNode,type StonewardsState} from './state.ts';
 
-/** Units per node per round. Rocks are slower but give more. */
+export {DEPLETED_LINES,NODE_NAMES,nodeValue} from './rules.ts';
+
+/** Units of work per node per round. Rocks are slower but give more. */
 export const NODE_CAPACITY:Readonly<Record<ResourceKind,number>>=Object.freeze({coco:4,pedra:6});
 /** Gatherer-ticks for one unit. Two gatherers on one node finish twice as fast, never twice the units. */
 export const WORK_PER_UNIT:Readonly<Record<ResourceKind,number>>=Object.freeze({coco:ticks(.8),pedra:ticks(1.2)});
 /** Reach beyond the obstacle's own radius. */
 export const GATHER_REACH=.9;
+/** Farthest a node's centre can be from a gatherer (largest obstacle plus the reach). */
+export const MAX_GATHER_DISTANCE=MAX_OBSTACLE_RADIUS+GATHER_REACH;
+/** Endless world guard: chunk coordinates outside this never hold nodes (chunks.ts WORLD_LIMIT). */
+const CHUNK_LIMIT=Math.floor(1_000_000/CHUNK_SIZE);
 
-export const NODE_NAMES:Readonly<Record<ResourceKind,string>>=Object.freeze({coco:'Coco',pedra:'Pedra'});
-/** pt-BR jokes the HUD may show when a node runs dry. */
-export const DEPLETED_LINES:Readonly<Record<ResourceKind,readonly string[]>>=Object.freeze({
-  coco:['Coqueiro pelado. Respeita o coqueiro.','Acabou o coco, só sobrou a água de memória.','Esse coqueiro entrou de férias.'],
-  pedra:['Pedra zerada. Agora é só pedregulho emocional.','Minerou até a alma da rocha.','Essa pedra virou areia de tanto apanhar.'],
-});
+/** What a node is, without its round state. */
+export interface NodeInfo extends Point {id:string;kind:ResourceKind;radius:number;value:number;capacity:number}
 
-export function nodeKind(o:Obstacle):ResourceKind{return o.kind==='rock'?'pedra':'coco';}
+export function nodeKind(o:Pick<Obstacle,'kind'>):ResourceKind{return o.kind==='rock'?'pedra':'coco';}
 
-/** Deterministic node list in obstacle order: coco on palms/trees, pedra on rocks. */
-export function createNodes(source:readonly Obstacle[]):ResourceNode[]{
-  return source.map((o,i)=>{
-    const kind=nodeKind(o),capacity=NODE_CAPACITY[kind];
-    return {id:`no-${kind}-${i}`,kind,x:o.x,y:o.y,radius:o.radius,remaining:capacity,capacity,work:0,workBy:{}};
-  });
-}
-
-export function refillNodes(state:StonewardsState){
-  for(const n of state.nodes){n.remaining=n.capacity;n.work=0;n.workBy={};}
+function info(id:string,o:Obstacle|{x:number;y:number;radius:number;kind:Obstacle['kind']},base:Point):NodeInfo{
+  const kind=nodeKind(o);
+  return {id,kind,x:o.x,y:o.y,radius:o.radius,value:nodeValue(Math.hypot(o.x-base.x,o.y-base.y)),capacity:NODE_CAPACITY[kind]};
 }
 
 /**
- * One tick of gathering. Only call during 'prepare'. Each standing player works the nearest
- * non-empty node in reach; units go to the team balance and are credited in proportion to the work
- * each gatherer put into them.
+ * Nodes whose centre is within `reach` of `p`, in a fixed order (island order; endless: chunk rows, then chunk
+ * columns, then generation order). `source` replaces the island's obstacles (tests).
  */
-export function gatherStep(ctx:SimContext,state:StonewardsState){
+export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,source?:readonly Obstacle[]):NodeInfo[]{
+  const out:NodeInfo[]=[];
+  if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!(reach>=0))return out;
+  const base=worldBase(terrain),r2=reach*reach,chunks=terrain?.chunks;
+  if(!chunks||source){
+    const list=source??ISLAND_OBSTACLES;
+    list.forEach((o,i)=>{const dx=o.x-p.x,dy=o.y-p.y;if(dx*dx+dy*dy<=r2)out.push(info(`no-${nodeKind(o)}-${i}`,o,base));});
+    return out;
+  }
+  const cx0=Math.max(-CHUNK_LIMIT,Math.floor((p.x-reach)/CHUNK_SIZE)),cx1=Math.min(CHUNK_LIMIT,Math.floor((p.x+reach)/CHUNK_SIZE));
+  const cy0=Math.max(-CHUNK_LIMIT,Math.floor((p.y-reach)/CHUNK_SIZE)),cy1=Math.min(CHUNK_LIMIT,Math.floor((p.y+reach)/CHUNK_SIZE));
+  for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){
+    chunks.chunk(cx,cy).obstacles.forEach((o,i)=>{const dx=o.x-p.x,dy=o.y-p.y;if(dx*dx+dy*dy<=r2)out.push(info(`no-${cx}_${cy}-${i}`,o,base));});
+  }
+  return out;
+}
+
+/** Units of work left on a node this round (full when nobody touched it). */
+export function remainingOf(state:StonewardsState,node:NodeInfo){
+  const touched=state.nodes.find(n=>n.id===node.id);
+  return touched?touched.remaining:node.capacity;
+}
+/** The node's round state, created on first touch. */
+export function touch(state:StonewardsState,node:NodeInfo):ResourceNode{
+  let n=state.nodes.find(t=>t.id===node.id);
+  if(!n){n={...node,remaining:node.capacity,work:0,workBy:{}};state.nodes.push(n);}
+  return n;
+}
+
+/** New round: every node is full again (nobody's work survives the wave). */
+export function refillNodes(state:StonewardsState){state.nodes.length=0;}
+
+/** A unit came out of a node: who gathered it, which node and whether that emptied it (for the depleted joke). */
+export interface Gathered {player:string;node:ResourceNode;emptied:boolean}
+
+/**
+ * One tick of gathering. Only call during 'prepare'. Each standing player works the nearest non-empty node in reach;
+ * each finished unit adds the node's value to the team balance, credited to the gatherers in proportion to their work.
+ */
+export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly Obstacle[]):Gathered[]{
+  const done:Gathered[]=[];
   const ids=[...ctx.players.keys()].sort();
   for(const id of ids){
     const p=ctx.players.get(id)!;
     if(!isStanding(p))continue;
-    let best:ResourceNode|undefined,bestDist=Infinity;
-    for(const n of state.nodes){
-      if(n.remaining<=0)continue;
+    let best:NodeInfo|undefined,bestDist=Infinity;
+    for(const n of nodesNear(ctx.terrain,p,MAX_GATHER_DISTANCE,source)){
+      if(remainingOf(state,n)<=0)continue;
       const d=Math.hypot(p.x-n.x,p.y-n.y);
       if(d<=n.radius+GATHER_REACH&&d<bestDist){best=n;bestDist=d;}
     }
     if(!best)continue;
-    best.work++;bump(best.workBy,id,1);
-    if(best.work<WORK_PER_UNIT[best.kind])continue;
-    for(const by of Object.keys(best.workBy).sort())bump(state.gathered,by,best.workBy[by]/best.work);
-    best.work=0;best.workBy={};best.remaining--;
-    state.balance[best.kind]++;
+    const node=touch(state,best);
+    node.work++;bump(node.workBy,id,1);
+    if(node.work<WORK_PER_UNIT[node.kind])continue;
+    for(const by of Object.keys(node.workBy).sort())bump(state.gathered,by,node.value*node.workBy[by]/node.work);
+    node.work=0;node.workBy={};node.remaining--;
+    state.balance[node.kind]+=node.value;
+    done.push({player:id,node,emptied:node.remaining<=0});
   }
+  return done;
 }

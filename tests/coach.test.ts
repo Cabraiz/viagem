@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Coach,COACH_KEY,DONE_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,WALK_DISTANCE,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson} from '../src/game/hud/coach.ts';
+import {Coach,COACH_KEY,DONE_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson} from '../src/game/hud/coach.ts';
 import {fakeView} from '../src/game/hud/fixtures.ts';
 import type {RunView} from '../src/game/sim/view.ts';
 
@@ -133,4 +133,33 @@ test('storage: once per phone, legacy hints count, and a storage that throws onl
 test('the coach sends nothing to the room and pauses nobody: no net, sim or timer imports',()=>{
   const src=readFileSync(new URL('../src/game/hud/coach.ts',import.meta.url),'utf8');
   assert.doesNotMatch(src,/from '\.\.\/net\/|from '\.\.\/sim\/(?!view)|setTimeout|setInterval|send\(/);
+});
+
+test('"andar" from the first second (round 1 prepare too) and over the street banner; the others wait for the banner',()=>{
+  resetSessionMemory();
+  const coach=new Coach(memory());
+  const prep=fakeView('prepare',1);
+  const start:RunView={...prep,round:{...prep.round!,index:1},offers:[],pickups:[],events:[]};
+  assert.deepEqual(coach.step(input(start,{banner:true}),0),{lesson:'walk',done:false},'the "Intervalo!" banner does not hold "andar"');
+  assert.equal(LESSONS.walk.overBanner,true);
+  for(const lesson of LESSON_ORDER.filter(l=>l!=='walk'))assert.ok(!LESSONS[lesson].overBanner,`${lesson} waits for the banner`);
+  // XP waits for the banner to go, and asks only for drops near the hero.
+  resetSessionMemory();
+  const walked=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
+  const drops=round1({pickups:[xpDrop]});
+  assert.equal(walked.step(input(drops,{banner:true}),0),undefined,'the round name first');
+  assert.equal(walked.step(input(drops),100)?.lesson,'xp');
+  assert.equal(wants('xp',input(round1({pickups:[{...xpDrop,x:XP_NEAR+5}]})),true),false,'a drop off screen does not call the hint');
+});
+
+test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk is measured from where it landed',()=>{
+  resetSessionMemory();
+  const coach=new Coach(memory());
+  coach.step(input(round1(),{hero:{x:0,y:0}}),0);
+  coach.step(input(round1(),{hero:{x:SNAP_DISTANCE+3,y:0}}),50);
+  assert.equal(coach.done.has('walk'),false,'teleported, not walked');
+  coach.step(input(round1(),{hero:{x:SNAP_DISTANCE+3+WALK_DISTANCE/2,y:0}}),100);
+  assert.equal(coach.done.has('walk'),false);
+  coach.step(input(round1(),{hero:{x:SNAP_DISTANCE+3+WALK_DISTANCE+.1,y:0}}),150);
+  assert.ok(coach.done.has('walk'),'then a real step counts');
 });

@@ -23,10 +23,12 @@ export const LESSON_ORDER:readonly Lesson[]=['rescue','walk','chip','xp','gather
 
 export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
   /** Most time this hint may stay on screen in one run (ms); undefined: while it makes sense. */
-  maxMs?:number}
+  maxMs?:number;
+  /** Takes the slot from the street banner (round name, "Intervalo!", a zueira event): the first thing a novice needs. */
+  overBanner?:boolean}
 /** House voice (revisao-visual §2.6): short, informal imperative, sentence case; the instruction is dry. */
 export const LESSONS:Readonly<Record<Lesson,LessonCopy>>={
-  walk:{text:'Arrasta o dedão pra andar',sub:'A arma atira sozinha',icon:'dedao'},
+  walk:{text:'Arrasta o dedão pra andar',sub:'A arma atira sozinha',icon:'dedao',overBanner:true},
   xp:{text:'Passa nas gotinhas de XP',sub:'Elas sobem o seu nível',icon:'gota',maxMs:9000},
   chip:{text:'Toca pra escolher melhoria',icon:'chip',maxMs:9000},
   rescue:{text:'Encosta no caído pra resgatar',sub:'Leva 3 s',icon:'boia'},
@@ -40,6 +42,10 @@ export const GAP_MS=700;
 export const WALK_DISTANCE=1.2;
 /** A gather node near the hero (world units) with work in progress means the hero is gathering. */
 export const GATHER_NEAR=2.5;
+/** XP drops farther than this from the hero (world units, about half a portrait screen) do not call the XP hint. */
+export const XP_NEAR=8;
+/** The hero jumping this far between two views is a snap (spawn, reconnection), not a step: the walk is measured anew. */
+export const SNAP_DISTANCE=2.5;
 
 export const COACH_KEY='viagem:dicas';
 /** Hints of earlier cards: a phone that saw them does not see them again. */
@@ -78,8 +84,10 @@ export interface CoachInput {
   hero?:{x:number;y:number};
   /** The "+N" chip is on screen in combat. */
   chip:boolean;
-  /** Another row holds the announcement slot (round banner, notice, alert): the hint waits. */
+  /** Another row holds the announcement slot (notice, alert, kill-cam) or a window is open: the hint waits. */
   blocked:boolean;
+  /** The street banner (round name, "Intervalo!", zueira event) is up: only an overBanner hint takes the slot from it. */
+  banner?:boolean;
 }
 export interface CoachShow {lesson:Lesson;done:boolean}
 
@@ -90,9 +98,11 @@ export function wants(lesson:Lesson,input:CoachInput,walked:boolean):boolean{
   const standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed&&me.hp>0;
   if(!standing||!round)return false;
   const wave=round.phase==='wave';
+  const near=(p:{x:number;y:number})=>!input.hero||Math.hypot(p.x-input.hero.x,p.y-input.hero.y)<=XP_NEAR;
   switch(lesson){
-    case 'walk':return wave;
-    case 'xp':return wave&&walked&&view.pickups.some(p=>p.kind==='xp');
+    // From the first second of the run (round 1's short prepare included): the 1st step should come in ≤ 3 s (UX-1).
+    case 'walk':return wave||round.phase==='prepare';
+    case 'xp':return wave&&walked&&view.pickups.some(p=>p.kind==='xp'&&near(p));
     case 'chip':return wave&&input.chip;
     case 'rescue':return view.players.some(p=>p.id!==localId&&!!p.downed&&!p.eliminated&&p.online);
     case 'gather':return round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
@@ -125,6 +135,7 @@ export class Coach {
   /** Where the hero stood when the walk hint first showed (the distance is measured from here). */
   private walkOrigin?:{x:number;y:number};
   private pendingDid=new Set<Lesson>();
+  private lastHero?:{x:number;y:number};
   private readonly storage:Store|undefined;
   constructor(storage:Store|undefined=defaultStore()){this.storage=storage;this.done=loadDone(storage);}
 
@@ -145,19 +156,25 @@ export class Coach {
     // Actions first: a tap or an event while its hint shows turns into the check; any other time it is just learned.
     for(const lesson of this.pendingDid)this.learn(lesson,now);
     this.pendingDid.clear();
-    // The walk origin is taken the first time the walk hint could show, so a novice standing 15 s still counts from there.
-    if(!this.done.has('walk')&&!this.walkOrigin&&input.hero&&wants('walk',input,false))this.walkOrigin={...input.hero};
+    // The walk origin is taken the first time the walk hint could show, so a novice standing 15 s still counts from there;
+    // a snap of the predicted hero (spawn, reconnection) is not a step, so it re-anchors the origin.
+    const hero=input.hero,last=this.lastHero;this.lastHero=hero&&{...hero};
+    if(!this.done.has('walk')&&hero){
+      if(this.walkOrigin&&last&&Math.hypot(hero.x-last.x,hero.y-last.y)>=SNAP_DISTANCE)this.walkOrigin={...hero};
+      if(!this.walkOrigin&&wants('walk',input,false))this.walkOrigin={...hero};
+    }
+    const held=(lesson:Lesson)=>input.blocked||(!!input.banner&&!LESSONS[lesson].overBanner);
     for(const lesson of LESSON_ORDER)if(!this.done.has(lesson)&&didAction(lesson,input,this.walkOrigin))this.learn(lesson,now);
     const cur=this.current;
     if(cur){
       if(cur.doneAt!==undefined){
         // The check keeps its clock but gives the slot away at once to any other row (one row at a time).
-        if(now-cur.doneAt<DONE_MS)return input.blocked?undefined:{lesson:cur.lesson,done:true};
+        if(now-cur.doneAt<DONE_MS)return held(cur.lesson)?undefined:{lesson:cur.lesson,done:true};
         // The gap runs from the end of the check, however seldom the views come.
         this.current=undefined;this.quietUntil=cur.doneAt+DONE_MS+GAP_MS;
       }else{
         const copy=LESSONS[cur.lesson];
-        const still=wants(cur.lesson,input,this.done.has('walk'))&&!input.blocked;
+        const still=wants(cur.lesson,input,this.done.has('walk'))&&!held(cur.lesson);
         if(still){
           const total=(this.shownMs.get(cur.lesson)??0)+dt;this.shownMs.set(cur.lesson,total);
           if(copy.maxMs===undefined||total<copy.maxMs)return {lesson:cur.lesson,done:false};
@@ -167,7 +184,7 @@ export class Coach {
     }
     if(input.blocked||now<this.quietUntil)return undefined;
     for(const lesson of LESSON_ORDER){
-      if(this.done.has(lesson))continue;
+      if(this.done.has(lesson)||held(lesson))continue;
       const max=LESSONS[lesson].maxMs;
       if(max!==undefined&&(this.shownMs.get(lesson)??0)>=max)continue;
       if(!wants(lesson,input,this.done.has('walk')))continue;
@@ -186,7 +203,7 @@ export class Coach {
     let changed=false;
     for(const [lesson,ms] of this.shownMs)if(ms>0&&!this.done.has(lesson)){this.done.add(lesson);changed=true;}
     if(changed)saveDone(this.done,this.storage);
-    this.shownMs.clear();this.current=undefined;this.walkOrigin=undefined;this.lastStep=undefined;this.quietUntil=0;
+    this.shownMs.clear();this.current=undefined;this.walkOrigin=undefined;this.lastHero=undefined;this.lastStep=undefined;this.quietUntil=0;
   }
 }
 

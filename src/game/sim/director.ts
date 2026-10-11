@@ -460,6 +460,31 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       endless(ctx)?{recycled:0,served:{}}:{});
     Object.assign(ctx.round,{phase:'wave',phaseEndsTick:ctx.tick+plan.durationTicks,remaining:plan.total});
     ctx.emit({type:'round',index,phase:'wave',name:theme.name,modifier:theme.modifierLabel});
+    // Only where the first bichos come from the off-screen ring (~25 s away): on the island they come from the coast in
+    // a few seconds, and an early level there only lands on the first contact.
+    if(plan.crumbs&&endless(ctx))layCrumbs(ctx,plan.crumbs);
+  }
+
+  /**
+   * Round 1 (VGM-056): a ring of XP drops around the team's middle, evenly spread with a little jitter, each on walkable
+   * ground (a few tries farther out, else skipped). Out of the magnet's reach, so a hero standing still never gets them.
+   */
+  function layCrumbs(ctx:SimContext,crumbs:NonNullable<RoundPlan['crumbs']>){
+    const team=anchorsOf(ctx);
+    const center=team.length?{x:team.reduce((s,p)=>s+p.x,0)/team.length,y:team.reduce((s,p)=>s+p.y,0)/team.length}:worldSpawn(ctx.terrain);
+    // A stream of its own, derived from the director's: the crumbs never shift the spawn plan of any round.
+    const r=new Rng((state.rng^0x056c0de5)>>>0);
+    const turn=r.range(0,Math.PI*2),[min,max]=crumbs.radius;
+    for(let i=0;i<crumbs.count;i++){
+      for(let attempt=0;attempt<4;attempt++){
+        const a=turn+i*2*Math.PI/crumbs.count+r.range(-.25,.25),d=r.range(min,max)+attempt*.5;
+        const at={x:center.x+Math.cos(a)*d,y:center.y+Math.sin(a)*d};
+        if(!walkable(at,ctx.terrain)||ctx.terrain.chunks&&!ctx.terrain.chunks.clear(at.x,at.y,MEMBER_CLEARANCE))continue;
+        const id=ctx.nextId('xp');
+        ctx.pickups.set(id,{id,kind:'xp',value:crumbs.value,x:at.x,y:at.y,spawnTick:ctx.tick});
+        break;
+      }
+    }
   }
 
   /** Cancels what has not spawned and walks the survivors back into the sea (endless: off screen, away from the nearest player). */

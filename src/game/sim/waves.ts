@@ -52,10 +52,18 @@ export interface RoundDef {
   boss?:{atSeconds:number};
   /** Names drawn for this round instead of the shared pool (elite and boss rounds keep their identity). */
   fixedNames?:readonly string[];
+  /**
+   * XP drops laid around the team when the wave starts (VGM-056, the first round teaches): the gosmas of the endless
+   * world need ~25 s to arrive, so the first "+N" chip would come late or never; these few drops, a short walk away
+   * and on screen, make walk, pick XP and the chip happen in the first seconds of moving. Team total, not per player.
+   */
+  crumbs?:{count:number;value:number;radius:readonly [number,number]};
 }
+/** Round 1's drops: one more than the first level needs (5 XP), so nobody hunts for the last one. */
+export const TUTORIAL_CRUMBS={count:6,value:1,radius:[2.5,4.5] as const};
 
 export const ROUNDS:readonly RoundDef[]=[
-  {index:1,budget:9,weights:{gosma:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35},
+  {index:1,budget:9,weights:{gosma:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,crumbs:TUTORIAL_CRUMBS},
   {index:2,budget:26,weights:{gosma:.75,pernilongo:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
   {index:3,budget:32,weights:{gosma:.6,pernilongo:.25,'tio-pave':.15},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
   {index:4,budget:46,weights:{gosma:.5,pernilongo:.2,'tio-pave':.15,fiscal:.15},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
@@ -213,6 +221,8 @@ export interface RoundPlan {
   side?:number;
   /** Flip the side every other group. */
   alternate?:boolean;
+  /** XP drops laid around the team at the wave start (RoundDef.crumbs). */
+  crumbs?:RoundDef['crumbs'];
 }
 
 const avgThreat=(w:Partial<Record<RegularKind,number>>)=>{
@@ -293,5 +303,6 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):
     retreat:!def.boss,boss:!!def.boss,
     side:mod?.singleSide||mod?.alternateSide?rng.range(0,Math.PI*2):undefined,
     ...(mod?.alternateSide?{alternate:true}:{}),
+    ...(def.crumbs?{crumbs:def.crumbs}:{}),
   };
 }

@@ -18,7 +18,7 @@ import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts
 import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
-import {Coach,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
+import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -152,8 +152,13 @@ export class RunHud {
     const ended=this.el.classList.contains('rh-ended');
     // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no new hint while the
     // offer window is open (the LEVEI stamp is the moment there).
-    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-marquee:not([hidden]),.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen();
-    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked},now);
+    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen();
+    const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    const banner=!!marquee&&!marquee.hidden;
+    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked,banner},now);
+    // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
+    // does for a notice or the offer window.
+    if(show&&banner&&LESSONS[show.lesson].overBanner)marquee!.hidden=true;
     this.coachShow=show;
     this.coachRow.render(show,view.offers.length);
     const lesson=show&&!show.done?show.lesson:'';

@@ -66,7 +66,7 @@
    caption; "FEITO" is stamped on it (the stamp, the one show moment). Gives way to any notice (.rh-killcam-yield). */
 .rh-killcam{display:flex;align-items:stretch;width:min(100%,380px);height:82px}
 .rh-killcam[hidden],.rh-killcam.rh-killcam-yield{display:none}
-.rh-killcam-tv{flex:none;width:106px;box-sizing:border-box;border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:0 0 0 2px var(--c-papel),var(--s-1)}
+.rh-killcam-tv{flex:none;width:96px;box-sizing:border-box;border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:0 0 0 2px var(--c-papel),var(--s-1)}
 .rh-killcam-caption{position:relative;flex:1;min-width:0;margin-left:8px;padding:6px 10px 7px 12px;display:flex;flex-direction:column;justify-content:center;
   border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro);text-align:left}
 .rh-killcam-title{display:block;margin-right:62px;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-lilas)}
@@ -421,6 +421,7 @@
 .rh-result-shame-title{display:block;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-lilas)}
 .rh-result-shame-joke{display:block;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
 /* The same moment as the first chip of that player's card, when the notice would make the six cards scroll. */
+.rh.rh.rh .rh-award.rh-award-shame{padding-left:20px}
 .rh-award-shame{position:relative;padding-left:20px;background:var(--c-papel);border-color:var(--c-breu);transform:rotate(-.6deg)}
 .rh-award-shame::before{content:'';position:absolute;left:6px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:var(--r-circulo);background:var(--c-breu)}
 .rh-award-shame .rh-award-emoji :is(img,svg){width:18px;height:18px;vertical-align:-4px;object-fit:contain}

@@ -37,8 +37,8 @@ export const EVENT_DELAY:readonly [number,number]=[8,16];
  * and a hero rescued in the middle only gets what is left (the drops stop when the total is out).
  */
 export const RAIN_EVERY=5,RAIN_SHARE=.45,RAIN_FIRST=3,RAIN_PER_HERO=16,RAIN_RADIUS:readonly [number,number]=[1.4,5.5],BOLETO_LIFETIME_SECONDS=12;
-/** The blackout waits (inside its 8–16 s window) for critters to look at: at least this many within this distance of most standing heroes. */
-export const APAGAO_CROWD=4,APAGAO_REACH=8;
+/** The blackout waits (inside its 8–16 s window) for critters to look at: at least this many within this distance of half the standing heroes. */
+export const APAGAO_CROWD=3,APAGAO_REACH=9;
 /** Kill-cam: never two rounds in a row, at most this many per run (VGM-053B design review D5). */
 export const KILLCAM_MAX_PER_RUN=4;
 /** Sale: coxinhas per standing hero, how far from them. */
@@ -158,12 +158,12 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
       drop(ctx,'xp',value,at,BOLETO_LIFETIME_SECONDS,BOLETO);
     }
   }
-  /** Most standing heroes have APAGAO_CROWD critters within APAGAO_REACH: there are eyes to see in the dark. */
+  /** Half the standing heroes have APAGAO_CROWD critters within APAGAO_REACH: there are eyes to see in the dark. */
   function crowded(ctx:SimContext){
     const team=heroes(ctx);if(!team.length)return false;
     let ok=0;
     for(const p of team){let n=0;for(const e of ctx.enemies.values())if((e.x-p.x)**2+(e.y-p.y)**2<=APAGAO_REACH**2&&++n>=APAGAO_CROWD)break;if(n>=APAGAO_CROWD)ok++;}
-    return ok*2>team.length;
+    return ok*2>=team.length;
   }
 
   return {
@@ -197,7 +197,8 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
       if(state.triggerTick!==undefined&&ctx.tick>=state.triggerTick&&!state.active&&round.remaining>0&&heroes(ctx).length){
         // The blackout waits for critters around (eyes to see); past the window it passes to the next eligible round.
         if(state.plan[0]?.kind!=='apagao'||crowded(ctx))fire(ctx,round.index);
-        else if(ctx.tick>(state.waveTick??ctx.tick)+ticks(EVENT_DELAY[1]))state.triggerTick=undefined;
+        // No critters came: this round has no event, and the blackout goes behind the next planned kind (it never blocks the others).
+        else if(ctx.tick>(state.waveTick??ctx.tick)+ticks(EVENT_DELAY[1])){state.triggerTick=undefined;if(state.plan.length>1)state.plan.push(state.plan.shift()!);}
       }
       save();
     },

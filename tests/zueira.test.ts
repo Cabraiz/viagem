@@ -194,14 +194,17 @@ test('the rain never gives more than 45% of the level: 6 heroes at level 2, 1 he
   assert.ok(rainXp(ctx)<=total+1e-6,`${rainXp(ctx)} of ${total}`);
 });
 
-test('the blackout waits for critters around (eyes to see), and passes on when none come', ()=>{
+test('the blackout waits for critters around (eyes to see), and never blocks the next event when none come', ()=>{
   const z=createZueira(4,{lab:{plan:[{round:2,kind:'apagao'},{round:3,kind:'promo'}],minGap:1}}),c=fakeCtx(),{ctx}=c;
   play(z,c,2,ticks(EVENT_DELAY[1])+40);
   assert.equal(z.state.fired.length,0,'no critter near the hero: no blackout in round 2');
-  Object.assign(ctx.round,{index:3,phase:'wave',remaining:5});
-  for(let i=0;i<4;i++)(ctx.enemies as Map<string,unknown>).set(`e${i}`,{id:`e${i}`,kind:'gosma',x:13+i*.3,y:12,hp:5});
+  assert.deepEqual(z.state.plan.map(p=>p.kind),['promo','apagao'],'the blackout goes behind the next kind');
+  play(z,c,3,ticks(EVENT_DELAY[1])+2);
+  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'promo']]);
+  Object.assign(ctx.round,{index:4,phase:'wave',remaining:5});
+  for(let i=0;i<3;i++)(ctx.enemies as Map<string,unknown>).set(`e${i}`,{id:`e${i}`,kind:'gosma',x:13+i*.3,y:12,hp:5});
   for(let i=0;i<ticks(EVENT_DELAY[1])+2;i++){ctx.tick++;z.step(ctx);}
-  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'apagao']]);
+  assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'promo'],[4,'apagao']]);
 });
 
 test('the blackout and the rain stop when the wave ends early', ()=>{

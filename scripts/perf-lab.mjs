@@ -76,10 +76,10 @@ async function scene(){
   cdp.on('Network.webSocketFrameSent',e=>{if(!counting)return;ws.out.n++;ws.out.bytes+=size(e.response);});
   await page.goto(web+'/');
   const joined=await page.evaluate(async([code,rooms])=>{
-    const {CoopClient}=await import('/src/game/net/client.ts');const {classes}=await import('/src/classes.ts');
+    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
     const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
     try{await c.join();}catch(e){return String(e.message);}
-    const {openExploration}=await import('/src/game/explore.ts');const {mountWaitingRoom}=await import('/src/game/lobby.ts');
+    const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');
     void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
     const layout=document.querySelector('dialog.explore-shell .explore-layout');if(layout)mountWaitingRoom(layout,c);
     return 'ok';
@@ -199,17 +199,17 @@ async function entry(){
   page.on('requestfinished',async r=>{const u=new URL(r.url());if(!/^\/(art|fonts)\//.test(u.pathname))return;try{files.push({path:u.pathname,bytes:(await r.sizes()).responseBodySize,at:Date.now()});}catch{}});
   const cdp=await ctx.newCDPSession(page);await cdp.send('Network.enable');
   await page.goto(web+'/');
-  await page.evaluate(async()=>{await Promise.all([import('/src/game/net/client.ts'),import('/src/classes.ts'),import('/src/game/explore.ts'),import('/src/game/lobby.ts'),import('/src/game/scene.ts')]);});
+  await page.evaluate(async()=>{await Promise.all([import('/src/client/net/client.ts'),import('/src/rules/classes.ts'),import('/src/client/explore.ts'),import('/src/client/lobby.ts'),import('/src/client/scene.ts')]);});
   await wait(500);files.length=0;
   if(LINKS[link])await cdp.send('Network.emulateNetworkConditions',{offline:false,...LINKS[link]});
   if(cpu>1)await cdp.send('Emulation.setCPUThrottlingRate',{rate:cpu});
   opened=Date.now();
   const joined=await page.evaluate(async([code,rooms])=>{
-    const {CoopClient}=await import('/src/game/net/client.ts');const {classes}=await import('/src/classes.ts');
+    const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
     const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
     try{await c.join();}catch(e){return String(e.message);}
     window.__t0=performance.now();
-    const {openExploration}=await import('/src/game/explore.ts');const {mountWaitingRoom}=await import('/src/game/lobby.ts');
+    const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');
     void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
     const layout=document.querySelector('dialog.explore-shell .explore-layout');if(layout)mountWaitingRoom(layout,c);
     // First frame drawn after the scene's create(): what the player sees instead of the loading line.

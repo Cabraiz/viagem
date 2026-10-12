@@ -8,9 +8,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {performance} from 'node:perf_hooks';
-import {Rng} from '../src/game/sim/rng.ts';
-import {NaiveIndex,SpatialHash,DEFAULT_CELL_SIZE} from '../src/game/sim/spatial.ts';
-import type {SpatialIndex} from '../src/game/sim/types.ts';
+import {Rng} from '../src/contract/rng.ts';
+import {NaiveIndex,SpatialHash,DEFAULT_CELL_SIZE} from '../src/sim/spatial.ts';
+import type {SpatialIndex} from '../src/contract/types.ts';
 
 type Enemy={id:string;x:number;y:number;radius:number};
 type Index=SpatialIndex<Enemy>;

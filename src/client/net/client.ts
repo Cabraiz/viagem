@@ -1,7 +1,9 @@
-import {defaultTerrain} from '../../maps/index.ts';
+import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
+import {loadCity} from './city-asset-loader.ts';
 import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,type Input,type Player} from '../../protocol/index.ts';
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,clientCatalog,parseWelcomeMap,checkClientMap,
+  type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {RunState} from '../../contract/index.ts';
 import type { Point } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
@@ -83,8 +85,31 @@ function frameBase(bytes:Uint8Array){
 }
 const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
   spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
+/**
+ * A map switch (welcome or {t:'map'}) waiting for the city download: what arrives meanwhile is replayed after it, in
+ * order. `welcome`: the held message is a welcome (first join or reconnection), so the seat is not applied yet.
+ */
+type MapWait={ws:WebSocket;queue:(object|ArrayBuffer)[];failed:boolean;welcome:boolean};
 export class CoopClient {
   terrain=defaultTerrain;
+  /**
+   * The Cidade Nevada this build ships ({id,version,hash} from public/maps/cidade-nevada.manifest.json), set before
+   * join() (lobby.ts); undefined when the manifest could not be read: the join then offers the endless map only.
+   */
+  cityRef?:MapRef&{bytes?:number};
+  /** The room's map as applied (welcome or {t:'map'}); an older room that does not say plays the endless map. */
+  map:MapRef=INFINITO_REF;
+  /** A map the room switched to whose asset is still downloading (progress 0..1), or did not arrive (`failed`, the text). */
+  mapLoad?:{ref:MapRef;progress:number;failed?:string};
+  /** Map switches applied after the welcome. */
+  mapSwitches=0;
+  /** Called when a {t:'map'} has been applied (terrain swapped). */
+  onMap:(map:MapRef)=>void=()=>{};
+  /** Downloads and decodes a city asset (city-asset-loader.ts); injectable for tests. Resolves undefined or the error text. */
+  loadCity:(ref:MapRef&{bytes?:number},onProgress:(fraction:number)=>void)=>Promise<string|undefined>=(ref,onProgress)=>loadCity(ref,onProgress);
+  private mapWait?:MapWait;
+  /** What this build can load, as sent in join.maps. */
+  get mapCatalog():MapCatalog{return new Map(clientCatalog(this.cityRef).map(r=>[r.id,{id:r.id,version:r.version,hash:r.hash}]));}
   run?:RunState;
   id='';token='';tick=0;rtt=0;connected=false;victory=false;
   players=new Map<string,Player>();
@@ -203,55 +228,37 @@ export class CoopClient {
     this.onStatus(this.token?'Reconectando à turma…':'Entrando na sala…');
     const url=new URL(`/room/${this.code}`,this.endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
     const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
-    const timeout=setTimeout(()=>ws.close(),8000);
-    ws.onopen=()=>{const kicked=this.token?undefined:this.kickedToken();this.out(ws,{t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})});};
+    const timeout=this.joinTimer=setTimeout(()=>ws.close(),8000);
+    ws.onopen=()=>{
+      const kicked=this.token?undefined:this.kickedToken();
+      const maps=clientCatalog(this.cityRef).map(r=>({id:r.id,version:r.version,hash:r.hash}));
+      this.out(ws,{t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,maps,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})});
+    };
     ws.onmessage=event=>{
       // A socket this client already replaced (or gave up on) says nothing any more.
       if(ws!==this.socket)return;
       this.lastMessage=performance.now();this.lastSeenAt=Date.now();
       if(this.initialized&&this.goneAway(ws,this.lastMessage))return;
-      if(this.initialized&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
+      // A welcome held for the city download keeps the socket alive too (the room drops a seat silent for 12 s).
+      if((this.initialized||this.mapWait?.ws===ws)&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
+        // Waiting for the city: frames wait too (they are of the new map); a failed wait drops them (resync later).
+        if(this.mapWait?.ws===ws){if(!this.mapWait.failed)this.mapWait.queue.push(data);return;}
         if(this.initialized&&ws===this.socket)this.frame(ws,data);
         return;
       }
       this.bytes+=event.data.length;
       let m:any;try{m=JSON.parse(event.data);}catch{return;}
-      if(m.t==='welcome'){
-        const terrain=terrainFor(m.world);
-        if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
-        this.terrain=terrain;
-        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
-        // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
-        this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
-        this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
-        // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
-        if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
-        this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
-        this.saveToken();
-        clearInterval(this.heartbeat);this.beatAt=performance.now();
-        this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
-      }
-      else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
-      else if(m.t==='pong'){this.rtt=Math.round(performance.now()-m.at);if(this.rtt<SETTLE_RTT_MS)this.backlog.settle(performance.now());}
-      else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
-      else if(m.t==='replaced')this.replaced(ws);
-      else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
-      else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
-      else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
-      else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
-      // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.
-      else if(m.t==='kicked'&&typeof m.message==='string'){
-        const token=this.token||this.kickedToken();
-        try{if(token)localStorage.setItem(KICKED_KEY+this.code,JSON.stringify({token,until:Number(m.until)||Date.now()}));}catch{}
-        this.kicked=true;this.forgetToken();this.fail(ws,m.message);
-      }
-      else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
+      if(m===null||typeof m!=='object')return;
+      if(this.mapWait?.ws===ws&&!this.mapWait.failed){this.mapWait.queue.push(m);return;}
+      this.message(ws,m);
     };
     ws.onclose=event=>{
       if(ws!==this.socket)return;
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
+      // A city download for this socket goes on (the loader keeps it), but what it held belongs to a dead connection.
+      if(this.mapWait?.ws===ws){this.mapWait=undefined;this.mapLoad=undefined;}
       if(this.stopped)return;
       if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
       // Left on purpose while hidden: back when the app is (visibility()).
@@ -268,6 +275,122 @@ export class CoopClient {
       this.retry=setTimeout(()=>this.connect(),retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS));
     };
     ws.onerror=()=>{};
+  }
+  /** The connect timer of the current socket (cleared by the welcome, or when the welcome waits for the city). */
+  private joinTimer?:ReturnType<typeof setTimeout>;
+  /**
+   * The room's map from a welcome or a {t:'map'}, checked against what this build ships (map-select.ts), or the text
+   * why not. A welcome without `map` comes from an older room: the endless map, accepted.
+   */
+  private roomMap(m:{map?:unknown},welcome:boolean):MapRef|string{
+    if(welcome&&m.map===undefined)return INFINITO_REF;
+    const parsed=parseWelcomeMap(m.map);
+    if(!parsed.ok)return welcome?parsed.text:UPDATE_NEEDED;
+    const check=checkClientMap(parsed.map,this.mapCatalog);
+    return check.ok?parsed.map:welcome?check.text:UPDATE_NEEDED;
+  }
+  /** The city ref to download before `world` can be built: a city this build ships but has not decoded yet. */
+  private cityToLoad(world:unknown):(MapRef&{bytes?:number})|undefined{
+    const w=world as {kind?:unknown;signature?:unknown}|undefined;
+    if(w?.kind!=='cidade'||typeof w.signature!=='string'||cityTerrainFor(w.signature))return undefined;
+    return this.cityRef?.hash===w.signature?this.cityRef:undefined;
+  }
+  /**
+   * Holds `m` (a welcome or a {t:'map'} of the city) and everything after it on this socket until the city is decoded,
+   * then handles them in order: the terrain is swapped before the next frame is read. A failed {t:'map'} download keeps
+   * the seat (the selector and the news strip say so) and drops frames; the next switch tries again. A failed download
+   * under a held welcome (first join or reconnection) ends here, with the download's text: there is no seat to keep.
+   *
+   * While a welcome waits (review cidade-09 F1) the heartbeat already runs (pings, so the room does not drop the seat
+   * at 12 s of silence) and the seat's id and token are kept at once: a socket lost meanwhile comes back to this seat
+   * with its token instead of joining as someone new.
+   */
+  private waitForCity(ws:WebSocket,m:{t?:unknown;id?:unknown;token?:unknown},ref:MapRef&{bytes?:number}){
+    const welcome=m.t==='welcome';
+    const wait:MapWait={ws,queue:[],failed:false,welcome};this.mapWait=wait;this.mapLoad={ref,progress:0};
+    if(welcome){
+      if(typeof m.id==='string'&&m.id)this.id=m.id;
+      if(typeof m.token==='string'&&m.token){this.token=m.token;this.saveToken();}
+      clearInterval(this.heartbeat);this.beatAt=performance.now();
+      this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
+    }
+    void this.loadCity(ref,progress=>{if(this.mapWait===wait&&!wait.failed)this.mapLoad={ref,progress};}).then(error=>{
+      if(this.mapWait!==wait||ws!==this.socket||this.stopped)return;
+      if(error){
+        wait.failed=true;wait.queue=[];this.mapLoad={ref,progress:0,failed:error};
+        // A welcome (first join or reconnection): not in the room, nothing to keep; the lobby or the HUD says why.
+        if(welcome){this.mapWait=undefined;this.fail(ws,error);return;}
+        this.onStatus(error);this.onNotice(error);return;
+      }
+      this.mapWait=undefined;this.mapLoad=undefined;
+      this.message(ws,m);
+      const rest=wait.queue;
+      for(let i=0;i<rest.length;i++){
+        if(ws!==this.socket||this.stopped)return;
+        // Another switch started while replaying: the rest waits for it.
+        const next=this.mapWait as MapWait|undefined;
+        if(next?.ws===ws&&!next.failed){next.queue.push(...rest.slice(i));return;}
+        const item=rest[i];
+        if(item instanceof ArrayBuffer){if(this.initialized&&!next)this.frame(ws,item);}
+        else this.message(ws,item);
+      }
+    });
+  }
+  /** {t:'map'} (cidade-09): the room switched maps in the lobby; the new terrain replaces the old before the next frame. */
+  private switchMap(ws:WebSocket,m:{t?:unknown;map?:unknown;world?:unknown}){
+    const map=this.roomMap(m,false);
+    if(typeof map==='string'){this.fail(ws,map);return;}
+    const city=this.cityToLoad(m.world);
+    if(city){this.waitForCity(ws,m,city);return;}
+    const terrain=terrainFor(m.world as Parameters<typeof terrainFor>[0]);
+    if(typeof terrain==='string'){this.fail(ws,terrain);return;}
+    this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
+    this.pending=[];this.samples=[];this.mapSwitches++;
+    this.onMap(map);
+  }
+  /** One JSON message from the room (after any city wait). */
+  private message(ws:WebSocket,m:any){
+    if(m.t==='welcome'){
+      if(m.protocol!==ROOM_PROTOCOL||!m.run){this.fail(ws,UPDATE_NEEDED);return;}
+      const map=this.roomMap(m,true);
+      if(typeof map==='string'){this.fail(ws,map);return;}
+      const city=this.cityToLoad(m.world);
+      // The download may outlast the 8 s connect timer: the loader has its own timeout.
+      if(city){clearTimeout(this.joinTimer);this.waitForCity(ws,m,city);return;}
+      const terrain=terrainFor(m.world);
+      if(typeof terrain==='string'){this.fail(ws,terrain);return;}
+      this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
+      this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
+      this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
+      // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
+      if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
+      this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
+      this.saveToken();
+      clearInterval(this.heartbeat);this.beatAt=performance.now();
+      this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
+    }
+    else if(m.t==='map'){if(this.initialized)this.switchMap(ws,m);}
+    else if(m.t==='run'&&m.run){
+      this.setRun(m.run,m.tick);
+      // The city never arrived and the round starts there: this phone cannot play it.
+      if(this.mapLoad?.failed&&this.run?.phase==='combat')this.fail(ws,this.mapLoad.failed);
+    }
+    else if(m.t==='pong'){this.rtt=Math.round(performance.now()-m.at);if(this.rtt<SETTLE_RTT_MS)this.backlog.settle(performance.now());}
+    else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
+    else if(m.t==='replaced')this.replaced(ws);
+    else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
+    else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
+    else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
+    // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.
+    else if(m.t==='kicked'&&typeof m.message==='string'){
+      const token=this.token||this.kickedToken();
+      try{if(token)localStorage.setItem(KICKED_KEY+this.code,JSON.stringify({token,until:Number(m.until)||Date.now()}));}catch{}
+      this.kicked=true;this.forgetToken();this.fail(ws,m.message);
+    }
+    else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
   }
   /** The character went to a newer connection (REPLACED_CLOSE): terminal here, token kept, no retry, so no tab ping-pong. */
   private replaced(ws:WebSocket){
@@ -365,10 +488,14 @@ export class CoopClient {
     ws.send(JSON.stringify(message));
     if(ws===this.socket)this.sentAt=performance.now();
   }
-  /** Nothing sent for KEEPALIVE_MS: an ack (or a ping before the first frame) from the message handler itself. */
+  /**
+   * Nothing sent for KEEPALIVE_MS: an ack (or a ping before the first frame, or while a welcome waits for the city: the
+   * last frame seq belongs to the previous connection) from the message handler itself.
+   */
   private keepalive(ws:WebSocket){
     if(ws.readyState!==WebSocket.OPEN)return;
-    if(this.ackSeq>0){this.ackSent=Math.max(this.ackSent,this.ackSeq);this.out(ws,{t:'ack',seq:this.ackSeq});}
+    const heldWelcome=this.mapWait?.ws===ws&&this.mapWait.welcome;
+    if(this.ackSeq>0&&!heldWelcome){this.ackSent=Math.max(this.ackSent,this.ackSeq);this.out(ws,{t:'ack',seq:this.ackSeq});}
     else this.out(ws,{t:'ping',at:performance.now()});
   }
   /** Standalone ack when no input carried it (events retire with it; frames are chained on the room side, N27). */
@@ -435,6 +562,15 @@ export class CoopClient {
   /** Whether this player owns the room (the post moves when the owner leaves for good). */
   get isOwner(){return !!this.id&&this.run?.owner===this.id;}
   rematch(){this.runCommand({t:'rematch'});}
+  /**
+   * Owner's map pick in the lobby (cidade-09): exactly {t:'setMap',map} (no round: map-select validateSetMap). The room
+   * answers everyone with {t:'map'}, or the owner with a notice. False when there is no open connection to send it on.
+   */
+  setMap(map:MapId){
+    const ws=this.socket;
+    if(!this.connected||ws?.readyState!==WebSocket.OPEN)return false;
+    this.out(ws,{t:'setMap',map});this.onCommand?.({t:'setMap'},true);return true;
+  }
   /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
   choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
   /** Playtest metrics only (dev/ux-metrics.ts, ?dev=1): every run command the player taps, and whether it left. Unset otherwise. */

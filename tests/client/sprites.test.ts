@@ -7,6 +7,9 @@ import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS} from '../../src/client/sprit
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 
+// Light under memory pressure (many test processes at once): no libvips operation cache, one libvips thread.
+sharp.cache(false);sharp.concurrency(1);
+
 test('all 36 class IDs have a transparent 18-frame sheet and a measured scale',async()=>{
   assert.equal(Object.keys(spriteCatalog).length,classes.length);
   for(const hero of classes){
@@ -203,16 +206,22 @@ test('4 directions: the local hero faces its joystick, so a 0.5 or 1 tile reconc
   }
 });
 
+const LAB='tests/fixtures/sprites-4dir/cidadao-comum.dir4.webp';
+/** The lab atlas decoded once (RGBA) for every test that needs its pixels; the importer calls still read the file. */
+let labDecoded:Promise<{data:Buffer,info:sharp.OutputInfo}>|undefined;
+const labPixels=()=>labDecoded??=sharp(LAB).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+/** A sharp pipeline over the decoded lab pixels: the same image as sharp(LAB), without decoding the file again. */
+const labImage=async()=>{const {data,info}=await labPixels();return sharp(data,{raw:{width:info.width,height:info.height,channels:4}});};
+
 test('figure boxes come measured in the catalog (no pixel reads in a match) and match the art',async()=>{
   for(const hero of classes){
     const {data,width,height}=await raw(`public/art/sprites/${hero.id}.webp`);
     assert.deepEqual(spriteCatalog[hero.id].figure,figureBox(data,width,height),hero.id);
   }
-  const lab=await raw(LAB);
-  assert.deepEqual(LAB_SHEETS['cidadao-comum'].figure,figureBox(lab.data,lab.width,lab.height));
+  const lab=await labPixels();
+  assert.deepEqual(LAB_SHEETS['cidadao-comum'].figure,figureBox(lab.data,lab.info.width,lab.info.height));
 });
 
-const LAB='tests/fixtures/sprites-4dir/cidadao-comum.dir4.webp';
 test('4-direction atlas: the TEST batch passes the importer and matches the lab registry',async()=>{
   // The test batch keeps the approved drawing's own feet column (108.5 px) and mirrors it for the left facings.
   const pivotX=await approvedPivotX('public/art/sprites/cidadao-comum.webp');
@@ -231,26 +240,25 @@ test('4-direction atlas: the TEST batch passes the importer and matches the lab 
 });
 
 test('4-direction atlas: the importer refuses size, transparency, pivot, height, edge, and moved walk or attack cells',async()=>{
-  const lab=await sharp(LAB).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  const lab=await labPixels();
   const pivotX=108.5,rowBytes=DIR4.width*4;
   const copy=()=>{const b=Buffer.alloc(lab.data.length);lab.data.copy(b);return b;};
   const image=(data:Buffer)=>sharp(data,{raw:{width:DIR4.width,height:DIR4.height,channels:4}}).png().toBuffer();
   const check=(input:Buffer)=>validateDirectionalAtlas(input,'teste',{pivotX});
   const rejects=async(input:Buffer,pattern:RegExp,not?:RegExp)=>assert.rejects(check(input),(e:Error)=>{
     assert.match(e.message,pattern);if(not)assert.doesNotMatch(e.message,not);return true;});
-  await rejects(await sharp(LAB).extract({left:0,top:0,width:1152,height:576}).png().toBuffer(),/1152×576, esperado 1152×2304/);
-  await rejects(await sharp(LAB).flatten({background:'#ffffff'}).png().toBuffer(),/sem transparência/);
+  await rejects(await (await labImage()).extract({left:0,top:0,width:1152,height:576}).png().toBuffer(),/1152×576, esperado 1152×2304/);
+  await rejects(await (await labImage()).flatten({background:'#ffffff'}).png().toBuffer(),/sem transparência/);
   // back-left block (rows 10..12) pushed 6 px down: its feet leave the shared row.
   const moved=copy(),top=9*CELL;
   moved.fill(0,top*rowBytes,(top+6)*rowBytes);lab.data.copy(moved,(top+6)*rowBytes,top*rowBytes,(DIR4.height-6)*rowBytes);
   await rejects(await image(moved),/costas-esquerda, parado: os pés ficam na linha 174/);
   // front-left block drawn 20 % smaller (squashed from the top, feet kept on their row): only the height is wrong.
-  const block=await sharp(LAB).extract({left:0,top:3*CELL,width:DIR4.width,height:3*CELL}).png().toBuffer();
   const cells=await Promise.all(Array.from({length:18},async(_,f)=>({
-    input:await sharp(block).extract({left:f%6*CELL,top:Math.floor(f/6)*CELL,width:CELL,height:CELL}).resize(CELL,Math.round(CELL*.8),{fit:'fill'}).png().toBuffer(),
+    input:await (await labImage()).extract({left:f%6*CELL,top:3*CELL+Math.floor(f/6)*CELL,width:CELL,height:CELL}).resize(CELL,Math.round(CELL*.8),{fit:'fill'}).png().toBuffer(),
     left:f%6*CELL,top:3*CELL+Math.floor(f/6)*CELL+PIVOT_Y-Math.round(PIVOT_Y*.8)})));
   const cleared=copy();cleared.fill(0,3*CELL*rowBytes,6*CELL*rowBytes);
-  await rejects(await sharp(await image(cleared)).composite(cells).png().toBuffer(),/frente-esquerda, parado: altura/,/pés na linha|pés ficam|pés centrados/);
+  await rejects(await sharp(cleared,{raw:{width:DIR4.width,height:DIR4.height,channels:4}}).composite(cells).png().toBuffer(),/frente-esquerda, parado: altura/,/pés na linha|pés ficam|pés centrados/);
   // A figure touching the cell edge.
   const clipped=copy();
   for(let y=100;y<110;y++){const i=(y*DIR4.width)*4;clipped[i]=clipped[i+1]=clipped[i+2]=0;clipped[i+3]=255;}
@@ -276,7 +284,7 @@ test('4-direction import is all-or-nothing: one bad atlas writes nothing, not ev
   try{
     const root=path.join(dir,'lote'),out=path.join(dir,'out'),catalogFile=path.join(dir,'catalog.ts');
     mkdirSync(path.join(root,'cidadao-comum'),{recursive:true});
-    await sharp(LAB).png().toFile(path.join(root,'cidadao-comum','atlas-4dir.png'));
+    await (await labImage()).png().toFile(path.join(root,'cidadao-comum','atlas-4dir.png'));
     // mendigo: the approved single sheet passed off as a 4-direction atlas (wrong size).
     await sharp('public/art/sprites/mendigo.webp').png().toFile(path.join(root,'mendigo.dir4.png'));
     copyFileSync('src/client/sprites/sprite-catalog.ts',catalogFile);

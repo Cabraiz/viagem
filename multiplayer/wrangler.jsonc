@@ -6,6 +6,9 @@
   "workers_dev": true,
   "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+  // D-035: the city asset goes in the bundle as a Text module (its exact text: the manifest sha256 is over it, so a
+  // parsed JSON module would not do). Only this file; the manifest next to it stays a regular JSON import.
+  "rules": [{ "type": "Text", "globs": ["**/cidade-nevada.json"], "fallthrough": true }],
   "vars": { "ALLOW_LOCAL": "false" },
   "ratelimits": [{ "name": "CREATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
   "observability": { "enabled": false }

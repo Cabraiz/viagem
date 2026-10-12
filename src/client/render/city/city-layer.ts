@@ -1,29 +1,36 @@
 /**
- * Phaser layer that draws the Cidade Nevada (card cidade-03a): ground per chunk, blocks as cap + 2 walls with
+ * Phaser layer that draws the Cidade Nevada (cards cidade-03a/03): ground per chunk, blocks as cap + 2 walls with
  * screen-side light, props, and translucent buildings over the local hero. Only chunks near the camera exist.
- * Not wired into the scene yet (code freeze): the wiring card calls `update` once per frame after the camera moved.
- * All geometry and decisions live in the pure modules (chunks, faces, occlusion); this file only draws.
+ * The scene calls `update` once per frame after the camera moved.
+ * Static ground (cells, ground decor, cast shadows) is baked once per chunk into one RenderTexture: Phaser re-tessellates
+ * every Graphics every frame, so only what changes stays a Graphics (fountain glints, fading blocks).
+ * Materials (materials.ts) swap in painted art when its textures are loaded, and fall back to the procedural look.
+ * All geometry and decisions live in the pure modules (chunks, faces, occlusion, materials); this file only draws.
  */
 import Phaser from 'phaser';
-import {heightAt,type CityAsset,type CityBlock,type CityProp} from './asset.ts';
+import {groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
-import {groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
-import {groundQuads,pieceGeometry,type PieceGeometry} from './faces.ts';
-import {OcclusionFader,actorDepth,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
+import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
+import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
+import {CityMaterials,buildingAnchor,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,type TextureLookup} from './materials.ts';
+import {OcclusionFader,actorDepth,covers,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
-import {VIEW_PIVOT,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
+import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
 const PINE_SHEET={pivotY:353/384,height:165,pixelHeight:340};
 /**
  * Ground layer, far below every column/prop/actor key (a 192-cell city spans about ±34 000 in depth keys), so
- * nothing on the ground can sort under it whatever the view or the depthOf mapping. Shadows and glints sit just above.
+ * nothing on the ground can sort under it whatever the view or the depthOf mapping. Glints sit just above.
  */
 export const CITY_GROUND_DEPTH=-1e8;
-const SHADOW_DEPTH=CITY_GROUND_DEPTH+1,GLINT_DEPTH=CITY_GROUND_DEPTH+2;
+const GLINT_DEPTH=CITY_GROUND_DEPTH+2;
 /** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
 const GLINT_PERIOD_MS=4000;
+/** Baked ground: texels per world px (shown scaled back up), and the largest texture side allowed. */
+export const GROUND_RESOLUTION=0.75;
+export const GROUND_RT_MAX_PX=2048;
 
 /** Draws one decor primitive into a Graphics. */
 function drawPrim(g:Phaser.GameObjects.Graphics,p:DecorPrim){
@@ -36,6 +43,7 @@ function drawPrim(g:Phaser.GameObjects.Graphics,p:DecorPrim){
 function reducedMotion(){
   try{return typeof window!=='undefined'&&!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}catch{return false;}
 }
+const lerp=(a:Pt,b:Pt,t:number):Pt=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
 
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
@@ -53,6 +61,8 @@ export interface CityLayerOptions {
   pivot?:Pt;
   /** Maps a projection depth key to the scene's depth space (e.g. origin rebasing; must be increasing). Identity by default. */
   depthOf?:(key:number)=>number;
+  /** Baked ground texels per world px (default GROUND_RESOLUTION); lower saves memory, higher is sharper when zoomed in. */
+  groundResolution?:number;
 }
 
 /**
@@ -60,18 +70,22 @@ export interface CityLayerOptions {
  * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
  */
 interface Band {blockId:string;key:number;body:Phaser.GameObjects.Graphics;outline:Phaser.GameObjects.Graphics}
+/** A building drawn as one painted image (materials.ts building sheet). */
+interface BlockSprite {blockId:string;key:number;obj:Phaser.GameObjects.Image}
 interface LiveProp {key:number;obj:Phaser.GameObjects.Graphics|Phaser.GameObjects.Image}
-interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;shadows:Phaser.GameObjects.Graphics;
-  glints:Phaser.GameObjects.Graphics;bands:Band[];props:LiveProp[];cells:number[]}
+interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.RenderTexture;glints:Phaser.GameObjects.Graphics;
+  bands:Band[];sprites:BlockSprite[];props:LiveProp[];cells:number[]}
 /** Columns looked at around an actor for its depth: the sprite reaches ~2.3 u up, tall blocks ~4 u. */
 const ACTOR_REACH_CELLS=5;
 
 export class CityLayer {
   readonly asset:CityAsset;
   readonly index:ChunkIndex;
+  readonly materials:CityMaterials;
   private readonly scene:Phaser.Scene;
   private readonly tracker:ChunkTracker;
   private readonly pivot:Pt;
+  private readonly groundResolution:number;
   private depthOf:(key:number)=>number;
   /** Unit columns of the live chunks by cell index, in the current view (for actorDepth). */
   private readonly columns=new Map<number,ColumnRef>();
@@ -88,10 +102,20 @@ export class CityLayer {
     this.scene=scene;this.asset=asset;
     this.pivot=options.pivot??VIEW_PIVOT;
     this.depthOf=options.depthOf??(k=>k);
+    const res=options.groundResolution;
+    this.groundResolution=res!==undefined&&Number.isFinite(res)&&res>0?Math.min(res,4):GROUND_RESOLUTION;
     this.index=buildChunks(asset);
     this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
     for(const b of asset.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
+    const textures=scene.textures;
+    // Painted ground is drawn with a Mesh, which only renders in WebGL: under Canvas the ground stays flat.
+    const webgl=scene.sys.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
+    const lookup:TextureLookup={
+      has:key=>(webgl||!key.startsWith('city:ground:'))&&textures.exists(key),
+      frames:key=>Math.max(1,textures.get(key).frameTotal-1),
+    };
+    this.materials=new CityMaterials(lookup);
   }
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
@@ -101,11 +125,11 @@ export class CityLayer {
    * Draw depth for an actor (hero, enemy, pickup) standing at world (x, y, z): its world depth, nudged above or
    * below the nearby columns it overlaps on screen so walls never cover it wrongly (occlusion.ts actorDepth).
    */
-  actorDepth(x:number,y:number,z=0):number{
-    const {cell,origin,width}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell),near:ColumnRef[]=[];
+  actorDepth(x:number,y:number,z=groundZ(this.asset,x,y)):number{
+    const {cell,origin,width}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell),near=new Set<ColumnRef>();
     for(let j=cy-ACTOR_REACH_CELLS;j<=cy+ACTOR_REACH_CELLS;j++)for(let i=cx-ACTOR_REACH_CELLS;i<=cx+ACTOR_REACH_CELLS;i++){
       if(i<0||j<0||i>=width)continue;
-      const c=this.columns.get(j*width+i);if(c)near.push(c);
+      const c=this.columns.get(j*width+i);if(c)near.add(c);
     }
     return this.depthOf(actorDepth(x,y,z,Math.max(0,this.view),near,this.pivot));
   }
@@ -115,6 +139,7 @@ export class CityLayer {
     this.depthOf=depthOf;
     for(const live of this.live.values()){
       for(const b of live.bands){const d=depthOf(b.key);b.body.setDepth(d);b.outline.setDepth(d+0.01);}
+      for(const s of live.sprites)s.obj.setDepth(depthOf(s.key));
       for(const p of live.props)p.obj.setDepth(depthOf(p.key));
     }
   }
@@ -140,19 +165,22 @@ export class CityLayer {
   private buildChunk(key:string,view:number){
     const chunk=this.chunksByKey.get(key);
     if(!chunk||this.live.has(key))return;
-    const ground=this.scene.add.graphics().setDepth(CITY_GROUND_DEPTH);
-    for(const quad of groundQuads(chunk,this.asset,view,this.pivot))
-      ground.fillStyle(groundColor(quad.kind,quad.shade),1).fillPoints(quad.points,true);
-    // Ground details (specks, tracks, joints, water rim); shimmering glints go to their own object.
-    const glints=this.scene.add.graphics().setDepth(GLINT_DEPTH);
-    for(const prim of groundDecor(chunk,this.asset,view,this.pivot))drawPrim(prim.shimmer?glints:ground,prim);
-    // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
-    const shadows=this.scene.add.graphics().setDepth(SHADOW_DEPTH),casters:BlockPiece[]=[];
-    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
-    for(const prim of shadowUnion(casters,this.asset,{x0:chunk.x0,y0:chunk.y0,x1:chunk.x1,y1:chunk.y1},view,this.pivot))drawPrim(shadows,prim);
-    // Group the chunk's columns by (block, depth key); draw each band back-to-front.
+    const {ground,glints}=this.bakeGround(chunk,view);
+    const cells:number[]=[];
+    // Buildings with a painted sheet: one image, drawn by the chunk that holds the block's centre cell.
+    const sprites:BlockSprite[]=[],painted=new Set<string>();
+    for(const piece of chunk.pieces){
+      if(painted.has(piece.blockId))continue;
+      const block=this.blocks.get(piece.blockId);
+      if(!block||!this.materials.building(block,view))continue;
+      painted.add(block.id);
+      const cx=Math.floor(block.x+(block.w-1)/2),cy=Math.floor(block.y+(block.h-1)/2);
+      if(cx>=chunk.x0&&cx<chunk.x1&&cy>=chunk.y0&&cy<chunk.y1)sprites.push(this.drawBuilding(block,piece.base,view,cells));
+    }
+    // Group the chunk's procedural columns by (block, depth key); draw each band back-to-front.
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const piece of chunk.pieces){
+      if(painted.has(piece.blockId))continue;
       const geo=pieceGeometry(piece,this.asset,view,this.pivot),id=`${piece.blockId}|${geo.depthKey}`;
       const g=groups.get(id);
       if(g)g.items.push({piece,geo});else groups.set(id,{blockId:piece.blockId,key:geo.depthKey,items:[{piece,geo}]});
@@ -175,7 +203,6 @@ export class CityLayer {
     }
     const props=chunk.props.map(p=>({key:depth(p.x,p.y,view,this.pivot),obj:this.drawProp(p,view)}));
     // Column cache for actorDepth: each unit column's key and occluder in this view.
-    const cells:number[]=[];
     for(const g of groups.values())for(const {piece,geo} of g.items){
       const cellIndex=piece.y*this.asset.width+piece.x;
       // A column lowered by a whole-cell bite only reaches the bite floor.
@@ -184,28 +211,152 @@ export class CityLayer {
       this.columns.set(cellIndex,{key:geo.depthKey,occ:occluderFor(unit,this.asset,piece.base,view,this.pivot)});
       cells.push(cellIndex);
     }
-    this.live.set(key,{chunk,ground,shadows,glints,bands,props,cells});
+    this.live.set(key,{chunk,ground,glints,bands,sprites,props,cells});
+  }
+
+  /**
+   * A building drawn from its sheet: one image with its footprint's front-bottom corner on the anchor, sorted by that
+   * corner, and ONE column covering the whole footprint registered on every footprint cell (for actorDepth).
+   */
+  private drawBuilding(block:CityBlock,base:number,view:number,cells:number[]):BlockSprite{
+    const m=this.materials.building(block,view)!;
+    const {cell,origin,width}=this.asset,fc=frontCorner(view);
+    const wx=origin.x+(block.x+fc.i*block.w)*cell,wy=origin.y+(block.y+fc.j*block.h)*cell;
+    const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
+    const frame=this.scene.textures.getFrame(m.key,m.frame);
+    const a=buildingAnchor(m.a,m.b,m.frame,frame.width,frame.height,cell);
+    const obj=this.scene.add.image(at.x,at.y,m.key,m.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(this.depthOf(key));
+    const column:ColumnRef={key,occ:occluderFor(block,this.asset,base,view,this.pivot)};
+    for(let j=block.y;j<block.y+block.h;j++)for(let i=block.x;i<block.x+block.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
+    return {blockId:block.id,key,obj};
+  }
+
+  /**
+   * Bakes the chunk's static ground into one RenderTexture: cells (flat colour, or the painted tile through a Mesh),
+   * slope shading over painted cells, ground decor (only over flat kinds) and the cast shadows landing here. Glints
+   * stay a small live Graphics (they breathe).
+   */
+  private bakeGround(chunk:CityChunk,view:number):{ground:Phaser.GameObjects.RenderTexture;glints:Phaser.GameObjects.Graphics}{
+    const {asset,pivot}=this;
+    // The texture also holds a ring of one neighbour cell per side, with the same content the neighbour bakes: the
+    // overlap hides the hairline a render texture (no multisampling, linear sampling) would leave at chunk edges.
+    const ring={...chunk,x0:Math.max(0,chunk.x0-1),y0:Math.max(0,chunk.y0-1),x1:Math.min(asset.width,chunk.x1+1),y1:Math.min(asset.height,chunk.y1+1)};
+    const quads=groundQuads(ring,asset,view,pivot);
+    const own=(q:GroundQuad)=>q.cx>=chunk.x0&&q.cx<chunk.x1&&q.cy>=chunk.y0&&q.cy<chunk.y1;
+    const painted=new Map<GroundKind,string>();
+    for(const q of quads)if(!painted.has(q.kind)){const k=this.materials.ground(q.kind);if(k)painted.set(q.kind,k);}
+    // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
+    const decor:DecorPrim[]=[];
+    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind))
+      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
+    decor.push(...(painted.size?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+    // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
+    const casters:BlockPiece[]=[];
+    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
+    const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot);
+
+    const box=boundsOf(quads.flatMap(q=>q.points));
+    let s=this.groundResolution;
+    const pad=2/s;
+    const bx=Math.floor(box.x-pad),by=Math.floor(box.y-pad),bw=box.w+2*pad+1,bh=box.h+2*pad+1;
+    s=Math.min(s,GROUND_RT_MAX_PX/bw,GROUND_RT_MAX_PX/bh);
+    const rt=this.scene.add.renderTexture(bx,by,Math.ceil(bw*s),Math.ceil(bh*s)).setOrigin(0,0).setScale(1/s).setDepth(CITY_GROUND_DEPTH);
+    const place=<T extends Phaser.GameObjects.Components.Transform>(o:T)=>{o.setScale(s);o.setPosition(-bx*s,-by*s);return o;};
+
+    // Pass 1: flat cells.
+    const flat=place(this.scene.make.graphics({},false));
+    for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
+    // Pass 2: painted cells, one Mesh per texture.
+    const meshes:Phaser.GameObjects.Mesh[]=[];
+    for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
+    // Pass 3: slope shading over painted cells, decor, shadows.
+    const over=place(this.scene.make.graphics({},false)),glints=this.scene.add.graphics().setDepth(GLINT_DEPTH);
+    for(const q of quads){
+      if(!painted.has(q.kind))continue;
+      const o=groundShadeOverlay(q.kind,q.shade);
+      if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
+    }
+    for(const prim of decor)drawPrim(prim.shimmer?glints:over,prim);
+    for(const prim of shadows)drawPrim(over,prim);
+    rt.draw(flat);
+    for(const m of meshes)rt.draw(m);
+    rt.draw(over);
+    flat.destroy();over.destroy();for(const m of meshes)m.destroy();
+    return {ground:rt,glints};
+  }
+
+  /**
+   * Ground decor of a chunk with painted kinds: the procedural decor of each flat cell only (painted art has its own
+   * detail), the same primitives and back-to-front order as groundDecor over the whole chunk, including its glint cap
+   * (the first GLINT.perChunk glint cells in world row-major order).
+   */
+  private decorOverFlat(chunk:CityChunk,view:number,quads:readonly GroundQuad[]):DecorPrim[]{
+    const byCell=new Map<string,DecorPrim[]>();
+    let glintCells=0;
+    for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
+      const kind=groundAt(this.asset,cx,cy);
+      if(!this.materials.decorOver(kind))continue;
+      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
+      if(prims.some(p=>p.shimmer)){
+        if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
+        else glintCells++;
+      }
+      byCell.set(`${cx},${cy}`,prims);
+    }
+    return quads.flatMap(q=>byCell.get(`${q.cx},${q.cy}`)??[]);
+  }
+
+  /** Painted ground cells of one texture as a Mesh: projected cell corners, UVs from world position (materials.ts). */
+  private groundMesh(quads:readonly GroundQuad[],key:string):Phaser.GameObjects.Mesh{
+    const {cell,origin}=this.asset,frame=this.scene.textures.getFrame(key);
+    const verts:number[]=[],uvs:number[]=[],idx:number[]=[];
+    for(const q of quads){
+      const [nw,ne,se,sw]=q.points,x0=origin.x+q.cx*cell,y0=origin.y+q.cy*cell;
+      const at=(s:number,t:number)=>lerp(lerp(nw,ne,s),lerp(sw,se,s),t);
+      for(const p of cellUvPatches(x0,y0,x0+cell,y0+cell)){
+        const n=verts.length/2;
+        for(const [s,t,u,v] of [[p.s0,p.t0,p.u0,p.v0],[p.s1,p.t0,p.u1,p.v0],[p.s1,p.t1,p.u1,p.v1],[p.s0,p.t1,p.u0,p.v1]]){
+          const pt=at(s,t);
+          // Mesh vertices are y-up (Phaser's mesh space): negate y to stay in screen px.
+          verts.push(pt.x,-pt.y);uvs.push(...frameUv(u,v,frame));
+        }
+        idx.push(n,n+1,n+2,n,n+2,n+3);
+      }
+    }
+    const mesh=new Phaser.GameObjects.Mesh(this.scene,0,0,key);
+    mesh.hideCCW=false;
+    mesh.setOrtho(mesh.width,mesh.height);
+    mesh.addVertices(verts,uvs,idx);
+    // Not on the update list: compute the vertex positions now (Mesh.preUpdate is what the update list would call).
+    (mesh as unknown as {preUpdate(time:number,delta:number):void}).preUpdate(0,0);
+    return mesh;
   }
 
   private dropChunk(key:string){
     const live=this.live.get(key);
     if(!live)return;
-    live.ground.destroy();live.shadows.destroy();live.glints.destroy();
+    live.ground.destroy();live.glints.destroy();
     for(const b of live.bands){b.body.destroy();b.outline.destroy();}
+    for(const s of live.sprites)s.obj.destroy();
     for(const p of live.props)p.obj.destroy();
     for(const c of live.cells)this.columns.delete(c);
     this.live.delete(key);
   }
 
   /**
-   * Props: pines use the approved `arvore-nevada` sheet (frame = view) when the scene has loaded it; the rest are
-   * small procedural shapes with a contact shadow and a 2 px Breu outline.
+   * Props: a `city:prop:<kind>` sheet when loaded (frame = view); pines use the approved `arvore-nevada` sheet
+   * (frame = view); the rest are small procedural shapes with a contact shadow and a 2 px Breu outline.
    */
   private drawProp(prop:CityProp,view:number):Phaser.GameObjects.Graphics|Phaser.GameObjects.Image{
     const {cx,cy}={cx:Math.floor((prop.x-this.asset.origin.x)/this.asset.cell),cy:Math.floor((prop.y-this.asset.origin.y)/this.asset.cell)};
     const z=heightAt(this.asset,cx,cy);
     const at=project(prop.x,prop.y,z,view,this.pivot);
     const order=this.depthOf(depth(prop.x,prop.y,view,this.pivot));
+    const sheet=this.materials.prop(prop.kind,view);
+    if(sheet){
+      const a=propAnchor(this.scene.textures.getFrame(sheet.key,sheet.frame).height);
+      return this.scene.add.image(at.x,at.y,sheet.key,sheet.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(order);
+    }
     if(prop.kind==='pine'&&this.scene.textures.exists(PINE_TEXTURE))
       return this.scene.add.image(at.x,at.y,PINE_TEXTURE,view).setOrigin(.5,PINE_SHEET.pivotY)
         .setScale(PINE_SHEET.height/PINE_SHEET.pixelHeight).setDepth(order);
@@ -234,22 +385,35 @@ export class CityLayer {
   }
 
   // ---------- Occlusion ----------
-  /** Buildings over the local hero fade as a whole block (all its bands, every live chunk). */
+  /** Fade group of a block: its `group` (one multi-rect building of the maps asset) or its own id. */
+  private groupOf(blockId:string):string{return this.blocks.get(blockId)?.group??blockId;}
+
+  /**
+   * Buildings over the local hero fade as a whole group: every band and image of every block of the group, in every
+   * live chunk, shares one alpha. Coverage is tested per block (exact box), and the group fades when any of its
+   * blocks covers the hero: the fader gets one occluder per group, the covering block's when there is one.
+   */
   private applyOcclusion(frame:CityFrame,view:number){
-    const bands=new Map<string,Band[]>(),bases=new Map<string,number>();
+    const members=new Map<string,{bands:Band[];sprites:BlockSprite[]}>(),bases=new Map<string,number>();
+    const entry=(id:string)=>{let e=members.get(id);if(!e){e={bands:[],sprites:[]};members.set(id,e);}return e;};
     for(const live of this.live.values()){
-      for(const b of live.bands){const list=bands.get(b.blockId);if(list)list.push(b);else bands.set(b.blockId,[b]);}
+      for(const b of live.bands)entry(b.blockId).bands.push(b);
+      for(const s of live.sprites)entry(s.blockId).sprites.push(s);
       for(const p of live.chunk.pieces)if(!bases.has(p.blockId))bases.set(p.blockId,p.base);
     }
-    const occluders:Occluder[]=[];
-    for(const id of [...bands.keys()].sort()){
+    const byGroup=new Map<string,Occluder>(),hero=frame.hero;
+    for(const id of [...members.keys()].sort()){
       const block=this.blocks.get(id);
-      if(block&&block.kind==='building')occluders.push(this.occluder(block,bases.get(id)??0,view));
+      if(!block||block.kind!=='building')continue;
+      const group=this.groupOf(id),occ=this.occluder(block,bases.get(id)??0,view),held=byGroup.get(group);
+      if(!held)byGroup.set(group,{...occ,id:group});
+      else if(hero&&!covers(held,hero,view,this.pivot)&&covers(occ,hero,view,this.pivot))byGroup.set(group,{...occ,id:group});
     }
-    const alphas=this.fader.update(occluders,frame.hero,view,frame.dtMs,this.pivot);
-    for(const [id,list] of bands){
-      const alpha=alphas.get(id)??1;
-      for(const b of list){b.body.setAlpha(alpha);b.outline.setAlpha(outlineAlpha(alpha));}
+    const alphas=this.fader.update([...byGroup.values()],hero,view,frame.dtMs,this.pivot);
+    for(const [id,{bands,sprites}] of members){
+      const alpha=alphas.get(this.groupOf(id))??1;
+      for(const b of bands){b.body.setAlpha(alpha);b.outline.setAlpha(outlineAlpha(alpha));}
+      for(const s of sprites)s.obj.setAlpha(alpha);
     }
   }
 

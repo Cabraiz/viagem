@@ -41,5 +41,13 @@ export class Projector {
     if(!this.anchor){this.base=0;return;}
     const o=this.rotate(this.anchor.x,this.anchor.y,{x:0,y:0});this.base=o.x+o.y-24;
   }
-  depth(x:number,y:number){const q=this.rotate(x,y,this.scratch);return (q.x+q.y-this.base)*100;}
+  /**
+   * City mode (card cidade-03): actors draw at the city layer's actor depth, placed exactly against the unit columns
+   * of the buildings (render/city occlusion.ts actorDepth), instead of the plain ground depth. Unset elsewhere.
+   */
+  depthOverride?:(x:number,y:number)=>number;
+  depth(x:number,y:number){
+    if(this.depthOverride)return this.depthOverride(x,y);
+    const q=this.rotate(x,y,this.scratch);return (q.x+q.y-this.base)*100;
+  }
 }

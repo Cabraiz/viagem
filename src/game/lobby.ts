@@ -232,14 +232,16 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         const said=`${m.bot?' bot':''}${m.owner?', dono da sala':''}${m.ready?', pronto':', ainda não'}`;
         const crown=m.owner?icon('coroa',{className:'coop-wait-crown'}):'';
         // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
+        // The owner's grid shows the rail's short name (unique for bots, like the HUD); the whole name is read aloud.
+        const shown=view.canManage?railName(m.name):m.name;
         const cls=`${m.ready?'is-ready':''}${m.ready&&!wasReady.has(m.id)?' just-ready':''}${m.online?'':' is-away'}${m.bot?' is-bot':' is-person'}`;
         if(view.canManage&&!m.self){
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
           const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
-          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}<span>${escapeHtml(ask?confirmText(m):m.name)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
+          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
         }
-        return `<li class="${cls}">${robot}${status}<span>${escapeHtml(m.name)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
+        return `<li class="${cls}">${robot}${status}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
       wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }

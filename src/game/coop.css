@@ -94,7 +94,16 @@
 .coop-wait-members:has(.is-bot){row-gap:12px;padding-top:6px}
 .coop-wait-botmark{position:absolute;top:-12px;left:-12px;display:flex;line-height:0;pointer-events:none}
 .coop-wait-members li:has(>button){padding:0;min-height:48px}
-.coop-wait.is-owner .coop-wait-members{gap:12px 8px}
+/* O dono vê os nomes numa grade (2 colunas no retrato, 3 na paisagem): seis cabem em quatro linhas sem rolar; o chip
+   dele ocupa a linha inteira e nome longo termina em reticências (o leitor de tela lê o nome inteiro). */
+.coop-wait.is-owner .coop-wait-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px 8px}
+.coop-wait.is-owner .coop-wait-members li{min-width:0}
+.coop-wait.is-owner .coop-wait-members li:not(:has(>button)){grid-column:1/-1;justify-self:center}
+.coop-wait.is-owner .coop-wait-members button{width:100%;min-width:0;font-size:var(--t-13)}
+.coop-wait.is-owner .coop-wait-members button>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.coop-wait.is-owner .coop-wait-members li.is-asking button>span{white-space:normal}
+.coop-wait.is-owner .coop-wait-line{min-height:0}
+.coop-wait .coop-wait-share{min-height:48px}
 .coop-wait .coop-wait-members button{display:flex;align-items:center;gap:4px;min-height:48px;margin:0;padding:4px 6px 4px 9px;border:0;border-radius:var(--r-ficha);background:transparent;color:inherit;font:inherit;font-weight:700;box-shadow:none}
 .coop-wait.is-owner .coop-wait-members li.is-person:has(>button){border:2px solid var(--c-cone)}
 .coop-wait-members li.is-asking,.coop-wait.is-owner .coop-wait-members li.is-asking{background:var(--c-cone);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);transition:none;animation:none}
@@ -106,4 +115,8 @@
 .coop-wait-owner[hidden]{display:none}
 /* Paisagem: a janela do dono fica mais larga (os nomes viram botões de 48 px); continua entre o joystick e a habilidade
    (150 px livres de cada lado em 844). A linha do dono fica. */
-@media(max-height:500px){.coop-wait.is-owner{width:min(560px,calc(100% - 300px))}.coop-wait.is-owner .coop-wait-members{gap:10px 6px}.coop-wait-owner{margin:4px 0;padding:6px 10px}}
+@media(max-height:500px){.coop-wait.is-owner{width:min(560px,calc(100% - 300px))}.coop-wait.is-owner .coop-wait-members{gap:10px 6px}.coop-wait-owner{margin:4px 0;padding:6px 10px}
+  /* Seis em duas linhas de três: o chip do dono entra na grade, com reticências como os outros. */
+  .coop-wait.is-owner .coop-wait-members li:not(:has(>button)){grid-column:auto;justify-self:stretch;min-height:48px;font-size:var(--t-13)}
+  .coop-wait.is-owner .coop-wait-members li:not(:has(>button))>span:not(.sr-only){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.coop-wait .coop-wait-ready{min-height:48px}

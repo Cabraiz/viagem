@@ -12,6 +12,7 @@
 import type {RunView,StructureView} from '../sim/view.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../sim/stonewards/rules.ts';
 import {icon,type IconName} from '../../ui/icon.ts';
+import {sticker,type StickerName} from '../../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {watchOverflow} from './overflow.ts';
 
@@ -27,7 +28,9 @@ export const MAX_TOWERS=3;
 /** Highest weapon level (evolutions.ts; gambiarra only raises a weapon below it). */
 const MAX_WEAPON_LEVEL=8;
 
-export const RECIPE_ICON:Readonly<Record<RecipeId,IconName>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':'chinelo'};
+/** The tower throws the same Chinelo da Mãe the run offers, so it wears that item's sticker (DSG-adesivos-itens). */
+export const RECIPE_ICON:Readonly<Record<RecipeId,IconName|{sticker:StickerName}>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':{sticker:'chinelo'}};
+const recipeArt=(art:IconName|{sticker:StickerName})=>typeof art==='string'?icon(art,{size:32}):sticker(art.sticker,{size:32});
 
 export interface ForgeAnswer {req:number;recipe:string;ok:boolean;reason?:string}
 export interface CampOptions {
@@ -107,7 +110,7 @@ export function createCamp(options:CampOptions):CampPart{
   const tags=new Map<RecipeId,{button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement}>();
   for(const id of RECIPE_IDS){
     const r=RECIPES[id],button=el('button','rh-forge-tag',list);button.type='button';button.dataset.recipe=id;
-    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${icon(RECIPE_ICON[id],{size:32})}</span>`);
+    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${recipeArt(RECIPE_ICON[id])}</span>`);
     const body=el('span','rh-forge-body',button);
     el('strong','rh-forge-name',body).textContent=r.name;
     el('span','rh-forge-desc',body).textContent=r.describe;

@@ -11,6 +11,7 @@ import {SIM_HZ,type OfferSource} from '../sim/types.ts';
 import type {OfferView,RunView} from '../sim/view.ts';
 import {isHeldOffer} from '../sim/offers.ts';
 import {itemDisplay,priceTag} from './items.ts';
+import {sticker} from '../../ui/sticker.ts';
 import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
 import {watchOverflow} from './overflow.ts';
 
@@ -182,7 +183,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
       card.classList.toggle('rh-card-default',flags.isDefault);
-      el('span','rh-card-icon',card).textContent=item.icon;
+      el('span','rh-card-icon',card).innerHTML=sticker(item.icon);
       const body=el('span','rh-card-body',card);
       el('strong','rh-card-name',body).textContent=item.name;
       el('span','rh-card-blurb',body).textContent=item.blurb;

@@ -1,10 +1,13 @@
 /** `?sandbox=audio`: full-screen sound lab to hear every procedural sound on a phone (VGM-050). */
 import { SOUND_IDS, type SoundId } from './audio/types.ts';
-import { RECIPES, SOUND_EMOJI } from './audio/recipes.ts';
+import { RECIPES, SOUND_ART, type SoundArt } from './audio/recipes.ts';
+import { icon } from '../ui/icon.ts';
+import { sticker } from '../ui/sticker.ts';
 import { getAudio, MAX_VOICES } from './audio/engine.ts';
 import { mountAudioControls } from './audio/controls.ts';
 
 const PASTELS=[['#d6eee4','#75b8a6'],['#fbdcd8','#ed8f91'],['#e5ddf1','#a391d4'],['#fbefcb','#d9b04f'],['#d8e9f5','#73add1'],['#f6dcea','#d99bbf']];
+const art=(a:SoundArt)=>'icon' in a?icon(a.icon,{size:32}):'sticker' in a?sticker(a.sticker,{size:32}):a.word;
 const CHAOS_PLAYS=40,CHAOS_SPREAD_MS=900;
 
 const CSS=`
@@ -74,7 +77,7 @@ export function openAudioSandbox():void{
   lab.innerHTML=`<header class="audio-lab-head"><div><h1 id="audio-lab-title">Laboratório de barulho</h1><p>Aperte tudo. Os vizinhos já desistiram.</p></div><button type="button" class="audio-lab-close" aria-label="Fechar laboratório">×</button><p class="audio-lab-hint" role="status">Toque em qualquer lugar para liberar o som</p></header>
 <div class="audio-lab-grid">${SOUND_IDS.map((id,i)=>{
   const [bg,ink]=PASTELS[i%PASTELS.length];
-  return `<button type="button" class="audio-lab-sound" data-sound="${id}" style="--bg:${bg};--ink:${ink}"><b aria-hidden="true">${SOUND_EMOJI[id]}</b><span>${RECIPES[id].label}</span></button>`;
+  return `<button type="button" class="audio-lab-sound" data-sound="${id}" style="--bg:${bg};--ink:${ink}"><b aria-hidden="true">${art(SOUND_ART[id])}</b><span>${RECIPES[id].label}</span></button>`;
 }).join('')}</div>
 <div class="audio-lab-panel"><div class="audio-lab-controls"></div><div class="audio-lab-row"><div class="audio-lab-voices"><span>vozes ativas: <strong></strong></span><small aria-live="polite"></small></div><button type="button" class="audio-lab-chaos">Caos! 💥</button></div></div>
 `;

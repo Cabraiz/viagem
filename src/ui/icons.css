@@ -22,6 +22,19 @@
 .f-pedra{fill:var(--c-pedra)}
 .f-casca{fill:var(--c-casca)}
 .f-gema{fill:var(--c-gema)}
+/* Adesivos ilustrados (DSG-adesivos-itens, src/ui/stickers.svg): café, fritura, a sombra recortada pela peça, traço fino
+   (código de barras, fio), pontinhos de textura e o cabo grosso com contorno (guarda-chuva, rodo, coador). */
+.f-cafe{fill:var(--c-cafe)}
+.f-dourado{fill:var(--c-dourado)}
+.ik-tom{fill:var(--c-tom);stroke:none}
+.ik-fina{fill:none;stroke-width:1.6px}
+.ik-ponto{fill:var(--c-casca);stroke:none}
+.ik-flor{fill:var(--c-amarelo);stroke-width:1.2px}
+.ik-cabo-fundo{fill:none;stroke-width:7px}
+.ik-cabo{fill:none;stroke-width:3.4px}
+.ik-cabo.c-casca{stroke:var(--c-casca)}
+.ik-cabo.c-pedra{stroke:var(--c-pedra)}
+.ik-cabo.c-claro{stroke:var(--c-papel-claro)}
 /* Espelhado: girar para a esquerda é o mesmo adesivo virado. */
 .ic-espelho{transform:scaleX(-1)}
 /* Agulha da bússola: gira com a vista atual (--vista em graus, explore.ts). */

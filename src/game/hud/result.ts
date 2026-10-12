@@ -8,6 +8,7 @@ import type {PlayerRunView} from '../sim/view.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
+import {sticker as drawSticker} from '../../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
 import {icon} from '../../ui/icon.ts';
@@ -182,7 +183,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const info=itemDisplay(item.id);
       const li=el('li','rh-rbuild',build);li.dataset.kind=info.kind;
       li.setAttribute('aria-label',`${info.name} nível ${item.level}`);
-      const icon=el('span','rh-rbuild-icon',li);icon.textContent=info.icon;
+      el('span','rh-rbuild-icon',li).innerHTML=drawSticker(info.icon);
       const level=el('b','rh-rbuild-level',li);level.textContent=info.kind==='evolution'?'★':String(item.level);
     }
     if(shown.hidden.length){
@@ -217,7 +218,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     }
     for(const award of awards){
       const chip=el('li','rh-award',list);
-      const emoji=el('span','rh-award-emoji',chip);emoji.textContent=award.emoji;emoji.setAttribute('aria-hidden','true');
+      const mark=el('span','rh-award-emoji',chip);mark.innerHTML=drawSticker(award.icon);mark.setAttribute('aria-hidden','true');
       const text=el('span','rh-award-text',chip);
       const name=el('strong','rh-award-title',text);name.textContent=award.title;
       const line=el('small','rh-award-line',text);line.textContent=award.line;

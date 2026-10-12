@@ -46,6 +46,10 @@
   --c-trilho:color-mix(in srgb,var(--c-breu) 18%,transparent);  /* trilho de barra sobre papel */
   --c-pedra:color-mix(in srgb,var(--c-papel) 55%,var(--c-breu));  /* pedra cinza do Stonewards (nó, muralha), VGM-046B */
   --c-casca:color-mix(in srgb,var(--c-cone) 45%,var(--c-breu));   /* casca de coco, VGM-046B */
+  /* Adesivos de itens e prêmios (DSG-adesivos-itens): só misturas das 6, para o café, a fritura e a sombra da arte. */
+  --c-cafe:color-mix(in srgb,var(--c-casca) 70%,var(--c-breu));     /* café, poça, mancha do coador */
+  --c-dourado:color-mix(in srgb,var(--c-amarelo) 62%,var(--c-casca)); /* fritura: coxinha, borda da pizza, pão */
+  --c-tom:color-mix(in srgb,var(--c-breu) 24%,transparent);          /* a única sombra dentro do adesivo */
 
   /* Usos semânticos. */
   --c-perigo:var(--c-cone);

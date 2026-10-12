@@ -135,7 +135,7 @@ test('joke awards: truthful winners, everyone gets one in a group, at most two, 
   const kills=Math.max(...result.players.map(p=>p.stats!.kills));
   assert.equal(result.players.find(p=>p.id===winner('exterminador'))?.stats?.kills,kills);
   assert.equal(winner('rei-do-resgate'),'p2');
-  for(const a of awards)assert.ok(a.title&&a.line&&a.emoji,a.id);
+  for(const a of awards)assert.ok(a.title&&a.line&&a.icon,a.id);
 });
 
 test('solo awards skip team-only titles; zero metrics win nothing',()=>{
@@ -152,7 +152,7 @@ test('runners-up get a vice title with their real place, never a first-place tit
   // p1 is 2nd in falls (1 × 4) and in damage (18,4k × 21k): consolation states the place, the earlier award wins the tie.
   const mine=awardsOf(awards,'p1');
   assert.equal(mine.length,1);assert.equal(mine[0].id,'vice-mais-caiu');assert.equal(mine[0].title,'Vice-campeão de tombo');
-  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].emoji,'🥈');
+  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].icon,'medalha-2');
   for(const a of awards)if(firsts.has(a.id))assert.ok(!a.id.startsWith('vice-'));
   assert.ok(!awards.some(a=>a.id==='figurante'));
   // Ties share a place: two players tied for 2nd are both "2º", nobody is called 3rd.
@@ -188,7 +188,7 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
 
 test('full-build coxinha (HEAL_CHOICE) is a known, funny snack card, not "Item misterioso"',()=>{
   const heal=itemDisplay(HEAL_CHOICE);
-  assert.notEqual(heal.icon,'❔');assert.equal(heal.kind,'snack');
+  assert.equal(heal.icon,'coxinha');assert.equal(heal.kind,'snack');
   assert.match(heal.name,/Coxinha/);assert.ok(heal.blurb.includes(String(HEAL_AMOUNT)),heal.blurb);assert.ok(heal.joke);
   assert.equal(levelTag(HEAL_CHOICE,1),'Lanche');
 });

@@ -18,10 +18,12 @@
  *   slacking (Turista) are about people; a bot still wins the plain counts (kills, rescues, falls…).
  */
 import type {PlayerRunView} from '../sim/view.ts';
-import {itemDisplay} from './items.ts';
+import type {StickerName} from '../../ui/sticker.ts';
+import {itemDisplay,UNKNOWN_ITEM_STICKER} from './items.ts';
 import type {PlayerTally,RunResult,RunTally} from './model.ts';
 
-export interface Award {id:string;title:string;emoji:string;playerId:string;line:string}
+/** `icon`: the illustrated sticker (src/ui/stickers.svg, DSG-adesivos-itens); draw it with sticker(). */
+export interface Award {id:string;title:string;icon:StickerName;playerId:string;line:string}
 
 /** Max awards shown per player card. */
 export const MAX_AWARDS_PER_PLAYER=2;
@@ -29,7 +31,7 @@ export const MAX_AWARDS_PER_PLAYER=2;
 interface PlayerFacts {player:PlayerRunView;tally:PlayerTally;damage:number;kills:number;revives:number;pickups:number}
 
 interface AwardDef {
-  id:string;title:string;emoji:string;
+  id:string;title:string;icon:StickerName;
   /** Consolation title for a runner-up (rule C); never claims first place. */
   vice:string;
   /** Allowed in a 1-player run. */
@@ -58,7 +60,7 @@ export function buildChaos(player:Pick<PlayerRunView,'weapons'|'passives'>){
   for(const item of items){
     if(item.level<=1)score++;
     const kind=itemDisplay(item.id);
-    if(kind.icon==='❔')score+=3;
+    if(kind.icon===UNKNOWN_ITEM_STICKER)score+=3;
     if(kind.kind==='evolution')score-=2;
   }
   return Math.max(0,score);
@@ -70,50 +72,53 @@ const isActive=(player:PlayerRunView)=>!player.spectator;
 
 /** Awards in priority order (earlier ones are handed out first). */
 const DEFS:readonly AwardDef[]=[
-  {id:'mais-caiu',title:'Mais caiu',emoji:'🫠',vice:'Vice-campeão de tombo',solo:true,
+  {id:'mais-caiu',title:'Mais caiu',icon:'banana',vice:'Vice-campeão de tombo',solo:true,
     metric:f=>f.tally.downs,
     line:(v,_f,solo)=>solo?`Caiu ${plural(v,'vez','vezes')}. Sozinho, ainda.`:`Beijou o chão ${plural(v,'vez','vezes')}.`},
-  {id:'rei-do-resgate',title:'Rei do resgate',emoji:'🚑',vice:'Príncipe do resgate',solo:false,
+  {id:'rei-do-resgate',title:'Rei do resgate',icon:'ambulancia',vice:'Príncipe do resgate',solo:false,
     metric:f=>f.revives,
     line:v=>`${plural(v,'resgate','resgates')}. O SAMU ligou.`},
-  {id:'carregou',title:'Carregou o time',emoji:'🏋️',vice:'Carregou a mochila',solo:true,
+  {id:'carregou',title:'Carregou o time',icon:'mochila',vice:'Carregou a mochila',solo:true,
     metric:f=>f.damage,
     line:(_v,_f,solo)=>solo?'O time era você. Parabéns?':'Costas doendo de tanto carregar.'},
-  {id:'exterminador',title:'Exterminador de gosma',emoji:'🧹',vice:'Estagiário da dedetização',solo:true,
+  {id:'exterminador',title:'Exterminador de gosma',icon:'rodo',vice:'Estagiário da dedetização',solo:true,
     metric:f=>f.kills,
     line:v=>`${v} bichos de volta pro mar.`},
-  {id:'build-sem-sentido',title:'Build mais sem sentido',emoji:'🤡',vice:'Build quase sem sentido',solo:true,person:true,
+  {id:'build-sem-sentido',title:'Build mais sem sentido',icon:'antena',vice:'Build quase sem sentido',solo:true,person:true,
     metric:f=>f.player.weapons.length+f.player.passives.length>=3?buildChaos(f.player):0,
     line:()=>'Montou no escuro. Funcionou?'},
-  {id:'ima-humano',title:'Ímã humano',emoji:'🧲',vice:'Ímã de geladeira',solo:true,
+  {id:'ima-humano',title:'Ímã humano',icon:'ima-ferradura',vice:'Ímã de geladeira',solo:true,
     metric:f=>f.pickups,
     line:v=>`Catou ${v} coisas. Até chiclete.`},
-  {id:'turista',title:'Turista',emoji:'📸',vice:'Turista de fim de semana',solo:false,person:true,
+  {id:'turista',title:'Turista',icon:'camera',vice:'Turista de fim de semana',solo:false,person:true,
     metric:(f,all)=>{
       const active=all.filter(other=>isActive(other.player));
       if(active.length<2||!isActive(f.player))return 0;
       return Math.max(...active.map(other=>other.damage))-f.damage;
     },
     line:()=>'Veio pela vista. Tirou foto.'},
-  {id:'coxinha',title:'Colecionador de coxinha',emoji:'🥟',vice:'Beliscador de coxinha',solo:true,
+  {id:'coxinha',title:'Colecionador de coxinha',icon:'coxinhas',vice:'Beliscador de coxinha',solo:true,
     metric:f=>f.tally.heals,
     line:v=>`${plural(v,'coxinha','coxinhas')} no meio da briga.`},
-  {id:'sortudo-do-bau',title:'Sortudo do baú',emoji:'🎁',vice:'Quase sortudo',solo:true,
+  {id:'sortudo-do-bau',title:'Sortudo do baú',icon:'bau-aberto',vice:'Quase sortudo',solo:true,
     metric:f=>f.tally.chests,
     line:v=>`${plural(v,'baú','baús')}. Joga na Mega já.`},
-  {id:'bate-nao-mata',title:'Bate mas não mata',emoji:'🥊',vice:'Bate e às vezes mata',solo:false,
+  {id:'bate-nao-mata',title:'Bate mas não mata',icon:'travesseiro',vice:'Bate e às vezes mata',solo:false,
     metric:f=>f.kills>0&&f.damage>0?Math.round(f.damage/f.kills):0,
     line:()=>'Amacia pros outros matarem.'},
-  {id:'evolucao',title:'Evolução de novela',emoji:'✨',vice:'Evolução de reprise',solo:true,person:true,
+  {id:'evolucao',title:'Evolução de novela',icon:'borboleta',vice:'Evolução de reprise',solo:true,person:true,
     metric:f=>evolutions(f),
     line:()=>'Evoluiu. Último capítulo!'},
-  {id:'marombeiro',title:'Marombeiro de upgrade',emoji:'💪',vice:'Frequenta a academia',solo:true,person:true,
+  {id:'marombeiro',title:'Marombeiro de upgrade',icon:'halter',vice:'Frequenta a academia',solo:true,person:true,
     metric:f=>buildLevels(f.player),
     line:v=>`${v} níveis de build. Só treina.`},
 ];
 
 const ZERO:Readonly<PlayerTally>={downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0};
-const FALLBACK={id:'figurante',title:'Figurante de luxo',emoji:'🎬',line:'Apareceu na foto. Valeu!'};
+const FALLBACK:Omit<Award,'playerId'>={id:'figurante',title:'Figurante de luxo',icon:'claquete',line:'Apareceu na foto. Valeu!'};
+
+/** Runner-up sticker (rule C): the coin of a lost tiebreak, the 2nd and 3rd medals (numbered: not only color), "na trave". */
+export const viceSticker=(place:number):StickerName=>place===1?'moeda':place===2?'medalha-2':place===3?'medalha-3':'medalha';
 
 const byId=(a:PlayerRunView,b:PlayerRunView)=>a.id<b.id?-1:a.id>b.id?1:0;
 
@@ -145,7 +150,7 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
   const give=(index:number,rank:number)=>{
     const def=defs[index],entry=rankings[index][rank];
     given.add(index);
-    owned.get(entry.f.player.id)!.push({id:def.id,title:def.title,emoji:def.emoji,playerId:entry.f.player.id,line:def.line(entry.value,entry.f,solo)});
+    owned.get(entry.f.player.id)!.push({id:def.id,title:def.title,icon:def.icon,playerId:entry.f.player.id,line:def.line(entry.value,entry.f,solo)});
   };
   const count=(id:string)=>owned.get(id)!.length;
 
@@ -185,7 +190,7 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
     if(best){
       const def=defs[best.index];
       const line=best.place===1?`Empatou em "${def.title}" e perdeu no desempate.`:`${best.place}º em "${def.title}". Na trave!`;
-      owned.get(player.id)!.push({id:`vice-${def.id}`,title:def.vice,emoji:best.place===1?'🤝':best.place===2?'🥈':best.place===3?'🥉':'🏅',playerId:player.id,line});
+      owned.get(player.id)!.push({id:`vice-${def.id}`,title:def.vice,icon:viceSticker(best.place),playerId:player.id,line});
     }else owned.get(player.id)!.push({...FALLBACK,playerId:player.id});
   }
 

@@ -76,6 +76,11 @@ const INF_BOSS_RADIUS=.9;
 const INF_CELL=1;
 /** src/game/sim/offscreen.ts:35-37 TILE_X, HERO_WORLD_PX, HERO_MIN_SCREEN_PX, REFERENCE_SHORT_SIDE_PX. */
 const INF_TILE_X=42,INF_HERO_WORLD_PX=96,INF_HERO_MIN_SCREEN_PX=56,INF_SHORT_PX=390;
+/**
+ * Legibility floor of the drawn hero, CSS px (D-009; src/game/sim/offscreen.ts:36 HERO_MIN_SCREEN_PX).
+ * D-030: it also binds the city — the world stays faithful, only the zoom obeys the floor.
+ */
+export const HERO_MIN_SCREEN_PX=INF_HERO_MIN_SCREEN_PX;
 /** D-009 reference phone long side (390×844). */
 const INF_LONG_PX=844;
 /**
@@ -187,15 +192,23 @@ export function visibleWidthUnits(profile:ScaleProfile,orientation:Orientation):
   if(hi<lo)throw new RangeError(`zoom.${orientation} must be [min,max], got [${lo},${hi}]`);
   return (lo+hi)/2*p.cell;
 }
+/** Widest view (world units) that still draws the hero at `minHeroPixels` on a viewport this wide. */
+export function floorWidthUnits(profile:ScaleProfile,viewportWidth:number,minHeroPixels=HERO_MIN_SCREEN_PX):number{
+  return positive('viewportWidth',viewportWidth)*checked(profile).hero.drawnSize/positive('minHeroPixels',minHeroPixels);
+}
 /**
- * Pixels per world unit (along screen x; screen y is half, TILE_Y) so the visible width matches the target for a
- * CSS viewport. Phaser zoom = pixelsPerUnit / (42·√2). heroPixels is the drawn figure (legibility, D-009);
- * bodyPixels is the collision diameter. Targets are width-only and tuned on the D-009 phones (390×844, 844×390):
- * the camera card must add a height cap for near-square screens. The 'infinito' widths are snapshots of
- * framing.ts followZoom on those two phones only; the endless map keeps using followZoom.
+ * Camera target for a CSS viewport (D-030): the faithful D-026 width (visibleWidthUnits), narrowed when needed so the
+ * drawn hero never falls under the 56 px floor. On 844×390 that is ≈15.1 cells (not 18) and on 390×844 ≈7.0 (not
+ * 10.5); `floored` says the floor won. pixelsPerUnit is along screen x (screen y is half, TILE_Y); Phaser zoom =
+ * pixelsPerUnit / (42·√2). heroPixels is the drawn figure, bodyPixels the collision diameter. Width-only: the camera
+ * card (cidade-04) adds a height cap for near-square screens. The 'infinito' widths are snapshots of framing.ts
+ * followZoom on the D-009 phones only; the endless map keeps using followZoom.
  */
-export function zoomFor(profile:ScaleProfile,viewportWidth:number,viewportHeight:number):{orientation:Orientation;pixelsPerUnit:number;visibleWidth:number;heroPixels:number;bodyPixels:number}{
+export function zoomFor(profile:ScaleProfile,viewportWidth:number,viewportHeight:number,minHeroPixels=HERO_MIN_SCREEN_PX):{orientation:Orientation;pixelsPerUnit:number;visibleWidth:number;visibleCells:number;floored:boolean;heroPixels:number;bodyPixels:number}{
   const p=checked(profile),orientation=orientationOf(viewportWidth,viewportHeight);
-  const visibleWidth=visibleWidthUnits(p,orientation),pixelsPerUnit=viewportWidth/visibleWidth;
-  return {orientation,pixelsPerUnit,visibleWidth,heroPixels:p.hero.drawnSize*pixelsPerUnit,bodyPixels:2*p.hero.radius*pixelsPerUnit};
+  const faithful=visibleWidthUnits(p,orientation),floor=floorWidthUnits(p,viewportWidth,minHeroPixels);
+  // Small tolerance so a profile tuned exactly at the floor (infinito) does not flip to `floored` by rounding.
+  const floored=floor<faithful-1e-9,visibleWidth=floored?floor:faithful,pixelsPerUnit=viewportWidth/visibleWidth;
+  return {orientation,pixelsPerUnit,visibleWidth,visibleCells:visibleWidth/p.cell,floored,
+    heroPixels:p.hero.drawnSize*pixelsPerUnit,bodyPixels:2*p.hero.radius*pixelsPerUnit};
 }

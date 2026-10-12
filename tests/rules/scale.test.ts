@@ -4,10 +4,11 @@ import {existsSync,readFileSync} from 'node:fs';
 import {
   WC3_UNIT,WC3_CELL,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
   heroWidthCells,enemySpeed,relativeRadius,traversalSeconds,convertSpeed,orientationOf,visibleWidthUnits,zoomFor,
+  HERO_MIN_SCREEN_PX,floorWidthUnits,
 } from '../../src/rules/scale.ts';
 import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
 import {RADIUS,SPEED} from '../../src/game/world.ts';
-import {HERO_MIN_SCREEN_PX} from '../../src/game/sim/offscreen.ts';
+import {HERO_MIN_SCREEN_PX as GAME_HERO_MIN_SCREEN_PX} from '../../src/game/sim/offscreen.ts';
 import {ENEMIES} from '../../src/game/sim/enemies/catalog.ts';
 
 const near=(actual:number,expected:number,tol:number,what:string)=>
@@ -82,25 +83,36 @@ test('real cidade-nevada asset (when imported): same cell size, straight start �
   within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25,36,'asset inicio → praca seconds');
 });
 
-test('zoom per orientation: 18 cells landscape, 10–11 portrait, legible hero',()=>{
+test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px floor (D-030)',()=>{
   assert.equal(orientationOf(390,844),'portrait');assert.equal(orientationOf(844,390),'landscape');assert.equal(orientationOf(500,500),'portrait');assert.equal(orientationOf(501,500),'landscape');
   near(visibleWidthUnits(city,'landscape')/city.cell,18,1e-9,'landscape cells');
   near(visibleWidthUnits(city,'portrait')/city.cell,10.5,1e-9,'portrait cells (midpoint of 10–11)');
   const land=zoomFor(city,844,390),port=zoomFor(city,390,844);
   assert.equal(land.orientation,'landscape');assert.equal(port.orientation,'portrait');
-  near(land.visibleWidth,visibleWidthUnits(city,'landscape'),1e-9,'landscape visibleWidth');
   near(land.pixelsPerUnit*land.visibleWidth,844,1e-9,'landscape fills the viewport width');
-  // heroPixels is the drawn figure (~1 cell, the doc's measure); bodyPixels is the ½-cell collision.
-  near(land.heroPixels,45,5,'landscape hero px (doc ~45)');
-  within(port.heroPixels,33,42,'portrait hero px (doc ~36–40, D-009)');
+  // D-030: on the reference phones the floor wins in both orientations; the hero is drawn at exactly 56 px.
+  assert.ok(land.floored&&port.floored,'floor binds on both reference phones');
+  near(land.heroPixels,HERO_MIN_SCREEN_PX,1e-9,'landscape hero = 56 px floor');
+  near(port.heroPixels,HERO_MIN_SCREEN_PX,1e-9,'portrait hero = 56 px floor');
+  near(land.visibleCells,844/56,1e-9,'landscape ≈15.1 cells');within(land.visibleCells,13.5,15.5,'landscape ~14 cells (D-030)');
+  near(port.visibleCells,390/56,1e-9,'portrait ≈7.0 cells');within(port.visibleCells,6.5,7.5,'portrait ~7 cells (D-030)');
+  assert.ok(land.visibleWidth<visibleWidthUnits(city,'landscape')&&port.visibleWidth<visibleWidthUnits(city,'portrait'),'never wider than the faithful view');
+  // Without the floor the faithful view gives the doc's ~45 / ~37 px (heroPixels is the drawn ~1-cell figure).
+  near(zoomFor(city,844,390,1).heroPixels,844/18,1e-9,'faithful landscape ≈47 px');near(zoomFor(city,390,844,1).heroPixels,390/10.5,1e-9,'faithful portrait ≈37 px');
+  assert.equal(zoomFor(city,844,390,1).floored,false);
+  near(floorWidthUnits(city,844),844*city.cell/56,1e-9,'floor width');
   near(city.hero.drawnSize,city.cell,1e-12,'drawn hero ≈ one cell');
   near(land.bodyPixels,land.heroPixels/2,1e-9,'collision is half the drawn figure');
   // Same measure as today's camera floor: the endless map's drawn hero is exactly HERO_MIN_SCREEN_PX.
   const inf=scaleProfile('infinito');
   near(zoomFor(inf,390,844).heroPixels,HERO_MIN_SCREEN_PX,1e-9,'infinito portrait hero = 56 px floor');
   near(zoomFor(inf,844,390).heroPixels,HERO_MIN_SCREEN_PX,1e-9,'infinito landscape hero = 56 px floor');
-  assert.ok(zoomFor(city,1688,780).pixelsPerUnit>land.pixelsPerUnit,'bigger landscape viewport → more px/u');
-  assert.ok(zoomFor(city,430,932).pixelsPerUnit>port.pixelsPerUnit,'bigger portrait viewport → more px/u');
+  assert.equal(zoomFor(inf,390,844).floored,false,'infinito is tuned at the floor, not narrowed by it');
+  // A big tablet reaches the faithful view (floor no longer binds); a slightly bigger phone stays at the floor.
+  const big=zoomFor(city,1688,780);assert.equal(big.floored,false);near(big.visibleCells,18,1e-9,'tablet sees the faithful 18 cells');
+  assert.ok(big.heroPixels>HERO_MIN_SCREEN_PX);
+  near(zoomFor(city,430,932).pixelsPerUnit,port.pixelsPerUnit,1e-9,'bigger phone in portrait stays at the floor scale');
+  assert.throws(()=>zoomFor(city,390,844,0),RangeError,'floor must be positive');
 });
 
 test('conversions: identity, hero-speed share, relative radius, linear enemy speed',()=>{
@@ -119,7 +131,7 @@ test('conversions: identity, hero-speed share, relative radius, linear enemy spe
 });
 
 test('infinito equals the current game code (drift guard)',()=>{
-  assert.equal(inf.hero.radius,RADIUS);assert.equal(inf.hero.speed,SPEED);
+  assert.equal(inf.hero.radius,RADIUS);assert.equal(inf.hero.speed,SPEED);assert.equal(HERO_MIN_SCREEN_PX,GAME_HERO_MIN_SCREEN_PX,'56 px floor');
   assert.equal(inf.hero.radius,.22);assert.equal(inf.hero.speed,3.1);assert.equal(inf.cell,1);
   near(enemySpeed(inf),ENEMIES.gosma.speed,1e-12,'gosma speed');
   near(relativeRadius(inf,inf.sizes.enemy),ENEMIES.gosma.radius,1e-12,'gosma radius');

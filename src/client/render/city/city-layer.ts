@@ -5,10 +5,10 @@
  * All geometry and decisions live in the pure modules (chunks, faces, occlusion); this file only draws.
  */
 import Phaser from 'phaser';
-import {heightAt,type CityAsset,type CityProp} from './asset.ts';
+import {heightAt,type CityAsset,type CityBlock,type CityProp} from './asset.ts';
 import {ChunkTracker,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
 import {groundQuads,pieceGeometry,type PieceGeometry} from './faces.ts';
-import {OcclusionFader,heroRelativeDepth,occluderFor,outlineAlpha,type Occluder} from './occlusion.ts';
+import {OcclusionFader,occluderFor,outlineAlpha,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 
@@ -22,20 +22,27 @@ export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
   camera:Rect;
   view:number;
-  /** Local hero feet (world units) or undefined when there is none (spectating). */
+  /**
+   * Local hero feet (world units) or undefined when there is none (spectating). Blocks are unit columns whose
+   * depth keys are exact against point actors, so the scene must draw actors at their world depth in city mode
+   * (depthOf(depth(x,y,view))), not at the island's fixed SELF_DEPTH.
+   */
   hero?:{x:number;y:number;z:number};
-  /** Draw depth the scene gives the local hero, to keep blocks on the correct side of it. */
-  heroDepth?:number;
   dtMs:number;
 }
 export interface CityLayerOptions {
+  /** Must equal the scene's projection pivot (VIEW_PIVOT), or the city drifts away from actors when the view turns. */
   pivot?:Pt;
   /** Maps a projection depth key to the scene's depth space (e.g. origin rebasing). Identity by default. */
   depthOf?:(key:number)=>number;
 }
 
-interface LivePiece {piece:BlockPiece;geo:PieceGeometry;body:Phaser.GameObjects.Graphics;outline:Phaser.GameObjects.Graphics}
-interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;pieces:LivePiece[];props:(Phaser.GameObjects.Graphics|Phaser.GameObjects.Image)[]}
+/**
+ * Unit columns of one block that share a depth key, drawn as one object pair: they never overlap each other on
+ * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
+ */
+interface Band {blockId:string;key:number;body:Phaser.GameObjects.Graphics;outline:Phaser.GameObjects.Graphics}
+interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;bands:Band[];props:(Phaser.GameObjects.Graphics|Phaser.GameObjects.Image)[]}
 
 export class CityLayer {
   readonly asset:CityAsset;
@@ -46,6 +53,9 @@ export class CityLayer {
   private readonly depthOf:(key:number)=>number;
   private readonly fader=new OcclusionFader();
   private readonly live=new Map<string,LiveChunk>();
+  private readonly blocks=new Map<string,CityBlock>();
+  private readonly occluders=new Map<string,Occluder>();
+  private readonly chunksByKey=new Map<string,CityChunk>();
   private view=-1;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
@@ -54,6 +64,8 @@ export class CityLayer {
     this.depthOf=options.depthOf??(k=>k);
     this.index=buildChunks(asset);
     this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
+    for(const b of asset.blocks)this.blocks.set(b.id,b);
+    for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
   }
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
@@ -68,36 +80,45 @@ export class CityLayer {
     this.applyOcclusion(frame,view);
   }
 
-  destroy(){for(const key of [...this.live.keys()])this.dropChunk(key);}
+  /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
+  destroy(){for(const key of [...this.live.keys()])this.dropChunk(key);this.tracker.reset();this.fader.reset();this.view=-1;}
 
   // ---------- Building and dropping chunks ----------
   private buildChunk(key:string,view:number){
-    const chunk=this.index.chunks.find(c=>c.key===key);
+    const chunk=this.chunksByKey.get(key);
     if(!chunk||this.live.has(key))return;
     const ground=this.scene.add.graphics().setDepth(CITY_GROUND_DEPTH);
     for(const quad of groundQuads(chunk,this.asset,view,this.pivot))
       ground.fillStyle(groundColor(quad.kind,quad.shade),1).fillPoints(quad.points,true);
-    const pieces:LivePiece[]=[];
+    // Group the chunk's columns by (block, depth key); draw each band back-to-front.
+    const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const piece of chunk.pieces){
-      const geo=pieceGeometry(piece,this.asset,view,this.pivot);
+      const geo=pieceGeometry(piece,this.asset,view,this.pivot),id=`${piece.blockId}|${geo.depthKey}`;
+      const g=groups.get(id);
+      if(g)g.items.push({piece,geo});else groups.set(id,{blockId:piece.blockId,key:geo.depthKey,items:[{piece,geo}]});
+    }
+    const bands:Band[]=[];
+    for(const g of groups.values()){
       const body=this.scene.add.graphics(),outline=this.scene.add.graphics();
-      const colors=BLOCK_COLORS[piece.kind];
-      for(const face of geo.faces)body.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
       outline.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);
-      for(const line of geo.outline)outline.strokePoints(line,false);
-      const d=this.depthOf(geo.depthKey);
+      for(const {piece,geo} of g.items){
+        const colors=BLOCK_COLORS[piece.kind];
+        for(const face of geo.faces)body.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
+        for(const line of geo.outline)outline.strokePoints(line,false);
+      }
+      const d=this.depthOf(g.key);
       body.setDepth(d);outline.setDepth(d+0.01);
-      pieces.push({piece,geo,body,outline});
+      bands.push({blockId:g.blockId,key:g.key,body,outline});
     }
     const props=chunk.props.map(p=>this.drawProp(p,view));
-    this.live.set(key,{chunk,ground,pieces,props});
+    this.live.set(key,{chunk,ground,bands,props});
   }
 
   private dropChunk(key:string){
     const live=this.live.get(key);
     if(!live)return;
     live.ground.destroy();
-    for(const p of live.pieces){p.body.destroy();p.outline.destroy();}
+    for(const b of live.bands){b.body.destroy();b.outline.destroy();}
     for(const g of live.props)g.destroy();
     this.live.delete(key);
   }
@@ -139,28 +160,30 @@ export class CityLayer {
   }
 
   // ---------- Occlusion ----------
+  /** Buildings over the local hero fade as a whole block (all its bands, every live chunk). */
   private applyOcclusion(frame:CityFrame,view:number){
-    const occluders:Occluder[]=[];
-    const byBlock=new Map<string,LivePiece[]>();
-    for(const live of this.live.values())for(const p of live.pieces){
-      const list=byBlock.get(p.piece.blockId);
-      if(list)list.push(p);else byBlock.set(p.piece.blockId,[p]);
+    const bands=new Map<string,Band[]>(),bases=new Map<string,number>();
+    for(const live of this.live.values()){
+      for(const b of live.bands){const list=bands.get(b.blockId);if(list)list.push(b);else bands.set(b.blockId,[b]);}
+      for(const p of live.chunk.pieces)if(!bases.has(p.blockId))bases.set(p.blockId,p.base);
     }
-    for(const block of this.asset.blocks){
-      const pieces=byBlock.get(block.id);
-      if(!pieces)continue;
-      occluders.push(occluderFor(block,this.asset,Math.max(...pieces.map(p=>p.piece.base)),view,this.pivot));
+    const occluders:Occluder[]=[];
+    for(const id of [...bands.keys()].sort()){
+      const block=this.blocks.get(id);
+      if(block&&block.kind==='building')occluders.push(this.occluder(block,bases.get(id)??0,view));
     }
     const alphas=this.fader.update(occluders,frame.hero,view,frame.dtMs,this.pivot);
-    for(const occ of occluders){
-      const alpha=alphas.get(occ.id)??1;
-      for(const p of byBlock.get(occ.id)!){
-        p.body.setAlpha(alpha);p.outline.setAlpha(outlineAlpha(alpha));
-        if(frame.hero&&frame.heroDepth!==undefined){
-          const d=heroRelativeDepth(occ,this.depthOf(p.geo.depthKey),frame.heroDepth,frame.hero.x,frame.hero.y,view,this.pivot);
-          p.body.setDepth(d);p.outline.setDepth(d+0.01);
-        }
-      }
+    for(const [id,list] of bands){
+      const alpha=alphas.get(id)??1;
+      for(const b of list){b.body.setAlpha(alpha);b.outline.setAlpha(outlineAlpha(alpha));}
     }
+  }
+
+  /** Occluder per (block, view), cached: blocks never move. */
+  private occluder(block:CityBlock,base:number,view:number):Occluder{
+    const key=`${block.id}|${view}`;
+    let occ=this.occluders.get(key);
+    if(!occ){occ=occluderFor(block,this.asset,base,view,this.pivot);this.occluders.set(key,occ);}
+    return occ;
   }
 }

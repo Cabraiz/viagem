@@ -14,7 +14,8 @@ export const FADE_ALPHA=0.35;
 export const OUTLINE_FADE_ALPHA=0.6;
 export const FADE_MS=120;
 /** Hero sprite box in screen px, centred on the feet and extending upward from them. */
-export const HERO_SCREEN:Readonly<{w:number;h:number}>=Object.freeze({w:34,h:46});
+/** The scene's hero figure: 96 px tall (framing.ts HERO_WORLD_PX), ~58 px wide (canopy half width in you-rules.ts). */
+export const HERO_SCREEN:Readonly<{w:number;h:number}>=Object.freeze({w:58,h:96});
 /** View-space tolerance: standing exactly on a front edge counts as in front. */
 const EPS=1e-6;
 
@@ -136,12 +137,15 @@ export class OcclusionFader {
 }
 
 /**
- * Draw-order fix for the local hero against one block: returns the depth to draw the block at so that the
- * hero is under the block when behind it (isBehind) and above it otherwise. Other actors keep the plain
- * front-corner key; long walls are split into short pieces by chunks.ts to keep that error small.
+ * Draw-order guard for one actor against one block, for callers that cannot use exact keys: only when the
+ * actor's screen box overlaps the block's silhouette, returns a depth that puts the block above the actor when
+ * the actor is behind it and below otherwise; elsewhere the block keeps its own key. The city layer does not
+ * need it: blocks are unit columns (chunks.ts), whose front-corner key is already exact against point actors,
+ * as long as the scene draws actors at their world depth (not the fixed SELF_DEPTH of the island).
  */
-export function heroRelativeDepth(occ:Occluder,blockDepth:number,heroDepth:number,hx:number,hy:number,view:number,pivot:Pt=VIEW_PIVOT):number{
-  const behind=isBehind(occ,hx,hy,view,pivot);
+export function heroRelativeDepth(occ:Occluder,blockDepth:number,heroDepth:number,hero:{x:number;y:number;z:number},view:number,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):number{
+  if(!rectHitsConvex(heroRect(hero.x,hero.y,hero.z,view,pivot,size),occ.silhouette))return blockDepth;
+  const behind=isBehind(occ,hero.x,hero.y,view,pivot);
   if(behind&&blockDepth<=heroDepth)return heroDepth+1;
   if(!behind&&blockDepth>=heroDepth)return heroDepth-1;
   return blockDepth;

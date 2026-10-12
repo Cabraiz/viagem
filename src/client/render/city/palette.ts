@@ -28,6 +28,20 @@ export const CITY_PALETTE=Object.freeze({
 });
 export type CityRole=keyof typeof CITY_PALETTE;
 
+/** Materials of palette.json ("materiais"): luz = top/lit, clara = screen-left-down face, escura = screen-right-down face. */
+export const MATERIALS=Object.freeze({
+  'neve-tampa':{luz:hex('#F4F5FB'),clara:hex('#DADEEE'),escura:hex('#B9BFDC')},
+  'tijolo':{luz:hex('#D98A6E'),clara:hex('#C46D59'),escura:hex('#9B5750'),detalhe:hex('#E6C7A2')},
+  'pedra':{luz:hex('#B3AEC4'),clara:hex('#9B95B0'),escura:hex('#757090'),detalhe:hex('#6C6684')},
+  'madeira':{luz:hex('#C99266'),clara:hex('#AF7B52'),escura:hex('#8D6043')},
+  'metal-ferrugem':{luz:hex('#C47A4C'),clara:hex('#B26A42'),escura:hex('#985A38')},
+  'metal-pintado':{luz:hex('#8CA6D6'),clara:hex('#6F8CC4'),escura:hex('#536A9E')},
+  'vidro':{luz:hex('#9FC9E0'),clara:hex('#6E9BBE'),escura:hex('#4E6F95')},
+});
+export type MaterialName=keyof typeof MATERIALS;
+/** Warm street-lamp light (palette.json "luz.poste"). */
+export const LAMP_LIGHT=Object.freeze({color:hex('#FFE6A3'),alpha:0.35});
+
 /** Ground fill and its detail tone per ground kind. */
 export const GROUND_COLORS:Readonly<Record<GroundKind,{base:number;detail:number}>>=Object.freeze({
   snow:{base:CITY_PALETTE.neve,detail:CITY_PALETTE['neve-detalhe']},
@@ -48,17 +62,19 @@ export const BLOCK_COLORS:Readonly<Record<BlockKind,Readonly<Record<FaceKind,num
 
 /** Prop body (light/dark) and accent colours, from the palette materials. */
 export const PROP_COLORS:Readonly<Record<PropKind,{light:number;dark:number;accent:number}>>=Object.freeze({
-  car:{light:hex('#8CA6D6'),dark:hex('#536A9E'),accent:CITY_PALETTE.tampa},
-  lamp:{light:hex('#8CA6D6'),dark:hex('#536A9E'),accent:hex('#FFE6A3')},
+  car:{light:MATERIALS['metal-pintado'].luz,dark:MATERIALS['metal-pintado'].escura,accent:CITY_PALETTE.tampa},
+  lamp:{light:MATERIALS['metal-pintado'].luz,dark:MATERIALS['metal-pintado'].escura,accent:LAMP_LIGHT.color},
   pine:{light:CITY_PALETTE['pinheiro-clara'],dark:CITY_PALETTE['pinheiro-escura'],accent:CITY_PALETTE.tampa},
-  crate:{light:hex('#C99266'),dark:hex('#8D6043'),accent:CITY_PALETTE.tampa},
-  barrel:{light:hex('#C47A4C'),dark:hex('#985A38'),accent:CITY_PALETTE.tampa},
-  debris:{light:hex('#B3AEC4'),dark:hex('#757090'),accent:CITY_PALETTE['neve-detalhe']},
+  crate:{light:MATERIALS.madeira.luz,dark:MATERIALS.madeira.escura,accent:CITY_PALETTE.tampa},
+  barrel:{light:MATERIALS['metal-ferrugem'].luz,dark:MATERIALS['metal-ferrugem'].escura,accent:CITY_PALETTE.tampa},
+  debris:{light:MATERIALS.pedra.luz,dark:MATERIALS.pedra.escura,accent:CITY_PALETTE['neve-detalhe']},
   rubble:{light:CITY_PALETTE['entulho-chao'],dark:CITY_PALETTE['entulho-chao-detalhe'],accent:CITY_PALETTE['neve-detalhe']},
-  bench:{light:hex('#C99266'),dark:hex('#8D6043'),accent:CITY_PALETTE.tampa},
+  bench:{light:MATERIALS.madeira.luz,dark:MATERIALS.madeira.escura,accent:CITY_PALETTE.tampa},
 });
 
+/** Cast shadow on the ground (palette.json "luz.sombra-projetada"). */
 export const SHADOW=Object.freeze({color:CITY_PALETTE.breu,alpha:0.22});
+/** Beyond the city wall (palette.json "luz.fora-da-cidade"). */
 export const OUTSIDE_CITY=hex('#2B2542');
 /** Outline widths from the art bible: 1.5 px on block edges, 2 px on props. */
 export const OUTLINE_PX=Object.freeze({block:1.5,prop:2});
@@ -83,6 +99,7 @@ export const GROUND_TOWARD_DETAIL=0.6;
  */
 export function groundColor(kind:GroundKind,shade:number):number{
   const {base,detail}=GROUND_COLORS[kind];
-  if(!(shade<0||shade>0))return base;
+  // Water is flat and its detail tone is the near-white foam: shading it would light the shaded side.
+  if(kind==='water'||!(shade<0||shade>0))return base;
   return shade>0?mixColor(base,0xffffff,GROUND_LIGHTEN*Math.min(1,shade)):mixColor(base,detail,GROUND_TOWARD_DETAIL*Math.min(1,-shade));
 }

@@ -10,18 +10,36 @@ import {HEIGHT_PX,VIEW_PIVOT,boundsOf,normalizeView,project,rectsOverlap} from '
 
 /** Chunk side in cells. */
 export const CHUNK_CELLS=16;
-/** Longest piece (cells along the long axis) for walls, cliffs and rubble; buildings stay whole. */
-export const PIECE_MAX_CELLS=2;
-/** Screen padding per world unit of the largest prop radius (props are sprites up to ~4 r tall). */
-const PROP_PAD_PER_R=4*HEIGHT_PX;
+/**
+ * Every block is cut into 1×1-cell pieces: a unit column sorts exactly by its front corner against other
+ * columns and against point actors, which a whole building does not (review of cidade-03a). The layer draws
+ * the columns of one block that share a depth key in a single object, so the object count stays low.
+ */
+export const PIECE_MAX_CELLS=1;
+/** Ruin bite (agreed with the art lane): a third of the block's shortest edge, at most 1 cell. */
+export const ruinBite=(b:{w:number;h:number})=>Math.min(1,Math.min(b.w,b.h)/3);
 
 /**
- * Part of a block drawn and depth-sorted as one box. x/y/w/h in cells; `base` = max ground height under
- * the footprint and `height` = box height above it (world units). `seams.<side>` = that edge touches
- * another piece of the same block (internal edge: no wall face, no outline).
+ * Screen extent of a prop above and beside its projected feet, in projected px. Must cover what city-layer.ts
+ * draws: lamps are a pole of 14 r plus a 3 r head; pines use the approved sheet (353 px above the pivot at scale
+ * 165/340 ≈ 171 px, 128 px half width ≈ 62 px) or a 3.2 r fallback; the rest stay under 2.5 r.
+ */
+export function propExtentPx(prop:CityProp):{up:number;side:number}{
+  const r=prop.r*HEIGHT_PX;
+  if(prop.kind==='lamp')return {up:r*17+4,side:Math.max(r*3,4)};
+  if(prop.kind==='pine')return {up:Math.max(353*165/340,r*3.2)+4,side:Math.max(128*165/340,r*1.2)+4};
+  return {up:r*2.5+4,side:r*1.5+4};
+}
+
+/**
+ * One cell of a block, drawn and depth-sorted as a unit box. x/y/w/h in cells (w = h = 1); `base` = the
+ * LOWEST ground height under the whole block, shared by all its pieces (no floating walls on slopes, no
+ * height steps between pieces), and `height` = box height above it (world units). `seams.<side>` = that edge
+ * touches another piece of the same block (internal edge: no wall face, no outline). `bite` = ruin bite side
+ * in cells, only on the world north-east piece of a ruined building.
  */
 export interface BlockPiece {id:string;blockId:string;kind:BlockKind;x:number;y:number;w:number;h:number;height:number;
-  ruined?:boolean;base:number;seams:{n:boolean;s:boolean;e:boolean;w:boolean}}
+  ruined?:boolean;bite?:number;base:number;seams:{n:boolean;s:boolean;e:boolean;w:boolean}}
 
 /** Cells [x0,x1)×[y0,y1). minBase/maxTop bound every height drawn by the chunk (world units). */
 export interface CityChunk {key:string;cx:number;cy:number;x0:number;y0:number;x1:number;y1:number;
@@ -32,24 +50,21 @@ export interface ChunkIndex {cols:number;rows:number;chunks:CityChunk[];get(cx:n
 const byId=(a:{id:string},b:{id:string})=>a.id<b.id?-1:a.id>b.id?1:0;
 const clamp=(v:number,lo:number,hi:number)=>v<lo?lo:v>hi?hi:v;
 
-function maxGround(asset:CityAsset,x0:number,y0:number,x1:number,y1:number){
-  let m=-Infinity;
-  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)m=Math.max(m,heightAt(asset,x,y));
+function minGround(asset:CityAsset,x0:number,y0:number,x1:number,y1:number){
+  let m=Infinity;
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)m=Math.min(m,heightAt(asset,x,y));
   return m;
 }
 
-/** Cuts a block into pieces: buildings whole, the rest in ≤PIECE_MAX_CELLS segments along the long axis (x on ties). */
+/** Cuts a block into 1×1 pieces, row-major (ids `${block}#${i}`), sharing the block's lowest ground as base. */
 export function blockPieces(asset:CityAsset,b:CityBlock):BlockPiece[]{
-  const alongX=b.w>=b.h,len=alongX?b.w:b.h;
-  const n=b.kind==='building'?1:Math.ceil(len/PIECE_MAX_CELLS);
-  const out:BlockPiece[]=[];
-  for(let i=0;i<n;i++){
-    const off=n===1?0:i*PIECE_MAX_CELLS,size=n===1?len:Math.min(PIECE_MAX_CELLS,len-off);
-    const x=alongX?b.x+off:b.x,y=alongX?b.y:b.y+off,w=alongX?size:b.w,h=alongX?b.h:size;
-    const prev=i>0,next=i<n-1;
-    out.push({id:`${b.id}#${i}`,blockId:b.id,kind:b.kind,x,y,w,h,height:b.height,...(b.ruined?{ruined:true}:{}),
-      base:maxGround(asset,x,y,x+w,y+h),
-      seams:alongX?{n:false,s:false,w:prev,e:next}:{n:prev,s:next,w:false,e:false}});
+  const base=minGround(asset,b.x,b.y,b.x+b.w,b.y+b.h),out:BlockPiece[]=[];
+  const ruin=b.kind==='building'&&!!b.ruined;
+  for(let j=0;j<b.h;j++)for(let i=0;i<b.w;i++){
+    const ne=ruin&&i===b.w-1&&j===0;
+    out.push({id:`${b.id}#${j*b.w+i}`,blockId:b.id,kind:b.kind,x:b.x+i,y:b.y+j,w:1,h:1,height:b.height,
+      ...(b.ruined?{ruined:true}:{}),...(ne?{bite:ruinBite(b)}:{}),base,
+      seams:{n:j>0,s:j<b.h-1,w:i>0,e:i<b.w-1}});
   }
   return out;
 }
@@ -64,7 +79,7 @@ export function buildChunks(asset:CityAsset,chunkCells=CHUNK_CELLS):ChunkIndex{
       pieces:[],props:[],minBase:0,maxTop:0});
   }
   const at=(x:number,y:number)=>chunks[Math.floor(clamp(y,0,asset.height-1)/size)*cols+Math.floor(clamp(x,0,asset.width-1)/size)];
-  for(const b of asset.blocks)for(const p of blockPieces(asset,b))at(p.x+Math.floor((p.w-1)/2),p.y+Math.floor((p.h-1)/2)).pieces.push(p);
+  for(const b of asset.blocks)for(const p of blockPieces(asset,b))at(p.x,p.y).pieces.push(p);
   for(const p of asset.props){const c=cellOf(asset,p.x,p.y);at(c.cx,c.cy).props.push(p);}
   for(const c of chunks){
     c.pieces.sort(byId);c.props.sort(byId);
@@ -80,21 +95,22 @@ export function buildChunks(asset:CityAsset,chunkCells=CHUNK_CELLS):ChunkIndex{
 }
 
 /**
- * Conservative screen rect of everything the chunk draws: its world box (chunk cells grown to cover its
- * pieces' footprints and prop circles) projected at minBase and maxTop, padded for prop sprites.
+ * Conservative screen rect of everything the chunk draws: its cells (pieces are unit cells inside them)
+ * projected at minBase and maxTop, united with each prop's drawn extent (propExtentPx) around its feet.
  */
 export function chunkScreenBounds(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):Rect{
   const {cell,origin}=asset;
-  let x0=origin.x+chunk.x0*cell,y0=origin.y+chunk.y0*cell,x1=origin.x+chunk.x1*cell,y1=origin.y+chunk.y1*cell,maxR=0;
-  for(const p of chunk.pieces){
-    x0=Math.min(x0,origin.x+p.x*cell);y0=Math.min(y0,origin.y+p.y*cell);
-    x1=Math.max(x1,origin.x+(p.x+p.w)*cell);y1=Math.max(y1,origin.y+(p.y+p.h)*cell);
-  }
-  for(const p of chunk.props){x0=Math.min(x0,p.x-p.r);y0=Math.min(y0,p.y-p.r);x1=Math.max(x1,p.x+p.r);y1=Math.max(y1,p.y+p.r);maxR=Math.max(maxR,p.r);}
+  const x0=origin.x+chunk.x0*cell,y0=origin.y+chunk.y0*cell,x1=origin.x+chunk.x1*cell,y1=origin.y+chunk.y1*cell;
   const pts:Pt[]=[];
   for(const z of [chunk.minBase,chunk.maxTop])for(const [x,y] of [[x0,y0],[x1,y0],[x1,y1],[x0,y1]])pts.push(project(x,y,z,view,pivot));
-  const r=boundsOf(pts),pad=maxR*PROP_PAD_PER_R;
-  return {x:r.x-pad,y:r.y-pad,w:r.w+2*pad,h:r.h+2*pad};
+  for(const p of chunk.props){
+    const {up,side}=propExtentPx(p);
+    for(const z of [chunk.minBase,chunk.maxTop]){
+      const f=project(p.x,p.y,z,view,pivot);
+      pts.push({x:f.x-side,y:f.y-up},{x:f.x+side,y:f.y+side});
+    }
+  }
+  return boundsOf(pts);
 }
 
 const grow=(r:Rect,m:number):Rect=>({x:r.x-m,y:r.y-m,w:r.w+2*m,h:r.h+2*m});
@@ -134,9 +150,14 @@ export class ChunkTracker {
     return r;
   }
 
+  /** Forgets every shown chunk (e.g. the layer was destroyed); the next update starts over. */
+  reset(){this.shown.clear();this.view=undefined;}
+
   update(camera:Rect,view:number):{show:string[];hide:string[]}{
     const v=normalizeView(view),hide:string[]=[];
-    if(this.view!==v){hide.push(...[...this.shown].sort());this.shown.clear();this.view=v;}
+    // After a rotation the whole screen is new: show every wanted chunk at once instead of leaving holes.
+    let budget=this.maxShowPerUpdate;
+    if(this.view!==v){hide.push(...[...this.shown].sort());this.shown.clear();if(this.view!==undefined)budget=Infinity;this.view=v;}
     const keep=grow(camera,this.keepMarginPx),want=grow(camera,this.showMarginPx);
     for(const key of [...this.shown].sort()){
       const c=this.byKey.get(key);
@@ -149,7 +170,7 @@ export class ChunkTracker {
       if(rectsOverlap(b,want))cand.push({key:c.key,d:(b.x+b.w/2-mx)**2+(b.y+b.h/2-my)**2});
     }
     cand.sort((a,b)=>a.d-b.d||(a.key<b.key?-1:a.key>b.key?1:0));
-    const show=cand.slice(0,this.maxShowPerUpdate).map(c=>c.key);
+    const show=cand.slice(0,budget).map(c=>c.key);
     for(const k of show)this.shown.add(k);
     return {show,hide};
   }

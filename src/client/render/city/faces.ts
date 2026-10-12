@@ -60,16 +60,17 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
   for(const s of ['n','s','e','w'] as const)if(piece.seams[s])seams.add(viewSide(s,v));
   const faces:{kind:FaceKind;q:Q[]}[]=[];
   // Roof bite (ruined buildings only).
-  // Agreed with the art lane: a third of the shortest edge, at most 1 cell, so any ruin at least 2 cells wide bites 1 cell.
-  const m=Math.min(piece.w,piece.h),bs=piece.kind==='building'&&piece.ruined&&m>=2?1:0;
+  // Bite side in cells (chunks.ts ruinBite: a third of the block's shortest edge, at most 1 cell), on one piece only.
+  const bs=piece.kind==='building'&&piece.bite!==undefined&&piece.bite>0?Math.min(piece.bite,Math.min(piece.w,piece.h)):0;
   let bite:{x0:number;x1:number;y0:number;y1:number;sx:QSide;sy:QSide}|null=null;
   if(bs>0){
     const n=viewSide('n',v),e=viewSide('e',v),sx=n[1]==='x'?n:e,sy=n[1]==='y'?n:e,d=bs*cell;
     bite={x0:sx==='+x'?qx1-d:qx0,x1:sx==='+x'?qx1:qx0+d,y0:sy==='+y'?qy1-d:qy0,y1:sy==='+y'?qy1:qy0+d,sx,sy};
     faces.push({kind:'cap',q:rectQ(bite.x0,bite.y0,bite.x1,bite.y1,zb)});
     // Inner walls: the remaining roof faces into the bite; only +qx / +qy normals face the camera.
+    // Both are dark whatever their screen side (art bible §8.4: inner faces of a ruin are dark).
     if(sx==='+x')faces.push({kind:'wallDark',q:wallQ(0,bite.x0,bite.y0,bite.y1,zb,z1,null,zb)});
-    if(sy==='+y')faces.push({kind:'wallLight',q:wallQ(1,bite.y0,bite.x0,bite.x1,zb,z1,null,zb)});
+    if(sy==='+y')faces.push({kind:'wallDark',q:wallQ(1,bite.y0,bite.x0,bite.x1,zb,z1,null,zb)});
   }
   if(!seams.has('+y'))faces.push({kind:'wallLight',q:wallQ(1,qy1,qx0,qx1,z0,z1,bite&&bite.sy==='+y'?[bite.x0,bite.x1]:null,zb)});
   if(!seams.has('+x'))faces.push({kind:'wallDark',q:wallQ(0,qx1,qy0,qy1,z0,z1,bite&&bite.sx==='+x'?[bite.y0,bite.y1]:null,zb)});

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type {BlockKind,CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {type Pt,VIEW_PIVOT,depth,project,unrotate} from '../../src/client/render/city/projection.ts';
 import {FADE_ALPHA,FADE_MS,HERO_SCREEN,OUTLINE_FADE_ALPHA,OcclusionFader,type Occluder,covers,heroRect,heroRelativeDepth,
-  isBehind,occluderFor,outlineAlpha,stepAlpha} from '../../src/client/render/city/occlusion.ts';
+  isBehind,occluderFor,outlineAlpha,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
 
 const VIEWS=[0,1,2,3] as const;
 const PIVOTS:Pt[]=[VIEW_PIVOT,{x:5.3,y:-2}];
@@ -178,7 +178,7 @@ test('OcclusionFader: deterministic order by id, independent of input order; bad
   f.update(os,hero,0,-3);assert.equal(f.alpha('a'),a);
 });
 
-test('heroRelativeDepth: behind -> above hero, in front -> below hero, matches isBehind (all views)',()=>{
+test('heroRelativeDepth: only where the hero overlaps the block; then behind -> above hero, in front -> below (all views)',()=>{
   each((v,p)=>{
     const o:Occluder=occluderFor(block('b','building',3),asset,0,v,p),{x0,x1,y0,y1}=o.q,tag=`view ${v} pivot ${p.x}`;
     const front=(x1+y1)*100,back=(x0+y0)*100,center=((x0+x1)/2+(y0+y1)/2)*100;
@@ -187,18 +187,20 @@ test('heroRelativeDepth: behind -> above hero, in front -> below hero, matches i
     samples.push([x1,(y0+y1)/2],[(x0+x1)/2,y1],[x1,y1],[x0,y0]);
     for(const [qx,qy] of samples){
       const h=worldOf(qx,qy,v,p),hd=depth(h.x,h.y,v,p),behind=isBehind(o,h.x,h.y,v,p);
+      const overlap=rectHitsConvex(heroRect(h.x,h.y,0,v,p),o.silhouette);
       for(const bd of [front,back,center,hd]){
-        const r=heroRelativeDepth(o,bd,hd,h.x,h.y,v,p);
+        const r=heroRelativeDepth(o,bd,hd,{x:h.x,y:h.y,z:0},v,p);
+        if(!overlap){assert.equal(r,bd,'no overlap: block keeps its own key');continue;}
         assert.equal(r>hd,behind,`q=(${qx.toFixed(2)},${qy.toFixed(2)}) key ${bd} ${tag}`);
         if(behind?bd>hd:bd<hd)assert.equal(r,bd,'already right: unchanged');
       }
     }
     // Explicit: just behind the back face with a back-corner key gets lifted above the hero.
     const hb=worldOf(x1-0.1,y0-0.1,v,p),hdb=depth(hb.x,hb.y,v,p);
-    assert.ok(back<=hdb);assert.equal(heroRelativeDepth(o,back,hdb,hb.x,hb.y,v,p),hdb+1);
+    assert.ok(back<=hdb);assert.equal(heroRelativeDepth(o,back,hdb,{x:hb.x,y:hb.y,z:0},v,p),hdb+1);
     // Just in front of the front face with a front-corner key gets pushed below the hero.
     const hf=worldOf(x0-0.5,y1+0.1,v,p),hdf=depth(hf.x,hf.y,v,p);
-    assert.ok(front>=hdf);assert.equal(heroRelativeDepth(o,front,hdf,hf.x,hf.y,v,p),hdf-1);
+    assert.ok(front>=hdf);assert.equal(heroRelativeDepth(o,front,hdf,{x:hf.x,y:hf.y,z:0},v,p),hdf-1);
   });
 });
 

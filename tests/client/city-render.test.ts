@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {heightAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
-import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
+import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
 import {groundQuads,pieceGeometry,type Face} from '../../src/client/render/city/faces.ts';
 import {VIEW_PIVOT,depth,project,rectsOverlap,type Pt,type Rect} from '../../src/client/render/city/projection.ts';
 
@@ -21,42 +21,35 @@ const piece=(over:Partial<BlockPiece>):BlockPiece=>({id:'t#0',blockId:'t',kind:'
   seams:{n:false,s:false,e:false,w:false},...over});
 const chunk=(key:string)=>index.chunks.find(c=>c.key===key) as CityChunk;
 
-test('walls, cliffs and rubble are cut into ≤2-cell pieces that tile the block; buildings stay whole',()=>{
+test('every block is cut into 1×1 pieces that tile it, share the lowest ground as base and mark internal seams',()=>{
+  assert.equal(PIECE_MAX_CELLS,1);
   for(const b of asset.blocks){
-    const ps=pieces.filter(p=>p.blockId===b.id).sort((a,c)=>a.x-c.x||a.y-c.y);
-    if(b.kind==='building'){
-      assert.equal(ps.length,1,b.id);assert.equal(ps[0].id,`${b.id}#0`);
-      assert.deepEqual([ps[0].x,ps[0].y,ps[0].w,ps[0].h],[b.x,b.y,b.w,b.h]);
-      assert.deepEqual(ps[0].seams,{n:false,s:false,e:false,w:false});
-      assert.equal(ps[0].ruined,b.ruined);
-    }
-    const cells=new Map<string,string>();
+    const ps=pieces.filter(p=>p.blockId===b.id);
+    assert.equal(ps.length,b.w*b.h,b.id);
+    let base=Infinity;
+    for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)base=Math.min(base,heightAt(asset,x,y));
+    const cells=new Set<string>();
     for(const p of ps){
-      assert.match(p.id,new RegExp(`^${b.id}#\\d+$`));
-      assert.equal(p.kind,b.kind);assert.equal(p.height,b.height);
-      if(b.kind!=='building')assert.ok((b.w>=b.h?p.w:p.h)<=PIECE_MAX_CELLS,p.id);
-      let base=-Infinity;
-      for(let y=p.y;y<p.y+p.h;y++)for(let x=p.x;x<p.x+p.w;x++){
-        const k=`${x},${y}`;assert.ok(!cells.has(k),`${p.id} overlaps ${cells.get(k)}`);cells.set(k,p.id);base=Math.max(base,heightAt(asset,x,y));
-      }
-      assert.equal(p.base,base,p.id);
-      // A seam is exactly an edge shared with another piece of the same block.
-      const touches=(q:BlockPiece,side:'n'|'s'|'e'|'w')=>side==='e'?q.x===p.x+p.w&&q.y<p.y+p.h&&p.y<q.y+q.h
-        :side==='w'?q.x+q.w===p.x&&q.y<p.y+p.h&&p.y<q.y+q.h:side==='s'?q.y===p.y+p.h&&q.x<p.x+p.w&&p.x<q.x+q.w
-        :q.y+q.h===p.y&&q.x<p.x+p.w&&p.x<q.x+q.w;
-      for(const side of ['n','s','e','w'] as const)assert.equal(p.seams[side],ps.some(q=>q!==p&&touches(q,side)),`${p.id} ${side}`);
+      assert.equal(p.id,`${b.id}#${(p.y-b.y)*b.w+(p.x-b.x)}`);
+      assert.equal(p.w,1);assert.equal(p.h,1);assert.equal(p.kind,b.kind);assert.equal(p.height,b.height);
+      assert.equal(p.base,base,`${p.id}: one base per block (lowest ground)`);
+      assert.equal(p.ruined,b.ruined);
+      cells.add(`${p.x},${p.y}`);
+      assert.deepEqual(p.seams,{n:p.y>b.y,s:p.y<b.y+b.h-1,w:p.x>b.x,e:p.x<b.x+b.w-1},p.id);
+      // The ruin bite sits on the world north-east piece only: a third of the shortest edge, at most 1 cell.
+      const ne=p.x===b.x+b.w-1&&p.y===b.y;
+      assert.equal(p.bite,b.kind==='building'&&b.ruined&&ne?ruinBite(b):undefined,p.id);
     }
     assert.equal(cells.size,b.w*b.h,b.id);
-    for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)assert.ok(cells.has(`${x},${y}`),b.id);
   }
-  const wall=pieces.filter(p=>p.blockId==='wall-n-w');
-  assert.equal(wall.length,7);assert.deepEqual(wall.map(p=>p.id).sort(),[0,1,2,3,4,5,6].map(i=>`wall-n-w#${i}`).sort());
-  assert.equal(pieces.filter(p=>p.blockId==='wall-w-n').length,7);
-  // Base = highest ground cell under the piece (raise two cells under one wall segment).
+  assert.equal(ruinBite({w:2,h:5}),2/3);assert.equal(ruinBite({w:6,h:6}),1);assert.equal(ruinBite({w:1,h:9}),1/3);
+  // Raising ground under part of a wall does not lift it: the whole block keeps the lowest ground (no floating, no steps).
   const heights=[...asset.heights];heights[0*asset.width+3]=0.5;heights[0*asset.width+2]=0.2;
-  const raised=buildChunks({...asset,heights}).chunks.flatMap(c=>c.pieces);
-  assert.equal(raised.find(p=>p.id==='wall-n-w#1')!.base,0.5);
-  assert.equal(raised.find(p=>p.id==='wall-n-w#0')!.base,0);
+  const raised=buildChunks({...asset,heights}).chunks.flatMap(c=>c.pieces).filter(p=>p.blockId==='wall-n-w');
+  assert.ok(raised.every(p=>p.base===0));
+  heights.fill(0.3,0,14);
+  const lifted=buildChunks({...asset,heights}).chunks.flatMap(c=>c.pieces).filter(p=>p.blockId==='wall-n-w');
+  assert.ok(lifted.every(p=>p.base===0.3),'all cells raised: the block sits on them');
 });
 
 test('chunks: 4 for a 32×32 city, every piece and prop in exactly one, deterministic',()=>{
@@ -64,12 +57,12 @@ test('chunks: 4 for a 32×32 city, every piece and prop in exactly one, determin
   assert.equal(index.chunks.length,4);assert.equal(index.cols,2);assert.equal(index.rows,2);
   assert.deepEqual(index.chunks.map(c=>c.key),['0,0','1,0','0,1','1,1']);
   assert.equal(index.get(1,0)?.key,'1,0');assert.equal(index.get(2,0),undefined);assert.equal(index.get(-1,0),undefined);
-  const total=asset.blocks.reduce((s,b)=>s+(b.kind==='building'?1:Math.ceil(Math.max(b.w,b.h)/PIECE_MAX_CELLS)),0);
+  const total=asset.blocks.reduce((s,b)=>s+b.w*b.h,0);
   assert.equal(pieces.length,total);assert.equal(new Set(pieces.map(p=>p.id)).size,total);
   const props=index.chunks.flatMap(c=>c.props);
   assert.equal(props.length,asset.props.length);assert.equal(new Set(props.map(p=>p.id)).size,asset.props.length);
   for(const c of index.chunks){
-    for(const p of c.pieces){const mx=p.x+Math.floor((p.w-1)/2),my=p.y+Math.floor((p.h-1)/2);assert.ok(mx>=c.x0&&mx<c.x1&&my>=c.y0&&my<c.y1,p.id);}
+    for(const p of c.pieces)assert.ok(p.x>=c.x0&&p.x<c.x1&&p.y>=c.y0&&p.y<c.y1,p.id);
     for(const p of c.props){const cx=Math.floor(p.x/asset.cell),cy=Math.floor(p.y/asset.cell);assert.ok(cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1,p.id);}
     assert.deepEqual(c.pieces.map(p=>p.id),c.pieces.map(p=>p.id).sort());
     assert.deepEqual(c.props.map(p=>p.id),c.props.map(p=>p.id).sort());
@@ -79,6 +72,20 @@ test('chunks: 4 for a 32×32 city, every piece and prop in exactly one, determin
   assert.deepEqual(buildChunks(asset).chunks,index.chunks);
   assert.equal(buildChunks(asset,8).chunks.length,16);
   assert.equal(buildChunks(asset,10).chunks.length,16);
+});
+
+test('chunk bounds cover what the layer draws for tall props (lamp pole, pine sheet)',()=>{
+  const lamp={id:'L',kind:'lamp' as const,x:W(8),y:W(8),r:0.3},pine={id:'P',kind:'pine' as const,x:W(9),y:W(8),r:0.1};
+  assert.ok(propExtentPx(lamp).up>=0.3*42*17,'lamp: pole 14 r + head 3 r');
+  assert.ok(propExtentPx(pine).up>=353*165/340,'pine: approved sheet ~171 px above the feet');
+  const c=buildChunks({...asset,props:[lamp,pine]}).chunks[0];
+  for(const v of VIEWS){
+    const r=chunkScreenBounds(c,asset,v);
+    for(const p of [lamp,pine]){
+      const f=project(p.x,p.y,0,v),{up,side}=propExtentPx(p);
+      assert.ok(inside(r,{x:f.x,y:f.y-up})&&inside(r,{x:f.x-side,y:f.y})&&inside(r,{x:f.x+side,y:f.y}),`${p.kind} v${v}`);
+    }
+  }
 });
 
 test('chunk screen bounds contain every piece corner, prop and ground point in all 4 views',()=>{
@@ -205,47 +212,42 @@ test('split walls drop seam faces and seam edges from the outline',()=>{
   }
   // +qx is world east in view 0 and world west in view 2 (both seams); +qy is east in view 1 and west in view 3.
   assert.deepEqual(VIEWS.map(v=>kinds(pieceGeometry(mid,asset,v).faces).join()),['wallLight,cap','wallDark,cap','wallLight,cap','wallDark,cap']);
-  const cliff=pieces.find(p=>p.id==='cliff-e#1') as BlockPiece;
-  assert.deepEqual(cliff.seams,{n:true,s:true,e:false,w:false});
+  // An east-edge cliff cell with seams north, south and west: only its world-east wall can show.
+  const cliff=pieces.find(p=>p.id==='cliff-e#3') as BlockPiece;
+  assert.deepEqual(cliff.seams,{n:true,s:true,e:false,w:true});
   assert.deepEqual(kinds(pieceGeometry(cliff,asset,0).faces),['wallDark','cap']);
   assert.deepEqual(kinds(pieceGeometry(cliff,asset,1).faces),['wallLight','cap']);
+  assert.deepEqual(kinds(pieceGeometry(cliff,asset,2).faces),['cap']);
 });
 
-test('ruined buildings lose a roof bite with a lower floor and camera-facing inner walls',()=>{
-  const ruined=pieces.filter(p=>p.ruined);
-  assert.equal(ruined.length,2);
-  for(const p of ruined){
-    const full=p.w*p.h*W(1)**2*2*42*21,bite=W(1)**2*2*42*21;
+test('ruined buildings lose a roof bite with a lower floor and dark camera-facing inner walls',()=>{
+  const bitten=pieces.filter(p=>p.bite!==undefined);
+  assert.deepEqual(bitten.map(p=>p.blockId).sort(),['bld-nw-2','bld-se-1']);
+  for(const b of [0.5,1]){
+    const p=piece({ruined:true,bite:b}),cap=W(1)**2*2*42*21,biteArea=W(b)**2*2*42*21;
     const walls:number[]=[];
     for(const v of VIEWS){
       const g=pieceGeometry(p,asset,v),caps=g.faces.filter(f=>f.kind==='cap');
-      assert.equal(caps.length,2,`${p.id} v${v}`);
+      assert.equal(caps.length,2,`bite ${b} v${v}`);
       const top=g.faces[g.faces.length-1];
       assert.equal(top.kind,'cap');assert.equal(top.points.length,6);
-      assert.ok(Math.abs(area(top.points)-(full-bite))<1e-6,'roof minus the bite');
+      assert.ok(Math.abs(area(top.points)-(cap-biteArea))<1e-6,'roof minus the bite');
       const low=caps[0];
       assert.equal(g.faces.indexOf(low),0,'lower cap drawn first');
-      assert.ok(Math.abs(area(low.points)-bite)<1e-6);
-      // The floor sits RUIN_FLOOR of the height down: the same footprint corner is 0.4*height*HEIGHT_PX lower on screen.
-      const nw=project(W(p.x+p.w-1),W(p.y),p.base+0.6*p.height,v);
-      assert.ok(low.points.some(q=>Math.abs(q.x-nw.x)<EPS&&Math.abs(q.y-nw.y)<EPS),`floor height v${v}`);
+      assert.ok(Math.abs(area(low.points)-biteArea)<1e-6);
+      // The floor sits at RUIN_FLOOR of the height, at the world north-east corner of the piece.
+      const ne=project(W(p.x+1-b),W(p.y+b),p.base+0.6*p.height,v);
+      assert.ok(low.points.some(q=>Math.abs(q.x-ne.x)<EPS&&Math.abs(q.y-ne.y)<EPS),`floor corner v${v}`);
+      const inner=g.faces.slice(1,-3);
+      for(const f of inner)assert.equal(f.kind,'wallDark','inner faces of a ruin are dark (art bible §8.4)');
       walls.push(g.faces.filter(f=>f.kind!=='cap').length);
-      // Inner walls (drawn right after the floor) rise from the floor to the roof: shorter than the outer walls.
-      const inner=g.faces.slice(1,-3),outer=g.faces.slice(-3,-1);
-      for(const f of inner)assert.equal(f.points.length,4);
-      for(const f of outer)assert.ok(f.kind!=='cap');
-      for(const f of inner)assert.ok(area(f.points)<Math.max(...outer.map(o=>area(o.points))));
       assert.ok(Math.abs(g.depthKey-Math.max(...corners(p).map(k=>depth(k.x,k.y,v))))<EPS);
     }
     // The bite sits at the right, front, left and back corner in views 0..3: 1, 2, 1 and 0 inner walls.
-    assert.deepEqual(walls,[3,4,3,2],p.id);
+    assert.deepEqual(walls,[3,4,3,2],`bite ${b}`);
   }
-  // A 1-cell-wide ruin has no bite.
-  const thin=pieceGeometry(piece({w:1,h:3,ruined:true}),asset,0);
-  assert.deepEqual(kinds(thin.faces),['wallLight','wallDark','cap']);
-  // 6×6 ruin: the bite never exceeds 1 cell (agreed with the art lane).
-  const big=pieceGeometry(piece({x:4,y:4,w:6,h:6,ruined:true}),asset,1);
-  assert.ok(Math.abs(area(big.faces[0].points)-W(1)**2*2*42*21)<1e-6);
+  // A ruined piece without a bite is a plain box.
+  assert.deepEqual(kinds(pieceGeometry(piece({ruined:true}),asset,0).faces),['wallLight','wallDark','cap']);
 });
 
 test('ground quads: one per cell, flat ground unshaded, hill flanks lit or dark, back-to-front',()=>{
@@ -277,4 +279,15 @@ test('ground quads: one per cell, flat ground unshaded, hill flanks lit or dark,
   assert.equal(groundQuads(chunk('0,0'),asset,0).find(q=>q.cx===1&&q.cy===1)!.kind,'packed');
   const corner=project(W(22),W(7),at(0,22,7).points.length?(heightAt(asset,21,6)+heightAt(asset,22,6)+heightAt(asset,21,7)+heightAt(asset,22,7))/4:0,0);
   assert.ok(Math.abs(at(0,22,7).points[0].x-corner.x)<EPS&&Math.abs(at(0,22,7).points[0].y-corner.y)<EPS,'corner = mean of the 4 cells');
+});
+
+test('a rotation shows every wanted chunk at once (no holes), and reset starts over',()=>{
+  const t=new ChunkTracker(index,asset,{maxShowPerUpdate:1});
+  const all0=unionRect(boundsAll(0)),all1=unionRect(boundsAll(1));
+  for(let i=0;i<4;i++)t.update(all0,0);
+  assert.equal(t.visible().length,4);
+  const u=t.update(all1,1);
+  assert.equal(u.show.length,4,'after a turn the whole screen comes back in one update');
+  t.reset();assert.deepEqual(t.visible(),[]);
+  assert.equal(t.update(all1,1).show.length,1,'first update after reset keeps the per-update budget');
 });

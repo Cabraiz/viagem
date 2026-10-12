@@ -22,7 +22,7 @@ export type Formation='cluster'|'line'|'surround';
 export type RegularKind='bebado'|'pombos'|'tio-pave'|'agiota'|'anao-molotov';
 export const REGULAR_KINDS:readonly RegularKind[]=['bebado','pombos','tio-pave','agiota','anao-molotov'];
 /**
- * Relative threat per enemy (hp x danger). The heavier tio (110 hp, harder shove) went 2.5 → 2.8; the anão (40 hp,
+ * Relative threat per enemy (hp x danger). The heavier tio (100 hp, harder shove) went 2.5 → 2.8; the anão (40 hp,
  * telegraphed molotov with pulsing fire and a death explosion) is 2.
  */
 export const THREAT:Readonly<Record<RegularKind,number>>={bebado:1,pombos:.5,'tio-pave':2.8,agiota:1.5,'anao-molotov':2};
@@ -68,12 +68,12 @@ export interface RoundDef {
 export const TUTORIAL_CRUMBS={count:6,value:1,radius:[2.5,4.5] as const};
 
 export const ROUNDS:readonly RoundDef[]=[
-  // D-033 cast: the anão debuts in round 3 with a modest share (taken from the bêbados), 5-8% after that.
+  // D-033 cast: the anão debuts in round 3 with a modest share (taken from the bêbados), 4-8% after that.
   {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,crumbs:TUTORIAL_CRUMBS},
   {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
-  {index:3,budget:32,weights:{bebado:.55,pombos:.25,'tio-pave':.15,'anao-molotov':.05},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
-  {index:4,budget:46,weights:{bebado:.45,pombos:.2,'tio-pave':.15,agiota:.15,'anao-molotov':.05},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
-  {index:5,budget:54,weights:{bebado:.4,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
+  {index:3,budget:32,weights:{bebado:.57,pombos:.25,'tio-pave':.15,'anao-molotov':.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
+  {index:4,budget:46,weights:{bebado:.49,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
+  {index:5,budget:54,weights:{bebado:.44,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},
   {index:6,budget:76,weights:{bebado:.4,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
     swarm:{size:[14,18],at:[.3,.7]}},

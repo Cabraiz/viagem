@@ -29,7 +29,7 @@ type FakeProjectile=ProjectileView&{until:number};
 /** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
   {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
-  {kind:'tio-pave',weight:12,hp:110,speed:.55},{kind:'agiota',weight:14,hp:40,speed:.8},{kind:'anao-molotov',weight:12,hp:36,speed:.7},
+  {kind:'tio-pave',weight:12,hp:100,speed:.55},{kind:'agiota',weight:14,hp:40,speed:.8},{kind:'anao-molotov',weight:12,hp:36,speed:.7},
 ];
 const BARKS:Record<string,string[]>={
   bebado:['Tu é meu irmão, sabia?','Hic… saideira!','Me empresta dez conto'],

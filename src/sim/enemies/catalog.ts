@@ -81,7 +81,7 @@ export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
   // Heavier than the VGM-031 tio (90 hp, 1 u/s, 14 dmg, 0.48 radius): more hp, size and push (TIO_JOKE shove/bump).
   'tio-pave':{
     id:'tio-pave',name:'Tio do Pavê',behavior:'joker',
-    hp:110,speed:.95,damage:16,radius:.52,xp:6,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
+    hp:100,speed:.95,damage:13,radius:.52,xp:6,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
     barks:['Sobrinho, e as namoradinha?','Essa corrente é ouro de praia','Botão de camisa é pra fraco','É pavê ou pa comê? HÁ HÁ HÁ','No meu tempo pavê era arma','Dieta: só carne e cerveja','Sobrinho, tu é CLT ainda?','Pavê é pa vê. Empurrão é pa tu','Peito aberto, coração também!','Viu meu bom dia no grupo?'],
     deathLines:['Engasguei no trocadilho...','Caí no isopor. Gelou o tio.','Morri de rir sozinho. Literal.','Me enterra com o espetinho','Ninguém riu? Nem no velório?','A corrente fica pra tia!','Pavê... pa... morrê...'],
     reactionLines:['Pavê ou porrada? Toma os dois!','Puxa meu dedo, sobrinho. PUXA!','Toc toc. Quem é? EMPURRÃO!','Pa vê se aprende! PÁ!','O que o boleto disse? Venci!','Olha o passarinho... PLAFT!','Ri, porra! A piada era boa!','No peito: ouro e colesterol!'],
@@ -115,7 +115,7 @@ export const ELITE:EliteDef=Object.freeze({
  * speed is in world units per second; pierce 0 like every hostile shot (D-012). `marks` rides on the projectile (D-002):
  * projectiles.ts collideHostile marks the player it hurts (DEVENDO).
  */
-export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5,radius:.18,damage:10,life:ticks(3),cooldown:ticks(2.6),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
+export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5,radius:.18,damage:7,life:ticks(3),cooldown:ticks(3),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
 /** Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35). */
 export const TIO_JOKE=Object.freeze({range:2.4,pause:ticks(1.6),charge:ticks(1.2),chargeSpeed:2.6,cooldown:ticks(6),shove:1.3,bump:.45});
 /**
@@ -139,8 +139,8 @@ export const BURP_SLOW_LINES:readonly string[]=Object.freeze(['Arrotou na tua ca
  * fires take `deathEnemyDamage` through ctx.damageEnemy (no player credit, weapon 'env:explosion').
  */
 export const MOLOTOV=Object.freeze({
-  minRange:4,maxRange:6,fireRange:7.5,aim:ticks(.5),flight:ticks(1),radius:1.1,damage:12,cooldown:ticks(4.5),retry:ticks(1),
-  pulses:3,pulseEvery:ticks(.8),pulseRadius:.9,pulseDamage:4,maxActive:2,maxGlobal:8,
+  minRange:4,maxRange:6,fireRange:7.5,aim:ticks(.5),flight:ticks(1),radius:.9,damage:9,cooldown:ticks(4.5),retry:ticks(1),
+  pulses:3,pulseEvery:ticks(.8),pulseRadius:.75,pulseDamage:3,maxActive:2,maxGlobal:8,
   deathRadius:1.6,deathDamage:15,deathEnemyDamage:30,deathDelay:ticks(.8),
 });
 /** Floater when a hero steps in the molotov's fire (D-033). Used when the client/sim wires the event; nothing reads it yet. */
@@ -158,7 +158,7 @@ export const PUDDLE_SLIP_LINES:readonly string[]=Object.freeze(['Merda dá sorte
  * tick < devendoUntil (JSON-safe extra field on SimPlayer, D-002). A fresh mark says one line (D-013 `say`, key `key`,
  * source = the player id) through the enemy-ai limiter.
  */
-export const DEVENDO=Object.freeze({ticks:ticks(5),mult:1.25,key:'devendo'});
+export const DEVENDO=Object.freeze({ticks:ticks(3),mult:1.15,key:'devendo'});
 export const DEVENDO_LINES:readonly string[]=Object.freeze(['DEVENDO! Apanha com juros!','Teu nome tá na pochete dele','Nome no caderninho dele!','Parcelado em 48x de porrada','Nome sujo, corpo frágil']);
 /** SimPlayer extras (D-002) of the mark: until when, and 1 while the fresh mark's line is still to be said. */
 export interface DevendoPlayer {devendoUntil?:number;devendoSay?:number}

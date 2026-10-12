@@ -9,7 +9,7 @@ import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../ru
 import {createDirector,type Director} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
 import {createEnemyAi,type EnemyAi} from './enemies/ai.ts';
-import {createBoss,type BossController} from './boss.ts';
+import {BOSS_TUNING,createBoss,type BossController} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
@@ -23,6 +23,7 @@ import {WALL_RADIUS} from './stonewards/wall.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
+import {citySpeed} from './city/speed.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -107,12 +108,18 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  // City speeds (cidade-05c, city/speed.ts): every body the director or the boss creates gets its catalog speed
+  // converted to the city's profile (before the round's speed multiplier, which the director applies after creating).
+  // Island and endless keep the catalog speeds untouched.
+  const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });
   const boss=createBoss({
-    summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?createEnemy(ctx,kind,at,1):undefined,
+    summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
+    // City (cidade-05c): the boss walks the streets on the players field of its size class, at the city speed.
+    ...(steer?{steer,tuning:{speed:citySpeed(BOSS_TUNING.speed)}}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
@@ -120,7 +127,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   director=createDirector({
     maxEnemies:MAX_ENEMIES,
     // Unknown kinds are skipped instead of throwing; elites are scaled by the director itself (D-010).
-    createEnemy:(ctx,kind,point,scale)=>isEnemyKind(kind)?createEnemy(ctx,kind,point,scale):undefined,
+    createEnemy:(ctx,kind,point,scale)=>isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
     spawnBoss:(ctx,point)=>boss.spawnBoss(ctx,point),
     onRoundEnd:(ctx,summary)=>{
       progression.grantRoundOffers(ctx,summary.index,summary.intermissionEndsTick);
@@ -129,7 +136,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
-    ...(avenues?{avenues,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined}:{}),
+    // City: the planner's arrival estimates at the converted speeds; groups aimed at a team away from the base.
+    ...(avenues?{avenues,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?citySpeed(enemyDef(kind).speed):undefined,...(steer?{cityChase:steer}:{})}:{}),
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 

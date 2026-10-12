@@ -126,15 +126,25 @@ export interface AvenueState {round:number;mode:AvenueMode;open:Mouth[];alternat
 
 /** `at` = nominal dispatch tick after round start (from the waves plan); size = members; speed = u/s of this group (default enemySpeed). */
 export interface GroupRequest {at:number;size:number;speed?:number}
-/** at0: the round's first nominal at (default: min of the requests' at); indexBase: global index of requests[0]; nowTick: earliest release. */
-export interface PlanOptions {at0?:number;indexBase?:number;nowTick?:number}
+/**
+ * Path distance (u) from p to the nearest live player (Infinity when none is reachable): aims groups at a team away
+ * from the plaza (cidade-05c). See planGroups and openRound.
+ */
+export type ChaseCost=(p:FlowPoint)=>number;
+/**
+ * at0: the round's first nominal at (default: min of the requests' at); indexBase: global index of requests[0];
+ * nowTick: earliest release; chaseCost: aim at the team instead of the plaza (see planGroups).
+ */
+export interface PlanOptions {at0?:number;indexBase?:number;nowTick?:number;chaseCost?:ChaseCost}
+/** chaseCost: prefer the mouths whose avenue comes closest to the team (see openRound). */
+export interface OpenOptions {chaseCost?:ChaseCost}
 export interface PlannedGroup {
   index:number;            // indexBase + request position
   mouth:Mouth;
   points:FlowPoint[];      // one walkable, hidden point per member (length = size, or fewer only if the avenue truly has no room)
   releaseTick:number;      // ticks after round start when they appear (>= nowTick)
   warnTick:number;         // releaseTick - warning (may be negative = during the intermission)
-  arrivalTick:number;      // estimated plaza arrival, ticks after round start
+  arrivalTick:number;      // estimated plaza arrival (with chaseCost: at the team), ticks after round start
 }
 export type Target={kind:'plaza'}|{kind:'barricade';mouth:Mouth}|{kind:'none'};
 
@@ -270,21 +280,30 @@ export class AvenuePlanner {
    * Choose which mouths open this round; updates `state` in place (a fresh one when absent) and returns it.
    * Least-used mouths first (rng breaks ties; mouths with no route last); 'alternado' opens the least-used opposite
    * pair; 'cerco' all 4 in MOUTHS order. Always draws 4 rng values.
+   * With opts.chaseCost (the team away from the base, cidade-05c) the mouths whose avenue (past the base, from
+   * OUTSIDE_MOUTH on) comes closest to the team by path rank first, before the use count: a team at an avenue's far
+   * end meets that avenue's horde instead of one that walks the whole city. 'alternado' prefers the pair holding the
+   * closest mouth; 'cerco' is unchanged. A mouth the team cannot be reached from ranks as farthest.
    */
-  openRound(round:number,mode:AvenueMode,rng:RngLike,state?:AvenueState):AvenueState{
+  openRound(round:number,mode:AvenueMode,rng:RngLike,state?:AvenueState,opts:OpenOptions={}):AvenueState{
     const s:AvenueState=state??{round:0,mode:'normal',open:[],alternate:0,uses:{N:0,S:0,L:0,O:0}};
     const uses=s.uses=s.uses??{N:0,S:0,L:0,O:0};
     for(const m of MOUTHS)if(!Number.isFinite(uses[m]))uses[m]=0;
     const tie:Record<Mouth,number>={N:rng.next(),S:rng.next(),L:rng.next(),O:rng.next()};
     const dead=(m:Mouth)=>this.routeData(m)?0:1;
-    const rank=(a:Mouth,b:Mouth)=>dead(a)-dead(b)||uses[a]-uses[b]||tie[a]-tie[b];
+    const chase=typeof opts?.chaseCost==='function'?opts.chaseCost:undefined;
+    // Path distance from each avenue to the team (0 for every mouth without chaseCost: the use count decides).
+    const near:Record<Mouth,number>={N:0,S:0,L:0,O:0};
+    if(chase&&mode!=='cerco')for(const m of MOUTHS){const r=this.routeData(m);near[m]=r?this.nearestOn(r,chase):Infinity;}
+    const cmp=(x:number,y:number)=>x===y?0:x<y?-1:1;
+    const rank=(a:Mouth,b:Mouth)=>dead(a)-dead(b)||cmp(near[a],near[b])||uses[a]-uses[b]||tie[a]-tie[b];
     let open:Mouth[];
     if(mode==='cerco')open=[...MOUTHS];
     else if(mode==='alternado'){
       const a:Mouth[]=['N','S'], b:Mouth[]=['L','O'];
-      const score=(p:Mouth[])=>[dead(p[0])+dead(p[1]),uses[p[0]]+uses[p[1]],Math.min(tie[p[0]],tie[p[1]])];
+      const score=(p:Mouth[])=>[dead(p[0])+dead(p[1]),Math.min(near[p[0]],near[p[1]]),uses[p[0]]+uses[p[1]],Math.min(tie[p[0]],tie[p[1]])];
       const sa=score(a), sb=score(b);
-      open=(sa[0]-sb[0]||sa[1]-sb[1]||sa[2]-sb[2])<=0?a:b;
+      open=(cmp(sa[0],sb[0])||cmp(sa[1],sb[1])||cmp(sa[2],sb[2])||cmp(sa[3],sb[3]))<=0?a:b;
       open.sort(rank);
     }else open=[...MOUTHS].sort(rank).slice(0,mouthCount(round,mode));
     for(const m of open)uses[m]++;
@@ -306,7 +325,12 @@ export class AvenuePlanner {
    *    the route's outermost base cell toward the spawn): the first at distance s, the rest stepping back by
    *    memberSpacing (extra lateral lanes only when single file runs out of avenue), each with a small rng lateral
    *    jitter, all reachable, outside the base, hiddenFrom every viewer and ≥ 0.8 u from members of groups of this
-   *    call released within 2 s; a mouth with no such spot is skipped; when none works the group has points=[].
+   *    call released within 2 s; a mouth with no such spot is skipped; when none works the group has points=[];
+   *  - opts.chaseCost (cidade-05c: the team away from the base): on each route the spots are tried by the path
+   *    distance of their route point to the team (ascending; ties → closer to the plaza) instead of by the distance
+   *    to the plaza, so the group appears as close to the team as it stays hidden; travel = that distance / speed, so
+   *    arrivalTick is the arrival at the team. A route with no finite chaseCost past the base (or no spot that fits
+   *    by it) falls back to the plaza scan.
    * Draws exactly Σ size rng values. Does not mutate `state`.
    */
   planGroups(requests:readonly GroupRequest[],players:readonly PlayerLike[],state:AvenueState,rng:RngLike,opts:PlanOptions={}):PlannedGroup[]{
@@ -316,6 +340,7 @@ export class AvenuePlanner {
     if(at0===Infinity){for(const r of requests){const a=Number(r?.at);if(Number.isFinite(a)&&a<at0)at0=a;}if(at0===Infinity)at0=0;}
     const open=(state?.open??[]).filter(m=>MOUTHS.includes(m)), mouths=open.length?open:[...MOUTHS];
     const off=Math.floor(fin(state?.alternate,0)), mode=state?.mode, placed:Placed[]=[];
+    const chase=typeof opts?.chaseCost==='function'?opts.chaseCost:undefined;
     const sizes=requests.map(r=>Math.max(0,Math.floor(fin(r?.size,0))));
     const jitter=sizes.map(n=>{const j:number[]=[];for(let q=0;q<n;q++)j.push((rng.next()*2-1)*JITTER);return j;});
     for(let k=0;k<requests.length;k++){
@@ -325,10 +350,10 @@ export class AvenuePlanner {
         const part=Math.floor(size/4), rem=size%4;
         for(let p=0,used=0;p<4;p++){
           const n=part+(mod(p-off-i,4)<rem?1:0);
-          if(n>0)placed.push(this.placeOn(i,rotate(MOUTHS,p),false,jitter[k].slice(used,used+n),viewers,desired,now,speed,placed));
+          if(n>0)placed.push(this.placeOn(i,rotate(MOUTHS,p),false,jitter[k].slice(used,used+n),viewers,desired,now,speed,placed,chase));
           used+=n;
         }
-      }else placed.push(this.placeOn(i,rotate(mouths,mod(off+i,mouths.length)),mode!=='alternado',jitter[k],viewers,desired,now,speed,placed));
+      }else placed.push(this.placeOn(i,rotate(mouths,mod(off+i,mouths.length)),mode!=='alternado',jitter[k],viewers,desired,now,speed,placed,chase));
     }
     return placed.map(p=>({index:p.index,mouth:p.mouth,points:p.points,releaseTick:p.release,warnTick:p.release-this.warn,arrivalTick:p.release+p.travel}));
   }
@@ -430,10 +455,11 @@ export class AvenuePlanner {
    * Place `size` members on the mouths of `order`: with `earliest` the placement with most members then earliest
    * arrival wins (ties → order); otherwise the first mouth with any spot.
    */
-  private placeOn(index:number,order:readonly Mouth[],earliest:boolean,jitter:readonly number[],viewers:readonly PlayerLike[],desired:number,now:number,speed:number,placed:readonly Placed[]):Placed{
+  private placeOn(index:number,order:readonly Mouth[],earliest:boolean,jitter:readonly number[],viewers:readonly PlayerLike[],desired:number,now:number,speed:number,placed:readonly Placed[],chase?:ChaseCost):Placed{
     let best:Placed|undefined;
     for(const mouth of order){
-      const r=this.routeData(mouth), got=r&&jitter.length?this.scan(r,jitter,viewers,desired,now,speed,placed):undefined;
+      const r=this.routeData(mouth);
+      const got=r&&jitter.length?(chase&&this.chaseScan(r,jitter,viewers,desired,now,speed,placed,chase))||this.scan(r,jitter,viewers,desired,now,speed,placed):undefined;
       if(!got)continue;
       const c:Placed={index,mouth,...got};
       if(!earliest)return c;
@@ -459,6 +485,48 @@ export class AvenuePlanner {
       if(s>=r.length)break;
     }
     return best;
+  }
+  /** Spots of route r past the base: s = minS, then every SCAN_STEP up to the spawn end (r.length). */
+  private spots(r:Route):number[]{
+    const out:number[]=[];
+    if(r.minS>r.length)return out;
+    for(let s=r.minS;;s=Math.min(r.length,s+SCAN_STEP)){out.push(s);if(s>=r.length)break;}
+    return out;
+  }
+  /**
+   * `scan` aimed at the team: the spots whose route point has a finite chaseCost, tried by that cost (ties → smaller
+   * s); travel = cost / speed. The first full fit wins, else the largest partial one (ties → cheaper); undefined when
+   * no spot has a finite cost or none fits.
+   */
+  private chaseScan(r:Route,jitter:readonly number[],viewers:readonly PlayerLike[],desired:number,now:number,speed:number,placed:readonly Placed[],chase:ChaseCost){
+    const spots:{s:number;cost:number}[]=[];
+    for(const s of this.spots(r)){
+      const a=this.pointAt(r,s), cost=chase({x:a.x,y:a.y});
+      if(Number.isFinite(cost)&&cost>=0)spots.push({s,cost});
+    }
+    spots.sort((p,q)=>p.cost-q.cost||p.s-q.s);
+    const size=jitter.length;
+    let best:{points:FlowPoint[];release:number;travel:number}|undefined;
+    for(const {s,cost} of spots){
+      const travel=ticks(cost/speed), release=Math.max(now,desired-travel);
+      const rows=Math.floor((r.length-s)/this.spacing+1e-9)+1;
+      for(let lanes=Math.min(LANES.length,Math.ceil(size/rows));lanes<=LANES.length;lanes++){
+        const pts=this.fill(r,s,rows,lanes,jitter,viewers,release,placed);
+        if(!pts)break;
+        if(pts.length===size)return {points:pts,release,travel};
+        if(pts.length&&(!best||pts.length>best.points.length))best={points:pts,release,travel};
+      }
+    }
+    return best;
+  }
+  /** Smallest finite chaseCost of route r's spots (see `spots`); Infinity when none. */
+  private nearestOn(r:Route,chase:ChaseCost):number{
+    let low=Infinity;
+    for(const s of this.spots(r)){
+      const a=this.pointAt(r,s), cost=chase({x:a.x,y:a.y});
+      if(Number.isFinite(cost)&&cost>=0&&cost<low)low=cost;
+    }
+    return low;
   }
   /** Member points from distance s back toward the spawn; undefined as soon as a point is seen or stacks on a recent group. */
   private fill(r:Route,s:number,rows:number,lanes:number,jitter:readonly number[],viewers:readonly PlayerLike[],release:number,placed:readonly Placed[]){

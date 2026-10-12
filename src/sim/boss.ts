@@ -94,6 +94,12 @@ export interface BossOptions {
   /** Player count used for hp (1..6); pass the director's scalePlayers so leaving before round 10 does not shrink the boss. */
   scalePlayers?:(ctx:SimContext)=>number;
   tuning?:Partial<BossTuning>;
+  /**
+   * Walking direction around the map (same signature as EnemyAiOptions.steer; the city passes citySteer, cidade-05c):
+   * writes a unit vector into `out` and returns true to replace the straight line to `target`. The boss keeps its own
+   * collision (clearSegment with the axis slides). Absent (island, endless): the straight walk.
+   */
+  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
 }
 /** JSON-safe controller state, enough to resume after a checkpoint. */
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
@@ -135,6 +141,8 @@ const SAFE_SPAWN_DISTANCE=4;
 /** Minions are placed this far from players and still need SAFE_SUMMON_DISTANCE when they appear. */
 const SUMMON_PLACE_DISTANCE=2.5,SAFE_SUMMON_DISTANCE=1.5;
 export const SUMMON_WARNING_TICKS=ticks(1.5);
+/** City (steer): cosine of the widest angle between the walking direction and a charge's line (45°). */
+const CHARGE_ALIGN=Math.SQRT1_2;
 const freshState=():BossState=>({defeated:false,lastX:0,lastY:0,minions:[],pending:[]});
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math.min(m,dist(p,q)),Infinity);
@@ -321,12 +329,18 @@ export function createBoss(options:BossOptions={}):BossController {
     slam(ctx,boss,targets);
   }
 
+  const steerOut:Point={x:0,y:0};
   function walk(ctx:SimContext,boss:EnemyState,target:Point){
     if(dist(boss,target)<=2.5)return;
     const slow=boss.slowUntil!==undefined&&ctx.tick<boss.slowUntil?.6:1;
     const mult=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.phase2Speed*(enraged(boss)?tuning.enragedSpeed:1):1;
     const step=boss.speed*mult*slow/SIM_HZ;
-    const dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
+    let dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
+    // The city's flow field bends the walk around buildings (it may point away from the target there).
+    if(options.steer?.(ctx,boss,target,steerOut)){
+      const s=Math.hypot(steerOut.x,steerOut.y);
+      if(s>1e-6){dx=steerOut.x;dy=steerOut.y;l=s;}
+    }
     const next={x:boss.x+dx/l*step,y:boss.y+dy/l*step};
     for(const c of [next,{x:next.x,y:boss.y},{x:boss.x,y:next.y}])
       if(clearSegment(boss,c,ctx.terrain)){boss.x=c.x;boss.y=c.y;return;}
@@ -354,10 +368,19 @@ export function createBoss(options:BossOptions={}):BossController {
     say(ctx,boss,'fine');windup(ctx,boss,fireTick);
   }
 
-  /** Line telegraph toward the nearest player, clipped where the island or an obstacle stops the dash. */
+  /**
+   * Line telegraph toward the nearest player, clipped where the island or an obstacle stops the dash. With `steer`
+   * (the city) only when the steer's walking direction is within CHARGE_ALIGN of that line (or it goes straight
+   * anyway): a dash at a player behind a building would throw the boss back against the wall its walk is going around
+   * (the attack falls back to the slam).
+   */
   function charge(ctx:SimContext,boss:EnemyState,target:Point):boolean {
     const dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
     if(l<1e-6)return false;
+    if(options.steer?.(ctx,boss,target,steerOut)){
+      const s=Math.hypot(steerOut.x,steerOut.y);
+      if(s>1e-6&&(steerOut.x*dx+steerOut.y*dy)/(s*l)<CHARGE_ALIGN)return false;
+    }
     const ux=dx/l,uy=dy/l;
     let reach=0;
     while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;

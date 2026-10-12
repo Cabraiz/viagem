@@ -12,7 +12,8 @@
  * - city (cidade-05, with options.avenues): at the avenue tips through the AvenuePlanner (city/avenues.ts). The round is
  *   planned once at its start for the warning ticks; each group is planned again just in time at its warning, at
  *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s). The round's timer
- *   covers the slowest member's walk (CITY_ARRIVAL_SLACK). The boss lands in the plaza itself (D-026). Timed-out
+ *   covers the slowest member's walk (CITY_ARRIVAL_SLACK). With the team away from the base (options.cityChase,
+ *   cidade-05c) the mouths and spots are aimed at the team instead of the plaza. The boss lands in the plaza itself (D-026). Timed-out
  *   hordes walk back up the avenues (exit flow field) and vanish out of everyone's sight, at the avenue end or far
  *   from the plaza.
  */
@@ -74,6 +75,12 @@ export interface DirectorOptions {
   avenues?:AvenuePlanner;
   /** City: base speed (u/s) of an enemy kind, for the planner's arrival estimate (× plan.speed). Planner default when absent. */
   enemySpeedOf?:(kind:string)=>number|undefined;
+  /**
+   * City (cidade-05c): path distance to the live players, from the AI's players field (CitySteer refresh/costTo).
+   * With it, while no live player stands in the base, the round's mouths and every group are aimed at the team
+   * instead of the plaza (planner openRound/planGroups chaseCost). Without it, or with someone in the base: the plaza.
+   */
+  cityChase?:{refresh(ctx:SimContext):void;costTo(p:Point):number};
 }
 
 /**
@@ -475,24 +482,43 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     return fastest>0?{at,size:members.length,speed:fastest*state.plan!.speed}:{at,size:members.length};
   }
   /**
+   * cidade-05c: the planner's chaseCost while the team is away from the base (some live player, none of them in the
+   * base) and options.cityChase is wired; the players field is brought up to this tick first. Else undefined (plaza).
+   */
+  function cityChaseCost(ctx:SimContext):((p:Point)=>number)|undefined{
+    const chase=options.cityChase;
+    if(!chase)return undefined;
+    let any=false;
+    for(const p of ctx.players.values()){
+      if(!(p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0))continue;
+      if(planner!.insideBase(p))return undefined;
+      any=true;
+    }
+    if(!any)return undefined;
+    chase.refresh(ctx);
+    return p=>chase.costTo(p);
+  }
+  /**
    * Round start: open the round's mouths and plan every group once, only for the tick each group's warning goes out
    * (its earliest part); groups are dispatched in that order. A round of siege groups only (every regular group
-   * besieges) is a cerco; a modifier wins over it (modeForModifier).
+   * besieges) is a cerco; a modifier wins over it (modeForModifier). With the team away from the base the mouths and
+   * groups are aimed at it (cityChaseCost).
    */
   function planCity(ctx:SimContext){
     const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite);
     const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||isSiege(g,i));
-    const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues);
+    const chaseCost=cityChaseCost(ctx),aim=chaseCost?{chaseCost}:{};
+    const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues,aim);
     // The boss appears in the plaza (cityWarn), not on an avenue: an empty request keeps every other group's index.
     const requests=plan.groups.map(g=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at));
-    const parts=planner!.planGroups(requests,viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0});
+    const parts=planner!.planGroups(requests,viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0,...aim});
     const warnAt=plan.groups.map(()=>Infinity);
     for(const part of parts)if(part.index<warnAt.length)warnAt[part.index]=Math.min(warnAt[part.index],part.warnTick);
     const cityWarn=state.cityWarn=warnAt.map((w,i)=>plan.groups[i].boss?plan.groups[i].at:Math.max(0,Number.isFinite(w)?w:plan.groups[i].at));
     state.cityOrder=plan.groups.map((_,i)=>i).sort((a,b)=>cityWarn[a]-cityWarn[b]||a-b);
     // A round that times out lasts until the slowest member of the last group could have walked in, plus
     // CITY_ARRIVAL_SLACK. Not the boss round: it never retreats, and its end tick is the boss's enrage (boss.ts).
-    const arrival=plan.retreat?cityLastArrival(ctx,parts):undefined;
+    const arrival=plan.retreat?cityLastArrival(ctx,parts,!!chaseCost):undefined;
     if(arrival!==undefined)ctx.round.phaseEndsTick=Math.max(ctx.round.phaseEndsTick,state.roundStart+arrival+ticks(CITY_ARRIVAL_SLACK));
   }
   /** City: flow field toward the team (the players at the wave's start), for the round timer; on the planner's grid. */
@@ -512,8 +538,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    * stands farther away, to the team where it is now (the steer chases the players, citySteer); distances are
    * flow-field costs (STRAIGHT_COST per cell, wall penalties included, so they never under-estimate the walk). The
    * release is the fastest member's (first contact), so slower kinds trail behind.
+   * `aimed` (cidade-05c: the groups were placed toward a team away from the base): the walk is to the team only (the
+   * plaza when the team field does not reach the spot), the same arrival the planner aimed at.
    */
-  function cityLastArrival(ctx:SimContext,parts:readonly {index:number;points:readonly Point[];releaseTick:number;arrivalTick:number}[]){
+  function cityLastArrival(ctx:SimContext,parts:readonly {index:number;points:readonly Point[];releaseTick:number;arrivalTick:number}[],aimed=false){
     const plan=state.plan!,field=planner!.plazaField,team=cityTeamField(ctx),used=plan.groups.map(()=>0);
     const units=(f:FlowField,p:Point)=>{const c=f.costAt(p.x,p.y);return c===UNREACHABLE?-1:c/STRAIGHT_COST*f.cellSize;};
     let last:number|undefined;
@@ -523,7 +551,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       part.points.forEach((p,j)=>{
         const kind=group.members[used[part.index]+j],known=kind===undefined?undefined:options.enemySpeedOf?.(kind);
         const speed=(known!==undefined&&Number.isFinite(known)&&known>0?known:CITY_ENEMY_SPEED)*plan.speed;
-        const d=Math.max(units(field,p),team?units(team,p):-1);
+        const toTeam=team?units(team,p):-1,d=aimed&&toTeam>=0?toTeam:Math.max(units(field,p),toTeam);
         const walk=d<0?part.arrivalTick-part.releaseTick:ticks(d/speed);
         last=Math.max(last??0,part.releaseTick+walk);
       });
@@ -545,8 +573,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       return;
     }
     const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
+    const chaseCost=cityChaseCost(ctx);
     const parts=planner!.planGroups([cityRequest(spawn.members,at)],viewers(ctx),state.avenues!,random(),
-      {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning});
+      {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning,...(chaseCost?{chaseCost}:{})});
     let used=0;
     for(const part of parts){
       const members=spawn.members.slice(used,used+part.points.length);

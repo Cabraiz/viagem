@@ -106,9 +106,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   structures=()=>{const {wall,wallDown,towers}=stonewards.state;return [...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];};
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
-  // TODO(cidade-05 steer hook): spread so tsc passes until EnemyAiOptions declares `steer` (the hook card types it).
-  const steer=avenues?{steer:citySteer(avenues,{terrain:cityTerrain})}:{};
-  const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,...steer,
+  const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });

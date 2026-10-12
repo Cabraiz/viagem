@@ -35,7 +35,7 @@ quando atrasa, e atraso acima de 0,5 s é descartado (um tick e o relógio recom
   o quadro sai no último), e o relógio **para quando não sobra socket**: inclusive quando a própria sala corta celulares
   mudos (sem rede o fechamento nunca volta e o relógio ficaria ligado até o alarme, ~230 GB-s por sala). Conferido no
   `wrangler dev`: depois do smoke, `clock.fires` parado em 906 com 0 conexões. Smoke depois disso: 20,05 · 20,02 ticks/s.
-- Teste com relógio falso: `tests/tick-clock.test.ts` (atraso fixo de 2,5 ms → 1 199 ticks em 60 s, nenhum disparo
+- Teste com relógio falso: `tests/rooms/tick-clock.test.ts` (atraso fixo de 2,5 ms → 1 199 ticks em 60 s, nenhum disparo
   duplo; atraso aleatório 0–20 ms por 10 min → 20 ticks/s, nunca dois disparos duplos seguidos; dívida > 0,5 s descartada).
 
 ## 2. Números da cena (6 jogadores = 1 pessoa + 5 bots da sala, horda de 300)
@@ -61,7 +61,7 @@ Cada linha é uma janela de 34–52 s em combate, depois de 8 s de aquecimento.
 - Normal fora da horda de laboratório (VGM-045, run inteira com 6 bots de protocolo, horda do jogo): 9,7–10,3 msgs/s
   e **5,1–6,3 KB/s** por cliente (p95 10,5–13,5). A horda de 300 em volta de todo mundo custa ~5× isso.
 - **Canvas do mundo: 1 pixel por px CSS** (390×844 com DPR 3; o Phaser 3.90 não tem `resolution`). O HUD é DOM e fica
-  na nitidez do aparelho (DPR 3). O DPR já está abaixo do teto de 2 nos dois modos; `tests/economy.test.ts` trava a
+  na nitidez do aparelho (DPR 3). O DPR já está abaixo do teto de 2 nos dois modos; `tests/client/economy.test.ts` trava a
   config do jogo sem `resolution`.
 
 ## 3. Peso inicial (build de produção, `scripts/serve.mjs`, sem compressão no servidor de teste)
@@ -179,7 +179,7 @@ O que mudou:
   iguais na tela; só num zoom de 3× da folha as folhinhas ficam um pouco mais macias
   (`board/evidence/NEW-20261012-N25-peso-e-rede/comparacao-*.png`). Resolução cheia de propósito: metade do tamanho
   pesaria 11% mas mudaria o desenho (e fecharia a porta do DPR 2). Teste: toda árvore e classe tem cópia feita do
-  arquivo aprovado como ele está agora (`tests/art-lite.test.ts`; importou arte nova, rode `node scripts/art-lite.mjs`).
+  arquivo aprovado como ele está agora (`tests/client/art-lite.test.ts`; importou arte nova, rode `node scripts/art-lite.mjs`).
   **O CI não gera as cópias, de propósito**: elas vão commitadas e o teste confere o hash do original e da cópia;
   gerar no build deixaria o servidor de dev diferente do site e poria o sharp no caminho de cada deploy.
 - **Só o que o 1º quadro precisa segura a cena**: chão, a folha do próprio herói, o retratinho dele (256 px, não o
@@ -225,7 +225,7 @@ O que mudou:
 - A cena real fica acima do banco porque o `wrangler dev` na máquina cheia corre atrás do relógio (rajadas, N17).
   Com a máquina calma a cena deu 13,9; a meta de 15 KB/s fica no limite com load 11.
 - O teste do protocolo trava: encadeado decodifica igual, com ack atrasado um minuto ou sem ack nenhum os quadros
-  não crescem, e um quadro perdido recupera com um quadro cheio (`tests/protocol4.test.ts`).
+  não crescem, e um quadro perdido recupera com um quadro cheio (`tests/protocol/protocol4.test.ts`).
 - O laboratório dos bots tinha um defeito que o encadeamento pegou: duas mensagens com o mesmo milissegundo de
   entrega podiam sair fora de ordem (um timer por mensagem). Agora um timer só esvazia a fila em ordem (`lab-socket.ts`).
 
@@ -262,11 +262,11 @@ Reproduzido com CPU 6× mais lenta (CDP), 1 pessoa + 5 bots, horda de 300, `scri
     isso (o lote de quadros atrasados é tratado em milissegundos).
 - **Depois** (CPU 6×, 90–120 s de combate, três rodadas): nenhuma queda; maior silêncio do celular 5,3–7,3 s (antes
   11,7–22,8 s); RTT 0,07–6,4 s (antes 12–51 s). Os timers continuam atrasando 2–7 s (é o laboratório).
-- Testes: `tests/slow-phone.test.ts` (limite de silêncio, celular que vai ficando lento com silêncios de até 15 s fica,
+- Testes: `tests/client/slow-phone.test.ts` (limite de silêncio, celular que vai ficando lento com silêncios de até 15 s fica,
   some e é cortado até 45 s; duas trocas de antena e a morte: cortado em ≤ 15 s; atraso e "alcançar"),
-  `tests/reconexao-cliente.test.ts` (timers parados: o keepalive segura a cadeira; batimento atrasado não julga, o
-  seguinte em dia derruba, página atrasada sempre derruba aos 24 s), `tests/aba-escondida.test.ts` (60 s escondido:
-  sai, não manda nada, não tenta voltar; visível, volta com o mesmo personagem), `tests/room-loop.test.ts`
+  `tests/client/reconexao-cliente.test.ts` (timers parados: o keepalive segura a cadeira; batimento atrasado não julga, o
+  seguinte em dia derruba, página atrasada sempre derruba aos 24 s), `tests/client/aba-escondida.test.ts` (60 s escondido:
+  sai, não manda nada, não tenta voltar; visível, volta com o mesmo personagem), `tests/rooms/room-loop.test.ts`
   (relógio para no limite).
 
 ### 7.4 Limites

@@ -1,0 +1,46 @@
+/**
+ * The server's view of a run tick (VGM-030): what every system steps over. It holds the live terrain, so it lives in
+ * the simulation sector, not in the contract (src/contract/types.ts has the state it carries).
+ * Change it only through the integration card (VGM-030) or with orchestrator approval.
+ */
+import type {TerrainField} from '../maps/index.ts';
+import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
+import type {Rng} from '../contract/index.ts';
+
+// ---------- Context and systems ----------
+export interface SimContext {
+  readonly tick:number;
+  /** Tick when the current combat started (D-005: chests before 2:00 do not evolve). */
+  readonly runStartTick:number;
+  readonly terrain:TerrainField;
+  /**
+   * Re-derived every tick from the run seed and tick. Fork inside step (ctx.rng.fork('<id>')) for per-system streams;
+   * do not keep a forked stream across ticks, because private state is outside the replay hash and survives rematches.
+   */
+  readonly rng:Rng;
+  /** Includes offline/spectators; systems must skip them as appropriate. */
+  readonly players:ReadonlyMap<string,SimPlayer>;
+  readonly enemies:Map<string,EnemyState>;
+  readonly pickups:Map<string,PickupState>;
+  readonly projectiles:Map<string,ProjectileState>;
+  readonly telegraphs:Map<string,Telegraph>;
+  readonly team:TeamProgress;
+  readonly offers:Map<string,LevelOffer[]>;
+  readonly round:RoundState;
+  readonly enemyIndex:SpatialIndex<EnemyState>;
+  /** Deterministic, monotonic ids: prefix + counter. */
+  nextId(prefix:string):string;
+  emit(event:SimEvent):void;
+  /**
+   * Only path to hurt enemies: multiplies by the source player's stats.might (D-001), emits damage/kill and removes the
+   * enemy once; drops (XP, chest) run in the integration's onKill hook, exactly once. Returns true if it killed.
+   */
+  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string):boolean;
+  /** Only path to hurt players: armor, invulnerability; at 0 hp the integration's onPlayerZero hook downs the player (VGM-037). */
+  damagePlayer(playerId:string,amount:number,source?:string):void;
+}
+
+export interface SimSystem {
+  readonly id:string;
+  step(ctx:SimContext):void;
+}

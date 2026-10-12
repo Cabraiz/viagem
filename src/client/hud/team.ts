@@ -1,0 +1,114 @@
+/**
+ * Team strip and revive alerts (VGM-040). Read-only overlays (no pointer events):
+ * up to 6 portraits with HP, downed ring with rescue progress, offline/eliminated badges,
+ * and banners telling who fell and how long is left.
+ */
+import type {PlayerRunView,RunView} from '../../contract/index.ts';
+import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
+import {railName} from '../render/map-label-rules.ts';
+import {icon,type IconName} from '../ui/icon.ts';
+
+const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
+  const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
+};
+
+export type MemberState='ok'|'low'|'downed'|'eliminated'|'offline'|'spectator';
+/** Visual state of a team member; downed/eliminated win over offline because they change what allies must do. */
+export function memberState(player:PlayerRunView):MemberState{
+  if(player.eliminated)return 'eliminated';
+  if(player.downed)return 'downed';
+  // Away beats watching (UX onda 5): someone not back after a restart is offline, not a spectator.
+  if(!player.online)return 'offline';
+  if(player.spectator)return 'spectator';
+  return hpFraction(player)<=.3?'low':'ok';
+}
+/** Status stickers (DSG-icones-sistema, §2.4): boia caído, porta (saiu) fora, fone cortado offline, pipoca assistindo. */
+export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',eliminated:'saiu',offline:'sem-linha',spectator:'pipoca'};
+// One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
+const firstName=railName;
+
+interface MemberNodes {root:HTMLElement;img:HTMLImageElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
+
+/** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
+const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
+  if(nodes.last.get(key)===value)return;
+  nodes.last.set(key,value);write(value);
+};
+
+export function createTeamStrip():HudPart{
+  const root=el('div','rh-team');root.setAttribute('aria-label','Time');
+  const members=new Map<string,MemberNodes>();
+  const make=(player:PlayerRunView,ctx:HudContext):MemberNodes=>{
+    const item=el('div','rh-member');
+    const ring=el('div','rh-member-ring',item);
+    const img=el('img','rh-member-img',ring);img.alt='';img.decoding='async';img.draggable=false;
+    const badge=el('span','rh-member-badge',item),timer=el('span','rh-member-timer',item);
+    // Room bot (D-025): the robot sticker on the portrait's other corner (the state sticker keeps its own).
+    const bot=el('span','rh-member-bot',item);bot.hidden=true;
+    const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
+    const name=el('span','rh-member-name',item);
+    img.src=ctx.portrait(player.classId);
+    return {root:item,img,ring,fill,badge,bot,name,timer,classId:player.classId,last:new Map()};
+  };
+  return {el:root,update(view:RunView,ctx:HudContext){
+    const ordered=teamOrder(view.players,ctx.localId);
+    const live=new Set(ordered.map(p=>p.id));
+    for(const [id,nodes] of members)if(!live.has(id)){nodes.root.remove();members.delete(id);}
+    root.dataset.count=String(ordered.length);
+    ordered.forEach((player,index)=>{
+      let nodes=members.get(player.id);
+      if(!nodes){nodes=make(player,ctx);nodes.root.dataset.id=player.id;members.set(player.id,nodes);}
+      if(nodes.classId!==player.classId){nodes.classId=player.classId;nodes.img.src=ctx.portrait(player.classId);}
+      if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
+      const state=memberState(player),n=nodes;
+      put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});
+      put(n,'me',String(player.id===ctx.localId),v=>n.root.classList.toggle('rh-me',v==='true'));
+      put(n,'bot',String(!!player.bot),v=>{n.bot.innerHTML=v==='true'?icon('robo'):'';n.bot.hidden=v!=='true';});
+      put(n,'name',player.id===ctx.localId?'Você':firstName(player.name),v=>{n.name.textContent=v;});
+      put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});
+      const progress=player.downed?clamp01(player.downed.progress):0;
+      put(n,'rescue',`${Math.round(progress*360)}deg`,v=>n.ring.style.setProperty('--rh-rescue',v));
+      if(player.downed)put(n,'timer',secondsText(secondsLeft(player.downed.bleedOutTick,view.tick)),v=>{n.timer.textContent=v;});
+      put(n,'aria',`${player.name}${player.bot?' (bot)':''}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
+    });
+  }};
+}
+
+export function createReviveAlerts():HudPart{
+  // The banner ticks every second, so it is not a live region; a hidden one announces each new fall once.
+  const root=el('div','rh-alerts');
+  const live=el('span','rh-sr',root);live.setAttribute('aria-live','assertive');
+  const announced=new Set<string>();
+  // One banner only (VGM-043): falls at the same time are grouped instead of stacking over the field.
+  const row=el('div','rh-alert',root);row.hidden=true;
+  const text=el('span','rh-alert-text',row),track=el('div','rh-alert-track',row),fill=el('i','rh-alert-fill',track);
+  // Own fall: what got you, as an optional second line (critter sticker + joke); the first line stays the instruction.
+  const cause=el('span','rh-alert-cause',row);cause.hidden=true;
+  const causeIcon=el('img','rh-alert-cause-icon',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
+  const causeText=el('span','rh-alert-cause-text',cause);
+  return {el:root,update(view:RunView,ctx:HudContext){
+    const all=reviveAlerts(view,ctx.localId);
+    const down=new Set(all.map(alert=>alert.playerId));
+    for(const id of announced)if(!down.has(id))announced.delete(id);
+    const fresh=all.filter(alert=>!announced.has(alert.playerId));
+    if(fresh.length){
+      for(const alert of fresh)announced.add(alert.playerId);
+      live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
+    }
+    const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching,ctx.worldRescue);
+    row.hidden=!banner;
+    if(!banner)return;
+    if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;
+    row.classList.toggle('rh-alert-urgent',banner.urgent);
+    if(text.textContent!==banner.text)text.textContent=banner.text;
+    track.hidden=!Number.isFinite(banner.seconds);
+    cause.hidden=!banner.cause;
+    if(banner.cause){
+      if(causeText.textContent!==banner.cause.line)causeText.textContent=banner.cause.line;
+      const src=ctx.critterIcon?.(banner.cause.kind)??'';
+      causeIcon.hidden=!src;if(src&&causeIcon.getAttribute('src')!==src)causeIcon.src=src;
+      cause.dataset.kind=banner.cause.kind;
+    }
+    fill.style.transform=`scaleX(${banner.progress})`;
+  }};
+}

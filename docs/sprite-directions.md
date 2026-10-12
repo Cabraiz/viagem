@@ -69,7 +69,7 @@ Se houver qualquer problema em qualquer atlas do lote, **nada é gravado**, e a 
 node --experimental-strip-types scripts/import-sprites.mjs --dir4 <pasta>
 ```
 
-- Grava `public/art/sprites/<id>.dir4.webp` (sem perda) e a entrada `dir4` (altura e caixa da figura) em `src/game/sprite-catalog.ts`. Nunca escreve `<id>.webp`; recusa sobrescrever um `.dir4.webp` sem `--replace`.
+- Grava `public/art/sprites/<id>.dir4.webp` (sem perda) e a entrada `dir4` (altura e caixa da figura) em `src/client/sprites/sprite-catalog.ts`. Nunca escreve `<id>.webp`; recusa sobrescrever um `.dir4.webp` sem `--replace`.
 - Depois de importar, rode `node scripts/art-lite.mjs`: o jogo baixa a cópia com perda em `public/art/lite/sprites/` (N27, ~45% do peso, qualidade medida em `scripts/art-lite.json`), nunca a folha aprovada; `npm test` reprova uma folha sem cópia ou mais nova que ela.
 - `--figures` remede as caixas da figura de toda a arte já importada (o jogo não lê pixels durante a partida).
 - Lote de TESTE (não é arte): `node scripts/make-lab-sprites4.mjs` e depois `--dir4 artifacts/lab-sprites4 --lab` (grava em `tests/fixtures/sprites-4dir/`). Ele só aparece no servidor de desenvolvimento com `?lab=sprites4` e nunca entra no catálogo nem no build. É derivado da folha aprovada do Cidadão Comum: as costas pintam o rosto de cabelo e levam a faixa "COSTAS", e cada direção tem seu código na camisa (FD, FE, CD, CE).

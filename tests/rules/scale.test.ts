@@ -70,17 +70,19 @@ test('example asset: start → plaza ≈ 33 s, plaza → spawn ≈ 36 s, enemies
   for(const d of Object.values(a.paths))assert.ok(traversalSeconds(d,city,enemySpeed(city))>traversalSeconds(d,city),'escape is possible');
 });
 
-test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is 25–36 s',t=>{
+test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is 25–38 s',t=>{
   const url=new URL('../../public/maps/cidade-nevada.json',import.meta.url);
   // Only a missing file skips; a present asset with a wrong scale or missing points fails.
   if(!existsSync(url)){t.skip('asset not imported yet');return;}
-  const asset=JSON.parse(readFileSync(url,'utf8')) as {units?:{perCell?:unknown};points?:Record<string,{x?:unknown;y?:unknown}>};
-  near(Number(asset.units?.perCell),city.cell,1e-9,'asset units.perCell = profile cell');
+  // D-027 (viagem-city) keeps the scale in the top-level unitsPerCell.
+  const asset=JSON.parse(readFileSync(url,'utf8')) as {unitsPerCell?:unknown;points?:Record<string,{x?:unknown;y?:unknown}>};
+  near(Number(asset.unitsPerCell),city.cell,1e-9,'asset unitsPerCell = profile cell');
   const start=asset.points?.inicio,plaza=asset.points?.praca;
   const ok=(p:{x?:unknown;y?:unknown}|undefined):p is {x:number;y:number}=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y);
   assert.ok(ok(start)&&ok(plaza),'asset has points.inicio and points.praca');
   // The ~33 s of the doc is a street path; the straight line is shorter but not by much.
-  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25,36,'asset inicio → praca seconds');
+  // The source start→boss line is ~34.4 s; the importer moves inicio ~1.9 u off the wreck for clearance (cidade-01).
+  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25,38,'asset inicio → praca seconds');
 });
 
 test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px floor (D-030)',()=>{

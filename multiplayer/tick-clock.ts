@@ -7,7 +7,7 @@
  * them (the rest of a small debt goes on the next fires, scheduled with no delay); a room more than MAX_LAG_MS behind
  * (a long pause, a busy isolate) drops that debt instead of fast-forwarding the horde. TickLoop is the timer around it:
  * one setTimeout aimed at the next tick, so a late fire shortens the next wait instead of adding up.
- * Pure and timer-injected: tests/tick-clock.test.ts drives it with a fake clock.
+ * Pure and timer-injected: tests/rooms/tick-clock.test.ts drives it with a fake clock.
  */
 /** One room tick (RUN_HZ = 20). */
 export const TICK_MS=50;

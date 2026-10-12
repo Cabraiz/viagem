@@ -1,6 +1,6 @@
 /**
  * Numbers for the VGM-045 artifacts: percentiles, per-second rates over a window, tick samples stitched from the
- * room's /lab polls, and the free-plan arithmetic (D-024). Pure, tested in tests/bots.test.ts.
+ * room's /lab polls, and the free-plan arithmetic (D-024). Pure, tested in tests/tools/bots.test.ts.
  */
 import type {SecondSample} from './lab-socket.ts';
 

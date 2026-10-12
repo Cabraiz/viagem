@@ -1,4 +1,4 @@
-// Sprite sheet checks shared by scripts/import-sprites.mjs, scripts/import-dir4.mjs and tests/sprites.test.ts.
+// Sprite sheet checks shared by scripts/import-sprites.mjs, scripts/import-dir4.mjs and tests/client/sprites.test.ts.
 // Format contract for artists: docs/sprite-directions.md (NEW-20261009-ORQ-sprites-4-direcoes). Messages are in
 // pt-BR because they are read by whoever draws the art.
 import sharp from 'sharp';

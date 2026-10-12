@@ -5,8 +5,8 @@
  * COR REAL do objeto (dois tons, sombra em degrau, um brilho duro). O script põe a grade numa caixa de 24×24 e gera,
  * sozinho, o contorno Breu de 1 px (vizinhança de 4), a borda branca-papel de figurinha (vizinhança de 8) e a sombra
  * dura 1 px abaixo; tudo com shape-rendering crispEdges, então a 24 px cada pixel é 1 px CSS (3 px no celular), a 32 px
- * são 4 px de tela e a 48 px são 2 px CSS. Saída: src/ui/stickers.svg (`node scripts/make-stickers.mjs`;
- * tests/stickers.test.ts confere que bate). Cores só por classe (src/ui/icons.css → tokens --arte-* em tokens.css).
+ * são 4 px de tela e a 48 px são 2 px CSS. Saída: src/client/ui/stickers.svg (`node scripts/make-stickers.mjs`;
+ * tests/client/stickers.test.ts confere que bate). Cores só por classe (src/client/ui/icons.css → tokens --arte-* em tokens.css).
  * Lilás é só do selo (o contorno Breu é o preto-lilás da paleta); o objeto leva a cor dele.
  */
 import fs from 'node:fs';
@@ -37,7 +37,7 @@ const N=20,PAD=2,BOX=24;
 // Each grid: 20 rows of 20 letters. Light comes from the top left: W or the light tone up-left, the darker tone in
 // steps down-right. Holes (a punched card, a handle, a net) are '.' inside the shape: they get their own outline.
 const STICKERS=[
-  // ---------------------------------------------------------------- items (src/game/hud/items.ts)
+  // ---------------------------------------------------------------- items (src/client/hud/items.ts)
   ['chinelo','Chinelo da Mãe',[
     '....................',
     '.......VVVVVV.......',
@@ -438,7 +438,7 @@ const STICKERS=[
     '....................',
     '....................']],
 
-  // ---------------------------------------------------------------- awards (src/game/hud/awards.ts)
+  // ---------------------------------------------------------------- awards (src/client/hud/awards.ts)
   ['banana','Mais caiu',[
     '....................',
     '...........bb.......',
@@ -854,14 +854,14 @@ export function buildSprite(){
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <!-- Adesivos de itens, prêmios e sons em pixel art (NEW-20261009-DSG-adesivos-itens). GERADO por scripts/make-stickers.mjs:
-     não edite à mão. Cores só por classe (src/ui/icons.css, tokens --arte-*). -->
+     não edite à mão. Cores só por classe (src/client/ui/icons.css, tokens --arte-*). -->
 ${symbols.join('\n')}
 </svg>
 `;
 }
 
 if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1])){
-  const out=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../src/ui/stickers.svg');
+  const out=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../src/client/ui/stickers.svg');
   fs.writeFileSync(out,buildSprite());
   console.log(`${STICKERS.length} adesivos em ${path.relative(process.cwd(),out)} (${fs.statSync(out).size} bytes)`);
 }

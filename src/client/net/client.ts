@@ -51,6 +51,24 @@ export const REPLACED_CLOSE=4009;
  * plus a margin (a restarted room seats everyone again with a fresh grace). Backoff up to RETRY_MAX_MS.
  */
 const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=4000;
+/**
+ * First retry after a joined connection drops (BUG-20261012 reconecta-round2): an edge drop (close 1006, room still up)
+ * usually comes back on the first try, so it goes at once-ish and the whole drop stays under a second.
+ */
+export const FIRST_RETRY_MS=150;
+/** Only a connection that lived this long gets the fast first retry, so a join that keeps dying cannot loop every 150 ms. */
+export const FAST_RETRY_AFTER_MS=5000;
+/** Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000, 4000 (cap); 500 first before joining. */
+export function retryDelay(attempts:number,joined:boolean){
+  // joined: the dropped connection had been up for FAST_RETRY_AFTER_MS (a socket dying right after welcome keeps the 500 ms pace).
+  return attempts===0&&joined?FIRST_RETRY_MS:Math.min(RETRY_MAX_MS,500*2**attempts);
+}
+/** The big "Reconectando à turma…" banner waits this long: a drop that heals sooner shows nothing in the middle. */
+export const RECONNECT_BANNER_MS=1500;
+/** Whether the center reconnecting banner shows now: down, not terminal, and offline for at least RECONNECT_BANNER_MS. */
+export function reconnectBanner(net:{connected:boolean;fatal?:string;offlineMs(now?:number):number},now=Date.now()){
+  return !net.connected&&!net.fatal&&net.offlineMs(now)>=RECONNECT_BANNER_MS;
+}
 /** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
 const WAKE_SILENCE_MS=3000;
 /** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
@@ -90,10 +108,14 @@ export class CoopClient {
   private attempts=0;
   /** Date.now() of the last message from the room (the reconnection window counts from it, across app switches). */
   private lastSeenAt=0;
+  /** Date.now() of the last welcome: how long the current connection has lived. */
+  private welcomedAt=0;
   /** Date.now() when the joined connection dropped (0 while connected). */
   private droppedAt=0;
   /** How long this client has been trying to get back (0 while connected or before joining). */
   offlineMs(now=Date.now()){return this.connected||!this.initialized||this.stopped||!this.droppedAt?0:now-this.droppedAt;}
+  /** The center "Reconectando…" banner (reconnectBanner): only for a drop that lasts RECONNECT_BANNER_MS. */
+  showReconnecting(now=Date.now()){return reconnectBanner(this,now);}
   /** "Tentar de novo" (UX onda 5): a fresh attempt now, backoff reset. */
   retryNow(){
     if(this.stopped||this.connected)return;
@@ -200,7 +222,7 @@ export class CoopClient {
         const terrain=terrainFor(m.world);
         if(m.protocol!==ROOM_PROTOCOL||!m.run||typeof terrain==='string'){this.fail(ws,typeof terrain==='string'?terrain:UPDATE_NEEDED);return;}
         this.terrain=terrain;
-        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;
+        clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
         this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -243,7 +265,7 @@ export class CoopClient {
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      this.retry=setTimeout(()=>this.connect(),Math.min(RETRY_MAX_MS,500*2**this.attempts++));
+      this.retry=setTimeout(()=>this.connect(),retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS));
     };
     ws.onerror=()=>{};
   }
@@ -281,7 +303,7 @@ export class CoopClient {
     if(this.hidden()){this.hiddenAt??=now;return;}
     this.hiddenAt=undefined;
     if(!this.away){this.resume();return;}
-    this.away=false;this.attempts=0;
+    this.away=false;this.attempts=0;if(this.droppedAt)this.droppedAt=Date.now();
     if(!this.stopped&&!this.connected&&(!this.socket||this.socket.readyState>=WebSocket.CLOSING))this.connect();
   }
   /** Visible again: a socket silent for WAKE_SILENCE_MS is dropped now, and a waiting retry goes at once. */

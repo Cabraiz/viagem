@@ -143,6 +143,8 @@ export class Simulation {
   private equip(p:ServerPlayer){
     p.classBonus=classBonusOf(p.classId);p.build=startingBuild(p.classId);p.weaponReady={};p.facing={...DEFAULT_FACING};
     delete p.target;delete p.downed;delete p.eliminated;delete p.invulnerableUntil;resetSkill(p);
+    // The agiota's devendo mark holds an absolute tick (D-002 extra field); a rematch restarts the clock at 0.
+    delete (p as {devendoUntil?:number}).devendoUntil;delete (p as {devendoSay?:number}).devendoSay;
     refreshStats(p);p.hp=p.stats.maxHp;
   }
   add(id:string,name:string,classId:string){

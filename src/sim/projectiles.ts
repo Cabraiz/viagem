@@ -234,7 +234,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       const before=player.hp;
       ctx.damagePlayer(player.id,p.damage,p.owner);
       // D-033: a boleto-juros that actually hurt (not blocked by invulnerability or armor) marks the player as devendo.
-      if(p.marks==='devendo'&&player.hp<before)markDevendo(player,ctx.tick);
+      if(p.marks==='devendo'&&player.hp<before&&!player.downed)markDevendo(player,ctx.tick);
       if(p.pierce<=0)return false;
       p.pierce--;
     }

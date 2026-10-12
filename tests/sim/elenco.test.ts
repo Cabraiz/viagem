@@ -12,8 +12,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BASE_STATS,type SimEvent,type SimPlayer,type Telegraph} from '../../src/contract/types.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
-import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,MOLOTOV,POOP,createEnemy,hazardKind,type DevendoPlayer,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {ENEMY_TELEGRAPH_CAP,EnemyAi,type EnemyAiOptions} from '../../src/sim/enemies/ai.ts';
+import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,MOLOTOV,POOP,createEnemy,hazardKind,markDevendo,type DevendoPlayer,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
+import {BARK_GAP,ENEMY_TELEGRAPH_CAP,EnemyAi,type EnemyAiOptions} from '../../src/sim/enemies/ai.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
@@ -254,7 +255,7 @@ test('agiota boleto marks the player devendo: one say per mark, ×DEVENDO.mult b
   const says=A.events.filter((e):e is Extract<SimEvent,{type:'say'}>&{tick:number}=>e.type==='say');
   assert.equal(says.length,1,'one line per mark');
   assert.equal(says[0].source,p.id);assert.equal(says[0].key,DEVENDO.key);assert.ok(DEVENDO_LINES.includes(says[0].line));
-  // While marked: 8 × 1.25 − 2 armor.
+  // While marked: 8 × DEVENDO.mult − 2 armor.
   A.world.damagePlayer(p.id,8,'test');assert.equal(p.hp,100-(8*DEVENDO.mult-2));
   // Hit again while marked: the mark is refreshed, no second line.
   p.hp=100;
@@ -327,4 +328,112 @@ test('steered walking never bends the aim: the boleto and the burp cone point st
   const burp=B.made.find(m=>m.t.owner===e.id);
   assert.ok(burp,'he burped');
   assert.ok(near(burp.t.dx!,1,1e-6)&&near(burp.t.dy!,0,1e-6),`cone (${burp.t.dx},${burp.t.dy}) points at the player`);
+});
+
+// ---------- Review regressions (NEW-20261012-ORQ-elenco-adult-swim) ----------
+type Says=Extract<SimEvent,{type:'say'}>;
+const devendoSays=(list:readonly SimEvent[])=>list.filter((e):e is Says=>e.type==='say'&&e.key===DEVENDO.key);
+
+test('B1: a rematch clears the devendo mark: no stale ×mult and no stale line',()=>{
+  const sim=new Simulation(7);sim.add('a','Ana','pedreiro');sim.resetRun();
+  for(let i=0;i<3000;i++)sim.step();
+  const p=sim.players.get('a')! as SimPlayer&DevendoPlayer;
+  markDevendo(p,sim.world.tick);
+  assert.ok(p.devendoUntil!>DEVENDO.ticks&&p.devendoSay===1,'marked late in the first run, line pending');
+  sim.resetRun();
+  assert.equal(p.devendoUntil,undefined,'mark gone');assert.equal(p.devendoSay,undefined,'pending line gone');
+  const hp=p.hp;p.invulnerableUntil=0;sim.world.damagePlayer('a',10,'x');
+  assert.equal(hp-p.hp,Math.max(0,10-p.stats.armor),'plain damage right after the rematch');
+  const events:SimEvent[]=[];
+  for(let i=0;i<DEVENDO.ticks+BARK_GAP;i++)events.push(...sim.step());
+  assert.deepEqual(devendoSays(events),[],'no stale devendo line');
+});
+
+test('B2: the last anão of a round explodes into the intermission without hurting anyone',()=>{
+  /** Wave on, every enemy but one (or two) gone and no more groups; the first becomes an anão next to the hero. */
+  const setup=(keepAnother:boolean)=>{
+    const sim=new Simulation(7);sim.add('a','Ana','pedreiro');sim.resetRun();
+    const w=sim.world;
+    for(let i=0;i<20000&&!(w.round.phase==='wave'&&w.enemies.size>(keepAnother?1:0));i++)sim.step();
+    const d=(sim as unknown as {systems:{director:{state:{nextGroup:number;plan:{groups:unknown[]};pending:unknown[]}}}}).systems.director.state;
+    d.nextGroup=d.plan.groups.length;d.pending=[];
+    const ids=[...w.enemies.keys()],p=sim.players.get('a')!;
+    const anao=w.enemies.get(ids[0])!,other=keepAnother?w.enemies.get(ids[1])!:undefined;
+    for(const id of ids.slice(keepAnother?2:1))w.damageEnemy(id,1e6,'a');
+    anao.kind='anao-molotov';anao.x=p.x+.8;anao.y=p.y;
+    // The one left alive (wave case) stays far and frozen, so the round goes on and only the blast can hurt.
+    if(other){other.x=p.x+12;other.y=p.y;other.frozenUntil=1e9;}
+    p.invulnerableUntil=0;
+    w.damageEnemy(anao.id,1e6,'a');
+    const owner=`env:explosion:${anao.id}`;
+    assert.ok([...w.telegraphs.values()].some(t=>t.owner===owner),'his explosion is telegraphed');
+    const events:SimEvent[]=[];const phases=new Set<string>();
+    for(let i=0;i<MOLOTOV.deathDelay+20;i++){events.push(...sim.step());phases.add(w.round.phase);p.hp=p.stats.maxHp;}
+    return {phases,armor:p.stats.armor,hits:damageFrom(events,'a',owner),left:[...w.telegraphs.values()].filter(t=>t.owner.startsWith('env:'))};
+  };
+  const last=setup(false);
+  assert.ok(last.phases.has('prepare'),'the round ended');
+  assert.deepEqual(last.hits,[],'no blast in the intermission');assert.deepEqual(last.left,[],'hazards dropped');
+  const wave=setup(true);
+  assert.deepEqual([...wave.phases],['wave'],'control: still the wave');
+  assert.deepEqual(wave.hits,[MOLOTOV.deathDamage-wave.armor],'control: during the wave the blast hurts (after armor)');
+});
+
+test('B2: pending molotov, fire and poop are dropped outside the wave and land during it',()=>{
+  const run=(phase:'wave'|'prepare')=>{
+    const A=arena(30);const p=addPlayer(A.world,'p',O);A.world.round.phase=phase;
+    const owners=['env:molotov:e90','env:poop:e91','env:explosion:e92'];
+    owners.forEach((owner,i)=>A.world.telegraphs.set(`h${i}`,{id:`h${i}`,shape:'circle',x:O.x,y:O.y,radius:1,damage:5,owner,fireTick:A.world.tick+MIN_TELEGRAPH_TICKS,pulses:1} as Telegraph));
+    A.step(MIN_TELEGRAPH_TICKS*3,healAll(A.world));
+    return owners.flatMap(o=>damageFrom(A.events,p.id,o)).length;
+  };
+  assert.equal(run('prepare'),0,'intermission is safe');
+  assert.ok(run('wave')>=3,'wave: they land (plus the fire pulse)');
+});
+
+test('R1a: the devendo line respects the bark limiter (two fresh marks inside the gap: one line, the next after it)',()=>{
+  const A=arena(31);const p1=addPlayer(A.world,'p1',O),p2=addPlayer(A.world,'p2',at(2));
+  markDevendo(p1,A.world.tick);markDevendo(p2,A.world.tick);
+  A.step(1);
+  assert.equal(devendoSays(A.events).length,1,'one line on the first tick');
+  A.step(BARK_GAP-2);
+  assert.equal(devendoSays(A.events).length,1,'still one inside the gap');
+  A.step(5);
+  const says=devendoSays(A.events) as (Says&{tick:number})[];
+  assert.equal(says.length,2,'the second mark speaks after the gap');
+  assert.deepEqual(says.map(s=>s.source),['p1','p2']);
+  assert.ok(says[1].tick-says[0].tick>=BARK_GAP);
+});
+
+test('R1b: the anão explosion never damages the boss',()=>{
+  const A=arena(32);addPlayer(A.world,'p',at(6));
+  const a=createEnemy(A.world,'anao-molotov',O);
+  const boss=createEnemy(A.world,'chefe',at(-1));const tio=createEnemy(A.world,'tio-pave',at(1));
+  for(const e of A.world.enemies.values())e.frozenUntil=1e9;
+  const bossHp=boss.hp,tioHp=tio.hp;
+  A.world.damageEnemy(a.id,999,'p');A.flush();
+  A.step(MOLOTOV.deathDelay+5);
+  assert.equal(tio.hp,tioHp-MOLOTOV.deathEnemyDamage,'control: the neighbor took the blast');
+  assert.equal(boss.hp,bossHp,'the boss did not');
+});
+
+test('R2: a bêbado who starts retreating drops his pending burp',()=>{
+  const A=arena(33);const p=addPlayer(A.world,'p',at(2));
+  const e=createEnemy(A.world,'bebado',O);
+  for(let i=0;i<400&&!A.made.some(m=>m.t.owner===e.id);i++)A.step(1,()=>{e.x=O.x;e.y=O.y;});
+  assert.ok(A.made.some(m=>m.t.owner===e.id),'he burped');
+  e.memory!.retreat=1;
+  A.step(MIN_TELEGRAPH_TICKS+5,healAll(A.world));
+  assert.deepEqual(damageFrom(A.events,p.id,e.id),[],'no damage from a retreater');
+  assert.ok(![...A.world.telegraphs.values()].some(t=>t.owner===e.id),'telegraph cancelled');
+});
+
+test('a boleto that downs the player does not mark them devendo',()=>{
+  const A=arena(34);const p=addPlayer(A.world,'p',O);p.hp=5;
+  A.world.onPlayerZero((player,source,ctx)=>{downPlayer(ctx,player,source);});
+  A.world.projectiles.set('pj',{id:'pj',owner:'e-x',source:AGIOTA_SHOT.source,x:O.x-1,y:O.y,vx:AGIOTA_SHOT.speed,vy:0,radius:AGIOTA_SHOT.radius,
+    damage:AGIOTA_SHOT.damage,pierce:0,untilTick:A.world.tick+40,hostile:true,hit:[],marks:'devendo'} as never);
+  A.step(10);
+  assert.ok(p.downed,'the boleto downed them');
+  assert.equal((p as SimPlayer&DevendoPlayer).devendoUntil,undefined);assert.equal((p as SimPlayer&DevendoPlayer).devendoSay,undefined);
 });

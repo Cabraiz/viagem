@@ -11,7 +11,7 @@ import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MOLOTOV,POOP,TIO_JOKE,enemyDef,hashUnit,isDevendo,type DevendoPlayer,type EnemyDef} from './catalog.ts';
-import {addTelegraph,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
+import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
@@ -151,6 +151,8 @@ export class EnemyAi implements SimSystem {
     targets.length=0;active.length=0;
     for(const p of ctx.players.values())if(live(p))targets.push(p);
     const structures=this.options.structures?.(ctx)??[];
+    // The intermission is safe: hazards that outlive the round (molotov fire, a death explosion, poop) are dropped.
+    if(ctx.round.phase!=='wave')this.clearHazards(ctx);
     // Hazards landing this tick (enemy-ai runs before the telegraph system, which resolves and removes them).
     this.landHazards(ctx);
     this.announceDevendo(ctx,rng);
@@ -160,7 +162,8 @@ export class EnemyAi implements SimSystem {
       // Bosses belong to VGM-038; retreating enemies are walked into the sea by the director (D-010).
       if(e.hp<=0||e.boss)continue;
       // A retreating enemy never comes back for a taunt; drop it so checkpoints stay clean.
-      if(e.memory?.retreat===1){delete (e as TauntedEnemy).taunt;continue;}
+      // Its pending burp is cancelled too (D-010: retreaters deal no damage).
+      if(e.memory?.retreat===1){delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);continue;}
       const memory=e.memory??={};
       memory.seed??=hashUnit(e.id);memory.state??=STATE.walk;memory.until??=0;memory.hitReady??=0;memory.actReady??=0;
       if(e.knock){
@@ -370,6 +373,12 @@ export class EnemyAi implements SimSystem {
     if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
     addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage,owner,pulses:MOLOTOV.pulses} as HazardSpec,MOLOTOV.flight);
     return true;
+  }
+
+  /** Removes the pending enemy hazards this AI created (env-owned: molotov, fire pulses, explosions, poop). */
+  private clearHazards(ctx:SimContext){
+    const prefixes=Object.values(HAZARD_OWNERS);
+    for(const t of [...ctx.telegraphs.values()])if(prefixes.some(p=>t.owner.startsWith(p)))ctx.telegraphs.delete(t.id);
   }
 
   /**

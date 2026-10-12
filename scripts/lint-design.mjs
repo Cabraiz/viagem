@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Lint de design (NEW-20261009-DSG-tokens, D-020). Falha se aparecer em src/**\/*.css (fora de src/ui/tokens.css):
+ * Lint de design (NEW-20261009-DSG-tokens, D-020). Falha se aparecer em src/**\/*.css (fora de src/client/ui/tokens.css):
  * cor fora dos tokens (hex, rgb()/hsl()/…, nome de cor), font-family que não seja var(--f-*), border-radius fora de
  * var(--r-*)/50%/0, sombra com blur > 0 (em box-shadow, text-shadow, drop-shadow ou qualquer variável que guarde
  * sombra), text-transform:uppercase, qualquer letter-spacing positivo e texto menor que o mínimo (13 px na partida,
  * 10 px fora), contando px, rem e calc(). Entende CSS aninhado.
- * Em src/game/**\/*.ts (sandboxes inclusive), emoji e ✦ em código (comentários não contam) têm de bater com o baseline de
+ * Em src/**\/*.ts e multiplayer/*.ts (sandboxes inclusive), emoji e ✦ em código (comentários não contam) têm de bater com o baseline de
  * scripts/design-lint-baseline.json: subir falha, e descer sem baixar o número também (o débito é dos cards
  * DSG-icones-sistema e DSG-adesivos-itens).
  * Uso: node scripts/lint-design.mjs [raiz]   (sai com 1 se houver violação)
@@ -14,9 +14,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const TOKENS='src/ui/tokens.css';
+const TOKENS='src/client/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
-const MATCH_CSS=new Set(['src/game/hud/hud.css','src/game/fun/fun.css','src/game/hud/you.css','src/game/hud/zones.css','src/game/hud/zones-debug.css','src/game/hud/camp.css']);
+const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css']);
 const MIN_MATCH=13,MIN_OTHER=10,ROOT_PX=16;
 const EMOJI=/(?![★☆])\p{Extended_Pictographic}|✦/gu;// ★/☆ are text stars, and ICU versions (Node 22 × 24) disagree on them
 const NAMED_COLORS=new Set(('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood '+
@@ -225,7 +225,7 @@ export function lintDesign(root=process.cwd()){
   const baselinePath=path.join(root,'scripts/design-lint-baseline.json');
   const baseline=fs.existsSync(baselinePath)?JSON.parse(fs.readFileSync(baselinePath,'utf8')).emoji??{}:{};
   const emoji={};
-  const files=new Set([...walk(path.join(root,'src/game'),'.ts').map(p=>rel(root,p)),...Object.keys(baseline)]);
+  const files=new Set([...['src','multiplayer'].flatMap(d=>walk(path.join(root,d),'.ts')).map(p=>rel(root,p)),...Object.keys(baseline)]);
   for(const file of [...files].sort()){
     const full=path.join(root,file);
     const n=fs.existsSync(full)?emojiCount(fs.readFileSync(full,'utf8')):0;

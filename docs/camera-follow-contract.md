@@ -1,9 +1,9 @@
 # Câmera que segue o jogador (D-019)
 
 Substitui o [`whole-island-contract.md`](whole-island-contract.md). Cards: `NEW-20261009-ORQ-camera-segue` e
-`NEW-20261009-UX-camera-segue`. Código: `src/game/framing.ts` (`followZoom`, `FollowCamera`, `followTarget`, `edgeOf`),
-`src/game/scene.ts` (ligação), `src/game/projection.ts` (`rotationLocked`, `viewDepth` com origem),
-`src/game/sim/offscreen.ts` (o contrato com o diretor). Testes: `tests/camera-follow.test.ts`.
+`NEW-20261009-UX-camera-segue`. Código: `src/client/framing.ts` (`followZoom`, `FollowCamera`, `followTarget`, `edgeOf`),
+`src/client/scene.ts` (ligação), `src/client/projection.ts` (`rotationLocked`, `viewDepth` com origem),
+`src/contract/offscreen.ts` (o contrato com o diretor). Testes: `tests/client/camera-follow.test.ts`.
 
 Esperado:
 - **Tamanho:** um zoom fixo por orientação, que só depende do tamanho da tela. O herói tem a maior entre a razão do

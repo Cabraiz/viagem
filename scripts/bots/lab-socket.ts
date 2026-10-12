@@ -1,7 +1,7 @@
 /**
  * Browser-like WebSocket for the protocol bots (VGM-045), on top of `ws`, with a lab network in the middle.
  *
- * The bots run the real CoopClient (src/game/net/client.ts) under node: it builds `new WebSocket(url)` and uses the
+ * The bots run the real CoopClient (src/client/net/client.ts) under node: it builds `new WebSocket(url)` and uses the
  * browser API (onopen/onmessage/onclose, binaryType, readyState, WebSocket.OPEN). This class gives it that API, sends
  * the Origin the rooms Worker checks, and puts a `Link` between the client and the room:
  * - delay: added round trip in ms (half each way) plus jitter, order kept (TCP never reorders);

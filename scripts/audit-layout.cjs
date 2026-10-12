@@ -230,11 +230,11 @@ const SCENES=[
     await page.addInitScript(src=>{window.__auditSrc=src;},audit.toString());
     // AUDIT_SLOW_MS=1500 holds every sandbox module that long, as a loaded box does (BUG-audit-scroll-flaky): the result
     // must be the same as without it.
-    if(+process.env.AUDIT_SLOW_MS>0)await page.route(/\/src\/game\/sandbox-[a-z]+\.ts/,async r=>{await new Promise(t=>setTimeout(t,+process.env.AUDIT_SLOW_MS));await r.continue();});
+    if(+process.env.AUDIT_SLOW_MS>0)await page.route(/\/src\/client\/sandboxes\/sandbox-[a-z]+\.ts/,async r=>{await new Promise(t=>setTimeout(t,+process.env.AUDIT_SLOW_MS));await r.continue();});
     for(const [name,url,roots,min] of SCENES)await run(name,url,roots,min);
     // Worst case: the catalog items with the most text (name + effect) on the 2x2 and on the row of 3.
     const worst=async()=>{await page.waitForSelector('.rh-card');await page.evaluate(async()=>{
-      const {allItemDisplays}=await import('/src/game/hud/items.ts');
+      const {allItemDisplays}=await import('/src/client/hud/items.ts');
       const items=[...allItemDisplays()];
       // Real items (name and effect stay together), the ones with the most text first.
       const longest=items.sort((a,b)=>(b.name.length+b.blurb.length)-(a.name.length+a.blurb.length));
@@ -261,21 +261,21 @@ const SCENES=[
     // minimap moved under the view buttons, and the balloon must not open over it or a top ficha (UX review janela-caido).
     for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open'],['combate (round)','wave'],['muralha baixa','camp-wave']])
       await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
-        await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
+        await page.evaluate(async()=>{await import('/src/client/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
           d.innerHTML='<button></button><span class="explore-view"><i style="display:block;width:32px;height:32px"></i></span><button></button><span class="explore-camera-hint" role="status"><i class="ic"></i><span>Gira no intervalo</span></span>';document.querySelector('.hs-world').append(d);});});
     // Portrait: the answer is a row of the announcement slot, ahead of the coach's hint (the same markup as explore.ts).
     for(const [name,state,extra] of [['combate','wave',''],['dica andar na vaga','wave','&dica=walk'],['muralha baixa','camp-wave','']])
       await run(`"Gira no intervalo" na vaga de anúncio, ${name}`,`/?sandbox=hud&players=6&state=${state}&frozen=1${extra}`,'.rh',13,async()=>{
-        await page.evaluate(async()=>{await import('/src/game/explore.css');const {icon}=await import('/src/ui/icon.ts');
+        await page.evaluate(async()=>{await import('/src/client/explore.css');const {icon}=await import('/src/client/ui/icon.ts');
           const row=document.createElement('div');row.className='explore-camera-row';row.setAttribute('role','status');row.innerHTML=`${icon('cadeado',{size:24})}<span>Gira no intervalo</span>`;
           window.__hud.queueRow(row,60000,{answer:true});});
         await page.waitForTimeout(300);});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
-    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
+    await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/rules/classes.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
     // The real SkillButton (sticker + "Habilidade", E7-skill-hud-wiring), ready and cooling with the widest note.
     for(const [label,setup] of [['botão de habilidade','ready'],['botão de habilidade, recarga','cooling'],['botão de habilidade, nota','note']])
-      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/game/coop.css');const {SkillButton}=await import('/src/game/hud/skill.ts');
+      await run(label,'/','.audit-actions',13,async()=>{await page.evaluate(async state=>{await import('/src/client/coop.css');const {SkillButton}=await import('/src/client/hud/skill.ts');
         const d=document.createElement('div');d.className='audit-actions';d.style.cssText='position:fixed;right:20px;bottom:20px;z-index:99';d.innerHTML='<button id="coop-attack"></button>';document.body.append(d);
         const b=new SkillButton(d.querySelector('#coop-attack'),'cidadao-comum');
         if(state==='cooling')b.update({skillTick:1,skillReadyTick:300},100,0);

@@ -11,7 +11,7 @@
  *   - `psnr`: the whole sheet, premultiplied colour and alpha (what the GPU blends), at full size;
  *   - `shownPsnr`: at the size a phone draws it (SHOWN_SCALE of the sheet: a 210-world-px tree from a 340 px drawing
  *     at the follow camera's zoom, D-019; heroes the same), both scaled the same way. Above 40 dB nobody tells them apart.
- * The tests (tests/art-lite.test.ts) fail when a tree or a class has no copy, or its copy is older than its source.
+ * The tests (tests/client/art-lite.test.ts) fail when a tree or a class has no copy, or its copy is older than its source.
  */
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';

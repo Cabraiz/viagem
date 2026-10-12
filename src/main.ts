@@ -248,3 +248,6 @@ if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./
 if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./game/sandbox-fun.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./game/sandbox-hud.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='voce')void import('./game/sandbox-voce.ts');
+// Playtest metrics (UX-playtest-metricas), dev only (exactly ?dev=1, as dev/ux-flag.ts; the menu imports nothing from
+// game/ statically, menu-perf): "Métricas" of this tab's last room session after "Sair".
+if(new URLSearchParams(location.search).get('dev')==='1'&&!new URLSearchParams(location.search).get('sandbox'))void import('./game/dev/ux-metrics.ts').then(m=>m.mountHomeExport(window)).catch(()=>undefined);

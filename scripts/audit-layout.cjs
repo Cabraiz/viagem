@@ -129,6 +129,12 @@ const SCENES=[
   ['hud chefe, 6p','/?sandbox=hud&players=6&state=boss&frozen=1','.rh',13],
   ['hud resultado, 6p','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13],
   ['hud resultado, 1p','/?sandbox=hud&players=1&state=result&frozen=1','.rh',13],
+  // The owner's result (D-025): "Arrumar a sala" with Revanche and Sair; and with the playtest's "Métricas" chip (?dev=1).
+  // (6 players with the owner's row at 125% in landscape still scroll the cards, with or without the chip: card
+  // BUG-resultado-dono-6p-rola; the 2-player scenes hold the three buttons and the chip.)
+  ['hud resultado do dono, 2p','/?sandbox=hud&players=2&state=result&frozen=1&dono=1','.rh',13],
+  ['hud resultado do dono, 2p, derrota, Métricas (dev)','/?sandbox=hud&players=2&state=result&frozen=1&dono=1&lose=1&dev=1','.rh',13],
+  ['hud resultado do dono, 1p, Métricas (dev)','/?sandbox=hud&players=1&state=result&frozen=1&dono=1&dev=1','.rh',13],
   ['hud setas na borda e minimapa (bordas), 6p','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13],
   ['hud setas na borda, vista 2','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas&vista=1','.rh',13],
   // The soma (N15 + 046B): minimap, base ficha and arrows with the forge open, the horn, and the round offer.

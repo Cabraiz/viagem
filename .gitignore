@@ -23,4 +23,5 @@ artifacts/
 !/docs/whole-island-contract.md
 !/docs/desempenho.md
 !/docs/sprite-directions.md
+!/docs/playtest-ux.md
 /scripts/check-multiplayer-artifact.mjs

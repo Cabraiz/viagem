@@ -3,6 +3,7 @@ import type { CoopClient } from './net/client.ts';
 import type { RunState } from './net/run.ts';
 import { icon } from '../ui/icon.ts';
 import {railName} from './render/map-label-rules.ts';
+import {inviteQuery} from './dev/ux-flag.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -44,8 +45,11 @@ export function countdownJoke(seconds:number){
   return 'Bora!';
 }
 
-/** Invite link, same format the island uses (`?room=` prefills the lobby). */
-export const shareLink=(origin:string,code:string)=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}#personagem`;
+/**
+ * Invite link, same format the island uses (`?room=` prefills the lobby). `extra`: more query (`&dev=1&g=…` when this
+ * tab chose "medir a turma" in the playtest, dev/ux-flag.ts inviteQuery).
+ */
+export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}${extra}#personagem`;
 
 /** `bot`: a room bot; `owner`: the dono da sala (D-025). */
 export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean;bot:boolean;owner:boolean}
@@ -142,13 +146,14 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     <p class="coop-wait-count" aria-hidden="true"></p>`;
   const $=<T extends HTMLElement>(s:string)=>panel.querySelector<T>(s)!;
   $('.coop-wait-code strong').textContent=client.code;
-  const link=shareLink(options.origin??location.origin,client.code);
+  // Read at each tap: the playtest's "Medir a turma" (dev only) may change what the invite carries.
+  const link=()=>shareLink(options.origin??location.origin,client.code,inviteQuery(location.search));
   const shareButton=$<HTMLButtonElement>('.coop-wait-share');
   shareButton.addEventListener('click',async()=>{
     const say=(text:string)=>{shareButton.textContent=text;setTimeout(()=>{shareButton.textContent='Chamar a turma';},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? A gosma não espera.`,url:link});say('Convite enviado!');return;}
-      await navigator.clipboard.writeText(link);say('Copiado! Manda no grupo da família.');
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? A gosma não espera.`,url:link()});say('Convite enviado!');return;}
+      await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
       say(`Código: ${client.code}`);

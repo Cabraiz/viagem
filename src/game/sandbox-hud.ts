@@ -18,6 +18,7 @@ import {RunHud} from './hud/hud.ts';
 import type {RunView} from './sim/view.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from './hud/coach.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
+import {uxMetricsEnabled} from './dev/ux-flag.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
 const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a,'');
@@ -71,6 +72,8 @@ const hud=new RunHud(document.body,{
     hud.update(view);
   },
   onRematch(){document.body.dataset.rematch='1';},
+  // The game passes onExit, so the result has its three buttons here too (Revanche, Arrumar a sala, Sair).
+  onExit(){document.body.dataset.exit='1';},
   coachStorage:{getItem:k=>coachStore.get(k)??null,setItem:(k,v)=>{coachStore.set(k,v);}},
 });
 (window as unknown as {__hud:RunHud}).__hud=hud;
@@ -94,6 +97,13 @@ function load(next:HudScenario){
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
+  // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
+  if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:[],seatsLeft:Math.max(0,6-ids.length),extra:[]});}
+  if(scenario==='result'&&uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
+    void import('./dev/ux-metrics.css');
+    const titles=hud.el.querySelector(m.RESULT_SELECTOR);
+    if(titles&&!titles.querySelector('.ux-dev-export'))titles.append(m.createExportButton(document,async()=>'cancelled'));
+  });
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }

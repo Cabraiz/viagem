@@ -707,6 +707,11 @@
 .rh-result .rh-result-manage[aria-pressed=true]{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
 @media (min-height:501px){.rh-result-actions.has-manage{flex-wrap:wrap}.rh-result-actions.has-manage .rh-result-rematch{flex:1 1 100%}}
 @media (max-height:500px){.rh-result .rh-result-btn{min-height:48px}}
+/* "Arrumar a sala" keeps its words (it overflowed into Revanche and Sair in landscape: flex:1 with min-width:44px let it
+   shrink below its text). It takes its own width; in portrait Sair fills the rest of its row, in landscape Revanche
+   takes what is left, never below 132 px, and Sair keeps its word. */
+.rh-result .rh-result-actions.has-manage .rh-result-manage{flex:0 0 auto}
+@media (max-height:500px){.rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto;min-width:132px}}
 .rh-result.is-managing .rh-rcard-awards{display:none}
 .rh-rcard-manage{display:flex;align-items:center;justify-content:center;gap:4px;min-height:48px;padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-breu);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
 .rh-rcard-manage:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}

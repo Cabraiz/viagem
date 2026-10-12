@@ -332,7 +332,13 @@ export class CoopClient {
   rematch(){this.runCommand({t:'rematch'});}
   /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
   choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
-  private runCommand(command:object){if(this.connected&&this.run&&this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({...command,round:this.run.round}));}
+  /** Playtest metrics only (dev/ux-metrics.ts, ?dev=1): every run command the player taps, and whether it left. Unset otherwise. */
+  onCommand?:(command:{t:string;offer?:string;index?:number},sent:boolean)=>void;
+  private runCommand(command:{t:string;[key:string]:unknown}){
+    const sent=this.connected&&!!this.run&&this.socket?.readyState===WebSocket.OPEN;
+    if(sent)this.socket!.send(JSON.stringify({...command,round:this.run!.round}));
+    this.onCommand?.(command,sent);
+  }
   /** A short render buffer smooths remote entities without delaying local controls. */
   view(now=performance.now()):{players:Player[]}{
     const target=now-120;

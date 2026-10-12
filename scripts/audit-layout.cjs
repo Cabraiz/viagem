@@ -148,6 +148,13 @@ const SCENES=[
   // Zueira events (VGM-053B): an event's banner in a wave, and the kill-cam window at the round's end.
   ['hud faixa do apagão, 6p','/?sandbox=hud&players=6&state=wave&frozen=1&zueira=apagao','.rh',13],
   ['hud kill-cam do último bicho, 6p','/?sandbox=hud&players=6&state=prepare&frozen=1&zueira=killcam','.rh',13],
+  // First-run coach (VGM-056): each hint as the row of the announcement slot, 6 players, both orientations, 100% and 125%.
+  ['dica andar (6p)','/?sandbox=hud&players=6&state=wave&frozen=1&dica=walk','.rh',13],
+  ['dica XP (6p)','/?sandbox=hud&players=6&state=wave&frozen=1&dica=xp','.rh',13],
+  ['dica chip (6p, 2 níveis)','/?sandbox=hud&players=6&state=offer&frozen=1&dica=chip','.rh',13],
+  ['dica resgatar (6p, 1 caído)','/?sandbox=hud&players=6&state=wave&frozen=1&dica=rescue','.rh',13],
+  ['dica coleta (intervalo, 6p)','/?sandbox=hud&players=6&state=prepare&frozen=1&dica=gather','.rh',13],
+  ['dica andar + setas e minimapa','/?sandbox=hud&players=6&state=wave&frozen=1&dica=walk&cenario=bordas','.rh',13],
   ['emotes abertos','/?sandbox=fun&players=6&state=open&frozen=1','.fun-emotes,.fun-balloons',13],
   ['balões','/?sandbox=fun&players=6&state=balloons&frozen=1','.fun-balloons',13],
 ];

@@ -296,15 +296,7 @@
 /* Grows away from the skill button (origin on its right edge), so the beat never eats the 24 px thumb gap. */
 .rh-offer-chip-beat{transform-origin:100% 50%;animation:rh-chip-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
 @keyframes rh-chip-beat{0%{transform:scale(1.35)}70%{transform:scale(.95)}100%{transform:scale(1)}}
-.rh-ended .rh-offer-chip,.rh-ended .rh-offer-hint{display:none}
-/* First time only (3 s, once per device): a balloon over the chip + skill pair, right-aligned with the skill and no
-   wider than the pair, so it never reaches over the joystick (post-merge zones audit); gone at the first tap. */
-.rh-offer-hint{position:absolute;z-index:1;margin:0;box-sizing:border-box;width:calc(var(--botao-habilidade) + 24px + 52px);padding:5px 8px;text-align:center;
-  right:max(24px,env(safe-area-inset-right));
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 10px);
-  border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);
-  font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:none;pointer-events:none}
-.rh-offer-hint::after{content:'';position:absolute;left:18px;bottom:-9px;width:14px;height:8px;background:var(--c-breu);clip-path:polygon(0 0,100% 0,50% 100%)}
+.rh-ended .rh-offer-chip{display:none}
 
 /* Compact strip: a row of tags right-aligned just above the controls band (24 px over the joystick), right of the team
    column and clear of the hero. Combat reading is icon + price + name (UX B5); effect and joke wait for the intermission. */
@@ -390,7 +382,6 @@
   .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
-  .rh-offer-hint{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 10px)}
   /* 125%: the right column is 190 px tall. Tags go 2x2 with name and price only; the effect line is the one exception
      to "never hidden", kept in each tag's aria-label and readable with the window folded or in portrait. */
   :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
@@ -725,3 +716,30 @@
 .rh-rcard-manage:disabled{opacity:.6}
 .rh-rcard-add{justify-content:center;background:var(--c-lilas-escuro);border-color:var(--c-papel)}
 .rh-rcard-add .rh-rcard-addbot{flex:1;flex-direction:column;font-size:var(--t-16)}
+
+/* ---------- First-run coach (VGM-056, hud/coach.ts) ----------
+   One hint at a time, as the last row of the announcement slot (top band, UX-zonas-tela): a calm ficha like the
+   notices (Breu body, Papel edge), a sticker of the control it talks about (the joystick with its Amarelo knob, the
+   XP drop, the chip's own "+N", the boia) and one short line, with an optional second one. Never over the hero or the
+   thumbs; any other row of the slot outranks it. Done: the check sticker and a Cartolina edge, then it goes. No motion. */
+.rh-coach{display:flex;align-items:center;gap:8px;box-sizing:border-box;width:min(100%,320px);padding:5px 12px 6px 8px;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
+  pointer-events:auto;touch-action:none}
+.rh-coach-mark{display:inline-flex;flex:none;align-items:center;justify-content:center;width:32px;height:32px}
+.rh-coach-body{display:flex;flex-direction:column;min-width:0}
+.rh-coach-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
+.rh-coach-sub{font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-coach-sub:empty{display:none}
+.rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:30px;height:30px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
+  background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
+.rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
+/* One call at a time (design review): while "andar" shows only the joystick is Amarelo, so a "+N" chip that came early
+   (a teammate's level) waits as plain Papel; with the chip's own hint up, the chip gets a 3 px Breu edge. Static. */
+.rh[data-coach=walk] .rh-offer-chip{background:var(--c-papel)}
+.rh[data-coach=chip] .rh-offer-chip{border-width:3px}
+.rh-ended .rh-coach{display:none}
+/* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */
+.rh-coach.rh-coach-yield{visibility:hidden}
+@media (max-height:500px){
+  .rh-coach{width:min(100%,300px);padding:3px 10px 4px 6px}
+}

@@ -13,11 +13,12 @@ import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
+import {chooseSlot,crosses,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
 import type {RecipeId} from '../sim/stonewards/rules.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
+import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -42,6 +43,10 @@ export interface RunHudOptions {
   onKick?(id:string):void;onAddBot?():void;onRemoveBot?(id:string):void;
   /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
   onForge?(recipe:RecipeId):number|undefined;
+  /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
+  coachStorage?:Pick<Storage,'getItem'|'setItem'>;
+  /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
+  heroRect?():Rect|undefined;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -81,6 +86,17 @@ export class RunHud {
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
+  /** First-run coach (VGM-056): one hint at a time in the announcement slot. */
+  readonly coach:Coach;
+  private readonly coachRow:CoachPart;
+  private coachShow?:CoachShow;
+  private hero?:{x:number;y:number};
+  private readonly chip:HTMLButtonElement;
+  private readonly offerEl:HTMLElement;
+  private readonly forgeEl:HTMLElement;
+  /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
+  private coachRect?:Rect;
+  private readonly heroRectOf?:()=>Rect|undefined;
   /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
@@ -91,23 +107,25 @@ export class RunHud {
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
-    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId});
+    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
+    this.coach=new Coach(options.coachStorage);this.heroRectOf=options.heroRect;this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
-    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
+    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
-    stack.append(announcer.el,killcam.el,alerts.el,camp.notice);this.stack=stack;this.alerts=alerts;
+    // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056).
+    stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp];
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,offer.hint,this.result.el);
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.minimap.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
-    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
+    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
     if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);}
@@ -131,17 +149,55 @@ export class RunHud {
     // The intermission offer opens after the FEITO stamp (design review D2): never two stamps in the same second.
     const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
+    this.updateCoach(view);
   }
+
+  /**
+   * The first-run coach (VGM-056): it waits while any other row holds the announcement slot, the HUD is hidden (out of
+   * the round) or the result is up; the joystick wears the hint's Amarelo while "andar" shows (data-coach on the root).
+   */
+  private updateCoach(view:RunView,now=performance.now()){
+    if(this.coach.finished&&!this.coachShow)return;
+    const ended=this.el.classList.contains('rh-ended');
+    // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no hint while the
+    // intermission window is open or a LEVEI stamp hits (one moment at a time).
+    // The forge window too (VGM-046B): the gathering hint never shows over an open forge.
+    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
+    const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    const banner=!!marquee&&!marquee.hidden;
+    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner},now);
+    // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
+    // does for a notice or the offer window.
+    if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
+    this.coachShow=show;
+    // A hint that just appeared or changed is measured now and steps aside at once if it is over the hero; between
+    // changes the box comes from the slot's cache (avoidHero), and the hero's box is read fresh on every view.
+    if(this.coachRow.render(show,view.offers.length)){const r=this.coachRow.el.hidden?undefined:this.coachRow.el.getBoundingClientRect();this.coachRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};}
+    const hero=this.heroRectOf?.();
+    if(hero)this.coachYield(hero,HERO_MARGIN_PX);
+    const lesson=show&&!show.done?show.lesson:'';
+    if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
+    // The joystick keeps calling (Amarelo) while "andar" is still to learn and on screen, or only pushed aside by the
+    // rescue hint (a caído outranks it); explore.css reads data-coach-stick.
+    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue');
+    if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
+  }
+  /** The "+N" chip waits for a tap: in combat, or the intermission window folded into it with "Depois" (janela-caido). */
+  private chipWaits(){return !this.chip.hidden&&(this.chip.dataset.mode==='combat'||this.offerEl.hidden===true);}
+  /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */
+  private offerOpen(){return !this.offerEl.hidden&&(this.offerEl.dataset.mode!=='combat'||this.offerEl.classList.contains('rh-offer-stamping'));}
   /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
   killcamRect(){return this.el.classList.contains('rh-ended')?undefined:this.killcam.rect();}
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
-  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);}
+  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
+    // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
+    this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
     this.result.show(result,this.ctx);
   }
 
@@ -179,15 +235,18 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).
-    const key=`${rows.map(r=>r.className).join('|')}:${low}`;
+    // The hint's lesson is in the key: another lesson may wrap to another height with the same classes.
+    const key=`${rows.map(r=>`${r.className}${r.dataset.lesson??''}`).join('|')}:${low}`;
     if(key!==this.rowsKey||this.rowsVersion!==this.layoutVersion||!this.rowsBox){
       this.rowsKey=key;this.rowsVersion=this.layoutVersion;
       const r=rows.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
       this.rowsBox={x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
+      const c=r[rows.indexOf(this.coachRow.el)];
+      this.coachRect=c&&{x:c.left,y:c.top,width:c.width,height:c.height};
       if(!low)this.topSlot=this.rowsBox;
       // In the low slot the rows may be taller or fewer now: keep the top slot's place with the rows' size.
       else if(this.topSlot)this.topSlot={...this.topSlot,height:this.rowsBox.height,width:Math.max(this.topSlot.width,this.rowsBox.width)};
@@ -196,6 +255,16 @@ export class RunHud {
     const lowSlot=low?this.rowsBox:{...this.topSlot,y:innerHeight};
     const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
     if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
+    this.coachYield(hero,margin);
+  }
+  /**
+   * The first-run hint never sits on the hero (VGM-056): if neither slot clears it (a camera still catching up after a
+   * jump), the hint steps aside (visibility only, it keeps its place in the slot) until the hero is clear again.
+   */
+  private coachYield(hero:Rect,margin:number){
+    const row=this.coachRow.el;
+    const over=!row.hidden&&!!this.coachRect&&crosses(this.coachRect,hero,margin);
+    if(row.classList.contains('rh-coach-yield')!==over)row.classList.toggle('rh-coach-yield',over);
   }
   /**
    * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or
@@ -235,6 +304,8 @@ export class RunHud {
   get view(){return this.last;}
 
   destroy(){
+    // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
+    this.coach.endRun();
     removeEventListener('resize',this.relayout);this.observer?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();

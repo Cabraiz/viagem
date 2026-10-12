@@ -71,7 +71,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
       onForge:recipe=>net.forge(recipe),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
-      onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id)});
+      onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
+      // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
+      heroRect:()=>controller?.scene.heroScreenRect()});
     net.onForged=answer=>hud?.forged(answer);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});

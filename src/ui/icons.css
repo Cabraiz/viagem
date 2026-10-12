@@ -21,6 +21,7 @@
 .f-breu{fill:var(--c-breu)}
 .f-pedra{fill:var(--c-pedra)}
 .f-casca{fill:var(--c-casca)}
+.f-gema{fill:var(--c-gema)}
 /* Espelhado: girar para a esquerda é o mesmo adesivo virado. */
 .ic-espelho{transform:scaleX(-1)}
 /* Agulha da bússola: gira com a vista atual (--vista em graus, explore.ts). */

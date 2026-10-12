@@ -9,6 +9,8 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   'base','chefe','onda','bau',
   // Stonewards (VGM-046B): resources, the wall, the return horn and the forge's recipes.
   'coco','pedra','muralha','corneta','fita','chinelo',
+  // First-run coach (VGM-056): the joystick (its knob Amarelo, like the stick while the hint shows) and the XP drop.
+  'dedao','gota',
   // Dono da sala e bots (D-025): a coroa de papel do chefe e o robô dos bots da sala.
   'robo','coroa'] as const;
 export type IconName=typeof ICON_NAMES[number];

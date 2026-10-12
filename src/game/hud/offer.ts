@@ -125,23 +125,18 @@ export const TAKE_ALL_MIN=2;
 export const TAKE_ALL_LABEL='Levar os indicados';
 /** Folds the intermission window into the chip, which opens it again (UX review janela-caido). */
 export const LATER_LABEL='Depois';
-/** First-time hint next to the chip, stored per device (never comes back once the chip was tapped). */
-export const CHIP_HINT_TEXT='Toca pra escolher melhoria';
-export const CHIP_HINT_KEY='viagem:hint:offer-chip';
-export const CHIP_HINT_MS=3000;
 
 export interface OfferPanelOptions {
   onChoose(offerId:string,index:number):void;
   /** Stamp feedback (sound "tum" + vibration); RunHud wires the audio engine. */
   onStamp?():void;
+  /** A tap on the "+N" chip: the first-run coach learns it (VGM-056, hud/coach.ts holds the chip's first-time hint). */
+  onChipTap?():void;
   /** This phone's player: the window's caído ficha never names you. */
   localId?:string;
 }
 
-const hintSeen=()=>{try{return localStorage.getItem(CHIP_HINT_KEY)==='1';}catch{return true;}};
-const markHintSeen=()=>{try{localStorage.setItem(CHIP_HINT_KEY,'1');}catch{/* private mode */}};
-
-export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement;hint:HTMLElement}{
+export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
   const root=el('section','rh-offer');root.hidden=true;
   root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
   const head=el('header','rh-offer-head',root);
@@ -164,7 +159,6 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
   const chipCount=el('span','rh-offer-chip-count',chip);
-  const hint=el('p','rh-offer-hint');hint.hidden=true;hint.textContent=CHIP_HINT_TEXT;hint.setAttribute('aria-hidden','true');
 
   const shownAt=new Map<string,number>();
   const guard=new OfferTapGuard();
@@ -174,7 +168,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   /** The stamped offer stays on screen for STAMP_HOLD_MS, even after the server dropped it. */
   let stamp:{offer:OfferView;until:number}|undefined;
   let open=false,collapsed=false,takingAll=false,lastMode:OfferMode|undefined,last:RunView|undefined;
-  let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
+  let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false;
 
   const render=(offer:OfferView)=>{
     root.dataset.source=offer.source;
@@ -256,7 +250,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     else open=!open;
     // Opening counts as a new render for the tap guard: the finger that opened it cannot pick blind.
     if((open||!collapsed)&&shown)guard.rendered(shown.id,now());
-    if(!hint.hidden||!hintSeen()){markHintSeen();hint.hidden=true;}
+    try{options.onChipTap?.();}catch{/* the coach is best effort */}
     if(last)update(last);
   });
   // Pressing the skill closes the compact strip: the thumb went back to fighting (DSG/UX review).
@@ -265,11 +259,6 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
 
   /** One stamp-like beat on the chip when it appears or its number goes up (no loop: D-020). */
   const beat=()=>{chip.classList.remove('rh-offer-chip-beat');void chip.offsetWidth;chip.classList.add('rh-offer-chip-beat');};
-  const showHint=()=>{
-    if(hintSeen()||hintTimer)return;
-    hint.hidden=false;
-    hintTimer=setTimeout(()=>{hint.hidden=true;},CHIP_HINT_MS);
-  };
 
   function update(view:RunView){
     last=view;
@@ -299,7 +288,6 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       chipCount.textContent=text.label;chip.setAttribute('aria-label',text.aria);
     }
     if(waiting<=0)lastPending=0;
-    if(!chip.hidden&&state.mode==='combat')showHint();
     const offer=stamp?.offer??offers[0];
     const visible=!!stamp||(!!offer&&offer.choices.length>0&&state.panel);
     chip.setAttribute('aria-expanded',String(visible));
@@ -331,5 +319,5 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,hint,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);if(hintTimer)clearTimeout(hintTimer);overflow.destroy();}};
+  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);overflow.destroy();}};
 }

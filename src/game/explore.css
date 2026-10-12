@@ -68,3 +68,8 @@ html:has(.explore-shell[open]){scrollbar-width:none}
   body:has(.rh-offer:not([hidden]),.rh-forge:not([hidden])) .explore-camera .explore-camera-hint{top:calc(100% + 24px + 76px + 8px);width:min-content;padding:2px 4px;white-space:normal}
 }
 .explore-exit .ic{margin-right:4px}
+/* First-run coach (VGM-056): while "Arrasta o dedão pra andar" shows (or the rescue hint only pushed it aside), the
+   stick wears the hint sticker's Amarelo (edge and knob), so the line and the control read as one. Static: no motion,
+   gone at the first steps (RunHud sets data-coach-stick). */
+.explore-layout:has(>.rh[data-coach-stick]) .explore-stick{border-color:var(--c-amarelo)}
+.explore-layout:has(>.rh[data-coach-stick]) .explore-stick span{background:var(--c-amarelo)}

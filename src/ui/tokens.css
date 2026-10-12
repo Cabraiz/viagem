@@ -59,6 +59,7 @@
   --c-emblema:#75B8A6; /* emblema padrão do jogador: identidade, fora da paleta de UI (§2.1) */
   /* Fora da paleta de UI, por serem cenário ou identidade e não sistema: */
   --c-retrato-a:#F5D1C8;--c-retrato-b:#FBE4DA; /* chevron rosa atrás do retrato ("deve ficar", §1.7) */
+  --c-gema:#6FE0DC; /* a gota de XP do mapa (render/textures.ts), só no adesivo dela: cenário, não sistema (VGM-056) */
   --cena-agua:#8DCECC; /* água rasa turquesa: fundo do palco e do minimapa antes do Phaser pintar (D-022, tropical claro) */
   --cena-mar:#14859E;  /* mar turquesa ao longe: fundo da câmera da cena (D-022; mesmo tom do SEA_DEEP do shader do terreno) */
   --cena-grama:#538F3F; /* grama mediana do mapa sem fim: fundo da câmera onde um bloco do chão ainda não foi assado (terreno-em-blocos) */

@@ -142,9 +142,9 @@ export function chooseSlot(slots:readonly Rect[],hero:Rect|undefined,margin=HERO
 export interface AuditBox {name:string;rect:Rect;
   /** A touch target (≥ THUMB_GAP from the joystick and the skill button). */
   target?:boolean;
-  /** Offer and result: the only ones allowed in the useful area (D-021 moves the level offer to a chip). The chip's
-   * first-time hint (3 s, once per device, never tappable) rides above the chip and the skill, like a label of them. The open emote fan
-   * counts as the right-thumb control the player just opened (it closes on any other tap), not as HUD over the field. */
+  /** Offer and result: the only ones allowed in the useful area (D-021 moves the level offer to a chip). The open emote fan
+   * counts as the right-thumb control the player just opened (it closes on any other tap), not as HUD over the field.
+   * First-time hints are not here: they are rows of the announcement slot (hud/coach.ts, VGM-056) and audited as such. */
   allowedInPlay?:boolean;
   /** Documented fallbacks while the camera does not follow the hero: the announcement in the low slot, and a status
    * readout veiled (30% opacity) because the hero walked under it. */
@@ -255,13 +255,15 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('.rh-round','round',top);add('.rh-xp','xp',top);add('.rh-boss','chefe',top);add('.rh-camp','base',top);
   const low=!!doc.querySelector('.rh-stack.rh-stack-low');
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
+  // The first-run coach's hint (VGM-056): a row of the same slot, so it may not touch the useful area, the hero or a thumb.
+  add('.rh-stack .rh-coach','dica',{fallback:low});
   add('.rh-member','time');
   // The open window may sit in the field but never on the hero: the camera moves the hero beside it (UX onda 4).
   add('.rh-offer','oferta',{allowedInPlay:true,overHeroFails:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true,overHeroFails:true});
   // The forge window (VGM-046B): an intermission window like the offer, in the field but never on the hero.
   add('.rh-forge','forja',{allowedInPlay:true,overHeroFails:true});add('.rh-forge .rh-forge-tag','forja-etiqueta',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-forge .rh-forge-close','forja-fechar',{allowedInPlay:true,target:true,overHeroFails:true});
-  add('.rh-offer-chip','chip',{target:true});add('.rh-offer-hint','dica-do-chip',{allowedInPlay:true});
+  add('.rh-offer-chip','chip',{target:true});
   add('.fun-emote-toggle','emote',{target:true});
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
   add('#coop-sos','me-salva',{thumb:true,target:true});

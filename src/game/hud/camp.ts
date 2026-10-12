@@ -27,14 +27,6 @@ export const MAX_TOWERS=3;
 /** Highest weapon level (evolutions.ts; gambiarra only raises a weapon below it). */
 const MAX_WEAPON_LEVEL=8;
 
-/** The gathering tip (first intermission, once per phone) and how long it stays. */
-export const GATHER_TIP='Encosta num coqueiro ou numa pedra pra catar';
-export const GATHER_TIP_MS=7000;
-const TIP_KEY='viagem:dica-coleta';
-/** Whether this phone already saw the tip; storage may be off (private tab): then it shows every run, never throws. */
-export function tipSeen(storage:Pick<Storage,'getItem'>|undefined=globalThis.localStorage){try{return storage?.getItem(TIP_KEY)==='1';}catch{return false;}}
-export function markTipSeen(storage:Pick<Storage,'setItem'>|undefined=globalThis.localStorage){try{storage?.setItem(TIP_KEY,'1');}catch{/* private tab: fine */}}
-
 export const RECIPE_ICON:Readonly<Record<RecipeId,IconName>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':'chinelo'};
 
 export interface ForgeAnswer {req:number;recipe:string;ok:boolean;reason?:string}
@@ -100,7 +92,8 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Horn / wall notice ----------
   const notice=el('div','rh-alert rh-horn');notice.hidden=true;notice.setAttribute('role','status');
   const noticeRow=el('span','rh-horn-row',notice);
-  noticeRow.insertAdjacentHTML('beforeend',`<span class="rh-horn-icon" data-for="horn">${icon('corneta')}</span><span class="rh-horn-icon" data-for="wall">${icon('muralha')}</span><span class="rh-horn-icon" data-for="hint">${icon('coco')}</span>`);
+  // The gathering tip of the first intermission moved to the first-run coach (VGM-056, hud/coach.ts).
+  noticeRow.insertAdjacentHTML('beforeend',`<span class="rh-horn-icon" data-for="horn">${icon('corneta')}</span><span class="rh-horn-icon" data-for="wall">${icon('muralha')}</span>`);
   const noticeText=el('span','rh-horn-text',noticeRow),noticeTime=el('b','rh-horn-time',noticeRow);
   const arrow=el('span','rh-horn-arrow',noticeRow);arrow.insertAdjacentHTML('beforeend',icon('voltar',{label:'Direção da base'}));
   const noticeJoke=el('span','rh-horn-joke',notice);
@@ -135,12 +128,6 @@ export function createCamp(options:CampOptions):CampPart{
   const overflow=watchOverflow(list);
 
   let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined;
-  // The tip shows from the first intermission (round index 2) for GATHER_TIP_MS, once per phone.
-  let tip:{round:number;until:number}|undefined;
-  const tipUntil=(round:number)=>{
-    if(!tip&&round>=2&&!tipSeen()){tip={round,until:performance.now()+GATHER_TIP_MS};markTipSeen();setTimeout(render,GATHER_TIP_MS+20);}
-    return tip&&tip.round===round?tip.until:0;
-  };
   let dismissed=false,stint=-1,wasInCamp=false;
   let pending:{req:number;recipe:RecipeId;timer:ReturnType<typeof setTimeout>}|undefined;
   let stampTimer:ReturnType<typeof setTimeout>|undefined,noteTimer:ReturnType<typeof setTimeout>|undefined;
@@ -203,10 +190,6 @@ export function createCamp(options:CampOptions):CampPart{
     const home=inCamp(hero,wall);
     if(warning&&performance.now()<warning.until){
       notice.hidden=false;notice.dataset.kind='wall';noticeText.textContent=warning.text;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
-    }else if(prepare&&camp.hornEndsTick===undefined&&standing&&tipUntil(round!.index)>performance.now()){
-      // First intermission on this phone: one short line on how to gather (review onda 6), then never again.
-      notice.hidden=false;notice.dataset.kind='hint';notice.classList.remove('rh-horn-urgent');
-      noticeText.textContent=GATHER_TIP;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
     }else if(prepare&&camp.hornEndsTick!==undefined&&standing){
       warning=undefined;
       const left=secondsLeft(camp.hornEndsTick,view.tick);

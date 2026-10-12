@@ -11,6 +11,7 @@ import {fitIsland,FollowCamera,followZoom} from './framing.ts';
 import {projectView,viewDepth,normalizeView} from './projection.ts';
 import {obstacles,walkable,type Point} from './world.ts';
 import {treeCatalog} from './tree-catalog.ts';
+import {treeUrl} from './art-urls.ts';
 import {CharacterSprites} from './character-sprites.ts';
 import {classes} from '../classes.ts';
 import {Rng} from './sim/rng.ts';
@@ -151,7 +152,7 @@ class HordeSandboxScene extends Phaser.Scene {
   private forceReduced:boolean;
   preload(){
     this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
-    for(const tree of treeCatalog.slice(0,6))this.load.spritesheet(`tree:${tree.id}`,`/art/trees/${tree.id}.webp`,{frameWidth:256,frameHeight:384});
+    for(const tree of treeCatalog.slice(0,6))this.load.spritesheet(`tree:${tree.id}`,treeUrl(tree.id),{frameWidth:256,frameHeight:384});
     for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(classes[(i*5)%classes.length].id);
   }
   create(){

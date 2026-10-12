@@ -8,6 +8,7 @@ import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
+import {treeUrl,thumbUrl} from './art-urls.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
@@ -112,6 +113,8 @@ export class IslandScene extends Phaser.Scene {
   /** Endless world: live props per tree sheet, and sheets loaded but unused (oldest first). */
   private treeUse=new Map<string,number>();
   private treeIdle=new Set<string>();
+  /** Endless world: sheets of the ring beyond the screen, fetched one by one in the background (pumpTrees). */
+  private treeLater=new Set<string>();
   private chooseTrees(){if(this.field.chunks)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
     const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
     return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
@@ -163,7 +166,28 @@ export class IslandScene extends Phaser.Scene {
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
-  preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
+  /**
+   * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
+   * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
+   * the spawn. Teammates' sheets come right after the first frame (CharacterSprites.animate), the trees around as the
+   * camera needs them, and the ring beyond in the background (pumpTrees).
+   */
+  preload(){
+    this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    this.sprites.queue(this.hooks.classId);
+    this.load.image('hero',thumbUrl(this.hooks.classId));
+    if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
+    for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
+  }
+  /** Texture key of a class's icon (a teammate's stand-in until its sheet is in); fetched the first time it is asked. */
+  private classIcon(classId:string){
+    const key=`class:${classId}`;
+    if(this.textures.exists(key))return key;
+    if(!classes.some(c=>c.id===classId))return '__DEFAULT';
+    if(!this.iconsAsked.has(key)){this.iconsAsked.add(key);this.load.image(key,thumbUrl(classId));if(this.booted&&!this.load.isLoading())this.load.start();}
+    return '__DEFAULT';
+  }
+  private iconsAsked=new Set<string>();
   create(){
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
     this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
@@ -245,7 +269,7 @@ export class IslandScene extends Phaser.Scene {
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
-    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();
+    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
@@ -528,7 +552,9 @@ export class IslandScene extends Phaser.Scene {
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the blank once in.
+      else if(objects.image.texture.key==='__DEFAULT'&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
@@ -629,7 +655,8 @@ export class IslandScene extends Phaser.Scene {
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;
-    this.load.spritesheet(`tree:${id}`,`/art/trees/${id}.webp`,{frameWidth:256,frameHeight:384});
+    this.treeLater.delete(id);
+    this.load.spritesheet(`tree:${id}`,treeUrl(id),{frameWidth:256,frameHeight:384});
   }
   /** Endless world: the sheets of the trees around the spawn, loaded with the scene (no sketch on the first frame). */
   private spawnTrees(){
@@ -665,16 +692,34 @@ export class IslandScene extends Phaser.Scene {
       for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,p.name));}
       this.chunkProps.set(key,{cx,cy,props,signs});changed=true;
     }
-    // Sheets of the next ring of chunks start loading before their trees can show (fewer shadows waiting on screen).
-    if(changed)for(let cy=ahead.iy0;cy<=ahead.iy1;cy++)for(let cx=ahead.ix0;cx<=ahead.ix1;cx++){
-      if(cx>=want.ix0&&cx<=want.ix1&&cy>=want.iy0&&cy<=want.iy1)continue;
-      for(const o of chunks.chunk(cx,cy).obstacles)if(o.art&&!this.textures.exists(`tree:${o.art}`)&&TREES.has(o.art)){this.loadTree(o.art);loads=true;}
+    // Sheets of the next ring of chunks load before their trees can show (fewer shadows waiting on screen), but in the
+    // background (N27): one at a time when nothing else loads, in combat (pumpTrees). On 4G the whole ring is ~30
+    // sheets; they used to go with the visible trees and the teammates' sheets, and those waited ~15 s behind them.
+    if(changed){
+      this.treeLater.clear();
+      for(let cy=ahead.iy0;cy<=ahead.iy1;cy++)for(let cx=ahead.ix0;cx<=ahead.ix1;cx++){
+        if(cx>=want.ix0&&cx<=want.ix1&&cy>=want.iy0&&cy<=want.iy1)continue;
+        for(const o of chunks.chunk(cx,cy).obstacles)if(o.art&&!this.textures.exists(`tree:${o.art}`)&&TREES.has(o.art))this.treeLater.add(o.art);
+      }
     }
     if(loads&&!this.load.isLoading())this.load.start();
     if(!changed)return;
     this.props=[...this.chunkProps.values()].flatMap(e=>e.props);
     this.signs=[...this.chunkProps.values()].flatMap(e=>e.signs);
     this.drawTreeShadows();this.dropIdleTrees();
+  }
+  /**
+   * Endless world, in combat (or solo): one sheet of the ring beyond the screen when the loader is idle, while the unused sheets
+   * kept fit TREE_TEXTURES_IDLE (more would be dropped at once and fetched again: the old churn). In the lobby the
+   * team stands at the spawn: nothing beyond the screen, so the first entry in combat stays light.
+   */
+  private pumpTrees(){
+    if(!this.treeLater.size||this.load.isLoading()||(this.hooks.net&&this.hooks.net.run?.phase!=='combat')||this.treeIdle.size>=TREE_TEXTURES_IDLE)return;
+    for(const id of this.treeLater){
+      this.treeLater.delete(id);
+      if(this.textures.exists(`tree:${id}`))continue;
+      this.loadTree(id);this.load.start();return;
+    }
   }
   private useTree(id:string,delta:number){
     const n=(this.treeUse.get(id)??0)+delta;

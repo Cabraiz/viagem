@@ -10,6 +10,7 @@ import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
 import {RADIUS,SPEED} from '../../src/maps/world.ts';
 import {HERO_MIN_SCREEN_PX} from '../../src/contract/index.ts';
 import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
+import {UNITS_PER_CELL} from '../../src/maps/city-asset.ts';
 
 const near=(actual:number,expected:number,tol:number,what:string)=>
   assert.ok(Math.abs(actual-expected)<=tol,`${what}: ${actual} not within ${tol} of ${expected}`);
@@ -70,6 +71,10 @@ test('example asset: start → plaza ≈ 33 s, plaza → spawn ≈ 36 s, enemies
   for(const d of Object.values(a.paths))assert.ok(traversalSeconds(d,city,enemySpeed(city))>traversalSeconds(d,city),'escape is possible');
 });
 
+test('the city asset format and the scale profile agree on the cell size (drift guard)',()=>{
+  assert.equal(UNITS_PER_CELL,city.cell,'src/maps/city-asset.ts UNITS_PER_CELL = cidade-nevada cell (0.88)');
+});
+
 test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is 25–38 s',t=>{
   const url=new URL('../../public/maps/cidade-nevada.json',import.meta.url);
   // Only a missing file skips; a present asset with a wrong scale or missing points fails.
@@ -80,7 +85,7 @@ test('real cidade-nevada asset (when imported): same cell size, straight start �
   const start=asset.points?.inicio,plaza=asset.points?.praca;
   const ok=(p:{x?:unknown;y?:unknown}|undefined):p is {x:number;y:number}=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y);
   assert.ok(ok(start)&&ok(plaza),'asset has points.inicio and points.praca');
-  // The ~33 s of the doc is a street path; the straight line is shorter but not by much.
+  // The doc's ~33 s (9,600 WC3 u) was an estimate: the real straight line already measures more.
   // The source start→boss line is ~34.4 s; the importer moves inicio ~1.9 u off the wreck for clearance (cidade-01).
   within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25,38,'asset inicio → praca seconds');
 });

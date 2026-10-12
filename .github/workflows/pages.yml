@@ -27,48 +27,59 @@ jobs:
         with:
           path: dist
   # The client and the rooms Worker speak the same room protocol, so the Worker
-  # goes first and the frontend is only published if the Worker deploy succeeded.
-  # Needs the repository secret CLOUDFLARE_API_TOKEN (template "Edit Cloudflare
-  # Workers") and, if the token sees more than one account, CLOUDFLARE_ACCOUNT_ID.
+  # goes first and the frontend is only published if the live Worker speaks the
+  # protocol in public/multiplayer.json.
+  # With the repository secret CLOUDFLARE_API_TOKEN (template "Edit Cloudflare
+  # Workers"; plus CLOUDFLARE_ACCOUNT_ID if the token sees more than one account)
+  # the Worker is deployed here. Without it the Worker is deployed from the
+  # orchestrator's PC (`npm run deploy:rooms`, logged-in wrangler) and this job only
+  # checks that the live Worker already matches, so pushes publish the site instead
+  # of failing on the missing secret.
   deploy-rooms:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: cloudflare-workers
     steps:
-      - name: Require the Cloudflare token
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::error::Secret CLOUDFLARE_API_TOKEN ausente: nada foi publicado (nem salas nem site)."
-            exit 1
-          fi
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Expected room protocol
+        id: proto
+        run: echo "n=$(node -p "require('./public/multiplayer.json').protocol")" >> "$GITHUB_OUTPUT"
+      - name: Token available?
+        id: token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "has=true" >> "$GITHUB_OUTPUT"
+          else echo "has=false" >> "$GITHUB_OUTPUT"; echo "::notice::Sem CLOUDFLARE_API_TOKEN: o Worker não é publicado aqui; só confiro se o que está no ar já fala o protocolo ${{ steps.proto.outputs.n }}."; fi
       - uses: actions/setup-node@v7
+        if: steps.token.outputs.has == 'true'
         with:
           node-version: 24
           cache: npm
       - run: npm ci --include=optional
+        if: steps.token.outputs.has == 'true'
       - name: Deploy rooms Worker
+        if: steps.token.outputs.has == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --config multiplayer/wrangler.jsonc
-      - name: Smoke test (the Worker live is the new one, protocol 7, before the site goes out)
+      - name: Live Worker speaks the site's protocol (never publish the site in front of an older Worker)
+        env:
+          WANT: ${{ steps.proto.outputs.n }}
         run: |
           code=$(curl -sS -o /dev/null -w '%{http_code}' https://viagem-salas.viagem.workers.dev/)
           echo "rooms Worker answered $code"
           test "$code" -lt 500
-          # The site speaks room protocol 7 (VGM-042b frames, sized events since E7, Stonewards camp and nodes since VGM-046B, zueira events and the kill-cam since VGM-053B): never publish it in front of an older Worker.
           # A fresh deploy can take a few seconds to reach every edge, so it is asked a few times before failing.
           for i in 1 2 3 4 5 6; do
-            if curl -fsS https://viagem-salas.viagem.workers.dev/health | tee /dev/stderr | grep -q '"protocol":7'; then exit 0; fi
+            if curl -fsS https://viagem-salas.viagem.workers.dev/health | tee /dev/stderr | grep -q "\"protocol\":$WANT[,}]"; then exit 0; fi
             sleep 10
           done
-          echo "::error::O Worker publicado não responde protocolo 7: o site não sai."
+          echo "::error::O Worker no ar não fala o protocolo $WANT. Sem token, publique as salas do PC (npm run deploy:rooms) e rode este workflow de novo."
           exit 1
   deploy:
     needs: [build, deploy-rooms]

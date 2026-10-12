@@ -24,6 +24,11 @@ export const MERGE_PX=52;
 export const RIM_PAD=8;
 /** Extra gap (CSS px) past the hero's keep-out when an arrow slides out of its way. */
 export const SLIDE_SLACK=8;
+/**
+ * Sideways room (CSS px) an arrow on the top or bottom rim keeps from the hero when the field is short (landscape): the
+ * ± HERO_MARGIN keep-out let it sit beside the hero's head, in the play (design/UX onda 6, §2.3).
+ */
+export const HEAD_ROOM=80;
 /** Room a caído's tag takes above (or below) its ficha, so stacked arrows never cover the seconds. */
 export const TAG_ROOM=16;
 
@@ -71,6 +76,16 @@ export function inView(p:Point,seen:NonNullable<EdgeOptions['seen']>){
   if(p.x<v.x+i||p.y<v.y+i||p.x>v.x+v.width-i||p.y>v.y+v.height-i)return false;
   return !seen.covered.some(r=>!!r&&p.x>=r.x&&p.x<=r.x+r.width&&p.y>=r.y&&p.y<=r.y+r.height);
 }
+/**
+ * The targets that need an arrow: outside the useful area and not in plain view (under the HUD, an open window or off
+ * the viewport). A caído or the boss in this list must end up with an arrow of its own (MUST_POINT), whatever window
+ * is open (NEW-20261011-UX-janela-esconde-caido); the audits read the list from the arrows' layer (data-need).
+ */
+export function pointedTargets(targets:readonly EdgeTarget[],area:Rect,seen?:EdgeOptions['seen']){
+  return targets.filter(t=>Number.isFinite(t.screen.x)&&Number.isFinite(t.screen.y)&&!edgeOf(t.screen,area).inside&&!(seen&&inView(t.screen,seen)));
+}
+/** Kinds that never go without their own arrow when they need one (the zones audit fails otherwise). */
+export const MUST_POINT:readonly EdgeKind[]=['caido','chefe'];
 /** Half size of an arrow ficha at a text scale (100% or 125%): the CSS uses the same numbers. */
 export const arrowHalf=(scale=1)=>({w:(44+32*scale)/2,h:18});
 
@@ -88,54 +103,69 @@ export function layoutEdges(targets:readonly EdgeTarget[],area:Rect,hero?:Rect,o
   // The caído's tag and the "+N" ride TAG_ROOM above the ficha: that room is kept inside the area too.
   const hw=Math.min(half.w+RIM_PAD,area.width/2),hh=Math.min(half.h+RIM_PAD,area.height/2),top=Math.min(TAG_ROOM,Math.max(0,area.height-2*hh));
   const inner={x:area.x+hw,y:area.y+hh+top,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh-top)};
-  const sorted=[...targets].filter(t=>Number.isFinite(t.screen.x)&&Number.isFinite(t.screen.y)&&!edgeOf(t.screen,area).inside&&!(options.seen&&inView(t.screen,options.seen)))
+  const sorted=pointedTargets(targets,area,options.seen)
     .sort((a,b)=>EDGE_PRIORITY[a.kind]-EDGE_PRIORITY[b.kind]||(a.seconds??Infinity)-(b.seconds??Infinity)||a.distance-b.distance||(a.key<b.key?-1:1));
   // (Among caídos the one with fewer seconds left goes first: a "+1" never hides the most urgent clock.)
   const out:EdgeArrow[]=[];
   // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Me salva: 24 s").
   const scale=Math.max(1,(2*half.w-44)/32);
   let current:EdgeTarget|undefined,compact=false;
+  // With two caídos or more, the most urgent one's tag may carry a "+N" ("6 s +1"): its keep-out counts that room.
+  const plus=sorted.filter(t=>t.kind==='caido').length>1?' +9':'';
   // On the right half of the area the tag grows leftwards, so a wide one never leaves the area.
   const tagFromRight=(x:number)=>x>area.x+area.width/2;
   const box=(x:number,y:number):Rect=>{
-    const tag=current?.kind==='caido'?caidoTag({...current,compact}):'';
+    const tag=current?.kind==='caido'?caidoTag({...current,compact})+plus:'';
     if(!tag)return {x:x-half.w,y:y-half.h,width:2*half.w,height:2*half.h};
     const w=Math.max(2*half.w,tagWidth(tag,scale)),left=tagFromRight(x)?x+half.w+4-w:x-half.w-4;
     return {x:left,y:y-half.h-TAG_ROOM,width:w+4,height:2*half.h+TAG_ROOM};
   };
-  const clear=(x:number,y:number)=>!hero||!crosses(box(x,y),hero,margin);
+  // On the top and bottom rims the keep-out is wider sideways (HEAD_ROOM): in a short field those rims are level with the
+  // hero's head. A tall field (portrait) keeps them far above or below it, so this changes nothing there.
+  let along=false;
+  const head=hero&&{x:hero.x-Math.max(HEAD_ROOM,margin),y:hero.y-margin,width:hero.width+2*Math.max(HEAD_ROOM,margin),height:hero.height+2*margin};
+  const clear=(x:number,y:number,wide=along)=>!hero||!crosses(box(x,y),hero,margin)&&!(wide&&crosses(box(x,y),head!));
   const onRim=(x:number,y:number)=>x>=inner.x-.5&&x<=inner.x+inner.width+.5&&y>=inner.y-.5&&y<=inner.y+inner.height+.5;
   const crowded=(x:number,y:number)=>out.find(a=>Math.abs(a.x-x)<2*half.w+4&&Math.abs(a.y-y)<2*half.h+TAG_ROOM&&Math.hypot(a.x-x,a.y-y)<Math.max(merge,2*half.w+4));
   for(const t of sorted){
     const e=edgeOf(t.screen,inner);
     let x=e.edge.x,y=e.edge.y;
-    const side=sideOf(x,y,inner),along=side==='top'||side==='bottom';
-    current=t;compact=false;
+    let side=sideOf(x,y,inner);along=side==='top'||side==='bottom';
+    current=t;compact=false;let wide=along;
     if(!clear(x,y)){
       // Slide along the side, to whichever end of the hero's keep-out is nearer and still on the rim.
       // A few px past the keep-out, so a camera that eases by a pixel does not put the arrow back over the hero.
       // Measured from the whole box (ficha + tag), whose sides are not symmetric around the arrow's centre.
-      const b=box(x,y),k=margin+SLIDE_SLACK,ends=along?[hero!.x-k-(b.x+b.width-x),hero!.x+hero!.width+k+(x-b.x)]:[hero!.y-k-(b.y+b.height-y),hero!.y+hero!.height+k+(y-b.y)];
-      const options=ends.filter(v=>along?onRim(v,y):onRim(x,v)).map(v=>along?{x:v,y}:{x,y:v});
+      const b=box(x,y),slide=(k:number)=>along?[hero!.x-k-(b.x+b.width-x),hero!.x+hero!.width+k+(x-b.x)]:[hero!.y-k-(b.y+b.height-y),hero!.y+hero!.height+k+(y-b.y)];
+      const near=(list:Point[])=>list.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y));
+      const spots=(k:number,wide:boolean)=>near(slide(k+SLIDE_SLACK).filter(v=>along?onRim(v,y):onRim(x,v)).map(v=>along?{x:v,y}:{x,y:v})).map(p=>({...p,wide}));
       // No room on its own side (a short area, a wide tag): the nearest corner of the rim that is clear. A caído's arrow
-      // must never vanish because the hero stands in the way (UX onda 6).
-      const corners=[{x:inner.x,y:inner.y},{x:inner.x+inner.width,y:inner.y},{x:inner.x,y:inner.y+inner.height},{x:inner.x+inner.width,y:inner.y+inner.height}];
-      const spot=[...options.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y)),...corners.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y))]
-        .find(p=>clear(p.x,p.y));
-      let found=spot;
+      // must never vanish because the hero stands in the way (UX onda 6). Corners keep the plain keep-out (they are the
+      // farthest the rim goes), and only then the side with the plain keep-out, before the head room gives up an arrow.
+      const corners=near([{x:inner.x,y:inner.y},{x:inner.x+inner.width,y:inner.y},{x:inner.x,y:inner.y+inner.height},{x:inner.x+inner.width,y:inner.y+inner.height}]).map(p=>({...p,wide:false}));
+      const tries=along?[...spots(Math.max(HEAD_ROOM,margin),true),...corners,...spots(margin,false)]:[...spots(margin,false),...corners];
+      let found=tries.find(p=>clear(p.x,p.y,p.wide));
       // Still no room: the lit ping keeps only its clock ("27 s", as wide as the ficha) and the arrow keeps its ring.
-      if(!found&&t.kind==='caido'&&t.ping){compact=true;found=[...options,...corners].find(p=>clear(p.x,p.y));}
+      if(!found&&t.kind==='caido'&&t.ping){compact=true;found=tries.find(p=>clear(p.x,p.y,p.wide));}
       if(!found)continue;
-      x=found.x;y=found.y;
+      x=found.x;y=found.y;wide=found.wide;
     }
     // Another arrow already there: step along the side to the nearest free spot; merge ("+1") only when none is left.
     if(crowded(x,y)){
-      const step=along?Math.max(2*half.w,box(x,y).width)+6:2*half.h+TAG_ROOM+2;let placed=false;
-      for(let k=1;k<=3&&!placed;k++)for(const sign of [1,-1]){
-        const nx=along?x+sign*k*step:x,ny=along?y:y+sign*k*step;
-        if(onRim(nx,ny)&&clear(nx,ny)&&!crowded(nx,ny)){x=nx;y=ny;placed=true;break;}
-      }
-      if(!placed){crowded(x,y)!.count++;continue;}
+      const step=along?Math.max(2*half.w,box(x,y).width)+6:2*half.h+TAG_ROOM+2;
+      // Steps from its own spot, then right next to the arrow in the way (a short field beside a window has room for
+      // two arrows on a side, but not for a full step from where the second one wanted to be).
+      const next:Point[]=[];
+      for(let k=1;k<=3;k++)for(const sign of [1,-1])next.push(along?{x:x+sign*k*step,y}:{x,y:y+sign*k*step});
+      const by=crowded(x,y)!;
+      for(const sign of [1,-1])next.push(along?{x:by.x+sign*step,y}:{x,y:by.y+sign*step});
+      next.sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y));
+      // The caído and the boss never hide inside another kind's "+1" while a corner of the rim is free (janela-caido).
+      if(by.kind!==t.kind&&EDGE_PRIORITY[t.kind]<=EDGE_PRIORITY.chefe)next.push(...[{x:inner.x,y:inner.y},{x:inner.x+inner.width,y:inner.y},{x:inner.x,y:inner.y+inner.height},{x:inner.x+inner.width,y:inner.y+inner.height}]
+        .sort((p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y)));
+      const spot=next.find(p=>onRim(p.x,p.y)&&clear(p.x,p.y,wide)&&!crowded(p.x,p.y));
+      if(!spot){by.count++;continue;}
+      x=spot.x;y=spot.y;side=sideOf(x,y,inner);
     }
     // Past the limit, the target still counts: it joins the nearest arrow's "+N" (same side first).
     if(out.length>=max){out.reduce((best,a)=>(a.side===side?0:1e6)+Math.hypot(a.x-x,a.y-y)<(best.side===side?0:1e6)+Math.hypot(best.x-x,best.y-y)?a:best).count++;continue;}
@@ -213,13 +243,22 @@ export class EdgeArrows {
         slot.face.innerHTML=a.kind==='aliado'?`<img alt="" decoding="async" draggable="false" src="${(a.portrait??'').replace(/"/g,'&quot;')}">`:sticker?icon(sticker):'';
       });
       put(slot,'num',distanceText(a.distance),v=>{slot.num.textContent=v;});
-      const tag=a.kind==='caido'?caidoTag(a):'';
-      put(slot,'tag',tag,v=>{slot.tag.textContent=v;slot.tag.hidden=!v;});
+      // A caído's "+N" rides inside its tag ("6 s +1"): a separate badge sat on the tag's corner and hid the seconds.
+      const tag=a.kind==='caido'?caidoTag(a):'',more=a.count>1?`+${a.count-1}`:'';
+      put(slot,'tag',tag&&more?`${tag} ${more}`:tag,v=>{slot.tag.textContent=v;slot.tag.hidden=!v;});
       put(slot,'ping',String(!!a.ping),v=>{slot.el.classList.toggle('rh-edge-ping',v==='true');});
       put(slot,'danger',String(!!a.danger),v=>{slot.el.classList.toggle('rh-edge-danger',v==='true');});
-      put(slot,'count',a.count>1?`+${a.count-1}`:'',v=>{slot.count.textContent=v;slot.count.hidden=!v;});
+      put(slot,'count',tag?'':more,v=>{slot.count.textContent=v;slot.count.hidden=!v;});
     }
   }
-  clear(){for(const s of this.slots){s.el.hidden=true;s.key='';}}
+  /**
+   * Which MUST_POINT kinds need an arrow right now (pointedTargets), on the layer as data-need: the zones audit fails
+   * when one of them has no arrow of its own (NEW-20261011-UX-janela-esconde-caido). Written only when it changes.
+   */
+  need(targets:readonly EdgeTarget[]){
+    const v=MUST_POINT.filter(k=>targets.some(t=>t.kind===k)).join(' ');
+    if((this.el.dataset.need??'')!==v)this.el.dataset.need=v;
+  }
+  clear(){for(const s of this.slots){s.el.hidden=true;s.key='';}if(this.el.dataset.need)this.el.dataset.need='';}
   destroy(){removeEventListener('resize',this.invalidate);this.observer?.disconnect();this.el.remove();}
 }

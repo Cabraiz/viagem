@@ -608,8 +608,9 @@
 .mm-chefe .mm-eye{fill:var(--c-breu);stroke:none}
 .mm-spawn path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1}
 .mm-bau rect{fill:none;stroke:var(--c-papel);stroke-width:1.6}
-.mm-coco circle{fill:var(--c-casca);stroke:var(--c-papel);stroke-width:1.1}
-.mm-pedra path{fill:var(--c-pedra);stroke:var(--c-papel);stroke-width:1}
+.mm-coco path{fill:var(--c-casca);stroke:var(--c-papel);stroke-width:1;stroke-linejoin:round}
+.mm-coco .mm-polpa{fill:none;stroke:var(--c-papel);stroke-width:1.3;stroke-linecap:round}
+.mm-pedra path{fill:var(--c-pedra);stroke:var(--c-papel);stroke-width:.9;stroke-linejoin:round}
 .mm-rim{opacity:.75}
 @media (min-height:501px){
   /* The XP bar already stops 82 px from the right; the boss bar does the same so the minimap has its corner. */
@@ -635,8 +636,10 @@
 }
 @media (max-height:500px){
   .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
-  /* The offer and the forge (VGM-046B) take the right column: the minimap steps aside while one is open (the arrows stay). */
-  .rh:has(.rh-offer:not([hidden])) .rh-minimap,.rh:has(.rh-forge:not([hidden])) .rh-minimap{visibility:hidden}
+  /* The offer and the forge (VGM-046B) take the right column: the minimap moves to the left column, under the camera
+     buttons and above the joystick's zone (outside the useful area), so the way to a caído never leaves the screen while
+     a window is open (NEW-20261011-UX-janela-esconde-caido). The arrows stay on the field left beside the window. */
+  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(var(--rh-t) + 68px)}
   /* With the base ficha (VGM-046B) the top band is a grid, so the ficha is in the band's flow and can never cover the
      round chip (soma, 125%): row 1 = round chip + base ficha side by side between the camera buttons and the gear;
      row 2 = XP; row 3 = boss bar. The camp.css absolute placement is undone here. */
@@ -667,7 +670,7 @@
 .rh-edge-danger{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
 .rh-edge-tag{position:absolute;left:-4px;top:-15px;padding:1px 5px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
 .rh-edge[data-tag=right] :is(.rh-edge-tag){left:auto;right:-4px} /* always on top (TAG_ROOM is reserved there); on the area's right half it grows leftwards */
-.rh-edge-count{position:absolute;right:-8px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+.rh-edge-count{position:absolute;right:-4px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
 /* A fresh "Me salva": two short bumps, then still (no infinite loop, design §2.5). */
 .rh-edge-ping{animation:rh-edge-bump .22s ease-out 2;box-shadow:0 0 0 2px var(--c-cone),0 0 0 4px var(--c-papel),var(--s-2)} /* lit "Me salva": a second Papel ring, also when the tag is squeezed to its clock */
 @keyframes rh-edge-bump{50%{scale:1.14}}

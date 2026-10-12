@@ -38,7 +38,8 @@ export function islandOutline(steps=28):Point[]{
 
 // ---------- DOM (browser only) ----------
 const SVG='http://www.w3.org/2000/svg';
-const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={coco:0,pedra:0,bau:1,spawn:2,base:3,aliado:4,chefe:5,caido:6,voce:7};
+// The base sits above the allies (design soma: a dot hid the tent); você stays on top, it is the centre of the drawing.
+export const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={coco:0,pedra:0,bau:1,spawn:2,aliado:3,base:4,chefe:5,caido:6,voce:7};
 /**
  * Each mark is the arrow's sticker simplified to its silhouette (design onda 6 D5: one symbol per thing): base = the tent
  * with its flag, chefe = the skull, spawn = the three-crest wave, caído = the boia; allies are people (dots), you the Lilás disc.
@@ -49,9 +50,10 @@ const shape=(kind:MinimapKind)=>{
     case 'chefe':return '<circle cy="-1" r="4.6"/><rect x="-2.8" y="1.6" width="5.6" height="4" rx="1"/><circle class="mm-eye" cx="-1.7" cy="-1.2" r="1.2"/><circle class="mm-eye" cx="1.7" cy="-1.2" r="1.2"/>';
     case 'spawn':return '<path d="M-6 3.5L-6 1Q-4.5 -3.5 -2.3 -.6Q-1 -4.5 1.2 -1Q2.6 -5 5 -1.3Q6.3 .5 6 1.5L6 3.5Z"/>';
     case 'bau':return '<rect x="-3.5" y="-3" width="7" height="6" rx="1"/>';
-    // Gather nodes (VGM-046B), only the near ones: the coco and the pedra stickers as dots.
-    case 'coco':return '<circle r="3"/>';
-    case 'pedra':return '<path d="M-3.5 1.5L-2.5 -1.5L.5 -2.8L3.5 -1L3 1.8L-.5 2.6Z"/>';
+    // Gather nodes (VGM-046B), the nearest one per resource, smaller than a person (Ø 6, design soma S2): the coco is
+    // half a shell seen from the side (a dome with its white flesh line), never the disc of an ally; the pedra a chip.
+    case 'coco':return '<path d="M-3.2 1.2A3.2 3.2 0 0 1 3.2 1.2Z"/><path class="mm-polpa" d="M-2.3 1.2H2.3"/>';
+    case 'pedra':return '<path d="M-3 1.2L-2.1 -1.3L.4 -2.4L3 -.9L2.6 1.5L-.4 2.2Z"/>';
     case 'caido':return '<circle r="5"/><circle class="mm-dot" r="1.6"/>';
     case 'voce':return '<circle r="4.5"/>';
     default:return '<circle r="3.5"/>';
@@ -90,7 +92,7 @@ export class Minimap {
     for(const [key,g] of this.nodes)if(!live.has(key)){g.remove();this.nodes.delete(key);}
   }
   private layers=new Map<MinimapKind,SVGGElement>();
-  /** One layer per kind in DRAW_ORDER: você on top, then caído, chefe, aliados, base, spawn, baú. */
+  /** One layer per kind in DRAW_ORDER: você on top, then caído, chefe, base, aliados, spawn, baú, gather nodes. */
   private layer(kind:MinimapKind){
     let g=this.layers.get(kind);
     if(!g){

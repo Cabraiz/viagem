@@ -12,7 +12,7 @@ import {MINIMAP_SIDE} from './layout.ts';
 
 /** World units: the city spans [0, CITY_SIZE] on x and y (row 0 = north, x west to east), the plaza at its centre. */
 export const CITY_SIZE=169;
-/** Camera view (90° steps), the convention of src/game/projection.ts. */
+/** Camera view (90° steps), the convention of src/client/projection.ts. */
 export type CityView=0|1|2|3;
 export type MouthId='N'|'S'|'L'|'O';
 export interface CityMapInfo {size:number;plaza:{x:number;y:number;radius:number};mouths:{id:MouthId;x:number;y:number}[];start:{x:number;y:number}}

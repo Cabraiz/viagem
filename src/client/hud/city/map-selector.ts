@@ -4,17 +4,19 @@
  * back to the server's map. Guests see the same control read-only. Locked in the countdown; off while the connection
  * is down (sem-linha); a reconnect or a new owner drops what was pending. Pure state machine and view first, the DOM below.
  */
-import {icon,type IconName} from './deps.ts';
+import {icon,PROTOCOL_DEFAULT_MAP,type IconName,type MapId} from './deps.ts';
 import {cityHudCss} from './minimap.ts';
 import type {Orientation} from './layout.ts';
 
-export type MapId='cidade'|'infinito';
+/** Map ids are the protocol's (src/protocol/map-select.ts), so the selector and the room never disagree. */
+export type {MapId};
 /** Name (Londrina --t-16) and the joke (M PLUS 700 --t-13, ≤ 28 characters, portrait only). */
 export const MAP_OPTIONS:readonly {id:MapId;name:string;subtitle:string}[]=[
-  {id:'cidade',name:'Cidade Nevada',subtitle:'Leve casaco, a firma não deu'},
+  {id:'cidade-nevada',name:'Cidade Nevada',subtitle:'Leve casaco, a firma não deu'},
   {id:'infinito',name:'Mapa infinito',subtitle:'Praia sem fim, boleto também'},
 ];
-export const DEFAULT_MAP:MapId='cidade',PENDING_MS=3000;
+/** Until the room confirms a map, show the protocol's default. */
+export const DEFAULT_MAP:MapId=PROTOCOL_DEFAULT_MAP,PENDING_MS=3000;
 /** How long the room's news strip shows "Mapa trocado: …" and how long a hint stays on the room's line in landscape. */
 export const NEWS_MS=4000,GUEST_HINT_MS=1200;
 export const SELECTOR_TEXT={

@@ -139,7 +139,7 @@ test('contract: constants and reference controls match the doc (§0, §1, §2, �
   assert.equal(THUMB_GAP,24);assert.equal(HERO_MARGIN,40);assert.equal(EDGE_COLUMN,120);assert.equal(MAX_ARROWS,6);
   assert.equal(city.MINIMAP_SIDE,76);assert.equal(city.BIG_MIN_SIDE,120);assert.equal(typeof city.bigMinimapSide,'function');
   assert.equal(city.GROUP_CELL,8);assert.equal(city.GROUP_MIN,5);assert.equal(city.GROUP_RANGE,60);assert.equal(city.GROUP_ARROWS,2);
-  assert.equal(city.CITY_SIZE,169);assert.equal(city.DEFAULT_MAP,'cidade');assert.equal(city.PENDING_MS,3000);
+  assert.equal(city.CITY_SIZE,169);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
   for(const o of ['portrait','landscape'] as const){
     const k=city.REFERENCE_CONTROLS[o] as any,d=DOC[o];
     assert.deepEqual(k.joystick,d.joystick,`${o} joystick`);assert.deepEqual(k.skill,d.skill,`${o} skill`);assert.deepEqual(k.team,d.team,`${o} team`);
@@ -736,12 +736,12 @@ test('§3 count text caps at "99+"; §4 download and news texts',()=>{
   assert.equal(city.downloadText(.4),'Baixando a cidade: 40%');assert.equal(city.downloadText(0),'Baixando a cidade: 0%');
   assert.equal(city.downloadText(1),'Baixando a cidade: 100%');assert.equal(city.downloadText(1.7),'Baixando a cidade: 100%');
   assert.equal(city.downloadText(-.2),'Baixando a cidade: 0%');assert.equal(city.downloadText(.404),'Baixando a cidade: 40%');
-  assert.equal(city.mapChangedNews('cidade'),'Mapa trocado: Cidade Nevada. Todo mundo confirma de novo.');
+  assert.equal(city.mapChangedNews('cidade-nevada'),'Mapa trocado: Cidade Nevada. Todo mundo confirma de novo.');
   assert.equal(city.SELECTOR_TEXT.failed,'Não chegou. Toca de novo.');assert.equal(city.NEWS_MS,4000);
 });
 
 test('9. map options: Cidade Nevada / Mapa infinito, subtitles ≤ 28 characters (doc §4)',()=>{
-  assert.deepEqual(city.MAP_OPTIONS.map(o=>o.id),['cidade','infinito']);
+  assert.deepEqual(city.MAP_OPTIONS.map(o=>o.id),['cidade-nevada','infinito']);
   assert.deepEqual(city.MAP_OPTIONS.map(o=>o.name),['Cidade Nevada','Mapa infinito']);
   assert.deepEqual(city.MAP_OPTIONS.map(o=>o.subtitle),['Leve casaco, a firma não deu','Praia sem fim, boleto também']);
   for(const o of city.MAP_OPTIONS){assert.ok(o.subtitle.length>0&&[...o.subtitle.normalize('NFC')].length<=28,o.subtitle);assert.doesNotMatch(o.subtitle,/chefe|rodada/i);}
@@ -749,26 +749,26 @@ test('9. map options: Cidade Nevada / Mapa infinito, subtitles ≤ 28 characters
 
 const step=(s:SelectorState,e:SelectorEvent)=>city.selectorReducer(s,e);
 test('9. selector state machine: owner tap → pending → confirm; same map sends nothing; pending dropped after 3 s',()=>{
-  let s=city.initialSelector(true);
-  assert.equal(s.confirmed,'cidade');assert.equal(s.canManage,true);assert.equal(s.locked,false);assert.equal(s.pending,undefined);
-  let out=step(s,{type:'tap',map:'cidade',nowMs:100});
+  let s=city.initialSelector(true,'cidade-nevada');
+  assert.equal(s.confirmed,'cidade-nevada');assert.equal(s.canManage,true);assert.equal(s.locked,false);assert.equal(s.pending,undefined);
+  let out=step(s,{type:'tap',map:'cidade-nevada',nowMs:100});
   assert.equal(out.send,undefined,'tapping the selected map sends nothing');assert.equal(out.state.pending,undefined);
   out=step(s,{type:'tap',map:'infinito',nowMs:100});
-  assert.equal(out.send,'infinito');assert.deepEqual(out.state.pending,{map:'infinito',sinceMs:100});assert.equal(out.state.confirmed,'cidade','nothing changes before the server says so');
+  assert.equal(out.send,'infinito');assert.deepEqual(out.state.pending,{map:'infinito',sinceMs:100});assert.equal(out.state.confirmed,'cidade-nevada','nothing changes before the server says so');
   const confirmed=step(out.state,{type:'confirm',map:'infinito'});
   assert.equal(confirmed.state.confirmed,'infinito');assert.equal(confirmed.state.pending,undefined);assert.equal(confirmed.send,undefined);
   // No answer in 3 s: back to the server's map.
   s=out.state;
   assert.ok(step(s,{type:'tick',nowMs:100+city.PENDING_MS-1}).state.pending,'still pending before 3 s');
   const dropped=step(s,{type:'tick',nowMs:100+city.PENDING_MS+1}).state;
-  assert.equal(dropped.pending,undefined);assert.equal(dropped.confirmed,'cidade');
+  assert.equal(dropped.pending,undefined);assert.equal(dropped.confirmed,'cidade-nevada');
   // And a new tap works again.
   assert.equal(step(dropped,{type:'tap',map:'infinito',nowMs:5000}).send,'infinito');
   assert.equal(city.initialSelector(true,'infinito').confirmed,'infinito');
 });
 
 test('9. selector state machine: locked in the countdown, reconnect drops the pending change, owner change, guest tap does nothing',()=>{
-  const owner=city.initialSelector(true);
+  const owner=city.initialSelector(true,'cidade-nevada');
   const locked=step(owner,{type:'countdown',on:true}).state;
   assert.equal(locked.locked,true);
   const tapLocked=step(locked,{type:'tap',map:'infinito',nowMs:10});
@@ -778,13 +778,13 @@ test('9. selector state machine: locked in the countdown, reconnect drops the pe
   // Reconnect: the pending change is dropped and the welcome's map rules.
   const pending=step(owner,{type:'tap',map:'infinito',nowMs:0}).state;
   const back=step(pending,{type:'reconnect'}).state;
-  assert.equal(back.pending,undefined);assert.equal(back.confirmed,'cidade');
+  assert.equal(back.pending,undefined);assert.equal(back.confirmed,'cidade-nevada');
   assert.equal(step(back,{type:'confirm',map:'infinito'}).state.confirmed,'infinito');
   // Owner change in the middle: the pending change drops too; the new guest can no longer pick.
   const demoted=step(pending,{type:'owner',canManage:false}).state;
   assert.equal(demoted.canManage,false);assert.equal(demoted.pending,undefined);
   // Guest: a tap does nothing at all.
-  const guest=city.initialSelector(false);
+  const guest=city.initialSelector(false,'cidade-nevada');
   const tap=step(guest,{type:'tap',map:'infinito',nowMs:0});
   assert.equal(tap.send,undefined);assert.deepEqual(tap.state,guest);
   // Guests still follow the server's map, and become able to pick when they get the room.
@@ -794,9 +794,9 @@ test('9. selector state machine: locked in the countdown, reconnect drops the pe
 });
 
 test('9. selector state machine never gets stuck and has no dead button (seeded random events, offline and download included)',()=>{
-  const maps:MapId[]=['cidade','infinito'];
+  const maps:MapId[]=['cidade-nevada','infinito'];
   for(const seed of [1,2,3,2026]){
-    const rnd=lcg(seed);let now=0,s=city.initialSelector(rnd()<.5);
+    const rnd=lcg(seed);let now=0,s=city.initialSelector(rnd()<.5,'cidade-nevada');
     for(let i=0;i<1500;i++){
       now+=Math.floor(rnd()*900);
       const k=rnd(),map=maps[Math.floor(rnd()*2)];
@@ -822,7 +822,7 @@ test('9. selector state machine never gets stuck and has no dead button (seeded 
       // Recovery from any state: back online, countdown over, room owner, 3 s later → a tap on the other map is sent.
       if(i%25===0){
         let t=step(s,{type:'offline',on:false}).state;t=step(t,{type:'countdown',on:false}).state;t=step(t,{type:'owner',canManage:true}).state;t=step(t,{type:'tick',nowMs:now+city.PENDING_MS+1}).state;
-        const other=t.confirmed==='cidade'?'infinito':'cidade';
+        const other=t.confirmed==='cidade-nevada'?'infinito':'cidade-nevada';
         assert.equal(step(t,{type:'tap',map:other,nowMs:now+city.PENDING_MS+2}).send,other,`${where}: stuck`);
       }
     }
@@ -830,17 +830,17 @@ test('9. selector state machine never gets stuck and has no dead button (seeded 
 });
 
 test('§4 reconnection: offline turns every segment off with sem-linha, drops the pending change, sends nothing; back online the owner picks again',()=>{
-  const owner=city.initialSelector(true);
+  const owner=city.initialSelector(true,'cidade-nevada');
   assert.equal(owner.offline,false);
   const pending=step(owner,{type:'tap',map:'infinito',nowMs:0}).state;
   const off=step(pending,{type:'offline',on:true}).state;
   assert.equal(off.offline,true);assert.equal(off.pending,undefined,'the pending change is dropped');
-  for(const map of ['cidade','infinito'] as const){const t=step(off,{type:'tap',map,nowMs:10});assert.equal(t.send,undefined);assert.equal(t.state.pending,undefined);}
+  for(const map of ['cidade-nevada','infinito'] as const){const t=step(off,{type:'tap',map,nowMs:10});assert.equal(t.send,undefined);assert.equal(t.state.pending,undefined);}
   for(const orientation of ['portrait','landscape'] as const){
     const v=city.selectorView(off,orientation);assert.ok(v.options.every(o=>o.disabled&&o.sticker==='sem-linha'),orientation);
   }
   // The welcome's map rules, then back online.
-  const back=step(step(off,{type:'confirm',map:'cidade'}).state,{type:'offline',on:false}).state;
+  const back=step(step(off,{type:'confirm',map:'cidade-nevada'}).state,{type:'offline',on:false}).state;
   assert.equal(back.offline,false);assert.equal(step(back,{type:'tap',map:'infinito',nowMs:20}).send,'infinito');
   // Stickers: pronto on the selection, relogio on the pending one, cadeado in the countdown (doc §4).
   assert.deepEqual(city.selectorView(owner,'portrait').options.map(o=>o.sticker),['pronto',undefined]);
@@ -849,7 +849,7 @@ test('§4 reconnection: offline turns every segment off with sem-linha, drops th
 });
 
 test('§4 download: the selected subtitle becomes "Baixando a cidade: 40%" (landscape too), and goes back after',()=>{
-  const s=step(city.initialSelector(false),{type:'download',text:city.downloadText(.4)}).state;
+  const s=step(city.initialSelector(false,'cidade-nevada'),{type:'download',text:city.downloadText(.4)}).state;
   for(const orientation of ['portrait','landscape'] as const){
     const v=city.selectorView(s,orientation);
     assert.equal(v.options[0].subtitle,'Baixando a cidade: 40%',orientation);
@@ -859,7 +859,7 @@ test('§4 download: the selected subtitle becomes "Baixando a cidade: 40%" (land
   const done=step(s,{type:'download'}).state;
   assert.equal(done.download,undefined);assert.equal(city.selectorView(done,'portrait').options[0].subtitle,city.MAP_OPTIONS[0].subtitle);
   // Downloading never blocks the owner's choice.
-  assert.equal(step(step(city.initialSelector(true),{type:'download',text:city.downloadText(.1)}).state,{type:'tap',map:'infinito',nowMs:0}).send,'infinito');
+  assert.equal(step(step(city.initialSelector(true,'cidade-nevada'),{type:'download',text:city.downloadText(.1)}).state,{type:'tap',map:'infinito',nowMs:0}).send,'infinito');
 });
 
 test('§1 group counts on the big minimap: labels for groups of 10+, drawn clear of every mark and of each other, inside the drawing',()=>{
@@ -877,10 +877,10 @@ test('§1 group counts on the big minimap: labels for groups of 10+, drawn clear
 });
 
 test('9. selectorView: one selected, pending marked, guests read-only with the owner hint, locked hint, no subtitles in landscape',()=>{
-  const owner=city.initialSelector(true),names=city.MAP_OPTIONS.map(o=>o.name);
+  const owner=city.initialSelector(true,'cidade-nevada'),names=city.MAP_OPTIONS.map(o=>o.name);
   for(const orientation of ['portrait','landscape'] as const){
     const v=city.selectorView(owner,orientation);
-    assert.deepEqual(v.options.map(o=>o.id),['cidade','infinito']);assert.deepEqual(v.options.map(o=>o.name),names);
+    assert.deepEqual(v.options.map(o=>o.id),['cidade-nevada','infinito']);assert.deepEqual(v.options.map(o=>o.name),names);
     assert.deepEqual(v.options.map(o=>o.selected),[true,false]);assert.ok(v.options.every(o=>!o.pending&&!o.disabled),orientation);
     if(orientation==='landscape')assert.ok(v.options.every(o=>!o.subtitle),'landscape drops the subtitles');
     else assert.deepEqual(v.options.map(o=>o.subtitle),city.MAP_OPTIONS.map(o=>o.subtitle));
@@ -892,5 +892,5 @@ test('9. selectorView: one selected, pending marked, guests read-only with the o
     assert.ok(guest.options.every(o=>o.disabled),'guests: read-only');assert.deepEqual(guest.options.map(o=>o.selected),[false,true]);
     for(const view of [v,pending,locked,guest])if(view.hint)assert.doesNotMatch(view.hint,/chefe/i,'"dono", never "chefe"');
   }
-  assert.equal(city.selectorView(city.initialSelector(false),'portrait').hint,'Quem escolhe o mapa é o dono da sala.');
+  assert.equal(city.selectorView(city.initialSelector(false,'cidade-nevada'),'portrait').hint,'Quem escolhe o mapa é o dono da sala.');
 });

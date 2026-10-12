@@ -175,7 +175,8 @@ const candidateCache=new WeakMap<TerrainField,Point[]>();
  */
 export function coastalSpawnPoints(terrain:TerrainField):Point[]{
   const cached=candidateCache.get(terrain);if(cached)return cached;
-  if(terrain.chunks){const none:Point[]=[];candidateCache.set(terrain,none);return none;}
+  // Endless world and city (cidade-05 spawns at the avenue tips): no coastal band.
+  if(terrain.chunks||terrain.world==='cidade'){const none:Point[]=[];candidateCache.set(terrain,none);return none;}
   const base=worldBase(terrain),spawn=worldSpawn(terrain),half=12,ox=base.x-half,oy=base.y-half;
   const step=.5,size=49,at=(id:number):Point=>({x:ox+(id%size)*step,y:oy+Math.floor(id/size)*step});
   const open=new Uint8Array(size*size);
@@ -230,6 +231,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function pickPoint(ctx:SimContext,side?:number):Point{
     const all=coastalSpawnPoints(ctx.terrain);
+    if(!all.length&&ctx.terrain.world==='cidade')throw new Error('cidade: rounds spawn at the avenue tips, which arrive with cidade-05');
     if(!all.length)throw new Error('terrain has no coastal spawn point');
     const center=worldBase(ctx.terrain);
     const inSide=side===undefined?all:all.filter(p=>{

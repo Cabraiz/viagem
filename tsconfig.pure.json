@@ -1,0 +1,20 @@
+// Pure sectors (OWNERS.md: contract, rules, maps, sim, protocol), part of `npm run check`.
+// Compiled with ES2022 only: no DOM lib, no @types, and `phaser` mapped to an empty module (Phaser ships its own
+// typings, so `types: []` alone would not hide it). The only extra globals are the cross-runtime ones in
+// types/pure-runtime.d.ts. Using a browser global or Phaser in these folders fails the check;
+// tests/arquitetura.test.ts additionally rejects any import of `phaser` there.
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler",
+    "lib": ["ES2022"], "types": [], "strict": true,
+    "noEmit": true, "skipLibCheck": true, "allowImportingTsExtensions": true,
+    "paths": {
+      "phaser": ["./types/no-phaser-in-pure-sectors.d.ts"],
+      "phaser/*": ["./types/no-phaser-in-pure-sectors.d.ts"]
+    }
+  },
+  "include": [
+    "types/pure-runtime.d.ts",
+    "src/contract/**/*.ts", "src/rules/**/*.ts", "src/maps/**/*.ts", "src/sim/**/*.ts", "src/protocol/**/*.ts"
+  ]
+}

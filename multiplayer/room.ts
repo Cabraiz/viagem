@@ -56,6 +56,8 @@ export interface RoomOptions {
    * storage (one row) and a restarted object can seat everyone again. See RoomRoster.
    */
   onRoster?:(roster:RoomRoster)=>void;
+  /** One line per socket end (closeLogLine): the Durable Object passes console.log, so `wrangler tail` shows it. */
+  log?:(line:string)=>void;
 }
 /**
  * What survives a restart of the Durable Object (deploy, eviction, crash), VGM-047. Not the run: the policy is to
@@ -134,6 +136,36 @@ export const LATE_ACK_MS=2000,SLOW_ACKS=2;
 /** Frame send times kept per connection for the lateness of its acks (10 Hz: ~51 s). */
 const FRAME_TIMES=512;
 export const silenceLimit=(c:{lag:number;lateAcks:number})=>c.lateAcks>=SLOW_ACKS?Math.min(SLOW_SILENT_MAX_MS,SILENT_MS+c.lag):SILENT_MS;
+/**
+ * BUG-20261012-ORQ-reconecta-round2: what one socket end looked like, for one log line (closeLogLine). `by` is who
+ * ended it: the browser or the network (the socket's close event), an error event, or the room itself (silence, flood,
+ * refused join, kick, replaced, leave, alarm). Only counters and the room's state: no name, token, player id or address.
+ */
+export interface CloseLog {
+  by:'client'|'error'|'room';code:number|null;reason:string;clean:boolean|null;
+  /** Run lifecycle phase and run round; the director's round index and phase (combat); the simulation tick. */
+  phase:string;run:number;round:number;roundPhase:string;tick:number;
+  /** Connection age, time since its last message, the silence limit it had (ms). */
+  ageMs:number;idleMs:number;limitMs:number;
+  /** Sent to it (bytes, binary frames), received from it (messages); its ack lag (ms) and late acks in a row. */
+  bytes:number;frames:number;received:number;lag:number;lateAcks:number;
+  /** It had a seat (joined); sockets the room held at that moment (this one included). */
+  seated:boolean;conns:number;
+}
+/** Close reasons are cut to this many characters in the log (a client may send up to 123 bytes). */
+export const CLOSE_REASON_MAX=60;
+/**
+ * The JSON line for one socket end: only the CloseLog keys, in a fixed order, numbers rounded (null when not finite),
+ * the reason cut to CLOSE_REASON_MAX. Whatever else the caller's object carries never reaches the log.
+ */
+export function closeLogLine(f:CloseLog):string{
+  const n=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v):null;
+  const text=(v:unknown,max:number)=>typeof v==='string'?v.slice(0,max):'';
+  return JSON.stringify({ev:'ws-end',by:f.by==='client'||f.by==='error'?f.by:'room',code:n(f.code),reason:text(f.reason,CLOSE_REASON_MAX),clean:typeof f.clean==='boolean'?f.clean:null,
+    phase:text(f.phase,16),run:n(f.run),round:n(f.round),roundPhase:text(f.roundPhase,16),tick:n(f.tick),
+    ageMs:n(f.ageMs),idleMs:n(f.idleMs),limitMs:n(f.limitMs),bytes:n(f.bytes),frames:n(f.frames),received:n(f.received),lag:n(f.lag),lateAcks:n(f.lateAcks),
+    seated:f.seated===true,conns:n(f.conns)});
+}
 /** Tick durations kept for the lab report (one minute at 20 Hz). */
 const PERF_SAMPLES=1200;
 /** Server-side cost of the room, for the lab (wrangler dev): tick and encode times, frames and bytes sent. */
@@ -160,6 +192,7 @@ export class Room {
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   private readonly onRoster?:(roster:RoomRoster)=>void;
+  private readonly log?:(line:string)=>void;
   /** Roster as last handed to onRoster (JSON), so only real changes are written. */
   private rosterKey='';
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
@@ -183,7 +216,7 @@ export class Room {
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
-    this.onRoster=options.onRoster;
+    this.onRoster=options.onRoster;this.log=options.log;
   }
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
@@ -239,8 +272,8 @@ export class Room {
   private rosterCore='';
   private rosterWrittenAt=-Infinity;
   connect(peer:Peer,now=Date.now()){
-    if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
-    if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
+    if(now-this.createdAt>ROOM_LIFETIME_MS){this.logClose(undefined,'room',4004,'Sala encerrada. Crie uma nova.',null,now);peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
+    if(this.connections.size>=12){this.logClose(undefined,'room',4008,'Muitas conexões.',null,now);peer.close(4008,'Muitas conexões.');return;}
     this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0,lag:0,lateAcks:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
@@ -249,14 +282,14 @@ export class Room {
   private handle(peer:Peer,raw:string,now:number){
     const c=this.connections.get(peer);if(!c)return;
     c.received++;
-    if(raw.length>1024){peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
+    if(raw.length>1024){this.logClose(c,'room',1009,'Mensagem muito grande.',null,now);peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
     if(now-c.window>=1000){c.window=now;c.count=0;}
-    if(++c.count>45){peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
+    if(++c.count>45){this.logClose(c,'room',4008,'Limite de mensagens.',null,now);peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
     let m:any;try{m=JSON.parse(raw);}catch{return;}
     if(!m||typeof m!=='object')return;
     c.seen=now;
     if(m.t==='join'&&!c.playerId){
-      if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED);return;}
+      if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED,now);return;}
       this.expire(now);
       // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
       const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);
@@ -265,23 +298,24 @@ export class Room {
       if(m.token!==undefined){
         const hash=typeof m.token==='string'&&m.token.length<=200?sha256Hex(m.token):'';
         session=[...this.sessions.values()].find(s=>s.hash===hash);
-        if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.');return;}
+        if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.',now);return;}
         // The newest connection takes the character (BUG-20261009-N1-reconexao-socket-velho): a phone back from another
         // network while the room still holds its dead socket, or a second tab. The old one hears why and is closed with
         // 4009, which the client never retries, so two real tabs cannot keep knocking each other out.
         for(const other of [...this.connections.values()])if(other!==c&&other.playerId===session.id){
+          this.logClose(other,'room',4009,'Personagem entrou por outra conexão.',null,now);
           this.connections.delete(other.peer);
           try{other.peer.send(JSON.stringify({t:'replaced',message:REPLACED_MESSAGE}));}catch{}
           try{other.peer.close(4009,'Personagem entrou por outra conexão.');}catch{}
         }
         this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
-        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.');return;}
+        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
-        if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.');return;}
+        if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
@@ -341,7 +375,7 @@ export class Room {
     else if(m.t==='kick')this.kick(c,m,now);
     else if(m.t==='bot-add')this.addBot(c,m,now);
     else if(m.t==='bot-remove')this.removeBotCommand(c,m,now);
-    else if(m.t==='leave'){this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
+    else if(m.t==='leave'){this.logClose(c,'room',1000,'Saiu da sala.',null,now);this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
   /** sha256(token) is kicked and still out at `now`: until when; else undefined. */
   private banOf(token:unknown,now:number){
@@ -355,6 +389,7 @@ export class Room {
   private sendKicked(peer:Peer,until:number,now:number){
     const message=kickedMessage(until,now);
     try{peer.send(JSON.stringify({t:'kicked',message,until}));}catch{}
+    this.logClose(this.connections.get(peer),'room',4003,'Expulso da sala.',null,now);
     this.connections.delete(peer);
     try{peer.close(4003,'Expulso da sala.');}catch{}
   }
@@ -520,7 +555,25 @@ export class Room {
   /** Non-fatal message for one peer (a client stops on 'error'; 'notice' only shows). */
   private notice(c:Connection,message:string){this.sendJson(c,{t:'notice',message});}
   /** Tells the peer why and closes it (4003: the client stops and forgets the token). */
-  private reject(peer:Peer,message:string){peer.send(JSON.stringify({t:'error',message}));this.connections.delete(peer);peer.close(4003,message);}
+  private reject(peer:Peer,message:string,now:number){peer.send(JSON.stringify({t:'error',message}));this.logClose(this.connections.get(peer),'room',4003,message,null,now);this.connections.delete(peer);peer.close(4003,message);}
+  /** The socket's close (or error) event, from the Durable Object: one log line, and the seat waits GRACE_MS. */
+  closed(peer:Peer,end:{by?:'client'|'error';code?:number;reason?:string;clean?:boolean}={},now=Date.now()){
+    this.logClose(this.connections.get(peer),end.by??'client',end.code??null,end.reason??'',end.clean??null,now);
+    this.disconnect(peer,now);
+  }
+  /** The Durable Object ends a socket itself (a binary message, the alarm): one log line, the seat waits, closed. */
+  close(peer:Peer,code:number,reason:string,now=Date.now()){
+    this.logClose(this.connections.get(peer),'room',code,reason,null,now);
+    this.disconnect(peer,now);peer.close(code,reason);
+  }
+  /** One closeLogLine for this socket end (nothing without a log sink: tests and the lab stay quiet). */
+  private logClose(c:Connection|undefined,by:CloseLog['by'],code:number|null,reason:string,clean:boolean|null,now:number){
+    if(!this.log)return;
+    const run=this.run.snapshot(),round=this.sim.world.round;
+    try{this.log(closeLogLine({by,code,reason,clean,phase:run.phase,run:run.round,round:round.index,roundPhase:round.phase,tick:this.sim.tick,
+      ageMs:c?now-c.opened:0,idleMs:c?now-c.seen:0,limitMs:c?silenceLimit(c):0,bytes:c?.bytes??0,frames:c?.frames??0,received:c?.received??0,lag:c?.lag??0,lateAcks:c?.lateAcks??0,
+      seated:!!c?.playerId,conns:this.connections.size}));}catch{/* a log line never ends a room */}
+  }
   disconnect(peer:Peer,now=Date.now()){
     const c=this.connections.get(peer);this.connections.delete(peer);
     if(c?.playerId){this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
@@ -550,7 +603,7 @@ export class Room {
   advance(now=Date.now(),flush=true){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
-      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
+      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.logClose(c,'room',4004,'Conexão expirada.',null,now);this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
     // Nobody left to play (the last participant's session expired; late arrivals are spectators; bots do not play for
@@ -663,12 +716,14 @@ export class Room {
     if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;
     const slot=c.encoder!.lastSeq%FRAME_TIMES;(c.frameSeq??=new Int32Array(FRAME_TIMES).fill(-1))[slot]=c.encoder!.lastSeq;(c.frameAt??=new Float64Array(FRAME_TIMES))[slot]=now;
-    try{c.peer.send(bytes);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(bytes);}catch{this.sendFailed(c,now);}
   }
   private sendJson(c:Connection,message:object){
     const raw=JSON.stringify(message);this.perf.jsonBytes+=raw.length;c.bytes+=raw.length;
-    try{c.peer.send(raw);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(raw);}catch{this.sendFailed(c);}
   }
+  /** A send that throws means the socket is gone: log it like any other end and close it, so it leaves `peers` too. */
+  private sendFailed(c:Connection,now=Date.now()){if(this.connections.get(c.peer)===c)this.close(c.peer,1011,'Falha ao enviar.',now);}
   private send(message:object){
     for(const c of [...this.connections.values()])if(c.playerId)this.sendJson(c,message);
   }

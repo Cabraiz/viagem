@@ -9,7 +9,8 @@ import type {Rng} from './rng.ts';
 /** A position or direction in world units (maps/world.ts re-exports it). */
 export type Point = { x: number; y: number };
 /** 'ilha': the ~24×24 island (default). 'infinito': endless chunked map (D-019), base at the origin. */
-export type WorldKind='ilha'|'infinito';
+/** 'cidade' = Cidade Nevada, the imported city (D-026/D-034). */
+export type WorldKind='ilha'|'infinito'|'cidade';
 /** Protocol 3 input. `attack` is accepted for compatibility but weapons fire automatically. */
 export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}
 

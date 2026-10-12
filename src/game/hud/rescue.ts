@@ -14,7 +14,7 @@ import type {RunHud} from './hud.ts';
 import type {RunView,PlayerRunView} from '../sim/view.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
-import {layoutEdges} from './edges.ts';
+import {layoutEdges,pointedTargets,COVERING,WINDOWS} from './edges.ts';
 import type {Rect} from './zones.ts';
 import {MINIMAP_RANGE,islandOutline} from './minimap.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
@@ -26,11 +26,11 @@ import {worldBase} from '../world.ts';
 import {getAudio} from '../audio/engine.ts';
 import {icon} from '../../ui/icon.ts';
 
-/** The HUD pieces that hide the map under them (readouts, team, controls, minimap, open offer), viewport CSS px. */
-export const COVERING='.rh-round,.rh-xp,.rh-boss,.rh-member,.rh-stack>:not([hidden]),.explore-camera button,.explore-config,.explore-stick,#coop-attack,#coop-sos,.rh-minimap,.rh-offer-chip,.rh-offer:not([hidden])';
-function coveredBoxes(doc:Document):Rect[]{
+/** The HUD pieces that hide the map (edges.ts COVERING, shared with the arrows sandbox and pinned by a test). */
+export {COVERING};
+function boxes(doc:Document,selector:string):Rect[]{
   const out:Rect[]=[];
-  for(const el of doc.querySelectorAll(COVERING)){
+  for(const el of doc.querySelectorAll(selector)){
     if((el as HTMLElement).closest('[hidden]'))continue;
     const r=el.getBoundingClientRect();if(r.width>0&&r.height>0)out.push({x:r.left,y:r.top,width:r.width,height:r.height});
   }
@@ -56,8 +56,8 @@ export class RescueBoard {
   private last?:RunView;
   private said=new Set<string>();
   private frame=0;private minimapAt=0;private timers=new Set<ReturnType<typeof setTimeout>>();
-  /** HUD boxes over the map, read twice a second: a target under them is not in view. */
-  private covered:Rect[]=[];private coveredAt=-Infinity;
+  /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
+  private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
   private readonly outline=islandOutline();
   constructor(options:RescueOptions){
     this.net=options.net;this.hud=options.hud;this.scene=options.scene;
@@ -140,8 +140,11 @@ export class RescueBoard {
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,pickups:this.last.pickups,
       warnings:this.warnings,nodes:this.last.nodes,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
     const area=scene.usefulArea??zones.useful;
-    if(now-this.coveredAt>500){this.coveredAt=now;this.covered=coveredBoxes(hud.el.ownerDocument);}
-    hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen:{viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered}}));
+    if(now-this.coveredAt>500||zones!==this.coveredZones){this.coveredAt=now;this.coveredZones=zones;this.covered=boxes(hud.el.ownerDocument,COVERING);this.windows=boxes(hud.el.ownerDocument,WINDOWS);}
+    const seen={viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
+    hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen,windows:this.windows}));
+    // What must keep an arrow (a caído or the boss off the field): the zones audit checks it against the arrows drawn.
+    hud.edges?.need(pointedTargets(targets,area,seen));
     // The minimap at ~15 Hz is plenty (dots move a fraction of a pixel per frame at its scale).
     if(hud.minimap&&now-this.minimapAt>=66){
       this.minimapAt=now;

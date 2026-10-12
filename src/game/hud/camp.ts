@@ -12,7 +12,8 @@
 import type {RunView,StructureView} from '../sim/view.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../sim/stonewards/rules.ts';
 import {icon,type IconName} from '../../ui/icon.ts';
-import {secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {watchOverflow} from './overflow.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -122,6 +123,9 @@ export function createCamp(options:CampOptions):CampPart{
     tags.set(id,{button,lock,full});
   }
   const note=el('p','rh-forge-note',head);note.setAttribute('aria-live','polite');
+  // Someone fell while the forge is open: a Cone ficha in the note's place (the note comes back for a tap's answer).
+  const fall=el('p','rh-window-fall rh-forge-fall',head);fall.hidden=true;fall.setAttribute('role','status');
+  const overflow=watchOverflow(list);
 
   let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined;
   let dismissed=false,stint=-1,wasInCamp=false;
@@ -130,7 +134,7 @@ export function createCamp(options:CampOptions):CampPart{
   let lastFraction:number|undefined,warning:{text:string;until:number}|undefined,warnTimer:ReturnType<typeof setTimeout>|undefined;
 
   const say=(text:string,keep=false)=>{
-    note.textContent=text;clearTimeout(noteTimer);
+    note.textContent=text;note.hidden=false;fall.hidden=true;clearTimeout(noteTimer);
     if(!keep)noteTimer=setTimeout(()=>{note.textContent=DEFAULT_NOTE;},2600);
   };
   const DEFAULT_NOTE='O saldo é da turma. Toca pra comprar.';
@@ -204,6 +208,9 @@ export function createCamp(options:CampOptions):CampPart{
     const show=prepare&&home&&standing&&!camp.wallDown&&!offerOpen&&!dismissed;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
+    const line=fallLine(view,ctxId),quiet=note.textContent===DEFAULT_NOTE;
+    if(fall.textContent!==line)fall.textContent=line;
+    fall.hidden=!line||!quiet;note.hidden=!!line&&quiet;
     for(const [id,{button,lock,full}] of tags){
       const reason=blockedReason(id,view,ctxId);
       button.classList.toggle('rh-forge-blocked',!!reason);
@@ -226,6 +233,6 @@ export function createCamp(options:CampOptions):CampPart{
         say(`${RECIPES[id].name}: feito!`);
       }else say(answer.reason==='balance'&&last?.camp?missing(last.camp,id)||FORGE_REFUSALS.balance:FORGE_REFUSALS[answer.reason??'']??'Agora não dá.');
     },
-    destroy(){clearTimeout(stampTimer);clearTimeout(noteTimer);clearTimeout(warnTimer);if(pending)clearTimeout(pending.timer);readout.remove();notice.remove();forge.remove();},
+    destroy(){overflow.destroy();clearTimeout(stampTimer);clearTimeout(noteTimer);clearTimeout(warnTimer);if(pending)clearTimeout(pending.timer);readout.remove();notice.remove();forge.remove();},
   };
 }

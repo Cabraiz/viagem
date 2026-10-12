@@ -10,7 +10,7 @@ import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunR
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
-import {createResultScreen} from './result.ts';
+import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,crosses,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
@@ -39,6 +39,8 @@ export interface RunHudOptions {
   worldRescue?:boolean;
   /** Stamp feedback when an offer is picked; defaults to the "carimbo" sound (with its 15 ms buzz). */
   onStamp?():void;
+  /** The owner's commands from the result screen (D-025). */
+  onKick?(id:string):void;onAddBot?():void;onRemoveBot?(id:string):void;
   /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
   onForge?(recipe:RecipeId):number|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
@@ -105,9 +107,10 @@ export class RunHud {
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
-    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,onChipTap:()=>this.coach.did('chip')});
+    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
     this.coach=new Coach(options.coachStorage);this.heroRectOf=options.heroRect;this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
-    this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
+    this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
+      onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
@@ -162,7 +165,7 @@ export class RunHud {
     const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
-    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked,banner},now);
+    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner},now);
     // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
     // does for a notice or the offer window.
     if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
@@ -179,6 +182,8 @@ export class RunHud {
     const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue');
     if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
+  /** The "+N" chip waits for a tap: in combat, or the intermission window folded into it with "Depois" (janela-caido). */
+  private chipWaits(){return !this.chip.hidden&&(this.chip.dataset.mode==='combat'||this.offerEl.hidden===true);}
   /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */
   private offerOpen(){return !this.offerEl.hidden&&(this.offerEl.dataset.mode!=='combat'||this.offerEl.classList.contains('rh-offer-stamping'));}
   /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
@@ -288,6 +293,8 @@ export class RunHud {
 
   /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
   rematchRefused(label:string){this.result.refuse(label);}
+  /** Owner and bots on the result screen (D-025): crown, robot and the owner's "Arrumar turma". */
+  setRoster(roster:ResultRoster){this.result.setRoster(roster);}
 
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){

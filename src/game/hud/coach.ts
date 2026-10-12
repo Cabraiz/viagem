@@ -96,7 +96,7 @@ export interface CoachInput {
   view:RunView;localId:string;
   /** The hero's predicted spot (explore.ts via RunHud.setHero); undefined in the sandbox without a hero. */
   hero?:{x:number;y:number};
-  /** The "+N" chip is on screen in combat. */
+  /** The "+N" chip is on screen waiting for a tap (combat, or the intermission window folded with "Depois"). */
   chip:boolean;
   /** Another row holds the announcement slot (notice, alert, kill-cam) or a window is open: the hint waits. */
   blocked:boolean;
@@ -117,7 +117,8 @@ export function wants(lesson:Lesson,input:CoachInput,walked:boolean):boolean{
     // From the first second of the run (round 1's short prepare included): the 1st step should come in ≤ 3 s (UX-1).
     case 'walk':return wave||round.phase==='prepare';
     case 'xp':return wave&&walked&&view.pickups.some(p=>p.kind==='xp'&&near(p));
-    case 'chip':return wave&&input.chip;
+    // In combat, or in the intermission with the window folded into the chip ("Depois"): the same tap opens it.
+    case 'chip':return (wave||round.phase==='prepare')&&input.chip;
     case 'rescue':return view.players.some(p=>p.id!==localId&&!!p.downed&&!p.eliminated&&p.online);
     case 'gather':return round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
   }

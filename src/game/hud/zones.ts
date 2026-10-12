@@ -7,7 +7,8 @@
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. The follow camera
  *   (D-019, UX-camera-segue) centres the hero on it (IslandScene.usefulArea, framing.ts FollowCamera).
  * - minimap (ORQ-minimapa): portrait, a status readout of the top band under the gear (the band grows by it);
- *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there).
+ *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there); while the
+ *   offer or the forge holds the right column, under the camera buttons, still outside the useful area.
  * - edge arrows (UX-bordas-fora-da-tela): the only HUD besides the offer and the result allowed inside the useful area,
  *   on its inner rim and never over the hero (± HERO_MARGIN); not touch targets.
  * Pure geometry plus one DOM reader (measureZones) and the audit the acceptance scripts run on the real scene.
@@ -18,6 +19,8 @@ export type Orientation='portrait'|'landscape';
 
 /** Minimum clearance between any touch target and the joystick or the skill button, in CSS px. */
 export const THUMB_GAP=24;
+/** Landscape: the minimap lives in a column this wide at the left or right edge, never over the field (janela-caido). */
+export const EDGE_COLUMN=120;
 /** Clearance kept around the hero's sprite (UX checklist B2). */
 export const HERO_MARGIN=40;
 /** Smallest useful-area side that holds the hero (56 px at the follow zoom) with HERO_MARGIN on both sides. */
@@ -83,7 +86,9 @@ export function computeZones(input:ZoneInput):ScreenZones{
   if(team&&column){if(team.x<viewport.width/2)left=Math.max(left,right(team)+8);else rightEdge=Math.min(rightEdge,team.x-8);}
   // Landscape minimap below the top band on the right: the field stops before it (it normally already sits past the right thumb).
   const mm=!portrait&&input.minimap&&bottom(input.minimap)>bottom(top)?input.minimap:undefined;
-  if(mm&&mm.x>viewport.width/2)rightEdge=Math.min(rightEdge,mm.x-8);
+  // With a window open it moves to the left column (NEW-20261011-UX-janela-esconde-caido): the field starts after it.
+  // Only an edge column trims the field; a minimap anywhere else is a layout bug the audit reports (offColumn).
+  if(mm){if(mm.x>=viewport.width-EDGE_COLUMN)rightEdge=Math.min(rightEdge,mm.x-8);else if(right(mm)<=EDGE_COLUMN)left=Math.max(left,right(mm)+8);}
   const floor=Math.min(viewport.height-safe.bottom,team&&!column?team.y-8:Infinity);
   const yTop=bottom(top);
   let aBottom=floor;for(const thumb of [leftThumb,thumbR])if(thumb)aBottom=Math.min(aBottom,thumb.y);
@@ -153,7 +158,13 @@ export interface AuditBox {name:string;rect:Rect;
   /** Must stay inside the useful area (the edge arrows, their tag and their "+N"): poking into the top band or a thumb fails. */
   withinUseful?:boolean;
   /** A ficha of the top band (round, XP, boss, base, minimap): two of them crossing fails (soma N15 + 046B). */
-  topReadout?:boolean}
+  topReadout?:boolean;
+  /** Not a box: a caído or the boss off the field with no arrow of its own (NEW-20261011-UX-janela-esconde-caido). Fails. */
+  unpointed?:boolean;
+  /** Landscape: must sit in an EDGE_COLUMN (the minimap); anywhere else fails. */
+  edgeColumn?:boolean;
+  /** A short balloon (the "Gira no intervalo" answer): crossing a top ficha other than the XP bar fails. */
+  balloon?:boolean}
 export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
   /** Offer/result over the hero: allowed by the contract, reported for the offer card (D-021). */
@@ -164,13 +175,20 @@ export interface AuditResult {
   escaped:string[];
   /** Top-band fichas that cross each other ("round×base"). */
   topCrossed:string[];
+  /** Kinds off the field that must keep an arrow and have none (a window open over the caído, janela-esconde-caido). */
+  unpointed:string[];
+  /** Landscape boxes that must sit in an edge column and do not (the minimap over the field). */
+  offColumn:string[];
   minThumbGap:number;ok:boolean}
 
 /** The zones audit: fails on a HUD box over the hero (± margin), a target closer than THUMB_GAP to a thumb control, or a box in the useful area. */
 export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rect,margin=HERO_MARGIN):AuditResult{
   const heroCrossed:string[]=[],allowedOverHero:string[]=[],veiledOverHero:string[]=[],inPlay:string[]=[],fallbackInPlay:string[]=[],escaped:string[]=[],thumbGaps:AuditResult['thumbGaps']=[];
   let minThumbGap=Infinity;
+  const unpointed=boxes.filter(b=>b.unpointed).map(b=>b.name);
+  const offColumn=zones.orientation==='landscape'?boxes.filter(b=>b.edgeColumn&&b.rect.x>EDGE_COLUMN&&right(b.rect)<zones.viewport.width-EDGE_COLUMN).map(b=>b.name):[];
   for(const box of boxes){
+    if(box.unpointed)continue;
     if(hero&&!box.thumb&&crosses(box.rect,hero,margin))(box.allowedInPlay&&!box.overHeroFails?allowedOverHero:box.veiled?veiledOverHero:heroCrossed).push(box.name);
     if(!box.allowedInPlay&&!box.thumb&&crosses(box.rect,zones.useful))(box.fallback?fallbackInPlay:inPlay).push(box.name);
     const u=zones.useful;
@@ -178,13 +196,14 @@ export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rec
   }
   const tops=boxes.filter(b=>b.topReadout),topCrossed:string[]=[];
   for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++)if(crosses(tops[i].rect,tops[j].rect,-.5))topCrossed.push(`${tops[i].name}×${tops[j].name}`);
+  for(const b of boxes.filter(x=>x.balloon))for(const top of tops)if(top.name!=='xp'&&crosses(b.rect,top.rect,-.5))topCrossed.push(`${b.name}×${top.name}`);
   const thumbs=boxes.filter(b=>b.thumb);
   for(const box of boxes)if(box.target&&!box.thumb)for(const thumb of thumbs){
     const g=gap(box.rect,thumb.rect);minThumbGap=Math.min(minThumbGap,g);
     if(g<THUMB_GAP)thumbGaps.push({a:box.name,b:thumb.name,gap:Math.round(g)});
   }
   return {heroCrossed,thumbGaps,inPlay,fallbackInPlay,allowedOverHero,veiledOverHero,escaped,minThumbGap:Number.isFinite(minThumbGap)?Math.round(minThumbGap):-1,
-    topCrossed,ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length&&!topCrossed.length};
+    topCrossed,unpointed,offColumn,ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length&&!topCrossed.length&&!unpointed.length&&!offColumn.length};
 }
 
 // ---------- DOM (browser only) ----------
@@ -248,10 +267,15 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('.fun-emote-toggle','emote',{target:true});
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
   add('#coop-sos','me-salva',{thumb:true,target:true});
-  add('.rh-minimap','minimapa',{target:true,topReadout:true});
+  add('.rh-minimap','minimapa',{target:true,topReadout:true,edgeColumn:true});
+  // The "Gira no intervalo" balloon (explore.css) never opens over the minimap or a top ficha (UX review janela-caido).
+  add('.explore-camera-hint','dica-girar',{balloon:true});
   // Edge arrows ride the useful area's inner rim by contract, never over the hero.
   const arrow={allowedInPlay:true,overHeroFails:true,withinUseful:true};
   add('.rh-edge:not([hidden])','seta',arrow);add('.rh-edge:not([hidden]) .rh-edge-tag:not([hidden])','seta-etiqueta',arrow);
-  add('.rh-edge:not([hidden]) .rh-edge-count:not([hidden])','seta-mais',arrow);add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
+  add('.rh-edge:not([hidden]) .rh-edge-count:not([hidden])','seta-mais',arrow);add('.rh-edge:not([hidden]) .rh-edge-name:not([hidden])','seta-nome',arrow);
+  // The arrows' layer lists the kinds that need an arrow now (edges.ts need): each one keeps an arrow of its own.
+  for(const kind of ((doc.querySelector('.rh-edges') as HTMLElement|null)?.dataset.need??'').split(' ').filter(Boolean))
+    if(![...doc.querySelectorAll(`.rh-edge[data-kind="${kind}"]`)].some(el=>rectOf(el)))boxes.push({name:`sem-seta-${kind}`,rect:{x:0,y:0,width:0,height:0},unpointed:true});add('.fun-emotes.is-open .fun-emote','emote-leque',{target:true,allowedInPlay:true});
   return boxes;
 }

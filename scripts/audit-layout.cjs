@@ -7,7 +7,8 @@
  *   - an overflow:hidden/clip box hides its own text (scroll size > client size),
  *   - a result card out of view (internal scroll) or under Revanche/Sair (long real names included),
  *   - text inside an offer card or a result card pokes out of the card, or a label pokes out of its button,
- * a glyph of a tag's text outside the tag, an offer over a fallen ally or over a "caiu!" banner,
+ * a glyph of a tag's text outside the tag, an offer over a fallen ally or over a "caiu!" banner, an edge arrow behind an
+ * open window (offer, forge, kill-cam, minimap) or a caído/boss arrow missing in the arrows scenes,
  * plus text under the minimum size (13 px in the match HUD and emotes), touch targets under 44 px and page scroll.
  * Usage: node scripts/audit-layout.cjs [baseUrl=http://127.0.0.1:4350] [out.json]
  * Needs Playwright: PLAYWRIGHT=/path/to/node_modules/playwright (cloud: /home/claude/tools/node_modules/playwright).
@@ -88,9 +89,24 @@ function audit(rootsSelector,minFont){
       if(hit(a.getBoundingClientRect())&&z<=zo)problems.push(`aviso de queda atrás da oferta: ${label(a)}`);}
   }
   // The top band's fichas never cross each other (soma N15 + 046B, 125%): round chip, XP, boss bar, base ficha, minimap.
-  {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
+  {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap,.explore-camera-hint:not([hidden])')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
     for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++){const a=tops[i].r,b=tops[j].r;
+      // (The "Gira no intervalo" balloon over the portrait XP bar is the old 1.5 s answer to a tap: only its new
+      // neighbour, the landscape minimap, and the fichas count for it.)
+      const pair=[tops[i].e,tops[j].e];if(pair.some(e=>e.matches('.explore-camera-hint'))&&pair.some(e=>e.matches('.rh-xp')))continue;
       if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`fichas do topo se cruzam: ${tops[i].e.className.split(' ')[0]} × ${tops[j].e.className.split(' ')[0]}`);}}
+  // NEW-20261011-UX-janela-esconde-caido: an edge arrow (ficha, tag or "+N") never sits behind an open window (offer,
+  // forge), the kill-cam or the minimap; and in the arrows scenes (cenario=bordas: two caídos and the boss off screen)
+  // the caído and the boss always keep their arrow, whatever window is open.
+  {const wins=[...document.querySelectorAll('.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-killcam:not([hidden]),.rh-minimap')].filter(vis);
+    for(const e of document.querySelectorAll('.rh-edge:not([hidden])'))if(vis(e))for(const part of [e,...e.querySelectorAll('.rh-edge-tag:not([hidden]),.rh-edge-count:not([hidden]),.rh-edge-name:not([hidden])')]){
+      const a=part.getBoundingClientRect();
+      for(const w of wins){const b=w.getBoundingClientRect();
+        if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`seta atrás da janela: ${e.dataset.kind} × ${w.className.split(' ')[0]}`);}}
+    // (Only for what is off the field and not in plain view: the arrows' layer lists those kinds in data-need, the same
+    // list the game writes and the zones audit reads.)
+    for(const kind of (document.querySelector('.rh-edges')?.dataset.need??'').split(' ').filter(Boolean))
+      if(![...document.querySelectorAll(`.rh-edge[data-kind=${kind}]:not([hidden])`)].some(vis))problems.push(`sem seta: ${kind}`);}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)
@@ -119,6 +135,12 @@ const SCENES=[
   ['soma: minimapa + base + setas + forja aberta','/?sandbox=hud&players=6&state=camp-forge&frozen=1&cenario=bordas','.rh',13],
   ['soma: minimapa + base + setas + corneta','/?sandbox=hud&players=6&state=camp-horn&frozen=1&cenario=bordas','.rh',13],
   ['soma: minimapa + base + setas + oferta do round','/?sandbox=hud&players=6&state=offer-round&frozen=1&cenario=bordas','.rh',13],
+  // NEW-20261011-UX-janela-esconde-caido: every window over the field with two caídos and the boss off screen. The check
+  // above fails when an arrow sits behind the window or the caído/boss arrow is gone.
+  ['janela: forja aberta + caídos e chefe fora da tela','/?sandbox=hud&players=6&state=camp-forge&frozen=1&cenario=bordas&vista=2','.rh',13],
+  ['janela: oferta de nível no intervalo + caídos e chefe fora','/?sandbox=hud&players=6&state=offer-prepare&frozen=1&cenario=bordas','.rh',13],
+  ['janela: painel de nível aberto em combate + caídos e chefe fora','/?sandbox=hud&players=6&state=offer-open&frozen=1&cenario=bordas','.rh',13],
+  ['janela: kill-cam + caídos e chefe fora','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas&zueira=killcam','.rh',13],
   // Stonewards (VGM-046B): the forge window in the camp, the horn far from it, the wall low in a wave.
   ['hud forja no acampamento, 6p','/?sandbox=hud&players=6&state=camp-forge&frozen=1','.rh',13],
   ['hud corneta longe da base, 6p','/?sandbox=hud&players=6&state=camp-horn&frozen=1','.rh',13],
@@ -146,6 +168,8 @@ const SCENES=[
       await page.goto(BASE+url);
       await page.evaluate(t=>{if(t==='125')document.documentElement.dataset.texto='125';},texto);
       await page.waitForTimeout(300);
+      // The arrows scenes draw once their modules are in (and again 4 times a second): wait for the first drawing.
+      if(url.includes('cenario=bordas'))await page.waitForFunction(()=>document.body.dataset.bordas==='1',null,{timeout:15000});
       if(prep)await prep();
       await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(700);
       const problems=await page.evaluate(([r,m])=>(window.__audit=eval('('+window.__auditSrc+')'),window.__audit(r,m)),[roots,min]);
@@ -175,6 +199,12 @@ const SCENES=[
       document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=names[(i+1)%names.length].split(' ')[0].slice(0,9);});
     });};
     await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13,longNames);
+    // The real "Gira no intervalo" balloon (explore.css) over the arrows scene with a window open: in landscape the
+    // minimap moved under the view buttons, and the balloon must not open over it or a top ficha (UX review janela-caido).
+    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open']])
+      await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
+        await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
+          d.innerHTML='<button></button><span class="explore-view"></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});

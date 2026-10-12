@@ -10,7 +10,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // Stonewards (VGM-046B): resources, the wall, the return horn and the forge's recipes.
   'coco','pedra','muralha','corneta','fita','chinelo',
   // First-run coach (VGM-056): the joystick (its knob Amarelo, like the stick while the hint shows) and the XP drop.
-  'dedao','gota'] as const;
+  'dedao','gota',
+  // Dono da sala e bots (D-025): a coroa de papel do chefe e o robô dos bots da sala.
+  'robo','coroa'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

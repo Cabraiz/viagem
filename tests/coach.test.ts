@@ -198,3 +198,14 @@ test('two tabs of the same phone: saving joins what the other tab stored meanwhi
   b.did('xp');b.step(input(round1()),0);
   assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['chip','xp'],'tab b did not erase tab a\'s chip');
 });
+
+test('the intermission window folded with "Depois" leaves the chip: its hint comes before gathering, and the tap teaches it',()=>{
+  resetSessionMemory();
+  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk','xp','rescue'])}));
+  const prep=fakeView('prepare',1);
+  const view:RunView={...prep,round:{...prep.round!,index:2},offers:[],nodes:[{id:'n1',kind:'coco',x:4,y:4,remaining:4,capacity:4,value:1,progress:0}]};
+  assert.equal(coach.step(input(view,{blocked:true}),0),undefined,'window open: nothing');
+  assert.equal(coach.step(input(view,{chip:true}),100)?.lesson,'chip','folded into the chip: "Toca no +N pra escolher"');
+  coach.did('chip');
+  assert.deepEqual(coach.step(input(view,{chip:true}),200),{lesson:'chip',done:true});
+});

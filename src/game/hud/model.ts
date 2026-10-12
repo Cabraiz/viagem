@@ -5,6 +5,7 @@
 import type {ShameMoment} from '../sim/shame.ts';
 import {SIM_HZ} from '../sim/types.ts';
 import type {OfferView,PlayerRunView,RunView} from '../sim/view.ts';
+import {railName} from '../render/map-label-rules.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 
 export const TOTAL_ROUNDS=10;
@@ -41,6 +42,19 @@ export const clamp01=(value:number)=>Number.isFinite(value)?Math.min(1,Math.max(
 export const secondsLeft=(untilTick:number,tick:number)=>Math.max(0,Math.ceil((untilTick-tick)/SIM_HZ));
 /** One clock format for a caído everywhere (team strip, edge arrow, map ficha): "27 s" (design onda 6 M2, UX aresta 1). */
 export const secondsText=(seconds:number)=>`${seconds} s`;
+/**
+ * With a window open (offer, forge), its header names the most urgent caído (not you) with the live clock: the window
+ * never hides that someone is bleeding out, and the player knows they can walk with it open (UX review janela-caido).
+ */
+export function fallLine(view:Pick<RunView,'players'|'tick'>,localId:string){
+  let best:{name:string;seconds:number}|undefined;
+  for(const p of view.players){
+    if(p.id===localId||!p.downed||p.eliminated||p.spectator)continue;
+    const seconds=secondsLeft(p.downed.bleedOutTick,view.tick);
+    if(!best||seconds<best.seconds)best={name:p.name,seconds};
+  }
+  return best?`${railName(best.name)} caiu, ${secondsText(best.seconds)}. Dá pra andar.`:'';
+}
 
 export function formatDuration(ticks:number){
   const total=Math.max(0,Math.floor(ticks/SIM_HZ));

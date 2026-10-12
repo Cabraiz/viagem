@@ -40,7 +40,7 @@ export interface RadarInput {
 }
 /** A spawn warning keeps its arrow until this long after the critters arrive. */
 export const SPAWN_TAIL_TICKS=SIM_HZ;
-/** Gather nodes show on the minimap within this many units of the followed hero (no flood of dots, design onda 6 D9). */
+/** Gather nodes show on the minimap within this many units of the followed hero, the nearest one per resource (no flood of dots, design onda 6 D9 and soma S2). */
 export const NODE_NEAR=14;
 /** A telegraph this close to the boss and this close to firing marks the boss arrow as danger. */
 export const BOSS_TELEGRAPH={units:8,ticks:SIM_HZ*1.5};
@@ -60,7 +60,7 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
     const ping=caido&&!!input.pinged?.(p.id);
     items.push({key:p.id,kind:caido?'caido':'aliado',x:p.x,y:p.y,ping});
     // Allies on their feet live on the minimap only (design onda 6 D4): an arrow each repeated it and crowded the rim.
-    if(caido)add({key:p.id,kind:'caido',name:p.name,portrait:input.portrait?.(p.classId),seconds:secondsLeft(st!.downed!.bleedOutTick,input.tick),ping},p);
+    if(caido)add({key:p.id,kind:'caido',name:p.name,label:railName(p.name),portrait:input.portrait?.(p.classId),seconds:secondsLeft(st!.downed!.bleedOutTick,input.tick),ping},p);
   }
   if(input.base){items.push({key:'base',kind:'base',x:input.base.x,y:input.base.y});add({key:'base',kind:'base',name:'Base'},input.base);}
   for(const e of input.enemies??[]){
@@ -72,7 +72,11 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
     if(input.tick>w.atTick+SPAWN_TAIL_TICKS)return;
     const key=`spawn:${w.atTick}:${i}`;items.push({key,kind:'spawn',x:w.x,y:w.y});add({key,kind:'spawn',name:'Bichos chegando'},w);
   });
-  for(const n of input.nodes??[])if(n.remaining>0&&(n.kind==='coco'||n.kind==='pedra')&&far(n)<=NODE_NEAR)items.push({key:`node:${n.id}`,kind:n.kind,x:n.x,y:n.y});
+  // One mark per resource (design/UX soma S2/U3): the nearest pile that still has something. Ten marks in 76 px were a
+  // blur; "where do I gather" needs one way per resource, and piles side by side are one mark.
+  const nearest=new Map<'coco'|'pedra',NodeView>();
+  for(const n of input.nodes??[])if(n.remaining>0&&(n.kind==='coco'||n.kind==='pedra')&&far(n)<=NODE_NEAR){const best=nearest.get(n.kind);if(!best||far(n)<far(best))nearest.set(n.kind,n);}
+  for(const n of nearest.values())items.push({key:`node:${n.id}`,kind:n.kind as 'coco'|'pedra',x:n.x,y:n.y});
   for(const p of input.pickups??[]){
     if(p.kind!=='chest')continue;
     items.push({key:p.id,kind:'bau',x:p.x,y:p.y});// minimap only, like the allies on their feet

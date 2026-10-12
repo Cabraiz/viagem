@@ -79,7 +79,8 @@ let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=fakeView(scenario,players,tick);
-  if(scenario==='wave'||scenario==='boss')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
+  // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)
+  if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
@@ -148,7 +149,7 @@ if(params.has('phaser'))void (async()=>{
 })();
 
 if(bordas)void (async()=>{
-  const {layoutEdges}=await import('./hud/edges.ts');
+  const {layoutEdges,pointedTargets,COVERING,WINDOWS}=await import('./hud/edges.ts');
   const {radar}=await import('./hud/radar.ts');
   const {computeZones,union}=await import('./hud/zones.ts');
   const {islandOutline,MINIMAP_RANGE}=await import('./hud/minimap.ts');
@@ -157,10 +158,18 @@ if(bordas)void (async()=>{
   const view=Math.max(0,Math.min(3,Number(params.get('vista'))||0));
   const rect=(el:Element|null)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
   const all=(sel:string)=>[...document.querySelectorAll(sel)].map(rect);
+  // Gather piles around the camp as the endless map lays them (several per resource): the minimap shows only the
+  // nearest one per resource (design soma S2, DSG-polimento-onda6).
+  const NODES=[[8,15,'coco'],[9,16,'coco'],[15,13,'coco'],[16,19,'coco'],[6,20,'coco'],[14,9,'pedra'],[18,16,'pedra'],[7,11,'pedra']]
+    .map(([x,y,kind],i)=>({id:`n${i}`,kind:kind as 'coco'|'pedra',x:x as number,y:y as number,remaining:3,capacity:3,value:1,progress:0}));
   const draw=()=>{
     const viewport={width:innerWidth,height:innerHeight};
+    // The open window (offer or forge) takes its part of the field, as measureZones does in the game: the hero and
+    // the arrows go to what is left (NEW-20261011-UX-janela-esconde-caido).
+    const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
+    const shown=getComputedStyle(hud.minimap!.el).visibility!=='hidden'?rect(hud.minimap!.el):undefined;
     const zones=computeZones({viewport,status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
-      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:rect(hud.minimap!.el)});
+      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
     const area=zones.useful,zoom=followZoom(viewport),hero={x:12,y:17};
     // The camera puts the hero's body in the middle of the useful area (framing.ts anchorOf), feet 28 px under it.
     const anchor={x:area.x+area.width/2,y:area.y+area.height/2+28},center=projectView(hero,view);
@@ -170,10 +179,16 @@ if(bordas)void (async()=>{
     const players=view0.players.map((p,i)=>({id:p.id,name:p.name,classId:p.classId,x:spots[i].x,y:spots[i].y,online:true}));
     const {targets,items}=radar({selfId:'p1',focus:hero,self:hero,tick:view0.tick,players,states,base:{x:12,y:12},
       enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:900,maxHp:1000,boss:true}],telegraphs:[{id:'t',shape:'circle',x:30,y:31,radius:3,fireTick:view0.tick+10}],
-      warnings:[{x:-6,y:4,atTick:view0.tick+20}],pinged:id=>id==='p3',locate,portrait:c=>`/art/portraits/${c}-thumb.webp`});
-    const covered=all('.rh-round,.rh-xp,.rh-boss,.rh-member,.hs-cam,.hs-gear,.hs-stick,.hs-attack,.rh-minimap').filter((r):r is NonNullable<typeof r>=>!!r);
+      warnings:[{x:-6,y:4,atTick:view0.tick+20}],nodes:NODES,pinged:id=>id==='p3',locate,portrait:c=>`/art/portraits/${c}-thumb.webp`});
+    // The game's own list (edges.ts COVERING) plus the sandbox's stand-ins for the explore shell's controls: the audits
+    // check the game's rule, not a copy of it (code review janela-caido).
+    const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
-    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen:{viewport:{x:0,y:0,...viewport},covered}}));
+    const seen={viewport:{x:0,y:0,...viewport},covered};
+    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen,windows:all(WINDOWS)}));
+    // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
+    // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
+    hud.edges!.need(pointedTargets(targets,area,seen));
     hud.minimap!.render(hero,view,MINIMAP_RANGE.ilha[hud.minimap!.far?1:0],items,islandOutline());
     hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
@@ -186,5 +201,8 @@ if(bordas)void (async()=>{
   view0.players=view0.players.map((p,i)=>i===2?{...p,hp:0,downed:{progress:0,bleedOutTick:1000+20*14}}:i===4?{...p,hp:0,online:true,downed:{progress:.45,bleedOutTick:1000+20*6}}:{...p,online:true});
   hud.setHero(FIXTURE_HERO[scenario]??FIXTURE_HERO['camp-wave']);hud.update(view0);
   draw();addEventListener('resize',draw);hud.minimap!.el.addEventListener('click',()=>requestAnimationFrame(draw));
+  // The game lays the arrows out every frame; the sandbox does it 4 times a second, so a window opening or moving,
+  // or the fonts arriving late, never leave the arrows of an older layout on screen.
+  setInterval(draw,250);
   document.body.dataset.bordas='1';
 })();

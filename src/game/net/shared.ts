@@ -70,6 +70,19 @@ export function restartedNotice(lost?:{round:number;level:number}){
   const body='Não foi ninguém da turma. Toca em Tô pronto pra começar outra.';
   return {title,body,message:`${title} ${body}`};
 }
+/** A kicked player stays out of the same room this long (D-025): by the seat's token, which the page keeps. */
+export const KICK_BAN_MS=10*60_000;
+/** What the kicked phone reads (and reads again if it knocks before the time is up): who, until when, what to do. */
+export function kickedMessage(until:number,now=Date.now()){
+  const minutes=Math.max(1,Math.ceil((until-now)/60_000));
+  return `O dono da sala te tirou da turma. Dá pra voltar nesta sala daqui a ${minutes} min, ou cria uma sala sua.`;
+}
+/** Refusals of the owner's commands (D-025), as room notices. */
+export const OWNER_ONLY='Só o dono da sala mexe na turma.';
+/** Title of the kicked window (D-025, design review): who did what, in the voice of the room. */
+export const KICKED_TITLE='Tiraram você da sala';
+export const OWNER_NOT_NOW='No meio do Round não dá. Espera o resultado.';
+export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
 
@@ -205,9 +218,17 @@ export class Simulation {
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}
+  /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
+  readonly bots=new Set<string>();
+  private botInputs=new Map<string,PlayerInput>();
+  private botSeq=0;
   private assemble(){
     return createRunSystems(this.world,{
-      takeInput:id=>{const p=this.players.get(id);return p?this.tracks.get(id)?.next(p,this.clock):undefined;},
+      takeInput:id=>{
+        const bot=this.botInputs.get(id);
+        if(bot){const step={...bot,seq:++this.botSeq};if(bot.skill)bot.skill=false;return step;}
+        const p=this.players.get(id);return p?this.tracks.get(id)?.next(p,this.clock):undefined;
+      },
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits for its last player standing who dropped exactly as long as the room keeps the seat (VGM-047);
@@ -221,7 +242,7 @@ export class Simulation {
     this.world.reset(runSeed(this.seed,++this.runs));
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
-    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();
+    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();this.botInputs.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
@@ -244,7 +265,24 @@ export class Simulation {
     this.equip(p);
     this.players.set(id,p);this.track(id).reset(0);return p;
   }
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);}
+  /**
+   * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
+   * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
+   */
+  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  /**
+   * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
+   * online, and out of the "momento mais vergonhoso" (a person's consent thing).
+   */
+  addBot(id:string,name:string,classId:string){
+    const p=this.add(id,name,classId);this.bots.add(id);this.shameOptOut.add(id);return p;
+  }
+  /** The bot's stick for the next steps (held until changed) and a one-shot skill tap. */
+  setBotInput(id:string,direction:Point,skill=false){
+    if(!this.bots.has(id))return;
+    const held=this.botInputs.get(id);
+    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack:false,skill:skill||!!held?.skill});
+  }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
   setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);delete p.target;}}
@@ -291,9 +329,9 @@ export class Simulation {
    * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area
    * of interest (each encoder keeps its own part). Untouched nodes are full.
    */
-  private nodeViews():NodeView[]{
+  private nodeViews(record=true):NodeView[]{
     const w=this.world,st=this.systems.stonewards.state;
-    if(w.round.phase!=='prepare'||w.round.index<1||st.wallDown){this.nodeIds=[];return [];}
+    if(w.round.phase!=='prepare'||w.round.index<1||st.wallDown){if(record)this.nodeIds=[];return [];}
     const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
     for(const p of this.players.values()){
       if(p.spectator||p.eliminated)continue;
@@ -304,7 +342,7 @@ export class Simulation {
           progress:touched?Math.min(1,touched.work/WORK_PER_UNIT[n.kind]):0});
       }
     }
-    this.nodeIds=[...out.keys()];
+    if(record)this.nodeIds=[...out.keys()];
     return [...out.values()];
   }
   private campView():CampView{
@@ -375,8 +413,26 @@ export class Simulation {
     for(const e of this.world.enemies.values())this.alive.set(e.id,e);
     for(const [id,tomb] of this.tombs)if(tomb.tick<=this.tick-TOMBSTONE_TICKS)this.tombs.delete(id);
   }
-  /** Hash of everything that decides future ticks (world, run systems, pending inputs, outcome). */
-  stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),outcome:this.result??null});}
+  /** Hash of everything that decides future ticks (world, run systems, pending inputs, the bots' sticks, counter and minds, outcome). */
+  stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),
+    bots:{sticks:[...this.botInputs].map(([id,b])=>[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
+  /** The room bots' minds (RoomBots.state: memories and forge requests), which decide their next sticks (set by the room). */
+  botState?:()=>unknown;
+  /**
+   * What a room bot sees (D-025): the same RunView shape the protocol bots read (bot-brain.ts), built from the live
+   * world without copying the horde (read-only for the brain). Players carry x/y, like the frames. `offers` per bot.
+   */
+  botView():RunView{
+    const w=this.world;
+    return {
+      tick:w.tick,team:w.team,round:w.round,
+      enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
+      structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
+      players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
+        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
+      offers:[],events:[],
+    } as unknown as RunView;
+  }
   /** Pure client view for one player (protocol 4 encodes this in VGM-042b). */
   view(playerId:string):RunView{
     const w=this.world;

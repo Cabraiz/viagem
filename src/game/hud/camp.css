@@ -92,6 +92,8 @@
 .rh-forge-head{display:contents}
 .rh-forge-title{grid-column:1;grid-row:1;align-self:center;padding-left:4px}
 .rh-forge-note{grid-column:2;grid-row:1;align-self:center}
+.rh-forge-fall{grid-column:2;grid-row:1;align-self:center;margin:0} /* in the note's cell (hud.css .rh-window-fall) */
+.rh-forge-note[hidden]{display:none}
 .rh .rh-forge-close{grid-column:3;grid-row:1}
 .rh-forge-tags{grid-column:1/-1;grid-row:2;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 @media (prefers-reduced-motion:reduce){.rh-forge-done .rh-forge-stamp{animation:none}}

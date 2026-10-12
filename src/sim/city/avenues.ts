@@ -8,7 +8,7 @@
  * Units: world u (x east, y south), speeds u/s, times in ticks at 20 Hz (ticks = Math.round(seconds × 20)).
  * Deterministic: randomness only from the injected RngLike. directionFor/retreatDirection allocate nothing with `out`.
  */
-import {FlowField,DIRS,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/flowfield.ts';
+import {FlowField,DIRS,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
 
 export type Mouth='N'|'S'|'L'|'O';
 /** Fixed mouth order (ties, iteration, cerco parts). */

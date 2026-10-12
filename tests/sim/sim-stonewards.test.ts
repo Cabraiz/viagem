@@ -578,6 +578,8 @@ test('the release workflow checks the protocol this client speaks',()=>{
   const yml=readFileSync(new URL('../../.github/workflows/pages.yml',import.meta.url),'utf8');
   assert.ok(yml.includes(`require('./public/multiplayer.json').protocol`));
   assert.ok(yml.includes('grep -q "\\"protocol\\":$WANT[,}]"'));
+  // The full-size protocol stress (6 clients) runs only in CI; dropping that step would hide the 4G budget margin.
+  assert.ok(yml.includes('npm run test:protocol:stress'),'CI runs the protocol stress');
   const config=JSON.parse(readFileSync(new URL('../../public/multiplayer.json',import.meta.url),'utf8'));
   assert.equal(config.protocol,PROTOCOL_VERSION);
 });

@@ -14,6 +14,7 @@
     "test:maps": "node --experimental-strip-types --test \"tests/maps/**/*.test.ts\"",
     "test:sim": "node --experimental-strip-types --test \"tests/sim/**/*.test.ts\"",
     "test:protocol": "node --experimental-strip-types --test \"tests/protocol/**/*.test.ts\"",
+    "test:protocol:stress": "node --experimental-strip-types --test \"tests/protocol/stress/*.stress.ts\"",
     "test:client": "node --experimental-strip-types --test \"tests/client/**/*.test.ts\"",
     "test:rooms": "node --experimental-strip-types --test \"tests/rooms/**/*.test.ts\"",
     "test:api": "node --experimental-strip-types --test \"tests/api/**/*.test.ts\"",

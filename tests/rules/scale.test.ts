@@ -10,6 +10,7 @@ import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
 import {RADIUS,SPEED} from '../../src/maps/world.ts';
 import {HERO_MIN_SCREEN_PX} from '../../src/contract/index.ts';
 import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
+import {UNITS_PER_CELL} from '../../src/maps/city-asset.ts';
 
 const near=(actual:number,expected:number,tol:number,what:string)=>
   assert.ok(Math.abs(actual-expected)<=tol,`${what}: ${actual} not within ${tol} of ${expected}`);
@@ -68,6 +69,10 @@ test('example asset: start → plaza ≈ 33 s, plaza → spawn ≈ 36 s, enemies
   near(traversalSeconds(a.paths['inicio-praca'],city),33,1.5,'inicio → praca');
   near(traversalSeconds(a.paths['praca-spawnS'],city),36,1.5,'praca → spawnS');
   for(const d of Object.values(a.paths))assert.ok(traversalSeconds(d,city,enemySpeed(city))>traversalSeconds(d,city),'escape is possible');
+});
+
+test('the city asset format and the scale profile agree on the cell size (drift guard)',()=>{
+  assert.equal(UNITS_PER_CELL,city.cell,'src/maps/city-asset.ts UNITS_PER_CELL = cidade-nevada cell (0.88)');
 });
 
 test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is 25–36 s',t=>{

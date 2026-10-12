@@ -10,21 +10,18 @@
  * modifier states its whole effect as data (fields below), balanced like waves.ts MODIFIERS: ~0.9-1.15 of the round's
  * threat, normalizeThreat for composition changes and multiplier products near 1.
  *
- * src/rules may only import the contract, which does not exist yet, so this module imports nothing: the small types
- * below mirror waves.ts (RegularKind, Formation, RoundModifier), catalog.ts (EnemyKind) and stonewards/rules.ts
- * (RecipeId) until the contract carries them. Every table is deep-frozen; text lives in plain arrays/objects so a
+ * Types come from the same sector (waves.ts, stonewards.ts); only the enemy kind list with the boss is mirrored,
+ * because sim/enemies/catalog.ts is outside rules. Every table is deep-frozen; text lives in plain arrays/objects so a
  * humor review can edit wording without touching code.
  */
+import type {Formation,RegularKind,RoundModifier} from './waves.ts';
+import type {RecipeId} from './stonewards.ts';
 
-// ---------- Mirrored types (until src/contract exists) ----------
-/** Mirrors waves.ts RegularKind. */
-export type CidadeRegularKind='gosma'|'pernilongo'|'tio-pave'|'fiscal';
-/** Mirrors catalog.ts EnemyKind. */
+export type CidadeRegularKind=RegularKind;
+/** Mirrors sim/enemies/catalog.ts EnemyKind (rules may not import sim). */
 export type CidadeEnemyKind=CidadeRegularKind|'chefe';
-/** Mirrors waves.ts Formation. */
-export type CidadeFormation='cluster'|'line'|'surround';
-/** Mirrors stonewards/rules.ts RecipeId. */
-export type CidadeRecipeId='reparo'|'gambiarra'|'torre-chinelo';
+export type CidadeFormation=Formation;
+export type CidadeRecipeId=RecipeId;
 
 export type Avenue='norte'|'sul'|'leste'|'oeste';
 export const AVENUES:readonly Avenue[]=Object.freeze(['norte','sul','leste','oeste']);
@@ -45,27 +42,11 @@ export interface CidadeKindTweak {
   zigzagMult?:number;
 }
 /**
- * A city round modifier. The first block is a copy of waves.ts RoundModifier (same names and semantics); the second
- * block is city-only data the director reads once the city is wired.
+ * A city round modifier: waves.ts RoundModifier (same fields and semantics; in the city singleSide picks one of the
+ * allowed avenues per round and alternateSide alternates between them) plus city-only data the director reads once
+ * the city is wired.
  */
-export interface CidadeModifier {
-  id:string;name:string;description:string;
-  /** Replaces the composition. */
-  weights?:Partial<Record<CidadeRegularKind,number>>;
-  /** Pins these shares and rescales the other kinds to fill the rest. */
-  share?:Partial<Record<CidadeRegularKind,number>>;
-  /** count x= base average threat / new average threat, clamped to [0.4, 1.6]. */
-  normalizeThreat?:boolean;
-  countMult?:number;hpMult?:number;speedMult?:number;sizeMult?:number;
-  groupSizeMult?:number;cadenceMult?:number;
-  formation?:CidadeFormation;
-  /** Every group of the round comes from one side (in the city: one of the allowed avenues, picked per round). */
-  singleSide?:boolean;
-  /** Groups come from one side, then the opposite one, alternating (in the city: alternating between the allowed avenues). */
-  alternateSide?:boolean;
-  /** Rounds where this modifier is never drawn (it would hide the elite or break the round's identity). */
-  banRounds:readonly number[];
-  // ---- City-only ----
+export interface CidadeModifier extends RoundModifier {
   /** Only these avenue ends spawn (default: all four). ['norte'] funnels every group into the Norte plaza mouth. */
   avenues?:readonly Avenue[];
   /**

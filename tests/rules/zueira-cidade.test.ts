@@ -5,9 +5,9 @@ import {
   CIDADE_HORN_LINES,CIDADE_MODIFIERS,CIDADE_REACTION_LINES,CIDADE_RECIPE_IDS,CIDADE_REGULAR_KINDS,CIDADE_RETREAT_LINES,CIDADE_ROUND_NAMES,
   CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,cidadeModifierLabel,type CidadeModifier,
 } from '../../src/rules/zueira-cidade.ts';
-import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/game/sim/waves.ts';
-import {ELITE,ENEMIES,ENEMY_KINDS} from '../../src/game/sim/enemies/catalog.ts';
-import {HORN_LINES,RECIPES,RECIPE_IDS} from '../../src/game/sim/stonewards/rules.ts';
+import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/rules/waves.ts';
+import {ELITE,ENEMIES,ENEMY_KINDS} from '../../src/sim/enemies/catalog.ts';
+import {HORN_LINES,RECIPES,RECIPE_IDS} from '../../src/rules/stonewards.ts';
 
 const key=(s:string)=>s.trim().toLocaleLowerCase('pt-BR');
 const len=(s:string)=>[...s].length;

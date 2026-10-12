@@ -1,21 +1,21 @@
-import {DEFAULT_SEED,type WorldKind} from '../src/game/terrain/field.ts';
-import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor,
-  KICK_BAN_MS, kickedMessage, OWNER_ONLY, OWNER_NOT_NOW, ROOM_FULL_BOTS } from '../src/game/net/shared.ts';
-import {RoomBots,botIdentity} from '../src/game/sim/room-bots.ts';
-import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/game/net/protocol4.ts';
-import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/game/net/run.ts';
-import { classes } from '../src/classes.ts';
-import {createEnemy,isEnemyKind} from '../src/game/sim/enemies/catalog.ts';
-import {addTelegraph} from '../src/game/sim/telegraphs.ts';
-import {walkable,worldBase} from '../src/game/world.ts';
-import {sha256Hex} from '../src/game/net/sha256.ts';
-import {downPlayer} from '../src/game/sim/revive.ts';
-import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/game/fun/sos.ts';
+import {DEFAULT_SEED,type WorldKind} from '../src/maps/index.ts';
+import {Simulation,DEFAULT_WORLD,worldDescriptor} from './simulation.ts';
+import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
+import {RoomBots,botIdentity} from './room-bots.ts';
+import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
+import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
+import { classes } from '../src/rules/index.ts';
+import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
+import {addTelegraph} from '../src/sim/index.ts';
+import {walkable,worldBase} from '../src/maps/index.ts';
+import {sha256Hex} from '../src/protocol/index.ts';
+import {downPlayer} from '../src/sim/index.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
-import {isRecipeId} from '../src/game/sim/stonewards/rules.ts';
-import type {ZueiraLab} from '../src/game/sim/zueira.ts';
+import {isRecipeId} from '../src/rules/index.ts';
+import type {ZueiraLab} from '../src/sim/index.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };
@@ -94,7 +94,7 @@ export const ROOM_LIFETIME_MS=30*60_000;
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
  * (MAX_STRETCH_PER_RUN). The worst case on paper (every round to its timeout, every stretch, boss at its nominal 90 s)
- * is 16.6 min, so 18 (tests/sim-stonewards.test.ts). Starting later would end with the room closing (4004) instead of a
+ * is 16.6 min, so 18 (tests/sim/sim-stonewards.test.ts). Starting later would end with the room closing (4004) instead of a
  * result. The 20 min tick cap stays a safety net.
  */
 export const RUN_START_WINDOW_MS=18*60_000;

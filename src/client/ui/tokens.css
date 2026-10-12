@@ -1,0 +1,129 @@
+/* Tokens de design (D-020 "Janela & Etiqueta", board/design/revisao-visual.md §2).
+   Único arquivo com hex, nome de fonte, raio e sombra: o lint de design (scripts/lint-design.mjs) barra o resto.
+   Funciona sobre fundo claro e escuro (D-022) pela regra da borda dupla: corpo claro + contorno Breu. */
+
+/* ---------- Fontes servidas pelo próprio site (public/fonts, OFL) ----------
+   Subconjunto pt-BR (Latin-1 + pontuação) gerado do @fontsource 5.3.0 com pyftsubset: ~83 KB os 5 pesos.
+   Cada unicode-range é o cmap real do arquivo (sem prometer glifo que não existe).
+   O latin-ext da M PLUS só baixa se aparecer um caractere dele (apelido com ł, ş…). A Londrina não tem latin-ext.
+   A M PLUS desenha a reticência (U+2026) como três pontos no meio da linha, que lê como o "A · B" proibido:
+   a família de sistema pega esse único glifo da Londrina (mesmo arquivo do peso 400, sem download extra). */
+@font-face{font-family:'Londrina Solid';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00AE,U+00B0-00FF,U+0152-0153,U+02C6,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122}
+@font-face{font-family:'Londrina Solid';font-style:normal;font-weight:900;font-display:swap;src:url(/fonts/londrina-solid-900.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00AE,U+00B0-00FF,U+0152-0153,U+02C6,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+2039-203A,U+20AC,U+2122}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2039-203A,U+20AC,U+2122,U+2212}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/m-plus-rounded-1c-400-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/m-plus-rounded-1c-700-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/m-plus-rounded-1c-800-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
+  unicode-range:U+2026}
+
+:root,::backdrop{
+  /* ::backdrop does not inherit custom properties before Safari 17.4 / Chrome 122, so the dialog veil needs its own copy. */
+  /* ---------- Paleta: 6 cores nomeadas (§2.1) ---------- */
+  --c-lilas:#5B3F8C;      /* Lilás Janela: moldura de sistema, texto sobre papel, tinta de carimbo */
+  --c-papel:#EEDDB8;      /* Papel de Pão: suporte de conteúdo (etiqueta, janela, balão); nunca fundo de página */
+  --c-amarelo:#FFD23F;    /* Amarelo Encarte: só escolha, CTA e "Novo!" */
+  --c-cone:#FF7A1F;       /* Laranja Cone: só perigo e urgência */
+  --c-cartolina:#7ED957;  /* Verde Cartolina: só "a favor" (cura, pronto, resgate) */
+  --c-breu:#1E1530;       /* Breu da Ilha: contorno de tudo sobre o mapa, sombra dura e texto principal */
+
+  /* Misturas das 6 (sem matiz novo). */
+  --c-papel-claro:color-mix(in srgb,var(--c-papel) 35%,#FFFFFF); /* "branco-papel": campo de texto, borda de adesivo */
+  --c-lilas-escuro:color-mix(in srgb,var(--c-lilas) 72%,var(--c-breu)); /* fundo de poço e botão secundário dentro da janela lilás */
+  --c-ficha:color-mix(in srgb,var(--c-breu) 88%,transparent);   /* corpo das fichas sobre o mapa */
+  --c-veu:color-mix(in srgb,var(--c-breu) 62%,transparent);     /* fundo atrás de diálogo */
+  --c-sombra:color-mix(in srgb,var(--c-breu) 45%,transparent);  /* sombra dura de janela */
+  --c-trilho:color-mix(in srgb,var(--c-breu) 18%,transparent);  /* trilho de barra sobre papel */
+  --c-pedra:color-mix(in srgb,var(--c-papel) 55%,var(--c-breu));  /* pedra cinza do Stonewards (nó, muralha), VGM-046B */
+  --c-casca:color-mix(in srgb,var(--c-cone) 45%,var(--c-breu));   /* casca de coco, VGM-046B */
+
+  /* Usos semânticos. */
+  --c-perigo:var(--c-cone);
+  --c-a-favor:var(--c-cartolina);
+  --c-escolha:var(--c-amarelo);
+  --c-voce:var(--c-lilas);      /* "você" (anel no chão, retrato, card do resultado): Lilás + forma, nunca Amarelo (onda 3 §0) */
+  --c-texto:var(--c-breu);
+  --c-texto-papel:var(--c-lilas); /* texto de sistema sobre Papel (6,18:1) */
+  --c-texto-mapa:var(--c-papel);  /* texto sobre ficha Breu */
+  --c-moldura:var(--c-lilas);
+  --c-emblema:#75B8A6; /* emblema padrão do jogador: identidade, fora da paleta de UI (§2.1) */
+  /* Fora da paleta de UI, por serem cenário ou identidade e não sistema: */
+  --c-retrato-a:#F5D1C8;--c-retrato-b:#FBE4DA; /* chevron rosa atrás do retrato ("deve ficar", §1.7) */
+  --c-gema:#6FE0DC; /* a gota de XP do mapa (render/textures.ts), só no adesivo dela: cenário, não sistema (VGM-056) */
+  --cena-agua:#8DCECC; /* água rasa turquesa: fundo do palco e do minimapa antes do Phaser pintar (D-022, tropical claro) */
+  --cena-mar:#14859E;  /* mar turquesa ao longe: fundo da câmera da cena (D-022; mesmo tom do SEA_DEEP do shader do terreno) */
+  --cena-grama:#538F3F; /* grama mediana do mapa sem fim: fundo da câmera onde um bloco do chão ainda não foi assado (terreno-em-blocos) */
+  /* Arte dos adesivos de itens e prêmios (DSG-adesivos-itens, src/client/ui/stickers.svg): a cor REAL de cada objeto, em dois
+     tons (luz e sombra em degrau), como nos sprites em pixel art. É ilustração, fora da paleta de UI: nunca vira fundo,
+     texto ou estado de interface. O contorno é o Breu e a borda de figurinha é o branco-papel. */
+  --arte-branco:#FFFDF4;--arte-papel:#F2E3C2;--arte-papel-sombra:#CDB48A;--arte-papel-escuro:#9C8261;
+  --arte-aluminio-claro:#E4E8EC;--arte-aluminio:#AAB4BE;--arte-aluminio-escuro:#6E7987;--arte-aluminio-breu:#454D5C;
+  --arte-amarelo-claro:#FFF09A;--arte-amarelo:#FFD23F;--arte-amarelo-sombra:#D99A1E;--arte-amarelo-escuro:#9E6412;
+  --arte-dourado-claro:#F7C877;--arte-dourado:#E39A3B;--arte-dourado-sombra:#A9601F;--arte-dourado-escuro:#6E3814;
+  --arte-kraft:#D9AE74;--arte-kraft-sombra:#A97C47;--arte-madeira-clara:#C98A55;--arte-madeira:#A0603A;--arte-madeira-escura:#663620;
+  --arte-cafe-claro:#8A5530;--arte-cafe:#5A3219;--arte-cafe-escuro:#3A1D0D;
+  --arte-vermelho-claro:#F58A6E;--arte-vermelho:#E04B3A;--arte-vermelho-sombra:#A3292B;--arte-vermelho-escuro:#6B1A22;
+  --arte-verde-claro:#8BD66B;--arte-verde:#3EAA4F;--arte-verde-sombra:#237238;--arte-verde-escuro:#164A2A;
+  --arte-azul-claro:#8EC2F2;--arte-azul:#3F86D9;--arte-azul-sombra:#24539E;--arte-azul-escuro:#16336A;
+  --arte-gema-clara:#C2F5F2;--arte-gema:#6FE0DC;--arte-gema-sombra:#2F9EA5;--arte-rosa-claro:#FCCADA;--arte-rosa:#F49BB4;--arte-rosa-sombra:#C9668A;
+  --arte-vidro:#CDEFE2;--arte-vidro-sombra:#8FC6B2;--arte-roxo:#8E4FB8;--arte-roxo-sombra:#5E2F86;
+
+  /* ---------- Tipo (§2.2) ---------- */
+  --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
+  --f-sistema:'M PLUS Rounded 1c',sans-serif;  /* voz de sistema: instrução, botão, apelido, timer */
+  /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
+  --t-escala:1;
+  --t-13:calc(13px * var(--t-escala));
+  --t-16:calc(16px * var(--t-escala));
+  --t-21:calc(21px * var(--t-escala));
+  --t-28:calc(28px * var(--t-escala));
+  --t-36:calc(36px * var(--t-escala));
+  --t-48:calc(48px * var(--t-escala));
+
+  /* Botão de habilidade (polegar direito): adesivo + "Habilidade" cabem dentro do anel; o chip, a dica e a oferta
+     se medem por ele. Cresce com a escala de texto (UX-acessibilidade). */
+  --botao-habilidade:calc(14px + 80px * var(--t-escala));
+
+  /* ---------- Formas (§2.3) ---------- */
+  --r-etiqueta:4px;  /* escolha ou evento: oferta, prêmio, faixa */
+  --r-ficha:6px;     /* contador sobre o mapa (nunca pílula no HUD) */
+  --r-balao:10px;    /* falas e emotes */
+  --r-janela:12px;   /* sistema persistente */
+  --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
+
+  /* ---------- Sombras duras e contorno ---------- */
+  --s-1:0 3px 0 var(--c-breu);
+  --s-2:0 4px 0 var(--c-sombra);
+  --s-texto:0 1px 0 var(--c-breu);
+  --borda-mapa:2px solid var(--c-breu);
+
+  /* ---------- Espaço ---------- */
+  --e-4:4px;--e-8:8px;--e-12:12px;--e-16:16px;--e-24:24px;
+
+  /* ---------- Safe areas (eram --rh-t/r/b/l) ---------- */
+  --sa-t:max(8px,env(safe-area-inset-top));
+  --sa-r:max(8px,env(safe-area-inset-right));
+  --sa-b:max(8px,env(safe-area-inset-bottom));
+  --sa-l:max(8px,env(safe-area-inset-left));
+
+  /* ---------- Camadas ---------- */
+  --z-mundo:0;--z-ilha:5;--z-hud:6;--z-painel:8;--z-resultado:10;--z-dialogo:20;
+
+  /* ---------- Aliases legados: saem no próximo ciclo (DSG-tokens) ---------- */
+  --purple:var(--c-lilas);
+  --purple-deep:var(--c-lilas-escuro);
+  --ink:var(--c-breu);
+  --paper:var(--c-papel-claro);
+  --emblem:var(--c-emblema);
+}
+:root[data-texto="125"]{--t-escala:1.25}

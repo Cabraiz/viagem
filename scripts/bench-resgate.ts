@@ -9,9 +9,9 @@
  * Run: node --experimental-strip-types scripts/bench-resgate.ts [runs=4] [minutes=4] [ilha|infinito]
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../src/game/net/shared.ts';
-import {Rng} from '../src/game/sim/rng.ts';
-import {walkable,worldBase} from '../src/game/world.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
+import {Rng} from '../src/contract/rng.ts';
+import {walkable,worldBase} from '../src/maps/world.ts';
 
 const RUNS=Number(process.argv[2])||4,MINUTES=Number(process.argv[3])||4,WORLD=process.argv[4]==='infinito'?'infinito' as const:undefined,SIGHT=7,STEP_MS=50;
 /** Wander radius around the base: the island is ~21 u across; the endless world spreads the team wider. */

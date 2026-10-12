@@ -8,6 +8,7 @@ import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
+import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './art-urls.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
@@ -25,6 +26,7 @@ import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
+import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -104,6 +106,8 @@ export class IslandScene extends Phaser.Scene {
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
   private props:Prop[]=[];
+  /** Bumped whenever the props change (a chunk in or out, a tree's art arriving): prize canopy tests run again. */
+  private propsVersion=0;
   private trees:(TreeArt|undefined)[]=[];
   private treeShadows?:Graphics;
   /** Endless world (terreno-em-blocos): props and place fichas of the chunks around the camera, by chunk. */
@@ -111,6 +115,8 @@ export class IslandScene extends Phaser.Scene {
   /** Endless world: live props per tree sheet, and sheets loaded but unused (oldest first). */
   private treeUse=new Map<string,number>();
   private treeIdle=new Set<string>();
+  /** Endless world: sheets of the ring beyond the screen, fetched one by one in the background (pumpTrees). */
+  private treeLater=new Set<string>();
   private chooseTrees(){if(this.field.chunks)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
     const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
     return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
@@ -162,8 +168,52 @@ export class IslandScene extends Phaser.Scene {
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
-  preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
+  /**
+   * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
+   * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
+   * the spawn. Teammates' sheets come right after the first frame (CharacterSprites.animate), the trees around as the
+   * camera needs them, and the ring beyond in the background (pumpTrees).
+   */
+  preload(){
+    // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
+    this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    this.sprites.queue(this.hooks.classId);
+    this.load.image('hero',thumbUrl(this.hooks.classId));
+    if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
+    for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
+  }
+  /**
+   * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
+   * asked (the trees beyond the screen wait for an idle loader, pumpTrees); until it is in, a silhouette.
+   */
+  private classIcon(classId:string){
+    const key=iconKey(classId,k=>this.textures.exists(k));
+    if(key!==STAND_IN_KEY||!classes.some(c=>c.id===classId))return key;
+    const wanted=`class:${classId}`;
+    if(!this.iconsAsked.has(wanted)){this.iconsAsked.add(wanted);this.load.image(wanted,thumbUrl(classId));if(this.booted&&!this.load.isLoading())this.load.start();}
+    return key;
+  }
+  /** The silhouette a teammate shows before its class icon arrives: Breu, 55%, head and shoulders. */
+  private standIn(){
+    if(this.textures.exists(STAND_IN_KEY))return;
+    const g=this.make.graphics({x:0,y:0},false),breu=tokenColor('--c-breu');
+    g.fillStyle(breu,.55).fillCircle(32,20,13).fillRoundedRect(12,34,40,30,{tl:16,tr:16,bl:4,br:4});
+    g.generateTexture(STAND_IN_KEY,64,64);g.destroy();
+  }
+  private fellBack=new Set<string>();
+  private artFallback(file:Phaser.Loader.File){
+    const url=typeof file.url==='string'?originalUrl(file.url):undefined;
+    if(!url||this.fellBack.has(file.key))return;
+    this.fellBack.add(file.key);
+    if(file.type==='spritesheet')this.load.spritesheet(file.key,url,file.config as Phaser.Types.Loader.FileTypes.ImageFrameConfig);
+    else if(file.type==='image')this.load.image(file.key,url);
+    else return;
+    if(!this.load.isLoading())this.load.start();
+  }
+  private iconsAsked=new Set<string>();
   create(){
+    this.standIn();
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
     this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
@@ -172,6 +222,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.field.chunks){
       let treeIndex=0;
       for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
+      this.propsVersion++;
       this.drawTreeShadows();
       landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
     }else{
@@ -201,7 +252,9 @@ export class IslandScene extends Phaser.Scene {
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1).
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
-        locate:id=>id===net.id?net.predicted:net.players.get(id)});
+        locate:id=>id===net.id?net.predicted:net.players.get(id),
+        // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
+        canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});
@@ -244,7 +297,7 @@ export class IslandScene extends Phaser.Scene {
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
-    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();
+    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
@@ -343,15 +396,30 @@ export class IslandScene extends Phaser.Scene {
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
-    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number};
-    loop.fpsLimit=profile.fps;loop.hasFpsLimit=true;loop._limitRate=frameGateMs(profile.fps);
+    this.frameGate();
     this.fpsWatch.reset();
   }
+  /**
+   * Phaser's frame gate (the game starts with fps.limit 60), changed live: the economy profile, or one frame every
+   * CATCH_UP_GATE_MS while the page is far behind the room (N27, slow phone: drawing is what keeps it behind).
+   */
+  private frameGate(){
+    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
+    loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
+  }
+  private readonly catchUp=new CatchUp();
+  /** Catching up with the room (slow phone): the lab probe and the tests read it. */
+  get catchingUp(){return this.catchUp.on;}
   get economyOn(){return this.economy;}
   /** Frames per second of the last whole watch windows (lab report and DEV probe). */
   get fpsHistory():readonly number[]{return this.fpsWatch.history;}
   private watchFrames(time:number){
     const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
+    if(net&&this.booted){
+      const was=this.catchUp.on;
+      if(this.catchUp.update(document.hidden?0:net.backlog.ms,time)!==was){this.frameGate();this.fpsWatch.taint();}
+      if(this.catchUp.on){this.fpsWatch.taint();return;}
+    }
     if(!net||this.economy||this.fpsWatch.done||last===undefined)return;
     if(document.hidden){this.fpsWatch.taint();return;}
     if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
@@ -512,7 +580,9 @@ export class IslandScene extends Phaser.Scene {
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,`class:${player.classId}`).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
+      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
@@ -613,7 +683,8 @@ export class IslandScene extends Phaser.Scene {
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;
-    this.load.spritesheet(`tree:${id}`,`/art/trees/${id}.webp`,{frameWidth:256,frameHeight:384});
+    this.treeLater.delete(id);
+    this.load.spritesheet(`tree:${id}`,treeUrl(id),{frameWidth:256,frameHeight:384});
   }
   /** Endless world: the sheets of the trees around the spawn, loaded with the scene (no sketch on the first frame). */
   private spawnTrees(){
@@ -649,16 +720,34 @@ export class IslandScene extends Phaser.Scene {
       for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,p.name));}
       this.chunkProps.set(key,{cx,cy,props,signs});changed=true;
     }
-    // Sheets of the next ring of chunks start loading before their trees can show (fewer shadows waiting on screen).
-    if(changed)for(let cy=ahead.iy0;cy<=ahead.iy1;cy++)for(let cx=ahead.ix0;cx<=ahead.ix1;cx++){
-      if(cx>=want.ix0&&cx<=want.ix1&&cy>=want.iy0&&cy<=want.iy1)continue;
-      for(const o of chunks.chunk(cx,cy).obstacles)if(o.art&&!this.textures.exists(`tree:${o.art}`)&&TREES.has(o.art)){this.loadTree(o.art);loads=true;}
+    // Sheets of the next ring of chunks load before their trees can show (fewer shadows waiting on screen), but in the
+    // background (N27): one at a time when nothing else loads, in combat (pumpTrees). On 4G the whole ring is ~30
+    // sheets; they used to go with the visible trees and the teammates' sheets, and those waited ~15 s behind them.
+    if(changed){
+      this.treeLater.clear();
+      for(let cy=ahead.iy0;cy<=ahead.iy1;cy++)for(let cx=ahead.ix0;cx<=ahead.ix1;cx++){
+        if(cx>=want.ix0&&cx<=want.ix1&&cy>=want.iy0&&cy<=want.iy1)continue;
+        for(const o of chunks.chunk(cx,cy).obstacles)if(o.art&&!this.textures.exists(`tree:${o.art}`)&&TREES.has(o.art))this.treeLater.add(o.art);
+      }
     }
     if(loads&&!this.load.isLoading())this.load.start();
     if(!changed)return;
-    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);
+    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);this.propsVersion++;
     this.signs=[...this.chunkProps.values()].flatMap(e=>e.signs);
     this.drawTreeShadows();this.dropIdleTrees();
+  }
+  /**
+   * Endless world, in combat (or solo): one sheet of the ring beyond the screen when the loader is idle, while the unused sheets
+   * kept fit TREE_TEXTURES_IDLE (more would be dropped at once and fetched again: the old churn). In the lobby the
+   * team stands at the spawn: nothing beyond the screen, so the first entry in combat stays light.
+   */
+  private pumpTrees(){
+    if(!this.treeLater.size||this.load.isLoading()||(this.hooks.net&&this.hooks.net.run?.phase!=='combat')||this.treeIdle.size>=TREE_TEXTURES_IDLE)return;
+    for(const id of this.treeLater){
+      this.treeLater.delete(id);
+      if(this.textures.exists(`tree:${id}`))continue;
+      this.loadTree(id);this.load.start();return;
+    }
   }
   private useTree(id:string,delta:number){
     const n=(this.treeUse.get(id)??0)+delta;
@@ -683,7 +772,7 @@ export class IslandScene extends Phaser.Scene {
       entry.props[i]=next;changed=true;
     });
     if(!changed)return;
-    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);
+    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);this.propsVersion++;
     this.drawTreeShadows();this.place();
   }
   private drawProp(g:Graphics,o:Obstacle){
@@ -765,7 +854,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,
-        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory]};
+        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory],catchUp:scene.catchingUp,backlogMs:Math.round(net?.backlog.ms??0)};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

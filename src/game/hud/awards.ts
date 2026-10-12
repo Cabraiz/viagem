@@ -103,7 +103,7 @@ const DEFS:readonly AwardDef[]=[
   {id:'sortudo-do-bau',title:'Sortudo do baú',icon:'bau-aberto',vice:'Quase sortudo',solo:true,
     metric:f=>f.tally.chests,
     line:v=>`${plural(v,'baú','baús')}. Joga na Mega já.`},
-  {id:'bate-nao-mata',title:'Bate mas não mata',icon:'travesseiro',vice:'Bate e às vezes mata',solo:false,
+  {id:'bate-nao-mata',title:'Bate mas não mata',icon:'galo',vice:'Bate e às vezes mata',solo:false,
     metric:f=>f.kills>0&&f.damage>0?Math.round(f.damage/f.kills):0,
     line:()=>'Amacia pros outros matarem.'},
   {id:'evolucao',title:'Evolução de novela',icon:'borboleta',vice:'Evolução de reprise',solo:true,person:true,
@@ -117,9 +117,9 @@ const DEFS:readonly AwardDef[]=[
 const ZERO:Readonly<PlayerTally>={downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0};
 const FALLBACK:Omit<Award,'playerId'>={id:'figurante',title:'Figurante de luxo',icon:'foto',line:'Apareceu na foto. Valeu!'};
 
-/** Runner-up sticker (rule C): the coin standing on edge (lost tiebreak), the várzea trophies 2 and 3 (numbered: not only
- *  color), and the goal post for "Na trave!". */
-export const viceSticker=(place:number):StickerName=>place===1?'moeda':place===2?'trofeu-2':place===3?'trofeu-3':'trave';
+/** Runner-up sticker (rule C): the balanced scale (lost tiebreak), the crate podiums 2 and 3 (numbered and of different
+ *  heights: not only color), and the goal post for "Na trave!". */
+export const viceSticker=(place:number):StickerName=>place===1?'balanca':place===2?'podio-2':place===3?'podio-3':'trave';
 
 const byId=(a:PlayerRunView,b:PlayerRunView)=>a.id<b.id?-1:a.id>b.id?1:0;
 

@@ -130,8 +130,8 @@ export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
  */
 export type SoundArt={icon:IconName}|{sticker:StickerName}|{word:string};
 export const SOUND_ART:Readonly<Record<SoundId,SoundArt>>=Object.freeze({
-  golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'trofeu-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
+  golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'podio-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
-  boing:{sticker:'travesseiro'},risada:{icon:'risada'},
+  boing:{sticker:'galo'},risada:{icon:'risada'},
   carimbo:{word:'tum'},
 });

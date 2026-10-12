@@ -32,9 +32,32 @@ export const OUTAGE_CONNECT_FAIL_MS=1000;
 export class OrderedDelay {
   private last=0;
   private readonly now:()=>number;
+  /** Items waiting, in hand-in order, and the one timer that delivers them. */
+  private items:{at:number;fn:()=>void}[]=[];
+  private timer?:ReturnType<typeof setTimeout>;
   constructor(now:()=>number=()=>performance.now()){this.now=now;}
   /** When an item handed in now with this delay is due (ms, same clock as `now`). */
   due(delayMs:number){const at=Math.max(this.last,this.now()+Math.max(0,delayMs));this.last=at;return at;}
+  /**
+   * Runs `fn` after `delayMs`, never before the items handed in earlier. One timer drains the queue in order: a
+   * timer per item could fire two items due on the same millisecond in the wrong order (N27: the chained frames
+   * caught the lab reordering what TCP never reorders).
+   */
+  schedule(delayMs:number,fn:()=>void){
+    this.items.push({at:this.due(delayMs),fn});
+    if(!this.timer&&!this.draining)this.arm();
+  }
+  private arm(){
+    const head=this.items[0];
+    this.timer=head?setTimeout(()=>this.drain(),Math.max(0,head.at-this.now())):undefined;
+  }
+  private draining=false;
+  private drain(){
+    this.timer=undefined;this.draining=true;
+    const now=this.now();
+    try{while(this.items.length&&this.items[0].at<=now+.5)this.items.shift()!.fn();}
+    finally{this.draining=false;this.arm();}
+  }
   reset(){this.last=0;}
 }
 
@@ -126,8 +149,7 @@ export class LabSocket {
   private later(queue:OrderedDelay,fn:()=>void){
     const delay=this.link.oneWay();
     if(delay<=0){fn();return;}
-    const at=queue.due(delay);
-    setTimeout(fn,Math.max(0,at-performance.now()));
+    queue.schedule(delay,fn);
   }
   send(data:string|ArrayBufferLike|Uint8Array){
     if(this.readyState===0)throw new Error('InvalidStateError: still connecting');

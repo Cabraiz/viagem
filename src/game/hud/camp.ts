@@ -14,6 +14,7 @@ import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type R
 import {icon,type IconName} from '../../ui/icon.ts';
 import {sticker,type StickerName} from '../../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
@@ -212,7 +213,7 @@ export function createCamp(options:CampOptions):CampPart{
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
     const line=fallLine(view,ctxId),quiet=note.textContent===DEFAULT_NOTE;
-    if(fall.textContent!==line)fall.textContent=line;
+    if(fall.textContent!==line)writeFallLine(fall,line);
     fall.hidden=!line||!quiet;note.hidden=!!line&&quiet;
     for(const [id,{button,lock,full}] of tags){
       const reason=blockedReason(id,view,ctxId);

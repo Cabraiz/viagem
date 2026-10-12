@@ -11,9 +11,9 @@ export const STICKER_NAMES=[
   // Itens (src/game/hud/items.ts): armas, evoluções, passivas, o lanche e o item que o cliente não conhece.
   'chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo',
   'cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao','coxinha','misterio',
-  // Prêmios (src/game/hud/awards.ts), o figurante e os vices (moeda do desempate, troféus de várzea 2 e 3, a trave).
-  'banana','ambulancia','mochila','rodo','antena','ima-ferradura','camera','coxinhas','bau-aberto','travesseiro',
-  'borboleta','halter','foto','moeda','trofeu-2','trofeu-3','trave'] as const;
+  // Prêmios (src/game/hud/awards.ts), o figurante e os vices (balança do desempate, pódio de caixote 2 e 3, a trave).
+  'banana','ambulancia','mochila','rodo','antena','ima-ferradura','camera','coxinhas','bau-aberto','galo',
+  'borboleta','halter','foto','balanca','podio-2','podio-3','trave'] as const;
 export type StickerName=typeof STICKER_NAMES[number];
 const KNOWN=new Set<string>(STICKER_NAMES);
 export const isStickerName=(name:string):name is StickerName=>KNOWN.has(name);

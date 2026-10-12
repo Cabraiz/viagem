@@ -152,7 +152,7 @@ test('runners-up get a vice title with their real place, never a first-place tit
   // p1 is 2nd in falls (1 × 4) and in damage (18,4k × 21k): consolation states the place, the earlier award wins the tie.
   const mine=awardsOf(awards,'p1');
   assert.equal(mine.length,1);assert.equal(mine[0].id,'vice-mais-caiu');assert.equal(mine[0].title,'Vice-campeão de tombo');
-  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].icon,'trofeu-2');
+  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].icon,'podio-2');
   for(const a of awards)if(firsts.has(a.id))assert.ok(!a.id.startsWith('vice-'));
   assert.ok(!awards.some(a=>a.id==='figurante'));
   // Ties share a place: two players tied for 2nd are both "2º", nobody is called 3rd.

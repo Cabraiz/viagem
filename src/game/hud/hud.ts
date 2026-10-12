@@ -89,6 +89,9 @@ export class RunHud {
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
+  private columnObserver?:ResizeObserver;
+  /** Shell rows that answer a tap (queueRow answer): they go ahead of the coach's hint. */
+  private readonly answers=new Set<HTMLElement>();
   /** First-run coach (VGM-056): one hint at a time in the announcement slot. */
   readonly coach:Coach;
   private readonly coachRow:CoachPart;
@@ -131,7 +134,11 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);}
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);
+      // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
+      // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
+      this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
+      this.columnObserver.observe(team.el);}
   }
 
   update(view:RunView){
@@ -233,16 +240,20 @@ export class RunHud {
    * against the coach while it shows, and steps out (its time paused) when a notice comes. It moves with the slot (top
    * or low, off the hero) like the other rows.
    */
-  queueRow(el:HTMLElement,ms:number){
+  queueRow(el:HTMLElement,ms:number,options:{answer?:boolean}={}){
     if(el.parentElement!==this.stack)this.stack.insertBefore(el,this.coachRow.el);
     el.classList.add('rh-row');el.hidden=true;
+    // An answer to the player's own tap ("Gira no intervalo") does not wait for the coach's hint: it takes the slot
+    // from it (the coach steps back while a row shows). Notices and the kill-cam still go first.
+    if(options.answer)this.answers.add(el);else this.answers.delete(el);
     this.rows.queue(el,ms);this.turnRows();
   }
   /** The row leaves the line and the slot (its own button answered it). */
   dropRow(el:HTMLElement){this.rows.drop(el);if(!el.hidden){el.hidden=true;this.relayout();}}
   /** Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on. */
   private turnRows(now=performance.now()){
-    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
+    const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
+    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
     const {show,hide}=this.rows.turn(now,busy);
     for(const el of hide)el.hidden=true;
     if(show)show.hidden=false;
@@ -333,7 +344,7 @@ export class RunHud {
   destroy(){
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
-    removeEventListener('resize',this.relayout);this.observer?.disconnect();
+    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
     this.el.remove();

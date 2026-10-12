@@ -70,10 +70,15 @@ export function applyEliteExtras(ctx:SimContext){
   }
 }
 
+/** Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. */
+export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2;
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
   const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}});
-  const zueira=createZueira(world.seed,{lab:options.zueiraLab});
+  // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
+  // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
+  let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures()});
   let director:Director|undefined;
   // D-016: once the director is done (boss down), a same-tick wipe is not a defeat. The director only reaches 'done'
   // on its next step, so the boss's killing blow also ends the run right away.
@@ -93,6 +98,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       if(after>before)for(const queue of ctx.offers.values())for(const offer of queue)if(offer.deadlineTick===before)offer.deadlineTick=after;
     },
   });
+  structures=()=>{const {wall,wallDown,towers}=stonewards.state;return [...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
@@ -113,6 +119,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       zueira.roundEnded(ctx,summary,director!.state.roundStart);
     },
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
+    // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
+    siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 

@@ -11,6 +11,7 @@
  * open window (offer, forge, kill-cam, minimap) or a caído/boss arrow missing in the arrows scenes,
  * plus text under the minimum size (13 px in the match HUD and emotes), touch targets under 44 px and page scroll.
  * Usage: node scripts/audit-layout.cjs [baseUrl=http://127.0.0.1:4350] [out.json]
+ * AUDIT_SLOW_MS=<ms> delays the sandbox modules (a loaded box); AUDIT_ONLY=<text> runs only scenes whose name has it.
  * Needs Playwright: PLAYWRIGHT=/path/to/node_modules/playwright (cloud: /home/claude/tools/node_modules/playwright).
  */
 const {chromium}=require(process.env.PLAYWRIGHT||'/home/claude/tools/node_modules/playwright');
@@ -25,6 +26,7 @@ function audit(rootsSelector,minFont){
   const label=e=>`${e.className||e.tagName}: "${e.textContent.trim().slice(0,28)}"`;
   const problems=[];
   const roots=[...document.querySelectorAll(rootsSelector)].filter(vis);
+  if(!roots.length)return ['nada para medir: a cena não está na tela'];
   for(const root of roots)for(const e of [root,...root.querySelectorAll('*')]){
     if(!vis(e)||e.closest('.rh-sr,.sr-only'))continue;
     const s=getComputedStyle(e);
@@ -91,9 +93,7 @@ function audit(rootsSelector,minFont){
   // The top band's fichas never cross each other (soma N15 + 046B, 125%): round chip, XP, boss bar, base ficha, minimap.
   {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap,.explore-camera-hint:not([hidden])')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
     for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++){const a=tops[i].r,b=tops[j].r;
-      // (The "Gira no intervalo" balloon over the portrait XP bar is the old 1.5 s answer to a tap: only its new
-      // neighbour, the landscape minimap, and the fichas count for it.)
-      const pair=[tops[i].e,tops[j].e];if(pair.some(e=>e.matches('.explore-camera-hint'))&&pair.some(e=>e.matches('.rh-xp')))continue;
+      // (The "Gira no intervalo" balloon counts against every ficha, the XP bar included: NEW-UX-balao-girar-retrato.)
       if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`fichas do topo se cruzam: ${tops[i].e.className.split(' ')[0]} × ${tops[j].e.className.split(' ')[0]}`);}}
   // NEW-20261011-UX-janela-esconde-caido: an edge arrow (ficha, tag or "+N") never sits behind an open window (offer,
   // forge), the kill-cam or the minimap; and in the arrows scenes (cenario=bordas: two caídos and the boss off screen)
@@ -107,6 +107,18 @@ function audit(rootsSelector,minFont){
     // list the game writes and the zones audit reads.)
     for(const kind of (document.querySelector('.rh-edges')?.dataset.need??'').split(' ').filter(Boolean))
       if(![...document.querySelectorAll(`.rh-edge[data-kind=${kind}]:not([hidden])`)].some(vis))problems.push(`sem seta: ${kind}`);}
+  // NEW-UX-nome-do-time-na-coluna: a team name ficha stays inside its member's box (the box the useful area and the arrows
+  // avoid) and on screen.
+  for(const n of document.querySelectorAll('.rh-member-name'))if(vis(n)){const m=n.closest('.rh-member').getBoundingClientRect(),r=n.getBoundingClientRect();
+    if(r.left<m.left-.5||r.right>m.right+.5||r.left<-.5||r.right>innerWidth+.5)problems.push(`nome sai da coluna do time: ${label(n)}`);
+    for(const w of document.querySelectorAll('.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-camp:not([hidden])'))if(vis(w)){const b=w.getBoundingClientRect();
+      if(r.right>b.left+.5&&b.right>r.left+.5&&r.bottom>b.top+.5&&b.bottom>r.top+.5)problems.push(`nome do time sob a janela: ${label(n)} × ${w.className.split(' ')[0]}`);}}
+  // pacote-bugs-ux (design review): the caído ficha of a window never lies on the visible part of a card or tag.
+  for(const f of document.querySelectorAll('.rh-window-fall:not([hidden])'))if(vis(f)){const r=f.getBoundingClientRect();
+    for(const c of document.querySelectorAll('.rh-offer:not([hidden]) .rh-card,.rh-forge:not([hidden]) .rh-forge-tag')){if(!vis(c))continue;
+      const list=c.closest('.rh-offer-cards,.rh-forge-tags'),b=c.getBoundingClientRect(),l=list?list.getBoundingClientRect():b;
+      const top=Math.max(b.top,l.top),bottom=Math.min(b.bottom,l.bottom),left=Math.max(b.left,l.left),right=Math.min(b.right,l.right);
+      if(bottom>top&&right>left&&r.right>left+.5&&r.left<right-.5&&r.bottom>top+.5&&r.top<bottom-.5)problems.push(`ficha do caído sobre ${label(c)}`);}}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)
@@ -130,8 +142,14 @@ const SCENES=[
   ['hud resultado, 6p','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13],
   ['hud resultado, 1p','/?sandbox=hud&players=1&state=result&frozen=1','.rh',13],
   // The owner's result (D-025): "Arrumar a sala" with Revanche and Sair; and with the playtest's "Métricas" chip (?dev=1).
-  // (6 players with the owner's row at 125% in landscape still scroll the cards, with or without the chip: card
-  // BUG-resultado-dono-6p-rola; the 2-player scenes hold the three buttons and the chip.)
+  // Six players with the owner's row (BUG-resultado-dono-6p-rola): long real names through the game's own card name,
+  // room bots, defeat, the "Métricas" chip and the owner arranging the room (cards trade prizes for buttons).
+  ['hud resultado do dono, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos','.rh',13],
+  ['hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&bots=4&dev=1','.rh',13],
+  ['hud resultado do dono, 6p, derrota, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1','.rh',13],
+  // The real room ended by the lab (DSG-adesivos-itens): ties everywhere, so most cards carry a long vice line.
+  ['hud resultado do dono, 6p, derrota, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&premios=empates','.rh',13],
+  ['hud resultado, 6p, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&premios=empates','.rh',13],
   ['hud resultado do dono, 2p','/?sandbox=hud&players=2&state=result&frozen=1&dono=1','.rh',13],
   ['hud resultado do dono, 2p, derrota, Métricas (dev)','/?sandbox=hud&players=2&state=result&frozen=1&dono=1&lose=1&dev=1','.rh',13],
   ['hud resultado do dono, 1p, Métricas (dev)','/?sandbox=hud&players=1&state=result&frozen=1&dono=1&dev=1','.rh',13],
@@ -171,18 +189,38 @@ const SCENES=[
     const ctx=await browser.newContext({viewport:v,isMobile:true,hasTouch:true,deviceScaleFactor:2});
     const page=await ctx.newPage();
     const run=async(name,url,roots,min,prep)=>{
+      if(process.env.AUDIT_ONLY&&!name.includes(process.env.AUDIT_ONLY))return;
       await page.goto(BASE+url);
       await page.evaluate(t=>{if(t==='125')document.documentElement.dataset.texto='125';},texto);
-      await page.waitForTimeout(300);
-      // The arrows scenes draw once their modules are in (and again 4 times a second): wait for the first drawing.
-      if(url.includes('cenario=bordas'))await page.waitForFunction(()=>document.body.dataset.bordas==='1',null,{timeout:15000});
-      if(prep)await prep();
-      await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(700);
-      const problems=await page.evaluate(([r,m])=>(window.__audit=eval('('+window.__auditSrc+')'),window.__audit(r,m)),[roots,min]);
+      // BUG-audit-scroll-flaky: on a loaded box Vite may still be serving the sandbox module 1 s after the page loads, and
+      // the audit then measured the long creation page under it ("a página rola", in a random scene). Measure only a
+      // mounted scene: the sandbox's own "drawn" flag, then the scene's roots on screen, the fonts and two frames. A scene
+      // that never mounts fails as such; nothing is measured on a half-built page.
+      const mounted=async()=>{
+        const flag=url.includes('sandbox=hud')?'hudReady':url.includes('sandbox=fun')?'funReady':undefined;
+        if(flag)await page.waitForFunction(f=>document.body.dataset[f]==='1',flag,{timeout:30000});
+        // The arrows scenes draw once their modules are in (and again 4 times a second): wait for the first drawing.
+        if(url.includes('cenario=bordas'))await page.waitForFunction(()=>document.body.dataset.bordas==='1',null,{timeout:30000});
+      };
+      const settled=async()=>{
+        await page.waitForSelector(roots,{state:'visible',timeout:30000});
+        await page.evaluate(()=>document.fonts.ready);
+        await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+      };
+      let problems;
+      try{
+        await mounted();await page.waitForTimeout(300);
+        if(prep)await prep();
+        await settled();await page.waitForTimeout(700);
+        problems=await page.evaluate(([r,m])=>(window.__audit=eval('('+window.__auditSrc+')'),window.__audit(r,m)),[roots,min]);
+      }catch(e){problems=[`cena não montou: ${String(e.message).split('\n')[0]}`];}
       report.push({view:`${v.width}x${v.height}`,texto,name,problems});
       if(problems.length)failed++;
     };
     await page.addInitScript(src=>{window.__auditSrc=src;},audit.toString());
+    // AUDIT_SLOW_MS=1500 holds every sandbox module that long, as a loaded box does (BUG-audit-scroll-flaky): the result
+    // must be the same as without it.
+    if(+process.env.AUDIT_SLOW_MS>0)await page.route(/\/src\/game\/sandbox-[a-z]+\.ts/,async r=>{await new Promise(t=>setTimeout(t,+process.env.AUDIT_SLOW_MS));await r.continue();});
     for(const [name,url,roots,min] of SCENES)await run(name,url,roots,min);
     // Worst case: the catalog items with the most text (name + effect) on the 2x2 and on the row of 3.
     const worst=async()=>{await page.waitForSelector('.rh-card');await page.evaluate(async()=>{
@@ -204,13 +242,24 @@ const SCENES=[
       document.querySelectorAll('.rh-rcard-name').forEach((e,i)=>{e.textContent=names[i%names.length];});
       document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=names[(i+1)%names.length].split(' ')[0].slice(0,9);});
     });};
-    await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13,longNames);
+    await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&nomes=longos','.rh',13);
+    // The owner arranging the room with six players: each card trades its prizes (and, in landscape, its numbers) for the
+    // 48 px "Expulsar" / "Tirar bot" button, one of them armed with the longest confirmation.
+    await run('hud resultado do dono arrumando a sala, 6p, 2 bots','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&bots=2&clean=1','.rh',13,async()=>{
+      await page.click('.rh-result-manage');await page.click('.rh-rcard-manage.is-person');});
     // The real "Gira no intervalo" balloon (explore.css) over the arrows scene with a window open: in landscape the
     // minimap moved under the view buttons, and the balloon must not open over it or a top ficha (UX review janela-caido).
-    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open']])
+    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open'],['combate (round)','wave'],['muralha baixa','camp-wave']])
       await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
         await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
-          d.innerHTML='<button></button><span class="explore-view"></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
+          d.innerHTML='<button></button><span class="explore-view"><i style="display:block;width:32px;height:32px"></i></span><button></button><span class="explore-camera-hint" role="status"><i class="ic"></i><span>Gira no intervalo</span></span>';document.querySelector('.hs-world').append(d);});});
+    // Portrait: the answer is a row of the announcement slot, ahead of the coach's hint (the same markup as explore.ts).
+    for(const [name,state,extra] of [['combate','wave',''],['dica andar na vaga','wave','&dica=walk'],['muralha baixa','camp-wave','']])
+      await run(`"Gira no intervalo" na vaga de anúncio, ${name}`,`/?sandbox=hud&players=6&state=${state}&frozen=1${extra}`,'.rh',13,async()=>{
+        await page.evaluate(async()=>{await import('/src/game/explore.css');const {icon}=await import('/src/ui/icon.ts');
+          const row=document.createElement('div');row.className='explore-camera-row';row.setAttribute('role','status');row.innerHTML=`${icon('cadeado',{size:24})}<span>Gira no intervalo</span>`;
+          window.__hud.queueRow(row,60000,{answer:true});});
+        await page.waitForTimeout(300);});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});

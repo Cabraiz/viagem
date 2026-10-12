@@ -66,7 +66,7 @@ test('every award and vice has a sticker; the vice medals say the place in shape
   assert.ok(named.length>=13,'every award def names a sticker');
   for(const name of named)assert.ok(isStickerName(name),name);
   assert.equal(new Set(named).size,named.length,'one drawing per award');
-  assert.deepEqual([1,2,3,4,9].map(viceSticker),['moeda','trofeu-2','trofeu-3','trave','trave']);
+  assert.deepEqual([1,2,3,4,9].map(viceSticker),['balanca','podio-2','podio-3','trave','trave']);
   // An award computed end to end carries a sticker name.
   const awards=computeAwards({victory:true,players:[
     {id:'a',name:'A',classId:'cidadao',level:3,weapons:[{id:'chinelo',level:2}],passives:[],downed:false,spectator:false,stats:{damage:10,kills:3,revives:0,pickups:2,downs:1,heals:0,magnets:0,chests:0,evolves:0}},

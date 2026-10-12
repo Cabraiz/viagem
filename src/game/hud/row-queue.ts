@@ -9,6 +9,8 @@ export class RowQueue<T> {
   /** The row on screen, if any. */
   get shown():T|undefined{return this.on?.item;}
   get waiting():number{return this.line.length;}
+  /** The row that gets the slot next, if any. */
+  get next():T|undefined{return this.line[0]?.item;}
   /** In line for `ms` on screen (a row already in line or on screen starts over at the back). */
   queue(item:T,ms:number){this.drop(item);this.line.push({item,ms});}
   /** Out of the line and off the screen. */

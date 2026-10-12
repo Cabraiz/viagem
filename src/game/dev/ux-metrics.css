@@ -1,10 +1,10 @@
 /* Playtest metrics (NEW-20261009-UX-playtest-metricas): the dev-only buttons ("Métricas" on the result and on the start
    screen, "Medir a turma" in the waiting room). Loaded only with ?dev=1 (ux-metrics.ts).
    The button is a 44 px tall touch target with no look of its own; the visible part is the chip inside it, a stat with a
-   dashed border (a tool, not part of the game). Negative margins keep the row it sits in at the chip's height. */
+   plain border (§2.3: no dashed edges; design review pacote-bugs-ux). Negative margins keep the row it sits in at the chip's height. */
 .ux-dev-export{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;margin:-10px 0;padding:0;border:0;background:none;color:var(--c-papel);cursor:pointer;touch-action:manipulation}
-.ux-dev-chip{padding:2px 9px;border-radius:var(--r-ficha);border:2px dashed var(--c-papel);background:var(--c-ficha);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap}
-.ux-dev-export:active .ux-dev-chip,.ux-dev-export[aria-pressed=true] .ux-dev-chip{background:var(--c-papel);color:var(--c-breu);border-style:solid;border-color:var(--c-breu)}
+.ux-dev-chip{padding:2px 9px;border-radius:var(--r-ficha);border:2px solid var(--c-papel);background:var(--c-ficha);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap}
+.ux-dev-export:active .ux-dev-chip,.ux-dev-export[aria-pressed=true] .ux-dev-chip{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
 /* Result: in portrait the head is centred and its top-left corner is free (title 42 px tall, the chip 24 + its 44 px
    target); in landscape the chip sits under the joke line, left-aligned, where the stats beside it are taller anyway. */
 .rh-result-titles .ux-dev-export{align-self:flex-start;margin:-4px 0 -10px}
@@ -13,3 +13,9 @@
 .ux-dev-team{margin:0}
 /* Start screen after "Sair": bottom left, over the page, inside the safe area. */
 .ux-dev-home{position:fixed;z-index:var(--z-hud);left:max(16px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom));margin:0}
+/* Landscape at 125% with five or six cards (the owner's row included): the chip under the joke made the head 25 px taller
+   and pushed the second row of cards out of view. There the chip takes the joke's line (the joke is the optional line of
+   the head, as in portrait at 125%; this only exists with ?dev=1). BUG-resultado-dono-6p-rola. */
+@media (max-height:500px){
+  :root[data-texto="125"] .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-titles:has(.ux-dev-export) .rh-result-sub{display:none}
+}

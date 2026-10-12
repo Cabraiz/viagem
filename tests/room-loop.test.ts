@@ -92,3 +92,20 @@ test('a catch-up burst of three ticks sends one frame per client, on the last ti
   assert.deepEqual(sockets.map((s,i)=>s.frames-mid[i]),[1,1,1]);
   o.loop.stop();
 });
+
+test('N27: a slow phone that went quiet for good still stops the clock, within SLOW_SILENT_MAX_MS',async()=>{
+  const {SLOW_SILENT_MAX_MS}=await import('../multiplayer/room.ts');
+  const {o,room}=object();
+  const a=join(o,room,'Tia lenta');
+  const t0=Date.now(),c=[...room.connections.values()][0];
+  // Its acks kept naming frames 30 s old: the room learned it is slow, not gone.
+  for(let i=1;i<=3;i++){room.advance(t0+i*100);}
+  room.receive(c.peer,JSON.stringify({t:'ack',seq:c.encoder!.lastSeq}),t0+20_000);
+  c.lag=30_000;c.lateAcks=3;
+  room.advance(t0+20_000+40_000);
+  assert.equal(a.closed,undefined,'40 s of silence after 20 s gaps and a 30 s lag: still slow, not gone');
+  assert.equal(o.loop.active,true);
+  room.advance(t0+20_000+SLOW_SILENT_MAX_MS+1);
+  assert.equal(a.closed?.code,4004);
+  assert.equal(o.loop.active,false,'the empty room stops its clock at the cap');
+});

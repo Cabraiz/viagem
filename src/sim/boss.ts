@@ -367,20 +367,23 @@ export function createBoss(options:BossOptions={}):BossController {
     m.act=ACT_WINDUP;m.actUntil=fireTick+ticks(.3);m.next=fireTick+recovery(boss);
   }
 
-  /** Phase 1: one stamp on a random player. Phase 2+: "multa em área", a fine on several players plus the boss's own feet. */
+  /**
+   * Phase 1: one stamp on a random player. Phase 2+: "multa em área", a fine on several players plus the boss's own feet.
+   * Telegraph kinds (D-036): the phase-1 stamp and the stomp at his feet are 'pancada'; the fines on players, 'carimbo'.
+   */
   function slam(ctx:SimContext,boss:EnemyState,targets:readonly SimPlayer[]){
     const r=stream(ctx);
     if((boss.phase??1)<PHASE_ASSEMBLY){
       const t=r.pick(targets);
-      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id},tuning.slamDelay);
+      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada'},tuning.slamDelay);
       say(ctx,boss,'slam');windup(ctx,boss,tg.fireTick);return;
     }
     const pool=[...targets];let fireTick=ctx.tick;
     for(let i=0;i<tuning.fineTargets&&pool.length;i++){
       const t=pool.splice(r.int(0,pool.length-1),1)[0];
-      fireTick=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.fineRadius,damage:scale(boss,tuning.fineDamage),owner:boss.id},tuning.fineDelay).fireTick;
+      fireTick=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.fineRadius,damage:scale(boss,tuning.fineDamage),owner:boss.id,kind:'carimbo'},tuning.fineDelay).fireTick;
     }
-    addTelegraph(ctx,{shape:'circle',x:boss.x,y:boss.y,radius:tuning.fineRadius+.6,damage:scale(boss,tuning.fineDamage),owner:boss.id},tuning.fineDelay);
+    addTelegraph(ctx,{shape:'circle',x:boss.x,y:boss.y,radius:tuning.fineRadius+.6,damage:scale(boss,tuning.fineDamage),owner:boss.id,kind:'pancada'},tuning.fineDelay);
     say(ctx,boss,'fine');windup(ctx,boss,fireTick);
   }
 
@@ -402,7 +405,7 @@ export function createBoss(options:BossOptions={}):BossController {
     while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;
     if(reach<2)return false;
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
-    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id},delay);
+    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida'},delay);
     const m=boss.memory!;
     Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+dashTicks+recovery(boss)});
     say(ctx,boss,'charge');
@@ -421,7 +424,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const m=boss.memory!;
     if(m.sweepLeft>0&&ctx.tick>=m.sweepAt){
       const tg=addTelegraph(ctx,{shape:'cone',x:boss.x,y:boss.y,dx:Math.cos(m.sweepAngle),dy:Math.sin(m.sweepAngle),
-        radius:tuning.coneRange,width:tuning.coneAngle,damage:scale(boss,tuning.coneDamage),owner:boss.id},tuning.coneDelay);
+        radius:tuning.coneRange,width:tuning.coneAngle,damage:scale(boss,tuning.coneDamage),owner:boss.id,kind:'varredura'},tuning.coneDelay);
       m.sweepAngle+=m.sweepTurn;m.sweepLeft--;m.sweepAt=ctx.tick+tuning.coneEvery;m.sweepEnd=tg.fireTick;
     }
     if(m.sweepLeft<=0)windup(ctx,boss,m.sweepEnd);

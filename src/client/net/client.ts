@@ -5,7 +5,7 @@ import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,clientCatalog,parseWelcomeMap,checkClientMap,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {RunState} from '../../contract/index.ts';
-import type { Point } from '../../maps/index.ts';
+import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher} from '../../protocol/index.ts';
@@ -115,6 +115,11 @@ export class CoopClient {
   players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
   pending:Input[]=[];
+  /**
+   * D-036 slow and slip of this player, as the latest frame (tick `this.tick`) carried them: the prediction steps the
+   * k-th pending input on tick this.tick+1+k with them (maps/prediction.ts), exactly like the room, so no snap-back.
+   */
+  effects:MoveEffects={};
   /** Change segments and the 10 Hz send slot (input-10hz). */
   private readonly batcher=new InputBatcher();
   private flushTimer?:ReturnType<typeof setTimeout>;
@@ -360,7 +365,7 @@ export class CoopClient {
       const terrain=terrainFor(m.world);
       if(typeof terrain==='string'){this.fail(ws,terrain);return;}
       this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -444,7 +449,8 @@ export class CoopClient {
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+GRACE_MS}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
+    // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
     this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));
@@ -479,7 +485,9 @@ export class CoopClient {
       this.run.elapsed=base.run.elapsed+d;this.run.remaining=Math.max(0,base.run.remaining-d);
     }
     const self=this.players.get(this.id);
-    if(self){this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain):{x:self.x,y:self.y};}
+    const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
+    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip}:{};
+    if(self){this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};}
     this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
@@ -511,7 +519,8 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     const {input,active}=this.batcher.step(direction,skill,target);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain);}
+    // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects);}
     this.flushInput();
   }
   /**

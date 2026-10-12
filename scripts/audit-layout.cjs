@@ -54,6 +54,16 @@ function audit(rootsSelector,minFont){
     // The "Novo!" word must sit inside the star's body (the burst's points leave ~80% of its width usable).
     if(e.parentElement&&e.parentElement.classList.contains('rh-card-star')&&e.offsetWidth>e.parentElement.clientWidth*.8+.5)
       problems.push(`letra sai da estrela: ${label(e)} (${e.offsetWidth} > 80% de ${e.parentElement.clientWidth})`);
+    // Seal × title (DSG-adesivos-itens): the "Novo!" star, the level price and the word tag never cover a letter of the
+    // tag's name or effect (the star's burst counts whole, minus 2 px of its points).
+    if(e.parentElement&&e.parentElement.matches('.rh-card-star,.rh-card-price,.rh-card-tag')||e.matches('.rh-card-tag')){
+      const seal=e.matches('.rh-card-tag')?e:e.parentElement,card=seal.closest('.rh-card'),sr=seal.getBoundingClientRect();
+      const box={left:sr.left+2,right:sr.right-2,top:sr.top+2,bottom:sr.bottom-2};
+      for(const t of card?card.querySelectorAll('.rh-card-name,.rh-card-blurb'):[]){
+        if(!vis(t))continue;const range=document.createRange();range.selectNodeContents(t);
+        if([...range.getClientRects()].some(r=>r.width&&r.right>box.left&&r.left<box.right&&r.bottom>box.top&&r.top<box.bottom)){problems.push(`selo cobre o texto: ${label(t)}`);break;}
+      }
+    }
     // Window header: the title's letters must not run into the clock or the "Levar os indicados" button.
     if(e.classList.contains('rh-offer-title')){
       const range=document.createRange();range.selectNodeContents(e);const tr=range.getBoundingClientRect();

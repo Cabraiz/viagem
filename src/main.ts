@@ -1,10 +1,10 @@
-import './style.css';
-import { setupSections } from './sections.ts';
-import { classes, filterClasses, getClass, roles, type HeroClass } from './classes.ts';
-import { mountIcons } from './ui/icon-sprite.ts';
-import { icon } from './ui/icon.ts';
+import './client/style.css';
+import { setupSections } from './client/sections.ts';
+import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/classes.ts';
+import { mountIcons } from './client/ui/icon-sprite.ts';
+import { icon } from './client/ui/icon.ts';
 mountIcons();
-if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./game/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
+if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./client/sandboxes/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];
 let selected = classes[0];
@@ -230,13 +230,13 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.getElementById('enter-island')!.before(coopButton);
 const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar as gosmas.';
-coopButton.addEventListener('click',async()=>{coopButton.disabled=true;try{const {openLobby}=await import('./game/lobby.ts');dialog.close();await openLobby(selected,nickname.trim());}catch{text('explore-error','Não foi possível abrir as salas.');}finally{coopButton.disabled=false;}});
+coopButton.addEventListener('click',async()=>{coopButton.disabled=true;try{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim());}catch{text('explore-error','Não foi possível abrir as salas.');}finally{coopButton.disabled=false;}});
 document.getElementById('back-to-classes')!.addEventListener('click',()=>dialog.close());
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   button.disabled=true;text('explore-error','');
   try {
-    const {openExploration}=await import('./game/explore.ts');
+    const {openExploration}=await import('./client/explore.ts');
     dialog.close();await openExploration(selected,nickname.trim());
   } catch {text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
   finally {button.disabled=false;}
@@ -244,10 +244,10 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
 setupSections(()=>{page=0;renderRoster();});
 matchMedia('(max-height:740px)').addEventListener('change',()=>{page=0;renderRoster();});
 renderRoster();renderSelected();
-if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./game/sandbox-horde.ts').then(m=>m.openHordeSandbox());
-if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./game/sandbox-fun.ts');
-if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./game/sandbox-hud.ts');
-if(new URLSearchParams(location.search).get('sandbox')==='voce')void import('./game/sandbox-voce.ts');
+if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./client/sandboxes/sandbox-horde.ts').then(m=>m.openHordeSandbox());
+if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./client/sandboxes/sandbox-fun.ts');
+if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./client/sandboxes/sandbox-hud.ts');
+if(new URLSearchParams(location.search).get('sandbox')==='voce')void import('./client/sandboxes/sandbox-voce.ts');
 // Playtest metrics (UX-playtest-metricas), dev only (exactly ?dev=1, as dev/ux-flag.ts; the menu imports nothing from
-// game/ statically, menu-perf): "Métricas" of this tab's last room session after "Sair".
-if(new URLSearchParams(location.search).get('dev')==='1'&&!new URLSearchParams(location.search).get('sandbox'))void import('./game/dev/ux-metrics.ts').then(m=>m.mountHomeExport(window)).catch(()=>undefined);
+// the game in client/ statically, menu-perf): "Métricas" of this tab's last room session after "Sair".
+if(new URLSearchParams(location.search).get('dev')==='1'&&!new URLSearchParams(location.search).get('sandbox'))void import('./client/dev/ux-metrics.ts').then(m=>m.mountHomeExport(window)).catch(()=>undefined);

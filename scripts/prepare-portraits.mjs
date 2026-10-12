@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { classes } from '../src/classes.ts';
+import { classes } from '../src/rules/classes.ts';
 
 const require = createRequire(import.meta.url);
 const sharp = require(process.env.VIAGEM_SHARP_MODULE || 'sharp');

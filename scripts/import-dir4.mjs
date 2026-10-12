@@ -6,7 +6,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import {validateDirectionalAtlas,approvedPivotX} from './sprite-atlas.mjs';
 
-export const CATALOG='src/game/sprite-catalog.ts';
+export const CATALOG='src/client/sprites/sprite-catalog.ts';
 const exists=file=>stat(file).then(()=>true,()=>false);
 export async function readCatalog(file=CATALOG){
   const text=await readFile(file,'utf8');

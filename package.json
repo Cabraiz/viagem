@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json && tsc -p scripts/bots/tsconfig.json",
     "preview": "node scripts/serve.mjs",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "prepare:art": "node scripts/prepare-portraits.mjs",
     "test:multiplayer:local": "node scripts/check-multiplayer-local.mjs",
     "test:multiplayer:production": "node --experimental-strip-types scripts/check-multiplayer.mjs https://viagem-salas.viagem.workers.dev",

@@ -17,9 +17,9 @@ import assert from 'node:assert/strict';
 import {Bot} from './bot.ts';
 import {Link} from './lab-socket.ts';
 import {rates,TickStitcher,freePlan,percentile,mean,type MatchCost} from './metrics.ts';
-import {PROTOCOL_VERSION} from '../../src/game/net/protocol4.ts';
-import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../src/game/net/shared.ts';
-import {RECIPES} from '../../src/game/sim/stonewards/rules.ts';
+import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
+import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../multiplayer/simulation.ts';
+import {RECIPES} from '../../src/rules/stonewards.ts';
 
 const ORIGIN='http://127.0.0.1:4187';
 const CLASSES=['cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum'];

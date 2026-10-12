@@ -8,7 +8,7 @@
 import WebSocket from 'ws';
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-import {FrameDecoder,PROTOCOL_VERSION} from '../src/game/net/protocol4.ts';
+import {FrameDecoder,PROTOCOL_VERSION} from '../src/protocol/protocol4.ts';
 const args=process.argv.slice(2).filter(a=>a!=='--lab'),labMode=process.argv.includes('--lab');
 const endpoint=args[0];if(!endpoint)throw new Error('Pass the multiplayer HTTPS endpoint.');
 const origin=args[1]??'https://viagem.cyou';

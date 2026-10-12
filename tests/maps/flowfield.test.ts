@@ -533,7 +533,8 @@ test('15. option validation: odd wallPenalty/clearance values construct quickly 
   for(let y=0;y<W;y++)for(let x=0;x<W;x++)open[y*W+x]=x%4===2&&y%8!==(x%8===2?7:0)?0:1; // serpentine walls (reviewer's pen.ts)
   const m=mk(W,W,1,open,[4*W+4]);
   const build=(o:FlowFieldOptions,label:string)=>{const t=performance.now(),f=new FlowField(m.grid,m.goals,o),ms=performance.now()-t;
-    assert.ok(ms<50,`${label}: constructor took ${ms.toFixed(1)} ms`);return f;};
+    // D-031: guards against hangs (NaN once looped forever, 1e7 took 1.8 s); >60x the ~15 ms seen on an idle machine.
+    assert.ok(ms<1000,`${label}: constructor took ${ms.toFixed(1)} ms`);return f;};
   const same=(o:FlowFieldOptions,label:string,as:FlowFieldOptions)=>{
     const f=build(o,label);sameField(dump(f,m),dump(new FlowField(m.grid,m.goals,as),m),W,`${label} behaves like ${JSON.stringify(as)}`);
     const clr=as.clearance??0,e=clr?eroded(m,clr):m;
@@ -638,6 +639,8 @@ test('19. benchmark: 192x192 full compute and 3x3 invalidate (best median of 3 b
   for(let t=0;t<100;t++)for(let a=0;a<300;a++){f.directionAt(px[a]+t*.003,py[a]-t*.002,out);sum+=out.x+out.y;}
   const per=(performance.now()-t0)/100;
   console.log(`[bench] flowfield directionAt 300 agents x 100 ticks: ${per.toFixed(3)} ms/tick (${(per*1e6/300).toFixed(0)} ns/call, checksum ${sum.toFixed(3)})`);
+  // D-031: timing limits only fail the run with BENCH=1; the normal suite just logs the numbers.
+  if(process.env.BENCH!=='1')return;
   assert.ok(Math.min(...res[0].full)<=25,`full compute best median ${Math.min(...res[0].full).toFixed(2)} ms > 25`);
   assert.ok(Math.min(...res[0].inv)<=5,`invalidate best median ${Math.min(...res[0].inv).toFixed(2)} ms > 5`);
 });

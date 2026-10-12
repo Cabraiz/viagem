@@ -1,5 +1,7 @@
-import test from 'node:test';
+import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
+import {setFlagsFromString} from 'node:v8';
+import {runInNewContext} from 'node:vm';
 import {Rng} from '../../src/contract/rng.ts';
 import type {SimEvent} from '../../src/contract/types.ts';
 import type {EnemyView,PickupView,ProjectileView,RunView,StructureView,TelegraphView} from '../../src/contract/view.ts';
@@ -7,6 +9,19 @@ import {
   FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
+
+/**
+ * Size of the bandwidth measurements. The default suite uses 2 clients (bytes per client do not depend on how many
+ * there are) so the file stays under ~250 MB; `npm run test:protocol:stress` (tests/protocol/stress/) runs the
+ * full room: 6 clients and the long no-interest run, as recorded in D-018.
+ */
+const STRESS=!!(globalThis as {__P4_STRESS__?:boolean}).__P4_STRESS__;
+const CLIENTS=STRESS?6:2;
+// Collect each test's garbage before the next one, so the file's peak is the heaviest test, not their sum.
+setFlagsFromString('--expose-gc');
+// If a Node version ever stops exposing gc this way, the tests still run (only the memory peak grows back).
+const collect=(runInNewContext('typeof gc==="function"?gc:undefined') as (()=>void)|undefined)??(()=>{});
+afterEach(()=>collect());
 
 const near=(a:number,b:number,eps:number,msg:string)=>assert.ok(Math.abs(a-b)<=eps,`${msg}: ${a} vs ${b}`);
 const POS_EPS=1/POS_SCALE;
@@ -140,6 +155,7 @@ test('delta frames against acked baselines track a busy world for 400 ticks',()=
   const inFlight:{seq:number;event:number;at:number}[]=[];
   let fullBytes=0,deltaBytes=0,deltas=0;
   for(let i=0;i<400;i++){
+    if(i%100===99)collect();
     enc.pushEvents(stepWorld(w,rng));
     if(i%2)continue; // 10 Hz
     const bytes=enc.encode(w.view);
@@ -265,8 +281,9 @@ test('control messages: forged or oversized input is refused',()=>{
 test('bandwidth for 6 clients x 300 enemies at 10 and 20 Hz fits mobile 4G',t=>{
   const results:Record<string,number>={};
   for(const hz of [10,20]){
+    collect();
     const rng=new Rng(8),w=busyWorld(rng);
-    const clients=Array.from({length:6},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+    const clients=Array.from({length:CLIENTS},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
     const seconds=10,every=20/hz;
     let bytes=0;
     for(let i=0;i<seconds*20;i++){
@@ -566,13 +583,18 @@ function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
   };
   return {view,step};
 }
-/** Bytes/s per client at 10 Hz over 10 s, acks ~150 ms late; `stagger` spreads the clients over both ticks. */
-function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean,stagger=false){
+/**
+ * Bytes/s per client at 10 Hz over `ticks` server ticks (200 = 10 s), acks ~150 ms late; `stagger` spreads the clients
+ * over both ticks. Measures the first CLIENTS players (2 by default, all 6 under the stress run).
+ */
+function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean,stagger=false,ticks=200){
   const ids=new WireIds();
-  const clients=world.view.players.map((p,i)=>({enc:new FrameEncoder(ids,{viewer:p.id,interest:interest?undefined:false,slot:stagger?sendSlot(i):0}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+  const clients=world.view.players.slice(0,CLIENTS).map((p,i)=>({enc:new FrameEncoder(ids,{viewer:p.id,interest:interest?undefined:false,slot:stagger?sendSlot(i):0}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
   let bytes=0,enemies=0,frames=0,encodeMs=0;
   const perTick:number[]=[];
-  for(let i=0;i<200;i++){
+  collect();
+  for(let i=0;i<ticks;i++){
+    if(i%50===49)collect();
     const events=world.step();
     for(const c of clients)c.enc.pushEvents(events);
     let tickMs=0;
@@ -587,8 +609,8 @@ function measure(world:{view:FrameInput;step:()=>SimEvent[]},interest:boolean,st
     if(tickMs>0)perTick.push(tickMs);
   }
   perTick.sort((a,b)=>a-b);
-  assert.equal(frames,clients.length*100,'10 Hz for every client');
-  return {encodeTickMsP50:Math.round(perTick[perTick.length>>1]*100)/100,encodeTickMsP95:Math.round(perTick[Math.floor(perTick.length*.95)]*100)/100,bytesPerSecond:Math.round(bytes/clients.length/10),enemiesPerFrame:Math.round(enemies/frames),eventBytes:Math.round(clients[0].enc.stats.eventBytes/10),
+  assert.equal(frames,clients.length*ticks/2,'10 Hz for every client');
+  return {encodeTickMsP50:Math.round(perTick[perTick.length>>1]*100)/100,encodeTickMsP95:Math.round(perTick[Math.floor(perTick.length*.95)]*100)/100,bytesPerSecond:Math.round(bytes/clients.length/(ticks/20)),enemiesPerFrame:Math.round(enemies/frames),eventBytes:Math.round(clients[0].enc.stats.eventBytes/(ticks/20)),
     encodeMsPerFrame:Math.round(encodeMs/frames*100)/100};
 }
 
@@ -597,7 +619,8 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   const atOrigin=measure(clusters(new Rng(51),[{x:12,y:12}],[0,0,0,0,0,0]),true);
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const apart=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true);
-  const apartAll=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),false);
+  // Without area of interest every client gets every horde (~9x the bytes): a short run is enough to show it.
+  const apartAll=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),false,false,STRESS?200:60);
   const staggered=measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true,true);
   t.diagnostic(`protocol 4, wide map, bytes/s per client at 10 Hz: together ${JSON.stringify(together)}; same at the origin ${JSON.stringify(atOrigin)}; spread 200 u ${JSON.stringify(apart)}; spread without area of interest ${JSON.stringify(apartAll)}; spread, clients staggered over both ticks ${JSON.stringify(staggered)}`);
   assert.ok(Math.abs(staggered.bytesPerSecond-apart.bytesPerSecond)<apart.bytesPerSecond*.05,'staggering costs no bandwidth');
@@ -789,7 +812,9 @@ test('N27 chained frames: deltas on the previous frame track a busy world exactl
     const rng=new Rng(11),w=busyWorld(rng);
     const enc=new FrameEncoder(new WireIds(),{chain}),dec=new FrameDecoder();
     const decoded:{seq:number;event:number}[]=[];let bytes=0,frames=0,events=0;
+    collect();
     for(let i=0;i<600;i++){
+      if(i%100===99)collect();
       enc.pushEvents(stepWorld(w,rng));
       if(i%2)continue;
       const e0=enc.stats.eventBytes,b=enc.encode(w.view),r=dec.decode(b);

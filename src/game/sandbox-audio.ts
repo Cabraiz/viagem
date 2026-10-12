@@ -1,10 +1,13 @@
 /** `?sandbox=audio`: full-screen sound lab to hear every procedural sound on a phone (VGM-050). */
 import { SOUND_IDS, type SoundId } from './audio/types.ts';
-import { RECIPES, SOUND_EMOJI } from './audio/recipes.ts';
+import { RECIPES, SOUND_ART, type SoundArt } from './audio/recipes.ts';
+import { icon } from '../ui/icon.ts';
+import { sticker } from '../ui/sticker.ts';
 import { getAudio, MAX_VOICES } from './audio/engine.ts';
 import { mountAudioControls } from './audio/controls.ts';
 
 const PASTELS=[['#d6eee4','#75b8a6'],['#fbdcd8','#ed8f91'],['#e5ddf1','#a391d4'],['#fbefcb','#d9b04f'],['#d8e9f5','#73add1'],['#f6dcea','#d99bbf']];
+const art=(a:SoundArt)=>'icon' in a?icon(a.icon,{size:32}):'sticker' in a?sticker(a.sticker,{size:32}):a.word;
 const CHAOS_PLAYS=40,CHAOS_SPREAD_MS=900;
 
 const CSS=`
@@ -21,7 +24,7 @@ const CSS=`
 .audio-lab-close{flex:none;width:44px;height:44px;border:2px solid #b4a4cd;border-radius:50%;background:#fffdf5;color:#7563ae;font-size:22px;line-height:1;cursor:pointer}
 .audio-lab-grid{grid-area:grid;min-height:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));grid-auto-rows:minmax(44px,1fr)}
 .audio-lab-sound{position:relative;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;border:2px solid var(--ink);border-radius:18px;background:var(--bg);color:#514464;font:800 13px/1.15 var(--f-sistema);text-align:center;box-shadow:0 4px 0 var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.audio-lab-sound b{font-size:clamp(22px,5.2vmin,34px);line-height:1}
+.audio-lab-sound b{display:grid;place-items:center;min-height:32px;font:400 21px/1 var(--f-cartaz)}
 .audio-lab-sound span{overflow-wrap:anywhere}
 .audio-lab-sound:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
 .audio-lab-sound.audio-ok{animation:audio-pop .28s ease-out}
@@ -74,9 +77,9 @@ export function openAudioSandbox():void{
   lab.innerHTML=`<header class="audio-lab-head"><div><h1 id="audio-lab-title">Laboratório de barulho</h1><p>Aperte tudo. Os vizinhos já desistiram.</p></div><button type="button" class="audio-lab-close" aria-label="Fechar laboratório">×</button><p class="audio-lab-hint" role="status">Toque em qualquer lugar para liberar o som</p></header>
 <div class="audio-lab-grid">${SOUND_IDS.map((id,i)=>{
   const [bg,ink]=PASTELS[i%PASTELS.length];
-  return `<button type="button" class="audio-lab-sound" data-sound="${id}" style="--bg:${bg};--ink:${ink}"><b aria-hidden="true">${SOUND_EMOJI[id]}</b><span>${RECIPES[id].label}</span></button>`;
+  return `<button type="button" class="audio-lab-sound" data-sound="${id}" style="--bg:${bg};--ink:${ink}"><b aria-hidden="true">${art(SOUND_ART[id])}</b><span>${RECIPES[id].label}</span></button>`;
 }).join('')}</div>
-<div class="audio-lab-panel"><div class="audio-lab-controls"></div><div class="audio-lab-row"><div class="audio-lab-voices"><span>vozes ativas: <strong></strong></span><small aria-live="polite"></small></div><button type="button" class="audio-lab-chaos">Caos! 💥</button></div></div>
+<div class="audio-lab-panel"><div class="audio-lab-controls"></div><div class="audio-lab-row"><div class="audio-lab-voices"><span>vozes ativas: <strong></strong></span><small aria-live="polite"></small></div><button type="button" class="audio-lab-chaos">Caos!</button></div></div>
 `;
   document.body.append(lab);
 

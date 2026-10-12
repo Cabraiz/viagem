@@ -228,10 +228,12 @@
 .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon . price' 'name name name' 'blurb blurb blurb';align-content:start;padding:4px 6px 5px 26px}
 .rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:-18px}
+/* Icon on its own row here: the whole 24 px sticker, so its paper edge never touches the name's accents. */
+.rh-offer-cards[data-count='4'] .rh-card-icon{height:24px}
 .rh-offer[data-count='4'] .rh-offer-joke{display:none}
 .rh-card{
   --tilt:var(--of-tilt-a);
-  position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb blurb' 'icon joke joke';
+  position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price' 'icon joke joke';
   align-items:center;column-gap:6px;row-gap:0;min-width:0;min-height:44px;padding:5px 8px 5px 26px;
   border-radius:var(--r-etiqueta);border:2px solid var(--c-breu);background:var(--c-papel);color:var(--c-breu);
   box-shadow:var(--s-1);text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
@@ -242,25 +244,28 @@
    Nothing sits beside it, so it never reads as a radio button. */
 .rh-card::before{content:'';position:absolute;left:6px;top:6px;width:10px;height:10px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
 .rh-card:active{transform:rotate(var(--tilt)) translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-.rh-card-icon{grid-area:icon;width:24px;text-align:center;font-size:20px;line-height:1}
+/* The item's sticker (src/ui/stickers.svg): 24 px, in a 20 px row so the tag is no taller than with the old emoji. */
+.rh-card-icon{grid-area:icon;display:grid;place-items:center;width:24px;height:20px}
 .rh-card-body{display:contents}
 .rh-card-name{grid-area:name;min-width:0;font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-breu);text-wrap:balance;overflow-wrap:anywhere;hyphens:auto}
 .rh-card-blurb{grid-area:blurb;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
 .rh-card-joke{display:none}
 /* Level as a price: small "Nv", big number (Londrina, tabular so it never dances). */
-.rh-card-price{grid-area:price;display:flex;align-items:baseline;gap:2px;color:var(--c-lilas)}
+.rh-card-price{grid-area:price;align-self:start;margin-bottom:3px;display:flex;align-items:baseline;gap:2px;color:var(--c-lilas)}
 .rh-card-price-unit{font:800 var(--t-13)/1 var(--f-sistema)}
 .rh-card-price-value{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 /* "Novo!" sits in the price slot, the size of the price (a launch's price): Amarelo star with a Breu edge, 8°.
    When every tag is new the title says "Tudo novo!" and the stars shrink to a mark (the word stays in aria-label). */
-.rh-card-star{grid-area:price;position:relative;display:grid;place-items:center;width:38px;height:38px;margin:-6px 0;transform:rotate(8deg)}
+/* The seal (star, price, word) owns its grid cells: it may ride the tag's top edge, never down over a letter of the name
+   or effect (audit: selo × título). */
+.rh-card-star{grid-area:price;align-self:start;position:relative;display:grid;place-items:center;width:38px;height:38px;margin:-6px 0 6px;transform:rotate(8deg)}
 .rh-card-star::before,.rh-card-star::after{content:'';position:absolute;clip-path:polygon(50% 0%,60.1% 12.3%,75% 6.7%,77.6% 22.4%,93.3% 25%,87.7% 39.9%,100% 50%,87.7% 60.1%,93.3% 75%,77.6% 77.6%,75% 93.3%,60.1% 87.7%,50% 100%,39.9% 87.7%,25% 93.3%,22.4% 77.6%,6.7% 75%,12.3% 60.1%,0% 50%,12.3% 39.9%,6.7% 25%,22.4% 22.4%,25% 6.7%,39.9% 12.3%)}
 .rh-card-star::before{inset:0;background:var(--c-breu)}
 .rh-card-star::after{inset:3px;background:var(--c-amarelo)}
 .rh-card-star>span{position:relative;z-index:1;font:400 13px/1 var(--f-cartaz);color:var(--c-breu)}
-.rh-offer-all-new .rh-card-star{width:22px;height:22px;margin:0}
-.rh-offer-all-new .rh-card-star>span{display:none}
-.rh-card-tag{grid-area:price;padding:1px 5px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap}
+/* "Tudo novo!" in the title says it once: the stars go (an empty star read as a bug, design review). */
+.rh-offer-all-new .rh-card-star{display:none}
+.rh-card-tag{grid-area:price;align-self:start;margin-bottom:3px;padding:1px 5px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap}
 .rh-card[data-kind=snack] .rh-card-tag{border-color:var(--c-breu);background:var(--c-cartolina);color:var(--c-breu)}
 /* The default tag: thicker Lilás edge plus the notch the "automático" note points at (shape, not only color). */
 .rh-offer-clock .rh-card-default{border-color:var(--c-lilas);box-shadow:0 0 0 1px var(--c-breu),var(--s-1)}
@@ -326,9 +331,8 @@
 .rh-offer[data-mode=combat] .rh-card::before{left:6px;top:8px}
 .rh-offer[data-mode=combat] .rh-card-name{font-size:min(var(--t-16),16px)}
 /* 34 px is the smallest star whose body holds "Novo!" at 13 px (the audit checks 80% of its width). */
-.rh-offer[data-mode=combat] .rh-card-star{width:34px;height:34px;margin:-6px 0}
+.rh-offer[data-mode=combat] .rh-card-star{width:34px;height:34px;margin:-6px 0 6px}
 .rh-offer[data-mode=combat] .rh-card-stamp{width:84%;font-size:var(--t-21);padding:1px 4px 2px}
-.rh-offer[data-mode=combat] .rh-card-icon{font-size:18px}
 /* The strip never scales past 16 px (B2): at 125% the tags are no wider, and the icon and the price must not touch. */
 .rh-offer[data-mode=combat] .rh-card-price-value{font-size:min(var(--t-21),21px)}
 .rh-offer[data-mode=combat] .rh-card-price-unit{font-size:13px}
@@ -354,7 +358,7 @@
   .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot){flex:none}
   /* 125%: four tags in two columns break names into three lines; one column of list tags reads better (it scrolls). */
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb blurb' 'icon joke joke';padding:5px 8px 5px 26px}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price' 'icon joke joke';padding:5px 8px 5px 26px}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
   .rh-offer-cards[data-count='4'] .rh-offer-joke,.rh-offer[data-count='4'] .rh-offer-joke{display:none}
   :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}
@@ -373,7 +377,7 @@
    so the middle (hero, island, the fallen) stays clear; "Levar os indicados" rides in the header. */
 @media (max-height:500px){
   .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;width:min(40vw,360px);max-width:none;margin:0;padding:3px 6px 4px}
-  .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0}
+  .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0 6px}
   /* Never closer than 24 px to the skill button: past that the list scrolls inside, as in portrait (zones audit). */
   .rh-offer[data-mode=intermission]{max-height:calc(100vh - var(--rh-t) - 52px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}
   .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 8px;margin:-6px -6px 0}
@@ -388,22 +392,18 @@
   .rh-offer-foot{margin-top:5px}
   .rh-card{padding:2px 8px 2px 26px}
   .rh .rh-offer-all{top:4px}
-  .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price' 'blurb blurb';padding:3px 6px 3px 22px}
-  .rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:0}
-  .rh-offer-cards[data-count='4'] .rh-card-icon{display:none}
+  /* Four tags: one column of list tags, like three (the list scrolls inside); the sticker and the effect stay. */
+  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
+  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price';padding:2px 8px 2px 26px}
+  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
   .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
-  /* 125%: the right column is 190 px tall. Tags go 2x2 with name and price only; the effect line is the one exception
-     to "never hidden", kept in each tag's aria-label and readable with the window folded or in portrait. */
+  /* 125%: the right column is 190 px tall. Same one-column list (sticker, name, price, effect); it scrolls inside. */
   :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
   :root[data-texto="125"] .rh-offer .rh-offer-auto,:root[data-texto="125"] .rh-offer .rh-card-default::after{display:none}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'name price';padding:4px 6px 4px 22px}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-name{margin-left:0;font-size:min(var(--t-16),16px)}
+  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-name{font-size:min(var(--t-16),16px)}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-deadline{display:none}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-icon{display:none}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-blurb{display:none}
   :root[data-texto="125"] .rh .rh-offer-all{font-size:13px}
   :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{padding-right:150px}
 }
@@ -450,9 +450,9 @@
 .rh-result-shame-joke{display:block;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
 /* The same moment as the first chip of that player's card, when the notice would make the six cards scroll. */
 /* The card's chip has no pin hole (design review pacote-bugs-ux: the "●" read as a stray bullet before the sticker); the
-   paper, the Breu edge and the slight turn still say "notice". */
+   paper, the Breu edge and the slight turn still say "notice". The critter sticker sits in the award's 32 px column. */
 .rh-award-shame{position:relative;background:var(--c-papel);border-color:var(--c-breu);transform:rotate(-.6deg)}
-.rh-award-shame .rh-award-emoji :is(img,svg){width:18px;height:18px;vertical-align:-4px;object-fit:contain}
+.rh-award-shame .rh-award-emoji :is(img,svg){width:28px;height:28px;object-fit:contain}
 /* Portrait with 5-6 cards (and any big text): the joke is the optional line, it goes so the six cards keep fitting. */
 @media (min-height:501px){
   .rh-result:has(.rh-result-grid:is([data-count="5"],[data-count="6"])) .rh-result-shame-joke{display:none}
@@ -483,18 +483,18 @@
 .rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:normal;text-wrap:balance;text-align:left}
 .rh-rcard-tag{padding:0 6px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/1.3 var(--f-sistema)}
 
-.rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:3px;min-width:0}
-.rh-rbuild{position:relative;display:grid;place-items:center;width:24px;height:24px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:1px solid var(--c-lilas)}
-.rh-rbuild[data-kind=passive]{border-color:var(--c-breu)}
-.rh-rbuild[data-kind=evolution]{background:var(--c-amarelo);border-color:var(--c-breu)}
-.rh-rbuild-icon{font-size:15px;line-height:1}
-.rh-rbuild-level{position:absolute;right:-4px;bottom:-5px;min-width:14px;padding:0 2px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/14px var(--f-sistema);text-align:center}
+.rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+/* A build slot is the item's own sticker (it has its paper edge): 28 px slot, 24 px sticker, 6 px apart; weapon,
+   passive and evolution differ by the level tag (Lilás number, Breu number, Amarelo star on Breu), shape and ink. */
+.rh-rbuild{position:relative;flex:none;display:grid;place-items:center;width:28px;height:28px}
+.rh-rbuild-icon{display:grid;place-items:center}
+.rh-rbuild-level{position:absolute;right:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/14px var(--f-sistema);text-align:center}
 .rh-rbuild[data-kind=passive] .rh-rbuild-level{background:var(--c-breu)}
-/* 3+ players in portrait: slimmer icons so 5 slots fit one row beside the portrait. */
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-build{gap:2px;flex-wrap:nowrap}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rbuild{width:22px;height:22px}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rbuild-icon{font-size:14px}
-.rh-rbuild-more{background:var(--c-papel);color:var(--c-lilas);font:800 var(--t-13)/1 var(--f-sistema)}
+/* 3+ players: one row (BUILD_SLOTS), the rest in the "+N" chip; slots stay 28 px apart-to-apart but 24 px tall (the
+   sticker's own height), so six cards still fit without scrolling. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-build{flex-wrap:nowrap}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rbuild{height:24px}
+.rh-rbuild-more{border-radius:var(--r-etiqueta);border:1px solid var(--c-lilas);background:var(--c-papel);color:var(--c-lilas);font:800 var(--t-13)/1 var(--f-sistema)}
 .rh-rbuild[data-kind=evolution] .rh-rbuild-level{background:var(--c-breu);color:var(--c-amarelo)}
 
 .rh-rcard-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px 2px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro)}
@@ -503,22 +503,35 @@
 .rh-rstat-label{font:700 var(--t-13)/1.25 var(--f-sistema);color:var(--c-breu)}
 
 .rh-rcard-awards{display:flex;flex-direction:column;gap:4px}
-.rh-award{display:flex;align-items:flex-start;gap:5px;min-width:0;padding:3px 6px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:1px solid var(--c-lilas)}
-.rh-award-emoji{flex:none;font-size:16px;line-height:1.1}
+/* Award chip: a fixed 32 px column for the sticker, title and joke stacked beside it (never under the sticker). */
+.rh-award{display:grid;grid-template-columns:32px minmax(0,1fr);align-items:start;column-gap:6px;min-width:0;padding:3px 6px;border-radius:var(--r-etiqueta);background:var(--c-papel-claro);border:1px solid var(--c-lilas)}
+.rh-award-emoji{display:grid;place-items:center;width:32px;height:32px}
+.rh-award .rh-award-text{text-align:left}
 .rh-award-text{display:flex;flex-direction:column;min-width:0}
 .rh-award-title{font:800 var(--t-13)/1.15 var(--f-sistema);color:var(--c-lilas)}
 .rh-award-line{font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 
-/* 3+ players: emoji, title and joke flow as one paragraph ("Título · piada"); far fewer lines than stacked
-   blocks, so 6 cards fit without scrolling even with notch insets. Solo/duo keep the stacked chip. */
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{display:block;padding:3px 6px;line-height:1.15}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji{margin-right:3px;font-size:13px}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-text{display:inline}
+/* 3+ players: beside the sticker, the bold title runs into the joke as one paragraph (no " · " between them; the
+   weight tells them apart), which needs far fewer lines, so 6 cards fit without scrolling. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{padding:1px 5px;column-gap:4px}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-text{display:block;line-height:1.15}
+/* ...and the sticker is 24 px inside its 32 px column (a one-line award stays one line tall). */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji{height:24px}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{width:24px;height:24px}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-title{display:inline}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:inline;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line::before{content:' · '}
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:inline;margin-left:.3em;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
 /* 125% text with 3+ players: the award jokes go first (titles stay), so 6 cards still fit without scrolling. */
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:none}
+/* The cards would still scroll (result.ts fitCards): the jokes go, titles and stickers stay. */
+.rh-result-grid.rh-result-tight .rh-award-line{display:none}
+/* (the title alone is one 19 px line: the 24 px sticker gets a 24 px column and rides 2 px over the chip's padding,
+   so six cards with long names still fit without scrolling at 125%) */
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{grid-template-columns:24px minmax(0,1fr)}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji{width:24px;height:20px}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame{grid-template-columns:20px minmax(0,1fr)}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji{width:20px}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji :is(img,svg){width:20px;height:20px}
+:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{margin:-2px 0}
 /* ...and with 5-6 players only each card's first award stays (second sacrifice). */
 :root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}
 /* 3+ players: the "Você" tag sits on the portrait's lower edge (a badge), so the name keeps the whole row. */
@@ -584,20 +597,17 @@
 
   .rh-rcard-top{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img id" "img build";row-gap:3px}
   .rh-rcard-img{width:40px;height:40px}
-  .rh-rbuild{width:22px;height:22px}
-  .rh-rbuild-icon{font-size:14px}
   .rh-rcard-id{flex-direction:row;align-items:center;gap:5px}
   .rh-rcard-awards{flex-direction:row}
   .rh-rcard-awards .rh-award{flex:1 1 0}
-  /* Side-by-side chips are narrow: emoji, title and joke flow as one paragraph ("Título · piada"),
-     which needs far fewer lines than stacked blocks, so 6 cards fit even with notch insets. */
+  /* Side-by-side chips: same sticker column; the bold title runs into the joke (no " · "). */
   .rh-rcard-awards{gap:3px}
-  .rh-rcard-awards .rh-award,.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{display:block;padding:2px 5px;line-height:1.15}
-  .rh-award-emoji{margin-right:3px;font-size:13px}
-  .rh-award-text{display:inline}
+  .rh-rcard-awards .rh-award{padding:1px 5px;column-gap:4px}
+  .rh-award-text{display:block;line-height:1.15}
+  .rh-award-emoji{height:24px}
+  .rh-award-emoji .ic-adesivo{width:24px;height:24px}
   .rh-award-title{display:inline}
-  .rh-award-line{display:inline;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
-  .rh-award-line::before{content:' · '}
+  .rh-award-line{display:inline;margin-left:.3em;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
   .rh-rcard{padding:5px 6px;gap:2px}
   .rh-rcard-stats{padding:2px}
 }

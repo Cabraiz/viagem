@@ -8,6 +8,7 @@ import type {PlayerRunView} from '../sim/view.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
+import {sticker as drawSticker} from '../../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
 import {icon} from '../../ui/icon.ts';
@@ -52,8 +53,9 @@ export function compactNumber(value:number){
   return `${Math.floor(n/1000)}k`;
 }
 
-/** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip. */
-export const BUILD_SLOTS={portrait:5,landscape:7} as const;
+/** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip.
+ *  Slots are 28 px stickers 6 px apart (design review of DSG-adesivos-itens): 118 px beside the portrait fits 3, 207 px fits 6. */
+export const BUILD_SLOTS={portrait:3,landscape:6} as const;
 const LANDSCAPE='(max-height:500px)';
 
 /** Build icons in display order (evolutions, weapons, passives; higher level first). With more items than slots,
@@ -205,7 +207,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const info=itemDisplay(item.id);
       const li=el('li','rh-rbuild',build);li.dataset.kind=info.kind;
       li.setAttribute('aria-label',`${info.name} nível ${item.level}`);
-      const icon=el('span','rh-rbuild-icon',li);icon.textContent=info.icon;
+      el('span','rh-rbuild-icon',li).innerHTML=drawSticker(info.icon);
       const level=el('b','rh-rbuild-level',li);level.textContent=info.kind==='evolution'?'★':String(item.level);
     }
     if(shown.hidden.length){
@@ -240,10 +242,11 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     }
     for(const award of awards){
       const chip=el('li','rh-award',list);
-      const emoji=el('span','rh-award-emoji',chip);emoji.textContent=award.emoji;emoji.setAttribute('aria-hidden','true');
+      const mark=el('span','rh-award-emoji',chip);mark.innerHTML=drawSticker(award.icon,{size:32});mark.setAttribute('aria-hidden','true');
       const text=el('span','rh-award-text',chip);
       const name=el('strong','rh-award-title',text);name.textContent=award.title;
       const line=el('small','rh-award-line',text);line.textContent=award.line;
+      chip.setAttribute('aria-label',`${award.title}: ${award.line}`);
     }
     list.hidden=!awards.length;
     if(managing&&!me){
@@ -318,6 +321,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',2);
     fitShame();
     if(grid.scrollHeight>grid.clientHeight+1){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
+    // Last resort (DSG-adesivos-itens: long vice lines like "Empatou em … e perdeu no desempate."): the award jokes go,
+    // titles and stickers stay; each chip keeps its whole text in its aria-label.
+    grid.classList.remove('rh-result-tight');
+    if(grid.scrollHeight>grid.clientHeight+1)grid.classList.add('rh-result-tight');
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);

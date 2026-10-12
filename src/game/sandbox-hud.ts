@@ -19,6 +19,7 @@ import type {RunView} from './sim/view.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from './hud/coach.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
 import {uxMetricsEnabled} from './dev/ux-flag.ts';
+import {icon} from '../ui/icon.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
 const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a,'');
@@ -55,7 +56,7 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser){display:none!importan
 document.head.append(style);
 
 const world=document.createElement('div');world.className='hs-world';
-world.innerHTML='<div class="hs-mock hs-cam">↶ 1 / 4 ↷</div><div class="hs-mock hs-gear">⚙</div><div class="hs-mock hs-stick">●</div><div class="hs-mock hs-attack">Atacar</div>';
+world.innerHTML='<div class="hs-mock hs-cam">↶ 1 / 4 ↷</div><div class="hs-mock hs-gear">'+icon('config')+'</div><div class="hs-mock hs-stick">●</div><div class="hs-mock hs-attack">Atacar</div>';
 document.body.append(world);
 let moved=0;
 world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTaps=String(moved);});
@@ -66,6 +67,17 @@ world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTap
  */
 const LONG_NAMES=['Maria Aparecida dos','Seu Jorge do Pastel','Wagner Washington Mo','Tia da Festa Junina','Concurseira Eterna d','Zé do Pix Parcelado'];
 const bots=Math.max(0,Math.min(5,Number(params.get('bots'))||0));
+/**
+ * `premios=empates` (DSG-adesivos-itens): the real room the lab ends at once. One player did all the damage, one caught a
+ * thing, the rest tied at zero, so most cards get a vice with the long "Empatou em … e perdeu no desempate." line.
+ */
+const ties=params.get('premios')==='empates';
+function tied<T extends {players:{stats?:unknown;weapons:unknown;passives:unknown}[]}>(v:T):T{
+  if(!ties)return v;
+  const builds=[['guarda-chuva','ima'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
+  return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:builds[i%6][0],level:i===5?2:1}],passives:builds[i%6].slice(1).map(id=>({id,level:1})),
+    stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,magnets:0,chests:0,evolves:0}}))};
+}
 function named<T extends {players:{name:string}[]}>(v:T):T{
   if(params.get('nomes')!=='longos')return v;
   return {...v,players:v.players.map((p,i)=>({...p,name:LONG_NAMES[i%LONG_NAMES.length]}))};
@@ -96,7 +108,7 @@ function load(next:HudScenario){
   if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
-  if(scenario==='result')view.events=fakeResultEvents(players,()=>++eventId);
+  if(scenario==='result')view.events=ties?[]:fakeResultEvents(players,()=>++eventId);
   // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
   if(dica){
     view.events=[];
@@ -106,7 +118,7 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  if(scenario==='result')hud.showResult(named(fakeResult(players,!params.has('lose'),params.has('full'))));
+  if(scenario==='result')hud.showResult(tied(named(fakeResult(players,!params.has('lose'),params.has('full')))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
   // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once

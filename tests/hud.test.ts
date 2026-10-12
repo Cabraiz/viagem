@@ -135,7 +135,7 @@ test('joke awards: truthful winners, everyone gets one in a group, at most two, 
   const kills=Math.max(...result.players.map(p=>p.stats!.kills));
   assert.equal(result.players.find(p=>p.id===winner('exterminador'))?.stats?.kills,kills);
   assert.equal(winner('rei-do-resgate'),'p2');
-  for(const a of awards)assert.ok(a.title&&a.line&&a.emoji,a.id);
+  for(const a of awards)assert.ok(a.title&&a.line&&a.icon,a.id);
 });
 
 test('solo awards skip team-only titles; zero metrics win nothing',()=>{
@@ -152,7 +152,7 @@ test('runners-up get a vice title with their real place, never a first-place tit
   // p1 is 2nd in falls (1 × 4) and in damage (18,4k × 21k): consolation states the place, the earlier award wins the tie.
   const mine=awardsOf(awards,'p1');
   assert.equal(mine.length,1);assert.equal(mine[0].id,'vice-mais-caiu');assert.equal(mine[0].title,'Vice-campeão de tombo');
-  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].emoji,'🥈');
+  assert.match(mine[0].line,/^2º em "Mais caiu"/);assert.equal(mine[0].icon,'podio-2');
   for(const a of awards)if(firsts.has(a.id))assert.ok(!a.id.startsWith('vice-'));
   assert.ok(!awards.some(a=>a.id==='figurante'));
   // Ties share a place: two players tied for 2nd are both "2º", nobody is called 3rd.
@@ -160,6 +160,22 @@ test('runners-up get a vice title with their real place, never a first-place tit
   const tied=computeAwards(tie,emptyTally());
   assert.deepEqual(tied.map(a=>[a.playerId,a.id]),[['p1','carregou'],['p2','turista'],['p3','vice-turista']]);
   assert.match(awardsOf(tied,'p3')[0].line,/^Empatou em "Turista"/);
+});
+
+test('a vice title goes to one card when the player has another to take (no two "Turista de fim de semana")',()=>{
+  // Real room (lab end): one player did all the damage, four did none and are tied for "Turista"; two of them also
+  // picked things up. Before, both empty-handed ties showed the same vice; now the second takes its next-best vice.
+  const r=fakeResult(5);r.players=r.players.map((p,i)=>({...p,weapons:[],passives:[],stats:{damage:[2400,0,0,0,0][i],kills:[120,0,0,0,0][i],revives:0,pickups:[0,3,2,0,1][i]}}));
+  const awards=computeAwards(r,emptyTally());
+  const vices=awards.filter(a=>a.id.startsWith('vice-'));
+  assert.equal(vices.length,2,JSON.stringify(awards.map(a=>[a.playerId,a.id])));
+  assert.equal(new Set(vices.map(a=>a.title)).size,vices.length,JSON.stringify(awards.map(a=>[a.playerId,a.id])));
+  assert.match(computeAwards(r,emptyTally()).find(a=>a.id==='ima-humano')!.line,/^Catou 3 coisas/);
+});
+
+test('plural: one thing caught is "1 coisa"',()=>{
+  const r=fakeResult(1);r.players=r.players.map(p=>({...p,weapons:[],passives:[],stats:{damage:0,kills:0,revives:0,pickups:1}}));
+  assert.equal(computeAwards(r,emptyTally()).find(a=>a.id==='ima-humano')?.line,'Catou 1 coisa. Até chiclete.');
 });
 
 test('offer and result copy helpers are deterministic pt-BR',()=>{
@@ -176,9 +192,9 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
   const full=fakeResult(6,true,true).players[0];
   assert.equal(full.weapons.length+full.passives.length,12);
   const portrait=buildIcons(full,BUILD_SLOTS.portrait);
-  assert.deepEqual(portrait.items.map(i=>i.id),['chinelo-evo','boleto','cafe','guarda-chuva']);
-  assert.equal(portrait.hidden.length,8);assert.equal(portrait.items.length+1,BUILD_SLOTS.portrait);
-  assert.equal(buildIcons(full,BUILD_SLOTS.landscape).items.length,6);
+  assert.deepEqual(portrait.items.map(i=>i.id),['chinelo-evo','boleto']);
+  assert.equal(portrait.hidden.length,10);assert.equal(portrait.items.length+1,BUILD_SLOTS.portrait);
+  assert.equal(buildIcons(full,BUILD_SLOTS.landscape).items.length,5);
   // Fits exactly: no chip wasted on a single hidden item.
   const five={weapons:full.weapons.slice(0,3),passives:full.passives.slice(0,2)};
   assert.deepEqual(buildIcons(five,5).hidden,[]);assert.equal(buildIcons(five,Infinity).items.length,5);
@@ -188,7 +204,7 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
 
 test('full-build coxinha (HEAL_CHOICE) is a known, funny snack card, not "Item misterioso"',()=>{
   const heal=itemDisplay(HEAL_CHOICE);
-  assert.notEqual(heal.icon,'❔');assert.equal(heal.kind,'snack');
+  assert.equal(heal.icon,'coxinha');assert.equal(heal.kind,'snack');
   assert.match(heal.name,/Coxinha/);assert.ok(heal.blurb.includes(String(HEAL_AMOUNT)),heal.blurb);assert.ok(heal.joke);
   assert.equal(levelTag(HEAL_CHOICE,1),'Lanche');
 });

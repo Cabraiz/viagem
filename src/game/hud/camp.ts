@@ -12,6 +12,7 @@
 import type {RunView,StructureView} from '../sim/view.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../sim/stonewards/rules.ts';
 import {icon,type IconName} from '../../ui/icon.ts';
+import {sticker,type StickerName} from '../../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
@@ -28,7 +29,9 @@ export const MAX_TOWERS=3;
 /** Highest weapon level (evolutions.ts; gambiarra only raises a weapon below it). */
 const MAX_WEAPON_LEVEL=8;
 
-export const RECIPE_ICON:Readonly<Record<RecipeId,IconName>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':'chinelo'};
+/** The tower throws the same Chinelo da Mãe the run offers, so it wears that item's sticker (DSG-adesivos-itens). */
+export const RECIPE_ICON:Readonly<Record<RecipeId,IconName|{sticker:StickerName}>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':{sticker:'chinelo'}};
+const recipeArt=(art:IconName|{sticker:StickerName})=>typeof art==='string'?icon(art,{size:32}):sticker(art.sticker,{size:32});
 
 export interface ForgeAnswer {req:number;recipe:string;ok:boolean;reason?:string}
 export interface CampOptions {
@@ -108,7 +111,7 @@ export function createCamp(options:CampOptions):CampPart{
   const tags=new Map<RecipeId,{button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement}>();
   for(const id of RECIPE_IDS){
     const r=RECIPES[id],button=el('button','rh-forge-tag',list);button.type='button';button.dataset.recipe=id;
-    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${icon(RECIPE_ICON[id],{size:32})}</span>`);
+    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${recipeArt(RECIPE_ICON[id])}</span>`);
     const body=el('span','rh-forge-body',button);
     el('strong','rh-forge-name',body).textContent=r.name;
     el('span','rh-forge-desc',body).textContent=r.describe;
@@ -117,9 +120,9 @@ export function createCamp(options:CampOptions):CampPart{
       const part=el('span','rh-forge-cost',price);el('b','',part).textContent=String(r.cost[kind]);
       part.insertAdjacentHTML('beforeend',icon(kind,{label:kind==='coco'?'coco':'pedra'}));
     }
-    const lock=el('span','rh-forge-lock',button);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
+    const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
-    const full=el('span','rh-forge-full',button);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
+    const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
     el('span','rh-forge-stamp',button).textContent='LEVEI';
     tags.set(id,{button,lock,full});
   }

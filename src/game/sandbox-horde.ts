@@ -239,7 +239,7 @@ export function openHordeSandbox(){
   const game=new Phaser.Game({type:Phaser.WEBGL,parent:stage,backgroundColor:'#8dcecc',width:stage.clientWidth||innerWidth,height:stage.clientHeight||innerHeight,
     scale:{mode:Phaser.Scale.RESIZE},antialias:true,autoFocus:false,audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
   left.onclick=()=>scene.rotate(-1);right.onclick=()=>scene.rotate(1);
-  pause.onclick=()=>{scene.paused=!scene.paused;pause.textContent=scene.paused?'▶':'❚❚';pause.setAttribute('aria-label',scene.paused?'Continuar a horda':'Pausar a horda');};
+  pause.onclick=()=>{scene.paused=!scene.paused;pause.textContent=scene.paused?'Seguir':'❚❚';pause.setAttribute('aria-label',scene.paused?'Continuar a horda':'Pausar a horda');};
   // FPS over 1 s windows; the worst window is kept so a spike is not hidden by the average.
   let frames=0,windowStart=performance.now(),fps=0,worst=Infinity;const samples:number[]=[];
   const tick=(now:number)=>{

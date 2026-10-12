@@ -3,6 +3,8 @@
  * Budget: each sound <= 1.6 s (golpe/gema <= 0.15 s), <= 8 tones, 30..8000 Hz, gain <= 0.6.
  */
 import { SOUND_IDS, type SoundId, type SoundRecipe, type Tone } from './types.ts';
+import type { IconName } from '../../ui/icon.ts';
+import type { StickerName } from '../../ui/sticker.ts';
 
 const LOW={type:'lowpass',freq:2600,q:0.7} as const;
 
@@ -122,10 +124,14 @@ export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>[id,RECIPES[id].label])) as Record<SoundId,string>,
 );
 
-/** Emoji shown next to each label in the sandbox and settings. */
-export const SOUND_EMOJI:Readonly<Record<SoundId,string>>=Object.freeze({
-  golpe:'👊',gema:'💎',nivel:'⭐',upgrade:'✨',queda:'🫠',resgate:'🤝',chefe:'👹',
-  'round-inicio':'📣','round-fim':'🎉',buzina:'🤡',boing:'🌀',risada:'😂',
-  // The stamp shows its own word instead of an emoji (D-020: no new emoji).
-  carimbo:'tum',
+/**
+ * Sticker shown next to each label in the sound lab (DSG-adesivos-itens: no emoji). A system icon (icons.svg), an
+ * illustrated sticker (stickers.svg) or, for the stamp, its own word.
+ */
+export type SoundArt={icon:IconName}|{sticker:StickerName}|{word:string};
+export const SOUND_ART:Readonly<Record<SoundId,SoundArt>>=Object.freeze({
+  golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'podio-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
+  resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
+  boing:{sticker:'galo'},risada:{icon:'risada'},
+  carimbo:{word:'tum'},
 });

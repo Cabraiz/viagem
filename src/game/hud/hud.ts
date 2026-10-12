@@ -221,6 +221,11 @@ export class RunHud {
     if(this.last)this.alerts.update(this.last,this.ctx);
   }
 
+  /**
+   * A quiet row of the shell's own in the announcement slot (VGM-048: "modo econômico ligou sozinho"), above the
+   * coach's hint: it moves with the slot (top or low, off the hero) instead of floating over the minimap.
+   */
+  addRow(el:HTMLElement){this.stack.insertBefore(el,this.coachRow.el);this.relayout();}
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){
     if(this.ctx.network===text)return;
@@ -235,7 +240,7 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden]),.rh-row:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).

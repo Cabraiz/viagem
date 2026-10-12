@@ -107,7 +107,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   // TODO(cidade-05 steer hook): spread so tsc passes until EnemyAiOptions declares `steer` (the hook card types it).
-  const steer=avenues?{steer:citySteer(avenues)}:{};
+  const steer=avenues?{steer:citySteer(avenues,{terrain:cityTerrain})}:{};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,...steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},

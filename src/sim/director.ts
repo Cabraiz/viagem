@@ -11,11 +11,13 @@
  *   come from off screen around the base, on their way to it. Timed-out hordes flee off screen.
  * - city (cidade-05, with options.avenues): at the avenue tips through the AvenuePlanner (city/avenues.ts). The round is
  *   planned once at its start for the warning ticks; each group is planned again just in time at its warning, at
- *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s). Timed-out hordes
- *   walk back up the avenues (exit flow field) and vanish at the avenue end or once hidden and far from the plaza.
+ *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s). The round's timer
+ *   covers the slowest member's walk (CITY_ARRIVAL_SLACK). The boss lands in the plaza itself (D-026). Timed-out
+ *   hordes walk back up the avenues (exit flow field) and vanish out of everyone's sight, at the avenue end or far
+ *   from the plaza.
  */
 import type {TerrainField} from '../maps/index.ts';
-import {RADIUS,SPEED,clearSegment,isLand,walkable,worldBase,worldSpawn,type Point} from '../maps/index.ts';
+import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
 import {MAX_ENEMIES} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
@@ -24,7 +26,7 @@ import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
-import {cityTerrainOf} from './city/grid.ts';
+import {CITY_ENEMY_SPEED,cityTerrainOf} from './city/grid.ts';
 import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
@@ -184,10 +186,16 @@ const STUCK_UNITS=.5,STUCK_SECONDS=2;
 /** Endless retreat: fleeing is faster and may take longer than walking into the island's sea. */
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
- * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end, or once
- * hidden from everyone and CITY_GONE_DISTANCE from the plaza; FLEE_CAP_SECONDS is the liveness cap.
+ * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
+ * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
  */
 export const CITY_EXIT_REACH=2,CITY_GONE_DISTANCE=25;
+/**
+ * City round timer (v2): a wave that times out lasts at least until the slowest member of the last group could reach
+ * the plaza (or the team, where it stood when the wave started, if that is farther), plus this many seconds to fight
+ * it, so no group retreats before it arrived (planCity; it never shortens the plan's time; not the boss round).
+ */
+export const CITY_ARRIVAL_SLACK=10;
 const retreatDir={x:0,y:0};
 
 export function activePlayers(ctx:SimContext){
@@ -475,11 +483,53 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite);
     const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||isSiege(g,i));
     const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues);
-    const parts=planner!.planGroups(plan.groups.map(g=>cityRequest(g.members,g.at)),viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0});
+    // The boss appears in the plaza (cityWarn), not on an avenue: an empty request keeps every other group's index.
+    const requests=plan.groups.map(g=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at));
+    const parts=planner!.planGroups(requests,viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0});
     const warnAt=plan.groups.map(()=>Infinity);
     for(const part of parts)if(part.index<warnAt.length)warnAt[part.index]=Math.min(warnAt[part.index],part.warnTick);
-    const cityWarn=state.cityWarn=warnAt.map((w,i)=>Math.max(0,Number.isFinite(w)?w:plan.groups[i].at));
+    const cityWarn=state.cityWarn=warnAt.map((w,i)=>plan.groups[i].boss?plan.groups[i].at:Math.max(0,Number.isFinite(w)?w:plan.groups[i].at));
     state.cityOrder=plan.groups.map((_,i)=>i).sort((a,b)=>cityWarn[a]-cityWarn[b]||a-b);
+    // A round that times out lasts until the slowest member of the last group could have walked in, plus
+    // CITY_ARRIVAL_SLACK. Not the boss round: it never retreats, and its end tick is the boss's enrage (boss.ts).
+    const arrival=plan.retreat?cityLastArrival(ctx,parts):undefined;
+    if(arrival!==undefined)ctx.round.phaseEndsTick=Math.max(ctx.round.phaseEndsTick,state.roundStart+arrival+ticks(CITY_ARRIVAL_SLACK));
+  }
+  /** City: flow field toward the team (the players at the wave's start), for the round timer; on the planner's grid. */
+  let teamField:FlowField|undefined;
+  function cityTeamField(ctx:SimContext){
+    const grid=(planner as {grid?:FlowGrid}).grid;
+    if(!grid)return undefined;
+    const team:Point[]=[];
+    for(const p of ctx.players.values())if(p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)team.push({x:p.x,y:p.y});
+    if(!team.length)return undefined;
+    if(teamField)teamField.setTargets(team);else teamField=new FlowField(grid,team);
+    return teamField;
+  }
+  /**
+   * Latest arrival (ticks after the round start) of any member of the planned parts: each member walks from its spot
+   * at its own kind's speed × plan.speed (CITY_ENEMY_SPEED × plan.speed when unknown) to the plaza or, when the team
+   * stands farther away, to the team where it is now (the steer chases the players, citySteer); distances are
+   * flow-field costs (STRAIGHT_COST per cell, wall penalties included, so they never under-estimate the walk). The
+   * release is the fastest member's (first contact), so slower kinds trail behind.
+   */
+  function cityLastArrival(ctx:SimContext,parts:readonly {index:number;points:readonly Point[];releaseTick:number;arrivalTick:number}[]){
+    const plan=state.plan!,field=planner!.plazaField,team=cityTeamField(ctx),used=plan.groups.map(()=>0);
+    const units=(f:FlowField,p:Point)=>{const c=f.costAt(p.x,p.y);return c===UNREACHABLE?-1:c/STRAIGHT_COST*f.cellSize;};
+    let last:number|undefined;
+    for(const part of parts){
+      const group=plan.groups[part.index];
+      if(!group||group.boss)continue;
+      part.points.forEach((p,j)=>{
+        const kind=group.members[used[part.index]+j],known=kind===undefined?undefined:options.enemySpeedOf?.(kind);
+        const speed=(known!==undefined&&Number.isFinite(known)&&known>0?known:CITY_ENEMY_SPEED)*plan.speed;
+        const d=Math.max(units(field,p),team?units(team,p):-1);
+        const walk=d<0?part.arrivalTick-part.releaseTick:ticks(d/speed);
+        last=Math.max(last??0,part.releaseTick+walk);
+      });
+      used[part.index]+=part.points.length;
+    }
+    return last;
   }
   /**
    * Just in time: plans this group alone (its cadence slot `spawn.group`, released no earlier than `delay` + the
@@ -487,6 +537,13 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    * time, see cityWarnings) and queues the exact positions. Members without a spot try again a second later (retryLater).
    */
   function cityWarn(ctx:SimContext,spawn:SpawnRequest,delay:number){
+    if(spawn.boss){
+      // D-026: the boss lands in the plaza, warned like any group (spawnPending re-warns if a player stepped onto it).
+      const p=cityBossSpot(ctx),atTick=ctx.tick+delay+warning;
+      state.pending.push({...spawn,x:p.x,y:p.y,atTick});
+      ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:spawn.members.length});
+      return;
+    }
     const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
     const parts=planner!.planGroups([cityRequest(spawn.members,at)],viewers(ctx),state.avenues!,random(),
       {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning});
@@ -502,6 +559,23 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       state.pending.push(entry);
     }
     if(used<spawn.members.length)retryLater(ctx,{...spawn,members:spawn.members.slice(used)},delay);
+  }
+  /** Centers of the plaza goal cells, nearest to planner.plazaCenter first (ties: cell order); read once. */
+  let plazaSpots:Point[]|undefined;
+  /** Boss spot: the walkable plaza goal cell nearest the plaza center >= minPlayerDistance from every body, else the center. */
+  function cityBossSpot(ctx:SimContext):Point{
+    const field=planner!.plazaField,center=planner!.plazaCenter;
+    if(!plazaSpots){
+      const cells:{p:Point;d:number}[]=[];
+      for(let cy=0;cy<field.height;cy++)for(let cx=0;cx<field.width;cx++){
+        if(field.cellCost(cx,cy)!==0)continue;
+        const p={x:field.originX+(cx+.5)*field.cellSize,y:field.originY+(cy+.5)*field.cellSize};
+        cells.push({p,d:Math.hypot(p.x-center.x,p.y-center.y)});
+      }
+      plazaSpots=cells.sort((a,b)=>a.d-b.d).map(c=>c.p);
+    }
+    for(const p of plazaSpots)if(field.atGoal(p.x,p.y)&&walkable(p,ctx.terrain)&&nearestPlayer(ctx,p)>=minDistance)return {x:p.x,y:p.y};
+    return {x:center.x,y:center.y};
   }
   /** Every member spot still hidden from every viewer and >= minPlayerDistance away (the planner's rule). */
   function cityHidden(ctx:SimContext,entry:PendingSpawn){
@@ -529,8 +603,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
   /**
    * City retreat: back up the avenues along the exit flow field (moveSafely: never through a building) at the island's
-   * retreat pace; gone near the avenue end, at the field's goal, once hidden and CITY_GONE_DISTANCE from the plaza, or
-   * at the FLEE_CAP_SECONDS cap.
+   * retreat pace; gone near the avenue end, at the field's goal or CITY_GONE_DISTANCE from the plaza, but only while
+   * hidden from every viewer (planner.hiddenFrom); the FLEE_CAP_SECONDS cap removes it regardless (liveness: a player
+   * camping at an avenue end must not keep a body alive forever).
    */
   function moveCityRetreats(ctx:SimContext){
     const players=viewers(ctx),plaza=planner!.plazaCenter;
@@ -541,8 +616,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
       const end=avenueEnd(ctx,planner!.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
-      const gone=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||planner!.exitField.atGoal(e.x,e.y)
-        ||Math.hypot(e.x-plaza.x,e.y-plaza.y)>=CITY_GONE_DISTANCE&&planner!.hiddenFrom(players,e)||ctx.tick>=r.untilTick;
+      // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.
+      const out=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||planner!.exitField.atGoal(e.x,e.y)
+        ||Math.hypot(e.x-plaza.x,e.y-plaza.y)>=CITY_GONE_DISTANCE;
+      const gone=out&&planner!.hiddenFrom(players,e)||ctx.tick>=r.untilTick;
       if(gone){ctx.enemies.delete(r.id);state.retreated++;return false;}
       return true;
     });
@@ -622,7 +699,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const request=requestOf(entry),isCity=city(ctx);
     // Endless: no hidden spot was found earlier, or a player now sees the warned one. Island: a player walked onto it.
     // City: a viewer now sees (or stands near) a member's spot. Either way, warn again somewhere else.
-    if(entry.retry||(isCity?!cityHidden(ctx,entry):endless(ctx)?!hiddenBy(ctx,center,SPAWN_MARGIN):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
+    // City boss (in the plaza, in sight by design): only a player standing on its spot moves it.
+    if(entry.retry||(isCity?entry.boss?nearestPlayer(ctx,center)<minDistance:!cityHidden(ctx,entry):endless(ctx)?!hiddenBy(ctx,center,SPAWN_MARGIN):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
     if(entry.boss){
       const before=new Set(ctx.enemies.keys());
       // Without VGM-038 the catalog's 'chefe' stands in, so the final round still has a boss to beat.

@@ -3,6 +3,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer, type RoomRoster } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
+import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/game/sim/zueira.ts';
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
@@ -41,7 +42,8 @@ export class GameRoom extends DurableObject<Env>{
   private room?:Room;
   /** The room being built from storage (a restarted object): concurrent reconnects wait for the same one. */
   private loading?:Promise<Room>;
-  private timer?:ReturnType<typeof setInterval>;
+  /** Wall clock with catch-up (N17): 20 ticks/s of real time while someone is connected. */
+  private loop=new TickLoop(now=>this.room?.advance(now),{now:()=>Date.now(),set:(fn,ms)=>setTimeout(fn,ms),clear:h=>clearTimeout(h as ReturnType<typeof setTimeout>)});
   private peers=new Map<WebSocket,Peer>();
   async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);this.loading=Promise.resolve(this.room);await this.ctx.storage.setAlarm(now+31*60_000);}}
   private create(created:number,seed:number){
@@ -60,7 +62,7 @@ export class GameRoom extends DurableObject<Env>{
     })();
   }
   /** Lab report (RPC from the /lab route); null on the deployed Worker even if something calls it. */
-  lab(){return local(this.env)?this.room?.lab()??null:null;}
+  lab(){if(!local(this.env)||!this.room)return null;return {...this.room.lab(),clock:this.loop.clock.stats};}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
@@ -69,10 +71,10 @@ export class GameRoom extends DurableObject<Env>{
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>server.close(code,reason)};
     this.peers.set(server,peer);room.connect(peer);
     server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else server.close(1003,'Texto esperado.');});
-    const close=()=>{this.room?.disconnect(peer);this.peers.delete(server);if(!this.peers.size&&this.timer){clearInterval(this.timer);this.timer=undefined;}};
+    const close=()=>{this.room?.disconnect(peer);this.peers.delete(server);if(!this.peers.size)this.loop.stop();};
     server.addEventListener('close',close);server.addEventListener('error',close);
-    this.timer??=setInterval(()=>this.room?.advance(),50);
+    this.loop.start();
     return new Response(null,{status:101,webSocket:client});
   }
-  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');if(this.timer)clearInterval(this.timer);this.timer=undefined;this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
+  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

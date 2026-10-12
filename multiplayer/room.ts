@@ -25,7 +25,11 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  */
 type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number;
   /** Its slot came up during a catch-up burst (N17): the frame goes once, on the burst's last tick. */
-  owed?:boolean};
+  owed?:boolean;
+  /** When the recent frames left (seq → ms, a ring of FRAME_TIMES): an ack says how late this phone runs. */
+  frameSeq?:Int32Array;frameAt?:Float64Array;
+  /** How far behind this phone decodes (ms, the latest ack's frame age), and the widest gap between its messages. */
+  lag:number;gap:number};
 /** `hash` is sha256(token): storage only ever sees hashes; `token` is known in memory once issued or presented. */
 type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
@@ -106,6 +110,27 @@ export const OFFER_ID=/^(lvl|rnd)-\d+-[\w-]{1,40}(~\d+)?$/;
 const MAX_CHOICE_INDEX=3;
 /** Room ticks between WireIds.prune calls (ids of entities gone for good). */
 const PRUNE_EVERY=RUN_HZ;
+/**
+ * Critters off every legal screen of a client go in every other frame of it (5 Hz instead of 10; N27, horde bytes).
+ * The frames are chained (FrameEncoder `chain`): deltas against the previous frame, the WebSocket being ordered.
+ */
+export const FAR_EVERY=2;
+/**
+ * A connection silent this long is closed (4004) and its seat waits GRACE_MS: with no network the close never comes
+ * back, so this is also what stops the room's clock when every phone is gone (VGM-048 review).
+ */
+export const SILENT_MS=12_000;
+/**
+ * N27 (slow phone): a phone that is merely slow keeps its connection. Its main thread falls behind (CPU 4–6× in the
+ * lab: frames decoded 10–40 s late, timers starved for 20 s), so its messages come late and far apart, yet it is
+ * there. The limit grows with what the room saw of it: twice its widest gap between messages and SILENT_MS on top of
+ * how late it decodes (the age of the frame its latest ack names). Capped at SLOW_SILENT_MAX_MS, so an empty room
+ * still stops its clock: at most that long after a slow phone went away for good (~6 GB-s at 128 MB).
+ */
+export const SLOW_SILENT_MAX_MS=45_000;
+/** Frame send times kept per connection for the lateness of its acks (10 Hz: ~51 s). */
+const FRAME_TIMES=512;
+export const silenceLimit=(c:{lag:number;gap:number})=>Math.min(SLOW_SILENT_MAX_MS,Math.max(SILENT_MS,2*c.gap,SILENT_MS+c.lag));
 /** Tick durations kept for the lab report (one minute at 20 Hz). */
 const PERF_SAMPLES=1200;
 /** Server-side cost of the room, for the lab (wrangler dev): tick and encode times, frames and bytes sent. */
@@ -213,7 +238,7 @@ export class Room {
   connect(peer:Peer,now=Date.now()){
     if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
     if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
-    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0});
+    this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0,lag:0,gap:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
     this.handle(peer,raw,now);this.flushRoster(now);
@@ -226,6 +251,7 @@ export class Room {
     if(++c.count>45){peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
     let m:any;try{m=JSON.parse(raw);}catch{return;}
     if(!m||typeof m!=='object')return;
+    if(c.playerId&&now-c.seen>c.gap)c.gap=now-c.seen;
     c.seen=now;
     if(m.t==='join'&&!c.playerId){
       if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED);return;}
@@ -262,12 +288,12 @@ export class Room {
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
-      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c)});
+      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
         run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain)});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
-      this.sendFrame(c,this.sim.frame());
+      this.sendFrame(c,this.sim.frame(),now);
       // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
       this.pushOffers(c);
       // Back after the room restarted in the middle of a run (VGM-047): say what happened, once.
@@ -278,7 +304,7 @@ export class Room {
     if(!c.playerId)return;
     if(m.t==='input'){
       // Inputs carry the ack of the last frame (one message instead of two at 20 Hz).
-      if(m.ack!==undefined)c.encoder?.ack(m.ack);
+      if(m.ack!==undefined){c.encoder?.ack(m.ack);this.lateness(c,m.ack,now);}
       const state=this.run.snapshot();
       if(state.phase==='combat'&&m.round===state.round){
         // Tap targets are client ids (e12); the simulation knows server ids. Unknown ones only drop the target.
@@ -288,7 +314,7 @@ export class Room {
         else this.sim.input(c.playerId,{...m,target:target(m.target)},now);
       }
     }
-    else if(m.t==='ack')c.encoder?.ack(m.seq);
+    else if(m.t==='ack'){c.encoder?.ack(m.seq);this.lateness(c,m.seq,now);}
     // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
     else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round)this.sim.tap(c.playerId,m.id);}
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
@@ -522,7 +548,7 @@ export class Room {
   advance(now=Date.now(),flush=true){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
-      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>12000){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
+      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
     // Nobody left to play (the last participant's session expired; late arrivals are spectators; bots do not play for
@@ -556,7 +582,7 @@ export class Room {
       if(!flush){if(due)c.owed=true;continue;}
       if(!due&&!c.owed)continue;
       c.owed=false;
-      this.sendFrame(c,input??=this.sim.frame());
+      this.sendFrame(c,input??=this.sim.frame(),now);
       this.pushOffers(c);
     }
     // Combat start/end and each new round go to storage (what a restart reports as lost).
@@ -619,7 +645,12 @@ export class Room {
     this.pushRun(true);
     this.send({t:'result',outcome,resultId,round});
   }
-  private sendFrame(c:Connection,input:FrameInput){
+  /** An ack of frame `seq` arrived at `now`: this phone decodes that late (the frame's age), see silenceLimit. */
+  private lateness(c:Connection,seq:unknown,now:number){
+    if(!Number.isSafeInteger(seq)||!c.frameSeq||!c.frameAt)return;
+    for(let i=0;i<FRAME_TIMES;i++)if(c.frameSeq[i]===seq){c.lag=Math.max(0,now-c.frameAt[i]);return;}
+  }
+  private sendFrame(c:Connection,input:FrameInput,now=Date.now()){
     // The owner sees itself at the last step it reported (input-10hz): its prediction replays only its own steps.
     const own=c.playerId?this.sim.confirmed(c.playerId):undefined;
     const view=own?{...input,players:input.players.map(p=>p.id===c.playerId?{...p,...own}:p)}:input;
@@ -627,6 +658,7 @@ export class Room {
     this.perf.encodeMs+=ms;
     if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;
+    const slot=c.encoder!.lastSeq%FRAME_TIMES;(c.frameSeq??=new Int32Array(FRAME_TIMES).fill(-1))[slot]=c.encoder!.lastSeq;(c.frameAt??=new Float64Array(FRAME_TIMES))[slot]=now;
     try{c.peer.send(bytes);}catch{this.disconnect(c.peer);}
   }
   private sendJson(c:Connection,message:object){

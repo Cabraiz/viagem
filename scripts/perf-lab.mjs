@@ -175,7 +175,73 @@ async function scene(){
   return report;
 }
 
+/** Simulated phone links (CDP Network.emulateNetworkConditions; the DevTools presets "Fast 4G" and "Slow 4G"). */
+const LINKS={
+  '4g':{latency:165,downloadThroughput:9e6/8*.9,uploadThroughput:1.5e6/8*.9},
+  'slow4g':{latency:562.5,downloadThroughput:1.6e6/8*.9,uploadThroughput:7.5e5/8*.9},
+};
+/**
+ * N27 · entering a room on a phone link: the art the scene pulls before its first frame and up to `--seconds` into
+ * combat (6 = this phone + 5 room bots), and the time from opening the scene to its first drawn frame. The dev
+ * server's modules are imported before the link is throttled (the built game's JS is reported by `weight`), so the
+ * number is the art's. Room bots join from the waiting room after the scene is up (the friends of a real room).
+ */
+async function entry(){
+  const web=arg('web','http://127.0.0.1:4327'),rooms=arg('rooms','http://127.0.0.1:8827');
+  const seconds=Number(arg('seconds','10')),link=arg('net','4g'),cpu=Number(arg('cpu','1'));
+  const created=await fetch(rooms+'/rooms',{method:'POST',headers:{Origin:web}});if(created.status!==201)throw new Error('room '+created.status);
+  const {code}=await created.json();log('room',code,'net',link,'cpu',cpu);
+  const ctx=await phone();
+  await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
+  const page=await ctx.newPage();
+  page.on('pageerror',e=>log('pageerror',e.message));
+  const files=[];let opened=0;
+  page.on('requestfinished',async r=>{const u=new URL(r.url());if(!/^\/(art|fonts)\//.test(u.pathname))return;try{files.push({path:u.pathname,bytes:(await r.sizes()).responseBodySize,at:Date.now()});}catch{}});
+  const cdp=await ctx.newCDPSession(page);await cdp.send('Network.enable');
+  await page.goto(web+'/');
+  await page.evaluate(async()=>{await Promise.all([import('/src/game/net/client.ts'),import('/src/classes.ts'),import('/src/game/explore.ts'),import('/src/game/lobby.ts'),import('/src/game/scene.ts')]);});
+  await wait(500);files.length=0;
+  if(LINKS[link])await cdp.send('Network.emulateNetworkConditions',{offline:false,...LINKS[link]});
+  if(cpu>1)await cdp.send('Emulation.setCPUThrottlingRate',{rate:cpu});
+  opened=Date.now();
+  const joined=await page.evaluate(async([code,rooms])=>{
+    const {CoopClient}=await import('/src/game/net/client.ts');const {classes}=await import('/src/classes.ts');
+    const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
+    try{await c.join();}catch(e){return String(e.message);}
+    window.__t0=performance.now();
+    const {openExploration}=await import('/src/game/explore.ts');const {mountWaitingRoom}=await import('/src/game/lobby.ts');
+    void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
+    const layout=document.querySelector('dialog.explore-shell .explore-layout');if(layout)mountWaitingRoom(layout,c);
+    // First frame drawn after the scene's create(): what the player sees instead of the loading line.
+    const watch=()=>{const g=window.__island?.game;if(!g){setTimeout(watch,5);return;}
+      g.events.on('postrender',()=>{if(window.__first===undefined&&window.__island.scene.sys.isActive())window.__first=performance.now();});};
+    watch();
+    return 'ok';
+  },[code,rooms]);
+  if(joined!=='ok')throw new Error(joined);
+  await page.waitForFunction(()=>window.__first!==undefined,null,{timeout:300000,polling:50});
+  const firstFrameMs=Math.round(await page.evaluate(()=>window.__first-window.__t0));
+  const atFirst=Date.now(),beforeFrame=files.filter(f=>f.at<=atFirst);
+  log('first frame',firstFrameMs,'ms',beforeFrame.length,'files');
+  for(let i=0;i<5;i++){await page.evaluate(()=>window.__net.addBot());await wait(450);}
+  await page.waitForFunction(()=>window.__net.run?.members?.length===6,null,{timeout:30000});
+  await page.evaluate(()=>window.__net.ready(true));
+  await page.waitForFunction(()=>window.__net.run?.phase==='combat',null,{timeout:120000});
+  const combatAt=Date.now();
+  await wait(seconds*1000);
+  const sum=list=>list.reduce((a,f)=>a+f.bytes,0);
+  const group=list=>Object.entries(list.reduce((m,f)=>{const k=f.path.split('/').slice(0,3).join('/')+(f.path.includes('-thumb')?' (thumb)':'');m[k]=m[k]??{files:0,bytes:0};m[k].files++;m[k].bytes+=f.bytes;return m;},{}));
+  const until=files.filter(f=>f.at<=Date.now());
+  const report={code,link,cpu,firstFrameMs,openToFirstFrameWallMs:atFirst-opened,
+    beforeFirstFrame:{files:beforeFrame.length,bytes:sum(beforeFrame),groups:group(beforeFrame)},
+    untilCombat:{seconds,files:until.length,bytes:sum(until),groups:group(until),afterCombatStart:sum(until.filter(f=>f.at>combatAt))},
+    list:until.map(f=>({path:f.path,bytes:f.bytes,s:round((f.at-opened)/1000)}))};
+  await page.evaluate(()=>window.__net.leave());
+  await ctx.close();
+  return report;
+}
+
 try{
-  const out=mode==='weight'?await weight():await scene();
+  const out=mode==='weight'?await weight():mode==='entry'?await entry():await scene();
   console.log(JSON.stringify(out,null,1));
 }finally{await browser.close();}

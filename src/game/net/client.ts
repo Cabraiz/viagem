@@ -6,6 +6,7 @@ import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from './protocol4.ts';
 import {InputBatcher} from './input-track.ts';
 import {parseSos,type SosPing} from '../fun/emotes.ts';
+import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
 /**
@@ -17,6 +18,17 @@ type Sample={at:number;players:Map<string,Player>};
 export const ACK_EVERY_MS=1000;
 /** RTT ping (diagnostics line); the acks already keep the connection alive (the room drops a peer silent for 12 s). */
 const PING_EVERY_MS=5000;
+/** Heartbeat timer period; a beat this much later than due means the page itself was stalled. */
+const HEARTBEAT_MS=2000,STALLED_BEAT_MS=2*HEARTBEAT_MS;
+/** Nothing heard for this long on a page that was awake the whole time: the socket is dead, reconnect. */
+const DEAD_SILENCE_MS=8000;
+/**
+ * N27 (slow phone): with nothing sent for this long, the next message handled answers with an ack. A slow phone's
+ * timers starve (20 s late at CPU 6× in the lab, the room cut it at 12 s), but its WebSocket messages are still
+ * handled every few hundred ms: the keepalive rides them. A phone that sends anything (input, the 1 s ack) never
+ * needs it, so the free plan's message count does not move.
+ */
+export const KEEPALIVE_MS=4000;
 /** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
 const MAX_PENDING=40;
 /** The room closes a connection whose character went to a newer one (another tab or network) with this code: never retried. */
@@ -55,6 +67,8 @@ export class CoopClient {
   get seq(){return this.batcher.seq;}
   /** RunView source for the horde renderer and the HUD: protocol 4 frames (VGM-042b). */
   readonly feed=new FrameRunFeed();
+  /** How far behind the room this page handles frames, ms (N27, slow phone): the scene stops drawing to catch up. */
+  readonly backlog=new Backlog();
   /** Bytes received on this client (frames + JSON), for the diagnostics line and the lab. */
   bytes=0;
   private socket?:WebSocket;
@@ -85,6 +99,8 @@ export class CoopClient {
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
+  /** performance.now() of the last message sent on the current socket, of the last heartbeat, and of the last beat that came late. */
+  private sentAt=0;private beatAt=0;private awakeAt=0;
   private initialized=false;
   private resolveReady?:()=>void;
   private rejectReady?:(error:Error)=>void;
@@ -120,7 +136,7 @@ export class CoopClient {
    */
   forge(recipe:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
-    const req=++this.forgeId;this.socket.send(JSON.stringify({t:'forge',round:this.run.round,recipe,req}));return req;
+    const req=++this.forgeId;this.out(this.socket,{t:'forge',round:this.run.round,recipe,req});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -146,11 +162,12 @@ export class CoopClient {
     const url=new URL(`/room/${this.code}`,this.endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
     const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
     const timeout=setTimeout(()=>ws.close(),8000);
-    ws.onopen=()=>{const kicked=this.token?undefined:this.kickedToken();ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})}));};
+    ws.onopen=()=>{const kicked=this.token?undefined:this.kickedToken();this.out(ws,{t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})});};
     ws.onmessage=event=>{
       // A socket this client already replaced (or gave up on) says nothing any more.
       if(ws!==this.socket)return;
       this.lastMessage=performance.now();this.lastSeenAt=Date.now();
+      if(this.initialized&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         if(this.initialized&&ws===this.socket)this.frame(ws,data);
@@ -164,16 +181,26 @@ export class CoopClient {
         this.terrain=terrain;
         clearTimeout(timeout);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;
         // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
-        this.feed.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
+        this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
         this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
         // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
-        if(!this.shamePref)ws.send(JSON.stringify({t:'pref',shame:false}));
+        if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
-        clearInterval(this.heartbeat);this.heartbeat=setInterval(()=>{const now=performance.now();if(now-this.lastMessage>8000){ws.close();return;}if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;ws.send(JSON.stringify({t:'ping',at:now}));}this.saveToken();},2000);
+        clearInterval(this.heartbeat);this.beatAt=this.awakeAt=performance.now();
+        this.heartbeat=setInterval(()=>{
+          const now=performance.now();
+          // A late beat means this page was stalled (slow phone, long task): the silence was ours, and the messages
+          // that came meanwhile are still queued behind this timer. Silence only counts from when the page woke up.
+          if(now-this.beatAt>STALLED_BEAT_MS)this.awakeAt=now;
+          this.beatAt=now;
+          if(now-Math.max(this.lastMessage,this.awakeAt)>DEAD_SILENCE_MS){ws.close();return;}
+          if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;this.out(ws,{t:'ping',at:now});}
+          this.saveToken();
+        },HEARTBEAT_MS);
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
-      else if(m.t==='pong')this.rtt=Math.round(performance.now()-m.at);
+      else if(m.t==='pong'){this.rtt=Math.round(performance.now()-m.at);if(this.rtt<SETTLE_RTT_MS)this.backlog.settle(performance.now());}
       else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
       else if(m.t==='replaced')this.replaced(ws);
       else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
@@ -244,7 +271,7 @@ export class CoopClient {
       if(frameBase(new Uint8Array(data))===0&&++this.badFullFrames>=MAX_BAD_FULL_FRAMES){this.fail(ws,UPDATE_NEEDED);return;}
       // A frame we cannot place (lost baseline, garbage): ask for a full one, once per RESYNC_EVERY_MS.
       const now=performance.now();
-      if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;ws.send(JSON.stringify({t:'resync'}));}
+      if(now-this.resyncAt>=RESYNC_EVERY_MS&&ws.readyState===WebSocket.OPEN){this.resyncAt=now;this.out(ws,{t:'resync'});}
       return;
     }
     this.badFullFrames=0;
@@ -253,6 +280,7 @@ export class CoopClient {
     this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
     this.tick=view.tick;
+    if(this.run?.phase==='combat')this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
     this.players.clear();
     for(const p of view.players)this.players.set(p.id,toPlayer(p as PlayerWireView));
     // In combat elapsed/remaining move one per simulation tick; the room only pushes the run when something else changes.
@@ -266,10 +294,21 @@ export class CoopClient {
     this.samples.push({at:performance.now(),players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
-  /** Standalone ack when no input carried it (D-018: deltas go against the last frame the room knows we have). */
+  /** Sends one JSON message; the current socket's send time feeds the keepalive. */
+  private out(ws:WebSocket,message:object){
+    ws.send(JSON.stringify(message));
+    if(ws===this.socket)this.sentAt=performance.now();
+  }
+  /** Nothing sent for KEEPALIVE_MS: an ack (or a ping before the first frame) from the message handler itself. */
+  private keepalive(ws:WebSocket){
+    if(ws.readyState!==WebSocket.OPEN)return;
+    if(this.ackSeq>0){this.ackSent=Math.max(this.ackSent,this.ackSeq);this.out(ws,{t:'ack',seq:this.ackSeq});}
+    else this.out(ws,{t:'ping',at:performance.now()});
+  }
+  /** Standalone ack when no input carried it (events retire with it; frames are chained on the room side, N27). */
   private flushAck(){
     if(this.ackSeq<=this.ackSent||this.socket?.readyState!==WebSocket.OPEN)return;
-    this.ackSent=this.ackSeq;this.socket.send(JSON.stringify({t:'ack',seq:this.ackSeq}));
+    this.ackSent=this.ackSeq;this.out(this.socket,{t:'ack',seq:this.ackSeq});
   }
   /**
    * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
@@ -288,7 +327,7 @@ export class CoopClient {
    */
   cast(){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
-    const id=++this.castId;this.socket.send(JSON.stringify({t:'cast',round:this.run.round,id}));return id;
+    const id=++this.castId;this.out(this.socket,{t:'cast',round:this.run.round,id});return id;
   }
   /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */
   private castId=0;
@@ -301,7 +340,7 @@ export class CoopClient {
       clearTimeout(this.flushTimer);this.flushTimer=undefined;
       const ack=this.ackSeq>this.ackSent?this.ackSeq:undefined;
       if(ack!==undefined){this.ackSent=ack;clearTimeout(this.ackTimer);this.ackTimer=undefined;}
-      socket.send(JSON.stringify({t:'input',round:this.run.round,seq:batch.seq,steps:batch.steps,...(ack!==undefined?{ack}:{})}));
+      this.out(socket,{t:'input',round:this.run.round,seq:batch.seq,steps:batch.steps,...(ack!==undefined?{ack}:{})});
       return;
     }
     const until=this.batcher.waitingUntil;
@@ -315,12 +354,12 @@ export class CoopClient {
   private shamePref=readShamePref();
   setShamePref(allow:boolean){
     this.shamePref=allow;writeShamePref(allow);
-    if(this.socket?.readyState===WebSocket.OPEN&&this.connected)this.socket.send(JSON.stringify({t:'pref',shame:allow}));
+    if(this.socket?.readyState===WebSocket.OPEN&&this.connected)this.out(this.socket,{t:'pref',shame:allow});
   }
   get allowsShame(){return this.shamePref;}
   sos(){
     if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
-    this.socket.send(JSON.stringify({t:'sos',round:this.run.round}));return true;
+    this.out(this.socket,{t:'sos',round:this.run.round});return true;
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   /** Owner commands (D-025): the room checks owner, phase and round; a refusal comes back as a notice. */
@@ -336,7 +375,7 @@ export class CoopClient {
   onCommand?:(command:{t:string;offer?:string;index?:number},sent:boolean)=>void;
   private runCommand(command:{t:string;[key:string]:unknown}){
     const sent=this.connected&&!!this.run&&this.socket?.readyState===WebSocket.OPEN;
-    if(sent)this.socket!.send(JSON.stringify({...command,round:this.run!.round}));
+    if(sent)this.out(this.socket!,{...command,round:this.run!.round});
     this.onCommand?.(command,sent);
   }
   /** A short render buffer smooths remote entities without delaying local controls. */
@@ -349,7 +388,7 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({t:'leave'}));this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
 }
 export { STEP };
 

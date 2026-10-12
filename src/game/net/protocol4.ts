@@ -29,7 +29,7 @@
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../sim/types.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../sim/view.ts';
-import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../sim/offscreen.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../sim/offscreen.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
@@ -456,6 +456,21 @@ export interface EncoderOptions {
   interest?:Partial<InterestOptions>|false;
   /** Broadcast slot (0..SEND_EVERY-1, see sendSlot); `due(tick)` says when this client's frame goes. Default 0. */
   slot?:number;
+  /**
+   * N27 (horde bytes): delta against the frame sent just before, not the last acked one. A WebSocket is ordered and
+   * reliable, so while the connection lives the client decoded every frame it was sent; a frame it could not decode
+   * makes it ask for a resync (the next frame is full), and a new connection gets a new encoder. Acks then only retire
+   * events. Without it a client acking once a second (standing still, ACK_EVERY_MS) or late (a slow phone) gets deltas
+   * against a frame up to a second or more old: whole positions instead of nudges (300 critters: 19 → 13 KB/s).
+   * The wire format is the same (baseSeq is the previous seq), so decoders need nothing new. Default false.
+   */
+  chain?:boolean;
+  /**
+   * N27 (horde bytes): critters off every legal phone screen around the viewer (offscreen.ts visibleOffset, the
+   * union of orientations and views) are updated only every `farEvery` frames; new ones and removals go at once.
+   * On screen nothing changes. Needs a viewer. Default 1 (every frame).
+   */
+  farEvery?:number;
 }
 /**
  * Server ids of a section list, built once per list and tick: the encoders of one room share the same FrameInput,
@@ -505,8 +520,11 @@ export class FrameEncoder {
   readonly viewer?:string;
   readonly slot:number;
   private readonly interest?:InterestOptions;
+  private readonly chain:boolean;
+  private readonly farEvery:number;
   constructor(ids=new WireIds(),options:EncoderOptions={}){
-    this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);
+    this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);this.chain=!!options.chain;
+    this.farEvery=Math.max(1,Math.floor(options.farEvery??1));
     if(options.viewer!==undefined&&options.interest!==false)
       this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS};
   }
@@ -557,15 +575,18 @@ export class FrameEncoder {
 
   /** Events still waiting for an ack (for monitoring and tests). */
   get pendingEvents(){return this.pending.length;}
+  /** Seq of the last frame encoded (0 before the first). */
+  get lastSeq(){return this.seq;}
   /** Whether this client's frame goes out on `tick` (staggered broadcast). */
   due(tick:number){return sendsOn(tick,this.slot);}
 
   /** The client decoded frame `seq`. Old, future or unknown acks are ignored. */
   ack(seq:number,_eventId?:number){
-    if(!Number.isSafeInteger(seq)||seq<=this.acked||seq>this.seq||!this.history.has(seq))return;
+    // Chained, an ack only retires events: a late one (a slow phone) still counts once its frame left the history.
+    if(!Number.isSafeInteger(seq)||seq<=this.acked||seq>this.seq||(!this.chain&&!this.history.has(seq)))return;
     this.acked=seq;
     this.pending=this.pending.filter(p=>p.firstSeq===undefined||p.firstSeq>seq);
-    for(const s of this.history.keys())if(s<seq)this.history.delete(s);
+    if(!this.chain)for(const s of this.history.keys())if(s<seq)this.history.delete(s);
   }
   /** Client lost its baselines (reconnect or decode error): next frame is full and unacked events go again. */
   resync(){
@@ -634,13 +655,14 @@ export class FrameEncoder {
 
   /** `focus` overrides where the area of interest is centred (a spectator following someone). */
   encode(view:FrameInput,options:{focus?:Point2}={}):Uint8Array{
-    const seq=++this.seq,base=this.history.get(this.acked);
+    // Chained: the previous frame (gone after a resync, which clears the history: then this one is full).
+    const baseSeq=this.chain?this.seq:this.acked,seq=++this.seq,base=this.history.get(baseSeq);
     const focus=this.focusOf(view,options.focus);
     const f:FrameCtx={tick:view.tick,ox:focus?Math.round(focus.x):0,oy:focus?Math.round(focus.y):0};
     if(!(Math.abs(f.ox)<=POS_LIMIT))f.ox=0;
     if(!(Math.abs(f.oy)<=POS_LIMIT))f.oy=0;
     const w=new Writer();
-    w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?this.acked:0);w.uvar(view.tick);w.svar(f.ox);w.svar(f.oy);
+    w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?baseSeq:0);w.uvar(view.tick);w.svar(f.ox);w.svar(f.oy);
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
     const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
     w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0));
@@ -664,9 +686,14 @@ export class FrameEncoder {
       const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
       const current=this.select(section,list,focus);
+      // Off-screen critters wait for their frame (farEvery): the client keeps the copy it has.
+      const hold=section==='enemies'&&this.farEvery>1&&focus&&this.viewer!==undefined&&seq%this.farEvery!==0?
+        // Both where the client has it and where it is now: one walking off the edge still gets its last steps.
+        (e:Entity,had:Entity)=>e.boss!==true&&!visibleOffset((e.x as number)-focus.x,(e.y as number)-focus.y)&&
+          !visibleOffset((had.x as number)-focus.x,(had.y as number)-focus.y):undefined;
       // Removed from this client but still in the world: it left the area of interest (no death poof).
       const exists=this.interest?(label:string)=>liveIds(list,view.tick).has(section==='players'?label:this.ids.resolve(label)??''):()=>false;
-      world.tables[section]=writeSection(w,schema,current,client,f,(id)=>this.ids.label(section,id),exists);
+      world.tables[section]=writeSection(w,schema,current,client,f,(id)=>this.ids.label(section,id),exists,hold);
     }
     const start=w.len;
     // Events are judged once, on their first frame: those nobody near this client could see are dropped.
@@ -685,6 +712,8 @@ export class FrameEncoder {
       p.firstSeq??=seq;p.sentTick=view.tick;
     }
     this.stats.eventBytes+=w.len-start;
+    // Chained, the next frame only needs this one (6 clients × 64 worlds of 300 critters stays out of the room's memory).
+    if(this.chain)this.history.clear();
     this.history.set(seq,world);
     if(this.history.size>HISTORY){
       const oldest=Math.min(...this.history.keys());
@@ -708,7 +737,8 @@ const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
  * Ids are ascending gaps. Non-player client ids are derived from the wire id (prefix + number), so they never
  * travel as text. `exists`: whether a client id is still in the server world (its removal is a culling).
  */
-function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:Table,f:FrameCtx,label:(serverId:string)=>string,exists:(clientId:string)=>boolean):Table{
+function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:Table,f:FrameCtx,label:(serverId:string)=>string,exists:(clientId:string)=>boolean,
+  hold?:(e:Entity,had:Entity)=>boolean):Table{
   const keys=Object.keys(schema.fields);
   const xi=keys.indexOf('x'),yi=keys.indexOf('y');
   const removed=[...client.keys()].filter(id=>!current.has(id)).sort((a,b)=>a-b);
@@ -718,6 +748,8 @@ function writeSection(w:Writer,schema:Schema,current:Map<number,Entity>,client:T
   const ups:{id:number;mask:number;e:Entity;nx?:number;ny?:number}[]=[];
   for(const id of [...current.keys()].sort((a,b)=>a-b)){
     const cur=current.get(id)!,prev=client.get(id);
+    // Held back this frame (off screen, farEvery): the client's copy stays as it is, nothing goes.
+    if(prev&&hold?.(cur,prev))continue;
     // `client` is this frame's own copy (advance), so a known entity is updated in place: no second copy.
     const next:Entity=prev??{id:label(cur.id)};
     const px=prev?.x,py=prev?.y;

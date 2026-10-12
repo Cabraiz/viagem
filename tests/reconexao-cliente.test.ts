@@ -144,3 +144,39 @@ test('client: offline time for the slow-link line, and "Tentar de novo" tries at
     assert.equal(ana.connected,true);assert.ok(net.opened>opened);assert.equal(ana.offlineMs(),0);
   }finally{stop();cleanup();}
 });
+
+test('N27 client: timers starved (slow phone), the message handler keeps the seat with an ack every KEEPALIVE_MS',async()=>{
+  const {KEEPALIVE_MS}=await import('../src/game/net/client.ts');
+  store.clear();net.room=new Room(Date.now());net.down=false;net.sent=[];const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();
+    const socket=sockets(ana);
+    // CPU 6× in the lab: the heartbeat and the 1 s ack timer come 20 s late. Here they never come.
+    clearInterval((ana as any).heartbeat);(ana as any).flushAck=()=>{};
+    const from=Date.now();
+    await sleep(13_500);
+    assert.equal(sockets(ana),socket,'same socket: the room never cut it (12 s of silence would)');
+    assert.equal(net.room.connections.size,1);
+    const acks=net.sent.filter(s=>s.at>from&&s.t==='ack').map(s=>s.at-from);
+    assert.ok(acks.length>=3&&acks.length<=4,`acks at ${acks}`);
+    for(let i=1;i<acks.length;i++)assert.ok(acks[i]-acks[i-1]>=KEEPALIVE_MS-5&&acks[i]-acks[i-1]<KEEPALIVE_MS+400,`gaps ${acks}`);
+  }finally{stop();cleanup();}
+});
+
+test('N27 client: a heartbeat that comes late (the page was stalled) does not call the link dead; a page awake and deaf does',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;
+  const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();
+    const socket=sockets(ana),opened=net.opened;
+    // The link goes deaf (nothing from the room reaches the page, pongs included) and the page "was" stalled for
+    // 10 s: last message 9 s ago, last beat 10 s ago.
+    stop();(socket.peer as {send:Peer['send']}).send=()=>{};await sleep(100);
+    (ana as any).lastMessage=performance.now()-9000;(ana as any).beatAt=(ana as any).awakeAt=performance.now()-10_000;
+    await sleep(2500);
+    assert.equal(socket.readyState,1,'the late beat only says the page was stalled');assert.equal(net.opened,opened);
+    // Awake now and still nothing: dead after DEAD_SILENCE_MS of an awake page.
+    for(let i=0;i<120&&net.opened===opened;i++)await sleep(100);
+    assert.ok(net.opened>opened,'closed and reconnecting');
+  }finally{stop();cleanup();}
+});

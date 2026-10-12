@@ -25,6 +25,7 @@ import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
+import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -343,15 +344,30 @@ export class IslandScene extends Phaser.Scene {
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
-    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number};
-    loop.fpsLimit=profile.fps;loop.hasFpsLimit=true;loop._limitRate=frameGateMs(profile.fps);
+    this.frameGate();
     this.fpsWatch.reset();
   }
+  /**
+   * Phaser's frame gate (the game starts with fps.limit 60), changed live: the economy profile, or one frame every
+   * CATCH_UP_GATE_MS while the page is far behind the room (N27, slow phone: drawing is what keeps it behind).
+   */
+  private frameGate(){
+    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
+    loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
+  }
+  private readonly catchUp=new CatchUp();
+  /** Catching up with the room (slow phone): the lab probe and the tests read it. */
+  get catchingUp(){return this.catchUp.on;}
   get economyOn(){return this.economy;}
   /** Frames per second of the last whole watch windows (lab report and DEV probe). */
   get fpsHistory():readonly number[]{return this.fpsWatch.history;}
   private watchFrames(time:number){
     const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
+    if(net&&this.booted){
+      const was=this.catchUp.on;
+      if(this.catchUp.update(document.hidden?0:net.backlog.ms,time)!==was){this.frameGate();this.fpsWatch.taint();}
+      if(this.catchUp.on){this.fpsWatch.taint();return;}
+    }
     if(!net||this.economy||this.fpsWatch.done||last===undefined)return;
     if(document.hidden){this.fpsWatch.taint();return;}
     if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
@@ -765,7 +781,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,
-        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory]};
+        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory],catchUp:scene.catchingUp,backlogMs:Math.round(net?.backlog.ms??0)};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

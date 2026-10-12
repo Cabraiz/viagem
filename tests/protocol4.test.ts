@@ -764,3 +764,64 @@ test('protocol 7: zueira events and the kill-cam reach every client, wherever th
   const old=me.encode(w).slice();old[1]=6;
   assert.deepEqual(new FrameDecoder().decode(old),{ok:false,error:'protocol version mismatch'});
 });
+
+test('N27 chained frames: deltas on the previous frame track a busy world exactly; acks a minute late or never do not grow them',()=>{
+  const run=(chain:boolean,ackEvery:number,lateBy:number)=>{
+    const rng=new Rng(11),w=busyWorld(rng);
+    const enc=new FrameEncoder(new WireIds(),{chain}),dec=new FrameDecoder();
+    const decoded:{seq:number;event:number}[]=[];let bytes=0,frames=0,events=0;
+    for(let i=0;i<600;i++){
+      enc.pushEvents(stepWorld(w,rng));
+      if(i%2)continue;
+      const e0=enc.stats.eventBytes,b=enc.encode(w.view),r=dec.decode(b);
+      assert.ok(r.ok,!r.ok?r.error:'');assertSameWorld(r.view,w.view,enc.ids,`tick ${w.tick}`);
+      decoded.push({seq:r.seq,event:r.ack.event});
+      // Sections only: this test world floods 60 damage events a frame, which the 512-event cap trims either way.
+      if(i>20){bytes+=b.length-(enc.stats.eventBytes-e0);frames++;}
+      // The phone acks every `ackEvery` frames, naming the frame it decoded `lateBy` frames before.
+      if(ackEvery&&frames%ackEvery===0){const a=decoded[Math.max(0,decoded.length-1-lateBy)];enc.ack(a.seq,a.event);}
+    }
+    return {perFrame:bytes/frames,full:enc.stats.fullFrames,pending:enc.pendingEvents};
+  };
+  const prompt=run(false,1,0),still=run(false,10,0),chained=run(true,10,0),slow=run(true,10,80),acked80=run(false,10,80),never=run(true,0,0);
+  assert.equal(chained.full,1);assert.equal(slow.full,1);assert.equal(never.full,1,'chained frames never need an ack to stay deltas');
+  assert.ok(acked80.full>100,`acked baselines past the 64-frame history go full: ${acked80.full}`);
+  assert.ok(chained.perFrame<=prompt.perFrame*1.02,`chained ${Math.round(chained.perFrame)} vs acked every frame ${Math.round(prompt.perFrame)}`);
+  assert.ok(chained.perFrame<still.perFrame*.9,`chained ${Math.round(chained.perFrame)} vs acked once a second ${Math.round(still.perFrame)}`);
+  assert.equal(slow.perFrame,chained.perFrame,'a slow phone gets the very same sections');assert.equal(never.perFrame,chained.perFrame);
+});
+
+test('N27 chained frames: a frame the client could not decode makes it resync, and the next frame is full',()=>{
+  const rng=new Rng(12),w=busyWorld(rng,40);
+  const enc=new FrameEncoder(new WireIds(),{chain:true}),dec=new FrameDecoder();
+  for(let i=0;i<5;i++){enc.pushEvents(stepWorld(w,rng));assert.ok(dec.decode(enc.encode(w.view)).ok);}
+  enc.pushEvents(stepWorld(w,rng));enc.encode(w.view); // lost on the client side (never decoded)
+  enc.pushEvents(stepWorld(w,rng));
+  const r=dec.decode(enc.encode(w.view));
+  assert.ok(!r.ok&&r.resync,'chained on a frame it does not have');
+  enc.resync();enc.pushEvents(stepWorld(w,rng));
+  const before=enc.stats.fullFrames,r2=dec.decode(enc.encode(w.view));
+  assert.ok(r2.ok);assert.equal(enc.stats.fullFrames,before+1);assertSameWorld(r2.view,w.view,enc.ids,'after resync');
+  enc.pushEvents(stepWorld(w,rng));const r3=dec.decode(enc.encode(w.view));assert.ok(r3.ok);assertSameWorld(r3.view,w.view,enc.ids,'chained again');
+});
+
+test('N27 farEvery: critters off every legal screen go every other frame, on screen every frame; the client stays consistent',()=>{
+  const rng=new Rng(13),w=farWorld(rng,0,0,0),v=w.view;
+  v.players=[player('me',0,{x:0,y:0})];
+  // 20 on screen (2 u away), 20 off every legal screen but inside the area of interest (40 u along a world axis,
+  // where offscreenDistance is 25.5 u), all walking.
+  v.enemies=[...Array.from({length:20},(_,i)=>({id:`n-${i}`,kind:'gosma',x:2+i*.1,y:1,hp:40,maxHp:40})),
+    ...Array.from({length:20},(_,i)=>({id:`f-${i}`,kind:'gosma',x:40+i*.1,y:0,hp:40,maxHp:40}))];
+  const enc=new FrameEncoder(new WireIds(),{viewer:'me',chain:true,farEvery:2}),dec=new FrameDecoder();
+  const seenAt=new Map<string,number[]>();
+  for(let f=1;f<=8;f++){
+    for(const e of v.enemies)e.x+=.05;v.tick+=2;
+    const r=dec.decode(enc.encode(v));assert.ok(r.ok,!r.ok?r.error:'');
+    for(const e of r.view.enemies){const src=v.enemies.find(s=>enc.ids.label('enemies',s.id)===e.id)!;
+      const fresh=Math.abs(e.x-src.x)<1/POS_SCALE*2;(seenAt.get(src.id[0])??seenAt.set(src.id[0],[]).get(src.id[0])!).push(fresh?1:0);}
+  }
+  assert.ok(seenAt.get('n')!.every(x=>x===1),'on screen: exact every frame');
+  const far=seenAt.get('f')!;
+  assert.ok(far.includes(0)&&far.includes(1),'off screen: held on some frames, exact on the others');
+  assert.equal(far.filter(x=>x===1).length,20*5,'new on the first frame, then on the even ones (4 of the other 7)');
+});

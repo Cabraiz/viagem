@@ -351,7 +351,8 @@ export class IslandScene extends Phaser.Scene {
   private watchFrames(time:number){
     const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
     if(!net||this.economy||this.fpsWatch.done||last===undefined)return;
-    if(this.paused||document.hidden||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
+    if(document.hidden){this.fpsWatch.taint();return;}
+    if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
     if(this.fpsWatch.frame(time-last))this.hooks.slow?.();
   }
   update(_time:number,delta:number){

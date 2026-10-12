@@ -190,13 +190,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Economy mode (VGM-048): 30 fps and fewer effects; persisted on this phone, turned on by itself when the game chokes.
   let economy:EconomySettings=loadEconomy(economyStore());
   const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
-  const economyToast=document.createElement('div');economyToast.className='economy-toast rh-row';economyToast.setAttribute('role','status');economyToast.hidden=true;
-  economyToast.innerHTML='<p class="economy-toast-text">Engasgou: modo econômico ligado.</p><button type="button" class="economy-toast-off">Desligar</button>';
-  const hideEconomyToast=()=>{economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
+  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag"></span></span>'
+    +'<span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span>';
+  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!;
+  const economyToast=document.createElement('div');economyToast.className='economy-toast';economyToast.setAttribute('role','status');economyToast.hidden=true;
+  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Modo econômico ligado</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desligar</button>`;
+  // Coop: the HUD's announcement slot takes it in line (one row at a time, off the hero). Solo has no HUD and no watch.
+  const hideEconomyToast=()=>{if(hud)hud.dropRow(economyToast);else economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
   const syncEconomy=()=>{
     economyButton.setAttribute('aria-pressed',String(economy.on));
-    economyButton.innerHTML=`<span class="explore-economy-title">Modo econômico: ${economy.on?'ligado':'desligado'}</span>`
-      +`<span class="explore-economy-note">${economy.on&&economy.auto?'Ligou sozinho porque o jogo tava engasgando. ':''}30 quadros por segundo e menos efeitos: poupa bateria.</span>`;
+    economyTag.textContent=economy.on?'Ligado':'Desligado';economyTag.dataset.on=String(economy.on);
     shell.dataset.economy=String(economy.on);
   };
   const setEconomy=(next:EconomySettings)=>{economy=next;saveEconomy(economyStore(),economy);controller?.scene.setEconomy(economy.on);syncEconomy();};
@@ -207,13 +210,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   for(const type of ['pointerdown','touchstart'])economyToast.addEventListener(type,event=>event.stopPropagation(),{signal});
   // Near the top of the settings (the panel scrolls on a phone): right under the title and the way back.
   settingsContent.insertBefore(economyButton,settingsContent.querySelector('.explore-top')?.nextSibling??settingsContent.firstChild);
-  // Coop: a row of the HUD's announcement slot (off the hero, never over the minimap); solo has no HUD and never fires.
-  if(hud)hud.addRow(economyToast);else $('.explore-layout').append(economyToast);
+  if(!hud)$('.explore-layout').append(economyToast);
   const slow=()=>{
     const next=autoEconomy(economy);if(!next)return;
     setEconomy(next);
+    if(hud){hud.queueRow(economyToast,ECONOMY_TOAST_MS);return;}
     economyToast.hidden=false;if(economyTimer)clearTimeout(economyTimer);economyTimer=setTimeout(hideEconomyToast,ECONOMY_TOAST_MS);
   };
+
   if(!net)$('#explore-trail').addEventListener('click',()=>{closeSettings();const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
   const updateStick=(event:PointerEvent)=>{
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;

@@ -53,25 +53,51 @@ test('frame gate: 30 fps on 60, 90 and 120 Hz screens even with rAF jitter; 60 s
   const at90=drawn(frameGateMs(30),1000/90,20,1.2);assert.ok(at90>=29&&at90<=31,`90 Hz: ${at90}`);
 });
 
-test('FPS watch: warm-up, two slow windows in a row, then once; fast windows and long gaps start over',()=>{
-  const feed=(w:FpsWatch,fps:number,ms:number)=>{let fired=0;for(let t=0;t<ms;t+=1000/fps)if(w.frame(1000/fps))fired++;return fired;};
+/** Feeds `ms` of frames at `fps`, each ± `jitter` ms (deterministic); returns how many times the watch fired. */
+function feed(w:FpsWatch,fps:number,ms:number,jitter=0){
+  let fired=0,seed=11;const rnd=()=>((seed=(seed*1103515245+12345)%2147483648)/2147483648-.5)*2;
+  for(let t=0;t<ms;){const d=1000/fps+jitter*rnd();t+=d;if(w.frame(d))fired++;}
+  return fired;
+}
+test('FPS watch: warm-up, two slow windows in a row, then once; a good window breaks the streak',()=>{
   const w=new FpsWatch();
   assert.equal(feed(w,20,FPS_WATCH.warmupMs),0,'warm-up never fires');
-  assert.equal(feed(w,20,FPS_WATCH.windowMs),0,'one slow window is not enough');
+  assert.equal(feed(w,20,FPS_WATCH.windowMs,6),0,'one slow window is not enough');
   assert.equal(feed(w,55,FPS_WATCH.windowMs),0,'a good window resets the count');
-  assert.equal(feed(w,30,FPS_WATCH.windowMs),0);
-  // Back from the background (one 5 s frame) throws the half-filled window away instead of counting as 0.2 fps.
-  w.frame(5000);
-  assert.equal(feed(w,30,FPS_WATCH.windowMs*2+50),1,'two slow windows: fires');
+  assert.equal(feed(w,22,FPS_WATCH.windowMs,8),0);
+  assert.equal(feed(w,22,FPS_WATCH.windowMs+50,8),1,'second slow window in a row: fires');
   assert.equal(w.done,true);assert.equal(feed(w,10,20_000),0,'fires once');
   assert.ok(w.history.length>=4&&w.history.every(f=>f>0));
-  // A phone at 2 fps (500 ms frames) is slow, not "away": it gets it too.
-  const crawl=new FpsWatch();assert.equal(feed(crawl,2,FPS_WATCH.warmupMs+FPS_WATCH.windowMs*2+1000),1);
   // A phone that keeps 45 fps never gets it.
-  const ok=new FpsWatch();assert.equal(feed(ok,45,60_000),0);
+  assert.equal(feed(new FpsWatch(),45,60_000,3),0);
   // Paused or out of combat: reset() starts the warm-up over.
-  const r=new FpsWatch();feed(r,20,FPS_WATCH.warmupMs+FPS_WATCH.windowMs*1.5);r.reset();
-  assert.equal(feed(r,20,FPS_WATCH.warmupMs+FPS_WATCH.windowMs),0);
+  const r=new FpsWatch();feed(r,20,FPS_WATCH.warmupMs+FPS_WATCH.windowMs*1.5,6);r.reset();
+  assert.equal(feed(r,20,FPS_WATCH.warmupMs+FPS_WATCH.windowMs,6),0);
+});
+
+test('FPS watch: a window with a rAF pause over 250 ms or a hidden moment does not count, either way',()=>{
+  const w=new FpsWatch();feed(w,60,FPS_WATCH.warmupMs);
+  assert.equal(feed(w,22,FPS_WATCH.windowMs,8),0,'one slow window');
+  // The notification shade: 20 fps with one 400 ms stop. Thrown away (not a 2nd slow window, not a good one).
+  feed(w,22,2000,8);w.frame(400);assert.equal(feed(w,22,FPS_WATCH.windowMs-2400,8),0,'tainted window: no fire');
+  assert.equal(w.ignored,1);
+  // Hidden for a moment (the scene calls taint()): thrown away too.
+  feed(w,22,1000,8);w.taint();assert.equal(feed(w,22,FPS_WATCH.windowMs,8),0);
+  assert.ok(w.ignored>=2);
+  // The streak survived the ignored windows: the next clean slow window fires.
+  assert.equal(feed(w,22,FPS_WATCH.windowMs+50,8),1);
+  // A phone stuck at 2 fps has a pause in every window: the watch never decides for it (the switch is still there).
+  assert.equal(feed(new FpsWatch(),2,60_000),0);
+});
+
+test('FPS watch: a steady 30 Hz rAF (iOS Low Power Mode) is a cap, not choking',()=>{
+  const capped=new FpsWatch();
+  assert.equal(feed(capped,30,120_000,1.5),0,'steady 33 ms frames: never');
+  assert.ok(capped.capped>=20,`${capped.capped} windows read as a 30 Hz cap`);
+  // A choking phone around 30 fps is not steady (frames 20–50 ms): it still gets it.
+  assert.equal(feed(new FpsWatch(),30,60_000,15),1);
+  // 20 fps steady is under the cap: slow.
+  assert.equal(feed(new FpsWatch(),20,60_000,1),1);
 });
 
 test('the world canvas has no resolution knob (DPR 1 under the cap of 2); the HUD stays DOM',()=>{

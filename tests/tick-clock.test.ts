@@ -56,7 +56,7 @@ test('a fire 120 ms late catches up with three ticks at most, the rest on the ne
   assert.equal(c.delay(270),0,'still behind: no wait');
   assert.equal(c.due(270),1);
   assert.equal(c.delay(270),30);
-  assert.equal(c.stats.ticks,5);assert.equal(c.stats.dropped,0);
+  assert.deepEqual(c.stats.bursts,[1,2,0,1],'owed per fire: 0, 1, 3, 1');assert.equal(c.stats.ticks,0,'the clock alone runs nothing');assert.equal(c.stats.dropped,0);
 });
 
 test('more than 0.5 s behind: the debt is dropped, not fast-forwarded',()=>{
@@ -89,5 +89,15 @@ test('stop() cancels the pending fire; start() again begins one step later',()=>
   // A tick that stops the loop (last peer gone in advance) ends the burst and schedules nothing.
   const stopper=new TickLoop(()=>{stopper.stop();},t.timers);
   loop.stop();stopper.start();t.stall(160);t.run(0);
-  assert.equal(stopper.clock.stats.ticks,3,'the clock owed 3');assert.equal(t.pending,undefined);
+  assert.equal(stopper.clock.stats.bursts[3],1,'the clock owed 3');assert.equal(stopper.clock.stats.ticks,1,'one ran: ticks counts only those');assert.equal(t.pending,undefined);
+});
+
+test('a burst tells the room which tick is its last (one frame per client there); ticks counts what ran',()=>{
+  const t=fakeTimers(()=>0);
+  const calls:boolean[]=[];
+  const loop=new TickLoop((_now,last)=>calls.push(last),t.timers);
+  loop.start();t.run(50);assert.deepEqual(calls,[true]);
+  calls.length=0;t.stall(160);t.run(0);
+  assert.deepEqual(calls,[false,false,true],'three owed: frames only on the last');
+  assert.equal(loop.clock.stats.ticks,4);loop.stop();
 });

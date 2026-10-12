@@ -60,6 +60,8 @@ async function scene(){
   await ctx.addInitScript(value=>{try{if(value==='off')localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));
     else if(value==='on')localStorage.setItem('viagem:economia:v1',JSON.stringify({on:true,auto:false,declined:false}));
     else localStorage.removeItem('viagem:economia:v1');}catch{}},economy);
+  // --coach done: this phone already learned the first-run hints (they hold the announcement slot in round 1).
+  if(arg('coach')==='done')await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
   const page=await ctx.newPage();
   page.on('pageerror',e=>log('pageerror',e.message));
   // Static files the game pulls (art, fonts: the same files as the build; the dev server's modules are not counted).
@@ -100,14 +102,18 @@ async function scene(){
   counting=true;const t0=Date.now();const heap=[];const enemies=[];
   let toastShot=false,economyOnAt;
   // The lab draws ~1 frame/s, so a print pair outlives the toast's 9 s: it is held on screen for the prints (noted).
+  // Prints at 390×844 and 844×390, text at 100% and 125%. The lab draws ~1 frame/s, so the set outlives the toast's
+  // 9 s: before each print it is put back in the HUD's line (queueRow, the real path: it shows only if the slot is free).
   const shot=async(label)=>{const keep=label.startsWith('aviso');
-    for(const [o,vp] of [['retrato',PORTRAIT],['paisagem',LANDSCAPE]]){await page.setViewportSize(vp);
-      if(keep)await page.evaluate(()=>{document.querySelector('.economy-toast').hidden=false;});
-      await wait(1500);
-      if(keep)log(o,await page.evaluate(()=>{const t=document.querySelector('.economy-toast');const r=t.getBoundingClientRect();const cs=getComputedStyle(t);
-        return JSON.stringify({hidden:t.hidden,parent:t.parentElement?.className,hud:t.closest('.rh')?.hidden,rect:[r.x,r.y,r.width,r.height].map(Math.round),display:cs.display,vis:cs.visibility,op:cs.opacity});}));
-      await page.screenshot({path:`${shots}/${label}-${o}.png`});}
-    await page.setViewportSize(PORTRAIT);};
+    for(const [o,vp] of [['retrato',PORTRAIT],['paisagem',LANDSCAPE]])for(const scale of ['100','125']){
+      await page.setViewportSize(vp);
+      await page.evaluate(s=>{if(s==='125')document.documentElement.dataset.texto='125';else delete document.documentElement.dataset.texto;},scale);
+      if(keep)await page.evaluate(()=>{const t=document.querySelector('.economy-toast');if(t.hidden)window.__hud?.queueRow(t,60_000);});
+      await wait(1800);
+      if(keep)log(o,scale,await page.evaluate(()=>{const t=document.querySelector('.economy-toast');const r=t.getBoundingClientRect();
+        return JSON.stringify({hidden:t.hidden,slot:t.parentElement?.className,rect:[r.x,r.y,r.width,r.height].map(Math.round),coach:!document.querySelector('.rh-coach')?.hidden});}));
+      await page.screenshot({path:`${shots}/${label}-${o}-${scale}.png`});}
+    await page.setViewportSize(PORTRAIT);await page.evaluate(()=>{delete document.documentElement.dataset.texto;});};
   if(shots)mkdirSync(shots,{recursive:true});
   while(Date.now()-t0<seconds*1000){
     for(let i=0;i<20;i++){
@@ -150,8 +156,10 @@ async function scene(){
     canvas:probe.canvas,canvasPxPerCssPx:round(probe.canvas.width/probe.canvas.cssWidth,2),devicePixelRatio:probe.dpr};
   if(shots){
     // The watch never fired in this run (economy still off, never declined here): the same hook the scene calls.
+    // The watch never fired here (every lab frame is a rAF pause over 250 ms, so every window is thrown away): the same
+    // hook the scene calls when it decides.
     if(!toastShot&&economy==='auto'&&!probe.economy)await page.evaluate(()=>window.__island.scene.hooks.slow?.());
-    await wait(300);report.toastPrint=toastShot||await page.evaluate(()=>!document.querySelector('.economy-toast').hidden);
+    await wait(1500);report.toastPrint=toastShot||await page.evaluate(()=>!document.querySelector('.economy-toast').hidden);
     if(report.toastPrint&&!toastShot)await shot('aviso-ligou-sozinho');
     await page.evaluate(()=>document.querySelector('.explore-config').click());await wait(600);
     await shot('configuracoes-modo-economico');

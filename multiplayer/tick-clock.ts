@@ -16,8 +16,10 @@ export const MAX_TICKS_PER_FIRE=3;
 /** Behind by more than this (ms), the debt is dropped: one tick now and the clock starts over from here. */
 export const MAX_LAG_MS=500;
 
-export interface ClockStats {fires:number;ticks:number;
-  /** Fires that ran 0, 1, 2 and 3 ticks (index = ticks in that fire). */
+export interface ClockStats {fires:number;
+  /** Ticks really run (TickLoop counts them: a burst cut by stop() runs fewer than it was owed). */
+  ticks:number;
+  /** Fires that owed 0, 1, 2 and 3 ticks (index = ticks due in that fire). */
   bursts:number[];
   /** Ticks given up (debt over MAX_LAG_MS) and how many times that happened. */
   dropped:number;resets:number}
@@ -47,7 +49,7 @@ export class TickClock {
         this.next+=n*this.stepMs;
       }
     }
-    this.stats.ticks+=n;this.stats.bursts[n]++;
+    this.stats.bursts[n]++;
     return n;
   }
   /** Wait (ms, ≥ 0) until the next tick is due. */
@@ -61,9 +63,10 @@ export class TickLoop {
   readonly clock:TickClock;
   private handle:unknown;
   private running=false;
-  private readonly tick:(now:number)=>void;
   private readonly timers:Timers;
-  constructor(tick:(now:number)=>void,timers:Timers,clock=new TickClock()){this.tick=tick;this.timers=timers;this.clock=clock;}
+  private readonly tick:(now:number,last:boolean)=>void;
+  /** `tick(now, last)`: `last` is false for the ticks of a catch-up burst before its final one (the room sends frames once, on the last). */
+  constructor(tick:(now:number,last:boolean)=>void,timers:Timers,clock=new TickClock()){this.tick=tick;this.timers=timers;this.clock=clock;}
   get active(){return this.running;}
   start(){
     if(this.running)return;
@@ -78,7 +81,7 @@ export class TickLoop {
     this.handle=undefined;
     if(!this.running)return;
     const now=this.timers.now();
-    try{for(let n=this.clock.due(now);n>0&&this.running;n--)this.tick(now);}
+    try{for(let n=this.clock.due(now);n>0&&this.running;n--){this.clock.stats.ticks++;this.tick(now,n===1);}}
     finally{if(this.running)this.schedule();}
   }
 }

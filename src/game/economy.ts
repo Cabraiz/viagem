@@ -63,34 +63,47 @@ export function renderProfile(economy:boolean):RenderProfile{
 export const frameGateMs=(fps:number)=>1000/fps*.85;
 
 /**
- * The FPS watch: frame intervals (ms) from the scene while the game is visible and running. After a warm-up it looks
- * at windows of `windowMs`; `lowWindows` windows in a row under `minFps` ask for economy (once).
- * A frame longer than `gapMs` (the app coming back from the background) resets the window instead of counting as
- * slowness; pause, hidden tab and the lobby reset the watch from the scene. A phone at 2 fps still counts as slow.
+ * The FPS watch: drawn-frame intervals (ms) from the scene while the game is visible and running. After a warm-up it
+ * looks at windows of `windowMs`; `lowWindows` counted windows in a row under `minFps` ask for economy (once).
+ * Windows that do not say "the phone chokes" are thrown away (they neither count nor break the streak):
+ *  - any frame longer than `gapMs` in it: the rAF stopped (notification shade, a call, a locked screen), not slowness;
+ *  - the tab hidden at any moment of it (`taint()`, from the scene).
+ * A steady ~30 Hz rAF (iOS Low Power Mode caps it there) is not choking: economy would draw at 30 anyway. A window
+ * where `steadyShare` of the frames sit within ±`steadyMs` of 33.3 ms breaks the streak instead of counting as low.
+ * Pause and the lobby reset the whole watch (warm-up too) from the scene.
  */
-export interface FpsWatchOptions {warmupMs:number;windowMs:number;minFps:number;lowWindows:number;gapMs:number}
-export const FPS_WATCH:Readonly<FpsWatchOptions>=Object.freeze({warmupMs:8000,windowMs:5000,minFps:40,lowWindows:2,gapMs:2000});
+export interface FpsWatchOptions {warmupMs:number;windowMs:number;minFps:number;lowWindows:number;gapMs:number;steadyMs:number;steadyShare:number}
+export const FPS_WATCH:Readonly<FpsWatchOptions>=Object.freeze({warmupMs:8000,windowMs:5000,minFps:40,lowWindows:2,gapMs:250,steadyMs:4,steadyShare:.85});
+/** The interval of a 30 Hz screen refresh (Low Power Mode). */
+const CAPPED_30_MS=1000/30;
 export class FpsWatch {
   private readonly o:FpsWatchOptions;
-  private warm=0;private span=0;private frames=0;private low=0;private fired=false;
+  private warm=0;private span=0;private frames=0;private steady=0;private tainted=false;private low=0;private fired=false;
   /** Last whole windows' fps (newest last, up to 12), for the lab report. */
   readonly history:number[]=[];
+  /** Windows thrown away (pause in the rAF or hidden tab) and windows read as a steady 30 Hz cap. */
+  ignored=0;capped=0;
   constructor(options:Partial<FpsWatchOptions>={}){this.o={...FPS_WATCH,...options};}
-  /** One rendered frame `deltaMs` after the last. True once, when economy should turn on. */
+  /** One drawn frame `deltaMs` after the last. True once, when economy should turn on. */
   frame(deltaMs:number):boolean{
     if(this.fired||!(deltaMs>0))return false;
-    if(deltaMs>this.o.gapMs){this.span=0;this.frames=0;return false;}
     if(this.warm<this.o.warmupMs){this.warm+=deltaMs;return false;}
+    if(deltaMs>this.o.gapMs)this.tainted=true;
     this.span+=deltaMs;this.frames++;
+    if(Math.abs(deltaMs-CAPPED_30_MS)<=this.o.steadyMs)this.steady++;
     if(this.span<this.o.windowMs)return false;
-    const fps=this.frames*1000/this.span;
+    const fps=this.frames*1000/this.span,steady=this.steady/this.frames,tainted=this.tainted;
+    this.span=0;this.frames=0;this.steady=0;this.tainted=false;
+    if(tainted){this.ignored++;return false;}
     this.history.push(Math.round(fps*10)/10);if(this.history.length>12)this.history.shift();
-    this.span=0;this.frames=0;
+    if(steady>=this.o.steadyShare){this.capped++;this.low=0;return false;}
     this.low=fps<this.o.minFps?this.low+1:0;
     if(this.low>=this.o.lowWindows){this.fired=true;return true;}
     return false;
   }
-  /** Paused, hidden or economy already on: start over (the warm-up too). */
-  reset(){this.warm=0;this.span=0;this.frames=0;this.low=0;}
+  /** The tab was hidden during the current window: it does not count. */
+  taint(){this.tainted=true;}
+  /** Paused, out of combat or economy already on: start over (the warm-up too). */
+  reset(){this.warm=0;this.span=0;this.frames=0;this.steady=0;this.tainted=false;this.low=0;}
   get done(){return this.fired;}
 }

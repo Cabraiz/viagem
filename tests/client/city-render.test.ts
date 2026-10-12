@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {heightAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
 import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,ruinStepFactor,RUIN_FLOOR,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
 import {groundQuads,pieceGeometry,viewSide,type Face} from '../../src/client/render/city/faces.ts';
+import {makeSampleCity} from '../../src/client/render/city/sample.ts';
 import {VIEW_PIVOT,depth,project,rectsOverlap,type Pt,type Rect} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -336,4 +337,18 @@ test('stepped ruin roofs close every camera-facing step with a wall as tall as t
     }
   }
   assert.ok(walls>0,'the fixture ruin exposes steps');
+});
+
+test('the JSON fixture is exactly makeSampleCity() (sandbox and tests use the same city)',()=>{
+  const json=JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8'));
+  assert.deepEqual(json,JSON.parse(JSON.stringify(makeSampleCity())),'regenerate with tests/client/fixtures/make-cidade-mini.mjs');
+});
+
+test('sample city: no prop stands inside a block',()=>{
+  const city=makeSampleCity();
+  for(const p of city.props){
+    const cx=Math.floor(p.x/city.cell),cy=Math.floor(p.y/city.cell);
+    const inside=city.blocks.find(b=>cx>=b.x&&cx<b.x+b.w&&cy>=b.y&&cy<b.y+b.h);
+    assert.equal(inside,undefined,`${p.id} inside ${inside?.id}`);
+  }
 });

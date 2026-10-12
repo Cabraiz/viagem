@@ -5,6 +5,7 @@ export * from './context.ts';
 export * from './core.ts';
 export * from './director.ts';
 export * from './enemies/catalog.ts';
+export * from './player-effects.ts';
 export * from './progression.ts';
 export * from './revive.ts';
 export * from './run.ts';

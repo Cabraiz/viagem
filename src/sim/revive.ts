@@ -6,6 +6,7 @@
 import type {SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {hazardKind} from './enemies/catalog.ts';
+import {clearMoveEffects} from './player-effects.ts';
 import {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS} from '../rules/index.ts';
 export {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS};
 
@@ -26,6 +27,8 @@ export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string){
   player.hp=0;
   player.target=undefined;
   player.invulnerableUntil=undefined;
+  // D-036: a fallen player neither crawls slowed nor slides; getting up starts clean too (below).
+  clearMoveEffects(player);
   player.downed={sinceTick:ctx.tick,bleedOutTick:ctx.tick+BLEED_OUT_TICKS,progress:0};
   // `by` is the enemy id that dealt the last hit (contact, telegraph owner or projectile owner); its kind names the cause.
   // A hazard that outlives its thrower (`env:molotov:<id>`, D-033) names the kind behind it.
@@ -108,6 +111,7 @@ export function createReviveSystem(options:ReviveOptions={}):ReviveSystem{
           p.downed=undefined;
           p.hp=revivedHp(p);
           p.invulnerableUntil=ctx.tick+REVIVE_INVULNERABLE_TICKS;
+          clearMoveEffects(p);
           for(const {r} of rates)revives.set(r.id,(revives.get(r.id)??0)+1);
           // Rescuers are fixed for this tick, so the revived player only helps others from the next one.
           ctx.emit({type:'revived',player:p.id,by:rates[0].r.id});

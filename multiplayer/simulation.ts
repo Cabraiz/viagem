@@ -9,11 +9,11 @@ import {coastalSpawnPoints} from '../src/sim/index.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick} from '../src/sim/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS} from '../src/contract/index.ts';
-import type {EnemyState,LevelOffer,RoundState,SimEvent} from '../src/contract/index.ts';
+import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
@@ -56,12 +56,18 @@ const runSeed=(seed:number,run:number)=>(seed^Math.imul(run+1,0x9e3779b9))>>>0;
 const TOMBSTONE_TICKS=10;
 /** Events kept for snapshots; the Room's cursor sends each once, this only bounds memory between broadcasts. */
 const EVENT_BUFFER_TICKS=40;
+/** Client view of a telegraph (VGM-039, D-036 kind): the shape, its timing and what it is; owner and damage stay on the server. */
+export function telegraphView(t:Telegraph):TelegraphView{
+  return {id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick,...(t.kind?{kind:t.kind}:{})};
+}
 /** Shallow copy of an event with its non-integer numbers rounded like the rest of the wire (15.600000000000001 → 15.6). */
 export function wireEvent(event:StampedEvent):StampedEvent{
   const out:Record<string,unknown>={};
   for(const [k,v] of Object.entries(event))out[k]=typeof v==='number'&&!Number.isInteger(v)?round(v):v;
   return out as StampedEvent;
 }
+/** Client steps whose tick the room remembers (D-036 confirmed check): past InputTrack's history (1.5 s + 16 steps). */
+const STEP_TICKS_KEPT=64;
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
 const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
@@ -119,7 +125,9 @@ export class Simulation {
       takeInput:id=>{
         const bot=this.botInputs.get(id);
         if(bot){const step={...bot,seq:++this.botSeq};if(bot.skill)bot.skill=false;return step;}
-        const p=this.players.get(id);return p?this.tracks.get(id)?.next(p,this.clock):undefined;
+        const p=this.players.get(id),step=p?this.tracks.get(id)?.next(p,this.clock):undefined;
+        if(step)this.recordStep(id,step.seq);
+        return step;
       },
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
@@ -149,6 +157,8 @@ export class Simulation {
     delete p.target;delete p.downed;delete p.eliminated;delete p.invulnerableUntil;resetSkill(p);
     // The agiota's devendo mark holds an absolute tick (D-002 extra field); a rematch restarts the clock at 0.
     delete (p as {devendoUntil?:number}).devendoUntil;delete (p as {devendoSay?:number}).devendoSay;
+    // D-036 slow and slip hold absolute ticks too.
+    clearMoveEffects(p);
     refreshStats(p);p.hp=p.stats.maxHp;
   }
   add(id:string,name:string,classId:string){
@@ -163,7 +173,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.stepTicks.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -191,8 +201,31 @@ export class Simulation {
   }
   /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
   tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
-  /** Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones. */
-  confirmed(id:string){return this.tracks.get(id)?.confirmed();}
+  /**
+   * Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones.
+   * D-036: the phone replays its pending steps on ticks frameTick+1+k (maps/prediction.ts). The confirmed position
+   * sits before steps the room already took on earlier ticks, so while a slow or a slip touches those steps (its end
+   * is after the first of them) the replay would put the effect on the wrong steps: the frame goes live instead
+   * (ack = the step taken this tick), where the mapping is exact.
+   */
+  confirmed(id:string){
+    const own=this.tracks.get(id)?.confirmed();
+    if(!own)return undefined;
+    const p=this.players.get(id),from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
+    if(p&&(p.slowUntil!==undefined||p.slipUntil!==undefined)&&(from===undefined||(p.slowUntil??-Infinity)>from||(p.slipUntil??-Infinity)>from))return undefined;
+    return own;
+  }
+  /** Per player: the tick each recent client step was taken on (D-036 confirmed check); a seq going back starts it over. */
+  private stepTicks=new Map<string,{seq:number;tick:number}[]>();
+  private recordStep(id:string,seq:number){
+    let list=this.stepTicks.get(id);
+    const last=list?.[list.length-1]?.seq;
+    // A press cast in place repeats the last seq (InputTrack.next): same step, nothing to add.
+    if(last===seq)return;
+    if(!list||last!==undefined&&last>seq)this.stepTicks.set(id,list=[]);
+    list.push({seq,tick:this.world.tick});
+    if(list.length>STEP_TICKS_KEPT)list.shift();
+  }
   /** Skill taps answered by the last step: seq is the client's, ok whether it was cast, readyTick the next ready tick. */
   casts:{id:string;seq:number;ok:boolean;readyTick:number}[]=[];
   /** Clock of the step being taken (ms): the Room's wall clock, or tick × STEP_MS (tests, replays). */
@@ -335,7 +368,7 @@ export class Simulation {
       enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
-      telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
+      telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
@@ -343,6 +376,7 @@ export class Simulation {
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
+        ...activeMoveEffects(p,w.tick),
       })),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
@@ -361,7 +395,7 @@ export class Simulation {
       enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
-      telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
+      telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>{
         const stats=this.statsOf(p.id);
@@ -370,6 +404,7 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
+          ...activeMoveEffects(p,w.tick),
         };
       }),
     };
@@ -385,7 +420,7 @@ export class Simulation {
       x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(p=>packPlayerExtra(p,this.statsOf(p.id))),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),
         projectiles:[...w.projectiles.values()].map(p=>[p.id,p.source,round(p.x),round(p.y),round(p.vx),round(p.vy),p.radius,p.hostile]),
-        telegraphs:[...w.telegraphs.values()].map(t=>({id:t.id,shape:t.shape,x:t.x,y:t.y,radius:t.radius,dx:t.dx,dy:t.dy,width:t.width,fireTick:t.fireTick})),
+        telegraphs:[...w.telegraphs.values()].map(telegraphView),
         events:this.recent.filter(r=>r.event.eventId>sinceEventId).map(r=>wireEvent(r.event))}};
   }
 }

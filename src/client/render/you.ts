@@ -9,7 +9,8 @@
  */
 import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
-import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,hpBarStep,ringBands} from './you-rules.ts';
+import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
+import {HAZARD} from './telegraph-look.ts';
 
 type Sprite=Phaser.GameObjects.Sprite;
 type Pt={x:number;y:number};
@@ -30,6 +31,8 @@ export interface HeroMark {
   hp:number;maxHp:number;downed:boolean;
   /** Screen-space facing (radians, 0 = right, π/2 = down) for the ring's beak. */
   facing?:number;
+  /** D-036: slowed by the bêbado's burp / slipping on pigeon poop now (the scene compares slowUntil/slipUntil to the tick). */
+  slow?:boolean;slip?:boolean;
 }
 
 export class YouMarkers {
@@ -44,7 +47,9 @@ export class YouMarkers {
   private fullSince:number|undefined;
   private readonly color={voce:tokenColor('--c-voce'),breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone'),cartolina:tokenColor('--c-cartolina')};
   /** Last frame, for the acceptance probe (dev) and tests of the scene wiring. */
-  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false};
+  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,slow:false,slip:false};
+  /** Scratch for the slip swirl (no allocation per frame). */
+  private swirl=Array.from({length:14},()=>({x:0,y:0}));
 
   constructor(scene:Phaser.Scene,reduced=false){
     this.scene=scene;this.reduced=reduced;
@@ -60,7 +65,7 @@ export class YouMarkers {
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
     g.clear();
-    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;
+    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.slow=false;this.last.slip=false;
     const live=new Set<string>();
     let selfShown=false;
     for(const mark of marks){
@@ -99,6 +104,7 @@ export class YouMarkers {
         if(fraction>0)g.fillStyle(low?c.cone:c.cartolina,1).fillRect(left+s,top2+s,(bw-2*s)*fraction,bh-2*s);
         this.last.bar=true;this.last.low=low;
       }
+      if(mark.slow||mark.slip)this.drawStatus(mark,now,s);
       // "Você" arrow over the head: a ficha (Breu body, Papel edge) with a tail pointing down.
       const arrow=arrowFrame(now-this.arrowAt,this.reduced);
       this.label.setVisible(arrow.visible);
@@ -117,6 +123,37 @@ export class YouMarkers {
     if(!selfShown)for(const copy of this.contour)copy.setVisible(false);
     for(const [id,ghost] of this.ghosts)if(!live.has(id))ghost.setVisible(false);
     this.last.ghosts=live.size;
+  }
+
+  /**
+   * D-036 status chips to the right of the head, stacked down: a green burp cloud while slowed, a brown swirl while
+   * slipping. Papel disc with a Breu edge (reads on sea, sand, grass and the horde); they bob unless motion is reduced.
+   */
+  private drawStatus(mark:HeroMark,now:number,s:number){
+    const g=this.g,sprite=mark.sprite,R=STATUS_CSS.radius*s,e=STATUS_CSS.edge*s;
+    const head=mark.feet.y-sprite.displayHeight*sprite.originY,x=mark.feet.x+Math.max(sprite.displayWidth*.3,18*s)+R;
+    let y=head+R+4*s;
+    const bob=this.reduced?0:Math.sin(now*.006)*1.5*s;
+    if(mark.slow){
+      const cy=y+bob;
+      g.fillStyle(this.color.breu,1).fillCircle(x,cy,R+e).fillStyle(this.color.papel,1).fillCircle(x,cy,R);
+      // Burp cloud: three puffs with an olive edge, and a bubble.
+      g.fillStyle(HAZARD.gasDark,1).fillCircle(x-4*s,cy+1.5*s,5.2*s).fillCircle(x+3.5*s,cy+1.5*s,5.2*s).fillCircle(x,cy-2.5*s,5.8*s);
+      g.fillStyle(HAZARD.gas,1).fillCircle(x-4*s,cy+1.5*s,4*s).fillCircle(x+3.5*s,cy+1.5*s,4*s).fillCircle(x,cy-2.5*s,4.6*s);
+      g.fillStyle(HAZARD.gasLight,1).fillCircle(x-1.5*s,cy-4*s,1.8*s);
+      g.lineStyle(1.4*s,HAZARD.gasDark,1).strokeCircle(x+6*s,cy-6.5*s,1.8*s);
+      this.last.slow=true;y+=2*(R+e)+STATUS_CSS.gap*s;
+    }
+    if(mark.slip){
+      const cy=y-bob,rot=this.reduced?0:now*.008;
+      g.fillStyle(this.color.breu,1).fillCircle(x,cy,R+e).fillStyle(this.color.papel,1).fillCircle(x,cy,R);
+      // Poop swirl: a brown spiral with a darker edge, a white drop at its heart.
+      const n=spiralPoints(x,cy,R*.78,2.1,rot,this.swirl);
+      g.lineStyle(4.2*s,HAZARD.poopDark,1).strokePoints(this.swirl,false,false,n);
+      g.lineStyle(2.4*s,HAZARD.poop,1).strokePoints(this.swirl,false,false,n);
+      g.fillStyle(HAZARD.poopWhite,1).fillCircle(x,cy,1.8*s);
+      this.last.slip=true;
+    }
   }
 
   /** ms left on the arrow (0 when hidden), for tests and the probe. */

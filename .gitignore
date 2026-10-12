@@ -22,4 +22,5 @@ artifacts/
 !/docs/camera-follow-contract.md
 !/docs/whole-island-contract.md
 !/docs/desempenho.md
+!/docs/sprite-directions.md
 /scripts/check-multiplayer-artifact.mjs

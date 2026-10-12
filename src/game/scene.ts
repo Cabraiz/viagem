@@ -150,6 +150,8 @@ export class IslandScene extends Phaser.Scene {
   private sosScreens:{x:number;y:number}[]=[];
   private lastFeet?:Point;
   private facing=Math.PI/2;
+  /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
+  private intent:Point={x:0,y:0};
   /** Caídos in the world: rescue ring, progress and light column (UX-resgate-e-ping). */
   private downedLayer?:DownedLayer;
   private downedMarks:DownedMark[]=[];
@@ -361,7 +363,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.actor)return;
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view);
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
     if(this.hooks.net){this.updateCoop(_time,delta);this.rebaseDepth();this.updateCamera(delta);this.drawYou(_time);return;}
     if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
@@ -369,8 +371,8 @@ export class IslandScene extends Phaser.Scene {
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
     const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
     const old=this.position,seconds=Math.min(delta/1000,.1);
-    if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.position=moveDirection(old,screenDirection(sx,sy,this.view),seconds,this.field);}
-    else this.position=moveAlong(old,this.route,seconds,this.field);
+    if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.intent=screenDirection(sx,sy,this.view);this.position=moveDirection(old,this.intent,seconds,this.field);}
+    else{this.position=moveAlong(old,this.route,seconds,this.field);this.intent={x:this.position.x-old.x,y:this.position.y-old.y};}
     const moved=Math.hypot(this.position.x-old.x,this.position.y-old.y);
     this.distance+=moved;
     if(moved>0)this.place();
@@ -478,6 +480,7 @@ export class IslandScene extends Phaser.Scene {
         while(this.route.length&&Math.hypot(this.route[0].x-net.predicted.x,this.route[0].y-net.predicted.y)<.18)this.route.shift();
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
+      this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       net.input(direction,!this.paused&&!!this.hooks.attacking?.(),this.attackTarget);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }

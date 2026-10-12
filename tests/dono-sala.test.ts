@@ -278,3 +278,12 @@ test('brain (room bots): a roamer walks with the person who left the wall, a gua
   assert.ok(Math.abs(beside.direction.x)<.9,'no straight run once beside her');
   assert.equal(decide({view,selfId:'bot-1',at:{x:2,y:0},index:1,memory:newMemory(1),escort:{x:LEASH-1,y:0}}).mode,'fight');
 });
+
+test('lab only: {t:lab,end} ends the run in a defeat (result-screen proofs); a real room ignores it',()=>{
+  for(const lab of [true,false]){
+    const room=new Room(1000,5,{lab}),a=peer();join(room,a,'Ana',1000);addBot(room,a,1000);
+    const t=combat(room,[a]);say(room,a,{t:'lab',end:true},t);
+    assert.equal(room.run.snapshot().phase,lab?'result':'combat');
+    if(lab)assert.equal(a.messages.findLast(m=>m.t==='run').run.outcome,'defeat');
+  }
+});

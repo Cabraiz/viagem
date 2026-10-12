@@ -378,6 +378,8 @@ export class Room {
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
+    // D-025 proofs: the run ends now (a defeat), so the owner's result screen is photographed without a 15-minute wait.
+    if(m.end===true){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();return;}
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);

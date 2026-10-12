@@ -131,7 +131,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const syncManage=()=>{
     const can=!!roster?.canManage;if(!can)managing=false;
     manage.hidden=!can;manage.setAttribute('aria-pressed',String(managing));
-    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span>Arrumar turma</span>`;
+    // Portrait has three buttons in 350 px: the crown and "Turma"; landscape has room for the whole verb.
+    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span class="rh-manage-long">Arrumar turma</span><span class="rh-manage-short">Turma</span>`;
+    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':'Arrumar turma');
     root.classList.toggle('is-managing',managing);
   };
   manage.addEventListener('click',()=>{managing=!managing;armed=undefined;syncManage();if(shownResult)renderGrid(shownResult.result,shownResult.ctx);});

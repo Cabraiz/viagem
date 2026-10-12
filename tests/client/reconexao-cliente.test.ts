@@ -1,5 +1,5 @@
-// VGM-047 / input-10hz on the real CoopClient: an in-memory socket bridges it to a real Room (no network, real timers).
-import test from 'node:test';
+// VGM-047 / input-10hz on the real CoopClient: an in-memory socket bridges it to a real Room (no network, fake clock).
+import test,{mock,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {REPLACED_MESSAGE} from '../../src/protocol/room.ts';
@@ -33,6 +33,20 @@ class FakeSocket{
   vanish(){this.readyState=3;setTimeout(()=>this.onclose?.({code:1006}),0);}
 }
 (globalThis as any).WebSocket=FakeSocket;
+/**
+ * A fake clock instead of real time (the file took ~40 s): setTimeout, setInterval and Date are node:test's mocks, and
+ * performance.now follows the same clock. Time flows on its own, like the real one, in 5 ms steps between macrotasks
+ * (setImmediate stays real, so every step lets promises settle): the client's backoff, join, heartbeat and ack timers,
+ * the room's 50 ms tick and the tests' sleeps all run on it, at a fraction of the wall time.
+ */
+const CLOCK_START=Date.parse('2026-10-12T12:00:00.000Z'),CLOCK_STEP=5;
+mock.timers.enable({apis:['setTimeout','setInterval','Date'],now:CLOCK_START});
+// A page that has been open for 10 s when the tests start (performance.now never starts at 0 in a real tab).
+Object.defineProperty(performance,'now',{configurable:true,writable:true,value:()=>Date.now()-CLOCK_START+10_000});
+let clock:ReturnType<typeof setImmediate>|undefined;
+const flow=()=>{mock.timers.tick(CLOCK_STEP);clock=setImmediate(flow);};
+clock=setImmediate(flow);
+after(()=>{clearImmediate(clock);mock.timers.reset();});
 const {CoopClient}=await import('../../src/client/net/client.ts');
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 /** The Durable Object's 50 ms timer. */

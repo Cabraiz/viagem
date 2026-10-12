@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit && tsc -p tsconfig.pure.json && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json && tsc -p scripts/bots/tsconfig.json",
     "preview": "node scripts/serve.mjs",
-    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "test": "node --experimental-strip-types --test --test-concurrency=4 \"tests/**/*.test.ts\"",
     "test:contract": "node --experimental-strip-types --test \"tests/contract/**/*.test.ts\"",
     "test:rules": "node --experimental-strip-types --test \"tests/rules/**/*.test.ts\"",
     "test:maps": "node --experimental-strip-types --test \"tests/maps/**/*.test.ts\"",

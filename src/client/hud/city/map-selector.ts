@@ -24,6 +24,8 @@ export const SELECTOR_TEXT={
   guest:'Quem escolhe o mapa é o dono da sala.',
   locked:'Na contagem o mapa não muda.',
   failed:'Não chegou. Toca de novo.',
+  /** Subtitle of a map that is wired but not open yet (D-035: the city until CITY_PLAYABLE). */
+  soon:'em breve',
 } as const;
 /** The room's news after the server changed the map (the server resets everyone's ready). */
 export const mapChangedNews=(map:MapId)=>`Mapa trocado: ${MAP_OPTIONS.find(o=>o.id===map)?.name??map}. Todo mundo confirma de novo.`;
@@ -36,7 +38,14 @@ export interface SelectorState {confirmed:MapId;pending?:{map:MapId;sinceMs:numb
   /** The last request ran out (PENDING_MS): the hint says so until the next tap or confirmation. */
   failed?:boolean;
   /** Download progress text of the selected map ("Baixando a cidade: 40%"), shown instead of its subtitle. */
-  download?:string}
+  download?:string;
+  /**
+   * Maps shown locked "em breve" (D-035: the city while CITY_PLAYABLE is false), each with the text an owner's tap on it
+   * shows as the hint. A tap on one never sends; the room would refuse it anyway.
+   */
+  soon?:Partial<Record<MapId,string>>;
+  /** The text of the owner's last tap on an "em breve" map: the hint until the next tap, confirmation or lock. */
+  notice?:string}
 export type SelectorEvent=
   |{type:'tap';map:MapId;nowMs:number}
   |{type:'confirm';map:MapId}
@@ -50,14 +59,20 @@ export type SelectorEvent=
 export function initialSelector(canManage:boolean,confirmed:MapId=DEFAULT_MAP):SelectorState{
   return {confirmed,canManage,locked:false,offline:false};
 }
-const settle=(s:SelectorState,patch:Partial<SelectorState>={}):SelectorState=>{const {pending:_p,failed:_f,...rest}=s;return {...rest,...patch};};
+const settle=(s:SelectorState,patch:Partial<SelectorState>={}):SelectorState=>{const {pending:_p,failed:_f,notice:_n,...rest}=s;return {...rest,...patch};};
+/** An "em breve" map other than the room's own (the room's map always shows as the selected one). */
+const soonText=(s:SelectorState,map:MapId)=>map!==s.confirmed?s.soon?.[map]:undefined;
 
 /** One event; `send` is the map to ask the server for (an owner's tap on the other map: online, not locked, nothing pending). */
 export function selectorReducer(s:SelectorState,e:SelectorEvent):{state:SelectorState;send?:MapId}{
   switch(e.type){
-    case 'tap':
+    case 'tap':{
       if(!s.canManage||s.locked||s.offline||s.pending||e.map===s.confirmed)return {state:s};
+      // "em breve": the owner gets the reason as the hint, nothing goes to the room (no pending, no 3 s wait).
+      const soon=soonText(s,e.map);
+      if(soon!==undefined)return {state:settle(s,{notice:soon})};
       return {state:{...settle(s),pending:{map:e.map,sinceMs:e.nowMs}},send:e.map};
+    }
     case 'confirm':return {state:settle(s,{confirmed:e.map})};
     case 'tick':return s.pending&&e.nowMs-s.pending.sinceMs>=PENDING_MS?{state:settle(s,{failed:true})}:{state:s};
     case 'countdown':return {state:e.on?settle(s,{locked:true}):{...s,locked:false}};
@@ -70,18 +85,21 @@ export function selectorReducer(s:SelectorState,e:SelectorEvent):{state:Selector
 
 export type SelectorSticker=Extract<IconName,'pronto'|'relogio'|'cadeado'|'sem-linha'>;
 export interface SelectorView {options:{id:MapId;name:string;subtitle?:string;selected:boolean;pending:boolean;disabled:boolean;
-  /** The 20 px sticker on the segment: sem-linha (offline, both), cadeado (countdown, selected), relogio (pending), pronto (selected). */
-  sticker?:SelectorSticker}[];hint?:string}
+  /** The 20 px sticker on the segment: sem-linha (offline, both), cadeado (countdown, selected; "em breve"), relogio (pending), pronto (selected). */
+  sticker?:SelectorSticker;
+  /** Locked "em breve" (disabled: it never sends), yet an owner's tap on it still answers with the hint. */
+  soon?:true}[];hint?:string}
 /** What the control shows. Landscape drops the subtitles (the joke) but keeps the download text; hints are handed out there. */
 export function selectorView(s:SelectorState,orientation:Orientation):SelectorView{
   const disabled=!s.canManage||s.locked||s.offline||!!s.pending;
   const options=MAP_OPTIONS.map(o=>{
-    const selected=o.id===s.confirmed,pending=s.pending?.map===o.id;
-    const subtitle=selected&&s.download?s.download:orientation==='portrait'?o.subtitle:undefined;
-    const sticker:SelectorSticker|undefined=s.offline?'sem-linha':s.locked&&selected?'cadeado':pending?'relogio':selected?'pronto':undefined;
-    return {id:o.id,name:o.name,...(subtitle?{subtitle}:{}),selected,pending,disabled,...(sticker?{sticker}:{})};
+    const selected=o.id===s.confirmed,pending=s.pending?.map===o.id,soon=soonText(s,o.id)!==undefined;
+    // "em breve" stays in landscape too: it is information, not the joke.
+    const subtitle=selected&&s.download?s.download:soon?SELECTOR_TEXT.soon:orientation==='portrait'?o.subtitle:undefined;
+    const sticker:SelectorSticker|undefined=s.offline?'sem-linha':soon||s.locked&&selected?'cadeado':pending?'relogio':selected?'pronto':undefined;
+    return {id:o.id,name:o.name,...(subtitle?{subtitle}:{}),selected,pending,disabled:disabled||soon,...(sticker?{sticker}:{}),...(soon?{soon:true as const}:{})};
   });
-  const hint=s.locked?SELECTOR_TEXT.locked:s.failed?SELECTOR_TEXT.failed:!s.canManage&&orientation==='portrait'?SELECTOR_TEXT.guest:undefined;
+  const hint=s.locked?SELECTOR_TEXT.locked:s.failed?SELECTOR_TEXT.failed:s.notice??(!s.canManage&&orientation==='portrait'?SELECTOR_TEXT.guest:undefined);
   return hint?{options,hint}:{options};
 }
 
@@ -108,7 +126,9 @@ export function mountMapSelector(host:HTMLElement,opts:MapSelectorOptions):{upda
   void cityHudCss().then(()=>{root.hidden=false;});
   const group=doc.createElement('div');group.className='ch-selector-group';group.setAttribute('role','radiogroup');group.setAttribute('aria-label',SELECTOR_TEXT.label);
   const crown=doc.createElement('span');crown.className='ch-selector-crown';crown.innerHTML=icon('coroa');
-  const hint=doc.createElement('p');hint.className='ch-selector-hint';
+  // The hint is a polite live region (the owner's tap on "em breve" says why there): it stays in the tree, empty and
+  // collapsed when there is nothing to say, so a new text is announced; it is only rewritten when the text changes.
+  const hint=doc.createElement('p');hint.className='ch-selector-hint is-empty';hint.setAttribute('aria-live','polite');hint.setAttribute('aria-atomic','true');
   root.append(crown,group,hint);host.append(root);
   let state=opts.state,orientation=opts.orientation,owner:boolean|undefined,lastHint:string|undefined;
   let timer:ReturnType<typeof setTimeout>|undefined,timerFor:number|undefined;
@@ -134,8 +154,12 @@ export function mountMapSelector(host:HTMLElement,opts:MapSelectorOptions):{upda
     crown.hidden=s.canManage||o==='portrait';
     for(const v of view.options){
       const seg=segments.get(v.id)!;
-      seg.setAttribute('aria-checked',String(v.selected));seg.classList.toggle('is-selected',v.selected);seg.classList.toggle('is-pending',v.pending);
-      if(seg instanceof HTMLButtonElement)seg.disabled=v.disabled;else seg.setAttribute('aria-disabled','true');
+      seg.setAttribute('aria-checked',String(v.selected));seg.classList.toggle('is-selected',v.selected);seg.classList.toggle('is-pending',v.pending);seg.classList.toggle('is-soon',!!v.soon);
+      // An "em breve" button stays tappable for the owner (aria-disabled), so the tap can say why; the reducer never sends it.
+      if(seg instanceof HTMLButtonElement){
+        seg.disabled=v.soon?!s.canManage||s.locked||s.offline||!!s.pending:v.disabled;
+        if(v.soon)seg.setAttribute('aria-disabled','true');else seg.removeAttribute('aria-disabled');
+      }else seg.setAttribute('aria-disabled','true');
       const mark=seg.querySelector<HTMLElement>('.ch-segment-mark')!,sticker=v.sticker??'';
       if(mark.dataset.icon!==sticker){mark.dataset.icon=sticker;mark.innerHTML=v.sticker?icon(v.sticker):'';}
       seg.querySelector('strong')!.textContent=v.name;
@@ -143,8 +167,13 @@ export function mountMapSelector(host:HTMLElement,opts:MapSelectorOptions):{upda
       if(small.textContent!==(v.subtitle??''))small.textContent=v.subtitle??'';
       small.hidden=!v.subtitle;
     }
-    hint.innerHTML=view.hint?`${!s.canManage&&!s.locked&&!s.failed?icon('coroa'):''}<span></span>`:'';
-    hint.querySelector('span')?.append(view.hint??'');hint.hidden=!view.hint;
+    const crowned=!!view.hint&&!s.canManage&&!s.locked&&!s.failed&&!s.notice,hintKey=view.hint?`${crowned?'+':'-'}${view.hint}`:'';
+    if(hint.dataset.key!==hintKey){
+      hint.dataset.key=hintKey;
+      hint.innerHTML=view.hint?`${crowned?icon('coroa'):''}<span></span>`:'';
+      hint.querySelector('span')?.append(view.hint??'');
+    }
+    hint.classList.toggle('is-empty',!view.hint);
     // Landscape: a new hint goes to the room's line (it has no line of its own).
     if(o==='landscape'&&view.hint&&view.hint!==lastHint)opts.onHint?.(view.hint);
     lastHint=view.hint;

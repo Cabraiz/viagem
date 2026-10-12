@@ -7,6 +7,7 @@ import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
+import {besideSelector} from './lobby.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
@@ -317,9 +318,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.
+              // Landscape: the map selector's small window sits in the side column (cidade-hud.md §7), the band keeps clear of it.
               const wait=run.phase!=='combat'?document.querySelector<HTMLElement>('.coop-wait:not([hidden])')?.getBoundingClientRect():undefined;
+              const picker=wait?document.querySelector<HTMLElement>('.coop-wait-map.is-window:not([hidden])')?.getBoundingClientRect():undefined;
               const z=hud.zones(),thumbs=Math.min(z.leftThumb?.y??innerHeight,z.rightThumb?.y??innerHeight);
-              if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0?freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs):z.useful;
+              if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0
+                ?besideSelector(freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
+                :z.useful;
               // Out or watching: the camera follows a teammate; the banner names who (a tap on a portrait changes it).
               hud.setWatching(controller?.scene.watching()?.name);
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));

@@ -56,6 +56,14 @@ export class RunLifecycle {
     if(round!==this.round||!member?.online||member.spectator||member.bot||this.phase==='combat'||this.phase==='result')return false;
     member.ready=ready;this.refreshCountdown();return true;
   }
+  /**
+   * The room switched maps in the lobby (D-026/D-035): every person says ready again, so nobody starts on a map they
+   * have not seen. Bots stay ready (they always are); a countdown that was going falls back to the lobby.
+   */
+  resetReady(){
+    for(const member of this.members.values())if(!member.bot)member.ready=false;
+    this.refreshCountdown();
+  }
   /** Who the start waits for: in the run, and online or only briefly away (LOBBY_AWAY_TICKS). */
   private candidates(){return [...this.members.values()].filter(m=>!m.spectator&&(m.online||(this.away.get(m.id)??0)<LOBBY_AWAY_TICKS));}
   private refreshCountdown(){

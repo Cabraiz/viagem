@@ -124,6 +124,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
   let closed=false,paused=false;
+  /** The economy toast's own clock (VGM-048), cleared on close. */
+  let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
   /** Result screen data from the last view: the room sends outcome and duration, the HUD view has round, players and build. */
   const runResult=(victory:boolean,durationTicks:number):RunResult=>{
@@ -190,7 +192,6 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
   const economyToast=document.createElement('div');economyToast.className='economy-toast rh-row';economyToast.setAttribute('role','status');economyToast.hidden=true;
   economyToast.innerHTML='<p class="economy-toast-text">Engasgou: modo econômico ligado.</p><button type="button" class="economy-toast-off">Desligar</button>';
-  let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const hideEconomyToast=()=>{economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
   const syncEconomy=()=>{
     economyButton.setAttribute('aria-pressed',String(economy.on));

@@ -120,6 +120,8 @@ export class IslandScene extends Phaser.Scene {
   private paused=false;
   /** Economy mode (VGM-048) and the FPS watch that may ask for it (coop combat only). */
   private economy=false;
+  /** create() ran: the frame gate and the horde exist (setEconomy before that only keeps the choice). */
+  private booted=false;
   private readonly fpsWatch=new FpsWatch();
   /** rAF time of the last drawn frame: Phaser's own delta is smoothed and clamped at 200 ms, too kind to a slow phone. */
   private lastFrameAt?:number;
@@ -157,7 +159,7 @@ export class IslandScene extends Phaser.Scene {
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
@@ -208,7 +210,7 @@ export class IslandScene extends Phaser.Scene {
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
-    this.setEconomy(!!this.hooks.economy);
+    this.booted=true;this.setEconomy(this.economy);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
@@ -335,6 +337,8 @@ export class IslandScene extends Phaser.Scene {
   /** Economy mode (VGM-048): 30 fps and the reduced effects budget, or back to 60 and the full one. */
   setEconomy(on:boolean){
     this.economy=on;const profile=renderProfile(on);
+    // A tap before the scene booted: create() applies it.
+    if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number};

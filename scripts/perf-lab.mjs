@@ -62,6 +62,9 @@ async function scene(){
     else localStorage.removeItem('viagem:economia:v1');}catch{}},economy);
   const page=await ctx.newPage();
   page.on('pageerror',e=>log('pageerror',e.message));
+  // Static files the game pulls (art, fonts: the same files as the build; the dev server's modules are not counted).
+  const statics=[];
+  page.on('requestfinished',async r=>{const u=new URL(r.url());if(!/^\/(art|fonts)\//.test(u.pathname))return;try{statics.push({path:u.pathname,bytes:(await r.sizes()).responseBodySize,at:Date.now()});}catch{}});
   const cdp=await ctx.newCDPSession(page);
   await cdp.send('Network.enable');await cdp.send('Performance.enable');
   const ws={in:{n:0,bytes:0,binary:0,text:0},out:{n:0,bytes:0}};let counting=false;
@@ -141,6 +144,9 @@ async function scene(){
       outPerS:round(ws.out.n/span),outBytesPerS:Math.round(ws.out.bytes/span)},
     room:{tickP50:room.tickP50,tickP95:room.tickP95,maxTickMs:room.maxTickMs,encodeP50:room.encodeP50,encodeP95:room.encodeP95,enemies:room.enemies,bots:room.bots,clock:room.clock,
       ticks:room.ticks,meanTickMs:round(room.tickMs/Math.max(1,room.ticks),2)},
+    staticAssets:(()=>{const seen=new Map();for(const f of statics)seen.set(f.path,f.bytes);const all=[...seen.entries()];
+      return {files:all.length,bytes:all.reduce((a,[,b])=>a+b,0),art:all.filter(([p])=>p.startsWith('/art/')).reduce((a,[,b])=>a+b,0),
+        biggest:all.sort((a,b)=>b[1]-a[1]).slice(0,6).map(([p,b])=>({path:p,bytes:b}))};})(),
     canvas:probe.canvas,canvasPxPerCssPx:round(probe.canvas.width/probe.canvas.cssWidth,2),devicePixelRatio:probe.dpr};
   if(shots){
     // The watch never fired in this run (economy still off, never declined here): the same hook the scene calls.

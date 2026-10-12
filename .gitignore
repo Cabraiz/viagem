@@ -21,4 +21,5 @@ artifacts/
 !/docs/github-pages.md
 !/docs/camera-follow-contract.md
 !/docs/whole-island-contract.md
+!/docs/desempenho.md
 /scripts/check-multiplayer-artifact.mjs

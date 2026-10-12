@@ -3,6 +3,7 @@ import type { CoopClient } from './net/client.ts';
 import type { RunState } from './net/run.ts';
 import { icon } from '../ui/icon.ts';
 import {railName} from './render/map-label-rules.ts';
+import {uxMetricsEnabled} from './dev/ux-flag.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -44,8 +45,11 @@ export function countdownJoke(seconds:number){
   return 'Bora!';
 }
 
-/** Invite link, same format the island uses (`?room=` prefills the lobby). */
-export const shareLink=(origin:string,code:string)=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}#personagem`;
+/**
+ * Invite link, same format the island uses (`?room=` prefills the lobby). `dev`: the playtest metrics are on here
+ * (`?dev=1`, dev/ux-metrics.ts), so the friends' phones measure too.
+ */
+export const shareLink=(origin:string,code:string,dev=false)=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}${dev?'&dev=1':''}#personagem`;
 
 /** `bot`: a room bot; `owner`: the dono da sala (D-025). */
 export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean;bot:boolean;owner:boolean}
@@ -142,7 +146,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     <p class="coop-wait-count" aria-hidden="true"></p>`;
   const $=<T extends HTMLElement>(s:string)=>panel.querySelector<T>(s)!;
   $('.coop-wait-code strong').textContent=client.code;
-  const link=shareLink(options.origin??location.origin,client.code);
+  const link=shareLink(options.origin??location.origin,client.code,uxMetricsEnabled(location.search));
   const shareButton=$<HTMLButtonElement>('.coop-wait-share');
   shareButton.addEventListener('click',async()=>{
     const say=(text:string)=>{shareButton.textContent=text;setTimeout(()=>{shareButton.textContent='Chamar a turma';},2500);};

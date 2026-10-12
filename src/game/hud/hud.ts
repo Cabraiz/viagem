@@ -182,6 +182,8 @@ export class RunHud {
     const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue');
     if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
+  /** The hint on screen now (playtest metrics, dev/ux-metrics.ts). */
+  get coachHint():CoachShow|undefined{return this.coachShow;}
   /** The "+N" chip waits for a tap: in combat, or the intermission window folded into it with "Depois" (janela-caido). */
   private chipWaits(){return !this.chip.hidden&&(this.chip.dataset.mode==='combat'||this.offerEl.hidden===true);}
   /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */

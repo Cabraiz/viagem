@@ -1,0 +1,7 @@
+/* Playtest metrics (NEW-20261009-UX-playtest-metricas): the dev-only "Métricas" button on the result screen.
+   Loaded only with ?dev=1 (ux-metrics.ts). A quiet chip at the end of the stats row: the look of a stat with a dashed
+   border (a tool, not part of the game); the tap area reaches 44 px through ::before without growing the row. */
+.ux-dev-export{position:relative;margin:0;padding:2px 9px;border-radius:var(--r-ficha);border:2px dashed var(--c-papel);background:var(--c-ficha);color:var(--c-papel);
+  font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.ux-dev-export::before{content:'';position:absolute;inset:-10px -4px}
+.ux-dev-export:active{background:var(--c-papel);color:var(--c-breu)}

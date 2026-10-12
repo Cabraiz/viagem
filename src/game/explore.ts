@@ -15,6 +15,8 @@ import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from '../ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
+import {uxMetricsEnabled} from './dev/ux-flag.ts';
+import type {UxMetrics} from './dev/ux-metrics.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -47,6 +49,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let rescue:RescueBoard|undefined;
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
+  /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
+  let ux:UxMetrics|undefined;
   // Dev overlay of the screen zones (UX-zonas-tela): ?zonas in the URL.
   let zoneOverlay=import.meta.env.DEV&&new URLSearchParams(location.search).has('zonas');
   const damage=new DamageTally();
@@ -77,6 +81,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onForged=answer=>hud?.forged(answer);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
+    if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
+      if(closed||!hud)return;
+      ux=m.createUxMetrics(window,net);ux?.attachHud(hud);
+      // "Me salva" relayed by the room (RescueBoard listens first): the player's own echo counts as sent.
+      const sos=net.onSos;net.onSos=ping=>{sos(ping);ux?.sos(ping.id===net.id);};
+    }).catch(()=>undefined);
     hud.el.hidden=true;
     // Out or watching: a tap on a teammate's portrait makes the camera follow them (UX onda 4).
     // Capture phase: the HUD panels stop their own events from leaking into the game (VGM-040).
@@ -91,7 +101,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${uxMetricsEnabled(location.search)?'&dev=1':''}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=()=>{pause(false);skill?.tap(()=>net.cast(),performance.now());};
@@ -133,7 +143,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();
-    net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
   const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
@@ -185,6 +195,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;
     if(!direction.move(event.pointerId,event.clientX-rect.left-rect.width/2,event.clientY-rect.top-rect.height/2,max))return;
     knob.style.transform=`translate(${direction.x*max}px,${direction.y*max}px)`;
+    // The finger's first drag with a direction (playtest metrics; a tap on the stick is not a move).
+    if(direction.x||direction.y)ux?.stick();
   };
   stick.addEventListener('pointerdown',event=>{
     if(event.button!==0||shell.dataset.out==='true'||!direction.start(event.pointerId))return;
@@ -222,6 +234,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
               shell.dataset.hudResult=String(resultShown!==undefined);
+              // After showResult: the coach's end-of-run rule already ran, the metrics read what it learned.
+              ux?.tick();
               // Owner, bots and who is still here on the result screen (D-025): crown, robot, "Arrumar turma".
               if(run.phase==='result'){
                 const ids=run.members.map(m=>m.id);
@@ -263,7 +277,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
         if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
-        if(phase==='combat')rescue?.view(view);
+        if(phase==='combat'){rescue?.view(view);ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined);}
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.

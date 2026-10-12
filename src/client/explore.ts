@@ -17,6 +17,7 @@ import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
+import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
@@ -59,6 +60,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
   let ux:UxMetrics|undefined;
+  /** The HUD slot lent to the version notice (room only). */
+  let updateSlot:MatchSlot|undefined;
   // Dev overlay of the screen zones (UX-zonas-tela): ?zonas in the URL.
   let zoneOverlay=import.meta.env.DEV&&new URLSearchParams(location.search).has('zonas');
   const damage=new DamageTally();
@@ -153,7 +156,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
+    if(updateSlot)setMatchSlot(undefined);
     ux?.destroy();net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    // Out of the island or the room: a version update that waited for the end of the match reloads now.
+    matchEnded();
   };
   const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
@@ -163,6 +169,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Locked is not disabled: the button still answers a tap with the lock's stamp beat and "Gira no intervalo" (UX onda 4 D3).
   let sceneReady=false,hintTimer:ReturnType<typeof setTimeout>|undefined;
   const cameraGroup=$('.explore-camera'),lock=$('.explore-lock'),hint=$('.explore-camera-hint');
+  // "Versão nova do jogo" during a round (NEW-20261012-E5-chunk-velho-deploy): a row of the HUD's announcement slot,
+  // only while the round is on screen; before that (loading, countdown) it floats at the top (update-toast.ts).
+  if(net&&hud){
+    const runHud=hud;
+    updateSlot={take:el=>{if(!sceneReady||closed||net.fatal||net.run?.phase!=='combat')return false;runHud.queueRow(el,UPDATE_ROW_MS);return true;},drop:el=>runHud.dropRow(el)};
+    setMatchSlot(updateSlot);
+  }
   const syncTurn=()=>{
     const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
     if(cameraGroup.dataset.locked!==String(locked))cameraGroup.dataset.locked=String(locked);
@@ -275,7 +288,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             if(hud)hud.el.hidden=true;}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
+            const previous=shell.dataset.runPhase;
             shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
+            // The version watch reads the phase from the shell (update-toast.ts inMatchOf): out of countdown/combat, an
+            // update that waited reloads now; any other change moves the notice to where it shows (HUD slot or top).
+            if(previous!==run.phase){if(leftMatch(previous,run.phase))matchEnded();else if(updateSlot)setMatchSlot(updateSlot);}
             if(hud){
               // Shown by runView once it holds this run's state; until then the DOM may still show the last run's falls.
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
@@ -337,9 +354,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
       economy:economy.on,slow,
-      ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
+      ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);
-  }catch{if(!closed){$('.explore-loading').textContent=net?'Não foi possível carregar o mapa. Volte às classes e tente novamente.':'Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
+  }catch(e){if(!closed){$('.explore-loading').textContent=chunkFailed(e)?'Saiu versão nova do jogo.':net?'Não foi possível carregar o mapa. Volte às classes e tente novamente.':'Não foi possível carregar a ilha. Volte às classes e tente novamente.';}}
 }

@@ -4,6 +4,7 @@ import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
+import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
@@ -386,7 +387,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   return {panel,update,dispose(){clearInterval(timer);mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
 }
 
-export async function openLobby(hero:HeroClass,name:string){
+/** `room` fills the code (in place of ?room=); with `autoJoin` the lobby enters it by itself (back from a version reload). */
+export interface LobbyOptions {room?:string;autoJoin?:boolean}
+export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
   // Loaded together (CSS stays dynamic so the pure helpers above import in node tests).
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const dialog=document.createElement('dialog');dialog.className='coop-lobby';dialog.setAttribute('aria-label','Jogar com amigos');
@@ -411,7 +414,7 @@ export async function openLobby(hero:HeroClass,name:string){
   const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
-  codeInput.value=new URL(location.href).searchParams.get('room')?.toUpperCase()??'';
+  codeInput.value=(options.room??new URL(location.href).searchParams.get('room')??'').toUpperCase();
   let busy=false,outdated=false;
   async function enter(create:boolean){
     if(busy||closed||outdated)return;
@@ -427,6 +430,8 @@ export async function openLobby(hero:HeroClass,name:string){
       if(closed)return;
       client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.onStatus=m=>{status.textContent=m;};await client.join();
       if(closed){client.leave();return;}
+      // In the room: a version reload from here comes back to it (update-toast.ts resumeOf reads it).
+      dialog.dataset.room=code;
       const {openExploration}=await import('./explore.ts');dialog.close();dialog.remove();
       const joined=client;
       const opening=openExploration(hero,nick,joined);
@@ -434,11 +439,16 @@ export async function openLobby(hero:HeroClass,name:string){
       if(layout)mountWaitingRoom(layout,joined);
       await opening;
     }catch(e){
+      // The island's chunk is from an older deploy: the watch reloads and the resume rejoins this room. Leaving now
+      // would give the seat away (leave() forgets the room's token), so nothing else happens here.
+      // Only when the reload is really underway: otherwise (guard, offline) the joined client must leave as usual.
+      if(chunkFailed(e)&&reloadUnderway()){status.textContent='Saiu versão nova do jogo.';return;}
+      delete dialog.dataset.room;
       const fatal=client?.fatal;client?.leave();
       if(closed)return;
       // Page and rooms disagree on the version: trying again gives the same refusal, so the doors close and the
       // reason shows right under them, in view in landscape too, with the reload button (UX onda 4).
-      const panel=fatal?await import('./net-fatal.ts'):undefined;
+      const panel=fatal?await import('./net-fatal.ts').catch(error=>{chunkFailed(error);return undefined;}):undefined;
       if(fatal&&panel?.needsUpdate(fatal)){
         outdated=true;status.textContent='';
         panel.showFatal(dialog.querySelector<HTMLElement>('form')!,fatal,{inline:true}).scrollIntoView({block:'center'});
@@ -452,4 +462,5 @@ export async function openLobby(hero:HeroClass,name:string){
   dialog.querySelector('form')!.addEventListener('submit',e=>{e.preventDefault();void enter(false);});
   for(const b of actionButtons())b.disabled=false;
   status.textContent=endpoint?'':'As salas ainda não estão disponíveis neste endereço.';
+  if(options.autoJoin&&endpoint&&codeInput.value)void enter(false);
 }

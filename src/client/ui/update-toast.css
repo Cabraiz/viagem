@@ -1,0 +1,25 @@
+/* "Versão nova do jogo" notice (NEW-20261012-E5-chunk-velho-deploy, update-toast.ts). Imported by main.ts with the menu:
+   after a deploy the old lazy CSS answers 404, so this rule cannot live in one.
+   A ficha over the map (Breu body, Papel edge, radius 6: a counter, never a pill in the HUD); the whole ficha is the
+   tap (>= 48 px tall), and the Amarelo square with the arrow marks the call to action. In a room match it is a row
+   of the HUD's announcement slot (.rh-stack: off the hero and the thumbs, danger notices first, one line only);
+   everywhere else it floats under the top corner buttons (camera 48 px at 12, gear 48 px at 18), safe-area aware. */
+.update-toast{box-sizing:border-box;max-width:100%;pointer-events:auto;touch-action:manipulation}
+.update-toast[hidden]{display:none}
+.update-toast-tap{box-sizing:border-box;display:flex;align-items:center;gap:var(--e-8);width:100%;min-height:48px;margin:0;padding:var(--e-4) var(--e-12) var(--e-4) var(--e-4);
+  border:2px solid var(--c-papel);border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-texto-mapa);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);
+  font:700 var(--t-13)/1.25 var(--f-sistema);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.update-toast-tap:active{transform:translateY(2px)}
+.update-toast-tap:focus-visible{outline:3px solid var(--c-amarelo);outline-offset:2px}
+.update-toast-icon{flex:none;display:grid;place-items:center;width:36px;height:36px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-amarelo);color:var(--c-breu)}
+.update-toast-icon .ic{width:24px;height:24px}
+.update-toast-text{display:grid;gap:2px;min-width:0;text-wrap:balance}
+.update-toast-text strong{font-weight:800}
+.update-toast-line{font-weight:400}
+/* In a match the notice is one line to read in 200 ms: the joke stays out (UX checklist B5). */
+.rh .update-toast-line{display:none}
+.update-toast-floating{position:fixed;z-index:var(--z-dialogo);top:calc(var(--sa-t) + 66px);left:50%;transform:translateX(-50%);
+  width:max-content;max-width:min(420px,calc(100vw - var(--sa-l) - var(--sa-r) - 16px))}
+/* Landscape phone: the corner buttons sit at 12 px, so the notice fits between them, at the top edge. */
+@media (max-height:500px){.update-toast-floating{top:var(--sa-t);max-width:min(420px,calc(100vw - var(--sa-l) - var(--sa-r) - 2*172px))}}
+@media (prefers-reduced-motion:reduce){.update-toast-tap:active{transform:none}}

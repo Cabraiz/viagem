@@ -108,8 +108,8 @@ async function scene(){
     for(const [o,vp] of [['retrato',PORTRAIT],['paisagem',LANDSCAPE]])for(const scale of ['100','125']){
       await page.setViewportSize(vp);
       await page.evaluate(s=>{if(s==='125')document.documentElement.dataset.texto='125';else delete document.documentElement.dataset.texto;},scale);
-      if(keep)await page.evaluate(()=>{const t=document.querySelector('.economy-toast');if(t.hidden)window.__hud?.queueRow(t,60_000);});
-      await wait(1800);
+      if(keep)await page.evaluate(()=>{window.__hud?.queueRow(document.querySelector('.economy-toast'),60_000);});
+      await wait(3000);
       if(keep)log(o,scale,await page.evaluate(()=>{const t=document.querySelector('.economy-toast');const r=t.getBoundingClientRect();
         return JSON.stringify({hidden:t.hidden,slot:t.parentElement?.className,rect:[r.x,r.y,r.width,r.height].map(Math.round),coach:!document.querySelector('.rh-coach')?.hidden});}));
       await page.screenshot({path:`${shots}/${label}-${o}-${scale}.png`});}

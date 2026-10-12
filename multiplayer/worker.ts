@@ -1,7 +1,7 @@
 import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer, type RoomRoster } from './room.ts';
-import {ROOM_PROTOCOL} from '../src/protocol/index.ts';
+import {ROOM_PROTOCOL,readMapRef,type MapRef} from '../src/protocol/index.ts';
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
@@ -17,6 +17,20 @@ interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREA
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
+/**
+ * The city asset (D-034/D-035, design/cidade-protocolo.md §2): its exact text, bundled as a wrangler Text module
+ * (wrangler.jsonc `rules`) so the sha256 is over the same bytes the client downloads, and the manifest's ref. Imported
+ * once per isolate, on the first room built here (node tests that load worker.ts never reach it); undefined when it
+ * cannot load or the manifest is not a valid ref: the room then has no city (it stays locked until cidade-10 anyway).
+ */
+type CityAsset={text:string;ref:MapRef};
+let cityLoad:Promise<CityAsset|undefined>|undefined;
+const loadCity=()=>cityLoad??=Promise.all([import('../public/maps/cidade-nevada.json'),import('../public/maps/cidade-nevada.manifest.json')]).then(([asset,manifest])=>{
+  // tsc types any .json import as the parsed object; the Text rule makes this one the file's text, checked here.
+  const text:unknown=asset.default,ref=readMapRef({id:manifest.default.id,version:manifest.default.version,hash:manifest.default.hash});
+  if(typeof text!=='string'||ref?.id!=='cidade-nevada')throw new Error('invalid city asset');
+  return {text,ref};
+}).catch((error:unknown)=>{console.log(JSON.stringify({ev:'map',asset:'cidade-nevada',error:String(error).slice(0,120)}));return undefined;});
 function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
@@ -47,19 +61,27 @@ export class GameRoom extends DurableObject<Env>{
   /** Wall clock with catch-up (N17): 20 ticks/s of real time while someone is connected. */
   private loop=new TickLoop((now,last)=>this.room?.advance(now,last),{now:()=>Date.now(),set:(fn,ms)=>setTimeout(fn,ms),clear:h=>clearTimeout(h as ReturnType<typeof setTimeout>)});
   private peers=new Map<RoomSocket,Peer>();
-  async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);this.loading=Promise.resolve(this.room);await this.ctx.storage.setAlarm(now+31*60_000);}}
+  /** The bundled city (loadCity), handed to every Room this object builds. */
+  private city?:CityAsset;
+  async init(){this.city??=await loadCity();if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);this.loading=Promise.resolve(this.room);await this.ctx.storage.setAlarm(now+31*60_000);}}
   private create(created:number,seed:number){
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
     const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
-    if(!local(this.env))return new Room(created,seed,{onRoster});
-    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
+    // BUG-20261012-ORQ-reconecta-round2: one JSON line per socket end (closeLogLine), read with `wrangler tail`.
+    const log=(line:string)=>console.log(line);
+    const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
+    if(!local(this.env))return new Room(created,seed,{onRoster,log,...city});
+    return new Room(created,seed,{onRoster,log,...city,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
   }
   /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
   private load(created:number){
     return this.loading??=(async()=>{
+      this.city??=await loadCity();
       const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
       const roster=await this.ctx.storage.get<RoomRoster>('roster');
       if(roster)room.restore(roster);
+      // A room restored on the city waits for it to decode before anyone is seated again.
+      await room.ready();
       return this.room=room;
     })();
   }
@@ -77,15 +99,26 @@ export class GameRoom extends DurableObject<Env>{
    * Wires one accepted socket to the room. Closing from the room's side (a phone gone silent, a refused join) takes
    * the socket out at once: with no network the close handshake never ends and no 'close' event would come, so the
    * room would tick (and bill duration) until the alarm. No socket left (room bots have none): the clock stops.
+   * Every socket end is logged once by the room (Room.closed for the socket's events, the room's own closes otherwise):
+   * a close event after the room already closed the socket finds it gone from `peers` and logs nothing.
    */
   attach(server:RoomSocket,room:Room){
+    const ERROR_CLOSE_WAIT_MS=2000;
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>{this.drop(server);try{server.close(code,reason);}catch{/* already closed */}}};
     this.peers.set(server,peer);room.connect(peer);
-    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else peer.close(1003,'Texto esperado.');});
-    const close=()=>{if(this.peers.has(server))this.room?.disconnect(peer);this.drop(server);};
-    server.addEventListener('close',close);server.addEventListener('error',close);
+    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else if(this.room)this.room.close(peer,1003,'Texto esperado.');else peer.close(1003,'Texto esperado.');});
+    // An abnormal end may fire 'error' before 'close': the close event carries the code (1006) and wasClean the log
+    // is for, so an error only marks the socket and waits; with no close event in ERROR_CLOSE_WAIT_MS it ends anyway.
+    let errored=false,fallback:ReturnType<typeof setTimeout>|undefined;
+    const close=(by:'client'|'error',e?:Partial<CloseEvent>)=>{
+      clearTimeout(fallback);
+      if(this.peers.has(server))this.room?.closed(peer,{by,code:e?.code,reason:e?.reason,clean:e?.wasClean});
+      this.drop(server);
+    };
+    server.addEventListener('close',e=>close(errored?'error':'client',e));
+    server.addEventListener('error',()=>{if(errored)return;errored=true;fallback=setTimeout(()=>close('error'),ERROR_CLOSE_WAIT_MS);});
     this.loop.start();
   }
   private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();}
-  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
+  async alarm(){for(const peer of [...this.peers.values()])if(this.room)this.room.close(peer,4004,'Sala encerrada.');else peer.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

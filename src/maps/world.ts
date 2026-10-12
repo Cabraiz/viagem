@@ -40,7 +40,16 @@ export function isLand(p: Point, margin=0, terrain?:TerrainField) {
   const x=(p.x-12)/(10.6-margin), y=(p.y-12)/(10.3-margin);
   return x*x+y*y < 1;
 }
+/** Mask-collided terrain (Cidade Nevada, city/terrain.ts): the body disc against its walkable bitset. */
+interface MaskSurface {clearDisc(x:number,y:number,r:number):boolean;readonly base:Point;readonly spawn:Point}
+/** The city terrain when `terrain` is one; the island and the endless world return undefined. */
+export function maskSurface(terrain?:TerrainField):(TerrainField&MaskSurface)|undefined{
+  return terrain&&typeof (terrain as Partial<MaskSurface>).clearDisc==='function'?terrain as TerrainField&MaskSurface:undefined;
+}
 export function walkable(p: Point, terrain?:TerrainField) {
+  // City: the hero's own disc against the walkable mask (D-030); no shoreline margin, buildings are in the mask.
+  const mask=maskSurface(terrain);
+  if(mask)return mask.clearDisc(p.x,p.y,RADIUS);
   if(!(Number.isFinite(p.x) && Number.isFinite(p.y) && isLand(p,RADIUS+.2,terrain)))return false;
   const chunks=terrain?.chunks;
   // Endless world: only the obstacles of the chunk(s) under the hero, so the cost never grows with the map.
@@ -49,19 +58,26 @@ export function walkable(p: Point, terrain?:TerrainField) {
 }
 /** The island's 16 obstacles, or the endless world's obstacles whose disc may touch a body of `radius` at `p`. */
 export function obstaclesNear(p:Point,radius:number,terrain?:TerrainField):readonly Obstacle[]{
+  // City solids are in the walkable mask; there are no disc obstacles to steer around.
+  if(maskSurface(terrain))return [];
   const chunks=terrain?.chunks;
   return chunks?chunks.obstaclesNear(p.x,p.y,radius+MAX_OBSTACLE_RADIUS):obstacles;
 }
 /** Where the base/wall goes: the island centre, or the origin of the endless world. */
 export const ISLAND_BASE:Readonly<Point>=Object.freeze({x:12,y:12});
-export function worldBase(terrain?:TerrainField):Point{return terrain?.chunks?{x:BASE.x,y:BASE.y}:{...ISLAND_BASE};}
+export function worldBase(terrain?:TerrainField):Point{
+  const mask=maskSurface(terrain);if(mask)return {x:mask.base.x,y:mask.base.y};
+  return terrain?.chunks?{x:BASE.x,y:BASE.y}:{...ISLAND_BASE};
+}
 /** Players' spawn: SPAWN on the island; south of the base in the endless world (same offset as the island). */
 export function worldSpawn(terrain?:TerrainField):Point{
+  const mask=maskSurface(terrain);if(mask)return {x:mask.spawn.x,y:mask.spawn.y};
   return terrain?.chunks?{x:BASE.x+SPAWN.x-ISLAND_BASE.x,y:BASE.y+SPAWN.y-ISLAND_BASE.y}:{...SPAWN};
 }
 /** Gather nodes: every island obstacle; in the endless world the ones within NODE_RADIUS of the base. */
 export const NODE_RADIUS=24;
 export function resourceObstacles(terrain?:TerrainField):readonly Obstacle[]{
+  if(maskSurface(terrain))return []; // the city's loot spots come from the asset (cidade-07)
   const chunks=terrain?.chunks;if(!chunks)return obstacles;
   const base=worldBase(terrain);
   return chunks.obstaclesNear(base.x,base.y,NODE_RADIUS).map(o=>({...o}))
@@ -77,7 +93,7 @@ export const PATH_MAX_NODES=97;
 const PATH_MARGIN=6;
 /**
  * Half-tile navigation with swept collision checks, also suitable for server validation.
- * Island: the fixed 49×49 lattice over 0..24. Endless world: a local box on the same global half-unit
+ * Island: the fixed 49×49 lattice over 0..24. Endless world and city: a local box on the same global half-unit
  * lattice around start and target (PATH_MARGIN around both), so the cost depends on the distance, never
  * on where in the world the search happens. Targets farther than the box allows return [] (use waypoints).
  */
@@ -87,7 +103,7 @@ export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[]
   if(clearSegment(start,target,terrain)) return [target];
   const step=.5;
   let ox=0,oy=0,w=49,h=49;
-  if(terrain?.chunks){
+  if(terrain?.chunks||maskSurface(terrain)){
     ox=Math.floor((Math.min(start.x,target.x)-PATH_MARGIN)/step);oy=Math.floor((Math.min(start.y,target.y)-PATH_MARGIN)/step);
     w=Math.ceil((Math.max(start.x,target.x)+PATH_MARGIN)/step)-ox+1;h=Math.ceil((Math.max(start.y,target.y)+PATH_MARGIN)/step)-oy+1;
     if(w>PATH_MAX_NODES||h>PATH_MAX_NODES)return [];

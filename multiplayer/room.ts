@@ -1,5 +1,6 @@
-import {DEFAULT_SEED,type WorldKind} from '../src/maps/index.ts';
+import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,type CityTerrain} from '../src/maps/index.ts';
 import {Simulation,DEFAULT_WORLD,worldDescriptor} from './simulation.ts';
+import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
 import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
@@ -56,7 +57,21 @@ export interface RoomOptions {
    * storage (one row) and a restarted object can seat everyone again. See RoomRoster.
    */
   onRoster?:(roster:RoomRoster)=>void;
+  /** One line per socket end (closeLogLine): the Durable Object passes console.log, so `wrangler tail` shows it. */
+  log?:(line:string)=>void;
+  /**
+   * D-034/D-035: the city asset's exact text and its manifest ref ({id,version,hash}), handed over by worker.ts (which
+   * bundles them); room.ts never imports the asset, so node tests stay light and inject it themselves.
+   */
+  cityText?:string;
+  cityRef?:MapRef;
+  /** Whether the owner may pick the city: CITY_PLAYABLE (false until cidade-10) unless a test says otherwise. */
+  cityPlayable?:boolean;
+  /** The map a new room opens on (ROOM_DEFAULT_MAP); a city that cannot be played falls back to the endless map. */
+  map?:MapId;
 }
+/** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
+export const mapMissingText=(names:string[])=>`${names.join(', ')} ${names.length>1?'precisam':'precisa'} atualizar a página antes de trocar o mapa.`;
 /**
  * What survives a restart of the Durable Object (deploy, eviction, crash), VGM-047. Not the run: the policy is to
  * end it honestly (D-024, proposed), so only who sits in the room and where the room was.
@@ -73,15 +88,22 @@ export interface RoomRoster {
   botsAdded?:number;
   bans?:{hash:string;until:number}[];
   nameBans?:{name:string;until:number}[];
+  /** D-035 (optional): the map the owner picked, when it is not the endless default. */
+  map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
+/** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
+const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
 /** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
 const BOT_CLASSES=classes.map(c=>c.id);
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
 export const OWNER_GAP_MS=300;
-/** A roster change that is only about bots is written at most this often (ms); the room tick flushes it. */
+/**
+ * A roster change that is only about bots or the map (the owner adding/removing bots, picking maps) is written at most
+ * this often (ms); the room tick (and a socket end) flushes the last one.
+ */
 export const ROSTER_BOTS_MS=1000;
 /**
  * The second sign of a kicked seat (D-025): the name, lower case, without accents, spaces or punctuation. The token is
@@ -134,6 +156,36 @@ export const LATE_ACK_MS=2000,SLOW_ACKS=2;
 /** Frame send times kept per connection for the lateness of its acks (10 Hz: ~51 s). */
 const FRAME_TIMES=512;
 export const silenceLimit=(c:{lag:number;lateAcks:number})=>c.lateAcks>=SLOW_ACKS?Math.min(SLOW_SILENT_MAX_MS,SILENT_MS+c.lag):SILENT_MS;
+/**
+ * BUG-20261012-ORQ-reconecta-round2: what one socket end looked like, for one log line (closeLogLine). `by` is who
+ * ended it: the browser or the network (the socket's close event), an error event, or the room itself (silence, flood,
+ * refused join, kick, replaced, leave, alarm). Only counters and the room's state: no name, token, player id or address.
+ */
+export interface CloseLog {
+  by:'client'|'error'|'room';code:number|null;reason:string;clean:boolean|null;
+  /** Run lifecycle phase and run round; the director's round index and phase (combat); the simulation tick. */
+  phase:string;run:number;round:number;roundPhase:string;tick:number;
+  /** Connection age, time since its last message, the silence limit it had (ms). */
+  ageMs:number;idleMs:number;limitMs:number;
+  /** Sent to it (bytes, binary frames), received from it (messages); its ack lag (ms) and late acks in a row. */
+  bytes:number;frames:number;received:number;lag:number;lateAcks:number;
+  /** It had a seat (joined); sockets the room held at that moment (this one included). */
+  seated:boolean;conns:number;
+}
+/** Close reasons are cut to this many characters in the log (a client may send up to 123 bytes). */
+export const CLOSE_REASON_MAX=60;
+/**
+ * The JSON line for one socket end: only the CloseLog keys, in a fixed order, numbers rounded (null when not finite),
+ * the reason cut to CLOSE_REASON_MAX. Whatever else the caller's object carries never reaches the log.
+ */
+export function closeLogLine(f:CloseLog):string{
+  const n=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?Math.round(v):null;
+  const text=(v:unknown,max:number)=>typeof v==='string'?v.slice(0,max):'';
+  return JSON.stringify({ev:'ws-end',by:f.by==='client'||f.by==='error'?f.by:'room',code:n(f.code),reason:text(f.reason,CLOSE_REASON_MAX),clean:typeof f.clean==='boolean'?f.clean:null,
+    phase:text(f.phase,16),run:n(f.run),round:n(f.round),roundPhase:text(f.roundPhase,16),tick:n(f.tick),
+    ageMs:n(f.ageMs),idleMs:n(f.idleMs),limitMs:n(f.limitMs),bytes:n(f.bytes),frames:n(f.frames),received:n(f.received),lag:n(f.lag),lateAcks:n(f.lateAcks),
+    seated:f.seated===true,conns:n(f.conns)});
+}
 /** Tick durations kept for the lab report (one minute at 20 Hz). */
 const PERF_SAMPLES=1200;
 /** Server-side cost of the room, for the lab (wrangler dev): tick and encode times, frames and bytes sent. */
@@ -160,6 +212,7 @@ export class Room {
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   private readonly onRoster?:(roster:RoomRoster)=>void;
+  private readonly log?:(line:string)=>void;
   /** Roster as last handed to onRoster (JSON), so only real changes are written. */
   private rosterKey='';
   /** Restored after a restart that cut a run: these players still have to hear why they are back in the lobby. */
@@ -177,13 +230,46 @@ export class Room {
   readonly bots=new RoomBots();
   /** Bots ever added in this room (their names and classes follow the seed and this count). */
   private botsAdded=0;
+  /** The map the room plays (D-026): announced in welcome and {t:'map'}, kept in the roster. */
+  map:MapRef=INFINITO_REF;
+  /** The world of the endless map's slot: DEFAULT_WORLD, or the island in tests and the lab (LAB_WORLD). */
+  private readonly baseWorld:WorldKind;
+  private readonly cityText?:string;
+  private readonly cityRef?:MapRef;
+  private readonly cityPlayable:boolean;
+  /** Each person's build catalog from join.maps (undefined: a client that sent none), for playersMissingMap. */
+  private readonly catalogs=new Map<string,MapCatalog|undefined>();
+  /** A city switch waiting for the asset to decode (its first use in this isolate); see ready(). */
+  private switching?:Promise<void>;
+  /** The map that waiting switch goes to: the owner's last pick, which a newer pick compares against (and cancels). */
+  private target?:MapRef;
+  /** Bumped by every switch: a waiting switch that finds a newer one when its decode lands gives way to it. */
+  private mapGen=0;
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
-    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});this.sim.botState=()=>this.bots.state();
+    this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.bots.state();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
-    this.onRoster=options.onRoster;
+    this.onRoster=options.onRoster;this.log=options.log;
+    if(options.map!==undefined&&options.map!==ROOM_DEFAULT_MAP)this.openMap(options.map,'create');
+  }
+  /** The maps this room accepts: the endless one, and the city once it is playable and its asset was handed over. */
+  private catalog(){return roomCatalog(this.cityText!==undefined?this.cityRef:undefined,this.cityPlayable);}
+  /** Resolves once no map switch is waiting for the city to decode (the Durable Object awaits it after a restore). */
+  async ready(){while(this.switching)await this.switching;}
+  /** One JSON line about the map (fallbacks, decode failures) for `wrangler tail`; without a sink (tests, lab) nothing. */
+  private logMap(line:object){try{this.log?.(JSON.stringify({ev:'map',...line}));}catch{/* a log line never ends a room */}}
+  /**
+   * A room opened or restored on `id` (RoomOptions.map, the stored roster): the city only when this room may play it,
+   * else the endless map, logged; never a crash. False when it fell back.
+   */
+  private openMap(id:unknown,why:'create'|'restore'){
+    if(id==='infinito')return true;
+    const ref=isMapId(id)?this.catalog().get(id):undefined;
+    if(!ref){this.logMap({fallback:typeof id==='string'?id.slice(0,20):typeof id,why,to:'infinito'});return false;}
+    this.switchTo(ref);return true;
   }
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
@@ -192,7 +278,7 @@ export class Room {
     const bots=[...this.sim.players.values()].filter(p=>this.sim.bots.has(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,slot:this.bots.slotOf(p.id)}));
     return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
       const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
-    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{})};
+    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{}),...(this.map.id!=='infinito'?{map:this.map.id}:{})};
   }
   /**
    * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
@@ -219,7 +305,15 @@ export class Room {
       this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
-    this.syncSpectators();const restored=this.roster();this.rosterKey=JSON.stringify(restored);this.rosterCore=JSON.stringify({...restored,bots:undefined,botsAdded:undefined});this.rosterDirty=false;
+    // D-035: the map the owner had picked; a city this room cannot play now comes back as the endless map (logged).
+    const kept=roster.map===undefined||this.openMap(roster.map,'restore');
+    this.syncSpectators();const restored=this.roster();
+    // Keyed as the stored row reads (it may still name a city that is decoding): a decode that lands writes nothing
+    // new, while one that fails (or a newer pick of the endless map) differs from it and rewrites the row.
+    const stored=roster.map!==undefined&&roster.map!==this.map.id?{...restored,map:roster.map}:restored;
+    this.rosterKey=JSON.stringify(stored);this.rosterCore=rosterCore(restored);this.rosterDirty=false;
+    // The stored row still names the city: rewrite it on the next flush.
+    if(!kept)this.rosterDirty=true;
   }
   /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
   private rosterDirty=false;
@@ -229,9 +323,10 @@ export class Room {
     if(!this.onRoster||!this.rosterDirty)return;
     const roster=this.roster(),key=JSON.stringify(roster);
     if(key===this.rosterKey){this.rosterDirty=false;return;}
-    // Only the bots changed (the owner adding or removing them, D-025): at most one row a second; the tick flushes the
-    // rest. Seats, kicks, leaves and runs are written at once.
-    const core=JSON.stringify({...roster,bots:undefined,botsAdded:undefined});
+    // Only the bots or the map changed (the owner adding or removing bots, D-025, or picking maps, D-035): at most one
+    // row a second; the tick (or the next socket end) flushes the last one. Seats, kicks, leaves and runs are written
+    // at once, and they carry the map and bots as they are then.
+    const core=rosterCore(roster);
     if(core===this.rosterCore&&now-this.rosterWrittenAt<ROSTER_BOTS_MS)return;
     this.rosterDirty=false;this.rosterKey=key;this.rosterCore=core;this.rosterWrittenAt=now;this.perf.rosterWrites++;
     try{this.onRoster(roster);}catch{}
@@ -239,8 +334,8 @@ export class Room {
   private rosterCore='';
   private rosterWrittenAt=-Infinity;
   connect(peer:Peer,now=Date.now()){
-    if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
-    if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
+    if(now-this.createdAt>ROOM_LIFETIME_MS){this.logClose(undefined,'room',4004,'Sala encerrada. Crie uma nova.',null,now);peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
+    if(this.connections.size>=12){this.logClose(undefined,'room',4008,'Muitas conexões.',null,now);peer.close(4008,'Muitas conexões.');return;}
     this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0,lag:0,lateAcks:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
@@ -249,51 +344,56 @@ export class Room {
   private handle(peer:Peer,raw:string,now:number){
     const c=this.connections.get(peer);if(!c)return;
     c.received++;
-    if(raw.length>1024){peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
+    if(raw.length>1024){this.logClose(c,'room',1009,'Mensagem muito grande.',null,now);peer.close(1009,'Mensagem muito grande.');this.disconnect(peer,now);return;}
     if(now-c.window>=1000){c.window=now;c.count=0;}
-    if(++c.count>45){peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
+    if(++c.count>45){this.logClose(c,'room',4008,'Limite de mensagens.',null,now);peer.close(4008,'Limite de mensagens.');this.disconnect(peer,now);return;}
     let m:any;try{m=JSON.parse(raw);}catch{return;}
     if(!m||typeof m!=='object')return;
     c.seen=now;
     if(m.t==='join'&&!c.playerId){
-      if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED);return;}
+      if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED,now);return;}
       this.expire(now);
       // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
       const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);
       if(banned!==undefined){this.sendKicked(peer,banned,now);return;}
+      // D-026: the room's map must be one this build ships (same version and hash). A build that sends no `maps`
+      // (deployed before D-035) ships the endless map only: refused on the city, and its catalog says so afterwards.
+      const maps=checkJoinMaps(m.maps===undefined?clientCatalog(undefined):m.maps,this.map);
+      if(!maps.ok){this.reject(peer,maps.text,now);return;}
       let session:Session|undefined;
       if(m.token!==undefined){
         const hash=typeof m.token==='string'&&m.token.length<=200?sha256Hex(m.token):'';
         session=[...this.sessions.values()].find(s=>s.hash===hash);
-        if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.');return;}
+        if(!session||session.until<now){this.reject(peer,'Sua sessão expirou. Entre novamente.',now);return;}
         // The newest connection takes the character (BUG-20261009-N1-reconexao-socket-velho): a phone back from another
         // network while the room still holds its dead socket, or a second tab. The old one hears why and is closed with
         // 4009, which the client never retries, so two real tabs cannot keep knocking each other out.
         for(const other of [...this.connections.values()])if(other!==c&&other.playerId===session.id){
+          this.logClose(other,'room',4009,'Personagem entrou por outra conexão.',null,now);
           this.connections.delete(other.peer);
           try{other.peer.send(JSON.stringify({t:'replaced',message:REPLACED_MESSAGE}));}catch{}
           try{other.peer.close(4009,'Personagem entrou por outra conexão.');}catch{}
         }
         this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
-        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.');return;}
+        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
-        if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.');return;}
+        if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
-      session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;
+      session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;this.catalogs.set(session.id,maps.maps);
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
       c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
-        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain)});
+        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
       // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
@@ -341,7 +441,8 @@ export class Room {
     else if(m.t==='kick')this.kick(c,m,now);
     else if(m.t==='bot-add')this.addBot(c,m,now);
     else if(m.t==='bot-remove')this.removeBotCommand(c,m,now);
-    else if(m.t==='leave'){this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
+    else if(m.t==='setMap')this.setMap(c,m,raw.length,now);
+    else if(m.t==='leave'){this.logClose(c,'room',1000,'Saiu da sala.',null,now);this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
   /** sha256(token) is kicked and still out at `now`: until when; else undefined. */
   private banOf(token:unknown,now:number){
@@ -355,6 +456,7 @@ export class Room {
   private sendKicked(peer:Peer,until:number,now:number){
     const message=kickedMessage(until,now);
     try{peer.send(JSON.stringify({t:'kicked',message,until}));}catch{}
+    this.logClose(this.connections.get(peer),'room',4003,'Expulso da sala.',null,now);
     this.connections.delete(peer);
     try{peer.close(4003,'Expulso da sala.');}catch{}
   }
@@ -401,6 +503,90 @@ export class Room {
     const id=typeof m.id==='string'?m.id:this.bots.ids.at(-1);
     if(id&&this.sim.bots.has(id)){this.removeBot(id);this.pushRun();}
   }
+  /**
+   * {t:'setMap',map} (D-026/D-035): the owner picks the map in the lobby. Throttled like the other owner commands; the
+   * locked city answers CITY_SOON; then validateSetMap (owner, lobby, catalog). The pick is compared with where the
+   * room is going (a city still decoding counts as picked): the same map changes nothing; another one supersedes the
+   * waiting switch, so the room ends on the owner's last pick. One that a connected person's build cannot load is
+   * refused with their names.
+   */
+  private setMap(c:Connection,m:unknown,rawLength:number,now:number){
+    if(c.ownerAt!==undefined&&now>=c.ownerAt&&now-c.ownerAt<OWNER_GAP_MS)return;
+    c.ownerAt=now;
+    if((m as {map?:unknown}).map==='cidade-nevada'&&!this.catalog().has('cidade-nevada')){this.notice(c,CITY_SOON);return;}
+    const check=validateSetMap(m,{rawLength,senderId:c.playerId,ownerId:this.owner,phase:this.run.snapshot().phase,current:this.target??this.map,catalog:this.catalog()});
+    if(!check.ok){this.notice(c,check.text);return;}
+    if(!check.changed||this.missing(c,check.map))return;
+    this.switchTo(check.map,c);
+  }
+  /**
+   * Connected people whose build cannot load `ref`: the owner hears their names and true comes back (no switch).
+   * Only connected people count: their catalog came with this connection's join. A seat that is away (a dropped
+   * phone, or every seat right after a restart, whose catalogs were never stored) is checked again by checkJoinMaps
+   * when it comes back, and refused with the update text then if its build lacks the map; it never blocks the owner.
+   */
+  private missing(c:Connection,ref:MapRef){
+    const online=new Map<string,MapCatalog|undefined>();
+    for(const other of this.connections.values())if(other.playerId&&this.catalogs.has(other.playerId))online.set(other.playerId,this.catalogs.get(other.playerId));
+    const names=playersMissingMap(ref,online).map(id=>this.sim.players.get(id)?.name??id).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+    if(names.length)this.notice(c,mapMissingText(names));
+    return names.length>0;
+  }
+  /**
+   * Switches to `ref`, superseding any switch still waiting (only the newest pick applies): the endless map at once;
+   * the city at once when this isolate already decoded it, else after its asset decodes (sha256 checked). `from` (the
+   * owner's connection) is checked again after the wait: a countdown that started, an owner who left or a person who
+   * joined without the map cancel it. A decode that fails leaves the room where it is and its roster row rewritten
+   * (a restored row may still name the city).
+   */
+  private switchTo(ref:MapRef,from?:Connection){
+    const gen=++this.mapGen;this.rosterDirty=true;
+    const city=ref.id==='cidade-nevada';
+    const cached=city&&ref.hash?cityTerrainFor(ref.hash):undefined;
+    if(!city||cached){this.target=undefined;if(!sameMap(ref,this.map))this.applyMap(ref,cached);return;}
+    this.target=ref;
+    const prev=this.switching,text=this.cityText;
+    const job=(async()=>{
+      try{
+        await prev;
+        const decoded=text!==undefined&&ref.hash?await cityTerrainFrom(text,ref.hash):undefined;
+        // A newer pick came while this one decoded: it already decided (or will), this one gives way silently.
+        if(gen!==this.mapGen)return;
+        this.target=undefined;
+        if(!decoded?.ok){
+          this.logMap({failed:ref.id,error:decoded?.error.slice(0,80)??'no asset'});if(from)this.notice(from,MAP_TEXT.unknown);
+          this.rosterDirty=true;this.flushRoster(Date.now());return;
+        }
+        if(sameMap(ref,this.map))return;
+        if(this.run.snapshot().phase!=='lobby'){if(from)this.notice(from,MAP_TEXT.lobbyOnly);return;}
+        if(from&&(this.connections.get(from.peer)!==from||from.playerId!==this.owner||this.missing(from,ref)))return;
+        this.applyMap(ref,decoded.terrain);this.flushRoster(Date.now());
+      }catch(error){if(gen===this.mapGen)this.target=undefined;this.logMap({failed:ref.id,error:String(error).slice(0,80)});}
+    })();
+    this.switching=job;
+    void job.then(()=>{if(this.switching===job)this.switching=undefined;});
+  }
+  /**
+   * The new map: a fresh Simulation on its terrain with the same people and bots (seats, online, spectators, the
+   * shame opt-outs), fresh wire ids and full frames for everyone, readies reset (bots stay ready), the roster marked,
+   * then {t:'map',map,world} to every seated player before the run state and the next frame.
+   */
+  private applyMap(ref:MapRef,city?:CityTerrain){
+    const old=this.sim;
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city)}):new Simulation(old.seed,{world:this.baseWorld});
+    sim.botState=()=>this.bots.state();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
+    for(const p of old.players.values()){
+      const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
+      next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
+    }
+    for(const id of old.shameOptOut)if(sim.players.has(id))sim.shameOptOut.add(id);
+    this.sim=sim;this.map=ref;
+    this.ids.reset();this.sosAt.clear();this.bots.reset();
+    for(const c of this.connections.values())c.encoder?.resync();
+    this.run.resetReady();this.syncSpectators();this.rosterDirty=true;
+    this.send({t:'map',map:welcomeMap(ref),world:worldDescriptor(sim.terrain)});
+    this.pushRun();
+  }
   private seatBot(id:string,name:string,classId:string,slot:number){
     this.sim.addBot(id,name,classId);this.run.join(id,{bot:true});this.bots.add(id,slot);this.rosterDirty=true;
   }
@@ -412,7 +598,7 @@ export class Room {
    * oldest person left; with nobody left, the bots go too (a room of bots alone plays for no one).
    */
   private dropPerson(id:string){
-    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.sosAt.delete(id);this.lostRun.delete(id);
+    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.lostRun.delete(id);
     if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
     if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
   }
@@ -520,7 +706,27 @@ export class Room {
   /** Non-fatal message for one peer (a client stops on 'error'; 'notice' only shows). */
   private notice(c:Connection,message:string){this.sendJson(c,{t:'notice',message});}
   /** Tells the peer why and closes it (4003: the client stops and forgets the token). */
-  private reject(peer:Peer,message:string){peer.send(JSON.stringify({t:'error',message}));this.connections.delete(peer);peer.close(4003,message);}
+  private reject(peer:Peer,message:string,now:number){peer.send(JSON.stringify({t:'error',message}));this.logClose(this.connections.get(peer),'room',4003,message,null,now);this.connections.delete(peer);peer.close(4003,message);}
+  /** The socket's close (or error) event, from the Durable Object: one log line, and the seat waits GRACE_MS. */
+  closed(peer:Peer,end:{by?:'client'|'error';code?:number;reason?:string;clean?:boolean}={},now=Date.now()){
+    this.logClose(this.connections.get(peer),end.by??'client',end.code??null,end.reason??'',end.clean??null,now);
+    // The last socket's end stops the room's clock (worker.ts): write now, so a map or bots row still waiting on
+    // ROSTER_BOTS_MS, and this seat's grace, survive a restart.
+    this.disconnect(peer,now);this.flushRoster(now);
+  }
+  /** The Durable Object ends a socket itself (a binary message, the alarm): one log line, the seat waits, closed. */
+  close(peer:Peer,code:number,reason:string,now=Date.now()){
+    this.logClose(this.connections.get(peer),'room',code,reason,null,now);
+    this.disconnect(peer,now);peer.close(code,reason);this.flushRoster(now);
+  }
+  /** One closeLogLine for this socket end (nothing without a log sink: tests and the lab stay quiet). */
+  private logClose(c:Connection|undefined,by:CloseLog['by'],code:number|null,reason:string,clean:boolean|null,now:number){
+    if(!this.log)return;
+    const run=this.run.snapshot(),round=this.sim.world.round;
+    try{this.log(closeLogLine({by,code,reason,clean,phase:run.phase,run:run.round,round:round.index,roundPhase:round.phase,tick:this.sim.tick,
+      ageMs:c?now-c.opened:0,idleMs:c?now-c.seen:0,limitMs:c?silenceLimit(c):0,bytes:c?.bytes??0,frames:c?.frames??0,received:c?.received??0,lag:c?.lag??0,lateAcks:c?.lateAcks??0,
+      seated:!!c?.playerId,conns:this.connections.size}));}catch{/* a log line never ends a room */}
+  }
   disconnect(peer:Peer,now=Date.now()){
     const c=this.connections.get(peer);this.connections.delete(peer);
     if(c?.playerId){this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
@@ -550,7 +756,7 @@ export class Room {
   advance(now=Date.now(),flush=true){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
-      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
+      if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.logClose(c,'room',4004,'Conexão expirada.',null,now);this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
     this.expire(now);
     // Nobody left to play (the last participant's session expired; late arrivals are spectators; bots do not play for
@@ -663,12 +869,14 @@ export class Room {
     if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;
     const slot=c.encoder!.lastSeq%FRAME_TIMES;(c.frameSeq??=new Int32Array(FRAME_TIMES).fill(-1))[slot]=c.encoder!.lastSeq;(c.frameAt??=new Float64Array(FRAME_TIMES))[slot]=now;
-    try{c.peer.send(bytes);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(bytes);}catch{this.sendFailed(c,now);}
   }
   private sendJson(c:Connection,message:object){
     const raw=JSON.stringify(message);this.perf.jsonBytes+=raw.length;c.bytes+=raw.length;
-    try{c.peer.send(raw);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(raw);}catch{this.sendFailed(c);}
   }
+  /** A send that throws means the socket is gone: log it like any other end and close it, so it leaves `peers` too. */
+  private sendFailed(c:Connection,now=Date.now()){if(this.connections.get(c.peer)===c)this.close(c.peer,1011,'Falha ao enviar.',now);}
   private send(message:object){
     for(const c of [...this.connections.values()])if(c.playerId)this.sendJson(c,message);
   }

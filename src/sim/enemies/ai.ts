@@ -5,7 +5,7 @@
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
@@ -110,6 +110,10 @@ const probe:Point={x:0,y:0};
 function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:number){
   const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.08));
   for(let i=1;i<=n;i++){probe.x=a.x+dx*i/n;probe.y=a.y+dy*i/n;if(!walkable(probe,terrain))return false;}
+  // City (mask terrain): the body's own disc must clear the walls, unless it already overlapped them at the start
+  // (spawned against a wall), in which case it may move like the obstacle rule below lets it leave an overlap.
+  const mask=radius>PLAYER_RADIUS?maskSurface(terrain):undefined;
+  if(mask&&!mask.clearDisc(probe.x,probe.y,radius)&&mask.clearDisc(a.x,a.y,radius))return false;
   if(radius>PLAYER_RADIUS)for(const o of obstaclesNear(probe,radius,terrain)){
     const after=Math.hypot(probe.x-o.x,probe.y-o.y);
     if(after<o.radius+radius&&after<Math.hypot(a.x-o.x,a.y-o.y))return false;

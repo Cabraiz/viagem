@@ -51,8 +51,10 @@ export class GameRoom extends DurableObject<Env>{
   private create(created:number,seed:number){
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
     const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
-    if(!local(this.env))return new Room(created,seed,{onRoster});
-    return new Room(created,seed,{onRoster,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
+    // BUG-20261012-ORQ-reconecta-round2: one JSON line per socket end (closeLogLine), read with `wrangler tail`.
+    const log=(line:string)=>console.log(line);
+    if(!local(this.env))return new Room(created,seed,{onRoster,log});
+    return new Room(created,seed,{onRoster,log,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
   }
   /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
   private load(created:number){
@@ -77,15 +79,20 @@ export class GameRoom extends DurableObject<Env>{
    * Wires one accepted socket to the room. Closing from the room's side (a phone gone silent, a refused join) takes
    * the socket out at once: with no network the close handshake never ends and no 'close' event would come, so the
    * room would tick (and bill duration) until the alarm. No socket left (room bots have none): the clock stops.
+   * Every socket end is logged once by the room (Room.closed for the socket's events, the room's own closes otherwise):
+   * a close event after the room already closed the socket finds it gone from `peers` and logs nothing.
    */
   attach(server:RoomSocket,room:Room){
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>{this.drop(server);try{server.close(code,reason);}catch{/* already closed */}}};
     this.peers.set(server,peer);room.connect(peer);
-    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else peer.close(1003,'Texto esperado.');});
-    const close=()=>{if(this.peers.has(server))this.room?.disconnect(peer);this.drop(server);};
-    server.addEventListener('close',close);server.addEventListener('error',close);
+    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else if(this.room)this.room.close(peer,1003,'Texto esperado.');else peer.close(1003,'Texto esperado.');});
+    const close=(by:'client'|'error',e?:Partial<CloseEvent>)=>{
+      if(this.peers.has(server))this.room?.closed(peer,by==='error'?{by}:{by,code:e?.code,reason:e?.reason,clean:e?.wasClean});
+      this.drop(server);
+    };
+    server.addEventListener('close',e=>close('client',e));server.addEventListener('error',()=>close('error'));
     this.loop.start();
   }
   private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();}
-  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
+  async alarm(){for(const peer of [...this.peers.values()])if(this.room)this.room.close(peer,4004,'Sala encerrada.');else peer.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

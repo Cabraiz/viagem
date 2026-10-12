@@ -175,10 +175,11 @@ export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:Te
   }
   return result;
 }
-export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField):Point {
+/** One walking step along `direction` (any length; normalized), sliding along walls. `speed`: world units/s (D-036 slow and slip); defaults to the world's hero speed (city 1.99, else 3.1). */
+export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField,speed=heroSpeed(terrain)):Point {
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return position;
-  const distance=heroSpeed(terrain)*Math.min(.1,Math.max(0,seconds));
+  const distance=(Number.isFinite(speed)&&speed>0?speed:0)*Math.min(.1,Math.max(0,seconds));
   const next={x:position.x+direction.x/length*distance,y:position.y+direction.y/length*distance};
   if(clearSegment(position,next,terrain))return next;
   const slideX={x:next.x,y:position.y},slideY={x:position.x,y:next.y};

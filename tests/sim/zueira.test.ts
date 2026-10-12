@@ -254,7 +254,7 @@ test('shame: the most embarrassing moment wins, ties go to the earliest', ()=>{
   s.observe(world(10,3),[{type:'downed',player:'p2',source:'bebado'}]);
   assert.equal(s.moment?.key,'caiu');
   s.observe(world(20,3),[{type:'downed',player:'p1',source:'pombos'}]);
-  assert.deepEqual(s.moment,{player:'p1',key:'pernilongo',round:3,tick:20,source:'pombos'});
+  assert.deepEqual(s.moment,{player:'p1',key:'pombos',round:3,tick:20,source:'pombos'});
   // Rescued, and down again 3 s later: worse.
   s.observe(world(30,3),[{type:'revived',player:'p1',by:'p2'}]);
   s.observe(world(90,3),[{type:'downed',player:'p1',source:'bebado'}]);

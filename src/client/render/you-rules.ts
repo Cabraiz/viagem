@@ -82,3 +82,16 @@ export function canopyCovers(hero:{x:number;y:number},tree:CanopyBox){
 export function arrowTrigger(events:readonly {type:string;phase?:unknown;player?:unknown}[],selfId:string){
   return events.some(e=>(e.type==='round'&&e.phase==='wave')||(e.type==='revived'&&e.player===selfId));
 }
+
+/**
+ * D-036 movement effects on the local hero: a chip per active effect to the right of the head (Papel disc, Breu edge,
+ * hard sticker style): the bêbado's burp cloud while slowed, the pigeon-poop swirl while slipping. CSS px.
+ */
+export const STATUS_CSS={radius:11,edge:2,gap:4} as const;
+/** Whether a timed player state (slowUntil, slipUntil) is still on at `tick` (the server's rule: tick < until). */
+export const effectOn=(until:number|undefined,tick:number)=>typeof until==='number'&&tick<until;
+/** Points of a spiral (center cx,cy; outer radius r; `turns` turns; rotated by rot) into out[0..n); returns n. */
+export function spiralPoints(cx:number,cy:number,r:number,turns:number,rot:number,out:{x:number;y:number}[],n=out.length){
+  for(let k=0;k<n;k++){const f=n>1?k/(n-1):0,a=rot+f*turns*Math.PI*2,p=out[k];p.x=cx+Math.cos(a)*r*f;p.y=cy+Math.sin(a)*r*f;}
+  return n;
+}

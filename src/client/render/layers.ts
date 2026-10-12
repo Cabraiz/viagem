@@ -13,6 +13,7 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
 import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesOpen} from './blackout-rules.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
@@ -64,7 +65,9 @@ interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:bool
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
-interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
+interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
+  /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
+  kind:TelegraphView['kind'];phase:number}
 interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean;priority:boolean;self:boolean}
 interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:number}
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
@@ -165,6 +168,8 @@ export const TELEGRAPH_BANDS_CSS={breu:2,papel:2,cone:3} as const;
 const TELEGRAPH_EDGE_CSS=2*TELEGRAPH_BANDS_CSS.breu+2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone;
 /** Hatch of the zone: Breu diagonals, 1,5 px CSS wide every 9 px CSS, at 18%. */
 const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
+/** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
+const DECOR_ELLIPSE_SEGMENTS=20;
 
 export class HordeRenderer{
   private scene:Phaser.Scene;
@@ -247,7 +252,7 @@ export class HordeRenderer{
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
-    this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
+    this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0,kind:undefined,phase:0}),()=>{});
     this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false,priority:false,self:false}),showText,CAPS.damage);
     this.pops=new Ring(()=>({text:text(popStyle('bebado'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
@@ -311,6 +316,8 @@ export class HordeRenderer{
   }
 
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
+  get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
   setReduced(reduced:boolean){this.reduced=reduced;}
   /**
@@ -388,7 +395,8 @@ export class HordeRenderer{
   };
   private syncTelegraph(view:TelegraphView){
     const used=this.telegraphs.use(view.id),t=used.item;
-    if(used.fresh)t.start=Math.min(this.viewTick,view.fireTick-1);
+    if(used.fresh){t.start=Math.min(this.viewTick,view.fireTick-1);t.phase=hashPhase(view.id);}
+    t.kind=view.kind;
     t.shape=view.shape;t.x=view.x;t.y=view.y;t.radius=view.radius;t.fireTick=view.fireTick;
     const length=Math.hypot(view.dx??0,view.dy??0);
     t.dx=length>1e-6?(view.dx as number)/length:1;t.dy=length>1e-6?(view.dy as number)/length:0;
@@ -628,27 +636,60 @@ export class HordeRenderer{
   private drawTelegraph=(t:TelegraphState)=>{
     const g=this.ground,u=telegraphPulse(this.nowTick,t.fireTick,this.reduced,t.start),blink=telegraphBlink(this.now,u,this.reduced);
     let n=this.outline(t,1);
-    const c=PALETTE;
-    g.fillStyle(c.cone,.14+.14*u).fillPoints(this.pts,true,true,n);
+    const b=this.decorFrame.bounds;b.minX=b.minY=Infinity;b.maxX=b.maxY=-Infinity;
+    for(let i=0;i<n;i++){const p=this.pts[i];if(p.x<b.minX)b.minX=p.x;if(p.x>b.maxX)b.maxX=p.x;if(p.y<b.minY)b.minY=p.y;if(p.y>b.maxY)b.maxY=p.y;}
+    const c=PALETTE,look=telegraphLook(t.kind),fill=look.fill??c.cone,fa=look.fillAlpha;
+    g.fillStyle(fill,Math.min(1,(.14+.14*u)*fa)).fillPoints(this.pts,true,true,n);
     n=this.outline(t,Math.max(.06,u));
-    g.fillStyle(c.cone,.24+.3*u).fillPoints(this.pts,true,true,n);
+    g.fillStyle(fill,Math.min(1,(.24+.3*u)*fa)).fillPoints(this.pts,true,true,n);
+    // D-036: plan the hazard's own drawing (gas, bottle, flames, splat, burst, stamp, charge arrow); it goes on the top
+    // layer (never under a critter), the zone part under the danger edge and what is in the air over it.
+    const css=this.css(),f=this.decorFrame;
+    f.u=u;f.ticksLeft=t.fireTick-this.nowTick;f.now=this.now;f.reduced=this.reduced;f.phase=t.phase;f.css=css;
+    const ops=planDecor(t,f,this.projectTo,this.decor);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
     // Line widths follow the UI scale (≥ 1): under ~0.55 zoom (the old whole-island view) a fixed 8px world line got ~2px.
     // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
     const top=this.top,w=this.ui;
-    top.fillStyle(c.cone,.08+.1*u).fillPoints(this.pts,true,true,n);
+    top.fillStyle(fill,.08+.1*u).fillPoints(this.pts,true,true,n);
     // Three hard bands on the zone's edge (Laranja Cone = danger only): Breu outside, Papel, Cone core. Breu holds on
     // sand, grass and water; Papel holds on the dark trees and the horde; the blink stays on the Papel band only.
     // Hatch over the fill, so the zone reads by shape too (Cone on the grass is close in luminance; deuteranopia).
-    const css=this.css(),hatch=hatchSegments(this.pts,n,HATCH_CSS.spacing*css,this.hatch,this.hatchXs);
+    const hatch=hatchSegments(this.pts,n,HATCH_CSS.spacing*css,this.hatch,this.hatchXs);
     if(hatch){top.lineStyle(HATCH_CSS.width*css,c.breu,HATCH_CSS.alpha);for(let i=0;i<hatch;i++){const o=i*4;top.lineBetween(this.hatch[o],this.hatch[o+1],this.hatch[o+2],this.hatch[o+3]);}}
+    if(ops)this.replayDecor(top,LAYER_ZONE);
     // Bands in CSS px (never thinner on screen when the camera zooms in); never below the old UI-scaled width either.
     const want=Math.max(TELEGRAPH_EDGE_CSS*css,TELEGRAPH_STROKE*w)/2,half=insetPolygon(this.pts,n,want,this.ptsIn),k=2*half/TELEGRAPH_EDGE_CSS;
     top.lineStyle(2*half,c.breu,.95).strokePoints(this.ptsIn,true,true,n);
     top.lineStyle(k*(2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone),c.papel,.55+.45*blink).strokePoints(this.ptsIn,true,true,n);
     top.lineStyle(k*TELEGRAPH_BANDS_CSS.cone,c.cone,1).strokePoints(this.ptsIn,true,true,n);
+    // What is in the air or sticks out of a small zone (bottle, flames, poop, stamp, charge arrow) goes over the edge.
+    if(ops)this.replayDecor(top,LAYER_AIR);
   };
+  /** Replays one layer of the planned decoration on its Graphics (allocation-free: scratch points only). */
+  private replayDecor(g:Phaser.GameObjects.Graphics,layer:number){
+    const d=this.decor.data,pts=this.decorPts;
+    for(let i=0;i<this.decor.count;i++){
+      const o=i*DECOR_STRIDE;if(d[o+1]!==layer)continue;
+      const color=d[o+2],alpha=d[o+3],a=o+4;
+      switch(d[o]){
+        case OP_CIRCLE:g.fillStyle(color,alpha).fillCircle(d[a],d[a+1],d[a+2]);break;
+        case OP_LINE:g.lineStyle(d[a+4],color,alpha).lineBetween(d[a],d[a+1],d[a+2],d[a+3]);break;
+        case OP_ELLIPSE:case OP_RING:{
+          for(let k=0;k<DECOR_ELLIPSE_SEGMENTS;k++){const an=k/DECOR_ELLIPSE_SEGMENTS*TAU,p=pts[k];p.x=d[a]+Math.cos(an)*d[a+2];p.y=d[a+1]+Math.sin(an)*d[a+3];}
+          if(d[o]===OP_ELLIPSE)g.fillStyle(color,alpha).fillPoints(pts,true,true,DECOR_ELLIPSE_SEGMENTS);
+          else g.lineStyle(d[a+4],color,alpha).strokePoints(pts,true,true,DECOR_ELLIPSE_SEGMENTS);
+          break;
+        }
+        case OP_POLY:{
+          const n=d[a];if(n<3)break;
+          for(let k=0;k<n;k++){const p=pts[k];p.x=d[a+1+k*2];p.y=d[a+2+k*2];}
+          g.fillStyle(color,alpha).fillPoints(pts,true,true,n);break;
+        }
+      }
+    }
+  }
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}
   private putWorld=(i:number,x:number,y:number)=>{const q=this.options.projector.project(x,y,this.q),p=this.pts[i];p.x=q.x;p.y=q.y;};
@@ -723,6 +764,11 @@ export class HordeRenderer{
   /** World px per CSS px at the current camera zoom: hard edges keep a minimum width on screen (onda 4: ≥ 1,5 px CSS). */
   private css(){return 1/Math.max(.05,this.scene.cameras.main.zoom);}
   private hatch=new Float64Array(HATCH_MAX_LINES*4);
+  /** D-036 decoration: one op buffer, one frame object and one scratch polygon, reused by every telegraph. */
+  private decor=new DecorBuffer();
+  private decorFrame:DecorFrame={u:0,ticksLeft:0,now:0,reduced:false,phase:0,css:1,bounds:{minX:0,minY:0,maxX:-1,maxY:-1}};
+  private decorPts:Pt[]=Array.from({length:Math.max(DECOR_ELLIPSE_SEGMENTS,POLY_MAX)},()=>({x:0,y:0}));
+  private projectTo=(x:number,y:number,out:Pt)=>this.options.projector.project(x,y,out);
   private hatchXs=new Float64Array(OUTLINE_MAX_POINTS);
   private project(p:Pt){return this.options.projector.project(p.x,p.y,this.q);}
   private depth(p:Pt){return this.options.projector.depth(p.x,p.y);}

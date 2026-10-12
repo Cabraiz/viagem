@@ -54,7 +54,19 @@ export interface SimPlayer extends Point {
   invulnerableUntil?:number;
   /** Class kit stat bonus (VGM-044A); pass to refreshStats whenever the build changes (D-005). */
   classBonus?:Partial<PlayerStats>;
+  /** D-036: walking speed × PLAYER_SLOW_MULT while tick < slowUntil (the bêbado's burp). Server-set, sent to the client for prediction. */
+  slowUntil?:number;
+  /**
+   * D-036: while tick < slipUntil the player slides along `slip` (unit vector) at PLAYER_SLIP_SPEED and input is
+   * ignored (pigeon poop). Deterministic from (slipUntil, slip), so the client predicts it exactly.
+   */
+  slipUntil?:number; slip?:Point;
 }
+/** D-036 player effects, shared by the server movement and the client prediction. */
+export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
+/** D-036: what a telegraph is, so the client draws each hazard its own way. Absent = generic. */
+export type TelegraphKind='arroto'|'molotov'|'fogo'|'coco'|'explosao'|'pancada'|'investida'|'varredura'|'carimbo';
+export const TELEGRAPH_KINDS:readonly TelegraphKind[]=['arroto','molotov','fogo','coco','explosao','pancada','investida','varredura','carimbo'];
 
 export interface EnemyState extends Point {
   id:string; kind:string; hp:number; maxHp:number;
@@ -85,6 +97,8 @@ export interface ProjectileState extends Point {
 export interface Telegraph {
   id:string; shape:'circle'|'line'|'cone'; x:number; y:number; radius:number;
   dx?:number; dy?:number; width?:number; fireTick:number; damage:number; owner:string;
+  /** D-036: hazard kind for the client's look (absent = generic). */
+  kind?:TelegraphKind;
 }
 
 // ---------- Team progression ----------

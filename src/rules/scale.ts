@@ -1,15 +1,16 @@
 /**
  * Person × terrain scale per map (D-026; measurements in viagem-board design/mvp-mapa-snow.md, section
- * "Proporção pessoa × terreno"). Pure rules: no DOM, Phaser, network or imports (src/rules may depend only on the
- * contract, which does not exist yet).
+ * "Proporção pessoa × terreno"; D-030 for the 56 px hero floor). Pure rules: no DOM, Phaser or network; only the
+ * contract is imported (camera constants), as src/rules may depend on nothing else.
  *
  * - 'cidade-nevada' copies the world proportions of the .w3x (hero : street : block : map, speed × crossing time)
  *   through 1 WC3 unit = WC3_UNIT world units, with a zoom per orientation instead of the WC3 camera (D-009: phone only).
- * - 'infinito' is the current endless map, its values copied from src/game (source lines next to each constant).
+ * - 'infinito' is the current endless map, its values copied from the maps and sim sectors (rules may not import them; source lines next to each constant).
  *
- * Nothing is wired yet: the game still reads world.ts/catalog.ts/framing.ts. Wiring comes in a later card, after the
- * sector migration (design/arquitetura-setores.md).
+ * Nothing is wired yet: the game still reads maps/world.ts, sim/enemies/catalog.ts and client/framing.ts; the camera
+ * card (cidade-04) and the director wire it.
  */
+import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,REFERENCE_SHORT_SIDE_PX,TILE_X} from '../contract/index.ts';
 
 /** Our world units per WC3 unit. */
 export const WC3_UNIT=0.006875;
@@ -63,35 +64,30 @@ export const CIDADE_NEVADA_WC3=Object.freeze({
   heroDrawnCells:1,
 });
 
-// ---------- Current endless map ("o atual"), copied from src/game (do not import it) ----------
-/** src/game/world.ts:8 RADIUS. */
+// ---------- Current endless map ("o atual"): maps/sim values copied (rules may only import the contract) ----------
+/** src/maps/world.ts:8 RADIUS. */
 const INF_HERO_RADIUS=.22;
-/** src/game/world.ts:7 SPEED. */
+/** src/maps/world.ts:7 SPEED. */
 const INF_HERO_SPEED=3.1;
-/** src/game/sim/enemies/catalog.ts:39 gosma speed and radius. */
+/** src/sim/enemies/catalog.ts:39 gosma speed and radius. */
 const INF_GOSMA_SPEED=1.4,INF_GOSMA_RADIUS=.32;
-/** src/game/sim/enemies/catalog.ts:67 chefe radius (the only boss kind). */
+/** src/sim/enemies/catalog.ts:67 chefe radius (the only boss kind). */
 const INF_BOSS_RADIUS=.9;
-/** One terrain tile is 1 world unit: src/game/world.ts:29 project (42 px per unit on x−y, 21 on x+y). */
+/** One terrain tile is 1 world unit: src/maps/world.ts:29 project (42 px per unit on x−y, 21 on x+y). */
 const INF_CELL=1;
-/** src/game/sim/offscreen.ts:35-37 TILE_X, HERO_WORLD_PX, HERO_MIN_SCREEN_PX, REFERENCE_SHORT_SIDE_PX. */
-const INF_TILE_X=42,INF_HERO_WORLD_PX=96,INF_HERO_MIN_SCREEN_PX=56,INF_SHORT_PX=390;
-/**
- * Legibility floor of the drawn hero, CSS px (D-009; src/game/sim/offscreen.ts:36 HERO_MIN_SCREEN_PX).
- * D-030: it also binds the city — the world stays faithful, only the zoom obeys the floor.
- */
-export const HERO_MIN_SCREEN_PX=INF_HERO_MIN_SCREEN_PX;
+/** Camera constants from the contract (src/contract/offscreen.ts): tile width, drawn hero, 56 px floor, reference phone. */
+const INF_TILE_X=TILE_X,INF_HERO_WORLD_PX=HERO_WORLD_PX,INF_SHORT_PX=REFERENCE_SHORT_SIDE_PX;
 /** D-009 reference phone long side (390×844). */
 const INF_LONG_PX=844;
 /**
- * src/game/framing.ts:60-64 followZoom: on the reference phones the floor wins, zoom = 56/96 CSS px per world px
+ * src/client/framing.ts:60-64 followZoom: on the reference phones the floor wins, zoom = 56/96 CSS px per world px
  * in both orientations, so the screen shows viewport width × 96/56 world px. One world unit along the screen's x
  * axis is 42·√2 px (offscreen.ts:26-27), so the visible width is ≈11.26 u in portrait and ≈24.36 u in landscape.
  * Landscape width grows with the aspect ratio there (the zoom follows the short side); this is the 844×390 value.
  */
 /** Drawn hero size in units: HERO_WORLD_PX over the world px of one unit along screen x (≈1.62 u, 56 CSS px at the floor zoom). */
 const INF_HERO_DRAWN=INF_HERO_WORLD_PX/(INF_TILE_X*Math.SQRT2);
-const infWidth=(screenPx:number)=>screenPx*INF_HERO_WORLD_PX/INF_HERO_MIN_SCREEN_PX/(INF_TILE_X*Math.SQRT2)/INF_CELL;
+const infWidth=(screenPx:number)=>screenPx*INF_HERO_WORLD_PX/HERO_MIN_SCREEN_PX/(INF_TILE_X*Math.SQRT2)/INF_CELL;
 
 const freezeProfile=(p:ScaleProfile):Readonly<ScaleProfile>=>{
   Object.freeze(p.hero);Object.freeze(p.sizes.boss);Object.freeze(p.sizes);
@@ -180,7 +176,7 @@ export function convertSpeed(speed:number,from:ScaleProfile,to:ScaleProfile):num
 
 // ---------- Camera ----------
 /** Square counts as portrait, like framing.ts (`height>=width`) and the CSS orientation query. */
-export function orientationOf(width:number,height:number):Orientation{
+export function cameraOrientation(width:number,height:number):Orientation{
   return positive('width',width)>positive('height',height)?'landscape':'portrait';
 }
 /** Target visible world width in units for an orientation (midpoint of the zoom range). */
@@ -205,7 +201,7 @@ export function floorWidthUnits(profile:ScaleProfile,viewportWidth:number,minHer
  * followZoom on the D-009 phones only; the endless map keeps using followZoom.
  */
 export function zoomFor(profile:ScaleProfile,viewportWidth:number,viewportHeight:number,minHeroPixels=HERO_MIN_SCREEN_PX):{orientation:Orientation;pixelsPerUnit:number;visibleWidth:number;visibleCells:number;floored:boolean;heroPixels:number;bodyPixels:number}{
-  const p=checked(profile),orientation=orientationOf(viewportWidth,viewportHeight);
+  const p=checked(profile),orientation=cameraOrientation(viewportWidth,viewportHeight);
   const faithful=visibleWidthUnits(p,orientation),floor=floorWidthUnits(p,viewportWidth,minHeroPixels);
   // Small tolerance so a profile tuned exactly at the floor (infinito) does not flip to `floored` by rounding.
   const floored=floor<faithful-1e-9,visibleWidth=floored?floor:faithful,pixelsPerUnit=viewportWidth/visibleWidth;

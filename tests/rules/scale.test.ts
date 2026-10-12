@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {
   WC3_UNIT,WC3_CELL,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
-  heroWidthCells,enemySpeed,relativeRadius,traversalSeconds,convertSpeed,orientationOf,visibleWidthUnits,zoomFor,
-  HERO_MIN_SCREEN_PX,floorWidthUnits,
+  heroWidthCells,enemySpeed,relativeRadius,traversalSeconds,convertSpeed,cameraOrientation,visibleWidthUnits,zoomFor,
+  floorWidthUnits,
 } from '../../src/rules/scale.ts';
 import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
-import {RADIUS,SPEED} from '../../src/game/world.ts';
-import {HERO_MIN_SCREEN_PX as GAME_HERO_MIN_SCREEN_PX} from '../../src/game/sim/offscreen.ts';
-import {ENEMIES} from '../../src/game/sim/enemies/catalog.ts';
+import {RADIUS,SPEED} from '../../src/maps/world.ts';
+import {HERO_MIN_SCREEN_PX} from '../../src/contract/index.ts';
+import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
 
 const near=(actual:number,expected:number,tol:number,what:string)=>
   assert.ok(Math.abs(actual-expected)<=tol,`${what}: ${actual} not within ${tol} of ${expected}`);
@@ -84,7 +84,7 @@ test('real cidade-nevada asset (when imported): same cell size, straight start �
 });
 
 test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px floor (D-030)',()=>{
-  assert.equal(orientationOf(390,844),'portrait');assert.equal(orientationOf(844,390),'landscape');assert.equal(orientationOf(500,500),'portrait');assert.equal(orientationOf(501,500),'landscape');
+  assert.equal(cameraOrientation(390,844),'portrait');assert.equal(cameraOrientation(844,390),'landscape');assert.equal(cameraOrientation(500,500),'portrait');assert.equal(cameraOrientation(501,500),'landscape');
   near(visibleWidthUnits(city,'landscape')/city.cell,18,1e-9,'landscape cells');
   near(visibleWidthUnits(city,'portrait')/city.cell,10.5,1e-9,'portrait cells (midpoint of 10–11)');
   const land=zoomFor(city,844,390),port=zoomFor(city,390,844);
@@ -131,7 +131,7 @@ test('conversions: identity, hero-speed share, relative radius, linear enemy spe
 });
 
 test('infinito equals the current game code (drift guard)',()=>{
-  assert.equal(inf.hero.radius,RADIUS);assert.equal(inf.hero.speed,SPEED);assert.equal(HERO_MIN_SCREEN_PX,GAME_HERO_MIN_SCREEN_PX,'56 px floor');
+  assert.equal(inf.hero.radius,RADIUS);assert.equal(inf.hero.speed,SPEED);assert.equal(HERO_MIN_SCREEN_PX,56,'56 px floor');
   assert.equal(inf.hero.radius,.22);assert.equal(inf.hero.speed,3.1);assert.equal(inf.cell,1);
   near(enemySpeed(inf),ENEMIES.gosma.speed,1e-12,'gosma speed');
   near(relativeRadius(inf,inf.sizes.enemy),ENEMIES.gosma.radius,1e-12,'gosma radius');
@@ -147,7 +147,7 @@ test('input validation',()=>{
     assert.throws(()=>cellsToUnits(v,city),RangeError);assert.throws(()=>wc3ToUnits(v),RangeError);
     assert.throws(()=>unitsToWc3(v),RangeError);assert.throws(()=>unitsToCells(v,city),RangeError);
   }
-  assert.throws(()=>orientationOf(0,100),RangeError);
+  assert.throws(()=>cameraOrientation(0,100),RangeError);
   // Hand-built bad profiles are rejected, not silently used.
   const bad=(patch:object)=>({...city,...patch}) as unknown as ScaleProfile;
   assert.throws(()=>visibleWidthUnits(bad({zoom:{landscape:[18,18],portrait:[11,10]}}),'portrait'),RangeError,'inverted zoom range');

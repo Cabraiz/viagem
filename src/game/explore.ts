@@ -19,6 +19,8 @@ import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,t
 
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
+/** How long the "Gira no intervalo" answer to a tap on the locked camera stays (balloon or slot row). */
+const CAMERA_HINT_MS=1500;
 const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
@@ -35,7 +37,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
-    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>Gira no intervalo</span></div>
+    <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira no intervalo</span></span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
     <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
@@ -169,9 +171,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     }
     if(!locked&&!hint.hidden){hint.hidden=true;if(hintTimer)clearTimeout(hintTimer);}
   };
+  // Portrait (pacote-bugs-ux design review): the top band has no free row under the camera buttons (the XP bar is 20 px
+  // below), so the answer is a row of the announcement slot, "[cadeado] Gira no intervalo", ahead of the coach's hint;
+  // the real lock keeps its beat in view. Landscape keeps the balloon under the buttons (nothing there to cover).
+  const cameraRow=document.createElement('div');cameraRow.className='explore-camera-row';cameraRow.setAttribute('role','status');cameraRow.hidden=true;
+  cameraRow.innerHTML=`${icon('cadeado',{size:24})}<span>Gira no intervalo</span>`;
+  const portrait=typeof matchMedia==='function'?matchMedia('(min-height:501px)'):undefined;
   const lockedTap=()=>{
     lock.classList.remove('is-beat');void lock.offsetWidth;lock.classList.add('is-beat');
-    hint.hidden=false;if(hintTimer)clearTimeout(hintTimer);hintTimer=setTimeout(()=>{hint.hidden=true;},1500);
+    if(hud&&portrait?.matches){hud.queueRow(cameraRow,CAMERA_HINT_MS,{answer:true});return;}
+    hint.hidden=false;if(hintTimer)clearTimeout(hintTimer);hintTimer=setTimeout(()=>{hint.hidden=true;},CAMERA_HINT_MS);
   };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
     if(controller?.scene.rotationLocked()){lockedTap();return;}

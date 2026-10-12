@@ -5,7 +5,7 @@
  * pieces the AI uses: nearest live player as the target, citySteer for the direction (straight at the target when it
  * declines), moveSafely with each body's radius and speed, stop on contact, 20 Hz.
  * Bodies come from the catalog (createEnemy, and enemySpeedOf as assemble.ts wires it), so every walk below runs at
- * the real speeds (gosma 1.4, pernilongo 2.7, fiscal 1.3, tio-pavê 1.0 u/s × the round's speed).
+ * the real speeds (bêbado 1.4, pombos 2.7, agiota 1.3, anão-molotov 1.0, tio-pavê 0.95 u/s × the round's speed).
  * Addendum v2 (after the review of 62fa986): the horde chases a team away from the plaza (citySteer's players field),
  * the round-10 boss appears in the plaza, the round lasts until the slowest member could arrive, and a retreating
  * body never vanishes in sight (except at the 60 s cap).
@@ -164,8 +164,8 @@ function alongRoute(m:Mouth,s:number):Point{
   return xy(pts[0]);
 }
 
-/** Catalog kinds cycled over a horde: pernilongo, gosma ×2, fiscal, tio-pavê. */
-const KINDS=['pernilongo','gosma','gosma','fiscal','tio-pave'] as const;
+/** Catalog kinds cycled over a horde (the whole D-033 regular cast, 0.2-0.52 u): pombos, bêbado ×2, agiota, tio-pavê, anão-molotov. */
+const KINDS=['pombos','bebado','bebado','agiota','tio-pave','anao-molotov'] as const;
 /** Planner-placed catalog bodies: `size`-member groups nominally every 2 s over a round-9 'normal' round (4 mouths). */
 function placeHorde(ctx:FakeCtx,rng:Rng,groups:number,size:number){
   const P=planner(),state=P.openRound(9,'normal',rng);
@@ -176,7 +176,7 @@ function placeHorde(ctx:FakeCtx,rng:Rng,groups:number,size:number){
     const i=bodies.length,elite=i%50===49;
     const e=catalogEnemy(ctx,elite?'tio-pave':KINDS[i%KINDS.length],p);
     ctx.enemies.delete(e.id);
-    // An elite as the director makes it: radius × ELITE_SIZE (≈0.65 u), its kind's speed.
+    // An elite as the director makes it: radius × ELITE_SIZE (0.52 × 1.35 ≈ 0.70 u), its kind's speed.
     if(elite){e.radius*=ELITE_SIZE;e.elite=true;}
     e.spawnTick=e.readyTick=g.releaseTick;
     bodies.push({e,release:g.releaseTick});
@@ -337,7 +337,7 @@ test('first arrival: team at the plaza, round 1, catalog speeds: the first relea
     assert.ok(arrival>=0,`seed ${seed}: the first group reached the plaza`);
     // ≈ 12 s is the plan (13 s with the stand-in speed 1.79 u/s, see git history). With the catalog speeds a group can
     // arrive later because it cannot be released before the round starts: seed 5 warns at +0 s, lands at +1.5 s on
-    // avenue S ~18 u out (the nearest spot hidden from the team) and a gosma (1.4 u/s) needs ~13.9 s more → 15.35 s.
+    // avenue S ~18 u out (the nearest spot hidden from the team) and a bêbado (1.4 u/s) needs ~13.9 s more → 15.35 s.
     // 05b's single-mouth excursão corner case is ~15 s too. City speed scaling is a pending Orquestrador decision, so
     // the bound is 16 s until then and the count within 13 s is logged.
     assert.ok(base<=arrival&&arrival<=ticks(16),`seed ${seed} (${mode}): first arrival ${secs(arrival)}`);
@@ -349,11 +349,11 @@ test('first arrival: team at the plaza, round 1, catalog speeds: the first relea
 });
 
 // ---------- 4. nobody stuck ----------
-test('nobody stuck: 300 catalog bodies (0.2–0.65 u) placed by the planner walk to the plaza with citySteer + moveSafely for 90 s',()=>{
+test('nobody stuck: 300 catalog bodies (0.2–0.7 u) placed by the planner walk to the plaza with citySteer + moveSafely for 90 s',()=>{
   const {P,ctx,state,bodies}=horde(41),steer=citySteer(P);
   assert.equal(state.open.length,4,'round 9: 4 mouths open');
   assert.equal(bodies.length,300,'the planner placed every member');
-  assert.ok(bodies.some(b=>b.e.radius>.64),'an elite-sized body');
+  assert.ok(bodies.some(b=>b.e.radius>.69),'an elite-sized body');
   const anchor=new Map<string,{x:number;y:number;since:number}>(),wasWalkable=new Set<string>();
   const stuck:string[]=[],left:string[]=[],reached=new Set<string>();
   let spawnedOff=0;
@@ -496,7 +496,7 @@ test('chase: a team away from the plaza is reached through the streets (players 
       return chase(seed,[a],{move:{at:ticks(20),to:b}});
     })),
     // real.ts 'inicio': the team at the start point, ~84 u of streets south of the plaza (~105 u from mouth N). The
-    // planner times the groups for the plaza, so a gosma from N needs ~75 s and a tio-pavê ~105 s to get there: 60 s
+    // planner times the groups for the plaza, so a bêbado from N needs ~75 s and a tio-pavê (0.95 u/s) ~110 s to get there: 60 s
     // is out of reach at the catalog speeds. Deadline: max(60 s, 1.25 × the body's shortest walk at its speed); the
     // share within 60 s is logged.
     ...chaseReport('team at inicio (seed 1)',[chase(1,[INICIO,{x:INICIO.x+1,y:INICIO.y}],{pathDeadline:true})]),
@@ -508,8 +508,8 @@ test('chase: the steer exposes the players field, whose goals follow the live pl
   const a=spotAway(r,20,35);let b=spotAway(r,20,35);
   while(Math.hypot(a.x-b.x,a.y-b.y)<20)b=spotAway(r,20,35);
   addPlayer(ctx,'p',a);addPlayer(ctx,'down',b,{downed:true});
-  // A pernilongo (0.2 u, no wider than the hero) follows the hero-rule players field itself.
-  const e=catalogEnemy(ctx,'pernilongo',alongRoute('N',30)),out={x:0,y:0};
+  // A pombo (0.2 u, no wider than the hero) follows the hero-rule players field itself.
+  const e=catalogEnemy(ctx,'pombos',alongRoute('N',30)),out={x:0,y:0};
   ctx.tick=1;steer(ctx,e,ctx.players.get('p')!,out);
   const field=steer.playersField;
   assert.ok(field,'citySteer exposes playersField');
@@ -711,7 +711,9 @@ test('DirectorState with avenues survives a JSON round-trip mid-round; the copy 
  * Island/endless director output (events with their ticks, spawns, round summaries, state, ctx.round) of a 10-round
  * run with siege share, enemies drifting to the base and a wandering player, as a short sha256. BASELINE was recorded
  * on main before cidade-05 (e4aa2b4, no `avenues` option); a card that changes island/endless director behavior on
- * purpose re-records it (run this scenario on the new tree and paste the hashes).
+ * purpose re-records it (run this scenario on the new tree and paste the hashes). Re-recorded for the D-033 cast
+ * (NEW-20261012-ORQ-elenco-adult-swim): the wave tables (rules/waves.ts kinds, weights, threat, names) changed, the
+ * director did not; this tree with main's waves.ts gives the old hashes exactly.
  */
 function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:AvenuePlanner){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -731,10 +733,10 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
   return {hash:createHash('sha256').update(json).digest('hex').slice(0,16),created:log.created.length,stage:director.state.stage};
 }
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'d8ddd52e7da5e6d8','ilha kill=40 seed 1':'20bceb2b51b6347e',
-  'ilha kill=Infinity seed 0':'1f075f588f0cc67e',
-  'infinito kill=40 seed 0':'d6da462e3bfec3ce','infinito kill=40 seed 1':'13585ceaf31da5d7',
-  'infinito kill=Infinity seed 0':'9bd9cdf9933a0e36',
+  'ilha kill=40 seed 0':'d98b496235de6e81','ilha kill=40 seed 1':'7ae1e2388b5d42c3',
+  'ilha kill=Infinity seed 0':'6b50e7fb7d8c36ee',
+  'infinito kill=40 seed 0':'2dba07886dacfe7a','infinito kill=40 seed 1':'93c150d8da968569',
+  'infinito kill=Infinity seed 0':'b2b533356079e5ed',
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

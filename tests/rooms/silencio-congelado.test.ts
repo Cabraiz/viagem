@@ -20,7 +20,7 @@ import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 /**
  * A room with one idle person (the live-play flow: 3 bots, ready, no stick) driven on a fake 20 Hz clock, with the
  * real client's upstream rhythm: an ack ~1 s after a frame, a ping every 5 s. Returns once the round-2 intermission
- * (round index 2, phase 'prepare') starts. Every close log line the room writes lands in `logs`.
+ * (round index 2, phase 'prepare') has started, on the tick of the page's next upstream message. Every close log line the room writes lands in `logs`.
  */
 function toRound2Intermission(t0:number){
   const logs:any[]=[];
@@ -44,6 +44,11 @@ function toRound2Intermission(t0:number){
   const w=room.sim.world;
   let guard=0;
   while(!(room.run.snapshot().phase==='combat'&&w.round.index===2&&w.round.phase==='prepare')){step(50);if(++guard>4000)throw new Error('never reached the round-2 intermission');}
+  // Hand over right after the page's last upstream message (<= 1 s later, still early in the ~30 s intermission), so a
+  // freeze's silence is the freeze itself (+ one 50 ms tick), not the freeze plus however far the round-1 clear landed
+  // from the 1 s ack cadence (that offset moves with the cast and the balance: 100 ms before the new cast, 600 ms after).
+  while(t!==lastMsg){step(50);if(++guard>4100)throw new Error('the page never spoke');}
+  assert.equal(w.round.index,2);assert.equal(w.round.phase,'prepare');
   return {room,peer,c,closed,logs,messages,get t(){return t;},step,say,lastMsg:()=>lastMsg,
     /** The page freezes: nothing handled, nothing sent; the room keeps ticking and sending frames. */
     freeze:(ms:number)=>step(ms,false)};

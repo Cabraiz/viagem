@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,type DirectionalSheet} from './sprite-sheets.ts';
+import {spriteUrl} from './art-urls.ts';
 import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 
 export type {FigureBox};
@@ -70,7 +71,7 @@ export class CharacterSprites {
     // The figure box is read when the sheet arrives (loading time), never in the middle of a frame (review onda 4).
     this.scene.load.once(`filecomplete-spritesheet-${key}`,()=>this.measure(id));
     this.scene.load.once('complete',()=>this.measure(id));
-    this.scene.load.spritesheet(key,directional?.url??`/art/sprites/${id}.webp`,{frameWidth:192,frameHeight:192});
+    this.scene.load.spritesheet(key,directional?.url??spriteUrl(id),{frameWidth:192,frameHeight:192});
   }
   /** Creates the class's animations once and keeps their keys (no string building or lookups per frame). */
   private animations(sheet:Sheet){

@@ -1,0 +1,625 @@
+{
+ "webp": {
+  "quality": 90,
+  "alphaQuality": 100,
+  "effort": 4,
+  "smartSubsample": true
+ },
+ "files": {
+  "sprites/aposentado.webp": {
+   "source": "f0420517e81b814455356b9ca3d6e8b9774ab18cf6cd893ccbff3054fbbdcc74",
+   "lite": "bb9f3f26f660727e05424be986afb7f092f18e2359e27fa2fb5b67975c41358b",
+   "bytes": 315560,
+   "liteBytes": 155470,
+   "psnr": 39.5,
+   "shownPsnr": 44
+  },
+  "sprites/astrologa.webp": {
+   "source": "c61cade5e50d74c288e68f8601089d739e5e683707f06fb0083dc0739c95f3b9",
+   "lite": "48864dac6e8e874e57610b81a657dd55343ab301729693b517947ff2c17484c7",
+   "bytes": 288720,
+   "liteBytes": 124814,
+   "psnr": 37,
+   "shownPsnr": 44.6
+  },
+  "sprites/caca-promocao.webp": {
+   "source": "bcf22f57aaf856808c77257e03c5adf159c5dd0430ec1249bde7592f442cefad",
+   "lite": "167404d5bb94368b337ef9acff15284e2802838081d9ac42905394980ad13ba6",
+   "bytes": 458770,
+   "liteBytes": 208534,
+   "psnr": 38.3,
+   "shownPsnr": 43.2
+  },
+  "sprites/cidadao-comum.webp": {
+   "source": "c59205019e8156cd7a6498bafba56325e7be2e394abb01ce489ab03b14b97f21",
+   "lite": "e11432927dc10b26986b720218b5ed5b75cb8d5bf400e4cfa0c9de5c701bf245",
+   "bytes": 318622,
+   "liteBytes": 160718,
+   "psnr": 41.4,
+   "shownPsnr": 44.8
+  },
+  "sprites/clt-cansado.webp": {
+   "source": "b773a9505b5aee79c2674f3e70d804f031840d48aaaf296ec319d3b447b8e141",
+   "lite": "37fe2907ebe0781c707b541e23ddede1336862f45de3967008db093787b0f976",
+   "bytes": 311958,
+   "liteBytes": 144088,
+   "psnr": 41.5,
+   "shownPsnr": 46.1
+  },
+  "sprites/coach.webp": {
+   "source": "73f6d8950be32acb060b312f0d19034f6fb55a84d79a6acad29e2824f2372ab7",
+   "lite": "60d8de194cc1ec80978b3df2b0eb100e2ce44f9c8195182b7a44872b14653e03",
+   "bytes": 262634,
+   "liteBytes": 132494,
+   "psnr": 40,
+   "shownPsnr": 45
+  },
+  "sprites/concurseira.webp": {
+   "source": "62fa2e83c1462e076dcdf61469b4d9393b3019d765e2a0b47cc65926334f63ec",
+   "lite": "9f1cfe77624638cf178dba38ef7abe6d34150c9ec9acf04b513bd699aa5b6da9",
+   "bytes": 290988,
+   "liteBytes": 139782,
+   "psnr": 40.6,
+   "shownPsnr": 44.9
+  },
+  "sprites/conspiracionista.webp": {
+   "source": "2538e9b0dddc8159e7f3ed5b215dbb5c1874222f4dc4b0f0f32b43950c8a5d78",
+   "lite": "74c994353de65addd4a95020554ef8a4c9fe131d96165abab90c26001a5bfe20",
+   "bytes": 382636,
+   "liteBytes": 172588,
+   "psnr": 40.5,
+   "shownPsnr": 44.4
+  },
+  "sprites/faxineira.webp": {
+   "source": "5e0ca42fbeb896a9596a4d8f2258e210ad504dcab6c3e652cab88dec4e30aef8",
+   "lite": "a12d82df359c16d790bd8726cc4b315603d823c8aa56dc2781d34edd78c0e7c6",
+   "bytes": 317690,
+   "liteBytes": 155310,
+   "psnr": 40.1,
+   "shownPsnr": 44.1
+  },
+  "sprites/feirante.webp": {
+   "source": "ea6af7470bda545a2a128e20e266bb1941044f00673711cca5d3bb772c663510",
+   "lite": "ac0b6dbbe9078bb44bdd239a8f55be3a8407b4401c66fdd8e48278317dd2e9c9",
+   "bytes": 455790,
+   "liteBytes": 191520,
+   "psnr": 36.8,
+   "shownPsnr": 42.1
+  },
+  "sprites/gambiarreiro.webp": {
+   "source": "f60bff35763a66e62ce442ac640b3ac7a1b63824d2ebc2c2af95da1a95cabdec",
+   "lite": "327599e1b3edce7e9d8761458553b68e79ecd1d248997359775e8e11242cea52",
+   "bytes": 344688,
+   "liteBytes": 160350,
+   "psnr": 37.5,
+   "shownPsnr": 43.2
+  },
+  "sprites/gamer-mobile.webp": {
+   "source": "8ce2fe38ab75e05e7dc652fc3297bb09098c2f0603434fffad81d85a94a0202b",
+   "lite": "60cafb828c4cd190d09897133101965df42b3e7522d1d7dada04659120f2c70f",
+   "bytes": 360340,
+   "liteBytes": 176190,
+   "psnr": 39.4,
+   "shownPsnr": 43.9
+  },
+  "sprites/goleira.webp": {
+   "source": "daf99f81957187367cb4b027540ed963768de366a34fab1fd00d764c6e6e3927",
+   "lite": "31979ab74aa93c7158b02a87a492af336f491be91866a1726c1d8fb0122ed0cf",
+   "bytes": 232182,
+   "liteBytes": 115808,
+   "psnr": 41.2,
+   "shownPsnr": 46.6
+  },
+  "sprites/mae-pet.webp": {
+   "source": "1b4df2c9415989b7cf844a0947f2001ccdaf8e7b0a7475ecda4c51b8e5c7bdda",
+   "lite": "5aab7e6b8b3d6f80822473e799f8e7d9c7e8a792ef71451cc0157291d443f95b",
+   "bytes": 364926,
+   "liteBytes": 166044,
+   "psnr": 39.9,
+   "shownPsnr": 45.3
+  },
+  "sprites/maromba.webp": {
+   "source": "b73a71e895f8fdbcc56120e8566d6d01af2f1c9cf278fcd82712b28faf48bd05",
+   "lite": "98f0daa78a5f60c8e063df52722d411a029d2a3c7f2a5f8e4ad8bdfc086c0a20",
+   "bytes": 357442,
+   "liteBytes": 167464,
+   "psnr": 40.6,
+   "shownPsnr": 44.5
+  },
+  "sprites/mendigo.webp": {
+   "source": "8a73b5f73f5e0fd4df856510f2c5023ab513d803fbd400575d512d7cd9858062",
+   "lite": "5f033b1fcc2f04717f14d626cd09350ed8ccc16074e8a0acb3f5954756854d34",
+   "bytes": 362832,
+   "liteBytes": 160264,
+   "psnr": 41,
+   "shownPsnr": 45.9
+  },
+  "sprites/merendeira.webp": {
+   "source": "4429a6841829587b518a3150d8fda67ab696c8e3c6be1f4bb7b00601ef4463d0",
+   "lite": "37560ecc8bfb6691761a3925ed54eeb1b4039e986078edf96497dfcd574ac968",
+   "bytes": 218714,
+   "liteBytes": 109112,
+   "psnr": 40.6,
+   "shownPsnr": 43.6
+  },
+  "sprites/motogirl.webp": {
+   "source": "5019a6baad6d87ceaf4b0ca4579ba717f20f9bc06babd1b3cd0c7ba63e99c875",
+   "lite": "a8e1f38e44d2b159a8c12a5b8f7571bb9a626f305d2ff500b1c4c9bfefbf120d",
+   "bytes": 329812,
+   "liteBytes": 152406,
+   "psnr": 39.9,
+   "shownPsnr": 46
+  },
+  "sprites/pagodeiro.webp": {
+   "source": "73aa15aa2fef161983655f01a10ffa4e4b5560fd6b10ff106a6552decdba34aa",
+   "lite": "e57543f373e8e2d63d326dc289475cac41a52df937adea0eea4871ce76ee867d",
+   "bytes": 404450,
+   "liteBytes": 195956,
+   "psnr": 36.8,
+   "shownPsnr": 41.7
+  },
+  "sprites/passageira.webp": {
+   "source": "2a1169feb760058f7750ee2e469e5dafac42753c253f7c5cbdd296e82d328869",
+   "lite": "0e7137001db2bb4f7f6a64e04143bd26ace4189c43af0e760ee1b7e163bdf700",
+   "bytes": 277364,
+   "liteBytes": 130068,
+   "psnr": 43.3,
+   "shownPsnr": 46.2
+  },
+  "sprites/pedreiro.webp": {
+   "source": "f9fc0a2ad7c5eec186f12bbd985645b5536e69d92bbf7b3790e0084607ff795c",
+   "lite": "02e16670ad8970622aa453623b51e8e331bedbec8f39b8a816286dd76922c73a",
+   "bytes": 350406,
+   "liteBytes": 161066,
+   "psnr": 38.1,
+   "shownPsnr": 43
+  },
+  "sprites/porteiro.webp": {
+   "source": "85371901c3fda170fe7d19b6b61ec378cced77484da59f69c60e06e590ef2739",
+   "lite": "c1a829497105bf56d0082854789852effac106faf4f7906f5d7f735436442222",
+   "bytes": 288198,
+   "liteBytes": 131392,
+   "psnr": 39.2,
+   "shownPsnr": 45.4
+  },
+  "sprites/rainha-bateria.webp": {
+   "source": "2037ee6fe8471767bb90cca438bdab82035d2f207e241c30475750040e8ad421",
+   "lite": "671281f565c6e14132993e75e9e49e64b04a4db75c2952b59dcffa8391ce71a6",
+   "bytes": 508442,
+   "liteBytes": 233390,
+   "psnr": 34.9,
+   "shownPsnr": 41.3
+  },
+  "sprites/rei-arraia.webp": {
+   "source": "9c47099f82bee5851fbd915c3aaac61580e58832b5b36dc57a19e31ab7897440",
+   "lite": "95c3c85cf1eeba28cf052c26f87084169786eebc75b5946bde05a75e0dca9249",
+   "bytes": 252070,
+   "liteBytes": 124234,
+   "psnr": 39.2,
+   "shownPsnr": 45.2
+  },
+  "sprites/rei-pastel.webp": {
+   "source": "d2d0fc5a04f4b9b08eb413a8412f1aefef93779cbdf43916cda4922e04645f9d",
+   "lite": "c63b647c100117f42832ab8b3584f02f0cdd108ea7bb9fc967fa31ed66ac9eb5",
+   "bytes": 220666,
+   "liteBytes": 110238,
+   "psnr": 39.3,
+   "shownPsnr": 43.8
+  },
+  "sprites/roqueira.webp": {
+   "source": "46b0dd346a0ff5a19688f539998a0ad2972925a48fcfcfe571d30de89054fd95",
+   "lite": "00d8e596e787a05bc41a2281b6b0e327bf92de6e180c667932ea39c8ad90d305",
+   "bytes": 316970,
+   "liteBytes": 151982,
+   "psnr": 41,
+   "shownPsnr": 45.9
+  },
+  "sprites/salva-vidas.webp": {
+   "source": "7e68626b8aa4ff90c1c78e827595181b7b023f9576f24e8b3c0de9ee19406266",
+   "lite": "a93466303b9c7527fe4df000388c20cd0c08b6452c3ce80505255544e6b65258",
+   "bytes": 295770,
+   "liteBytes": 145402,
+   "psnr": 39.1,
+   "shownPsnr": 43.7
+  },
+  "sprites/sensei.webp": {
+   "source": "59d580ad9e720311b4b75a87ba676477b37ad63a1534ffd810fd6f5220256d3a",
+   "lite": "21e6e9a11d2608dda1e516dee9cbe163a1a7b9b00eec0f4cffcdfa1feb0e53df",
+   "bytes": 236948,
+   "liteBytes": 116388,
+   "psnr": 41,
+   "shownPsnr": 45.5
+  },
+  "sprites/streamer.webp": {
+   "source": "fce822c9d5fcbde556f109bbb29e0f38390f2d14ada8c0663f818f8d7d478fb9",
+   "lite": "a0f7a405f545b90e58b9b245e969fb3010542949f21ccda7ba5125e3169c689e",
+   "bytes": 540612,
+   "liteBytes": 221644,
+   "psnr": 38.8,
+   "shownPsnr": 44.4
+  },
+  "sprites/tecnico-ti.webp": {
+   "source": "837ebb88bb8e321d78de4084ca2d6cec1ef9405d823cecb88e74bad17fbb6ec8",
+   "lite": "a1bd623579a833c037c079089690e3d710dc34fccc2b895559c09d07ef8f3b68",
+   "bytes": 330814,
+   "liteBytes": 150440,
+   "psnr": 42,
+   "shownPsnr": 46.1
+  },
+  "sprites/tia-festa.webp": {
+   "source": "dd368f36e0081d0c0ea43f851a9af553983ac9d2c331bba94979cf8c5ce4d0e5",
+   "lite": "fb708bcbb675115ebe1423ccc1b2ae47798f58f69d3e03366d50803c7ce6d23f",
+   "bytes": 395294,
+   "liteBytes": 167606,
+   "psnr": 37.2,
+   "shownPsnr": 44.1
+  },
+  "sprites/tio-do-churrasco.webp": {
+   "source": "c6a9b7ae7a97cb1a4b4d6c27cf545c2eb1a56e75a03d07dab12ac11e41ff727f",
+   "lite": "01589e9c05de6870780babb47c37b8e1520de84a6b2b4b9ce46fb2e3d11444a0",
+   "bytes": 372438,
+   "liteBytes": 168456,
+   "psnr": 38.3,
+   "shownPsnr": 43.4
+  },
+  "sprites/universitario.webp": {
+   "source": "1d337cac9dcb0b12c6479daf080dc3c5ccff9592ddd65bfb255318757ed8ccc2",
+   "lite": "0afb9d75bab7d5f242bc2f791e148cd8d380fbac584679a9b4c9b34420caaf2e",
+   "bytes": 342734,
+   "liteBytes": 161980,
+   "psnr": 41.5,
+   "shownPsnr": 45.9
+  },
+  "sprites/vendedor-praia.webp": {
+   "source": "77d361eb4690a8b69fa55bb81aebb9c5d954017056471416f84b5ed32dcaab1b",
+   "lite": "22887920e031522054ffb235aec670d5ba9d54b9ae8a502a9bf466e2fe518712",
+   "bytes": 302778,
+   "liteBytes": 145422,
+   "psnr": 37.8,
+   "shownPsnr": 43.3
+  },
+  "sprites/viciado-em-bet.webp": {
+   "source": "df6e023107ea5cb2d5f9b73e06c7229191959ac8eaccf975783ecc56116fceb4",
+   "lite": "423de58404339442618e66ab97cae9faeabd989a9e69c92392ba1154c5d8e782",
+   "bytes": 357292,
+   "liteBytes": 166170,
+   "psnr": 38,
+   "shownPsnr": 43.3
+  },
+  "sprites/vizinha-fofoqueira.webp": {
+   "source": "7fa84e0df9d4c7d3fde13ae16c6d43871c7bad25c56e0e57bee376e14954ec61",
+   "lite": "61816625888eb27b068cbbcf7cca0b42757bd6e7451f7caa842d4e761c4cf3d3",
+   "bytes": 397942,
+   "liteBytes": 173258,
+   "psnr": 38.3,
+   "shownPsnr": 43.7
+  },
+  "trees/abeto-azul.webp": {
+   "source": "74c79379f28120517334350ea2c7218b5ea260c7a5edfca5396f03e54ef86709",
+   "lite": "d4364dc490696e82036cfc56a4f576957a820933d3ed79c11273c02945070e59",
+   "bytes": 360024,
+   "liteBytes": 148478,
+   "psnr": 39,
+   "shownPsnr": 43
+  },
+  "trees/acacia.webp": {
+   "source": "1a702973d8bf94dcf3abaa2ad76e288a895d4d0011a484308b38323f0da93826",
+   "lite": "86891d0a53f4ef8046af7835436bb49f71d12ea89240bf1af3e86e4a7c8b7a8b",
+   "bytes": 287148,
+   "liteBytes": 120500,
+   "psnr": 37.5,
+   "shownPsnr": 38.8
+  },
+  "trees/ameixeira-roxa.webp": {
+   "source": "ce30f937d9352425a931eb11cc930f0c581e76c687e037d593dc7641d0dcaa8a",
+   "lite": "5fc56ab94daad08e40ec2103e16bd21ac846163da4147cdcb685cf9fb02264cf",
+   "bytes": 349786,
+   "liteBytes": 133254,
+   "psnr": 34.6,
+   "shownPsnr": 40.2
+  },
+  "trees/araucaria-alta.webp": {
+   "source": "0f2d7b9e062b6bf96b225f6b64015297dbe6adc2654d5eea169ad42309fe6dc2",
+   "lite": "45f9999204115f29b5d27ea301e5894c4afdce7e79506b55dfdc6b398aa76ce3",
+   "bytes": 353952,
+   "liteBytes": 150060,
+   "psnr": 35.9,
+   "shownPsnr": 38.7
+  },
+  "trees/arvore-broto.webp": {
+   "source": "74c934deb550cdb3b5c0b7bf5d2beafe18959065236628aa8e65c5b69703b8ea",
+   "lite": "b74e871a2da32b82883d1aa891bdc3786070e841274717e16e7e0aa201d15c47",
+   "bytes": 309076,
+   "liteBytes": 133292,
+   "psnr": 38.1,
+   "shownPsnr": 39.6
+  },
+  "trees/arvore-coracao.webp": {
+   "source": "8af938ed89e93d248f593fbd2ab8969bb852e87a66eb83bfe29eeb5e9179ca54",
+   "lite": "c5a84ed6624f88af829235b0857b56e00ec7ab072972a14adfb280f05a744ce6",
+   "bytes": 328156,
+   "liteBytes": 130236,
+   "psnr": 34,
+   "shownPsnr": 39.9
+  },
+  "trees/arvore-cristal-azul.webp": {
+   "source": "3dacc70850ed60429988fc7f9dd038f4cfa450fa4aabf82660b0fce919f52c4c",
+   "lite": "fcd3b8e553979eb30ef3b174acd39e13c5d8e62c9d2b4642a2827f107c918fde",
+   "bytes": 394782,
+   "liteBytes": 174608,
+   "psnr": 33,
+   "shownPsnr": 38.8
+  },
+  "trees/arvore-lunar.webp": {
+   "source": "e1e06683a0738842d33c154d92d5d8ebcd26158c0688b5fe82a4743bd9912121",
+   "lite": "3d9aa28c05ec9b246128026159561434009cb4d2a3eb827eaf224e56647f1a2c",
+   "bytes": 399406,
+   "liteBytes": 169740,
+   "psnr": 38.4,
+   "shownPsnr": 42.8
+  },
+  "trees/arvore-musgo.webp": {
+   "source": "86f9b73dabdbbc7a857b55d776855cbabc986b17356d943e402d08ca28013d7a",
+   "lite": "446ae931b1c395cbeb68717869fa10b7b443572f99f18e88f5ae7e0e88072842",
+   "bytes": 373810,
+   "liteBytes": 150064,
+   "psnr": 36.9,
+   "shownPsnr": 38.7
+  },
+  "trees/arvore-nevada.webp": {
+   "source": "b51159d226f7f7afef6b82b462d2d2f1567c6c063ebe13219dedd4c7459c896a",
+   "lite": "811afe4975905277985ddb0d0a21a4b1d74950bb43ba51f882a3a39560f3943c",
+   "bytes": 361342,
+   "liteBytes": 144760,
+   "psnr": 37.3,
+   "shownPsnr": 41.4
+  },
+  "trees/arvore-oca.webp": {
+   "source": "43deb69506172eeb92e5c504044e804033211d61ba66c0958ab615ba532bffe6",
+   "lite": "9e2a206b0b44e0a232dc28d0240bbd6486e76e1c33d1ad87fa3e07bd1e1880d3",
+   "bytes": 433008,
+   "liteBytes": 172986,
+   "psnr": 36.2,
+   "shownPsnr": 37.1
+  },
+  "trees/arvore-seca.webp": {
+   "source": "b7ff9150675a8fdfbbb285f26ded870e8b53221819fb91c295c82b1f31697fc9",
+   "lite": "2c1d64a4599336891d355b789ae5cd51eb3fb86d7ccc18c8de920717c3f3445a",
+   "bytes": 250246,
+   "liteBytes": 135604,
+   "psnr": 41.9,
+   "shownPsnr": 44.1
+  },
+  "trees/arvore-torta.webp": {
+   "source": "1355bebdf56f0fe39809c278f5dd2fd84edcba37e7753374c81fb20c9c5485ed",
+   "lite": "9283660d63b58154beaab8aea02a3f613e17c4742c57aee7c34d5cd9e4ff1313",
+   "bytes": 204840,
+   "liteBytes": 92198,
+   "psnr": 39.5,
+   "shownPsnr": 41.6
+  },
+  "trees/arvore-violeta.webp": {
+   "source": "a61cb4ddaee5ab6359529b04a8204c0f2b33c88f874e7aa2314e1d060e074e65",
+   "lite": "7f0117e915618722f74c92e49d0eaadd23c1350dc7b562c26355fe1be29ec3ed",
+   "bytes": 422598,
+   "liteBytes": 161752,
+   "psnr": 31.3,
+   "shownPsnr": 37.3
+  },
+  "trees/bananeira.webp": {
+   "source": "b4a82b56e2fd98892c5564586272b5bd6400227a875cb199b5080acb6a44cc3c",
+   "lite": "7f7c396f0e4c8efb2f6f65112ce62e71756184fc1e2923e1c5480a8d0335620b",
+   "bytes": 337272,
+   "liteBytes": 141402,
+   "psnr": 37.5,
+   "shownPsnr": 39.4
+  },
+  "trees/baoba.webp": {
+   "source": "38e58e7db46703c027f0e007ecbba050d8dfcdc441bbcd5dd7804a9989403be1",
+   "lite": "2cf52b1e4a9ebcaea59ce5c7f839d8d05f93ba6454f446101b68e3443657ed0c",
+   "bytes": 405462,
+   "liteBytes": 159204,
+   "psnr": 36,
+   "shownPsnr": 38
+  },
+  "trees/betula-clara.webp": {
+   "source": "cb0b9e4f490214cf8e8119b0fedb1ec737b5e119bc692c270f1594d94e5c119c",
+   "lite": "2b3e892907915a3eaca0bc706404d45829ff7ad71334d6d5609fab57a5b1a4e9",
+   "bytes": 361492,
+   "liteBytes": 154092,
+   "psnr": 36.6,
+   "shownPsnr": 37.5
+  },
+  "trees/bordo-laranja.webp": {
+   "source": "a0953478812e416c989076dc2b7697c131543b4b35b774aaff561792c0277d2e",
+   "lite": "6de5ad5fc82fd94b78b0a86969a0cf41a98c80497e15826fd99d7a1448ac4d9f",
+   "bytes": 406762,
+   "liteBytes": 167848,
+   "psnr": 34.4,
+   "shownPsnr": 39.9
+  },
+  "trees/bordo-rubi.webp": {
+   "source": "f1d481e967b8b1531a6fef6e9cbd8ac3993b91be976e2b302beda89a14d5715a",
+   "lite": "180fbf128cbc20d6f6473ed5146e9c673c1cc66d2b4000ae0ba746ee42e65127",
+   "bytes": 377532,
+   "liteBytes": 152012,
+   "psnr": 32.8,
+   "shownPsnr": 38.2
+  },
+  "trees/carvalho-cobre.webp": {
+   "source": "e253667e03eab1390d9911adf2f313ed86bac4909b6c427b00a6a1a028874404",
+   "lite": "3da7a0f0aa26d78cd4b92630333c9cb7914f385d859f9fa7fad3b7cc3b0510a7",
+   "bytes": 386610,
+   "liteBytes": 158012,
+   "psnr": 34.4,
+   "shownPsnr": 39.1
+  },
+  "trees/carvalho-verde.webp": {
+   "source": "083251862aa4d2cfa8e0f21a84db7e954a8d841584de3532db7574aadcb79d15",
+   "lite": "df0da7c59812b11aa07ff4f680b3e733a7c5b27700c085cde8a8f2bcbfeccd24",
+   "bytes": 391202,
+   "liteBytes": 156262,
+   "psnr": 35.8,
+   "shownPsnr": 37
+  },
+  "trees/cerejeira-rosa.webp": {
+   "source": "1430d3965d643b1afce97ce23d67fd682b7a765f996d5dc7f3e671fda5595fb0",
+   "lite": "1dff50b0319561820a02496a992f946ad23d2ab19c1eea5b05a14933935f5306",
+   "bytes": 428452,
+   "liteBytes": 171672,
+   "psnr": 34.3,
+   "shownPsnr": 39.4
+  },
+  "trees/cipreste-fino.webp": {
+   "source": "9045b99ec32ddb70870a8437485b17f9d68d24a0cf2a1116282d26c331ffc603",
+   "lite": "a89789c445ef98838f4396a59d77bc32e1628cf3de2c1ff658b7b492059311ec",
+   "bytes": 269056,
+   "liteBytes": 100188,
+   "psnr": 39,
+   "shownPsnr": 40.2
+  },
+  "trees/coqueiro-curvo.webp": {
+   "source": "ccc82584225ebadeab69e28a9386e6d0f90069ad4e50bb6ee73c67425fa8b3ea",
+   "lite": "9a405cea56f4037c11eaf0a54fdcf5708659b4866bd2269375f72c81e0509765",
+   "bytes": 358592,
+   "liteBytes": 160464,
+   "psnr": 36.8,
+   "shownPsnr": 39.5
+  },
+  "trees/eucalipto.webp": {
+   "source": "8e054ee5123c689d8f7ce6cc07746d70ec6a0be45392276a27438d757681c9a8",
+   "lite": "541d0d6543779d7fefcebdbf6fdc42dc27725c520826ab1f44016656bcad5683",
+   "bytes": 379336,
+   "liteBytes": 163992,
+   "psnr": 36.3,
+   "shownPsnr": 40.8
+  },
+  "trees/figueira-gigante.webp": {
+   "source": "1c515907eca87ecbb9e6ba3db98a61d685ea23b13730b475cc9f051a16beff5c",
+   "lite": "b3aa18f82ab5f7d200272f670feba0b07c34b0c69a08dee36c4e27e999cdf566",
+   "bytes": 438542,
+   "liteBytes": 178068,
+   "psnr": 35.8,
+   "shownPsnr": 37.8
+  },
+  "trees/ginkgo-dourado.webp": {
+   "source": "da9ff45bc9ac0ca6d11fd13a8e03d3244f9576b46e54db75ce20f56571b1ea83",
+   "lite": "d159fa3cf213a1478ae00686985a3d01ba8fb3d99fc16c17d6b9a07a64ba6dd2",
+   "bytes": 374828,
+   "liteBytes": 162626,
+   "psnr": 36.9,
+   "shownPsnr": 41.6
+  },
+  "trees/jabuticabeira.webp": {
+   "source": "585047d7983908d97da130b28a8bf90f7768d46b97355a2e11fea895750af2ac",
+   "lite": "aed066c19ec8d248f69865652e603078b9c0cb9e3f33b24ae4e55bff328eaaf8",
+   "bytes": 378020,
+   "liteBytes": 151254,
+   "psnr": 36.2,
+   "shownPsnr": 38.1
+  },
+  "trees/jacaranda-lilas.webp": {
+   "source": "ba3e615c037ecf1814dcd13e7103ef53d71a9c8d03ddc2c409e867f6eb2662a3",
+   "lite": "3ba72ac8d338c4c375921747a5e48afd8b03b9926aae307ac434ea068d485b97",
+   "bytes": 409710,
+   "liteBytes": 161472,
+   "psnr": 34.5,
+   "shownPsnr": 39.7
+  },
+  "trees/laranjeira.webp": {
+   "source": "5497855490f072d1ca9b4e8d702a58949ecf9250e4644cc8186b8d09a933f89a",
+   "lite": "38db8e25383117551beda19375078bb745aaf62df82f2e51d86a5dc8d9e80ae3",
+   "bytes": 408042,
+   "liteBytes": 162574,
+   "psnr": 35.4,
+   "shownPsnr": 37.6
+  },
+  "trees/limoeiro.webp": {
+   "source": "4c48089896bfaf6a11d419fc58cdf04939875138ee3e839fd6b0a53559f24381",
+   "lite": "3ffaecb213a5cec8bede771104f81069da06de22e9680a5484c4a8aa33db1b93",
+   "bytes": 409826,
+   "liteBytes": 169206,
+   "psnr": 35.4,
+   "shownPsnr": 38.8
+  },
+  "trees/macieira.webp": {
+   "source": "b5a087c88ce97c9d791780b7a05f8ddecdbb4a1df5d0acdd10b04e7d6821ba32",
+   "lite": "0541ac6d75fa7e37e143f659f1e23efb0cb3593337b57cde65c652dabe48b7db",
+   "bytes": 371848,
+   "liteBytes": 146260,
+   "psnr": 36.6,
+   "shownPsnr": 38.5
+  },
+  "trees/mangue-raizes.webp": {
+   "source": "8a37ae55ae5ba0c583b83d16e622b915c8acc19c6a29d067e0aef1da36ff06d3",
+   "lite": "86d020cdcee9e54a25b41732ce3e4b63976f7376aa4e23c83777f2a878512b43",
+   "bytes": 410006,
+   "liteBytes": 164510,
+   "psnr": 36.6,
+   "shownPsnr": 37.7
+  },
+  "trees/mangueira-frutos.webp": {
+   "source": "c07986de5377063fad146cb7c46f572972646c0b6d3ea7df537a1f65b4a6c0a9",
+   "lite": "2fe10d7d4b9e6a485246d468d4eabeb758d93e96f5e3bda4ed3b13784b53094f",
+   "bytes": 437698,
+   "liteBytes": 174898,
+   "psnr": 35.2,
+   "shownPsnr": 37.6
+  },
+  "trees/palmeira-leque.webp": {
+   "source": "22b709b47afe2789596741f33e5ee5785fa05905426adb644d7f4cb9118250d7",
+   "lite": "a7e08191a1dc81407d14782f00c96bf8cf49b4dc4a9cc907a6971ae5afad28c3",
+   "bytes": 375096,
+   "liteBytes": 162716,
+   "psnr": 36.2,
+   "shownPsnr": 38.6
+  },
+  "trees/pau-brasil.webp": {
+   "source": "4f30053c6c894cb1c2501e9c54b6ea835da74d32d7df7201574a31465223bcac",
+   "lite": "dea1a05b7766ee4726c84bbb29f5be7277b824c750bcd10f403ab330b352b2d4",
+   "bytes": 454552,
+   "liteBytes": 168768,
+   "psnr": 35,
+   "shownPsnr": 36.6
+  },
+  "trees/pessegueiro.webp": {
+   "source": "07a5b6462f521ea4ff3d32bc3c624ab4856558dd214f6f6b9acdf46539bcb1d5",
+   "lite": "4c0ef6302b8153db84f20afb2dda515399a16ce142e86d11f653578d83bfa696",
+   "bytes": 431932,
+   "liteBytes": 172464,
+   "psnr": 35.4,
+   "shownPsnr": 37.9
+  },
+  "trees/pinheiro-esmeralda.webp": {
+   "source": "046f44802243be7d0a1cac91cc46b8bb3ddfda939266362e09e8f54ca714c9b6",
+   "lite": "c38ea084e15db731371e3b9f467128d9dcd779c7b1b05a006964ce10656edee2",
+   "bytes": 358870,
+   "liteBytes": 152422,
+   "psnr": 35.8,
+   "shownPsnr": 38.5
+  },
+  "trees/salgueiro-chorao.webp": {
+   "source": "dcd7f7ff8166349cfcf6bb25732d9d8aa05fe725c2af7046f2696819a14fd55f",
+   "lite": "e764cf919320010b49168913f03f8ddb06a8a773a56deca14ce5a7f5944c48ca",
+   "bytes": 418548,
+   "liteBytes": 171890,
+   "psnr": 35.5,
+   "shownPsnr": 36.9
+  },
+  "trees/sequoia-antiga.webp": {
+   "source": "57d6e67611deb43fd22c39f23bd94b0ffe1341df50c71234c195800d9c3908d0",
+   "lite": "4d39e0a6a5b6b7cb217b442a077112d58498aa99f7a1f4242d5b91e8996feecf",
+   "bytes": 344300,
+   "liteBytes": 141226,
+   "psnr": 36.6,
+   "shownPsnr": 38.4
+  }
+ },
+ "summary": {
+  "files": 76,
+  "bytes": 27117252,
+  "liteBytes": 11791082,
+  "worstPsnr": 31.3,
+  "worstShownPsnr": 36.6
+ }
+}

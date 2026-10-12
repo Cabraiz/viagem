@@ -137,3 +137,11 @@ test('lab network: delay, drop and outage against a real ws server',async()=>{
     const ws3=new Socket(`ws://127.0.0.1:${port}`);await open(ws3);ws3.close();
   }finally{for(const c of server.clients)c.terminate();server.close();}
 });
+
+test('N27 lab link: items due on the same millisecond still go in the order they were handed in',async()=>{
+  const q=new OrderedDelay();const got:number[]=[];
+  // 200 items with random delays inside 2 ms: due() makes most of them share a time; one timer keeps the order.
+  for(let i=0;i<200;i++)q.schedule(5+Math.random()*2,()=>got.push(i));
+  await new Promise(r=>setTimeout(r,60));
+  assert.deepEqual(got,Array.from({length:200},(_,i)=>i));
+});

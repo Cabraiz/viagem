@@ -75,7 +75,8 @@ Cada linha é uma janela de 34–52 s em combate, depois de 8 s de aquecimento.
 - Primeira pintura em 0,8 s e `load` em 0,9 s no laboratório (rede local; num 4G de 10 Mbit/s a primeira carga seria
   ~0,3 s de transferência e a entrada no jogo ~10 s só de arte).
 - O maior arquivo da primeira carga é o retrato grande da classe (137 KB).
-- **Achado:** entrar numa sala puxa ~12 MB de arte (cada folha de sprite ~450 KB, cada árvore ~420 KB). Card sugerido.
+- **Achado:** entrar numa sala puxa ~12 MB de arte (cada folha de sprite ~450 KB, cada árvore ~420 KB). Resolvido no
+  N27 (seção 7): ≤ 4 MB até o combate.
 
 ## 4. Cotas do plano gratuito (consultadas em 12/10/2026)
 
@@ -136,9 +137,147 @@ Medido: run inteira com 6 jogadores = 967 s de sala ativa, 17 120 mensagens rece
    iPhone; quanto o modo econômico ganha de verdade e se o vigia (40 fps) liga cedo ou tarde demais.
 2. Temperatura e bateria em 15 min de run (com e sem modo econômico).
 3. Heap e memória total da aba depois de 2 runs seguidas (o laboratório viu 32–91 MB de heap JS numa janela de 40 s).
-4. Entrada no jogo pelo 4G: tempo até o primeiro quadro com os ~12 MB de arte; primeira carga no 4G.
+4. Entrada no jogo pelo 4G de verdade: tempo até o primeiro quadro (laboratório com 4G simulado na seção 7: 3,9–4,6 s); primeira carga no 4G.
 5. Sala na Cloudflare de verdade (quando o deploy voltar, D-024): `npm run bots -- smoke --endpoint <worker>` para
    conferir os 20 ticks/s e o tick p95 no workerd de produção.
-6. Celular lento demais (0,7 fps com CPU 4× no laboratório): a run acabou no meio da medição (provável queda); conferir se um
-   aparelho fraco mantém a conexão (input e ping) quando o quadro passa de 1 s.
+6. Celular lento de verdade: o laboratório achou e consertou a queda (seção 7.3); falta ver num aparelho fraco se a
+   página fica a poucos segundos da sala (o modo "alcançar") e quanto tempo de tela parada isso dá.
 7. Se vale desenhar o mundo em DPR 2 (mais nítido, 4× os pixels) nos aparelhos que aguentam.
+
+## 7. Peso, rede e celular lento (N27, 12/10/2026)
+
+Medido pelo Executor-N27, branch `vgm/peso-e-rede`, contra a `main` 18011b4 ("antes"). Mesmo laboratório (2 núcleos,
+SwiftShader, outros dois executores rodando, load 8–11). Ferramentas novas: `node scripts/perf-lab.mjs entry`
+(entrada numa sala pelo celular com rede simulada pelo CDP) e `scripts/bench-horde-bytes.ts` (bytes por cliente com
+horda, sem rede e sem navegador, repetível).
+
+### 7.1 Arte da entrada
+
+Redes simuladas (CDP `Network.emulateNetworkConditions`, os perfis do DevTools): **4G** = 8,1 Mbit/s de descida,
+1,35 de subida, 165 ms; **4G lento** = 1,44 Mbit/s, 0,68, 562 ms. Os módulos do servidor de dev são importados antes
+de ligar a rede simulada (o JS do jogo é medido à parte, seção 3), então o número é o da arte. Tempo = de abrir a cena
+(depois de entrar na sala) até o primeiro quadro desenhado; 6 jogadores = esta pessoa + 5 bots da sala, que entram
+pela sala de espera; cada sala tem uma semente nova (o número de árvores por perto muda: 6 a 12 na largada).
+
+| medição | antes | depois |
+|---|---|---|
+| 1º quadro, 4G | 6,1 · 6,8 s | **4,6 · 3,9 s** |
+| 1º quadro, 4G lento | 27,8 s | **11,9 s** |
+| arte antes do 1º quadro | 3,2 · 3,7 MB (46–47 arquivos) | 1,9 · 1,5 MB (12–15 arquivos) |
+| arte puxada até o início do combate (4G) | 14,8 · 16,8 MB | **3,4 · 3,9 MB** |
+| arte até 10 s de combate (4G) | 16,4 · 17,2 MB | 4,2 · 4,6 MB |
+| arte em 40 s de cena com horda de 300 (rede local) | 11,4 MB (86 arquivos) | 5,1 · 5,4 MB (47–49 arquivos) |
+
+O que mudou:
+
+- **Cópias com perda das folhas** (`public/art/lite/{trees,sprites}`, feitas por `scripts/art-lite.mjs`): WebP com
+  perda a 90, alfa exato (o recorte não muda), mesma resolução. As folhas aprovadas (WebP sem perda) ficam onde
+  estavam, intactas; o jogo baixa as cópias. Árvores 14,95 → 6,14 MB (41%), sprites das 36 classes 12,17 → 5,65 MB
+  (46%). Qualidade medida por arquivo em `scripts/art-lite.json`: PSNR (cor pré-multiplicada + alfa) mediana 37,5 dB,
+  pior 31,3 dB na folha inteira; **no tamanho em que o celular desenha** (35% da folha) mediana 41,7 dB, pior 36,6 dB
+  (pau-brasil). Os piores conferidos a olho, desenhados como o Phaser desenha (vizinho mais próximo, ×3 do DPR):
+  iguais na tela; só num zoom de 3× da folha as folhinhas ficam um pouco mais macias
+  (`board/evidence/NEW-20261012-N25-peso-e-rede/comparacao-*.png`). Resolução cheia de propósito: metade do tamanho
+  pesaria 11% mas mudaria o desenho (e fecharia a porta do DPR 2). Teste: toda árvore e classe tem cópia feita do
+  arquivo aprovado como ele está agora (`tests/art-lite.test.ts`; importou arte nova, rode `node scripts/art-lite.mjs`).
+  **O CI não gera as cópias, de propósito**: elas vão commitadas e o teste confere o hash do original e da cópia;
+  gerar no build deixaria o servidor de dev diferente do site e poria o sharp no caminho de cada deploy.
+- **Só o que o 1º quadro precisa segura a cena**: chão, a folha do próprio herói, o retratinho dele (256 px, não o
+  retrato de 1024 que era o "boneco provisório"), os ícones só das classes que estão na sala (não as 36; quem chega
+  depois tem o seu buscado na hora) e as árvores da largada. As folhas dos colegas vêm logo depois do 1º quadro.
+- **Colega de classe nova**: até o ícone dele chegar aparece uma silhueta (Breu 55%), nunca um vazio; o ícone e a
+  folha dele são pedidos na hora, à frente das árvores além da tela. Sequência em
+  `evidence/NEW-20261012-N25-peso-e-rede/chegando-{1-antes,2-durante,3-depois}.png`.
+- **Cópia que não carrega cai para o original** (`/art/lite/…` → `/art/…`), conferido no navegador bloqueando uma
+  cópia de árvore.
+- **Árvores além da tela em segundo plano**: o anel de chunks além da tela pedia ~30 folhas junto com as da tela e
+  as dos colegas (no 4G as folhas dos colegas chegavam ~15 s depois). Agora elas vão uma de cada vez, só quando nada
+  mais carrega, só em combate (na sala de espera o time está parado na largada) e só enquanto cabem no limite de
+  folhas paradas na memória (antes o anel inteiro carregava, o limite de 12 jogava fora o excesso e o anel pedia de
+  novo: o vaivém aparecia como pedidos repetidos de 0 bytes).
+- Bichos e chefe não pesam: são desenhados pelo próprio jogo (`render/textures.ts`), não baixados.
+- **Cache**: o GitHub Pages já manda `Cache-Control: max-age=600` e ETag (volta em 10 min sai do cache; depois disso
+  é um 304 por arquivo). **Sem Service Worker** por enquanto: o ganho (zero ida e volta numa visita no outro dia)
+  não paga o risco de uma página presa num cache sem jeito de desligar sem deploy; fica para quando houver deploy.
+
+### 7.2 Bytes da horda
+
+| horda de 300 em volta do time, por cliente | antes | depois |
+|---|---|---|
+| banco, pessoa parada (ack 1×/s) | 19,3 KB/s | **12,8 · 13,1 KB/s** |
+| banco, pessoa andando (ack a cada input) | 12,7 KB/s | 12,7 KB/s |
+| banco, celular lento (acks 8 s atrasados) | 19,2 KB/s (quadros cheios) | **12,8 KB/s** |
+| cena real, 40 s (navegador, `wrangler dev` com load 10–11) | 27,8 KB/s | **13,9** (só encadeado) · **14,9 · 15,0 KB/s** |
+| banco, jogo normal sem horda de laboratório (400 s) | 1,20 KB/s | 1,04 KB/s |
+
+- **Quadros encadeados** (o que mais rendeu): o delta ia contra o último quadro que o celular confirmou. Parado, o
+  celular confirma 1×/s (de propósito: cada mensagem conta na cota), então cada quadro levava a posição inteira dos
+  300 bichos em vez do empurrãozinho de 2 bytes; num celular lento a confirmação passava do histórico de 64 quadros e
+  **todo quadro saía cheio**. Agora o delta vai contra o quadro anterior: o WebSocket é ordenado e confiável, então
+  enquanto a conexão vive o celular decodificou tudo o que recebeu; um quadro que não decodifica faz ele pedir resync
+  (o próximo vem cheio) e conexão nova ganha codificador novo. O ack agora só aposenta eventos. O formato no fio é o
+  mesmo (o `baseSeq` é o quadro anterior): **o protocolo continua 7**, cliente antigo entende. A sala guarda só o
+  último quadro por cliente (antes até 64 mundos de 300 bichos por cliente).
+- Eventos com quadros encadeados vão **uma vez** (e de novo só depois de um resync), não a cada 5 s sem ack.
+- **Bicho fora de toda tela legal** (a união das telas em pé e deitadas nas 4 vistas, `offscreen.ts`) vai a 5 Hz;
+  na tela, 10 Hz, como antes. Na horda de laboratório quase todos estão a menos de 30 u (dentro de alguma tela
+  legal), então quase não muda ali; no jogo normal tira ~13%.
+- A cena real fica acima do banco porque o `wrangler dev` na máquina cheia corre atrás do relógio (rajadas, N17).
+  Com a máquina calma a cena deu 13,9; a meta de 15 KB/s fica no limite com load 11.
+- O teste do protocolo trava: encadeado decodifica igual, com ack atrasado um minuto ou sem ack nenhum os quadros
+  não crescem, e um quadro perdido recupera com um quadro cheio (`tests/protocol4.test.ts`).
+- O laboratório dos bots tinha um defeito que o encadeamento pegou: duas mensagens com o mesmo milissegundo de
+  entrega podiam sair fora de ordem (um timer por mensagem). Agora um timer só esvazia a fila em ordem (`lab-socket.ts`).
+
+### 7.3 Celular lento caindo da sala
+
+Reproduzido com CPU 6× mais lenta (CDP), 1 pessoa + 5 bots, horda de 300, `scripts`/laboratório:
+
+- **Causa**: com a thread principal tomada pelo desenho (83% do tempo fora do JS, no SwiftShader), o navegador
+  atrasava os timers em até **22 s** (o `setInterval` de 1 s do teste). O ack de 1 s e o ping de 5 s são timers:
+  o celular ficava 6 → 13 → 22,8 s sem mandar nada, e a sala corta quem fica **12 s** mudo (4004, "Conexão
+  expirada"). As mensagens que chegavam, por outro lado, continuavam sendo tratadas (4–5 por segundo, das 10 que
+  chegavam): a fila crescia sem fim e o RTT medido foi de 2 s para **51 s** (o celular jogava um mundo de quase um
+  minuto atrás). Depois do corte, a sala sem nenhum socket para o relógio, o Durable Object foi descarregado e,
+  quando o celular voltou, "A sala caiu e voltou. A partida se perdeu" (ver limites).
+- **Conserto**:
+  - o **keepalive vai na mensagem recebida**: tratando qualquer mensagem da sala com nada enviado há 4 s, o cliente
+    responde um ack ali mesmo. Celular que manda alguma coisa (input, o ack de 1 s) nunca precisa dele: a cota não
+    muda;
+  - o vigia do cliente (8 s sem ouvir nada = conexão morta) **não julga num batimento atrasado** (a página estava
+    travada e as mensagens podem estar na fila atrás dele): julga no batimento seguinte, e passa a julgar mesmo
+    atrasado depois de 24 s de silêncio, para uma página travada sempre ainda achar o socket morto;
+  - a **sala dá folga só a quem é lento agora**: se os dois últimos acks nomearam quadros com 2 s ou mais de idade,
+    o limite é 12 s + esse atraso, **no máximo 45 s**, contados da última mensagem; um ack em dia volta a 12 s na
+    hora. Troca de antena (um ack atrasado, depois acks em dia) não ganha folga: duas trocas de 11 s e depois a morte
+    de verdade cortam em ≤ 15 s (teste). Sala vazia ainda para o relógio: no pior caso 45 s depois da última
+    mensagem de um celular lento (~6 GB-s);
+  - **app escondido por 60 s sai da sala sozinho** (fecha com 4010, não tenta voltar enquanto escondido): uma página
+    escondida ainda trata mensagens, então o keepalive manteria viva uma sala só de bots com a aba esquecida por
+    30 min. Saindo, a cadeira espera os 120 s de sempre, a sala sem socket para o relógio, e com o app de volta o
+    cliente reconecta com o token (teste);
+  - **"alcançar"**: o cliente mede quanto está atrás da sala (chegada do quadro × tick, contra o quadro menos
+    atrasado dos últimos 20 s; um pong rápido prova fila vazia) e, com mais de 3 s de atraso por mais de 2 s seguidos,
+    a cena desenha um quadro a cada 2,5 s até o atraso cair abaixo de 0,6 s. Um soluço de 4G num celular bom não liga
+    isso (o lote de quadros atrasados é tratado em milissegundos).
+- **Depois** (CPU 6×, 90–120 s de combate, três rodadas): nenhuma queda; maior silêncio do celular 5,3–7,3 s (antes
+  11,7–22,8 s); RTT 0,07–6,4 s (antes 12–51 s). Os timers continuam atrasando 2–7 s (é o laboratório).
+- Testes: `tests/slow-phone.test.ts` (limite de silêncio, celular que vai ficando lento com silêncios de até 15 s fica,
+  some e é cortado até 45 s; duas trocas de antena e a morte: cortado em ≤ 15 s; atraso e "alcançar"),
+  `tests/reconexao-cliente.test.ts` (timers parados: o keepalive segura a cadeira; batimento atrasado não julga, o
+  seguinte em dia derruba, página atrasada sempre derruba aos 24 s), `tests/aba-escondida.test.ts` (60 s escondido:
+  sai, não manda nada, não tenta voltar; visível, volta com o mesmo personagem), `tests/room-loop.test.ts`
+  (relógio para no limite).
+
+### 7.4 Limites
+
+- Laboratório, não celular: a lentidão é a do SwiftShader com CPU 6×; num aparelho fraco a proporção entre desenho,
+  timers e mensagens pode ser outra (VGM-051).
+- O "alcançar" deixa a tela quase parada enquanto a página corre atrás; num celular a 0,5 fps isso é melhor que jogar
+  50 s no passado, mas é feio. O certo para esses aparelhos é desenhar menos (DPR, efeitos), não medido aqui.
+- **Run perdida quando a sala esvazia**: com a única pessoa fora (bots não seguram socket), a sala para o relógio e o
+  Durable Object pode ser descarregado antes dos 120 s de cadeira guardada; a volta encontra a sala restaurada do
+  armazenamento, sem a run. No `wrangler dev` aconteceu em ~18 s depois de a sala cortar o socket (com o celular
+  fechando a conexão ele mesmo, 30 s não descarregaram). Card sugerido.
+- 4G simulado no CDP não simula perda nem a variação do rádio; os WebSockets não passam pela simulação.
+- Meta dos 15 KB/s no limite com a máquina cheia (14,9–15,0); o banco (sem máquina) dá 12,8–13,1.

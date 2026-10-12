@@ -274,18 +274,19 @@ test('protocol 4: full frame on join, deltas against the acked frame, 10 Hz per 
     for(const [id,p] of room.sim.players){const mine=c.feed.players.get(id)!;assert.equal(mine.name,p.name);assert.ok(Math.abs(mine.x!-p.x)<.01&&Math.abs(mine.y!-p.y)<.01);}
   }
 });
-test('protocol 4: deltas go against the last acked frame; without acks they turn full, resync gives a full frame, no run JSON per tick',()=>{
+test('protocol 4: room frames are chained on the previous one (N27): no acks, still deltas; resync gives a full frame, no run JSON per tick',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
   const ca=client(room,a);ca.pump(4150);
-  const acked=ca.decoded.at(-1)!.seq,runMessages=a.messages.filter(m=>m.t==='run').length;
+  const runMessages=a.messages.filter(m=>m.t==='run').length;
   let t=4200;const tick=(ack:boolean)=>{if((t/50)%20===0)command(room,a,{t:'ping',at:0},t);room.advance(t);ca.pump(t,ack);t+=50;};
   for(let i=0;i<20;i++)tick(false);
-  assert.ok(ca.decoded.slice(-10).every(d=>d.base===acked),'every delta is against the acked frame, not the last one sent');
+  assert.ok(ca.decoded.slice(-10).every(d=>d.base===d.seq-1),'every delta is against the frame sent just before');
+  // Before N27 the acked frame aged out of the 64-frame history here and every frame went full.
   for(let i=0;i<140;i++)tick(false);
-  assert.ok(ca.decoded.slice(-5).every(d=>d.base===0),'the acked frame aged out of the history: full frames');
+  assert.ok(ca.decoded.slice(-5).every(d=>d.base===d.seq-1),'no acks for 8 s: still deltas');
   assert.equal(a.messages.filter(m=>m.t==='run').length,runMessages,'combat ticks do not resend the run state');
   for(let i=0;i<6;i++)tick(true);
-  assert.ok(ca.decoded.at(-1)!.base!==0,'acks bring deltas back');
+  assert.ok(ca.decoded.at(-1)!.base!==0,'acks change nothing for the frames');
   command(room,a,{t:'resync'},t);
   for(let i=0;i<3;i++)tick(true);
   assert.ok(ca.decoded.slice(-2).some(d=>d.base===0),'resync answered with a full frame');

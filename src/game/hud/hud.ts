@@ -43,6 +43,8 @@ export interface RunHudOptions {
   onForge?(recipe:RecipeId):number|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
+  /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
+  heroRect?():Rect|undefined;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -92,6 +94,7 @@ export class RunHud {
   private readonly forgeEl:HTMLElement;
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
+  private readonly heroRectOf?:()=>Rect|undefined;
   /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
@@ -103,7 +106,7 @@ export class RunHud {
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,onChipTap:()=>this.coach.did('chip')});
-    this.coach=new Coach(options.coachStorage);this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
+    this.coach=new Coach(options.coachStorage);this.heroRectOf=options.heroRect;this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
@@ -164,7 +167,11 @@ export class RunHud {
     // does for a notice or the offer window.
     if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
     this.coachShow=show;
-    this.coachRow.render(show,view.offers.length);
+    // A hint that just appeared or changed is measured now and steps aside at once if it is over the hero; between
+    // changes the box comes from the slot's cache (avoidHero), and the hero's box is read fresh on every view.
+    if(this.coachRow.render(show,view.offers.length)){const r=this.coachRow.el.hidden?undefined:this.coachRow.el.getBoundingClientRect();this.coachRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};}
+    const hero=this.heroRectOf?.();
+    if(hero)this.coachYield(hero,HERO_MARGIN_PX);
     const lesson=show&&!show.done?show.lesson:'';
     if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
     // The joystick keeps calling (Amarelo) while "andar" is still to learn and on screen, or only pushed aside by the

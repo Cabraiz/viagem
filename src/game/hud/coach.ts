@@ -30,14 +30,16 @@ export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
   overBanner?:boolean}
 /** House voice (revisao-visual §2.6): short, informal imperative, sentence case; the instruction is dry. */
 export const LESSONS:Readonly<Record<Lesson,LessonCopy>>={
-  walk:{text:'Arrasta o dedão pra andar',sub:'A arma atira sozinha',icon:'dedao',overBanner:true},
+  // Each line fits one row of the slot at 125% in portrait (the top line is 16 px, 20 px at 125%): a taller hint
+  // would reach into the useful area. The lit joystick says "which thumb".
+  walk:{text:'Arrasta pra andar',sub:'A arma atira sozinha',icon:'dedao',overBanner:true},
   // XP is the team's (one bar for everyone): the drops raise the turma's level, not "yours".
-  xp:{text:'Passa nas gotinhas de XP',sub:'Sobem o nível da turma',icon:'gota',maxMs:9000},
+  xp:{text:'Passa nas gotinhas',sub:'Sobem o nível da turma',icon:'gota',maxMs:9000},
   // "{n}" is the chip's own count ("+1", "+2"): the line names the control, as it looks right now.
   chip:{text:'Toca no +{n} pra escolher',icon:'chip',maxMs:9000},
   // Two short lines: one line plus "Leva 3 s" wrapped to three rows in portrait at 125%.
   rescue:{text:'Encosta em quem caiu',sub:'Fica 3 s pra resgatar',icon:'boia'},
-  gather:{text:'Encosta num coqueiro ou numa pedra pra catar',icon:'coco',maxMs:10000},
+  gather:{text:'Encosta num coqueiro',sub:'Ou numa pedra, pra catar',icon:'coco',maxMs:10000},
 };
 /** The check after the action, then the row goes. */
 export const DONE_MS=900;
@@ -228,8 +230,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 
 export interface CoachPart {
   readonly el:HTMLElement;
-  /** Draws the hint `show` (undefined hides it); `pending` is the chip's count for its replica. */
-  render(show:CoachShow|undefined,pending:number):void;
+  /** Draws the hint `show` (undefined hides it); `pending` is the chip's count for its replica. True when it changed. */
+  render(show:CoachShow|undefined,pending:number):boolean;
 }
 
 /** The row of the announcement slot: a sticker (or the chip's replica), the line and an optional second line. */
@@ -241,13 +243,14 @@ export function createCoachRow():CoachPart{
   let key='';
   return {el:row,render(show,pending){
     const next=show?`${show.lesson}:${show.done}:${show.lesson==='chip'?pending:''}`:'';
-    if(next===key)return;key=next;
-    if(!show){row.hidden=true;delete row.dataset.lesson;return;}
+    if(next===key)return false;key=next;
+    if(!show){row.hidden=true;delete row.dataset.lesson;return true;}
     const copy=LESSONS[show.lesson];
     row.hidden=false;row.dataset.lesson=show.lesson;row.classList.toggle('rh-coach-done',show.done);
     // The chip's own look ("+N" on Amarelo), so the line points at it without an arrow over the field.
     mark.innerHTML=show.done?icon('pronto',{size:32}):copy.icon==='chip'?`<span class="rh-coach-chip" aria-hidden="true">+${Math.max(1,pending)}</span>`:icon(copy.icon,{size:32});
     text.textContent=copy.text.replace('{n}',String(Math.max(1,pending)));
     sub.textContent=show.done?'':copy.sub??'';
+    return true;
   }};
 }

@@ -113,6 +113,12 @@ function audit(rootsSelector,minFont){
     if(r.left<m.left-.5||r.right>m.right+.5||r.left<-.5||r.right>innerWidth+.5)problems.push(`nome sai da coluna do time: ${label(n)}`);
     for(const w of document.querySelectorAll('.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-camp:not([hidden])'))if(vis(w)){const b=w.getBoundingClientRect();
       if(r.right>b.left+.5&&b.right>r.left+.5&&r.bottom>b.top+.5&&b.bottom>r.top+.5)problems.push(`nome do time sob a janela: ${label(n)} × ${w.className.split(' ')[0]}`);}}
+  // pacote-bugs-ux (design review): the caído ficha of a window never lies on the visible part of a card or tag.
+  for(const f of document.querySelectorAll('.rh-window-fall:not([hidden])'))if(vis(f)){const r=f.getBoundingClientRect();
+    for(const c of document.querySelectorAll('.rh-offer:not([hidden]) .rh-card,.rh-forge:not([hidden]) .rh-forge-tag')){if(!vis(c))continue;
+      const list=c.closest('.rh-offer-cards,.rh-forge-tags'),b=c.getBoundingClientRect(),l=list?list.getBoundingClientRect():b;
+      const top=Math.max(b.top,l.top),bottom=Math.min(b.bottom,l.bottom),left=Math.max(b.left,l.left),right=Math.min(b.right,l.right);
+      if(bottom>top&&right>left&&r.right>left+.5&&r.left<right-.5&&r.bottom>top+.5&&r.top<bottom-.5)problems.push(`ficha do caído sobre ${label(c)}`);}}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)
@@ -243,7 +249,14 @@ const SCENES=[
     for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open'],['combate (round)','wave'],['muralha baixa','camp-wave']])
       await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
         await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
-          d.innerHTML='<button></button><span class="explore-view"><i style="display:block;width:32px;height:32px"></i></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
+          d.innerHTML='<button></button><span class="explore-view"><i style="display:block;width:32px;height:32px"></i></span><button></button><span class="explore-camera-hint" role="status"><i class="ic"></i><span>Gira no intervalo</span></span>';document.querySelector('.hs-world').append(d);});});
+    // Portrait: the answer is a row of the announcement slot, ahead of the coach's hint (the same markup as explore.ts).
+    for(const [name,state,extra] of [['combate','wave',''],['dica andar na vaga','wave','&dica=walk'],['muralha baixa','camp-wave','']])
+      await run(`"Gira no intervalo" na vaga de anúncio, ${name}`,`/?sandbox=hud&players=6&state=${state}&frozen=1${extra}`,'.rh',13,async()=>{
+        await page.evaluate(async()=>{await import('/src/game/explore.css');const {icon}=await import('/src/ui/icon.ts');
+          const row=document.createElement('div');row.className='explore-camera-row';row.setAttribute('role','status');row.innerHTML=`${icon('cadeado',{size:24})}<span>Gira no intervalo</span>`;
+          window.__hud.queueRow(row,60000,{answer:true});});
+        await page.waitForTimeout(300);});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});

@@ -54,6 +54,8 @@ export interface DirectorOptions {
   siegeShare?:number;
   /** First round whose groups may besiege through siegeShare (default 1). Groups a plan flags itself always do. */
   siegeFromRound?:number;
+  /** Where siege enemies are going (the wall, VGM-046B); the world's base when absent or down. */
+  siegeTarget?:(ctx:SimContext)=>Point|undefined;
   /** Endless world: the camera a client reported (042b/camera-segue). Without it every orientation and view counts. */
   cameraOf?:(ctx:SimContext,player:SimPlayer)=>CameraHint|undefined;
 }
@@ -133,11 +135,20 @@ export const CATCH_UP_SPEED=2.5;
  * behind a tree never arrive: with the team waiting by the base every round of the sim timed out with a third to half
  * of the horde fleeing (53-69 s). So once every group of the plan is out:
  *  - the round gets at least LAST_CALL_SECONDS more before its timeout (the HUD shows no wave clock, only bichos);
- *  - each enemy still farther than LAST_CALL_NEAR from the team (siege ones: from the base) hurries in at
- *    CATCH_UP_SPEED on top of its own pace, on screen too, sidestepping trees and rocks; inside LAST_CALL_NEAR it is
- *    back to its own pace, so nobody standing still is hit by a body that arrived faster than it could be seen.
+ *  - each enemy still farther than LAST_CALL_NEAR from the team (siege ones: from the wall they besiege) hurries in,
+ *    sidestepping trees and rocks; inside LAST_CALL_NEAR it is back to its own pace, so nobody standing still is hit by
+ *    a body that arrived faster than it could be seen. Off every screen it closes in at CATCH_UP_SPEED on top of its
+ *    pace (as before the last call); where someone may see it, never faster than LAST_CALL_PACE × the hero's speed in
+ *    all, so a team that runs away is never caught by the hurry (code review: 3.9 u/s outran the hero's 3.1).
  */
-export const LAST_CALL_SECONDS=20,LAST_CALL_NEAR=7;
+export const LAST_CALL_SECONDS=25,LAST_CALL_NEAR=7,LAST_CALL_PACE=.9;
+/** The extra speed of a called enemy (u/s): full catch-up off screen, capped so its pace plus it stays ≤ 0.9 × SPEED on one. */
+export const lastCallBoost=(pace:number,hidden:boolean)=>hidden?CATCH_UP_SPEED:Math.max(0,Math.min(CATCH_UP_SPEED,LAST_CALL_PACE*SPEED-pace));
+/**
+ * A called enemy that tried every sidestep and still could not move waits this many ticks (plus 0-7 by its id) before it
+ * tries again: up to 7 moveSafely calls per blocked body per tick were ~5 ms per tick with 300 of them (code review).
+ */
+const BLOCKED_WAIT=6;
 /** Sidesteps a called enemy tries when the straight step is blocked, in radians (its own side first, by memory.seed). */
 const DETOUR_TURNS=[Math.PI/3,Math.PI/2,2*Math.PI/3];
 /**
@@ -331,7 +342,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function catchUp(ctx:SimContext){
     const anchors=anchorsOf(ctx).filter(p=>p.online&&!p.downed&&p.hp>0);
     if(!anchors.length)return;
-    const step=CATCH_UP_SPEED/SIM_HZ,called=!!state.called,base=called?worldBase(ctx.terrain):undefined;
+    const step=CATCH_UP_SPEED/SIM_HZ,called=!!state.called,base=called?options.siegeTarget?.(ctx)??worldBase(ctx.terrain):undefined;
     for(const id of state.tracked){
       const e=ctx.enemies.get(id);
       if(!e||e.hp<=0||e.memory?.retreat===1||ctx.tick<e.readyTick)continue;
@@ -341,16 +352,19 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(e.boss&&e.memory?.act!==0)continue;
       if(e.frozenUntil!==undefined&&ctx.tick<e.frozenUntil)continue;
       if(called){
-        // Last call: towards the team (siege bodies: towards the base they besiege), on screen too, until LAST_CALL_NEAR.
+        // Last call: towards the team (siege bodies: towards the wall they besiege), on screen too, until LAST_CALL_NEAR.
         const to=siege?base!:nearestOf(anchors,e).player!,dx=to.x-e.x,dy=to.y-e.y,d=Math.hypot(dx,dy);
         if(d<=LAST_CALL_NEAR)continue;
-        // Once a second: a body that did not get anywhere squeezes through for a while (STUCK_SECONDS).
         const m=e.memory??={};
+        if(ctx.tick<(m.blockedUntil??-1))continue;
+        const boost=lastCallBoost(e.speed,hidden(ctx,e))/SIM_HZ;
+        if(boost<=0)continue;
+        // Once a second: a body that did not get anywhere squeezes through for a while (STUCK_SECONDS).
         if(m.callTick===undefined||ctx.tick-m.callTick>=SIM_HZ){
           if(m.callTick!==undefined&&Math.hypot(e.x-(m.callX??e.x),e.y-(m.callY??e.y))<STUCK_UNITS)m.squeezeUntil=ctx.tick+ticks(STUCK_SECONDS);
           m.callTick=ctx.tick;m.callX=e.x;m.callY=e.y;
         }
-        hurry(ctx,e,dx/d*step,dy/d*step,ctx.tick<(m.squeezeUntil??-1));
+        if(!hurry(ctx,e,dx/d*boost,dy/d*boost,ctx.tick<(m.squeezeUntil??-1)))m.blockedUntil=ctx.tick+BLOCKED_WAIT+(Math.floor((m.seed??0)*8)&7);
         continue;
       }
       if(!hidden(ctx,e))continue;
@@ -362,20 +376,23 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(!hidden(ctx,e)){e.x=x;e.y=y;}
     }
   }
-  /** A called enemy's extra step; blocked straight ahead (a tree, a rock), it sidesteps (its own side first). */
+  /**
+   * A called enemy's extra step; blocked straight ahead (a tree, a rock), it sidesteps (its own side first).
+   * False when nothing moved it (the caller makes it wait BLOCKED_WAIT ticks before the next try).
+   */
   function hurry(ctx:SimContext,e:EnemyState,dx:number,dy:number,squeeze:boolean){
     const x=e.x,y=e.y,want=Math.hypot(dx,dy);
     // Squeezing: straight through trees and rocks, on land only (moveSafely lets a body inside an obstacle walk out).
-    if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,ctx.terrain)){e.x=x+dx;e.y=y+dy;return;}
+    if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,ctx.terrain)){e.x=x+dx;e.y=y+dy;return true;}
     moveSafely(e,dx,dy,ctx.terrain,e.radius);
-    if(Math.hypot(e.x-x,e.y-y)>=want*.5)return;
+    if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     const side=(e.memory?.seed??0)<.5?1:-1;
     for(const turn of DETOUR_TURNS)for(const sign of [side,-side]){
       const a=turn*sign,c=Math.cos(a),s=Math.sin(a);
       e.x=x;e.y=y;moveSafely(e,dx*c-dy*s,dx*s+dy*c,ctx.terrain,e.radius);
-      if(Math.hypot(e.x-x,e.y-y)>=want*.5)return;
+      if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     }
-    e.x=x;e.y=y;
+    e.x=x;e.y=y;return false;
   }
   /** VS recycling: enemies far from every player come back on a ring next to one, same id and hp, no kill. */
   function recycle(ctx:SimContext){

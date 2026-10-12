@@ -62,13 +62,16 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 @keyframes explore-lock-beat{0%{transform:scale(1.35)}100%{transform:scale(1)}}
 .explore-camera .explore-camera-hint{position:absolute;left:0;top:calc(100% + 8px);padding:4px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 13px/1.3 var(--f-sistema);white-space:nowrap;pointer-events:none}
 .explore-camera .explore-camera-hint[hidden]{display:none}
-/* Portrait (NEW-UX-balao-girar-retrato): under the buttons the balloon covered the XP bar for 1.5 s, and the top band has
-   no free row for it (round chip to the right, XP 20 px below). It opens over the locked control itself, the thing the
-   player just tapped (dimmed arrows and the lock), centred on it: it says why the control does not answer and covers
-   nothing else of the HUD. */
-@media (min-height:501px){
-  .explore-camera .explore-camera-hint{left:50%;top:50%;transform:translate(-50%,-50%)}
-}
+/* The answer carries the lock (design review pacote-bugs-ux): "[cadeado] Gira no intervalo". Portrait has no free row
+   under the buttons (the XP bar is 20 px below): there the answer is a row of the announcement slot (.explore-camera-row,
+   explore.ts), and this balloon never shows; the real lock and its beat stay in view. */
+.explore-camera .explore-camera-hint:not([hidden]){display:inline-flex;align-items:center;gap:4px}
+.explore-camera .explore-camera-hint .ic{flex:none;width:20px;height:20px}
+@media (min-height:501px){.explore-camera .explore-camera-hint{display:none!important}}
+.explore-camera-row{box-sizing:border-box;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 8px;border:2px solid var(--c-breu);border-radius:var(--r-balao);
+  background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 var(--t-13)/1.3 var(--f-sistema);white-space:nowrap;pointer-events:none}
+.explore-camera-row[hidden]{display:none}
+.explore-camera-row .ic{flex:none;width:20px;height:20px}
 /* Landscape with a window open: the minimap sits 24 px under these buttons (hud.css), so the balloon goes under the
    minimap, in the same left column, on two lines (UX review janela-caido; the zones audit checks it never crosses it). */
 @media (max-height:500px){

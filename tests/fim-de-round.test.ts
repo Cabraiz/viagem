@@ -4,7 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_WORLD,Simulation} from '../src/game/net/shared.ts';
 import {ticks} from '../src/game/sim/types.ts';
-import {LAST_CALL_NEAR,LAST_CALL_SECONDS} from '../src/game/sim/director.ts';
+import {CATCH_UP_SPEED,LAST_CALL_NEAR,LAST_CALL_PACE,LAST_CALL_SECONDS,lastCallBoost} from '../src/game/sim/director.ts';
+import {ENEMIES} from '../src/game/sim/enemies/catalog.ts';
+import {SPEED,clearSegment} from '../src/game/world.ts';
 import {ROUNDS} from '../src/game/sim/waves.ts';
 
 interface RoundEnd {round:number;waveTicks:number;timedOut:boolean;fled:number;spawned:number;calledAt?:number;endsAtCall?:number}
@@ -52,4 +54,43 @@ test('the last call starts once every group is out and gives the round at least 
 test('the last call is deterministic: the same seed ends its rounds on the same ticks',()=>{
   const a=standStill(2,1).ends,b=standStill(2,1).ends;
   assert.deepEqual(a,b);
+});
+
+test('code review: on someone\'s screen a called bicho never outruns a hero (pace + boost ≤ 0.9 × SPEED, every kind and the elite)',()=>{
+  for(const [kind,def] of Object.entries(ENEMIES)){
+    if(kind==='chefe')continue;
+    for(const pace of [def.speed,def.speed*1.2]){
+      // (A pernilongo is already faster than that on its own: it gets no boost at all.)
+      assert.ok(pace+lastCallBoost(pace,false)<=Math.max(pace,LAST_CALL_PACE*SPEED)+1e-9,`${kind} at ${pace} u/s`);
+      assert.ok(lastCallBoost(pace,false)>=0);
+    }
+  }
+  // Off every screen the old catch-up stays (nobody can see it).
+  assert.equal(lastCallBoost(1.4,true),CATCH_UP_SPEED);
+  assert.ok(LAST_CALL_PACE*SPEED<SPEED);
+});
+
+test('code review: a hero running in a straight line on open ground after the call is not caught by the bichos behind',()=>{
+  let checked=0;
+  for(const seed of [4,5,6,7]){
+    const sim=new Simulation(seed,{world:DEFAULT_WORLD});
+    sim.add('p0','p0','cidadao-comum');sim.resetRun();
+    const director=(sim as unknown as {systems:{director:{state:{called?:boolean}}}}).systems.director;
+    const hero=sim.players.get('p0')!;
+    let t=0;
+    for(;t<ticks(80)&&!director.state.called;t++){hero.invulnerableUntil=sim.tick+40;sim.step();for(const o of sim.offers('p0'))sim.choose('p0',o.id,o.defaultIndex);}
+    if(!director.state.called)continue;
+    // A direction with 25 u of open ground ahead.
+    const dir=[0,1,2,3,4,5,6,7].map(k=>({x:Math.cos(k*Math.PI/4),y:Math.sin(k*Math.PI/4)})).find(u=>clearSegment(hero,{x:hero.x+u.x*25,y:hero.y+u.y*25},sim.terrain));
+    if(!dir)continue;
+    const behind=[...sim.world.enemies.values()].filter(e=>{const dx=e.x-hero.x,dy=e.y-hero.y,d=Math.hypot(dx,dy);return d>LAST_CALL_NEAR&&(dx*dir.x+dy*dir.y)/d<-.5;}).map(e=>({e,d0:Math.hypot(e.x-hero.x,e.y-hero.y)}));
+    const start={x:hero.x,y:hero.y};let seq=0;
+    for(let k=0;k<ticks(6);k++){hero.invulnerableUntil=sim.tick+40;sim.input('p0',{seq:++seq,x:dir.x,y:dir.y,attack:false});sim.step();for(const o of sim.offers('p0'))sim.choose('p0',o.id,o.defaultIndex);}
+    const ran=Math.hypot(hero.x-start.x,hero.y-start.y);
+    if(ran<SPEED*6*.9)continue;
+    for(const {e,d0} of behind){if(!sim.world.enemies.has(e.id))continue;const d=Math.hypot(e.x-hero.x,e.y-hero.y);
+      // Off every screen (≥ 25.5 u away) the old catch-up may close in; from there on the hero only gets away.
+      assert.ok(d>=Math.min(d0,25)-.5,`seed ${seed}: ${e.id} (${e.kind}) closed from ${d0.toFixed(1)} to ${d.toFixed(1)} u while the hero ran ${ran.toFixed(1)} u`);checked++;}
+  }
+  assert.ok(checked>=5,`only ${checked} bichos behind were checked`);
 });

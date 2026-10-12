@@ -104,6 +104,8 @@ export class IslandScene extends Phaser.Scene {
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
   private props:Prop[]=[];
+  /** Bumped whenever the props change (a chunk in or out, a tree's art arriving): prize canopy tests run again. */
+  private propsVersion=0;
   private trees:(TreeArt|undefined)[]=[];
   private treeShadows?:Graphics;
   /** Endless world (terreno-em-blocos): props and place fichas of the chunks around the camera, by chunk. */
@@ -172,6 +174,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.field.chunks){
       let treeIndex=0;
       for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
+      this.propsVersion++;
       this.drawTreeShadows();
       landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
     }else{
@@ -203,7 +206,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
-        canopyCovers:(q,depth)=>this.treeCovers(q,depth)});
+        canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});
@@ -658,7 +661,7 @@ export class IslandScene extends Phaser.Scene {
     }
     if(loads&&!this.load.isLoading())this.load.start();
     if(!changed)return;
-    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);
+    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);this.propsVersion++;
     this.signs=[...this.chunkProps.values()].flatMap(e=>e.signs);
     this.drawTreeShadows();this.dropIdleTrees();
   }
@@ -685,7 +688,7 @@ export class IslandScene extends Phaser.Scene {
       entry.props[i]=next;changed=true;
     });
     if(!changed)return;
-    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);
+    this.props=[...this.chunkProps.values()].flatMap(e=>e.props);this.propsVersion++;
     this.drawTreeShadows();this.place();
   }
   private drawProp(g:Graphics,o:Obstacle){

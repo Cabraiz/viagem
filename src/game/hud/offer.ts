@@ -302,7 +302,12 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     takeAll.hidden=!(state.mode==='intermission'&&offers.length>=TAKE_ALL_MIN);
     later.hidden=state.mode!=='intermission';
     const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
-    if(fall.textContent!==line){fall.textContent=fallFoot.textContent=line;fall.hidden=fallFoot.hidden=!line;}
+    if(fall.textContent!==line){
+      // "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans: in the landscape foot the hint goes, so the
+      // ficha is one short line beside "Depois" (design review pacote-bugs-ux).
+      for(const node of [fall,fallFoot])writeFallLine(node,line);
+      fall.hidden=fallFoot.hidden=!line;
+    }
     root.classList.toggle('rh-offer-clock',state.clock);
     if(state.clock){
       const fraction=offerDeadlineFraction(offer,view.tick,startTick??view.tick);
@@ -320,4 +325,15 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   }
 
   return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);overflow.destroy();}};
+}
+
+/**
+ * The caído ficha of a window: "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans, so a short window (the
+ * landscape offer's foot, the landscape forge) shows one line without the hint (design review pacote-bugs-ux).
+ */
+export function writeFallLine(node:HTMLElement,line:string){
+  const cut=line.indexOf('. ')+1,who=cut>0?line.slice(0,cut):line,hint=cut>0?line.slice(cut):'';
+  const a=document.createElement('span');a.textContent=who;
+  const b=document.createElement('span');b.className='rh-window-fall-hint';b.textContent=hint;
+  node.replaceChildren(a,...(hint?[b]:[]));
 }

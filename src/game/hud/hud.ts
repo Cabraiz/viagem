@@ -90,6 +90,8 @@ export class RunHud {
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
   private columnObserver?:ResizeObserver;
+  /** Shell rows that answer a tap (queueRow answer): they go ahead of the coach's hint. */
+  private readonly answers=new Set<HTMLElement>();
   /** First-run coach (VGM-056): one hint at a time in the announcement slot. */
   readonly coach:Coach;
   private readonly coachRow:CoachPart;
@@ -238,16 +240,20 @@ export class RunHud {
    * against the coach while it shows, and steps out (its time paused) when a notice comes. It moves with the slot (top
    * or low, off the hero) like the other rows.
    */
-  queueRow(el:HTMLElement,ms:number){
+  queueRow(el:HTMLElement,ms:number,options:{answer?:boolean}={}){
     if(el.parentElement!==this.stack)this.stack.insertBefore(el,this.coachRow.el);
     el.classList.add('rh-row');el.hidden=true;
+    // An answer to the player's own tap ("Gira no intervalo") does not wait for the coach's hint: it takes the slot
+    // from it (the coach steps back while a row shows). Notices and the kill-cam still go first.
+    if(options.answer)this.answers.add(el);else this.answers.delete(el);
     this.rows.queue(el,ms);this.turnRows();
   }
   /** The row leaves the line and the slot (its own button answered it). */
   dropRow(el:HTMLElement){this.rows.drop(el);if(!el.hidden){el.hidden=true;this.relayout();}}
   /** Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on. */
   private turnRows(now=performance.now()){
-    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
+    const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
+    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
     const {show,hide}=this.rows.turn(now,busy);
     for(const el of hide)el.hidden=true;
     if(show)show.hidden=false;

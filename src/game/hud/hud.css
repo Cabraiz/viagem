@@ -216,7 +216,11 @@
   .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-foot{margin:0}
   /* With a queue ("Levar os indicados" in the corner), "Depois" stays in the foot: the caído ficha rides beside it. */
   .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-window-fall:not(.rh-offer-fall-foot){display:none}
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-offer-fall-foot:not([hidden]){display:block;flex:1;min-width:0;margin:0}
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-offer-fall-foot:not([hidden]){display:block;flex:0 1 auto;min-width:0;margin:0 8px 0 0;align-self:center;white-space:nowrap}
+  /* One short line beside "Depois" ("Zé caiu, 6 s."): the hint goes, and the foot keeps 6 px from the list's cut edge, so
+     the ficha never reads as lying on a card (design review pacote-bugs-ux). */
+  .rh-offer-fall-foot .rh-window-fall-hint{display:none}
+  .rh-offer[data-mode=intermission]:has(.rh-offer-fall-foot:not([hidden])) .rh-offer-foot{margin-top:6px}
 }
 /* Something cut below in a scrolling list (offer cards, forge tags): a Breu cut edge pinned to its bottom. */
 .rh-offer-cards[data-more=true]::after,.rh-forge-tags[data-more=true]::after{content:'';position:sticky;bottom:-2px;z-index:3;height:14px;margin-top:-20px;pointer-events:none;
@@ -436,18 +440,18 @@
 /* "Momento mais vergonhoso" (VGM-053B): a notice pinned on the condo board, an etiqueta (Papel, Breu edge, 4 px, the
    punched hole), the critter's sticker or the sweat sticker; the joke is the optional second line. */
 .rh-result-shame{grid-area:shame;position:relative;z-index:1;justify-self:center;display:flex;align-items:center;gap:8px;width:min(100%,560px);box-sizing:border-box;
-  padding:5px 12px 6px 26px;border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1);transform:rotate(-.6deg)}
+  padding:5px 12px 6px 12px;border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1);transform:rotate(-.6deg)}
 .rh-result-shame[hidden]{display:none}
-.rh-result-shame::before{content:'';position:absolute;left:8px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:var(--r-circulo);background:var(--c-breu)}
+/* (No pin hole: a Breu dot before the sticker read as a stray bullet; design review pacote-bugs-ux.) */
 .rh-result-shame-icon{flex:none;display:grid;place-items:center;width:32px;height:32px}
 .rh-result-shame-icon img{max-width:32px;max-height:32px;object-fit:contain}
 .rh-result-shame-body{min-width:0;font:700 var(--t-13)/1.25 var(--f-sistema);color:var(--c-breu)}
 .rh-result-shame-title{display:block;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-lilas)}
 .rh-result-shame-joke{display:block;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
 /* The same moment as the first chip of that player's card, when the notice would make the six cards scroll. */
-.rh.rh.rh .rh-award.rh-award-shame{padding-left:20px}
-.rh-award-shame{position:relative;padding-left:20px;background:var(--c-papel);border-color:var(--c-breu);transform:rotate(-.6deg)}
-.rh-award-shame::before{content:'';position:absolute;left:6px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:var(--r-circulo);background:var(--c-breu)}
+/* The card's chip has no pin hole (design review pacote-bugs-ux: the "●" read as a stray bullet before the sticker); the
+   paper, the Breu edge and the slight turn still say "notice". */
+.rh-award-shame{position:relative;background:var(--c-papel);border-color:var(--c-breu);transform:rotate(-.6deg)}
 .rh-award-shame .rh-award-emoji :is(img,svg){width:18px;height:18px;vertical-align:-4px;object-fit:contain}
 /* Portrait with 5-6 cards (and any big text): the joke is the optional line, it goes so the six cards keep fitting. */
 @media (min-height:501px){
@@ -474,7 +478,9 @@
 .rh-me .rh-rcard-img{border-color:var(--c-lilas)}
 .rh-rcard-id{grid-area:id;display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0}
 /* Names wrap (up to 20 characters from the lobby) instead of being cut with an ellipsis. */
-.rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:break-word;text-wrap:balance}
+/* No break inside a word: result.ts fitCardName shortens the name with "…" at a word instead (up to 2 lines, 1 if the
+   cards would scroll). */
+.rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:normal;text-wrap:balance}
 .rh-rcard-tag{padding:0 6px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/1.3 var(--f-sistema)}
 
 .rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:3px;min-width:0}
@@ -558,7 +564,7 @@
 /* Landscape: head and actions share the top row; cards in up to 3 columns */
 @media (max-height:500px){
   .rh-result{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"head actions" "shame shame" "grid grid";gap:4px 10px}
-  .rh-result-shame{padding:3px 10px 4px 24px}
+  .rh-result-shame{padding:3px 10px 4px 10px}
 
   .rh-result-head{flex-direction:row;align-items:center;gap:10px;text-align:left}
   .rh-result-titles{align-items:flex-start;flex:none}

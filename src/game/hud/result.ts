@@ -87,10 +87,25 @@ export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},askin
 export const MANAGE_LABEL='Arrumar a sala';
 /** The same verb where three buttons share one row (portrait): the crown says whose button it is (BUG-resultado-dono-6p-rola). */
 export const MANAGE_SHORT='Arrumar';
-/** From this many cards on, a card shows the team rail's short name (first word, ≤ 9 letters), so a long name never takes
- * a second line and pushes the 6th card out of view; the full name stays in the card's label (BUG-resultado-dono-6p-rola). */
-export const SHORT_NAME_FROM=5;
-export const cardName=(name:string,count:number)=>count>=SHORT_NAME_FROM?railName(name)||name:name;
+/**
+ * The candidates for a card's name, longest first (design review of pacote-bugs-ux: "Seu", "Tia" alone lose the person,
+ * and a name is never cut inside a word without "…"): the whole name, then whole words with "…", then the first word
+ * cut with "…". The card writes the first that fits its lines (fitCardName).
+ */
+export function nameCandidates(name:string):string[]{
+  const full=name.trim(),words=full.split(/\s+/).filter(Boolean),out=[full];
+  for(let k=words.length-1;k>=1;k--)out.push(`${words.slice(0,k).join(' ')}…`);
+  const first=[...(words[0]??'')];
+  for(let n=first.length-1;n>=1;n--)out.push(`${first.slice(0,n).join('')}…`);
+  return out;
+}
+/** Writes into `el` the longest candidate of `name` that takes at most `lines` lines and has no word poking out. */
+export function fitCardName(el:HTMLElement,name:string,lines:number){
+  const line=parseFloat(getComputedStyle(el).lineHeight)||0;
+  const fits=()=>el.scrollWidth<=el.clientWidth+1&&(!line||el.getBoundingClientRect().height<=line*lines+1);
+  for(const text of nameCandidates(name)){el.textContent=text;if(fits())return text;}
+  return el.textContent;
+}
 const CONFIRM_MS=3000,REARM_MS=1500,DOUBLE_TAP_MS=500;
 
 const CONFETTI=18;
@@ -165,7 +180,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   let shameChip:{playerId:string;line:string;aria:string;key:string;source?:string}|undefined;
   /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
   let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
-  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number;count:number},index:number)=>{
+  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
     const node=el('article','rh-rcard');
     node.setAttribute('aria-label',player.name);
     node.style.setProperty('--i',String(index));
@@ -176,7 +191,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const top=el('div','rh-rcard-top',node);
     const img=el('img','rh-rcard-img',top);img.alt='';img.decoding='async';img.draggable=false;img.src=ctx.portrait(player.classId);
     const id=el('div','rh-rcard-id',top);
-    const name=el('strong','rh-rcard-name',id);name.textContent=cardName(player.name,ctx.count);
+    const name=el('strong','rh-rcard-name',id);name.textContent=player.name;name.dataset.full=player.name;
     if(me){const tag=el('span','rh-rcard-tag',id);tag.textContent='Você';}
     // Robot sticker for a room bot, paper crown for the owner (D-025): shape, not color.
     const bot=player.bot||roster?.bots.includes(player.id);
@@ -275,8 +290,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const count=players.length+(tile?1:0);
     const slots=count>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
     grid.dataset.count=String(count);chipEl=undefined;
-    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots,count},index)),...(tile?[addTile()]:[]));
-    fitShame();
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)),...(tile?[addTile()]:[]));
+    fitCards();
   };
   /**
    * The notice on top when the cards still fit under it (up to four players); otherwise it moves into the shamed
@@ -292,6 +307,17 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const crowded=grid.children.length>=(landscape?.matches?4:5);
     if(!crowded&&(root.hidden||grid.scrollHeight<=grid.clientHeight+1))return;
     shame.hidden=true;list.prepend(chip);list.hidden=false;for(const a of extra)a.hidden=true;
+  };
+  /**
+   * Names in up to two lines (whole name, else whole words with "…"); if the cards would then scroll, one line. Then the
+   * shame notice finds its place (it measures the grid too). Only once the screen is laid out.
+   */
+  const fitCards=()=>{
+    if(root.hidden||typeof getComputedStyle!=='function'){fitShame();return;}
+    const names=[...grid.querySelectorAll<HTMLElement>('.rh-rcard-name')];
+    for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',2);
+    fitShame();
+    if(grid.scrollHeight>grid.clientHeight+1){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
@@ -326,7 +352,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       renderGrid(result,ctx);
       resetRematch();exited=false;
       root.hidden=false;
-      fitShame();
+      fitCards();
+      // A late font changes every width: fit again once the fonts are in.
+      void document.fonts?.ready?.then(()=>{if(!root.hidden)fitCards();});
       // Restart the entrance animation on every show.
       root.classList.remove('rh-result-in');void root.offsetWidth;root.classList.add('rh-result-in');
     },

@@ -56,6 +56,32 @@ export const PROMO_COXINHAS=3,PROMO_RADIUS:readonly [number,number]=[1.4,3];
  */
 export const PRIZE_SCREEN_SPAN=5;
 export const prizeSpotSafe=(dx:number,dy:number)=>Math.abs(dx-dy)<=PRIZE_SCREEN_SPAN&&Math.abs(dx+dy)<=PRIZE_SCREEN_SPAN;
+/**
+ * The thumb zones of a phone, CSS px from its hero's feet (x right, y down), measured on the real scene (portrait and
+ * landscape, 100% and 125%, camera settled; evidence logs/zonas-polegar.json), each grown by THUMB_MARGIN_PX: the
+ * look-ahead (≤ 36 px) and half a sale's coxinha (23 px). At the follow zoom of a 390 px short side (0.583).
+ */
+export const THUMB_ZONES:readonly {x:number;y:number;width:number;height:number}[]=[
+  {x:-228,y:193,width:193,height:202},{x:-56,y:211,width:251,height:184},// portrait (union of 100% and 125%)
+  {x:-429,y:-8,width:154,height:145},{x:191,y:-26,width:246,height:183},// landscape (union of 100% and 125%)
+];
+export const THUMB_MARGIN_PX=59,THUMB_ZOOM=.583;
+/**
+ * Whether a world offset from a hero can sit under one of that hero's phone's thumbs, in any of the 4 views and either
+ * orientation (projection.ts without relief: x = 42·(qx−qy), y = 21·(qx+qy) after the view's rotation). The test checks
+ * that prizeSpotSafe never needs it for the prize's own hero (see `around` for the teammates).
+ */
+export function underThumb(dx:number,dy:number){
+  for(let view=0;view<4;view++){
+    // A quarter turn per view (projection.ts viewPoint); all four are checked, so the turning direction does not matter.
+    const qx=view===0?dx:view===1?-dy:view===2?-dx:dy,qy=view===0?dy:view===1?dx:view===2?-dy:-dx;
+    const sx=42*(qx-qy)*THUMB_ZOOM,sy=21*(qx+qy)*THUMB_ZOOM;
+    for(const z of THUMB_ZONES)if(sx>z.x-THUMB_MARGIN_PX&&sx<z.x+z.width+THUMB_MARGIN_PX&&sy>z.y-THUMB_MARGIN_PX&&sy<z.y+z.height+THUMB_MARGIN_PX)return true;
+  }
+  return false;
+}
+/** A structure a prize must not fall on (the wall's ring and tent, the forge's towers): centre and clearance, units. */
+export interface PrizeBlock {x:number;y:number;radius:number}
 /** Tries for a prize spot around its hero (then that prize is skipped, as before). */
 export const PRIZE_TRIES=12;
 /** Marks an XP pickup as a boleto of the rain (PickupState.resource; the client draws a boleto, D-002). */
@@ -120,7 +146,7 @@ export function parseZueiraLab(value?:string):ZueiraLab|undefined{
   return kinds.length?{plan:kinds.slice(0,8).map((kind,i)=>({round:FIRST_EVENT_ROUND+i,kind})),minGap:1}:undefined;
 }
 
-export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSystem{
+export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:SimContext)=>readonly PrizeBlock[]}={}):ZueiraSystem{
   const minGap=options.lab?.minGap??EVENT_GAP[0];
   const state=createZueiraState(seed);
   if(options.lab)state.plan=options.lab.plan.map(p=>({...p}));
@@ -128,12 +154,20 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
   const rngOf=()=>rng??=new Rng(state.rng);
   const save=()=>{if(rng)state.rng=rng.state;};
 
-  /** A spot around `p` the hero can walk straight to and that no thumb covers on any phone (a few tries, then none). */
+  /**
+   * A spot around `p` that its hero can walk straight to, never under that hero's thumbs (prizeSpotSafe) and off the
+   * structures (a few tries, then none). Teammates' thumbs are not checked: the server knows neither their orientation
+   * nor their view, and over all of them a landscape phone's thumbs (beside its hero, 5.4–17 u along the screen) cover
+   * almost every spot around a team spread over a few steps (332 of 337 prizes in tests/premio-polegar); a prize next
+   * to a teammate is never under that teammate's thumbs (they start 5.4 u to the side in landscape, 16 u below in
+   * portrait). Card NEW-ORQ-camera-hint-no-servidor would make it exact.
+   */
   function around(ctx:SimContext,p:SimPlayer,[min,max]:readonly [number,number]){
-    const r=rngOf();
+    const r=rngOf(),blocks=options.blocked?.(ctx)??[];
     for(let i=0;i<PRIZE_TRIES;i++){
       const a=r.range(0,Math.PI*2),d=r.range(min,max),dx=Math.cos(a)*d,dy=Math.sin(a)*d,at={x:p.x+dx,y:p.y+dy};
-      if(prizeSpotSafe(dx,dy)&&walkable(at,ctx.terrain)&&clearSegment(p,at,ctx.terrain))return at;
+      if(!prizeSpotSafe(dx,dy)||blocks.some(b=>Math.hypot(at.x-b.x,at.y-b.y)<b.radius))continue;
+      if(walkable(at,ctx.terrain)&&clearSegment(p,at,ctx.terrain))return at;
     }
     return undefined;
   }

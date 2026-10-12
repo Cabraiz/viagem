@@ -39,6 +39,8 @@ export interface HordeRendererOptions{
    * hero). Event prizes (boletos, the sale's coxinhas) covered by one are drawn above the canopies (PRIZE_LIFT_DEPTH).
    */
   canopyCovers?:(screen:Pt,depth:number)=>boolean;
+  /** Changes whenever the trees change (a chunk in or out, a tree's art loaded on demand): cached canopy answers expire. */
+  canopyVersion?:()=>number;
   /** World position of a player, so hostile damage numbers can appear over them. */
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
@@ -53,7 +55,7 @@ interface EnemyActor{
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
   /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
-  coverX?:number;coverY?:number;covered?:boolean}
+  coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
@@ -583,10 +585,11 @@ export class HordeRenderer{
       else y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
     }
     // Event prizes behind a canopy: lifted above the trees. The test runs again only when the prize moved 4 px on
-    // screen (the magnet, a camera turn), not every frame for every boleto.
+    // screen (the magnet, a camera turn) or the trees changed (canopyVersion), not every frame for every boleto.
     let lifted=false;
     if((a.look===FX.boleto||a.promo)&&this.options.canopyCovers){
-      if(a.coverX===undefined||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.covered=this.options.canopyCovers(q,depth);}
+      const version=this.options.canopyVersion?.()??0;
+      if(a.coverX===undefined||a.coverVersion!==version||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.coverVersion=version;a.covered=this.options.canopyCovers(q,depth);}
       lifted=!!a.covered;
     }
     a.image.setPosition(q.x,q.y+y).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale).setRotation(rotation);

@@ -2,12 +2,12 @@
  * Client-side view model of a horde run. Protocol 4 (VGM-041) decodes into these shapes;
  * renderers (VGM-039) and HUD (VGM-040) consume them and must not import server-only modules.
  */
-import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState} from './types.ts';
+import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState,TelegraphKind} from './types.ts';
 
 export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean}
-export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx?:number;dy?:number;width?:number;fireTick:number}
+export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx?:number;dy?:number;width?:number;fireTick:number;kind?:TelegraphKind}
 /** The wall ('muralha') and the forge's towers ('torre-chinelo', with the tick they go away). */
 export interface StructureView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;untilTick?:number}
 /**
@@ -30,6 +30,8 @@ export interface PlayerRunView {
   stats?:PlayerStatsView;
   /** A room bot (D-025): the client sets it from the run state; the HUD shows the robot sticker, people-only prizes skip it. */
   bot?:boolean;
+  /** D-036 movement effects (see SimPlayer): the client's prediction applies them so movement never snaps back. */
+  slowUntil?:number;slipUntil?:number;slip?:{x:number;y:number};
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

@@ -598,7 +598,7 @@ export class Room {
     const w=this.sim.world,players=[...this.sim.players.values()].filter(p=>!p.spectator);
     if(!players.length)return;
     for(const p of players){p.invulnerableUntil=w.tick+40;if(p.downed){delete p.downed;p.hp=p.stats.maxHp;}}
-    const kinds=['gosma','pernilongo','fiscal','tio-pave'];
+    const kinds=['bebado','pombos','agiota','tio-pave','anao-molotov'];
     // A team that runs away (the 2-minute straight walk of terreno-em-blocos) keeps its 300: critters left over 40 u
     // behind every player come back 8–30 u around one, so the measure always has the whole horde near the screen.
     let moved=0;

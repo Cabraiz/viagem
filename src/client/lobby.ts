@@ -9,7 +9,7 @@ import {inviteQuery} from './dev/ux-flag.ts';
 
 /** Nicknames shown by the "Sortear" button; the HUD and sheet cap names at 20 characters. */
 export const NICK_MAX=20;
-const NICK_HEADS=['Capivara','Pastel','Coxinha','Tiozão','Pombo','Boleto','Chinelo','Pernilongo','Gosma','Marmita','Fiscal','Pavê','Biscoito','Sacolé'];
+const NICK_HEADS=['Capivara','Pastel','Coxinha','Tiozão','Pombo','Boleto','Chinelo','Molotov','Cachaça','Marmita','Agiota','Pavê','Biscoito','Sacolé'];
 const NICK_TAILS=['Veloz','Turbo','do Grau','Lendário','Sem Wi-Fi','de Feira','Cansado','Fujão','Raiz','Nutella','do Bairro','Atrasado','de Ouro','Brabo'];
 
 /** Funny nickname that fits NICK_MAX; `random` is injectable for tests (cosmetic only, never sim). */
@@ -30,7 +30,7 @@ export const WAITING_LINES:readonly string[]=Object.freeze([
   'O Wi-Fi do vizinho está colaborando.',
   'Aquecendo o chinelo…',
   'Conferindo se o boleto venceu.',
-  'A gosma também está esperando. Educada.',
+  'O bêbado também está esperando. Na saideira.',
   'Quem não estiver pronto paga a coxinha.',
   'O tio do pavê está ensaiando a piada.',
 ]);
@@ -152,7 +152,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   shareButton.addEventListener('click',async()=>{
     const say=(text:string)=>{shareButton.textContent=text;setTimeout(()=>{shareButton.textContent='Chamar a turma';},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? A gosma não espera.`,url:link()});say('Convite enviado!');return;}
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
@@ -259,7 +259,7 @@ export async function openLobby(hero:HeroClass,name:string){
   // Loaded together (CSS stays dynamic so the pure helpers above import in node tests).
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const dialog=document.createElement('dialog');dialog.className='coop-lobby';dialog.setAttribute('aria-label','Jogar com amigos');
-  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2>Chama a turma.</h2><p>Até seis personagens na mesma sala. Compartilhe o código, encontre os amigos e enfrentem as gosmas.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button><div class="coop-divider">ou entre na sala de alguém</div><form><label for="room-code">Código da sala</label><input id="room-code" maxlength="10" pattern="[a-fA-F0-9]{10}" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="10 letras e números"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p><small>Partidas de até 30 minutos. Pontos desta versão valem só na sala. As classes ainda compartilham o mesmo ataque básico.</small>`;
+  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2>Chama a turma.</h2><p>Até seis personagens na mesma sala. Compartilhe o código, encontre os amigos e enfrentem os bêbados.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button><div class="coop-divider">ou entre na sala de alguém</div><form><label for="room-code">Código da sala</label><input id="room-code" maxlength="10" pattern="[a-fA-F0-9]{10}" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="10 letras e números"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p><small>Partidas de até 30 minutos. Pontos desta versão valem só na sala. As classes ainda compartilham o mesmo ataque básico.</small>`;
   document.body.append(dialog);dialog.showModal();
   const status=dialog.querySelector<HTMLElement>('.coop-status')!;
   const nickInput=dialog.querySelector<HTMLInputElement>('#coop-nick')!;

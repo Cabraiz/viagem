@@ -72,21 +72,21 @@ test('copy: every event has a banner, the kill-cam names who closed the round, e
   assert.ok(KILLCAM_MS>=2000&&KILLCAM_MS<=3000,'short');
   // Kill-cam captions never repeat inside a run, never carry the round number (M1), and name who closed it.
   const used=new Set<string>(),lines:string[]=[];
-  for(let i=0;i<4;i++){const c=killcamCaption('Tia','gosma',i*7+1,used);used.add(c.template);lines.push(c.line);assert.equal(c.title,'Último bicho!');assert.doesNotMatch(c.line,/Round|\d/);}
+  for(let i=0;i<4;i++){const c=killcamCaption('Tia','bebado',i*7+1,used);used.add(c.template);lines.push(c.line);assert.equal(c.title,'Último bicho!');assert.doesNotMatch(c.line,/Round|\d/);}
   assert.equal(new Set(lines).size,4);
   assert.ok(lines.every(l=>l.includes('Tia')));
-  assert.ok(KILLCAM_ALONE.includes(killcamCaption(undefined,'fiscal',3).line));
+  assert.ok(KILLCAM_ALONE.includes(killcamCaption(undefined,'agiota',3).line));
   assert.ok(KILLCAM_LINES.length>=4);
   for(const key of Object.keys(SHAME_SCORE) as ShameKey[]){
-    const t=shameText({player:'a',key,round:3,tick:1,source:'pernilongo',seconds:4},'Tia Cleide');
+    const t=shameText({player:'a',key,round:3,tick:1,source:'pombos',seconds:4},'Tia Cleide');
     assert.ok(t.text.startsWith('Tia Cleide')&&t.joke.length>0,key);
   }
-  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'gosma'},'Zé').text,'Zé caiu no Round 1 pra uma gosma.');
+  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé').text,'Zé caiu no Round 1 pra um bêbado do boteco.');
   assert.equal(shameText({player:'a',key:'recaida',round:5,tick:1,seconds:3},'Tia').text,'Tia levantou e caiu de novo em 3 s.');
   assert.match(shameText({player:'a',key:'caiu',round:2,tick:1,source:'??'},'X').text,/um bicho/);
   // The room reads it: never "você", no gendered participles, no attack on the person (design review B1/D6).
   for(const key of Object.keys(SHAME_SCORE) as ShameKey[]){
-    const t=shameText({player:'a',key,round:3,tick:1,source:'gosma',seconds:2},'Kim');
+    const t=shameText({player:'a',key,round:3,tick:1,source:'bebado',seconds:2},'Kim');
     assert.doesNotMatch(`${t.text} ${t.joke}`,/\bvoc[eê]\b/i,key);
     assert.doesNotMatch(t.text,/\b(resgatad[oa]|derrubad[oa]|sozinh[oa])\b/i,key);
   }
@@ -106,7 +106,7 @@ test('a boleto of the rain looks like a boleto; any other XP stays a gem', ()=>{
 });
 
 test('kill-cam framing: the critter (≥ 40 px CSS when it fits) and its line stay inside the TV, portrait and landscape', ()=>{
-  for(const tv of [{width:100,height:76},{width:82,height:64}])for(const kind of ['gosma','pernilongo','tio-pave','fiscal'] as const)for(const reduced of [false,true]){
+  for(const tv of [{width:100,height:76},{width:82,height:64}])for(const kind of ['bebado','anao-molotov','pombos','tio-pave','agiota'] as const)for(const reduced of [false,true]){
     const art=ENEMY_ART[kind];
     for(const t of [0,.1,.2,.35,.46,.55,.6,.7,.9,1]){
       const input={tv,mainZoom:.58,art,feet:{x:300,y:500},t,reduced,pop:{width:180,height:36}};

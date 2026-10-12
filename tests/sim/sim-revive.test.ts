@@ -302,9 +302,9 @@ test('zueira quips are deterministic pt-BR lines from the event alone',()=>{
 
 test('downed names the kind of the enemy that dealt the last hit (UX-voce-e-dano f); unknown hitters keep only by',()=>{
   const a=player('a',0,0),b=player('b',1,0),c=player('c',2,0),ctx=fakeCtx([a,b,c]);
-  ctx.enemies.set('e7',{id:'e7',kind:'pernilongo',x:0,y:0,hp:5,maxHp:5} as never);
+  ctx.enemies.set('e7',{id:'e7',kind:'pombos',x:0,y:0,hp:5,maxHp:5} as never);
   downPlayer(ctx,a,'e7');downPlayer(ctx,b,'gone');downPlayer(ctx,c);
-  assert.deepEqual(ctx.events,[{type:'downed',player:'a',by:'e7',source:'pernilongo'},{type:'downed',player:'b',by:'gone'},{type:'downed',player:'c'}]);
+  assert.deepEqual(ctx.events,[{type:'downed',player:'a',by:'e7',source:'pombos'},{type:'downed',player:'b',by:'gone'},{type:'downed',player:'c'}]);
 });
 
 test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceite: 100% of downed)',async()=>{

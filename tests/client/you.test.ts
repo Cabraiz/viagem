@@ -47,36 +47,36 @@ const viewOf=(events:unknown[],enemies:unknown[]=[])=>({tick:1,team:{xp:0,level:
 
 test('fall causes: source first, then the live hitter, then a hitter killed on the same tick; unknown is "bichos"',()=>{
   const log=emptyCauses();
-  assert.equal(resolveCause({source:'fiscal',by:'e1'},viewOf([]),log),'fiscal');
-  assert.equal(resolveCause({by:'e1'},viewOf([],[{id:'e1',kind:'gosma'}]),log),'gosma');
+  assert.equal(resolveCause({source:'agiota',by:'e1'},viewOf([]),log),'agiota');
+  assert.equal(resolveCause({by:'e1'},viewOf([],[{id:'e1',kind:'bebado'}]),log),'bebado');
   rememberKill(log,'e2','tio-pave');assert.equal(resolveCause({by:'e2'},viewOf([]),log),'tio-pave');
   assert.equal(resolveCause({by:'e9'},viewOf([]),log),'bichos');
-  for(let i=0;i<KILL_MEMORY+5;i++)rememberKill(log,`k${i}`,'gosma');
+  for(let i=0;i<KILL_MEMORY+5;i++)rememberKill(log,`k${i}`,'bebado');
   assert.equal(log.kills.size,KILL_MEMORY);assert.equal(log.kills.has('e2'),false);
   // The kill that comes after the fall in the same view still names it.
   const tally=emptyTally();
-  applyEvents(tally,viewOf([{type:'downed',player:'me',by:'e5',eventId:1},{type:'kill',enemy:'e5',kind:'pernilongo',x:0,y:0,eventId:2}]));
-  assert.equal(tally.causes.last.get('me'),'pernilongo');
+  applyEvents(tally,viewOf([{type:'downed',player:'me',by:'e5',eventId:1},{type:'kill',enemy:'e5',kind:'pombos',x:0,y:0,eventId:2}]));
+  assert.equal(tally.causes.last.get('me'),'pombos');
   applyEvents(tally,viewOf([{type:'downed',player:'zé',by:'b1',source:'chefe',eventId:3}]));
   assert.equal(tally.causes.last.get('zé'),'chefe');
-  // A fiscal seen in an earlier view, gone when its shot downs someone: still named.
-  applyEvents(tally,viewOf([],[{id:'f9',kind:'fiscal'}]));
+  // An agiota seen in an earlier view, gone when its shot downs someone: still named.
+  applyEvents(tally,viewOf([],[{id:'f9',kind:'agiota'}]));
   applyEvents(tally,viewOf([{type:'downed',player:'bia',by:'f9',eventId:4}]));
-  assert.equal(tally.causes.last.get('bia'),'fiscal');
+  assert.equal(tally.causes.last.get('bia'),'agiota');
 });
 
 test('result names what downed you, else the team; the own-fall banner carries the joke line',()=>{
   const log=emptyCauses();
   assert.equal(resultCause(log,'me'),undefined);
-  recordFall(log,'zé','gosma');recordFall(log,'bia','gosma');recordFall(log,'bia','fiscal');
-  assert.deepEqual(resultCause(log,'me'),{kind:'gosma',text:'Derrubou a turma: Gosma 2×'});
-  recordFall(log,'me','fiscal');
-  assert.deepEqual(resultCause(log,'me'),{kind:'fiscal',text:'Te derrubou: Fiscal'});
-  recordFall(log,'me','gosma');
-  assert.equal(topCause(log,'me')?.kind,'gosma');
+  recordFall(log,'zé','bebado');recordFall(log,'bia','bebado');recordFall(log,'bia','agiota');
+  assert.deepEqual(resultCause(log,'me'),{kind:'bebado',text:'Derrubou a turma: Bêbado do Boteco 2×'});
+  recordFall(log,'me','agiota');
+  assert.deepEqual(resultCause(log,'me'),{kind:'agiota',text:'Te derrubou: Agiota do Bairro'});
+  recordFall(log,'me','bebado');
+  assert.equal(topCause(log,'me')?.kind,'bebado');
   const view={...viewOf([]),tick:0,players:[{id:'me',name:'Eu',classId:'x',hp:0,maxHp:100,online:true,spectator:false,downed:{progress:0,bleedOutTick:600},weapons:[],passives:[]}]} as RunView;
   const banner=reviveBanner(view,'me',undefined,log)!;
-  assert.equal(banner.kind,'self');assert.deepEqual(banner.cause,{kind:'gosma',...CAUSE_COPY.gosma});
+  assert.equal(banner.kind,'self');assert.deepEqual(banner.cause,{kind:'bebado',...CAUSE_COPY.bebado});
   assert.equal(reviveBanner(view,'me')!.cause,undefined);
   for(const copy of Object.values(CAUSE_COPY)){assert.ok(copy.line.length<=40,copy.line);assert.doesNotMatch(copy.line,/[A-ZÀ-Ú]{2}/);}
 });

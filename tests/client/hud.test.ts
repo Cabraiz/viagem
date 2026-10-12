@@ -82,7 +82,7 @@ test('event tally counts each eventId once and ignores late or repeated events',
   const tally=emptyTally(),view=fakeView('wave',2);
   view.events=[
     {type:'downed',player:'p1',eventId:1},{type:'revived',player:'p1',by:'p2',eventId:2},
-    {type:'pickup',player:'p2',pickup:'k-1',kind:'heal',value:30,eventId:3},{type:'kill',enemy:'e-1',kind:'gosma',by:'p1',x:0,y:0,eventId:4},
+    {type:'pickup',player:'p2',pickup:'k-1',kind:'heal',value:30,eventId:3},{type:'kill',enemy:'e-1',kind:'bebado',by:'p1',x:0,y:0,eventId:4},
   ];
   applyEvents(tally,view);applyEvents(tally,view);
   view.events=[{type:'downed',player:'p1',eventId:2},{type:'downed',player:'p1',eventId:5}];
@@ -243,13 +243,13 @@ test('tap guard: a second quick tap on the offer that replaced the chosen one is
 
 test('rematch: tally restarts but late events of the old run still dedupe (monotonic eventIds)',()=>{
   const tally=emptyTally(),view=fakeView('wave',2);
-  view.events=[{type:'downed',player:'p1',eventId:10},{type:'kill',enemy:'e',kind:'gosma',by:'p2',x:0,y:0,eventId:11}];
+  view.events=[{type:'downed',player:'p1',eventId:10},{type:'kill',enemy:'e',kind:'bebado',by:'p2',x:0,y:0,eventId:11}];
   applyEvents(tally,view);
   assert.equal(tally.players.get('p1')!.downs,1);
   resetTally(tally);
   assert.equal(tally.players.size,0);assert.equal(tally.startTick,undefined);
   // A late resend of run 1 (eventId 11) plus run 2 events.
-  view.events=[{type:'kill',enemy:'e',kind:'gosma',by:'p2',x:0,y:0,eventId:11},{type:'downed',player:'p2',eventId:12}];
+  view.events=[{type:'kill',enemy:'e',kind:'bebado',by:'p2',x:0,y:0,eventId:11},{type:'downed',player:'p2',eventId:12}];
   applyEvents(tally,view);
   assert.equal(tally.players.get('p2')!.kills,0);assert.equal(tally.players.get('p2')!.downs,1);assert.equal(tally.players.get('p1'),undefined);
   // Awards of run 2 only see run 2.

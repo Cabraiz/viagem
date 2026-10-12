@@ -8,7 +8,7 @@
  *   recaida 60   fell again within RECAIDA_SECONDS of being rescued
  *   apagao 55    fell during the blackout
  *   coxinha 50   fell with a coxinha on the ground within COXINHA_REACH
- *   pernilongo 45 fell to a pernilongo (the frailest critter)
+ *   pernilongo 45 fell to the pombos (the frailest critter; contract key kept, see SHAME_KIND)
  *   cedo 40      fell in round 1
  *   sem-boleto 25 stood through a whole boleto rain and caught none (while the team caught some)
  *   coxinha-cheia 15 ate a coxinha with full life
@@ -24,6 +24,12 @@ import {BOLETO,type ActiveHappening} from './zueira.ts';
 
 export const SHAME_SCORE:Readonly<Record<ShameKey,number>>={recaida:60,apagao:55,coxinha:50,pernilongo:45,cedo:40,'sem-boleto':25,'coxinha-cheia':15,caiu:10};
 export const RECAIDA_SECONDS=5,COXINHA_REACH=2.5;
+/**
+ * Enemy kind (downed.source) → shame key. D-033 renamed the swarm to 'pombos', but ShameKey lives in the contract
+ * (src/contract/run.ts), which only the Orquestrador changes.
+ * TODO(Orquestrador): rename the ShameKey 'pernilongo' → 'pombos' (contract, client awards/result texts) and drop this map.
+ */
+export const SHAME_KIND:Readonly<Record<string,ShameKey>>=Object.freeze({pombos:'pernilongo'});
 /** A rain the team barely touched does not shame anyone. */
 export const RAIN_MIN_CAUGHT=4;
 
@@ -68,7 +74,7 @@ export class ShameTracker {
         if(since!==undefined&&tick-since<=RECAIDA_SECONDS*SIM_HZ)this.offer({...base,key:'recaida',seconds:Math.max(1,Math.round((tick-since)/SIM_HZ))});
         if(active?.kind==='apagao')this.offer({...base,key:'apagao'});
         if(p&&nearCoxinha(ctx.pickups,p))this.offer({...base,key:'coxinha'});
-        if(e.source==='pernilongo')this.offer({...base,key:'pernilongo'});
+        if(e.source!==undefined&&Object.hasOwn(SHAME_KIND,e.source))this.offer({...base,key:SHAME_KIND[e.source]});
         if(round===1)this.offer({...base,key:'cedo'});
         this.offer({...base,key:'caiu'});
       }else if(e.type==='pickup'){

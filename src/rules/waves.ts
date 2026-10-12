@@ -6,7 +6,7 @@
  *   1 P    9  26  32  46  54   76   64   72   82   30 + chefe
  *   6 P   32  91 112 161 189  266  224  252  287  105 + chefe
  * Threat (count x hp x kind weight) climbs 3 -> 246 for one player; round 6 is a fragile swarm breather after the elite.
- * Round 1 teaches (BUG-20261009-N1-round1-letal): a trickle of gosmas at about a third of their hp, so every starting
+ * Round 1 teaches (BUG-20261009-N1-round1-letal): a trickle of bêbados at about a third of their hp, so every starting
  * weapon kills one in one or two hits, slow enough that a novice who stands 15 s or stops 8 s at each offer still
  * walks out with hp left, with 1, 2 or 6 players. Rounds 2-3 ramp the hp back (0.8, 1.1) to meet round 4 where it was.
  * Six players get count x3.5 and hp x1.75 (~6x threat for ~6x damage); groups grow and arrive faster by sqrt(count),
@@ -18,17 +18,22 @@ import {ticks} from '../contract/index.ts';
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
 export type Formation='cluster'|'line'|'surround';
-export type RegularKind='gosma'|'pernilongo'|'tio-pave'|'fiscal';
-export const REGULAR_KINDS:readonly RegularKind[]=['gosma','pernilongo','tio-pave','fiscal'];
-/** Relative threat per enemy (hp x danger). Placeholder until VGM-031 catalog numbers settle. */
-export const THREAT:Readonly<Record<RegularKind,number>>={gosma:1,pernilongo:.5,'tio-pave':2.5,fiscal:1.5};
+/** Regular cast of D-033 (sim/enemies/catalog.ts EnemyKind without the boss). */
+export type RegularKind='bebado'|'pombos'|'tio-pave'|'agiota'|'anao-molotov';
+export const REGULAR_KINDS:readonly RegularKind[]=['bebado','pombos','tio-pave','agiota','anao-molotov'];
+/**
+ * Relative threat per enemy (hp x danger). The heavier tio (110 hp, harder shove) went 2.5 → 2.8; the anão (40 hp,
+ * telegraphed molotov with pulsing fire and a death explosion) is 2.
+ */
+export const THREAT:Readonly<Record<RegularKind,number>>={bebado:1,pombos:.5,'tio-pave':2.8,agiota:1.5,'anao-molotov':2};
 
-/** Round 5 (elite tio-pavê with a chest) and round 10 (the boss) draw from their own names. */
+/** Round 5 (elite tio-pavê with a chest) and round 10 (the boss) draw from their own names (D-033 joke pass). */
 export const ELITE_ROUND_NAMES:readonly string[]=[
-  'Chegou o Tio do Isopor','Tio da Pochete Chegou','Tio Contando a Mesma Piada','Tio do Pavê Gourmet','Tio Abriu a Cadeira de Praia',
+  'O Crachá Dourado Bateu Ponto','Puxa-Saco com Baú','Coroa de Papel, Baú de Ouro','O Chefe Tá Olhando',
+  'Promovido a Desgraça',
 ];
 export const BOSS_ROUND_NAMES:readonly string[]=[
-  'Final de Novela','Assembleia Extraordinária','Advertência Por Escrito','Proibido Bola no Play','O Síndico Quer Falar',
+  'Assembleia Sangrenta','Taxa Extra de Porrada','Síndico Desceu de Roupão','Ata da Carnificina','Rateio do Apocalipse',
 ];
 
 export interface RoundDef {
@@ -44,7 +49,7 @@ export interface RoundDef {
   /** Seconds; past this the rest of a regular round retreats to the sea. */
   maxDuration:number;
   hpScale:number;
-  /** Pernilongo-only groups taken from the budget; `at` is a fraction of the spawn window. */
+  /** Pombos-only groups taken from the budget; `at` is a fraction of the spawn window. */
   swarm?:{size:[number,number];at:number[]};
   /** One elite with a chest, outside the budget. */
   elite?:{kind:RegularKind;at:number};
@@ -53,7 +58,7 @@ export interface RoundDef {
   /** Names drawn for this round instead of the shared pool (elite and boss rounds keep their identity). */
   fixedNames?:readonly string[];
   /**
-   * XP drops laid around the team when the wave starts (VGM-056, the first round teaches): the gosmas of the endless
+   * XP drops laid around the team when the wave starts (VGM-056, the first round teaches): the bêbados of the endless
    * world need ~25 s to arrive, so the first "+N" chip would come late or never; these few drops, a short walk away
    * and on screen, make walk, pick XP and the chip happen in the first seconds of moving. Team total, not per player.
    */
@@ -63,18 +68,19 @@ export interface RoundDef {
 export const TUTORIAL_CRUMBS={count:6,value:1,radius:[2.5,4.5] as const};
 
 export const ROUNDS:readonly RoundDef[]=[
-  {index:1,budget:9,weights:{gosma:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,crumbs:TUTORIAL_CRUMBS},
-  {index:2,budget:26,weights:{gosma:.75,pernilongo:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
-  {index:3,budget:32,weights:{gosma:.6,pernilongo:.25,'tio-pave':.15},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
-  {index:4,budget:46,weights:{gosma:.5,pernilongo:.2,'tio-pave':.15,fiscal:.15},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
-  {index:5,budget:54,weights:{gosma:.45,pernilongo:.2,'tio-pave':.2,fiscal:.15},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
+  // D-033 cast: the anão debuts in round 3 with a modest share (taken from the bêbados), 5-8% after that.
+  {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,crumbs:TUTORIAL_CRUMBS},
+  {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
+  {index:3,budget:32,weights:{bebado:.55,pombos:.25,'tio-pave':.15,'anao-molotov':.05},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
+  {index:4,budget:46,weights:{bebado:.45,pombos:.2,'tio-pave':.15,agiota:.15,'anao-molotov':.05},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
+  {index:5,budget:54,weights:{bebado:.4,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},
-  {index:6,budget:76,weights:{gosma:.45,pernilongo:.2,'tio-pave':.2,fiscal:.15},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
+  {index:6,budget:76,weights:{bebado:.4,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
     swarm:{size:[14,18],at:[.3,.7]}},
-  {index:7,budget:64,weights:{gosma:.4,pernilongo:.2,'tio-pave':.2,fiscal:.2},group:[6,9],cadence:5,maxDuration:65,hpScale:1.9},
-  {index:8,budget:72,weights:{gosma:.35,pernilongo:.2,'tio-pave':.25,fiscal:.2},group:[6,10],cadence:5,maxDuration:70,hpScale:2.1},
-  {index:9,budget:82,weights:{gosma:.35,pernilongo:.25,'tio-pave':.2,fiscal:.2},group:[7,11],cadence:5,maxDuration:75,hpScale:2.35},
-  {index:10,budget:30,weights:{gosma:.4,pernilongo:.3,'tio-pave':.15,fiscal:.15},group:[4,6],cadence:8,maxDuration:90,hpScale:2.5,
+  {index:7,budget:64,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.2,'anao-molotov':.07},group:[6,9],cadence:5,maxDuration:65,hpScale:1.9},
+  {index:8,budget:72,weights:{bebado:.28,pombos:.2,'tio-pave':.25,agiota:.2,'anao-molotov':.07},group:[6,10],cadence:5,maxDuration:70,hpScale:2.1},
+  {index:9,budget:82,weights:{bebado:.27,pombos:.25,'tio-pave':.2,agiota:.2,'anao-molotov':.08},group:[7,11],cadence:5,maxDuration:75,hpScale:2.35},
+  {index:10,budget:30,weights:{bebado:.35,pombos:.3,'tio-pave':.15,agiota:.15,'anao-molotov':.05},group:[4,6],cadence:8,maxDuration:90,hpScale:2.5,
     boss:{atSeconds:2},fixedNames:BOSS_ROUND_NAMES},
 ];
 export const ROUND_COUNT=ROUNDS.length;
@@ -94,31 +100,30 @@ export function playerScale(players:number){
 
 // ---------- Zueira ----------
 export const ROUND_NAMES:readonly string[]=[
-  'Round do Boleto Vencido','Segunda-feira Eterna','Fila do Banco','Reunião que Podia Ser um E-mail',
-  'Grupo da Família às 6h','Áudio de 7 Minutos','Churrasco Sem Carvão','Wi-Fi da Vizinha',
-  'Pão de Queijo Frio','Domingo à Noite','Ônibus Lotado','Leve 3, Pague 3',
-  'Rodízio de Gosma','Cadê o Controle?','Feriado que Caiu no Sábado','Café Sem Açúcar',
-  'Liquidação de Pernilongo','Visita Surpresa da Tia','Pix Errado','Calor de 40 Graus',
-  'Tomada de Três Pinos','Aniversário do Primo','Furadeira do Vizinho','Olha o Carro do Ovo',
-  'Dedinho na Quina','Ventilador no Talo','Reunião de Condomínio','Celular com 2%',
-  'Esqueci o Guarda-Chuva','Arroz Grudou na Panela','Pote de Sorvete com Feijão','Sexta-feira 17h59',
-  'Chinelo Voador','Atualização Obrigatória','Pastel de Vento','Mãe Gritando o Nome Completo',
-  // Pack 2 (VGM-055)
-  'A Sacola de Sacolas','Só Mais um Episódio','Fone Enrolado no Bolso','Cortina do Box Grudando',
-  'Chuveiro Queimou no Banho','Amigo Oculto de 20 Reais','Xepa da Feira','Gato Derrubou o Copo',
-  'Toalha Molhada na Cama','Vizinho Gritou Gol Antes','Cadê a Ponta da Fita?','Pisou de Meia no Molhado',
-  'Uva-Passa em Tudo','Telemarketing no Domingo','Ensaboado e Sem Água','Micro-ondas Frio no Meio',
-  'Sobrou Só Piruá','Biscoito ou Bolacha?','Vó Disse Que Tá Magrinho','Pagou Academia, Nunca Foi',
-  'Corre, Roupa no Varal!','Fecha Essa Geladeira!','Panela de Pressão Chiando','Soneca Pela Quinta Vez',
-  'Se Eu For Aí e Achar...','Tio Pegou o Microfone','Todo Mundo Fala Xis!','O Bolo Solou',
-  'Caramelo Dono da Rua','Brigadeiro Antes do Parabéns',
+  // D-033 joke pass (heavy tone, humor-reviewed).
+  'Saideira Que Nunca Acaba','Vaquinha Pro Presente do Chefe','Caixinha de Som no Ônibus',
+  'Arroto Que Derrubou um Poste','Pombo Cagou no Pastel','Chá Revelação Pegou Fogo','Happy Hour de Guerra',
+  'Agiota Mandou Áudio de 8 Minutos','Acordou no Ponto Final','Carvão Acabou no Meio do Churrasco',
+  'Acendeu o Carvão com Cachaça','Tio Abriu Mais Um Botão','Agiota de Óculos à Noite','Reunião Que Podia Ser um Email',
+  'Vômito na Escada do Prédio','Isopor Sem Gelo','Pastel de Vento e Porrada','Caldo de Cana Batizado',
+  'Bar Fechou, Bêbado Não','Obra do Vizinho às 7h de Sábado','Revoada na Rodoviária','Tio Pegou o Microfone',
+  'Fiado Só Amanhã','Almoço de Domingo na Sogra','Assembleia de Bêbados','O Garçom Desistiu','Sexta-feira, 18h01',
+  'Feriado Prolongado de Porrada','Cheque Voltou, Tio Também','Penúltima Dose do Fim do Mundo',
+  // Kept from the VGM-033/VGM-055 packs to hold the 60-name minimum (no repeats across a run).
+  'Vomitou na Fila do Banco','Grupo da Família às 6h','Wi-Fi da Vizinha','Leve 3, Pague 3','Rodízio de Bêbado',
+  'Feriado que Caiu no Sábado','Liquidação de Pombo','Visita Surpresa da Tia','Dedinho na Quina','Celular com 2%',
+  'Pote de Sorvete com Feijão','Chinelo Voador','Acordou Abraçado na Privada','Amigo Oculto de 20 Reais','Feirante Gritando no Ouvido',
+  'Vizinho Gritou Gol Antes','Pisou de Meia no Molhado','Uva-Passa em Tudo','Telemarketing no Domingo',
+  'Ensaboado e Sem Água','Vó Disse Que Tá Magrinho','Pagou Academia, Nunca Foi','Fecha Essa Geladeira!',
+  'Soneca Pela Quinta Vez','Se Eu For Aí e Achar...','Tia Bebeu o Licor do Bolo','Caramelo Dono da Rua',
+  'Brigadeiro Antes do Parabéns','Ex Curtiu Foto de 2014','Olha o Carro do Ovo',
 ];
 /** Said by one enemy when a timed-out horde gives up and walks back into the sea. */
 export const RETREAT_LINES:readonly string[]=[
-  'Deu meu horário, fui!','Amanhã a gente volta.','Esqueci o feijão no fogo!','Vou ali e já volto.',
-  'Bateu o ponto, tchau!','Minha mãe tá chamando!',
-  'Volto depois do comercial!','Ai, a água tá gelada!','Esqueci a carteira em casa!','Isso não tava no combinado!',
-  'Vou ali buscar reforço...','Meu carro de app chegou!','Bateu o sono do almoço!','Tá muito sol, vou pra sombra.',
+  'Fechou o bar? Então fui.','Vou ali vomitar e já volto','Minha mãe ligou. Tchau, porra','Amanhã tem firma, desgraça',
+  'Deixei o feijão no fogo!','Vou buscar cigarro. Já volto.','Bateu a ressaca. Abortar!','Tô indo, mas levo o isopor',
+  'Acabou a cachaça. Retirada!','Vou dormir na escada do prédio','Pombo não corre. Pombo voa.',
+  'Volto quando sair o 13º','Deu minha hora, bati o ponto','Fui! Pendura minha morte aí',
 ];
 
 export interface RoundModifier {
@@ -139,28 +144,31 @@ export interface RoundModifier {
   /** Rounds where this modifier is never drawn (it would hide the elite or break the round's identity). */
   banRounds:readonly number[];
 }
-/** Drawn from round 3, one per round, never twice in a run, never on the boss round. Each stays within ~0.9-1.15 of the round threat. */
+/**
+ * Drawn from round 3, one per round, never twice in a run, never on the boss round. Each stays within ~0.9-1.15 of the round threat.
+ * Names and descriptions of the kind-specific ones follow the D-033 cast (the D-033 joke pass left the base modifiers as they are).
+ */
 export const MODIFIERS:readonly RoundModifier[]=[
-  {id:'uncle-party',name:'Round do Pavê',description:'Só tio. É pavê ou pacumê?',
+  {id:'uncle-party',name:'Round do Pavê',description:'Só tio. É pavê ou pa comê?',
     weights:{'tio-pave':1},normalizeThreat:true,banRounds:[5,6]},
-  {id:'mosquito-swarm',name:'Enxame de Pernilongo',description:'Quem abriu a janela?!',
-    share:{pernilongo:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},
+  {id:'mosquito-swarm',name:'Revoada de Pombos',description:'Quem jogou milho?!',
+    share:{pombos:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},
   {id:'giant-everyone',name:'Todo Mundo Gigante',description:'Exageraram no fermento.',
     sizeMult:1.5,hpMult:1.3,countMult:.7,banRounds:[5]},
   {id:'shrunk-in-wash',name:'Encolheu na Lavagem',description:'Lavaram com água quente.',
     sizeMult:.75,hpMult:.8,countMult:1.3,speedMult:1.1,banRounds:[]},
-  {id:'lovesick-slimes',name:'Gosmas Apaixonadas',description:'Em fila, de mãozinha dada.',
-    share:{gosma:.7},normalizeThreat:true,groupSizeMult:2,cadenceMult:2,formation:'line',banRounds:[6]},
-  {id:'taxman-day-off',name:'Fiscal de Folga',description:'Tá na praia de meia e papete.',
-    weights:{fiscal:0},normalizeThreat:true,banRounds:[3]},
+  {id:'lovesick-slimes',name:'Bêbados Abraçados',description:'Em fila, de mãozinha dada.',
+    share:{bebado:.7},normalizeThreat:true,groupSizeMult:2,cadenceMult:2,formation:'line',banRounds:[6]},
+  {id:'taxman-day-off',name:'Agiota de Folga',description:'Tá na praia de meia e papete.',
+    weights:{agiota:0},normalizeThreat:true,banRounds:[3]},
   {id:'monday-speed',name:'Modo Segunda-feira',description:'Ninguém quer trabalhar.',
     speedMult:.75,countMult:1.15,banRounds:[]},
   {id:'company-trip',name:'Excursão da Firma',description:'Vieram todos na mesma van.',
     singleSide:true,countMult:1.1,groupSizeMult:1.3,cadenceMult:1.3,banRounds:[]},
   {id:'black-friday',name:'Black Friday',description:'Tudo pela metade do dobro.',
     countMult:1.35,hpMult:.75,groupSizeMult:1.35,banRounds:[]},
-  {id:'audit-day',name:'Dia de Fiscalização',description:'Cadê o alvará?',
-    share:{fiscal:.4},normalizeThreat:true,banRounds:[3,6]},
+  {id:'audit-day',name:'Dia de Cobrança',description:'Venceu tudo hoje.',
+    share:{agiota:.4},normalizeThreat:true,banRounds:[3,6]},
   // Pack 2 (VGM-055): surround and alternating sides, threat 0.9-1.12 of the base round.
   {id:'surprise-party',name:'Festa Surpresa',description:'Fingiram que esqueceram.',
     formation:'surround',countMult:.95,groupSizeMult:1.3,cadenceMult:1.3,banRounds:[]},
@@ -176,8 +184,8 @@ export const MODIFIERS:readonly RoundModifier[]=[
     speedMult:.8,hpMult:1.4,countMult:.8,sizeMult:1.15,banRounds:[5]},
   {id:'leaky-roof',name:'Goteira na Sala',description:'Pinga devagar, sem parar.',
     groupSizeMult:.4,cadenceMult:.45,countMult:1.05,banRounds:[6]},
-  {id:'bug-spray',name:'Passou Repelente',description:'Pernilongo hoje não.',
-    weights:{pernilongo:0},normalizeThreat:true,banRounds:[6]},
+  {id:'bug-spray',name:'Espantalho na Praça',description:'Pombo hoje não.',
+    weights:{pombos:0},normalizeThreat:true,banRounds:[6]},
 ];
 export const MODIFIER_FROM_ROUND=3;
 export const modifierLabel=(m:RoundModifier)=>`${m.name}: ${m.description}`;
@@ -237,7 +245,7 @@ function composition(def:RoundDef,mod?:RoundModifier){
     const rest=REGULAR_KINDS.filter(k=>!(k in mod.share!)).reduce((n,k)=>n+(w[k]??0),0);
     for(const k of REGULAR_KINDS)w[k]=k in mod.share?mod.share[k]:rest>0?(w[k]??0)*(1-pinned)/rest:0;
   }
-  if(!REGULAR_KINDS.some(k=>(w[k]??0)>0))w={gosma:1};
+  if(!REGULAR_KINDS.some(k=>(w[k]??0)>0))w={bebado:1};
   return w;
 }
 /** Splits `total` by weights with the largest remainder method, so composition is exact. */
@@ -267,12 +275,12 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):
   const groupMult=scale.group*(mod?.groupSizeMult??1);
   const cadence=Math.max(2,def.cadence*(mod?.cadenceMult??1)/scale.group);
 
-  // Swarm groups first (pernilongo only), then the rest of the budget shuffled into groups.
+  // Swarm groups first (pombos only), then the rest of the budget shuffled into groups.
   const swarmGroups:string[][]=[];
   let left=regular;
   for(const _ of def.swarm?.at??[]){
     const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*Math.min(1,regular/raw*modCount)));
-    swarmGroups.push(Array(size).fill('pernilongo'));left-=size;
+    swarmGroups.push(Array(size).fill('pombos'));left-=size;
   }
   const pool:string[]=[];
   for(const {kind,count} of apportion(left,weights))for(let i=0;i<count;i++)pool.push(kind);

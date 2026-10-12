@@ -138,6 +138,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   const offKill=world.onKill((enemy,by,ctx)=>{
     progression.dropLoot(ctx,enemy,by);
+    // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
+    enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.

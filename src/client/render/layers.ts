@@ -5,12 +5,12 @@
 import Phaser from 'phaser';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
 import type {SimEvent} from '../../contract/index.ts';
-import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {deathLine,kindStyle,damageLabel,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
+import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
@@ -56,7 +56,7 @@ interface EnemyActor{
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
   /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
-interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
+interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
 interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean;priority:boolean;self:boolean}
@@ -64,7 +64,9 @@ interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:num
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
 interface StarFx{image:Image;born:number;x:number;y:number;lift:number;vx:number;vy:number;spin:number}
 /** enemy: the barking critter; player: the skill caster (E7-skill-hud-wiring), followed through options.locate. */
-interface BubbleFx{text:Text;born:number;enemy:string;player:string;x:number;y:number;lift:number}
+interface BubbleFx{text:Text;born:number;enemy:string;player:string;x:number;y:number;lift:number;
+  /** A status tag (the agiota's "DEVENDO", D-033): red body, Papel text. */
+  tag:boolean}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16} as const;
@@ -97,6 +99,9 @@ const BUBBLE_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'700',co
  * light body with a Breu edge (double-edge rule). Read from src/client/ui/tokens.css once the first renderer exists, since
  * Phaser cannot read CSS variables; the hex in PALETTE are the same token values, kept for a page without the stylesheet.
  */
+/** The red tag over a player marked by the agiota's boleto (say key 'devendo', D-033): Papel letters on a red body. */
+const TAG_STYLE:TextStyle={fontFamily:FONT,fontSize:'20px',fontStyle:'900',color:'#fff8ec',padding:{x:10,y:5},align:'center'};
+const TAG_RED=0xd2392f;
 const PALETTE={breu:0x1e1530,papel:0xeeddb8,cone:0xff7a1f};
 let paletteReady=false;
 function applyPalette(){
@@ -107,6 +112,7 @@ function applyPalette(){
   CRIT_STYLE.color=token('--c-amarelo');CRIT_STYLE.stroke=breu;
   HURT_STYLE.color=token('--c-cone');HURT_STYLE.stroke=breu;
   BUBBLE_STYLE.color=breu;BUBBLE_STYLE.backgroundColor='rgba(0,0,0,0)'; // body drawn on the overlay, with its edge
+  TAG_STYLE.color=token('--c-papel');
   PALETTE.breu=tokenColor('--c-breu');PALETTE.papel=tokenColor('--c-papel');PALETTE.cone=tokenColor('--c-cone');
 }
 const popStyles=new Map<string,TextStyle>();
@@ -227,18 +233,18 @@ export class HordeRenderer{
     const showActor=(o:{image:Image;shadow:Image},active:boolean)=>{showImage(o,active);o.shadow.setVisible(active).setActive(active);};
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('gosma'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'gosma',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
-    this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
+    this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
     this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false,priority:false,self:false}),showText,CAPS.damage);
-    this.pops=new Ring(()=>({text:text(popStyle('gosma'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
+    this.pops=new Ring(()=>({text:text(popStyle('bebado'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
     this.stars=new Ring(()=>({image:image(FX.star)(),born:0,x:0,y:0,lift:0,vx:0,vy:0,spin:0}),showImage,CAPS.stars);
-    this.bubbles=new Ring(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',player:'',x:0,y:0,lift:0}),showText,CAPS.bubbles);
+    this.bubbles=new Ring<BubbleFx>(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',player:'',x:0,y:0,lift:0,tag:false}),showText,CAPS.bubbles);
     this.warnings=new Ring(()=>({image:image(FX.warning)(),born:0,x:0,y:0,atTick:0,size:1}),showImage,CAPS.warnings);
   }
 
@@ -357,9 +363,9 @@ export class HordeRenderer{
     a.nx=view.x;a.ny=view.y;a.value=view.value;a.promo=view.kind==='heal'&&view.resource==='promo';
   }
   private syncProjectile(view:ProjectileView){
-    const used=this.projectiles.use(view.id),a=used.item;
-    if(used.fresh||a.hostile!==view.hostile||a.radius!==view.radius){
-      a.image.setTexture(view.hostile?FX.projHostile:FX.projFriendly).setOrigin(.5,.5);
+    const used=this.projectiles.use(view.id),a=used.item,look=projectileTexture(view.hostile,view.source);
+    if(used.fresh||a.look!==look||a.radius!==view.radius){
+      a.look=look;a.image.setTexture(look).setOrigin(.5,.5);
       a.image.setScale(Math.max(.5,Math.min(3,view.radius*2*46/Math.max(1,a.image.width))));
     }
     a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;
@@ -407,7 +413,8 @@ export class HordeRenderer{
       case 'bark':this.spawnBubble(event.enemy,event.line);break;
       case 'skill':this.spawnSkillBubble(event.player,skillBubbleLine(event));break;
       // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
-      case 'say':this.spawnSkillBubble(event.source,event.line);break;
+      // D-033: the agiota's boleto marks a player as owing money: a short red tag over them instead of the line.
+      case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line);break;}
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss)boss.flashAt=this.now;break;}
     }
   }
@@ -467,7 +474,7 @@ export class HordeRenderer{
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
     b.text.setDepth(96000);
-    b.born=this.now;b.enemy=enemy;b.player='';b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
+    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
     paint(b.text,BUBBLE_STYLE,line);
   }
   /**
@@ -478,9 +485,10 @@ export class HordeRenderer{
   private skillBubbleAt=new Map<string,number>();
   /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
   say(player:string,line:string){this.spawnSkillBubble(player,line);}
-  private spawnSkillBubble(player:string,line:string){
+  private spawnSkillBubble(player:string,line:string,tag=false){
+    // A status tag is game information (the mark makes the player take more damage): it never waits for the gap.
     const last=this.skillBubbleAt.get(player)??-Infinity;
-    if(this.now-last<SKILL_BUBBLE_GAP_MS)return;
+    if(!tag&&this.now-last<SKILL_BUBBLE_GAP_MS)return;
     const p=this.options.locate?.(player);if(!p)return;
     this.skillBubbleAt.set(player,this.now);
     let own:BubbleFx|undefined;this.bubbles.forEach(b=>{if(b.player===player)own=b;});
@@ -492,8 +500,8 @@ export class HordeRenderer{
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
     b.text.setDepth(HERO_BALLOON_DEPTH+1);
-    b.born=this.now;b.enemy='';b.player=player;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
-    paint(b.text,BUBBLE_STYLE,line);
+    b.born=this.now;b.enemy='';b.player=player;b.tag=tag;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
+    paint(b.text,tag?TAG_STYLE:BUBBLE_STYLE,line);
   }
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
@@ -503,20 +511,21 @@ export class HordeRenderer{
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
     let lift=art.hover*size,dx=0;
-    if(a.kind==='pernilongo'&&!this.reduced){
+    let sway=0;
+    if(a.kind==='pombos'&&!this.reduced){
       lift+=Math.sin(now*.011+a.phase*TAU)*6;
-      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10; // zig-zag buzz
-    }
+      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10; // zig-zag flap
+    }else if(a.kind==='bebado'&&!this.reduced)sway=Math.sin(now*.004+a.phase*TAU)*.09; // staggering (cambaleando)
     if(!Number.isNaN(a.screenX)&&Math.abs(q.x-a.screenX)>.2)a.flip=q.x<a.screenX;
     a.screenX=q.x;
     const s=squash(now,a.phase,a.moving,this.reduced,this.scale2);
-    let sx=s.sx,sy=s.sy,rotation=0;
+    let sx=s.sx,sy=s.sy,rotation=sway;
     if(a.boss&&!this.reduced){const w=Math.sin(now*.0032+a.phase*TAU);sx*=1+.035*w;sy*=1-.03*w;rotation=w*.035;}
     a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx,sy).setRotation(rotation).setFlipX(a.flip);
     const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
-    const shadow=art.width*size*(a.kind==='pernilongo'?.45:.66);
+    const shadow=art.width*size*(a.kind==='pombos'?.45:.66);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
@@ -534,7 +543,7 @@ export class HordeRenderer{
     const v=this.scene.cameras.main.worldView;
     if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
     // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
-    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pernilongo'?.55:.62)*size;
+    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size;
     const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;
     const open=eyesOpen(this.now,a.phase,this.reduced);
     const me=this.options.selfId?.(),hero=me?this.options.locate?.(me):undefined;
@@ -694,7 +703,7 @@ export class HordeRenderer{
     // Balloon: Papel body with a 2 px Breu edge (it vanished on the light sand), then the Papel tail over it.
     o.fillStyle(PALETTE.breu,alpha).fillRoundedRect(tx.x-bw/2-e,by-bh-e,bw+2*e,bh+2*e,10*this.ui)
       .fillTriangle(q.x-t-e,by-1,q.x+t+e,by-1,q.x,by+t*1.25+e*1.6);
-    o.fillStyle(PALETTE.papel,alpha).fillRoundedRect(tx.x-bw/2,by-bh,bw,bh,8*this.ui)
+    o.fillStyle(b.tag?TAG_RED:PALETTE.papel,alpha).fillRoundedRect(tx.x-bw/2,by-bh,bw,bh,8*this.ui)
       .fillTriangle(q.x-t,by-1,q.x+t,by-1,q.x,by+t*1.25);
     return true;
   };

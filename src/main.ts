@@ -229,7 +229,7 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.getElementById('enter-island')!.before(coopButton);
-const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar as gosmas.';
+const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar os bêbados do boteco.';
 coopButton.addEventListener('click',async()=>{coopButton.disabled=true;try{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim());}catch{text('explore-error','Não foi possível abrir as salas.');}finally{coopButton.disabled=false;}});
 document.getElementById('back-to-classes')!.addEventListener('click',()=>dialog.close());
 document.getElementById('enter-island')!.addEventListener('click',async()=>{

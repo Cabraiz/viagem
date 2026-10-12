@@ -24,7 +24,7 @@ test('six slots, seventh refused, and rooms isolated',()=>{
 test('reconnect preserves identity, health, score, enemies and refuses stolen display name',()=>{
   const r=new Room(1000),a=peer();join(r,a);const w=a.messages.find(m=>m.t==='welcome');
   const original=r.sim.players.get(w.id)!;original.hp=64;original.score=10;
-  const enemy=createEnemy(r.sim.world,'gosma',{x:original.x+8,y:original.y});enemy.hp=2;
+  const enemy=createEnemy(r.sim.world,'bebado',{x:original.x+8,y:original.y});enemy.hp=2;
   r.disconnect(a,1500);const b=peer();r.connect(b,1600);r.receive(b,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,token:w.token}),1600);
   assert.equal(b.messages[0].id,w.id);assert.equal(r.sim.players.size,1);assert.equal(original.hp,64);assert.equal(original.score,10);
   assert.equal(r.sim.world.enemies.get(enemy.id)?.hp,2);
@@ -63,7 +63,7 @@ test('prediction replay produces same state after delayed acknowledgement',()=>{
 test('every kill rewards each active player once and never spectators',()=>{
   const s=new Simulation(),p=s.add('p','Tester','cidadao-comum'),q=s.add('q','Ally','mendigo'),watcher=s.add('w','Watcher','cidadao-comum');
   watcher.spectator=true;s.resetRun();
-  const enemy=createEnemy(s.world,'gosma',{x:p.x+8,y:p.y});
+  const enemy=createEnemy(s.world,'bebado',{x:p.x+8,y:p.y});
   assert.equal(s.world.damageEnemy(enemy.id,1e6,p.id),true);s.step();
   assert.equal(p.score,10);assert.equal(q.score,10);assert.equal(watcher.score,0);
   assert.equal(s.world.damageEnemy(enemy.id,1e6,p.id),false);s.step();
@@ -296,7 +296,7 @@ test('protocol 4: room frames are chained on the previous one (N27): no acks, st
 test('protocol 4: tap targets travel as client ids and reach the simulation as server ids',()=>{
   const room=new Room(1000),a=peer();join(room,a);startRun(room,[a]);
   const ca=client(room,a),p=room.sim.players.get(idOf(a))!;
-  const enemy=createEnemy(room.sim.world,'gosma',{x:p.x+3,y:p.y});
+  const enemy=createEnemy(room.sim.world,'bebado',{x:p.x+3,y:p.y});
   for(let i=0;i<3;i++){room.advance(4200+i*50);ca.pump(4200+i*50);}
   const label=[...ca.feed.enemies.keys()].find(id=>room.ids.resolve(id)===enemy.id)!;
   assert.match(label,/^e\d+$/);assert.notEqual(label,enemy.id);
@@ -354,7 +354,7 @@ test('each event reaches the client exactly once, with rounded numbers (review 3
   const sent:number[]=[],world=room.sim.world,step=world.step.bind(world);
   world.step=()=>{const events=step();sent.push(...events.map(e=>e.eventId));return events;};
   const p=room.sim.players.get(idOf(a))!;
-  for(let i=0;i<10;i++)createEnemy(world,'gosma',{x:p.x+.6+i*.1,y:p.y+.4},1);
+  for(let i=0;i<10;i++)createEnemy(world,'bebado',{x:p.x+.6+i*.1,y:p.y+.4},1);
   const ca=client(room,a);ca.pump();ca.feed.take();
   const received:any[]=[];
   for(let i=0;i<400;i++){if(i%40===0)command(room,a,{t:'ping',at:0},4200+i*50);room.advance(4200+i*50);ca.pump(4200+i*50);if(i%7===0)received.push(...ca.feed.take().events);}

@@ -9,9 +9,11 @@ import type {RunView} from '../../src/contract/view.ts';
 import type {Point} from '../../src/maps/world.ts';
 
 // The page keeps the seat token in sessionStorage; each bot keeps it in its CoopClient (no shared storage, or six
-// bots in one process would take each other's seats).
+// bots in one process would take each other's seats). Always replaced: Node ≥ 25 has a real, process-wide
+// sessionStorage (and a localStorage that warns without --localstorage-file), which a `??=` stub left in place.
 const g=globalThis as any;
-g.sessionStorage??={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+const noStorage={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+for(const name of ['sessionStorage','localStorage'])Object.defineProperty(g,name,{value:noStorage,configurable:true,writable:true});
 // CoopClient reads WebSocket.OPEN/CLOSED; the class itself is swapped per bot while it connects (see Bot).
 g.WebSocket=LabSocket;
 const {CoopClient}=await import('../../src/client/net/client.ts');

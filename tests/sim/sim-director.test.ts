@@ -700,7 +700,7 @@ test('endless: a downed player still sees: nothing is recycled off their screen'
   const a=ctx.players.get('a')!,mates:EnemyState[]=[];
   for(let i=0;i<5;i++){
     let p={x:a.x+3+i,y:a.y+1};while(!walkable(p,ctx.terrain))p={x:p.x+.3,y:p.y};
-    const e:EnemyState={id:`near-${i}`,kind:'gosma',x:p.x,y:p.y,hp:9,maxHp:9,speed:1,damage:1,radius:.3,xp:1,spawnTick:ctx.tick,readyTick:ctx.tick};
+    const e:EnemyState={id:`near-${i}`,kind:'bebado',x:p.x,y:p.y,hp:9,maxHp:9,speed:1,damage:1,radius:.3,xp:1,spawnTick:ctx.tick,readyTick:ctx.tick};
     ctx.enemies.set(e.id,e);director.state.tracked.push(e.id);mates.push(e);
   }
   const before=mates.map(e=>({x:e.x,y:e.y}));

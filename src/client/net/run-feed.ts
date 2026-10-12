@@ -35,7 +35,8 @@ export interface RunFeed {
 /** Events kept between two takes (the tab may be in the background); the oldest are cosmetic and dropped first. */
 export const MAX_FEED_EVENTS=1500;
 
-const KIND_FALLBACK='gosma';
+/** Kind of an enemy whose first full record was lost: the basic chaser (D-033), like render/keys.ts enemyKind. */
+const KIND_FALLBACK='bebado';
 
 /** Protocol 3 + horde extras (JSON). */
 export class JsonRunFeed implements RunFeed {

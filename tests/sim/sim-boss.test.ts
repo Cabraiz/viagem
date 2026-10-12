@@ -365,7 +365,7 @@ test('killing blow ends the fight once: no posthumous hits, one chest, one victo
   assert.equal([...a.ctx.telegraphs.values()].filter(t=>t.owner===boss.id).length,0);
   assert.equal(a.ctx.playerDamage.length,hitsBefore);
   assert.ok(a.controller.bossDefeated(a.ctx));
-  assert.equal(a.ctx.events.filter(e=>e.type==='bark'&&e.enemy===boss.id&&/Renuncio|ata!/.test(e.line)).length,1);
+  assert.equal(a.ctx.events.filter(e=>e.type==='bark'&&e.enemy===boss.id&&(BOSS_LINES.defeat as readonly string[]).includes(e.line)).length,1);
 });
 
 test('no victory before a spawn; custom chest hook runs once at the boss position',()=>{
@@ -541,7 +541,7 @@ test('boss barks only through the injected global limiter (D-012) and the lines 
 test('default minions come from the enemy catalog, wait a moment after arriving and respect the enemy budget',()=>{
   const run=(fill:number)=>{
     const ctx=fakeCtx({players:[player('p1',12,5)],terrain:defaultTerrain,seed:2});
-    for(let i=0;i<fill;i++)ctx.enemies.set(`x${i}`,enemy(`x${i}`,3,3,{boss:false,kind:'gosma'}));
+    for(let i=0;i<fill;i++)ctx.enemies.set(`x${i}`,enemy(`x${i}`,3,3,{boss:false,kind:'bebado'}));
     const c=createBoss();
     const boss=c.spawnBoss(ctx,{x:12,y:12})!;boss.hp=boss.maxHp*.4;boss.readyTick=0;
     for(let i=0;i<=SUMMON_WARNING_TICKS+1;i++){c.step(ctx);ctx.tick++;}
@@ -551,7 +551,7 @@ test('default minions come from the enemy catalog, wait a moment after arriving 
   assert.ok(minions.length>0);
   for(const m of minions){
     assert.ok((MINION_KINDS as readonly string[]).includes(m.kind));
-    assert.equal(m.maxHp,ENEMIES[m.kind as 'gosma'].hp,'catalog stats');
+    assert.equal(m.maxHp,ENEMIES[m.kind as 'bebado'].hp,'catalog stats');
     assert.equal(m.readyTick-m.spawnTick,MINION_READY_TICKS);
     assert.ok(!m.boss);
   }

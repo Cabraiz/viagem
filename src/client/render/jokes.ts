@@ -5,13 +5,14 @@
 import {isEnemyKind,type EnemyKind} from './keys.ts';
 import {hashPhase} from './motion.ts';
 
-export const GENERIC_LINES:readonly string[]=['PAGO!','TCHAU!','JÁ ERA!','FOI-SE!','PARTIU!'];
+export const GENERIC_LINES:readonly string[]=['PAGO!','VIROU SAUDADE!','JÁ ERA!','FOI-SE!','PARTIU!'];
 export const DEATH_LINES:Record<EnemyKind,readonly string[]>={
-  gosma:['SPLOFT!','GLUB!','SPLASH!','PLOC!','MELECOU!'],
-  pernilongo:['XÔ!','PLAFT!','ZZZ... TÁ!','BZZT!','PEGUEI!'],
-  'tio-pave':['É PAVÊ!','FUI COMÊ!','PAVÊ OU PACUMÊ?','PAVORAMA!','SOBREMESA!'],
-  fiscal:['MULTADO!','CARIMBADO!','ARQUIVADO!','DEFERIDO!','PROTOCOLADO!'],
-  chefe:['CONDOMÍNIO PAGO!','REUNIÃO CANCELADA!','DEMITIDO!','FÉRIAS!','PONTO BATIDO!'],
+  bebado:['HIC... PLOFT!','FECHOU A CONTA!','ABRAÇOU O POSTE!','APAGOU NA MESA!','ZZZ... RONC!'],
+  'anao-molotov':['CABUM!','PEGOU FOGO, BICHO!','CACHAÇA FLAMBADA!','FLAMBOU A BARBA!','EXPLODIU A CINTA!'],
+  pombos:['CRUU!','PENA PRA TODO LADO!','VOOU... PRO CHÃO!','PRU-PRU... PLAFT!','FIM DO MIOLO!'],
+  'tio-pave':['MORREU RINDO!','ENGASGOU NA PIADA!','PAVÊ OU PA COMÊ?','TIO NO GELO!','SOBREMESA!'],
+  agiota:['NOME LIMPO!','JUROS ZERADOS!','CALOTE!','QUITADO, PORRA!','VIROU PAPEL!'],
+  chefe:['CONDOMÍNIO PAGO!','ATA ENCERRADA!','DESPEJADO!','ASSEMBLEIA CANCELADA!','SÍNDICO DEPOSTO!'],
 };
 
 export interface KindStyle {
@@ -22,10 +23,11 @@ export interface KindStyle {
 }
 export const GENERIC_STYLE:KindStyle={fill:'#fff8ec',stroke:'#6a4f7a',tint:0xf3e6ff};
 export const KIND_STYLES:Record<EnemyKind,KindStyle>={
-  gosma:{fill:'#f4ffe9',stroke:'#4f9a55',tint:0xc8f5b8},
-  pernilongo:{fill:'#fff8ec',stroke:'#5f6fb0',tint:0xd6dcff},
+  bebado:{fill:'#fff4d6',stroke:'#3f7a3a',tint:0xf6dc9a},
+  'anao-molotov':{fill:'#fff1d0',stroke:'#b23a1c',tint:0xffc28a},
+  pombos:{fill:'#f4f4f8',stroke:'#5b5f75',tint:0xd8dbe6},
   'tio-pave':{fill:'#fff6d8',stroke:'#a8673a',tint:0xffe2b8},
-  fiscal:{fill:'#f2f8ff',stroke:'#3f6e96',tint:0xcfe6ff},
+  agiota:{fill:'#fff8dc',stroke:'#2e2a33',tint:0xf0dc8a},
   chefe:{fill:'#fff0fb',stroke:'#8a3f9e',tint:0xf0c8ff},
 };
 
@@ -45,3 +47,7 @@ export const SKILL_BUBBLE_GAP_MS=2000;
 export const DICE_LINE={flop:'Deu ruim.',hit:'Acertou!',miracle:'Milagre!'} as const;
 /** Balloon text of a skill cast (E7-skill-hud-wiring): the kit line, plus the dice on a second line. */
 export const skillBubbleLine=(e:{line:string;outcome?:keyof typeof DICE_LINE})=>e.outcome?`${e.line}\n${DICE_LINE[e.outcome]}`:e.line;
+
+/** `say` keys that show a short red status tag over the player instead of the line (D-033: the agiota's boleto). */
+export const SAY_TAGS:Readonly<Record<string,string>>={devendo:'DEVENDO'};
+export const sayTag=(key:string|undefined):string|undefined=>key!==undefined&&Object.hasOwn(SAY_TAGS,key)?SAY_TAGS[key]:undefined;

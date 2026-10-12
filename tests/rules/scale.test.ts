@@ -124,9 +124,9 @@ test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px f
 
 test('conversions: identity, hero-speed share, relative radius, linear enemy speed',()=>{
   for(const p of [inf,city])for(const x of [0,1.4,3.1,7])near(convertSpeed(x,p,p),x,1e-12,`identity ${p.id} ${x}`);
-  // The endless hero (3.1 u/s) becomes the city hero (~2.0 u/s); a gosma keeps its share of the hero speed.
+  // The endless hero (3.1 u/s) becomes the city hero (~2.0 u/s); a bêbado keeps its share of the hero speed.
   near(convertSpeed(inf.hero.speed,inf,city),city.hero.speed,1e-12,'hero 3.1 → 1.99');
-  near(convertSpeed(1.4,inf,city),1.4/3.1*city.hero.speed,1e-12,'gosma 1.4 → ~0.90');
+  near(convertSpeed(1.4,inf,city),1.4/3.1*city.hero.speed,1e-12,'bebado 1.4 → ~0.90');
   assert.ok(convertSpeed(3.1,inf,city)<3.1,'the city is slower, the conversion is not a no-op');
   for(const x of [inf.hero.speed,1.4,.5])near(convertSpeed(x,inf,city)/city.hero.speed,x/inf.hero.speed,1e-12,`share ${x}`);
   near(convertSpeed(convertSpeed(2.4,inf,city),city,inf),2.4,1e-12,'speed round-trip');
@@ -140,8 +140,8 @@ test('conversions: identity, hero-speed share, relative radius, linear enemy spe
 test('infinito equals the current game code (drift guard)',()=>{
   assert.equal(inf.hero.radius,RADIUS);assert.equal(inf.hero.speed,SPEED);assert.equal(HERO_MIN_SCREEN_PX,56,'56 px floor');
   assert.equal(inf.hero.radius,.22);assert.equal(inf.hero.speed,3.1);assert.equal(inf.cell,1);
-  near(enemySpeed(inf),ENEMIES.gosma.speed,1e-12,'gosma speed');
-  near(relativeRadius(inf,inf.sizes.enemy),ENEMIES.gosma.radius,1e-12,'gosma radius');
+  near(enemySpeed(inf),ENEMIES.bebado.speed,1e-12,'bebado speed');
+  near(relativeRadius(inf,inf.sizes.enemy),ENEMIES.bebado.radius,1e-12,'bebado radius');
   near(relativeRadius(inf,inf.sizes.boss.max),ENEMIES.chefe.radius,1e-12,'chefe radius');
   assert.ok(inf.sizes.boss.min<=inf.sizes.boss.max);
 });

@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {JsonRunFeed,FrameRunFeed,DamageTally,MAX_FEED_EVENTS} from '../../src/client/net/run-feed.ts';
 import {delta,applyDelta,ROOM_PROTOCOL,type Snapshot} from '../../src/protocol/room.ts';
-import {createEnemy} from '../../src/sim/enemies/catalog.ts';
+import {createEnemy,ENEMY_KINDS} from '../../src/sim/enemies/catalog.ts';
+/** The sim's basic chaser, whatever the cast calls it (D-033 renames it): these tests need a critter, not a kind. */
+const CRITTER=ENEMY_KINDS[0];
+
 
 
 /** JSON control messages in `messages`, protocol 4 frames in `frames`. */
@@ -96,7 +99,7 @@ test('a downed player shows its fall, the critter behind it, revive progress and
   const feed=new FrameRunFeed();pump(room,feed,b);
   const victim=room.sim.players.get(idOf(a))!;victim.invulnerableUntil=0;
   // Sturdy, so the starting weapon does not kill it before it hits.
-  const hitter=createEnemy(room.sim.world,'pernilongo',{x:victim.x+1,y:victim.y});hitter.hp=hitter.maxHp=1e6;
+  const hitter=createEnemy(room.sim.world,CRITTER,{x:victim.x+1,y:victim.y});hitter.hp=hitter.maxHp=1e6;
   advanceToFrame(room,b);pump(room,feed,b);feed.take();
   room.sim.world.damagePlayer(victim.id,1e6,hitter.id);
   advanceToFrame(room,b);pump(room,feed,b);
@@ -104,7 +107,7 @@ test('a downed player shows its fall, the critter behind it, revive progress and
   assert.ok(fallen.downed,'downed reaches the ally');assert.equal(fallen.downed!.bleedOutTick,victim.downed!.bleedOutTick);
   assert.equal(fallen.hp,0);assert.ok(fallen.maxHp>0);assert.ok(fallen.weapons.length>0,'starting weapon');
   const downed=view.events.find(e=>e.type==='downed') as any;
-  assert.ok(downed,'downed event');assert.equal(downed.player,victim.id);assert.equal(downed.source,'pernilongo','what got you travels in protocol 4');
+  assert.ok(downed,'downed event');assert.equal(downed.player,victim.id);assert.equal(downed.source,CRITTER,'what got you travels in protocol 4');
   assert.equal(room.ids.resolve(downed.by),hitter.id,'by is the client id of the hitter');
   // JSON reference (protocol 3, tests only): deltas carry the extras only when they change.
   const before=room.sim.snapshot(),after=room.sim.snapshot();
@@ -116,12 +119,12 @@ test('tombstones leave the map and boss phase follows its event',()=>{
   const feed=new JsonRunFeed();
   const base=(tick:number,full:boolean,enemies:Snapshot['enemies'],events:any[]=[]):Snapshot=>({t:'state',tick,full,players:[],enemies,removed:[],victory:false,
     x:{round:{index:10,total:10,phase:'wave',phaseEndsTick:0,remaining:1,name:'x'} as any,team:{xp:0,level:1,nextXp:5},pickups:[],projectiles:[],telegraphs:[],events}});
-  feed.apply(base(10,true,[['e1',1,1,30,'gosma',30,0],['boss',5,5,900,'chefe',1000,2]]));
+  feed.apply(base(10,true,[['e1',1,1,30,'bebado',30,0],['boss',5,5,900,'chefe',1000,2]]));
   assert.equal(feed.enemies.get('boss')?.phase,1);
   feed.apply(base(12,false,[['e1',1.5,1,12],['boss',5,5,400]],[{eventId:7,type:'boss-phase',enemy:'boss',phase:2}]));
-  assert.deepEqual({kind:feed.enemies.get('e1')!.kind,maxHp:feed.enemies.get('e1')!.maxHp,hp:feed.enemies.get('e1')!.hp},{kind:'gosma',maxHp:30,hp:12},'a short delta keeps kind and maxHp');
+  assert.deepEqual({kind:feed.enemies.get('e1')!.kind,maxHp:feed.enemies.get('e1')!.maxHp,hp:feed.enemies.get('e1')!.hp},{kind:'bebado',maxHp:30,hp:12},'a short delta keeps kind and maxHp');
   assert.equal(feed.enemies.get('boss')?.phase,2);assert.equal(feed.take().enemies.find(e=>e.boss)?.phase,2);
-  feed.apply(base(14,false,[['e1',1.5,1,0,'gosma',30,0]]));
+  feed.apply(base(14,false,[['e1',1.5,1,0,'bebado',30,0]]));
   assert.equal(feed.enemies.has('e1'),false);
   // Next round's full snapshot keeps the boss phase it already learned.
   feed.apply(base(16,true,[['boss',5,5,380,'chefe',1000,2]]));
@@ -181,7 +184,7 @@ test('an entity that leaves the area of interest disappears without a kill (no p
   const room=new Room(1000,undefined,{world:'infinito'}),a=peer();join(room,a);startRun(room,[a]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const p=room.sim.players.get(idOf(a))!;
-  const far=createEnemy(room.sim.world,'gosma',{x:p.x+20,y:p.y});
+  const far=createEnemy(room.sim.world,CRITTER,{x:p.x+20,y:p.y});
   advanceToFrame(room,a);pump(room,feed,a);
   const label=[...feed.enemies.keys()].find(id=>room.ids.resolve(id)===far.id)!;assert.ok(label,'sent while near');
   feed.take();

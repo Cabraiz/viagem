@@ -125,14 +125,14 @@ export const FLEE_CAP_SECONDS=60;
 /**
  * Endless world: an enemy no one can see walks this much faster towards the nearest player, so a horde born on the
  * off-screen ring (25.5-41.4 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
- * instead of the ~21 s a gosma needs at 1.4 u/s. On screen it is back to its own pace. Never siege enemies; the boss
+ * instead of the ~21 s a bêbado needs at 1.4 u/s. On screen it is back to its own pace. Never siege enemies; the boss
  * only while walking.
  */
 export const CATCH_UP_SPEED=2.5;
 /**
  * Endless world, last call (NEW-ORQ-fim-de-round-no-infinito). A round ends when its whole horde is down (the HUD counts
  * the bichos left; the last kill gets the kill-cam), and only a timeout makes the rest flee. In the endless world the
- * last groups are born 25-41 u away on the off-screen ring at 65% of the round, a gosma walks 1.4 u/s, and bodies stuck
+ * last groups are born 25-41 u away on the off-screen ring at 65% of the round, a bêbado walks 1.4 u/s, and bodies stuck
  * behind a tree never arrive: with the team waiting by the base every round of the sim timed out with a third to half
  * of the horde fleeing (53-69 s). So once every group of the plan is out:
  *  - the round gets at least LAST_CALL_SECONDS more before its timeout (the HUD shows no wave clock, only bichos);

@@ -1,7 +1,7 @@
 /**
  * ?sandbox=voce — the "você" marker (ring with beak, sticker contour, "Você" arrow, mini health bar) over flat samples
  * of every ground it must read on: today's dark sea and grass, and the light tropical scene of D-022 (water, grass,
- * sand), plus the lilac horde and the gosma. A table measures each ring layer against each ground (WCAG contrast):
+ * sand), plus the lilac horde and the bêbado (D-033). A table measures each ring layer against each ground (WCAG contrast):
  * at least one layer must pass 3:1 everywhere (design onda 3 §0, checklist A8). Dev page; ground hexes are samples.
  * Query: hero (class id, default sensei), facing (degrees, default 90 = down), low=1 (health at 20%).
  */
@@ -12,7 +12,7 @@ import {token} from '../ui/tokens.ts';
 const GROUNDS:{name:string;hex:string}[]=[
   {name:'Mar escuro (hoje)',hex:'#142F2D'},{name:'Grama escura (hoje)',hex:'#4E6B47'},
   {name:'Água clara (D-022)',hex:'#8DCECC'},{name:'Grama clara (D-022)',hex:'#7CBF6A'},{name:'Areia (D-022)',hex:'#E8D49A'},
-  {name:'Horda lilás',hex:'#976C97'},{name:'Gosma',hex:'#CF94BC'},
+  {name:'Horda lilás',hex:'#976C97'},{name:'Bêbado',hex:'#E3A33C'},
 ];
 const LAYERS:{name:string;token:string}[]=[{name:'Papel',token:'--c-papel'},{name:'Lilás (você)',token:'--c-voce'},{name:'Breu',token:'--c-breu'}];
 

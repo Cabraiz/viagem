@@ -28,7 +28,7 @@ function player(id:string,x:number,y:number,extra:Partial<SimPlayer>={}):SimPlay
     build:{weapons:[],passives:[]},stats:{...BASE_STATS},weaponReady:{},...extra};
 }
 function enemy(id:string,x:number,y:number,extra:Partial<EnemyState>={}):EnemyState{
-  return {id,kind:'gosma',x,y,hp:30,maxHp:30,speed:1,damage:10,radius:.35,xp:1,spawnTick:0,readyTick:0,...extra};
+  return {id,kind:'bebado',x,y,hp:30,maxHp:30,speed:1,damage:10,radius:.35,xp:1,spawnTick:0,readyTick:0,...extra};
 }
 
 function fakeCtx(players:SimPlayer[],phase:RoundPhase='prepare'):FakeCtx{
@@ -484,17 +484,17 @@ test('E8 integrated: a siege enemy on the wall deals exactly its damage per cont
   // Keep the director out (no waves), the only player far on the island and unhurt.
   s.run.director.state.stage='done';
   const p=s.players.get('p0')!;Object.assign(p,{x:4,y:12});
-  const siege=createEnemy(w,'gosma',{x:wall.x+WALL_RADIUS+.3,y:wall.y},1);siege.memory={[SIEGE_FLAG]:1};
-  const plain=createEnemy(w,'gosma',{x:wall.x,y:wall.y-WALL_RADIUS-.3},1);
-  const def=enemyDef('gosma'),hits:number[]=[];
+  const siege=createEnemy(w,'bebado',{x:wall.x+WALL_RADIUS+.3,y:wall.y},1);siege.memory={[SIEGE_FLAG]:1};
+  const plain=createEnemy(w,'bebado',{x:wall.x,y:wall.y-WALL_RADIUS-.3},1);
+  const def=enemyDef('bebado'),hits:number[]=[];
   for(let t=0;t<def.contactCooldown*6+10;t++){
     p.hp=p.stats.maxHp;p.invulnerableUntil=w.tick+5;p.build.weapons=[];
     const before=wall.hp;s.step();if(wall.hp<before)hits.push(before-wall.hp);
   }
   assert.ok(hits.length>=6,`hits ${hits.length}`);
-  assert.ok(hits.every(h=>h===siege.damage),`each hit is one gosma bite: ${hits.join(',')}`);
+  assert.ok(hits.every(h=>h===siege.damage),`each hit is one bêbado bite: ${hits.join(',')}`);
   assert.ok(hits.length<=Math.ceil((def.contactCooldown*6+10)/def.contactCooldown),'one hit per contact cooldown, never two paths');
-  assert.ok(Math.hypot(plain.x-wall.x,plain.y-wall.y)>WALL_RADIUS+plain.radius+.5,'the plain gosma left the wall for the player');
+  assert.ok(Math.hypot(plain.x-wall.x,plain.y-wall.y)>WALL_RADIUS+plain.radius+.5,'the plain bêbado left the wall for the player');
 });
 
 test('the wall falling is a defeat exactly once, and the D-016 boss blow still wins a same-tick tie',()=>{

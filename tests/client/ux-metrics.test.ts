@@ -125,7 +125,7 @@ test('a run: first move, still time, falls, offers (chosen, default, Depois), ch
   step(view({phase:'prepare',offers:[]}),{x:40.4,y:40},coach(['walk','chip']),50,false);
   step(view({phase:'prepare',offers:[offer('rnd-1','round')]}),{x:40.4,y:40},coach(['walk','chip']));
   step(view({phase:'prepare',offers:[],events:[ev({type:'happening',kind:'boletos',endsTick:5})]}),{x:40.4,y:40},coach(['walk','chip']));
-  step(view({round:2,events:[ev({type:'downed',player:ME}),ev({type:'eliminated',player:ME}),ev({type:'last-bicho',kind:'gosma',x:1,y:2,round:2})]}),{x:40.4,y:40},coach(['walk','chip']));
+  step(view({round:2,events:[ev({type:'downed',player:ME}),ev({type:'eliminated',player:ME}),ev({type:'last-bicho',kind:'bebado',x:1,y:2,round:2})]}),{x:40.4,y:40},coach(['walk','chip']));
   // Same events again (a view repeated): counted once.
   step(view({round:2,events:[ev({type:'downed',player:FRIEND})].map(e=>({...e,eventId:1}))}),{x:40.4,y:40},coach(['walk','chip']));
   r.sos(true);r.sos(false);r.sos(false);
@@ -232,7 +232,7 @@ test('rematch: events of the old run seen again (eventIds grow across runs, D-01
   eventId=0;
   const r=rec();
   r.runState(run(1,'combat'),ME,0,coach([]));
-  const old=[ev({type:'downed',player:ME}),ev({type:'revived',player:ME,by:FRIEND}),ev({type:'last-bicho',kind:'gosma',x:1,y:1,round:1})];
+  const old=[ev({type:'downed',player:ME}),ev({type:'revived',player:ME,by:FRIEND}),ev({type:'last-bicho',kind:'bebado',x:1,y:1,round:1})];
   r.view(view({events:old}),ME,{x:0,y:0},true,100);
   r.runState(run(1,'result',{outcome:'defeat'}),ME,200);
   // On the result and in the waiting room the feed still carries them; and the new run's first view too.

@@ -69,9 +69,9 @@ export const CIDADE_NEVADA_WC3=Object.freeze({
 const INF_HERO_RADIUS=.22;
 /** src/maps/world.ts:7 SPEED. */
 const INF_HERO_SPEED=3.1;
-/** src/sim/enemies/catalog.ts:39 gosma speed and radius. */
-const INF_GOSMA_SPEED=1.4,INF_GOSMA_RADIUS=.32;
-/** src/sim/enemies/catalog.ts:67 chefe radius (the only boss kind). */
+/** src/sim/enemies/catalog.ts ENEMIES.bebado speed and radius (the common enemy, D-033). */
+const INF_COMMON_SPEED=1.4,INF_COMMON_RADIUS=.32;
+/** src/sim/enemies/catalog.ts ENEMIES.chefe radius (the only boss kind). */
 const INF_BOSS_RADIUS=.9;
 /** One terrain tile is 1 world unit: src/maps/world.ts:29 project (42 px per unit on x−y, 21 on x+y). */
 const INF_CELL=1;
@@ -100,8 +100,8 @@ export const SCALE_PROFILES:Readonly<Record<MapId,Readonly<ScaleProfile>>>=Objec
   infinito:freezeProfile({
     id:'infinito',cell:INF_CELL,
     hero:{radius:INF_HERO_RADIUS,speed:INF_HERO_SPEED,drawnSize:INF_HERO_DRAWN},
-    enemySpeedRatio:INF_GOSMA_SPEED/INF_HERO_SPEED,
-    sizes:{enemy:INF_GOSMA_RADIUS/INF_HERO_RADIUS,boss:{min:INF_BOSS_RADIUS/INF_HERO_RADIUS,max:INF_BOSS_RADIUS/INF_HERO_RADIUS}},
+    enemySpeedRatio:INF_COMMON_SPEED/INF_HERO_SPEED,
+    sizes:{enemy:INF_COMMON_RADIUS/INF_HERO_RADIUS,boss:{min:INF_BOSS_RADIUS/INF_HERO_RADIUS,max:INF_BOSS_RADIUS/INF_HERO_RADIUS}},
     zoom:{portrait:fixed(infWidth(INF_SHORT_PX)),landscape:fixed(infWidth(INF_LONG_PX))},
   }),
   'cidade-nevada':freezeProfile({
@@ -167,7 +167,7 @@ export function traversalSeconds(distance:number,profile:ScaleProfile,speed?:num
 }
 /**
  * Converts a speed authored for one profile to another, keeping its fraction of the hero speed
- * (gosma at 1.4 of a 3.1 hero → same share of the 1.99 city hero). Both heroes are 0.22 wide, so
+ * (bêbado at 1.4 of a 3.1 hero → same share of the 1.99 city hero). Both heroes are 0.22 wide, so
  * a widths-per-second rule would be a no-op between them.
  */
 export function convertSpeed(speed:number,from:ScaleProfile,to:ScaleProfile):number{

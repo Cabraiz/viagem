@@ -4,7 +4,7 @@ import {performance} from 'node:perf_hooks';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,type EnemyState,type LevelOffer,type PickupState,type ProjectileState,type RoundState,type SimEvent,type SimPlayer,type SpatialIndex,type TeamProgress,type Telegraph} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
-import {ELITE,ENEMIES,ENEMY_KINDS,FISCAL_SHOT,TIO_JOKE,applyElite,createEnemy,deathLineFor,enemyName,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
+import {ELITE,ENEMIES,ENEMY_KINDS,AGIOTA_SHOT,TIO_JOKE,applyElite,createEnemy,deathLineFor,enemyName,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {BARK_GAP,EnemyAi,STATE,moveSafely} from '../../src/sim/enemies/ai.ts';
 import {RADIUS,clearSegment,obstacles,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
@@ -96,15 +96,15 @@ function corridor(len:number,width=.8){
   }
   throw new Error(`no corridor of length ${len}`);
 }
-const MIX:EnemyKind[]=['gosma','gosma','gosma','gosma','gosma','gosma','gosma','gosma','pernilongo','pernilongo','pernilongo','pernilongo','pernilongo','pernilongo','tio-pave','tio-pave','tio-pave','fiscal','fiscal','fiscal'];
+const MIX:EnemyKind[]=['bebado','bebado','bebado','bebado','bebado','bebado','bebado','pombos','pombos','pombos','pombos','pombos','pombos','tio-pave','tio-pave','tio-pave','agiota','agiota','anao-molotov','anao-molotov'];
 function horde(ctx:FakeCtx,count:number,spawn:Rng,eliteEvery=0){
   for(let i=0;i<count;i++)createEnemy(ctx,MIX[i%MIX.length],spawn.pick(WALK),1,{elite:eliteEvery>0&&i%eliteEvery===0});
 }
 function placePlayers(ctx:FakeCtx,count:number,spawn:Rng){for(let i=0;i<count;i++)addPlayer(ctx,`p${i}`,spawn.pick(WALK));}
 
 // ---------- 1. Catalog ----------
-test('catalog: five kinds plus elite, with enough short unique lines and positive stats',()=>{
-  assert.deepEqual([...ENEMY_KINDS],['gosma','pernilongo','tio-pave','fiscal','chefe']);
+test('catalog: the six D-033 kinds plus elite, with enough short unique lines and positive stats',()=>{
+  assert.deepEqual([...ENEMY_KINDS],['bebado','anao-molotov','pombos','tio-pave','agiota','chefe']);
   assert.deepEqual(Object.keys(ENEMIES).sort(),[...ENEMY_KINDS].sort());
   const all:string[]=[];
   for(const kind of ENEMY_KINDS){
@@ -122,21 +122,22 @@ test('catalog: five kinds plus elite, with enough short unique lines and positiv
   for(const line of all){assert.ok(line.trim().length>0);assert.ok([...line].length<=32,`too long (${[...line].length}): ${line}`);}
   const seen=new Set<string>();
   for(const line of all){assert.ok(!seen.has(line),`duplicate line: ${line}`);seen.add(line);}
-  assert.ok(ENEMIES['tio-pave'].barks.includes('É pavê ou pa comê?'));
+  // The tio's signature joke (D-033 joke pass).
+  assert.ok(ENEMIES['tio-pave'].barks.includes('É pavê ou pa comê? HÁ HÁ HÁ'));
 });
 
 // ---------- 2. createEnemy ----------
 test('createEnemy registers, scales hp only, applies elite/boss, readyIn; death lines and names are stable',()=>{
   const ctx=new FakeCtx();ctx.tick=10;
   const at=BY_CENTER[0];
-  const g=createEnemy(ctx,'gosma',at);
+  const g=createEnemy(ctx,'bebado',at);
   assert.equal(g.id,'e1');assert.equal(ctx.enemies.get('e1'),g);
-  assert.equal(g.hp,ENEMIES.gosma.hp);assert.equal(g.maxHp,g.hp);assert.equal(g.x,at.x);assert.equal(g.y,at.y);
+  assert.equal(g.hp,ENEMIES.bebado.hp);assert.equal(g.maxHp,g.hp);assert.equal(g.x,at.x);assert.equal(g.y,at.y);
   assert.equal(g.spawnTick,10);assert.equal(g.readyTick,10);assert.ok(!g.elite&&!g.boss);
-  const s=createEnemy(ctx,'gosma',at,2.5);
-  assert.equal(s.id,'e2');assert.equal(s.hp,Math.round(ENEMIES.gosma.hp*2.5));assert.equal(s.maxHp,s.hp);
+  const s=createEnemy(ctx,'bebado',at,2.5);
+  assert.equal(s.id,'e2');assert.equal(s.hp,Math.round(ENEMIES.bebado.hp*2.5));assert.equal(s.maxHp,s.hp);
   assert.deepEqual([s.speed,s.damage,s.radius,s.xp],[g.speed,g.damage,g.radius,g.xp]);
-  for(const bad of [0,-1,NaN,Infinity]){const b=createEnemy(ctx,'fiscal',at,bad);assert.equal(b.hp,ENEMIES.fiscal.hp,`scale ${bad}`);}
+  for(const bad of [0,-1,NaN,Infinity]){const b=createEnemy(ctx,'agiota',at,bad);assert.equal(b.hp,ENEMIES.agiota.hp,`scale ${bad}`);}
   const el=createEnemy(ctx,'tio-pave',at,2,{elite:true});
   const t=ENEMIES['tio-pave'];
   assert.equal(el.elite,true);
@@ -144,8 +145,8 @@ test('createEnemy registers, scales hp only, applies elite/boss, readyIn; death 
   assert.ok(Math.abs(el.radius-t.radius*ELITE.radius)<1e-12);assert.equal(el.xp,t.xp*ELITE.xp);
   assert.ok(Math.abs(el.speed-t.speed*ELITE.speed)<1e-12);assert.equal(el.damage,Math.round(t.damage*ELITE.damage));
   const boss=createEnemy(ctx,'chefe',at);assert.equal(boss.boss,true);assert.ok(!boss.elite);
-  const late=createEnemy(ctx,'pernilongo',at,1,{readyIn:30});assert.equal(late.readyTick,40);
-  assert.equal(createEnemy(ctx,'gosma',at,1,{readyIn:-5}).readyTick,10);
+  const late=createEnemy(ctx,'pombos',at,1,{readyIn:30});assert.equal(late.readyTick,40);
+  assert.equal(createEnemy(ctx,'bebado',at,1,{readyIn:-5}).readyTick,10);
   assert.throws(()=>createEnemy(ctx,'dragao' as EnemyKind,at));
   // Death lines: deterministic and from the right list.
   for(const e of ctx.enemies.values()){
@@ -154,38 +155,39 @@ test('createEnemy registers, scales hp only, applies elite/boss, readyIn; death 
     const list=e.elite?ELITE.deathLines:ENEMIES[e.kind as EnemyKind].deathLines;
     assert.ok(list.includes(line),`${e.id} ${line}`);
   }
-  const lines=new Set(Array.from({length:60},(_,i)=>deathLineFor({id:`e${i}`,kind:'gosma'})));
+  const lines=new Set(Array.from({length:60},(_,i)=>deathLineFor({id:`e${i}`,kind:'bebado'})));
   assert.ok(lines.size>1,'death lines vary by id');
-  assert.ok(ELITE.deathLines.includes(deathLineFor({id:'e9',kind:'gosma',elite:true})));
-  assert.equal(enemyName({kind:'fiscal'}),ENEMIES.fiscal.name);
-  assert.equal(enemyName({kind:'fiscal',elite:true}),`${ENEMIES.fiscal.name} ${ELITE.name}`);
+  assert.ok(ELITE.deathLines.includes(deathLineFor({id:'e9',kind:'bebado',elite:true})));
+  assert.equal(enemyName({kind:'agiota'}),ENEMIES.agiota.name);
+  assert.equal(enemyName({kind:'agiota',elite:true}),`${ENEMIES.agiota.name} ${ELITE.name}`);
 });
 
 // ---------- 3. Chase ----------
-test('gosma chases the nearest live player, ignores downed/offline/spectator/eliminated/dead ones, idles without targets',()=>{
+test('bêbado chases the nearest live player, ignores downed/offline/spectator/eliminated/dead ones, idles without targets',()=>{
   const c=corridor(7);
   const variants:Partial<SimPlayer>[]=[{downed:{sinceTick:0,bleedOutTick:999,progress:0}},{online:false},{spectator:true},{eliminated:true},{hp:0}];
   for(const v of variants){
     const ctx=new FakeCtx();
     const live=addPlayer(ctx,'live',c.at(7)),decoy=addPlayer(ctx,'decoy',c.at(1),v);
-    const e=createEnemy(ctx,'gosma',c.at(3));const ai=new EnemyAi();
+    const e=createEnemy(ctx,'bebado',c.at(3));const ai=new EnemyAi();
     const d0=dist(e,live),k0=dist(e,decoy);
     run(ctx,ai,10);
     const moved=(e.x-c.at(3).x)*c.u.x+(e.y-c.at(3).y)*c.u.y;
     assert.ok(dist(e,live)<d0-.6,`${JSON.stringify(v)}: closes on live player`);
     assert.ok(dist(e,decoy)>k0+.6,`${JSON.stringify(v)}: leaves decoy`);
-    assert.ok(Math.abs(moved-10*ENEMIES.gosma.speed/SIM_HZ)<1e-6,`${JSON.stringify(v)}: full speed along the line (${moved})`);
+    // Full speed toward the target; the drunk sway on top tilts it a little off the corridor axis (≤ 5% either way).
+    assert.ok(Math.abs(moved-10*ENEMIES.bebado.speed/SIM_HZ)<.05*10*ENEMIES.bebado.speed/SIM_HZ,`${JSON.stringify(v)}: full speed along the line (${moved})`);
   }
   {// Memory is optional on EnemyState: the AI initializes it.
     const ctx=new FakeCtx();const live=addPlayer(ctx,'live',c.at(7));
-    const e=createEnemy(ctx,'gosma',c.at(3));delete e.memory;const d0=dist(e,live);
+    const e=createEnemy(ctx,'bebado',c.at(3));delete e.memory;const d0=dist(e,live);
     run(ctx,new EnemyAi(),5);
     assert.ok(dist(e,live)<d0-.3);assert.ok(e.memory&&Number.isFinite(e.memory.seed)&&e.memory.state===STATE.walk);
   }
   // Only invalid targets: no movement at all.
   const ctx=new FakeCtx();
   variants.forEach((v,i)=>addPlayer(ctx,`x${i}`,c.at(1+i*.5),v));
-  const e=createEnemy(ctx,'gosma',c.at(5));const start={x:e.x,y:e.y};
+  const e=createEnemy(ctx,'bebado',c.at(5));const start={x:e.x,y:e.y};
   run(ctx,new EnemyAi(),40);
   assert.deepEqual({x:e.x,y:e.y},start);
   assert.equal(ctx.hits.length,0);
@@ -204,7 +206,7 @@ test('enemies never enter the sea or obstacles; an off-land spawn walks ashore a
   assert.ok(across.length>=10,`pairs across obstacles: ${across.length}`);
   const coast=WALK.filter(p=>!TERRAIN.land(p.x,p.y,RADIUS+.7));
   assert.ok(coast.length>20,'coast points');
-  const kinds:EnemyKind[]=['gosma','pernilongo','tio-pave','fiscal'];
+  const kinds:EnemyKind[]=['bebado','pombos','tio-pave','agiota'];
   across.forEach((x,i)=>createEnemy(ctx,kinds[i%4],x.e,1,{elite:i%5===0}));
   while(ctx.enemies.size<60)createEnemy(ctx,kinds[ctx.enemies.size%4],spawn.pick(WALK));
   const players=Array.from({length:4},(_,i)=>addPlayer(ctx,`p${i}`,across[i].p));
@@ -230,7 +232,7 @@ test('enemies never enter the sea or obstacles; an off-land spawn walks ashore a
   }
   assert.ok(found,'shallow-sea spawn point');
   const sea=new FakeCtx(5);addPlayer(sea,'p',found.p);
-  const e=createEnemy(sea,'gosma',found.s);assert.ok(!walkable(e,TERRAIN));
+  const e=createEnemy(sea,'bebado',found.s);assert.ok(!walkable(e,TERRAIN));
   const ai2=new EnemyAi();let ashore=-1;
   for(let t=0;t<200;t++){
     run(sea,ai2,1,heal(sea));
@@ -244,22 +246,22 @@ test('enemies never enter the sea or obstacles; an off-land spawn walks ashore a
 test('contact damage goes through damagePlayer with the enemy id and respects contactCooldown',()=>{
   const c=corridor(3),ctx=new FakeCtx();
   const p=addPlayer(ctx,'p1',c.at(2));
-  const e=createEnemy(ctx,'gosma',c.at(1.5));const ai=new EnemyAi();
+  const e=createEnemy(ctx,'bebado',c.at(1.5));const ai=new EnemyAi();
   run(ctx,ai,60,heal(ctx));
   assert.ok(ctx.hits.length>=3);
   for(const h of ctx.hits)assert.deepEqual({id:h.id,amount:h.amount,source:h.source},{id:p.id,amount:e.damage,source:e.id});
   assert.equal(ctx.hits[0].tick,1);
-  for(let i=1;i<ctx.hits.length;i++)assert.equal(ctx.hits[i].tick-ctx.hits[i-1].tick,ENEMIES.gosma.contactCooldown);
+  for(let i=1;i<ctx.hits.length;i++)assert.equal(ctx.hits[i].tick-ctx.hits[i-1].tick,ENEMIES.bebado.contactCooldown);
   // Hp is subtracted by the core, invulnerability honored by the fake core (not by the AI).
-  const before=ctx.hits.length;run(ctx,ai,ENEMIES.gosma.contactCooldown);
+  const before=ctx.hits.length;run(ctx,ai,ENEMIES.bebado.contactCooldown);
   assert.equal(ctx.hits.length,before+1);assert.equal(p.hp,100-e.damage);
 });
 
 // ---------- 6. Pernilongo zig-zag ----------
-test('pernilongo zig-zags sideways while closing distance',()=>{
+test('pombos zig-zag sideways while closing distance',()=>{
   const c=corridor(9,1.2),ctx=new FakeCtx();
   const p=addPlayer(ctx,'p1',c.at(9));
-  const e=createEnemy(ctx,'pernilongo',c.at(0));const ai=new EnemyAi();
+  const e=createEnemy(ctx,'pombos',c.at(0));const ai=new EnemyAi();
   const d0=dist(e,p);let lo=Infinity,hi=-Infinity;
   for(let t=0;t<45;t++){
     run(ctx,ai,1);
@@ -321,49 +323,49 @@ test('tio do pave stops for a joke, barks a reaction, charges faster, shoves and
 });
 
 // ---------- 8. Fiscal ----------
-test('fiscal keeps distance, aims still and fires hostile fines with a cooldown',()=>{
+test('agiota keeps distance, aims still and fires hostile boletos with a cooldown',()=>{
   const c=corridor(10);
   {// Approach when far (shot on cooldown).
     const ctx=new FakeCtx();const p=addPlayer(ctx,'p',c.at(9));
-    const e=createEnemy(ctx,'fiscal',c.at(0));e.memory!.actReady=1e9;const d0=dist(e,p);
+    const e=createEnemy(ctx,'agiota',c.at(0));e.memory!.actReady=1e9;const d0=dist(e,p);
     run(ctx,new EnemyAi(),10);
     assert.ok(dist(e,p)<d0-.5,'approaches beyond maxRange');
-    assert.ok(d0>FISCAL_SHOT.maxRange);
+    assert.ok(d0>AGIOTA_SHOT.maxRange);
   }
   {// Retreat when close.
     const ctx=new FakeCtx();const p=addPlayer(ctx,'p',c.at(7.5));
-    const e=createEnemy(ctx,'fiscal',c.at(5));e.memory!.actReady=1e9;const d0=dist(e,p);
-    assert.ok(d0<FISCAL_SHOT.minRange);
+    const e=createEnemy(ctx,'agiota',c.at(5));e.memory!.actReady=1e9;const d0=dist(e,p);
+    assert.ok(d0<AGIOTA_SHOT.minRange);
     run(ctx,new EnemyAi(),10);
     assert.ok(dist(e,p)>d0+.5,'retreats inside minRange');
     assert.equal(ctx.hits.length,0);
   }
   {// Hugged: backs off instead of standing still, and still hits on contact.
     const ctx=new FakeCtx();const p=addPlayer(ctx,'p',c.at(5.5));
-    const e=createEnemy(ctx,'fiscal',c.at(5));e.memory!.actReady=1e9;const d0=dist(e,p);
+    const e=createEnemy(ctx,'agiota',c.at(5));e.memory!.actReady=1e9;const d0=dist(e,p);
     run(ctx,new EnemyAi(),10);
     assert.ok(dist(e,p)>d0+.5,`backs off when touching (${dist(e,p).toFixed(3)})`);
     assert.equal(ctx.hits.length,1);assert.equal(ctx.hits[0].source,e.id);
   }
   // Aim and shoot.
   const ctx=new FakeCtx(8);const p=addPlayer(ctx,'p',c.at(5));
-  const e=createEnemy(ctx,'fiscal',c.at(0));const ai=new EnemyAi();
+  const e=createEnemy(ctx,'agiota',c.at(0));const ai=new EnemyAi();
   run(ctx,ai,1);
   assert.equal(e.memory!.state,STATE.aim);
   const pos={x:e.x,y:e.y},aimStart=ctx.tick;
-  while(!ctx.projectiles.size&&ctx.tick<aimStart+FISCAL_SHOT.aim+5){run(ctx,ai,1);assert.deepEqual({x:e.x,y:e.y},pos,'stands still while aiming');}
-  assert.equal(ctx.projectiles.size,1);assert.equal(ctx.tick,aimStart+FISCAL_SHOT.aim);
+  while(!ctx.projectiles.size&&ctx.tick<aimStart+AGIOTA_SHOT.aim+5){run(ctx,ai,1);assert.deepEqual({x:e.x,y:e.y},pos,'stands still while aiming');}
+  assert.equal(ctx.projectiles.size,1);assert.equal(ctx.tick,aimStart+AGIOTA_SHOT.aim);
   const shot=[...ctx.projectiles.values()][0];
-  assert.equal(shot.owner,e.id);assert.equal(shot.hostile,true);assert.equal(shot.source,'multa');
+  assert.equal(shot.owner,e.id);assert.equal(shot.hostile,true);assert.equal(shot.source,'boleto-juros');
   assert.ok(shot.untilTick>ctx.tick);assert.deepEqual(shot.hit,[]);assert.ok(shot.damage>0);
   const to={x:p.x-e.x,y:p.y-e.y},len=Math.hypot(to.x,to.y),speed=Math.hypot(shot.vx,shot.vy);
-  assert.ok(Math.abs(speed-FISCAL_SHOT.speed)<1e-9);
+  assert.ok(Math.abs(speed-AGIOTA_SHOT.speed)<1e-9);
   assert.ok((shot.vx*to.x+shot.vy*to.y)/(speed*len)>.999,'velocity points to the player');
   // Cooldown between shots.
   const fired=[ctx.tick];let count=1;
   run(ctx,ai,300,()=>{if(ctx.projectiles.size>count){count=ctx.projectiles.size;fired.push(ctx.tick);}});
   assert.ok(fired.length>=4,`shots ${fired.length}`);
-  for(let i=1;i<fired.length;i++)assert.equal(fired[i]-fired[i-1],FISCAL_SHOT.cooldown+FISCAL_SHOT.aim);
+  for(let i=1;i<fired.length;i++)assert.equal(fired[i]-fired[i-1],AGIOTA_SHOT.cooldown+AGIOTA_SHOT.aim);
   assert.ok([...ctx.projectiles.values()].every(s=>s.owner===e.id&&s.hostile));
 });
 
@@ -372,22 +374,23 @@ test('slow halves the step, freeze stops moving and hitting, knock displaces and
   const c=corridor(8);
   {// Slow.
     const ctx=new FakeCtx();addPlayer(ctx,'p',c.at(8));
-    const e=createEnemy(ctx,'gosma',c.at(0));const ai=new EnemyAi();
+    // The tio walks straight (the bêbado sways on top of his step), so one step is exactly speed/SIM_HZ.
+    const e=createEnemy(ctx,'tio-pave',c.at(0));const ai=new EnemyAi();
     let q={x:e.x,y:e.y};run(ctx,ai,1);const d1=dist(e,q);
     e.slowUntil=ctx.tick+10;q={x:e.x,y:e.y};run(ctx,ai,1);const d2=dist(e,q);
-    assert.ok(Math.abs(d1-ENEMIES.gosma.speed/SIM_HZ)<1e-9);
+    assert.ok(Math.abs(d1-ENEMIES['tio-pave'].speed/SIM_HZ)<1e-9);
     assert.ok(Math.abs(d2-d1/2)<1e-9,`slowed ${d2} vs ${d1}`);
   }
   {// Freeze.
     const ctx=new FakeCtx();addPlayer(ctx,'p',c.at(1.5));
-    const e=createEnemy(ctx,'gosma',c.at(1));e.frozenUntil=30;const ai=new EnemyAi();const q={x:e.x,y:e.y};
+    const e=createEnemy(ctx,'bebado',c.at(1));e.frozenUntil=30;const ai=new EnemyAi();const q={x:e.x,y:e.y};
     run(ctx,ai,29);
     assert.deepEqual({x:e.x,y:e.y},q);assert.equal(ctx.hits.length,0);
     run(ctx,ai,1);assert.equal(ctx.hits.length,1,'hits once thawed');
   }
   {// Knock away from the player.
     const ctx=new FakeCtx();const p=addPlayer(ctx,'p',c.at(6));
-    const e=createEnemy(ctx,'gosma',c.at(3));const ai=new EnemyAi();
+    const e=createEnemy(ctx,'bebado',c.at(3));const ai=new EnemyAi();
     e.knock={x:-c.u.x*.3,y:-c.u.y*.3};
     const d=[dist(e,p)];
     for(let t=0;t<3;t++){run(ctx,ai,1);d.push(dist(e,p));}
@@ -399,7 +402,7 @@ test('slow halves the step, freeze stops moving and hitting, knock displaces and
   }
   {// Ready delay.
     const ctx=new FakeCtx();addPlayer(ctx,'p',c.at(1.5));
-    const e=createEnemy(ctx,'gosma',c.at(1),1,{readyIn:40});const ai=new EnemyAi();const q={x:e.x,y:e.y};
+    const e=createEnemy(ctx,'bebado',c.at(1),1,{readyIn:40});const ai=new EnemyAi();const q={x:e.x,y:e.y};
     run(ctx,ai,39);
     assert.deepEqual({x:e.x,y:e.y},q);assert.equal(ctx.hits.length,0);assert.equal(ctx.barks().length,0);
     run(ctx,ai,20);assert.ok(ctx.hits.length>=1);assert.equal(ctx.hits[0].tick,40,'acts exactly at readyTick');
@@ -407,11 +410,11 @@ test('slow halves the step, freeze stops moving and hitting, knock displaces and
 });
 
 // ---------- 10. Separation ----------
-test('stacked gosmas spread apart without NaN',()=>{
+test('stacked bêbados spread apart without NaN',()=>{
   const at=openPoint(2.2);
   for(const n of [2,10]){
     const ctx=new FakeCtx();
-    for(let i=0;i<n;i++)createEnemy(ctx,'gosma',at);
+    for(let i=0;i<n;i++)createEnemy(ctx,'bebado',at);
     const ai=new EnemyAi(),list=[...ctx.enemies.values()];
     const minPair=()=>{let m=Infinity;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)m=Math.min(m,dist(list[i],list[j]));return m;};
     const series=[minPair()];
@@ -468,19 +471,19 @@ test('chefe is left to the boss system',()=>{
 // ---------- 15. Director contract (D-010) ----------
 test('retreating enemies are left to the director; elite is explicit and never doubles hp',()=>{
   const c=corridor(4),ctx=new FakeCtx();addPlayer(ctx,'p',c.at(1));
-  const tio=createEnemy(ctx,'tio-pave',c.at(1.3)),fiscal=createEnemy(ctx,'fiscal',c.at(3.5));
-  for(const e of [tio,fiscal]){e.memory!.retreat=1;e.damage=0;}
-  const snap=JSON.stringify([tio,fiscal]);
+  const tio=createEnemy(ctx,'tio-pave',c.at(1.3)),agiota=createEnemy(ctx,'agiota',c.at(3.5));
+  for(const e of [tio,agiota]){e.memory!.retreat=1;e.damage=0;}
+  const snap=JSON.stringify([tio,agiota]);
   run(ctx,new EnemyAi(),80);
-  assert.equal(JSON.stringify([tio,fiscal]),snap);
+  assert.equal(JSON.stringify([tio,agiota]),snap);
   assert.equal(ctx.hits.length,0);assert.equal(ctx.projectiles.size,0);assert.equal(ctx.barks().length,0);
   // Director path: hp scale only, then elite flag and its own radius multiplier.
   const scaled=createEnemy(ctx,'tio-pave',c.at(2),8);scaled.elite=true;scaled.radius*=1.35;
   assert.equal(scaled.maxHp,ENEMIES['tio-pave'].hp*8);assert.equal(scaled.speed,ENEMIES['tio-pave'].speed);
   assert.equal(applyElite(scaled).maxHp,ENEMIES['tio-pave'].hp*8,'applyElite skips enemies already elite');
-  const plain=applyElite(createEnemy(ctx,'gosma',c.at(2)));
-  assert.equal(plain.maxHp,ENEMIES.gosma.hp*ELITE.hp);assert.equal(plain.hp,plain.maxHp);
-  assert.equal(applyElite(plain).maxHp,ENEMIES.gosma.hp*ELITE.hp);
+  const plain=applyElite(createEnemy(ctx,'bebado',c.at(2)));
+  assert.equal(plain.maxHp,ENEMIES.bebado.hp*ELITE.hp);assert.equal(plain.hp,plain.maxHp);
+  assert.equal(applyElite(plain).maxHp,ENEMIES.bebado.hp*ELITE.hp);
 });
 
 // ---------- 16. Review regressions ----------
@@ -498,10 +501,10 @@ test('in a crowd, the tio only stops when his joke is on screen and most jokes a
   assert.ok(pauses>0,'some jokes happened');
   assert.equal(heard,pauses,'every joke pause comes with its line');
 });
-test('fiscal drops a stale aim, fires single-target fines and respects the projectile cap',()=>{
+test('agiota drops a stale aim, fires single-target boletos and respects the projectile cap',()=>{
   const c=corridor(9),ctx=new FakeCtx(17);
   const a=addPlayer(ctx,'a',c.at(4.5));
-  const f=createEnemy(ctx,'fiscal',c.at(0));const ai=new EnemyAi({projectileCap:1});
+  const f=createEnemy(ctx,'agiota',c.at(0));const ai=new EnemyAi({projectileCap:1});
   run(ctx,ai,1,heal(ctx));
   assert.equal(f.memory!.state,STATE.aim);
   a.downed={sinceTick:ctx.tick,bleedOutTick:ctx.tick+600,progress:0};
@@ -509,10 +512,10 @@ test('fiscal drops a stale aim, fires single-target fines and respects the proje
   assert.equal(f.memory!.state,STATE.walk,'aim dropped without a live player');
   assert.equal(ctx.projectiles.size,0);
   const b=addPlayer(ctx,'b',c.at(8.9));
-  run(ctx,ai,FISCAL_SHOT.aim+2,heal(ctx));
-  for(const shot of ctx.projectiles.values()){assert.equal(shot.pierce,0);assert.ok(dist(shot,b)<FISCAL_SHOT.fireRange+1,'never fired from beyond range');}
+  run(ctx,ai,AGIOTA_SHOT.aim+2,heal(ctx));
+  for(const shot of ctx.projectiles.values()){assert.equal(shot.pierce,0);assert.ok(dist(shot,b)<AGIOTA_SHOT.fireRange+1,'never fired from beyond range');}
   // Cap: with one hostile projectile alive no new one is created.
-  run(ctx,ai,FISCAL_SHOT.cooldown*3,heal(ctx));
+  run(ctx,ai,AGIOTA_SHOT.cooldown*3,heal(ctx));
   assert.ok(ctx.projectiles.size<=1,`cap respected: ${ctx.projectiles.size}`);
 });
 test('tio does not shove a player his hit just downed',()=>{
@@ -542,23 +545,23 @@ test('siege enemies target structures when closer and hit through the callback; 
   addPlayer(ctx,'far',c.at(6));
   const wall={id:'muralha',...c.at(0),radius:.3};
   const hits:{id:string;amount:number;enemy:string}[]=[];
-  const g=createEnemy(ctx,'gosma',c.at(1.5));g.memory={siege:1};
-  const plain=createEnemy(ctx,'gosma',c.at(3));
+  const g=createEnemy(ctx,'bebado',c.at(1.5));g.memory={siege:1};
+  const plain=createEnemy(ctx,'bebado',c.at(3));
   const ai=new EnemyAi({structures:()=>[wall],hitStructure:(_ctx,id,amount,enemy)=>hits.push({id,amount,enemy:enemy.id})});
   const start=dist(plain,c.at(6));
   run(ctx,ai,60);
   assert.ok(hits.length>=1,`wall was hit (${hits.length}); plain at ${dist(plain,c.at(6)).toFixed(2)} from ${start.toFixed(2)}`);
   assert.equal(hits[0].id,'muralha');assert.equal(hits[0].amount,g.damage);
   assert.ok(hits.every(h=>h.enemy===g.id),'only the siege enemy hits the wall');
-  assert.ok(dist(plain,c.at(6))<start-1.5,`the plain gosma walks past the wall to the player: ${dist(plain,c.at(6)).toFixed(2)} from ${start.toFixed(2)}`);
+  assert.ok(dist(plain,c.at(6))<start-1.5,`the plain bêbado walks past the wall to the player: ${dist(plain,c.at(6)).toFixed(2)} from ${start.toFixed(2)}`);
 });
 
-test('a siege fiscal walks up to the wall and hits it instead of fining it from afar',()=>{
+test('a siege agiota walks up to the wall and hits it instead of billing it from afar',()=>{
   const c=corridor(8),ctx=new FakeCtx(23);
   addPlayer(ctx,'far',c.at(8));
   const wall={id:'muralha',...c.at(0),radius:.5};
   const hits:string[]=[];
-  const f=createEnemy(ctx,'fiscal',c.at(4));f.memory={siege:1};
+  const f=createEnemy(ctx,'agiota',c.at(4));f.memory={siege:1};
   run(ctx,new EnemyAi({structures:()=>[wall],hitStructure:(_ctx,_id,_a,enemy)=>hits.push(enemy.id)}),200);
   assert.ok(hits.length>=2&&hits.every(id=>id===f.id));
   assert.equal(ctx.projectiles.size,0,'no fine thrown at the wall');
@@ -569,7 +572,9 @@ test('Hora Extra taunt pulls enemies to the CLT until it expires or the CLT goes
   const setup=()=>{
     const ctx=new FakeCtx();
     const clt=addPlayer(ctx,'clt',c.at(7)),near=addPlayer(ctx,'near',c.at(1));
-    const e=createEnemy(ctx,'gosma',c.at(3)) as Taunted;
+    const e=createEnemy(ctx,'bebado',c.at(3)) as Taunted;
+    // No burp (he stands still while it winds up): this test is about where he walks.
+    e.memory!.actReady=1e9;
     // 0.5 s of taunt: afterwards the other player is the nearer one again.
     e.taunt={player:'clt',untilTick:10};
     return {ctx,clt,near,e,ai:new EnemyAi()};
@@ -613,6 +618,8 @@ test('limiter and rng state round-trip through JSON',()=>{
   // Copy world state and the saved ai state, then continue both.
   b.tick=a.tick;b.enemies.clear();for(const e of a.enemies.values())b.enemies.set(e.id,structuredClone(e));
   for(const p of a.players.values())Object.assign(b.players.get(p.id)!,structuredClone(p));
+  // Pending hazards (burp, molotov, poop) are world state too: the caps count them.
+  b.telegraphs.clear();for(const t of a.telegraphs.values())b.telegraphs.set(t.id,structuredClone(t));
   const restored=new EnemyAi();restored.restore(JSON.parse(JSON.stringify(ai.state())));
   const na=a.events.length;
   run(a,ai,200,heal(a));run(b,restored,200,heal(b));
@@ -620,12 +627,34 @@ test('limiter and rng state round-trip through JSON',()=>{
   assert.equal(JSON.stringify([...b.enemies.values()]),JSON.stringify([...a.enemies.values()]));
 });
 
+test('a steer option (city flow field) sets the walking direction; without it the chase is unchanged',()=>{
+  const c=corridor(7);
+  const make=(steer?:boolean)=>{
+    const ctx=new FakeCtx();const p=addPlayer(ctx,'p',c.at(7));
+    // The tio walks straight while out of joke range, so the direction is easy to read.
+    const e=createEnemy(ctx,'tio-pave',c.at(3));
+    const calls:Point[]=[];
+    const ai=new EnemyAi(steer?{steer:(_ctx,_e,target,out)=>{calls.push({x:target.x,y:target.y});out.x=-c.u.x;out.y=-c.u.y;return true;}}:{});
+    run(ctx,ai,10);
+    return {e,p,calls,along:(e.x-c.at(3).x)*c.u.x+(e.y-c.at(3).y)*c.u.y};
+  };
+  const steered=make(true),plain=make(false);
+  const step=10*ENEMIES['tio-pave'].speed/SIM_HZ;
+  assert.ok(Math.abs(steered.along+step)<1e-6,`walks the flow direction (away from the player here): ${steered.along}`);
+  assert.equal(steered.calls.length,10);assert.deepEqual(steered.calls[0],{x:steered.p.x,y:steered.p.y},'asked toward its target');
+  assert.ok(Math.abs(plain.along-step)<1e-6,`no steer: straight at the player: ${plain.along}`);
+  // A steer that declines (returns false) leaves the Euclidean direction.
+  const ctx=new FakeCtx();addPlayer(ctx,'p',c.at(7));const e=createEnemy(ctx,'tio-pave',c.at(3));
+  run(ctx,new EnemyAi({steer:(_c,_e,_t,out)=>{out.x=0;out.y=1;return false;}}),10);
+  assert.ok(Math.abs((e.x-c.at(3).x)*c.u.x+(e.y-c.at(3).y)*c.u.y-step)<1e-6);
+});
+
 // ---------- 14. Performance ----------
 function bench(index:SpatialIndex<EnemyState>){
   const ctx=new FakeCtx(14),spawn=new Rng(1414);ctx.enemyIndex=index;
   const pts=[0,1,2,3,4,5].map(i=>openPoint(1,i*40));
   pts.forEach((q,i)=>addPlayer(ctx,`p${i}`,q));
-  for(let i=0;i<300;i++)createEnemy(ctx,i<120?'gosma':i<210?'pernilongo':i<255?'tio-pave':'fiscal',spawn.pick(WALK));
+  for(let i=0;i<300;i++)createEnemy(ctx,i<120?'bebado':i<210?'pombos':i<255?'tio-pave':'agiota',spawn.pick(WALK));
   const ai=new EnemyAi();
   run(ctx,ai,50,heal(ctx));
   const times:number[]=[];

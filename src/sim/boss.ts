@@ -46,20 +46,24 @@ export const BOSS_TUNING:Readonly<BossTuning>=Object.freeze({
   phase2Speed:1.4,enragedSpeed:1.3,enragedDamage:1.5,enragedCooldown:.6,barkEvery:ticks(2),
 });
 
-/** pt-BR barks. Kept short so the speech bubble stays readable on a phone. */
+/**
+ * pt-BR barks, kept short so the speech bubble stays readable on a phone. spawn, slam, fine, phase2, enrage and defeat
+ * are the D-033 joke pass (intro; stamps split between slam and fine; phase2 split with enrage; defeat). charge, sweep
+ * and summon predate it (the pass wrote none for them).
+ */
 export const BOSS_LINES={
-  spawn:['Reunião de condomínio AGORA! Pauta: vocês.','Quem deixou o chinelo no corredor?!','Edital afixado no elevador: estão todos MULTADOS.','Cheguei! Trouxe a ata, o carimbo e a pauta de 47 itens.'],
-  slam:['MULTA!','Proibido pisar na grama!','Carimbado e registrado!','Isso aqui não é área de lazer!','Barulho depois das 22h? MULTA!'],
-  fine:['Multa coletiva pra todo mundo!','Rateio da multa entre os condôminos!','Multa em área! Tá no regimento!','Boleto extra pra cada unidade!'],
-  charge:['Vaga de garagem é MINHA!','Correndo atrás do inadimplente!','Sai da frente que eu tô atrasado pro conselho!','Quem estacionou na minha vaga?!'],
+  spawn:['Assembleia extraordinária. Pauta: matar vocês.','Tenho mil chaves. Nenhuma abre a saída pra vocês.','Desci de roupão. Alguém reclamou do barulho.','Quórum alcançado: eu e o meu ego.','Gostaram da capa? São 500 avisos de elevador.','Puta que pariu! Quem deu a chave pra esse povo?'],
+  slam:['INDEFERIDO!','Autentica essa cara aí!','Advertência por escrito! PÁ!','Arquivado! Na tua cara!'],
+  fine:['Multa na testa, desgraça!','Toma a segunda via!','Despejo imediato! PLOFT!','Notificado com força!'],
+  charge:['Vaga de garagem é MINHA!','Correndo atrás do inadimplente!','Sai da frente que eu tô atrasado pro conselho!','Atropelamento previsto no regimento!'],
   sweep:['Leitura da ata: item 1, item 2, item 3…','Ninguém sai antes de ler a ata!','Votação aberta: quem é contra apanha!','Item 38 da pauta: a cor do capacho.'],
-  summon:['Convoquei os condôminos!','Quórum garantido!','Chamei o fiscal e o tio do pavê!','Subcomissão do salão de festas, ataquem!'],
-  phase2:['ASSEMBLEIA EXTRAORDINÁRIA! Agora é pessoal.','Aprovado por unanimidade: vocês vão apanhar!'],
-  enrage:['A taxa condominial SUBIU! Hora extra do síndico!','Estourou o horário da reunião! Agora é taxa extra!'],
-  defeat:['Renuncio ao cargo… mas a multa continua!','Isso vai pra ata!','Convoco nova assembleia… semana que vem…'],
+  summon:['Condôminos, desçam! É assembleia de porrada!','Quem faltar paga multa! Desce todo mundo!','Chamei o agiota e o tio do pavê!','Subcomissão do salão de festas, ataquem!'],
+  phase2:['Tomei o poder. E tomei umas também. HIC!','Me reelegi sozinho! Mandato vitalício!','Rasguei a capa. Por baixo? Mais avisos!'],
+  enrage:['Revoguei a gravidade do condomínio, caralho!','Agora EU sou o regimento interno!'],
+  defeat:['A ata... tá me engolindo... que morte linda...','Convoquem eleição. Duvido alguém querer o cargo.','Minhas mil chaves... e nenhuma era do portão...','Não façam churrasco na garagem... por favor...'],
 } as const;
 
-export const MINION_KINDS=['fiscal','tio-pave','gosma'] as const satisfies readonly EnemyKind[];
+export const MINION_KINDS=['agiota','tio-pave','bebado'] as const satisfies readonly EnemyKind[];
 export type BossLineKey=keyof typeof BOSS_LINES;
 /** Grace after a minion appears (the spawn-warning already gave 1.5 s). */
 export const MINION_READY_TICKS=ticks(.4);

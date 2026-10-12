@@ -5,16 +5,18 @@
  */
 import type {RunView} from '../../contract/index.ts';
 
-export const CAUSE_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const;
+/** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them with more hp. */
+export const CAUSE_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe'] as const;
 export type CauseKind=typeof CAUSE_KINDS[number];
 
 /** One word (or name) for combat, and the joke that goes on the optional second line. */
 export const CAUSE_COPY:Record<CauseKind|'bichos',{name:string;line:string}>={
-  gosma:{name:'Gosma',line:'A gosma te abraçou forte demais'},
-  pernilongo:{name:'Pernilongo',line:'O pernilongo picou até você deitar'},
+  bebado:{name:'Bêbado do Boteco',line:'O bêbado arrotou e você apagou'},
+  'anao-molotov':{name:'Anão do Molotov',line:'O anão brindou. Com você no meio'},
+  pombos:{name:'Pombos do Centro',line:'Bombardeado por pombo. Que fase'},
   'tio-pave':{name:'Tio do Pavê',line:'O Tio do Pavê te venceu no trocadilho'},
-  fiscal:{name:'Fiscal',line:'O fiscal te multou até o chão'},
-  chefe:{name:'Síndico Supremo',line:'O Síndico Supremo te deu advertência'},
+  agiota:{name:'Agiota do Bairro',line:'O agiota cobrou com juros. Em você'},
+  chefe:{name:'Síndico Supremo',line:'O síndico lavrou teu óbito em ata'},
   bichos:{name:'Bichos',line:'Os bichos te pegaram de jeito'},
 };
 export const causeKind=(kind:string|undefined):CauseKind|undefined=>(CAUSE_KINDS as readonly string[]).includes(kind??'')?kind as CauseKind:undefined;
@@ -22,7 +24,7 @@ export const causeCopy=(kind:string|undefined)=>CAUSE_COPY[causeKind(kind)??'bic
 
 /**
  * Kinds of the latest enemy ids seen (live in a view or in a kill), to name a hitter that is already gone: one that died
- * on the tick it downed someone, or a fiscal whose shot lands after it died (the sim cannot name it then).
+ * on the tick it downed someone, or an agiota whose boleto lands after it died (the sim cannot name it then).
  */
 export const KILL_MEMORY=1024;
 
@@ -76,7 +78,7 @@ export function topCause(log:CauseLog,player?:string){
   return best?{kind:best,count}:undefined;
 }
 
-/** Result line: "Te derrubou: Gosma 2×" for the local player, or the team's top cause if they never fell. */
+/** Result line: "Te derrubou: Bêbado do Boteco 2×" for the local player, or the team's top cause if they never fell. */
 export function resultCause(log:CauseLog,localId:string){
   const own=topCause(log,localId);
   if(own)return {kind:own.kind,text:`Te derrubou: ${causeCopy(own.kind).name}${own.count>1?` ${own.count}×`:''}`};

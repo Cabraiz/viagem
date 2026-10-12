@@ -31,7 +31,7 @@ export const ATTACK_RANGE=1.8,BASIC_COOLDOWN_TICKS=12,SKILL_RANGE=2.8,SKILL_COOL
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
-/** Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a gosma is ~33 px tall at the follow zoom. */
+/** Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a bêbado is ~36 px tall at the follow zoom. */
 const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
@@ -469,7 +469,7 @@ export class IslandScene extends Phaser.Scene {
   private icons=new Map<string,string>();
   /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
   critterIcon(kind:string){
-    // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the gosma and name the wrong critter.
+    // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
     if(!isEnemyKind(kind))return undefined;
     let url=this.icons.get(kind);
     if(url===undefined){const key=enemyTexture(kind);url=this.textures.exists(key)?this.textures.getBase64(key):'';if(url)this.icons.set(kind,url);}

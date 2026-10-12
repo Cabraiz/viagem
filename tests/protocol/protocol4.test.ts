@@ -10,6 +10,11 @@ import {
 
 const near=(a:number,b:number,eps:number,msg:string)=>assert.ok(Math.abs(a-b)<=eps,`${msg}: ${a} vs ${b}`);
 const POS_EPS=1/POS_SCALE;
+/**
+ * The D-033 horde (catalog.ts ENEMY_KINDS without the boss). Only 'tio-pave' is in the protocol 7 DICT; the other kinds
+ * travel inline (0xFF + utf8) until the protocol owner appends them (protocol bump), so these fixtures pay that cost.
+ */
+const CAST=['bebado','pombos','tio-pave','agiota','anao-molotov'];
 
 function player(id:string,i:number,extra:Partial<PlayerWireView>={}):PlayerWireView{
   return {id,name:`Jogador ${i}`,classId:'cidadao-comum',hp:73.4,maxHp:120,online:true,spectator:false,
@@ -22,10 +27,10 @@ function busyWorld(rng:Rng,enemies=300):ServerWorld{
     tick:1000,team:{xp:340,level:12,nextXp:455},
     round:{index:4,total:10,phase:'wave',phaseEndsTick:1900,remaining:enemies},
     players:Array.from({length:6},(_,i)=>player(`uuid-${i}`,i)),
-    enemies:Array.from({length:enemies},(_,i):EnemyView=>({id:`e-${i+1}`,kind:rng.pick(['gosma','pernilongo','tio-pave','fiscal']),
+    enemies:Array.from({length:enemies},(_,i):EnemyView=>({id:`e-${i+1}`,kind:rng.pick(CAST),
       x:rng.range(1,23),y:rng.range(1,23),hp:rng.range(5,80),maxHp:80,...(i%50===0?{elite:true}:{})})),
     pickups:Array.from({length:150},(_,i):PickupView=>({id:`xp-${i+1}`,kind:'xp',x:rng.range(2,22),y:rng.range(2,22),value:rng.int(1,5)})),
-    projectiles:Array.from({length:100},(_,i):ProjectileView=>({id:`p-${i+1}`,source:'boleto',x:rng.range(4,20),y:rng.range(4,20),
+    projectiles:Array.from({length:100},(_,i):ProjectileView=>({id:`p-${i+1}`,source:i%10===0?'boleto-juros':'boleto',x:rng.range(4,20),y:rng.range(4,20),
       vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2,hostile:i%10===0})),
     telegraphs:Array.from({length:6},(_,i):TelegraphView=>({id:`t-${i+1}`,shape:'line',x:12,y:12,radius:3,dx:.6,dy:.8,width:1.2,fireTick:1020+i})),
     structures:[{id:'muralha',kind:'muralha',x:12,y:12,hp:800,maxHp:1000}],
@@ -46,7 +51,7 @@ function stepWorld(w:ServerWorld,rng:Rng):SimEvent[]{
   for(const e of v.enemies.filter(e=>e.hp<=0)){events.push({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y,by:'uuid-1'});}
   v.enemies=v.enemies.filter(e=>e.hp>0);
   while(v.enemies.length<300){
-    const id=`e-${++spawned}`;v.enemies.push({id,kind:'gosma',x:rng.range(1,23),y:rng.range(1,23),hp:40,maxHp:40});w.velocity.set(id,{x:rng.range(-1,1),y:rng.range(-1,1)});
+    const id=`e-${++spawned}`;v.enemies.push({id,kind:'bebado',x:rng.range(1,23),y:rng.range(1,23),hp:40,maxHp:40});w.velocity.set(id,{x:rng.range(-1,1),y:rng.range(-1,1)});
   }
   for(const p of v.pickups.slice(0,10)){p.x+=w.tick%40<20?.3:-.3;}
   if(w.tick%7===0){const p=v.projectiles.shift()!;v.projectiles.push({...p,id:`p-${++spawned}`,x:12,y:12});}
@@ -99,7 +104,7 @@ test('a full frame round-trips every field within quantization',()=>{
   const enc=new FrameEncoder(),dec=new FrameDecoder();
   const events:(SimEvent&{eventId:number})[]=[
     {type:'damage',target:'e-1',amount:12.2,crit:true,source:'uuid-0',weapon:'chinelo',eventId:7},
-    {type:'kill',enemy:'e-2',kind:'gosma',x:5,y:6,by:'uuid-1',eventId:8},
+    {type:'kill',enemy:'e-2',kind:'bebado',x:5,y:6,by:'uuid-1',eventId:8},
     {type:'spawn-warning',x:2,y:3,atTick:1030,count:6,eventId:9},
     {type:'fire',player:'uuid-0',weapon:'audio',x:4,y:4,dx:.6,dy:-.8,eventId:10},
     {type:'pickup',player:'uuid-0',pickup:'xp-1',kind:'xp',value:3,eventId:11},
@@ -454,7 +459,7 @@ test('wide map: positions round-trip exactly at ±10 000 units, near the viewer 
 test('wide map: truncated or corrupted far frames are rejected without throwing',()=>{
   const rng=new Rng(21),w=farWorld(rng,10_000,-10_000,40);
   const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
-  enc.pushEvents([{type:'kill',enemy:'e-1',kind:'gosma',x:10_001,y:-9_999},{type:'round',index:1,phase:'wave',name:'Pix Errado'}]);
+  enc.pushEvents([{type:'kill',enemy:'e-1',kind:'bebado',x:10_001,y:-9_999},{type:'round',index:1,phase:'wave',name:'Pix Errado'}]);
   const frame=enc.encode(w.view);
   for(let n=0;n<frame.length;n++)assert.equal(dec.decode(frame.slice(0,n)).ok,false,`prefix ${n}`);
   for(let i=0;i<500;i++){const bad=frame.slice();bad[rng.int(2,bad.length-1)]^=1<<rng.int(0,7);assert.doesNotThrow(()=>new FrameDecoder().decode(bad));}
@@ -470,9 +475,9 @@ test('area of interest: near things, every ally, the base and the boss; leaving 
   const rng=new Rng(31),w=farWorld(rng,5000,-3000,0),v=w.view;
   const R=INTEREST_RADIUS;
   v.enemies=[
-    {id:'e-near',kind:'gosma',x:5000+10,y:-3000,hp:20,maxHp:20},
-    {id:'e-walker',kind:'gosma',x:5000+R-1,y:-3000,hp:20,maxHp:20},
-    {id:'e-far',kind:'gosma',x:5000+R+30,y:-3000,hp:20,maxHp:20},
+    {id:'e-near',kind:'bebado',x:5000+10,y:-3000,hp:20,maxHp:20},
+    {id:'e-walker',kind:'bebado',x:5000+R-1,y:-3000,hp:20,maxHp:20},
+    {id:'e-far',kind:'bebado',x:5000+R+30,y:-3000,hp:20,maxHp:20},
     {id:'boss-1',kind:'chefe',x:5000+400,y:-3000,hp:4000,maxHp:4000,boss:true},
   ];
   v.pickups=[{id:'xp-near',kind:'xp',x:5003,y:-3000,value:1},{id:'xp-far',kind:'xp',x:5000,y:-3000+R+20,value:1}];
@@ -493,12 +498,12 @@ test('area of interest: near things, every ally, the base and the boss; leaving 
   assert.deepEqual(r.left,[enc.ids.label('enemies','e-walker')],'left the area');
   assert.ok(!r.view.events.some(e=>e.type==='kill'));
   // A death inside the area: removed, not "left", and its kill event arrives.
-  enc.pushEvents([{type:'kill',enemy:'e-near',kind:'gosma',x:5010,y:-3000,by:'uuid-0'},{type:'kill',enemy:'e-far',kind:'gosma',x:5000+R+30,y:-3000}]);
+  enc.pushEvents([{type:'kill',enemy:'e-near',kind:'bebado',x:5010,y:-3000,by:'uuid-0'},{type:'kill',enemy:'e-far',kind:'bebado',x:5000+R+30,y:-3000}]);
   v.enemies=v.enemies.filter(e=>e.id!=='e-near'&&e.id!=='e-far');r=frame();
   assert.ok(!ids(r,'enemies').includes('e-near'));assert.deepEqual(r.left,[]);
   assert.deepEqual(r.view.events.filter(e=>e.type==='kill').map(e=>e.type==='kill'&&enc.ids.resolve(e.enemy)),['e-near'],'the far kill is not sent');
   // Coming back: the walker returns inside the radius and is sent again.
-  v.enemies.push({id:'e-walker',kind:'gosma',x:5000+R-2,y:-3000,hp:20,maxHp:20});r=frame();
+  v.enemies.push({id:'e-walker',kind:'bebado',x:5000+R-2,y:-3000,hp:20,maxHp:20});r=frame();
   assert.ok(ids(r,'enemies').includes('e-walker'));
   // Global events reach everyone; far damage numbers do not.
   enc.pushEvents([{type:'downed',player:'uuid-5'},{type:'damage',target:'uuid-5',amount:9,source:'e-x'},{type:'levelup',level:9}]);
@@ -531,11 +536,11 @@ function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
     enemies:[],pickups:[],projectiles:[],telegraphs:[],structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:800,maxHp:1000}],world:ENDLESS};
   let n=0;
   const enemy=(c:{x:number;y:number}):EnemyView=>{const a=rng.range(0,Math.PI*2),d=rng.range(2,32);
-    return {id:`e-${++n}`,kind:rng.pick(['gosma','pernilongo','tio-pave','fiscal']),x:c.x+Math.cos(a)*d,y:c.y+Math.sin(a)*d,hp:rng.range(5,80),maxHp:80};};
+    return {id:`e-${++n}`,kind:rng.pick(CAST),x:c.x+Math.cos(a)*d,y:c.y+Math.sin(a)*d,hp:rng.range(5,80),maxHp:80};};
   for(const c of centers){
     for(let i=0;i<300;i++)view.enemies.push(enemy(c));
     for(let i=0;i<150;i++)view.pickups.push({id:`xp-${++n}`,kind:'xp',x:c.x+rng.range(-12,12),y:c.y+rng.range(-12,12),value:rng.int(1,5)});
-    for(let i=0;i<100;i++)view.projectiles.push({id:`p-${++n}`,source:'boleto',x:c.x+rng.range(-8,8),y:c.y+rng.range(-8,8),vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2,hostile:i%10===0});
+    for(let i=0;i<100;i++)view.projectiles.push({id:`p-${++n}`,source:i%10===0?'boleto-juros':'boleto',x:c.x+rng.range(-8,8),y:c.y+rng.range(-8,8),vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2,hostile:i%10===0});
   }
   const home=new Map(view.enemies.map((e,i)=>[e.id,centers[Math.floor(i/300)]]));
   const shotHome=new Map(view.projectiles.map((p,i)=>[p.id,centers[Math.floor(i/100)]]));
@@ -602,8 +607,12 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   t.diagnostic(`protocol 4, wide map, bytes/s per client at 10 Hz: together ${JSON.stringify(together)}; same at the origin ${JSON.stringify(atOrigin)}; spread 200 u ${JSON.stringify(apart)}; spread without area of interest ${JSON.stringify(apartAll)}; spread, clients staggered over both ticks ${JSON.stringify(staggered)}`);
   assert.ok(Math.abs(staggered.bytesPerSecond-apart.bytesPerSecond)<apart.bytesPerSecond*.05,'staggering costs no bandwidth');
   // D-018 budget: the island worst case was 26.7 KB/s per client; the wide map must stay in the same range.
-  assert.ok(together.bytesPerSecond<32_000,`together ${together.bytesPerSecond}`);
-  assert.ok(apart.bytesPerSecond<32_000,`spread ${apart.bytesPerSecond}`);
+  // D-033 cast (NEW-20261012-ORQ-elenco-adult-swim): with the old DICT kinds this measured 31.5 KB/s together and
+  // 31.9 KB/s spread (limit 32 000); the new kinds and the agiota's 'boleto-juros' shots go inline (0xFF + utf8, protocol 7 DICT is append-only) and
+  // measure 33.8 / 34.2 KB/s. Raised to 36 000, still far under the 4G budget (D-009: < 50 KB/s per client at 20 Hz). Appending
+  // the new kinds to the DICT (protocol bump) brings it back to ~31.9.
+  assert.ok(together.bytesPerSecond<36_000,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<36_000,`spread ${apart.bytesPerSecond}`);
   assert.ok(apart.enemiesPerFrame<=300,'each client only gets its own horde');
   assert.ok(apartAll.bytesPerSecond>apart.bytesPerSecond*3,'the area of interest is what keeps spread players cheap');
   assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
@@ -624,7 +633,7 @@ test('the server world descriptor rebuilds the same terrain on the client, islan
 
 test('area of interest without a body: a spectator follows a player, an empty room the base, never "everything"',()=>{
   const v=farWorld(new Rng(61),3000,3000,0).view;
-  v.enemies=[{id:'e-a',kind:'gosma',x:3001,y:3000,hp:5,maxHp:5},{id:'e-b',kind:'gosma',x:1,y:1,hp:5,maxHp:5}];
+  v.enemies=[{id:'e-a',kind:'bebado',x:3001,y:3000,hp:5,maxHp:5},{id:'e-b',kind:'bebado',x:1,y:1,hp:5,maxHp:5}];
   const spectator=new FrameEncoder(new WireIds(),{viewer:'ghost'});
   const r1=new FrameDecoder().decode(spectator.encode(v));assert.ok(r1.ok);
   assert.deepEqual(r1.view.enemies.map(e=>spectator.ids.resolve(e.id)),['e-a'],'follows the first player with a body');
@@ -810,8 +819,8 @@ test('N27 farEvery: critters off every legal screen go every other frame, on scr
   v.players=[player('me',0,{x:0,y:0})];
   // 20 on screen (2 u away), 20 off every legal screen but inside the area of interest (40 u along a world axis,
   // where offscreenDistance is 25.5 u), all walking.
-  v.enemies=[...Array.from({length:20},(_,i)=>({id:`n-${i}`,kind:'gosma',x:2+i*.1,y:1,hp:40,maxHp:40})),
-    ...Array.from({length:20},(_,i)=>({id:`f-${i}`,kind:'gosma',x:40+i*.1,y:0,hp:40,maxHp:40}))];
+  v.enemies=[...Array.from({length:20},(_,i)=>({id:`n-${i}`,kind:'bebado',x:2+i*.1,y:1,hp:40,maxHp:40})),
+    ...Array.from({length:20},(_,i)=>({id:`f-${i}`,kind:'bebado',x:40+i*.1,y:0,hp:40,maxHp:40}))];
   const enc=new FrameEncoder(new WireIds(),{viewer:'me',chain:true,farEvery:2}),dec=new FrameDecoder();
   const seenAt=new Map<string,number[]>();
   for(let f=1;f<=8;f++){

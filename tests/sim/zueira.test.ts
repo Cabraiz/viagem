@@ -202,7 +202,7 @@ test('the blackout waits for critters around (eyes to see), and never blocks the
   play(z,c,3,ticks(EVENT_DELAY[1])+2);
   assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'promo']]);
   Object.assign(ctx.round,{index:4,phase:'wave',remaining:5});
-  for(let i=0;i<3;i++)(ctx.enemies as Map<string,unknown>).set(`e${i}`,{id:`e${i}`,kind:'gosma',x:13+i*.3,y:12,hp:5});
+  for(let i=0;i<3;i++)(ctx.enemies as Map<string,unknown>).set(`e${i}`,{id:`e${i}`,kind:'bebado',x:13+i*.3,y:12,hp:5});
   for(let i=0;i<ticks(EVENT_DELAY[1])+2;i++){ctx.tick++;z.step(ctx);}
   assert.deepEqual(z.state.fired.map(f=>[f.round,f.kind]),[[3,'promo'],[4,'apagao']]);
 });
@@ -251,16 +251,16 @@ const world=(tick:number,round:number)=>({tick,round:{index:round,total:10,phase
 
 test('shame: the most embarrassing moment wins, ties go to the earliest', ()=>{
   const s=new ShameTracker();
-  s.observe(world(10,3),[{type:'downed',player:'p2',source:'gosma'}]);
+  s.observe(world(10,3),[{type:'downed',player:'p2',source:'bebado'}]);
   assert.equal(s.moment?.key,'caiu');
-  s.observe(world(20,3),[{type:'downed',player:'p1',source:'pernilongo'}]);
-  assert.deepEqual(s.moment,{player:'p1',key:'pernilongo',round:3,tick:20,source:'pernilongo'});
+  s.observe(world(20,3),[{type:'downed',player:'p1',source:'pombos'}]);
+  assert.deepEqual(s.moment,{player:'p1',key:'pernilongo',round:3,tick:20,source:'pombos'});
   // Rescued, and down again 3 s later: worse.
   s.observe(world(30,3),[{type:'revived',player:'p1',by:'p2'}]);
-  s.observe(world(90,3),[{type:'downed',player:'p1',source:'gosma'}]);
+  s.observe(world(90,3),[{type:'downed',player:'p1',source:'bebado'}]);
   assert.equal(s.moment?.key,'recaida');assert.equal(s.moment?.seconds,3);
   // A later blackout fall scores below a recaída: it stays.
-  s.observe(world(200,4),[{type:'downed',player:'p2',source:'fiscal'}],{kind:'apagao',round:4,startTick:190,endsTick:250});
+  s.observe(world(200,4),[{type:'downed',player:'p2',source:'agiota'}],{kind:'apagao',round:4,startTick:190,endsTick:250});
   assert.equal(s.moment?.key,'recaida');
   s.reset();assert.equal(s.moment,undefined);
   const a:ShameMoment={player:'b',key:'cedo',round:1,tick:5},b:ShameMoment={player:'a',key:'cedo',round:1,tick:5};
@@ -276,13 +276,13 @@ test('shame: blackout falls, coxinha at full life, a coxinha on the floor and a 
   s.observe(full,[{type:'pickup',player:'p2',pickup:'heal-1',kind:'heal',value:30}]);
   assert.equal(s.moment?.key,'coxinha-cheia');
   // Down in the dark beats it.
-  s.observe(world(3,5),[{type:'downed',player:'p1',source:'gosma'}],{kind:'apagao',round:5,startTick:1,endsTick:60});
+  s.observe(world(3,5),[{type:'downed',player:'p1',source:'bebado'}],{kind:'apagao',round:5,startTick:1,endsTick:60});
   assert.equal(s.moment?.key,'apagao');
   // A coxinha 1 unit away when you fall beats nothing above 50... but a blackout (55) still wins.
   const w=world(4,5);(w.pickups as unknown as Map<string,unknown>).set('heal-2',{id:'heal-2',kind:'heal',x:1,y:0,value:30});
-  s.observe(w,[{type:'downed',player:'p2',source:'gosma'}]);
+  s.observe(w,[{type:'downed',player:'p2',source:'bebado'}]);
   assert.equal(s.moment?.key,'apagao');
-  const t=new ShameTracker();t.observe(w,[{type:'downed',player:'p1',source:'gosma'}]);assert.equal(t.moment?.key,'coxinha');
+  const t=new ShameTracker();t.observe(w,[{type:'downed',player:'p1',source:'bebado'}]);assert.equal(t.moment?.key,'coxinha');
   // Rain: p1 catches 4, p2 none while standing the whole time.
   const r=new ShameTracker(),rain={kind:'boletos' as const,round:3,startTick:100,endsTick:180};
   const rw=world(100,3);(rw.pickups as unknown as Map<string,unknown>).set('xp-9',{id:'xp-9',kind:'xp',x:0,y:0,value:3,resource:'boleto'});
@@ -313,7 +313,7 @@ test('simulation: a fall in round 1 is the run\'s moment, sent with every view o
   for(let t=0;t<2000&&!sim.shameMoment();t++){
     sim.players.get('b')!.invulnerableUntil=sim.tick+40;
     sim.step();
-    if(sim.world.round.phase==='wave'&&sim.tick%20===0)sim.world.damagePlayer('a',1000,'gosma');
+    if(sim.world.round.phase==='wave'&&sim.tick%20===0)sim.world.damagePlayer('a',1000,'bebado');
   }
   const m=sim.shameMoment();
   assert.ok(m);assert.equal(m.player,'a');assert.equal(m.key,'cedo');assert.equal(m.round,1);

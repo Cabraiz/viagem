@@ -8,6 +8,7 @@ import type {SimContext,SimSystem} from './context.ts';
 import {SIM_HZ} from '../contract/index.ts';
 import {RADIUS as PLAYER_RADIUS} from '../maps/index.ts';
 import {getWeapon} from './weapons/catalog.ts';
+import {markDevendo} from './enemies/catalog.ts';
 
 /** Local projectile ceiling until the shared budget (VGM-032) is wired in by integration. */
 export const PROJECTILE_CAP=400;
@@ -37,6 +38,8 @@ export interface WeaponProjectile extends ProjectileState {
   blocksHostile?:boolean;
   /** Boomerang: at this tick velocity reverses and `hit` resets once for the return pass. */
   returnTick?:number;
+  /** Hostile only: status the hit applies to the player it hurts (agiota's boleto-juros, enemies/catalog.ts DEVENDO). */
+  marks?:'devendo';
 }
 export type ProjectileInit=Omit<WeaponProjectile,'id'|'hit'>&{hit?:string[]};
 
@@ -228,7 +231,10 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     victims.sort((a,b)=>a.t-b.t||(a.player.id<b.player.id?-1:a.player.id>b.player.id?1:0));
     for(const {player} of victims){
       p.hit.push(player.id);
+      const before=player.hp;
       ctx.damagePlayer(player.id,p.damage,p.owner);
+      // D-033: a boleto-juros that actually hurt (not blocked by invulnerability or armor) marks the player as devendo.
+      if(p.marks==='devendo'&&player.hp<before)markDevendo(player,ctx.tick);
       if(p.pierce<=0)return false;
       p.pierce--;
     }

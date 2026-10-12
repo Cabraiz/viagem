@@ -9,6 +9,7 @@ import {Rng} from '../contract/index.ts';
 import {SYSTEM_ORDER} from '../contract/index.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
+import {DEVENDO,isDevendo} from './enemies/catalog.ts';
 
 export type {StampedEvent};
 export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld)=>void;
@@ -183,6 +184,8 @@ export class SimWorld implements SimContext {
     const player=this.players.get(playerId);
     if(!player||player.spectator||player.eliminated||player.downed||!(player.hp>0))return;
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
+    // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
+    if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
     let dealt=Math.min(player.hp,Math.max(0,amount-player.stats.armor));
     if(!(dealt>0))return;
     if(player.hp-dealt<1e-9)dealt=player.hp;

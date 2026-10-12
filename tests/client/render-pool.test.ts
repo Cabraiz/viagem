@@ -104,8 +104,10 @@ test('jokes are deterministic, non-empty and fall back for unknown kinds',()=>{
 });
 
 test('texture keys fall back for unknown kinds and the boss never goes elite',()=>{
-  assert.equal(enemyTexture('dragao-novo'),'horde:enemy:gosma');
-  assert.equal(enemyTexture('gosma',true),'horde:enemy:gosma:elite');
+  assert.equal(enemyTexture('dragao-novo'),'horde:enemy:bebado');
+  assert.equal(enemyTexture('gosma'),'horde:enemy:bebado','an old kind from an older server falls back too');
+  assert.equal(enemyTexture('bebado',true),'horde:enemy:bebado:elite');
+  assert.equal(enemyTexture('anao-molotov'),'horde:enemy:anao-molotov');
   assert.equal(enemyTexture('chefe',true),'horde:enemy:chefe');
   assert.ok(!enemyTexture('chefe',true).endsWith(':elite'));
 });

@@ -1,7 +1,9 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
  * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0,
- * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019).
+ * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
+ * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
+ * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -24,18 +26,30 @@ import {Projector} from '../render/projector.ts';
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
 type FakeProjectile=ProjectileView&{until:number};
+/** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
-  {kind:'gosma',weight:40,hp:30,speed:.9},{kind:'pernilongo',weight:30,hp:12,speed:1.7},
-  {kind:'tio-pave',weight:12,hp:90,speed:.6},{kind:'fiscal',weight:18,hp:40,speed:.8},
+  {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
+  {kind:'tio-pave',weight:12,hp:110,speed:.55},{kind:'agiota',weight:14,hp:40,speed:.8},{kind:'anao-molotov',weight:12,hp:36,speed:.7},
 ];
 const BARKS:Record<string,string[]>={
-  gosma:['Me dá um abraço!','Glub glub…','Tô grudento, desculpa'],
-  pernilongo:['Bzzzz no teu ouvido','Só uma picadinha','Apaga a luz!'],
+  bebado:['Tu é meu irmão, sabia?','Hic… saideira!','Me empresta dez conto'],
+  pombos:['Cruu cruu','Miolo ou morte!','Alvo na cabeça: confirmado'],
   'tio-pave':['É pavê ou pa comê?','Pavê? Pa você!','Puxa meu dedo'],
-  fiscal:['Cadê o alvará?','Isso aí é multa','Calçada irregular!'],
+  agiota:['Venceu ontem, parceiro','Juros de 30% ao dia','Tá devendo, hein?'],
+  'anao-molotov':['Segura essa, porra!','Cachaça boa pega fogo','FOGO NO PARQUINHO!'],
   chefe:['Reunião de condomínio AGORA!','Quem deixou o lixo aqui?'],
 };
 const PLAYER_COUNT=6;
+/**
+ * ?elenco=1 line-up: [kind, elite, screen offset x, y] of each critter's feet from the first player's feet, in world px
+ * at view 0 (x right, y down), so the whole D-033 cast fits a phone in portrait and landscape.
+ */
+const LINEUP:[string,boolean,number,number][]=[
+  ['bebado',false,-170,-120],['pombos',false,0,-135],['anao-molotov',false,170,-120],
+  ['tio-pave',false,-170,40],['agiota',false,170,40],
+  ['bebado',true,-180,180],['chefe',false,0,200],['agiota',true,180,180],
+];
+const fromScreen=(origin:Point,sx:number,sy:number):Point=>({x:origin.x+(sx/42+sy/21)/2,y:origin.y+(sy/21-sx/42)/2});
 
 /** Deterministic stand-in for the server: enough churn to stress every layer. */
 class FakeHorde {
@@ -43,12 +57,42 @@ class FakeHorde {
   enemies:FakeEnemy[]=[];pickups:FakePickup[]=[];projectiles:FakeProjectile[]=[];telegraphs:TelegraphView[]=[];
   players:{id:string;classId:string;x:number;y:number;attackTick:number;angle:number}[]=[];
   private events:(SimEvent&{eventId:number})[]=[];
-  constructor(private field:TerrainField,private target:number,seed:number){
+  constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false){
     this.rng=new Rng(seed);
     for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:classes[(i*5)%classes.length].id,x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
     this.movePlayers();
+    if(lineup)this.lineUp();
     for(let i=0;i<target;i++)this.spawn(this.landPoint(2.5,9.5));
-    const boss=this.spawn({x:12,y:8.5},'chefe');boss.hp=boss.maxHp*.62;
+    if(!lineup){const boss=this.spawn({x:12,y:8.5},'chefe');boss.hp=boss.maxHp*.62;}
+  }
+  /** D-033 cast line-up: still critters around the first player; the other players wait off screen. */
+  private lineUp(){
+    const me=this.players[0];me.x=12;me.y=12.5;
+    this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
+    for(const [kind,elite,sx,sy] of LINEUP){
+      const e=this.spawn(fromScreen(me,sx,sy),kind);
+      e.speed=0;e.elite=elite||undefined;e.boss=kind==='chefe'||undefined;e.phase=kind==='chefe'?1:undefined;e.hp=e.maxHp*(elite?.7:1);
+    }
+  }
+  private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
+  /** Line-up danger, refreshed so every shape is always on screen: burp cone, molotov fire, explosion, pigeon poop. */
+  private lineUpDanger(){
+    const me=this.players[0],at=(e:FakeEnemy|undefined)=>e??{x:me.x,y:me.y};
+    if(this.telegraphs.length===0){
+      const bebado=at(this.lined('bebado')),anao=at(this.lined('anao-molotov')),pombo=at(this.lined('pombos')),d=Math.hypot(me.x-bebado.x,me.y-bebado.y)||1;
+      const add=(t:Omit<TelegraphView,'id'|'fireTick'>,ticks:number)=>{const v={...t,id:`t${this.next++}`,fireTick:this.tick+ticks};this.telegraphs.push(v);this.emit({type:'telegraph',telegraph:v.id});};
+      add({shape:'cone',x:bebado.x,y:bebado.y,radius:3,dx:(me.x-bebado.x)/d,dy:(me.y-bebado.y)/d,width:1},60);
+      const fire=fromScreen(anao,-70,50);
+      add({shape:'circle',x:fire.x,y:fire.y,radius:.9},60);add({shape:'circle',x:fire.x+.9,y:fire.y-.6,radius:.7},60);
+      const boom=this.enemies.find(e=>e.elite&&e.kind==='bebado');if(boom){const c=fromScreen(boom,40,-95);add({shape:'circle',x:c.x,y:c.y,radius:1.3},60);}
+      const poop=fromScreen(pombo,45,55);add({shape:'circle',x:poop.x,y:poop.y,radius:.45},60);
+    }
+    const agiota=this.lined('agiota');
+    if(agiota&&this.tick%20===0){
+      const d=Math.hypot(me.x-agiota.x,me.y-agiota.y)||1;
+      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:agiota.x,y:agiota.y,vx:(me.x-agiota.x)/d*.12,vy:(me.y-agiota.y)/d*.12,radius:.22,hostile:true,until:this.tick+Math.floor(d/.12)});
+    }
+    if(this.tick%30===1)this.emit({type:'say',source:me.id,key:'devendo',line:'Tá devendo!'});
   }
   private emit(event:SimEvent){this.events.push({...event,eventId:++this.eventId});}
   private landPoint(min:number,max:number):Point{
@@ -73,13 +117,22 @@ class FakeHorde {
     }
   }
   step(){
-    this.tick++;this.movePlayers();
+    this.tick++;
+    if(this.lineup){
+      this.lineUpDanger();
+      for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
+      this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
+      this.telegraphs=this.telegraphs.filter(t=>t.fireTick>this.tick);
+      if(this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);this.emit({type:'bark',enemy:e.id,line:this.rng.pick(BARKS[e.kind]??BARKS.bebado)});}
+      return;
+    }
+    this.movePlayers();
     const dt=1/SIM_HZ;
     for(const e of this.enemies){
       let best=this.players[0],bd=Infinity;
       for(const p of this.players){const d=(p.x-e.x)**2+(p.y-e.y)**2;if(d<bd){bd=d;best=p;}}
       const d=Math.sqrt(bd);if(d<.6&&!e.boss)continue;
-      const zig=e.kind==='pernilongo'?Math.sin(this.tick*.5+e.wobble)*.9:0;
+      const zig=e.kind==='pombos'?Math.sin(this.tick*.5+e.wobble)*.9:0;
       const dx=(best.x-e.x)/d,dy=(best.y-e.y)/d;
       const q={x:e.x+(dx-dy*zig)*e.speed*dt,y:e.y+(dy+dx*zig)*e.speed*dt};
       if(walkable(q,this.field)){e.x=q.x;e.y=q.y;}
@@ -95,9 +148,9 @@ class FakeHorde {
       const a=this.rng.range(0,Math.PI*2);p.attackTick=this.tick;
       this.projectiles.push({id:`b${this.next++}`,source:'boleto',x:p.x,y:p.y,vx:Math.cos(a)*.35,vy:Math.sin(a)*.35,radius:.18,hostile:false,until:this.tick+24});
     }
-    for(const e of this.enemies)if(e.kind==='fiscal'&&this.rng.chance(.008)){
+    for(const e of this.enemies)if(e.kind==='agiota'&&this.rng.chance(.008)){
       const p=this.rng.pick(this.players),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
-      this.projectiles.push({id:`h${this.next++}`,source:'fiscal',x:e.x,y:e.y,vx:(p.x-e.x)/d*.22,vy:(p.y-e.y)/d*.22,radius:.2,hostile:true,until:this.tick+40});
+      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:e.x,y:e.y,vx:(p.x-e.x)/d*.22,vy:(p.y-e.y)/d*.22,radius:.2,hostile:true,until:this.tick+40});
     }
     for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
     this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
@@ -109,7 +162,7 @@ class FakeHorde {
       const t:TelegraphView={id:`t${this.next++}`,shape,x:shape==='circle'?p.x:boss.x,y:shape==='circle'?p.y:boss.y,radius:shape==='circle'?1.6:shape==='line'?7:4,dx:(p.x-boss.x)/d,dy:(p.y-boss.y)/d,width:shape==='line'?1.2:shape==='cone'?1.1:undefined,fireTick:this.tick+30};
       this.telegraphs.push(t);this.emit({type:'telegraph',telegraph:t.id});
     }
-    if(this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);const lines=BARKS[e.kind]??BARKS.gosma;this.emit({type:'bark',enemy:e.id,line:this.rng.pick(lines)});}
+    if(this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);const lines=BARKS[e.kind]??BARKS.bebado;this.emit({type:'bark',enemy:e.id,line:this.rng.pick(lines)});}
     // Keep the horde at the target size: replacements arrive from the coast with a warning.
     // Replacements arrive at once in coastal groups of 4 (with a warning), so the horde really holds n enemies.
     while(this.target-this.liveCount()>0){
@@ -165,10 +218,13 @@ class HordeSandboxScene extends Phaser.Scene {
       const image=this.add.image(p.x,p.y,`tree:${tree.id}`,this.view).setOrigin(.5,353/384).setScale(tree.height/tree.pixelHeight).setDepth(this.depth(o));
       this.props.push({point:o,image});
     }
-    this.horde=new FakeHorde(this.field,this.count,this.seed);
+    const lineup=new URLSearchParams(location.search).get('elenco')==='1';
+    this.horde=new FakeHorde(this.field,this.count,this.seed,lineup);
     this.projector=new Projector(this.view,this.field);
     // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
-    this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ});
+    this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
+      // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
+      locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
     const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);};
     motion.addEventListener('change',onMotion);
     this.events.once('shutdown',()=>{motion.removeEventListener('change',onMotion);this.scale.off('resize',this.fit,this);this.layers.destroy();});

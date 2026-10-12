@@ -196,7 +196,7 @@ test('a skill press that arrives after its steps still casts once; tap targets r
   room.receive(a,JSON.stringify({t:'input',round:1,seq:applied,steps:[[2,1,0,1],[3,1,0,0]]}),4600);
   const casts=p.skillTick;room.advance(4650);assert.notEqual(p.skillTick,casts,'cast on the next tick');
   // A tap target travels as a client id inside a segment and reaches the simulation as the server id.
-  const enemy=createEnemy(room.sim.world,'gosma',{x:p.x+3,y:p.y});
+  const enemy=createEnemy(room.sim.world,'bebado',{x:p.x+3,y:p.y});
   room.advance(4700);room.advance(4750);
   const label=room.ids.label('enemies',enemy.id);
   // Segments start after the last step reported (`applied` above): the room reaches them on the client's clock.

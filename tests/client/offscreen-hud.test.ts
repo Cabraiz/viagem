@@ -130,7 +130,7 @@ test('radar: caído with seconds and ping, base, boss with an imminent telegraph
   const states=new Map<string,PlayerRunView>([['me',player('me')],['b',player('b',{hp:0,downed:{progress:.2,bleedOutTick:400}})],['c',player('c',{eliminated:true})],['d',player('d',{online:false})]]);
   const players=['me','b','c','d','e'].map((id,i)=>({id,name:`N${id}`,classId:'cidadao-comum',x:10+i,y:10,online:id!=='d'}));
   const {targets,items}=radar({selfId:'me',focus:{x:10,y:10},self:{x:10,y:10},tick:200,players,states,base:{x:12,y:12},
-    enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:10,maxHp:10,boss:true},{id:'g',kind:'gosma',x:1,y:1,hp:1,maxHp:1}],
+    enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:10,maxHp:10,boss:true},{id:'g',kind:'bebado',x:1,y:1,hp:1,maxHp:1}],
     telegraphs:[{id:'t',shape:'circle',x:31,y:30,radius:2,fireTick:220}],pickups:[{id:'ch',kind:'chest',x:5,y:5,value:1},{id:'xp',kind:'xp',x:5,y:5,value:1}],
     warnings:[{x:40,y:0,atTick:210},{x:0,y:40,atTick:100}],pinged:id=>id==='b',locate:p=>({x:p.x*10,y:p.y*10})});
   const by=(k:string)=>targets.find(x=>x.key===k);

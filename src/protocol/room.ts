@@ -22,7 +22,7 @@ export const UPDATE_NEEDED='Saiu versão nova do jogo. Atualiza a página pra en
 /** Whether a terminal message asks for a reload (also older rooms' wording, "Atualize a página"). */
 export const needsUpdate=(message:string)=>message===UPDATE_NEEDED||/Atualiz[ae] a página/.test(message);
 /** Room notice when a new run would not fit in the room's lifetime (042a R2); the client turns the rematch button into advice. */
-export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que a gosma espera.';
+export const ROOM_CLOSING_NOTICE='O síndico vai fechar a sala antes de dar tempo de outra run inteira. Criem uma sala nova, que o bêbado espera.';
 
 /**
  * The room's Durable Object restarted (deploy, eviction) in the middle of a run (VGM-047, D-024): honest end, as news

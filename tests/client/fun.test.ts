@@ -62,7 +62,7 @@ test('simulation events map to the right speaker and situation',()=>{
   assert.deepEqual(ups,Array.from({length:300},(_,i)=>lineForEvent({type:'upgrade',player:'c',item:'chinelo',level:2},crew,i)));
   assert.equal(lineForEvent({type:'evolve',player:'c',from:'chinelo',to:'chinelo-evo'},crew,1)!.speaker,'c');
   assert.equal(lineForEvent({type:'downed',player:'ghost'},crew,1),undefined);
-  assert.equal(lineForEvent({type:'kill',enemy:'e1',kind:'gosma',x:0,y:0},crew,1),undefined);
+  assert.equal(lineForEvent({type:'kill',enemy:'e1',kind:'bebado',x:0,y:0},crew,1),undefined);
   // Team level-up: exactly one speaker, the same on every client regardless of list order.
   const up=lineForEvent({type:'levelup',level:3},crew,9)!,again=lineForEvent({type:'levelup',level:3},[...crew].reverse(),9)!;
   assert.equal(up.situation,'levelUp');assert.deepEqual(up,again);

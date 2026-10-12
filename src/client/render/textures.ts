@@ -39,51 +39,110 @@ function sparkle(g:G,x:number,y:number,r:number,color=0xffffff,alpha=1){
   poly(g,[x,y-r,x+r*.25,y-r*.25,x+r,y,x+r*.25,y+r*.25,x,y+r,x-r*.25,y+r*.25,x-r,y,x-r*.25,y-r*.25],color,alpha);
 }
 
-function drawGosma(g:G):Head{
-  const body:Shape[]=[['e',0,-22,52,44],['e',0,-8,58,15],['e',-17,-6,18,11],['e',17,-6,18,11],['r',17,-14,7,12,3.5],['c',20.5,-2,3.6]];
-  sil(g,body,0xcf94bc,0x976c97);
-  g.fillStyle(0xe4b5d3,.9).fillEllipse(0,-9,42,14,20);
-  g.fillStyle(0xb57ca6,.5).fillEllipse(-14,-3,18,5,12).fillEllipse(10,-2,14,4,12);
-  g.fillStyle(0xffffff,.75).fillEllipse(-15,-32,9,13,14).fillCircle(-6,-40,2.6).fillCircle(19.6,-3,1.2);
-  eye(g,-10,-21,10,13);eye(g,10,-21,10,13);
-  poly(g,arcPts(0,-14,6.5,0,Math.PI),0x6b3c62);
-  g.fillStyle(0xf47c9e).fillEllipse(1.5,-9.5,6,4,12);
-  blush(g,-19,-14,9,4.5);blush(g,19,-14,9,4.5);
-  return {x:0,y:-44};
+/*
+ * D-033 cast (design/arte-v2.md §4) drawn with the old procedural shapes, recolored and slightly reshaped, until the
+ * prerendered Myth-style art arrives. Every silhouette must read apart at phone size: blob (bêbado), small stout figure
+ * with a burning bottle (anão), flying wings (pombos), big tiozão (tio do pavê), thin dark figure (agiota), giant (chefe).
+ */
+function drawBebado(g:G):Head{
+  // The old gosma blob as a beer belly: amber body, foam on top, droopy eyes, red nose and a tiny green bottle.
+  const amber=0xe3a33c,amberL=0x8a561c;
+  const body:Shape[]=[['e',0,-22,52,44],['e',0,-8,58,15],['e',-17,-6,18,11],['e',17,-6,18,11],['c',-22,-12,5]];
+  sil(g,body,amber,amberL);
+  g.fillStyle(0xf2c065,.8).fillEllipse(-12,-30,12,14,14);
+  // Stained tank top (regata) over the belly.
+  g.fillStyle(0xf4efe2).fillEllipse(0,-9,42,15,20);
+  g.fillStyle(0xf4efe2).fillRect(-12,-20,5,9).fillRect(7,-20,5,9);
+  g.fillStyle(0xc8964a,.7).fillEllipse(8,-8,9,5,12).fillEllipse(-6,-5,5,3,10);
+  // Beer foam on the head.
+  sil(g,[['c',-14,-41,7],['c',-5,-46,8],['c',6,-45,8],['c',15,-40,6.5],['e',0,-40,34,9]],0xfffbef,0xc9b98f,1.6);
+  g.fillStyle(0xfffbef).fillEllipse(-17,-35,5,7,10).fillEllipse(13,-35,4,6,10);
+  g.fillStyle(0xffffff).fillCircle(-7,-48,2.2);
+  // Droopy eyes: the lid covers the top half.
+  eye(g,-10,-25,10,12);eye(g,10,-25,10,12);
+  g.fillStyle(amber).fillRect(-16,-32,12,7).fillRect(4,-32,12,7);
+  line(g,[-16,-25,-4,-25],amberL,1.8);line(g,[4,-25,16,-25],amberL,1.8);
+  blush(g,-19,-16,11,6,.8);blush(g,19,-16,11,6,.8);
+  sil(g,[['c',0,-18,4.2]],0xe2546c,0xa63650,1.2);g.fillStyle(0xffffff,.8).fillCircle(-1.2,-19.4,1.1);
+  line(g,[-7,-12,-3.5,-13.5,0,-12,3.5,-13.5,7,-12],0x6b3a1e,1.8);
+  // The bottle in the nub hand.
+  sil(g,[['r',19,-23,8,15,2.5],['r',21,-30,4,8,1]],0x3f8a46,0x1f4a26,1.4);
+  g.fillStyle(0xf2d36b).fillRect(19.5,-18,7,4);g.fillStyle(0xffffff,.6).fillRect(20.5,-22,1.6,10);
+  sil(g,[['c',22,-7,4]],amber,amberL,1.4);
+  return {x:0,y:-52};
 }
 
-function drawPernilongo(g:G):Head{
-  const wing=(cx:number,cy:number,rot:number)=>{const p=ell(cx,cy,6.5,13,rot);poly(g,p,0xe8f8ff,.6);g.lineStyle(1.6,0x86aac2,.85).strokePoints(pts(p),true);
-    line(g,[cx+Math.sin(rot)*10,cy-Math.cos(rot)*10,cx-Math.sin(rot)*8,cy+Math.cos(rot)*8],0xb4d4e6,1,.8);};
-  wing(2,-33,-.5);wing(12,-34,.35);
-  const legs=0x5f7d8c;
-  line(g,[-4,-24,-9,-13,-12,-7],legs,1.6);line(g,[2,-23,2,-11,0,-5],legs,1.6);line(g,[8,-24,13,-13,17,-8],legs,1.6);
-  sil(g,[['p',ell(17,-27,13,7.5,.35)]],0xa8dccb,0x5f8f8a);
-  line(g,[13,-33,10,-22],0x7fb3a6,2.4);line(g,[20,-30,17,-20],0x7fb3a6,2.4);line(g,[26,-27,24,-20],0x7fb3a6,2);
-  sil(g,[['c',2,-29,9]],0xb6cfd8,0x6f8fa0);
-  g.fillStyle(0x4f6675).fillPoints(pts([-19,-32,-32,-17,-30.5,-16.5,-17,-27]),true);
-  g.fillStyle(0xd6e4ea).fillPoints(pts([-19,-31,-30,-18.5,-18.5,-29]),true);
-  sil(g,[['c',-12,-33,10.5]],0xc4dde4,0x6f8fa0);
-  line(g,[-14,-42,-19,-48],0x6f8fa0,1.4);line(g,[-9,-43,-6,-49],0x6f8fa0,1.4);
-  g.fillStyle(0xffffff).fillCircle(-16,-33,4.2).fillCircle(-8,-34,4.2);
-  g.lineStyle(1,0x6f8fa0).strokeCircle(-16,-33,4.2).strokeCircle(-8,-34,4.2);
-  g.fillStyle(0x2f2a3a).fillCircle(-13.8,-32.6,2).fillCircle(-10.2,-33.6,2);
-  g.fillStyle(0xffffff).fillCircle(-14.4,-33.4,.7).fillCircle(-10.8,-34.4,.7);
-  line(g,[-20.5,-39.5,-14,-37],0x2f2a3a,2);line(g,[-3.5,-40.5,-10,-38],0x2f2a3a,2);
-  blush(g,-18,-27,5,2.6,.6);
-  g.fillStyle(0xffffff,.7).fillCircle(-1,-33,2);
-  return {x:-12,y:-43};
+function drawAnaoMolotov(g:G):Head{
+  // Small stout dwarf grenadier: hard hat, bandana, big beard, a belt of bottles and a burning one raised.
+  const skin=0xf1c7a3,skinL=0xc59775;
+  g.fillStyle(0xff8a3a,.22).fillCircle(26,-58,13);g.fillStyle(0xffb04a,.35).fillCircle(26,-58,8);
+  sil(g,[['e',-9,-3,16,7],['e',9,-3,16,7]],0x5a3a24,0x3a2414);
+  sil(g,[['r',-13,-15,10,13,2],['r',3,-15,10,13,2]],0x4a5f8a,0x2f3e5e);
+  sil(g,[['e',0,-25,40,28]],0x4f6b3a,0x2e4020);
+  sil(g,[['c',-19,-24,5.5]],skin,skinL,1.5);
+  // Belt of cachaça bottles with burning rags.
+  sil(g,[['r',-19,-20,38,6,2]],0x6b4226,0x3e2414,1.2);
+  for(const x of [-14,-6,2,10]){
+    sil(g,[['r',x,-26,5,8,1.5]],0xd9c27a,0x8a7432,1);
+    g.fillStyle(0xff7a1f).fillTriangle(x+.5,-26,x+4.5,-26,x+2.5,-30);
+  }
+  // Beard over the chest, face, nose and angry eyes.
+  sil(g,[['c',0,-44,11]],skin,skinL);
+  sil(g,[['e',0,-33,26,20],['c',-9,-27,5],['c',9,-27,5],['c',0,-24,5]],0xb5652a,0x6e3815,1.5);
+  line(g,[-5,-34,-6,-28],0x8a4a1c,1.2);line(g,[4,-34,5,-28],0x8a4a1c,1.2);
+  sil(g,[['c',0,-41,3.8]],0xe89a86,0xb5675a,1);
+  eye(g,-5,-46,4.5,5.5);eye(g,5,-46,4.5,5.5);
+  line(g,[-9,-50.5,-2,-48.5],0x3d2b46,1.8);line(g,[9,-50.5,2,-48.5],0x3d2b46,1.8);
+  // Red bandana and the yellow hard hat.
+  sil(g,[['r',-11,-53,22,4,1.5]],0xd2392f,0x7a1a14,1);
+  poly(g,[-11,-52,-17,-55,-16,-49],0xd2392f);
+  sil(g,[['p',arcPts(0,-53,12,Math.PI,TAU,14)],['e',0,-53,30,5]],0xf2c230,0x9a7412,1.4);
+  line(g,[0,-65,0,-54],0xc99a1c,2);g.fillStyle(0xffffff,.6).fillEllipse(-5,-60,6,3,10);
+  // The raised arm with the molotov: bottle, rag and fire.
+  line(g,[13,-30,20,-44],0x2e4020,7);line(g,[13,-30,20,-44],0x4f6b3a,4.6);
+  sil(g,[['p',ell(23,-54,4,7,.35)],['r',24,-63,3.5,5,1]],0xd9a640,0x7a5212,1.2);
+  g.fillStyle(0xffffff,.55).fillEllipse(21.5,-55,1.6,5,8);
+  sil(g,[['c',20,-45,4]],skin,skinL,1.4);
+  poly(g,[23,-63,31,-63,27,-71],0xe0402a);poly(g,[24.5,-63,29.5,-63,27.5,-68.5],0xff7a1f);poly(g,[25.8,-63,28.4,-63,27.2,-66.5],0xffd84a);
+  return {x:0,y:-66};
 }
 
+function pigeon(g:G,x:number,y:number,s:number,shade=0){
+  // A plump grey pigeon flying left: wings up, iridescent neck, orange eye with an angry brow.
+  const k=(v:number)=>v*s,grey=shade?0x8a909d:0xa3a9b6,greyD=0x6b7180,line0=0x3c4152;
+  const at=(flat:number[])=>flat.map((v,i)=>i%2?y+k(v):x+k(v));
+  sil(g,[['p',at([2,-4,9,-20,14,-30,15,-23,20,-29,19,-20,24,-24,16,-8,9,-2])]],greyD,line0,1.4);
+  sil(g,[['p',at([12,-3,26,0,25,6,11,5])],['p',ell(x+k(2),y,k(16),k(9.5),.08)]],grey,line0,1.4);
+  line(g,at([16,1,24,3]),greyD,1.2);
+  sil(g,[['p',ell(x+k(-8),y+k(-2),k(5.5),k(5),0)],['c',x+k(-12),y+k(-7),k(7)]],grey,line0,1.4);
+  g.fillStyle(0x4fa08a,.9).fillEllipse(x+k(-8),y+k(-1),k(8),k(5),12);g.fillStyle(0x8a6aa8,.8).fillEllipse(x+k(-6),y+k(1),k(6),k(3),10);
+  poly(g,at([-18,-8,-24,-5.5,-18,-4.5]),0x3a3340);g.fillStyle(0xf0e8e0).fillCircle(x+k(-17.5),y+k(-7.6),k(1.3));
+  g.fillStyle(0xf08a24).fillCircle(x+k(-13),y+k(-8.5),k(2.6));g.fillStyle(0x1e1530).fillCircle(x+k(-13.4),y+k(-8.5),k(1.3));
+  line(g,at([-17,-13,-10,-10.5]),line0,Math.max(1.2,k(2)));
+  // Front wing raised mid-flap: feathered tips and the two black bars of a city pigeon.
+  sil(g,[['p',at([-2,-4,-10,-20,-9,-33,-4,-26,0,-36,4,-27,9,-33,11,-18,8,-3])]],0xd2d6de,line0,1.4);
+  line(g,at([-7,-14,8,-12]),0x2b2733,Math.max(1.2,k(2.2)));line(g,at([-6,-9,8,-7]),0x2b2733,Math.max(1.2,k(2.2)));
+  line(g,at([0,8,-2,12]),0xe07a5a,Math.max(1.2,k(2)));line(g,at([5,8,4,12]),0xe07a5a,Math.max(1.2,k(2)));
+}
+function drawPombos(g:G):Head{
+  pigeon(g,22,-34,.68,1);
+  pigeon(g,-6,-15,1.2);
+  return {x:-20,y:-33};
+}
 function drawTioPave(g:G):Head{
   sil(g,[['e',-10,-3,17,8],['e',10,-3,17,8]],0x6e5a4f,0x4b3c34);
   sil(g,[['r',-17,-17,34,14,4]],0x8d9cba,0x5f6d8c);
-  sil(g,[['e',-27,-31,13,22]],0xe9d7ae,0xa88f62);
-  sil(g,[['e',0,-31,56,42]],0xe9d7ae,0xa88f62);
-  g.fillStyle(0xd6c193).fillRect(-27,-30,54,4);g.fillStyle(0xf4e7c9,.7).fillEllipse(-12,-38,14,10,14);
+  // D-033: heavier tiozão in an open loud shirt with a gold chain (drawn 1.15× by DRAW), still carrying the pavê.
+  const shirt=0xe8743c,shirtL=0x9a3f1c;
+  sil(g,[['e',-27,-31,13,22]],shirt,shirtL);
+  sil(g,[['e',0,-31,58,44]],shirt,shirtL);
+  g.fillStyle(0xf5c9a6).fillPoints(pts([-8,-52,8,-52,0,-36]),true);
+  g.fillStyle(0xfff1c0);for(const [x,y] of [[-20,-38],[-14,-24],[16,-42],[-22,-26],[-6,-20],[20,-30]])g.fillCircle(x,y,2.6);
+  g.fillStyle(0x3fa38f);for(const [x,y] of [[-17,-31],[13,-36],[-10,-42],[-2,-26]])g.fillCircle(x,y,1.8);
   poly(g,[-9,-51,0,-43,-1,-52],0xfaf3e1);poly(g,[9,-51,0,-43,1,-52],0xfaf3e1);
-  g.fillStyle(0xa88f62).fillCircle(0,-38,1.6).fillCircle(0,-33,1.6);
-  g.fillStyle(0xd6c193).fillRoundedRect(-17,-43,8,6,1.5);g.fillStyle(0x7fb36a).fillEllipse(-13,-40,4,2.4,8);
+  g.lineStyle(2.4,0xb08328).strokePoints(pts(arcPts(0,-50,8,.35,Math.PI-.35,10)),false);
+  g.lineStyle(1.4,0xf6d05a).strokePoints(pts(arcPts(0,-50,8,.35,Math.PI-.35,10)),false);
+  sil(g,[['c',0,-41,2.6]],0xf6d05a,0xb08328,1);
   sil(g,[['c',-27,-21,5]],0xf5c9a6,0xc99878);
   sil(g,[['e',21,-21,30,8]],0xf6f2ea,0xaaa196);
   sil(g,[['r',12,-33,18,11,3]],0xf7e6bf,0xb39c73);
@@ -104,36 +163,45 @@ function drawTioPave(g:G):Head{
   return {x:0,y:-82};
 }
 
-function drawFiscal(g:G):Head{
-  sil(g,[['e',-7,-2,13,6],['e',7,-2,13,6]],0x5a4f55,0x3d353a);
-  sil(g,[['r',-9,-24,8,22,2],['r',1,-24,8,22,2]],0x7d8a9c,0x58647a);
-  sil(g,[['e',15,-34,8,20]],0xe6eef4,0x9fb0be);
-  sil(g,[['r',-13,-50,26,30,7]],0xe6eef4,0x9fb0be);
-  sil(g,[['p',[-13,-47,-3,-48,-1,-22,-13,-22]],['p',[13,-47,3,-48,1,-22,13,-22]]],0xcdb57c,0x96814e,1.5);
-  g.fillStyle(0xb29a62).fillRect(-11,-34,6,5).fillRect(5,-34,6,5).fillRect(-11,-27,6,4).fillRect(5,-27,6,4);
-  g.fillStyle(0x3f6aa0).fillRect(6,-37,1.5,4);
-  sil(g,[['c',16,-24,4]],0xf1c7a3,0xc59775,1.5);line(g,[17,-21,19,-15],0x3f4a66,1.8);
-  sil(g,[['e',-13,-37,8,16]],0xe6eef4,0x9fb0be,1.5);
-  sil(g,[['r',-26,-44,16,21,2]],0xb58a5e,0x86613f);
-  g.fillStyle(0xfbf8ef).fillRect(-24,-41,12,16);
-  g.fillStyle(0xb3bcc4);for(let i=0;i<4;i++)g.fillRect(-22,-37+i*3.5,8-(i%2)*2,1.2);
-  g.fillStyle(0xe2546c).fillRect(-17,-30,3,1.2);
-  sil(g,[['r',-21,-46,6,4,1.5]],0xb7c1c9,0x7f8a94,1);
-  sil(g,[['c',-11,-31,4]],0xf1c7a3,0xc59775,1.5);
-  const skin=0xf1c7a3,skinL=0xc59775;
+function drawAgiota(g:G):Head{
+  // The old fiscal's thin standing figure as the neighborhood loan shark: dark clothes, wine shirt, gold chain,
+  // gold fanny pack (pochete), slicked hair, dark shades and a fan of boletos com juros in the hand.
+  const skin=0xf1c7a3,skinL=0xc59775,dark=0x2b2733,darkL=0x14111a,gold=0xf2c84b,goldL=0x9a6a1e;
+  sil(g,[['e',-7,-2,13,6],['e',7,-2,13,6]],0x1e1a22,0x0c0a0e);
+  g.fillStyle(0xffffff,.45).fillEllipse(-9,-3,4,1.6,8).fillEllipse(5,-3,4,1.6,8);
+  sil(g,[['r',-9,-24,8,22,2],['r',1,-24,8,22,2]],0x3a3442,darkL);
+  sil(g,[['e',15,-34,8,20]],dark,darkL);
+  sil(g,[['r',-13,-50,26,30,7]],0x8e2a3c,0x4e1420);
+  g.fillStyle(skin).fillPoints(pts([-5,-50,5,-50,0,-42]),true);
+  poly(g,[-13,-49,-5,-50,-1,-36,-13,-24],dark);poly(g,[13,-49,5,-50,1,-36,13,-24],dark);
+  g.lineStyle(2.2,goldL).strokePoints(pts(arcPts(0,-50,6,.4,Math.PI-.4,8)),false);
+  g.lineStyle(1.2,gold).strokePoints(pts(arcPts(0,-50,6,.4,Math.PI-.4,8)),false);
+  // Gold pochete across the waist, strap over the chest.
+  line(g,[-12,-46,10,-28],0x1e1a22,2.2);
+  sil(g,[['r',-12,-30,22,9,3.5]],gold,goldL,1.6);
+  g.fillStyle(0xd9a836).fillRect(-10,-26.5,18,1.4);g.fillStyle(0xfff3c0).fillRect(-9,-29,6,1.4);
+  sil(g,[['c',16,-24,4]],skin,skinL,1.5);
+  sil(g,[['e',-13,-37,8,16]],dark,darkL,1.5);
+  // Fan of boletos: paper slips with a red band and a bar code.
+  const slip=(x:number,y:number,rot:number)=>{
+    const c=Math.cos(rot),s2=Math.sin(rot),tf=(px:number,py:number)=>[x+px*c-py*s2,y+px*s2+py*c];
+    sil(g,[['p',[...tf(-7,-5),...tf(7,-5),...tf(7,5),...tf(-7,5)]]],0xfbf8ef,0x2b2233,1.2);
+    g.fillStyle(0xd2392f).fillPoints(pts([...tf(-7,-5),...tf(7,-5),...tf(7,-2),...tf(-7,-2)]),true);
+    g.fillStyle(0x2b2233);for(const bx of [-5,-3,-2,0,2,3,5])g.fillPoints(pts([...tf(bx,0),...tf(bx+.8,0),...tf(bx+.8,3.5),...tf(bx,3.5)]),true);
+  };
+  slip(-22,-36,-.45);slip(-19,-39,-.1);slip(-15,-40,.3);
+  sil(g,[['c',-13,-33,4]],skin,skinL,1.5);
   sil(g,[['r',-3,-53,6,5,1],['c',0,-62,15],['c',-15,-61,3.5],['c',15,-61,3.5]],skin,skinL);
-  sil(g,[['p',arcPts(0,-66,15.5,Math.PI,TAU,14)],['e',-12,-66,18,6]],0x7d9a6f,0x52704b);
-  g.fillStyle(0x6a8660).fillRect(-15,-67.5,31,3);
-  sil(g,[['c',2,-74,2.6]],0xf2d36b,0xb89a3a,1);
-  g.fillStyle(0xffffff,.5).fillEllipse(-6,-76,8,3,10);
-  eye(g,-6,-59,5.5,7);
-  g.fillStyle(skin).fillRect(-9,-63.5,7,3);line(g,[-9.5,-60.5,-2.5,-60.5],0x3d2b46,1.6);
-  line(g,[3,-59,9,-59.5],0x3d2b46,2.2);
-  line(g,[-10,-66,-2.5,-64],0x5a4636,1.8);line(g,[2.5,-63,10,-64.5],0x5a4636,1.8);
-  line(g,[-7,-52,-3,-53.5,0,-52.8,3,-53.5,7,-52],0x5a4636,1.6);
-  line(g,[-2,-49.2,3,-49.8],0x9b4a55,1.4);
-  blush(g,-10,-54,5,2.6,.45);blush(g,10,-54,5,2.6,.45);
-  return {x:0,y:-81};
+  // Slicked black hair with a shine.
+  sil(g,[['p',arcPts(0,-64,15.5,Math.PI,TAU,14)],['e',-8,-73,16,7]],0x1e1a22,0x0c0a0e,1.2);
+  g.fillStyle(0xffffff,.45).fillEllipse(-4,-75,9,2.4,10);
+  // Dark shades, smug smile and a gold tooth.
+  sil(g,[['r',-13,-65,11,7,2.5],['r',2,-65,11,7,2.5]],0x14111a,0x000000,.8);
+  line(g,[-2,-62.5,2,-62.5],0x14111a,1.6);line(g,[-13,-63,-15.5,-62],0x14111a,1.4);line(g,[13,-63,15.5,-62],0x14111a,1.4);
+  g.fillStyle(0xffffff,.7).fillRect(-11,-63.5,3,1.2).fillRect(4,-63.5,3,1.2);
+  line(g,[-6,-54,0,-52.5,7,-55],0x5a2a2a,1.8);
+  g.fillStyle(gold).fillRect(1,-53.5,2.4,2);
+  return {x:0,y:-80};
 }
 
 function drawChefe(g:G):Head{
@@ -182,7 +250,10 @@ function drawChefe(g:G):Head{
   return {x:0,y:-158};
 }
 
-const DRAW:Record<EnemyKind,(g:G)=>Head>={gosma:drawGosma,pernilongo:drawPernilongo,'tio-pave':drawTioPave,fiscal:drawFiscal,chefe:drawChefe};
+/** The tio do pavê is heavier in D-033: the same drawing, 1.15× (ENEMY_ART grows with it). */
+const TIO_SCALE=1.15;
+const drawTioPaveHeavy=(g:G):Head=>{g.save().scaleCanvas(TIO_SCALE,TIO_SCALE);const h=drawTioPave(g);g.restore();return {x:h.x*TIO_SCALE,y:h.y*TIO_SCALE};};
+const DRAW:Record<EnemyKind,(g:G)=>Head>={bebado:drawBebado,'anao-molotov':drawAnaoMolotov,pombos:drawPombos,'tio-pave':drawTioPaveHeavy,agiota:drawAgiota,chefe:drawChefe};
 
 function crown(g:G,x:number,y:number){
   sil(g,[['p',[x-8,y,x-9,y-10,x-4.5,y-6,x,y-12,x+4.5,y-6,x+9,y-10,x+8,y]],['r',x-8,y-3,16,4,1]],0xf6d05a,0xb08328,1.5);
@@ -203,6 +274,13 @@ function drawEnemy(g:G,kind:EnemyKind,elite:boolean){
   aura(g,W/2,H-1-ah/2,a.width*.95,ah);
   g.save().translateCanvas(W/2,feet).scaleCanvas(s,s);const head=DRAW[kind](g);g.restore();
   crown(g,W/2+head.x*s,feet+head.y*s+5);
+  badge(g,W/2+head.x*s*.5+7,feet+head.y*s*.48);
+}
+/** Funcionário do Mês (D-033 elite): the gold name badge (crachá) on a lanyard, on top of the crown and the aura. */
+function badge(g:G,x:number,y:number){
+  line(g,[x-4,y-9,x,y-4,x+4,y-9],0xe0506a,1.4);
+  sil(g,[['r',x-4.5,y-4,9,11,1.5]],0xf6d05a,0x8a6418,1.4);
+  g.fillStyle(0xfffaf0).fillRect(x-3,y-.5,6,2.2);g.fillStyle(0x8a6418).fillRect(x-2.5,y+3,5,1);
 }
 
 const PICKUP_DRAW:Record<string,(g:G)=>void>={
@@ -269,6 +347,12 @@ function drawFx(make:(key:string,w:number,h:number,draw:(g:G)=>void)=>void){
   make(FX.projHostile,20,20,g=>{
     sil(g,[['p',starPts(10,10,9,5.2,8,0)]],0xe0306a,0x4a0f2a,1.2);
     g.fillStyle(0xff6f9a).fillCircle(10,10,4);g.fillStyle(0xffd0de).fillCircle(9,9,1.8);
+  });
+  // The agiota's boleto com juros (D-033): a Papel slip with a red band, Breu edge and bar code.
+  make(FX.projBoleto,26,20,g=>{
+    g.fillStyle(0x1e1530).fillRoundedRect(1,2,24,16,2.5);g.fillStyle(0xfbf8ef).fillRoundedRect(2.5,3.5,21,13,1.5);
+    g.fillStyle(0xd2392f).fillRect(2.5,3.5,21,4.5);g.fillStyle(0xfbf8ef).fillCircle(6,5.8,1.2);
+    g.fillStyle(0x1e1530);for(const [x,w] of [[5,1],[7,2],[10,1],[12,1],[14,2],[17,1],[19,2]])g.fillRect(x,10,w,4.5);
   });
   // 1 px Papel edge outside the dark frame: the frame alone vanished on dark canopies (DSG-contraste-mapa, D-022).
   const papel=tokenColor('--c-papel');

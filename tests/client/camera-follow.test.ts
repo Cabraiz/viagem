@@ -16,14 +16,14 @@ const PORTRAIT={width:390,height:844},LANDSCAPE={width:844,height:390};
 const USEFUL_P:Rect={x:70,y:202.6,width:320,height:481.4},USEFUL_L:Rect={x:138,y:154,width:582,height:155.1};
 const HERO={width:56,height:56};
 
-test('zoom: the VS ratio is under the D-009 floor on a phone, so the hero is 56 CSS px and a gosma ≥ 28 px',t=>{
+test('zoom: the VS ratio is under the D-009 floor on a phone, so the hero is 56 CSS px and every critter ≥ 28 px',t=>{
   // VS (Steam screenshots 1280×800): hero 56 px on 800 → 7%. On 390 px that is 27 px, under the 56 px floor.
   assert.ok(VS_HERO_SHORT_RATIO*390<HERO_MIN_SCREEN_PX);
   for(const vp of [PORTRAIT,LANDSCAPE]){
     const z=followZoom(vp);
     assert.ok(Math.abs(HERO_WORLD_PX*z-56)<1e-9,`${vp.width}: hero ${HERO_WORLD_PX*z}`);
-    for(const kind of ['gosma','pernilongo','fiscal','tio-pave'] as const)assert.ok(ENEMY_ART[kind].height*z>=28,`${kind} ${ENEMY_ART[kind].height*z}`);
-    t.diagnostic(`${vp.width}×${vp.height}: zoom ${z.toFixed(4)}, hero ${(HERO_WORLD_PX*z).toFixed(1)} px, gosma ${(ENEMY_ART.gosma.height*z).toFixed(1)} px, pernilongo ${(ENEMY_ART.pernilongo.height*z).toFixed(1)} px`);
+    for(const kind of ['bebado','anao-molotov','pombos','agiota','tio-pave'] as const)assert.ok(ENEMY_ART[kind].height*z>=28,`${kind} ${ENEMY_ART[kind].height*z}`);
+    t.diagnostic(`${vp.width}×${vp.height}: zoom ${z.toFixed(4)}, hero ${(HERO_WORLD_PX*z).toFixed(1)} px, bebado ${(ENEMY_ART.bebado.height*z).toFixed(1)} px, pombos ${(ENEMY_ART.pombos.height*z).toFixed(1)} px`);
   }
   // One zoom per orientation: it does not depend on the useful area, only on the viewport.
   assert.equal(followZoom(PORTRAIT),followZoom(LANDSCAPE));

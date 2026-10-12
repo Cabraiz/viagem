@@ -18,7 +18,7 @@ function view(extra:Partial<RunView>={}):RunView{
 const input=(v:RunView,at={x:0,y:3},memory=newMemory(0),selfId='a'):BrainInput=>({view:v,selfId,at,index:0,memory});
 
 test('brain: a critter on top pushes the bot away from it',()=>{
-  const d=decide(input(view({enemies:[{id:'e1',kind:'gosma',x:.5,y:3,hp:10,maxHp:10}]})));
+  const d=decide(input(view({enemies:[{id:'e1',kind:'bebado',x:.5,y:3,hp:10,maxHp:10}]})));
   assert.equal(d.mode,'fight');assert.ok(d.direction.x<-.5,`moves away (x ${d.direction.x})`);
 });
 test('brain: far from the wall in combat, the bot walks home',()=>{

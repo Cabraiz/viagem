@@ -4,15 +4,18 @@
  */
 import type {PickupKind} from '../../contract/index.ts';
 
-export const ENEMY_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const;
+/** Enemy cast of D-033 (design/arte-v2.md §4): procedural stand-ins until the prerendered art arrives. */
+export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe'] as const;
 export type EnemyKind=typeof ENEMY_KINDS[number];
 export const PICKUP_KINDS:readonly PickupKind[]=['xp','heal','magnet','chest','resource'];
 
 export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readonly string[]).includes(kind);
-/** Unknown kinds fall back to gosma so a newer server never crashes an older client. */
-export const enemyKind=(kind:string):EnemyKind=>isEnemyKind(kind)?kind:'gosma';
+/** Unknown kinds fall back to the bêbado (the basic chaser) so a newer server never crashes an older client. */
+export const enemyKind=(kind:string):EnemyKind=>isEnemyKind(kind)?kind:'bebado';
 export const enemyTexture=(kind:string,elite=false)=>`horde:enemy:${enemyKind(kind)}${elite&&kind!=='chefe'?':elite':''}`;
 export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'xp'}`;
+/** Hostile projectile look by source: the agiota's boleto com juros is a slip; every other hostile shot is the star. */
+export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.projFriendly:source==='boleto-juros'?FX.projBoleto:FX.projHostile;
 /** What a pickup looks like: its kind's texture, or a boleto for the XP of the boleto rain (resource 'boleto', VGM-053B). */
 export const pickupLook=(kind:string,resource?:string)=>kind==='xp'&&resource==='boleto'?FX.boleto:pickupTexture(kind);
 
@@ -22,6 +25,8 @@ export const FX={
   star:'horde:fx:star',
   projFriendly:'horde:proj:friendly',
   projHostile:'horde:proj:hostile',
+  /** The agiota's boleto com juros (D-033): a paper slip, not the generic hostile star. */
+  projBoleto:'horde:proj:boleto-juros',
   warning:'horde:fx:warning',
   bar:'horde:fx:bar',
   barElite:'horde:fx:bar-elite',
@@ -36,10 +41,11 @@ export const FX={
  */
 export interface EnemyArt {width:number;height:number;originY:number;hover:number;bar:number}
 export const ENEMY_ART:Record<EnemyKind,EnemyArt>={
-  gosma:{width:64,height:56,originY:.92,hover:0,bar:58},
-  pernilongo:{width:64,height:52,originY:.9,hover:26,bar:84},
-  'tio-pave':{width:72,height:92,originY:.95,hover:0,bar:96},
-  fiscal:{width:62,height:86,originY:.95,hover:0,bar:90},
+  bebado:{width:64,height:62,originY:.92,hover:0,bar:64},
+  'anao-molotov':{width:76,height:78,originY:.94,hover:0,bar:80},
+  pombos:{width:88,height:68,originY:.9,hover:26,bar:94},
+  'tio-pave':{width:84,height:106,originY:.95,hover:0,bar:110},
+  agiota:{width:62,height:86,originY:.95,hover:0,bar:90},
   chefe:{width:150,height:178,originY:.95,hover:0,bar:186},
 };
 /** Elite variants are the base art with crown and aura, drawn into a texture this much larger. */

@@ -33,7 +33,7 @@ test('every horde system is registered once per run, and a rematch replaces them
   for(let run=0;run<3;run++){
     s.resetRun();
     assert.deepEqual(s.world.registered(),[...RUN_ORDER]);
-    const enemy=createEnemy(s.world,'gosma',{x:12,y:12},1);
+    const enemy=createEnemy(s.world,'bebado',{x:12,y:12},1);
     const before=[...s.players.values()].map(p=>p.score);
     assert.ok(s.world.damageEnemy(enemy.id,1e6,'p0'));
     assert.deepEqual([...s.players.values()].map(p=>p.score),before.map(n=>n+KILL_SCORE),'kill score applied once per kill');
@@ -67,7 +67,7 @@ test('might is applied exactly once between a weapon hit and the damage event (D
 
 test('victory beats a defeat decided in the same tick, and the outcome is decided once',()=>{
   const s=sim(1),p=s.players.get('p0')!;
-  const boss=createEnemy(s.world,'gosma',{x:12,y:12},1);boss.boss=true;
+  const boss=createEnemy(s.world,'bebado',{x:12,y:12},1);boss.boss=true;
   // Same tick: the boss dies on the killing blow while the last player falls.
   s.world.clearSystems().register({id:'players',step(ctx){ctx.damageEnemy(boss.id,1e6,'p0');ctx.damagePlayer(p.id,1e6,'x');}});
   s.run.revive && s.world.register(s.run.revive);
@@ -79,10 +79,10 @@ test('victory beats a defeat decided in the same tick, and the outcome is decide
 
 test('the snapshot extends protocol 3: enemy kind/maxHp/flags, tombstones once removed, and horde extras',()=>{
   const s=sim(1);
-  const e=createEnemy(s.world,'fiscal',{x:12,y:12},1);e.elite=true;
+  const e=createEnemy(s.world,'agiota',{x:12,y:12},1);e.elite=true;
   s.step();
   const wire=s.snapshot().enemies.find(w=>w[0]===e.id)!;
-  assert.deepEqual(wire.slice(4),['fiscal',e.maxHp,1]);
+  assert.deepEqual(wire.slice(4),['agiota',e.maxHp,1]);
   s.world.damageEnemy(e.id,1e6,'p0');
   s.step();
   const tomb=s.snapshot().enemies.find(w=>w[0]===e.id)!;
@@ -104,7 +104,7 @@ test('elite extras (plan §2 item 1): damage and xp from the catalog, applied on
   applyEliteExtras(s.world);applyEliteExtras(s.world);
   assert.equal(e.damage,Math.round(base.damage*ELITE.damage));assert.equal(e.xp,base.xp*ELITE.xp);
   assert.equal(e.maxHp,base.hp,'hp stays with the director (D-010)');assert.equal(e.radius,base.radius);
-  const boss=createEnemy(s.world,'gosma',{x:14,y:14},1);boss.elite=true;boss.boss=true;const bossDamage=boss.damage;
+  const boss=createEnemy(s.world,'bebado',{x:14,y:14},1);boss.elite=true;boss.boss=true;const bossDamage=boss.damage;
   applyEliteExtras(s.world);assert.equal(boss.damage,bossDamage,'the boss is never treated as an elite');
 });
 
@@ -112,7 +112,7 @@ test('every class skill casts inside the integrated run (36 kits, SpatialHash, r
   for(const kit of KITS){
     const s=new Simulation(7);s.add('a','A',kit.classId);s.add('b','B','cidadao-comum');s.resetRun();untilWave(s);
     const a=s.players.get('a')!;
-    for(let i=0;i<5;i++)createEnemy(s.world,'gosma',{x:a.x+1+i*.3,y:a.y+.5},1);
+    for(let i=0;i<5;i++)createEnemy(s.world,'bebado',{x:a.x+1+i*.3,y:a.y+.5},1);
     let casts=0;
     for(let seq=1;seq<=60;seq++){
       s.input('a',{seq,x:1,y:0,attack:false,skill:true});s.input('b',{seq,x:0,y:0,attack:false});
@@ -135,13 +135,13 @@ test('wire hp is rounded up: fractions from regen or might never show as 0 or as
   assert.equal(s.snapshot().players[0][3],87);
   p.hp=.0004;assert.equal(s.snapshot().players[0][3],1);
   p.hp=0;assert.equal(s.snapshot().players[0][3],0);
-  assert.equal(packEnemy({id:'e',x:0,y:0,hp:12.2,kind:'gosma',maxHp:30.5} as never)[3],13);
+  assert.equal(packEnemy({id:'e',x:0,y:0,hp:12.2,kind:'bebado',maxHp:30.5} as never)[3],13);
 });
 
 test('deltas drop unchanged enemy kind/maxHp/flags and diff pickups/projectiles; applyDelta rebuilds the full state',()=>{
   const s=sim(2);untilWave(s);
   const w=s.world;
-  for(let i=0;w.enemies.size<MAX_ENEMIES&&i<4000;i++){const a=i*.37,r=6+i%7;createEnemy(w,'gosma',{x:20+Math.cos(a)*r,y:20+Math.sin(a)*r},1);}
+  for(let i=0;w.enemies.size<MAX_ENEMIES&&i<4000;i++){const a=i*.37,r=6+i%7;createEnemy(w,'bebado',{x:20+Math.cos(a)*r,y:20+Math.sin(a)*r},1);}
   for(let i=0;i<MAX_PROJECTILES;i++)w.projectiles.set(`pr-${i}`,{id:`pr-${i}`,owner:'p0',source:'chinelo',x:10+i*.0123,y:11+i*.0456,vx:3.1,vy:-2.4,radius:.25,damage:5,pierce:0,untilTick:w.tick+1e6,hostile:false,hit:[]});
   for(let i=0;i<MAX_PICKUPS;i++)w.pickups.set(`pk-${i}`,{id:`pk-${i}`,kind:'xp',x:5+i*.0371,y:7+i*.0219,value:3});
   let state=s.snapshot();const fullBytes=JSON.stringify(state).length;
@@ -178,7 +178,9 @@ test('plan §2 item 8: a 2-minute boss fight against 6 players (both phases) sta
   let peak=0;
   for(let t=0;t<2400;t++){
     // Players never fall and never shoot, so the boss keeps casting through phase 1 and 2.
-    for(const p of s.players.values()){p.hp=p.stats.maxHp;delete p.downed;p.build.weapons=[];}
+    // (Invulnerable too: with every hero standing on one spot, several boss charges can land on the same tick and stack
+    // past full hp; the D-033 minions (heavier tio shove, bêbado burp) shift the heroes enough to line that up.)
+    for(const p of s.players.values()){p.hp=p.stats.maxHp;delete p.downed;p.build.weapons=[];p.invulnerableUntil=s.world.tick+2;}
     // ...and the wall holds (nobody defends it here: the siege would end the run, VGM-046B).
     s.run.stonewards.state.wall.hp=s.run.stonewards.state.wall.maxHp;
     const boss=s.run.boss.boss(s.world);if(boss&&t===600)boss.hp=boss.maxHp*.4;

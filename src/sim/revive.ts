@@ -5,6 +5,7 @@
  */
 import type {SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
+import {hazardKind} from './enemies/catalog.ts';
 import {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS} from '../rules/index.ts';
 export {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS};
 
@@ -27,7 +28,8 @@ export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string){
   player.invulnerableUntil=undefined;
   player.downed={sinceTick:ctx.tick,bleedOutTick:ctx.tick+BLEED_OUT_TICKS,progress:0};
   // `by` is the enemy id that dealt the last hit (contact, telegraph owner or projectile owner); its kind names the cause.
-  const source=by===undefined?undefined:ctx.enemies.get(by)?.kind;
+  // A hazard that outlives its thrower (`env:molotov:<id>`, D-033) names the kind behind it.
+  const source=by===undefined?undefined:ctx.enemies.get(by)?.kind??hazardKind(by);
   ctx.emit(by===undefined?{type:'downed',player:player.id}:source===undefined?{type:'downed',player:player.id,by}:{type:'downed',player:player.id,by,source});
   return true;
 }
@@ -130,10 +132,10 @@ export function createReviveSystem(options:ReviveOptions={}):ReviveSystem{
 export const DOWNED_LINES=[
   'Caiu igual boleto no fim do mês!',
   'Deitou pra descansar… no meio da horda.',
-  'Escorregou na gosma. Clássico.',
+  'Tropeçou num bêbado. Clássico.',
   'Cochilo estratégico, juro.',
   'Desmaiou de tanto ouvir piada de pavê.',
-  'Foi multado pelo fiscal da vida.',
+  'Cobrado pelo agiota da vida.',
 ] as const;
 export const REVIVED_LINES=[
   'Levanta, que o pavê não acabou!',

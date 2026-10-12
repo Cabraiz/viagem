@@ -6,7 +6,11 @@ import {
   CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,cidadeModifierLabel,type CidadeModifier,
 } from '../../src/rules/zueira-cidade.ts';
 import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/rules/waves.ts';
-import {ELITE,ENEMIES,ENEMY_KINDS} from '../../src/sim/enemies/catalog.ts';
+import {BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,PUDDLE_SLIP_LINES} from '../../src/sim/enemies/catalog.ts';
+import {BOSS_LINES,BOSS_NAME} from '../../src/sim/boss.ts';
+import {DEATH_LINES,GENERIC_LINES} from '../../src/client/render/jokes.ts';
+import {CAUSE_COPY} from '../../src/client/hud/cause.ts';
+import {KILLCAM_ALONE,KILLCAM_KIND_LINES,KILLCAM_LINES} from '../../src/client/fun/zueira.ts';
 import {HORN_LINES,RECIPES,RECIPE_IDS} from '../../src/rules/stonewards.ts';
 
 const key=(s:string)=>s.trim().toLocaleLowerCase('pt-BR');
@@ -38,7 +42,7 @@ test('cidade zueira has enough of everything',()=>{
   // The laugh moment: the tio's joke stop (chance 1 in enemy-ai) always says one of these.
   const tio=CIDADE_REACTION_LINES['tio-pave']??[];
   assert.ok(tio.length>=5,'tio-pave reactions');
-  for(const line of ['É pavê ou picolé?','Olha o tio patinando!'])assert.ok(tio.includes(line),line);
+  for(const line of ['É pavê ou picolé?','Toc toc. Quem é? AVALANCHE!'])assert.ok(tio.includes(line),line);
   for(const kind of Object.keys(CIDADE_REACTION_LINES))assert.ok((ENEMY_KINDS as readonly string[]).includes(kind),kind);
   assert.deepEqual(Object.keys(CIDADE_DEATH_LINES).sort(),[...REGULAR_KINDS].sort());
   assert.ok(CIDADE_RETREAT_LINES.length>=6);
@@ -191,17 +195,51 @@ test('the modifiers the card asks for are present by intent',()=>{
   assert.ok(CIDADE_MODIFIERS.some(m=>m.ice?.plazaOnly),'plaza/fountain ice');
 });
 
-test('no third-party brand or IP and real pt-BR accents',()=>{
+/**
+ * Every D-033 line a player can see outside the city tables: catalog, mechanics floaters, boss, waves, and the client's
+ * death pops, "what got you" copy and kill-cam captions.
+ */
+const gameText=[
+  ...Object.values(ENEMIES).flatMap(e=>[e.name,...e.barks,...e.deathLines,...e.reactionLines]),
+  ELITE.name,...ELITE.barks,...ELITE.deathLines,...DEVENDO_LINES,...FIRE_GROUND_LINES,...PUDDLE_SLIP_LINES,...BURP_SLOW_LINES,
+  BOSS_NAME,...Object.values(BOSS_LINES).flat(),...ROUND_NAMES,...ELITE_ROUND_NAMES,...BOSS_ROUND_NAMES,...RETREAT_LINES,
+  ...MODIFIERS.map(modifierLabel),
+  ...GENERIC_LINES,...Object.values(DEATH_LINES).flat(),...Object.values(CAUSE_COPY).flatMap(c=>[c.name,c.line]),
+  ...KILLCAM_LINES,...Object.values(KILLCAM_KIND_LINES).flat(),...KILLCAM_ALONE,
+];
+const hasWord=(low:string,w:string)=>new RegExp(`(^|[^\\p{L}\\d])${w}($|[^\\p{L}\\d])`,'u').test(low);
+
+/**
+ * D-033 tone (heavy Adult Swim): alcohol, cigarettes and light swearing are allowed. Still banned: third-party IP
+ * (Resident Evil and friends), real brands, drugs other than álcool/cigarro, slurs and sexual terms. The anão never
+ * gets a height or child joke: no such word in his lists nor in any line that mentions him.
+ */
+test('D-033 content: no third-party brand or IP, drug, slur, sexual term or anão height joke; real pt-BR accents',()=>{
   const banned=['resident','umbrella','raccoon','zumbi','zombie','blizzard','warcraft','capcom','nemesis','t-virus','ifood',
     'rappi','havaiana','coca-cola','netflix','whatsapp','instagram','tiktok','mcdonald','nescau','toddy','chevrolet','volkswagen',
     'sucrilhos','frozen','fazer um boneco','boneco quer fazer',
-    // No alcohol in a game for kids (humor review).
-    'quentão','cerveja','cachaça','vinho','bêbad','pinga'];
-  const bannedWords=['uber','99','leon','claire','jill','olaf','elsa'];
-  for(const s of allStrings){
+    // Drugs other than álcool and cigarro.
+    'maconha','cocaína','cocaina','crack','lança-perfume','ecstasy','heroína','baseado','cheirad','chapad',
+    // Slurs and sexual terms (substrings that are never innocent in pt-BR).
+    'viado','traveco','baitola','retardad','mongoloide','buceta','xoxota','piroca','punheta','boquete','siririca',
+    'sexo','transar','tesão','pelad','safad'];
+  const bannedWords=['uber','99','leon','claire','jill','olaf','elsa','bicha','sapatão','aleijado','pau','rola','pica','gozar',
+    'foder','fodendo','pinto','peitinho','bunduda','gostosa'];
+  for(const s of [...allStrings,...gameText]){
     const low=s.toLocaleLowerCase('pt-BR');
     for(const b of banned)assert.ok(!low.includes(b),`"${s}" mentions ${b}`);
-    for(const w of bannedWords)assert.ok(!new RegExp(`(^|[^\\p{L}\\d])${w}($|[^\\p{L}\\d])`,'u').test(low),`"${s}" mentions ${w}`);
+    for(const w of bannedWords)assert.ok(!hasWord(low,w),`"${s}" mentions ${w}`);
+  }
+  // The anão rule: his own lines (catalog, city, client) and any line naming him.
+  const height=['baixinh','nanic','tampinha','pequen','anãozinh','tamanho','altura','miúd','parquinho','crianç'];
+  const anao=[...ENEMIES['anao-molotov'].barks,...ENEMIES['anao-molotov'].deathLines,...ENEMIES['anao-molotov'].reactionLines,
+    ...CIDADE_BARKS['anao-molotov'],...CIDADE_DEATH_LINES['anao-molotov'],...DEATH_LINES['anao-molotov'],
+    CAUSE_COPY['anao-molotov'].line,...KILLCAM_KIND_LINES['anao-molotov']??[],
+    ...[...allStrings,...gameText].filter(s=>s.toLocaleLowerCase('pt-BR').includes('anão'))];
+  assert.ok(anao.length>=20,'anão lines found');
+  for(const s of anao){
+    const low=s.toLocaleLowerCase('pt-BR');
+    for(const h of height)assert.ok(!low.includes(h),`"${s}" is a height joke (${h})`);
   }
   const unaccented=['nao','voce','voces','sao','ate','tambem','entao','ninguem','tres','cafe','pe','ja','so','esta frio','ta frio','to','agua','mae','vo'];
   for(const s of allStrings){

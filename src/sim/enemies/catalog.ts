@@ -1,5 +1,5 @@
 /**
- * Enemy catalog (VGM-031): stats, visual identity and the joke lines of each kind.
+ * Enemy catalog (VGM-031, cast of D-033): stats, visual identity and the joke lines of each kind.
  * Stats are base values; createEnemy applies the elite modifier and the director's hp scale.
  */
 import type {Point} from '../../maps/index.ts';
@@ -7,18 +7,29 @@ import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 
-export type EnemyKind='gosma'|'pernilongo'|'tio-pave'|'fiscal'|'chefe';
-/** chase: walks straight; swarm: zig-zag; joker: stops for a joke then charges; ranged: keeps distance and shoots; boss: driven by VGM-038. */
-export type EnemyBehavior='chase'|'swarm'|'joker'|'ranged'|'boss';
+/** Cast of D-033 (design/arte-v2.md §4). Coach, motoboy and influencer come in a later card. */
+export type EnemyKind='bebado'|'anao-molotov'|'pombos'|'tio-pave'|'agiota'|'chefe';
+/**
+ * stagger: drunk zig-zag chase plus a telegraphed burp cone (bebado); swarm: fast zig-zag plus poop (pombos);
+ * joker: stops for a joke then charges (tio-pave); ranged: keeps distance and shoots (agiota);
+ * thrower: keeps distance and lobs telegraphed molotovs (anao-molotov); chase: walks straight (siege, generic);
+ * boss: driven by VGM-038.
+ */
+export type EnemyBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'boss';
 
 export interface EnemyLines {
   /** Ambient speech balloons, picked rarely by enemy-ai. */
   barks:readonly string[];
   /** Pop text for the death "poof"; pick with deathLineFor. */
   deathLines:readonly string[];
-  /** Lines tied to the kind's funny behavior (hug, buzz, dad joke, fine). */
+  /** Lines tied to the kind's funny behavior (burp, molotov, poop, dad joke, boleto). */
   reactionLines:readonly string[];
 }
+/**
+ * Lateral wobble of the walk: direction = toward + perpendicular × sin(tick·freq + seed·2π) × amp. The swarm walks the
+ * normalized direction (its speed is its speed); the stagger keeps its speed toward the target and sways on top.
+ */
+export interface Zigzag {freq:number;amp:number}
 export interface EnemyDef extends EnemyLines {
   id:EnemyKind; name:string; behavior:EnemyBehavior;
   /** World units for speed/radius (speed per second), damage per contact hit. */
@@ -27,65 +38,146 @@ export interface EnemyDef extends EnemyLines {
   contactCooldown:number;
   /** Pastel body and accent colors (0xRRGGBB) for procedural textures. */
   color:number; accent:number;
+  /** Zig-zag walk (stagger and swarm behaviors). */
+  zigzag?:Zigzag;
 }
 /** Multipliers applied on top of any kind. */
 export interface EliteDef extends EnemyLines {name:string;hp:number;speed:number;damage:number;radius:number;xp:number;accent:number}
 
-export const ENEMY_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const satisfies readonly EnemyKind[];
+export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe'] as const satisfies readonly EnemyKind[];
 
+/*
+ * Lines are the D-033 joke pass (heavy tone, humor-reviewed). Every line is ≤ 30 characters and unique across the
+ * catalog (the city's BARK_MAX). The bebado/anão/pombos/agiota reactionLines predate the pass (it wrote none for them).
+ */
 export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
-  // Gosma hugs more than it hurts: 5 per second of contact (was 8 every 0.8 s, which downed a duo in round 1).
-  gosma:{
-    id:'gosma',name:'Gosma de Geladeira',behavior:'chase',
-    hp:20,speed:1.4,damage:5,radius:.32,xp:1,contactCooldown:ticks(1),color:0x9be37a,accent:0x5fae4a,
-    barks:['Me dá um abraço!','Tô grudento de saudade!','Vencido desde 2019!','Sou o pote sem tampa!','Cheiro de pote esquecido!','Vem cá, fofinho!','Eu só quero carinho!','Ninguém me jogou fora!','Gruda, gruda, gruda!'],
-    deathLines:['Fui pro ralo!','Me joga no lixo orgânico!','Virei mancha no chão!','Splosh... adeus!','Avisa a mãe que eu mofei!','Volto na próxima faxina!'],
-    reactionLines:['Grudei em você!','Agora somos um só!','Não solto mais!','Shlurp!'],
+  // VGM-031 basic chaser numbers: hugs more than it hurts, 5 per second of contact (BUG round 1). The drunk wobble sways
+  // on top of his walk (ai.ts stagger), so he still closes at 1.4 u/s.
+  bebado:{
+    id:'bebado',name:'Bêbado do Boteco',behavior:'stagger',
+    hp:20,speed:1.4,damage:5,radius:.32,xp:1,contactCooldown:ticks(1),color:0xf0d9a0,accent:0x8a5a2b,
+    zigzag:{freq:.18,amp:.3},
+    barks:['Eu te amo, cara. Sério. Hic!','Pendura aí que amanhã eu pago','Cê sabe com quem tá falando?','O chão tá vindo me pegar!','Bebi pra esquecer. Cê é quem?','Bêbado não. Tô em modo avião','Segura minha cerveja. BURP!','Pago essa! Cadê minha calça?','Saideira é a penúltima, sabia?','Chama minha ex que eu tô bem'],
+    deathLines:['Abracei o poste. Valeu, poste.','Zzz... mãe, hoje não tem aula','Fígado venceu. GG, fígado.','Hoje não bebo mais. Mentira.','Diz pra minha mãe que era suco','Ressaca eterna, desgraça...','Garçom... a conta... no céu...'],
+    reactionLines:['BUUUURP!','Saiu o arrotão!','Ops, foi o torresmo.','Sente o buquê: pinga e pastel','Servido? Tem mais de onde veio'],
   },
-  pernilongo:{
-    id:'pernilongo',name:'Pernilongo das 3h',behavior:'swarm',
-    hp:6,speed:2.7,damage:4,radius:.2,xp:1,contactCooldown:ticks(.6),color:0xc3bde3,accent:0xe86a7d,
-    barks:['Bzzz no seu ouvido!','Acordei você? Ótimo!','Cadê o tapa? Errou!','Sangue sabor delícia!','Chamei a família toda!','Repelente? Nem ligo!','Só uma picadinha!','Ventilador não me pega!'],
-    deathLines:['Esmagado na parede!','Morri de raquetada!','Virei pintinha no teto!','Avisa o enxame...','Bzz... bz... b.','Volto às 3 da manhã!'],
-    reactionLines:['ZZZzzz!','ZZzz... zZZz!','BZZZZZZ!','Zig! Zag! Bzzz!','zzZZZzz...'],
+  // New mid-range thrower: slow, medium hp, keeps MOLOTOV.minRange..maxRange and lobs molotovs; explodes on death.
+  'anao-molotov':{
+    id:'anao-molotov',name:'Anão do Molotov',behavior:'thrower',
+    hp:40,speed:1,damage:6,radius:.28,xp:3,contactCooldown:ticks(1),color:0xe8b48a,accent:0xd0502a,
+    barks:['Pedreiro raiz usa molotov','Uma pra mim, uma pro fogo!','Minha barba já pegou fogo 3x','Cachaça boa não se bebe. Taca!','Alguém tem fogo? EU TENHO!','Licença ambiental? Queimei!','Tô calmo! TÔ CALMO, PORRA!','Vizinho reclamou. Ex-vizinho.','Hoje o churrasco é de vocês','Pano, gargalo e fé!'],
+    deathLines:['Ih, acendi a cinta errada...','Falei SEGURA, não ACENDE!','Acidente de trabalho, caralho!','Minha barba! MINHA BARBA!','Era pra explodir vocês, desgr—','Pelo menos foi com a cana boa','Perda total. Inclusive eu.'],
+    reactionLines:['Lá vai o molotov!','Aquece aí, campeão!','Brinde! Na tua cara!','Arremesso de três!','Quem pediu bem passado?'],
   },
+  // VGM-031 swarm numbers: fast and fragile swarm; drops telegraphed poop (POOP).
+  pombos:{
+    id:'pombos',name:'Pombos do Centro',behavior:'swarm',
+    hp:6,speed:2.7,damage:4,radius:.2,xp:1,contactCooldown:ticks(.6),color:0xc4c4d2,accent:0x5d6b7a,
+    zigzag:{freq:.45,amp:.9},
+    barks:['Cruu. Passa o pão. Cruu.','Estátua nova? Vamos inaugurar','Cagamos no seu carro novo','Comemos lixo e somos felizes','Pombo não paga aluguel, otário','Seu ombro é nosso banheiro','Rato com asa? Respeita, porra','Coxinha caiu? Coxinha é nossa','Sem pão, sem paz. CRUU!'],
+    deathLines:['Cruu... volto na estátua...','Virei travesseiro, desgraça','Uma pena. Ou várias. Cruu.','Avisa a praça... cruu...','Morri e ainda caguei em você','Ressuscito no próximo milho'],
+    reactionLines:['Bombardeio liberado!','Presente do alto!','Cocô de precisão!','Acertei! Vale 3 pontos, cruu!','Splat! Cruu!'],
+  },
+  // Heavier than the VGM-031 tio (90 hp, 1 u/s, 14 dmg, 0.48 radius): more hp, size and push (TIO_JOKE shove/bump).
   'tio-pave':{
     id:'tio-pave',name:'Tio do Pavê',behavior:'joker',
-    hp:90,speed:1,damage:14,radius:.48,xp:5,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
-    barks:['É pavê ou pa comê?','Chega mais, sobrinho!','E a faculdade, hein?','Quer ouvir uma boa?','Pera que essa é ótima!','No meu tempo era a pé!','Cresceu, hein, rapaz!','Abraço de tio, vem!'],
-    deathLines:['Volto no Natal!','Vou tirar um cochilo...','Me acorda no churrasco!','Essa foi pesada, hein!','Ninguém riu... morri.','Cadê o pavê? Ugh...'],
-    reactionLines:['Zero pro oito: belo cinto!','Café perigoso? O ex-preso!','Pato pra pata? Vem quá!','Jacaré na escola? Réptil de ano!','Rei dos queijos? Requeijão!','Tomate no banco? Tirar extrato!','Pimenta no castelo? Do reino!','Peixe que caiu? Aaaaaatum!','Vaca no espaço? Via Láctea!','Cavalo no orelhão? Passa trote!'],
+    hp:110,speed:.95,damage:16,radius:.52,xp:6,contactCooldown:ticks(1),color:0xf2d3a0,accent:0xa86b3c,
+    barks:['Sobrinho, e as namoradinha?','Essa corrente é ouro de praia','Botão de camisa é pra fraco','É pavê ou pa comê? HÁ HÁ HÁ','No meu tempo pavê era arma','Dieta: só carne e cerveja','Sobrinho, tu é CLT ainda?','Pavê é pa vê. Empurrão é pa tu','Peito aberto, coração também!','Viu meu bom dia no grupo?'],
+    deathLines:['Engasguei no trocadilho...','Caí no isopor. Gelou o tio.','Morri de rir sozinho. Literal.','Me enterra com o espetinho','Ninguém riu? Nem no velório?','A corrente fica pra tia!','Pavê... pa... morrê...'],
+    reactionLines:['Pavê ou porrada? Toma os dois!','Puxa meu dedo, sobrinho. PUXA!','Toc toc. Quem é? EMPURRÃO!','Pa vê se aprende! PÁ!','O que o boleto disse? Venci!','Olha o passarinho... PLAFT!','Ri, porra! A piada era boa!','No peito: ouro e colesterol!'],
   },
-  fiscal:{
-    id:'fiscal',name:'Fiscal da Vizinhança',behavior:'ranged',
-    hp:30,speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0x9cc3ee,accent:0x2f4f7f,
-    barks:['Isso aí tá irregular!','Documento, por favor!','Vou ter que autuar!','Tô de olho, hein!','Cadê o alvará disso?','Anotei sua placa!','Regra é regra, querido!','Bloquinho na mão, viu!'],
-    deathLines:['Meu bloquinho, não!','Isso vai pro relatório...','Meu carimbo... sumiu...','Caneta... sem tinta...','Autuado pelo destino!','Volto com reforço fiscal!'],
-    reactionLines:['Multa: grama alta demais','Multa: andar feliz','Multa: respirar alto','Multa: chinelo sem par','Multa: sorriso sem alvará','Multa: varal no domingo','Multa: cachorro fofo demais','Multa: excesso de amizade','Multa: pisar na linha','Multa: acordar às 7h'],
+  // VGM-031 ranged numbers: ranged; boletos with interest mark the hit player as "devendo" (AGIOTA_SHOT, DEVENDO).
+  agiota:{
+    id:'agiota',name:'Agiota do Bairro',behavior:'ranged',
+    hp:30,speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0xb9d3a0,accent:0x2f3f2f,
+    barks:['Juros de 40% ao dia, campeão','Aceito dinheiro, rim ou carro','Eu sei onde tua tia mora','Boleto ou joelho? Escolhe.','Sorria, você tá sendo cobrado','Fiado? Fiado é o caralho','Juros sobre juros é poesia','Quitou? Nunca quita, amigo.','Teu nome tá sujo, meu anjo','Taxa de cobrança: um dente'],
+    deathLines:['O boleto... venceu... eu...','Prescreveu! PRESCREVEU!','Perdoo a dívida... MENTIRA','Minha pochete! Meu tudo!','Volto com correção monetária','Cobra no inferno, já tô indo','Me paga no enterro, à vista'],
+    reactionLines:['Toma o boleto!','Vence hoje, hein!','Recibo? Te dou um roxo.','Boleto com multa e mora!','Parcelo teus dentes, quer?'],
   },
   chefe:{
     id:'chefe',name:'Síndico Supremo',behavior:'boss',
     hp:4000,speed:1.1,damage:25,radius:.9,xp:100,contactCooldown:ticks(1),color:0xd9a8e3,accent:0x6b3f7a,
-    barks:['Assembleia extraordinária!','Artigo 12 do regimento!','Silêncio após as 22h!','Rateio extra pra todos!','Quem deixou a bike aí?','Isso vai pra ata!','Condomínio subiu de novo!','Piscina fechada, limpeza!','Pauta única: vocês!'],
-    deathLines:['Convoco... nova... reunião...','Renuncio ao mandato!','Registra isso em ata!','O porteiro vai saber!','Volto na próxima eleição!','Quórum... insuficiente...'],
+    barks:['Quem estacionou na minha alma?','Ata lavrada. Vocês morreram.','Multa por respirar no hall!','Grupo do prédio já tá sabendo!','Barulho após 22h? Pena capital','Assembleia sou eu, porra!','Câmera do elevador viu tudo!','Rateio de caixão pra todos!'],
+    deathLines:['Registra em ata: eu morri','Meu mandato! Minhas chaves!','Quem vai cobrar a taxa extra?','Pauta encerrada... pra sempre','Aprovado... por unanimidade...','Volto como fantasma do 302'],
     reactionLines:[],
   },
 });
 
 export const ELITE:EliteDef=Object.freeze({
   name:'Funcionário do Mês',hp:8,speed:.9,damage:1.5,radius:1.5,xp:10,accent:0xffd25e,
-  barks:['Fui promovido, respeita!','Tenho crachá dourado!','Treinei o ano inteiro!','Bati a meta de vocês!','Versão premium, meu bem!','Comi o PF completo!','Hoje eu tô brabo!'],
-  deathLines:['Leva o baú, mas chora!','Meu baú... era da firma!','Larguei o espólio, toma!','O tesouro fica, eu vou!','Abre o baú com carinho!'],
+  barks:['Chefe, olha eu matando eles!','Bati a meta de porrada!','Hora extra? É de graça, amo!','Ganhei um bombom de prêmio!','Vou contar tudo pro RH, hein','Levo notebook pro churrasco!','Puxo saco com as duas mãos','Férias? Nunca tirei. Orgulho!'],
+  deathLines:['Morri no expediente. Conta?','Me substituem até segunda...','Fala pro chefe que fui bem!','Leva o baú, eu levo o burnout','Nem ganhei aumento, porra'],
   reactionLines:[],
 });
 
-/** Hostile "multa" shot of the fiscal. Projectile speed is in world units per second. */
-export const FISCAL_SHOT=Object.freeze({source:'multa',speed:4.5,radius:.18,damage:10,life:ticks(3),cooldown:ticks(2.6),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5});
-/** Tio do Pavê: stops to tell a joke, then charges and shoves. */
-export const TIO_JOKE=Object.freeze({range:2.4,pause:ticks(1.6),charge:ticks(1.2),chargeSpeed:2.6,cooldown:ticks(6),shove:1,bump:.35});
+/**
+ * Hostile "boleto com juros" of the agiota (source 'boleto-juros', NOT 'boleto', which is a player weapon). Projectile
+ * speed is in world units per second; pierce 0 like every hostile shot (D-012). `marks` rides on the projectile (D-002):
+ * projectiles.ts collideHostile marks the player it hurts (DEVENDO).
+ */
+export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5,radius:.18,damage:10,life:ticks(3),cooldown:ticks(2.6),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
+/** Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35). */
+export const TIO_JOKE=Object.freeze({range:2.4,pause:ticks(1.6),charge:ticks(1.2),chargeSpeed:2.6,cooldown:ticks(6),shove:1.3,bump:.45});
+/**
+ * Bêbado's burp: a cone telegraph (apex at him, aimed at the player) when a player stands within `trigger` in front of
+ * him (inside half the aperture around his last walking direction). He stands still until it fires; the owner is his
+ * id, so it fizzles if he dies first. `chance` per eligible tick, then `cooldown`. Never before round `fromRound`:
+ * round 1 teaches the plain chase (BUG-20261009-N1-round1-letal; with the burp a novice standing still fell to 19%).
+ * TODO(PHASE B): the burp should also slow the player ("arroto que deixa lento"); that needs a player slow field in the
+ * contract (e.g. SimPlayer.slowUntil, read by the players system) — Orquestrador.
+ */
+export const BURP=Object.freeze({fromRound:2,trigger:2.5,range:2.5,angle:Math.PI/2,delay:ticks(.8),damage:6,cooldown:ticks(5),chance:.1});
+/** Floater when the burp slows a hero (D-033). Used when the client/sim wires the event; nothing reads it yet. */
+export const BURP_SLOW_LINES:readonly string[]=Object.freeze(['Arrotou na tua cara! Lento!','Bafo de torresmo! Lerdeza!','Hálito de cachaça com ovo','Atordoado pelo arroto do ano','Arroto com eco. Tá zonzo!']);
+/**
+ * Anão's molotov: keeps minRange..maxRange from the nearest player, aims `aim` ticks, then lobs at the player's
+ * current position: a circle telegraph (`radius`, `damage`) landing after `flight`, owned by `env:molotov:<id>` so it
+ * lands even if he dies. Each landing schedules the next fire pulse at the same spot (`pulses` of them, `pulseEvery`
+ * apart, smaller and weaker): the fire on the ground pulses. At most `maxActive` molotov chains per anão and
+ * `maxGlobal` overall, inside the enemies' telegraph budget (MAX_TELEGRAPHS minus the boss reserve, ai.ts).
+ * On death he explodes (`death*`): a circle owned by `env:explosion:<id>` that hurts players; enemies inside it when it
+ * fires take `deathEnemyDamage` through ctx.damageEnemy (no player credit, weapon 'env:explosion').
+ */
+export const MOLOTOV=Object.freeze({
+  minRange:4,maxRange:6,fireRange:7.5,aim:ticks(.5),flight:ticks(1),radius:1.1,damage:12,cooldown:ticks(4.5),retry:ticks(1),
+  pulses:3,pulseEvery:ticks(.8),pulseRadius:.9,pulseDamage:4,maxActive:2,maxGlobal:8,
+  deathRadius:1.6,deathDamage:15,deathEnemyDamage:30,deathDelay:ticks(.8),
+});
+/** Floater when a hero steps in the molotov's fire (D-033). Used when the client/sim wires the event; nothing reads it yet. */
+export const FIRE_GROUND_LINES:readonly string[]=Object.freeze(['Pisou na cachaça em chamas!','Arde mais que cachaça barata!','Churrasquinho de herói!','Pé no fogo! Dança, porra!','Flambado no álcool do anão']);
+/**
+ * Pombos' poop: while a player is within `range`, a bird may (`chance` per tick, `cooldown` per bird) drop a small
+ * circle telegraph under itself, owned by `env:poop:<id>` (it falls even if the bird dies). At most `maxGlobal` at once.
+ * TODO(PHASE B): the slippery puddle ("poça escorregadia") needs a ground effect / player slide field in the contract.
+ */
+export const POOP=Object.freeze({range:2,chance:.04,cooldown:ticks(4),radius:.5,damage:3,delay:ticks(.8),maxGlobal:6});
+/** Floater when a hero slips on the pombos' puddle (D-033). Used when the client/sim wires the event; nothing reads it yet. */
+export const PUDDLE_SLIP_LINES:readonly string[]=Object.freeze(['Merda dá sorte. Só que não!','Patinação artística na bosta','Pombo 1 x 0 Você','Caiu de bunda no presente','Isso não é lama. Não é.']);
+/**
+ * "Devendo" mark of the agiota's boleto: the hit player takes `mult` × damage (before armor, core damagePlayer) while
+ * tick < devendoUntil (JSON-safe extra field on SimPlayer, D-002). A fresh mark says one line (D-013 `say`, key `key`,
+ * source = the player id) through the enemy-ai limiter.
+ */
+export const DEVENDO=Object.freeze({ticks:ticks(5),mult:1.25,key:'devendo'});
+export const DEVENDO_LINES:readonly string[]=Object.freeze(['DEVENDO! Apanha com juros!','Teu nome tá na pochete dele','Nome no caderninho dele!','Parcelado em 48x de porrada','Nome sujo, corpo frágil']);
+/** SimPlayer extras (D-002) of the mark: until when, and 1 while the fresh mark's line is still to be said. */
+export interface DevendoPlayer {devendoUntil?:number;devendoSay?:number}
+export const isDevendo=(player:object,tick:number)=>tick<((player as DevendoPlayer).devendoUntil??-Infinity);
+/** Marks `player` as devendo from `tick`; a player who was not marked gets one line queued for the enemy-ai limiter. */
+export function markDevendo(player:object,tick:number){
+  const p=player as DevendoPlayer;
+  if(!isDevendo(p,tick))p.devendoSay=1;
+  p.devendoUntil=tick+DEVENDO.ticks;
+}
+
+/** Owner prefixes of the hazards that outlive their thrower (telegraphs.ts `env:` rule). */
+export const HAZARD_OWNERS=Object.freeze({molotov:'env:molotov:',explosion:'env:explosion:',poop:'env:poop:'});
+const HAZARD_KIND:Readonly<Record<string,EnemyKind>>=Object.freeze({molotov:'anao-molotov',explosion:'anao-molotov',poop:'pombos'});
+/** Enemy kind behind a hazard owner (`env:molotov:e7` → 'anao-molotov'), for "what got you" once the thrower is gone. */
+export const hazardKind=(owner:string):EnemyKind|undefined=>{const what=owner.startsWith('env:')?owner.split(':')[1]:undefined;return what!==undefined&&Object.hasOwn(HAZARD_KIND,what)?HAZARD_KIND[what]:undefined;};
 
 export const isEnemyKind=(value:string):value is EnemyKind=>Object.hasOwn(ENEMIES,value);
-export const enemyDef=(kind:string):EnemyDef=>isEnemyKind(kind)?ENEMIES[kind]:ENEMIES.gosma;
+export const enemyDef=(kind:string):EnemyDef=>isEnemyKind(kind)?ENEMIES[kind]:ENEMIES.bebado;
 export const enemyName=(enemy:Pick<EnemyState,'kind'|'elite'>)=>enemy.elite?`${enemyDef(enemy.kind).name} ${ELITE.name}`:enemyDef(enemy.kind).name;
 
 /** FNV-1a of a string scaled to [0,1). Stable across server and client, consumes no rng. */

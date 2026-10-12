@@ -1,21 +1,26 @@
 /**
- * enemy-ai system (VGM-031): chase, swarm zig-zag, Tio do Pavê joke + charge, fiscal ranged fines,
- * neighbor separation, terrain collision, contact damage and rare barks.
+ * enemy-ai system (VGM-031, cast of D-033): bêbado drunk chase + burp cone, pombos swarm zig-zag + poop, Tio do Pavê
+ * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
+ * explosion, neighbor separation, terrain collision, contact damage and rare barks.
+ * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
 import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
-import {SIM_HZ,ticks,type EnemyState,type SimPlayer} from '../../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ELITE,FISCAL_SHOT,TIO_JOKE,enemyDef,hashUnit,type EnemyDef} from './catalog.ts';
+import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MOLOTOV,POOP,TIO_JOKE,enemyDef,hashUnit,isDevendo,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+import {addTelegraph,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
+import {MAX_TELEGRAPHS} from '../../rules/index.ts';
+import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
 
 /**
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
  * consider it, and go for whichever is closer: a player or the structure's edge (NEW-20261006-E8-wall-siege-single-path).
- * Everyone else ignores structures. Against a structure every kind walks up and hits it (the fiscal too: a fine does
- * not hurt a wall).
+ * Everyone else ignores structures. Against a structure every kind walks up and hits it (the agiota and the anão too: a boleto does
+ * not hurt a wall, a molotov is not thrown at it).
  */
 export interface StructureTarget extends Point {id:string;radius:number}
 export interface EnemyAiOptions {
@@ -29,12 +34,18 @@ export interface EnemyAiOptions {
   barkChance?:number;
   /** Hostile projectiles are not created at or above this count (D-003; budget.ts MAX_PROJECTILES). */
   projectileCap?:number;
+  /** City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean. */
+  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  /** Enemy hazards (burp, molotov, fire, poop, explosion) are not created at or above this many telegraphs. */
+  telegraphCap?:number;
 }
 /** JSON-safe limiter and rng state, for checkpoints (VGM-047). */
 export interface EnemyAiState {rng:number|null;lastBarkTick:number|null;lastLine:Record<string,string>}
 
 /** Reactions (joke, fine, buzz, hug) need BARK_GAP of silence; ambient barks need AMBIENT_GAP_FACTOR times that, so reactions win. */
 export const BARK_GAP=ticks(2.2),AMBIENT_GAP_FACTOR=2,BARK_CHANCE=.06,PROJECTILE_CAP=400;
+/** Telegraph slots kept free for the boss (its multi-target fine plus a sweep); enemy hazards use the rest. */
+export const BOSS_TELEGRAPH_RESERVE=8,ENEMY_TELEGRAPH_CAP=MAX_TELEGRAPHS-BOSS_TELEGRAPH_RESERVE;
 export const SLOW_FACTOR=.5;
 /** `knock` is a displacement per tick that decays by this factor; above KNOCK_STUN the enemy does not walk. */
 export const KNOCK_DECAY=.6,KNOCK_STUN=.05;
@@ -47,7 +58,18 @@ const TAU=Math.PI*2;
 /** Enemy memory flag of the besiegers (stonewards/wall.ts SIEGE_FLAG; not imported, to keep this module off Stonewards). */
 const SIEGE='siege';
 /** memory.state values. */
-export const STATE={walk:0,joke:1,charge:2,aim:3} as const;
+export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4} as const;
+
+/**
+ * Telegraph extras (D-002, JSON-safe; the wire only sends the shape fields): `pulses` left after this one lands
+ * (molotov fire), `enemyDamage` dealt to enemies inside it when it fires (anão explosion).
+ */
+export interface HazardTelegraph extends Telegraph {pulses?:number;enemyDamage?:number}
+type HazardSpec=TelegraphSpec&{pulses?:number;enemyDamage?:number};
+/** Pending telegraphs whose owner starts with `prefix` (or equals it, when `exact`). */
+const countOwned=(ctx:SimContext,prefix:string,exact=false)=>{
+  let n=0;for(const t of ctx.telegraphs.values())if(exact?t.owner===prefix:t.owner.startsWith(prefix))n++;return n;
+};
 
 const live=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
@@ -95,6 +117,21 @@ function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:numbe
   return true;
 }
 
+const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower';
+/** Zig-zag direction (not normalized) toward (ux,uy), from the kind's zigzag (stagger, swarm). */
+function zigzag(ctx:SimContext,e:EnemyState,def:EnemyDef,ux:number,uy:number):[number,number]{
+  const z=def.zigzag;
+  if(!z)return [ux,uy];
+  const wave=Math.sin(ctx.tick*z.freq+(e.memory?.seed??0)*TAU)*z.amp;
+  return [ux-uy*wave,uy+ux*wave];
+}
+/** True when (ux,uy) is within `half` radians of the facing kept in memory (fx, fy); no facing yet means not in front. */
+function inFront(memory:Record<string,number>,ux:number,uy:number,half:number){
+  const fx=memory.fx,fy=memory.fy;
+  if(!Number.isFinite(fx)||!Number.isFinite(fy))return false;
+  return fx*ux+fy*uy>=Math.cos(half)-1e-9;
+}
+
 export class EnemyAi implements SimSystem {
   readonly id='enemy-ai';
   /** Tick of the last bark emitted (global limiter). */
@@ -105,6 +142,7 @@ export class EnemyAi implements SimSystem {
   private readonly targets:SimPlayer[]=[];
   private readonly neighbors:EnemyState[]=[];
   private readonly active:EnemyState[]=[];
+  private readonly steerOut={x:0,y:0};
   constructor(options:EnemyAiOptions={}){this.options=options;this.rng=options.rng;}
 
   step(ctx:SimContext){
@@ -113,6 +151,9 @@ export class EnemyAi implements SimSystem {
     targets.length=0;active.length=0;
     for(const p of ctx.players.values())if(live(p))targets.push(p);
     const structures=this.options.structures?.(ctx)??[];
+    // Hazards landing this tick (enemy-ai runs before the telegraph system, which resolves and removes them).
+    this.landHazards(ctx);
+    this.announceDevendo(ctx,rng);
     // D-004: positions are snapshotted on rebuild; the core rebuilds again after enemy-ai for later systems.
     ctx.enemyIndex.rebuild(ctx.enemies.values());
     for(const e of ctx.enemies.values()){
@@ -143,14 +184,59 @@ export class EnemyAi implements SimSystem {
       if(!player&&memory.state!==STATE.walk)memory.state=STATE.walk;
       let dirX=0,dirY=0,pace=1;
       if(target&&!stunned){
-        const tx=target.x-e.x,ty=target.y-e.y,d=Math.max(1e-6,Math.hypot(tx,ty)),ux=tx/d,uy=ty/d;
+        const tx=target.x-e.x,ty=target.y-e.y,d=Math.max(1e-6,Math.hypot(tx,ty));
+        // (ax,ay): straight line to the target, for what is aimed (boleto, burp cone, Tio's shove); (ux,uy): walking
+        // direction, which the city flow field may bend around corners (it can point away from the target there).
+        const ax=tx/d,ay=ty/d;
+        let ux=ax,uy=ay;
+        if(this.options.steer?.(ctx,e,target,this.steerOut)){ux=this.steerOut.x;uy=this.steerOut.y;}
         const touching=best<=e.radius+PLAYER_RADIUS+.05;
         const def=enemyDef(e.kind);
         switch(structure?'chase':def.behavior){
+          case 'stagger':{
+            // Burp wind-up: he stands still until the cone fires.
+            if(memory.state===STATE.burp){
+              if(ctx.tick>=memory.until)memory.state=STATE.walk;
+              else break;
+            }
+            if(player&&ctx.round.index>=BURP.fromRound&&best<=BURP.trigger&&ctx.tick>=memory.actReady&&inFront(memory,ax,ay,BURP.angle/2)
+              &&this.hazardRoom(ctx)&&rng.chance(BURP.chance)){
+              addTelegraph(ctx,{shape:'cone',x:e.x,y:e.y,dx:ax,dy:ay,radius:BURP.range,width:BURP.angle,damage:BURP.damage,owner:e.id},BURP.delay);
+              memory.state=STATE.burp;memory.until=ctx.tick+BURP.delay;memory.actReady=ctx.tick+BURP.cooldown;
+              this.react(ctx,rng,e,def,1);
+              break;
+            }
+            [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
+            // The wobble is on top of the walk: he still closes at his own speed (like the VGM-031 chaser, so rounds end
+            // on time), the sideways sway adds up to √(1+amp²) to the step (1.04 × at amp 0.3, far under a hero; 0.5 made round 1-2 balance tests flaky).
+            const length=Math.hypot(dirX,dirY);pace=length;
+            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact).
+            memory.fx=dirX/length;memory.fy=dirY/length;
+            break;
+          }
           case 'swarm':{
-            const wave=Math.sin(ctx.tick*.45+memory.seed*TAU)*.9;
-            dirX=ux-uy*wave;dirY=uy+ux*wave;
-            if(best<3)this.react(ctx,rng,e,def,.02);
+            [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
+            if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
+              &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage,owner:HAZARD_OWNERS.poop+e.id},POOP.delay);
+              memory.actReady=ctx.tick+POOP.cooldown;
+              this.react(ctx,rng,e,def,.3);
+            }
+            break;
+          }
+          case 'thrower':{
+            if(memory.state===STATE.aim&&best>MOLOTOV.fireRange){memory.state=STATE.walk;dirX=ux;dirY=uy;}
+            else if(memory.state===STATE.aim){
+              if(ctx.tick>=memory.until){
+                memory.state=STATE.walk;
+                if(player&&this.throwMolotov(ctx,e,player)){memory.actReady=ctx.tick+MOLOTOV.cooldown;this.react(ctx,rng,e,def,.6);}
+                else memory.actReady=ctx.tick+MOLOTOV.retry;
+              }
+            }else if(player&&best<=MOLOTOV.fireRange&&ctx.tick>=memory.actReady){
+              memory.state=STATE.aim;memory.until=ctx.tick+MOLOTOV.aim;
+            }else if(best>MOLOTOV.maxRange){dirX=ux;dirY=uy;}
+            else if(best<MOLOTOV.minRange){dirX=-ux;dirY=-uy;}
+            else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
             break;
           }
           case 'joker':{
@@ -166,36 +252,37 @@ export class EnemyAi implements SimSystem {
             break;
           }
           case 'ranged':{
-            if(memory.state===STATE.aim&&best>FISCAL_SHOT.fireRange){memory.state=STATE.walk;dirX=ux;dirY=uy;}
+            if(memory.state===STATE.aim&&best>AGIOTA_SHOT.fireRange){memory.state=STATE.walk;dirX=ux;dirY=uy;}
             else if(memory.state===STATE.aim){
               if(ctx.tick>=memory.until){
-                memory.state=STATE.walk;memory.actReady=ctx.tick+FISCAL_SHOT.cooldown;
+                memory.state=STATE.walk;memory.actReady=ctx.tick+AGIOTA_SHOT.cooldown;
                 if(ctx.projectiles.size>=(this.options.projectileCap??PROJECTILE_CAP))break;
-                const sx=e.x+ux*e.radius,sy=e.y+uy*e.radius;
+                const sx=e.x+ax*e.radius,sy=e.y+ay*e.radius;
                 const id=ctx.nextId('p');
-                ctx.projectiles.set(id,{id,owner:e.id,source:FISCAL_SHOT.source,x:sx,y:sy,vx:ux*FISCAL_SHOT.speed,vy:uy*FISCAL_SHOT.speed,radius:FISCAL_SHOT.radius,damage:FISCAL_SHOT.damage,pierce:0,untilTick:ctx.tick+FISCAL_SHOT.life,hostile:true,hit:[]});
+                // `marks` (D-002): projectiles.ts marks the player this boleto hurts as devendo.
+                ctx.projectiles.set(id,{id,owner:e.id,source:AGIOTA_SHOT.source,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage,pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],marks:AGIOTA_SHOT.marks} as ProjectileState);
               }
-            }else if(player&&best<=FISCAL_SHOT.fireRange&&ctx.tick>=memory.actReady){
-              memory.state=STATE.aim;memory.until=ctx.tick+FISCAL_SHOT.aim;
+            }else if(player&&best<=AGIOTA_SHOT.fireRange&&ctx.tick>=memory.actReady){
+              memory.state=STATE.aim;memory.until=ctx.tick+AGIOTA_SHOT.aim;
               this.react(ctx,rng,e,def,.7);
-            }else if(best>FISCAL_SHOT.maxRange){dirX=ux;dirY=uy;}
-            else if(best<FISCAL_SHOT.minRange){dirX=-ux;dirY=-uy;}
+            }else if(best>AGIOTA_SHOT.maxRange){dirX=ux;dirY=uy;}
+            else if(best<AGIOTA_SHOT.minRange){dirX=-ux;dirY=-uy;}
             else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
             break;
           }
           default:{dirX=ux;dirY=uy;}
         }
-        // Melee kinds stop at contact; the fiscal keeps backing off (from players). Tio does not hit mid-joke.
-        if(touching&&(def.behavior!=='ranged'||structure)){dirX=0;dirY=0;}
+        // Melee kinds stop at contact; the agiota and the anão keep backing off (from players). Tio does not hit mid-joke.
+        if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
         if(touching&&memory.state!==STATE.joke&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           if(player){
             ctx.damagePlayer(player.id,e.damage,e.id);
             if(def.behavior==='joker'){
               const charging=memory.state===STATE.charge;
-              if(live(player))moveSafely(player,ux*(charging?TIO_JOKE.shove:TIO_JOKE.bump),uy*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ctx.terrain);
+              if(live(player))moveSafely(player,ax*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ay*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ctx.terrain);
               if(charging)this.endCharge(ctx,memory);
-            }else if(def.behavior==='chase')this.react(ctx,rng,e,def,.5);
+            }else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
           }else if(structure)this.options.hitStructure?.(ctx,structure.id,e.damage,e);
         }
       }
@@ -223,6 +310,17 @@ export class EnemyAi implements SimSystem {
     }
   }
 
+  /**
+   * Kill hook (the run wires it into world.onKill, assemble.ts): the anão explodes his own belt. A circle telegraph owned
+   * by `env:explosion:<id>` (it outlives him) hurts players when it fires, and landHazards deals MOLOTOV.deathEnemyDamage
+   * to the enemies inside it then. Skipped when the enemies' telegraph budget is full.
+   */
+  onKill(ctx:SimContext,enemy:EnemyState){
+    if(enemy.boss||enemyDef(enemy.kind).behavior!=='thrower'||!this.hazardRoom(ctx))return;
+    addTelegraph(ctx,{shape:'circle',x:enemy.x,y:enemy.y,radius:MOLOTOV.deathRadius,damage:MOLOTOV.deathDamage,
+      owner:HAZARD_OWNERS.explosion+enemy.id,enemyDamage:MOLOTOV.deathEnemyDamage} as HazardSpec,MOLOTOV.deathDelay);
+  }
+
   /** True when the global limiter allows a bark now (factor > 1 for low-priority ambient barks). */
   canBark(ctx:SimContext,factor=1){return ctx.tick-this.lastBarkTick>=(this.options.barkGap??BARK_GAP)*factor;}
   /**
@@ -241,18 +339,76 @@ export class EnemyAi implements SimSystem {
   /** Emits a bark if the global limiter allows; avoids repeating the previous line of the same list. */
   private bark(ctx:SimContext,rng:Rng,e:EnemyState,lines:readonly string[],key:string){
     if(!lines.length||!this.canBark(ctx))return false;
-    let line=rng.pick(lines);
-    if(lines.length>1&&line===this.lastLine[key])line=lines[(lines.indexOf(line)+1+rng.int(0,lines.length-2))%lines.length];
-    this.lastLine[key]=line;
+    const line=this.pickLine(rng,lines,key);
     this.lastBarkTick=ctx.tick;
     ctx.emit({type:'bark',enemy:e.id,line});
     return true;
+  }
+  /** Picks a line of a non-empty list, never the previous line picked for the same `key`. */
+  private pickLine(rng:Rng,lines:readonly string[],key:string){
+    let line=rng.pick(lines);
+    if(lines.length>1&&line===this.lastLine[key])line=lines[(lines.indexOf(line)+1+rng.int(0,lines.length-2))%lines.length];
+    this.lastLine[key]=line;
+    return line;
   }
   /** Behavior reaction line; has priority over ambient barks. */
   private react(ctx:SimContext,rng:Rng,e:EnemyState,def:EnemyDef,chance:number){
     return this.canBark(ctx)&&rng.chance(chance)&&this.bark(ctx,rng,e,def.reactionLines,`${def.id}:react`);
   }
   private endCharge(ctx:SimContext,memory:Record<string,number>){memory.state=STATE.walk;memory.actReady=ctx.tick+TIO_JOKE.cooldown;}
+
+  /** Room for one more enemy hazard telegraph (budget.ts MAX_TELEGRAPHS minus the boss reserve). */
+  private hazardRoom(ctx:SimContext){return ctx.telegraphs.size<(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP);}
+
+  /**
+   * Lobs a molotov at `player`'s current position: the landing telegraph carries the fire pulses still to come.
+   * Refused (false) when this anão already has MOLOTOV.maxActive chains burning, MOLOTOV.maxGlobal chains burn in all,
+   * or the telegraph budget is full.
+   */
+  private throwMolotov(ctx:SimContext,e:EnemyState,player:SimPlayer){
+    const owner=HAZARD_OWNERS.molotov+e.id;
+    if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
+    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage,owner,pulses:MOLOTOV.pulses} as HazardSpec,MOLOTOV.flight);
+    return true;
+  }
+
+  /**
+   * Hazard telegraphs due this tick (the telegraph system resolves their player damage right after enemy-ai):
+   * a molotov landing or pulse schedules the next, smaller pulse at the same spot (the fire goes out early when the
+   * budget is full); an explosion hurts the enemies inside it once, through ctx.damageEnemy (no player credit), which
+   * ignores the dead, so a kill never counts twice; a neighbor anão it kills explodes in turn on a later tick.
+   */
+  private landHazards(ctx:SimContext){
+    const due:HazardTelegraph[]=[];
+    for(const t of ctx.telegraphs.values())if(t.fireTick<=ctx.tick&&t.owner.startsWith('env:'))due.push(t);
+    for(const t of due){
+      if((t.pulses??0)>0&&t.owner.startsWith(HAZARD_OWNERS.molotov)&&ctx.telegraphs.size<=(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP)){
+        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage,owner:t.owner,pulses:t.pulses!-1} as HazardSpec,MOLOTOV.pulseEvery);
+      }
+      if((t.enemyDamage??0)>0){
+        const victims:string[]=[];
+        for(const e of ctx.enemies.values())if(e.hp>0&&!e.boss&&telegraphHits(t,e,e.radius))victims.push(e.id);
+        for(const id of victims)ctx.damageEnemy(id,t.enemyDamage!,undefined,'env:explosion');
+      }
+    }
+  }
+
+  /**
+   * D-013 `say` for a fresh devendo mark (projectiles.ts sets devendoSay): one line per mark, through the same global
+   * limiter as the barks with reaction priority; it waits while the limiter is busy and is dropped if the mark expires.
+   */
+  private announceDevendo(ctx:SimContext,rng:Rng){
+    for(const p of ctx.players.values()){
+      const marked=p as SimPlayer&DevendoPlayer;
+      if(marked.devendoSay!==1)continue;
+      if(!isDevendo(marked,ctx.tick)){delete marked.devendoSay;continue;}
+      if(!this.canBark(ctx))return;
+      const line=this.pickLine(rng,DEVENDO_LINES,DEVENDO.key);
+      this.lastBarkTick=ctx.tick;
+      ctx.emit({type:'say',source:p.id,key:DEVENDO.key,line});
+      delete marked.devendoSay;
+    }
+  }
 }
 
 export const createEnemyAi=(options:EnemyAiOptions={})=>new EnemyAi(options);

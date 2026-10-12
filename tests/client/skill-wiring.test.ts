@@ -4,7 +4,10 @@ import {Room,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {reconcile} from '../../src/maps/prediction.ts';
 import {ROOM_PROTOCOL,type Input} from '../../src/protocol/room.ts';
-import {createEnemy} from '../../src/sim/enemies/catalog.ts';
+import {createEnemy,ENEMY_KINDS} from '../../src/sim/enemies/catalog.ts';
+/** The sim's basic chaser, whatever the cast calls it (D-033 renames it): these tests need a critter, not a kind. */
+const CRITTER=ENEMY_KINDS[0];
+
 import {kitFor} from '../../src/rules/kits.ts';
 import {SIM_HZ} from '../../src/contract/types.ts';
 import {SkillTaps,skillState,skillLabel,ANSWER_MS} from '../../src/client/hud/skill.ts';
@@ -47,7 +50,7 @@ test('a skill tap casts inside the tick; the line, dice, cooldown and the tap an
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
-  const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
+  const critter=createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
   tap(room,a,1);
   const events=settle(room,feed,a,[a,b]);
   assert.deepEqual(answers(a).map(m=>[m.seq,m.ok]),[[1,true]],'the room answers the tap once');
@@ -98,7 +101,7 @@ test('one tap is one cast: walking afterwards never recasts, even when the coold
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
-  const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
+  const critter=createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
   const taps=new SkillTaps();let id=0;
   assert.equal(taps.tap(false,()=>{tap(room,a,++id);return id;},0),'sent');
   let seq=0,casts=0;
@@ -116,7 +119,7 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana','viciado-em-bet');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const me=room.sim.players.get(idOf(a))!;
-  createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y}).hp=1e6;
+  createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y}).hp=1e6;
   tap(room,a,1);settle(room,feed,a,[a,b]);
   assert.ok(me.skillReadyTick!>room.sim.tick);
   for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
@@ -126,7 +129,7 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   settle(room,feed,a,[a,b]);
   assert.equal(me.skillReadyTick,0,'wire cooldown cleared');assert.equal((me as any).skillReady,undefined,'skill state cleared (resetSkill)');
   startRun(room,[a,b]);pump(room,feed,a);
-  const critter=createEnemy(room.sim.world,'gosma',{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
+  const critter=createEnemy(room.sim.world,CRITTER,{x:me.x+1.5,y:me.y});critter.hp=critter.maxHp=1e6;
   tap(room,a,2);
   assert.equal(settle(room,feed,a,[a,b]).filter(e=>e.type==='skill').length,1,'casts at once in the new run');
 });

@@ -48,7 +48,7 @@ test('the last call starts once every group is out and gives the round at least 
   const [first]=ends;
   assert.ok(first.calledAt!==undefined,'the last call started');
   assert.ok(first.endsAtCall!>=first.calledAt!+ticks(LAST_CALL_SECONDS),'deadline pushed');
-  assert.ok(LAST_CALL_NEAR>=6,'the last stretch in is at the bicho\'s own pace (≥ 6 u: over 4 s for a gosma)');
+  assert.ok(LAST_CALL_NEAR>=6,'the last stretch in is at the bicho\'s own pace (≥ 6 u: over 4 s for a bêbado)');
 });
 
 test('the last call is deterministic: the same seed ends its rounds on the same ticks',()=>{
@@ -60,7 +60,7 @@ test('code review: on someone\'s screen a called bicho never outruns a hero (pac
   for(const [kind,def] of Object.entries(ENEMIES)){
     if(kind==='chefe')continue;
     for(const pace of [def.speed,def.speed*1.2]){
-      // (A pernilongo is already faster than that on its own: it gets no boost at all.)
+      // (A pombo is already faster than that on its own: it gets no boost at all.)
       assert.ok(pace+lastCallBoost(pace,false)<=Math.max(pace,LAST_CALL_PACE*SPEED)+1e-9,`${kind} at ${pace} u/s`);
       assert.ok(lastCallBoost(pace,false)>=0);
     }

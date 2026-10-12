@@ -21,12 +21,12 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:
 
 const VICTORY_LINES=[
   'O síndico foi despejado',
-  'A gosma pediu arrego',
+  'O bêbado pediu a saideira',
   'Condomínio liberado, churrasco confirmado',
   'Nem o boleto segurou vocês',
 ];
 const DEFEAT_LINES=[
-  'a gosma venceu',
+  'o agiota cobrou com juros',
   'o síndico manda lembranças',
   'bateu a segunda-feira',
   'faltou só… tudo',

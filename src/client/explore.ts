@@ -68,7 +68,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     shell.setAttribute('aria-label','Mapa da turma');$('.explore-title h2').textContent='Mapa da turma';
     $('.explore-stage').setAttribute('aria-label','Mapa sem fim da turma');
     $('.explore-title p').innerHTML='Jogando como <span id="explorer-name"></span>';
-    $('.explore-quest').innerHTML='<small>A turma contra as gosmas</small><strong id="coop-objective">Segurem a muralha</strong><span id="coop-health"></span><div class="coop-party"></div>';
+    $('.explore-quest').innerHTML='<small>A turma contra os bêbados</small><strong id="coop-objective">Segurem a muralha</strong><span id="coop-health"></span><div class="coop-party"></div>';
     // The island's little map (and its dot) has no meaning on the endless map: the HUD's minimap does that job.
     shell.querySelector('.explore-map')?.remove();
     $('.explore-help').innerHTML='<strong id="coop-code"></strong><p id="coop-network">Conectado</p><button id="coop-copy">Copiar convite</button>';

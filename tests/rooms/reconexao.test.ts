@@ -59,7 +59,7 @@ test('drops of 5 s and 20 s in the middle of combat: same character, offers kept
     room.sim.step=(now?:number)=>{const events=step(now);for(const e of events)if(e.type==='damage'&&e.source===id&&!room.sim.players.has(e.target))dealt+=e.amount;return events;};
     room.sim.run.progression.grantLevelOffers(room.sim.world,2);
     // Ana's weapon hits a critter next to her before and while she is away.
-    for(let i=0;i<4;i++)createEnemy(room.sim.world,'gosma',{x:p.x+1.2,y:p.y+(i-1.5)*.4});
+    for(let i=0;i<4;i++)createEnemy(room.sim.world,'bebado',{x:p.x+1.2,y:p.y+(i-1.5)*.4});
     for(let i=0;i<10;i++)room.advance(t+=50);
     const offers=room.sim.offers(id).map(o=>({id:o.id,deadline:o.deadlineTick})),tickAtDrop=room.sim.tick;
     assert.equal(offers.length,1);

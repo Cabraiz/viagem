@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import {spriteCatalog} from './sprite-catalog.ts';
-import {rotateVector} from './projection.ts';
-import {SpriteMotion,SPRITE_CLIPS,type Motion} from './sprite-motion.ts';
+import {directionalSheets,sheetKey} from './sprite-sheets.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 
-/** Box of the drawn figure inside a 192 px frame (frame px): the union over the sheet's 18 frames. */
+/** Box of the drawn figure inside a 192 px frame (frame px): the union over the sheet's frames (all 4 facings). */
 export interface FigureBox {left:number;top:number;right:number;bottom:number}
 
 export class CharacterSprites {
@@ -15,7 +15,7 @@ export class CharacterSprites {
    */
   figure(id:string):FigureBox|undefined{return this.figures.get(id)??undefined;}
   private measure(id:string){
-    const key=`sprite:${id}`;
+    const key=sheetKey(id);
     if(this.figures.has(id)||!this.scene.textures.exists(key))return;
     let box:FigureBox|null=null;
     try{
@@ -33,36 +33,47 @@ export class CharacterSprites {
     }catch{box=null;}
     this.figures.set(id,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;x:number;y:number}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;facing:FacingTracker;x:number;y:number}>();
   constructor(private scene:Phaser.Scene){}
   queue(id:string){
     if(!spriteCatalog[id]||this.requested.has(id))return;
     this.requested.add(id);
-    if(this.scene.textures.exists(`sprite:${id}`)){this.measure(id);return;}
+    const key=sheetKey(id);
+    if(this.scene.textures.exists(key)){this.measure(id);return;}
     // The figure box is read when the sheet arrives (loading time), never in the middle of a frame (review onda 4).
-    this.scene.load.once(`filecomplete-spritesheet-sprite:${id}`,()=>this.measure(id));
+    this.scene.load.once(`filecomplete-spritesheet-${key}`,()=>this.measure(id));
     this.scene.load.once('complete',()=>this.measure(id));
-    this.scene.load.spritesheet(`sprite:${id}`,`/art/sprites/${id}.webp`,{frameWidth:192,frameHeight:192});
+    this.scene.load.spritesheet(key,directionalSheets.get(id)?.url??`/art/sprites/${id}.webp`,{frameWidth:192,frameHeight:192});
   }
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0){
-    const key=`sprite:${id}`;
+    const key=sheetKey(id),directional=directionalSheets.get(id);
     if(!this.scene.textures.exists(key)){
       this.queue(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();return;
     }
-    if(sprite.texture.key!==key)sprite.setTexture(key,0).setOrigin(.5,.88).setScale(96/spriteCatalog[id].height);
+    if(sprite.texture.key!==key){
+      sprite.setTexture(key,0).setOrigin(.5,.88).setScale(96/(directional?.height??spriteCatalog[id].height));
+      // A 4-direction atlas draws its left side itself: no mirror (single sheets keep the flip they had).
+      if(directional)sprite.setFlipX(false);
+    }
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),x,y};this.states.set(sprite,state);}
+    if(!state){state={motion:new SpriteMotion(),facing:new FacingTracker(),x,y};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=Math.hypot(dx,dy)>.001;
-    const direction=rotateVector({x:dx,y:dy},view);
-    if(Math.abs(direction.x-direction.y)>.001)sprite.setFlipX(direction.x-direction.y<0);
+    // Remote allies come here with their interpolated positions, so their facing follows the interpolated velocity.
+    const facing:Facing|undefined=directional?state.facing.update(dx,dy,view):undefined;
+    if(!directional)sprite.setFlipX(legacyFlip(sprite.flipX,dx,dy,view));
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     state.x=x;state.y=y;
-    for(const name of Object.keys(SPRITE_CLIPS) as Motion[]){
-      const clip=SPRITE_CLIPS[name];
-      const animation=`${key}:${name}`;
-      if(!this.scene.anims.exists(animation))this.scene.anims.create({key:animation,frames:this.scene.anims.generateFrameNumbers(key,{frames:[...clip.frames]}),frameRate:clip.frameRate,repeat:clip.repeat});
+    for(const name of Object.keys(SPRITE_CLIPS) as Motion[])for(const block of directional?FACINGS:[undefined]){
+      const clip=SPRITE_CLIPS[name],offset=block?FACINGS.indexOf(block)*FACING_FRAMES:0;
+      const animation=block?`${key}:${name}:${block}`:`${key}:${name}`;
+      if(!this.scene.anims.exists(animation))this.scene.anims.create({key:animation,frames:this.scene.anims.generateFrameNumbers(key,{frames:clip.frames.map(f=>f+offset)}),frameRate:clip.frameRate,repeat:clip.repeat});
     }
-    sprite.play(`${key}:${motion}`,true);
+    const animation=facing?`${key}:${motion}:${facing}`:`${key}:${motion}`;
+    // A turn in the middle of a clip keeps its progress: the walk cycle or the swing goes on in the new drawing.
+    const current=sprite.anims.currentAnim,turning=!!facing&&!!current&&current.key!==animation&&current.key.startsWith(`${key}:${motion}:`);
+    const progress=turning?sprite.anims.getProgress():0;
+    sprite.play(animation,true);
+    if(turning)sprite.anims.setProgress(progress);
     if(!alive)sprite.anims.pause();else sprite.anims.resume();
   }
 }

@@ -71,3 +71,149 @@ test('rematch clears old attack ticks and accepts the first swing of the new rou
   assert.equal(motion.update(10100,false,0),'idle');
   assert.equal(motion.update(10200,false,1),'attack');
 });
+
+// NEW-20261009-ORQ-sprites-4-direcoes: 4 diagonals (front/back × left/right) picked from the motion on screen.
+import {FacingTracker,FACINGS,FACING_FRAMES,FACING_HYSTERESIS,FACING_STEP,legacyFlip,screenMotion,turnFacing,type Facing} from '../src/game/sprite-motion.ts';
+import {directionalSheets,sheetKey,LAB_SHEETS} from '../src/game/sprite-sheets.ts';
+import {screenDirection,rotateVector,projectView} from '../src/game/projection.ts';
+import {validateDirectionalAtlas,validateSingleSheet,DIR4,FACING_BLOCKS,PIVOT_Y,CELL} from '../scripts/sprite-atlas.mjs';
+import {existsSync,readdirSync} from 'node:fs';
+
+const expected=(sx:number,sy:number):Facing=>`${sy>0?'front':'back'}-${sx>0?'right':'left'}` as Facing;
+/** Walks a tracker for `frames` frames of 1/60 s at hero speed along a screen-relative joystick (the real input path). */
+function walk(tracker:FacingTracker,jx:number,jy:number,view:number,frames=10){
+  let facing:Facing='front-right';
+  for(let i=0;i<frames;i++){const d=screenDirection(jx,jy,view),n=Math.hypot(d.x,d.y)||1;facing=tracker.update(d.x/n*3.1/60,d.y/n*3.1/60,view);}
+  return facing;
+}
+
+test('4 directions: each screen diagonal of the joystick shows its drawing in each of the 4 camera views',()=>{
+  for(let view=0;view<4;view++)for(const [jx,jy] of [[1,1],[-1,1],[1,-1],[-1,-1],[.9,.4],[-.3,.95],[.95,-.35],[-.5,-.8]]){
+    const tracker=new FacingTracker();
+    assert.equal(walk(tracker,jx,jy,view),expected(jx,jy),`view ${view} joystick ${jx},${jy}`);
+    // The drawing follows the projected motion, not the world axes: the same check through projectView.
+    const d=screenDirection(jx,jy,view),a=projectView({x:0,y:0},view),b=projectView({x:d.x,y:d.y},view);
+    assert.equal(expected(b.x-a.x,b.y-a.y),expected(jx,jy));
+  }
+});
+
+test('4 directions: a figure standing still turns with the camera like the ground under it',()=>{
+  for(let view=0;view<4;view++)for(const [wx,wy] of [[1,0],[0,1],[-1,0],[0,-1],[1,.3],[-.2,1]]){
+    const tracker=new FacingTracker();
+    for(let i=0;i<5;i++)tracker.update(wx*.05,wy*.05,view);
+    for(let next=0;next<4;next++){
+      const s=screenMotion(wx,wy,next);
+      assert.equal(tracker.update(0,0,next),expected(s.x,s.y),`walked in view ${view}, seen in view ${next}`);
+    }
+  }
+  // One quarter turn of the camera moves every diagonal one step along the same cycle.
+  for(const facing of FACINGS){assert.equal(turnFacing(turnFacing(facing,1),-1),facing);assert.equal(turnFacing(facing,4),facing);}
+  const s=screenMotion(1,0,1);assert.equal(turnFacing('front-right',1),expected(s.x,s.y));
+});
+
+test('4 directions: hysteresis keeps the drawing while the thumb runs along a border',()=>{
+  for(let view=0;view<4;view++){
+    // Right along the screen's horizontal, wobbling ±10° (inside the 15° band): stays front (it came from front).
+    const tracker=new FacingTracker();
+    assert.equal(walk(tracker,1,1,view),'front-right');
+    const changes=new Set<Facing>();
+    for(let i=0;i<120;i++){const a=(i%2?10:-10)*Math.PI/180;changes.add(walk(tracker,Math.cos(a),Math.sin(a),view,1));}
+    assert.deepEqual([...changes],['front-right'],`horizontal wobble, view ${view}`);
+    // 20° up clears the band: now the back.
+    const up=-20*Math.PI/180;assert.equal(walk(tracker,Math.cos(up),Math.sin(up),view,2),'back-right');
+    // Straight up the screen with ±10° wobble: keeps its side (right); 25° to the left clears it.
+    const side=new Set<Facing>();
+    for(let i=0;i<120;i++){const a=(-90+(i%2?10:-10))*Math.PI/180;side.add(walk(tracker,Math.cos(a),Math.sin(a),view,1));}
+    assert.deepEqual([...side],['back-right'],`vertical wobble, view ${view}`);
+    const left=(-90-25)*Math.PI/180;assert.equal(walk(tracker,Math.cos(left),Math.sin(left),view,2),'back-left');
+  }
+  assert.ok(FACING_HYSTERESIS>Math.sin(10*Math.PI/180)&&FACING_HYSTERESIS<Math.sin(20*Math.PI/180));
+});
+
+test('4 directions: tiny corrections and teleports never turn the figure',()=>{
+  const tracker=new FacingTracker();
+  assert.equal(walk(tracker,1,1,0),'front-right');
+  // A server correction backwards smaller than FACING_STEP, then standing still: nothing changes.
+  const back=screenDirection(-1,-1,0),n=Math.hypot(back.x,back.y);
+  assert.equal(tracker.update(back.x/n*FACING_STEP*.6,back.y/n*FACING_STEP*.6,0),'front-right');
+  assert.equal(tracker.update(0,0,0),'front-right');
+  assert.equal(tracker.update(back.x/n*FACING_STEP*.6,back.y/n*FACING_STEP*.6,0),'front-right','the stop clears the gathered jitter');
+  // A respawn snap across the map is not a heading.
+  assert.equal(tracker.update(-40,-40,0),'front-right');
+});
+
+test('4 directions: a remote ally turns by its interpolated velocity, without blinking',()=>{
+  // 20 Hz snapshots of an ally walking a screen diagonal with ±0.03 tile noise, drawn at 60 fps by linear interpolation.
+  for(let view=0;view<4;view++)for(const [jx,jy] of [[1,1],[-1,1],[1,-1],[-1,-1]]){
+    const d=screenDirection(jx,jy,view),n=Math.hypot(d.x,d.y);
+    let seed=7;const noise=()=>{seed=(seed*16807)%2147483647;return (seed/2147483647-.5)*.06;};
+    const snaps=Array.from({length:40},(_,k)=>({x:d.x/n*3.1*k/20+noise(),y:d.y/n*3.1*k/20+noise()}));
+    const tracker=new FacingTracker(),seen:Facing[]=[];let last={...snaps[0]};
+    for(let frame=0;frame<39*3;frame++){
+      const k=Math.floor(frame/3),t=frame%3/3,p={x:snaps[k].x+(snaps[k+1].x-snaps[k].x)*t,y:snaps[k].y+(snaps[k+1].y-snaps[k].y)*t};
+      seen.push(tracker.update(p.x-last.x,p.y-last.y,view));last=p;
+    }
+    const tail=seen.slice(3);
+    assert.ok(tail.every(f=>f===expected(jx,jy)),`view ${view} ${jx},${jy}: ${[...new Set(tail)]}`);
+  }
+});
+
+test('4 directions: the 36 classes without a 4-direction batch keep exactly the old mirror rule',()=>{
+  // No class ships a 4-direction batch yet: every class (the 35 others and the lab one outside the lab) uses its
+  // approved single sheet, under the same texture key and clips as before.
+  assert.equal(directionalSheets.size,Object.values(spriteCatalog).filter(c=>c.dir4).length);
+  for(const hero of classes){
+    if(spriteCatalog[hero.id].dir4)continue;
+    assert.equal(sheetKey(hero.id),`sprite:${hero.id}`,hero.id);
+    assert.ok(!existsSync(`public/art/sprites/${hero.id}.dir4.webp`),`${hero.id}: a 4-direction atlas without its catalog entry`);
+  }
+  // The flip of the single sheets, copied from the code before this card.
+  const old=(flipped:boolean,dx:number,dy:number,view:number)=>{const d=rotateVector({x:dx,y:dy},view);return Math.abs(d.x-d.y)>.001?d.x-d.y<0:flipped;};
+  let seed=3;const r=()=>{seed=(seed*48271)%2147483647;return seed/2147483647-.5;};
+  for(let i=0;i<4000;i++){
+    const flipped=i%2===0,dx=i%7===0?0:r()*.2,dy=i%11===0?dx:r()*.2,view=i%4;
+    assert.equal(legacyFlip(flipped,dx,dy,view),old(flipped,dx,dy,view));
+  }
+  // Every approved sheet is still in place and valid: the new directions only add files.
+  for(const file of readdirSync('public/art/sprites'))assert.match(file,/^[a-z-]+(\.dir4)?\.webp$/);
+});
+
+const LAB='tests/fixtures/sprites-4dir/cidadao-comum.dir4.webp';
+test('4-direction atlas: the TEST batch passes the importer and matches the lab registry',async()=>{
+  const result=await validateDirectionalAtlas(LAB,'cidadao-comum');
+  assert.deepEqual(result.facings.map(f=>f.facing),[...FACINGS]);
+  assert.deepEqual(FACING_BLOCKS,[...FACINGS]);
+  assert.equal(FACING_FRAMES,18);
+  assert.equal(LAB_SHEETS['cidadao-comum'].height,result.height);
+  assert.equal(LAB_SHEETS['cidadao-comum'].url,'/'+LAB);
+  for(const f of result.facings)assert.ok(Math.abs(f.baseline-PIVOT_Y)<=2,`${f.facing} feet on ${f.baseline}`);
+  // The single-sheet check still runs on the approved art.
+  assert.equal((await validateSingleSheet('public/art/sprites/cidadao-comum.webp','cidadao-comum')).height,spriteCatalog['cidadao-comum'].height);
+});
+
+test('4-direction atlas: the importer refuses wrong size, no transparency, moved pivot, other height and clipped cells',async()=>{
+  const raw=await sharp(LAB).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  const image=(data:Buffer,width=DIR4.width,height=DIR4.height)=>sharp(data,{raw:{width,height,channels:4}}).png().toBuffer();
+  const rejects=async(input:Buffer,pattern:RegExp)=>assert.rejects(validateDirectionalAtlas(input,'teste'),pattern);
+  await rejects(await sharp(LAB).extract({left:0,top:0,width:1152,height:576}).png().toBuffer(),/1152x576, expected 1152x2304/);
+  await rejects(await sharp(LAB).flatten({background:'#ffffff'}).png().toBuffer(),/no transparency/);
+  // back-left block (rows 9..11) pushed 6 px down: its feet leave the shared row.
+  const moved=Buffer.alloc(raw.data.length);raw.data.copy(moved);
+  const top=3*3*CELL,rowBytes=DIR4.width*4;
+  moved.fill(0,top*rowBytes,(top+6)*rowBytes);raw.data.copy(moved,(top+6)*rowBytes,top*rowBytes,(DIR4.height-6)*rowBytes);
+  await rejects(await image(moved),/Feet off the pivot row: teste:back-left stands on row 17[34]/);
+  // front-left block drawn 20 % smaller (squashed from the top, feet kept on their row).
+  const block=await sharp(LAB).extract({left:0,top:3*CELL,width:DIR4.width,height:3*CELL}).png().toBuffer();
+  const cells=await Promise.all(Array.from({length:18},async(_,f)=>{
+    const cell=await sharp(block).extract({left:f%6*CELL,top:Math.floor(f/6)*CELL,width:CELL,height:CELL}).resize(CELL,Math.round(CELL*.8),{fit:'fill'}).png().toBuffer();
+    return {input:cell,left:f%6*CELL,top:3*CELL+Math.floor(f/6)*CELL+PIVOT_Y-Math.round(PIVOT_Y*.8)};
+  }));
+  const cleared=Buffer.alloc(raw.data.length);raw.data.copy(cleared);cleared.fill(0,3*CELL*rowBytes,6*CELL*rowBytes);
+  const smaller=await sharp(await image(cleared)).composite(cells).png().toBuffer();
+  await rejects(smaller,/Height differs between facings: teste:front-left/);
+  await assert.rejects(validateDirectionalAtlas(smaller,'teste'),(e:Error)=>!/pivot row|feet row/.test(e.message),'only the height is wrong');
+  // A figure touching the cell edge.
+  const clipped=Buffer.alloc(raw.data.length);raw.data.copy(clipped);
+  for(let y=100;y<110;y++){const i=(y*DIR4.width)*4;clipped[i]=clipped[i+1]=clipped[i+2]=0;clipped[i+3]=255;}
+  await rejects(await image(clipped),/Clipped cell: teste:0/);
+});

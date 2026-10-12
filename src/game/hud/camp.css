@@ -49,7 +49,7 @@
 
 /* ---------- Forge window ----------
    The round offer's place and frame (system window: Lilás body, Breu edge, Papel inner line), holding price tags. */
-.rh-forge{position:absolute;z-index:1;left:calc(var(--rh-l) + 62px);right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+.rh-forge{position:absolute;z-index:1;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
   max-width:440px;margin:0 0 0 auto;padding:6px 8px 7px;border-radius:var(--r-janela);display:flex;flex-direction:column;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
   pointer-events:auto;touch-action:manipulation;text-align:left}
@@ -101,7 +101,7 @@
 @media (min-height:501px){
   .rh-forge{max-height:32vh;max-height:32svh}
   .rh-forge-tags{padding:6px 10px;margin:-2px -8px 0}
-  :root[data-texto="125"] .rh-forge{left:calc(var(--rh-l) + 86px)}
+  :root[data-texto="125"] .rh-forge{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}
 }
 /* Landscape: the right column, above the skill button (its top - 24 px), like the round offer. */
 @media (max-height:500px){

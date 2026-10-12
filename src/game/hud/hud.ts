@@ -89,6 +89,7 @@ export class RunHud {
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private observer?:ResizeObserver;
+  private columnObserver?:ResizeObserver;
   /** First-run coach (VGM-056): one hint at a time in the announcement slot. */
   readonly coach:Coach;
   private readonly coachRow:CoachPart;
@@ -131,7 +132,11 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);}
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);
+      // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
+      // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
+      this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
+      this.columnObserver.observe(team.el);}
   }
 
   update(view:RunView){
@@ -333,7 +338,7 @@ export class RunHud {
   destroy(){
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
-    removeEventListener('resize',this.relayout);this.observer?.disconnect();
+    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
     this.el.remove();

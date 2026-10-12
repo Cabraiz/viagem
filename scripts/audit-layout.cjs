@@ -110,7 +110,9 @@ function audit(rootsSelector,minFont){
   // NEW-UX-nome-do-time-na-coluna: a team name ficha stays inside its member's box (the box the useful area and the arrows
   // avoid) and on screen.
   for(const n of document.querySelectorAll('.rh-member-name'))if(vis(n)){const m=n.closest('.rh-member').getBoundingClientRect(),r=n.getBoundingClientRect();
-    if(r.left<m.left-.5||r.right>m.right+.5||r.left<-.5||r.right>innerWidth+.5)problems.push(`nome sai da coluna do time: ${label(n)}`);}
+    if(r.left<m.left-.5||r.right>m.right+.5||r.left<-.5||r.right>innerWidth+.5)problems.push(`nome sai da coluna do time: ${label(n)}`);
+    for(const w of document.querySelectorAll('.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-camp:not([hidden])'))if(vis(w)){const b=w.getBoundingClientRect();
+      if(r.right>b.left+.5&&b.right>r.left+.5&&r.bottom>b.top+.5&&b.bottom>r.top+.5)problems.push(`nome do time sob a janela: ${label(n)} × ${w.className.split(' ')[0]}`);}}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)

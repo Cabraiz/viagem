@@ -41,7 +41,7 @@
 .rh-boss.rh-enraged{animation:rh-shake .35s linear infinite}
 
 /* ---------- Center stack (revive alerts) ---------- */
-.rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + 70px);right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
+.rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + max(70px,var(--rh-coluna,54px) + 16px));right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
 .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 150px)}
 /* Low slot (VGM-043): the banner leaves the top when it would cover the hero; above the joystick row. */
 .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 140px)}
@@ -94,6 +94,10 @@
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
 /* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
 .rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
+/* Portrait at 125% the column's name grows to 14 px, not 16: at 16 a 9-letter name made the column 85 px wide, the
+   window opened right of it and the field above the forge had no room left for the caído and boss arrows (audit-layout,
+   "sem seta"). 14 px stays above the 13 px floor and still grows with the setting (NEW-UX-nome-do-time-na-coluna). */
+@media (min-height:501px){:root[data-texto="125"] .rh-member-name{font-size:14px}}
 .rh-member-badge{position:absolute;top:-6px;right:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato (centro + 31 px), não à largura da coluna */ /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
@@ -154,7 +158,8 @@
    note, then (landscape at 125% only) the effect line, which stays in the tag's aria-label. */
 .rh-offer{
   --of-tilt-a:-1deg;--of-tilt-b:.8deg;
-  position:absolute;z-index:1;left:calc(var(--rh-l) + 62px);right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  /* Right of the team column (54 px, or its widest name: --rh-coluna, NEW-UX-nome-do-time-na-coluna) plus 8 px. */
+  position:absolute;z-index:1;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
   max-width:460px;margin-left:auto;padding:6px 8px 7px;border-radius:var(--r-janela);
   display:flex;flex-direction:column;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
@@ -348,8 +353,8 @@
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb blurb' 'icon joke joke';padding:5px 8px 5px 26px}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
   .rh-offer-cards[data-count='4'] .rh-offer-joke,.rh-offer[data-count='4'] .rh-offer-joke{display:none}
-  :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + 86px)}
-  :root[data-texto="125"] .rh-offer[data-mode=combat]{width:min(300px,calc(100vw - var(--rh-l) - 94px - var(--rh-r)))}
+  :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}
+  :root[data-texto="125"] .rh-offer[data-mode=combat]{width:min(300px,calc(100vw - var(--rh-l) - max(94px,var(--rh-coluna,54px) + 16px) - var(--rh-r)))}
   :root[data-texto="125"] .rh-offer-title,:root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{font-size:var(--t-16)}
   :root[data-texto="125"] .rh-offer-auto{display:none}
   /* 125%: beside "Levar os indicados" there is no room for title and clock on one line, so the clock goes under it. */
@@ -642,7 +647,7 @@
      (design onda 6 B2): the gear's corner has one owner, the band grows by one short row, and no ficha of the band can
      cover another (the audits check it). It stays clear of the team column on the left. */
   .rh .rh-camp{position:static;align-self:stretch;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:36px;
-    margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 62px);padding:3px 8px}
+    margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));padding:3px 8px}
   /* The wall bar takes what is left (it shrinks first at 125%), the numbers never get cut. */
   .rh .rh-camp-wall{flex:1 1 auto;min-width:0}
   .rh .rh-camp-track{flex:1 1 auto;width:auto;min-width:20px}
@@ -698,7 +703,7 @@
 @keyframes rh-edge-bump{50%{scale:1.14}}
 @media (prefers-reduced-motion:reduce){.rh-edge-ping{animation:none}}
 /* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
-.rh-member-bot{position:absolute;top:-6px;left:-4px;display:flex;line-height:0}
+.rh-member-bot{position:absolute;top:-6px;left:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato, como o adesivo de estado */
 .rh-member-bot[hidden]{display:none}
 /* Resultado: robô e coroa de papel ao lado do nome; o dono arruma a sala (Expulsar / Tirar bot / Adicionar bot).
    "Tirar bot" é o botão neutro, cheio; "Expulsar" é só contorno Laranja (borda dupla: Cone por dentro, Breu por fora) e

@@ -24,6 +24,7 @@ import {STEP} from '../../src/maps/prediction.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
+import {citySpeed} from '../../src/sim/city/speed.ts';
 
 const TERRAIN=new TerrainField(DEFAULT_SEED,{world:'infinito'});
 function openSpot(r:number):Point{
@@ -41,7 +42,8 @@ const CITY_HERO=SCALE_PROFILES['cidade-nevada'].hero.speed;
 /** The Tio in the city as cidade-05c converts him (catalog 0.95 × city common 1.7875 / endless common 1.4 ≈ 1.21, card). */
 const CITY_TIO=.95*1.7875/1.4;
 /** cidade-05c's conversion of a catalog speed (citySpeed at plan.speed 1: × city common 1.7875 / endless common 1.4). */
-const citySpeed05c=(catalog:number)=>catalog*1.7875/1.4;
+// The real city conversion from cidade-05c (catalog speed → city speed, plan speed 1).
+const citySpeed05c=(catalog:number)=>citySpeed(catalog);
 /** Regular kinds (the boss moves in boss.ts). */
 const KINDS:EnemyKind[]=['bebado','anao-molotov','pombos','tio-pave','agiota'];
 /** The same Tio if the city kept his share of the hero speed (convertSpeed). */
@@ -154,7 +156,7 @@ test('endless world: every kind (elite too) steps exactly as before the cap',()=
   }
 });
 
-test('city: every step is held to 1.994 × 1.15 (pombos 3.45 u/s after 05c), the rest walk as converted',()=>{
+test('city: with the real 05c conversion every kind stays under 1.994 × 1.15; a faster body is held to the cap',()=>{
   const cap=CITY_HERO*ACTION_PEAK_MAX;
   for(const kind of KINDS){
     const A=arena({heroSpeed:CITY_HERO});
@@ -163,15 +165,22 @@ test('city: every step is held to 1.994 × 1.15 (pombos 3.45 u/s after 05c), the
     let fastest=0;
     for(let i=0;i<20;i++){const q={x:e.x,y:e.y};A.step(1);fastest=Math.max(fastest,Math.hypot(e.x-q.x,e.y-q.y));}
     assert.ok(fastest<=cap/SIM_HZ+1e-12,`${kind}: ${fastest} ≤ ${cap/SIM_HZ}`);
-    if(kind==='pombos'){
-      assert.ok(e.speed/CITY_HERO>1.7,'uncapped city pombos would walk ~1.73 × the hero');
-      assert.ok(Math.abs(fastest-cap/SIM_HZ)<1e-12,'pombos: the cap is what limits them');
-    }else assert.ok(fastest<cap/SIM_HZ,`${kind}: under the cap, unchanged`);
+    // citySpeed is not linear: the fast pombos land at ~0.98 × the city hero, so no catalog kind needs the cap today.
+    assert.ok(fastest<cap/SIM_HZ,`${kind}: under the cap, walks as converted`);
   }
-  // A hero running straight away at the city hero speed: the pombo closes in at most (cap − hero) × t.
+  // The cap is the guarantee for anything faster (a future kind, a modifier): a 3.45 u/s body is held to it.
+  {
+    const A=arena({heroSpeed:CITY_HERO});
+    addPlayer(A.world,'p',at(8.5));
+    const e=createEnemy(A.world,'pombos',at(-8));e.speed=3.45;
+    let fastest=0;
+    for(let i=0;i<20;i++){const q={x:e.x,y:e.y};A.step(1);fastest=Math.max(fastest,Math.hypot(e.x-q.x,e.y-q.y));}
+    assert.ok(Math.abs(fastest-cap/SIM_HZ)<1e-12,'a 1.73 × hero body is limited by the cap');
+  }
+  // A hero running straight away at the city hero speed: even a 3.45 u/s body closes in at most (cap − hero) × t.
   const A=arena({heroSpeed:CITY_HERO});
   const p=addPlayer(A.world,'p',at(-4));
-  const e=createEnemy(A.world,'pombos',at(-8));e.speed=citySpeed05c(ENEMIES.pombos.speed);
+  const e=createEnemy(A.world,'pombos',at(-8));e.speed=3.45;
   const gap0=Math.hypot(p.x-e.x,p.y-e.y),n=40;
   A.step(n,()=>{const next=moveDirection(p,{x:1,y:0},STEP,TERRAIN,CITY_HERO);p.x=next.x;p.y=next.y;p.hp=100;});
   const closed=gap0-Math.hypot(p.x-e.x,p.y-e.y);

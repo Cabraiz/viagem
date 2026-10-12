@@ -143,12 +143,14 @@ export class Simulation {
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();this.botInputs.clear();
+    // D-036: the new run's clock starts over; an old effect end would hold the owner's frames live.
+    this.effectEnd.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
     for(const p of this.players.values()){
       this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
-      this.track(p.id).reset(0);
+      this.track(p.id).reset(0);this.trackReset(p.id);
     }
   }
   /** Fresh run kit: class bonus and starting weapon (VGM-044A), stats, full hp, cleared fall/skill state. */
@@ -167,13 +169,13 @@ export class Simulation {
     const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??worldSpawn(this.terrain);
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);
-    this.players.set(id,p);this.track(id).reset(0);return p;
+    this.players.set(id,p);this.track(id).reset(0);this.trackReset(id);return p;
   }
   /**
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.stepTicks.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -189,7 +191,7 @@ export class Simulation {
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
-  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);delete p.target;}}
+  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);this.trackReset(id);delete p.target;}}
   /**
    * A batch of change segments `{seq,steps}` (input-10hz) or one legacy step `{seq,x,y,attack,skill?,target?}`.
    * Refused (false) for offline or spectating players and for anything malformed or out of order; see InputTrack.
@@ -204,17 +206,32 @@ export class Simulation {
   /**
    * Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones.
    * D-036: the phone replays its pending steps on ticks frameTick+1+k (maps/prediction.ts). The confirmed position
-   * sits before steps the room already took on earlier ticks, so while a slow or a slip touches those steps (its end
-   * is after the first of them) the replay would put the effect on the wrong steps: the frame goes live instead
-   * (ack = the step taken this tick), where the mapping is exact.
+   * sits before steps the room already took on earlier ticks, so while a slow or a slip touches those steps (the
+   * latest effect end, effectEnd, is after the first of them) the replay would put the effect on the wrong steps: the
+   * frame goes live instead (ack = the step taken this tick), where the mapping is exact.
+   * The owner's ack never goes back (review B1): after a live frame, confirmed stays live until the client's report
+   * passes that ack (liveAck), or the phone, which already dropped its pending steps up to it, would replay from an
+   * older position without them and snap back.
    */
   confirmed(id:string){
     const own=this.tracks.get(id)?.confirmed();
     if(!own)return undefined;
-    const p=this.players.get(id),from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
-    if(p&&(p.slowUntil!==undefined||p.slipUntil!==undefined)&&(from===undefined||(p.slowUntil??-Infinity)>from||(p.slipUntil??-Infinity)>from))return undefined;
+    const p=this.players.get(id);
+    if(!p)return own;
+    const from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
+    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity);
+    const touched=end>-Infinity&&(from===undefined||end>from);
+    const liveAck=this.liveAck.get(id);
+    if(touched||liveAck!==undefined&&own.ack<liveAck){this.liveAck.set(id,Math.max(liveAck??0,p.ack));return undefined;}
+    this.liveAck.delete(id);
     return own;
   }
+  /** Per player: the highest ack a live frame carried while confirmed was held back (D-036, review B1). */
+  private liveAck=new Map<string,number>();
+  /** Per player: the latest tick a slow or slip of this run ran until (kept after the players system drops it). */
+  private effectEnd=new Map<string,number>();
+  /** The input track starts over (join, reconnect, rematch): acks restart, so does the monotone guard. */
+  private trackReset(id:string){this.liveAck.delete(id);this.stepTicks.delete(id);}
   /** Per player: the tick each recent client step was taken on (D-036 confirmed check); a seq going back starts it over. */
   private stepTicks=new Map<string,{seq:number;tick:number}[]>();
   private recordStep(id:string,seq:number){
@@ -284,6 +301,11 @@ export class Simulation {
     for(const e of this.world.enemies.values())if(!this.alive.has(e.id))this.alive.set(e.id,e);
     const castBefore=new Map([...this.players.values()].map(p=>[p.id,p.skillTick]));
     const events=this.world.step();
+    // D-036: remember how far each slow or slip ran (the players system drops it once it is over; confirmed needs it).
+    for(const p of this.players.values()){
+      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity);
+      if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
+    }
     // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.
     this.casts=[];
     for(const [id,t] of this.tracks)if(t.tapped!==undefined){const p=this.players.get(id);if(p)this.casts.push({id,seq:t.tapped,ok:p.skillTick!==castBefore.get(id),readyTick:skillReadyTick(p)});}

@@ -226,8 +226,11 @@ test('views carry the telegraph kind and only the active effects; confirmed goes
   assert.equal(sim.view('a').players[0].slowUntil,p.slowUntil);
   for(let i=0;i<3;i++)sim.step();
   assert.deepEqual([self().slowUntil,self().slipUntil,self().slip],[undefined,undefined,undefined],'expired: nothing on the wire');
-  assert.ok(p.slowUntil!==undefined,'the server keeps the old tick (harmless: it is in the past)');
-  assert.deepEqual(activeMoveEffects(p,0),{slowUntil:p.slowUntil,slipUntil:p.slipUntil,slip:{x:1,y:0}});
+  assert.deepEqual([p.slowUntil,p.slipUntil,p.slip],[undefined,undefined,undefined],'the players system drops what is over');
+  p.slowUntil=50;p.slipUntil=40;p.slip={x:1,y:0};
+  assert.deepEqual(activeMoveEffects(p,0),{slowUntil:50,slipUntil:40,slip:{x:1,y:0}});
+  assert.deepEqual(activeMoveEffects(p,45),{slowUntil:50});
+  clearMoveEffects(p);
 
   // Confirmed: the room walks past the client's last report (input-10hz); with an effect over those steps it goes live.
   sim.input('a',{seq:1,steps:[[1,1,0,0]]},sim.tick*50);
@@ -236,6 +239,17 @@ test('views carry the telegraph kind and only the active effects; confirmed goes
   assert.ok(own,'confirmed position while guessing past the report');
   p.slowUntil=sim.tick+5;
   assert.equal(sim.confirmed('a'),undefined,'slow over the guessed steps: live frame');
+  const liveAck=p.ack;
   clearMoveEffects(p);
-  assert.deepEqual(sim.confirmed('a'),own);
+  // Review B1: the live frame carried ack=liveAck; going back to the older confirmed ack would snap the phone back.
+  assert.equal(sim.confirmed('a'),undefined,'stays live while the report is behind the live ack');
+  sim.step((sim.tick+1)*50+10*50);
+  assert.equal(sim.confirmed('a'),undefined);
+  // The client reports past it (a keepalive); once the room guesses past that report again, confirmed comes back.
+  const report=liveAck+5;
+  sim.input('a',{seq:report,steps:[]},sim.tick*50);
+  for(let i=0;i<20&&!sim.confirmed('a');i++)sim.step((sim.tick+1)*50+10*50);
+  const back=sim.confirmed('a');
+  assert.ok(back&&back.ack>=liveAck,`confirmed again at ack ${back?.ack} ≥ ${liveAck}`);
+  void own;
 });

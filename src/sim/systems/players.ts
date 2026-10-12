@@ -43,6 +43,9 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
   return {id:'players',step(ctx){
     for(const player of ctx.players.values()){
       const p=player as RunPlayer;
+      // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
+      if(p.slowUntil!==undefined&&ctx.tick>=p.slowUntil)delete p.slowUntil;
+      if(p.slipUntil!==undefined&&ctx.tick>=p.slipUntil){delete p.slipUntil;delete p.slip;}
       if(!p.online||p.spectator)continue;
       const input=takeInput(p.id);
       if(input)p.ack=input.seq;

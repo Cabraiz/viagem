@@ -365,7 +365,7 @@ export class CoopClient {
       const terrain=terrainFor(m.world);
       if(typeof terrain==='string'){this.fail(ws,terrain);return;}
       this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -449,7 +449,8 @@ export class CoopClient {
   private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+GRACE_MS}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
+    // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
     this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));

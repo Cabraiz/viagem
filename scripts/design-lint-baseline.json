@@ -1,4 +1,4 @@
 {
- "note": "Débito de emoji em código: zerado. Sistema e status saíram no DSG-icones-sistema (icons.svg); itens, prêmios, passivas e sons no DSG-adesivos-itens (stickers.svg, gerado por scripts/make-stickers.mjs). A estrela U+2726 não existe mais no projeto (só no próprio lint e no teste dele). Qualquer emoji novo em src/game falha.",
+ "note": "Débito de emoji em código: zerado. Sistema e status saíram no DSG-icones-sistema (icons.svg); itens, prêmios, passivas e sons no DSG-adesivos-itens (stickers.svg, gerado por scripts/make-stickers.mjs). A estrela U+2726 não existe mais no projeto (só no próprio lint e no teste dele). Qualquer emoji novo em src ou multiplayer falha.",
  "emoji": {}
 }

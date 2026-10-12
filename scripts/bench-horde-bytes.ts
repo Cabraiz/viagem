@@ -9,9 +9,9 @@
  * the client holds, as JSON.
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../src/game/net/shared.ts';
-import {FrameRunFeed} from '../src/game/net/run-feed.ts';
-import {ACK_EVERY_MS} from '../src/game/net/client.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
+import {FrameRunFeed} from '../src/client/net/run-feed.ts';
+import {ACK_EVERY_MS} from '../src/client/net/client.ts';
 
 const horde=Number(process.argv[2]??300),seconds=Number(process.argv[3]??60),mode=process.argv[4]??'still',seed=Number(process.argv[5]??4242);
 const feed=new FrameRunFeed();

@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { classes } from '../src/classes.ts';
+import { classes } from '../src/rules/classes.ts';
 
 const lines = ['# As 36 classes de viagem', '', 'Catálogo da primeira versão de seleção. Habilidades abaixo são propostas de design; ainda não estão implementadas em combate. Atributos: Força / Agilidade / Malícia / Carisma.', ''];
 for (const hero of classes) {

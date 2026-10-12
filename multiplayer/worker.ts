@@ -1,10 +1,10 @@
-import {randomSeed,DEFAULT_SEED} from '../src/game/terrain/field.ts';
+import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer, type RoomRoster } from './room.ts';
-import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/index.ts';
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
-import {parseZueiraLab} from '../src/game/sim/zueira.ts';
+import {parseZueiraLab} from '../src/sim/index.ts';
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
  * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see

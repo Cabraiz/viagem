@@ -20,6 +20,7 @@ import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
+import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
 
@@ -71,6 +72,8 @@ export class RunHud {
   private readonly ctx:HudContext;
   private last?:RunView;
   private readonly stack:HTMLElement;
+  /** The shell's quiet rows (queueRow): one at a time in the announcement slot. */
+  private readonly rows=new RowQueue<HTMLElement>();
   private readonly alerts:HudPart;
   private readonly hurt:ReturnType<typeof createHurtFrame>;
   /** Base ficha, forge window and horn notice (VGM-046B, hud/camp.ts). */
@@ -149,6 +152,7 @@ export class RunHud {
     // The intermission offer opens after the FEITO stamp (design review D2): never two stamps in the same second.
     const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
+    this.turnRows();
     this.updateCoach(view);
   }
 
@@ -162,7 +166,7 @@ export class RunHud {
     // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no hint while the
     // intermission window is open or a LEVEI stamp hits (one moment at a time).
     // The forge window too (VGM-046B): the gathering hint never shows over an open forge.
-    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
+    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
     const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner},now);
@@ -221,6 +225,27 @@ export class RunHud {
     if(this.last)this.alerts.update(this.last,this.ctx);
   }
 
+  /**
+   * A quiet row of the shell's own for the announcement slot (VGM-048: "modo econômico ligou sozinho"), shown for `ms`.
+   * One row at a time: it waits in line while a notice, the kill-cam or the coach's hint holds the slot, holds the slot
+   * against the coach while it shows, and steps out (its time paused) when a notice comes. It moves with the slot (top
+   * or low, off the hero) like the other rows.
+   */
+  queueRow(el:HTMLElement,ms:number){
+    if(el.parentElement!==this.stack)this.stack.insertBefore(el,this.coachRow.el);
+    el.classList.add('rh-row');el.hidden=true;
+    this.rows.queue(el,ms);this.turnRows();
+  }
+  /** The row leaves the line and the slot (its own button answered it). */
+  dropRow(el:HTMLElement){this.rows.drop(el);if(!el.hidden){el.hidden=true;this.relayout();}}
+  /** Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on. */
+  private turnRows(now=performance.now()){
+    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
+    const {show,hide}=this.rows.turn(now,busy);
+    for(const el of hide)el.hidden=true;
+    if(show)show.hidden=false;
+    if(show||hide.length)this.relayout();
+  }
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){
     if(this.ctx.network===text)return;
@@ -235,7 +260,7 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden]),.rh-row:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).

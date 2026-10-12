@@ -23,7 +23,9 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  * offers: the pending-offer list (JSON) this peer last received, so each change is pushed once.
  * encoder: this client's protocol 4 encoder (VGM-042b), created on join; a reconnect gets a fresh one.
  */
-type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number};
+type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number;
+  /** Its slot came up during a catch-up burst (N17): the frame goes once, on the burst's last tick. */
+  owed?:boolean};
 /** `hash` is sha256(token): storage only ever sees hashes; `token` is known in memory once issued or presented. */
 type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
@@ -513,7 +515,11 @@ export class Room {
       p.x=at.x;p.y=at.y;
     }
   }
-  advance(now=Date.now()){
+  /**
+   * One room tick. `flush` false: a tick of a catch-up burst before its last one (multiplayer/tick-clock.ts): the
+   * simulation steps and every encoder gets the events, but frames wait for the burst's last tick, one per client.
+   */
+  advance(now=Date.now(),flush=true){
     const started=performance.now();
     for(const c of [...this.connections.values()]){
       if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>12000){this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
@@ -545,7 +551,11 @@ export class Room {
     // Lobby, countdown and result keep their frames too (the waiting room lists players from them).
     let input:FrameInput|undefined;
     for(const c of [...this.connections.values()]){
-      if(!c.encoder||!c.encoder.due(this.ticks))continue;
+      if(!c.encoder)continue;
+      const due=c.encoder.due(this.ticks);
+      if(!flush){if(due)c.owed=true;continue;}
+      if(!due&&!c.owed)continue;
+      c.owed=false;
       this.sendFrame(c,input??=this.sim.frame());
       this.pushOffers(c);
     }

@@ -3,6 +3,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer, type RoomRoster } from './room.ts';
 import { ROOM_PROTOCOL } from '../src/game/net/shared.ts';
 import { isAllowedOrigin } from './origins.ts';
+import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/game/sim/zueira.ts';
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
@@ -10,6 +11,8 @@ import {parseZueiraLab} from '../src/game/sim/zueira.ts';
  * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,boletos"
  * plays those zueira events one per round from round 2 (VGM-053B proofs).
  */
+/** What the room needs of a server-side WebSocket (the tests pass a fake one). */
+export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
 interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
@@ -41,8 +44,9 @@ export class GameRoom extends DurableObject<Env>{
   private room?:Room;
   /** The room being built from storage (a restarted object): concurrent reconnects wait for the same one. */
   private loading?:Promise<Room>;
-  private timer?:ReturnType<typeof setInterval>;
-  private peers=new Map<WebSocket,Peer>();
+  /** Wall clock with catch-up (N17): 20 ticks/s of real time while someone is connected. */
+  private loop=new TickLoop((now,last)=>this.room?.advance(now,last),{now:()=>Date.now(),set:(fn,ms)=>setTimeout(fn,ms),clear:h=>clearTimeout(h as ReturnType<typeof setTimeout>)});
+  private peers=new Map<RoomSocket,Peer>();
   async init(){if(!(await this.ctx.storage.get('created'))){const now=Date.now();const seed=randomSeed();await this.ctx.storage.put({created:now,terrainSeed:seed});this.room=this.create(now,seed);this.loading=Promise.resolve(this.room);await this.ctx.storage.setAlarm(now+31*60_000);}}
   private create(created:number,seed:number){
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
@@ -60,19 +64,28 @@ export class GameRoom extends DurableObject<Env>{
     })();
   }
   /** Lab report (RPC from the /lab route); null on the deployed Worker even if something calls it. */
-  lab(){return local(this.env)?this.room?.lab()??null:null;}
+  lab(){if(!local(this.env)||!this.room)return null;return {...this.room.lab(),clock:this.loop.clock.stats};}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
     if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
     const room=this.room??await this.load(created);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
-    const peer:Peer={send:data=>server.send(data),close:(code,reason)=>server.close(code,reason)};
-    this.peers.set(server,peer);room.connect(peer);
-    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else server.close(1003,'Texto esperado.');});
-    const close=()=>{this.room?.disconnect(peer);this.peers.delete(server);if(!this.peers.size&&this.timer){clearInterval(this.timer);this.timer=undefined;}};
-    server.addEventListener('close',close);server.addEventListener('error',close);
-    this.timer??=setInterval(()=>this.room?.advance(),50);
+    this.attach(server,room);
     return new Response(null,{status:101,webSocket:client});
   }
-  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');if(this.timer)clearInterval(this.timer);this.timer=undefined;this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
+  /**
+   * Wires one accepted socket to the room. Closing from the room's side (a phone gone silent, a refused join) takes
+   * the socket out at once: with no network the close handshake never ends and no 'close' event would come, so the
+   * room would tick (and bill duration) until the alarm. No socket left (room bots have none): the clock stops.
+   */
+  attach(server:RoomSocket,room:Room){
+    const peer:Peer={send:data=>server.send(data),close:(code,reason)=>{this.drop(server);try{server.close(code,reason);}catch{/* already closed */}}};
+    this.peers.set(server,peer);room.connect(peer);
+    server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else peer.close(1003,'Texto esperado.');});
+    const close=()=>{if(this.peers.has(server))this.room?.disconnect(peer);this.drop(server);};
+    server.addEventListener('close',close);server.addEventListener('error',close);
+    this.loop.start();
+  }
+  private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();}
+  async alarm(){for(const ws of this.peers.keys())ws.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

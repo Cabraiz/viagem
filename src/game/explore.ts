@@ -15,6 +15,11 @@ import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from '../ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
+import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
+
+/** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
+const ECONOMY_TOAST_MS=9000;
+const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -119,6 +124,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
   let closed=false,paused=false;
+  /** The economy toast's own clock (VGM-048), cleared on close. */
+  let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
   /** Result screen data from the last view: the room sends outcome and duration, the HUD view has round, players and build. */
   const runResult=(victory:boolean,durationTicks:number):RunResult=>{
@@ -132,7 +139,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   };
   const reset=()=>{const pointer=direction.pointer;direction.reset();knob.style.transform='';stick.classList.remove('is-dragging');if(pointer!==undefined&&stick.hasPointerCapture(pointer))stick.releasePointerCapture(pointer);};
   const close=()=>{
-    if(closed)return;closed=true;active=false;abort.abort();reset();
+    if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
   };
   const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
@@ -180,6 +187,37 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     sync();shame.addEventListener('click',()=>{net.setShamePref(!net.allowsShame);sync();},{signal});
     settingsContent.append(shame);
   }
+  // Economy mode (VGM-048): 30 fps and fewer effects; persisted on this phone, turned on by itself when the game chokes.
+  let economy:EconomySettings=loadEconomy(economyStore());
+  const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
+  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag"></span></span>'
+    +'<span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span>';
+  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!;
+  const economyToast=document.createElement('div');economyToast.className='economy-toast';economyToast.setAttribute('role','status');economyToast.hidden=true;
+  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Modo econômico ligado</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desligar</button>`;
+  // Coop: the HUD's announcement slot takes it in line (one row at a time, off the hero). Solo has no HUD and no watch.
+  const hideEconomyToast=()=>{if(hud)hud.dropRow(economyToast);else economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
+  const syncEconomy=()=>{
+    economyButton.setAttribute('aria-pressed',String(economy.on));
+    economyTag.textContent=economy.on?'Ligado':'Desligado';economyTag.dataset.on=String(economy.on);
+    shell.dataset.economy=String(economy.on);
+  };
+  const setEconomy=(next:EconomySettings)=>{economy=next;saveEconomy(economyStore(),economy);controller?.scene.setEconomy(economy.on);syncEconomy();};
+  syncEconomy();
+  economyButton.addEventListener('click',()=>{setEconomy(toggleEconomy(economy,!economy.on));hideEconomyToast();},{signal});
+  economyToast.querySelector('button')!.addEventListener('click',event=>{event.stopPropagation();setEconomy(toggleEconomy(economy,false));hideEconomyToast();},{signal});
+  // The toast sits over the map: its taps never reach the game (like the HUD panels).
+  for(const type of ['pointerdown','touchstart'])economyToast.addEventListener(type,event=>event.stopPropagation(),{signal});
+  // Near the top of the settings (the panel scrolls on a phone): right under the title and the way back.
+  settingsContent.insertBefore(economyButton,settingsContent.querySelector('.explore-top')?.nextSibling??settingsContent.firstChild);
+  if(!hud)$('.explore-layout').append(economyToast);
+  const slow=()=>{
+    const next=autoEconomy(economy);if(!next)return;
+    setEconomy(next);
+    if(hud){hud.queueRow(economyToast,ECONOMY_TOAST_MS);return;}
+    economyToast.hidden=false;if(economyTimer)clearTimeout(economyTimer);economyTimer=setTimeout(hideEconomyToast,ECONOMY_TOAST_MS);
+  };
+
   if(!net)$('#explore-trail').addEventListener('click',()=>{closeSettings();const next=landmarks.findIndex((_l,i)=>!visited.has(i));if(next>=0)controller?.scene.goTo(landmarks[next]);else notice.textContent='Ilha explorada! Agora escolha seu cantinho favorito.';},{signal});
   const updateStick=(event:PointerEvent)=>{
     const rect=stick.getBoundingClientRect(),max=rect.width*.27;
@@ -268,6 +306,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
+      economy:economy.on,slow,
       ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });

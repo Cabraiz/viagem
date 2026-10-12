@@ -24,6 +24,7 @@ import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
+import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
@@ -51,6 +52,10 @@ export interface SceneHooks {
   runView?:(view:RunView)=>void;
   /** The HUD's kill-cam picture (CSS px, viewport coordinates) while it shows, VGM-053B. */
   killcamRect?:()=>Rect|undefined;
+  /** Economy mode at start (VGM-048: 30 fps, fewer effects); setEconomy changes it live. */
+  economy?:boolean;
+  /** The FPS watch saw the combat stay under 40 fps (coop, economy off): the shell turns economy on and says so. */
+  slow?:()=>void;
 }
 type Graphics=Phaser.GameObjects.Graphics;
 const polygon=(g:Graphics,points:Point[],color:number,alpha=1)=>{
@@ -113,6 +118,13 @@ export class IslandScene extends Phaser.Scene {
   private stamp=0;
   private distance=0;
   private paused=false;
+  /** Economy mode (VGM-048) and the FPS watch that may ask for it (coop combat only). */
+  private economy=false;
+  /** create() ran: the frame gate and the horde exist (setEconomy before that only keeps the choice). */
+  private booted=false;
+  private readonly fpsWatch=new FpsWatch();
+  /** rAF time of the last drawn frame: Phaser's own delta is smoothed and clamped at 200 ms, too kind to a slow phone. */
+  private lastFrameAt?:number;
   private accumulator=0;
   private attackTarget?:string;
   private skillEffects?:Graphics;
@@ -147,7 +159,7 @@ export class IslandScene extends Phaser.Scene {
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
   preload(){this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);this.sprites.queue(this.hooks.classId);if(this.hooks.net)for(const p of this.hooks.net.players.values())this.sprites.queue(p.classId);this.load.image('hero',`/art/portraits/${this.hooks.classId}.webp`);if(this.hooks.net)for(const c of classes)this.load.image(`class:${c.id}`,`/art/portraits/${c.id}-thumb.webp`);}
   create(){
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
@@ -198,6 +210,7 @@ export class IslandScene extends Phaser.Scene {
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
+    this.booted=true;this.setEconomy(this.economy);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
@@ -321,7 +334,29 @@ export class IslandScene extends Phaser.Scene {
     this.you.update(time,this.cameras.main.zoom,this.marks);
     this.marks.length=0;
   }
+  /** Economy mode (VGM-048): 30 fps and the reduced effects budget, or back to 60 and the full one. */
+  setEconomy(on:boolean){
+    this.economy=on;const profile=renderProfile(on);
+    // A tap before the scene booted: create() applies it.
+    if(!this.booted)return;
+    this.horde?.setEffects(profile.effects);
+    // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
+    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number};
+    loop.fpsLimit=profile.fps;loop.hasFpsLimit=true;loop._limitRate=frameGateMs(profile.fps);
+    this.fpsWatch.reset();
+  }
+  get economyOn(){return this.economy;}
+  /** Frames per second of the last whole watch windows (lab report and DEV probe). */
+  get fpsHistory():readonly number[]{return this.fpsWatch.history;}
+  private watchFrames(time:number){
+    const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
+    if(!net||this.economy||this.fpsWatch.done||last===undefined)return;
+    if(document.hidden){this.fpsWatch.taint();return;}
+    if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
+    if(this.fpsWatch.frame(time-last))this.hooks.slow?.();
+  }
   update(_time:number,delta:number){
+    this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.drawLabels();
@@ -727,7 +762,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,
-        zueira:scene.zueiraState(),blackout:scene.blackoutAudit()};
+        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory]};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

@@ -2,7 +2,7 @@
  * Top of the run HUD (VGM-040): round chip ("Round N/10" + critters or interval countdown),
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {bossInfo,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';

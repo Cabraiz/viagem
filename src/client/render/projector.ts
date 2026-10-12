@@ -2,8 +2,8 @@
  * Allocation-free twin of projection.ts for per-frame rendering of hundreds of entities.
  * Same math as projectView/viewDepth (tests keep them identical); writes into a caller-owned point.
  */
-import type {TerrainField} from '../../maps/terrain/field.ts';
-import {elevation} from '../../maps/world.ts';
+import type {TerrainField} from '../../maps/index.ts';
+import {elevation} from '../../maps/index.ts';
 import {normalizeView} from '../projection.ts';
 
 export interface Pt {x:number;y:number}

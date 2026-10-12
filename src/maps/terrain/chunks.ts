@@ -15,7 +15,7 @@
  * Only +, -, *, /, Math.sqrt, Math.floor and Math.imul are used to build a chunk (all exact in IEEE 754),
  * never Math.sin/exp/hypot, whose last bit may differ between V8 (Worker) and JavaScriptCore (iPhone).
  */
-import {Rng} from '../../contract/rng.ts';
+import {Rng} from '../../contract/index.ts';
 import {treeCatalog} from '../tree-catalog.ts';
 import {fbm,hash2u,mix,noise,smooth} from './noise.ts';
 

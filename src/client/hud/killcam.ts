@@ -5,7 +5,7 @@
  * end is stamped "FEITO" on the caption (the stamp: the one show moment, design §2.5). It never takes the camera or
  * the controls, gives way to any notice (danger over the joke) and closes by itself.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {KILLCAM_MS,killcamCaption} from '../fun/zueira.ts';
 import type {HudContext,HudPart} from './model.ts';
 import type {Rect} from './zones.ts';

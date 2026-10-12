@@ -1,5 +1,5 @@
 /** Pure rules of the Stonewards renderer (VGM-046B), kept apart from Phaser so node tests can import them. */
-import type {NodeView} from '../../contract/view.ts';
+import type {NodeView} from '../../contract/index.ts';
 
 /** Life share under which the wall's bar turns Laranja Cone (and gains its notch). */
 export const WALL_LOW=.3;

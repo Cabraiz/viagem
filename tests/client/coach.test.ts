@@ -133,7 +133,7 @@ test('storage: once per phone, legacy hints count, and a storage that throws onl
 
 test('the coach sends nothing to the room and pauses nobody: no net, sim or timer imports',()=>{
   const src=readFileSync(new URL('../../src/client/hud/coach.ts',import.meta.url),'utf8');
-  assert.doesNotMatch(src,/from '\.\.\/net\/|from '\.\.\/\.\.\/(sim|protocol)\/|from '\.\.\/\.\.\/contract\/(?!view)|setTimeout|setInterval|send\(/);
+  assert.doesNotMatch(src,/from '\.\.\/net\/|from '\.\.\/\.\.\/(sim|protocol|maps)\/|^import (?!type )[^;]*from '\.\.\/\.\.\/contract\/|setTimeout|setInterval|send\(/m);
 });
 
 test('"andar" from the first second (round 1 prepare too) and over the street banner; the others wait for the banner',()=>{

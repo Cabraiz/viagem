@@ -7,9 +7,9 @@
  * Each choice is a price tag from the corner shop (etiqueta); picking one stamps "LEVEI" on it (the one show moment),
  * with a "tum" and a 15 ms buzz. The DOM is rebuilt only when the shown offer changes.
  */
-import {SIM_HZ,type OfferSource} from '../../contract/types.ts';
-import type {OfferView,RunView} from '../../contract/view.ts';
-import {isHeldOffer} from '../../rules/offers.ts';
+import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
+import type {OfferView,RunView} from '../../contract/index.ts';
+import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';

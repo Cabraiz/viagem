@@ -17,7 +17,7 @@
  * Consent (design review D7): a player who turned "my embarrassing moment" off never is the moment; the run's moment is
  * the worst among the others. The tracker keeps each player's worst so that choice can be made at the end.
  */
-import type {PickupState,SimContext,SimEvent} from '../contract/types.ts';
+import type {PickupState,SimContext,SimEvent} from '../contract/index.ts';
 import {BOLETO,type ActiveHappening} from './zueira.ts';
 
 export type ShameKey='recaida'|'apagao'|'coxinha'|'pernilongo'|'cedo'|'sem-boleto'|'coxinha-cheia'|'caiu';

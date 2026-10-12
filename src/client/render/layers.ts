@@ -3,8 +3,8 @@
  * Steady state creates and destroys no GameObjects; pools grow only when demand exceeds their history.
  */
 import Phaser from 'phaser';
-import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/view.ts';
-import type {SimEvent} from '../../contract/types.ts';
+import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
+import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {KeyedPool,Ring} from './pool.ts';

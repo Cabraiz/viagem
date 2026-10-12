@@ -11,7 +11,7 @@
  */
 import type {CoopClient} from '../net/client.ts';
 import type {RunHud} from './hud.ts';
-import type {RunView,PlayerRunView} from '../../contract/view.ts';
+import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,COVERING,WINDOWS} from './edges.ts';
@@ -22,7 +22,7 @@ import {defaultPortrait} from './hud.ts';
 import {EmoteGate,SosBoard,SOS_COOLDOWN_MS,type SosPing} from '../fun/emotes.ts';
 import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
-import {worldBase} from '../../maps/world.ts';
+import {worldBase} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 

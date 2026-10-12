@@ -5,10 +5,10 @@
  * the horde extras `x`) stays as the reference the JSON snapshot tests use; no room sends it any more.
  * Pure (no DOM, no Phaser): unit-tested under node.
  */
-import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,TelegraphView} from '../../contract/view.ts';
-import type {LevelOffer,PickupKind,SimEvent} from '../../contract/types.ts';
+import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,TelegraphView} from '../../contract/index.ts';
+import type {LevelOffer,PickupKind,SimEvent} from '../../contract/index.ts';
 import {unpackStats,type EnemyWire,type PlayerExtraWire,type PlayerWire,type Snapshot} from '../../../multiplayer/simulation.ts';
-import {FrameDecoder,type DecodeResult,type PlayerWireView,type WorldDescriptor} from '../../protocol/protocol4.ts';
+import {FrameDecoder,type DecodeResult,type PlayerWireView,type WorldDescriptor} from '../../protocol/index.ts';
 
 type StampedEvent=SimEvent&{eventId:number};
 

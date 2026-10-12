@@ -2,9 +2,9 @@
  * Enemy catalog (VGM-031): stats, visual identity and the joke lines of each kind.
  * Stats are base values; createEnemy applies the elite modifier and the director's hp scale.
  */
-import type {Point} from '../../maps/world.ts';
-import type {EnemyState,SimContext} from '../../contract/types.ts';
-import {ticks} from '../../contract/types.ts';
+import type {Point} from '../../maps/index.ts';
+import type {EnemyState,SimContext} from '../../contract/index.ts';
+import {ticks} from '../../contract/index.ts';
 
 export type EnemyKind='gosma'|'pernilongo'|'tio-pave'|'fiscal'|'chefe';
 /** chase: walks straight; swarm: zig-zag; joker: stops for a joke then charges; ranged: keeps distance and shoots; boss: driven by VGM-038. */

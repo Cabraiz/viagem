@@ -2,7 +2,7 @@
  * Copy and timing of the zueira events on the client (VGM-053B). Pure: the HUD, the scene and the tests share it.
  * Voice (design §2.6): the joke lives in the title, the instruction stays dry; "Round" and "bichos" from the glossary.
  */
-import type {HappeningKind} from '../../contract/types.ts';
+import type {HappeningKind} from '../../contract/index.ts';
 import type {ShameKey,ShameMoment} from '../../sim/shame.ts';
 
 /** Street banner of an event (the round banner's faixa: title + one dry line). */

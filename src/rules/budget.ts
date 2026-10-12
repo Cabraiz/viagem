@@ -3,7 +3,7 @@
  * Caps keep the server tick and the snapshot size bounded; systems ask for room before creating entities.
  * XP is never dropped to respect a cap: gems are merged into bigger gems that carry the summed value.
  */
-import type {PickupState} from '../contract/types.ts';
+import type {PickupState} from '../contract/index.ts';
 
 /** Live enemies (VS uses ~300 for periodic spawns). The director may receive a lower cap. */
 export const MAX_ENEMIES=300;

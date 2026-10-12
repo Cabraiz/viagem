@@ -27,9 +27,9 @@
  * base) and the boss, plus enemies, pickups, projectiles, telegraphs and nodes within INTEREST_RADIUS of the viewer (kept
  * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
  */
-import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/types.ts';
-import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/view.ts';
-import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/offscreen.ts';
+import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
+import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/index.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder

@@ -14,11 +14,11 @@
  * wave starts; a round that ends before that passes it on to the next eligible round.
  * State is JSON-safe (stateHash, checkpoints) with its own Rng, so a replay draws the same plan and the same drops.
  */
-import {MAX_PICKUPS,hasRoom} from '../rules/budget.ts';
-import {HEAL_AMOUNT} from '../rules/offers.ts';
-import {Rng} from '../contract/rng.ts';
-import {clearSegment,walkable} from '../maps/world.ts';
-import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimContext,type SimPlayer,type SimSystem} from '../contract/types.ts';
+import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';
+import {HEAL_AMOUNT} from '../rules/index.ts';
+import {Rng} from '../contract/index.ts';
+import {clearSegment,walkable} from '../maps/index.ts';
+import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimContext,type SimPlayer,type SimSystem} from '../contract/index.ts';
 
 export const HAPPENING_KINDS:readonly HappeningKind[]=['boletos','promo','apagao'];
 /** How long each event lasts on screen, in seconds (the sale: how long its coxinhas stay on the ground). */

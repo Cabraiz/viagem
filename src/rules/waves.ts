@@ -12,9 +12,9 @@
  * Six players get count x3.5 and hp x1.75 (~6x threat for ~6x damage); groups grow and arrive faster by sqrt(count),
  * so a round lasts about the same 40-55 s for 1 or 6 players. Spawns plus ~20 s intermissions add up to ~11 min.
  */
-import type {Rng} from '../contract/rng.ts';
+import type {Rng} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
-import {ticks} from '../contract/types.ts';
+import {ticks} from '../contract/index.ts';
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
 export type Formation='cluster'|'line'|'surround';

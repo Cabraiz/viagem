@@ -20,7 +20,7 @@
  * | revive    | 1    | -                            | 0.5 .. 3    |
  * Order: base + class bonus + passives, then clamp. Multipliers are additive, not compounding.
  */
-import {BASE_STATS,type PlayerBuild,type PlayerStats,type SimPlayer} from '../contract/types.ts';
+import {BASE_STATS,type PlayerBuild,type PlayerStats,type SimPlayer} from '../contract/index.ts';
 import {PASSIVE_MAX_LEVEL,passiveDef} from './passives.ts';
 
 export type StatKey=keyof PlayerStats;

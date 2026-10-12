@@ -8,8 +8,8 @@
  *   sees the copy). The main camera, the hero and the controls never change.
  */
 import Phaser from 'phaser';
-import type {RunView} from '../../contract/view.ts';
-import type {HappeningKind} from '../../contract/types.ts';
+import type {RunView} from '../../contract/index.ts';
+import type {HappeningKind} from '../../contract/index.ts';
 import {BLACKOUT_DEPTH,blackoutAlpha} from './blackout-rules.ts';
 import {KILLCAM_MS} from '../fun/zueira.ts';
 import {ENEMY_ART,FX,enemyKind,enemyTexture} from './keys.ts';

@@ -11,12 +11,12 @@
  * - offers: picks the default card after a human-ish reaction (longer in combat, where the offer is a chip);
  * - fallen: asks for help ("Me salva") every few seconds.
  */
-import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/view.ts';
+import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {telegraphHits} from './telegraphs.ts';
-import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/stonewards.ts';
+import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
-import {walkable,type Point} from '../maps/world.ts';
-import type {TerrainField} from '../maps/terrain/field.ts';
+import {walkable,type Point} from '../maps/index.ts';
+import type {TerrainField} from '../maps/index.ts';
 
 export const HZ=20;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */

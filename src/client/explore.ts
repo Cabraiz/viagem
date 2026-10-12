@@ -1,6 +1,6 @@
 import './explore.css';
-import type { HeroClass } from '../rules/classes.ts';
-import {landmarks} from '../maps/world.ts';
+import type { HeroClass } from '../rules/index.ts';
+import {landmarks} from '../maps/index.ts';
 import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import {JoystickInput} from './joystick.ts';
@@ -11,7 +11,7 @@ import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../../multiplayer/simulation.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
-import type {RunView} from '../contract/view.ts';
+import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';

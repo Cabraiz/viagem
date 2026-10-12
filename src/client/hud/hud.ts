@@ -5,7 +5,7 @@
  */
 import './hud.css';
 import './you.css';
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
@@ -15,7 +15,7 @@ import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,crosses,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
-import type {RecipeId} from '../../rules/stonewards.ts';
+import type {RecipeId} from '../../rules/index.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';

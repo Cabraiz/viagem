@@ -11,18 +11,18 @@
  * The wall (D-017): in the run only the enemy-ai hits it (hitStructure -> damageWall); `siegeContact:false` turns
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
  */
-import type {Obstacle} from '../../maps/world.ts';
-import type {SimContext,SimSystem} from '../../contract/types.ts';
-import {ticks} from '../../contract/types.ts';
+import type {Obstacle} from '../../maps/index.ts';
+import type {SimContext,SimSystem} from '../../contract/index.ts';
+import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
 import {gatherStep,refillNodes} from './resources.ts';
-import {DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/stonewards.ts';
+import {DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
-export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/stonewards.ts';
+export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
 
 /**
  * The horn sounds at least this long before an intermission ends (on its first tick if it is shorter).

@@ -16,10 +16,10 @@
  * a non-`env:` owner that is in neither ctx.players nor ctx.enemies, or is an enemy with hp<=0, is gone and the
  * telegraph resolves without damage (a boss killed earlier in the tick does not hit posthumously).
  */
-import {RADIUS} from '../maps/world.ts';
-import type {Point} from '../maps/world.ts';
-import {ticks} from '../contract/types.ts';
-import type {SimContext,SimPlayer,SimSystem,Telegraph} from '../contract/types.ts';
+import {RADIUS} from '../maps/index.ts';
+import type {Point} from '../maps/index.ts';
+import {ticks} from '../contract/index.ts';
+import type {SimContext,SimPlayer,SimSystem,Telegraph} from '../contract/index.ts';
 
 /** Minimum warning before any telegraph deals damage: 0.8 s. */
 export const MIN_TELEGRAPH_TICKS=ticks(.8);

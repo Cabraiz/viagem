@@ -1,10 +1,10 @@
 /**
  * Fake RunView/RunResult data for the HUD sandbox and tests (VGM-040). Deterministic, no DOM.
  */
-import {ticks} from '../../contract/types.ts';
-import {HELD_DEADLINE} from '../../rules/offers.ts';
-import type {OfferView,PlayerRunView,RunView} from '../../contract/view.ts';
-import type {SimEvent} from '../../contract/types.ts';
+import {ticks} from '../../contract/index.ts';
+import {HELD_DEADLINE} from '../../rules/index.ts';
+import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
+import type {SimEvent} from '../../contract/index.ts';
 import type {RunResult} from './model.ts';
 
 /**

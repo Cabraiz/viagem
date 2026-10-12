@@ -1,5 +1,5 @@
-import type {TerrainField} from '../maps/terrain/field.ts';
-import {elevation,type Point} from '../maps/world.ts';
+import type {TerrainField} from '../maps/index.ts';
+import {elevation,type Point} from '../maps/index.ts';
 
 export const normalizeView=(view:number)=>((view%4)+4)%4;
 export function rotateVector(p:Point,view:number):Point{

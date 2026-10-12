@@ -1,8 +1,8 @@
-import type {TerrainField} from '../maps/terrain/field.ts';
-import {SPEED,isLand,landmarks,obstacles,project,type Point} from '../maps/world.ts';
+import type {TerrainField} from '../maps/index.ts';
+import {SPEED,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
 import {projectView,normalizeView} from './projection.ts';
 import {HERO_MARGIN} from './hud/zones.ts';
-import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/offscreen.ts';
+import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
 
 const center=project({x:12,y:12});
 export const SHORE={x:center.x,y:center.y+40,width:1290,height:710};

@@ -15,7 +15,7 @@
  * - Storage may be off or throw (private tab): the coach then remembers in memory for this page only, never throws.
  * Pure state (Coach) plus a small DOM part (createCoach); the state is unit-tested under node.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 
 export type Lesson='walk'|'xp'|'chip'|'rescue'|'gather';

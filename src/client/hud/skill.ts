@@ -5,9 +5,9 @@
  * from the tap's own answer, "ainda não" for a tap during the cooldown (nothing is sent) and "sem alvo" when the room
  * answered ok:false. Mobile only (D-009). SkillTaps and skillState are pure (tests); SkillButton paints #coop-attack.
  */
-import {SIM_HZ} from '../../contract/types.ts';
-import {kitFor} from '../../rules/kits.ts';
-import type {PlayerRunView} from '../../contract/view.ts';
+import {SIM_HZ} from '../../contract/index.ts';
+import {kitFor} from '../../rules/index.ts';
+import type {PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */

@@ -3,8 +3,8 @@
  * The core calls downPlayer when a player's hp reaches 0. The 'revive' system advances rescue
  * progress, bleeds out downed players and reports the common defeat exactly once.
  */
-import type {SimContext,SimPlayer,SimSystem} from '../contract/types.ts';
-import {ticks} from '../contract/types.ts';
+import type {SimContext,SimPlayer,SimSystem} from '../contract/index.ts';
+import {ticks} from '../contract/index.ts';
 
 export const BLEED_OUT_TICKS=ticks(30);
 export const REVIVE_RADIUS=1.2;

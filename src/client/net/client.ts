@@ -1,10 +1,10 @@
-import {defaultTerrain} from '../../maps/terrain/field.ts';
+import {defaultTerrain} from '../../maps/index.ts';
 import { STEP, ROOM_PROTOCOL, GRACE_MS, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from '../../../multiplayer/simulation.ts';
 import type {RunState} from '../../sim/run.ts';
-import type { Point } from '../../maps/world.ts';
+import type { Point } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
-import type {PlayerWireView} from '../../protocol/protocol4.ts';
-import {InputBatcher} from '../../maps/input-track.ts';
+import type {PlayerWireView} from '../../protocol/index.ts';
+import {InputBatcher} from '../../maps/index.ts';
 import {parseSos,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */

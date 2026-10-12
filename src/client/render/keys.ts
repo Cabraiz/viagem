@@ -2,7 +2,7 @@
  * Texture keys and display metrics shared by the procedural texture factory and the horde layers.
  * Pure module (no Phaser import) so node tests can read it.
  */
-import type {PickupKind} from '../../contract/types.ts';
+import type {PickupKind} from '../../contract/index.ts';
 
 export const ENEMY_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const;
 export type EnemyKind=typeof ENEMY_KINDS[number];

@@ -11,8 +11,8 @@
  * - Negative or NaN radius, or non-finite query points, match nothing. Items with non-finite positions are skipped at rebuild.
  * - The index does not know about deaths: consumers skip items that were removed after the rebuild (e.g. hp <= 0).
  */
-import type {Point} from '../maps/world.ts';
-import type {SpatialIndex} from '../contract/types.ts';
+import type {Point} from '../maps/index.ts';
+import type {SpatialIndex} from '../contract/index.ts';
 
 type Entry=Point&{id:string};
 

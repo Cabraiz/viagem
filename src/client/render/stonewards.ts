@@ -9,9 +9,9 @@
  * Pure drawing: no simulation, no network; the scene pushes each new RunView and calls update every frame.
  */
 import Phaser from 'phaser';
-import type {NodeView,RunView,StructureView} from '../../contract/view.ts';
-import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/stonewards.ts';
-import {SIM_HZ} from '../../contract/types.ts';
+import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
+import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
 import {WALL_LOW,gatheredSince,wallBar} from './stonewards-rules.ts';
 

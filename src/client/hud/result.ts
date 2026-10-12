@@ -4,7 +4,7 @@
  * and the rematch/exit buttons. Mobile only (D-009): big touch targets, no hover or keyboard paths.
  * Player names always go through textContent.
  */
-import type {PlayerRunView} from '../../contract/view.ts';
+import type {PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
@@ -12,7 +12,7 @@ import {sticker as drawSticker} from '../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
 import {icon} from '../ui/icon.ts';
-import {WALL_DOWN_LINES} from '../../rules/stonewards.ts';
+import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{

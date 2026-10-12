@@ -1,6 +1,6 @@
 import './client/style.css';
 import { setupSections } from './client/sections.ts';
-import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/classes.ts';
+import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 mountIcons();

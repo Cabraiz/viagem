@@ -1,4 +1,4 @@
-import type { HeroClass } from '../rules/classes.ts';
+import type { HeroClass } from '../rules/index.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from '../sim/run.ts';
 import { icon } from './ui/icon.ts';

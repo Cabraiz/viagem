@@ -2,10 +2,10 @@
  * Player step of the horde run (VGM-042): movement and facing from the input queue, tap target, class skill and regen.
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive.
  */
-import {moveDirection,type Point} from '../../maps/world.ts';
-import type {TerrainField} from '../../maps/terrain/field.ts';
-import {SIM_HZ,SYSTEM_ORDER} from '../../contract/types.ts';
-import type {SimPlayer,SimSystem} from '../../contract/types.ts';
+import {moveDirection,type Point} from '../../maps/index.ts';
+import type {TerrainField} from '../../maps/index.ts';
+import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
+import type {SimPlayer,SimSystem} from '../../contract/index.ts';
 import {castSkill} from '../skills.ts';
 
 /** 'players' runs before the contract systems, so enemies react to this tick's positions. */

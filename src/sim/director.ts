@@ -10,15 +10,15 @@
  *   RECYCLE_DISTANCE from every player are moved back onto a ring (same id and hp: no kill, no xp). Siege groups
  *   come from off screen around the base, on their way to it. Timed-out hordes flee off screen.
  */
-import type {TerrainField} from '../maps/terrain/field.ts';
-import {RADIUS,SPEED,clearSegment,isLand,walkable,worldBase,worldSpawn,type Point} from '../maps/world.ts';
-import {MAX_ENEMIES} from '../rules/budget.ts';
-import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/offscreen.ts';
+import type {TerrainField} from '../maps/index.ts';
+import {RADIUS,SPEED,clearSegment,isLand,walkable,worldBase,worldSpawn,type Point} from '../maps/index.ts';
+import {MAX_ENEMIES} from '../rules/index.ts';
+import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
-import {Rng} from '../contract/rng.ts';
-import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimContext,type SimPlayer,type SimSystem} from '../contract/types.ts';
-import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/waves.ts';
+import {Rng} from '../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimContext,type SimPlayer,type SimSystem} from '../contract/index.ts';
+import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
 export type CreateEnemy=(ctx:SimContext,kind:string,point:Point,scale:number)=>EnemyState|undefined;

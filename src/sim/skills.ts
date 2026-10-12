@@ -5,10 +5,10 @@
  * Mobile only (D-009): one tap on the skill button casts; there is no aim input. Targets come from
  * player.target (tapped enemy) or the nearest enemy/ally, and direction from player.facing (joystick).
  */
-import {ticks,type EnemyState,type PickupKind,type SimContext,type SimPlayer} from '../contract/types.ts';
-import {clearSegment,moveDirection,type Point} from '../maps/world.ts';
-import {kitFor,type ClassKit} from '../rules/kits.ts';
-import type {Rng} from '../contract/rng.ts';
+import {ticks,type EnemyState,type PickupKind,type SimContext,type SimPlayer} from '../contract/index.ts';
+import {clearSegment,moveDirection,type Point} from '../maps/index.ts';
+import {kitFor,type ClassKit} from '../rules/index.ts';
+import type {Rng} from '../contract/index.ts';
 import {BLEED_OUT_TICKS,REVIVE_RADIUS} from './revive.ts';
 
 /** Local pickup cap for skill drops (D-003); integration swaps in budget.ts MAX_PICKUPS. */

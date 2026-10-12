@@ -14,8 +14,8 @@
  * that point (slope ±0.125, a short self-shadow up to SHADOW_REACH along the sun), so each tile's texture covers its
  * footprint plus FIELD_MARGIN on every side.
  */
-import {CHUNK_SIZE,CHUNK_STEP,CHUNK_SAMPLES,type ChunkWorld} from '../../maps/terrain/chunks.ts';
-import {TILE_X} from '../../contract/offscreen.ts';
+import {CHUNK_SIZE,CHUNK_STEP,CHUNK_SAMPLES,type ChunkWorld} from '../../maps/index.ts';
+import {TILE_X} from '../../contract/index.ts';
 
 /** Side of a ground tile in world px (screen space of the view). 256 px ≈ 2 s of walking across it. */
 export const TILE_PX=256;

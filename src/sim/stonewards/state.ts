@@ -2,11 +2,11 @@
  * Stonewards layer (VGM-046A, wired into the run by VGM-046B): shared state for gathering, forge, wall and towers.
  * Server-only; everything here is JSON-safe so rooms can checkpoint it (VGM-047).
  */
-import type {Point} from '../../maps/world.ts';
-import type {Balance,ResourceKind} from '../../rules/stonewards.ts';
+import type {Point} from '../../maps/index.ts';
+import type {Balance,ResourceKind} from '../../rules/index.ts';
 
-export type {Balance,ResourceKind} from '../../rules/stonewards.ts';
-export {RESOURCE_KINDS} from '../../rules/stonewards.ts';
+export type {Balance,ResourceKind} from '../../rules/index.ts';
+export {RESOURCE_KINDS} from '../../rules/index.ts';
 
 /**
  * A gather node somebody worked this round (base-stonewards-mapa). Nodes are the map's obstacles (coco on palms and

@@ -1,21 +1,21 @@
-import {DEFAULT_SEED,type WorldKind} from '../src/maps/terrain/field.ts';
+import {DEFAULT_SEED,type WorldKind} from '../src/maps/index.ts';
 import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor,
   KICK_BAN_MS, kickedMessage, OWNER_ONLY, OWNER_NOT_NOW, ROOM_FULL_BOTS } from './simulation.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
-import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/protocol4.ts';
-import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/run.ts';
-import { classes } from '../src/rules/classes.ts';
-import {createEnemy,isEnemyKind} from '../src/sim/enemies/catalog.ts';
-import {addTelegraph} from '../src/sim/telegraphs.ts';
-import {walkable,worldBase} from '../src/maps/world.ts';
-import {sha256Hex} from '../src/protocol/sha256.ts';
-import {downPlayer} from '../src/sim/revive.ts';
-import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/sos.ts';
+import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
+import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
+import { classes } from '../src/rules/index.ts';
+import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
+import {addTelegraph} from '../src/sim/index.ts';
+import {walkable,worldBase} from '../src/maps/index.ts';
+import {sha256Hex} from '../src/protocol/index.ts';
+import {downPlayer} from '../src/sim/index.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
-import {isRecipeId} from '../src/rules/stonewards.ts';
-import type {ZueiraLab} from '../src/sim/zueira.ts';
+import {isRecipeId} from '../src/rules/index.ts';
+import type {ZueiraLab} from '../src/sim/index.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
 export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reason:string)=>void };

@@ -1,12 +1,12 @@
 /** Forge: three recipes bought from the team balance during the intermission. */
-import {walkable} from '../../maps/world.ts';
-import {Rng} from '../../contract/rng.ts';
-import type {SimContext} from '../../contract/types.ts';
-import {ticks} from '../../contract/types.ts';
+import {walkable} from '../../maps/index.ts';
+import {Rng} from '../../contract/index.ts';
+import type {SimContext} from '../../contract/index.ts';
+import {ticks} from '../../contract/index.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';
 import type {StonewardsState} from './state.ts';
-import {CAMP_RADIUS,RECIPES,TOWER_SECONDS,canPay,type RecipeId} from '../../rules/stonewards.ts';
+import {CAMP_RADIUS,RECIPES,TOWER_SECONDS,canPay,type RecipeId} from '../../rules/index.ts';
 
 export const REPAIR_FRACTION=.25;
 export const TOWER_DURATION=ticks(TOWER_SECONDS);
@@ -18,7 +18,7 @@ export const MAX_TOWERS=3;
 /** Remembered purchase ids; older ones fall off (a resend that late is a new purchase). */
 export const HANDLED_LIMIT=256;
 
-export {RECIPES,RECIPE_IDS,type Recipe,type RecipeId} from '../../rules/stonewards.ts';
+export {RECIPES,RECIPE_IDS,type Recipe,type RecipeId} from '../../rules/index.ts';
 
 export type BuyResult=
   | {ok:true;recipe:RecipeId;line:string;item?:string;level?:number;tower?:string}

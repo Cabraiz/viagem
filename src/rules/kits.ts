@@ -3,7 +3,7 @@
  * classBonus feeds computeStats/refreshStats/openChest (D-005). Skill effects live in skills.ts.
  * Unknown class ids fall back to DEFAULT_KIT.
  */
-import type {PlayerBuild} from '../contract/types.ts';
+import type {PlayerBuild} from '../contract/index.ts';
 import type {ClassBonus} from './stats.ts';
 
 export type KitRole='Linha de frente'|'Dano'|'Suporte'|'Controle';

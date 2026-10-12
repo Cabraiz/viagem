@@ -2,7 +2,7 @@
  * Sim events -> sounds (VGM-050). Client integration (VGM-043) feeds RunView.events here.
  * Only the local player's own hits and pickups make noise; team moments (falls, rescues, boss, rounds) play for everyone.
  */
-import type {SimEvent} from '../../contract/types.ts';
+import type {SimEvent} from '../../contract/index.ts';
 import type {SoundId} from './types.ts';
 
 export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefined{

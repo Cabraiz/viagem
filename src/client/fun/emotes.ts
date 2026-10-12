@@ -17,7 +17,7 @@ export const EMOTES:readonly EmoteDef[]=Object.freeze([
   {id:'foimal',label:'Foi mal',icon:'suor',tone:'sorry'},
 ]);
 export const EMOTE_COOLDOWN_MS=2000;
-export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from '../../rules/sos.ts';
+export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from '../../rules/index.ts';
 /** Balloon lifetime on screen. */
 export const BALLOON_MS=2200;
 export const isEmoteId=(value:unknown):value is EmoteId=>typeof value==='string'&&EMOTES.some(e=>e.id===value);

@@ -8,9 +8,9 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {decide,newMemory,HZ,type BrainMemory} from '../src/sim/bot-brain.ts';
+import {decide,newMemory,HZ,type BrainMemory} from '../src/sim/index.ts';
 import type {Simulation} from './simulation.ts';
-import type {RecipeId} from '../src/rules/stonewards.ts';
+import type {RecipeId} from '../src/rules/index.ts';
 import {railName} from '../src/client/render/map-label-rules.ts';
 
 /** A bot looks at the world this often (ticks): 200 ms, like a thumb (VGM-045 DECISION_MS). Slots are staggered. */

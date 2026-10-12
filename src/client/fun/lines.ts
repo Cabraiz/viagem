@@ -2,7 +2,7 @@
  * Per-class funny lines (VGM-053A): lookup, deterministic pick and the mapping from simulation events to balloons.
  * Content lives in lines.data.ts; visible text is pt-BR.
  */
-import type {SimEvent} from '../../contract/types.ts';
+import type {SimEvent} from '../../contract/index.ts';
 import {CLASS_LINES,type Situation} from './lines.data.ts';
 
 export type {Situation};

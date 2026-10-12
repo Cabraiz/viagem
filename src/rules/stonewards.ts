@@ -2,7 +2,7 @@
  * Stonewards rules the client also needs (VGM-046B): recipes and their prices, node values, the camp radius and the
  * pt-BR lines. Pure constants and math, no terrain or server imports, so the HUD and the renderer can bundle them.
  */
-import {SIM_HZ} from '../contract/types.ts';
+import {SIM_HZ} from '../contract/index.ts';
 
 export type ResourceKind='coco'|'pedra';
 export const RESOURCE_KINDS:readonly ResourceKind[]=['coco','pedra'];

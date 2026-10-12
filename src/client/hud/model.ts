@@ -3,8 +3,8 @@
  * so it can be unit-tested under node. DOM parts in this folder consume these helpers.
  */
 import type {ShameMoment} from '../../sim/shame.ts';
-import {SIM_HZ} from '../../contract/types.ts';
-import type {OfferView,PlayerRunView,RunView} from '../../contract/view.ts';
+import {SIM_HZ} from '../../contract/index.ts';
+import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 

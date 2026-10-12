@@ -2,7 +2,7 @@
  * Passive items (VGM-036). Each passive has 5 levels and adds a flat delta per level
  * to one or more PlayerStats. Numbers live here; stats.ts sums and clamps them.
  */
-import type {ItemDef,PlayerStats} from '../contract/types.ts';
+import type {ItemDef,PlayerStats} from '../contract/index.ts';
 
 export const PASSIVE_MAX_LEVEL=5;
 

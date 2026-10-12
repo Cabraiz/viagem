@@ -3,13 +3,13 @@
  * Owns entity maps, deterministic ids, the per-tick event queue, the central damage paths
  * and the ordered system registry. Systems never hurt anything except through damageEnemy/damagePlayer.
  */
-import type {TerrainField} from '../maps/terrain/field.ts';
-import type {Point} from '../maps/world.ts';
-import {Rng} from '../contract/rng.ts';
-import {SYSTEM_ORDER} from '../contract/types.ts';
+import type {TerrainField} from '../maps/index.ts';
+import type {Point} from '../maps/index.ts';
+import {Rng} from '../contract/index.ts';
+import {SYSTEM_ORDER} from '../contract/index.ts';
 import type {
   EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimContext,SimEvent,SimPlayer,SimSystem,SpatialIndex,TeamProgress,Telegraph,
-} from '../contract/types.ts';
+} from '../contract/index.ts';
 
 export type StampedEvent=SimEvent&{eventId:number};
 export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld)=>void;

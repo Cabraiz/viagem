@@ -15,9 +15,9 @@
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {RunHud} from '../hud/hud.ts';
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
-import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/waves.ts';
+import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
 import {icon} from '../ui/icon.ts';
 

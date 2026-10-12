@@ -2,9 +2,9 @@
  * Upgrade offers (VGM-034): candidate rolling, eligibility and build application.
  * The item catalog is injected so this module does not depend on the weapon/passive cards.
  */
-import type {Rng} from '../contract/rng.ts';
-import {MAX_PASSIVES,MAX_WEAPONS} from '../contract/types.ts';
-import type {ItemDef,OfferChoice,OwnedItem,PlayerBuild,SimPlayer} from '../contract/types.ts';
+import type {Rng} from '../contract/index.ts';
+import {MAX_PASSIVES,MAX_WEAPONS} from '../contract/index.ts';
+import type {ItemDef,OfferChoice,OwnedItem,PlayerBuild,SimPlayer} from '../contract/index.ts';
 
 export interface ItemCatalog {get(id:string):ItemDef|undefined; all():readonly ItemDef[]}
 

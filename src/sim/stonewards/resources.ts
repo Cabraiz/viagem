@@ -6,16 +6,16 @@
  * A node's value (units per unit of work) grows with its distance from the base (rules.ts nodeValue). Only nodes
  * somebody worked this round live in the state; refilling at each intermission is clearing that list.
  */
-import {obstacles as ISLAND_OBSTACLES,worldBase,type Obstacle,type Point} from '../../maps/world.ts';
-import {CHUNK_SIZE,MAX_OBSTACLE_RADIUS} from '../../maps/terrain/chunks.ts';
-import type {TerrainField} from '../../maps/terrain/field.ts';
-import type {SimContext} from '../../contract/types.ts';
-import {ticks} from '../../contract/types.ts';
+import {obstacles as ISLAND_OBSTACLES,worldBase,type Obstacle,type Point} from '../../maps/index.ts';
+import {CHUNK_SIZE,MAX_OBSTACLE_RADIUS} from '../../maps/index.ts';
+import type {TerrainField} from '../../maps/index.ts';
+import type {SimContext} from '../../contract/index.ts';
+import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
-import {nodeValue} from '../../rules/stonewards.ts';
+import {nodeValue} from '../../rules/index.ts';
 import {bump,type ResourceKind,type ResourceNode,type StonewardsState} from './state.ts';
 
-export {DEPLETED_LINES,NODE_NAMES,nodeValue} from '../../rules/stonewards.ts';
+export {DEPLETED_LINES,NODE_NAMES,nodeValue} from '../../rules/index.ts';
 
 /** Units of work per node per round. Rocks are slower but give more. */
 export const NODE_CAPACITY:Readonly<Record<ResourceKind,number>>=Object.freeze({coco:4,pedra:6});

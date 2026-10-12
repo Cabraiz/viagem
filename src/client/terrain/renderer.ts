@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import {FIELD_MIN,FIELD_SIZE,FIELD_STEP,TerrainField,clamp} from '../../maps/terrain/field.ts';
+import {FIELD_MIN,FIELD_SIZE,FIELD_STEP,TerrainField,clamp} from '../../maps/index.ts';
 import {landShader,waterShader} from './shaders.ts';
 import {waterCacheSize} from './water-size.ts';
-import type {ChunkWorld} from '../../maps/terrain/chunks.ts';
+import type {ChunkWorld} from '../../maps/index.ts';
 import {ENDLESS_MAX_HEIGHT,FIELD_STEP as TILE_FIELD_STEP,FIELD_TEXELS,TILE_PX,TILE_TEXELS,WATER_TEXELS,
   fieldChunks,fieldOrigin,fillField,inRange,tileRange,type Rect,type TileId} from './tiles.ts';
 import {BANDS,TilePool,type PoolBackend,type PoolSlot,type PoolStats} from './tile-pool.ts';

@@ -3,7 +3,7 @@
  * up to 6 portraits with HP, downed ring with rescue progress, offline/eliminated badges,
  * and banners telling who fell and how long is left.
  */
-import type {PlayerRunView,RunView} from '../../contract/view.ts';
+import type {PlayerRunView,RunView} from '../../contract/index.ts';
 import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../ui/icon.ts';

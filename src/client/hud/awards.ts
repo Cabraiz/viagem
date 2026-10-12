@@ -17,7 +17,7 @@
  * - Room bots (D-025) never win an award marked `person`: jokes about choices (build, upgrades, evolution) or about
  *   slacking (Turista) are about people; a bot still wins the plain counts (kills, rescues, falls…).
  */
-import type {PlayerRunView} from '../../contract/view.ts';
+import type {PlayerRunView} from '../../contract/index.ts';
 import type {StickerName} from '../ui/sticker.ts';
 import {itemDisplay,UNKNOWN_ITEM_STICKER} from './items.ts';
 import type {PlayerTally,RunResult,RunTally} from './model.ts';

@@ -2,8 +2,8 @@
  * Weapon and evolution catalog (VGM-035). Pure data plus lookups; the `weapons` system reads it.
  * Numbers are per level BEFORE player stats. Damage is base damage: `ctx.damageEnemy` applies might.
  */
-import type {ItemDef,PlayerStats} from '../../contract/types.ts';
-import {SIM_HZ} from '../../contract/types.ts';
+import type {ItemDef,PlayerStats} from '../../contract/index.ts';
+import {SIM_HZ} from '../../contract/index.ts';
 
 export const WEAPON_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'] as const;
 export const EVOLUTION_IDS=['chinelo-evo','boleto-evo','cafe-evo'] as const;

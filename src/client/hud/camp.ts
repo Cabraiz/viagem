@@ -9,8 +9,8 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
-import type {RunView,StructureView} from '../../contract/view.ts';
-import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../../rules/stonewards.ts';
+import type {RunView,StructureView} from '../../contract/index.ts';
+import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';

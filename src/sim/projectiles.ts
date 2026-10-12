@@ -3,9 +3,9 @@
  * Friendly projectiles hurt enemies only through ctx.damageEnemy; hostile ones hurt players only through ctx.damagePlayer.
  * Extra fields below ride on ProjectileState (JSON-safe), so types.ts stays untouched and the view keeps reading the base fields.
  */
-import type {EnemyState,ProjectileState,SimContext,SimPlayer,SimSystem} from '../contract/types.ts';
-import {SIM_HZ} from '../contract/types.ts';
-import {RADIUS as PLAYER_RADIUS} from '../maps/world.ts';
+import type {EnemyState,ProjectileState,SimContext,SimPlayer,SimSystem} from '../contract/index.ts';
+import {SIM_HZ} from '../contract/index.ts';
+import {RADIUS as PLAYER_RADIUS} from '../maps/index.ts';
 import {getWeapon} from './weapons/catalog.ts';
 
 /** Local projectile ceiling until the shared budget (VGM-032) is wired in by integration. */

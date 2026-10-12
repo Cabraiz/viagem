@@ -11,17 +11,17 @@
  * The last round (the boss wave, D-023) has no intermission after it, and without a director (ctx.round.total 0)
  * there is none at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
  */
-import {Rng} from '../contract/rng.ts';
-import {SIM_HZ,ticks} from '../contract/types.ts';
-import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimContext,SimPlayer,SimSystem,TeamProgress} from '../contract/types.ts';
-import type {Point} from '../maps/world.ts';
-import {isLand} from '../maps/world.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/offers.ts';
-import type {ItemCatalog} from '../rules/offers.ts';
+import {Rng} from '../contract/index.ts';
+import {SIM_HZ,ticks} from '../contract/index.ts';
+import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimContext,SimPlayer,SimSystem,TeamProgress} from '../contract/index.ts';
+import type {Point} from '../maps/index.ts';
+import {isLand} from '../maps/index.ts';
+import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';
+import type {ItemCatalog} from '../rules/index.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
-import {refreshStats} from '../rules/stats.ts';
-import type {ClassBonus} from '../rules/stats.ts';
+import {refreshStats} from '../rules/index.ts';
+import type {ClassBonus} from '../rules/index.ts';
 
 /** Contract additions approved in D-005 (SimPlayer.classBonus, SimContext.runStartTick), read defensively until VGM-030 lands them. */
 const classBonusOf=(player:SimPlayer)=>(player as SimPlayer&{classBonus?:ClassBonus}).classBonus;

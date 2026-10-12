@@ -2,10 +2,10 @@
  * The wall/shelter at the base (island centre, or the origin of the endless world): placement, damage and the 046A
  * contact siege. In the run only the enemy-ai hits the wall (D-017): hitStructure -> damageWall, siegeStep stays off.
  */
-import type {TerrainField} from '../../maps/terrain/field.ts';
-import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../maps/world.ts';
-import type {EnemyState,SimContext} from '../../contract/types.ts';
-import {ticks} from '../../contract/types.ts';
+import type {TerrainField} from '../../maps/index.ts';
+import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../maps/index.ts';
+import type {EnemyState,SimContext} from '../../contract/index.ts';
+import {ticks} from '../../contract/index.ts';
 import type {StonewardsState,WallState} from './state.ts';
 
 export const WALL_MAX_HP=600;
@@ -15,7 +15,7 @@ export const ISLAND_CENTER:Readonly<Point>=ISLAND_BASE;
 export const SIEGE_FLAG='siege';
 export const SIEGE_HIT_COOLDOWN=ticks(1);
 
-export {WALL_DOWN_LINES} from '../../rules/stonewards.ts';
+export {WALL_DOWN_LINES} from '../../rules/index.ts';
 
 /** Retreating enemies (D-010, memory.retreat===1) never hit the wall. */
 export const isSiege=(e:EnemyState)=>e.memory?.[SIEGE_FLAG]===1&&e.memory.retreat!==1;

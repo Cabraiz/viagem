@@ -4,7 +4,7 @@
  * Static on purpose (D-020 §2.5: urgency is a static switch to Cone, no infinite pulse). With reduced motion the
  * flash is a static edge for 400 ms (no fade). Never takes taps.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {LOW_HP,hurtStrength} from '../render/you-rules.ts';
 import {hpFraction,type HudContext,type HudPart} from './model.ts';
 

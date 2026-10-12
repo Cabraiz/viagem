@@ -5,18 +5,18 @@
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
-import {TerrainField,DEFAULT_SEED} from '../../maps/terrain/field.ts';
+import {TerrainField,DEFAULT_SEED} from '../../maps/index.ts';
 import {TerrainRenderer} from '../terrain/renderer.ts';
 import {fitIsland,FollowCamera,followZoom} from '../framing.ts';
 import {projectView,viewDepth,normalizeView} from '../projection.ts';
-import {obstacles,walkable,type Point} from '../../maps/world.ts';
-import {treeCatalog} from '../../maps/tree-catalog.ts';
+import {obstacles,walkable,type Point} from '../../maps/index.ts';
+import {treeCatalog} from '../../maps/index.ts';
 import {treeUrl} from '../sprites/art-urls.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
-import {classes} from '../../rules/classes.ts';
-import {Rng} from '../../contract/rng.ts';
-import {SIM_HZ,type SimEvent,type PickupKind} from '../../contract/types.ts';
-import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/view.ts';
+import {classes} from '../../rules/index.ts';
+import {Rng} from '../../contract/index.ts';
+import {SIM_HZ,type SimEvent,type PickupKind} from '../../contract/index.ts';
+import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';

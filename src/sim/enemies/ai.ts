@@ -3,10 +3,10 @@
  * neighbor separation, terrain collision, contact damage and rare barks.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../maps/world.ts';
-import type {TerrainField} from '../../maps/terrain/field.ts';
-import {Rng} from '../../contract/rng.ts';
-import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSystem} from '../../contract/types.ts';
+import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import type {TerrainField} from '../../maps/index.ts';
+import {Rng} from '../../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSystem} from '../../contract/index.ts';
 import {ELITE,FISCAL_SHOT,TIO_JOKE,enemyDef,hashUnit,type EnemyDef} from './catalog.ts';
 import type {TauntedEnemy} from '../skills.ts';
 

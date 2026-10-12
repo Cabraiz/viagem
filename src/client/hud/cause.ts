@@ -3,7 +3,7 @@
  * (the sim names the kind) or, when a wire drops it, from the hitter's id (`by`) looked up in the live enemies or
  * among the latest kills. Pure (no DOM): the HUD banner and the result screen read it.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 
 export const CAUSE_KINDS=['gosma','pernilongo','tio-pave','fiscal','chefe'] as const;
 export type CauseKind=typeof CAUSE_KINDS[number];

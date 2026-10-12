@@ -3,14 +3,14 @@
  * players (interpolated positions + run state), the base of the world, the last RunView (boss, telegraphs, chests),
  * the spawn warnings still pending and the lit "Me salva" pings. Pure: the scene's `locate` is passed in.
  */
-import type {EnemyView,NodeView,PickupView,PlayerRunView,TelegraphView} from '../../contract/view.ts';
+import type {EnemyView,NodeView,PickupView,PlayerRunView,TelegraphView} from '../../contract/index.ts';
 import type {EdgeTarget} from './edges.ts';
 import type {MinimapItem} from './minimap.ts';
 import {secondsLeft} from './model.ts';
-import {SIM_HZ} from '../../contract/types.ts';
+import {SIM_HZ} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {REVIVE_RADIUS} from '../../sim/revive.ts';
-import {SOS_COOLDOWN_MS} from '../../rules/sos.ts';
+import {SOS_COOLDOWN_MS} from '../../rules/index.ts';
 
 export interface Point {x:number;y:number}
 export interface RadarPlayer {id:string;name:string;classId:string;x:number;y:number;online:boolean;spectator?:boolean}

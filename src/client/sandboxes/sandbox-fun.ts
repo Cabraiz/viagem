@@ -4,7 +4,7 @@
  * the emote button and speech balloons with class lines. Fake data only; nothing talks to the server.
  */
 import '../fun/fun.css';
-import {classes} from '../../rules/classes.ts';
+import {classes} from '../../rules/index.ts';
 import {BalloonLayer,EMOTES,EmoteBar,EmoteGate,emoteDef,type EmoteId} from '../fun/emotes.ts';
 import {LineThrottle,SITUATIONS,SITUATION_LABELS,lineForEvent,pickLine,type Situation} from '../fun/lines.ts';
 

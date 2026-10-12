@@ -3,8 +3,8 @@
  * it only spawns projectiles (moved and collided by the projectile system) except the audio cone, which hits instantly.
  * Damage passed to ctx.damageEnemy is base weapon damage; the core applies might.
  */
-import type {EnemyState,SimContext,SimPlayer,SimSystem} from '../../contract/types.ts';
-import {SIM_HZ,ticks} from '../../contract/types.ts';
+import type {EnemyState,SimContext,SimPlayer,SimSystem} from '../../contract/index.ts';
+import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,spawnProjectile} from '../projectiles.ts';

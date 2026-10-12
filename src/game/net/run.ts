@@ -19,7 +19,7 @@ export interface RunState {
   members:RunMember[];outcome?:RunOutcome;resultId?:string;
   /** Result only (VGM-053B): the run's most embarrassing moment, from the simulation. */
   shame?:ShameMoment;
-  /** The room's owner ("chefe da sala", D-025): the only one whose kick and bot commands the room accepts. */
+  /** The room's owner ("dono da sala", D-025; "chefe" is the boss of the game): the only one whose kick and bot commands the room accepts. */
   owner?:string;
 }
 

@@ -55,6 +55,8 @@ export class ShameTracker {
     for(const m of this.best.values())if(!optOut?.has(m.player)&&worse(m,pick))pick=m;
     return pick&&{...pick};
   }
+  /** A player who left the room for good: none of their moments can be the run's (they are not on the result). */
+  forget(id:string){this.best.delete(id);this.revivedAt.delete(id);this.hp.delete(id);this.boletos.delete(id);this.rain?.caught.delete(id);this.rain?.standing.delete(id);}
   reset(){this.best.clear();this.revivedAt.clear();this.hp.clear();this.boletos.clear();this.rain=undefined;}
   private offer(m:ShameMoment){if(worse(m,this.best.get(m.player)))this.best.set(m.player,m);}
 

@@ -9,7 +9,7 @@ import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.t
 import {freeAround} from './framing.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
-import {ROOM_CLOSING_NOTICE} from './net/shared.ts';
+import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from './net/shared.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
 import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
@@ -208,7 +208,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           shell.dataset.offline=String(!net.connected&&!net.fatal);
           showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           const run=net.run,member=run?.members.find(p=>p.id===net.id);

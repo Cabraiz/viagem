@@ -75,10 +75,12 @@ export const KICK_BAN_MS=10*60_000;
 /** What the kicked phone reads (and reads again if it knocks before the time is up): who, until when, what to do. */
 export function kickedMessage(until:number,now=Date.now()){
   const minutes=Math.max(1,Math.ceil((until-now)/60_000));
-  return `O chefe da sala te tirou da turma. Dá pra voltar nesta sala daqui a ${minutes} min, ou cria uma sala sua.`;
+  return `O dono da sala te tirou da turma. Dá pra voltar nesta sala daqui a ${minutes} min, ou cria uma sala sua.`;
 }
 /** Refusals of the owner's commands (D-025), as room notices. */
-export const OWNER_ONLY='Só o chefe da sala mexe na turma.';
+export const OWNER_ONLY='Só o dono da sala mexe na turma.';
+/** Title of the kicked window (D-025, design review): who did what, in the voice of the room. */
+export const KICKED_TITLE='Tiraram você da sala';
 export const OWNER_NOT_NOW='No meio do Round não dá. Espera o resultado.';
 export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
@@ -263,7 +265,11 @@ export class Simulation {
     this.equip(p);
     this.players.set(id,p);this.track(id).reset(0);return p;
   }
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.bots.delete(id);this.botInputs.delete(id);}
+  /**
+   * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
+   * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
+   */
+  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -407,9 +413,11 @@ export class Simulation {
     for(const e of this.world.enemies.values())this.alive.set(e.id,e);
     for(const [id,tomb] of this.tombs)if(tomb.tick<=this.tick-TOMBSTONE_TICKS)this.tombs.delete(id);
   }
-  /** Hash of everything that decides future ticks (world, run systems, pending inputs, bot sticks, outcome). */
+  /** Hash of everything that decides future ticks (world, run systems, pending inputs, the bots' sticks, counter and minds, outcome). */
   stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),
-    bots:[...this.botInputs].map(([id,b])=>[id,b.x,b.y,!!b.skill]),outcome:this.result??null});}
+    bots:{sticks:[...this.botInputs].map(([id,b])=>[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
+  /** The room bots' minds (RoomBots.state: memories and forge requests), which decide their next sticks (set by the room). */
+  botState?:()=>unknown;
   /**
    * What a room bot sees (D-025): the same RunView shape the protocol bots read (bot-brain.ts), built from the live
    * world without copying the horde (read-only for the brain). Players carry x/y, like the frames. `offers` per bot.

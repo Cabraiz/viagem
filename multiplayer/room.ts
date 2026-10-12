@@ -23,7 +23,7 @@ export type Peer={ send:(data:string|Uint8Array)=>void; close:(code:number,reaso
  * offers: the pending-offer list (JSON) this peer last received, so each change is pushed once.
  * encoder: this client's protocol 4 encoder (VGM-042b), created on join; a reconnect gets a fresh one.
  */
-type Connection={peer:Peer;playerId?:string;opened:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number};
+type Connection={peer:Peer;playerId?:string;opened:number;ownerAt?:number;window:number;count:number;seen:number;offers:string;encoder?:FrameEncoder;bytes:number;frames:number;received:number};
 /** `hash` is sha256(token): storage only ever sees hashes; `token` is known in memory once issued or presented. */
 type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
@@ -66,12 +66,22 @@ export interface RoomRoster {
   bots?:{id:string;name:string;classId:string;slot:number}[];
   botsAdded?:number;
   bans?:{hash:string;until:number}[];
+  nameBans?:{name:string;until:number}[];
 }
 const classIds=new Set(classes.map(c=>c.id));
 /** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
 const BOT_CLASSES=classes.map(c=>c.id);
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
+/** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
+export const OWNER_GAP_MS=300;
+/** A roster change that is only about bots is written at most this often (ms); the room tick flushes it. */
+export const ROSTER_BOTS_MS=1000;
+/**
+ * The second sign of a kicked seat (D-025): the name, lower case, without accents, spaces or punctuation. The token is
+ * the first (kept on the phone); a fresh browser with the same name is refused too. A new name gets in: no IP is kept.
+ */
+export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
@@ -131,12 +141,14 @@ export class Room {
   owner?:string;
   /** Kicked seats: sha256(token) → until (ms). A join presenting that token (as `token` or `kicked`) is refused. */
   private bans=new Map<string,number>();
+  /** Kicked names (nameKey) → until (ms): the second sign, for a join with no token at all. */
+  private nameBans=new Map<string,number>();
   /** The room's bots (D-025): played inside the tick, no socket. */
   readonly bots=new RoomBots();
   /** Bots ever added in this room (their names and classes follow the seed and this count). */
   private botsAdded=0;
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
-    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:options.world??DEFAULT_WORLD});this.sim.botState=()=>this.bots.state();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
@@ -146,11 +158,11 @@ export class Room {
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
     const running=this.run.snapshot().phase==='combat',w=this.sim.world;
-    const bans=[...this.bans].map(([hash,until])=>({hash,until}));
+    const bans=[...this.bans].map(([hash,until])=>({hash,until})),nameBans=[...this.nameBans].map(([name,until])=>({name,until}));
     const bots=[...this.sim.players.values()].filter(p=>this.sim.bots.has(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,slot:this.bots.slotOf(p.id)}));
     return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
       const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
-    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{})};
+    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{})};
   }
   /**
    * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
@@ -170,33 +182,39 @@ export class Room {
     }
     // D-025: kicked seats still out, the owner if still seated (else the oldest person), and the bots (only with people).
     for(const b of Array.isArray(roster.bans)?roster.bans:[])if(typeof b?.hash==='string'&&/^[0-9a-f]{64}$/.test(b.hash)&&Number.isFinite(b.until)&&b.until>now)this.bans.set(b.hash,b.until);
+    for(const b of Array.isArray(roster.nameBans)?roster.nameBans:[])if(typeof b?.name==='string'&&b.name.length<=40&&Number.isFinite(b.until)&&b.until>now)this.nameBans.set(b.name,b.until);
     this.botsAdded=Number.isSafeInteger(roster.botsAdded)&&roster.botsAdded!>0?roster.botsAdded!:0;
     if(this.sessions.size)for(const b of Array.isArray(roster.bots)?roster.bots:[]){
       if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
       this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
-    this.syncSpectators();this.rosterKey=JSON.stringify(this.roster());this.rosterDirty=false;
+    this.syncSpectators();const restored=this.roster();this.rosterKey=JSON.stringify(restored);this.rosterCore=JSON.stringify({...restored,bots:undefined,botsAdded:undefined});this.rosterDirty=false;
   }
   /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
   private rosterDirty=false;
   private rosterRound=-1;
   /** Hands the roster to storage when it changed: one row each time. */
-  private flushRoster(){
+  private flushRoster(now:number){
     if(!this.onRoster||!this.rosterDirty)return;
-    this.rosterDirty=false;
     const roster=this.roster(),key=JSON.stringify(roster);
-    if(key===this.rosterKey)return;
-    this.rosterKey=key;this.perf.rosterWrites++;
+    if(key===this.rosterKey){this.rosterDirty=false;return;}
+    // Only the bots changed (the owner adding or removing them, D-025): at most one row a second; the tick flushes the
+    // rest. Seats, kicks, leaves and runs are written at once.
+    const core=JSON.stringify({...roster,bots:undefined,botsAdded:undefined});
+    if(core===this.rosterCore&&now-this.rosterWrittenAt<ROSTER_BOTS_MS)return;
+    this.rosterDirty=false;this.rosterKey=key;this.rosterCore=core;this.rosterWrittenAt=now;this.perf.rosterWrites++;
     try{this.onRoster(roster);}catch{}
   }
+  private rosterCore='';
+  private rosterWrittenAt=-Infinity;
   connect(peer:Peer,now=Date.now()){
     if(now-this.createdAt>ROOM_LIFETIME_MS){peer.close(4004,'Sala encerrada. Crie uma nova.');return;}
     if(this.connections.size>=12){peer.close(4008,'Muitas conexões.');return;}
     this.connections.set(peer,{peer,opened:now,window:now,count:0,seen:now,offers:'[]',bytes:0,frames:0,received:0});
   }
   receive(peer:Peer,raw:string,now=Date.now()){
-    this.handle(peer,raw,now);this.flushRoster();
+    this.handle(peer,raw,now);this.flushRoster(now);
   }
   private handle(peer:Peer,raw:string,now:number){
     const c=this.connections.get(peer);if(!c)return;
@@ -229,6 +247,10 @@ export class Room {
         this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
         if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.');return;}
+        const named=this.nameBans.get(nameKey(m.name));
+        if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
+        // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
+        if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.');return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
@@ -287,8 +309,8 @@ export class Room {
     // acceptance shots of the off-screen and rescue cards (six players spread over the map, one caído far away).
     else if(m.t==='lab'&&this.labOn&&this.run.snapshot().phase==='combat')this.labCommand(c.playerId,m);
     else if(m.t==='kick')this.kick(c,m,now);
-    else if(m.t==='bot-add')this.addBot(c,m);
-    else if(m.t==='bot-remove')this.removeBotCommand(c,m);
+    else if(m.t==='bot-add')this.addBot(c,m,now);
+    else if(m.t==='bot-remove')this.removeBotCommand(c,m,now);
     else if(m.t==='leave'){this.dropPerson(c.playerId);this.syncSpectators();this.connections.delete(peer);peer.close(1000,'Saiu da sala.');this.pushRun();}
   }
   /** sha256(token) is kicked and still out at `now`: until when; else undefined. */
@@ -310,29 +332,33 @@ export class Room {
    * The owner's commands (D-025) go through here: from the owner only, out of combat only (lobby, countdown, result),
    * for this run's round. A refusal is a notice to the sender (its buttons were stale).
    */
-  private ownerCommand(c:Connection,m:any){
+  private ownerCommand(c:Connection,m:any,now:number){
     const state=this.run.snapshot();
     if(m.round!==state.round)return false;
+    // One owner command per OWNER_GAP_MS per connection: a stuck finger or a script cannot churn bots (and rows).
+    if(c.ownerAt!==undefined&&now>=c.ownerAt&&now-c.ownerAt<OWNER_GAP_MS)return false;
+    c.ownerAt=now;
     if(c.playerId!==this.owner){this.notice(c,OWNER_ONLY);return false;}
     if(state.phase==='combat'){this.notice(c,OWNER_NOT_NOW);return false;}
     return true;
   }
   /** {t:'kick',id,round}: the person leaves the room and stays out for KICK_BAN_MS; a bot id just removes the bot. */
   private kick(c:Connection,m:any,now:number){
-    if(!this.ownerCommand(c,m))return;
+    if(!this.ownerCommand(c,m,now))return;
     const id=m.id;
     if(typeof id!=='string'||id===c.playerId)return;
     if(this.sim.bots.has(id)){this.removeBot(id);return;}
     const session=this.sessions.get(id);
     if(!session)return;
-    const until=now+KICK_BAN_MS;
+    const until=now+KICK_BAN_MS,name=this.sim.players.get(id)?.name;
     this.bans.set(session.hash,until);
+    if(name)this.nameBans.set(nameKey(name),until);
     for(const other of [...this.connections.values()])if(other.playerId===id)this.sendKicked(other.peer,until,now);
     this.dropPerson(id);this.syncSpectators();this.pushRun();
   }
   /** {t:'bot-add',round}: one more bot, while the room has fewer than six (bots count). */
-  private addBot(c:Connection,m:any){
-    if(!this.ownerCommand(c,m))return;
+  private addBot(c:Connection,m:any,now:number){
+    if(!this.ownerCommand(c,m,now))return;
     if(this.sim.players.size>=6){this.notice(c,ROOM_FULL_BOTS);return;}
     const n=this.botsAdded++,taken=new Set([...this.sim.players.values()].map(p=>p.name));
     const {name,classId}=botIdentity(this.sim.seed,n,BOT_CLASSES,taken);
@@ -340,8 +366,8 @@ export class Room {
     this.syncSpectators();this.pushRun();
   }
   /** {t:'bot-remove',round,id?}: that bot, or the last one added. */
-  private removeBotCommand(c:Connection,m:any){
-    if(!this.ownerCommand(c,m))return;
+  private removeBotCommand(c:Connection,m:any,now:number){
+    if(!this.ownerCommand(c,m,now))return;
     const id=typeof m.id==='string'?m.id:this.bots.ids.at(-1);
     if(id&&this.sim.bots.has(id)){this.removeBot(id);this.pushRun();}
   }
@@ -473,6 +499,7 @@ export class Room {
   expire(now:number){
     for(const s of [...this.sessions.values()])if(s.until<now)this.dropPerson(s.id);
     for(const [hash,until] of this.bans)if(until<=now){this.bans.delete(hash);this.rosterDirty=true;}
+    for(const [name,until] of this.nameBans)if(until<=now){this.nameBans.delete(name);this.rosterDirty=true;}
     this.syncSpectators();
   }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
@@ -525,7 +552,7 @@ export class Room {
     // Combat start/end and each new round go to storage (what a restart reports as lost).
     const round=this.run.snapshot().phase==='combat'?this.sim.world.round.index:-1;
     if(round!==this.rosterRound){this.rosterRound=round;this.rosterDirty=true;}
-    this.flushRoster();
+    this.flushRoster(now);
     this.measure(performance.now()-started);
   }
   /** Lab stress (labHorde): critters spawn 8–30 u around a random standing player, up to 25 per tick (and stragglers come back); nobody falls. */

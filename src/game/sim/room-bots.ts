@@ -68,6 +68,8 @@ export class RoomBots {
   slotOf(id:string){return this.minds.get(id)?.slot??0;}
   /** The lowest slot no bot holds (0..5). */
   freeSlot(){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=0;while(used.has(slot))slot++;return slot;}
+  /** What decides the bots' next choices (Simulation.stateHash): each mind by slot, plain JSON. */
+  state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory}));}
   /** New run: fresh memories (forge refusals, offers seen, unstick), same slots. */
   reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;}}
   /**

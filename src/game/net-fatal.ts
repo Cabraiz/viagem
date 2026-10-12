@@ -9,21 +9,25 @@ export {needsUpdate};
 
 /**
  * Shows (or updates) the panel in `host`; `inline` puts it in the flow (lobby window) instead of over the scene.
- * `action` replaces the reload (kicked from the room, D-025: reloading would knock on the same door).
+ * `action` replaces the reload (kicked from the room, D-025: reloading would knock on the same door); `title` goes
+ * above the text in the poster voice (Londrina 21, left), and the window then reads left-aligned.
  */
-export function showFatal(host:HTMLElement,message:string,{inline=false,action}:{inline?:boolean;action?:{label:string;run():void}}={}):HTMLElement{
+export function showFatal(host:HTMLElement,message:string,{inline=false,action,title}:{inline?:boolean;action?:{label:string;run():void};title?:string}={}):HTMLElement{
   let panel=host.querySelector<HTMLElement>(':scope > .net-fatal');
   if(!panel){
     panel=document.createElement('div');panel.className='net-fatal';panel.setAttribute('role','alert');
+    const heading=document.createElement('h2');heading.className='net-fatal-title';heading.hidden=true;
     const text=document.createElement('p');text.className='net-fatal-text';
     const reload=document.createElement('button');reload.type='button';reload.className='net-fatal-reload';reload.textContent='Atualizar';
     reload.addEventListener('click',()=>{const run=(panel as HTMLElement&{action?:()=>void}).action;if(run)run();else location.reload();});
-    panel.append(text,reload);host.append(panel);
+    panel.append(heading,text,reload);host.append(panel);
   }
   (panel as HTMLElement&{action?:()=>void}).action=action?.run;
   panel.querySelector('.net-fatal-reload')!.textContent=action?.label??'Atualizar';
   panel.dataset.kind=action?'exit':'reload';
   panel.classList.toggle('net-fatal-inline',inline);
+  const heading=panel.querySelector<HTMLElement>('.net-fatal-title')!;heading.hidden=!title;heading.textContent=title??'';
+  panel.classList.toggle('net-fatal-titled',!!title);
   panel.dataset.update=String(needsUpdate(message));
   panel.querySelector('.net-fatal-text')!.textContent=message;
   return panel;

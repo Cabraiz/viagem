@@ -1,7 +1,7 @@
 // NEW-20261011-ORQ-dono-sala-bots (D-025): the room's owner, kick with a 10-minute ban, and the room's own bots.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Room,type Peer,type RoomRoster} from '../multiplayer/room.ts';
+import {Room,OWNER_GAP_MS,ROSTER_BOTS_MS,nameKey,type Peer,type RoomRoster} from '../multiplayer/room.ts';
 import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage,Simulation} from '../src/game/net/shared.ts';
 import {RunLifecycle} from '../src/game/net/run.ts';
 import {RoomBots,botIdentity,BOT_NAMES,BOT_THINK_EVERY} from '../src/game/sim/room-bots.ts';
@@ -9,7 +9,7 @@ import {downPlayer} from '../src/game/sim/revive.ts';
 import {classes} from '../src/classes.ts';
 import {NICK_MAX} from '../src/game/lobby.ts';
 import {railName} from '../src/game/render/map-label-rules.ts';
-import {waitingRoomView,confirmText,OWNER_HINT} from '../src/game/lobby.ts';
+import {waitingRoomView,confirmText,ownerNotice,OWNER_HINT} from '../src/game/lobby.ts';
 import {computeAwards} from '../src/game/hud/awards.ts';
 import {emptyTally} from '../src/game/hud/model.ts';
 import {manageLabel} from '../src/game/hud/result.ts';
@@ -28,7 +28,10 @@ const welcome=(p:TestPeer)=>p.messages.findLast(m=>m.t==='welcome');
 const round=(room:Room)=>room.run.snapshot().round;
 const owner=(room:Room)=>room.run.snapshot().owner;
 const bots=(room:Room)=>room.run.snapshot().members.filter(m=>m.bot).map(m=>m.id);
-const addBot=(room:Room,p:TestPeer,now:number)=>say(room,p,{t:'bot-add',round:round(room)},now);
+/** Owner commands from one phone are at least OWNER_GAP_MS apart (the room drops the rest): space them like a finger. */
+const lastCmd=new WeakMap<object,number>();
+const cmd=(room:Room,p:TestPeer,m:object,now:number)=>{const t=Math.max(now,(lastCmd.get(p)??-Infinity)+OWNER_GAP_MS);lastCmd.set(p,t);say(room,p,m,t);return t;};
+const addBot=(room:Room,p:TestPeer,now:number)=>cmd(room,p,{t:'bot-add',round:round(room)},now);
 const notices=(p:TestPeer)=>p.messages.filter(m=>m.t==='notice').map(m=>m.message);
 function combat(room:Room,peers:TestPeer[],from=1100){
   let t=from;for(const p of peers)say(room,p,{t:'ready',round:round(room),ready:true},t);
@@ -44,26 +47,26 @@ test('the owner is whoever sat first; it travels in the run state to everyone',(
 
 test('only the owner kicks and adds bots; the others hear why and nothing changes',()=>{
   const room=new Room(1000),a=peer(),b=peer(),c=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);join(room,c,'Caio',1000);
-  say(room,b,{t:'kick',round:round(room),id:welcome(c).id},1100);
-  addBot(room,b,1100);say(room,b,{t:'bot-remove',round:round(room)},1100);
+  cmd(room,b,{t:'kick',round:round(room),id:welcome(c).id},1100);
+  addBot(room,b,1100);cmd(room,b,{t:'bot-remove',round:round(room)},1100);
   assert.equal(room.sim.players.size,3);assert.deepEqual(bots(room),[]);assert.deepEqual(c.closes,[]);
   assert.deepEqual(notices(b),[OWNER_ONLY,OWNER_ONLY,OWNER_ONLY]);
   // A stale command (last run's round) is dropped quietly, even from the owner.
   say(room,a,{t:'bot-add',round:round(room)+1},1100);assert.deepEqual(bots(room),[]);
   // The owner cannot kick itself.
-  say(room,a,{t:'kick',round:round(room),id:welcome(a).id},1100);assert.equal(room.sim.players.size,3);
+  cmd(room,a,{t:'kick',round:round(room),id:welcome(a).id},1100);assert.equal(room.sim.players.size,3);
 });
 
 test('never in combat: kick and bots only in the lobby, the countdown and the result',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
   let t=combat(room,[a,b]);
-  say(room,a,{t:'kick',round:round(room),id:welcome(b).id},t);addBot(room,a,t);
+  cmd(room,a,{t:'kick',round:round(room),id:welcome(b).id},t);addBot(room,a,t);
   assert.equal(room.sim.players.size,2);assert.deepEqual(b.closes,[]);
   assert.deepEqual(notices(a),[OWNER_NOT_NOW,OWNER_NOT_NOW]);
   // At the result the owner may again.
   room.run.finish('defeat');room.advance(t+=50);assert.equal(room.run.snapshot().phase,'result');
   addBot(room,a,t);assert.equal(bots(room).length,1);
-  say(room,a,{t:'bot-remove',round:round(room)},t);assert.deepEqual(bots(room),[]);
+  cmd(room,a,{t:'bot-remove',round:round(room)},t);assert.deepEqual(bots(room),[]);
   // In the countdown too: a bot added then plays the coming run (ready, not a spectator).
   say(room,a,{t:'rematch',round:round(room)},t);say(room,b,{t:'rematch',round:round(room)},t);
   for(const p of [a,b])say(room,p,{t:'ready',round:round(room),ready:true},t);
@@ -76,10 +79,10 @@ test('never in combat: kick and bots only in the lobby, the countdown and the re
 test('the kicked one is told clearly, cannot come back for 10 minutes (token or fresh join with it), then can',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
   const bia=welcome(b);
-  say(room,a,{t:'kick',round:round(room),id:bia.id},2000);
+  cmd(room,a,{t:'kick',round:round(room),id:bia.id},2000);
   const kicked=b.messages.at(-1);
   assert.equal(kicked.t,'kicked');assert.equal(kicked.until,2000+KICK_BAN_MS);assert.equal(kicked.message,kickedMessage(2000+KICK_BAN_MS,2000));
-  assert.match(kicked.message,/chefe da sala te tirou.*10 min/);
+  assert.match(kicked.message,/dono da sala te tirou.*10 min/);
   assert.equal(b.closes[0].code,4003);assert.equal(room.sim.players.size,1);assert.equal(room.run.snapshot().members.length,1);
   // Back with the seat's token, or as a new player presenting it (what the page does), 9 minutes later: refused.
   const t9=2000+9*60_000;
@@ -109,16 +112,23 @@ test('the owner post moves to the oldest person when the owner leaves for good, 
   say(room,c,{t:'leave'},t);assert.equal(room.sim.players.size,0);assert.equal(owner(room),undefined);
 });
 
-test('six with bots: the seventh person and a seventh bot are refused',()=>{
+test('six with bots: a seventh bot is refused; a person takes the newest bot seat out of combat, never in it',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
   for(let i=0;i<4;i++)addBot(room,a,1100);
   assert.equal(room.sim.players.size,6);assert.equal(bots(room).length,4);
   addBot(room,a,1100);assert.equal(bots(room).length,4);assert.equal(notices(a).at(-1),ROOM_FULL_BOTS);
-  const seventh=peer();join(room,seventh,'Caio',1200);
-  assert.equal(seventh.closes[0].code,4003);assert.match(seventh.messages[0].message,/Sala cheia/);
-  // A bot out makes room for a person.
-  say(room,a,{t:'bot-remove',round:round(room),id:bots(room)[0]},1300);
-  const in6=peer();join(room,in6,'Caio',1300);assert.equal(welcome(in6).t,'welcome');assert.equal(room.sim.players.size,6);
+  // Lobby: Caio takes the seat of the newest bot.
+  const newest=bots(room).at(-1),before=bots(room);
+  const caio=peer();join(room,caio,'Caio',3000);
+  assert.equal(welcome(caio).t,'welcome');assert.equal(room.sim.players.size,6);
+  assert.deepEqual(bots(room),before.filter(id=>id!==newest));
+  // Combat: full is full, nobody's bot goes.
+  const t=combat(room,[a,b,caio],3100);
+  const late=peer();join(room,late,'Duda',t);
+  assert.equal(late.closes[0]?.code,4003);assert.match(late.messages[0].message,/Sala cheia/);assert.equal(bots(room).length,3);
+  // Result: again a person comes first.
+  room.run.finish('defeat');room.advance(t+50);
+  const after=peer();join(room,after,'Duda',t+100);assert.equal(welcome(after).t,'welcome');assert.equal(bots(room).length,2);
 });
 
 test('bots: funny names that fit, a class of the 36, marked as bot, ready, never holding the start alone',()=>{
@@ -198,7 +208,7 @@ test('restart keeps the owner, the bots and the kicked seats',()=>{
   const writes:RoomRoster[]=[];
   const room=new Room(1000,99,{onRoster:r=>writes.push(structuredClone(r))}),a=peer(),b=peer(),c=peer();
   join(room,a,'Ana',1000);join(room,b,'Bia',1000);join(room,c,'Caio',1000);
-  addBot(room,a,1100);addBot(room,a,1100);say(room,a,{t:'kick',round:round(room),id:welcome(c).id},1200);
+  addBot(room,a,1100);addBot(room,a,1100);cmd(room,a,{t:'kick',round:round(room),id:welcome(c).id},1200);
   say(room,a,{t:'pref',shame:true},1200);
   const roster=writes.at(-1)!;
   assert.equal(roster.owner,welcome(a).id);assert.equal(roster.bots?.length,2);assert.equal(roster.bans?.length,1);assert.equal(roster.botsAdded,2);
@@ -237,9 +247,15 @@ test('waiting room: the owner manages, people first then bots, the crown and rob
   // Countdown: still allowed; combat and result: the waiting room is hidden (the result has its own buttons).
   assert.equal(waitingRoomView({...run,phase:'countdown',remaining:40},names,'me').canManage,true);
   assert.equal(waitingRoomView({...run,phase:'combat'},names,'me').canManage,false);
-  assert.equal(confirmText({name:'Zé',bot:false}),'Expulsar Zé?');assert.equal(confirmText({name:'Bot Pamonha',bot:true}),'Tirar Bot Pamonha?');
-  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Bot Fujão',bot:true},true),'Tirar Bot Fujão?');
-  assert.ok(OWNER_HINT.length<60);
+  assert.equal(confirmText({name:'Wagner Washington',bot:false}),'Expulsar Wagner? Toca de novo.');assert.equal(confirmText({name:'Pamonha 3000',bot:true}),'Tirar Pamonha? Toca de novo.');
+  assert.equal(manageLabel({name:'Zé'},false),'Expulsar');assert.equal(manageLabel({name:'Fujão 3000',bot:true},false),'Tirar bot');
+  assert.equal(manageLabel({name:'Fujão 3000',bot:true},true),'Tirar Fujão? Toca de novo.');
+  assert.ok(OWNER_HINT.length<60);assert.match(OWNER_HINT,/dono da sala/);assert.doesNotMatch(OWNER_HINT,/chefe/);
+  // Owner news: the post moved, mine now, or a guest's first look; the owner's own first look says nothing.
+  assert.equal(ownerNotice({name:'Tia Cleide Aparecida'},'Wagner Washington',false),'Tia saiu. Agora quem manda é Wagner.');
+  assert.equal(ownerNotice({name:'Tia Cleide'},'Wagner',true),'Agora a sala é sua.');
+  assert.equal(ownerNotice(undefined,'Caio Souza',false),'Caio é dono da sala.');
+  assert.equal(ownerNotice(undefined,'Eu',true),undefined);
 });
 
 test('people-only prizes never go to a bot; plain counts still can',()=>{
@@ -286,4 +302,53 @@ test('lab only: {t:lab,end} ends the run in a defeat (result-screen proofs); a r
     assert.equal(room.run.snapshot().phase,lab?'result':'combat');
     if(lab)assert.equal(a.messages.findLast(m=>m.t==='run').run.outcome,'defeat');
   }
+});
+
+test('owner commands: one per 300 ms per phone; a roster change that is only bots is written at most once a second',()=>{
+  const writes:RoomRoster[]=[];
+  const room=new Room(1000,9,{onRoster:r=>writes.push(structuredClone(r))}),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
+  const before=writes.length;
+  for(let i=0;i<5;i++)say(room,a,{t:'bot-add',round:round(room)},2000+i*10);
+  assert.equal(bots(room).length,1,'a burst adds one bot');
+  say(room,a,{t:'bot-add',round:round(room)},2000+OWNER_GAP_MS);assert.equal(bots(room).length,2);
+  say(room,a,{t:'bot-add',round:round(room)},2000+2*OWNER_GAP_MS);assert.equal(bots(room).length,3);
+  assert.equal(writes.length-before,1,'three bot changes inside a second: one row');
+  // The tick writes the rest once the second is up.
+  room.advance(2000+ROSTER_BOTS_MS+10);
+  assert.equal(writes.length-before,2);assert.equal(writes.at(-1)!.bots?.length,3);
+  // A kick is written at once, bots and all.
+  say(room,a,{t:'bot-add',round:round(room)},2000+ROSTER_BOTS_MS+20);
+  say(room,a,{t:'kick',round:round(room),id:welcome(b).id},2000+ROSTER_BOTS_MS+20+OWNER_GAP_MS);
+  assert.equal(writes.at(-1)!.bans?.length,1);assert.equal(writes.at(-1)!.bots?.length,4);
+});
+
+test('kicked: the second sign is the name (no accents, spaces or case), for 10 minutes; another name gets in',()=>{
+  assert.equal(nameKey(' Wágner  Washington! '),nameKey('wagnerwashington'));
+  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Wagner Washington',1000);
+  cmd(room,a,{t:'kick',round:round(room),id:welcome(b).id},2000);
+  // A fresh browser (no token kept) with the same name, written another way.
+  const again=peer();join(room,again,'wágner washington',3000);
+  assert.equal(again.messages[0].t,'kicked');assert.equal(again.closes[0].code,4003);
+  const other=peer();join(room,other,'Zé',3000);assert.equal(welcome(other).t,'welcome');
+  // A restart keeps it; ten minutes later the name is free.
+  const restarted=new Room(1000);restarted.restore(room.roster(),3100);
+  const knock=peer();join(restarted,knock,'WAGNER WASHINGTON',3200);assert.equal(knock.messages[0].t,'kicked');
+  const later=peer();join(room,later,'Wagner Washington',2000+KICK_BAN_MS+1);assert.equal(welcome(later).t,'welcome');
+});
+
+test('stateHash covers the bots minds and step counter, not only their sticks',()=>{
+  const sim=new Simulation(4242,{world:'infinito'}),rb=new RoomBots();sim.botState=()=>rb.state();
+  sim.add('ana','Ana','cidadao-comum');sim.addBot('bot-1',BOT_NAMES[0],'mendigo');rb.add('bot-1',0);sim.resetRun();
+  for(let i=0;i<40;i++){rb.think(sim);sim.step(i*50);}
+  const hash=sim.stateHash();
+  (rb.state()[0].memory as {lastCastTick:number}).lastCastTick=-12345;
+  assert.notEqual(sim.stateHash(),hash,'a different memory is a different future');
+});
+
+test('remove: the opt-out and the moments of who left go with them (a later "no" is never lost to a leave)',()=>{
+  const sim=new Simulation(7);sim.add('ana','Ana','cidadao-comum');sim.add('bia','Bia','cidadao-comum');sim.setShamePref('bia',false);
+  sim.resetRun();
+  (sim as any).shame.best.set('bia',{player:'bia',key:'caiu',tick:5,round:1});
+  sim.remove('bia');
+  assert.equal(sim.shameOptOut.has('bia'),false);assert.equal(sim.shameMoment()?.player,undefined);
 });

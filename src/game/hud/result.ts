@@ -5,6 +5,7 @@
  * Player names always go through textContent.
  */
 import type {PlayerRunView} from '../sim/view.ts';
+import {railName} from '../render/map-label-rules.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
@@ -81,8 +82,10 @@ export interface ResultRoster {
 }
 /** The owner's buttons on a card: the verb, and the one-tap confirmation with the name. */
 export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},asking:boolean)=>
-  asking?(player.bot?`Tirar ${player.name}?`:`Expulsar ${player.name}?`):(player.bot?'Tirar bot':'Expulsar');
-const CONFIRM_MS=3000,REARM_MS=1500;
+  asking?`${player.bot?'Tirar':'Expulsar'} ${railName(player.name)}? Toca de novo.`:(player.bot?'Tirar bot':'Expulsar');
+/** The owner's button on the result: what it does, with no room for "turma" to read as the team's score. */
+export const MANAGE_LABEL='Arrumar a sala';
+const CONFIRM_MS=3000,REARM_MS=1500,DOUBLE_TAP_MS=500;
 
 const CONFETTI=18;
 const CONFETTI_COLORS=['#f2c94c','#ed6f72','#75b8a6','#9fd8ff','#c8a8ff','#ffb347'];
@@ -127,13 +130,14 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const manage=el('button','rh-result-btn rh-result-manage',actions);manage.type='button';manage.hidden=true;
   const exit=el('button','rh-result-btn rh-result-exit',actions);exit.type='button';exit.textContent='Sair';
   exit.hidden=!options.onExit;
-  let roster:ResultRoster|undefined,managing=false,armed:{id:string;until:number}|undefined,disarm:ReturnType<typeof setTimeout>|undefined,rosterKey='';
+  let roster:ResultRoster|undefined,managing=false,armed:{id:string;at:number;until:number}|undefined,disarm:ReturnType<typeof setTimeout>|undefined,rosterKey='';
   const syncManage=()=>{
     const can=!!roster?.canManage;if(!can)managing=false;
     manage.hidden=!can;manage.setAttribute('aria-pressed',String(managing));
     // Portrait has three buttons in 350 px: the crown and "Turma"; landscape has room for the whole verb.
-    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span class="rh-manage-long">Arrumar turma</span><span class="rh-manage-short">Turma</span>`;
-    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':'Arrumar turma');
+    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span>${MANAGE_LABEL}</span>`;
+    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':`${MANAGE_LABEL}: expulsar, tirar ou pôr bot`);
+    actions.classList.toggle('has-manage',can);
     root.classList.toggle('is-managing',managing);
   };
   manage.addEventListener('click',()=>{managing=!managing;armed=undefined;syncManage();if(shownResult)renderGrid(shownResult.result,shownResult.ctx);});
@@ -169,7 +173,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     // Robot sticker for a room bot, paper crown for the owner (D-025): shape, not color.
     const bot=player.bot||roster?.bots.includes(player.id);
     if(bot){const mark=el('span','rh-rcard-mark',id);mark.innerHTML=icon('robo',{label:'bot'});node.dataset.bot='true';}
-    if(roster?.owner===player.id){const mark=el('span','rh-rcard-mark',id);mark.innerHTML=icon('coroa',{label:'chefe da sala'});}
+    if(roster?.owner===player.id){const mark=el('span','rh-rcard-mark',id);mark.innerHTML=icon('coroa',{label:'dono da sala'});}
 
     const build=el('ul','rh-rcard-build',top);
     build.setAttribute('aria-label','Build');
@@ -221,11 +225,13 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     list.hidden=!awards.length;
     if(managing&&!me){
       const asking=armed?.id===player.id,who={name:player.name,bot:!!bot};
-      const button=el('button','rh-rcard-manage',node);button.type='button';button.dataset.id=player.id;
+      // A bot goes out by the door (the neutral button); a person is expelled: the cross, outlined in Cone, lighter.
+      const button=el('button',`rh-rcard-manage ${bot?'is-bot':'is-person'}`,node);button.type='button';button.dataset.id=player.id;
       button.classList.toggle('is-asking',asking);
-      button.innerHTML=`${icon('saiu')}<span></span>`;button.querySelector('span')!.textContent=manageLabel(who,asking);
-      button.setAttribute('aria-label',asking?`${manageLabel(who,true)} Toca de novo pra confirmar.`:`${manageLabel(who,false)}: ${player.name}`);
+      button.innerHTML=`${icon(bot?'saiu':'fechar')}<span></span>`;button.querySelector('span')!.textContent=manageLabel(who,asking);
+      button.setAttribute('aria-label',asking?manageLabel(who,true):`${manageLabel(who,false)}: ${player.name}`);
       button.addEventListener('click',()=>{
+        if(armed?.id===player.id&&Date.now()-armed.at<DOUBLE_TAP_MS)return; // the same finger bouncing
         if(armed?.id===player.id&&Date.now()<=armed.until){
           armed=undefined;clearTimeout(disarm);button.disabled=true;
           if(bot)options.onRemoveBot?.(player.id);else options.onKick?.(player.id);
@@ -233,7 +239,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
           disarm=setTimeout(()=>{if(shownResult)renderGrid(shownResult.result,shownResult.ctx);},REARM_MS);
           return;
         }
-        armed={id:player.id,until:Date.now()+CONFIRM_MS};clearTimeout(disarm);
+        armed={id:player.id,at:Date.now(),until:Date.now()+CONFIRM_MS};clearTimeout(disarm);
         disarm=setTimeout(()=>{armed=undefined;if(shownResult)renderGrid(shownResult.result,shownResult.ctx);},CONFIRM_MS);
         if(shownResult)renderGrid(shownResult.result,shownResult.ctx);
       });

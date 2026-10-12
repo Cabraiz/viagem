@@ -183,3 +183,70 @@ test('N27 client: a late heartbeat does not judge the silence, the next one on t
     (bob as any).beat(s2,t2+25_000);assert.equal(s2.readyState,3,'25 s of silence: dead even though every beat was late');
   }finally{stop();cleanup();}
 });
+
+test('reconecta-round2: the banner helper and the retry schedule (150 ms first once joined, then 1, 2, 4 s)',async()=>{
+  const {reconnectBanner,retryDelay,RECONNECT_BANNER_MS,FIRST_RETRY_MS}=await import('../../src/client/net/client.ts');
+  assert.equal(RECONNECT_BANNER_MS,1500);assert.equal(FIRST_RETRY_MS,150);
+  const at=(offline:number,extra:{connected?:boolean;fatal?:string}={})=>reconnectBanner({connected:false,...extra,offlineMs:()=>offline});
+  assert.equal(at(0),false);assert.equal(at(1499),false);assert.equal(at(1500),true);assert.equal(at(30_000),true);
+  assert.equal(at(5000,{connected:true}),false);assert.equal(at(5000,{fatal:'Conexão indisponível.'}),false,'terminal: the fatal window, not the banner');
+  assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,4000,4000,4000]);
+  assert.deepEqual([0,1].map(n=>retryDelay(n,false)),[500,1000],'before joining the lobby keeps its pace');
+});
+
+test('reconecta-round2: an edge drop (1006) mid-combat reconnects to the same seat in under 1.5 s and the banner never shows',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();ana.ready(true);
+    for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+    assert.equal(ana.run?.phase,'combat');
+    const id=ana.id,old=sockets(ana);
+    // Cloudflare edge drop: the page sees 1006, the room still holds the old socket, the network is fine.
+    const from=Date.now();old.vanish();
+    let banner=false;
+    while(Date.now()-from<1500&&!(ana.connected&&sockets(ana)!==old)){banner||=ana.showReconnecting();await sleep(10);}
+    const took=Date.now()-from;
+    assert.equal(ana.connected,true,`still down after ${took} ms`);assert.notEqual(sockets(ana),old);
+    assert.ok(took<1000,`back in ${took} ms (first retry at 150 ms)`);
+    assert.equal(banner,false,'the center banner never showed');assert.equal(ana.showReconnecting(),false);
+    assert.equal(ana.id,id);assert.equal(ana.fatal,undefined);
+    assert.equal(net.room.sim.players.size,1,'same seat, no duplicate');assert.equal(net.room.connections.size,1);
+    for(let i=0;i<40&&ana.run?.phase!=='combat';i++)await sleep(25);
+    assert.equal(ana.run?.phase,'combat','the run goes on');
+  }finally{stop();cleanup();}
+});
+
+test('reconecta-round2: a long outage (network down 3 s) shows the banner after 1.5 s and clears it once back',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();ana.ready(true);
+    for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+    net.down=true;sockets(ana).vanish();
+    for(let i=0;i<40&&ana.connected;i++)await sleep(10);
+    assert.equal(ana.connected,false);
+    const samples:{offline:number;banner:boolean}[]=[];
+    const from=Date.now();
+    while(Date.now()-from<3000){const now=Date.now();samples.push({offline:ana.offlineMs(now),banner:ana.showReconnecting(now)});await sleep(20);}
+    assert.ok(samples.every(s=>s.banner===s.offline>=1500),'banner exactly from 1.5 s offline');
+    assert.ok(samples.some(s=>s.banner),'shown during the long outage');assert.ok(samples.some(s=>!s.banner),'not at the start');
+    net.down=false;
+    for(let i=0;i<120&&!ana.connected;i++)await sleep(50);
+    assert.equal(ana.connected,true);assert.equal(ana.showReconnecting(),false);assert.equal(ana.fatal,undefined);
+  }finally{stop();cleanup();}
+});
+
+test('reconecta-round2: terminal ends (replaced by another tab, gave up) show their window, never the banner',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const one=client();await one.join();
+    const two=client();await two.join();
+    for(let i=0;i<40&&!one.fatal;i++)await sleep(25);
+    assert.equal(one.fatal,REPLACED_MESSAGE);assert.equal(one.showReconnecting(Date.now()+60_000),false);
+    // Past the reconnection window (nothing heard for GRACE_MS + 10 s): stops for good.
+    store.clear();net.room=new Room(Date.now());
+    const ana=client();await ana.join();
+    (ana as any).lastSeenAt=0;net.down=true;sockets(ana).vanish();
+    for(let i=0;i<40&&!ana.fatal;i++)await sleep(10);
+    assert.match(ana.fatal??'',/Conexão indisponível/);assert.equal(ana.showReconnecting(Date.now()+60_000),false);
+  }finally{stop();net.down=false;cleanup();}
+});

@@ -19,7 +19,7 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
-import {InputTrack,STEP_MS} from '../src/maps/index.ts';
+import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
 import type {ZueiraLab} from '../src/sim/index.ts';
 /**
@@ -36,7 +36,8 @@ import type {ZueiraLab} from '../src/sim/index.ts';
 export const DEFAULT_WORLD:WorldKind='infinito';
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
-  return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
+  const kind=terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
+  return {kind,terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
 }
 /** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
 const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
@@ -92,8 +93,11 @@ export class Simulation {
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
    */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
-    this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
+  /** `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world. */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField}={}){
+    if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
+    const generated=options.world==='cidade'?undefined:options.world;
+    this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }
@@ -181,7 +185,7 @@ export class Simulation {
   input(id:string,value:unknown,now=this.tick*STEP_MS){
     const p=this.players.get(id),t=this.tracks.get(id);
     if(!p?.online||p.spectator||!t)return false;
-    return t.accept(value,p,this.terrain,now);
+    return t.accept(value,now);
   }
   /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
   tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
@@ -374,7 +378,7 @@ export class Simulation {
     const enemies:EnemyWire[]=[...w.enemies.values()].map(packEnemy);
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
     return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature,
-      ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:{})},t:'state',tick:this.tick,full:true,
+      ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:this.terrain.world==='cidade'?{world:'cidade' as const}:{})},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
       x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(p=>packPlayerExtra(p,this.statsOf(p.id))),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),

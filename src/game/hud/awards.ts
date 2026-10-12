@@ -89,7 +89,7 @@ const DEFS:readonly AwardDef[]=[
     line:()=>'Montou no escuro. Funcionou?'},
   {id:'ima-humano',title:'Ímã humano',icon:'ima-ferradura',vice:'Ímã de geladeira',solo:true,
     metric:f=>f.pickups,
-    line:v=>`Catou ${v} coisas. Até chiclete.`},
+    line:v=>`Catou ${plural(v,'coisa','coisas')}. Até chiclete.`},
   {id:'turista',title:'Turista',icon:'camera',vice:'Turista de fim de semana',solo:false,person:true,
     metric:(f,all)=>{
       const active=all.filter(other=>isActive(other.player));
@@ -115,10 +115,11 @@ const DEFS:readonly AwardDef[]=[
 ];
 
 const ZERO:Readonly<PlayerTally>={downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0};
-const FALLBACK:Omit<Award,'playerId'>={id:'figurante',title:'Figurante de luxo',icon:'claquete',line:'Apareceu na foto. Valeu!'};
+const FALLBACK:Omit<Award,'playerId'>={id:'figurante',title:'Figurante de luxo',icon:'foto',line:'Apareceu na foto. Valeu!'};
 
-/** Runner-up sticker (rule C): the coin of a lost tiebreak, the 2nd and 3rd medals (numbered: not only color), "na trave". */
-export const viceSticker=(place:number):StickerName=>place===1?'moeda':place===2?'medalha-2':place===3?'medalha-3':'medalha';
+/** Runner-up sticker (rule C): the coin standing on edge (lost tiebreak), the várzea trophies 2 and 3 (numbered: not only
+ *  color), and the goal post for "Na trave!". */
+export const viceSticker=(place:number):StickerName=>place===1?'moeda':place===2?'trofeu-2':place===3?'trofeu-3':'trave';
 
 const byId=(a:PlayerRunView,b:PlayerRunView)=>a.id<b.id?-1:a.id>b.id?1:0;
 
@@ -177,17 +178,22 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
     if(top&&count(top.f.player.id)<MAX_AWARDS_PER_PLAYER)give(index,0);
   });
   // C: runners-up get a vice title that states their real rank; D: figurante only without any metric.
+  // Each vice title goes to one card when the player has another one to take: two cards both saying "Turista de fim
+  // de semana" read as a bug (design review). A vice already shown elsewhere is only the fallback.
+  const viceShown=new Set<number>();
   if(!solo)for(const player of players){
     if(count(player.id)>0)continue;
-    let best:{index:number;place:number}|undefined;
+    let best:{index:number;place:number;taken:boolean}|undefined;
     rankings.forEach((ranking,index)=>{
       const rank=ranking.findIndex(entry=>entry.f.player.id===player.id);
       if(rank<0)return;
       // Place counts distinct better values, so ties share a place and nobody is called 3rd when tied for 2nd.
       const place=1+new Set(ranking.slice(0,rank).map(entry=>entry.value).filter(value=>value>ranking[rank].value)).size;
-      if(!best||place<best.place)best={index,place};
+      const taken=viceShown.has(index);
+      if(!best||(best.taken&&!taken)||(best.taken===taken&&place<best.place))best={index,place,taken};
     });
     if(best){
+      viceShown.add(best.index);
       const def=defs[best.index];
       const line=best.place===1?`Empatou em "${def.title}" e perdeu no desempate.`:`${best.place}º em "${def.title}". Na trave!`;
       owned.get(player.id)!.push({id:`vice-${def.id}`,title:def.vice,icon:viceSticker(best.place),playerId:player.id,line});

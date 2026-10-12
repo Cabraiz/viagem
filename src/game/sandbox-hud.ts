@@ -19,6 +19,7 @@ import type {RunView} from './sim/view.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from './hud/coach.ts';
 import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from './sim/waves.ts';
 import {uxMetricsEnabled} from './dev/ux-flag.ts';
+import {icon} from '../ui/icon.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
 const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a,'');
@@ -55,7 +56,7 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser){display:none!importan
 document.head.append(style);
 
 const world=document.createElement('div');world.className='hs-world';
-world.innerHTML='<div class="hs-mock hs-cam">↶ 1 / 4 ↷</div><div class="hs-mock hs-gear">⚙</div><div class="hs-mock hs-stick">●</div><div class="hs-mock hs-attack">Atacar</div>';
+world.innerHTML='<div class="hs-mock hs-cam">↶ 1 / 4 ↷</div><div class="hs-mock hs-gear">'+icon('config')+'</div><div class="hs-mock hs-stick">●</div><div class="hs-mock hs-attack">Atacar</div>';
 document.body.append(world);
 let moved=0;
 world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTaps=String(moved);});

@@ -119,9 +119,9 @@ export function createCamp(options:CampOptions):CampPart{
       const part=el('span','rh-forge-cost',price);el('b','',part).textContent=String(r.cost[kind]);
       part.insertAdjacentHTML('beforeend',icon(kind,{label:kind==='coco'?'coco':'pedra'}));
     }
-    const lock=el('span','rh-forge-lock',button);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
+    const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
-    const full=el('span','rh-forge-full',button);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
+    const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
     el('span','rh-forge-stamp',button).textContent='LEVEI';
     tags.set(id,{button,lock,full});
   }

@@ -5,7 +5,7 @@
  * var(--r-*)/50%/0, sombra com blur > 0 (em box-shadow, text-shadow, drop-shadow ou qualquer variável que guarde
  * sombra), text-transform:uppercase, qualquer letter-spacing positivo e texto menor que o mínimo (13 px na partida,
  * 10 px fora), contando px, rem e calc(). Entende CSS aninhado.
- * Em src/game/**\/*.ts (menos sandbox-*), emoji e ✦ em código (comentários não contam) têm de bater com o baseline de
+ * Em src/game/**\/*.ts (sandboxes inclusive), emoji e ✦ em código (comentários não contam) têm de bater com o baseline de
  * scripts/design-lint-baseline.json: subir falha, e descer sem baixar o número também (o débito é dos cards
  * DSG-icones-sistema e DSG-adesivos-itens).
  * Uso: node scripts/lint-design.mjs [raiz]   (sai com 1 se houver violação)
@@ -227,7 +227,6 @@ export function lintDesign(root=process.cwd()){
   const emoji={};
   const files=new Set([...walk(path.join(root,'src/game'),'.ts').map(p=>rel(root,p)),...Object.keys(baseline)]);
   for(const file of [...files].sort()){
-    if(/\/sandbox-[^/]*\.ts$/.test(file))continue;
     const full=path.join(root,file);
     const n=fs.existsSync(full)?emojiCount(fs.readFileSync(full,'utf8')):0;
     const allowed=baseline[file]??0;

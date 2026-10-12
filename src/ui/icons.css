@@ -22,19 +22,37 @@
 .f-pedra{fill:var(--c-pedra)}
 .f-casca{fill:var(--c-casca)}
 .f-gema{fill:var(--c-gema)}
-/* Adesivos ilustrados (DSG-adesivos-itens, src/ui/stickers.svg): café, fritura, a sombra recortada pela peça, traço fino
-   (código de barras, fio), pontinhos de textura e o cabo grosso com contorno (guarda-chuva, rodo, coador). */
-.f-cafe{fill:var(--c-cafe)}
-.f-dourado{fill:var(--c-dourado)}
-.ik-tom{fill:var(--c-tom);stroke:none}
-.ik-fina{fill:none;stroke-width:1.6px}
-.ik-ponto{fill:var(--c-casca);stroke:none}
-.ik-flor{fill:var(--c-amarelo);stroke-width:1.2px}
-.ik-cabo-fundo{fill:none;stroke-width:7px}
-.ik-cabo{fill:none;stroke-width:3.4px}
-.ik-cabo.c-casca{stroke:var(--c-casca)}
-.ik-cabo.c-pedra{stroke:var(--c-pedra)}
-.ik-cabo.c-claro{stroke:var(--c-papel-claro)}
+/* Adesivos de itens, prêmios e sons em pixel art (DSG-adesivos-itens, src/ui/stickers.svg, scripts/make-stickers.mjs):
+   pixel inteiro (crispEdges), contorno e sombra Breu, borda branca-papel, e a cor real de cada objeto (--arte-*). */
+.ic-adesivo{shape-rendering:crispEdges}
+.px-sombra,.px-contorno,.px-breu{fill:var(--c-breu)}
+.px-borda{fill:var(--c-papel-claro)}
+.px-lilas{fill:var(--c-lilas)}
+.px-branco{fill:var(--arte-branco)}
+.px-papel{fill:var(--arte-papel)}
+.px-papel-sombra{fill:var(--arte-papel-sombra)}
+.px-kraft{fill:var(--arte-kraft)}
+.px-aluminio-claro{fill:var(--arte-aluminio-claro)}
+.px-aluminio{fill:var(--arte-aluminio)}
+.px-aluminio-escuro{fill:var(--arte-aluminio-escuro)}
+.px-amarelo{fill:var(--arte-amarelo)}
+.px-amarelo-sombra{fill:var(--arte-amarelo-sombra)}
+.px-dourado{fill:var(--arte-dourado)}
+.px-dourado-sombra{fill:var(--arte-dourado-sombra)}
+.px-madeira{fill:var(--arte-madeira)}
+.px-cafe{fill:var(--arte-cafe)}
+.px-vermelho{fill:var(--arte-vermelho)}
+.px-vermelho-sombra{fill:var(--arte-vermelho-sombra)}
+.px-verde{fill:var(--arte-verde)}
+.px-verde-sombra{fill:var(--arte-verde-sombra)}
+.px-azul{fill:var(--arte-azul)}
+.px-azul-sombra{fill:var(--arte-azul-sombra)}
+.px-gema{fill:var(--arte-gema)}
+.px-gema-sombra{fill:var(--arte-gema-sombra)}
+.px-roxo{fill:var(--arte-roxo)}
+.px-rosa{fill:var(--arte-rosa)}
+.px-rosa-sombra{fill:var(--arte-rosa-sombra)}
+.px-vidro{fill:var(--arte-vidro)}
 /* Espelhado: girar para a esquerda é o mesmo adesivo virado. */
 .ic-espelho{transform:scaleX(-1)}
 /* Agulha da bússola: gira com a vista atual (--vista em graus, explore.ts). */

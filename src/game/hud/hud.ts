@@ -23,7 +23,6 @@ import {Minimap} from './minimap.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
-import './stickers.css';
 
 export interface RunHudOptions {
   localId:string;

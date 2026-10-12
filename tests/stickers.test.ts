@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
-import {buildSprite,STICKER_LIST} from '../scripts/make-stickers.mjs';
+import {buildSprite,STICKER_GRIDS,STICKER_LIST} from '../scripts/make-stickers.mjs';
 import {STICKER_NAMES,isStickerName,sticker} from '../src/ui/sticker.ts';
 import {ICON_NAMES} from '../src/ui/icon.ts';
 import {allItemDisplays,itemDisplay,UNKNOWN_ITEM_STICKER} from '../src/game/hud/items.ts';
@@ -20,26 +20,31 @@ test('stickers.svg is exactly what scripts/make-stickers.mjs draws (run it after
   assert.equal(new Set(symbols).size,symbols.length,'no duplicate symbol');
 });
 
-test('every sticker is a sticker: title, hard shadow, paper edge, art in token classes only, one shade at most',()=>{
+test('every sticker is pixel art with the sticker edge: title, hard shadow, paper edge, outline, real colors by class',()=>{
   for(const name of STICKER_NAMES){
-    const body=svg.match(new RegExp(`<symbol id="a-${name}"[^>]*>(.*?)</symbol>`))?.[1]??'';
-    assert.match(body,new RegExp(`^<title>[^<]+</title><use href="#sa-${name}" class="ik-sombra"/><use href="#sa-${name}" class="ik-papel"/><g class="ik-arte">`),name);
-    assert.ok((body.match(/class="ik-brilho"/g)??[]).length===1,`${name}: one light`);
-    assert.ok((body.match(/class="ik-tom"/g)??[]).length<=1,`${name}: at most one shade`);
+    const body=svg.match(new RegExp(`<symbol id="a-${name}" viewBox="0 0 24 24">(.*?)</symbol>`))?.[1]??'';
+    assert.match(body,/^<title>[^<]+<\/title><path class="px-sombra" d="[^"]+"\/><path class="px-borda" d="[^"]+"\/><path class="px-contorno" d="[^"]+"\/>/,name);
+    // Real colors: at least three art colors besides the outline (an object, its shade and its light).
+    const colors=[...body.matchAll(/class="px-([a-z-]+)"/g)].map(m=>m[1]).filter(c=>!['sombra','borda','contorno','breu'].includes(c));
+    assert.ok(colors.length>=3,`${name}: ${colors.join(',')}`);
+    assert.ok(!colors.includes('lilas'),`${name}: lilás is the seal's, not the object's`);
   }
+  for(const [name,grid] of Object.entries(STICKER_GRIDS as Record<string,string[]>))
+    assert.ok(grid.length===20&&grid.every(row=>row.length===20),name);
   assert.doesNotMatch(svg,/#[0-9a-f]{3,8}\b(?!-)/i,'no hex color');
   assert.doesNotMatch(svg,/\b(rgba?|hsla?)\(/i);
-  assert.doesNotMatch(svg,/(fill|stroke)="(?!none")[^"]+"/,'no paint attributes besides none');
+  assert.doesNotMatch(svg,/(fill|stroke)="/,'no paint attributes');
   assert.doesNotMatch(svg,/\p{Extended_Pictographic}|✦/u);
   assert.doesNotMatch(svg,/style=/);
-  const clips=new Set([...svg.matchAll(/<clipPath id="([^"]+)"/g)].map(m=>m[1]));
-  for(const m of svg.matchAll(/clip-path="url\(#([^)]+)\)"/g))assert.ok(clips.has(m[1]),`clip ${m[1]} exists`);
-  assert.ok(svg.length<60_000,`sprite stays light (${svg.length} bytes)`);
+  // Every px-* class the sprite uses is painted by icons.css from a token.
+  const css=readFileSync(new URL('../src/ui/icons.css',import.meta.url),'utf8');
+  for(const cls of new Set([...svg.matchAll(/class="(px-[a-z-]+)"/g)].map(m=>m[1])))assert.match(css,new RegExp(`\\.${cls}[,{]`),cls);
+  assert.ok(svg.length<100_000,`sprite stays light (${svg.length} bytes)`);
 });
 
 test('sticker() is a decorative <use> unless labelled, with the icon sizes',()=>{
-  assert.equal(sticker('coxinha'),'<svg class="ic ic-adesivo" viewBox="0 0 48 48" aria-hidden="true" focusable="false" data-sticker="coxinha"><use href="#a-coxinha"/></svg>');
-  assert.match(sticker('boleto',{size:48,label:'Boleto "vencido"'}),/class="ic ic-adesivo ic-48" viewBox="0 0 48 48" role="img" aria-label="Boleto &quot;vencido&quot;"/);
+  assert.equal(sticker('coxinha'),'<svg class="ic ic-adesivo" viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-sticker="coxinha"><use href="#a-coxinha"/></svg>');
+  assert.match(sticker('boleto',{size:48,label:'Boleto "vencido"'}),/class="ic ic-adesivo ic-48" viewBox="0 0 24 24" role="img" aria-label="Boleto &quot;vencido&quot;"/);
   assert.ok(isStickerName('pombo'));assert.ok(!isStickerName('🐦'));
 });
 
@@ -61,7 +66,7 @@ test('every award and vice has a sticker; the vice medals say the place in shape
   assert.ok(named.length>=13,'every award def names a sticker');
   for(const name of named)assert.ok(isStickerName(name),name);
   assert.equal(new Set(named).size,named.length,'one drawing per award');
-  assert.deepEqual([1,2,3,4,9].map(viceSticker),['moeda','medalha-2','medalha-3','medalha','medalha']);
+  assert.deepEqual([1,2,3,4,9].map(viceSticker),['moeda','trofeu-2','trofeu-3','trave','trave']);
   // An award computed end to end carries a sticker name.
   const awards=computeAwards({victory:true,players:[
     {id:'a',name:'A',classId:'cidadao',level:3,weapons:[{id:'chinelo',level:2}],passives:[],downed:false,spectator:false,stats:{damage:10,kills:3,revives:0,pickups:2,downs:1,heals:0,magnets:0,chests:0,evolves:0}},

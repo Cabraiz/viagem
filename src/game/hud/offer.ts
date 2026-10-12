@@ -174,7 +174,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const render=(offer:OfferView)=>{
     root.dataset.source=offer.source;
     const allNew=isAllNew(offer);const titleNew=allNew&&offer.source==='level';
-    root.classList.toggle('rh-offer-all-new',allNew);
+    root.classList.toggle('rh-offer-all-new',titleNew);
     title.textContent=titleNew?'Tudo novo!':offerTitle(offer).title;
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);

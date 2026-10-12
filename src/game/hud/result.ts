@@ -53,8 +53,9 @@ export function compactNumber(value:number){
   return `${Math.floor(n/1000)}k`;
 }
 
-/** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip. */
-export const BUILD_SLOTS={portrait:5,landscape:7} as const;
+/** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip.
+ *  Slots are 28 px stickers 6 px apart (design review of DSG-adesivos-itens): 118 px beside the portrait fits 3, 207 px fits 6. */
+export const BUILD_SLOTS={portrait:3,landscape:6} as const;
 const LANDSCAPE='(max-height:500px)';
 
 /** Build icons in display order (evolutions, weapons, passives; higher level first). With more items than slots,
@@ -218,7 +219,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     }
     for(const award of awards){
       const chip=el('li','rh-award',list);
-      const mark=el('span','rh-award-emoji',chip);mark.innerHTML=drawSticker(award.icon);mark.setAttribute('aria-hidden','true');
+      const mark=el('span','rh-award-emoji',chip);mark.innerHTML=drawSticker(award.icon,{size:32});mark.setAttribute('aria-hidden','true');
       const text=el('span','rh-award-text',chip);
       const name=el('strong','rh-award-title',text);name.textContent=award.title;
       const line=el('small','rh-award-line',text);line.textContent=award.line;

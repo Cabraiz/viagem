@@ -24,7 +24,7 @@ const CSS=`
 .audio-lab-close{flex:none;width:44px;height:44px;border:2px solid #b4a4cd;border-radius:50%;background:#fffdf5;color:#7563ae;font-size:22px;line-height:1;cursor:pointer}
 .audio-lab-grid{grid-area:grid;min-height:0;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));grid-auto-rows:minmax(44px,1fr)}
 .audio-lab-sound{position:relative;min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;border:2px solid var(--ink);border-radius:18px;background:var(--bg);color:#514464;font:800 13px/1.15 var(--f-sistema);text-align:center;box-shadow:0 4px 0 var(--ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.audio-lab-sound b{font-size:clamp(22px,5.2vmin,34px);line-height:1}
+.audio-lab-sound b{display:grid;place-items:center;min-height:32px;font:400 21px/1 var(--f-cartaz)}
 .audio-lab-sound span{overflow-wrap:anywhere}
 .audio-lab-sound:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
 .audio-lab-sound.audio-ok{animation:audio-pop .28s ease-out}
@@ -79,7 +79,7 @@ export function openAudioSandbox():void{
   const [bg,ink]=PASTELS[i%PASTELS.length];
   return `<button type="button" class="audio-lab-sound" data-sound="${id}" style="--bg:${bg};--ink:${ink}"><b aria-hidden="true">${art(SOUND_ART[id])}</b><span>${RECIPES[id].label}</span></button>`;
 }).join('')}</div>
-<div class="audio-lab-panel"><div class="audio-lab-controls"></div><div class="audio-lab-row"><div class="audio-lab-voices"><span>vozes ativas: <strong></strong></span><small aria-live="polite"></small></div><button type="button" class="audio-lab-chaos">Caos! 💥</button></div></div>
+<div class="audio-lab-panel"><div class="audio-lab-controls"></div><div class="audio-lab-row"><div class="audio-lab-voices"><span>vozes ativas: <strong></strong></span><small aria-live="polite"></small></div><button type="button" class="audio-lab-chaos">Caos!</button></div></div>
 `;
   document.body.append(lab);
 

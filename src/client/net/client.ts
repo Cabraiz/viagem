@@ -6,7 +6,7 @@ import type {RunState} from '../../contract/index.ts';
 import type { Point } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
-import {InputBatcher} from '../../maps/index.ts';
+import {InputBatcher} from '../../protocol/index.ts';
 import {parseSos,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */

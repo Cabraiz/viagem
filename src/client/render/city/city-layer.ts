@@ -9,11 +9,11 @@
  */
 import Phaser from 'phaser';
 import {groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
-import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
+import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius} from './chunks.ts';
 import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,type TextureLookup} from './materials.ts';
-import {OcclusionFader,actorDepth,covers,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
+import {HERO_SCREEN,OcclusionFader,actorDepth,covers,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 
@@ -89,6 +89,12 @@ export class CityLayer {
   private depthOf:(key:number)=>number;
   /** Unit columns of the live chunks by cell index, in the current view (for actorDepth). */
   private readonly columns=new Map<number,ColumnRef>();
+  /**
+   * actorDepth runs per actor per frame: the columns an actor standing in a cell could overlap on screen depend only
+   * on the cell, so they are gathered once per cell and cached until chunks change or the view turns.
+   */
+  private readonly cellColumns=new Map<number,ColumnRef[]>();
+  private query=0;
   private readonly fader=new OcclusionFader();
   private readonly live=new Map<string,LiveChunk>();
   private readonly blocks=new Map<string,CityBlock>();
@@ -126,12 +132,39 @@ export class CityLayer {
    * below the nearby columns it overlaps on screen so walls never cover it wrongly (occlusion.ts actorDepth).
    */
   actorDepth(x:number,y:number,z=groundZ(this.asset,x,y)):number{
-    const {cell,origin,width}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell),near=new Set<ColumnRef>();
-    for(let j=cy-ACTOR_REACH_CELLS;j<=cy+ACTOR_REACH_CELLS;j++)for(let i=cx-ACTOR_REACH_CELLS;i<=cx+ACTOR_REACH_CELLS;i++){
-      if(i<0||j<0||i>=width)continue;
-      const c=this.columns.get(j*width+i);if(c)near.add(c);
+    const {cell,origin,width,height}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell);
+    const view=Math.max(0,this.view);
+    if(cx<0||cy<0||cx>=width||cy>=height||!this.columns.size)return this.depthOf(depth(x,y,view,this.pivot));
+    const index=cy*width+cx;
+    let near=this.cellColumns.get(index);
+    if(!near){near=this.gatherColumns(cx,cy,view);this.cellColumns.set(index,near);}
+    return this.depthOf(actorDepth(x,y,z,view,near,this.pivot));
+  }
+
+  /**
+   * Columns within reach of a cell whose screen bounds can meet the box of an actor standing anywhere in it: the cell's
+   * corners projected at their ground heights, widened by the actor box (HERO_SCREEN) and a margin. Each column once.
+   */
+  private gatherColumns(cx:number,cy:number,view:number):ColumnRef[]{
+    const {cell,origin,width,height}=this.asset,out:ColumnRef[]=[],stamp=++this.query;
+    let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+    for(const [i,j] of [[0,0],[1,0],[1,1],[0,1]]){
+      const wx=origin.x+(cx+i)*cell,wy=origin.y+(cy+j)*cell,p=project(wx,wy,groundZ(this.asset,wx,wy),view,this.pivot);
+      x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);
     }
-    return this.depthOf(actorDepth(x,y,z,Math.max(0,this.view),near,this.pivot));
+    const m=4;x0-=HERO_SCREEN.w/2+m;x1+=HERO_SCREEN.w/2+m;y0-=HERO_SCREEN.h+m;y1+=m;
+    const i0=Math.max(0,cx-ACTOR_REACH_CELLS),i1=Math.min(width-1,cx+ACTOR_REACH_CELLS);
+    const j0=Math.max(0,cy-ACTOR_REACH_CELLS),j1=Math.min(height-1,cy+ACTOR_REACH_CELLS);
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+      const c=this.columns.get(j*width+i);
+      // A painted building registers one column on all its cells: count it once.
+      if(!c||c.mark===stamp)continue;
+      c.mark=stamp;
+      const b=c.occ.box;
+      if(b.x1<=x0||x1<=b.x0||b.y1<=y0||y1<=b.y0)continue;
+      out.push(c);
+    }
+    return out;
   }
 
   /** Changes the depth mapping (e.g. the scene rebased its depth origin) and re-applies it to everything live. */
@@ -146,7 +179,7 @@ export class CityLayer {
 
   update(frame:CityFrame){
     const view=normalizeView(frame.view);
-    if(view!==this.view){this.view=view;this.fader.reset();}
+    if(view!==this.view){this.view=view;this.fader.reset();this.cellColumns.clear();}
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
     for(const key of show)this.buildChunk(key,view);
@@ -163,6 +196,7 @@ export class CityLayer {
 
   // ---------- Building and dropping chunks ----------
   private buildChunk(key:string,view:number){
+    this.cellColumns.clear();
     const chunk=this.chunksByKey.get(key);
     if(!chunk||this.live.has(key))return;
     const {ground,glints}=this.bakeGround(chunk,view);
@@ -340,6 +374,7 @@ export class CityLayer {
     for(const s of live.sprites)s.obj.destroy();
     for(const p of live.props)p.obj.destroy();
     for(const c of live.cells)this.columns.delete(c);
+    this.cellColumns.clear();
     this.live.delete(key);
   }
 
@@ -360,7 +395,7 @@ export class CityLayer {
     if(prop.kind==='pine'&&this.scene.textures.exists(PINE_TEXTURE))
       return this.scene.add.image(at.x,at.y,PINE_TEXTURE,view).setOrigin(.5,PINE_SHEET.pivotY)
         .setScale(PINE_SHEET.height/PINE_SHEET.pixelHeight).setDepth(order);
-    const c=PROP_COLORS[prop.kind],r=prop.r*42,g=this.scene.add.graphics({x:at.x,y:at.y});
+    const c=PROP_COLORS[prop.kind],r=propDrawRadius(prop)*42,g=this.scene.add.graphics({x:at.x,y:at.y});
     g.fillStyle(SHADOW.color,SHADOW.alpha).fillEllipse(0,0,r*2.2,r*1.1);
     g.lineStyle(OUTLINE_PX.prop,CITY_PALETTE.breu,1);
     switch(prop.kind){

@@ -1,7 +1,7 @@
 import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
-import {CityLayer,OUTSIDE_CITY,cityRenderAsset} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ} from './render/city/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
@@ -127,7 +127,7 @@ export class IslandScene extends Phaser.Scene {
   private treeIdle=new Set<string>();
   /** Endless world: sheets of the ring beyond the screen, fetched one by one in the background (pumpTrees). */
   private treeLater=new Set<string>();
-  private chooseTrees(){if(this.field.chunks)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
+  private chooseTrees(){if(this.field.chunks||this.field instanceof CityTerrain)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
     const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
     return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
   });}
@@ -187,7 +187,9 @@ export class IslandScene extends Phaser.Scene {
   preload(){
     // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
-    this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    // City: no island ground textures; its pines use the approved snowy tree sheet (city layer PINE_TEXTURE).
+    if(this.field instanceof CityTerrain)this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
+    else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
     this.load.image('hero',thumbUrl(this.hooks.classId));
     if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
@@ -308,7 +310,8 @@ export class IslandScene extends Phaser.Scene {
     if(!this.city)return;
     const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
     const camera={x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
-    const hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:0};
+    // The fade test needs the hero's real ground height (city relief reaches ~185 px).
+    const hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(this.city.asset,this.position.x,this.position.y)};
     this.city.update({camera,view:this.view,dtMs:delta,hero});
   }
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
@@ -463,7 +466,12 @@ export class IslandScene extends Phaser.Scene {
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(_time,delta);this.rebaseDepth();this.updateCamera(delta);this.drawYou(_time);return;}
+    // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
+    // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
+    if(this.hooks.net){
+      if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
+      this.updateCamera(delta);this.drawYou(_time);return;
+    }
     if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));

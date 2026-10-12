@@ -7,7 +7,7 @@
  * Also gives `heroRelativeDepth`, the draw-order fix that keeps the hero above a block it stands in front of.
  */
 import type {BlockKind,CityAsset,CityBlock} from './asset.ts';
-import {type Pt,type Rect,VIEW_PIVOT,depth,project,viewPoint} from './projection.ts';
+import {type Pt,type Rect,VIEW_PIVOT,boundsOf,depth,project,viewPoint} from './projection.ts';
 
 export const FADE_ALPHA=0.35;
 /** Outline (edge lines) alpha when its block is fully faded: edges stay a bit stronger so the shape still reads. */
@@ -28,6 +28,8 @@ export interface Occluder {
   base:number;top:number;
   /** Screen-space convex hull of the 8 projected box corners, consistent winding, no collinear points. */
   silhouette:Pt[];
+  /** Screen bounds of the silhouette: a cheap reject before the exact test (actorDepth runs per actor per frame). */
+  box:{x0:number;y0:number;x1:number;y1:number};
 }
 
 /** Convex hull (monotone chain); collinear points are dropped. */
@@ -50,9 +52,10 @@ export function occluderFor(block:CityBlock,asset:CityAsset,base:number,view:num
   const top=base+block.height;
   const screen:Pt[]=[];
   for(const p of corners)screen.push(project(p.x,p.y,base,view,pivot),project(p.x,p.y,top,view,pivot));
+  const silhouette=hull(screen),b=boundsOf(silhouette);
   return {id:block.id,kind:block.kind,
     q:{x0:Math.min(...qs.map(p=>p.x)),x1:Math.max(...qs.map(p=>p.x)),y0:Math.min(...qs.map(p=>p.y)),y1:Math.max(...qs.map(p=>p.y))},
-    base,top,silhouette:hull(screen)};
+    base,top,silhouette,box:{x0:b.x,y0:b.y,x1:b.x+b.w,y1:b.y+b.h}};
 }
 
 /** Screen box of the hero: `size.w` wide, centred on the projected feet, `size.h` px upward from them. */
@@ -79,13 +82,22 @@ function span(poly:readonly Pt[],ax:number,ay:number):[number,number]{
 }
 /** Rect vs convex polygon (SAT); touching edges do not count as overlap. */
 export function rectHitsConvex(r:Rect,poly:readonly Pt[]):boolean{
-  if(poly.length<3||!(r.w>0)||!(r.h>0))return false;
-  const box:Pt[]=[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}];
-  const axes:Pt[]=[{x:1,y:0},{x:0,y:1}];
-  for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];axes.push({x:a.y-b.y,y:b.x-a.x});}
-  for(const ax of axes){
-    const len=Math.hypot(ax.x,ax.y);if(!(len>0))continue;
-    const [a0,a1]=span(box,ax.x/len,ax.y/len),[b0,b1]=span(poly,ax.x/len,ax.y/len);
+  const n=poly.length;
+  if(n<3||!(r.w>0)||!(r.h>0))return false;
+  // Allocation-free SAT: the rect's own axes first (a bounds test), then each polygon edge normal.
+  const rx1=r.x+r.w,ry1=r.y+r.h;
+  let px0=Infinity,px1=-Infinity,py0=Infinity,py1=-Infinity;
+  for(let i=0;i<n;i++){const p=poly[i];if(p.x<px0)px0=p.x;if(p.x>px1)px1=p.x;if(p.y<py0)py0=p.y;if(p.y>py1)py1=p.y;}
+  if(rx1<=px0+EPS||px1<=r.x+EPS||ry1<=py0+EPS||py1<=r.y+EPS)return false;
+  for(let i=0;i<n;i++){
+    const a=poly[i],b=poly[(i+1)%n];
+    let ax=a.y-b.y,ay=b.x-a.x;
+    const len=Math.hypot(ax,ay);if(!(len>0))continue;
+    ax/=len;ay/=len;
+    let b0=Infinity,b1=-Infinity;
+    for(let k=0;k<n;k++){const d=poly[k].x*ax+poly[k].y*ay;if(d<b0)b0=d;if(d>b1)b1=d;}
+    const c1=r.x*ax+r.y*ay,c2=rx1*ax+r.y*ay,c3=rx1*ax+ry1*ay,c4=r.x*ax+ry1*ay;
+    const a0=Math.min(c1,c2,c3,c4),a1=Math.max(c1,c2,c3,c4);
     if(a1<=b0+EPS||b1<=a0+EPS)return false;
   }
   return true;
@@ -137,7 +149,9 @@ export class OcclusionFader {
 }
 
 /** A unit column as actorDepth sees it: its sort key and its occluder in the current view. */
-export interface ColumnRef {key:number;occ:Occluder}
+export interface ColumnRef {key:number;occ:Occluder;
+  /** Scratch for callers that gather columns from several cells: the last query that saw it (dedupe, no Set). */
+  mark?:number}
 
 /**
  * Exact draw depth for a point actor among nearby unit columns. A scalar key per column cannot be exact (the
@@ -149,7 +163,10 @@ export interface ColumnRef {key:number;occ:Occluder}
 export function actorDepth(x:number,y:number,z:number,view:number,columns:Iterable<ColumnRef>,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):number{
   const own=depth(x,y,view,pivot),r=heroRect(x,y,z,view,pivot,size);
   let lo=-Infinity,hi=Infinity;
+  const rx1=r.x+r.w,ry1=r.y+r.h;
   for(const c of columns){
+    const b=c.occ.box;
+    if(b&&(rx1<=b.x0||b.x1<=r.x||ry1<=b.y0||b.y1<=r.y))continue;
     if(!rectHitsConvex(r,c.occ.silhouette))continue;
     if(isBehind(c.occ,x,y,view,pivot))hi=Math.min(hi,c.key);else lo=Math.max(lo,c.key);
   }

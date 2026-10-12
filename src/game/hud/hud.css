@@ -480,7 +480,7 @@
 /* Names wrap (up to 20 characters from the lobby) instead of being cut with an ellipsis. */
 /* No break inside a word: result.ts fitCardName shortens the name with "…" at a word instead (up to 2 lines, 1 if the
    cards would scroll). */
-.rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:normal;text-wrap:balance}
+.rh-rcard-name{display:block;min-width:0;max-width:100%;font:400 var(--t-16)/1.05 var(--f-cartaz);overflow-wrap:normal;text-wrap:balance;text-align:left}
 .rh-rcard-tag{padding:0 6px;border-radius:var(--r-etiqueta);background:var(--c-lilas);color:var(--c-papel);font:800 var(--t-13)/1.3 var(--f-sistema)}
 
 .rh-rcard-build{grid-area:build;display:flex;flex-wrap:wrap;gap:3px;min-width:0}

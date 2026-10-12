@@ -168,6 +168,10 @@ test('a fallen barricade opens its avenue to the flow field and a rebuild seals 
   assert.deepEqual(sys.buy(prep,'a','reparo','r1',ID('N')),{ok:false,reason:'blocked'});
   assert.deepEqual(sys.state.balance,{coco:99,pedra:99},'not charged');
   prep.enemies.clear();
+  // A pigeon (0.2 u, narrower than the hero) just inside the hero reach also blocks the rebuild: it would end up inside.
+  prep.enemies.set('p1',{id:'p1',kind:'pombos',x:n.x,y:n.y+n.r+.21,hp:5,maxHp:5,speed:1,damage:1,radius:.2,xp:1,spawnTick:0,readyTick:0});
+  assert.deepEqual(sys.buy(prep,'a','reparo','r1b',ID('N')),{ok:false,reason:'blocked'});
+  prep.enemies.clear();
   // A hero standing in the mouth does not block it: barricades only block enemies, the hero walks through.
   const b=player('b',{x:n.x,y:n.y});prep.players.set('b',b);
   const done=sys.buy(prep,'a','reparo','r2',ID('N'));

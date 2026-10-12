@@ -94,6 +94,6 @@ export const FORGE_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   duplicate:'Esse pedido já foi.',
   'wall-down':'A muralha caiu.',
   away:'Volta pro acampamento pra forjar.',
-  blocked:'Tem gente no meio da barricada. Sai daí que a gente monta.',
+  blocked:'Tem bicho no meio da barricada. Tira ele daí que a gente monta.',
   target:'Essa barricada não existe nem no papel.',
 });

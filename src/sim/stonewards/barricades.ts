@@ -219,7 +219,9 @@ export function damageBarricade(ctx:SimContext,state:StonewardsState,id:string,a
  * because barricades only block enemies (they walk through their own barricades).
  */
 export function barricadeOccupied(ctx:SimContext,b:Pick<BarricadeState,'x'|'y'|'r'>):boolean{
-  for(const e of ctx.enemies.values())if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<b.r+e.radius)return true;
+  // Same reach as clearDisc: a body narrower than the hero (pombos, 0.2 u) is judged with the hero radius, or one just
+  // outside its own radius would end up inside the rebuilt disc, walk free (moveSafely) and cross it.
+  for(const e of ctx.enemies.values())if(e.hp>0&&Math.hypot(e.x-b.x,e.y-b.y)<b.r+Math.max(e.radius,RADIUS))return true;
   return false;
 }
 

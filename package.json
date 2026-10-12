@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "check": "tsc --noEmit && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json && tsc -p scripts/bots/tsconfig.json",
+    "check": "tsc --noEmit && tsc -p tsconfig.pure.json && tsc -p backend/tsconfig.json && tsc -p multiplayer/tsconfig.json && tsc -p scripts/bots/tsconfig.json",
     "preview": "node scripts/serve.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
     "test:contract": "node --experimental-strip-types --test \"tests/contract/**/*.test.ts\"",

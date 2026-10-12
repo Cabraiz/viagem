@@ -23,6 +23,7 @@ import {WALL_RADIUS} from './stonewards/wall.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
+import {citySpeed} from './city/speed.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -107,6 +108,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  // City speeds (cidade-05c v2, city/speed.ts): converted once, on the EFFECTIVE speed. The director's bodies are
+  // created at the catalog speed and the director converts catalog × plan.speed (DirectorOptions.speedMap); the boss
+  // converts its walk after the phase and enrage multipliers (BossOptions.speedMap); its minions, which no multiplier
+  // touches, here. Island and endless keep the catalog speeds untouched.
+  const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     // Caps action paces (the Tio's charge) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
@@ -115,7 +121,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });
   const boss=createBoss({
-    summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?createEnemy(ctx,kind,at,1):undefined,
+    summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
+    // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
+    // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
+    ...(steer?{steer:steer.hero,speedMap:citySpeed}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
@@ -132,7 +141,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
-    ...(avenues?{avenues,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined}:{}),
+    // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
+    // groups aimed at a team away from the base.
+    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{})}:{}),
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 

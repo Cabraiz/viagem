@@ -10,7 +10,7 @@ import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunR
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
-import {createResultScreen} from './result.ts';
+import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
@@ -38,6 +38,8 @@ export interface RunHudOptions {
   worldRescue?:boolean;
   /** Stamp feedback when an offer is picked; defaults to the "carimbo" sound (with its 15 ms buzz). */
   onStamp?():void;
+  /** The owner's commands from the result screen (D-025). */
+  onKick?(id:string):void;onAddBot?():void;onRemoveBot?(id:string):void;
   /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
   onForge?(recipe:RecipeId):number|undefined;
 }
@@ -90,7 +92,8 @@ export class RunHud {
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp});
-    this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
+    this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
+      onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
     const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
@@ -221,6 +224,8 @@ export class RunHud {
 
   /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
   rematchRefused(label:string){this.result.refuse(label);}
+  /** Owner and bots on the result screen (D-025): crown, robot and the owner's "Arrumar turma". */
+  setRoster(roster:ResultRoster){this.result.setRoster(roster);}
 
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){

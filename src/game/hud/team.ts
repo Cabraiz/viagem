@@ -27,7 +27,7 @@ export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;img:HTMLImageElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
+interface MemberNodes {root:HTMLElement;img:HTMLImageElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -43,10 +43,12 @@ export function createTeamStrip():HudPart{
     const ring=el('div','rh-member-ring',item);
     const img=el('img','rh-member-img',ring);img.alt='';img.decoding='async';img.draggable=false;
     const badge=el('span','rh-member-badge',item),timer=el('span','rh-member-timer',item);
+    // Room bot (D-025): the robot sticker on the portrait's other corner (the state sticker keeps its own).
+    const bot=el('span','rh-member-bot',item);bot.hidden=true;
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
     img.src=ctx.portrait(player.classId);
-    return {root:item,img,ring,fill,badge,name,timer,classId:player.classId,last:new Map()};
+    return {root:item,img,ring,fill,badge,bot,name,timer,classId:player.classId,last:new Map()};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -61,12 +63,13 @@ export function createTeamStrip():HudPart{
       const state=memberState(player),n=nodes;
       put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});
       put(n,'me',String(player.id===ctx.localId),v=>n.root.classList.toggle('rh-me',v==='true'));
+      put(n,'bot',String(!!player.bot),v=>{n.bot.innerHTML=v==='true'?icon('robo'):'';n.bot.hidden=v!=='true';});
       put(n,'name',player.id===ctx.localId?'Você':firstName(player.name),v=>{n.name.textContent=v;});
       put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});
       const progress=player.downed?clamp01(player.downed.progress):0;
       put(n,'rescue',`${Math.round(progress*360)}deg`,v=>n.ring.style.setProperty('--rh-rescue',v));
       if(player.downed)put(n,'timer',secondsText(secondsLeft(player.downed.bleedOutTick,view.tick)),v=>{n.timer.textContent=v;});
-      put(n,'aria',`${player.name}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
+      put(n,'aria',`${player.name}${player.bot?' (bot)':''}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
     });
   }};
 }

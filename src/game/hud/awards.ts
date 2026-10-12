@@ -14,6 +14,8 @@
  *       best (2nd place, 3rd…, metric > 0, then by priority), which says the real rank ("2º lugar").
  *   D.  Only a player with no eligible metric at all gets "Figurante de luxo".
  * - Solo runs only consider awards marked `solo` (team jokes like "Turista" make no sense alone).
+ * - Room bots (D-025) never win an award marked `person`: jokes about choices (build, upgrades, evolution) or about
+ *   slacking (Turista) are about people; a bot still wins the plain counts (kills, rescues, falls…).
  */
 import type {PlayerRunView} from '../sim/view.ts';
 import {itemDisplay} from './items.ts';
@@ -32,6 +34,8 @@ interface AwardDef {
   vice:string;
   /** Allowed in a 1-player run. */
   solo:boolean;
+  /** Only people can win it (D-025): bots pick the suggested card and do not slack. */
+  person?:boolean;
   /** Metric for one player; <= 0 means not eligible. `all` lets an award compare against the team. */
   metric(facts:PlayerFacts,all:readonly PlayerFacts[]):number;
   line(value:number,facts:PlayerFacts,solo:boolean):string;
@@ -78,13 +82,13 @@ const DEFS:readonly AwardDef[]=[
   {id:'exterminador',title:'Exterminador de gosma',emoji:'🧹',vice:'Estagiário da dedetização',solo:true,
     metric:f=>f.kills,
     line:v=>`${v} bichos de volta pro mar.`},
-  {id:'build-sem-sentido',title:'Build mais sem sentido',emoji:'🤡',vice:'Build quase sem sentido',solo:true,
+  {id:'build-sem-sentido',title:'Build mais sem sentido',emoji:'🤡',vice:'Build quase sem sentido',solo:true,person:true,
     metric:f=>f.player.weapons.length+f.player.passives.length>=3?buildChaos(f.player):0,
     line:()=>'Montou no escuro. Funcionou?'},
   {id:'ima-humano',title:'Ímã humano',emoji:'🧲',vice:'Ímã de geladeira',solo:true,
     metric:f=>f.pickups,
     line:v=>`Catou ${v} coisas. Até chiclete.`},
-  {id:'turista',title:'Turista',emoji:'📸',vice:'Turista de fim de semana',solo:false,
+  {id:'turista',title:'Turista',emoji:'📸',vice:'Turista de fim de semana',solo:false,person:true,
     metric:(f,all)=>{
       const active=all.filter(other=>isActive(other.player));
       if(active.length<2||!isActive(f.player))return 0;
@@ -100,10 +104,10 @@ const DEFS:readonly AwardDef[]=[
   {id:'bate-nao-mata',title:'Bate mas não mata',emoji:'🥊',vice:'Bate e às vezes mata',solo:false,
     metric:f=>f.kills>0&&f.damage>0?Math.round(f.damage/f.kills):0,
     line:()=>'Amacia pros outros matarem.'},
-  {id:'evolucao',title:'Evolução de novela',emoji:'✨',vice:'Evolução de reprise',solo:true,
+  {id:'evolucao',title:'Evolução de novela',emoji:'✨',vice:'Evolução de reprise',solo:true,person:true,
     metric:f=>evolutions(f),
     line:()=>'Evoluiu. Último capítulo!'},
-  {id:'marombeiro',title:'Marombeiro de upgrade',emoji:'💪',vice:'Frequenta a academia',solo:true,
+  {id:'marombeiro',title:'Marombeiro de upgrade',emoji:'💪',vice:'Frequenta a academia',solo:true,person:true,
     metric:f=>buildLevels(f.player),
     line:v=>`${v} níveis de build. Só treina.`},
 ];
@@ -133,7 +137,7 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
   const defs=DEFS.filter(def=>!solo||def.solo);
   // Ranking per award: eligible players by metric desc, ties → smaller id (facts are already id-sorted, sort is stable).
   const rankings=defs.map(def=>{
-    const scored=facts.map(f=>({f,value:def.metric(f,facts)})).filter(entry=>Number.isFinite(entry.value)&&entry.value>0);
+    const scored=facts.filter(f=>!def.person||!f.player.bot).map(f=>({f,value:def.metric(f,facts)})).filter(entry=>Number.isFinite(entry.value)&&entry.value>0);
     return scored.sort((a,b)=>b.value-a.value);
   });
   const owned=new Map<string,Award[]>(players.map(player=>[player.id,[]]));

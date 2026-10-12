@@ -5,6 +5,7 @@
  * Player names always go through textContent.
  */
 import type {PlayerRunView} from '../sim/view.ts';
+import {railName} from '../render/map-label-rules.ts';
 import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.ts';
 import {itemDisplay} from './items.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
@@ -66,10 +67,30 @@ export function buildIcons(player:Pick<PlayerRunView,'weapons'|'passives'>,slots
   return {items:all.slice(0,keep),hidden:all.slice(keep)};
 }
 
+/** Who owns the room, who is still in it and what the owner may do now (D-025); from the run state. */
+export interface ResultRoster {
+  owner?:string;
+  /** The local player owns the room (result phase: kick and bots allowed). */
+  canManage:boolean;
+  /** Ids still in the room: a kicked player's or removed bot's card goes away. */
+  members:readonly string[];
+  /** Ids of the room bots (robot sticker). */
+  bots:readonly string[];
+  seatsLeft:number;
+  /** Players in the room but not in the result (a bot added on this screen): a card without numbers worth reading. */
+  extra:readonly PlayerRunView[];
+}
+/** The owner's buttons on a card: the verb, and the one-tap confirmation with the name. */
+export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},asking:boolean)=>
+  asking?`${player.bot?'Tirar':'Expulsar'} ${railName(player.name)}? Toca de novo.`:(player.bot?'Tirar bot':'Expulsar');
+/** The owner's button on the result: what it does, with no room for "turma" to read as the team's score. */
+export const MANAGE_LABEL='Arrumar a sala';
+const CONFIRM_MS=3000,REARM_MS=1500,DOUBLE_TAP_MS=500;
+
 const CONFETTI=18;
 const CONFETTI_COLORS=['#f2c94c','#ed6f72','#75b8a6','#9fd8ff','#c8a8ff','#ffb347'];
 
-export function createResultScreen(options:{onRematch():void;onExit?():void}){
+export function createResultScreen(options:{onRematch():void;onExit?():void;onKick?(id:string):void;onAddBot?():void;onRemoveBot?(id:string):void}){
   const root=el('section','rh-result');
   root.hidden=true;
   root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-labelledby','rh-result-title');
@@ -105,8 +126,21 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
 
   const actions=el('div','rh-result-actions',root);
   const rematch=el('button','rh-result-btn rh-result-rematch',actions);rematch.type='button';
+  // The owner's "Arrumar turma" (D-025): the cards trade their prizes for "Expulsar" / "Tirar bot", plus "Adicionar bot".
+  const manage=el('button','rh-result-btn rh-result-manage',actions);manage.type='button';manage.hidden=true;
   const exit=el('button','rh-result-btn rh-result-exit',actions);exit.type='button';exit.textContent='Sair';
   exit.hidden=!options.onExit;
+  let roster:ResultRoster|undefined,managing=false,armed:{id:string;at:number;until:number}|undefined,disarm:ReturnType<typeof setTimeout>|undefined,rosterKey='';
+  const syncManage=()=>{
+    const can=!!roster?.canManage;if(!can)managing=false;
+    manage.hidden=!can;manage.setAttribute('aria-pressed',String(managing));
+    // Portrait has three buttons in 350 px: the crown and "Turma"; landscape has room for the whole verb.
+    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span>${MANAGE_LABEL}</span>`;
+    manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':`${MANAGE_LABEL}: expulsar, tirar ou pôr bot`);
+    actions.classList.toggle('has-manage',can);
+    root.classList.toggle('is-managing',managing);
+  };
+  manage.addEventListener('click',()=>{managing=!managing;armed=undefined;syncManage();if(shownResult)renderGrid(shownResult.result,shownResult.ctx);});
   // Head (landscape) and actions share a row: CSS moves them via grid areas, DOM order stays readable.
 
   let asked=false;
@@ -136,6 +170,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
     const id=el('div','rh-rcard-id',top);
     const name=el('strong','rh-rcard-name',id);name.textContent=player.name;
     if(me){const tag=el('span','rh-rcard-tag',id);tag.textContent='Você';}
+    // Robot sticker for a room bot, paper crown for the owner (D-025): shape, not color.
+    const bot=player.bot||roster?.bots.includes(player.id);
+    if(bot){const mark=el('span','rh-rcard-mark',id);mark.innerHTML=icon('robo',{label:'bot'});node.dataset.bot='true';}
+    if(roster?.owner===player.id){const mark=el('span','rh-rcard-mark',id);mark.innerHTML=icon('coroa',{label:'dono da sala'});}
 
     const build=el('ul','rh-rcard-build',top);
     build.setAttribute('aria-label','Build');
@@ -185,18 +223,51 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       const line=el('small','rh-award-line',text);line.textContent=award.line;
     }
     list.hidden=!awards.length;
+    if(managing&&!me){
+      const asking=armed?.id===player.id,who={name:player.name,bot:!!bot};
+      // A bot goes out by the door (the neutral button); a person is expelled: the cross, outlined in Cone, lighter.
+      const button=el('button',`rh-rcard-manage ${bot?'is-bot':'is-person'}`,node);button.type='button';button.dataset.id=player.id;
+      button.classList.toggle('is-asking',asking);
+      button.innerHTML=`${icon(bot?'saiu':'fechar')}<span></span>`;button.querySelector('span')!.textContent=manageLabel(who,asking);
+      button.setAttribute('aria-label',asking?manageLabel(who,true):`${manageLabel(who,false)}: ${player.name}`);
+      button.addEventListener('click',()=>{
+        if(armed?.id===player.id&&Date.now()-armed.at<DOUBLE_TAP_MS)return; // the same finger bouncing
+        if(armed?.id===player.id&&Date.now()<=armed.until){
+          armed=undefined;clearTimeout(disarm);button.disabled=true;
+          if(bot)options.onRemoveBot?.(player.id);else options.onKick?.(player.id);
+          // The card goes with the next room state; if it is still here (bad network, refused), the button comes back.
+          disarm=setTimeout(()=>{if(shownResult)renderGrid(shownResult.result,shownResult.ctx);},REARM_MS);
+          return;
+        }
+        armed={id:player.id,at:Date.now(),until:Date.now()+CONFIRM_MS};clearTimeout(disarm);
+        disarm=setTimeout(()=>{armed=undefined;if(shownResult)renderGrid(shownResult.result,shownResult.ctx);},CONFIRM_MS);
+        if(shownResult)renderGrid(shownResult.result,shownResult.ctx);
+      });
+    }
+    return node;
+  };
+  /** "Adicionar bot" as one more card in the grid while the owner arranges the room and a seat is free. */
+  const addTile=()=>{
+    const node=el('article','rh-rcard rh-rcard-add');
+    const button=el('button','rh-rcard-manage rh-rcard-addbot',node);button.type='button';
+    button.innerHTML=`${icon('robo',{size:32})}<span>Adicionar bot</span>`;
+    button.addEventListener('click',()=>{button.disabled=true;options.onAddBot?.();setTimeout(()=>{button.disabled=false;},400);});
     return node;
   };
 
   // Build slots depend on orientation, so the grid is rebuilt when the phone turns (the cards just fade in again).
-  let shownResult:{result:RunResult;ctx:HudContext}|undefined;
+  let shownResult:{result:RunResult;ctx:HudContext;awards:Award[]}|undefined;
   const landscape=typeof matchMedia==='function'?matchMedia(LANDSCAPE):undefined;
   const renderGrid=(result:RunResult,ctx:HudContext)=>{
-    const players=teamOrder(result.players,ctx.localId);
-    const slots=players.length>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
-    const awards=computeAwards(result,ctx.tally);
-    grid.dataset.count=String(players.length);chipEl=undefined;
-    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)));
+    // The prizes were decided when the run ended; a kick or a new bot on this screen moves cards, never prizes.
+    const awards=shownResult?.result===result?shownResult.awards:computeAwards(result,ctx.tally);
+    const inRoom=roster?[...result.players.filter(p=>roster!.members.includes(p.id)),...roster.extra.filter(p=>!result.players.some(q=>q.id===p.id))]:result.players;
+    const players=teamOrder(inRoom,ctx.localId);
+    const tile=managing&&!!roster&&roster.seatsLeft>0;
+    const count=players.length+(tile?1:0);
+    const slots=count>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
+    grid.dataset.count=String(count);chipEl=undefined;
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)),...(tile?[addTile()]:[]));
     fitShame();
   };
   /**
@@ -242,7 +313,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
         else shameIcon.innerHTML=icon('suor',{size:32});
         shame.dataset.key=moment.key;
       }
-      shownResult={result,ctx};
+      shownResult={result,ctx,awards:computeAwards(result,ctx.tally)};
+      managing=false;armed=undefined;syncManage();
       renderGrid(result,ctx);
       resetRematch();exited=false;
       root.hidden=false;
@@ -250,9 +322,18 @@ export function createResultScreen(options:{onRematch():void;onExit?():void}){
       // Restart the entrance animation on every show.
       root.classList.remove('rh-result-in');void root.offsetWidth;root.classList.add('rh-result-in');
     },
-    hide(){shownResult=undefined;root.hidden=true;root.classList.remove('rh-result-in');},
+    hide(){shownResult=undefined;managing=false;armed=undefined;clearTimeout(disarm);root.hidden=true;root.classList.remove('rh-result-in','is-managing');},
+    /** Owner, bots and who is still in the room (D-025); the grid follows only when something changed. */
+    setRoster(next:ResultRoster){
+      const key=JSON.stringify(next);
+      if(key===rosterKey)return;
+      rosterKey=key;roster=next;
+      if(armed&&!next.members.includes(armed.id))armed=undefined;
+      syncManage();
+      if(shownResult&&!root.hidden){root.classList.remove('rh-result-in');renderGrid(shownResult.result,shownResult.ctx);}
+    },
     /** The room refused the rematch (not enough lifetime left): the button stops waiting and says what to do. */
     refuse(label:string){asked=true;rematch.disabled=true;rematch.classList.remove('rh-waiting');rematch.textContent=label;},
-    destroy(){landscape?.removeEventListener('change',onTurn);root.remove();},
+    destroy(){landscape?.removeEventListener('change',onTurn);clearTimeout(disarm);root.remove();},
   };
 }

@@ -672,3 +672,25 @@
 .rh-edge-ping{animation:rh-edge-bump .22s ease-out 2;box-shadow:0 0 0 2px var(--c-cone),0 0 0 4px var(--c-papel),var(--s-2)} /* lit "Me salva": a second Papel ring, also when the tag is squeezed to its clock */
 @keyframes rh-edge-bump{50%{scale:1.14}}
 @media (prefers-reduced-motion:reduce){.rh-edge-ping{animation:none}}
+/* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
+.rh-member-bot{position:absolute;top:-6px;left:-4px;display:flex;line-height:0}
+.rh-member-bot[hidden]{display:none}
+/* Resultado: robô e coroa de papel ao lado do nome; o dono arruma a sala (Expulsar / Tirar bot / Adicionar bot).
+   "Tirar bot" é o botão neutro, cheio; "Expulsar" é só contorno Laranja (borda dupla: Cone por dentro, Breu por fora) e
+   sem sombra, mais leve. Armado: Laranja cheio, borda Breu 2 px e contorno Papel 1 px, sem transição, com
+   "Expulsar Wagner? Toca de novo.". No retrato, com o botão do dono, as ações viram duas linhas (Revanche em cima). */
+.rh-rcard-mark{flex:none;display:flex;line-height:0}
+.rh-result .rh-result-manage{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 10px;background:var(--c-ficha);color:var(--c-papel);border-color:var(--c-papel);white-space:nowrap}
+.rh-result .rh-result-manage[hidden]{display:none}
+.rh-result .rh-result-manage[aria-pressed=true]{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
+@media (min-height:501px){.rh-result-actions.has-manage{flex-wrap:wrap}.rh-result-actions.has-manage .rh-result-rematch{flex:1 1 100%}}
+@media (max-height:500px){.rh-result .rh-result-btn{min-height:48px}}
+.rh-result.is-managing .rh-rcard-awards{display:none}
+.rh-rcard-manage{display:flex;align-items:center;justify-content:center;gap:4px;min-height:48px;padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-breu);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
+.rh-rcard-manage:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+.rh-rcard-manage.is-person{background:transparent;border-color:var(--c-cone);box-shadow:0 0 0 1px var(--c-breu);font-weight:700}
+.rh-rcard-manage.is-person:active{box-shadow:0 0 0 1px var(--c-breu)}
+.rh-rcard-manage.is-asking{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);font-weight:800;transition:none}
+.rh-rcard-manage:disabled{opacity:.6}
+.rh-rcard-add{justify-content:center;background:var(--c-lilas-escuro);border-color:var(--c-papel)}
+.rh-rcard-add .rh-rcard-addbot{flex:1;flex-direction:column;font-size:var(--t-16)}

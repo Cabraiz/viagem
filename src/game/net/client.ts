@@ -127,6 +127,13 @@ export class CoopClient {
   readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
   // Plain fields, not parameter properties: node's type stripping loads this file, so the client has unit tests.
   constructor(endpoint:string,code:string,name:string,classId:string){this.endpoint=endpoint;this.code=code;this.name=name;this.classId=classId;}
+  /** Kicked from this room (D-025): the room's text; the screen offers the way out instead of a reload. */
+  kicked=false;
+  /** The seat token of a kick still running in this room (kept on this device), presented on join so the room says why. */
+  private kickedToken():string|undefined{
+    try{const ban=JSON.parse(localStorage.getItem(KICKED_KEY+this.code)??'null');if(ban?.token&&ban.until>Date.now())return String(ban.token);localStorage.removeItem(KICKED_KEY+this.code);}catch{}
+    return undefined;
+  }
   async join(){
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
@@ -139,7 +146,7 @@ export class CoopClient {
     const url=new URL(`/room/${this.code}`,this.endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
     const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
     const timeout=setTimeout(()=>ws.close(),8000);
-    ws.onopen=()=>{ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{})}));};
+    ws.onopen=()=>{const kicked=this.token?undefined:this.kickedToken();ws.send(JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})}));};
     ws.onmessage=event=>{
       // A socket this client already replaced (or gave up on) says nothing any more.
       if(ws!==this.socket)return;
@@ -173,6 +180,12 @@ export class CoopClient {
       else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
       else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
       else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
+      // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.
+      else if(m.t==='kicked'&&typeof m.message==='string'){
+        const token=this.token||this.kickedToken();
+        try{if(token)localStorage.setItem(KICKED_KEY+this.code,JSON.stringify({token,until:Number(m.until)||Date.now()}));}catch{}
+        this.kicked=true;this.forgetToken();this.fail(ws,m.message);
+      }
       else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
     };
     ws.onclose=event=>{
@@ -218,6 +231,7 @@ export class CoopClient {
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     this.run={...run,members:run.members.map(m=>({...m}))};
+    this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));
     this.victory=run.outcome==='victory';
     if(run.phase==='combat')this.roomNotice=undefined;
   }
@@ -309,6 +323,12 @@ export class CoopClient {
     this.socket.send(JSON.stringify({t:'sos',round:this.run.round}));return true;
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
+  /** Owner commands (D-025): the room checks owner, phase and round; a refusal comes back as a notice. */
+  kick(id:string){this.runCommand({t:'kick',id});}
+  addBot(){this.runCommand({t:'bot-add'});}
+  removeBot(id?:string){this.runCommand({t:'bot-remove',...(id?{id}:{})});}
+  /** Whether this player owns the room (the post moves when the owner leaves for good). */
+  get isOwner(){return !!this.id&&this.run?.owner===this.id;}
   rematch(){this.runCommand({t:'rematch'});}
   /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
   choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
@@ -327,6 +347,8 @@ export class CoopClient {
 }
 export { STEP };
 
+/** localStorage key (+ room code) of a kick still running: {token,until} (D-025). */
+export const KICKED_KEY='viagem:expulso:';
 /** "Meu momento vergonhoso pode aparecer" (VGM-053B, D7): on unless the player turned it off on this device. */
 const SHAME_KEY='viagem:momento-vergonhoso';
 function readShamePref(){try{return localStorage.getItem(SHAME_KEY)!=='off';}catch{return true;}}

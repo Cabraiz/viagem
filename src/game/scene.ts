@@ -467,6 +467,9 @@ export class IslandScene extends Phaser.Scene {
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
     for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
+    // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
+    // would land on an earlier one steps one row down, so the names read as a short list under the group.
+    const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom;
     for(const player of view.players){
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
@@ -482,7 +485,7 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15,zoomNow):q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -529,6 +532,12 @@ export class IslandScene extends Phaser.Scene {
     for(const sign of this.signs){const show=mapLabelVisible('place',phase);sign.label.draw(zoom,show&&!(sos.length&&placeYieldsToSos(sign.label.screen,sos)));}
   }
   /** 'combat' only while a wave runs: the interval between waves counts as a pause for the labels. */
+  /** The first free row for a name ficha at (x, y) (world px): 110 × 17 CSS px per ficha, one row down per clash. */
+  private staggerLabel(placed:Point[],x:number,y:number,zoom:number){
+    const w=110/zoom,h=17/zoom;let at=y;
+    for(let i=0;i<6&&placed.some(p=>Math.abs(p.x-x)<w&&Math.abs(p.y-at)<h);i++)at+=h;
+    placed.push({x,y:at});return at;
+  }
   private labelPhase(){const phase=this.hooks.net?.run?.phase;return phase==='combat'&&this.roundPhase==='prepare'?'interval':phase;}
   private drawTreeShadows(){
     const g=this.treeShadows??=this.add.graphics().setDepth(-9990);g.clear();

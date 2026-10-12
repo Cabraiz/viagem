@@ -302,5 +302,9 @@ export class CityMinimap {
     if(big)for(const l of cityMinimapLabels(marks,side))html+=`<text class="ch-mm-num" x="${f(l.x)}" y="${f(l.y)}" text-anchor="${l.anchor}" dominant-baseline="central">${l.text}</text>`;
     face.marks.innerHTML=html;
   }
+  /** Closes the big one without drawing (the run left the wave: no frame comes to redraw it). */
+  collapse(){
+    this.big.hidden=true;this.element.classList.remove('ch-minimap-aberto');this.element.setAttribute('aria-expanded','false');
+  }
   destroy(){this.element.remove();this.big.remove();}
 }

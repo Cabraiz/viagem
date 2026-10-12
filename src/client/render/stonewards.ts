@@ -13,9 +13,9 @@ import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
-import {WALL_LOW,gatheredSince,wallBar} from './stonewards-rules.ts';
+import {WALL_LOW,gatheredSince,structureBarY,wallBar} from './stonewards-rules.ts';
 
-export {WALL_LOW,gatheredSince,wallBar};
+export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 
 /** A unit gathered: "+N" rises this long over its node. */
@@ -29,7 +29,13 @@ interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
   /** The local hero (client prediction): nodes are marked only near it. */
-  hero?:()=>Pt|undefined}
+  hero?:()=>Pt|undefined;
+  /**
+   * World px multiplier of what is drawn at the endless map's size (the wall and the towers, and their bars' lift):
+   * framing.ts CITY_VIEW_SCALE in the city, so they keep their size next to the heroes under the city zoom. The camp ring
+   * (world units) and the CSS-px nodes, bars and pops need nothing. Default 1.
+   */
+  actorScale?:()=>number}
 
 export class StonewardsRenderer {
   private scene:Phaser.Scene;
@@ -91,13 +97,13 @@ export class StonewardsRenderer {
 
   update(time:number){
     this.now=time;
-    const k=1/Math.max(.05,this.scene.cameras.main.zoom);
+    const k=1/Math.max(.05,this.scene.cameras.main.zoom),u=this.options.actorScale?.()??1;
     this.ground.clear();
     const wall=this.structures.find(s=>s.kind==='muralha');
     if(wall&&this.prepare)this.drawRing(wall,k);
     for(const m of this.marks.values())this.drawNode(m,k);
-    this.drawWall(wall,k);
-    for(const s of this.structures)if(s.kind!=='muralha')this.drawTower(s,k);
+    this.drawWall(wall,k,u);
+    for(const s of this.structures)if(s.kind!=='muralha')this.drawTower(s,k,u);
     this.drawPops(k);
   }
 
@@ -158,57 +164,61 @@ export class StonewardsRenderer {
     g.fillStyle(c.cartolina,1).fillRect(x-total/2,y+20*k,total*Math.min(1,n.progress),3*k);
   }
 
-  /** The wall/shelter: a ring of stones with a lona tent and its flag, plus the life bar above it. */
-  private drawWall(wall:StructureView|undefined,k:number){
+  /**
+   * The wall/shelter: a ring of stones with a lona tent and its flag, plus the life bar above it. `u`: world px per
+   * endless-map world px (actorScale) for the art; `k`: world px per CSS px for the bar.
+   */
+  private drawWall(wall:StructureView|undefined,k:number,u:number){
     const g=this.wall;g.clear();
     if(!wall){g.setVisible(false);return;}
     g.setVisible(true);
     const p=this.project(wall.x,wall.y),c=this.c,x=p.x,y=p.y,down=wall.hp<=0;
     g.setDepth(this.options.projector.depth(wall.x,wall.y));
-    // Shadow, stone ring (a low wall), tent, flag. Drawn in world px: the wall is part of the map, it zooms with it.
-    g.fillStyle(c.breu,.25).fillEllipse(x,y+6,150,56);
+    // Shadow, stone ring (a low wall), tent, flag. Drawn in world px: the wall is part of the map, it zooms with it
+    // (× u: the endless map's size next to the heroes, also in the city).
+    g.fillStyle(c.breu,.25).fillEllipse(x,y+6*u,150*u,56*u);
     const stones=down?7:14;
     for(let i=0;i<stones;i++){
-      const a=Math.PI*(1+i/(stones-1)),sx=x+Math.cos(a)*62,sy=y+Math.sin(a)*24-4;
-      g.fillStyle(c.pedra,1).fillRoundedRect(sx-11,sy-10,22,16,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-11,sy-10,22,16,5);
+      const a=Math.PI*(1+i/(stones-1)),sx=x+Math.cos(a)*62*u,sy=y+Math.sin(a)*24*u-4*u;
+      g.fillStyle(c.pedra,1).fillRoundedRect(sx-11*u,sy-10*u,22*u,16*u,5*u).lineStyle(2*u,c.breu,1).strokeRoundedRect(sx-11*u,sy-10*u,22*u,16*u,5*u);
     }
     if(!down){
-      const tent=[{x:x-40,y:y+6},{x:x,y:y-62},{x:x+40,y:y+6}];
-      g.fillStyle(c.papel,1).fillPoints(tent,true).lineStyle(2.5,c.breu,1).strokePoints(tent,true);
-      g.fillStyle(c.breu,1).fillTriangle(x-10,y+6,x,y-18,x+10,y+6);
-      g.lineStyle(3,c.breu,1).lineBetween(x,y-62,x,y-92);
-      const flag=[{x:x,y:y-92},{x:x+26,y:y-85},{x:x,y:y-77}];
-      g.fillStyle(c.lilas,1).fillPoints(flag,true).lineStyle(2,c.breu,1).strokePoints(flag,true);
+      const tent=[{x:x-40*u,y:y+6*u},{x:x,y:y-62*u},{x:x+40*u,y:y+6*u}];
+      g.fillStyle(c.papel,1).fillPoints(tent,true).lineStyle(2.5*u,c.breu,1).strokePoints(tent,true);
+      g.fillStyle(c.breu,1).fillTriangle(x-10*u,y+6*u,x,y-18*u,x+10*u,y+6*u);
+      g.lineStyle(3*u,c.breu,1).lineBetween(x,y-62*u,x,y-92*u);
+      const flag=[{x:x,y:y-92*u},{x:x+26*u,y:y-85*u},{x:x,y:y-77*u}];
+      g.fillStyle(c.lilas,1).fillPoints(flag,true).lineStyle(2*u,c.breu,1).strokePoints(flag,true);
     }
     for(let i=0;i<stones;i++){
-      const a=Math.PI*(i/(stones-1)),sx=x+Math.cos(a)*62,sy=y+Math.sin(a)*24-2;
-      g.fillStyle(c.pedra,1).fillRoundedRect(sx-12,sy-11,24,18,5).lineStyle(2,c.breu,1).strokeRoundedRect(sx-12,sy-11,24,18,5);
+      const a=Math.PI*(i/(stones-1)),sx=x+Math.cos(a)*62*u,sy=y+Math.sin(a)*24*u-2*u;
+      g.fillStyle(c.pedra,1).fillRoundedRect(sx-12*u,sy-11*u,24*u,18*u,5*u).lineStyle(2*u,c.breu,1).strokeRoundedRect(sx-12*u,sy-11*u,24*u,18*u,5*u);
     }
     if(down)return;
     // Life bar (CSS px): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch.
-    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=72*k,bh=8*k,bx=x-bw/2,by=y-100-12*k;
+    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=72*k,bh=8*k,bx=x-bw/2,by=structureBarY('muralha',y,k,u);
     g.fillStyle(c.breu,1).fillRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*fraction,bh);
     g.lineStyle(2*k,c.papel,1).strokeRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     if(low)g.fillStyle(c.breu,1).fillTriangle(bx+bw*WALL_LOW-4*k,by-2*k,bx+bw*WALL_LOW+4*k,by-2*k,bx+bw*WALL_LOW,by+4*k);
   }
 
-  /** Chinelo tower: a small stand with a sandal on top and a Papel bar of the time it has left. */
-  private drawTower(s:StructureView,k:number){
+  /** Chinelo tower: a small stand with a sandal on top and a Papel bar of the time it has left (`u`, `k`: as drawWall). */
+  private drawTower(s:StructureView,k:number,u:number){
     let g=this.towers.get(s.id);
     if(!g){g=this.scene.add.graphics();this.towers.set(s.id,g);}
     g.clear();
     const p=this.project(s.x,s.y),c=this.c,x=p.x,y=p.y;
     g.setDepth(this.options.projector.depth(s.x,s.y));
-    g.fillStyle(c.breu,.25).fillEllipse(x,y+3,46,18);
-    g.lineStyle(2,c.breu,1).fillStyle(c.papel,1);
-    g.fillRect(x-14,y-34,5,34).strokeRect(x-14,y-34,5,34).fillRect(x+9,y-34,5,34).strokeRect(x+9,y-34,5,34);
-    g.fillRoundedRect(x-20,y-42,40,10,3).strokeRoundedRect(x-20,y-42,40,10,3);
+    g.fillStyle(c.breu,.25).fillEllipse(x,y+3*u,46*u,18*u);
+    g.lineStyle(2*u,c.breu,1).fillStyle(c.papel,1);
+    g.fillRect(x-14*u,y-34*u,5*u,34*u).strokeRect(x-14*u,y-34*u,5*u,34*u).fillRect(x+9*u,y-34*u,5*u,34*u).strokeRect(x+9*u,y-34*u,5*u,34*u);
+    g.fillRoundedRect(x-20*u,y-42*u,40*u,10*u,3*u).strokeRoundedRect(x-20*u,y-42*u,40*u,10*u,3*u);
     // The sandal: a Lilás sole with a Papel strap (Havaiana of the vó).
-    g.fillStyle(c.lilas,1).fillEllipse(x,y-52,30,13).strokeEllipse(x,y-52,30,13);
-    g.lineStyle(3,c.papel,1).lineBetween(x-3,y-56,x+8,y-50).lineBetween(x-3,y-56,x+8,y-56);
+    g.fillStyle(c.lilas,1).fillEllipse(x,y-52*u,30*u,13*u).strokeEllipse(x,y-52*u,30*u,13*u);
+    g.lineStyle(3*u,c.papel,1).lineBetween(x-3*u,y-56*u,x+8*u,y-50*u).lineBetween(x-3*u,y-56*u,x+8*u,y-56*u);
     if(s.untilTick!==undefined){
-      const left=Math.max(0,Math.min(1,(s.untilTick-this.tick)/(TOWER_SECONDS*SIM_HZ))),bw=36*k,bh=5*k,by=y-66-8*k;
+      const left=Math.max(0,Math.min(1,(s.untilTick-this.tick)/(TOWER_SECONDS*SIM_HZ))),bw=36*k,bh=5*k,by=structureBarY('torre',y,k,u);
       g.fillStyle(c.breu,1).fillRect(x-bw/2-k,by-k,bw+2*k,bh+2*k).fillStyle(c.papel,1).fillRect(x-bw/2,by,bw*left,bh);
     }
   }

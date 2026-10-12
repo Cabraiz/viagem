@@ -7,7 +7,10 @@ import {
   floorWidthUnits,
 } from '../../src/rules/scale.ts';
 import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
-import {RADIUS,SPEED} from '../../src/maps/world.ts';
+import {CITY_HERO_SPEED,RADIUS,SPEED,heroSpeed} from '../../src/maps/world.ts';
+import {TerrainField} from '../../src/maps/terrain/field.ts';
+import {CAMP_RADIUS,WALK_SPEED,returnTicks} from '../../src/rules/stonewards.ts';
+import {SIM_HZ} from '../../src/contract/index.ts';
 import {HERO_MIN_SCREEN_PX} from '../../src/contract/index.ts';
 import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
 import {UNITS_PER_CELL} from '../../src/maps/city-asset.ts';
@@ -144,6 +147,22 @@ test('infinito equals the current game code (drift guard)',()=>{
   near(relativeRadius(inf,inf.sizes.enemy),ENEMIES.bebado.radius,1e-12,'bebado radius');
   near(relativeRadius(inf,inf.sizes.boss.max),ENEMIES.chefe.radius,1e-12,'chefe radius');
   assert.ok(inf.sizes.boss.min<=inf.sizes.boss.max);
+});
+
+test('maps walks at the profile speeds: city CITY_HERO_SPEED, island and infinito SPEED (drift guard)',()=>{
+  // Exact equality: maps repeats 290 × 0.006875 (it may not import rules), so any drift on either side fails here.
+  assert.equal(CITY_HERO_SPEED,SCALE_PROFILES['cidade-nevada'].hero.speed,'world.ts CITY_HERO_SPEED = cidade-nevada hero.speed');
+  assert.equal(SPEED,SCALE_PROFILES.infinito.hero.speed,'world.ts SPEED = infinito hero.speed');
+  assert.equal(heroSpeed({world:'cidade'} as unknown as TerrainField),city.hero.speed,'heroSpeed(city)');
+  assert.equal(heroSpeed(new TerrainField(7,{world:'infinito'})),inf.hero.speed,'heroSpeed(infinito)');
+  assert.equal(heroSpeed(new TerrainField(7)),SPEED,'heroSpeed(island)');assert.equal(heroSpeed(),SPEED,'heroSpeed(no terrain)');
+  // The horn's return estimate (stonewards.ts) is told the world's speed: the slower city hero gets more time.
+  assert.equal(WALK_SPEED,SPEED,'stonewards WALK_SPEED = world.ts SPEED');
+  assert.equal(returnTicks(150),returnTicks(150,SPEED));
+  assert.equal(returnTicks(150,CITY_HERO_SPEED),Math.ceil(((150-CAMP_RADIUS)/CITY_HERO_SPEED*1.1+2)*SIM_HZ));
+  assert.ok(returnTicks(80,CITY_HERO_SPEED)>returnTicks(80,SPEED),'city return takes longer');
+  assert.equal(returnTicks(CAMP_RADIUS,CITY_HERO_SPEED),0);
+  for(const bad of [0,-1,Number.NaN,Number.POSITIVE_INFINITY])assert.equal(returnTicks(150,bad),returnTicks(150),`speed ${bad} falls back`);
 });
 
 test('input validation',()=>{

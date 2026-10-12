@@ -1,0 +1,123 @@
+/**
+ * City HUD wiring (card cidade-04, design/cidade-hud.md §7): the pure glue between the run (terrain, RunView, the spawn
+ * warnings, the scene's camera) and the city minimap and arrows. Which minimap a terrain gets, the CityMapInfo of the
+ * decoded asset, which avenue mouths a round opened (inferred from the spawn warnings), the world corners of what the
+ * screen shows, and the big minimap's open/close state. No DOM: rescue.ts and the HUD sandbox call these.
+ */
+import {SIM_HZ} from './deps.ts';
+import {bigShouldClose,type CityMapInfo,type MouthId,type BigCloseInput,type BlockReason} from './minimap.ts';
+import {BIG_MIN_SIDE} from './layout.ts';
+
+/** Which minimap the run HUD shows: the city's (the whole city as a diamond), the endless map's or the island's. */
+export type MinimapMode='cidade'|'infinito'|'ilha';
+/** The terrain's minimap: the city when its world says so (D-034), the endless map when it streams chunks, else the island. */
+export function minimapMode(terrain:{world?:string;chunks?:unknown}):MinimapMode{
+  return terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
+}
+
+interface P {readonly x:number;readonly y:number}
+/** The part of the decoded city asset (src/maps/city-asset.ts CityAsset) the HUD reads. */
+export interface CityAssetLike {
+  readonly size:{readonly w:number;readonly h:number};
+  readonly points:{readonly praca:P;readonly inicio:P;readonly spawnN:P;readonly spawnS:P;readonly spawnL:P;readonly spawnO:P;
+    /** The plaza's 4 entrances (barricade spots). */
+    readonly bocas:{readonly N:P;readonly S:P;readonly L:P;readonly O:P}};
+}
+/** The city asset of a terrain, when the terrain is the city (CityTerrain carries it as `asset`). */
+export function cityAssetOf(terrain:{world?:string}):CityAssetLike|undefined{
+  if(terrain.world!=='cidade'||!('asset' in terrain))return undefined;
+  const asset=(terrain as {asset?:CityAssetLike}).asset;
+  return asset&&asset.points&&asset.size?asset:undefined;
+}
+
+export const MOUTH_IDS:readonly MouthId[]=['N','S','L','O'];
+/**
+ * The minimap's map info from the asset: the plaza at `praca` with the radius of its farthest entrance (the wall's ring),
+ * the 4 avenue ends (spawnN/S/L/O) as the minimap's mouths (where the critters come in, doc §1), the start at `inicio`.
+ */
+export function cityMapInfo(asset:CityAssetLike):CityMapInfo{
+  const p=asset.points,plaza=p.praca;
+  const radius=Math.max(...MOUTH_IDS.map(id=>Math.hypot(p.bocas[id].x-plaza.x,p.bocas[id].y-plaza.y)));
+  const end:Record<MouthId,P>={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO};
+  return {size:Math.max(asset.size.w,asset.size.h),plaza:{x:plaza.x,y:plaza.y,radius},
+    mouths:MOUTH_IDS.map(id=>({id,x:end[id].x,y:end[id].y})),start:{x:p.inicio.x,y:p.inicio.y}};
+}
+
+/** A spawn warning this close (world units) to an avenue (its end → the plaza) comes in through that avenue's mouth. */
+export const AVENUE_MATCH=10;
+/** Doc §3: a mouth stays active until 3 s after its critters come out (`atTick`). */
+export const MOUTH_TAIL_TICKS=3*SIM_HZ;
+const toSegment=(p:P,a:P,b:P)=>{
+  const dx=b.x-a.x,dy=b.y-a.y,len=dx*dx+dy*dy,t=len>0?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/len)):0;
+  return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
+};
+/**
+ * The avenue a spawn warning stands on: the nearest avenue (end → plaza centre) within AVENUE_MATCH, never inside the
+ * plaza (the boss lands there, D-026; minions are summoned around it). Undefined: not an avenue spawn.
+ */
+export function mouthOfWarning(p:P,map:CityMapInfo):MouthId|undefined{
+  if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return undefined;
+  if(Math.hypot(p.x-map.plaza.x,p.y-map.plaza.y)<=map.plaza.radius)return undefined;
+  let best:MouthId|undefined,bestD=AVENUE_MATCH;
+  for(const m of map.mouths){const d=toSegment(p,m,map.plaza);if(d<=bestD){bestD=d;best=m.id;}}
+  return best;
+}
+/**
+ * Active mouths (doc §3): every spawn warning in `events` lights the mouth of its avenue until MOUTH_TAIL_TICKS after
+ * its critters come out; `state` (mouth → last tick it stays lit) is updated in place and the mouths still lit at `tick`
+ * are returned in N, S, L, O order. Feed it each view's events; clear `state` between rounds.
+ */
+export function trackMouths(state:Map<MouthId,number>,events:readonly {type:string;x?:number;y?:number;atTick?:number}[],tick:number,map:CityMapInfo):MouthId[]{
+  for(const e of events){
+    if(e.type!=='spawn-warning'||!Number.isFinite(e.atTick))continue;
+    const id=mouthOfWarning({x:e.x??NaN,y:e.y??NaN},map);
+    if(id)state.set(id,Math.max(state.get(id)??-Infinity,e.atTick!+MOUTH_TAIL_TICKS));
+  }
+  for(const [id,until] of state)if(until<tick)state.delete(id);
+  return MOUTH_IDS.filter(id=>state.has(id));
+}
+
+/**
+ * The world corners of the viewport (the big minimap's view rectangle, doc §2), from the scene's world → screen map:
+ * that map is affine on flat ground, so three points give it and its inverse takes the 4 corners back (top-left,
+ * top-right, bottom-right, bottom-left). Empty when the map is degenerate.
+ */
+export function screenCorners(locate:(p:{x:number;y:number})=>{x:number;y:number},focus:{x:number;y:number},viewport:{width:number;height:number}):{x:number;y:number}[]{
+  const step=8,o=locate(focus),ax=locate({x:focus.x+step,y:focus.y}),ay=locate({x:focus.x,y:focus.y+step});
+  const a=(ax.x-o.x)/step,c=(ax.y-o.y)/step,b=(ay.x-o.x)/step,d=(ay.y-o.y)/step,det=a*d-b*c;
+  if(!Number.isFinite(det)||Math.abs(det)<1e-9)return [];
+  const back=(s:{x:number;y:number})=>{const dx=s.x-o.x,dy=s.y-o.y;return {x:focus.x+(d*dx-b*dy)/det,y:focus.y+(a*dy-c*dx)/det};};
+  const {width:w,height:h}=viewport;
+  return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}].map(back);
+}
+
+/** Seconds left to get back to the base after the horn (doc §3: the base's arrow shows "5 s"); only in the intermission. */
+export function hornSeconds(camp:{hornEndsTick?:number}|undefined,tick:number,phase:'wave'|'prepare'):number|undefined{
+  if(phase!=='prepare'||camp?.hornEndsTick===undefined)return undefined;
+  return Math.max(0,Math.ceil((camp.hornEndsTick-tick)/SIM_HZ));
+}
+
+/**
+ * The big minimap's state (doc §2): a tap on the collapsed one opens it when its side is ≥ BIG_MIN_SIDE and nothing
+ * blocks the tap; a tap on it closes it; it closes by itself (bigShouldClose). `changed` tells the owner to draw now.
+ */
+export class BigMapState {
+  openedAt?:number;
+  changed=false;
+  get open(){return this.openedAt!==undefined;}
+  /** A tap on either box at `now` (ms); `side` is the big square's side now, `blocked` why a tap must not open it. */
+  tap(now:number,side:number,blocked?:BlockReason){
+    if(this.open)this.close();
+    else if(side>=BIG_MIN_SIDE&&!blocked){this.openedAt=now;this.changed=true;}
+    return this.open;
+  }
+  close(){if(this.open){this.openedAt=undefined;this.changed=true;}}
+  /** Closes it when bigShouldClose says so; true when it closed now. */
+  update(input:Omit<BigCloseInput,'openedAtMs'>){
+    if(this.openedAt===undefined||!bigShouldClose({...input,openedAtMs:this.openedAt}))return false;
+    this.close();return true;
+  }
+  /** The owner drew it: `changed` goes back to false (true is returned once per change). */
+  take(){const c=this.changed;this.changed=false;return c;}
+}
+

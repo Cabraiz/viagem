@@ -27,6 +27,12 @@ export interface HordeRendererOptions{
   projector:Projector;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
+  /**
+   * World px multiplier for what is authored at the endless map's size (enemy art and its shadow, bar, ring and lifts,
+   * pickups, death puffs, warnings): framing.ts CITY_VIEW_SCALE in the city, so they keep their CSS size under the
+   * city zoom (D-030). Sizes that come from world units (projectiles, telegraphs) need nothing. Default 1.
+   */
+  actorScale?:()=>number;
   reduced?:boolean;
   /** 'reduced' trims numbers, pops, stars and bubbles (settings, VGM-057). Default 'full'. */
   effects?:EffectsProfile;
@@ -195,6 +201,8 @@ export class HordeRenderer{
   private warnings:Ring<WarningFx>;
   private now=0;
   private ui=1;
+  /** options.actorScale, read once per frame (1 on the island and the endless map). */
+  private body=1;
   private numbersThisPush=0;
   private q:Pt={x:0,y:0};
   private pushAt=0;
@@ -279,6 +287,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
+    this.body=this.options.actorScale?.()??1;
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
@@ -399,7 +408,7 @@ export class HordeRenderer{
           const p=this.options.locate?.(event.target);
           if(p){
             const self=!this.options.selfId||this.options.selfId()===event.target;
-            this.spawnNumber(event.target,p.x,p.y,92,event.amount,false,true,self,numberPriority(false,self,false,false),eventId);
+            this.spawnNumber(event.target,p.x,p.y,92*this.body,event.amount,false,true,self,numberPriority(false,self,false,false),eventId);
           }
         }
         break;
@@ -450,21 +459,21 @@ export class HordeRenderer{
     paint(fx.text,fx.hostile?HURT_STYLE:fx.crit?CRIT_STYLE:DAMAGE_STYLE,fx.hostile?`-${damageLabel(fx.total)}`:damageLabel(fx.total,fx.crit));
   }
   private spawnDeath(kind:string,id:string,x:number,y:number){
-    const k=enemyKind(kind),phase=hashPhase(id),lift=ENEMY_ART[k].height*.35;
+    const k=enemyKind(kind),phase=hashPhase(id),body=this.body,lift=ENEMY_ART[k].height*.35*body;
     const puff=this.poofs.spawn();
-    puff.born=this.now;puff.x=x;puff.y=y;puff.lift=lift;puff.scale=k==='chefe'?2.4:1;
+    puff.born=this.now;puff.x=x;puff.y=y;puff.lift=lift;puff.scale=(k==='chefe'?2.4:1)*body;
     puff.image.setTint(kindStyle(kind).tint);
     const starCount=this.fx.starsPerKill;
     for(let i=0;i<starCount;i++){
       const star=this.stars.spawn(),angle=(i/starCount+phase)*TAU,speed=170+60*((i*7+phase*10)%3)/3;
       star.born=this.now;star.x=x;star.y=y;star.lift=lift;
-      star.vx=Math.cos(angle)*speed;star.vy=Math.sin(angle)*speed*.8-90;star.spin=(i%2?1:-1)*(4+phase*4);
+      star.vx=Math.cos(angle)*speed*body;star.vy=(Math.sin(angle)*speed*.8-90)*body;star.spin=(i%2?1:-1)*(4+phase*4);
       star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
     }
     // The death joke of a boss or an elite always shows (recycling the oldest pop); plain kills respect the budget.
     if(!admitPop(this.pops.active,this.fx.pops,k==='chefe'||!!this.enemies.get(id)?.elite))return;
     const pop=this.pops.spawn();
-    pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45;pop.rotation=(phase-.5)*.36;
+    pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45*body;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
   }
   private spawnBubble(enemy:string,line:string){
@@ -474,7 +483,7 @@ export class HordeRenderer{
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
     b.text.setDepth(96000);
-    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
+    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16*this.body:110*this.body;
     paint(b.text,BUBBLE_STYLE,line);
   }
   /**
@@ -506,31 +515,31 @@ export class HordeRenderer{
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
   private drawEnemy=(a:EnemyActor)=>{
-    const f=this.frac,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1;
+    const f=this.frac,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.body;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
-    let lift=art.hover*size,dx=0;
+    let lift=art.hover*size*body,dx=0;
     let sway=0;
     if(a.kind==='pombos'&&!this.reduced){
-      lift+=Math.sin(now*.011+a.phase*TAU)*6;
-      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10; // zig-zag flap
+      lift+=Math.sin(now*.011+a.phase*TAU)*6*body;
+      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10*body; // zig-zag flap
     }else if(a.kind==='bebado'&&!this.reduced)sway=Math.sin(now*.004+a.phase*TAU)*.09; // staggering (cambaleando)
     if(!Number.isNaN(a.screenX)&&Math.abs(q.x-a.screenX)>.2)a.flip=q.x<a.screenX;
     a.screenX=q.x;
     const s=squash(now,a.phase,a.moving,this.reduced,this.scale2);
     let sx=s.sx,sy=s.sy,rotation=sway;
     if(a.boss&&!this.reduced){const w=Math.sin(now*.0032+a.phase*TAU);sx*=1+.035*w;sy*=1-.03*w;rotation=w*.035;}
-    a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx,sy).setRotation(rotation).setFlipX(a.flip);
+    a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx*body,sy*body).setRotation(rotation).setFlipX(a.flip);
     const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
-    const shadow=art.width*size*(a.kind==='pombos'?.45:.66);
+    const shadow=art.width*size*(a.kind==='pombos'?.45:.66)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
-    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8);
+    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8*body);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size);
   };
@@ -543,7 +552,7 @@ export class HordeRenderer{
     const v=this.scene.cameras.main.worldView;
     if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
     // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
-    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size;
+    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size*this.body;
     const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;
     const open=eyesOpen(this.now,a.phase,this.reduced);
     const me=this.options.selfId?.(),hero=me?this.options.locate?.(me):undefined;
@@ -557,10 +566,11 @@ export class HordeRenderer{
       g.fillStyle(PALETTE.breu,alpha).fillCircle(ex+lx,head+ly,EYES_CSS.pupil*c);
     }
   }
-  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1);}
+  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*this.body;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
-    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=a.elite&&!a.boss?Math.sqrt(this.ui):1; // bars stay proportional to the body, or they hide the horde
+    // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).
+    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=(a.elite&&!a.boss?Math.sqrt(this.ui/this.body):1)*this.body;
     const w=(a.boss?170:a.elite?54:40)*u,h=(a.boss?13:7)*u,border=3*u;
     const fill=a.boss?0xb48cff:ratio>.5?0x8fe39a:ratio>.25?0xffd36e:0xff8080;
     const key=a.elite&&!a.boss?FX.barElite:FX.bar;
@@ -572,8 +582,9 @@ export class HordeRenderer{
   }
   private drawRing(x:number,y:number,width:number){
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.008);
-    this.ground.lineStyle(5,0x2b2233,.45).strokeEllipse(x,y,width*pulse+4,width*.46*pulse+2);
-    this.ground.lineStyle(3,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
+    const b=this.body;
+    this.ground.lineStyle(5*b,0x2b2233,.45).strokeEllipse(x,y,width*pulse+4*b,width*.46*pulse+2*b);
+    this.ground.lineStyle(3*b,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
   }
   private drawPickup=(a:PickupActor)=>{
     const f=this.frac,now=this.now,reduced=this.reduced;
@@ -601,8 +612,9 @@ export class HordeRenderer{
       if(a.coverX===undefined||a.coverVersion!==version||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.coverVersion=version;a.covered=this.options.canopyCovers(q,depth);}
       lifted=!!a.covered;
     }
-    a.image.setPosition(q.x,q.y+y).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale).setRotation(rotation);
-    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60);
+    const body=this.body;
+    a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body).setRotation(rotation);
+    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor)=>{
@@ -610,7 +622,7 @@ export class HordeRenderer{
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
     const q=this.project(this.at),depth=this.depth(this.at);
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
-    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
+    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT*this.body).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
     a.shadow.setPosition(q.x,q.y).setScale(a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
   };
   private drawTelegraph=(t:TelegraphState)=>{
@@ -648,13 +660,13 @@ export class HordeRenderer{
     if(this.nowTick>=w.atTick||this.now-w.born>8000)return false;
     this.at.x=w.x;this.at.y=w.y;
     const q=this.project(this.at),pulse=this.reduced?1:1+.16*Math.sin((this.now-w.born)*.012);
-    const dark=this.dark>0;
-    w.image.setPosition(q.x,q.y-26).setDepth(dark?LIFTED_DEPTH+1:this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
+    const dark=this.dark>0,body=this.body;
+    w.image.setPosition(q.x,q.y-26*body).setDepth(dark?LIFTED_DEPTH+1:this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
       .setAlpha(this.reduced?.9:.65+.35*Math.abs(Math.sin((this.now-w.born)*.006)));
     // Breu 2 | Cone 3 | Breu 2 px CSS at any zoom.
     const css=this.css();
-    (dark?this.lifted:this.ground).lineStyle(Math.max(7,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
-      .lineStyle(Math.max(3,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse);
+    (dark?this.lifted:this.ground).lineStyle(Math.max(7*body,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse*body,28*w.size*pulse*body)
+      .lineStyle(Math.max(3*body,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse*body,28*w.size*pulse*body);
     return true;
   };
   private drawPoof=(p:PoofFx)=>{
@@ -671,30 +683,30 @@ export class HordeRenderer{
     const t=age/1000,k=age/STAR_MS;
     let ox:number,oy:number;
     if(this.reduced){ox=s.vx*.12;oy=s.vy*.12;}
-    else{ox=s.vx*t;oy=s.vy*t+420*t*t;}
+    else{ox=s.vx*t;oy=s.vy*t+420*this.body*t*t;}
     this.place(s.image,s.x,s.y,s.lift-oy,ox);
     this.at.x=s.x;this.at.y=s.y;
-    s.image.setDepth(this.depth(this.at)+4).setScale(.95-.5*k).setAlpha(1-k*k).setRotation(this.reduced?0:s.spin*t);
+    s.image.setDepth(this.depth(this.at)+4).setScale((.95-.5*k)*this.body).setAlpha(1-k*k).setRotation(this.reduced?0:s.spin*t);
     return true;
   };
   private drawNumber=(n:NumberFx)=>{
     const frame=damageFloat(this.now-n.born,this.textFrame);
     if(frame.done){this.retireNumber(n,false);return false;}
-    this.place(n.text,n.x,n.y,n.lift-frame.y,n.jitter);
+    this.place(n.text,n.x,n.y,n.lift-frame.y*this.body,n.jitter*this.body);
     n.text.setScale((this.reduced?1:frame.scale)*this.ui).setAlpha(frame.alpha);
     return true;
   };
   private drawPop=(p:PopFx)=>{
     const age=this.now-p.born;if(age>=POP_TEXT_MS)return false;
     const frame=popText(age,this.reduced,this.textFrame);
-    this.place(p.text,p.x,p.y,p.lift-frame.y);
+    this.place(p.text,p.x,p.y,p.lift-frame.y*this.body);
     p.text.setScale(frame.scale*(1+(this.ui-1)*.6)).setAlpha(frame.alpha).setRotation(p.rotation);
     return true;
   };
   private drawBubble=(b:BubbleFx)=>{
     const age=this.now-b.born;if(age>=BUBBLE_MS)return false;
     if(b.player){const p=this.options.locate?.(b.player);if(p){b.x=p.x;b.y=p.y;}b.lift=PLAYER_BUBBLE_LIFT*this.ui;}
-    else{const enemy=this.enemies.get(b.enemy);if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18;}}
+    else{const enemy=this.enemies.get(b.enemy);if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18*this.body;}}
     if(Number.isNaN(b.x)){b.text.setVisible(false);return true;}
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;

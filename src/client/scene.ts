@@ -3,7 +3,7 @@ import {propChunks} from './terrain/tiles.ts';
 import {TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,followWorld,hordeUiScale,worldZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
@@ -31,7 +31,10 @@ export const SKILL_RANGE=2.8;
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
-/** Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a bêbado is ~36 px tall at the follow zoom. */
+/**
+ * Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a bêbado is ~36 px tall at the follow zoom (in
+ * the city too: its art is scaled by CITY_VIEW_SCALE under a zoom 1/CITY_VIEW_SCALE times larger).
+ */
 const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
@@ -88,6 +91,13 @@ export class IslandScene extends Phaser.Scene {
   /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
   private follow=new FollowCamera();
   private zoom=1;
+  /**
+   * World px multiplier of everything drawn at the endless map's size (hero, allies, enemies, rings, shadows):
+   * framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere. Set by fit() from the camera's terrain.
+   */
+  private actorScale=1;
+  /** The terrain the camera was last fitted for: the net's terrain swaps on a lobby map switch (client.ts switchMap). */
+  private cameraTerrain?:TerrainField;
   private canvasOffset={x:0,y:0};
   /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
   private steps=new StepLerp();
@@ -250,16 +260,19 @@ export class IslandScene extends Phaser.Scene {
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
       this.projector=new Projector(this.view,this.field);
-      // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1).
-      this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
+      // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
+      // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
+      this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
-      this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
-      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});
-      this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,
+      // Caídos' light columns follow the figures' scale (CITY_VIEW_SCALE in the city).
+      this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p),()=>this.actorScale);
+      // The wall, the towers and the kill-cam's copy follow the figures' scale too (CITY_VIEW_SCALE in the city).
+      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale});
+      this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
       const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
@@ -276,10 +289,27 @@ export class IslandScene extends Phaser.Scene {
     const u=this.usefulArea;if(!u)return undefined;
     return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
   }
-  /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation). */
+  /**
+   * The terrain the camera frames: the net's (it changes on a lobby map switch, cidade-09) or the scene's own field.
+   * In the city (world 'cidade') the zoom is framing.ts cityZoom (D-030) and the figures are scaled by CITY_VIEW_SCALE.
+   */
+  private cameraField():TerrainField{return this.hooks.net?.terrain??this.field;}
+  /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
+  private setActorScale(k:number){
+    const old=this.actorScale;if(k===old)return;
+    this.actorScale=k;this.sprites.viewScale=k;
+    this.shadow?.setScale(k);this.ring?.setScale(k);
+    const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
+      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*k,icon*k);
+    };
+    if(this.actor)resize(this.actor,112);
+    for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(k);}
+  }
+  /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
   private fit(){
-    const viewport=this.viewport();
-    this.zoom=followZoom(viewport);
+    const viewport=this.viewport(),terrain=this.cameraTerrain=this.cameraField();
+    this.zoom=worldZoom(viewport,terrain);
+    this.follow.world=followWorld(terrain);this.setActorScale(this.follow.world.scale);
     const at=this.watchPoint??this.smooth??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
@@ -353,8 +383,9 @@ export class IslandScene extends Phaser.Scene {
     const p=this.project(target);
     // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
-    this.destination.lineStyle(5,breu,.9).strokeEllipse(p.x,p.y,28,14).lineStyle(2,papel,1).strokeEllipse(p.x,p.y,28,14);
-    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5).fillStyle(papel,1).fillCircle(p.x,p.y,3);
+    const k=this.actorScale;
+    this.destination.lineStyle(5*k,breu,.9).strokeEllipse(p.x,p.y,28*k,14*k).lineStyle(2*k,papel,1).strokeEllipse(p.x,p.y,28*k,14*k);
+    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5*k).fillStyle(papel,1).fillCircle(p.x,p.y,3*k);
   }
   private place(){
     const p=this.project(this.position),depth=this.depth(this.position);
@@ -430,6 +461,8 @@ export class IslandScene extends Phaser.Scene {
     this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
+    // A lobby map switch swapped the net's terrain (island/endless ↔ city): new zoom, figure scale and camera at once.
+    if(this.cameraTerrain&&this.cameraField()!==this.cameraTerrain)this.fit();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
@@ -460,7 +493,7 @@ export class IslandScene extends Phaser.Scene {
     let best:string|undefined,bestDistance=Infinity;
     for(const enemy of feed.enemies.values()){
       if(enemy.hp<=0)continue;
-      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=enemy.elite&&kind!=='chefe'?ELITE_SCALE:1,q=this.project(enemy);
+      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=(enemy.elite&&kind!=='chefe'?ELITE_SCALE:1)*this.actorScale,q=this.project(enemy);
       const cy=q.y-(art.hover+art.height*art.originY*.5)*size,distance=Math.hypot(p.x-q.x,p.y-cy);
       if(distance<=Math.max(floor,art.width*size*.6)&&distance<bestDistance){best=enemy.id;bestDistance=distance;}
     }
@@ -562,7 +595,7 @@ export class IslandScene extends Phaser.Scene {
       if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
       const radius=SKILL_RANGE*(this.reduced?1:.3+.7*age/10);
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
-      effects.lineStyle(3,0xffde88,1-age/10).strokePoints(points,true);
+      effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
     const target=smooth,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
@@ -581,9 +614,10 @@ export class IslandScene extends Phaser.Scene {
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      const k=this.actorScale;
+      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
-      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
+      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
@@ -594,7 +628,7 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15,zoomNow):q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*this.actorScale,zoomNow):q.y+15*this.actorScale,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -602,7 +636,7 @@ export class IslandScene extends Phaser.Scene {
     if(selfDown||this.selfLabel){
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
       label.setSos(selfDown).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,q.y+15,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
+        .anchor(q.x,q.y+15*this.actorScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
     this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();
@@ -840,18 +874,18 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
   // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
   if(import.meta.env.DEV){
-    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point;follow:FollowCamera;depthOrigin?:Point;useful():Rect|undefined};
+    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point;follow:FollowCamera;depthOrigin?:Point;useful():Rect|undefined;actorScale:number};
     const probe=()=>{
       const cam=s.cameras.main,net=s.hooks.net;
       const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
       const enemies=[...(net?.feed.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
-        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=e.elite&&kind!=='chefe'?ELITE_SCALE:1,q=s.project(e);
+        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=(e.elite&&kind!=='chefe'?ELITE_SCALE:1)*s.actorScale,q=s.project(e);
         return {id:e.id,...screen({x:q.x,y:q.y-(art.hover+art.height*art.originY*.5)*size})};
       });
       const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];
       const you=(scene as unknown as {you?:YouMarkers}).you;
       const camera={center:{...s.follow.center},look:{...s.follow.look},useful:s.useful(),depthOrigin:s.depthOrigin,locked:scene.rotationLocked(),
-        heroPx:Math.round(96*cam.zoom),scroll:{x:cam.scrollX,y:cam.scrollY}};
+        heroPx:Math.round(96*s.actorScale*cam.zoom),actorScale:s.actorScale,scroll:{x:cam.scrollX,y:cam.scrollY}};
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,

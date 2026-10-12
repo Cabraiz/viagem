@@ -10,7 +10,9 @@ export {cityMinimapPoint,cityMinimapMarks,cityMinimapLabels,cityFixedLayer,cityR
   BIG_OPEN_MS,NEAR_BLOCK,DANGER_NOTICES,BLOCKED_LABEL,NOTICE_BLOCKED_LABEL,
   type CityView,type MouthId,type CityMapInfo,type CityMarkKind,type CityMark,type CityLabel,type CityMinimapInput,
   type NoticeKind,type BlockReason,type BigCloseInput} from './minimap.ts';
-export {cityEdgeTargets,layoutCityEdges,mergeGroupTargets,besideWindows,cityEdgeRank,WALL_HIT_MS,GROUP_DANGER_HERO,GROUP_DANGER_WALL,MOUTH_GROUP_MERGE,MOUTH_ARROWS,GROUP_EDGE_ARROWS,
+export {cityEdgeTargets,layoutCityEdges,mergeGroupTargets,cityMustPoint,cityPlaceRank,besideWindows,cityEdgeRank,WALL_HIT_MS,GROUP_DANGER_HERO,GROUP_DANGER_WALL,MOUTH_GROUP_MERGE,MOUTH_ARROWS,GROUP_EDGE_ARROWS,
   type CityEdgeInput,type CityEdgeTarget,type CityEdgeArrow,type CityEdgeOptions} from './edges.ts';
 export {initialSelector,selectorReducer,selectorView,mountMapSelector,mapChangedNews,downloadText,MAP_OPTIONS,DEFAULT_MAP,PENDING_MS,NEWS_MS,GUEST_HINT_MS,SELECTOR_TEXT,
   type MapId,type SelectorState,type SelectorEvent,type SelectorView,type SelectorSticker,type MapSelectorOptions} from './map-selector.ts';
+export {minimapMode,cityAssetOf,cityMapInfo,mouthOfWarning,trackMouths,screenCorners,hornSeconds,BigMapState,MOUTH_IDS,AVENUE_MATCH,MOUTH_TAIL_TICKS,
+  type MinimapMode,type CityAssetLike} from './wiring.ts';

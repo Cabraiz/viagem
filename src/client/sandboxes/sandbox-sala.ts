@@ -31,7 +31,7 @@ body>:not(.ss-layout){display:none!important}
 document.head.append(style);
 
 const layout=document.createElement('div');layout.className='ss-layout';
-layout.innerHTML='<div class="ss-mock ss-gear">⚙</div><div class="ss-mock ss-stick">joystick</div><div class="ss-mock ss-attack">ataque</div>';
+layout.innerHTML='<div class="ss-mock ss-gear">config</div><div class="ss-mock ss-stick">joystick</div><div class="ss-mock ss-attack">ataque</div>';
 document.body.append(layout);
 
 const ids=Array.from({length:players},(_,i)=>`p${i+1}`);

@@ -8,6 +8,13 @@ import {BASE,ChunkWorld,endlessSignature} from './chunks.ts';
 import type {WorldKind} from '../../contract/index.ts';
 export type {WorldKind};
 export interface TerrainOptions {world?:WorldKind;maxLiveChunks?:number}
+/** Bilinear sample of an island grid. A module function, not a private method: TerrainField stays structurally typed,
+ * so other surfaces with the same shape (city/terrain.ts) are accepted wherever a TerrainField is. */
+function sampleField(data:Float32Array,x:number,y:number){
+  const fx=clamp((x-FIELD_MIN)/FIELD_STEP,0,FIELD_SIZE-1),fy=clamp((y-FIELD_MIN)/FIELD_STEP,0,FIELD_SIZE-1);
+  const ix=Math.min(FIELD_SIZE-2,Math.floor(fx)),iy=Math.min(FIELD_SIZE-2,Math.floor(fy)),tx=fx-ix,ty=fy-iy,index=iy*FIELD_SIZE+ix;
+  return mix(mix(data[index],data[index+1],tx),mix(data[index+FIELD_SIZE],data[index+FIELD_SIZE+1],tx),ty);
+}
 export function randomSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
 export class TerrainField {
   readonly seed:number;
@@ -56,14 +63,9 @@ export class TerrainField {
     const radius=10.35+.58*Math.sin(angle*3+phase)+.3*Math.sin(angle*5-phase*.7);
     return radius-Math.hypot(dx,dy);
   }
-  private sample(data:Float32Array,x:number,y:number){
-    const fx=clamp((x-FIELD_MIN)/FIELD_STEP,0,FIELD_SIZE-1),fy=clamp((y-FIELD_MIN)/FIELD_STEP,0,FIELD_SIZE-1);
-    const ix=Math.min(FIELD_SIZE-2,Math.floor(fx)),iy=Math.min(FIELD_SIZE-2,Math.floor(fy)),tx=fx-ix,ty=fy-iy,index=iy*FIELD_SIZE+ix;
-    return mix(mix(data[index],data[index+1],tx),mix(data[index+FIELD_SIZE],data[index+FIELD_SIZE+1],tx),ty);
-  }
-  bed(x:number,y:number){return this.chunks?this.chunks.bed(x,y):this.sample(this.heights,x,y);}
+  bed(x:number,y:number){return this.chunks?this.chunks.bed(x,y):sampleField(this.heights,x,y);}
   height(x:number,y:number){return Math.max(0,this.bed(x,y));}
-  wetness(x:number,y:number){return this.chunks?this.chunks.wetness(x,y):this.sample(this.moisture,x,y);}
+  wetness(x:number,y:number){return this.chunks?this.chunks.wetness(x,y):sampleField(this.moisture,x,y);}
   slope(x:number,y:number){return Math.hypot(this.height(x+.125,y)-this.height(x-.125,y),this.height(x,y+.125)-this.height(x,y-.125))/.25;}
   land(x:number,y:number,margin=0){return Number.isFinite(x)&&Number.isFinite(y)&&this.coast(x,y)>margin&&this.bed(x,y)>0;}
   /**

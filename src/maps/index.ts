@@ -7,3 +7,4 @@ export * from './input-track.ts';
 export * from './prediction.ts';
 export * from './city-asset.ts';
 export * from './flowfield.ts';
+export * from './city/terrain.ts';

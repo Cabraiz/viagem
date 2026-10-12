@@ -36,7 +36,8 @@ import type {ZueiraLab} from '../src/sim/index.ts';
 export const DEFAULT_WORLD:WorldKind='infinito';
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
-  return {kind:terrain.chunks?'infinito':'ilha',terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
+  const kind=terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
+  return {kind,terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
 }
 /** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
 const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
@@ -92,8 +93,9 @@ export class Simulation {
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
    */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind}={}){
-    this.seed=seed;this.terrain=new TerrainField(seed,{world:options.world});
+  /** `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world. */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField}={}){
+    this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:options.world==='cidade'?undefined:options.world});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }

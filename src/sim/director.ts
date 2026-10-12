@@ -175,7 +175,8 @@ const candidateCache=new WeakMap<TerrainField,Point[]>();
  */
 export function coastalSpawnPoints(terrain:TerrainField):Point[]{
   const cached=candidateCache.get(terrain);if(cached)return cached;
-  if(terrain.chunks){const none:Point[]=[];candidateCache.set(terrain,none);return none;}
+  // Endless world and city (cidade-05 spawns at the avenue tips): no coastal band.
+  if(terrain.chunks||terrain.world==='cidade'){const none:Point[]=[];candidateCache.set(terrain,none);return none;}
   const base=worldBase(terrain),spawn=worldSpawn(terrain),half=12,ox=base.x-half,oy=base.y-half;
   const step=.5,size=49,at=(id:number):Point=>({x:ox+(id%size)*step,y:oy+Math.floor(id/size)*step});
   const open=new Uint8Array(size*size);

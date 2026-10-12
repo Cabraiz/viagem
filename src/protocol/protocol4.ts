@@ -39,7 +39,7 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/ind
  * (`last-bicho`, the kill-cam); a 6 decoder would skip them silently (no blackout, no kill-cam), so the version moves.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=7;
+export const PROTOCOL_VERSION=8;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -433,8 +433,10 @@ function advance(schema:Schema,base:Table|undefined,tick:number,baseTick:number)
 }
 
 /** Terrain the frames are about (rede-mapa-grande): the client builds the same TerrainField from it. */
-export interface WorldDescriptor {kind:'ilha'|'infinito';terrainVersion:number;generatorVersion:number;seed:number;signature:string}
-const WORLD_KINDS=['ilha','infinito'] as const;
+/** City (D-034): seed 0 and signature = the asset sha256, the same hash as the map-select MapRef (D-027). */
+export interface WorldDescriptor {kind:'ilha'|'infinito'|'cidade';terrainVersion:number;generatorVersion:number;seed:number;signature:string}
+/** Appended only: the u8 index is on the wire. */
+const WORLD_KINDS=['ilha','infinito','cidade'] as const;
 const sameWorld=(a?:WorldDescriptor,b?:WorldDescriptor)=>!!a&&!!b&&a.kind===b.kind&&a.terrainVersion===b.terrainVersion&&
   a.generatorVersion===b.generatorVersion&&a.seed===b.seed&&a.signature===b.signature;
 

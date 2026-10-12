@@ -622,6 +622,24 @@ test('the server world descriptor rebuilds the same terrain on the client, islan
   }
 });
 
+test('protocol 8 (D-034): a city room says kind cidade, seed 0 and the asset sha256, and the client gets its decoded city',async()=>{
+  assert.equal(PROTOCOL_VERSION,8);
+  const {worldDescriptor}=await import('../../multiplayer/simulation.ts');
+  const {cityTerrainFrom,cityTerrainFor}=await import('../../src/maps/city/terrain.ts');
+  const {terrainFor}=await import('../../src/client/net/terrain.ts');
+  const {readFileSync}=await import('node:fs');
+  const json=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
+  const {hash}=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
+  const built=cityTerrainFrom(json,hash);assert.ok(built.ok);
+  const d=worldDescriptor(built.terrain);
+  assert.deepEqual({kind:d.kind,seed:d.seed,generatorVersion:d.generatorVersion,signature:d.signature},{kind:'cidade',seed:0,generatorVersion:0,signature:hash});
+  const w=busyWorld(new Rng(5),2);(w.view as FrameInput).world=d;
+  const r=new FrameDecoder().decode(new FrameEncoder().encode(w.view));
+  assert.ok(r.ok&&r.world);assert.deepEqual(r.world,d,'the 64-hex signature fits and round-trips');
+  assert.equal(terrainFor(r.world),cityTerrainFor(hash),'the client plays on the city it decoded');
+  assert.equal(typeof terrainFor({...r.world,signature:'0'.repeat(64)}),'string','an unknown city asks to update, never guesses');
+});
+
 test('area of interest without a body: a spectator follows a player, an empty room the base, never "everything"',()=>{
   const v=farWorld(new Rng(61),3000,3000,0).view;
   v.enemies=[{id:'e-a',kind:'gosma',x:3001,y:3000,hp:5,maxHp:5},{id:'e-b',kind:'gosma',x:1,y:1,hp:5,maxHp:5}];
@@ -742,8 +760,9 @@ test('protocol 6: a 5 decoder byte is refused, and a frame without Stonewards st
   const r=dec.decode(bytes);assert.ok(r.ok);assert.equal(r.view.camp,undefined);assert.deepEqual(r.view.nodes,[]);
 });
 
-test('protocol 7: zueira events and the kill-cam reach every client, wherever they happened (VGM-053B)',()=>{
-  assert.equal(PROTOCOL_VERSION,7);
+test('protocol 7+: zueira events and the kill-cam reach every client, wherever they happened (VGM-053B)',()=>{
+  // 7 added these events; 8 (D-034) only appended the city world kind.
+  assert.ok(PROTOCOL_VERSION>=7);
   const ids=new WireIds(),me=new FrameEncoder(ids,{viewer:'me'}),far=new FrameEncoder(ids,{viewer:'far'});
   const dm=new FrameDecoder(),df=new FrameDecoder();
   const w=campWorld();

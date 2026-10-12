@@ -16,6 +16,26 @@ export const CHUNK_CELLS=16;
  * the columns of one block that share a depth key in a single object, so the object count stays low.
  */
 export const PIECE_MAX_CELLS=1;
+/** Ruined roofs: one side steps down in 2 or 3 steps of this fraction of the height (art bible §4.2). */
+export const RUIN_STEP=0.12;
+/** FNV-1a hash of a string, for decisions seeded by a block id (same in every client and view). */
+export function hashId(id:string):number{
+  let h=0x811c9dc5;
+  for(let i=0;i<id.length;i++){h^=id.charCodeAt(i);h=Math.imul(h,0x01000193);}
+  return h>>>0;
+}
+/**
+ * Stepped ruin roof: the side (n, e, s or w) and the number of steps (2 or 3, fewer on narrow blocks, always
+ * leaving at least one full-height row) come from the block id. Returns the height factor of a cell.
+ */
+export function ruinStepFactor(b:CityBlock,i:number,j:number):number{
+  const h=hashId(b.id),side=(['n','e','s','w'] as const)[h%4];
+  const across=side==='n'||side==='s'?b.h:b.w;
+  const steps=Math.min(2+((h>>>2)&1),across-1);
+  if(steps<1)return 1;
+  const d=side==='n'?j:side==='s'?b.h-1-j:side==='w'?i:b.w-1-i;
+  return d<steps?1-RUIN_STEP*(steps-d):1;
+}
 /** Ruin bite (agreed with the art lane): a third of the block's shortest edge, at most 1 cell. */
 export const ruinBite=(b:{w:number;h:number})=>Math.min(1,Math.min(b.w,b.h)/3);
 
@@ -39,7 +59,9 @@ export function propExtentPx(prop:CityProp):{up:number;side:number}{
  * in cells, only on the world north-east piece of a ruined building.
  */
 export interface BlockPiece {id:string;blockId:string;kind:BlockKind;x:number;y:number;w:number;h:number;height:number;
-  ruined?:boolean;bite?:number;base:number;seams:{n:boolean;s:boolean;e:boolean;w:boolean}}
+  ruined?:boolean;bite?:number;base:number;seams:{n:boolean;s:boolean;e:boolean;w:boolean};
+  /** On a seam side, how much taller this piece is than its neighbour (world units; only when > 0). */
+  drops?:{n?:number;s?:number;e?:number;w?:number}}
 
 /** Cells [x0,x1)×[y0,y1). minBase/maxTop bound every height drawn by the chunk (world units). */
 export interface CityChunk {key:string;cx:number;cy:number;x0:number;y0:number;x1:number;y1:number;
@@ -56,15 +78,23 @@ function minGround(asset:CityAsset,x0:number,y0:number,x1:number,y1:number){
   return m;
 }
 
-/** Cuts a block into 1×1 pieces, row-major (ids `${block}#${i}`), sharing the block's lowest ground as base. */
+/**
+ * Cuts a block into 1×1 pieces, row-major (ids `${block}#${i}`), sharing the block's lowest ground as base.
+ * Ruined buildings get a stepped roof (ruinStepFactor) and a bite on the north-east piece; `drops` records
+ * where a piece stands above its neighbour so faces.ts closes the step with a wall.
+ */
 export function blockPieces(asset:CityAsset,b:CityBlock):BlockPiece[]{
   const base=minGround(asset,b.x,b.y,b.x+b.w,b.y+b.h),out:BlockPiece[]=[];
   const ruin=b.kind==='building'&&!!b.ruined;
+  const height=(i:number,j:number)=>ruin?b.height*ruinStepFactor(b,i,j):b.height;
   for(let j=0;j<b.h;j++)for(let i=0;i<b.w;i++){
-    const ne=ruin&&i===b.w-1&&j===0;
-    out.push({id:`${b.id}#${j*b.w+i}`,blockId:b.id,kind:b.kind,x:b.x+i,y:b.y+j,w:1,h:1,height:b.height,
+    const ne=ruin&&i===b.w-1&&j===0,hh=height(i,j);
+    const drops:{n?:number;s?:number;e?:number;w?:number}={};
+    const near:[('n'|'s'|'e'|'w'),number,number][]=[['n',i,j-1],['s',i,j+1],['w',i-1,j],['e',i+1,j]];
+    for(const [side,ni,nj] of near)if(ni>=0&&nj>=0&&ni<b.w&&nj<b.h&&hh-height(ni,nj)>1e-9)drops[side]=hh-height(ni,nj);
+    out.push({id:`${b.id}#${j*b.w+i}`,blockId:b.id,kind:b.kind,x:b.x+i,y:b.y+j,w:1,h:1,height:hh,
       ...(b.ruined?{ruined:true}:{}),...(ne?{bite:ruinBite(b)}:{}),base,
-      seams:{n:j>0,s:j<b.h-1,w:i>0,e:i<b.w-1}});
+      seams:{n:j>0,s:j<b.h-1,w:i>0,e:i<b.w-1},...(Object.keys(drops).length?{drops}:{})});
   }
   return out;
 }

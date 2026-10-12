@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {heightAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
-import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
-import {groundQuads,pieceGeometry,type Face} from '../../src/client/render/city/faces.ts';
+import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,ruinStepFactor,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
+import {groundQuads,pieceGeometry,viewSide,type Face} from '../../src/client/render/city/faces.ts';
 import {VIEW_PIVOT,depth,project,rectsOverlap,type Pt,type Rect} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -31,7 +31,10 @@ test('every block is cut into 1×1 pieces that tile it, share the lowest ground 
     const cells=new Set<string>();
     for(const p of ps){
       assert.equal(p.id,`${b.id}#${(p.y-b.y)*b.w+(p.x-b.x)}`);
-      assert.equal(p.w,1);assert.equal(p.h,1);assert.equal(p.kind,b.kind);assert.equal(p.height,b.height);
+      assert.equal(p.w,1);assert.equal(p.h,1);assert.equal(p.kind,b.kind);
+      // Stepped ruin roofs (art bible §4.2): only ruined buildings vary, by whole RUIN_STEP steps.
+      const factor=b.kind==='building'&&b.ruined?ruinStepFactor(b,p.x-b.x,p.y-b.y):1;
+      assert.ok(Math.abs(p.height-b.height*factor)<1e-9,p.id);
       assert.equal(p.base,base,`${p.id}: one base per block (lowest ground)`);
       assert.equal(p.ruined,b.ruined);
       cells.add(`${p.x},${p.y}`);
@@ -42,6 +45,18 @@ test('every block is cut into 1×1 pieces that tile it, share the lowest ground 
     }
     assert.equal(cells.size,b.w*b.h,b.id);
   }
+  // Ruins step down 2 or 3 times on one seeded side, keep a full-height row, and record drops toward lower neighbours.
+  for(const b of asset.blocks.filter(b=>b.ruined)){
+    const ps=pieces.filter(p=>p.blockId===b.id),levels=new Set(ps.map(p=>p.height.toFixed(6)));
+    assert.ok(levels.size>=3&&levels.size<=4,`${b.id}: ${levels.size} levels`);
+    assert.ok(ps.some(p=>p.height===b.height),`${b.id} keeps full height somewhere`);
+    for(const p of ps)for(const side of ['n','s','e','w'] as const){
+      const nx=p.x+(side==='e'?1:side==='w'?-1:0),ny=p.y+(side==='s'?1:side==='n'?-1:0);
+      const n=ps.find(q=>q.x===nx&&q.y===ny),drop=n?p.height-n.height:0;
+      assert.equal(p.drops?.[side]??0,drop>1e-9?drop:0,`${p.id} drop ${side}`);
+    }
+  }
+  assert.equal(ruinStepFactor({id:'x',kind:'building',x:0,y:0,w:1,h:1,height:3},0,0),1,'a 1×1 ruin has no steps');
   assert.equal(ruinBite({w:2,h:5}),2/3);assert.equal(ruinBite({w:6,h:6}),1);assert.equal(ruinBite({w:1,h:9}),1/3);
   // Raising ground under part of a wall does not lift it: the whole block keeps the lowest ground (no floating, no steps).
   const heights=[...asset.heights];heights[0*asset.width+3]=0.5;heights[0*asset.width+2]=0.2;
@@ -290,4 +305,28 @@ test('a rotation shows every wanted chunk at once (no holes), and reset starts o
   assert.equal(u.show.length,4,'after a turn the whole screen comes back in one update');
   t.reset();assert.deepEqual(t.visible(),[]);
   assert.equal(t.update(all1,1).show.length,1,'first update after reset keeps the per-update budget');
+});
+
+test('stepped ruin roofs close every camera-facing step with a wall as tall as the step (no holes)',()=>{
+  const ruin={id:'ruin-steps',kind:'building' as const,x:4,y:4,w:4,h:4,height:3,ruined:true};
+  const ps=buildChunks({...asset,blocks:[ruin],props:[]}).chunks.flatMap(c=>c.pieces);
+  let walls=0;
+  for(const v of VIEWS)for(const p of ps){
+    const g=pieceGeometry(p,asset,v);
+    for(const side of ['n','s','e','w'] as const){
+      const drop=p.drops?.[side];
+      const facing=viewSide(side,v);
+      if(!drop||(facing!=='+x'&&facing!=='+y'))continue;
+      // The step wall sits on the seam plane, from the neighbour's top to this piece's top.
+      const kind=facing==='+y'?'wallLight':'wallDark';
+      const tops=g.faces.filter(f=>f.kind===kind&&f.points.length===4);
+      const h=(f:Face)=>Math.max(...f.points.map(q=>q.y))-Math.min(...f.points.map(q=>q.y));
+      // A wall one cell wide spans 21·cell px of screen y along its base plus 42 px per unit of height.
+      assert.ok(tops.some(f=>Math.abs(h(f)-(drop*42+21*asset.cell))<1e-6),`${p.id} ${side} v${v}`);
+      // And it is outlined (closed polyline).
+      assert.ok(g.outline.some(l=>l.length===5),`${p.id} ${side} v${v} outlined`);
+      walls++;
+    }
+  }
+  assert.ok(walls>0,'the fixture ruin exposes steps');
 });

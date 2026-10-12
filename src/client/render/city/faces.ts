@@ -74,6 +74,17 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
   }
   if(!seams.has('+y'))faces.push({kind:'wallLight',q:wallQ(1,qy1,qx0,qx1,z0,z1,bite&&bite.sy==='+y'?[bite.x0,bite.x1]:null,zb)});
   if(!seams.has('+x'))faces.push({kind:'wallDark',q:wallQ(0,qx1,qy0,qy1,z0,z1,bite&&bite.sx==='+x'?[bite.y0,bite.y1]:null,zb)});
+  // Stepped ruin roof: on a camera-facing seam where the neighbour is lower, close the step with a wall from the
+  // neighbour's top up to ours (outlined on its own: the seam rule would drop every edge of this face).
+  const stepWalls:{kind:FaceKind;q:Q[]}[]=[];
+  for(const s of ['n','s','e','w'] as const){
+    const drop=piece.drops?.[s];
+    if(!drop||!piece.seams[s])continue;
+    const side=viewSide(s,v);
+    if(side==='+y')stepWalls.push({kind:'wallLight',q:wallQ(1,qy1,qx0,qx1,z1-drop,z1,null,zb)});
+    else if(side==='+x')stepWalls.push({kind:'wallDark',q:wallQ(0,qx1,qy0,qy1,z1-drop,z1,null,zb)});
+  }
+  faces.push(...stepWalls);
   let cap=rectQ(qx0,qy0,qx1,qy1,z1);
   if(bite){
     // Replace the bitten corner by the three corners of the notch, keeping the winding.
@@ -87,6 +98,7 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
     ||(seams.has('+y')&&p[1]===qy1&&r[1]===qy1)||(seams.has('-y')&&p[1]===qy0&&r[1]===qy0);
   const outline:Pt[][]=[];
   for(const f of faces){
+    if(stepWalls.includes(f)){const pts=f.q.map(toScreen);outline.push([...pts,pts[0]]);continue;}
     const n=f.q.length,cut=f.q.findIndex((p,i)=>onSeam(p,f.q[(i+1)%n]));
     if(cut<0){const pts=f.q.map(toScreen);outline.push([...pts,pts[0]]);continue;}
     let line:Pt[]=[];

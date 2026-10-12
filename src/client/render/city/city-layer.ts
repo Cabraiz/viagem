@@ -7,6 +7,7 @@
 import Phaser from 'phaser';
 import {heightAt,type CityAsset,type CityBlock,type CityProp} from './asset.ts';
 import {ChunkTracker,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
+import {groundDecor,pieceDecor,pieceShadow,type DecorPrim} from './decor.ts';
 import {groundQuads,pieceGeometry,type PieceGeometry} from './faces.ts';
 import {OcclusionFader,occluderFor,outlineAlpha,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -15,8 +16,23 @@ import {VIEW_PIVOT,depth,normalizeView,project,type Pt,type Rect} from './projec
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
 const PINE_SHEET={pivotY:353/384,height:165,pixelHeight:340};
-/** Same layer as the island ground bake (src/game/terrain/renderer.ts). */
+/** Same layer as the island ground bake (src/game/terrain/renderer.ts); cast shadows and glints sit just above it. */
 export const CITY_GROUND_DEPTH=-10000;
+const SHADOW_DEPTH=CITY_GROUND_DEPTH+1,GLINT_DEPTH=CITY_GROUND_DEPTH+2;
+/** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
+const GLINT_PERIOD_MS=4000;
+
+/** Draws one decor primitive into a Graphics. */
+function drawPrim(g:Phaser.GameObjects.Graphics,p:DecorPrim){
+  if(p.shape==='circle'&&p.cx!==undefined&&p.cy!==undefined&&p.r!==undefined){g.fillStyle(p.color,p.alpha).fillCircle(p.cx,p.cy,p.r);return;}
+  if(!p.points||p.points.length<2)return;
+  if(p.shape==='line')g.lineStyle(p.width??1,p.color,p.alpha).strokePoints(p.points,false);
+  else g.fillStyle(p.color,p.alpha).fillPoints(p.points,true);
+}
+/** prefers-reduced-motion, read once (false outside a browser). */
+function reducedMotion(){
+  try{return typeof window!=='undefined'&&!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}catch{return false;}
+}
 
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
@@ -42,7 +58,8 @@ export interface CityLayerOptions {
  * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
  */
 interface Band {blockId:string;key:number;body:Phaser.GameObjects.Graphics;outline:Phaser.GameObjects.Graphics}
-interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;bands:Band[];props:(Phaser.GameObjects.Graphics|Phaser.GameObjects.Image)[]}
+interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;shadows:Phaser.GameObjects.Graphics;
+  glints:Phaser.GameObjects.Graphics;bands:Band[];props:(Phaser.GameObjects.Graphics|Phaser.GameObjects.Image)[]}
 
 export class CityLayer {
   readonly asset:CityAsset;
@@ -57,6 +74,8 @@ export class CityLayer {
   private readonly occluders=new Map<string,Occluder>();
   private readonly chunksByKey=new Map<string,CityChunk>();
   private view=-1;
+  private clock=0;
+  private readonly still=reducedMotion();
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -78,6 +97,11 @@ export class CityLayer {
     for(const key of hide)this.dropChunk(key);
     for(const key of show)this.buildChunk(key,view);
     this.applyOcclusion(frame,view);
+    if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
+      this.clock=(this.clock+frame.dtMs)%GLINT_PERIOD_MS;
+      const alpha=0.55+0.45*Math.sin(this.clock/GLINT_PERIOD_MS*Math.PI*2);
+      for(const live of this.live.values())live.glints.setAlpha(alpha);
+    }
   }
 
   /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
@@ -90,6 +114,11 @@ export class CityLayer {
     const ground=this.scene.add.graphics().setDepth(CITY_GROUND_DEPTH);
     for(const quad of groundQuads(chunk,this.asset,view,this.pivot))
       ground.fillStyle(groundColor(quad.kind,quad.shade),1).fillPoints(quad.points,true);
+    // Ground details (specks, tracks, joints, water rim); shimmering glints go to their own object.
+    const glints=this.scene.add.graphics().setDepth(GLINT_DEPTH);
+    for(const prim of groundDecor(chunk,this.asset,view,this.pivot))drawPrim(prim.shimmer?glints:ground,prim);
+    const shadows=this.scene.add.graphics().setDepth(SHADOW_DEPTH);
+    for(const piece of chunk.pieces)drawPrim(shadows,pieceShadow(piece,this.asset,view,this.pivot));
     // Group the chunk's columns by (block, depth key); draw each band back-to-front.
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const piece of chunk.pieces){
@@ -104,6 +133,9 @@ export class CityLayer {
       for(const {piece,geo} of g.items){
         const colors=BLOCK_COLORS[piece.kind];
         for(const face of geo.faces)body.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
+        // Icing, windows, plaster and icicles fade with the block (same object).
+        for(const prim of pieceDecor(piece,this.asset,view,this.pivot))drawPrim(body,prim);
+        outline.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);
         for(const line of geo.outline)outline.strokePoints(line,false);
       }
       const d=this.depthOf(g.key);
@@ -111,13 +143,13 @@ export class CityLayer {
       bands.push({blockId:g.blockId,key:g.key,body,outline});
     }
     const props=chunk.props.map(p=>this.drawProp(p,view));
-    this.live.set(key,{chunk,ground,bands,props});
+    this.live.set(key,{chunk,ground,shadows,glints,bands,props});
   }
 
   private dropChunk(key:string){
     const live=this.live.get(key);
     if(!live)return;
-    live.ground.destroy();
+    live.ground.destroy();live.shadows.destroy();live.glints.destroy();
     for(const b of live.bands){b.body.destroy();b.outline.destroy();}
     for(const g of live.props)g.destroy();
     this.live.delete(key);

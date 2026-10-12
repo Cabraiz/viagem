@@ -135,7 +135,7 @@ if(params.has('phaser'))void (async()=>{
 })();
 
 if(bordas)void (async()=>{
-  const {layoutEdges,pointedTargets}=await import('./hud/edges.ts');
+  const {layoutEdges,pointedTargets,COVERING,WINDOWS}=await import('./hud/edges.ts');
   const {radar}=await import('./hud/radar.ts');
   const {computeZones,union}=await import('./hud/zones.ts');
   const {islandOutline,MINIMAP_RANGE}=await import('./hud/minimap.ts');
@@ -166,10 +166,12 @@ if(bordas)void (async()=>{
     const {targets,items}=radar({selfId:'p1',focus:hero,self:hero,tick:view0.tick,players,states,base:{x:12,y:12},
       enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:900,maxHp:1000,boss:true}],telegraphs:[{id:'t',shape:'circle',x:30,y:31,radius:3,fireTick:view0.tick+10}],
       warnings:[{x:-6,y:4,atTick:view0.tick+20}],nodes:NODES,pinged:id=>id==='p3',locate,portrait:c=>`/art/portraits/${c}-thumb.webp`});
-    const covered=all('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-member,.rh-stack>:not([hidden]),.hs-cam,.hs-gear,.hs-stick,.hs-attack,.rh-minimap,.rh-offer-chip,.rh-offer:not([hidden]),.rh-forge:not([hidden])').filter((r):r is NonNullable<typeof r>=>!!r);
+    // The game's own list (edges.ts COVERING) plus the sandbox's stand-ins for the explore shell's controls: the audits
+    // check the game's rule, not a copy of it (code review janela-caido).
+    const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     const seen={viewport:{x:0,y:0,...viewport},covered};
-    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen}));
+    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen,windows:all(WINDOWS)}));
     // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));

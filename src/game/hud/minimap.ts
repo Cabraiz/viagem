@@ -50,11 +50,12 @@ const shape=(kind:MinimapKind)=>{
     case 'chefe':return '<circle cy="-1" r="4.6"/><rect x="-2.8" y="1.6" width="5.6" height="4" rx="1"/><circle class="mm-eye" cx="-1.7" cy="-1.2" r="1.2"/><circle class="mm-eye" cx="1.7" cy="-1.2" r="1.2"/>';
     case 'spawn':return '<path d="M-6 3.5L-6 1Q-4.5 -3.5 -2.3 -.6Q-1 -4.5 1.2 -1Q2.6 -5 5 -1.3Q6.3 .5 6 1.5L6 3.5Z"/>';
     case 'bau':return '<rect x="-3.5" y="-3" width="7" height="6" rx="1"/>';
-    // Gather nodes (VGM-046B), the nearest one per resource, smaller than a person (Ø 6, design soma S2): the coco is
+    // Gather nodes (VGM-046B), the nearest one per resource, 8 px wide (design soma S2, review janela-caido): the coco is
     // half a shell seen from the side (a dome with its white flesh line), never the disc of an ally; the pedra a chip.
-    case 'coco':return '<path d="M-3.2 1.2A3.2 3.2 0 0 1 3.2 1.2Z"/><path class="mm-polpa" d="M-2.3 1.2H2.3"/>';
-    case 'pedra':return '<path d="M-3 1.2L-2.1 -1.3L.4 -2.4L3 -.9L2.6 1.5L-.4 2.2Z"/>';
-    case 'caido':return '<circle r="5"/><circle class="mm-dot" r="1.6"/>';
+    case 'coco':return '<path d="M-4 1.5A4 4 0 0 1 4 1.5Z"/><path class="mm-polpa" d="M-2.9 1.5H2.9"/>';
+    case 'pedra':return '<path d="M-4 1.6L-2.8 -1.7L.5 -3.2L4 -1.2L3.5 2L-.5 2.9Z"/>';
+    // The boia; a lit "Me salva" adds a Papel ring outside the Cone one (.mm-halo, hidden otherwise).
+    case 'caido':return '<circle class="mm-halo" r="6.5"/><circle r="5"/><circle class="mm-dot" r="1.6"/>';
     case 'voce':return '<circle r="4.5"/>';
     default:return '<circle r="3.5"/>';
   }

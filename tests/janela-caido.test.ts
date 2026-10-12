@@ -4,7 +4,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {layoutEdges,arrowHalf,pointedTargets,MUST_POINT,HEAD_ROOM,type EdgeTarget,type EdgeArrow} from '../src/game/hud/edges.ts';
+import {layoutEdges,arrowHalf,pointedTargets,caidoTag,tagWidth,MUST_POINT,HEAD_ROOM,TAG_ROOM,NAME_ROOM,RIM_PAD,type EdgeTarget,type EdgeArrow} from '../src/game/hud/edges.ts';
+import {fallLine} from '../src/game/hud/model.ts';
 import {computeZones,auditBoxes,crosses,gap,HERO_MARGIN,type Rect,type ZoneInput} from '../src/game/hud/zones.ts';
 import {radar} from '../src/game/hud/radar.ts';
 import {DRAW_ORDER} from '../src/game/hud/minimap.ts';
@@ -113,4 +114,105 @@ test('a boss arrow never hides in the caído\'s "+1" while a corner of the field
   const arrows=layoutEdges([t('c','caido',2000,230,{seconds:6}),t('b','chefe',2000,231)],area,hero);
   assert.deepEqual(arrows.map(a=>a.kind).sort(),['caido','chefe']);
   assert.ok(arrows.every(a=>a.count===1));
+});
+
+// ---------- review round (code, design, UX) ----------
+test('a caído\'s "+N" counts only caídos: spawn, base, ally and chest never join it, the boss never does', async ()=>{
+  const area:Rect={x:100,y:150,width:360,height:160},hero={x:140,y:202,width:56,height:56};
+  const same=(key:string,kind:EdgeTarget['kind'],extra:Partial<EdgeTarget>={})=>t(key,kind,2000,210,extra);
+  const arrows=layoutEdges([same('c','caido',{seconds:6,label:'Zé'}),same('s','spawn'),same('b','base'),same('a','aliado'),same('k','bau'),same('boss','chefe')],area,hero);
+  const caido=arrows.find(a=>a.kind==='caido')!;
+  assert.equal(caido.count,1,'nothing of another kind inside the caído');
+  assert.ok(arrows.some(a=>a.kind==='chefe'),'the boss keeps its own arrow');
+  for(const a of arrows)if(a.count>1)assert.ok(arrows.filter(b=>b.kind===a.kind).length>=1);
+  // Two caídos and nothing else fits: the second one is the "+1" of the first.
+  const two=layoutEdges([same('c1','caido',{seconds:6}),same('c2','caido',{seconds:9})],{x:100,y:150,width:110,height:90},undefined,{max:1});
+  assert.equal(two.length,1);assert.equal(two[0].count,2);assert.equal(two[0].key,'c1');
+});
+
+test('the tag reserve follows the real "+N": a merged caído\'s tag ("Me salva: 16 s +1") and its name never enter the hero\'s margin',()=>{
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const half=arrowHalf();let merged=0;
+  for(let i=0;i<400;i++){
+    // A short landscape field beside a window, the hero somewhere in it, 2 to 4 caídos off to one side.
+    const area:Rect={x:138,y:154,width:300+rnd()*120,height:150+rnd()*10};
+    const hero:Rect={x:area.x+60+rnd()*(area.width-176),y:area.y+area.height/2-28+(rnd()-.5)*20,width:56,height:56};
+    const n=2+Math.floor(rnd()*3),dir=rnd()*Math.PI*2,list:EdgeTarget[]=[];
+    for(let k=0;k<n;k++)list.push(t(`c${k}`,'caido',hero.x+Math.cos(dir+(rnd()-.5)*.05)*900,hero.y+Math.sin(dir+(rnd()-.5)*.05)*900,{seconds:10+k,label:['Zé','Concursei','Wagner','Tia'][k],ping:k===0}));
+    for(const a of layoutEdges(list,area,hero,{max:2})){
+      if(a.count>1)merged++;
+      const text=caidoTag(a)+(a.count>1?` +${a.count-1}`:''),w=Math.max(2*half.w,tagWidth(text));
+      const left=a.tagEnd==='right'?a.x+half.w+4-w:a.x-half.w-4,box={x:left,y:a.y-half.h-TAG_ROOM,width:w+4,height:2*half.h+TAG_ROOM+(a.label?NAME_ROOM:0)};
+      assert.equal(crosses(box,hero,HERO_MARGIN),false,`case ${i}: "${text}" at ${Math.round(a.x)},${Math.round(a.y)}`);
+    }
+  }
+  assert.ok(merged>20,`merges exercised (${merged})`);
+});
+
+test('caído: the first name rides under the ficha (never wider than it), the tag keeps the clock and the ping',()=>{
+  assert.equal(caidoTag({seconds:30}),'30 s');assert.equal(caidoTag({seconds:16,ping:true}),'Me salva: 16 s');
+  const {targets}=radar({selfId:'me',focus:{x:0,y:0},self:{x:0,y:0},tick:0,locate:p=>({x:p.x*50,y:p.y*50}),
+    players:[{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',x:30,y:0,online:true}],
+    states:new Map([['cz',{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',hp:0,maxHp:100,online:true,spectator:false,downed:{progress:0,bleedOutTick:600},weapons:[],passives:[]} as never]])});
+  const c=targets.find(x=>x.kind==='caido')!;assert.equal(c.label,'Concursei');
+  // Londrina 13 px: 9 letters stay inside the ficha (76 px at 100%), so the name never needs side room.
+  assert.ok(9*13*.46+10<=2*arrowHalf().w);
+  // The name's room stays inside the field: an arrow on the bottom rim keeps NAME_ROOM under its ficha.
+  const area:Rect={x:0,y:0,width:400,height:300};
+  const [a]=layoutEdges([{...c,screen:{x:200,y:5000}}],area);
+  assert.ok(a.y+arrowHalf().h+NAME_ROOM<=area.height-RIM_PAD+.5,`${a.y}`);
+  const [b]=layoutEdges([{...c,label:undefined,screen:{x:200,y:5000}}],area);
+  assert.ok(b.y>a.y,'unnamed arrows keep the old rim');
+});
+
+test('behind a window: the arrow sits on the field\'s edge right beside it, level with the caído, beak into the window',()=>{
+  const forge=FORGE.landscape,zones=computeZones({...LANDSCAPE,offer:forge}),u=zones.useful,hero=heroIn(u);
+  const behind={x:forge.x+60,y:forge.y+forge.height-30};
+  const [a]=layoutEdges([t('c','caido',behind.x,behind.y,{seconds:9,label:'Zé'})],u,hero,{seen:{viewport:{x:0,y:0,width:844,height:390},covered:[forge]},windows:[forge]});
+  assert.ok(a);const half=arrowHalf();
+  assert.ok(Math.abs(forge.x-(a.x+half.w)-8)<=1,`8 px from the window (${forge.x-(a.x+half.w)})`);
+  assert.ok(Math.abs(a.y-behind.y)<1,'level with the caído');
+  assert.ok(Math.abs(a.angle)<1e-9,'beak straight into the window');
+});
+
+test('COVERING (game and arrows sandbox) counts the open windows; the sandbox reads the same list',async ()=>{
+  const {COVERING,WINDOWS}=await import('../src/game/hud/edges.ts');
+  for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-camp','.rh-stack>:not([hidden])','.rh-minimap'])assert.ok(COVERING.split(',').includes(sel),sel);
+  assert.deepEqual(WINDOWS.split(','),['.rh-offer:not([hidden])','.rh-forge:not([hidden])']);
+  const {readFileSync}=await import('node:fs');
+  const sandbox=readFileSync(new URL('../src/game/sandbox-hud.ts',import.meta.url),'utf8'),rescue=readFileSync(new URL('../src/game/hud/rescue.ts',import.meta.url),'utf8');
+  assert.match(sandbox,/\$\{COVERING\}/);assert.match(rescue,/boxes\(hud\.el\.ownerDocument,COVERING\)/);
+});
+
+test('zones audit: in landscape the minimap sits in an edge column, never over the field',()=>{
+  const zones=computeZones(LANDSCAPE);
+  const at=(x:number)=>auditBoxes([{name:'minimapa',rect:{x,y:84,width:76,height:76},edgeColumn:true}],zones).offColumn;
+  assert.deepEqual(at(14),[]);assert.deepEqual(at(754),[]);assert.deepEqual(at(400),['minimapa']);
+  assert.deepEqual(auditBoxes([{name:'minimapa',rect:{x:150,y:84,width:76,height:76},edgeColumn:true}],computeZones(PORTRAIT)).offColumn,[],'portrait: the top band rule');
+});
+
+test('window header: the most urgent caído (not you), first name and live seconds',()=>{
+  const p=(id:string,name:string,extra:object={})=>({id,name,downed:undefined,eliminated:false,spectator:false,...extra}) as never;
+  const view={tick:100,players:[p('me','Maria',{downed:{progress:0,bleedOutTick:120}}),p('z','Zé do Pix',{downed:{progress:0,bleedOutTick:100+20*27}}),
+    p('c','Concurseira',{downed:{progress:0,bleedOutTick:100+20*30}}),p('w','Wagner',{downed:{progress:0,bleedOutTick:101},eliminated:true})]};
+  assert.equal(fallLine(view,'me'),'Zé caiu, 27 s. Dá pra andar.');
+  assert.equal(fallLine({tick:0,players:[]},'me'),'');
+});
+
+test('portrait, window open: the settled follow camera keeps the hero ≥ 40 px from the window (100% and 125%)',async ()=>{
+  const {anchorOf,followZoom}=await import('../src/game/framing.ts');
+  for(const offer of [{x:70,y:416,width:312,height:268},{x:94,y:414,width:288,height:270},{x:70,y:449,width:315,height:235}]){
+    const z=computeZones({...PORTRAIT,minimap:{x:306,y:72,width:76,height:76},offer}),viewport=PORTRAIT.viewport;
+    assert.ok(z.useful.height>=136,`field ${z.useful.y}..${z.useful.y+z.useful.height}`);
+    const anchor=anchorOf(viewport,followZoom(viewport),z.useful,{width:56,height:56}),hero={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
+    assert.equal(crosses(hero,offer,HERO_MARGIN),false,`window at ${offer.y}: hero ${hero.y}..${hero.y+56}`);
+  }
+});
+
+test('zones audit: the "Gira no intervalo" balloon never sits on the minimap (the XP bar is its old neighbour)',()=>{
+  const zones=computeZones(LANDSCAPE),mm={x:14,y:84,width:76,height:76};
+  const over=auditBoxes([{name:'minimapa',rect:mm,topReadout:true,edgeColumn:true},{name:'dica-girar',rect:{x:14,y:68,width:126,height:28},balloon:true}],zones);
+  assert.deepEqual(over.topCrossed,['dica-girar×minimapa']);
+  const under=auditBoxes([{name:'minimapa',rect:mm,topReadout:true,edgeColumn:true},{name:'dica-girar',rect:{x:14,y:168,width:70,height:42},balloon:true}],zones);
+  assert.deepEqual(under.topCrossed,[]);
 });

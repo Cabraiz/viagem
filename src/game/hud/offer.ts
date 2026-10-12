@@ -11,7 +11,8 @@ import {SIM_HZ,type OfferSource} from '../sim/types.ts';
 import type {OfferView,RunView} from '../sim/view.ts';
 import {isHeldOffer} from '../sim/offers.ts';
 import {itemDisplay,priceTag} from './items.ts';
-import {offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
+import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
+import {watchOverflow} from './overflow.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -122,6 +123,8 @@ export const isAllNew=(offer:OfferView)=>offer.choices.length>1&&offer.choices.e
 /** "Levar os indicados" shows when at least this many offers wait in the intermission. */
 export const TAKE_ALL_MIN=2;
 export const TAKE_ALL_LABEL='Levar os indicados';
+/** Folds the intermission window into the chip, which opens it again (UX review janela-caido). */
+export const LATER_LABEL='Depois';
 /** First-time hint next to the chip, stored per device (never comes back once the chip was tapped). */
 export const CHIP_HINT_TEXT='Toca pra escolher melhoria';
 export const CHIP_HINT_KEY='viagem:hint:offer-chip';
@@ -131,6 +134,8 @@ export interface OfferPanelOptions {
   onChoose(offerId:string,index:number):void;
   /** Stamp feedback (sound "tum" + vibration); RunHud wires the audio engine. */
   onStamp?():void;
+  /** This phone's player: the window's caído ficha never names you. */
+  localId?:string;
 }
 
 const hintSeen=()=>{try{return localStorage.getItem(CHIP_HINT_KEY)==='1';}catch{return true;}};
@@ -142,13 +147,19 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const head=el('header','rh-offer-head',root);
   const title=el('strong','rh-offer-title',head);
   const queue=el('span','rh-offer-queue',head),time=el('span','rh-offer-time',head);
+  // Someone fell while the window is open: a Cone ficha under the title, first name and live seconds (janela-caido).
+  const fall=el('p','rh-window-fall',root);fall.hidden=true;fall.setAttribute('role','status');
   const joke=el('p','rh-offer-joke',root);
   const track=el('div','rh-offer-deadline',root),fill=el('i','rh-offer-deadline-fill',track);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const cards=el('div','rh-offer-cards',root);
+  const overflow=watchOverflow(cards);
   const foot=el('footer','rh-offer-foot',root);
   const note=el('p','rh-offer-auto',foot);note.textContent=AUTO_NOTE;
   const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
+  const fallFoot=el('p','rh-window-fall rh-offer-fall-foot',foot);fallFoot.hidden=true;fallFoot.setAttribute('aria-hidden','true');
+  const later=el('button','rh-offer-later',foot);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
+  later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
 
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
@@ -239,6 +250,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     takingAll=true;
     pick(shown.defaultIndex);
   });
+  later.addEventListener('click',()=>{if(lastMode!=='intermission')return;collapsed=true;if(last)update(last);});
   chip.addEventListener('click',()=>{
     if(lastMode==='intermission'){collapsed=!collapsed;}
     else open=!open;
@@ -300,6 +312,9 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     // Taking all: the next head gets its default as soon as the previous stamp is done.
     if(takingAll&&!pending&&state.mode==='intermission'){pick(offer.defaultIndex);return;}
     takeAll.hidden=!(state.mode==='intermission'&&offers.length>=TAKE_ALL_MIN);
+    later.hidden=state.mode!=='intermission';
+    const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
+    if(fall.textContent!==line){fall.textContent=fallFoot.textContent=line;fall.hidden=fallFoot.hidden=!line;}
     root.classList.toggle('rh-offer-clock',state.clock);
     if(state.clock){
       const fraction=offerDeadlineFraction(offer,view.tick,startTick??view.tick);
@@ -316,5 +331,5 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,hint,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);if(hintTimer)clearTimeout(hintTimer);}};
+  return {el:root,chip,hint,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);if(hintTimer)clearTimeout(hintTimer);overflow.destroy();}};
 }

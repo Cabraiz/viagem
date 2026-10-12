@@ -89,14 +89,17 @@ function audit(rootsSelector,minFont){
       if(hit(a.getBoundingClientRect())&&z<=zo)problems.push(`aviso de queda atrás da oferta: ${label(a)}`);}
   }
   // The top band's fichas never cross each other (soma N15 + 046B, 125%): round chip, XP, boss bar, base ficha, minimap.
-  {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
+  {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap,.explore-camera-hint:not([hidden])')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
     for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++){const a=tops[i].r,b=tops[j].r;
+      // (The "Gira no intervalo" balloon over the portrait XP bar is the old 1.5 s answer to a tap: only its new
+      // neighbour, the landscape minimap, and the fichas count for it.)
+      const pair=[tops[i].e,tops[j].e];if(pair.some(e=>e.matches('.explore-camera-hint'))&&pair.some(e=>e.matches('.rh-xp')))continue;
       if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`fichas do topo se cruzam: ${tops[i].e.className.split(' ')[0]} × ${tops[j].e.className.split(' ')[0]}`);}}
   // NEW-20261011-UX-janela-esconde-caido: an edge arrow (ficha, tag or "+N") never sits behind an open window (offer,
   // forge), the kill-cam or the minimap; and in the arrows scenes (cenario=bordas: two caídos and the boss off screen)
   // the caído and the boss always keep their arrow, whatever window is open.
   {const wins=[...document.querySelectorAll('.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-killcam:not([hidden]),.rh-minimap')].filter(vis);
-    for(const e of document.querySelectorAll('.rh-edge:not([hidden])'))if(vis(e))for(const part of [e,...e.querySelectorAll('.rh-edge-tag:not([hidden]),.rh-edge-count:not([hidden])')]){
+    for(const e of document.querySelectorAll('.rh-edge:not([hidden])'))if(vis(e))for(const part of [e,...e.querySelectorAll('.rh-edge-tag:not([hidden]),.rh-edge-count:not([hidden]),.rh-edge-name:not([hidden])')]){
       const a=part.getBoundingClientRect();
       for(const w of wins){const b=w.getBoundingClientRect();
         if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`seta atrás da janela: ${e.dataset.kind} × ${w.className.split(' ')[0]}`);}}
@@ -189,6 +192,12 @@ const SCENES=[
       document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=names[(i+1)%names.length].split(' ')[0].slice(0,9);});
     });};
     await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1','.rh',13,longNames);
+    // The real "Gira no intervalo" balloon (explore.css) over the arrows scene with a window open: in landscape the
+    // minimap moved under the view buttons, and the balloon must not open over it or a top ficha (UX review janela-caido).
+    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open']])
+      await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
+        await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
+          d.innerHTML='<button></button><span class="explore-view"></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});

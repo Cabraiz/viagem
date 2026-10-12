@@ -188,6 +188,31 @@
 
 /* Tags: list lines (icon column, name and effect, price on the right); a 2x2 for four. */
 .rh-offer-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:0 2px}
+/* A caído while a window is open (offer here, forge in camp.css): a Cone ficha, first name and live seconds, under the
+   title (UX review janela-caido). Not in the compact combat strip: there the arrows are the whole story. */
+.rh-window-fall{flex:none;margin:2px 4px 4px;padding:2px 8px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);
+  font:800 var(--t-13)/1.2 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:none}
+.rh-window-fall[hidden],.rh-offer[data-mode=combat] .rh-window-fall{display:none}
+.rh-offer-fall-foot{display:none} /* the same ficha beside "Depois" (landscape with a queue, below) */
+/* "Depois": folds the intermission window into the chip (which opens it again); 48 px, a calm system button. */
+.rh .rh-offer-later{flex:none;margin:0 0 0 auto;min-height:48px;padding:0 16px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
+  background:transparent;color:var(--c-papel);font:700 var(--t-16)/1 var(--f-sistema);cursor:pointer;touch-action:manipulation}
+.rh .rh-offer-later:active{transform:translateY(2px)}
+.rh-offer[data-mode=intermission] .rh-offer-foot:has(.rh-offer-later:not([hidden])){display:flex}
+/* Landscape is short: "Depois" takes the header's right corner ("Levar os indicados" holds it when offers queue up) and
+   the "automático" line goes (the default tag is already marked), so the cards keep their room. */
+@media (max-height:500px){
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-head{min-height:48px;padding-right:104px}
+  .rh .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]) .rh-offer-later{position:absolute;top:5px;right:6px}
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-auto{display:none}
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-foot{margin:0}
+  /* With a queue ("Levar os indicados" in the corner), "Depois" stays in the foot: the caído ficha rides beside it. */
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-window-fall:not(.rh-offer-fall-foot){display:none}
+  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-offer-fall-foot:not([hidden]){display:block;flex:1;min-width:0;margin:0}
+}
+/* Something cut below in a scrolling list (offer cards, forge tags): a Breu cut edge pinned to its bottom. */
+.rh-offer-cards[data-more=true]::after,.rh-forge-tags[data-more=true]::after{content:'';position:sticky;bottom:-2px;z-index:3;height:14px;margin-top:-20px;pointer-events:none;
+  background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-breu) 70%,transparent));border-bottom:3px solid var(--c-breu)}
 .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon . price' 'name name name' 'blurb blurb blurb';align-content:start;padding:4px 6px 5px 26px}
 .rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:-18px}
@@ -601,7 +626,8 @@
 .mm-aliado circle{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
 .mm-caido circle{fill:none;stroke:var(--c-cone);stroke-width:2.6}
 .mm-caido .mm-dot{fill:var(--c-papel);stroke:none}
-.mm-ping circle:first-child{stroke:var(--c-papel);stroke-width:3.2}
+.mm-caido .mm-halo{display:none}
+.mm-ping .mm-halo{display:inline;fill:none;stroke:var(--c-papel);stroke-width:1.4} /* a lit "Me salva": the Cone ring stays, a Papel ring outside it (design review janela-caido) */
 .mm-base path{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
 .mm-base .mm-flag{fill:var(--c-lilas);stroke:var(--c-papel);stroke-width:.8}
 .mm-chefe :is(circle,rect){fill:var(--c-papel);stroke:var(--c-cone);stroke-width:1.4}
@@ -639,7 +665,7 @@
   /* The offer and the forge (VGM-046B) take the right column: the minimap moves to the left column, under the camera
      buttons and above the joystick's zone (outside the useful area), so the way to a caído never leaves the screen while
      a window is open (NEW-20261011-UX-janela-esconde-caido). The arrows stay on the field left beside the window. */
-  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(var(--rh-t) + 68px)}
+  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 48px + 24px)} /* 24 px under the view buttons (explore.css: 48 px at max(12px, safe top)) */
   /* With the base ficha (VGM-046B) the top band is a grid, so the ficha is in the band's flow and can never cover the
      round chip (soma, 125%): row 1 = round chip + base ficha side by side between the camera buttons and the gear;
      row 2 = XP; row 3 = boss bar. The camp.css absolute placement is undone here. */
@@ -669,6 +695,8 @@
 .rh-edge:is([data-kind=caido],[data-kind=chefe],[data-kind=spawn]){box-shadow:0 0 0 2px var(--c-cone),var(--s-2)}
 .rh-edge-danger{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
 .rh-edge-tag{position:absolute;left:-4px;top:-15px;padding:1px 5px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
+.rh-edge[data-kind=caido]{z-index:1} /* a cramped field's last resort may stack the boss on a caído: the caído's clock and name stay on top */
+.rh-edge-name{position:absolute;left:50%;top:calc(100% + 2px);transform:translateX(-50%);padding:0 4px;border-radius:var(--r-etiqueta);background:var(--c-ficha);color:var(--c-papel);border:1px solid var(--c-papel);font:400 var(--t-13)/1.1 var(--f-cartaz);text-shadow:none} /* the caído's first name, never wider than the ficha (NAME_ROOM) */
 .rh-edge[data-tag=right] :is(.rh-edge-tag){left:auto;right:-4px} /* always on top (TAG_ROOM is reserved there); on the area's right half it grows leftwards */
 .rh-edge-count{position:absolute;right:-4px;top:-12px;padding:1px 4px;border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);border:1px solid var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);text-shadow:none}
 /* A fresh "Me salva": two short bumps, then still (no infinite loop, design §2.5). */

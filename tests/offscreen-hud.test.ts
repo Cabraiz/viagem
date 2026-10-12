@@ -45,10 +45,11 @@ test('priority caído > chefe > spawn > base > aliado > baú; at most 6; neighbo
   const apart=layoutEdges([t('ally','aliado',900,470,4),t('down','caido',905,480,30,{seconds:12})],AREA);
   assert.equal(apart.length,2);const half=arrowHalf();
   assert.ok(Math.abs(apart[0].y-apart[1].y)>=2*half.h,'stacked, not overlapping');
-  // ...and only when the side has no room left they become one, the caído's, with "+1".
+  // ...and when the side has no room left, the caído keeps its arrow alone: its "+N" counts only caídos (code review
+  // janela-caido, "6 s +4" lied), the ally stays on the minimap.
   const tight:Rect={x:0,y:0,width:100,height:40};
   const merged=layoutEdges([t('ally','aliado',900,20,4),t('down','caido',905,22,30,{seconds:12})],tight);
-  assert.equal(merged.length,1);assert.equal(merged[0].kind,'caido');assert.equal(merged[0].count,2);
+  assert.equal(merged.length,1);assert.equal(merged[0].kind,'caido');assert.equal(merged[0].count,1);
 });
 
 test('an arrow never covers the hero (± 40 px): it slides along its side',()=>{

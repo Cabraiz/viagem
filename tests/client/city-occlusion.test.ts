@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type {BlockKind,CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {type Pt,VIEW_PIVOT,depth,project,unrotate} from '../../src/client/render/city/projection.ts';
 import {FADE_ALPHA,FADE_MS,HERO_SCREEN,OUTLINE_FADE_ALPHA,OcclusionFader,type Occluder,covers,heroRect,heroRelativeDepth,
-  isBehind,occluderFor,outlineAlpha,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
+  actorDepth,isBehind,occluderFor,outlineAlpha,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
 
 const VIEWS=[0,1,2,3] as const;
 const PIVOTS:Pt[]=[VIEW_PIVOT,{x:5.3,y:-2}];
@@ -215,4 +215,30 @@ test('fixture: some building of cidade-mini covers a hero placed behind it',asyn
     const h={...worldOf((x0+x1)/2,y0-0.2,v,p),z:o.base};
     assert.equal(covers(o,h,v,p),true,`view ${v}`);
   });
+});
+
+test('actorDepth: actors ≥ 0.22 u from blocks are never drawn on the wrong side of a column they overlap (all views)',async()=>{
+  const {buildChunks}=await import('../../src/client/render/city/chunks.ts');
+  const {pieceGeometry}=await import('../../src/client/render/city/faces.ts');
+  const city:CityAsset={...asset,blocks:[block('a','building',3.5,10,10,3,5),block('w','wall',1.6,14,9,6,1),block('d','building',2,13,13,2,2)]};
+  const cols=buildChunks(city).chunks.flatMap(c=>c.pieces),cell=city.cell;
+  const clear=(x:number,y:number)=>city.blocks.every(b=>Math.hypot(Math.max(b.x*cell-x,0,x-(b.x+b.w)*cell),Math.max(b.y*cell-y,0,y-(b.y+b.h)*cell))>=0.22);
+  let checked=0,adjusted=0;
+  for(const v of [0,1,2,3]){
+    const refs=cols.map(p=>({key:pieceGeometry(p,city,v).depthKey,occ:occluderFor({id:p.id,kind:p.kind,x:p.x,y:p.y,w:1,h:1,height:p.height},city,p.base,v)}));
+    for(let x=7;x<=19;x+=0.17)for(let y=7;y<=19;y+=0.13){
+      if(!clear(x,y))continue;
+      const d=actorDepth(x,y,0,v,refs),rect=heroRect(x,y,0,v);
+      if(d!==depth(x,y,v))adjusted++;
+      for(const c of refs){
+        if(!rectHitsConvex(rect,c.occ.silhouette))continue;
+        assert.equal(c.key>d,isBehind(c.occ,x,y,v),`view ${v} actor (${x.toFixed(2)},${y.toFixed(2)}) column ${c.occ.id}`);
+        checked++;
+      }
+    }
+  }
+  assert.ok(checked>5000,`${checked} overlapping actor/column pairs`);
+  assert.ok(adjusted>0&&adjusted<checked/10,`${adjusted} actors nudged (the centre key alone is right for most)`);
+  // Far from every column the actor keeps its own world depth.
+  assert.equal(actorDepth(2,2,0,0,[]),depth(2,2,0));
 });

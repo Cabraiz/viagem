@@ -6,18 +6,21 @@
  */
 import Phaser from 'phaser';
 import {heightAt,type CityAsset,type CityBlock,type CityProp} from './asset.ts';
-import {ChunkTracker,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
-import {groundDecor,pieceDecor,pieceShadow,type DecorPrim} from './decor.ts';
+import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
+import {groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
 import {groundQuads,pieceGeometry,type PieceGeometry} from './faces.ts';
-import {OcclusionFader,occluderFor,outlineAlpha,type Occluder} from './occlusion.ts';
+import {OcclusionFader,actorDepth,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
 const PINE_SHEET={pivotY:353/384,height:165,pixelHeight:340};
-/** Same layer as the island ground bake (src/game/terrain/renderer.ts); cast shadows and glints sit just above it. */
-export const CITY_GROUND_DEPTH=-10000;
+/**
+ * Ground layer, far below every column/prop/actor key (a 192-cell city spans about ±34 000 in depth keys), so
+ * nothing on the ground can sort under it whatever the view or the depthOf mapping. Shadows and glints sit just above.
+ */
+export const CITY_GROUND_DEPTH=-1e8;
 const SHADOW_DEPTH=CITY_GROUND_DEPTH+1,GLINT_DEPTH=CITY_GROUND_DEPTH+2;
 /** Fountain glint: a slow breathing alpha (period ~4 s), the only looping animation (art bible §8.7). */
 const GLINT_PERIOD_MS=4000;
@@ -39,9 +42,8 @@ export interface CityFrame {
   camera:Rect;
   view:number;
   /**
-   * Local hero feet (world units) or undefined when there is none (spectating). Blocks are unit columns whose
-   * depth keys are exact against point actors, so the scene must draw actors at their world depth in city mode
-   * (depthOf(depth(x,y,view))), not at the island's fixed SELF_DEPTH.
+   * Local hero feet (world units) or undefined when there is none (spectating). In city mode the scene draws every
+   * actor at `layer.actorDepth(x,y)` (not the island's fixed SELF_DEPTH): exact against the unit columns.
    */
   hero?:{x:number;y:number;z:number};
   dtMs:number;
@@ -49,7 +51,7 @@ export interface CityFrame {
 export interface CityLayerOptions {
   /** Must equal the scene's projection pivot (VIEW_PIVOT), or the city drifts away from actors when the view turns. */
   pivot?:Pt;
-  /** Maps a projection depth key to the scene's depth space (e.g. origin rebasing). Identity by default. */
+  /** Maps a projection depth key to the scene's depth space (e.g. origin rebasing; must be increasing). Identity by default. */
   depthOf?:(key:number)=>number;
 }
 
@@ -58,8 +60,11 @@ export interface CityLayerOptions {
  * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
  */
 interface Band {blockId:string;key:number;body:Phaser.GameObjects.Graphics;outline:Phaser.GameObjects.Graphics}
+interface LiveProp {key:number;obj:Phaser.GameObjects.Graphics|Phaser.GameObjects.Image}
 interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.Graphics;shadows:Phaser.GameObjects.Graphics;
-  glints:Phaser.GameObjects.Graphics;bands:Band[];props:(Phaser.GameObjects.Graphics|Phaser.GameObjects.Image)[]}
+  glints:Phaser.GameObjects.Graphics;bands:Band[];props:LiveProp[];cells:number[]}
+/** Columns looked at around an actor for its depth: the sprite reaches ~2.3 u up, tall blocks ~4 u. */
+const ACTOR_REACH_CELLS=5;
 
 export class CityLayer {
   readonly asset:CityAsset;
@@ -67,7 +72,9 @@ export class CityLayer {
   private readonly scene:Phaser.Scene;
   private readonly tracker:ChunkTracker;
   private readonly pivot:Pt;
-  private readonly depthOf:(key:number)=>number;
+  private depthOf:(key:number)=>number;
+  /** Unit columns of the live chunks by cell index, in the current view (for actorDepth). */
+  private readonly columns=new Map<number,ColumnRef>();
   private readonly fader=new OcclusionFader();
   private readonly live=new Map<string,LiveChunk>();
   private readonly blocks=new Map<string,CityBlock>();
@@ -89,6 +96,28 @@ export class CityLayer {
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
   liveChunks(){return [...this.live.keys()].sort();}
+
+  /**
+   * Draw depth for an actor (hero, enemy, pickup) standing at world (x, y, z): its world depth, nudged above or
+   * below the nearby columns it overlaps on screen so walls never cover it wrongly (occlusion.ts actorDepth).
+   */
+  actorDepth(x:number,y:number,z=0):number{
+    const {cell,origin,width}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell),near:ColumnRef[]=[];
+    for(let j=cy-ACTOR_REACH_CELLS;j<=cy+ACTOR_REACH_CELLS;j++)for(let i=cx-ACTOR_REACH_CELLS;i<=cx+ACTOR_REACH_CELLS;i++){
+      if(i<0||j<0||i>=width)continue;
+      const c=this.columns.get(j*width+i);if(c)near.push(c);
+    }
+    return this.depthOf(actorDepth(x,y,z,Math.max(0,this.view),near,this.pivot));
+  }
+
+  /** Changes the depth mapping (e.g. the scene rebased its depth origin) and re-applies it to everything live. */
+  setDepthOf(depthOf:(key:number)=>number){
+    this.depthOf=depthOf;
+    for(const live of this.live.values()){
+      for(const b of live.bands){const d=depthOf(b.key);b.body.setDepth(d);b.outline.setDepth(d+0.01);}
+      for(const p of live.props)p.obj.setDepth(depthOf(p.key));
+    }
+  }
 
   update(frame:CityFrame){
     const view=normalizeView(frame.view);
@@ -117,8 +146,10 @@ export class CityLayer {
     // Ground details (specks, tracks, joints, water rim); shimmering glints go to their own object.
     const glints=this.scene.add.graphics().setDepth(GLINT_DEPTH);
     for(const prim of groundDecor(chunk,this.asset,view,this.pivot))drawPrim(prim.shimmer?glints:ground,prim);
-    const shadows=this.scene.add.graphics().setDepth(SHADOW_DEPTH);
-    for(const piece of chunk.pieces)drawPrim(shadows,pieceShadow(piece,this.asset,view,this.pivot));
+    // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
+    const shadows=this.scene.add.graphics().setDepth(SHADOW_DEPTH),casters:BlockPiece[]=[];
+    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
+    for(const prim of shadowUnion(casters,this.asset,{x0:chunk.x0,y0:chunk.y0,x1:chunk.x1,y1:chunk.y1},view,this.pivot))drawPrim(shadows,prim);
     // Group the chunk's columns by (block, depth key); draw each band back-to-front.
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const piece of chunk.pieces){
@@ -142,8 +173,18 @@ export class CityLayer {
       body.setDepth(d);outline.setDepth(d+0.01);
       bands.push({blockId:g.blockId,key:g.key,body,outline});
     }
-    const props=chunk.props.map(p=>this.drawProp(p,view));
-    this.live.set(key,{chunk,ground,shadows,glints,bands,props});
+    const props=chunk.props.map(p=>({key:depth(p.x,p.y,view,this.pivot),obj:this.drawProp(p,view)}));
+    // Column cache for actorDepth: each unit column's key and occluder in this view.
+    const cells:number[]=[];
+    for(const g of groups.values())for(const {piece,geo} of g.items){
+      const cellIndex=piece.y*this.asset.width+piece.x;
+      // A column lowered by a whole-cell bite only reaches the bite floor.
+      const top=(piece.bite??0)>=1?piece.height*RUIN_FLOOR:piece.height;
+      const unit:CityBlock={id:piece.id,kind:piece.kind,x:piece.x,y:piece.y,w:1,h:1,height:top};
+      this.columns.set(cellIndex,{key:geo.depthKey,occ:occluderFor(unit,this.asset,piece.base,view,this.pivot)});
+      cells.push(cellIndex);
+    }
+    this.live.set(key,{chunk,ground,shadows,glints,bands,props,cells});
   }
 
   private dropChunk(key:string){
@@ -151,7 +192,8 @@ export class CityLayer {
     if(!live)return;
     live.ground.destroy();live.shadows.destroy();live.glints.destroy();
     for(const b of live.bands){b.body.destroy();b.outline.destroy();}
-    for(const g of live.props)g.destroy();
+    for(const p of live.props)p.obj.destroy();
+    for(const c of live.cells)this.columns.delete(c);
     this.live.delete(key);
   }
 

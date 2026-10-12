@@ -99,8 +99,12 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
     cap=[...cap.slice(0,i),...notch,...cap.slice(i+1)];
   }
   faces.push({kind:'cap',q:cap});
-  const onSeam=(p:Q,r:Q)=>(seams.has('+x')&&p[0]===qx1&&r[0]===qx1)||(seams.has('-x')&&p[0]===qx0&&r[0]===qx0)
-    ||(seams.has('+y')&&p[1]===qy1&&r[1]===qy1)||(seams.has('-y')&&p[1]===qy0&&r[1]===qy0);
+  // A seam where this piece stands taller than its neighbour is a visible step edge: keep its outline (the
+  // camera-facing step wall is outlined on its own; an away-facing step still needs the cap edge).
+  const lineSeams=new Set<QSide>();
+  for(const s of ['n','s','e','w'] as const)if(piece.seams[s]&&!piece.drops?.[s])lineSeams.add(viewSide(s,v));
+  const onSeam=(p:Q,r:Q)=>(lineSeams.has('+x')&&p[0]===qx1&&r[0]===qx1)||(lineSeams.has('-x')&&p[0]===qx0&&r[0]===qx0)
+    ||(lineSeams.has('+y')&&p[1]===qy1&&r[1]===qy1)||(lineSeams.has('-y')&&p[1]===qy0&&r[1]===qy0);
   const outline:Pt[][]=[];
   for(const f of faces){
     if(stepWalls.includes(f)){const pts=f.q.map(toScreen);outline.push([...pts,pts[0]]);continue;}
@@ -115,7 +119,10 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
     }
     if(line.length>1)outline.push(line);
   }
-  return {faces:faces.map(f=>({kind:f.kind,points:f.q.map(toScreen)})),outline,depthKey:(qx1+qy1)*DEPTH_SCALE};
+  // Sort key = the column's centre. For unit columns this orders columns among themselves and against point
+  // actors at depth(feet) correctly, including actors beside a wall (a front-corner key put an actor standing
+  // in front of the +qx or +qy wall behind the column). Only contact within the actor radius at a corner remains.
+  return {faces:faces.map(f=>({kind:f.kind,points:f.q.map(toScreen)})),outline,depthKey:(qx0+qx1+qy0+qy1)/2*DEPTH_SCALE};
 }
 
 export interface GroundQuad {cx:number;cy:number;kind:GroundKind;points:Pt[];shade:number}

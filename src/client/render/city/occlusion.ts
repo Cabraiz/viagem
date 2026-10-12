@@ -7,7 +7,7 @@
  * Also gives `heroRelativeDepth`, the draw-order fix that keeps the hero above a block it stands in front of.
  */
 import type {BlockKind,CityAsset,CityBlock} from './asset.ts';
-import {type Pt,type Rect,VIEW_PIVOT,project,viewPoint} from './projection.ts';
+import {type Pt,type Rect,VIEW_PIVOT,depth,project,viewPoint} from './projection.ts';
 
 export const FADE_ALPHA=0.35;
 /** Outline (edge lines) alpha when its block is fully faded: edges stay a bit stronger so the shape still reads. */
@@ -136,11 +136,34 @@ export class OcclusionFader {
   reset():void{this.state=new Map();}
 }
 
+/** A unit column as actorDepth sees it: its sort key and its occluder in the current view. */
+export interface ColumnRef {key:number;occ:Occluder}
+
+/**
+ * Exact draw depth for a point actor among nearby unit columns. A scalar key per column cannot be exact (the
+ * "behind" region of a box is an L, not a half-plane), so the actor is placed instead: above every column it
+ * overlaps on screen and stands in front of, below every column it overlaps and stands behind. Its plain
+ * depth is kept when it already fits; otherwise it goes just inside the allowed gap. If the constraints ever
+ * conflict (not seen on unit columns) the plain depth is returned.
+ */
+export function actorDepth(x:number,y:number,z:number,view:number,columns:Iterable<ColumnRef>,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):number{
+  const own=depth(x,y,view,pivot),r=heroRect(x,y,z,view,pivot,size);
+  let lo=-Infinity,hi=Infinity;
+  for(const c of columns){
+    if(!rectHitsConvex(r,c.occ.silhouette))continue;
+    if(isBehind(c.occ,x,y,view,pivot))hi=Math.min(hi,c.key);else lo=Math.max(lo,c.key);
+  }
+  if(own>lo&&own<hi)return own;
+  if(!(lo<hi))return own;
+  const gap=Math.min(0.5,(hi-lo)/2);
+  return own<=lo?lo+gap:hi-gap;
+}
+
 /**
  * Draw-order guard for one actor against one block, for callers that cannot use exact keys: only when the
  * actor's screen box overlaps the block's silhouette, returns a depth that puts the block above the actor when
  * the actor is behind it and below otherwise; elsewhere the block keeps its own key. The city layer does not
- * need it: blocks are unit columns (chunks.ts), whose front-corner key is already exact against point actors,
+ * need it: blocks are unit columns (chunks.ts) keyed by their centre (faces.ts), already right against point actors,
  * as long as the scene draws actors at their world depth (not the fixed SELF_DEPTH of the island).
  */
 export function heroRelativeDepth(occ:Occluder,blockDepth:number,heroDepth:number,hero:{x:number;y:number;z:number},view:number,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):number{

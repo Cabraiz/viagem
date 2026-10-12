@@ -6,7 +6,7 @@ import {blockPieces,buildChunks,type BlockPiece,type CityChunk} from '../../src/
 import {groundQuads,pieceGeometry,viewSide} from '../../src/client/render/city/faces.ts';
 import * as palette from '../../src/client/render/city/palette.ts';
 import {CITY_PALETTE,MATERIALS,SHADOW} from '../../src/client/render/city/palette.ts';
-import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,TRACK,groundDecor,pieceDecor,pieceShadow,type DecorPrim} from '../../src/client/render/city/decor.ts';
+import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,TRACK,groundDecor,pieceDecor,pieceShadow,shadowUnion,type DecorPrim} from '../../src/client/render/city/decor.ts';
 import {HEIGHT_PX,project,type Pt} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -250,4 +250,25 @@ test('performance: fixture chunks × 4 views stay under 4000 primitives per chun
   assert.ok(max<4000,`max ${max} per chunk`);
   assert.ok(ms<150,`${ms.toFixed(1)} ms for ${total} primitives`);
   console.log(`decor: ${total} primitives over ${index.chunks.length} chunks × 4 views (max ${max}/chunk) in ${ms.toFixed(1)} ms`);
+});
+
+test('shadowUnion: one disjoint shadow per chunk region, covering every piece shadow that lands there (no stacking)',()=>{
+  const area4=(pts:Pt[])=>Math.abs(pts.reduce((s,p,i)=>{const q=pts[(i+1)%pts.length];return s+p.x*q.y-q.x*p.y;},0))/2;
+  for(const v of VIEWS)for(const c of index.chunks){
+    const casters=index.chunks.flatMap(k=>k.pieces);
+    const prims=shadowUnion(casters,asset,{x0:c.x0,y0:c.y0,x1:c.x1,y1:c.y1},v);
+    for(const p of prims){assert.equal(p.color,CITY_PALETTE.breu);assert.equal(p.alpha,SHADOW.alpha);}
+    // Disjoint: sampled points are inside at most one polygon.
+    for(let i=0;i<prims.length;i++){
+      const ci=prims[i].points!.reduce((s,q)=>({x:s.x+q.x/4,y:s.y+q.y/4}),{x:0,y:0});
+      const hits=prims.filter(p=>inPoly(ci,p.points!,-0.01)).length;
+      assert.ok(hits<=1,`view ${v} chunk ${c.key}: overlapping shadow polygons`);
+    }
+    // Every piece shadow point inside the region is covered by the union.
+    for(const p of c.pieces){
+      const s=pieceShadow(p,asset,v),ctr=s.points!.reduce((a,q)=>({x:a.x+q.x/s.points!.length,y:a.y+q.y/s.points!.length}),{x:0,y:0});
+      assert.ok(prims.some(u=>inPoly(ctr,u.points!,0.5)),`view ${v} ${p.id} shadow covered`);
+    }
+    assert.ok(prims.every(u=>area4(u.points!)>0));
+  }
 });

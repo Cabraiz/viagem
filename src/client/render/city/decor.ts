@@ -191,6 +191,49 @@ export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt
  * piece whose +qx side is a seam returns only its footprint (hidden under the block): the block's pieces then tile
  * the block's shadow exactly, with no overlapping 22% layers.
  */
+/**
+ * Cast shadows of `pieces` clipped to the world cell rect [x0,x1)×[y0,y1), as disjoint polygons: overlapping
+ * shadows must not stack (two 22% layers would break the contrast rule). Each piece's shadow is a view-space
+ * rect (its footprint stretched by SHADOW_LENGTH·height along +qx, screen right-down); rects of the same base
+ * height are merged by coordinate compression and split into disjoint strips. Pass the pieces of the chunk and
+ * of its neighbours so shadows crossing a chunk border are drawn once, by the chunk they land on.
+ */
+export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:{x0:number;y0:number;x1:number;y1:number},view:number,pivot:Pt=VIEW_PIVOT):DecorPrim[]{
+  const v=normalizeView(view),{cell,origin}=asset,out:DecorPrim[]=[];
+  const q=(cx:number,cy:number)=>viewPoint(origin.x+cx*cell,origin.y+cy*cell,v,pivot);
+  const ra=q(region.x0,region.y0),rb=q(region.x1,region.y1);
+  const clip={x0:Math.min(ra.x,rb.x),x1:Math.max(ra.x,rb.x),y0:Math.min(ra.y,rb.y),y1:Math.max(ra.y,rb.y)};
+  const byBase=new Map<number,{x0:number;x1:number;y0:number;y1:number}[]>();
+  for(const p of pieces){
+    const a=q(p.x,p.y),b=q(p.x+p.w,p.y+p.h);
+    const seam=(['n','s','e','w'] as const).some(s=>p.seams[s]&&viewSide(s,v)==='+x');
+    const L=seam?0:SHADOW_LENGTH*p.height;
+    const r={x0:Math.max(clip.x0,Math.min(a.x,b.x)),x1:Math.min(clip.x1,Math.max(a.x,b.x)+L),y0:Math.max(clip.y0,Math.min(a.y,b.y)),y1:Math.min(clip.y1,Math.max(a.y,b.y))};
+    if(!(r.x1>r.x0&&r.y1>r.y0))continue;
+    const list=byBase.get(p.base);if(list)list.push(r);else byBase.set(p.base,[r]);
+  }
+  const toScreen=(qx:number,qy:number,z:number):Pt=>({x:(qx-qy)*TILE_X,y:(qx+qy)*TILE_Y-z*HEIGHT_PX});
+  for(const base of [...byBase.keys()].sort((a,b)=>a-b)){
+    const rects=byBase.get(base)!;
+    const xs=[...new Set(rects.flatMap(r=>[r.x0,r.x1]))].sort((a,b)=>a-b),ys=[...new Set(rects.flatMap(r=>[r.y0,r.y1]))].sort((a,b)=>a-b);
+    for(let j=0;j+1<ys.length;j++){
+      // Strip [ys[j],ys[j+1]): merge covered x-intervals into runs.
+      let run=-1;
+      for(let i=0;i+1<xs.length;i++){
+        const mx=(xs[i]+xs[i+1])/2,my=(ys[j]+ys[j+1])/2;
+        const covered=rects.some(r=>mx>r.x0&&mx<r.x1&&my>r.y0&&my<r.y1);
+        if(covered&&run<0)run=i;
+        if((!covered||i+2===xs.length)&&run>=0){
+          const end=covered?xs[i+1]:xs[i];
+          out.push(poly(SHADOW.color,[toScreen(xs[run],ys[j],base),toScreen(end,ys[j],base),toScreen(end,ys[j+1],base),toScreen(xs[run],ys[j+1],base)],SHADOW.alpha));
+          run=-1;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 export function pieceShadow(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):DecorPrim{
   const v=normalizeView(view),{cell,origin}=asset,x0=origin.x+piece.x*cell,y0=origin.y+piece.y*cell,x1=x0+piece.w*cell,y1=y0+piece.h*cell;
   const foot=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>project(x,y,piece.base,v,pivot));

@@ -201,7 +201,8 @@ test('a unit building shows 1 cap and 2 walls on the correct screen sides in eve
     assert.equal(g.outline.length,3);
     for(const line of g.outline){assert.equal(line.length,5);assert.deepEqual(line[0],line[4]);}
     const front=Math.max(...corners(p).map(k=>depth(k.x,k.y,v,pivot)));
-    assert.ok(Math.abs(g.depthKey-front)<EPS,`depthKey v${v}`);
+    const centre=(Math.max(...corners(p).map(k=>depth(k.x,k.y,v,pivot)))+Math.min(...corners(p).map(k=>depth(k.x,k.y,v,pivot))))/2;
+    assert.ok(front>centre);assert.ok(Math.abs(g.depthKey-centre)<EPS,`depthKey = column centre v${v}`);
     // Cap area = footprint area on screen.
     assert.ok(Math.abs(area(g.faces[2].points)-W(1)**2*2*42*21)<1e-6);
   }
@@ -259,7 +260,8 @@ test('ruined buildings lose a roof bite with a lower floor and dark camera-facin
       const inner=g.faces.slice(1,-3);
       for(const f of inner)assert.equal(f.kind,'wallDark','inner faces of a ruin are dark (art bible §8.4)');
       walls.push(g.faces.filter(f=>f.kind!=='cap').length);
-      assert.ok(Math.abs(g.depthKey-Math.max(...corners(p).map(k=>depth(k.x,k.y,v))))<EPS);
+      const ds=corners(p).map(k=>depth(k.x,k.y,v));
+      assert.ok(Math.abs(g.depthKey-(Math.max(...ds)+Math.min(...ds))/2)<EPS);
     }
     // The bite sits at the right, front, left and back corner in views 0..3: 1, 2, 1 and 0 inner walls.
     assert.deepEqual(walls,[3,4,3,2],`bite ${b}`);

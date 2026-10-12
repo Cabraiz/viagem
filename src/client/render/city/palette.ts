@@ -17,7 +17,7 @@ export const CITY_PALETTE=Object.freeze({
   'neve-pisada':hex('#A8A5BD'),'neve-pisada-detalhe':hex('#8D89A6'),
   gelo:hex('#AEDEF0'),'gelo-detalhe':hex('#8FC3D9'),'gelo-brilho':hex('#F3FBFF'),
   agua:hex('#3F8EC0'),'agua-raso':hex('#69BEDD'),'agua-espuma':hex('#E8F5FB'),
-  calcada:hex('#B5ADA7'),'calcada-junta':hex('#8C837E'),
+  calcada:hex('#B5ADA7'),'calcada-junta':hex('#CAC7C9'),
   'entulho-chao':hex('#9A8580'),'entulho-chao-detalhe':hex('#7A6763'),
   tampa:hex('#F4F5FB'),'parede-clara':hex('#C46D59'),'parede-escura':hex('#9B5750'),'parede-detalhe':hex('#E6C7A2'),
   'muro-tampa':hex('#F4F5FB'),'muro-clara':hex('#9B95B0'),'muro-escura':hex('#757090'),
@@ -25,6 +25,8 @@ export const CITY_PALETTE=Object.freeze({
   'entulho-tampa':hex('#B9BFDC'),'entulho-clara':hex('#C46D59'),'entulho-escura':hex('#757090'),
   breu:hex('#1E1530'),
   'pinheiro-clara':hex('#5E8C6A'),'pinheiro-escura':hex('#4E7A63'),'pinheiro-luz':hex('#6E9C78'),
+  'caixa-dagua-luz':hex('#62AEF4'),'caixa-dagua-clara':hex('#3F90E2'),'caixa-dagua-escura':hex('#2A74C8'),
+  vergalhao:hex('#5A2F1E'),'toldo-a':hex('#C99090'),'toldo-b':hex('#E6E0D6'),grade:hex('#4F8A93'),
 });
 export type CityRole=keyof typeof CITY_PALETTE;
 
@@ -91,8 +93,8 @@ export function luminance(color:number):number{
 }
 /** Lit slopes lighten at most this much toward white. */
 export const GROUND_LIGHTEN=0.12;
-/** Shaded slopes blend at most this much toward the kind's measured detail tone. */
-export const GROUND_TOWARD_DETAIL=0.6;
+/** Shaded slopes blend at most this much toward the kind's measured detail tone (0.4: still >= 0.131 under a 22% cast shadow). */
+export const GROUND_TOWARD_DETAIL=0.4;
 /**
  * Ground colour for a slope shade in [-1,1] (faces.ts groundQuads): lit slopes lighten toward white, slopes facing
  * away blend toward the measured detail tone. Never darker than the darker of the two palette tones (contrast rule).

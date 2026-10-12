@@ -5,10 +5,7 @@
  * Fake data only; nothing talks to the server and the game scene is untouched (wiring: card cidade-03).
  */
 import Phaser from 'phaser';
-import {CityLayer,PINE_TEXTURE,parseCityAsset,type CityAsset} from '../render/city/index.ts';
-import {CITY_PALETTE,OUTSIDE_CITY} from '../render/city/palette.ts';
-import {depth,project,unproject} from '../render/city/projection.ts';
-import {makeSampleCity} from '../render/city/sample.ts';
+import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,makeSampleCity,parseCityAsset,project,unproject,type CityAsset} from '../render/city/index.ts';
 
 const params=new URLSearchParams(location.search);
 const [startX,startY]=(params.get('hero')??'6.5,3.3').split(',').map(Number);
@@ -60,15 +57,16 @@ class CitySandbox extends Phaser.Scene {
     for(let i=0;i<12;i++)this.tick(16);
   }
   update(_t:number,dt:number){this.tick(dt);}
-  /** Hero at its world depth (city mode: no fixed SELF_DEPTH), camera centred on it. */
+  /** Hero at the layer's actor depth (city mode: no fixed SELF_DEPTH), camera centred on it. */
   private place(){
     const feet=project(this.at.x,this.at.y,0,this.view);
-    this.hero.setPosition(feet.x,feet.y).setDepth(depth(this.at.x,this.at.y,this.view));
+    this.hero.setPosition(feet.x,feet.y);
     this.cameras.main.centerOn(feet.x,feet.y-40);
   }
   private tick(dt:number){
     const cam=this.cameras.main.worldView;
     this.layer?.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z:0}});
+    if(this.layer)this.hero.setDepth(this.layer.actorDepth(this.at.x,this.at.y));
   }
 }
 

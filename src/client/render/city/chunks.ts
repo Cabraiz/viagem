@@ -11,8 +11,8 @@ import {HEIGHT_PX,VIEW_PIVOT,boundsOf,normalizeView,project,rectsOverlap} from '
 /** Chunk side in cells. */
 export const CHUNK_CELLS=16;
 /**
- * Every block is cut into 1×1-cell pieces: a unit column sorts exactly by its front corner against other
- * columns and against point actors, which a whole building does not (review of cidade-03a). The layer draws
+ * Every block is cut into 1×1-cell pieces: a unit column sorts by its centre against other columns and against
+ * point actors, which a whole building cannot (review of cidade-03a). The layer draws
  * the columns of one block that share a depth key in a single object, so the object count stays low.
  */
 export const PIECE_MAX_CELLS=1;

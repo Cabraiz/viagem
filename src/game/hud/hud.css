@@ -705,7 +705,24 @@
 .rh-result .rh-result-manage{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 10px;background:var(--c-ficha);color:var(--c-papel);border-color:var(--c-papel);white-space:nowrap}
 .rh-result .rh-result-manage[hidden]{display:none}
 .rh-result .rh-result-manage[aria-pressed=true]{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
-@media (min-height:501px){.rh-result-actions.has-manage{flex-wrap:wrap}.rh-result-actions.has-manage .rh-result-rematch{flex:1 1 100%}}
+/* BUG-resultado-dono-6p-rola: in portrait the three buttons share one row (Revanche, crown + "Arrumar", Sair); the second
+   row of buttons ate the 56 px that six cards need. Landscape and the "Feito" state keep the whole verb. */
+.rh-result .rh-result-manage .rh-manage-short{display:none}
+@media (min-height:501px){
+  .rh-result .rh-result-manage .rh-manage-long{display:none}
+  .rh-result .rh-result-manage .rh-manage-short{display:inline}
+  .rh-result .rh-result-actions.has-manage .rh-result-btn{padding-inline:10px}
+  .rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto}
+  .rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}
+}
+/* Landscape at 125%: the whole verb pushed the three stat fichas into three rows and the cards out of view; the crown and
+   "Arrumar" leave them two. While the owner arranges the room the cards trade their numbers for the button (the prizes
+   already go), so six cards with a 48 px button fit the 3×2 grid. */
+@media (max-height:500px){
+  :root[data-texto="125"] .rh-result .rh-result-manage .rh-manage-long{display:none}
+  :root[data-texto="125"] .rh-result .rh-result-manage .rh-manage-short{display:inline}
+  .rh-result.is-managing .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard-stats{display:none}
+}
 @media (max-height:500px){.rh-result .rh-result-btn{min-height:48px}}
 /* "Arrumar a sala" keeps its words (it overflowed into Revanche and Sair in landscape: flex:1 with min-width:44px let it
    shrink below its text). It takes its own width; in portrait Sair fills the rest of its row, in landscape Revanche
@@ -713,6 +730,10 @@
 .rh-result .rh-result-actions.has-manage .rh-result-manage{flex:0 0 auto}
 @media (max-height:500px){.rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto;min-width:132px}}
 .rh-result.is-managing .rh-rcard-awards{display:none}
+/* A room bot's card (D-025) is shorter with 3+ cards: one prize, title only (bots take no person prizes, and its joke
+   line is the one a reader skips first). BUG-resultado-dono-6p-rola. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true] .rh-award:nth-child(n+2),
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true] .rh-award-line{display:none}
 .rh-rcard-manage{display:flex;align-items:center;justify-content:center;gap:4px;min-height:48px;padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-breu);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
 .rh-rcard-manage:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
 .rh-rcard-manage.is-person{background:transparent;border-color:var(--c-cone);box-shadow:0 0 0 1px var(--c-breu);font-weight:700}

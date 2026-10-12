@@ -60,8 +60,18 @@ document.body.append(world);
 let moved=0;
 world.addEventListener('pointerdown',()=>{moved++;document.body.dataset.worldTaps=String(moved);});
 
+/**
+ * `nomes=longos`: the lobby's longest real names (20 characters) through the game's own rendering; `bots=N`: the owner's
+ * roster marks the last N players as room bots (D-025). Both for the owner's 6-player result (BUG-resultado-dono-6p-rola).
+ */
+const LONG_NAMES=['Maria Aparecida dos','Seu Jorge do Pastel','Wagner Washington Mo','Tia da Festa Junina','Concurseira Eterna d','Zé do Pix Parcelado'];
+const bots=Math.max(0,Math.min(5,Number(params.get('bots'))||0));
+function named<T extends {players:{name:string}[]}>(v:T):T{
+  if(params.get('nomes')!=='longos')return v;
+  return {...v,players:v.players.map((p,i)=>({...p,name:LONG_NAMES[i%LONG_NAMES.length]}))};
+}
 let tick=1000,forgeReq=0;
-let view:RunView=fakeView(scenario,players,tick);
+let view:RunView=named(fakeView(scenario,players,tick));
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas,
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
@@ -81,7 +91,7 @@ const hud=new RunHud(document.body,{
 let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
-  view=fakeView(scenario,players,tick);
+  view=named(fakeView(scenario,players,tick));
   // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)
   if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
@@ -96,14 +106,19 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  if(scenario==='result')hud.showResult(fakeResult(players,!params.has('lose'),params.has('full')));
+  if(scenario==='result')hud.showResult(named(fakeResult(players,!params.has('lose'),params.has('full'))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
-  if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:[],seatsLeft:Math.max(0,6-ids.length),extra:[]});}
-  if(scenario==='result'&&uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
-    void import('./dev/ux-metrics.css');
+  if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
+  // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once
+  // its module and stylesheet are in.
+  document.body.dataset.hudReady='0';
+  if(scenario==='result'&&uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(async m=>{
+    await import('./dev/ux-metrics.css');
     const titles=hud.el.querySelector(m.RESULT_SELECTOR);
     if(titles&&!titles.querySelector('.ux-dev-export'))titles.append(m.createExportButton(document,async()=>'cancelled'));
+    document.body.dataset.hudReady='1';
   });
+  else document.body.dataset.hudReady='1';
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }

@@ -11,7 +11,7 @@
  *   come from off screen around the base, on their way to it. Timed-out hordes flee off screen.
  */
 import type {TerrainField} from '../terrain/field.ts';
-import {SPEED,clearSegment,walkable,worldBase,worldSpawn,type Point} from '../world.ts';
+import {RADIUS,SPEED,clearSegment,isLand,walkable,worldBase,worldSpawn,type Point} from '../world.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from './offscreen.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
@@ -90,6 +90,8 @@ export interface DirectorState {
   recycled?:number;
   /** Endless world: members sent to each player this round (tie-break of the horde split). */
   served?:Record<string,number>;
+  /** Endless world: the round's last call started (every group is out); see LAST_CALL_SECONDS. */
+  called?:boolean;
 }
 
 export interface Director extends SimSystem {
@@ -124,6 +126,26 @@ export const FLEE_CAP_SECONDS=60;
  * only while walking.
  */
 export const CATCH_UP_SPEED=2.5;
+/**
+ * Endless world, last call (NEW-ORQ-fim-de-round-no-infinito). A round ends when its whole horde is down (the HUD counts
+ * the bichos left; the last kill gets the kill-cam), and only a timeout makes the rest flee. In the endless world the
+ * last groups are born 25-41 u away on the off-screen ring at 65% of the round, a gosma walks 1.4 u/s, and bodies stuck
+ * behind a tree never arrive: with the team waiting by the base every round of the sim timed out with a third to half
+ * of the horde fleeing (53-69 s). So once every group of the plan is out:
+ *  - the round gets at least LAST_CALL_SECONDS more before its timeout (the HUD shows no wave clock, only bichos);
+ *  - each enemy still farther than LAST_CALL_NEAR from the team (siege ones: from the base) hurries in at
+ *    CATCH_UP_SPEED on top of its own pace, on screen too, sidestepping trees and rocks; inside LAST_CALL_NEAR it is
+ *    back to its own pace, so nobody standing still is hit by a body that arrived faster than it could be seen.
+ */
+export const LAST_CALL_SECONDS=20,LAST_CALL_NEAR=7;
+/** Sidesteps a called enemy tries when the straight step is blocked, in radians (its own side first, by memory.seed). */
+const DETOUR_TURNS=[Math.PI/3,Math.PI/2,2*Math.PI/3];
+/**
+ * A called enemy that gained less than STUCK_UNITS in a second (a pocket of trees or rocks: the AI pulls it straight
+ * back in) squeezes through trees and rocks, never water, for the next STUCK_SECONDS. Most of it happens off screen;
+ * on screen it reads as a bicho pushing through the bushes, and it is still LAST_CALL_NEAR away from anyone.
+ */
+const STUCK_UNITS=.5,STUCK_SECONDS=2;
 /** Endless retreat: fleeing is faster and may take longer than walking into the island's sea. */
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 
@@ -305,17 +327,32 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const point=ringPoint(ctx,anchor,spawn.side,options.cameraOf?.(ctx,anchor));
     return point&&{point,anchor:anchor.id};
   }
-  /** Hidden enemies close in faster (CATCH_UP_SPEED); see the constant. */
+  /** Hidden enemies close in faster (CATCH_UP_SPEED); in the last call, every far one (see LAST_CALL_SECONDS). */
   function catchUp(ctx:SimContext){
     const anchors=anchorsOf(ctx).filter(p=>p.online&&!p.downed&&p.hp>0);
     if(!anchors.length)return;
-    const step=CATCH_UP_SPEED/SIM_HZ;
+    const step=CATCH_UP_SPEED/SIM_HZ,called=!!state.called,base=called?worldBase(ctx.terrain):undefined;
     for(const id of state.tracked){
       const e=ctx.enemies.get(id);
-      if(!e||e.hp<=0||e.memory?.retreat===1||e.memory?.[SIEGE_FLAG]===1||ctx.tick<e.readyTick)continue;
+      if(!e||e.hp<=0||e.memory?.retreat===1||ctx.tick<e.readyTick)continue;
+      const siege=e.memory?.[SIEGE_FLAG]===1;
+      if(siege&&!called)continue;
       // The boss only while it walks (boss.ts ACT_IDLE = 0); its dash and sweep place it themselves.
       if(e.boss&&e.memory?.act!==0)continue;
       if(e.frozenUntil!==undefined&&ctx.tick<e.frozenUntil)continue;
+      if(called){
+        // Last call: towards the team (siege bodies: towards the base they besiege), on screen too, until LAST_CALL_NEAR.
+        const to=siege?base!:nearestOf(anchors,e).player!,dx=to.x-e.x,dy=to.y-e.y,d=Math.hypot(dx,dy);
+        if(d<=LAST_CALL_NEAR)continue;
+        // Once a second: a body that did not get anywhere squeezes through for a while (STUCK_SECONDS).
+        const m=e.memory??={};
+        if(m.callTick===undefined||ctx.tick-m.callTick>=SIM_HZ){
+          if(m.callTick!==undefined&&Math.hypot(e.x-(m.callX??e.x),e.y-(m.callY??e.y))<STUCK_UNITS)m.squeezeUntil=ctx.tick+ticks(STUCK_SECONDS);
+          m.callTick=ctx.tick;m.callX=e.x;m.callY=e.y;
+        }
+        hurry(ctx,e,dx/d*step,dy/d*step,ctx.tick<(m.squeezeUntil??-1));
+        continue;
+      }
       if(!hidden(ctx,e))continue;
       const {player,d2}=nearestOf(anchors,e);
       if(!player||d2<1)continue;
@@ -324,6 +361,21 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       // The extra step never carries it onto a screen: the last stretch in is at its own pace.
       if(!hidden(ctx,e)){e.x=x;e.y=y;}
     }
+  }
+  /** A called enemy's extra step; blocked straight ahead (a tree, a rock), it sidesteps (its own side first). */
+  function hurry(ctx:SimContext,e:EnemyState,dx:number,dy:number,squeeze:boolean){
+    const x=e.x,y=e.y,want=Math.hypot(dx,dy);
+    // Squeezing: straight through trees and rocks, on land only (moveSafely lets a body inside an obstacle walk out).
+    if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,ctx.terrain)){e.x=x+dx;e.y=y+dy;return;}
+    moveSafely(e,dx,dy,ctx.terrain,e.radius);
+    if(Math.hypot(e.x-x,e.y-y)>=want*.5)return;
+    const side=(e.memory?.seed??0)<.5?1:-1;
+    for(const turn of DETOUR_TURNS)for(const sign of [side,-side]){
+      const a=turn*sign,c=Math.cos(a),s=Math.sin(a);
+      e.x=x;e.y=y;moveSafely(e,dx*c-dy*s,dx*s+dy*c,ctx.terrain,e.radius);
+      if(Math.hypot(e.x-x,e.y-y)>=want*.5)return;
+    }
+    e.x=x;e.y=y;
   }
   /** VS recycling: enemies far from every player come back on a ring next to one, same id and hp, no kill. */
   function recycle(ctx:SimContext){
@@ -460,7 +512,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const plan=planRound(index,scalePlayers(ctx),theme,random());
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
-      endless(ctx)?{recycled:0,served:{}}:{});
+      endless(ctx)?{recycled:0,served:{},called:false}:{});
     Object.assign(ctx.round,{phase:'wave',phaseEndsTick:ctx.tick+plan.durationTicks,remaining:plan.total});
     ctx.emit({type:'round',index,phase:'wave',name:theme.name,modifier:theme.modifierLabel});
     // Only where the first bichos come from the off-screen ring (~25 s away): on the island they come from the coast in
@@ -559,7 +611,13 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const due=state.pending.filter(p=>p.atTick<=ctx.tick);
     state.pending=state.pending.filter(p=>p.atTick>ctx.tick);
     for(const entry of due)spawnPending(ctx,entry);
-    if(endless(ctx)){recycle(ctx);catchUp(ctx);}
+    if(endless(ctx)){
+      // Last call (see LAST_CALL_SECONDS): every group of a regular round is out, nothing is waiting for a spot.
+      if(!state.called&&plan.retreat&&!state.timedOut&&state.nextGroup>=plan.groups.length&&!state.pending.length){
+        state.called=true;ctx.round.phaseEndsTick=Math.max(ctx.round.phaseEndsTick,ctx.tick+ticks(LAST_CALL_SECONDS));
+      }
+      recycle(ctx);catchUp(ctx);
+    }
     save();
     const alive=()=>{state.tracked=state.tracked.filter(id=>ctx.enemies.has(id));};
     alive();

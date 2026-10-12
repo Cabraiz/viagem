@@ -85,6 +85,12 @@ export const manageLabel=(player:Pick<PlayerRunView,'name'>&{bot?:boolean},askin
   asking?`${player.bot?'Tirar':'Expulsar'} ${railName(player.name)}? Toca de novo.`:(player.bot?'Tirar bot':'Expulsar');
 /** The owner's button on the result: what it does, with no room for "turma" to read as the team's score. */
 export const MANAGE_LABEL='Arrumar a sala';
+/** The same verb where three buttons share one row (portrait): the crown says whose button it is (BUG-resultado-dono-6p-rola). */
+export const MANAGE_SHORT='Arrumar';
+/** From this many cards on, a card shows the team rail's short name (first word, ≤ 9 letters), so a long name never takes
+ * a second line and pushes the 6th card out of view; the full name stays in the card's label (BUG-resultado-dono-6p-rola). */
+export const SHORT_NAME_FROM=5;
+export const cardName=(name:string,count:number)=>count>=SHORT_NAME_FROM?railName(name)||name:name;
 const CONFIRM_MS=3000,REARM_MS=1500,DOUBLE_TAP_MS=500;
 
 const CONFETTI=18;
@@ -135,7 +141,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const can=!!roster?.canManage;if(!can)managing=false;
     manage.hidden=!can;manage.setAttribute('aria-pressed',String(managing));
     // Portrait has three buttons in 350 px: the crown and "Turma"; landscape has room for the whole verb.
-    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span>${MANAGE_LABEL}</span>`;
+    // Landscape and wide rows say the whole verb; portrait's single row of three says "Arrumar" (CSS picks one).
+    manage.innerHTML=managing?'Feito':`${icon('coroa')}<span class="rh-manage-long">${MANAGE_LABEL}</span><span class="rh-manage-short">${MANAGE_SHORT}</span>`;
     manage.setAttribute('aria-label',managing?'Feito, voltar aos prêmios':`${MANAGE_LABEL}: expulsar, tirar ou pôr bot`);
     actions.classList.toggle('has-manage',can);
     root.classList.toggle('is-managing',managing);
@@ -158,8 +165,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   let shameChip:{playerId:string;line:string;aria:string;key:string;source?:string}|undefined;
   /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
   let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
-  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
+  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number;count:number},index:number)=>{
     const node=el('article','rh-rcard');
+    node.setAttribute('aria-label',player.name);
     node.style.setProperty('--i',String(index));
     const me=player.id===ctx.localId;
     node.classList.toggle('rh-me',me);
@@ -168,7 +176,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const top=el('div','rh-rcard-top',node);
     const img=el('img','rh-rcard-img',top);img.alt='';img.decoding='async';img.draggable=false;img.src=ctx.portrait(player.classId);
     const id=el('div','rh-rcard-id',top);
-    const name=el('strong','rh-rcard-name',id);name.textContent=player.name;
+    const name=el('strong','rh-rcard-name',id);name.textContent=cardName(player.name,ctx.count);
     if(me){const tag=el('span','rh-rcard-tag',id);tag.textContent='Você';}
     // Robot sticker for a room bot, paper crown for the owner (D-025): shape, not color.
     const bot=player.bot||roster?.bots.includes(player.id);
@@ -267,7 +275,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const count=players.length+(tile?1:0);
     const slots=count>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
     grid.dataset.count=String(count);chipEl=undefined;
-    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)),...(tile?[addTile()]:[]));
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots,count},index)),...(tile?[addTile()]:[]));
     fitShame();
   };
   /**

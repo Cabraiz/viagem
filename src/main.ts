@@ -3,7 +3,15 @@ import { setupSections } from './client/sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
+import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
+import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
+import './client/ui/update-toast.css';
 mountIcons();
+// Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
+// Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
+const session=()=>{try{return sessionStorage;}catch{return undefined;}};
+linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
+  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./client/sandboxes/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];
@@ -230,7 +238,15 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.getElementById('enter-island')!.before(coopButton);
 const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar as gosmas.';
-coopButton.addEventListener('click',async()=>{coopButton.disabled=true;try{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim());}catch{text('explore-error','Não foi possível abrir as salas.');}finally{coopButton.disabled=false;}});
+// A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
+async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
+  coopButton.disabled=true;
+  const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
+  try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
+  catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
+  finally{coopButton.disabled=false;}
+}
+coopButton.addEventListener('click',()=>void openCoop());
 document.getElementById('back-to-classes')!.addEventListener('click',()=>dialog.close());
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
@@ -238,12 +254,16 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   try {
     const {openExploration}=await import('./client/explore.ts');
     dialog.close();await openExploration(selected,nickname.trim());
-  } catch {text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
+  } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
   finally {button.disabled=false;}
 });
 setupSections(()=>{page=0;renderRoster();});
 matchMedia('(max-height:740px)').addEventListener('change',()=>{page=0;renderRoster();});
 renderRoster();renderSelected();
+// Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
+// with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
+const resume=takeResume(session(),Date.now());
+if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
 if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./client/sandboxes/sandbox-horde.ts').then(m=>m.openHordeSandbox());
 if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./client/sandboxes/sandbox-fun.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./client/sandboxes/sandbox-hud.ts');

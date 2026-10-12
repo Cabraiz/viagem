@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 // Executors share one node_modules through a junction, so each dev server needs its own
 // pre-bundle cache: VITE_CACHE_DIR=node_modules/.vite-e<N> npx vite --port 42NN (cloud: .vite-n<k>, port 43k0).
@@ -16,7 +16,21 @@ const isPureSector = (id: string) => {
   return path.startsWith(ROOT) && PURE_SECTOR.test(path.slice(ROOT.length));
 };
 
+// One id per build (src/client/ui/version-watch.ts): the deploy's commit on CI, VIAGEM_BUILD_ID when set, otherwise a
+// 'dev-' id, which keeps the version watch off (dev server and local builds) unless a test turns it on.
+const BUILD_ID = process.env.GITHUB_SHA?.slice(0, 12) || process.env.VIAGEM_BUILD_ID || `dev-${Date.now().toString(36)}`;
+// dist/version.json = {"build":BUILD_ID}: an open tab polls it to notice a new deploy.
+const versionFile: Plugin = {
+  name: 'viagem-version-json',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) });
+  },
+};
+
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
+  plugins: [versionFile],
   cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
   build: {
     rolldownOptions: {

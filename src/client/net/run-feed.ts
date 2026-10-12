@@ -7,7 +7,7 @@
  */
 import type {EnemyView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,TelegraphView} from '../../contract/index.ts';
 import type {LevelOffer,PickupKind,SimEvent} from '../../contract/index.ts';
-import {unpackStats,type EnemyWire,type PlayerExtraWire,type PlayerWire,type Snapshot} from '../../../multiplayer/simulation.ts';
+import {unpackStats,type EnemyWire,type PlayerExtraWire,type PlayerWire,type Snapshot} from '../../protocol/index.ts';
 import {FrameDecoder,type DecodeResult,type PlayerWireView,type WorldDescriptor} from '../../protocol/index.ts';
 
 type StampedEvent=SimEvent&{eventId:number};

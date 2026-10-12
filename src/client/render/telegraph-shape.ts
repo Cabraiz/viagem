@@ -1,8 +1,8 @@
 /**
- * World-space outline of a telegraph, with exactly the server's hit semantics (src/sim/telegraphs.ts, D-015):
+ * World-space outline of a telegraph, with exactly the server's hit semantics (src/rules/telegraph-geometry.ts, D-015):
  * line width = full thickness in world units, cone width = FULL aperture in radians. Pure module, tested against telegraphHits.
  */
-import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH} from '../../sim/telegraphs.ts';
+import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH} from '../../rules/index.ts';
 
 export interface Pt {x:number;y:number}
 export interface TelegraphShape {shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx:number;dy:number;width?:number}

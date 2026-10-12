@@ -2,7 +2,7 @@
  * Pure HUD model (VGM-040): derives display data from RunView without touching the DOM,
  * so it can be unit-tested under node. DOM parts in this folder consume these helpers.
  */
-import type {ShameMoment} from '../../sim/shame.ts';
+import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';

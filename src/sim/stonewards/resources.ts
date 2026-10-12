@@ -9,7 +9,7 @@
 import {obstacles as ISLAND_OBSTACLES,worldBase,type Obstacle,type Point} from '../../maps/index.ts';
 import {CHUNK_SIZE,MAX_OBSTACLE_RADIUS} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
-import type {SimContext} from '../../contract/index.ts';
+import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {nodeValue} from '../../rules/index.ts';

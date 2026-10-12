@@ -2,6 +2,9 @@
  * Pure rules of the map labels (DSG-cenario-coerencia): when a ficha shows, what it says and its scale.
  * No Phaser here, so the tests run in Node.
  */
+import {railName} from '../../rules/index.ts';
+/** The rail name is a shared rule (src/rules/names.ts): the room's bots use it too. */
+export {railName};
 /** Text size on screen, in CSS px (A9: 13 is the minimum in a match). */
 export const LABEL_CSS=13;
 const MAX_NAME=16;
@@ -23,8 +26,6 @@ export function shortName(name:string,max=MAX_NAME){
   const chars=[...name.trim()];
   return chars.length<=max?chars.join(''):chars.slice(0,max-1).join('').trimEnd()+'…';
 }
-/** The team rail's short name (first word, up to 9 letters): the same player has one name on the rail and on the map. */
-export const railName=(name:string)=>[...(name.trim().split(/\s+/)[0]??'')].slice(0,9).join('');
 /**
  * Ally ficha text. Caído: rail name and the seconds left ("Tia, 18 s"); the SOS tag on the ficha already says caído.
  * Otherwise (waiting room) the name, plus one glossary word for the state ("fora", "assistindo", "voltando"). No "A · B".

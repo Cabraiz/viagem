@@ -16,7 +16,7 @@
  * Pure state (UxRecorder, unit-tested under node) plus a thin DOM part (UxMetrics) that explore.ts drives.
  */
 import type {RunView} from '../../contract/index.ts';
-import type {RunState} from '../../sim/run.ts';
+import type {RunState} from '../../contract/index.ts';
 import type {SosPing} from '../../rules/index.ts';
 import {groupLabel,measuringTeam,setMeasuringTeam,uxMetricsEnabled} from './ux-flag.ts';
 export {UX_FLAG,uxMetricsEnabled} from './ux-flag.ts';

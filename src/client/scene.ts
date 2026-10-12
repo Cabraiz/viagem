@@ -3,7 +3,6 @@ import {propChunks} from './terrain/tiles.ts';
 import {TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
-import {SKILL_RANGE} from '../../multiplayer/simulation.ts';
 import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -27,6 +26,8 @@ import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
+/** Client-side ranges for the prototype skill ring (scene.ts). */
+export const ATTACK_RANGE=1.8,BASIC_COOLDOWN_TICKS=12,SKILL_RANGE=2.8,SKILL_COOLDOWN_TICKS=160;
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;

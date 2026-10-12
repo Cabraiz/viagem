@@ -2,10 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,MAX_PASSIVES,MAX_WEAPONS,ticks} from '../../src/contract/types.ts';
-import type {
-  EnemyState,ItemDef,ItemKind,LevelOffer,OfferChoice,OwnedItem,PickupKind,PickupState,PlayerBuild,PlayerStats,
-  SimContext,SimEvent,SimPlayer,SpatialIndex,TeamProgress,RoundState,
-} from '../../src/contract/types.ts';
+import type {EnemyState,ItemDef,ItemKind,LevelOffer,OfferChoice,OwnedItem,PickupKind,PickupState,PlayerBuild,PlayerStats,SimEvent,SimPlayer,SpatialIndex,TeamProgress,RoundState} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
 import {
   ARM_SECONDS,BASE_CHOICES,HEAL_AMOUNT,HEAL_CHOICE,HELD_DEADLINE,MAX_CHOICES,OFFER_SECONDS,
   applyChoice,isHeldOffer,baseItemId,defaultIndexFor,isEligible,nextLevel,rollChoices,

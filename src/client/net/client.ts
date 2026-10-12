@@ -1,6 +1,8 @@
 import {defaultTerrain} from '../../maps/index.ts';
-import { STEP, ROOM_PROTOCOL, GRACE_MS, REPLACED_MESSAGE, reconcile, simulate, interpolate, terrainFor, UPDATE_NEEDED, type Input, type Player } from '../../../multiplayer/simulation.ts';
-import type {RunState} from '../../sim/run.ts';
+import {terrainFor} from './terrain.ts';
+import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,type Input,type Player} from '../../protocol/index.ts';
+import type {RunState} from '../../contract/index.ts';
 import type { Point } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';

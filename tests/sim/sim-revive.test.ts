@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,ticks} from '../../src/contract/types.ts';
-import type {SimContext,SimEvent,SimPlayer,RoundPhase} from '../../src/contract/types.ts';
+import type {SimEvent,SimPlayer,RoundPhase} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
 import {
   BLEED_OUT_TICKS,REVIVE_TICKS,RECONNECT_GRACE_TICKS,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,
   DOWNED_LINES,REVIVED_LINES,ELIMINATED_LINES,

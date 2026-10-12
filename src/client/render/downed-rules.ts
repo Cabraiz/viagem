@@ -1,7 +1,7 @@
 /**
  * Pure geometry of the caído's ring in the world (UX-resgate-e-ping), no Phaser, so node tests run it.
  */
-import {REVIVE_RADIUS} from '../../sim/revive.ts';
+import {REVIVE_RADIUS} from '../../rules/index.ts';
 
 export interface Pt {x:number;y:number}
 export interface DownedMark {id:string;at:Pt;progress:number}

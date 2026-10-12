@@ -13,7 +13,8 @@
  */
 import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks} from '../contract/index.ts';
-import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimContext,SimPlayer,SimSystem,TeamProgress} from '../contract/index.ts';
+import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimPlayer,TeamProgress} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 import type {Point} from '../maps/index.ts';
 import {isLand} from '../maps/index.ts';
 import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';

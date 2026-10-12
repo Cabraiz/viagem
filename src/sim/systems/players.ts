@@ -5,7 +5,8 @@
 import {moveDirection,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
-import type {SimPlayer,SimSystem} from '../../contract/index.ts';
+import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
+import type {SimSystem} from '../context.ts';
 import {castSkill} from '../skills.ts';
 
 /** 'players' runs before the contract systems, so enemies react to this tick's positions. */
@@ -15,8 +16,8 @@ import {castSkill} from '../skills.ts';
  */
 export const RUN_ORDER=['players',SYSTEM_ORDER[0],'zueira',...SYSTEM_ORDER.slice(1)] as const;
 
-/** Protocol 3 input. `attack` is accepted for compatibility but weapons fire automatically. */
-export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}
+/** Protocol 3 input (src/contract/types.ts). */
+export type {PlayerInput};
 /** Protocol 3 wire fields kept on the server player. */
 export type RunPlayer=SimPlayer&{ack:number;score:number;attackTick?:number;skillTick?:number;skillReadyTick?:number};
 

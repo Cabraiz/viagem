@@ -4,7 +4,8 @@
  */
 import type {TerrainField} from '../../maps/index.ts';
 import {ISLAND_BASE,obstaclesNear,walkable,worldBase,type Obstacle,type Point} from '../../maps/index.ts';
-import type {EnemyState,SimContext} from '../../contract/index.ts';
+import type {EnemyState} from '../../contract/index.ts';
+import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import type {StonewardsState,WallState} from './state.ts';
 

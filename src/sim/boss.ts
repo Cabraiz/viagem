@@ -17,7 +17,8 @@ import type {Rng} from '../contract/index.ts';
 import {addTelegraph,cancelTelegraphs,canBeTargeted} from './telegraphs.ts';
 import {MAX_ENEMIES,hasRoom} from '../rules/index.ts';
 import {createEnemy,type EnemyKind} from './enemies/catalog.ts';
-import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSystem} from '../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 
 export const BOSS_KIND='chefe';
 export const BOSS_NAME='Síndico Supremo';

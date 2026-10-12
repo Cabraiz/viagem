@@ -3,7 +3,8 @@
  * Called on every new run; dispose() removes this run's hooks before the next one registers.
  */
 import type {SimWorld} from './core.ts';
-import type {EnemyState,SimContext,SimPlayer,SimSystem} from '../contract/index.ts';
+import type {EnemyState,SimPlayer} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../rules/index.ts';
 import {createDirector,type Director} from './director.ts';
 import {ELITE,createEnemy,isEnemyKind} from './enemies/catalog.ts';

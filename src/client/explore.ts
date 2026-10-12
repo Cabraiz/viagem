@@ -9,7 +9,7 @@ import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.t
 import {freeAround} from './framing.ts';
 import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
 import {DamageTally} from './net/run-feed.ts';
-import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../../multiplayer/simulation.ts';
+import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
 import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';

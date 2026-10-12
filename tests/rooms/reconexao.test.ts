@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer,type RoomRoster} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice} from '../../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice} from '../../src/protocol/room.ts';
 import {sha256Hex} from '../../src/protocol/sha256.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 

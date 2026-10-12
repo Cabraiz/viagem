@@ -1,12 +1,17 @@
 /**
  * Shared simulation contract for the horde run (VGM-030+).
- * Systems are pure server-side steps over SimContext. Keep this file stable:
+ * Systems are pure server-side steps over SimContext (src/sim/context.ts, the server's side). Keep this file stable:
  * change it only through the integration card (VGM-030) or with orchestrator approval.
  * Erasable TypeScript only (no enum, namespace or parameter properties): tests run with --experimental-strip-types.
  */
-import type {TerrainField} from '../maps/terrain/field.ts';
-import type {Point} from '../maps/world.ts';
 import type {Rng} from './rng.ts';
+
+/** A position or direction in world units (maps/world.ts re-exports it). */
+export type Point = { x: number; y: number };
+/** 'ilha': the ~24×24 island (default). 'infinito': endless chunked map (D-019), base at the origin. */
+export type WorldKind='ilha'|'infinito';
+/** Protocol 3 input. `attack` is accepted for compatibility but weapons fire automatically. */
+export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}
 
 export const SIM_HZ=20;
 export const ticks=(seconds:number)=>Math.round(seconds*SIM_HZ);
@@ -131,6 +136,8 @@ export type SimEvent=
   /** VGM-053B: the last critter of a round fell (kill-cam): kind, where, who closed the bill and which round. */
   | {type:'last-bicho';kind:string;x:number;y:number;round:number;by?:string};
 export type HappeningKind='boletos'|'promo'|'apagao';
+/** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
+export type StampedEvent=SimEvent&{eventId:number};
 
 // ---------- Spatial query (VGM-032 implements a hash; tests may use naive) ----------
 export interface SpatialIndex<T extends Point&{id:string}> {
@@ -138,44 +145,6 @@ export interface SpatialIndex<T extends Point&{id:string}> {
   /** Items whose center is within radius, any order. */
   query(x:number,y:number,radius:number,out?:T[]):T[];
   nearest(x:number,y:number,radius:number,filter?:(item:T)=>boolean):T|undefined;
-}
-
-// ---------- Context and systems ----------
-export interface SimContext {
-  readonly tick:number;
-  /** Tick when the current combat started (D-005: chests before 2:00 do not evolve). */
-  readonly runStartTick:number;
-  readonly terrain:TerrainField;
-  /**
-   * Re-derived every tick from the run seed and tick. Fork inside step (ctx.rng.fork('<id>')) for per-system streams;
-   * do not keep a forked stream across ticks, because private state is outside the replay hash and survives rematches.
-   */
-  readonly rng:Rng;
-  /** Includes offline/spectators; systems must skip them as appropriate. */
-  readonly players:ReadonlyMap<string,SimPlayer>;
-  readonly enemies:Map<string,EnemyState>;
-  readonly pickups:Map<string,PickupState>;
-  readonly projectiles:Map<string,ProjectileState>;
-  readonly telegraphs:Map<string,Telegraph>;
-  readonly team:TeamProgress;
-  readonly offers:Map<string,LevelOffer[]>;
-  readonly round:RoundState;
-  readonly enemyIndex:SpatialIndex<EnemyState>;
-  /** Deterministic, monotonic ids: prefix + counter. */
-  nextId(prefix:string):string;
-  emit(event:SimEvent):void;
-  /**
-   * Only path to hurt enemies: multiplies by the source player's stats.might (D-001), emits damage/kill and removes the
-   * enemy once; drops (XP, chest) run in the integration's onKill hook, exactly once. Returns true if it killed.
-   */
-  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string):boolean;
-  /** Only path to hurt players: armor, invulnerability; at 0 hp the integration's onPlayerZero hook downs the player (VGM-037). */
-  damagePlayer(playerId:string,amount:number,source?:string):void;
-}
-
-export interface SimSystem {
-  readonly id:string;
-  step(ctx:SimContext):void;
 }
 
 /** Order systems run each tick. Integration (VGM-030) registers implementations against these ids. */

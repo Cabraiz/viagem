@@ -1,7 +1,7 @@
 /** Forge: three recipes bought from the team balance during the intermission. */
 import {walkable} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
-import type {SimContext} from '../../contract/index.ts';
+import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';

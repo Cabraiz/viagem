@@ -9,7 +9,7 @@
  * the client holds, as JSON.
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
 import {FrameRunFeed} from '../src/client/net/run-feed.ts';
 import {ACK_EVERY_MS} from '../src/client/net/client.ts';
 

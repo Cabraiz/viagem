@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {register} from 'node:module';
 import {Room,type Peer} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {TickLoop} from '../../multiplayer/tick-clock.ts';
 
 const hooks=`export async function resolve(spec,ctx,next){

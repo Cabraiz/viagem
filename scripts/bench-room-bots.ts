@@ -5,7 +5,7 @@
  *   node --experimental-strip-types scripts/bench-room-bots.ts [seed] [bots]
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
 
 const seed=Number(process.argv[2]??4242),count=Math.max(0,Math.min(5,Number(process.argv[3]??5)));
 const messages:any[]=[];

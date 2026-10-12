@@ -9,7 +9,7 @@ import type {MinimapItem} from './minimap.ts';
 import {secondsLeft} from './model.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
-import {REVIVE_RADIUS} from '../../sim/revive.ts';
+import {REVIVE_RADIUS} from '../../rules/index.ts';
 import {SOS_COOLDOWN_MS} from '../../rules/index.ts';
 
 export interface Point {x:number;y:number}

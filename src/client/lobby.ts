@@ -1,6 +1,6 @@
 import type { HeroClass } from '../rules/index.ts';
 import type { CoopClient } from './net/client.ts';
-import type { RunState } from '../sim/run.ts';
+import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';

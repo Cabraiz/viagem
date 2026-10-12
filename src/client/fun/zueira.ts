@@ -3,7 +3,7 @@
  * Voice (design §2.6): the joke lives in the title, the instruction stays dry; "Round" and "bichos" from the glossary.
  */
 import type {HappeningKind} from '../../contract/index.ts';
-import type {ShameKey,ShameMoment} from '../../sim/shame.ts';
+import type {ShameKey,ShameMoment} from '../../contract/index.ts';
 
 /** Street banner of an event (the round banner's faixa: title + one dry line). */
 export const HAPPENING_COPY:Readonly<Record<HappeningKind,{title:string;subtitle:string}>>={

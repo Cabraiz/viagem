@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,type Input} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import type {Input} from '../../src/protocol/room.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {stateHash} from '../../src/sim/core.ts';
 import type {SimEvent} from '../../src/contract/types.ts';

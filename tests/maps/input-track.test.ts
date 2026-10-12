@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,simulate,reconcile,STEP,type Input} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {simulate,reconcile,STEP} from '../../src/maps/prediction.ts';
+import {type Input,ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {InputBatcher,InputTrack,DIRECTIONS,DIRECTION_BUCKETS,quantizeDirection,SEND_MIN_MS,KEEPALIVE_MS,HORIZON_STEPS,MAX_SEGMENTS,LEAD_STEPS} from '../../src/maps/input-track.ts';
 import {SPEED,type Point} from '../../src/maps/world.ts';
 import {Room} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../../multiplayer/simulation.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);

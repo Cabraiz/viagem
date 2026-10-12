@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
 import {SPAWN,findPath,walkable,type Point} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';
-import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundState,type SimContext,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundState,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
 import {coastalSpawnPoints,createDirector,type DirectorOptions,type RoundSummary} from '../../src/sim/director.ts';
 import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MAX_ROUND_ENEMIES,MODIFIERS,RETREAT_LINES,ROUNDS,ROUND_COUNT,ROUND_NAMES,THREAT,drawTheme,modifierLabel,planRound,playerScale,type RegularKind,type RoundPlan} from '../../src/rules/waves.ts';
 

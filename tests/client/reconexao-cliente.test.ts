@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
-import {REPLACED_MESSAGE} from '../../multiplayer/simulation.ts';
+import {REPLACED_MESSAGE} from '../../src/protocol/room.ts';
 
 const store=new Map<string,string>();
 (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};

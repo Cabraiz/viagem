@@ -1,6 +1,7 @@
 /** Port of the simulation sector: the server's core and systems, as the rooms (multiplayer/) use them. */
 export * from './assemble.ts';
 export * from './bot-brain.ts';
+export * from './context.ts';
 export * from './core.ts';
 export * from './director.ts';
 export * from './enemies/catalog.ts';

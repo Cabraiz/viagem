@@ -4,7 +4,7 @@
  * WhatsApp/Instagram browsers the reload lives in a menu, so the button is the way out.
  */
 import './net-fatal.css';
-import {needsUpdate} from '../../multiplayer/simulation.ts';
+import {needsUpdate} from '../protocol/index.ts';
 export {needsUpdate};
 
 /**

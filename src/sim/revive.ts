@@ -3,23 +3,11 @@
  * The core calls downPlayer when a player's hp reaches 0. The 'revive' system advances rescue
  * progress, bleeds out downed players and reports the common defeat exactly once.
  */
-import type {SimContext,SimPlayer,SimSystem} from '../contract/index.ts';
-import {ticks} from '../contract/index.ts';
+import type {SimPlayer} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
+import {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS} from '../rules/index.ts';
+export {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS};
 
-export const BLEED_OUT_TICKS=ticks(30);
-export const REVIVE_RADIUS=1.2;
-export const REVIVE_TICKS=ticks(3);
-export const REVIVE_HP_FRACTION=.4;
-export const REVIVE_INVULNERABLE_TICKS=ticks(2);
-/** Without a rescuer in range, progress falls back at the base revive speed. */
-export const REVIVE_DECAY_PER_TICK=1/REVIVE_TICKS;
-/**
- * A player who dropped while on their feet may be back soon (VGM-047). While one of them is
- * missing and nobody else stands, the defeat waits this long instead of latching on a 1-tick lag.
- */
-export const RECONNECT_GRACE_TICKS=ticks(5);
-/** Weight of each rescuer after the strongest one: more allies speed it up, with diminishing returns. */
-export const EXTRA_RESCUER_WEIGHT=.5;
 
 /** Online, in the run, on their feet. */
 export function isStanding(p:SimPlayer){

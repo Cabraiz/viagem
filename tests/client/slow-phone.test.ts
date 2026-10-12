@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer,SILENT_MS,SLOW_SILENT_MAX_MS,silenceLimit} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {Backlog,CatchUp,ANCHOR_WINDOW_MS,CATCH_UP_ON_MS,CATCH_UP_OFF_MS,CATCH_UP_HOLD_MS} from '../../src/client/net/backlog.ts';
 
 /** A room with one person on a fake peer (frames counted, closes recorded). */

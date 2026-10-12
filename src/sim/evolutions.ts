@@ -3,7 +3,8 @@
  * Weapon ids, max levels and recipes come from the VGM-035 weapon catalog, so a new weapon or
  * evolution only needs a catalog entry.
  */
-import {ticks,type OwnedItem,type PlayerBuild,type SimContext,type SimPlayer} from '../contract/index.ts';
+import {ticks,type OwnedItem,type PlayerBuild,type SimPlayer} from '../contract/index.ts';
+import type {SimContext} from './context.ts';
 import {PASSIVE_MAX_LEVEL,isPassiveId,type PassiveId} from '../rules/index.ts';
 import {refreshStats} from '../rules/index.ts';
 import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';

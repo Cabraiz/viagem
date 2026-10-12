@@ -11,7 +11,7 @@
 import {decide,newMemory,HZ,type BrainMemory} from '../src/sim/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
-import {railName} from '../src/client/render/map-label-rules.ts';
+import {railName} from '../src/rules/index.ts';
 
 /** A bot looks at the world this often (ticks): 200 ms, like a thumb (VGM-045 DECISION_MS). Slots are staggered. */
 export const BOT_THINK_EVERY=4;

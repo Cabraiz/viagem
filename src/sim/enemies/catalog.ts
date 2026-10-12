@@ -3,7 +3,8 @@
  * Stats are base values; createEnemy applies the elite modifier and the director's hp scale.
  */
 import type {Point} from '../../maps/index.ts';
-import type {EnemyState,SimContext} from '../../contract/index.ts';
+import type {EnemyState} from '../../contract/index.ts';
+import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 
 export type EnemyKind='gosma'|'pernilongo'|'tio-pave'|'fiscal'|'chefe';

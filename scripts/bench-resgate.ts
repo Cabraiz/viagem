@@ -9,7 +9,7 @@
  * Run: node --experimental-strip-types scripts/bench-resgate.ts [runs=4] [minutes=4] [ilha|infinito]
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
-import {ROOM_PROTOCOL} from '../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
 import {Rng} from '../src/contract/rng.ts';
 import {walkable,worldBase} from '../src/maps/world.ts';
 

@@ -5,7 +5,8 @@
  * Mobile only (D-009): one tap on the skill button casts; there is no aim input. Targets come from
  * player.target (tapped enemy) or the nearest enemy/ally, and direction from player.facing (joystick).
  */
-import {ticks,type EnemyState,type PickupKind,type SimContext,type SimPlayer} from '../contract/index.ts';
+import {ticks,type EnemyState,type PickupKind,type SimPlayer} from '../contract/index.ts';
+import type {SimContext} from './context.ts';
 import {clearSegment,moveDirection,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';

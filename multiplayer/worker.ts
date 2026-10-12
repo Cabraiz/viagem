@@ -1,7 +1,7 @@
 import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, type Peer, type RoomRoster } from './room.ts';
-import { ROOM_PROTOCOL } from './simulation.ts';
+import {ROOM_PROTOCOL} from '../src/protocol/index.ts';
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';

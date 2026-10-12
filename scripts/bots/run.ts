@@ -18,7 +18,7 @@ import {Bot} from './bot.ts';
 import {Link} from './lab-socket.ts';
 import {rates,TickStitcher,freePlan,percentile,mean,type MatchCost} from './metrics.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
-import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../multiplayer/simulation.ts';
+import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../src/protocol/room.ts';
 import {RECIPES} from '../../src/rules/stonewards.ts';
 
 const ORIGIN='http://127.0.0.1:4187';

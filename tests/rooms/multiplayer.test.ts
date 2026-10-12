@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,STEP,reconcile,simulate,delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {STEP,reconcile,simulate} from '../../src/maps/prediction.ts';
+import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.ts';
 import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
@@ -382,7 +384,7 @@ test('reconnect drops stale inputs and accepts the client sequence restarting at
 });
 
 test('the client accepts only the room\'s exact terrain from the welcome descriptor',async()=>{
-  const {worldDescriptor,terrainFor}=await import('../../multiplayer/simulation.ts');
+  const {worldDescriptor}=await import('../../multiplayer/simulation.ts');const {terrainFor}=await import('../../src/client/net/terrain.ts');
   const room=new Room(1000,4242),a=peer();join(room,a);
   const welcome=a.messages.find(m=>m.t==='welcome');
   assert.equal(welcome.protocol,ROOM_PROTOCOL);assert.deepEqual(welcome.world,worldDescriptor(room.sim.terrain));

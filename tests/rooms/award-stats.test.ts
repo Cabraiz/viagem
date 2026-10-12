@@ -1,7 +1,8 @@
 /** NEW-20261009-N2-award-stats-server: the result-screen prizes come from the server counters, so every client agrees. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,applyDelta,delta,type Snapshot} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {applyDelta,delta,type Snapshot} from '../../src/protocol/room.ts';
 import {JsonRunFeed} from '../../src/client/net/run-feed.ts';
 import {FrameDecoder,FrameEncoder,WireIds,type FrameInput} from '../../src/protocol/protocol4.ts';
 import {applyEvents,emptyTally,type RunResult} from '../../src/client/hud/model.ts';

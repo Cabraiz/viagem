@@ -1,6 +1,6 @@
 import {DEFAULT_SEED,type WorldKind} from '../src/maps/index.ts';
-import { Simulation, DEFAULT_WORLD, GRACE_MS, ROOM_PROTOCOL, ROOM_CLOSING_NOTICE, restartedNotice, REPLACED_MESSAGE, UPDATE_NEEDED, worldDescriptor,
-  KICK_BAN_MS, kickedMessage, OWNER_ONLY, OWNER_NOT_NOW, ROOM_FULL_BOTS } from './simulation.ts';
+import {Simulation,DEFAULT_WORLD,worldDescriptor} from './simulation.ts';
+import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';

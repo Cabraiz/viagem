@@ -15,8 +15,7 @@
  */
 import type {Point} from './world.ts';
 import type {TerrainField} from './terrain/field.ts';
-import type {PlayerInput} from '../sim/systems/players.ts';
-import type {SimPlayer} from '../contract/index.ts';
+import type {PlayerInput,SimPlayer} from '../contract/index.ts';
 import {SIM_HZ} from '../contract/index.ts';
 
 /** Joystick directions: 32 (11.25°); the client predicts with the very numbers it sends. */

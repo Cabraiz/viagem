@@ -6,7 +6,8 @@
 import {RADIUS as PLAYER_RADIUS,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
-import {SIM_HZ,ticks,type EnemyState,type SimContext,type SimPlayer,type SimSystem} from '../../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type SimPlayer} from '../../contract/index.ts';
+import type {SimContext,SimSystem} from '../context.ts';
 import {ELITE,FISCAL_SHOT,TIO_JOKE,enemyDef,hashUnit,type EnemyDef} from './catalog.ts';
 import type {TauntedEnemy} from '../skills.ts';
 

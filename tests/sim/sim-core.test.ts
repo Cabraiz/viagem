@@ -4,7 +4,8 @@ import {SimWorld,NaiveIndex,stateHash} from '../../src/sim/core.ts';
 import type {SimWorldOptions,StampedEvent} from '../../src/sim/core.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {SYSTEM_ORDER,BASE_STATS} from '../../src/contract/types.ts';
-import type {EnemyState,SimContext,SimPlayer,SimSystem} from '../../src/contract/types.ts';
+import type {EnemyState,SimPlayer} from '../../src/contract/types.ts';
+import type {SimContext,SimSystem} from '../../src/sim/context.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 
 const mkWorld=(opts:Partial<SimWorldOptions>={})=>new SimWorld({terrain:defaultTerrain,seed:1,...opts});

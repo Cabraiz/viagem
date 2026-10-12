@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
-import {BASE_STATS,ticks,type OwnedItem,type PickupState,type PlayerBuild,type PlayerStats,type SimContext,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import {BASE_STATS,ticks,type OwnedItem,type PickupState,type PlayerBuild,type PlayerStats,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
 import {PASSIVES,PASSIVE_IDS,PASSIVE_MAX_LEVEL,passiveDef} from '../../src/rules/passives.ts';
 import {STAT_KEYS,STAT_LIMITS,computeStats,refreshStats,type ClassBonus,type StatKey} from '../../src/rules/stats.ts';
 import {CHEST_HEAL_LIFETIME_SECONDS,CHEST_HEAL_VALUE,EVOLUTIONS,EVOLUTION_MIN_TICKS,WEAPON_IDS,WEAPON_MAX_LEVEL,eligibleEvolutions,itemMaxLevel,openChest} from '../../src/sim/evolutions.ts';

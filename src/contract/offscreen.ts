@@ -30,7 +30,7 @@
  * axes, bound by landscape) to 41.4 units (the screen axes of the views, bound by the long side of a 21:9
  * portrait phone), camera offset budget included. With a camera hint (one orientation and view) a portrait phone gets 10.2 units sideways.
  */
-import type {Point} from '../maps/world.ts';
+import type {Point} from './types.ts';
 
 export const TILE_X=42,TILE_Y=21;
 export const HERO_WORLD_PX=96;

@@ -17,7 +17,8 @@ import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visi
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
 import {Rng} from '../contract/index.ts';
-import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimContext,type SimPlayer,type SimSystem} from '../contract/index.ts';
+import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */

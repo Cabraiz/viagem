@@ -1,5 +1,6 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
-import type {ShameMoment} from './shame.ts';
+import type {RunMember,RunOutcome,RunPhase,RunState,ShameMoment} from '../contract/index.ts';
+export type {RunMember,RunOutcome,RunPhase,RunState} from '../contract/index.ts';
 export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
@@ -10,18 +11,6 @@ export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
  * one who missed the start watches that run and plays the rematch.
  */
 export const LOBBY_AWAY_TICKS=10*RUN_HZ;
-export type RunPhase='lobby'|'countdown'|'combat'|'result';
-export type RunOutcome='victory'|'defeat'|'timeout';
-/** `bot`: a room bot (D-025): played by the room itself, always online and ready, never holds the start. */
-export interface RunMember {id:string;online:boolean;ready:boolean;spectator:boolean;bot?:true}
-export interface RunState {
-  round:number;phase:RunPhase;elapsed:number;remaining:number;
-  members:RunMember[];outcome?:RunOutcome;resultId?:string;
-  /** Result only (VGM-053B): the run's most embarrassing moment, from the simulation. */
-  shame?:ShameMoment;
-  /** The room's owner ("dono da sala", D-025; "chefe" is the boss of the game): the only one whose kick and bot commands the room accepts. */
-  owner?:string;
-}
 
 export class RunLifecycle {
   private members=new Map<string,RunMember>();

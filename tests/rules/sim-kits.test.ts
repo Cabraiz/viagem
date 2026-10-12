@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
-import {ticks,type EnemyState,type PickupState,type PlayerBuild,type RoundPhase,type SimContext,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import {ticks,type EnemyState,type PickupState,type PlayerBuild,type RoundPhase,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
+import type {SimContext} from '../../src/sim/context.ts';
 import {clearSegment,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {STAT_KEYS,STAT_LIMITS,computeStats} from '../../src/rules/stats.ts';
 import {WEAPON_IDS} from '../../src/sim/evolutions.ts';

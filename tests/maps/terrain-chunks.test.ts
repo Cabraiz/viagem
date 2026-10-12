@@ -13,7 +13,9 @@ import {
 } from '../../src/client/terrain/tiles.ts';
 import {projectView,unprojectView} from '../../src/client/projection.ts';
 import {landShader,waterShader} from '../../src/client/terrain/shaders.ts';
-import {DEFAULT_WORLD,Simulation,ROOM_PROTOCOL,terrainFor,worldDescriptor} from '../../multiplayer/simulation.ts';
+import {DEFAULT_WORLD,Simulation,worldDescriptor} from '../../multiplayer/simulation.ts';
+import {terrainFor} from '../../src/client/net/terrain.ts';
+import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {RADIUS,findPath,walkable,worldBase,worldSpawn} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';

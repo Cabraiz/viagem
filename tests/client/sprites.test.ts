@@ -4,7 +4,8 @@ import sharp from 'sharp';
 import {classes} from '../../src/rules/classes.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS} from '../../src/client/sprites/sprite-motion.ts';
-import {Simulation,packPlayer,unpackPlayer} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 
 test('all 36 class IDs have a transparent 18-frame sheet and a measured scale',async()=>{
   assert.equal(Object.keys(spriteCatalog).length,classes.length);

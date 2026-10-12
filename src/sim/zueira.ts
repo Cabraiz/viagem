@@ -18,7 +18,8 @@ import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';
 import {HEAL_AMOUNT} from '../rules/index.ts';
 import {Rng} from '../contract/index.ts';
 import {clearSegment,walkable} from '../maps/index.ts';
-import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimContext,type SimPlayer,type SimSystem} from '../contract/index.ts';
+import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimPlayer} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 
 export const HAPPENING_KINDS:readonly HappeningKind[]=['boletos','promo','apagao'];
 /** How long each event lasts on screen, in seconds (the sale: how long its coxinhas stay on the ground). */

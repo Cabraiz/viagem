@@ -5,8 +5,8 @@ export const FIELD_SIZE=129,FIELD_MIN=-4,FIELD_STEP=.25;
 export {clamp,mix,smooth,hash2d,hash2u,noise,fbm,seedFrom} from './noise.ts';
 import {clamp,mix,smooth,hash2d,fbm} from './noise.ts';
 import {BASE,ChunkWorld,endlessSignature} from './chunks.ts';
-/** 'ilha': the ~24×24 island (default). 'infinito': endless chunked map (D-019), base at the origin. */
-export type WorldKind='ilha'|'infinito';
+import type {WorldKind} from '../../contract/index.ts';
+export type {WorldKind};
 export interface TerrainOptions {world?:WorldKind;maxLiveChunks?:number}
 export function randomSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
 export class TerrainField {

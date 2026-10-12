@@ -17,18 +17,12 @@
  * Consent (design review D7): a player who turned "my embarrassing moment" off never is the moment; the run's moment is
  * the worst among the others. The tracker keeps each player's worst so that choice can be made at the end.
  */
-import type {PickupState,SimContext,SimEvent} from '../contract/index.ts';
+import type {PickupState,ShameKey,ShameMoment,SimEvent} from '../contract/index.ts';
+import type {SimContext} from './context.ts';
+export type {ShameKey,ShameMoment} from '../contract/index.ts';
 import {BOLETO,type ActiveHappening} from './zueira.ts';
 
-export type ShameKey='recaida'|'apagao'|'coxinha'|'pernilongo'|'cedo'|'sem-boleto'|'coxinha-cheia'|'caiu';
 export const SHAME_SCORE:Readonly<Record<ShameKey,number>>={recaida:60,apagao:55,coxinha:50,pernilongo:45,cedo:40,'sem-boleto':25,'coxinha-cheia':15,caiu:10};
-export interface ShameMoment {
-  player:string;key:ShameKey;round:number;tick:number;
-  /** Critter kind behind a fall. */
-  source?:string;
-  /** recaida: seconds between the rescue and the new fall. */
-  seconds?:number;
-}
 export const RECAIDA_SECONDS=5,COXINHA_REACH=2.5;
 /** A rain the team barely touched does not shame anyone. */
 export const RAIN_MIN_CAUGHT=4;

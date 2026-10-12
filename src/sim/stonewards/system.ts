@@ -12,7 +12,7 @@
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
  */
 import type {Obstacle} from '../../maps/index.ts';
-import type {SimContext,SimSystem} from '../../contract/index.ts';
+import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';

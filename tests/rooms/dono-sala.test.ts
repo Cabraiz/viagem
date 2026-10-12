@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,OWNER_GAP_MS,ROSTER_BOTS_MS,nameKey,type Peer,type RoomRoster} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage,Simulation} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage} from '../../src/protocol/room.ts';
 import {RunLifecycle} from '../../src/sim/run.ts';
 import {RoomBots,botIdentity,BOT_NAMES,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 import {downPlayer} from '../../src/sim/revive.ts';

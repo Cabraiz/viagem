@@ -1,6 +1,7 @@
 import type {TerrainField} from './terrain/field.ts';
 import {BASE,MAX_OBSTACLE_RADIUS} from './terrain/chunks.ts';
-export type Point = { x: number; y: number };
+import type {Point} from '../contract/index.ts';
+export type {Point};
 /** `art` (tree-catalog id) only comes on obstacles of the endless world; the island picks art in scene.ts. */
 export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock'; art?: string };
 export const SPAWN: Point = { x: 12, y: 17 };

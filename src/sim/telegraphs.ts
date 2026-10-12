@@ -19,45 +19,14 @@
 import {RADIUS} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
 import {ticks} from '../contract/index.ts';
-import type {SimContext,SimPlayer,SimSystem,Telegraph} from '../contract/index.ts';
+import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData} from '../rules/index.ts';
+export {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData};
+import type {SimPlayer,Telegraph} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 
 /** Minimum warning before any telegraph deals damage: 0.8 s. */
 export const MIN_TELEGRAPH_TICKS=ticks(.8);
-export const DEFAULT_LINE_WIDTH=1;
-export const DEFAULT_CONE_ANGLE=Math.PI/3;
 export type TelegraphSpec=Omit<Telegraph,'id'|'fireTick'>;
-export type TelegraphShapeData=Pick<Telegraph,'shape'|'x'|'y'|'radius'|'dx'|'dy'|'width'>;
-
-const TAU=Math.PI*2;
-const finite=(...n:number[])=>n.every(Number.isFinite);
-
-/** Pure geometry. padding = target body radius (players use world RADIUS). */
-export function telegraphHits(t:TelegraphShapeData,p:Point,padding=0):boolean{
-  const {x,y,radius}=t;
-  if(!finite(x,y,radius,p.x,p.y,padding)||radius<0||padding<0)return false;
-  const vx=p.x-x,vy=p.y-y,dist=Math.hypot(vx,vy);
-  if(t.shape==='circle')return dist<=radius+padding;
-  const dx=t.dx??NaN,dy=t.dy??NaN;
-  if(!finite(dx,dy))return false;
-  const len=Math.hypot(dx,dy);
-  if(!(len>0))return false;
-  const ux=dx/len,uy=dy/len;
-  if(t.shape==='line'){
-    const width=t.width??DEFAULT_LINE_WIDTH;
-    if(!Number.isFinite(width)||width<0)return false;
-    const along=vx*ux+vy*uy,across=Math.abs(vx*uy-vy*ux);
-    return along>=-padding&&along<=radius+padding&&across<=width/2+padding;
-  }
-  if(t.shape==='cone'){
-    const aperture=Math.min(TAU,t.width??DEFAULT_CONE_ANGLE);
-    if(!(aperture>0))return false;
-    if(dist>radius+padding)return false;
-    if(dist<=padding)return true;
-    const angle=Math.atan2(Math.abs(vx*uy-vy*ux),vx*ux+vy*uy);
-    return angle<=aperture/2+Math.asin(Math.min(1,padding/dist));
-  }
-  return false;
-}
 
 /** Adds telegraph with fireTick=ctx.tick+max(delay,MIN_TELEGRAPH_TICKS) (delay in ticks, non-finite -> MIN), id ctx.nextId('tg'), stores in ctx.telegraphs, emits {type:'telegraph',telegraph:id}. Normalizes dx/dy to a unit vector for line/cone (zero/non-finite direction -> throw Error). Returns the stored Telegraph. */
 export function addTelegraph(ctx:SimContext,spec:TelegraphSpec,delay:number):Telegraph{

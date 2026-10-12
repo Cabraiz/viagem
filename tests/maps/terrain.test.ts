@@ -4,7 +4,8 @@ import {TerrainField} from '../../src/maps/terrain/field.ts';
 import {findPath,clearSegment,walkable,SPAWN,landmarks,moveDirection} from '../../src/maps/world.ts';
 import {projectView,unprojectView} from '../../src/client/projection.ts';
 import {fitIsland} from '../../src/client/framing.ts';
-import {Simulation,simulate,reconcile} from '../../multiplayer/simulation.ts';
+import {Simulation} from '../../multiplayer/simulation.ts';
+import {simulate,reconcile} from '../../src/maps/prediction.ts';
 
 test('same seed reproduces the entire field, while different seeds change coast and relief',()=>{
   const a=new TerrainField(17),b=new TerrainField(17),c=new TerrainField(18);

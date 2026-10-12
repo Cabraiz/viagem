@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {JsonRunFeed,FrameRunFeed,DamageTally,MAX_FEED_EVENTS} from '../../src/client/net/run-feed.ts';
-import {delta,applyDelta,ROOM_PROTOCOL,type Snapshot} from '../../multiplayer/simulation.ts';
+import {delta,applyDelta,ROOM_PROTOCOL,type Snapshot} from '../../src/protocol/room.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
 

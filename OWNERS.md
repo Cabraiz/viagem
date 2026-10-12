@@ -7,11 +7,11 @@ contrato só com decisão registrada.
 
 | Setor | Pasta | O que tem | Pode importar | Testes | Executor de referência |
 | --- | --- | --- | --- | --- | --- |
-| contrato | `src/contract/` | tipos do estado (`types.ts`), modelo do cliente (`view.ts`), RNG determinístico, constantes de tela e área de interesse (`offscreen.ts`) | nada | `npm run test:contract` | a definir pelo Orquestrador |
-| regras | `src/rules/` | regras puras do cliente e do servidor: classes, stats, passivas, kits, ofertas, orçamento, ondas, Stonewards, SOS | contrato | `npm run test:rules` | a definir pelo Orquestrador |
-| mapas | `src/maps/` | terreno infinito e ilha (`terrain/`), colisão e caminhos (`world.ts`), catálogo de árvores, trilha de input e predição | contrato | `npm run test:maps` | a definir pelo Orquestrador |
-| simulação | `src/sim/` | núcleo (`core.ts`, `assemble.ts`) e sistemas do servidor: diretor, IA, armas, progressão, resgate, chefe, zueira, Stonewards, cérebro dos bots, ciclo da run | contrato, regras, mapas | `npm run test:sim` | a definir pelo Orquestrador |
-| protocolo | `src/protocol/` | protocolo 4 (frames binários), sha256 | contrato | `npm run test:protocol` | a definir pelo Orquestrador |
+| contrato | `src/contract/` | tipos do estado (`types.ts`), modelo do cliente (`view.ts`), RNG determinístico, constantes de tela e área de interesse (`offscreen.ts`), a run no fio (`run.ts`: `RunState`, `ShameMoment`) | nada | `npm run test:contract` | a definir pelo Orquestrador |
+| regras | `src/rules/` | regras puras do cliente e do servidor: classes, stats, passivas, kits, ofertas, orçamento, ondas, Stonewards, SOS, raio de resgate, geometria de telegraph, nome curto | contrato | `npm run test:rules` | a definir pelo Orquestrador |
+| mapas | `src/maps/` | terreno infinito e ilha (`terrain/`), colisão e caminhos (`world.ts`), catálogo de árvores, trilha de input e predição de movimento (`prediction.ts`) | contrato | `npm run test:maps` | a definir pelo Orquestrador |
+| simulação | `src/sim/` | núcleo (`core.ts`, `context.ts`, `assemble.ts`) e sistemas do servidor: diretor, IA, armas, progressão, resgate, chefe, zueira, Stonewards, cérebro dos bots, ciclo da run | contrato, regras, mapas | `npm run test:sim` | a definir pelo Orquestrador |
+| protocolo | `src/protocol/` | protocolo 4 (frames binários), mensagens da sala e formato do protocolo 3 (`room.ts`), sha256 | contrato | `npm run test:protocol` | a definir pelo Orquestrador |
 | cliente | `src/client/` (+ `src/main.ts`) | cena Phaser, render, HUD, fun, áudio, UI, lobby, exploração, sprites, terreno desenhado, rede do navegador, sandboxes | contrato, regras, mapas, protocolo | `npm run test:client` | a definir pelo Orquestrador |
 | salas | `multiplayer/` | Worker, Durable Object (`room.ts`), `Simulation` da sala (`simulation.ts`), bots da sala | contrato, regras, mapas, simulação, protocolo | `npm run test:rooms` | a definir pelo Orquestrador |
 | api | `backend/` | Vercel + Turso (resultados) | contrato | `npm run test:api` | a definir pelo Orquestrador |

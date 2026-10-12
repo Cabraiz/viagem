@@ -7,11 +7,10 @@ import type {TerrainField} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
 import {SYSTEM_ORDER} from '../contract/index.ts';
-import type {
-  EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimContext,SimEvent,SimPlayer,SimSystem,SpatialIndex,TeamProgress,Telegraph,
-} from '../contract/index.ts';
+import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
+import type {SimContext,SimSystem} from './context.ts';
 
-export type StampedEvent=SimEvent&{eventId:number};
+export type {StampedEvent};
 export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld)=>void;
 export type PlayerZeroHandler=(player:SimPlayer,source:string|undefined,ctx:SimWorld)=>void;
 

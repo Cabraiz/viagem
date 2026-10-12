@@ -100,6 +100,15 @@ export interface BossOptions {
    * collision (clearSegment with the axis slides). Absent (island, endless): the straight walk.
    */
   steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  /**
+   * Map from the authored speeds (u/s) to the world's (the city passes city/speed.ts citySpeed, cidade-05c v2),
+   * applied to the EFFECTIVE speed, after the phase and enrage multipliers: walk = speedMap(speed × multiplier) × slow,
+   * so a faster phase never ends past the hero when it was not before. The charge maps its dash speed likewise
+   * (chargeLength over dashTicks; no length is converted, like every other distance of the fight): the dash keeps
+   * chargeLength and lasts chargeLength / speedMap(that speed), rounded to ticks (`dashTicks` below).
+   * Absent (island, endless): the authored speeds.
+   */
+  speedMap?:(speed:number)=>number;
 }
 /** JSON-safe controller state, enough to resume after a checkpoint. */
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
@@ -149,6 +158,13 @@ const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math
 
 export function createBoss(options:BossOptions={}):BossController {
   const tuning:Readonly<BossTuning>=Object.freeze({...BOSS_TUNING,...options.tuning});
+  /** Ticks of a dash: tuning.dashTicks, or with speedMap the time the full charge takes at its mapped speed. */
+  const dashTicks=(()=>{
+    const authored=Math.max(1,tuning.dashTicks);
+    if(!options.speedMap)return tuning.dashTicks;
+    const speed=tuning.chargeLength*SIM_HZ/authored, mapped=options.speedMap(speed);
+    return mapped>0&&Number.isFinite(mapped)?Math.max(1,Math.round(tuning.chargeLength/mapped*SIM_HZ)):tuning.dashTicks;
+  })();
   const state:BossState=freshState();
   let rng:Rng|undefined;
   const stream=(ctx:SimContext)=>{
@@ -310,7 +326,7 @@ export function createBoss(options:BossOptions={}):BossController {
     if(m.act===ACT_WINDUP){if(ctx.tick>=m.actUntil)m.act=ACT_IDLE;return;}
     if(m.act===ACT_DASH){
       if(ctx.tick<m.dashAt)return;
-      const t=Math.min(1,(ctx.tick-m.dashAt+1)/Math.max(1,tuning.dashTicks));
+      const t=Math.min(1,(ctx.tick-m.dashAt+1)/Math.max(1,dashTicks));
       boss.x=m.fromX+(m.toX-m.fromX)*t;boss.y=m.fromY+(m.toY-m.fromY)*t;
       if(t>=1){m.act=ACT_WINDUP;m.actUntil=ctx.tick+recovery(boss);}
       return;
@@ -334,7 +350,7 @@ export function createBoss(options:BossOptions={}):BossController {
     if(dist(boss,target)<=2.5)return;
     const slow=boss.slowUntil!==undefined&&ctx.tick<boss.slowUntil?.6:1;
     const mult=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.phase2Speed*(enraged(boss)?tuning.enragedSpeed:1):1;
-    const step=boss.speed*mult*slow/SIM_HZ;
+    const speed=boss.speed*mult,step=(options.speedMap?options.speedMap(speed):speed)*slow/SIM_HZ;
     let dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
     // The city's flow field bends the walk around buildings (it may point away from the target there).
     if(options.steer?.(ctx,boss,target,steerOut)){
@@ -388,7 +404,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
     const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id},delay);
     const m=boss.memory!;
-    Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+tuning.dashTicks+recovery(boss)});
+    Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+dashTicks+recovery(boss)});
     say(ctx,boss,'charge');
     return true;
   }

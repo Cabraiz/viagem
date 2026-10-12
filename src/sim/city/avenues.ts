@@ -124,8 +124,12 @@ export interface AvenuePlannerOptions {
  */
 export interface AvenueState {round:number;mode:AvenueMode;open:Mouth[];alternate:number;uses:Record<Mouth,number>}
 
-/** `at` = nominal dispatch tick after round start (from the waves plan); size = members; speed = u/s of this group (default enemySpeed). */
-export interface GroupRequest {at:number;size:number;speed?:number}
+/**
+ * `at` = nominal dispatch tick after round start (from the waves plan); size = members; speed = u/s of this group
+ * (default enemySpeed); aim (cidade-05c v2): 'plaza' keeps this group on the plaza scan even when planGroups gets a
+ * chaseCost (siege groups besiege the base, they never chase the team); 'team' or absent follows opts.chaseCost.
+ */
+export interface GroupRequest {at:number;size:number;speed?:number;aim?:'team'|'plaza'}
 /**
  * Path distance (u) from p to the nearest live player (Infinity when none is reachable): aims groups at a team away
  * from the plaza (cidade-05c). See planGroups and openRound.
@@ -330,7 +334,7 @@ export class AvenuePlanner {
    *    distance of their route point to the team (ascending; ties → closer to the plaza) instead of by the distance
    *    to the plaza, so the group appears as close to the team as it stays hidden; travel = that distance / speed, so
    *    arrivalTick is the arrival at the team. A route with no finite chaseCost past the base (or no spot that fits
-   *    by it) falls back to the plaza scan.
+   *    by it) falls back to the plaza scan. A request with aim 'plaza' (a siege group) ignores chaseCost.
    * Draws exactly Σ size rng values. Does not mutate `state`.
    */
   planGroups(requests:readonly GroupRequest[],players:readonly PlayerLike[],state:AvenueState,rng:RngLike,opts:PlanOptions={}):PlannedGroup[]{
@@ -344,16 +348,16 @@ export class AvenuePlanner {
     const sizes=requests.map(r=>Math.max(0,Math.floor(fin(r?.size,0))));
     const jitter=sizes.map(n=>{const j:number[]=[];for(let q=0;q<n;q++)j.push((rng.next()*2-1)*JITTER);return j;});
     for(let k=0;k<requests.length;k++){
-      const i=indexBase+k, size=sizes[k], speed=pos(requests[k]?.speed,this.speed);
+      const i=indexBase+k, size=sizes[k], speed=pos(requests[k]?.speed,this.speed), aim=requests[k]?.aim==='plaza'?undefined:chase;
       const desired=this.firstArrival+Math.round(fin(requests[k]?.at,at0)-at0);
       if(mode==='cerco'){
         const part=Math.floor(size/4), rem=size%4;
         for(let p=0,used=0;p<4;p++){
           const n=part+(mod(p-off-i,4)<rem?1:0);
-          if(n>0)placed.push(this.placeOn(i,rotate(MOUTHS,p),false,jitter[k].slice(used,used+n),viewers,desired,now,speed,placed,chase));
+          if(n>0)placed.push(this.placeOn(i,rotate(MOUTHS,p),false,jitter[k].slice(used,used+n),viewers,desired,now,speed,placed,aim));
           used+=n;
         }
-      }else placed.push(this.placeOn(i,rotate(mouths,mod(off+i,mouths.length)),mode!=='alternado',jitter[k],viewers,desired,now,speed,placed,chase));
+      }else placed.push(this.placeOn(i,rotate(mouths,mod(off+i,mouths.length)),mode!=='alternado',jitter[k],viewers,desired,now,speed,placed,aim));
     }
     return placed.map(p=>({index:p.index,mouth:p.mouth,points:p.points,releaseTick:p.release,warnTick:p.release-this.warn,arrivalTick:p.release+p.travel}));
   }

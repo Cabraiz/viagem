@@ -27,7 +27,7 @@ import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
-import {CITY_ENEMY_SPEED,cityTerrainOf} from './city/grid.ts';
+import {CITY_ENEMY_SPEED,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
@@ -73,8 +73,17 @@ export interface DirectorOptions {
    * comment) instead of throwing; ignored on the island and in the endless world.
    */
   avenues?:AvenuePlanner;
-  /** City: base speed (u/s) of an enemy kind, for the planner's arrival estimate (× plan.speed). Planner default when absent. */
+  /**
+   * City: base (catalog) speed (u/s) of an enemy kind, for the planner's arrival estimate: speedMap(it × plan.speed),
+   * the speed the body will walk at. Planner default when absent.
+   */
   enemySpeedOf?:(kind:string)=>number|undefined;
+  /**
+   * City (cidade-05c v2): the world's speed of an authored speed (city/speed.ts citySpeed). Applied once, to the
+   * EFFECTIVE speed: every body the director spawns in the city gets speed = speedMap(catalog speed × plan.speed), so a
+   * fast round never pushes a kind that was slower than the hero past it. Ignored outside the city.
+   */
+  speedMap?:(speed:number)=>number;
   /**
    * City (cidade-05c): path distance to the live players, from the AI's players field (CitySteer refresh/costTo).
    * With it, while no live player stands in the base, the round's mouths and every group are aimed at the team
@@ -138,6 +147,12 @@ export interface Director extends SimSystem {
    * round, VGM-046B). Ignored outside an intermission and for an earlier tick.
    */
   extendPrepare(ctx:SimContext,endsTick:number):void;
+  /**
+   * City: the flow field toward the live players that the round timer uses (cityLastArrival), brought up to the
+   * current players and grid (barricades: CityFlowGrid version, cidade-05c v2) as when the director plans. Undefined
+   * outside the city, without a planner grid or without a live player. Inspection only: no director state changes.
+   */
+  cityTeamField(ctx:SimContext):FlowField|undefined;
 }
 
 const BAND_MAX=2.2;
@@ -474,13 +489,18 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
   /**
    * Planner request of a group: its members, nominal tick and, when known, its fastest member's speed this round, so
-   * no member reaches the plaza before the group's slot (slower ones trail behind).
+   * no member reaches the plaza before the group's slot (slower ones trail behind). A siege group (cidade-05c v2)
+   * aims at the plaza (aim 'plaza'): it besieges the base, it does not chase a team away from it.
    */
-  function cityRequest(members:readonly string[],at:number):GroupRequest{
+  function cityRequest(members:readonly string[],at:number,siege=false):GroupRequest{
+    const aim:Partial<GroupRequest>=siege?{aim:'plaza'}:{};
     let fastest=0;
     for(const kind of members){const v=options.enemySpeedOf?.(kind);if(v!==undefined&&Number.isFinite(v)&&v>fastest)fastest=v;}
-    return fastest>0?{at,size:members.length,speed:fastest*state.plan!.speed}:{at,size:members.length};
+    // speedMap is monotone: the fastest member's mapped speed is the largest mapped one.
+    return fastest>0?{at,size:members.length,speed:citySpeedOf(fastest*state.plan!.speed),...aim}:{at,size:members.length,...aim};
   }
+  /** City: the speed a body of authored effective speed `speed` walks at (options.speedMap; identity without it). */
+  function citySpeedOf(speed:number){return options.speedMap?options.speedMap(speed):speed;}
   /**
    * cidade-05c: the planner's chaseCost while the team is away from the base (some live player, none of them in the
    * base) and options.cityChase is wired; the players field is brought up to this tick first. Else undefined (plaza).
@@ -510,7 +530,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const chaseCost=cityChaseCost(ctx),aim=chaseCost?{chaseCost}:{};
     const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues,aim);
     // The boss appears in the plaza (cityWarn), not on an avenue: an empty request keeps every other group's index.
-    const requests=plan.groups.map(g=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at));
+    const requests=plan.groups.map((g,i)=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at,!g.elite&&isSiege(g,i)));
     const parts=planner!.planGroups(requests,viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0,...aim});
     const warnAt=plan.groups.map(()=>Infinity);
     for(const part of parts)if(part.index<warnAt.length)warnAt[part.index]=Math.min(warnAt[part.index],part.warnTick);
@@ -521,14 +541,25 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const arrival=plan.retreat?cityLastArrival(ctx,parts,!!chaseCost):undefined;
     if(arrival!==undefined)ctx.round.phaseEndsTick=Math.max(ctx.round.phaseEndsTick,state.roundStart+arrival+ticks(CITY_ARRIVAL_SLACK));
   }
-  /** City: flow field toward the team (the players at the wave's start), for the round timer; on the planner's grid. */
-  let teamField:FlowField|undefined;
+  /**
+   * City: flow field toward the team (the players at the wave's start), for the round timer; on the planner's grid.
+   * Barricades (cidade-06; cidade-05c v2): when the CityFlowGrid's version moved since the field last read it, the
+   * field re-reads the changed cells first (changedSince; the whole grid when the grid cannot tell), lazily on its next
+   * use, like citySteer's fields. Only the round timer reads it, at the round's start.
+   */
+  let teamField:FlowField|undefined,teamVersion=0;
   function cityTeamField(ctx:SimContext){
-    const grid=(planner as {grid?:FlowGrid}).grid;
+    const grid=(planner as {grid?:FlowGrid&Partial<CityFlowGrid>}|undefined)?.grid;
     if(!grid)return undefined;
     const team:Point[]=[];
     for(const p of ctx.players.values())if(p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)team.push({x:p.x,y:p.y});
     if(!team.length)return undefined;
+    const version=grid.version??0;
+    if(teamField&&version!==teamVersion){
+      const r=grid.changedSince?.(teamVersion);
+      teamField.invalidate(r??{x0:0,y0:0,x1:teamField.width-1,y1:teamField.height-1});
+    }
+    teamVersion=version;
     if(teamField)teamField.setTargets(team);else teamField=new FlowField(grid,team);
     return teamField;
   }
@@ -540,6 +571,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    * release is the fastest member's (first contact), so slower kinds trail behind.
    * `aimed` (cidade-05c: the groups were placed toward a team away from the base): the walk is to the team only (the
    * plaza when the team field does not reach the spot), the same arrival the planner aimed at.
+   * Siege members (cidade-05c v2) walk to the plaza, aimed or not: they besiege the base wherever the team is.
+   * Member speeds are the ones the bodies get: speedMap(catalog × plan.speed).
    */
   function cityLastArrival(ctx:SimContext,parts:readonly {index:number;points:readonly Point[];releaseTick:number;arrivalTick:number}[],aimed=false){
     const plan=state.plan!,field=planner!.plazaField,team=cityTeamField(ctx),used=plan.groups.map(()=>0);
@@ -548,10 +581,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(const part of parts){
       const group=plan.groups[part.index];
       if(!group||group.boss)continue;
+      const siege=!group.elite&&isSiege(group,part.index);
       part.points.forEach((p,j)=>{
         const kind=group.members[used[part.index]+j],known=kind===undefined?undefined:options.enemySpeedOf?.(kind);
-        const speed=(known!==undefined&&Number.isFinite(known)&&known>0?known:CITY_ENEMY_SPEED)*plan.speed;
-        const toTeam=team?units(team,p):-1,d=aimed&&toTeam>=0?toTeam:Math.max(units(field,p),toTeam);
+        const speed=known!==undefined&&Number.isFinite(known)&&known>0?citySpeedOf(known*plan.speed):CITY_ENEMY_SPEED*plan.speed;
+        const toTeam=siege||!team?-1:units(team,p),d=siege?units(field,p):aimed&&toTeam>=0?toTeam:Math.max(units(field,p),toTeam);
         const walk=d<0?part.arrivalTick-part.releaseTick:ticks(d/speed);
         last=Math.max(last??0,part.releaseTick+walk);
       });
@@ -574,7 +608,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     }
     const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
     const chaseCost=cityChaseCost(ctx);
-    const parts=planner!.planGroups([cityRequest(spawn.members,at)],viewers(ctx),state.avenues!,random(),
+    const parts=planner!.planGroups([cityRequest(spawn.members,at,!!spawn.siege)],viewers(ctx),state.avenues!,random(),
       {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning,...(chaseCost?{chaseCost}:{})});
     let used=0;
     for(const part of parts){
@@ -749,6 +783,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
       enemy.speed*=plan.speed;enemy.radius*=plan.size*(entry.elite?ELITE_SIZE:1);
+      // City (cidade-05c v2): the one conversion to the city's speeds, on the effective speed (after plan.speed).
+      if(isCity)enemy.speed=citySpeedOf(enemy.speed);
       if(entry.elite)enemy.elite=true;
       enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{})};
       state.tracked.push(enemy.id);state.spawned++;
@@ -906,6 +942,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   return {
     id:'director',state,scalePlayers,
+    cityTeamField:ctx=>planner&&city(ctx)?cityTeamField(ctx):undefined,
     extendPrepare(ctx,endsTick){
       if(state.stage!=='prepare'||ctx.round.phase!=='prepare'||!Number.isSafeInteger(endsTick)||endsTick<=ctx.round.phaseEndsTick)return;
       ctx.round.phaseEndsTick=endsTick;state.round={...ctx.round};

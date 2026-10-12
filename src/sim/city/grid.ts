@@ -116,6 +116,12 @@ export type CitySteer=((ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boo
   refresh(ctx:SimContext):void;
   /** Path distance (u, wall penalties included) from p to the nearest live player on `playersField`; Infinity when unreachable or unbuilt. */
   costTo(p:Point):number;
+  /**
+   * The same steer for a body that collides by the hero rule whatever its radius (the boss, boss.ts clearSegment;
+   * cidade-05c v2): the hero-size `playersField` only, no size class, its straight chase and corner nudge by the hero
+   * rule. Shares this steer's fields (no extra build).
+   */
+  readonly hero:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
 };
 export interface CitySteerOptions {
   /** Within this distance (u) of its target, with a clear straight segment, an enemy goes straight. Default 6. */
@@ -126,6 +132,8 @@ export interface CitySteerOptions {
   grid?:FlowGrid;
   /** The city: builds every wide-body field now (reading the terrain, tens of ms) instead of on the first wide body. */
   terrain?:CityTerrain;
+  /** Every body steers like `CitySteer.hero` (the hero-size players field only, no size classes). Default false. */
+  heroOnly?:boolean;
 }
 /** Sampling step of the straight-segment check (maps world.ts clearSegment). */
 const SEGMENT_STEP=.08;
@@ -135,7 +143,8 @@ const SEGMENT_STEP=.08;
  * of ~0.44 u), and the
  * wider ones fit a two-cell street only along its middle line, which runs on cell corners; moveSafely keeps their whole
  * disc out of the walls, so a field that sends them there parks them. They follow the players field of their class
- * (WIDE_RADII: the smallest class ≥ the body, else the largest): on the cell centres and, from half a cell of radius,
+ * (WIDE_RADII: the smallest class ≥ the body, else the largest; where that class does not reach the body, the next
+ * smaller classes in turn, cidade-05c v2): on the cell centres and, from half a cell of radius,
  * also on the cell corners (the cheaper of the two at the body), a node being open iff the terrain clears a disc of the
  * class radius there. Its goals around each player are the open nodes of the smallest Chebyshev ring
  * (0..WIDE_GOAL_RING) that has any, so a player hugging a wall still has goals next to it (none: that player is out of
@@ -166,7 +175,9 @@ interface PlayersLayer {
  *    `playersField`, whose goals are the cells of the live players (online, not spectating, downed nor eliminated,
  *    hp > 0: the AI's chase targets), so bodies follow the streets to the team wherever it stands. A wide body
  *    (WIDE_FROM) follows its `widePlayersFields` class first where that reaches it, to its goal ring, then straight;
- *    where its class does not reach it, the hero-size `playersField` (the boss collides by the hero rule).
+ *    where its class does not reach it, the next smaller classes (cidade-05c v2: a gap one class too narrow still
+ *    keeps it on a field nearer its size), then the hero-size `playersField`. `hero` (the boss, which collides by the
+ *    hero rule) and opts.heroOnly skip the classes.
  *    In a player's cell → false (straight). Unreachable (or no live player) → the planner's flow (plaza, or the
  *    barricade that cut it off); zero → false.
  *    A players-field step that would clip a wall's end heads for the next cell's centre instead (NUDGE).
@@ -213,7 +224,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
       return layer(on,WIDE_GOAL_RING,Math.floor(every*slotOf(k,shift>0)/slots),Math.ceil(radius/cs)+1);
     });
   };
-  if(grid&&opts.terrain)for(let k=0;k<WIDE_RADII.length;k++)wide[k]=wideLayers(opts.terrain,k);
+  if(grid&&opts.terrain&&opts.heroOnly!==true)for(let k=0;k<WIDE_RADII.length;k++)wide[k]=wideLayers(opts.terrain,k);
   /**
    * Once per tick and field: build on the first call, then when a live player's cell changed, on ticks t with
    * (t − phase) a multiple of `every`; the phases spread the fields' rebuilds over different ticks.
@@ -291,9 +302,9 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     }
     return true;
   };
-  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>{
+  const run=(ctx:SimContext,e:EnemyState,target:Point,out:Point,hero:boolean)=>{
     if(e.memory?.retreat===1)return false;
-    const dx=target.x-e.x, dy=target.y-e.y, terrain=e.radius>WIDE_FROM?cityTerrainOf(ctx.terrain):undefined;
+    const dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(ctx.terrain):undefined;
     if(dx*dx+dy*dy<=range2&&clear(e,target,ctx.terrain)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
     if(narrow&&e.memory?.[SIEGE_FLAG]!==1&&isPlayer(ctx,target)){
       // cidade-05c: one fixed order, wherever the player stands (base or not): the body's own size-class field, then
@@ -303,16 +314,19 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
       // ping-ponged at the plaza goal's edge between the plaza flow, zero inside, and the players field).
       if(terrain){
         let k=0;while(k<WIDE_RADII.length-1&&WIDE_RADII[k]<e.radius)k++;
-        const ls=wide[k].length?wide[k]:wide[k]=wideLayers(terrain,k);
-        let best:FlowField|undefined, low=UNREACHABLE;
-        for(const l of ls){
-          update(ctx,l);
-          const c=l.field.costAt(e.x,e.y);
-          // In its goal ring: as close as it fits, the straight line from here.
-          if(c===0)return false;
-          if(c<low){low=c;best=l.field;}
+        // Its own class, then (where that does not reach it) each smaller class, before the hero-size field.
+        for(;k>=0;k--){
+          const ls=wide[k].length?wide[k]:wide[k]=wideLayers(terrain,k);
+          let best:FlowField|undefined, low=UNREACHABLE;
+          for(const l of ls){
+            update(ctx,l);
+            const c=l.field.costAt(e.x,e.y);
+            // In its goal ring: as close as it fits, the straight line from here.
+            if(c===0)return false;
+            if(c<low){low=c;best=l.field;}
+          }
+          if(best&&follow(best,e,out,ctx,terrain))return true;
         }
-        if(best&&follow(best,e,out,ctx,terrain))return true;
       }
       update(ctx,narrow);
       if(narrow.field.atGoal(e.x,e.y))return false;
@@ -321,7 +335,11 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     planner.directionFor(e,planner.targetFor(e),out);
     return out.x!==0||out.y!==0;
   };
+  const heroOnly=opts.heroOnly===true;
+  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,heroOnly);
+  const hero=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,true);
   return Object.defineProperties(steer,{
+    hero:{value:hero,enumerable:true},
     playersField:{get:()=>narrow?.field,enumerable:true},
     widePlayersFields:{get:()=>wide.map(ls=>ls.map(l=>l.field)),enumerable:true},
     refresh:{value:(ctx:SimContext)=>{if(narrow)update(ctx,narrow,true);},enumerable:true},

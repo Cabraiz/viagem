@@ -9,7 +9,7 @@ import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../ru
 import {createDirector,type Director} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
 import {createEnemyAi,type EnemyAi} from './enemies/ai.ts';
-import {BOSS_TUNING,createBoss,type BossController} from './boss.ts';
+import {createBoss,type BossController} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
@@ -108,9 +108,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
-  // City speeds (cidade-05c, city/speed.ts): every body the director or the boss creates gets its catalog speed
-  // converted to the city's profile (before the round's speed multiplier, which the director applies after creating).
-  // Island and endless keep the catalog speeds untouched.
+  // City speeds (cidade-05c v2, city/speed.ts): converted once, on the EFFECTIVE speed. The director's bodies are
+  // created at the catalog speed and the director converts catalog × plan.speed (DirectorOptions.speedMap); the boss
+  // converts its walk after the phase and enrage multipliers (BossOptions.speedMap); its minions, which no multiplier
+  // touches, here. Island and endless keep the catalog speeds untouched.
   const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
@@ -118,8 +119,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   });
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
-    // City (cidade-05c): the boss walks the streets on the players field of its size class, at the city speed.
-    ...(steer?{steer,tuning:{speed:citySpeed(BOSS_TUNING.speed)}}:{}),
+    // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
+    // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
+    ...(steer?{steer:steer.hero,speedMap:citySpeed}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
@@ -127,7 +129,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   director=createDirector({
     maxEnemies:MAX_ENEMIES,
     // Unknown kinds are skipped instead of throwing; elites are scaled by the director itself (D-010).
-    createEnemy:(ctx,kind,point,scale)=>isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
+    createEnemy:(ctx,kind,point,scale)=>isEnemyKind(kind)?createEnemy(ctx,kind,point,scale):undefined,
     spawnBoss:(ctx,point)=>boss.spawnBoss(ctx,point),
     onRoundEnd:(ctx,summary)=>{
       progression.grantRoundOffers(ctx,summary.index,summary.intermissionEndsTick);
@@ -136,8 +138,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
-    // City: the planner's arrival estimates at the converted speeds; groups aimed at a team away from the base.
-    ...(avenues?{avenues,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?citySpeed(enemyDef(kind).speed):undefined,...(steer?{cityChase:steer}:{})}:{}),
+    // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
+    // groups aimed at a team away from the base.
+    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{})}:{}),
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 

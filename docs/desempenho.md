@@ -31,6 +31,10 @@ quando atrasa, e atraso acima de 0,5 s é descartado (um tick e o relógio recom
   vitória no round 10, nível 23, muralha inteira, 46 de 52 forjas aceitas, nenhuma checagem falhou.
 - Tick da sala nessa run: p50 3 ms, p95 18 ms (VGM-045, máquina mais calma: p95 3 ms). A diferença é a máquina cheia,
   não o relógio: o custo por tick é o mesmo código.
+- Recuperação manda **um quadro por cliente por rajada** (os ticks de dentro da rajada só simulam e empilham eventos;
+  o quadro sai no último), e o relógio **para quando não sobra socket**: inclusive quando a própria sala corta celulares
+  mudos (sem rede o fechamento nunca volta e o relógio ficaria ligado até o alarme, ~230 GB-s por sala). Conferido no
+  `wrangler dev`: depois do smoke, `clock.fires` parado em 906 com 0 conexões. Smoke depois disso: 20,05 · 20,02 ticks/s.
 - Teste com relógio falso: `tests/tick-clock.test.ts` (atraso fixo de 2,5 ms → 1 199 ticks em 60 s, nenhum disparo
   duplo; atraso aleatório 0–20 ms por 10 min → 20 ticks/s, nunca dois disparos duplos seguidos; dívida > 0,5 s descartada).
 
@@ -112,10 +116,18 @@ Medido: run inteira com 6 jogadores = 967 s de sala ativa, 17 120 mensagens rece
 - Configurações → "Modo econômico": 30 fps (o portão de quadros do Phaser a 85% do período, para não cair a 20 fps num
   quadro de 60 Hz que chega cedo) e o orçamento de efeitos `reduced` da horda (números, estrelas, balões e barras).
   Salvo no aparelho com try/catch (`viagem:economia:v1`); sem armazenamento vale só na sessão.
-- **Liga sozinho**: em combate, depois de 8 s, duas janelas seguidas de 5 s abaixo de 40 fps. Mostra uma linha na faixa
-  de avisos do HUD ("Engasgou: modo econômico ligado." + Desligar), que some em 9 s e entra na conta de desviar do herói.
-  Desligar depois de ele ligar sozinho é lembrado: o vigia não liga de novo naquele aparelho (um toque na chave ainda liga).
-- No laboratório o vigia ligou sozinho 5,6–11,8 s depois do início da janela, todas as vezes (a cena anda a ~1 fps).
+- Na tela: título "Modo econômico", etiqueta à direita "Ligado" (Amarelo) ou "Desligado", e "Menos efeitos, jogo mais
+  leve: poupa bateria."; o item continua com cara de botão nos dois estados.
+- **Liga sozinho**: em combate, depois de 8 s, duas janelas seguidas de 5 s abaixo de 40 fps. Janelas que não provam
+  engasgo são jogadas fora (não contam nem quebram a sequência): qualquer pausa do rAF acima de 250 ms (cortina de
+  notificação, ligação, tela travada) ou a aba escondida em qualquer momento. rAF estável em ~30 Hz (Modo de Pouca Energia
+  do iOS) não é engasgo: zera a sequência, porque o modo econômico já desenharia a 30.
+- O aviso ("Modo econômico ligado" / "Tava engasgando", adesivo de 24 px, Desligar) entra na fila da faixa de avisos do
+  HUD: uma vaga só, depois dos avisos de queda, da kill-cam e da dica do treinador; um aviso de perigo toma a vaga e ele
+  volta depois com o tempo que faltava; fica 9 s na tela e entra na conta de desviar do herói.
+- Desligar depois de ele ligar sozinho é lembrado: o vigia não liga de novo naquele aparelho (um toque na chave ainda liga).
+- No laboratório o vigia **não** liga mais sozinho: a cena anda a ~1 fps, então toda janela tem pausa acima de 250 ms e é
+  descartada (o mesmo vale para um celular abaixo de ~4 fps: a chave continua lá). Os prints chamam o mesmo gancho da cena.
 - DPR: ver a seção 2 (o canvas já desenha em DPR 1; o HUD DOM fica nítido).
 
 ## 6. O que falta medir no celular (VGM-051)

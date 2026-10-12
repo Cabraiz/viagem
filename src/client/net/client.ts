@@ -85,8 +85,11 @@ function frameBase(bytes:Uint8Array){
 }
 const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
   spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
-/** A map switch (welcome or {t:'map'}) waiting for the city download: what arrives meanwhile is replayed after it, in order. */
-type MapWait={ws:WebSocket;queue:(object|ArrayBuffer)[];failed:boolean};
+/**
+ * A map switch (welcome or {t:'map'}) waiting for the city download: what arrives meanwhile is replayed after it, in
+ * order. `welcome`: the held message is a welcome (first join or reconnection), so the seat is not applied yet.
+ */
+type MapWait={ws:WebSocket;queue:(object|ArrayBuffer)[];failed:boolean;welcome:boolean};
 export class CoopClient {
   terrain=defaultTerrain;
   /**
@@ -236,7 +239,8 @@ export class CoopClient {
       if(ws!==this.socket)return;
       this.lastMessage=performance.now();this.lastSeenAt=Date.now();
       if(this.initialized&&this.goneAway(ws,this.lastMessage))return;
-      if(this.initialized&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
+      // A welcome held for the city download keeps the socket alive too (the room drops a seat silent for 12 s).
+      if((this.initialized||this.mapWait?.ws===ws)&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         // Waiting for the city: frames wait too (they are of the new map); a failed wait drops them (resync later).
@@ -293,17 +297,29 @@ export class CoopClient {
   }
   /**
    * Holds `m` (a welcome or a {t:'map'} of the city) and everything after it on this socket until the city is decoded,
-   * then handles them in order: the terrain is swapped before the next frame is read. A failed download keeps the seat
-   * (the selector and the news strip say so) and drops frames; the next switch or reconnection tries again.
+   * then handles them in order: the terrain is swapped before the next frame is read. A failed {t:'map'} download keeps
+   * the seat (the selector and the news strip say so) and drops frames; the next switch tries again. A failed download
+   * under a held welcome (first join or reconnection) ends here, with the download's text: there is no seat to keep.
+   *
+   * While a welcome waits (review cidade-09 F1) the heartbeat already runs (pings, so the room does not drop the seat
+   * at 12 s of silence) and the seat's id and token are kept at once: a socket lost meanwhile comes back to this seat
+   * with its token instead of joining as someone new.
    */
-  private waitForCity(ws:WebSocket,m:object,ref:MapRef&{bytes?:number}){
-    const wait:MapWait={ws,queue:[],failed:false};this.mapWait=wait;this.mapLoad={ref,progress:0};
+  private waitForCity(ws:WebSocket,m:{t?:unknown;id?:unknown;token?:unknown},ref:MapRef&{bytes?:number}){
+    const welcome=m.t==='welcome';
+    const wait:MapWait={ws,queue:[],failed:false,welcome};this.mapWait=wait;this.mapLoad={ref,progress:0};
+    if(welcome){
+      if(typeof m.id==='string'&&m.id)this.id=m.id;
+      if(typeof m.token==='string'&&m.token){this.token=m.token;this.saveToken();}
+      clearInterval(this.heartbeat);this.beatAt=performance.now();
+      this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
+    }
     void this.loadCity(ref,progress=>{if(this.mapWait===wait&&!wait.failed)this.mapLoad={ref,progress};}).then(error=>{
       if(this.mapWait!==wait||ws!==this.socket||this.stopped)return;
       if(error){
         wait.failed=true;wait.queue=[];this.mapLoad={ref,progress:0,failed:error};
-        // Not in the room yet (first join): nothing to keep, the lobby dialog says why.
-        if(!this.initialized){this.fail(ws,error);return;}
+        // A welcome (first join or reconnection): not in the room, nothing to keep; the lobby or the HUD says why.
+        if(welcome){this.mapWait=undefined;this.fail(ws,error);return;}
         this.onStatus(error);this.onNotice(error);return;
       }
       this.mapWait=undefined;this.mapLoad=undefined;
@@ -321,7 +337,7 @@ export class CoopClient {
     });
   }
   /** {t:'map'} (cidade-09): the room switched maps in the lobby; the new terrain replaces the old before the next frame. */
-  private switchMap(ws:WebSocket,m:{map?:unknown;world?:unknown}){
+  private switchMap(ws:WebSocket,m:{t?:unknown;map?:unknown;world?:unknown}){
     const map=this.roomMap(m,false);
     if(typeof map==='string'){this.fail(ws,map);return;}
     const city=this.cityToLoad(m.world);
@@ -472,10 +488,14 @@ export class CoopClient {
     ws.send(JSON.stringify(message));
     if(ws===this.socket)this.sentAt=performance.now();
   }
-  /** Nothing sent for KEEPALIVE_MS: an ack (or a ping before the first frame) from the message handler itself. */
+  /**
+   * Nothing sent for KEEPALIVE_MS: an ack (or a ping before the first frame, or while a welcome waits for the city: the
+   * last frame seq belongs to the previous connection) from the message handler itself.
+   */
   private keepalive(ws:WebSocket){
     if(ws.readyState!==WebSocket.OPEN)return;
-    if(this.ackSeq>0){this.ackSent=Math.max(this.ackSent,this.ackSeq);this.out(ws,{t:'ack',seq:this.ackSeq});}
+    const heldWelcome=this.mapWait?.ws===ws&&this.mapWait.welcome;
+    if(this.ackSeq>0&&!heldWelcome){this.ackSent=Math.max(this.ackSent,this.ackSeq);this.out(ws,{t:'ack',seq:this.ackSeq});}
     else this.out(ws,{t:'ping',at:performance.now()});
   }
   /** Standalone ack when no input carried it (events retire with it; frames are chained on the room side, N27). */

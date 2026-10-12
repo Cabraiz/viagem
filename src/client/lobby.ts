@@ -104,6 +104,26 @@ export const CITY_NOT_ARRIVED='A cidade não baixou.';
 export function mapLoadText(load:{progress:number;failed?:string}|undefined):string|undefined{
   return !load?undefined:load.failed?CITY_NOT_ARRIVED:downloadText(load.progress);
 }
+/**
+ * The ready button while the room's map is still downloading on this phone, or did not arrive (review cidade-09): it
+ * cannot be marked ready, so no countdown starts on a map this phone has not loaded. The text says why.
+ */
+export const READY_BLOCKED={downloading:'Baixando a cidade…',failed:'A cidade não baixou'} as const;
+export function readyBlock(load:{progress:number;failed?:string}|undefined):string|undefined{
+  return !load?undefined:load.failed?READY_BLOCKED.failed:READY_BLOCKED.downloading;
+}
+/**
+ * How long a join waits for the city manifest (counted from the lobby opening, review cidade-09): the lobby never
+ * blocks on it, and a manifest later than this leaves the city out of join.maps (the room then offers this phone the
+ * endless map only).
+ */
+export const MANIFEST_BUDGET_MS=1000;
+/** `promise`'s value if it settles within `ms`, else undefined (a rejection is undefined too). Never rejects. */
+export function within<T>(promise:Promise<T>,ms:number):Promise<T|undefined>{
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const late=new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),Math.max(0,ms));});
+  return Promise.race([promise.catch(()=>undefined),late]).finally(()=>clearTimeout(timer));
+}
 /** The map the selector shows as the room's: the one being downloaded (the room already switched), else the applied one. */
 export const roomMapId=(client:{map?:MapRef;mapLoad?:{ref:MapRef}}):MapId=>client.mapLoad?.ref.id??client.map?.id??DEFAULT_MAP;
 /** Lobby orientation, as coop.css and the HUD zones decide it (zones.ts orientationOf): landscape up to 500 px tall. */
@@ -331,8 +351,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
     // Ready players can still back out during the countdown (the server accepts it).
     readyButton.hidden=view.selfSpectator;
-    readyButton.disabled=!client.connected;
-    setText(readyButton,view.selfReady?'Ops, peraí':'Tô pronto!');
+    // The room's map still downloading here (or it did not arrive): no "pronto" (backing out stays possible).
+    const blocked=view.selfReady?undefined:readyBlock(load);
+    readyButton.disabled=!client.connected||!!blocked;
+    setText(readyButton,blocked??(view.selfReady?'Ops, peraí':'Tô pronto!'));
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
     readyButton.classList.toggle('is-ready',view.selfReady);
     if(armed&&!view.members.some(m=>m.id===armed!.id&&!m.self))armed=undefined;
@@ -382,10 +404,11 @@ export async function openLobby(hero:HeroClass,name:string){
   dialog.querySelector('.coop-close')!.addEventListener('click',cancel);
   dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
   // The city's manifest (a few bytes) rides along: its ref goes in join.maps (the 392 KB city only when a room picks it).
-  const [endpoint,cityRef]=await Promise.all([
-    fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined),
-    import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined),
-  ]);
+  // The lobby does not wait for it: a join takes it if it has arrived, waiting at most until MANIFEST_BUDGET_MS after
+  // the lobby opened (later, the join offers the endless map only).
+  const manifestBy=performance.now()+MANIFEST_BUDGET_MS;
+  const manifest=import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined);
+  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
   codeInput.value=new URL(location.href).searchParams.get('room')?.toUpperCase()??'';
@@ -400,6 +423,8 @@ export async function openLobby(hero:HeroClass,name:string){
       if(closed)return;
       if(!/^[A-F0-9]{10}$/.test(code))throw new Error('O código deve ter 10 letras e números.');
       const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
+      const cityRef=await within(manifest,manifestBy-performance.now());
+      if(closed)return;
       client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.onStatus=m=>{status.textContent=m;};await client.join();
       if(closed){client.leave();return;}
       const {openExploration}=await import('./explore.ts');dialog.close();dialog.remove();

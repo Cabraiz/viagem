@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as city from '../../src/client/hud/city/index.ts';
-import {soonMaps,mapNews,mapLoadText,roomMapId,syncSelector,besideSelector,lobbyOrientation,CITY_NOT_ARRIVED} from '../../src/client/lobby.ts';
+import {soonMaps,mapNews,mapLoadText,roomMapId,syncSelector,besideSelector,lobbyOrientation,readyBlock,within,CITY_NOT_ARRIVED,READY_BLOCKED,MANIFEST_BUDGET_MS} from '../../src/client/lobby.ts';
 import {readCityManifest,loadCity,CITY_FAILED} from '../../src/client/net/city-asset-loader.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,clientCatalog,MAP_TEXT,ROOM_PROTOCOL,UPDATE_NEEDED,type MapId,type MapRef} from '../../src/protocol/index.ts';
 import {TerrainField,TERRAIN_VERSION,CHUNK_VERSION,cityTerrainFrom,cityTerrainFor} from '../../src/maps/index.ts';
@@ -104,6 +104,43 @@ test('lobby helpers: news, download text, the room\'s map while downloading, ori
   assert.equal(roomMapId({map:INFINITO_REF,mapLoad:{ref:CITY_REF}}),'cidade-nevada','the room already switched: the selector follows it');
   assert.equal(lobbyOrientation({width:390,height:844}),'portrait');
   assert.equal(lobbyOrientation({width:844,height:390}),'landscape');
+});
+
+test('review: no "pronto" while the room\'s map downloads here or did not arrive (pt-BR reason on the button)',()=>{
+  assert.equal(readyBlock(undefined),undefined,'nothing downloading: the button is free');
+  assert.equal(readyBlock({progress:.4}),READY_BLOCKED.downloading);
+  assert.equal(READY_BLOCKED.downloading,'Baixando a cidade…');
+  assert.equal(readyBlock({progress:0,failed:CITY_FAILED}),READY_BLOCKED.failed);
+  // The lobby wires it: blocked (not ready yet) disables the button and puts the reason on it; backing out stays free.
+  const source=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
+  assert.match(source,/const blocked=view\.selfReady\?undefined:readyBlock\(load\);\s*readyButton\.disabled=!client\.connected\|\|!!blocked;/);
+  assert.match(source,/setText\(readyButton,blocked\?\?/);
+});
+
+test('review: the lobby does not wait on the city manifest (≤ 1 s budget, a late or broken one is left out)',async()=>{
+  assert.ok(MANIFEST_BUDGET_MS<=1000);
+  assert.equal(await within(Promise.resolve(7),0),7,'already there: taken even with no time left');
+  const start=performance.now();
+  assert.equal(await within(new Promise(()=>{}),30),undefined,'never arrives: undefined at the budget');
+  assert.ok(performance.now()-start<500,'the budget bounds the wait');
+  assert.equal(await within(Promise.reject(new Error('x')),30),undefined,'a failed fetch: undefined, never a throw');
+  assert.equal(await within(new Promise(r=>setTimeout(()=>r('late'),200)),20),undefined,'later than the budget: left out');
+  // openLobby: the manifest is started, not awaited, next to the endpoint; the join takes it within the budget.
+  const source=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
+  const open=source.slice(source.indexOf('export async function openLobby'));
+  assert.doesNotMatch(open,/Promise\.all\(\[\s*fetch\('\/multiplayer\.json'/,'the endpoint no longer waits for the manifest');
+  assert.match(open,/const cityRef=await within\(manifest,manifestBy-performance\.now\(\)\);/);
+});
+
+test('review (a11y): the portrait hint that says "em breve" is a polite live region, rewritten only when it changes',()=>{
+  const source=readFileSync(new URL('../../src/client/hud/city/map-selector.ts',import.meta.url),'utf8');
+  assert.match(source,/hint\.setAttribute\('aria-live','polite'\)/);
+  assert.doesNotMatch(source,/hint\.hidden=/,'never display:none: a live region shown together with its text is not announced');
+  assert.match(source,/if\(hint\.dataset\.key!==hintKey\)/);
+  const css=readFileSync(new URL('../../src/client/hud/city/city-hud.css',import.meta.url),'utf8');
+  assert.match(css,/\.ch-selector-hint\.is-empty\{min-height:0;margin:0\}/);
+  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps()};
+  assert.equal(city.selectorView(step(owner,{type:'tap',map:'cidade-nevada',nowMs:0}).state,'portrait').hint,CITY_SOON);
 });
 
 test('syncSelector follows the room: owner, countdown lock, connection, map (pending confirmed) and download',()=>{
@@ -238,6 +275,74 @@ test('a city download that fails keeps the seat: selector text + notice, frames 
   assert.equal(client.fatal,CITY_FAILED);
 });
 
+/** sessionStorage that records what the client saves (the seat token), restored after the test. */
+function recordStorage(){
+  const before=(globalThis as any).sessionStorage,store=new Map<string,string>();
+  (globalThis as any).sessionStorage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);},removeItem:(k:string)=>{store.delete(k);}};
+  return {store,restore:()=>{(globalThis as any).sessionStorage=before;}};
+}
+
+// Review C2/F1: the room drops a seat silent for 12 s and the city may take 30 s.
+test('review F1: a welcome held for the city keeps the socket alive and the seat; a lost socket comes back with the token',async()=>{
+  assert.equal(cityTerrainFor(CITY_REF.hash!),undefined,'the city is not decoded yet');
+  const storage=recordStorage();
+  try{
+    const client=new CoopClient('http://sala','ABCDEF1234','Bia','cidadao-comum');client.cityRef=CITY_REF;
+    let release!:(error:string|undefined)=>void;const download=new Promise<string|undefined>(r=>{release=r;});
+    let calls=0;client.loadCity=()=>{calls++;return download;};
+    const joining=client.join();joining.catch(()=>{});await sleep(5);
+    const ws=FakeSocket.all.at(-1)!;
+    ws.push({t:'welcome',protocol:ROOM_PROTOCOL,id:'p2',token:'tok2',tick:0,run:RUN,world:CITY_WORLD,map:CITY_REF});
+    assert.equal(client.connected,false,'not applied before the city is there');
+    assert.equal(client.token,'tok2','the seat token is kept at once');assert.equal(client.id,'p2');
+    assert.equal(JSON.parse(storage.store.get('viagem:room:ABCDEF1234')!).token,'tok2','and saved, so a reload keeps the seat');
+    // The heartbeat runs while the welcome waits: a ping well inside the room's 12 s.
+    await sleep(2300);
+    assert.ok(ws.sent.some(m=>m.t==='ping'),JSON.stringify(ws.sent.map(m=>m.t)));
+    // A frame after KEEPALIVE_MS without sending answers with a ping (no ack of a frame not applied).
+    (client as any).sentAt=-1e9;const before=ws.sent.length;
+    ws.push(new ArrayBuffer(4));
+    assert.deepEqual(ws.sent.slice(before).map(m=>m.t),['ping']);
+    // The socket dies mid-download: the retry joins with the token (same seat, no ghost).
+    ws.close(1006);await sleep(700);
+    const ws2=FakeSocket.all.at(-1)!;
+    assert.notEqual(ws2,ws);
+    assert.equal(ws2.sent[0].t,'join');assert.equal(ws2.sent[0].token,'tok2');
+    ws2.push({t:'welcome',protocol:ROOM_PROTOCOL,id:'p2',token:'tok2',tick:0,run:RUN,world:CITY_WORLD,map:CITY_REF});
+    assert.equal(calls,2,'the second welcome waits on the same download');
+    // The download fails: the join ends with the download's text and the socket closes, no limbo.
+    release(CITY_FAILED);
+    await assert.rejects(joining,(e:Error)=>e.message===CITY_FAILED);
+    await sleep(20);
+    assert.equal(client.fatal,CITY_FAILED);assert.equal(client.connected,false);assert.equal(ws2.readyState,FakeSocket.CLOSED);
+    const sockets=FakeSocket.all.length;await sleep(700);
+    assert.equal(FakeSocket.all.length,sockets,'no retry after the failure');
+  }finally{storage.restore();}
+});
+
+// Review C1/F2: a reconnection into a city room whose download fails used to stay not connected, not fatal, socket open.
+test('review F2: reconnecting into a city room whose download fails ends clearly (fatal, closed), never in limbo',async()=>{
+  assert.equal(cityTerrainFor(CITY_REF.hash!),undefined,'the city is not decoded yet');
+  const {client,ws,joining}=await joined({cityRef:CITY_REF,welcome:{map:INFINITO_REF}});await joining;
+  client.loadCity=async()=>{await sleep(5);return CITY_FAILED;};
+  (client as any).ackSeq=5;
+  const n=FakeSocket.all.length;
+  ws.close(1006);await sleep(700);
+  assert.equal(FakeSocket.all.length,n+1,'one reconnection');
+  const ws2=FakeSocket.all.at(-1)!;
+  assert.equal(ws2.sent[0].token,'tok');
+  ws2.push({t:'welcome',protocol:ROOM_PROTOCOL,id:'p1',token:'tok',tick:0,run:RUN,world:CITY_WORLD,map:CITY_REF});
+  // While it waits, a keepalive is a ping, never an ack of the old connection's frame.
+  (client as any).sentAt=-1e9;const before=ws2.sent.length;ws2.push(new ArrayBuffer(4));
+  assert.deepEqual(ws2.sent.slice(before).map(m=>m.t),['ping']);
+  await sleep(50);
+  assert.equal(client.connected,false);assert.equal(client.fatal,CITY_FAILED,'the download text, terminal');
+  assert.equal(ws2.readyState,FakeSocket.CLOSED,'the socket is closed');
+  const count=FakeSocket.all.length;await sleep(700);
+  assert.equal(FakeSocket.all.length,count,'no retry loop');
+  client.leave();
+});
+
 test('{t:"map"} to the city: frames wait for the download, the terrain is swapped before the next frame, order kept',async()=>{
   const {client,ws,frames,joining}=await joined({cityRef:CITY_REF});await joining;
   const text=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
@@ -273,4 +378,26 @@ test('loadCity: a refused or wrong download says so and is not cached; progress 
   const progress:number[]=[];
   assert.equal(await loadCity({...CITY_REF,bytes:MANIFEST.bytes},p=>progress.push(p),async()=>new Response(text)),undefined);
   assert.ok(progress.length>=1&&progress.at(-1)===1&&progress.every((p,i)=>i===0||p>=progress[i-1]),JSON.stringify(progress));
+});
+
+// Review F6: a second caller of the running download got no progress.
+test('loadCity: every caller waiting on the running download gets its progress',async()=>{
+  const ref={...CITY_REF,hash:'1'.repeat(64),bytes:12};
+  let push!:(chunk:Uint8Array|null)=>void;
+  const body=new ReadableStream<Uint8Array>({start(c){push=chunk=>{if(chunk)c.enqueue(chunk);else c.close();};}});
+  let fetches=0;const fetcher=async()=>{fetches++;return new Response(body);};
+  const first:number[]=[],second:number[]=[],late:number[]=[];
+  const a=loadCity(ref,p=>first.push(p),fetcher);
+  const b=loadCity(ref,p=>second.push(p),fetcher);
+  await sleep(5);
+  push(new TextEncoder().encode('{"a":'));await sleep(5);
+  const c=loadCity(ref,p=>late.push(p),fetcher);
+  push(new TextEncoder().encode('1}'));await sleep(5);push(null);
+  const results=await Promise.all([a,b,c]);
+  assert.equal(fetches,1,'one download');
+  assert.deepEqual(results,[CITY_FAILED,CITY_FAILED,CITY_FAILED],'the wrong hash fails for everyone');
+  assert.ok(first.length>=2,JSON.stringify(first));
+  assert.deepEqual(second,first,'the second caller sees the same progress');
+  assert.equal(late[0],first[0],'a late caller gets the fraction reached at once');
+  assert.deepEqual(late,first,'then the rest');
 });

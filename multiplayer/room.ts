@@ -1,6 +1,6 @@
 import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,type CityTerrain} from '../src/maps/index.ts';
 import {Simulation,DEFAULT_WORLD,worldDescriptor} from './simulation.ts';
-import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,isMapId,playersMissingMap,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
+import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
 import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
@@ -92,13 +92,18 @@ export interface RoomRoster {
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
+/** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
+const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
 /** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
 const BOT_CLASSES=classes.map(c=>c.id);
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
 export const OWNER_GAP_MS=300;
-/** A roster change that is only about bots is written at most this often (ms); the room tick flushes it. */
+/**
+ * A roster change that is only about bots or the map (the owner adding/removing bots, picking maps) is written at most
+ * this often (ms); the room tick (and a socket end) flushes the last one.
+ */
 export const ROSTER_BOTS_MS=1000;
 /**
  * The second sign of a kicked seat (D-025): the name, lower case, without accents, spaces or punctuation. The token is
@@ -236,6 +241,10 @@ export class Room {
   private readonly catalogs=new Map<string,MapCatalog|undefined>();
   /** A city switch waiting for the asset to decode (its first use in this isolate); see ready(). */
   private switching?:Promise<void>;
+  /** The map that waiting switch goes to: the owner's last pick, which a newer pick compares against (and cancels). */
+  private target?:MapRef;
+  /** Bumped by every switch: a waiting switch that finds a newer one when its decode lands gives way to it. */
+  private mapGen=0;
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.bots.state();
@@ -298,9 +307,13 @@ export class Room {
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
     // D-035: the map the owner had picked; a city this room cannot play now comes back as the endless map (logged).
     const kept=roster.map===undefined||this.openMap(roster.map,'restore');
-    this.syncSpectators();const restored=this.roster();this.rosterKey=JSON.stringify(restored);this.rosterCore=JSON.stringify({...restored,bots:undefined,botsAdded:undefined});this.rosterDirty=false;
+    this.syncSpectators();const restored=this.roster();
+    // Keyed as the stored row reads (it may still name a city that is decoding): a decode that lands writes nothing
+    // new, while one that fails (or a newer pick of the endless map) differs from it and rewrites the row.
+    const stored=roster.map!==undefined&&roster.map!==this.map.id?{...restored,map:roster.map}:restored;
+    this.rosterKey=JSON.stringify(stored);this.rosterCore=rosterCore(restored);this.rosterDirty=false;
     // The stored row still names the city: rewrite it on the next flush.
-    if(!kept){this.rosterKey='';this.rosterDirty=true;}
+    if(!kept)this.rosterDirty=true;
   }
   /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
   private rosterDirty=false;
@@ -310,9 +323,10 @@ export class Room {
     if(!this.onRoster||!this.rosterDirty)return;
     const roster=this.roster(),key=JSON.stringify(roster);
     if(key===this.rosterKey){this.rosterDirty=false;return;}
-    // Only the bots changed (the owner adding or removing them, D-025): at most one row a second; the tick flushes the
-    // rest. Seats, kicks, leaves and runs are written at once.
-    const core=JSON.stringify({...roster,bots:undefined,botsAdded:undefined});
+    // Only the bots or the map changed (the owner adding or removing bots, D-025, or picking maps, D-035): at most one
+    // row a second; the tick (or the next socket end) flushes the last one. Seats, kicks, leaves and runs are written
+    // at once, and they carry the map and bots as they are then.
+    const core=rosterCore(roster);
     if(core===this.rosterCore&&now-this.rosterWrittenAt<ROSTER_BOTS_MS)return;
     this.rosterDirty=false;this.rosterKey=key;this.rosterCore=core;this.rosterWrittenAt=now;this.perf.rosterWrites++;
     try{this.onRoster(roster);}catch{}
@@ -342,8 +356,9 @@ export class Room {
       // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
       const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);
       if(banned!==undefined){this.sendKicked(peer,banned,now);return;}
-      // D-026: the room's map must be one this build ships (same version and hash); `maps` absent = an older client.
-      const maps=checkJoinMaps(m.maps,this.map);
+      // D-026: the room's map must be one this build ships (same version and hash). A build that sends no `maps`
+      // (deployed before D-035) ships the endless map only: refused on the city, and its catalog says so afterwards.
+      const maps=checkJoinMaps(m.maps===undefined?clientCatalog(undefined):m.maps,this.map);
       if(!maps.ok){this.reject(peer,maps.text,now);return;}
       let session:Session|undefined;
       if(m.token!==undefined){
@@ -490,48 +505,63 @@ export class Room {
   }
   /**
    * {t:'setMap',map} (D-026/D-035): the owner picks the map in the lobby. Throttled like the other owner commands; the
-   * locked city answers CITY_SOON; then validateSetMap (owner, lobby, catalog). A switch to the current map changes
-   * nothing; one that a seated person's build cannot load is refused with their names.
+   * locked city answers CITY_SOON; then validateSetMap (owner, lobby, catalog). The pick is compared with where the
+   * room is going (a city still decoding counts as picked): the same map changes nothing; another one supersedes the
+   * waiting switch, so the room ends on the owner's last pick. One that a connected person's build cannot load is
+   * refused with their names.
    */
   private setMap(c:Connection,m:unknown,rawLength:number,now:number){
     if(c.ownerAt!==undefined&&now>=c.ownerAt&&now-c.ownerAt<OWNER_GAP_MS)return;
     c.ownerAt=now;
     if((m as {map?:unknown}).map==='cidade-nevada'&&!this.catalog().has('cidade-nevada')){this.notice(c,CITY_SOON);return;}
-    const check=validateSetMap(m,{rawLength,senderId:c.playerId,ownerId:this.owner,phase:this.run.snapshot().phase,current:this.map,catalog:this.catalog()});
+    const check=validateSetMap(m,{rawLength,senderId:c.playerId,ownerId:this.owner,phase:this.run.snapshot().phase,current:this.target??this.map,catalog:this.catalog()});
     if(!check.ok){this.notice(c,check.text);return;}
     if(!check.changed||this.missing(c,check.map))return;
     this.switchTo(check.map,c);
   }
-  /** Seated people whose build cannot load `ref`: the owner hears their names and true comes back (no switch). */
+  /**
+   * Connected people whose build cannot load `ref`: the owner hears their names and true comes back (no switch).
+   * Only connected people count: their catalog came with this connection's join. A seat that is away (a dropped
+   * phone, or every seat right after a restart, whose catalogs were never stored) is checked again by checkJoinMaps
+   * when it comes back, and refused with the update text then if its build lacks the map; it never blocks the owner.
+   */
   private missing(c:Connection,ref:MapRef){
-    const names=playersMissingMap(ref,[...this.sessions.keys()].map(id=>[id,this.catalogs.get(id)] as const)).map(id=>this.sim.players.get(id)?.name??id).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+    const online=new Map<string,MapCatalog|undefined>();
+    for(const other of this.connections.values())if(other.playerId&&this.catalogs.has(other.playerId))online.set(other.playerId,this.catalogs.get(other.playerId));
+    const names=playersMissingMap(ref,online).map(id=>this.sim.players.get(id)?.name??id).sort((x,y)=>x.localeCompare(y,'pt-BR'));
     if(names.length)this.notice(c,mapMissingText(names));
     return names.length>0;
   }
   /**
-   * Switches to `ref`: the endless map at once; the city at once when this isolate already decoded it, else after its
-   * asset decodes (sha256 checked), queued behind any switch still waiting. `from` (the owner's connection) is checked
-   * again after the wait: a countdown that started, an owner who left or a person who joined without the map cancel it.
+   * Switches to `ref`, superseding any switch still waiting (only the newest pick applies): the endless map at once;
+   * the city at once when this isolate already decoded it, else after its asset decodes (sha256 checked). `from` (the
+   * owner's connection) is checked again after the wait: a countdown that started, an owner who left or a person who
+   * joined without the map cancel it. A decode that fails leaves the room where it is and its roster row rewritten
+   * (a restored row may still name the city).
    */
   private switchTo(ref:MapRef,from?:Connection){
+    const gen=++this.mapGen;this.rosterDirty=true;
     const city=ref.id==='cidade-nevada';
     const cached=city&&ref.hash?cityTerrainFor(ref.hash):undefined;
-    if(!this.switching&&(!city||cached)){this.applyMap(ref,cached);return;}
+    if(!city||cached){this.target=undefined;if(!sameMap(ref,this.map))this.applyMap(ref,cached);return;}
+    this.target=ref;
     const prev=this.switching,text=this.cityText;
     const job=(async()=>{
       try{
         await prev;
-        let terrain:CityTerrain|undefined;
-        if(city){
-          const decoded=text!==undefined&&ref.hash?await cityTerrainFrom(text,ref.hash):undefined;
-          if(!decoded?.ok){this.logMap({failed:ref.id,error:decoded?.error.slice(0,80)??'no asset'});if(from)this.notice(from,MAP_TEXT.unknown);return;}
-          terrain=decoded.terrain;
+        const decoded=text!==undefined&&ref.hash?await cityTerrainFrom(text,ref.hash):undefined;
+        // A newer pick came while this one decoded: it already decided (or will), this one gives way silently.
+        if(gen!==this.mapGen)return;
+        this.target=undefined;
+        if(!decoded?.ok){
+          this.logMap({failed:ref.id,error:decoded?.error.slice(0,80)??'no asset'});if(from)this.notice(from,MAP_TEXT.unknown);
+          this.rosterDirty=true;this.flushRoster(Date.now());return;
         }
         if(sameMap(ref,this.map))return;
         if(this.run.snapshot().phase!=='lobby'){if(from)this.notice(from,MAP_TEXT.lobbyOnly);return;}
         if(from&&(this.connections.get(from.peer)!==from||from.playerId!==this.owner||this.missing(from,ref)))return;
-        this.applyMap(ref,terrain);this.flushRoster(Date.now());
-      }catch(error){this.logMap({failed:ref.id,error:String(error).slice(0,80)});}
+        this.applyMap(ref,decoded.terrain);this.flushRoster(Date.now());
+      }catch(error){if(gen===this.mapGen)this.target=undefined;this.logMap({failed:ref.id,error:String(error).slice(0,80)});}
     })();
     this.switching=job;
     void job.then(()=>{if(this.switching===job)this.switching=undefined;});
@@ -680,12 +710,14 @@ export class Room {
   /** The socket's close (or error) event, from the Durable Object: one log line, and the seat waits GRACE_MS. */
   closed(peer:Peer,end:{by?:'client'|'error';code?:number;reason?:string;clean?:boolean}={},now=Date.now()){
     this.logClose(this.connections.get(peer),end.by??'client',end.code??null,end.reason??'',end.clean??null,now);
-    this.disconnect(peer,now);
+    // The last socket's end stops the room's clock (worker.ts): write now, so a map or bots row still waiting on
+    // ROSTER_BOTS_MS, and this seat's grace, survive a restart.
+    this.disconnect(peer,now);this.flushRoster(now);
   }
   /** The Durable Object ends a socket itself (a binary message, the alarm): one log line, the seat waits, closed. */
   close(peer:Peer,code:number,reason:string,now=Date.now()){
     this.logClose(this.connections.get(peer),'room',code,reason,null,now);
-    this.disconnect(peer,now);peer.close(code,reason);
+    this.disconnect(peer,now);peer.close(code,reason);this.flushRoster(now);
   }
   /** One closeLogLine for this socket end (nothing without a log sink: tests and the lab stay quiet). */
   private logClose(c:Connection|undefined,by:CloseLog['by'],code:number|null,reason:string,clean:boolean|null,now:number){

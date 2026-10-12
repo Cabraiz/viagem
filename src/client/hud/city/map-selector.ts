@@ -126,7 +126,9 @@ export function mountMapSelector(host:HTMLElement,opts:MapSelectorOptions):{upda
   void cityHudCss().then(()=>{root.hidden=false;});
   const group=doc.createElement('div');group.className='ch-selector-group';group.setAttribute('role','radiogroup');group.setAttribute('aria-label',SELECTOR_TEXT.label);
   const crown=doc.createElement('span');crown.className='ch-selector-crown';crown.innerHTML=icon('coroa');
-  const hint=doc.createElement('p');hint.className='ch-selector-hint';
+  // The hint is a polite live region (the owner's tap on "em breve" says why there): it stays in the tree, empty and
+  // collapsed when there is nothing to say, so a new text is announced; it is only rewritten when the text changes.
+  const hint=doc.createElement('p');hint.className='ch-selector-hint is-empty';hint.setAttribute('aria-live','polite');hint.setAttribute('aria-atomic','true');
   root.append(crown,group,hint);host.append(root);
   let state=opts.state,orientation=opts.orientation,owner:boolean|undefined,lastHint:string|undefined;
   let timer:ReturnType<typeof setTimeout>|undefined,timerFor:number|undefined;
@@ -165,8 +167,13 @@ export function mountMapSelector(host:HTMLElement,opts:MapSelectorOptions):{upda
       if(small.textContent!==(v.subtitle??''))small.textContent=v.subtitle??'';
       small.hidden=!v.subtitle;
     }
-    hint.innerHTML=view.hint?`${!s.canManage&&!s.locked&&!s.failed&&!s.notice?icon('coroa'):''}<span></span>`:'';
-    hint.querySelector('span')?.append(view.hint??'');hint.hidden=!view.hint;
+    const crowned=!!view.hint&&!s.canManage&&!s.locked&&!s.failed&&!s.notice,hintKey=view.hint?`${crowned?'+':'-'}${view.hint}`:'';
+    if(hint.dataset.key!==hintKey){
+      hint.dataset.key=hintKey;
+      hint.innerHTML=view.hint?`${crowned?icon('coroa'):''}<span></span>`:'';
+      hint.querySelector('span')?.append(view.hint??'');
+    }
+    hint.classList.toggle('is-empty',!view.hint);
     // Landscape: a new hint goes to the room's line (it has no line of its own).
     if(o==='landscape'&&view.hint&&view.hint!==lastHint)opts.onHint?.(view.hint);
     lastHint=view.hint;

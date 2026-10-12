@@ -34,18 +34,30 @@ export function loadCityManifest(fetcher:Fetch=(u,i)=>fetch(u,i)):Promise<(MapRe
   return manifest;
 }
 
-const cities=new Map<string,Promise<string|undefined>>();
+/** A running download: its promise, everyone waiting for its progress, and the last fraction (a late caller starts there). */
+type Download={job:Promise<string|undefined>;listeners:Set<(fraction:number)=>void>;progress:number};
+const cities=new Map<string,Download>();
 /**
  * Downloads and decodes the city of `ref`; resolves undefined when `cityTerrainFor(ref.hash)` is ready, or the text why
- * not. `onProgress` gets 0..1 (bytes read over the manifest's size). One download per hash at a time; a failure is not
- * kept, so the next switch or reconnection tries again.
+ * not. `onProgress` gets 0..1 (bytes read over the manifest's size). One download per hash at a time: a second caller
+ * joins the running one and gets its progress too (from the fraction already reached). A failure is not kept, so the
+ * next switch or reconnection tries again.
  */
 export function loadCity(ref:MapRef&{bytes?:number},onProgress:(fraction:number)=>void=()=>{},fetcher:Fetch=(u,i)=>fetch(u,i)):Promise<string|undefined>{
   const hash=ref.hash;
   if(!hash)return Promise.resolve(CITY_FAILED);
   const running=cities.get(hash);
-  if(running)return running;
-  const job=(async()=>{
+  if(running){
+    running.listeners.add(onProgress);
+    if(running.progress>0)onProgress(running.progress);
+    return running.job;
+  }
+  const download:Download={job:Promise.resolve(undefined),listeners:new Set([onProgress]),progress:0};
+  const report=(fraction:number)=>{
+    download.progress=fraction;
+    for(const listener of download.listeners){try{listener(fraction);}catch{/* one caller's view never stops the others */}}
+  };
+  download.job=(async()=>{
     try{
       const response=await fetcher(CITY_ASSET_URL,{signal:AbortSignal.timeout(CITY_TIMEOUT_MS)});
       if(!response.ok)return CITY_FAILED;
@@ -59,17 +71,18 @@ export function loadCity(ref:MapRef&{bytes?:number},onProgress:(fraction:number)
           const {done,value}=await reader.read();
           if(done)break;
           read+=value.byteLength;parts.push(decoder.decode(value,{stream:true}));
-          if(total>0)onProgress(Math.min(.99,read/total));
+          if(total>0)report(Math.min(.99,read/total));
         }
         parts.push(decoder.decode());text=parts.join('');
       }
       const decoded=await cityTerrainFrom(text,hash);
       if(!decoded.ok)return CITY_FAILED;
-      onProgress(1);
+      report(1);
       return undefined;
     }catch{return CITY_FAILED;}
   })();
-  cities.set(hash,job);
-  void job.then(error=>{if(error)cities.delete(hash);});
-  return job;
+  cities.set(hash,download);
+  // Done either way: nobody listens any more; a failure leaves room for the next try, a success stays (decoded already).
+  void download.job.then(error=>{download.listeners.clear();if(error&&cities.get(hash)===download)cities.delete(hash);});
+  return download.job;
 }

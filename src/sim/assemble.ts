@@ -15,7 +15,7 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
-import {refreshStats} from '../rules/index.ts';
+import {SCALE_PROFILES,refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
@@ -108,6 +108,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
+    // Caps action paces (the Tio's charge) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
+    // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
+    heroSpeed:steer?SCALE_PROFILES['cidade-nevada'].hero.speed:SCALE_PROFILES.infinito.hero.speed,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });

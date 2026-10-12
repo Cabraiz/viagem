@@ -111,12 +111,26 @@ export const ELITE:EliteDef=Object.freeze({
 });
 
 /**
+ * Orquestrador rule (BUG-20261012-E6-cidade-velocidades-relativas): no enemy-ai step (walk, zig-zag, approach, back-off,
+ * strafe or the Tio's charge) takes an enemy above ACTION_PEAK_MAX × the walking speed of the heroes of its world, and an
+ * action's warning gives the hero time to step out (≥ 0.8 s, MIN_TELEGRAPH_TICKS). Enemy speeds are converted per world
+ * (the city's 1.99 u/s hero vs the endless 3.1; city pombos walk 3.45 u/s), so enemy-ai moves at
+ * min(speed × pace, heroSpeed × ACTION_PEAK_MAX), slows on top. The endless world never reaches it (fastest: pombos 2.7 < 3.565).
+ * The boss (boss.ts) and retreating enemies (director.ts) move outside enemy-ai.
+ */
+export const ACTION_PEAK_MAX=1.15;
+/**
  * Hostile "boleto com juros" of the agiota (source 'boleto-juros', NOT 'boleto', which is a player weapon). Projectile
  * speed is in world units per second; pierce 0 like every hostile shot (D-012). `marks` rides on the projectile (D-002):
  * projectiles.ts collideHostile marks the player it hurts (DEVENDO).
  */
 export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5,radius:.18,damage:7,life:ticks(3),cooldown:ticks(3),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
-/** Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35). */
+/**
+ * Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35).
+ * The joke is the warning (BUG-20261012-E6-cidade-velocidades-relativas): when it starts he locks the charge on the
+ * player's position then and draws it as an 'investida' line (0 damage) that lasts the `pause`; the charge runs that
+ * line without homing, at `chargeSpeed` × his speed capped by ACTION_PEAK_MAX, so a hero who walks out of it is safe.
+ */
 export const TIO_JOKE=Object.freeze({range:2.4,pause:ticks(1.6),charge:ticks(1.2),chargeSpeed:2.6,cooldown:ticks(6),shove:1.3,bump:.45});
 /**
  * Bêbado's burp: a cone telegraph (apex at him, aimed at the player) when a player stands within `trigger` in front of

@@ -701,7 +701,9 @@ export class FrameEncoder {
       if(p.sentTick!==undefined||this.relevant(p,focus,view.players))return true;
       this.stats.droppedEvents++;return false;
     });
-    const due=this.pending.filter(p=>p.sentTick===undefined||view.tick-p.sentTick>=this.resendTicks);
+    // Chained frames on an ordered link: a frame sent was decoded, or the client asks for a resync (which clears
+    // sentTick), so an event goes once and again only after a resync. Acked baselines resend after resendTicks.
+    const due=this.pending.filter(p=>p.sentTick===undefined||(!this.chain&&view.tick-p.sentTick>=this.resendTicks));
     w.uvar(due.length);
     let last=0;
     for(const p of due){

@@ -825,3 +825,22 @@ test('N27 farEvery: critters off every legal screen go every other frame, on scr
   assert.ok(far.includes(0)&&far.includes(1),'off screen: held on some frames, exact on the others');
   assert.equal(far.filter(x=>x===1).length,20*5,'new on the first frame, then on the even ones (4 of the other 7)');
 });
+
+test('N27 chained frames: an event goes once, never again every 5 s; a resync sends the unacked ones again',()=>{
+  const w=busyWorld(new Rng(14),20);
+  const enc=new FrameEncoder(new WireIds(),{chain:true}),dec=new FrameDecoder();
+  enc.pushEvents([{type:'levelup',level:3}]);w.view.tick++;
+  const r0=dec.decode(enc.encode(w.view));assert.ok(r0.ok&&r0.view.events.some(e=>e.type==='levelup'));
+  // 20 s of frames with no ack at all: each frame's event block is the empty count (1 byte). The old rule resent
+  // the event every 5 s.
+  const before=enc.stats.eventBytes;
+  for(let i=0;i<200;i++){w.view.tick+=2;assert.ok(dec.decode(enc.encode(w.view)).ok);}
+  assert.equal(enc.stats.eventBytes-before,200,'no event bytes on a chained, ordered link');
+  assert.equal(enc.pendingEvents,1,'still pending until acked');
+  const plain=new FrameEncoder(new WireIds());plain.pushEvents([{type:'levelup',level:3}]);
+  const b0=plain.stats.eventBytes;for(let i=0;i<200;i++){w.view.tick+=2;plain.encode(w.view);}
+  assert.ok(plain.stats.eventBytes-b0>200+3*4,'acked baselines still resend every 5 s');
+  enc.resync();w.view.tick+=2;
+  const fresh=new FrameDecoder(),r=fresh.decode(enc.encode(w.view));
+  assert.ok(r.ok&&r.view.events.some(e=>e.type==='levelup'),'after a resync it goes again');
+});

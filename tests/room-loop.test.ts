@@ -98,10 +98,10 @@ test('N27: a slow phone that went quiet for good still stops the clock, within S
   const {o,room}=object();
   const a=join(o,room,'Tia lenta');
   const t0=Date.now(),c=[...room.connections.values()][0];
-  // Its acks came 30 s late and 20 s apart: the room learned it is slow, not gone.
+  // Its acks kept naming frames 30 s old: the room learned it is slow, not gone.
   for(let i=1;i<=3;i++){room.advance(t0+i*100);}
   room.receive(c.peer,JSON.stringify({t:'ack',seq:c.encoder!.lastSeq}),t0+20_000);
-  c.lag=30_000;
+  c.lag=30_000;c.lateAcks=3;
   room.advance(t0+20_000+40_000);
   assert.equal(a.closed,undefined,'40 s of silence after 20 s gaps and a 30 s lag: still slow, not gone');
   assert.equal(o.loop.active,true);

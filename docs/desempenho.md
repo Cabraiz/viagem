@@ -180,9 +180,16 @@ O que mudou:
   (`board/evidence/NEW-20261012-N25-peso-e-rede/comparacao-*.png`). Resolução cheia de propósito: metade do tamanho
   pesaria 11% mas mudaria o desenho (e fecharia a porta do DPR 2). Teste: toda árvore e classe tem cópia feita do
   arquivo aprovado como ele está agora (`tests/art-lite.test.ts`; importou arte nova, rode `node scripts/art-lite.mjs`).
+  **O CI não gera as cópias, de propósito**: elas vão commitadas e o teste confere o hash do original e da cópia;
+  gerar no build deixaria o servidor de dev diferente do site e poria o sharp no caminho de cada deploy.
 - **Só o que o 1º quadro precisa segura a cena**: chão, a folha do próprio herói, o retratinho dele (256 px, não o
   retrato de 1024 que era o "boneco provisório"), os ícones só das classes que estão na sala (não as 36; quem chega
   depois tem o seu buscado na hora) e as árvores da largada. As folhas dos colegas vêm logo depois do 1º quadro.
+- **Colega de classe nova**: até o ícone dele chegar aparece uma silhueta (Breu 55%), nunca um vazio; o ícone e a
+  folha dele são pedidos na hora, à frente das árvores além da tela. Sequência em
+  `evidence/NEW-20261012-N25-peso-e-rede/chegando-{1-antes,2-durante,3-depois}.png`.
+- **Cópia que não carrega cai para o original** (`/art/lite/…` → `/art/…`), conferido no navegador bloqueando uma
+  cópia de árvore.
 - **Árvores além da tela em segundo plano**: o anel de chunks além da tela pedia ~30 folhas junto com as da tela e
   as dos colegas (no 4G as folhas dos colegas chegavam ~15 s depois). Agora elas vão uma de cada vez, só quando nada
   mais carrega, só em combate (na sala de espera o time está parado na largada) e só enquanto cabem no limite de
@@ -211,6 +218,7 @@ O que mudou:
   (o próximo vem cheio) e conexão nova ganha codificador novo. O ack agora só aposenta eventos. O formato no fio é o
   mesmo (o `baseSeq` é o quadro anterior): **o protocolo continua 7**, cliente antigo entende. A sala guarda só o
   último quadro por cliente (antes até 64 mundos de 300 bichos por cliente).
+- Eventos com quadros encadeados vão **uma vez** (e de novo só depois de um resync), não a cada 5 s sem ack.
 - **Bicho fora de toda tela legal** (a união das telas em pé e deitadas nas 4 vistas, `offscreen.ts`) vai a 5 Hz;
   na tela, 10 Hz, como antes. Na horda de laboratório quase todos estão a menos de 30 u (dentro de alguma tela
   legal), então quase não muda ali; no jogo normal tira ~13%.
@@ -236,11 +244,18 @@ Reproduzido com CPU 6× mais lenta (CDP), 1 pessoa + 5 bots, horda de 300, `scri
   - o **keepalive vai na mensagem recebida**: tratando qualquer mensagem da sala com nada enviado há 4 s, o cliente
     responde um ack ali mesmo. Celular que manda alguma coisa (input, o ack de 1 s) nunca precisa dele: a cota não
     muda;
-  - o vigia do cliente (8 s sem ouvir nada = conexão morta) **não conta o tempo em que a própria página estava
-    travada**: um batimento que chega atrasado zera o relógio do silêncio;
-  - a **sala dá folga a quem é só lento**: o limite de silêncio passa a ser o maior entre 12 s, 2× o maior silêncio
-    que esse celular já teve, e 12 s + o atraso dos acks dele (a idade do quadro que o ack nomeia), **no máximo
-    45 s**. Sala vazia ainda para o relógio: no pior caso 45 s depois que um celular lento sumiu de vez (~6 GB-s);
+  - o vigia do cliente (8 s sem ouvir nada = conexão morta) **não julga num batimento atrasado** (a página estava
+    travada e as mensagens podem estar na fila atrás dele): julga no batimento seguinte, e passa a julgar mesmo
+    atrasado depois de 24 s de silêncio, para uma página travada sempre ainda achar o socket morto;
+  - a **sala dá folga só a quem é lento agora**: se os dois últimos acks nomearam quadros com 2 s ou mais de idade,
+    o limite é 12 s + esse atraso, **no máximo 45 s**, contados da última mensagem; um ack em dia volta a 12 s na
+    hora. Troca de antena (um ack atrasado, depois acks em dia) não ganha folga: duas trocas de 11 s e depois a morte
+    de verdade cortam em ≤ 15 s (teste). Sala vazia ainda para o relógio: no pior caso 45 s depois da última
+    mensagem de um celular lento (~6 GB-s);
+  - **app escondido por 60 s sai da sala sozinho** (fecha com 4010, não tenta voltar enquanto escondido): uma página
+    escondida ainda trata mensagens, então o keepalive manteria viva uma sala só de bots com a aba esquecida por
+    30 min. Saindo, a cadeira espera os 120 s de sempre, a sala sem socket para o relógio, e com o app de volta o
+    cliente reconecta com o token (teste);
   - **"alcançar"**: o cliente mede quanto está atrás da sala (chegada do quadro × tick, contra o quadro menos
     atrasado dos últimos 20 s; um pong rápido prova fila vazia) e, com mais de 3 s de atraso por mais de 2 s seguidos,
     a cena desenha um quadro a cada 2,5 s até o atraso cair abaixo de 0,6 s. Um soluço de 4G num celular bom não liga
@@ -248,8 +263,10 @@ Reproduzido com CPU 6× mais lenta (CDP), 1 pessoa + 5 bots, horda de 300, `scri
 - **Depois** (CPU 6×, 90–120 s de combate, três rodadas): nenhuma queda; maior silêncio do celular 5,3–7,3 s (antes
   11,7–22,8 s); RTT 0,07–6,4 s (antes 12–51 s). Os timers continuam atrasando 2–7 s (é o laboratório).
 - Testes: `tests/slow-phone.test.ts` (limite de silêncio, celular que vai ficando lento com silêncios de até 15 s fica,
-  some e é cortado até 45 s; atraso e "alcançar"), `tests/reconexao-cliente.test.ts` (timers parados: o keepalive
-  segura a cadeira; batimento atrasado não derruba, página acordada e surda derruba), `tests/room-loop.test.ts`
+  some e é cortado até 45 s; duas trocas de antena e a morte: cortado em ≤ 15 s; atraso e "alcançar"),
+  `tests/reconexao-cliente.test.ts` (timers parados: o keepalive segura a cadeira; batimento atrasado não julga, o
+  seguinte em dia derruba, página atrasada sempre derruba aos 24 s), `tests/aba-escondida.test.ts` (60 s escondido:
+  sai, não manda nada, não tenta voltar; visível, volta com o mesmo personagem), `tests/room-loop.test.ts`
   (relógio para no limite).
 
 ### 7.4 Limites

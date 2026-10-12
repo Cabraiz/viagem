@@ -8,7 +8,7 @@ import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from './tree-catalog.ts';
 import {CharacterSprites} from './character-sprites.ts';
-import {treeUrl,thumbUrl} from './art-urls.ts';
+import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './art-urls.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from './world.ts';
 import {HordeRenderer} from './render/layers.ts';
@@ -173,22 +173,45 @@ export class IslandScene extends Phaser.Scene {
    * camera needs them, and the ring beyond in the background (pumpTrees).
    */
   preload(){
+    // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
     this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
     this.sprites.queue(this.hooks.classId);
     this.load.image('hero',thumbUrl(this.hooks.classId));
     if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
   }
-  /** Texture key of a class's icon (a teammate's stand-in until its sheet is in); fetched the first time it is asked. */
+  /**
+   * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
+   * asked (the trees beyond the screen wait for an idle loader, pumpTrees); until it is in, a silhouette.
+   */
   private classIcon(classId:string){
-    const key=`class:${classId}`;
-    if(this.textures.exists(key))return key;
-    if(!classes.some(c=>c.id===classId))return '__DEFAULT';
-    if(!this.iconsAsked.has(key)){this.iconsAsked.add(key);this.load.image(key,thumbUrl(classId));if(this.booted&&!this.load.isLoading())this.load.start();}
-    return '__DEFAULT';
+    const key=iconKey(classId,k=>this.textures.exists(k));
+    if(key!==STAND_IN_KEY||!classes.some(c=>c.id===classId))return key;
+    const wanted=`class:${classId}`;
+    if(!this.iconsAsked.has(wanted)){this.iconsAsked.add(wanted);this.load.image(wanted,thumbUrl(classId));if(this.booted&&!this.load.isLoading())this.load.start();}
+    return key;
+  }
+  /** The silhouette a teammate shows before its class icon arrives: Breu, 55%, head and shoulders. */
+  private standIn(){
+    if(this.textures.exists(STAND_IN_KEY))return;
+    const g=this.make.graphics({x:0,y:0},false),breu=tokenColor('--c-breu');
+    g.fillStyle(breu,.55).fillCircle(32,20,13).fillRoundedRect(12,34,40,30,{tl:16,tr:16,bl:4,br:4});
+    g.generateTexture(STAND_IN_KEY,64,64);g.destroy();
+  }
+  private fellBack=new Set<string>();
+  private artFallback(file:Phaser.Loader.File){
+    const url=typeof file.url==='string'?originalUrl(file.url):undefined;
+    if(!url||this.fellBack.has(file.key))return;
+    this.fellBack.add(file.key);
+    if(file.type==='spritesheet')this.load.spritesheet(file.key,url,file.config as Phaser.Types.Loader.FileTypes.ImageFrameConfig);
+    else if(file.type==='image')this.load.image(file.key,url);
+    else return;
+    if(!this.load.isLoading())this.load.start();
   }
   private iconsAsked=new Set<string>();
   create(){
+    this.standIn();
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
     this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
@@ -553,8 +576,8 @@ export class IslandScene extends Phaser.Scene {
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
       if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
-      // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the blank once in.
-      else if(objects.image.texture.key==='__DEFAULT'&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
+      // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
+      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;

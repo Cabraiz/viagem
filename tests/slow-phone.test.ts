@@ -16,12 +16,11 @@ function seated(t0:number){
   return {room,peer,closed,c:room.connections.get(peer)!};
 }
 
-test('silence limit: 12 s for a phone the room knows nothing bad about, more for a slow one, never past the cap',()=>{
-  assert.equal(silenceLimit({lag:0,gap:0}),SILENT_MS);
-  assert.equal(silenceLimit({lag:0,gap:1000}),SILENT_MS,'a still phone acks every second');
-  assert.equal(silenceLimit({lag:0,gap:9000}),18_000,'twice its widest gap');
-  assert.equal(silenceLimit({lag:10_000,gap:0}),22_000,'12 s on top of how late it decodes');
-  assert.equal(silenceLimit({lag:120_000,gap:60_000}),SLOW_SILENT_MAX_MS);
+test('silence limit: 12 s unless the acks keep naming old frames (two in a row 2 s late), then 12 s + the lag, never past the cap',()=>{
+  assert.equal(silenceLimit({lag:0,lateAcks:0}),SILENT_MS);
+  assert.equal(silenceLimit({lag:11_000,lateAcks:1}),SILENT_MS,'one late ack (an antenna change) extends nothing');
+  assert.equal(silenceLimit({lag:10_000,lateAcks:2}),22_000);
+  assert.equal(silenceLimit({lag:120_000,lateAcks:9}),SLOW_SILENT_MAX_MS);
 });
 
 test('room: a phone silent from the start is cut at 12 s; one that slows down bit by bit (gaps up to 15 s) is not',()=>{
@@ -45,9 +44,31 @@ test('room: a phone silent from the start is cut at 12 s; one that slows down bi
   }
   assert.equal(slow.closed.length,0,'gaps of 15 s with frames decoded 12 s late: slow, still there');
   assert.ok(slow.c.lag>=11_900&&slow.c.lag<=12_100,`lag ${slow.c.lag}`);
-  assert.ok(slow.c.gap>=14_900,`gap ${slow.c.gap}`);
+  assert.ok(slow.c.lateAcks>=2,`late acks ${slow.c.lateAcks}`);
   // Gone for good now: cut within the cap.
   slow.room.advance(t+SLOW_SILENT_MAX_MS+100);assert.equal(slow.closed[0]?.code,4004);
+});
+
+test('room: two antenna changes of 11 s, then the phone dies for real: cut within 15 s of its last message',()=>{
+  const t0=2_000_000,{room,peer,closed,c}=seated(t0);
+  const sent:{seq:number;at:number}[]=[];
+  let t=t0,lastMsg=t0;
+  const tick=()=>{t+=50;room.advance(t);sent.push({seq:c.encoder!.lastSeq,at:t});};
+  const ack=(late=0)=>{const f=sent.find(s=>s.at>=t-late-25)!;room.receive(peer,JSON.stringify({t:'ack',seq:f.seq}),t);lastMsg=t;};
+  const normal=(ms:number)=>{const end=t+ms;while(t<end){tick();if((t-t0)%1000===0)ack();}};
+  normal(10_000);
+  for(let swap=0;swap<2;swap++){
+    // 11 s with no network: nothing reaches the room; then the keepalive names the frame decoded before the swap.
+    const end=t+11_000;while(t<end)tick();
+    assert.equal(closed.length,0,'11 s is under the 12 s limit');
+    ack(11_000);assert.ok(c.lag>=10_900,`late ack ${c.lag}`);
+    normal(8000);
+    assert.equal(silenceLimit(c),SILENT_MS,'fresh acks again: back to 12 s');
+  }
+  // Dead for real.
+  while(!closed.length&&t<lastMsg+60_000)tick();
+  assert.equal(closed[0]?.code,4004);
+  assert.ok(t-lastMsg<=15_000,`cut ${t-lastMsg} ms after its last message`);
 });
 
 test('backlog: steady frames read 0; a growing queue shows; a step of the room clock is forgotten; settle and reset',()=>{

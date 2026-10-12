@@ -5,7 +5,7 @@ import {readFileSync,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {treeCatalog} from '../src/game/tree-catalog.ts';
 import {spriteCatalog} from '../src/game/sprite-catalog.ts';
-import {treeUrl,spriteUrl} from '../src/game/art-urls.ts';
+import {treeUrl,spriteUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from '../src/game/art-urls.ts';
 
 const manifest=JSON.parse(readFileSync('scripts/art-lite.json','utf8'));
 const sha=(path:string)=>createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -29,4 +29,15 @@ test('measured quality: at the size a phone draws them no copy is below 36 dB, a
   assert.ok(s.worstShownPsnr>=36,`${s.worstShownPsnr} dB`);
   assert.ok(s.liteBytes<=s.bytes*.45,`${s.liteBytes} of ${s.bytes}`);
   assert.equal(manifest.webp.alphaQuality,100,'cut-out edges stay exact');
+});
+
+test('a copy that fails falls back to the approved file; a teammate without its icon yet shows the silhouette, never nothing',()=>{
+  for(const url of [treeUrl('acacia'),spriteUrl('coach'),spriteUrl('coach',true)]){
+    const back=originalUrl(url)!;
+    assert.ok(back.startsWith('/art/')&&!back.includes('/lite/'),back);
+    if(!url.includes('.dir4'))assert.ok(existsSync(`public${back}`),`${back} is the approved file`);
+  }
+  assert.equal(originalUrl(thumbUrl('coach')),undefined,'portraits have no copy to fall back from');
+  assert.equal(iconKey('coach',()=>false),STAND_IN_KEY);
+  assert.equal(iconKey('coach',k=>k==='class:coach'),'class:coach');
 });

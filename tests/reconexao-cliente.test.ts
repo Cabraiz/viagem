@@ -163,20 +163,23 @@ test('N27 client: timers starved (slow phone), the message handler keeps the sea
   }finally{stop();cleanup();}
 });
 
-test('N27 client: a heartbeat that comes late (the page was stalled) does not call the link dead; a page awake and deaf does',async()=>{
+test('N27 client: a late heartbeat does not judge the silence, the next one on time does; a page late beat after beat still does past 24 s',async()=>{
   store.clear();net.room=new Room(Date.now());net.down=false;
   const stop=ticking(net.room);
   try{
     const ana=client();await ana.join();
-    const socket=sockets(ana),opened=net.opened;
-    // The link goes deaf (nothing from the room reaches the page, pongs included) and the page "was" stalled for
-    // 10 s: last message 9 s ago, last beat 10 s ago.
-    stop();(socket.peer as {send:Peer['send']}).send=()=>{};await sleep(100);
-    (ana as any).lastMessage=performance.now()-9000;(ana as any).beatAt=(ana as any).awakeAt=performance.now()-10_000;
-    await sleep(2500);
-    assert.equal(socket.readyState,1,'the late beat only says the page was stalled');assert.equal(net.opened,opened);
-    // Awake now and still nothing: dead after DEAD_SILENCE_MS of an awake page.
-    for(let i=0;i<120&&net.opened===opened;i++)await sleep(100);
-    assert.ok(net.opened>opened,'closed and reconnecting');
+    const socket=sockets(ana);const beat=(now:number)=>(ana as any).beat(socket,now);
+    // The link goes deaf (nothing from the room reaches the page, pongs included); the beats are driven by hand.
+    stop();(socket.peer as {send:Peer['send']}).send=()=>{};await sleep(100);clearInterval((ana as any).heartbeat);
+    const t=performance.now();
+    (ana as any).lastMessage=t-9000;(ana as any).beatAt=t-10_000;
+    beat(t);assert.equal(socket.readyState,1,'a late beat: the page was stalled, messages may still be queued');
+    beat(t+2000);assert.equal(socket.readyState,3,'the next beat on time: 11 s of silence, dead');
+    // A page stalled beat after beat (every beat 5 s late): dead once the silence passes 24 s.
+    const bob=client('Bob');await bob.join();const s2=sockets(bob);clearInterval((bob as any).heartbeat);
+    (s2.peer as {send:Peer['send']}).send=()=>{};await sleep(50);
+    const t2=performance.now();(bob as any).lastMessage=t2;(bob as any).beatAt=t2;
+    for(let i=1;i<=4;i++){(bob as any).beat(s2,t2+i*5000);assert.equal(s2.readyState,1,`late beat ${i}: ${i*5} s`);}
+    (bob as any).beat(s2,t2+25_000);assert.equal(s2.readyState,3,'25 s of silence: dead even though every beat was late');
   }finally{stop();cleanup();}
 });

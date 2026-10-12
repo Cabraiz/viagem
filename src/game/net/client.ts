@@ -20,8 +20,19 @@ export const ACK_EVERY_MS=1000;
 const PING_EVERY_MS=5000;
 /** Heartbeat timer period; a beat this much later than due means the page itself was stalled. */
 const HEARTBEAT_MS=2000,STALLED_BEAT_MS=2*HEARTBEAT_MS;
-/** Nothing heard for this long on a page that was awake the whole time: the socket is dead, reconnect. */
+/** Nothing heard for this long: the socket is dead, reconnect (judged on a heartbeat that came on time, see beat()). */
 const DEAD_SILENCE_MS=8000;
+/** A page whose heartbeats keep coming late still calls the socket dead past this much silence. */
+const STALLED_DEAD_MS=3*DEAD_SILENCE_MS;
+/**
+ * N27 review: the app hidden this long (another app, screen off) leaves the room on its own (close 4010, no retry
+ * while hidden): the keepalive rides received messages, and a hidden page still handles them, so without this a
+ * room of bots with one hidden tab would tick (and bill) for its 30 minutes. The seat waits GRACE_MS; visible again,
+ * the client reconnects with its token.
+ */
+export const AWAY_MS=60_000;
+/** Close code of a client that left because its app was hidden for AWAY_MS (never retried while hidden). */
+export const AWAY_CLOSE=4010;
 /**
  * N27 (slow phone): with nothing sent for this long, the next message handled answers with an ack. A slow phone's
  * timers starve (20 s late at CPU 6× in the lab, the room cut it at 12 s), but its WebSocket messages are still
@@ -100,7 +111,14 @@ export class CoopClient {
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
   /** performance.now() of the last message sent on the current socket, of the last heartbeat, and of the last beat that came late. */
-  private sentAt=0;private beatAt=0;private awakeAt=0;
+  private sentAt=0;private beatAt=0;
+  /** performance.now() when the app went to the background (undefined while visible); AWAY_MS by default (tests shorten it). */
+  private hiddenAt?:number;
+  awayMs=AWAY_MS;
+  /** Left the room because the app stayed hidden (AWAY_MS): reconnects when visible again. */
+  away=false;
+  /** Whether the page is hidden (a stand-in in node tests). */
+  hidden:()=>boolean=()=>typeof document!=='undefined'&&document.hidden;
   private initialized=false;
   private resolveReady?:()=>void;
   private rejectReady?:(error:Error)=>void;
@@ -153,7 +171,7 @@ export class CoopClient {
   async join(){
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
-    if(typeof document!=='undefined'&&!this.wake){this.wake=()=>{if(!document.hidden)this.resume();};document.addEventListener('visibilitychange',this.wake);}
+    if(typeof document!=='undefined'&&!this.wake){this.wake=()=>this.visibility();document.addEventListener('visibilitychange',this.wake);}
     return new Promise<void>((resolve,reject)=>{this.resolveReady=resolve;this.rejectReady=reject;this.connect();});
   }
   private connect(){
@@ -167,6 +185,7 @@ export class CoopClient {
       // A socket this client already replaced (or gave up on) says nothing any more.
       if(ws!==this.socket)return;
       this.lastMessage=performance.now();this.lastSeenAt=Date.now();
+      if(this.initialized&&this.goneAway(ws,this.lastMessage))return;
       if(this.initialized&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
       if(typeof event.data!=='string'){
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
@@ -187,17 +206,8 @@ export class CoopClient {
         if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
         this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
         this.saveToken();
-        clearInterval(this.heartbeat);this.beatAt=this.awakeAt=performance.now();
-        this.heartbeat=setInterval(()=>{
-          const now=performance.now();
-          // A late beat means this page was stalled (slow phone, long task): the silence was ours, and the messages
-          // that came meanwhile are still queued behind this timer. Silence only counts from when the page woke up.
-          if(now-this.beatAt>STALLED_BEAT_MS)this.awakeAt=now;
-          this.beatAt=now;
-          if(now-Math.max(this.lastMessage,this.awakeAt)>DEAD_SILENCE_MS){ws.close();return;}
-          if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;this.out(ws,{t:'ping',at:now});}
-          this.saveToken();
-        },HEARTBEAT_MS);
+        clearInterval(this.heartbeat);this.beatAt=performance.now();
+        this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
       }
       else if(m.t==='run'&&m.run)this.setRun(m.run,m.tick);
       else if(m.t==='pong'){this.rtt=Math.round(performance.now()-m.at);if(this.rtt<SETTLE_RTT_MS)this.backlog.settle(performance.now());}
@@ -220,6 +230,8 @@ export class CoopClient {
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
       if(this.stopped)return;
       if(this.initialized&&!this.droppedAt)this.droppedAt=Date.now();
+      // Left on purpose while hidden: back when the app is (visibility()).
+      if(this.away)return;
       // A newer connection took the character: stop here, keep the token (the reload button takes it back on purpose).
       if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
       if(this.initialized&&Date.now()-this.lastSeenAt>RETRY_WINDOW_MS||(!this.initialized&&this.attempts>=2)){
@@ -239,6 +251,36 @@ export class CoopClient {
     this.stopped=true;this.connected=false;this.fatal=REPLACED_MESSAGE;clearTimeout(this.retry);
     this.onStatus(REPLACED_MESSAGE);this.rejectReady?.(new Error(REPLACED_MESSAGE));
     try{ws.close();}catch{}
+  }
+  /**
+   * One heartbeat. A beat that comes late (the page was stalled: slow phone, long task) does not judge the silence:
+   * messages that came meanwhile may still be queued behind this timer, so the next beat does. Past STALLED_DEAD_MS of
+   * silence it judges anyway, so a page stalled beat after beat still finds a dead socket.
+   */
+  private beat(ws:WebSocket,now=performance.now()){
+    const late=now-this.beatAt>STALLED_BEAT_MS;this.beatAt=now;
+    if(this.goneAway(ws,now))return;
+    const silent=now-this.lastMessage;
+    if(silent>DEAD_SILENCE_MS&&(!late||silent>STALLED_DEAD_MS)){ws.close();return;}
+    if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;this.out(ws,{t:'ping',at:now});}
+    this.saveToken();
+  }
+  /** Hidden for awayMs: leave the room (AWAY_CLOSE) and send nothing more until visible. True when gone. */
+  private goneAway(ws:WebSocket,now:number){
+    if(this.away)return true;
+    if(this.hiddenAt===undefined&&this.hidden())this.hiddenAt=now;
+    if(this.hiddenAt===undefined||now-this.hiddenAt<this.awayMs||ws!==this.socket)return false;
+    this.away=true;clearTimeout(this.retry);this.retry=undefined;
+    try{ws.close(AWAY_CLOSE,'App em segundo plano.');}catch{}
+    return true;
+  }
+  /** The app went to the background or came back (visibilitychange). */
+  visibility(now=performance.now()){
+    if(this.hidden()){this.hiddenAt??=now;return;}
+    this.hiddenAt=undefined;
+    if(!this.away){this.resume();return;}
+    this.away=false;this.attempts=0;
+    if(!this.stopped&&!this.connected&&(!this.socket||this.socket.readyState>=WebSocket.CLOSING))this.connect();
   }
   /** Visible again: a socket silent for WAKE_SILENCE_MS is dropped now, and a waiting retry goes at once. */
   private resume(){

@@ -70,3 +70,7 @@
 .ch-selector[data-orientation=landscape] .ch-selector-group{grid-template-columns:1fr;gap:4px}
 .ch-selector[data-orientation=landscape] .ch-segment{height:64px;justify-content:center;padding:4px;text-align:center}
 .ch-selector[data-orientation=landscape] .ch-selector-hint{display:none}
+/* "em breve" (D-035): wired but not open. Never Amarelo, the cadeado on its edge, the name faded and "em breve" in Papel;
+   the owner's tap only says why (aria-disabled, never sent). */
+.ch-selector .ch-segment.is-soon{background:var(--c-lilas-escuro);color:var(--c-papel);cursor:default}
+.ch-selector .ch-segment.is-soon strong{color:color-mix(in srgb,var(--c-papel) 70%,transparent)}

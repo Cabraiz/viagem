@@ -4,6 +4,9 @@ import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
+import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef} from '../protocol/index.ts';
+import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
+  type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -90,6 +93,50 @@ export function ownerNotice(before:{name?:string}|undefined,after:string,mine:bo
 /** A second tap this soon after the first is the same finger bouncing, not a confirmation (ms). */
 export const DOUBLE_TAP_MS=500;
 
+// ---------- Map selector of the waiting room (cidade-09, design/cidade-hud.md §4, D-035) ----------
+
+/** The maps the selector shows locked "em breve", with what an owner's tap on one says: the city until CITY_PLAYABLE. */
+export const soonMaps=(cityPlayable=CITY_PLAYABLE):Partial<Record<MapId,string>>=>cityPlayable?{}:{'cidade-nevada':CITY_SOON};
+/** The room's news when the map changes (the room resets every ready). The city's "Leve casaco" is already its subtitle. */
+export const mapNews=(map:MapId)=>mapChangedNews(map);
+/** Subtitle of the room's map while its asset downloads ("Baixando a cidade: 40%"), or when it did not arrive. */
+export const CITY_NOT_ARRIVED='A cidade não baixou.';
+export function mapLoadText(load:{progress:number;failed?:string}|undefined):string|undefined{
+  return !load?undefined:load.failed?CITY_NOT_ARRIVED:downloadText(load.progress);
+}
+/** The map the selector shows as the room's: the one being downloaded (the room already switched), else the applied one. */
+export const roomMapId=(client:{map?:MapRef;mapLoad?:{ref:MapRef}}):MapId=>client.mapLoad?.ref.id??client.map?.id??DEFAULT_MAP;
+/** Lobby orientation, as coop.css and the HUD zones decide it (zones.ts orientationOf): landscape up to 500 px tall. */
+export const lobbyOrientation=(viewport:{width:number;height:number}):Orientation=>viewport.height<=500?'landscape':'portrait';
+/**
+ * The selector state brought up to date with the room (pure): owner, countdown lock, connection, the room's map (a
+ * pending pick the room confirmed settles too) and the download text. Same object when nothing changed.
+ */
+export function syncSelector(s:SelectorState,room:{canManage:boolean;countdown:boolean;connected:boolean;map:MapId;download?:string}):SelectorState{
+  const step=(e:SelectorEvent)=>{s=selectorReducer(s,e).state;};
+  if(s.canManage!==room.canManage)step({type:'owner',canManage:room.canManage});
+  if(s.locked!==room.countdown)step({type:'countdown',on:room.countdown});
+  if(s.offline===room.connected)step({type:'offline',on:!room.connected});
+  if(s.confirmed!==room.map||s.pending?.map===room.map)step({type:'confirm',map:room.map});
+  if(s.download!==room.download)step({type:'download',text:room.download});
+  return s;
+}
+/** Portrait guests in a room of 4+: the waiting joke gives its lines to the map selector (the window must not scroll). */
+export const jokeYields=(orientation:Orientation,view:Pick<WaitingView,'canManage'|'members'>)=>orientation==='portrait'&&!view.canManage&&view.members.length>=4;
+type Box={x:number;y:number;width:number;height:number};
+/**
+ * Lobby framing (explore.ts): the free band around the waiting window, cut clear of the landscape selector window
+ * (cidade-hud.md §7) so the hero never stands under it. The side of the band away from the selector is kept.
+ */
+export function besideSelector(band:Box,selector:Box|undefined,gapPx=8):Box{
+  if(!selector||!(selector.width>0&&selector.height>0))return band;
+  const overlaps=selector.x<band.x+band.width&&selector.x+selector.width>band.x&&selector.y<band.y+band.height&&selector.y+selector.height>band.y;
+  if(!overlaps)return band;
+  if(selector.x+selector.width/2>=band.x+band.width/2)return {...band,width:Math.max(0,selector.x-gapPx-band.x)};
+  const x=Math.min(band.x+band.width,selector.x+selector.width+gapPx);
+  return {...band,x,width:Math.max(0,band.x+band.width-x)};
+}
+
 /** View model of the waiting room from the polled run state. Spectators are not counted. */
 export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,{name:string}>,selfId:string,hz=20):WaitingView{
   const phase=run?.phase==='lobby'||run?.phase==='countdown'?run.phase:'hidden';
@@ -132,7 +179,8 @@ const escapeHtml=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 export const CONFIRM_MS=3000;
 /** A confirmed chip waits this long for the room before it is tappable again (lost on a bad network, refused). */
 export const REARM_MS=1500;
-export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'>>,options:{origin?:string;now?:()=>number}={}){
+export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'|'setMap'|'map'|'mapLoad'>>,
+  options:{origin?:string;now?:()=>number;cityPlayable?:boolean}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
@@ -186,12 +234,54 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   host.append(panel);
   let membersKey='',wasReady=new Set<string>();
   // Who owned the room last time we looked, and the names seen (the one who left is gone from the run state).
+  // The news strip (.coop-wait-owner) also carries the map news and, in landscape, the selector's hints.
   let ownerSeen:string|undefined,ownerNews:{text:string;until:number}|undefined;
+  // From a tap: shown at once (update); from inside update(): `refresh` false, the line is drawn further down.
+  let updating=false;
+  const say=(text:string,ms:number,refresh=true)=>{ownerNews={text,until:now()+ms};if(refresh&&!updating)update();};
+  // Map selector (cidade-09): portrait, in the window under the code row; landscape, its own small window in the column
+  // opposite the notch (selectorRects), outside the panel. The owner picks, the room decides ({t:'map'}).
+  const mapSlot=document.createElement('div');mapSlot.className='coop-wait-map';
+  $('.coop-wait-code').after(mapSlot);
+  // Safe-area insets for the landscape window (the same env() the panel's CSS reads).
+  const probe=document.createElement('div');probe.setAttribute('aria-hidden','true');
+  probe.style.cssText='position:fixed;inset:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  host.append(probe);
+  const soon=soonMaps(options.cityPlayable);
+  const viewport=()=>({width:innerWidth,height:innerHeight});
+  let orientation=lobbyOrientation(viewport()),mapSeen:MapId|undefined,loadFailed:string|undefined;
+  let selector:SelectorState={...initialSelector(false,roomMapId(client)),soon};
+  const dispatch=(event:SelectorEvent)=>{const out=selectorReducer(selector,event);selector=out.state;if(out.send)client.setMap?.(out.send);mapControl.update(selector,orientation);};
+  const mapControl=mountMapSelector(mapSlot,{state:selector,orientation,now,
+    onPick:(map,nowMs)=>{
+      dispatch({type:'tap',map,nowMs});
+      // Landscape has no hint line: each tap on "em breve" says it again on the room's line (the hint repeats only once).
+      if(orientation==='landscape'&&selector.notice&&soon[map])say(selector.notice,NEWS_MS);
+    },
+    onEvent:dispatch,
+    onHint:text=>say(text,text===SELECTOR_TEXT.guest?GUEST_HINT_MS:NEWS_MS)});
+  const placeMap=()=>{
+    const landscape=orientation==='landscape';
+    mapSlot.classList.toggle('is-window',landscape);mapSlot.dataset.orientation=orientation;
+    if(!landscape){
+      if(mapSlot.parentElement!==panel)$('.coop-wait-code').after(mapSlot);
+      // 12 px under the code row: the segments' stickers stand 10 px over their top edge, clear of the share button.
+      if(mapSlot.dataset.css!=='portrait'){mapSlot.dataset.css='portrait';mapSlot.style.cssText='margin:12px 0 0';}
+      return;
+    }
+    if(mapSlot.parentElement!==host)host.append(mapSlot);
+    const style=getComputedStyle(probe),px=(v:string)=>parseFloat(v)||0;
+    const safe={top:px(style.paddingTop),right:px(style.paddingRight),bottom:px(style.paddingBottom),left:px(style.paddingLeft)};
+    const {selector:box}=selectorRects(viewport(),safe),origin=host.getBoundingClientRect();
+    const css=`position:absolute;z-index:var(--z-hud);left:${box.x-origin.left}px;top:${box.y-origin.top}px;margin:0;pointer-events:auto`;
+    if(mapSlot.dataset.css!==css){mapSlot.dataset.css=css;mapSlot.style.cssText=css;}
+  };
+  placeMap();
   const names=new Map<string,string>();
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
     for(const m of view.members)names.set(m.id,m.name);
     const owner=client.run?.owner;
@@ -201,7 +291,19 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
     // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
     panel.hidden=!view.visible||!!client.fatal;
+    mapSlot.hidden=panel.hidden;
     if(!view.visible)return;
+    // The map selector follows the room: owner, countdown, connection, the room's map and its download.
+    const roomMap=roomMapId(client),load=client.mapLoad;
+    if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS,false);
+    mapSeen=roomMap;
+    if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS,false);
+    loadFailed=load?.failed;
+    const nextOrientation=lobbyOrientation(viewport());
+    const next=syncSelector(selector,{canManage:view.canManage,countdown:view.phase==='countdown',connected:client.connected,map:roomMap,download:mapLoadText(load)});
+    // (The control may hand a landscape hint to say() from here: drawn below, no nested update.)
+    if(next!==selector||nextOrientation!==orientation){selector=next;orientation=nextOrientation;updating=true;try{mapControl.update(selector,orientation);}finally{updating=false;}}
+    placeMap();
     panel.dataset.phase=view.phase;
     // After a restart of the room the run is gone (VGM-047, UX onda 5): the news goes on top, as a ficha, in place of
     // the headline, and the waiting joke is suspended until the next run starts.
@@ -215,8 +317,15 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(ownerNews?.until===Infinity&&!host.querySelector('.explore-loading:not([hidden])'))ownerNews.until=now()+OWNER_NEWS_MS;
     const ownerLine=$('.coop-wait-owner'),showNews=!!ownerNews&&now()<ownerNews.until;
     ownerLine.hidden=!showNews;if(showNews)setText(ownerLine,ownerNews!.text);
+    // A fuller window (4+, the selector inside in portrait): for its 4 s the news takes the headline's place, like the
+    // restart notice does, and in portrait the line under the chips too, so the window never scrolls the ready button away.
+    const tightNews=showNews&&view.phase!=='countdown'&&view.members.length>=4;
+    if(tightNews)$('.coop-wait-headline').hidden=true;
     const hint=view.canManage&&(view.members.length>1||view.seatsLeft>0);
     setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint?OWNER_HINT:waitingLine((now()-started)/1000));
+    // Portrait, a guest in a fuller room: the selector's fixed line ("Quem escolhe o mapa é o dono da sala.") takes the
+    // joke's place, so the window fits without scrolling and the ready button stays in view (cidade-09).
+    $('.coop-wait-line').hidden=jokeYields(orientation,view)||tightNews&&orientation==='portrait';
     botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
     panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
@@ -252,7 +361,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
   };
   const timer=setInterval(update,200);update();
-  return {panel,update,dispose(){clearInterval(timer);panel.remove();}};
+  return {panel,update,dispose(){clearInterval(timer);mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
 }
 
 export async function openLobby(hero:HeroClass,name:string){
@@ -272,7 +381,11 @@ export async function openLobby(hero:HeroClass,name:string){
   const cancel=()=>{closed=true;client?.leave();dialog.close();dialog.remove();document.getElementById('confirm')?.focus();};
   dialog.querySelector('.coop-close')!.addEventListener('click',cancel);
   dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
-  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
+  // The city's manifest (a few bytes) rides along: its ref goes in join.maps (the 392 KB city only when a room picks it).
+  const [endpoint,cityRef]=await Promise.all([
+    fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined),
+    import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined),
+  ]);
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
   codeInput.value=new URL(location.href).searchParams.get('room')?.toUpperCase()??'';
@@ -287,7 +400,7 @@ export async function openLobby(hero:HeroClass,name:string){
       if(closed)return;
       if(!/^[A-F0-9]{10}$/.test(code))throw new Error('O código deve ter 10 letras e números.');
       const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
-      client=new CoopClient(endpoint,code,nick,hero.id);client.onStatus=m=>{status.textContent=m;};await client.join();
+      client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.onStatus=m=>{status.textContent=m;};await client.join();
       if(closed){client.leave();return;}
       const {openExploration}=await import('./explore.ts');dialog.close();dialog.remove();
       const joined=client;

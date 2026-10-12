@@ -93,9 +93,7 @@ function audit(rootsSelector,minFont){
   // The top band's fichas never cross each other (soma N15 + 046B, 125%): round chip, XP, boss bar, base ficha, minimap.
   {const tops=[...document.querySelectorAll('.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-minimap,.explore-camera-hint:not([hidden])')].filter(vis).map(e=>({e,r:e.getBoundingClientRect()}));
     for(let i=0;i<tops.length;i++)for(let j=i+1;j<tops.length;j++){const a=tops[i].r,b=tops[j].r;
-      // (The "Gira no intervalo" balloon over the portrait XP bar is the old 1.5 s answer to a tap: only its new
-      // neighbour, the landscape minimap, and the fichas count for it.)
-      const pair=[tops[i].e,tops[j].e];if(pair.some(e=>e.matches('.explore-camera-hint'))&&pair.some(e=>e.matches('.rh-xp')))continue;
+      // (The "Gira no intervalo" balloon counts against every ficha, the XP bar included: NEW-UX-balao-girar-retrato.)
       if(a.right>b.left+.5&&b.right>a.left+.5&&a.bottom>b.top+.5&&b.bottom>a.top+.5)problems.push(`fichas do topo se cruzam: ${tops[i].e.className.split(' ')[0]} × ${tops[j].e.className.split(' ')[0]}`);}}
   // NEW-20261011-UX-janela-esconde-caido: an edge arrow (ficha, tag or "+N") never sits behind an open window (offer,
   // forge), the kill-cam or the minimap; and in the arrows scenes (cenario=bordas: two caídos and the boss off screen)
@@ -109,6 +107,10 @@ function audit(rootsSelector,minFont){
     // list the game writes and the zones audit reads.)
     for(const kind of (document.querySelector('.rh-edges')?.dataset.need??'').split(' ').filter(Boolean))
       if(![...document.querySelectorAll(`.rh-edge[data-kind=${kind}]:not([hidden])`)].some(vis))problems.push(`sem seta: ${kind}`);}
+  // NEW-UX-nome-do-time-na-coluna: a team name ficha stays inside its member's box (the box the useful area and the arrows
+  // avoid) and on screen.
+  for(const n of document.querySelectorAll('.rh-member-name'))if(vis(n)){const m=n.closest('.rh-member').getBoundingClientRect(),r=n.getBoundingClientRect();
+    if(r.left<m.left-.5||r.right>m.right+.5||r.left<-.5||r.right>innerWidth+.5)problems.push(`nome sai da coluna do time: ${label(n)}`);}
   // The HUD is a fixed overlay: the page must not scroll. (The lobby dialog lives over the long creation page.)
   // UX review: in portrait the intermission window never takes more than 32% of the height.
   for(const w of document.querySelectorAll('.rh-offer[data-mode=intermission]'))if(vis(w)&&innerHeight>500&&w.getBoundingClientRect().height>innerHeight*.32+1)
@@ -236,10 +238,10 @@ const SCENES=[
       await page.click('.rh-result-manage');await page.click('.rh-rcard-manage.is-person');});
     // The real "Gira no intervalo" balloon (explore.css) over the arrows scene with a window open: in landscape the
     // minimap moved under the view buttons, and the balloon must not open over it or a top ficha (UX review janela-caido).
-    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open']])
+    for(const [name,state] of [['forja','camp-forge'],['painel de nível','offer-open'],['combate (round)','wave'],['muralha baixa','camp-wave']])
       await run(`janela: balão "Gira no intervalo" com ${name} aberta`,`/?sandbox=hud&players=6&state=${state}&frozen=1&cenario=bordas`,'.rh',13,async()=>{
         await page.evaluate(async()=>{await import('/src/game/explore.css');const d=document.createElement('div');d.className='explore-camera';d.dataset.locked='true';
-          d.innerHTML='<button></button><span class="explore-view"></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
+          d.innerHTML='<button></button><span class="explore-view"><i style="display:block;width:32px;height:32px"></i></span><button></button><span class="explore-camera-hint" role="status">Gira no intervalo</span>';document.querySelector('.hs-world').append(d);});});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/classes.ts');const {openLobby}=await import('/src/game/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});

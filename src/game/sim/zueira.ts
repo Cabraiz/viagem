@@ -17,7 +17,7 @@
 import {MAX_PICKUPS,hasRoom} from './budget.ts';
 import {HEAL_AMOUNT} from './offers.ts';
 import {Rng} from './rng.ts';
-import {walkable} from '../world.ts';
+import {clearSegment,walkable} from '../world.ts';
 import {ticks,type EnemyState,type HappeningKind,type PickupState,type SimContext,type SimPlayer,type SimSystem} from './types.ts';
 
 export const HAPPENING_KINDS:readonly HappeningKind[]=['boletos','promo','apagao'];
@@ -43,6 +43,21 @@ export const APAGAO_CROWD=3,APAGAO_REACH=9;
 export const KILLCAM_MAX_PER_RUN=4;
 /** Sale: coxinhas per standing hero, how far from them. */
 export const PROMO_COXINHAS=3,PROMO_RADIUS:readonly [number,number]=[1.4,3];
+/**
+ * Where a prize may fall around its hero (VGM-053B review M3, pacote-bugs-ux): never where a thumb sits, and never where
+ * the hero cannot walk straight to it. The server knows neither the phone's orientation nor its view (D-019), so the rule
+ * holds for all of them: under view k a world offset (dx, dy) lands 42·zoom·(±(dx−dy) or ±(dx+dy)) CSS px sideways on
+ * screen (projection.ts) and 21·zoom·(the other one) px down. Measured on the real scene (evidence
+ * NEW-20261012-pacote-bugs-ux, logs/zonas-polegar.json): portrait thumbs start 193 px under the hero's feet, out of reach
+ * (21·0.583·7.8 = 95 px at most); landscape thumbs sit beside the hero, the right one from 191 px (199 at 125%), the left
+ * from 285 px. With the look-ahead (≤ 36 px) and half a coxinha of the sale (23 px), sideways must stay under 132 px:
+ * |dx−dy| and |dx+dy| ≤ PRIZE_SCREEN_SPAN (5 u = 122 px at the 0.583 zoom of a 390 px short side; bigger phones put the
+ * thumbs farther in proportion).
+ */
+export const PRIZE_SCREEN_SPAN=5;
+export const prizeSpotSafe=(dx:number,dy:number)=>Math.abs(dx-dy)<=PRIZE_SCREEN_SPAN&&Math.abs(dx+dy)<=PRIZE_SCREEN_SPAN;
+/** Tries for a prize spot around its hero (then that prize is skipped, as before). */
+export const PRIZE_TRIES=12;
 /** Marks an XP pickup as a boleto of the rain (PickupState.resource; the client draws a boleto, D-002). */
 export const BOLETO='boleto';
 /** Marks a coxinha of the flash sale (the client draws it bigger, with its short life). */
@@ -113,12 +128,12 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab}={}):ZueiraSyst
   const rngOf=()=>rng??=new Rng(state.rng);
   const save=()=>{if(rng)state.rng=rng.state;};
 
-  /** A walkable spot around `p` (a few tries, then none). */
+  /** A spot around `p` the hero can walk straight to and that no thumb covers on any phone (a few tries, then none). */
   function around(ctx:SimContext,p:SimPlayer,[min,max]:readonly [number,number]){
     const r=rngOf();
-    for(let i=0;i<6;i++){
-      const a=r.range(0,Math.PI*2),d=r.range(min,max),at={x:p.x+Math.cos(a)*d,y:p.y+Math.sin(a)*d};
-      if(walkable(at,ctx.terrain))return at;
+    for(let i=0;i<PRIZE_TRIES;i++){
+      const a=r.range(0,Math.PI*2),d=r.range(min,max),dx=Math.cos(a)*d,dy=Math.sin(a)*d,at={x:p.x+dx,y:p.y+dy};
+      if(prizeSpotSafe(dx,dy)&&walkable(at,ctx.terrain)&&clearSegment(p,at,ctx.terrain))return at;
     }
     return undefined;
   }

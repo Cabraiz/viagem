@@ -221,7 +221,7 @@ if(bordas)void (async()=>{
   // 5 allies, two of them caídos (p3 pinging), every one far from the hero.
   // The chosen state underneath (wave by default; camp-forge, camp-horn, offer-round… for the soma scenes of the audit),
   // always with the base ficha (VGM-046B) so the minimap and the ficha share the corner as in the real game.
-  const base=fakeView(scenario,6,1000),camp=fakeView('camp-wave',6,1000);
+  const base=named(fakeView(scenario,6,1000)),camp=fakeView('camp-wave',6,1000);
   const view0={...base,camp:base.camp??camp.camp,structures:base.structures.length?base.structures:camp.structures};
   view0.players=view0.players.map((p,i)=>i===2?{...p,hp:0,downed:{progress:0,bleedOutTick:1000+20*14}}:i===4?{...p,hp:0,online:true,downed:{progress:.45,bleedOutTick:1000+20*6}}:{...p,online:true});
   hud.setHero(FIXTURE_HERO[scenario]??FIXTURE_HERO['camp-wave']);hud.update(view0);

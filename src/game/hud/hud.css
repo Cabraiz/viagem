@@ -82,7 +82,10 @@
 /* ---------- Team strip (portrait: left column; landscape: bottom center) ---------- */
 .rh-team{position:absolute;top:calc(var(--rh-t) + 112px);left:var(--rh-l);display:flex;flex-direction:column;gap:6px}
 .rh-top:has(.rh-boss:not([hidden]))~.rh-team{top:calc(var(--rh-t) + 150px)}
-.rh-member{position:relative;width:54px;display:flex;flex-direction:column;align-items:center;gap:2px;text-shadow:var(--s-texto)}
+/* NEW-UX-nome-do-time-na-coluna: the column is as wide as its widest name ficha (54 px at least), so a 9-letter name at
+   125% ("Concursei", 88 px) never pokes past the column, out of the screen or into an arrow that only avoids the members'
+   boxes (the useful area and the arrows already measure .rh-member). Every member stretches to that width. */
+.rh-member{position:relative;min-width:54px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:2px;text-shadow:var(--s-texto)}
 /* Portrait ring: Papel with a Breu edge, so it reads on sand and on sea. */
 .rh-member-ring{--rh-rescue:0deg;width:44px;height:44px;padding:3px;border-radius:var(--r-circulo);background:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
 .rh-member-img{display:block;width:100%;height:100%;border-radius:var(--r-circulo);object-fit:cover;object-position:50% 12%;background:var(--c-papel-claro)}
@@ -91,7 +94,7 @@
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
 /* Names sit on a small ficha so they read on light sand and dark sea alike (D-022). */
 .rh-member-name{white-space:nowrap;font-size:var(--t-13);line-height:1.15;padding:0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);text-shadow:none} /* filete Papel: a ficha Breu some sobre copa escura */
-.rh-member-badge{position:absolute;top:-6px;right:-4px;display:flex;line-height:0} /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
+.rh-member-badge{position:absolute;top:-6px;right:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato (centro + 31 px), não à largura da coluna */ /* adesivo de status de 24 px (icons.svg): já traz contorno, borda papel e sombra */
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
 .rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}

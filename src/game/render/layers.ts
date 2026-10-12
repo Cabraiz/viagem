@@ -34,6 +34,11 @@ export interface HordeRendererOptions{
   tickMs?:number;
   /** ms between authoritative pushes (the room broadcasts every 2 ticks); enemies and pickups glide over it. Default tickMs. */
   pushMs?:number;
+  /**
+   * Whether a tree canopy drawn in front covers a sprite at this screen point and depth (the scene's own test for the
+   * hero). Event prizes (boletos, the sale's coxinhas) covered by one are drawn above the canopies (PRIZE_LIFT_DEPTH).
+   */
+  canopyCovers?:(screen:Pt,depth:number)=>boolean;
   /** World position of a player, so hostile damage numbers can appear over them. */
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
@@ -46,7 +51,9 @@ interface EnemyActor{
   phase:number;flashAt:number;flashing:boolean;screenX:number;flip:boolean;moving:boolean;
 }
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
-interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number}
+interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
+  /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
+  coverX?:number;coverY?:number;covered?:boolean}
 interface ProjectileActor{image:Image;shadow:Image;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
@@ -73,6 +80,11 @@ export const EYES_CSS={width:9,height:12,gap:7,edge:2,pupil:2.2,look:1.8} as con
 export const BOLETO_FALL_PX=220,BOLETO_FALL_MS=420;
 /** The flash sale's coxinhas are drawn this much bigger: the event reads at a glance (VGM-053B). */
 export const PROMO_SCALE=1.6;
+/**
+ * A boleto or a sale's coxinha behind a tree is drawn above the canopies, just under the blackout (VGM-053B review M3,
+ * pacote-bugs-ux): a prize of an event is never hidden by the scenery. Under critters' bars, balloons, heroes and danger.
+ */
+export const PRIZE_LIFT_DEPTH=93900;
 
 const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
 const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
@@ -337,7 +349,7 @@ export class HordeRenderer{
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,look=pickupLook(view.kind,view.resource);
     if(used.fresh||a.look!==look){a.image.setTexture(look).setOrigin(.5,.92);a.kind=view.kind;a.look=look;}
-    if(used.fresh){a.born=this.now;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;}
+    if(used.fresh){a.born=this.now;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;a.coverX=undefined;}
     else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
     a.nx=view.x;a.ny=view.y;a.value=view.value;a.promo=view.kind==='heal'&&view.resource==='promo';
@@ -570,7 +582,14 @@ export class HordeRenderer{
       else if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
       else y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
     }
-    a.image.setPosition(q.x,q.y+y).setDepth(depth+1).setScale(scale).setRotation(rotation);
+    // Event prizes behind a canopy: lifted above the trees. The test runs again only when the prize moved 4 px on
+    // screen (the magnet, a camera turn), not every frame for every boleto.
+    let lifted=false;
+    if((a.look===FX.boleto||a.promo)&&this.options.canopyCovers){
+      if(a.coverX===undefined||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.covered=this.options.canopyCovers(q,depth);}
+      lifted=!!a.covered;
+    }
+    a.image.setPosition(q.x,q.y+y).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale).setRotation(rotation);
     const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };

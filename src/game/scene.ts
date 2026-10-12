@@ -201,7 +201,9 @@ export class IslandScene extends Phaser.Scene {
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1).
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
-        locate:id=>id===net.id?net.predicted:net.players.get(id)});
+        locate:id=>id===net.id?net.predicted:net.players.get(id),
+        // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
+        canopyCovers:(q,depth)=>this.treeCovers(q,depth)});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
       this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});

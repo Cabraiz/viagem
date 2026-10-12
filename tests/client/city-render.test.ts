@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {heightAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
-import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,ruinStepFactor,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
+import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,ruinStepFactor,RUIN_FLOOR,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
 import {groundQuads,pieceGeometry,viewSide,type Face} from '../../src/client/render/city/faces.ts';
 import {VIEW_PIVOT,depth,project,rectsOverlap,type Pt,type Rect} from '../../src/client/render/city/projection.ts';
 
@@ -52,7 +52,9 @@ test('every block is cut into 1×1 pieces that tile it, share the lowest ground 
     assert.ok(ps.some(p=>p.height===b.height),`${b.id} keeps full height somewhere`);
     for(const p of ps)for(const side of ['n','s','e','w'] as const){
       const nx=p.x+(side==='e'?1:side==='w'?-1:0),ny=p.y+(side==='s'?1:side==='n'?-1:0);
-      const n=ps.find(q=>q.x===nx&&q.y===ny),drop=n?p.height-n.height:0;
+      // A whole-cell bite lowers its column to the floor (RUIN_FLOOR of its stepped height).
+      const top=(q:BlockPiece)=>(q.bite??0)>=1?q.height*RUIN_FLOOR:q.height;
+      const n=ps.find(q=>q.x===nx&&q.y===ny),drop=n?top(p)-top(n):0;
       assert.equal(p.drops?.[side]??0,drop>1e-9?drop:0,`${p.id} drop ${side}`);
     }
   }
@@ -238,7 +240,7 @@ test('split walls drop seam faces and seam edges from the outline',()=>{
 test('ruined buildings lose a roof bite with a lower floor and dark camera-facing inner walls',()=>{
   const bitten=pieces.filter(p=>p.bite!==undefined);
   assert.deepEqual(bitten.map(p=>p.blockId).sort(),['bld-nw-2','bld-se-1']);
-  for(const b of [0.5,1]){
+  for(const b of [0.5,0.75]){
     const p=piece({ruined:true,bite:b}),cap=W(1)**2*2*42*21,biteArea=W(b)**2*2*42*21;
     const walls:number[]=[];
     for(const v of VIEWS){
@@ -261,6 +263,11 @@ test('ruined buildings lose a roof bite with a lower floor and dark camera-facin
     // The bite sits at the right, front, left and back corner in views 0..3: 1, 2, 1 and 0 inner walls.
     assert.deepEqual(walls,[3,4,3,2],`bite ${b}`);
   }
+  // A whole-cell bite lowers the column: a plain box up to the floor, no notch.
+  const low=pieceGeometry(piece({ruined:true,bite:1,height:3}),asset,0);
+  assert.deepEqual(kinds(low.faces),['wallLight','wallDark','cap']);
+  const capTop=Math.min(...low.faces[2].points.map(q=>q.y)),full=Math.min(...pieceGeometry(piece({height:3}),asset,0).faces[2].points.map(q=>q.y));
+  assert.ok(Math.abs(capTop-full-0.4*3*42)<1e-6,'cap lowered to 0.6 of the height');
   // A ruined piece without a bite is a plain box.
   assert.deepEqual(kinds(pieceGeometry(piece({ruined:true}),asset,0).faces),['wallLight','wallDark','cap']);
 });
@@ -318,7 +325,7 @@ test('stepped ruin roofs close every camera-facing step with a wall as tall as t
       const facing=viewSide(side,v);
       if(!drop||(facing!=='+x'&&facing!=='+y'))continue;
       // The step wall sits on the seam plane, from the neighbour's top to this piece's top.
-      const kind=facing==='+y'?'wallLight':'wallDark';
+      const kind='wallDark';// exposed inside of a broken slab (art bible §4.3)
       const tops=g.faces.filter(f=>f.kind===kind&&f.points.length===4);
       const h=(f:Face)=>Math.max(...f.points.map(q=>q.y))-Math.min(...f.points.map(q=>q.y));
       // A wall one cell wide spans 21·cell px of screen y along its base plus 42 px per unit of height.

@@ -6,7 +6,7 @@ import {blockPieces,buildChunks,type BlockPiece,type CityChunk} from '../../src/
 import {groundQuads,pieceGeometry,viewSide} from '../../src/client/render/city/faces.ts';
 import * as palette from '../../src/client/render/city/palette.ts';
 import {CITY_PALETTE,MATERIALS,SHADOW} from '../../src/client/render/city/palette.ts';
-import {GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,TRACK,groundDecor,pieceDecor,pieceShadow,type DecorPrim} from '../../src/client/render/city/decor.ts';
+import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,TRACK,groundDecor,pieceDecor,pieceShadow,type DecorPrim} from '../../src/client/render/city/decor.ts';
 import {HEIGHT_PX,project,type Pt} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -155,8 +155,11 @@ test('piece decor: inside the piece faces, never on seams, and anchored to world
     const perSide=new Map<string,string[]>();
     for(const v of VIEWS){
       const faces=pieceGeometry(p,asset,v).faces,prims=pieceDecor(p,asset,v);
+      // Rubble on a whole-cell bite floor sits on the lowered cap and may rise up to its max height above it.
+      const whole=(p.bite??0)>=1,cap=faces.find(f=>f.kind==='cap'),rise=BITE_RUBBLE_MAX_HEIGHT*42;
+      const onFloor=(q:Pt)=>!!cap&&Array.from({length:Math.ceil(rise)+1},(_,k)=>k).some(k=>inPoly({x:q.x,y:q.y+k},cap.points,TOL));
       for(const d of prims)for(const q of ptsOf(d))
-        assert.ok(faces.some(f=>inPoly(q,f.points,TOL)),`${p.id} view ${v}: ${d.shape} #${d.color.toString(16)} at ${q.x.toFixed(1)},${q.y.toFixed(1)} outside faces`);
+        assert.ok(faces.some(f=>inPoly(q,f.points,TOL))||(whole&&onFloor(q)),`${p.id} view ${v}: ${d.shape} #${d.color.toString(16)} at ${q.x.toFixed(1)},${q.y.toFixed(1)} outside faces`);
       for(const side of ['n','s','e','w'] as const){
         const vs=viewSide(side,v);
         if(p.seams[side]||(vs!=='+x'&&vs!=='+y'))continue;
@@ -196,12 +199,13 @@ test('piece decor: icing hangs 3–5 px in broad waves; windows, plaster and ici
   assert.ok(windows>100&&broken>5&&icicles>50&&plaster>20,`windows ${windows} broken ${broken} icicles ${icicles} plaster ${plaster}`);
 });
 
-test('ruin: rubble chunks ≤ 0.3 u on the bite floor, only in the view where the bite opens to the camera',()=>{
+test('ruin: rubble chunks ≤ 0.3 u on the bite floor; a whole-cell bite (lowered column) shows them in every view',()=>{
   const bites=pieces.filter(p=>p.bite);
   assert.equal(bites.length,2);
   for(const p of bites){
     const dark=CITY_PALETTE['entulho-escura'],shown=VIEWS.filter(v=>pieceDecor(p,asset,v).some(d=>d.color===dark));
-    assert.deepEqual(shown,VIEWS.filter(v=>(['n','e'] as const).every(s=>['+x','+y'].includes(viewSide(s,v)))));
+    const open=(p.bite??0)>=1?VIEWS:VIEWS.filter(v=>(['n','e'] as const).every(s=>['+x','+y'].includes(viewSide(s,v))));
+    assert.deepEqual(shown,open,p.id);
     for(const v of shown){
       const walls=pieceDecor(p,asset,v).filter(d=>d.color===dark);
       assert.ok(walls.length>=2&&walls.length<=3,`${p.id}: ${walls.length} chunks`);

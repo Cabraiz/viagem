@@ -16,6 +16,8 @@ export const CHUNK_CELLS=16;
  * the columns of one block that share a depth key in a single object, so the object count stays low.
  */
 export const PIECE_MAX_CELLS=1;
+/** Ruin bite floor, as a fraction of the block height. */
+export const RUIN_FLOOR=0.6;
 /** Ruined roofs: one side steps down in 2 or 3 steps of this fraction of the height (art bible §4.2). */
 export const RUIN_STEP=0.12;
 /** FNV-1a hash of a string, for decisions seeded by a block id (same in every client and view). */
@@ -86,12 +88,15 @@ function minGround(asset:CityAsset,x0:number,y0:number,x1:number,y1:number){
 export function blockPieces(asset:CityAsset,b:CityBlock):BlockPiece[]{
   const base=minGround(asset,b.x,b.y,b.x+b.w,b.y+b.h),out:BlockPiece[]=[];
   const ruin=b.kind==='building'&&!!b.ruined;
+  const bite=ruin?ruinBite(b):0;
+  // A bite of a whole cell lowers the north-east column to the bite floor; neighbours close it with step walls.
+  const top=(i:number,j:number)=>ruin&&bite>=1&&i===b.w-1&&j===0?height(i,j)*RUIN_FLOOR:height(i,j);
   const height=(i:number,j:number)=>ruin?b.height*ruinStepFactor(b,i,j):b.height;
   for(let j=0;j<b.h;j++)for(let i=0;i<b.w;i++){
     const ne=ruin&&i===b.w-1&&j===0,hh=height(i,j);
     const drops:{n?:number;s?:number;e?:number;w?:number}={};
     const near:[('n'|'s'|'e'|'w'),number,number][]=[['n',i,j-1],['s',i,j+1],['w',i-1,j],['e',i+1,j]];
-    for(const [side,ni,nj] of near)if(ni>=0&&nj>=0&&ni<b.w&&nj<b.h&&hh-height(ni,nj)>1e-9)drops[side]=hh-height(ni,nj);
+    for(const [side,ni,nj] of near)if(ni>=0&&nj>=0&&ni<b.w&&nj<b.h&&top(i,j)-top(ni,nj)>1e-9)drops[side]=top(i,j)-top(ni,nj);
     out.push({id:`${b.id}#${j*b.w+i}`,blockId:b.id,kind:b.kind,x:b.x+i,y:b.y+j,w:1,h:1,height:hh,
       ...(b.ruined?{ruined:true}:{}),...(ne?{bite:ruinBite(b)}:{}),base,
       seams:{n:j>0,s:j<b.h-1,w:i>0,e:i<b.w-1},...(Object.keys(drops).length?{drops}:{})});

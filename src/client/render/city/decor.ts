@@ -321,7 +321,10 @@ export function pieceDecor(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt
   const b=biteOf(piece);
   if(b>0){
     const front=(s:Side)=>{const q=viewSide(s,v);return q==='+x'||q==='+y';};
-    if(front('n')&&front('e')){
+    // A whole-cell bite lowers the column (chunks.ts): its floor is open to the camera in every view. A partial bite
+    // only shows its floor when both bite sides face the camera (the roof hides it otherwise).
+    const whole=b>=Math.min(piece.w,piece.h)-1e-9;
+    if(whole||(front('n')&&front('e'))){
       const {cell,origin}=asset,zb=piece.base+RUIN_FLOOR*piece.height,r=seeded(`${piece.blockId}:bite`);
       // Inner corner of the bite (where the remaining roof's walls meet), in cells.
       const ix=piece.x+piece.w-b,iy=piece.y+b,n=count(r,[2,3]),boxes:{q:number;box:number[]}[]=[];

@@ -6,7 +6,7 @@
  */
 import type {CityAsset,GroundKind} from './asset.ts';
 import {groundAt,heightAt} from './asset.ts';
-import type {BlockPiece,CityChunk} from './chunks.ts';
+import {RUIN_FLOOR,type BlockPiece,type CityChunk} from './chunks.ts';
 import type {Pt} from './projection.ts';
 import {DEPTH_SCALE,HEIGHT_PX,TILE_X,TILE_Y,VIEW_PIVOT,normalizeView,project,rotate,viewPoint} from './projection.ts';
 
@@ -16,7 +16,7 @@ export interface Face {kind:FaceKind;points:Pt[]}
 export interface PieceGeometry {faces:Face[];outline:Pt[][];depthKey:number}
 
 /** Ruined roof: the bite's floor sits at this fraction of the piece height. */
-export const RUIN_FLOOR=0.6;
+export {RUIN_FLOOR};
 /** Ground shade per unit of screen-space slope (clamped to [-1,1]). */
 export const SHADE_GAIN=4;
 
@@ -55,13 +55,17 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
   const v=normalizeView(view),{cell,origin}=asset;
   const a=viewPoint(origin.x+piece.x*cell,origin.y+piece.y*cell,v,pivot),b=viewPoint(origin.x+(piece.x+piece.w)*cell,origin.y+(piece.y+piece.h)*cell,v,pivot);
   const qx0=Math.min(a.x,b.x),qx1=Math.max(a.x,b.x),qy0=Math.min(a.y,b.y),qy1=Math.max(a.y,b.y);
-  const z0=piece.base,z1=piece.base+piece.height,zb=piece.base+RUIN_FLOOR*piece.height;
+  const zb=piece.base+RUIN_FLOOR*piece.height;
+  // A bite covering the whole column (unit pieces, bite >= 1 cell) lowers the column to the bite floor; its
+  // neighbours close the hole with their (dark) step walls, as chunks.ts computes the drops from that floor.
+  const whole=piece.kind==='building'&&(piece.bite??0)>=Math.min(piece.w,piece.h)-1e-9;
+  const z0=piece.base,z1=whole?zb:piece.base+piece.height;
   const seams=new Set<QSide>();
   for(const s of ['n','s','e','w'] as const)if(piece.seams[s])seams.add(viewSide(s,v));
   const faces:{kind:FaceKind;q:Q[]}[]=[];
   // Roof bite (ruined buildings only).
   // Bite side in cells (chunks.ts ruinBite: a third of the block's shortest edge, at most 1 cell), on one piece only.
-  const bs=piece.kind==='building'&&piece.bite!==undefined&&piece.bite>0?Math.min(piece.bite,Math.min(piece.w,piece.h)):0;
+  const bs=!whole&&piece.kind==='building'&&piece.bite!==undefined&&piece.bite>0?Math.min(piece.bite,Math.min(piece.w,piece.h)):0;
   let bite:{x0:number;x1:number;y0:number;y1:number;sx:QSide;sy:QSide}|null=null;
   if(bs>0){
     const n=viewSide('n',v),e=viewSide('e',v),sx=n[1]==='x'?n:e,sy=n[1]==='y'?n:e,d=bs*cell;
@@ -81,7 +85,8 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
     const drop=piece.drops?.[s];
     if(!drop||!piece.seams[s])continue;
     const side=viewSide(s,v);
-    if(side==='+y')stepWalls.push({kind:'wallLight',q:wallQ(1,qy1,qx0,qx1,z1-drop,z1,null,zb)});
+    // Exposed inside of a broken slab: dark whatever the screen side (art bible §4.3).
+    if(side==='+y')stepWalls.push({kind:'wallDark',q:wallQ(1,qy1,qx0,qx1,z1-drop,z1,null,zb)});
     else if(side==='+x')stepWalls.push({kind:'wallDark',q:wallQ(0,qx1,qy0,qy1,z1-drop,z1,null,zb)});
   }
   faces.push(...stepWalls);

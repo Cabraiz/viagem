@@ -1,7 +1,8 @@
 // TEST 4-direction batch for the lab flag (?lab=sprites4) — NOT ART. Derived from the approved cidadao-comum sheet,
 // which is only read: front-right is the sheet itself, front-left its mirror, and the two back facings recolour the
 // head as hair and print "COSTAS" over the body, so a print shows at a glance which drawing the render picked.
-// Every facing carries its code (FD, FE, CD, CE) on the shirt. Overlays are clipped to the figure (blend "atop"),
+// Every facing carries its code (FD, FE, CD, CE) on the shirt. Also writes the reference strip (standing cell of each
+// facing, 768×192) next to the fixture. Overlays are clipped to the figure (blend "atop"),
 // so alpha, pivot and height stay exactly the approved ones.
 //   node scripts/make-lab-sprites4.mjs [outDir=artifacts/lab-sprites4]
 //   node --experimental-strip-types scripts/import-sprites.mjs --dir4 artifacts/lab-sprites4 --lab
@@ -15,16 +16,11 @@ const out=process.argv[2]??'artifacts/lab-sprites4';
 const source=`public/art/sprites/${ID}.webp`;
 const CODES={'front-right':'FD','front-left':'FE','back-right':'CD','back-left':'CE'};
 
-// The test copy is moved so the idle feet stand on the cell's centre column (the pivot the mirror turns around).
-const approved=await sharp(source).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-const shift=Math.round(CELL/2-cellStats(approved.data,approved.info.width,0).footX);
+// The approved drawing keeps its own feet column (the importer checks each class against its approved sheet), and the
+// left facings are its mirror around the cell's centre, exactly like the flip the game does today.
 const clear={r:0,g:0,b:0,alpha:0};
 const at=frame=>({left:frame%COLUMNS*CELL,top:Math.floor(frame/COLUMNS)*CELL});
-const cells=await Promise.all(Array.from({length:COLUMNS*ROWS},async(_,frame)=>{
-  const cell=await sharp(source).extract({...at(frame),width:CELL,height:CELL}).png().toBuffer();
-  return sharp(cell).extend({left:Math.max(shift,0),right:Math.max(-shift,0),background:clear}).png().toBuffer()
-    .then(wide=>sharp(wide).extract({left:Math.max(-shift,0),top:0,width:CELL,height:CELL}).png().toBuffer());
-}));
+const cells=await Promise.all(Array.from({length:COLUMNS*ROWS},(_,frame)=>sharp(source).extract({...at(frame),width:CELL,height:CELL}).png().toBuffer()));
 const sheet=inputs=>sharp({create:{width:SINGLE.width,height:SINGLE.height,channels:4,background:clear}})
   .composite(inputs.map((input,frame)=>({input,...at(frame)}))).png().toBuffer();
 const straight=await sheet(cells);
@@ -57,4 +53,7 @@ await mkdir(path.join(out,ID),{recursive:true});
 const file=path.join(out,ID,'atlas-4dir.png');
 await sharp({create:{width:DIR4.width,height:DIR4.height,channels:4,background:clear}})
   .composite(blocks.map((input,i)=>({input,left:0,top:i*SINGLE.height}))).png().toFile(file);
+await sharp({create:{width:CELL*4,height:CELL,channels:4,background:clear}})
+  .composite(await Promise.all(blocks.map(async(input,i)=>({input:await sharp(input).extract({left:0,top:0,width:CELL,height:CELL}).png().toBuffer(),left:i*CELL,top:0}))))
+  .png().toFile('tests/fixtures/sprites-4dir/tira-referencia.png');
 console.log(file);

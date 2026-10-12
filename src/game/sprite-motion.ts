@@ -55,19 +55,31 @@ const facingOf=(front:boolean,right:boolean):Facing=>front?right?'front-right':'
  * (front/back) each change only when the motion clears its border by FACING_HYSTERESIS, so a thumb held along a
  * border or a remote ally's interpolated wobble cannot make the figure blink between two drawings. The heading is
  * kept in world terms, so a figure standing still turns with the camera like the ground under it.
+ *
+ * Two sources: a remote figure turns by its (interpolated) displacement; the LOCAL hero passes its `intent` (the
+ * joystick or route step it sends), because a prediction/reconciliation snap of 0.5–1 tile backwards is a real
+ * on-screen motion that would otherwise show its back for several frames. With an intent, displacement is ignored:
+ * a zero intent (thumb off, down, paused) holds the drawing.
  */
 export class FacingTracker {
   /** Facing as seen from view 0. */
   private base:Facing='front-right';
   private ax=0;
   private ay=0;
-  update(dx:number,dy:number,view:number):Facing{
+  update(dx:number,dy:number,view:number,intent?:{x:number;y:number}):Facing{
+    if(intent){
+      this.ax=this.ay=0;
+      return Math.hypot(intent.x,intent.y)<1e-6?turnFacing(this.base,view):this.turn(intent.x,intent.y,view);
+    }
     const step=Math.hypot(dx,dy);
     if(step<.001||step>FACING_TELEPORT){this.ax=this.ay=0;return turnFacing(this.base,view);}
     this.ax+=dx;this.ay+=dy;
     if(Math.hypot(this.ax,this.ay)<FACING_STEP)return turnFacing(this.base,view);
-    const s=screenMotion(this.ax,this.ay,view),length=Math.hypot(s.x,s.y),ux=s.x/length,uy=s.y/length;
-    this.ax=this.ay=0;
+    const x=this.ax,y=this.ay;this.ax=this.ay=0;
+    return this.turn(x,y,view);
+  }
+  private turn(dx:number,dy:number,view:number):Facing{
+    const s=screenMotion(dx,dy,view),length=Math.hypot(s.x,s.y),ux=s.x/length,uy=s.y/length;
     const now=turnFacing(this.base,view);
     let right=now.endsWith('right'),front=now.startsWith('front');
     if(ux>FACING_HYSTERESIS)right=true;else if(ux< -FACING_HYSTERESIS)right=false;

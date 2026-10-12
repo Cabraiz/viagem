@@ -15,16 +15,20 @@ export const SCHEMA='viagem-ux/1';
  * `max`: teto da fração da turma toda (ofertas no padrão).
  */
 export const TARGETS={
-  firstMove:{label:'1º movimento ≤ 3 s',limitMs:3000,share:.8,who:'novatos'},
-  round1:{label:'Round 1 sem queda (4 de 5 novatos)',share:.8,who:'novatos'},
+  firstMove:{label:'1º movimento ≤ 3 s (80% dos novatos)',limitMs:3000,share:.8,who:'novatos'},
+  round1:{label:'Round 1 sem queda (80% dos novatos)',share:.8,who:'novatos'},
   defaulted:{label:'Ofertas no padrão < 20%',max:.2,who:'todas as runs'},
-  rematch:{label:'Revanche ≥ 60% dos grupos',share:.6,who:'grupos'},
-  chip:{label:'1º chip ≤ 30 s',limitMs:30000,share:.8,who:'novatos'},
+  rematch:{label:'Revanche (60% dos grupos)',share:.6,who:'grupos'},
+  chip:{label:'1º chip ≤ 30 s (80% dos novatos)',limitMs:30000,share:.8,who:'novatos'},
 };
 
-const median=list=>{const s=list.filter(v=>typeof v==='number').sort((a,b)=>a-b);if(!s.length)return null;const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
-const sec=ms=>ms===null||ms===undefined?'—':`${(ms/1000).toFixed(1).replace('.',',')} s`;
-const pct=v=>v===null?'—':`${Math.round(v*100)}%`;
+/** A finite number, or null: anything missing, broken or NaN is "sem dado", never a value. */
+const num=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+const median=list=>{const s=list.map(num).filter(v=>v!==null).sort((a,b)=>a-b);if(!s.length)return null;const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const sec=ms=>num(ms)===null?'—':`${(ms/1000).toFixed(1).replace('.',',')} s`;
+const pct=v=>num(v)===null?'—':`${Math.round(v*100)}%`;
+const sumOf=(list,f)=>list.reduce((a,x)=>a+(num(f(x))??0),0);
 
 /** Reads files and folders into export objects; invalid files are listed, never fatal. */
 export function load(paths){
@@ -40,61 +44,63 @@ export function load(paths){
   return {files,skipped};
 }
 
-/** The table's rows from export objects (one per phone and room). Pure: the test calls it. */
+/** The table's rows from export objects (one per phone and room). Pure: the test calls it. Never throws on partial files. */
 export function summarize(exports){
-  const phones=exports.filter(e=>e?.schema===SCHEMA&&Array.isArray(e.runs));
-  const novices=phones.filter(e=>e.novice);
+  const phones=(Array.isArray(exports)?exports:[]).filter(e=>e?.schema===SCHEMA&&Array.isArray(e.runs));
+  const runsOf=e=>e.runs.filter(r=>r&&typeof r==='object');
+  const novices=phones.filter(e=>e.novice===true);
   // The novice metrics read the first run of each first-time phone; without any novice, every phone's first run (noted).
-  const base=(novices.length?novices:phones).map(e=>e.runs[0]).filter(Boolean);
+  const base=(novices.length?novices:phones).map(e=>runsOf(e)[0]).filter(Boolean);
   const noviceNote=novices.length?'':' (nenhum celular novato: todos)';
-  const runs=phones.flatMap(e=>e.runs);
+  const runs=phones.flatMap(runsOf);
   const rows=[];
-  const share=(key,list,pass)=>{
-    const t=TARGETS[key],n=list.length,k=list.filter(pass).length;
-    rows.push({key,label:t.label,value:n?`${k} de ${n}`:'sem dado',ok:n?k/n>=t.share:null,detail:''});
+  /** A share target over the runs that HAVE the value (`get` not null); the others are counted as "sem dado". */
+  const share=(key,list,get,pass)=>{
+    const t=TARGETS[key],known=list.filter(r=>get(r)!==null),n=known.length,k=known.filter(r=>pass(get(r))).length,missing=list.length-n;
+    rows.push({key,label:t.label,value:n?`${k} de ${n} (${pct(k/n)})${missing?`, ${missing} sem dado`:''}`:'sem dado',ok:n?k/n>=t.share:null,detail:''});
     return rows[rows.length-1];
   };
   // The novice's move is the finger's first drag on the joystick; without it (no touch), the hero's first step.
-  const move=r=>r.firstStickMs??r.firstMoveMs??null;
-  const firstMoves=base.map(move);
-  share('firstMove',base,r=>move(r)!==null&&move(r)<=TARGETS.firstMove.limitMs).detail=`mediana ${sec(median(firstMoves))} (herói anda: ${sec(median(base.map(r=>r.firstMoveMs)))}); nunca andou: ${firstMoves.filter(v=>v===null).length}${noviceNote}`;
-  share('round1',base,r=>r.downs?.meRound1===0).detail=`quedas no round 1 (da turma): ${base.reduce((a,r)=>a+(r.downs?.teamRound1??0),0)}${noviceNote}`;
+  const move=r=>num(r.firstStickMs)??num(r.firstMoveMs);
+  share('firstMove',base,move,v=>v<=TARGETS.firstMove.limitMs).detail=`mediana ${sec(median(base.map(move)))} (herói anda: ${sec(median(base.map(r=>r.firstMoveMs)))}); tentou na sala de espera: ${novices.filter(e=>num(obj(e.waitingRoom).stickMs)!==null).length}${noviceNote}`;
+  share('round1',base,r=>num(obj(r.downs).meRound1),v=>v===0).detail=`quedas no round 1 (da turma): ${sumOf(base,r=>obj(r.downs).teamRound1)}${noviceNote}`;
   {
-    const sum=(f)=>runs.reduce((a,r)=>a+f(r),0);
-    const chosen=sum(r=>r.offers?.chosen??0),defaulted=sum(r=>r.offers?.defaulted??0),n=chosen+defaulted;
-    const part=k=>{const c=sum(r=>r.offers?.[k]?.chosen??0),d=sum(r=>r.offers?.[k]?.defaulted??0);return c+d?`${pct(d/(c+d))} (${d} de ${c+d})`:'—';};
+    const o=r=>obj(r.offers);
+    const chosen=sumOf(runs,r=>o(r).chosen),defaulted=sumOf(runs,r=>o(r).defaulted),n=chosen+defaulted;
+    const part=k=>{const c=sumOf(runs,r=>obj(o(r)[k]).chosen),d=sumOf(runs,r=>obj(o(r)[k]).defaulted);return c+d?`${pct(d/(c+d))} (${d} de ${c+d})`:'—';};
     const v=n?defaulted/n:null;
     rows.push({key:'defaulted',label:TARGETS.defaulted.label,value:n?`${pct(v)} (${defaulted} de ${n})`:'sem dado',ok:n?v<TARGETS.defaulted.max:null,
-      detail:`em combate ${part('combat')}; no intervalo ${part('intermission')}`});
+      detail:`chegaram em combate ${part('combat')}; no intervalo ${part('intermission')}; toques não enviados ${sumOf(runs,r=>o(r).unsent)}`});
   }
   {
-    // A group (room) counts when one of its phones saw a result; it passes when any of them saw the rematch start.
+    // A group (random label) counts when one of its phones saw a result; it passes when any of them saw the rematch start.
     const groups=new Map();
-    for(const e of phones){const g=groups.get(e.group)??{result:false,rematch:false};for(const r of e.runs){if(r.ended==='result')g.result=true;if(r.rematch?.started)g.rematch=true;}groups.set(e.group,g);}
+    for(const e of phones){const id=typeof e.group==='string'&&e.group?e.group:`sem-grupo-${groups.size}`;const g=groups.get(id)??{result:false,rematch:false};
+      for(const r of runsOf(e)){if(r.ended==='result')g.result=true;if(obj(r.rematch).started===true)g.rematch=true;}groups.set(id,g);}
     const played=[...groups.values()].filter(g=>g.result),k=played.filter(g=>g.rematch).length;
-    rows.push({key:'rematch',label:TARGETS.rematch.label,value:played.length?`${k} de ${played.length} grupos`:'sem dado',ok:played.length?k/played.length>=TARGETS.rematch.share:null,
-      detail:`apertaram Revanche: ${runs.filter(r=>r.rematch?.pressedMs!==null&&r.rematch?.pressedMs!==undefined).length} vez(es)`});
+    rows.push({key:'rematch',label:TARGETS.rematch.label,value:played.length?`${k} de ${played.length} grupos (${pct(k/played.length)})`:'sem dado',ok:played.length?k/played.length>=TARGETS.rematch.share:null,
+      detail:`apertaram Revanche: ${runs.filter(r=>num(obj(r.rematch).pressedMs)!==null).length} vez(es)`});
   }
-  share('chip',base,r=>r.chip?.firstMs!==null&&r.chip?.firstMs!==undefined&&r.chip.firstMs<=TARGETS.chip.limitMs).detail=`mediana ${sec(median(base.map(r=>r.chip?.firstMs)))}; 1º toque no chip: mediana ${sec(median(base.map(r=>r.chip?.firstTapMs)))}${noviceNote}`;
+  share('chip',base,r=>num(obj(r.chip).firstMs),v=>v<=TARGETS.chip.limitMs).detail=`mediana ${sec(median(base.map(r=>obj(r.chip).firstMs)))}; 1º toque no chip: mediana ${sec(median(base.map(r=>obj(r.chip).firstTapMs)))}${noviceNote}`;
 
   // Without a target: what the observer reads next to the table.
   const info=[];
-  info.push(['Parado nos primeiros 60 s (mediana, 1ª run)',sec(median(base.map(r=>r.still60?.seconds*1000)))]);
-  info.push(['Tempo de escolha (mediana das médias por run)',sec(median(runs.map(r=>r.offers?.choiceMsAvg)))]);
-  info.push(['"Depois" tocado',String(runs.reduce((a,r)=>a+(r.offers?.later??0),0))]);
-  info.push(['Caídos resgatados / perdidos',`${runs.reduce((a,r)=>a+(r.fallen?.rescued??0),0)} / ${runs.reduce((a,r)=>a+(r.fallen?.lost??0),0)}`]);
-  info.push(['"Me salva" enviados / recebidos',`${runs.reduce((a,r)=>a+(r.pings?.sent??0),0)} / ${runs.reduce((a,r)=>a+(r.pings?.received??0),0)}`]);
-  info.push(['Emotes',runs.some(r=>r.emotes?.available)?String(runs.reduce((a,r)=>a+(r.emotes?.sent??0),0)):'não existem na sala ainda']);
+  info.push(['Parado nos primeiros 60 s (mediana, 1ª run)',sec(median(base.map(r=>{const v=num(obj(r.still60).seconds);return v===null?null:v*1000;})))]);
+  info.push(['Tempo de escolha (mediana das médias por run)',sec(median(runs.map(r=>obj(r.offers).choiceMsAvg)))]);
+  info.push(['"Depois" tocado',String(sumOf(runs,r=>obj(r.offers).later))]);
+  info.push(['Caídos resgatados / perdidos',`${sumOf(runs,r=>obj(r.fallen).rescued)} / ${sumOf(runs,r=>obj(r.fallen).lost)}`]);
+  info.push(['"Me salva" enviados / recebidos',`${sumOf(runs,r=>obj(r.pings).sent)} / ${sumOf(runs,r=>obj(r.pings).received)}`]);
+  info.push(['Emotes',runs.some(r=>obj(r.emotes).available===true)?String(sumOf(runs,r=>obj(r.emotes).sent)):'não existem na sala ainda']);
   const LESSON_NAMES={walk:'andar',xp:'gotinhas (XP)',chip:'chip +N',rescue:'resgatar',gather:'coleta'};
   for(const lesson of Object.keys(LESSON_NAMES)){
-    const seen=base.filter(r=>r.coach?.[lesson]&&!r.coach[lesson].knownAtStart);
+    const seen=base.map(r=>obj(obj(r.coach)[lesson])).filter(l=>Object.keys(l).length&&l.knownAtStart!==true);
     if(!seen.length)continue;
-    const learned=seen.filter(r=>r.coach[lesson].learnedMs!==null);
-    info.push([`Dica "${LESSON_NAMES[lesson]}": aprendida`,`${learned.length} de ${seen.length} (vista em ${sec(median(seen.map(r=>r.coach[lesson].shownMs)))}, aprendida em ${sec(median(learned.map(r=>r.coach[lesson].learnedMs)))}; por ação ${learned.filter(r=>r.coach[lesson].by==='action').length})`]);
+    const learned=seen.filter(l=>num(l.learnedMs)!==null);
+    info.push([`Dica "${LESSON_NAMES[lesson]}": aprendida`,`${learned.length} de ${seen.length} (vista em ${sec(median(seen.map(l=>l.shownMs)))}, aprendida em ${sec(median(learned.map(l=>l.learnedMs)))}; por ação ${learned.filter(l=>l.by==='action').length})`]);
   }
-  const owner=phones.reduce((a,e)=>({kick:a.kick+(e.owner?.kick??0),botAdd:a.botAdd+(e.owner?.botAdd??0),botRemove:a.botRemove+(e.owner?.botRemove??0)}),{kick:0,botAdd:0,botRemove:0});
-  info.push(['Comandos de dono (expulsar / pôr bot / tirar bot)',`${owner.kick} / ${owner.botAdd} / ${owner.botRemove}`]);
-  const moments={};for(const r of runs)for(const [k,v] of Object.entries(r.moments??{}))moments[k]=(moments[k]??0)+v;
+  const owner=k=>sumOf(phones,e=>obj(e.owner)[k]);
+  info.push(['Comandos de dono confirmados (expulsar / pôr bot / tirar bot)',`${owner('kick')} / ${owner('botAdd')} / ${owner('botRemove')} (sem confirmação ${owner('unconfirmed')}, não enviados ${owner('unsent')})`]);
+  const moments={};for(const r of runs)for(const [k,v] of Object.entries(obj(r.moments)))if(num(v)!==null)moments[k]=(moments[k]??0)+v;
   info.push(['Momentos de risada que aconteceram (ver a folha do observador)',Object.entries(moments).map(([k,v])=>`${k} ${v}`).join(', ')||'—']);
   return {phones:phones.length,novices:novices.length,groups:new Set(phones.map(e=>e.group)).size,runs:runs.length,rows,info};
 }

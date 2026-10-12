@@ -15,7 +15,7 @@ import type {RunView} from './sim/view.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from '../ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
-import {uxMetricsEnabled} from './dev/ux-flag.ts';
+import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
@@ -83,9 +83,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
       if(closed||!hud)return;
+      // It chains net.onCommand and net.onSos (RescueBoard's) and puts them back on destroy.
       ux=m.createUxMetrics(window,net);ux?.attachHud(hud);
-      // "Me salva" relayed by the room (RescueBoard listens first): the player's own echo counts as sent.
-      const sos=net.onSos;net.onSos=ping=>{sos(ping);ux?.sos(ping.id===net.id);};
+      if(sceneReady)ux?.ready();
     }).catch(()=>undefined);
     hud.el.hidden=true;
     // Out or watching: a tap on a teammate's portrait makes the camera follow them (UX onda 4).
@@ -101,7 +101,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${uxMetricsEnabled(location.search)?'&dev=1':''}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${inviteQuery(location.search)}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=()=>{pause(false);skill?.tap(()=>net.cast(),performance.now());};
@@ -277,12 +277,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
         if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
-        if(phase==='combat'){rescue?.view(view);ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined);}
+        if(phase==='combat')rescue?.view(view);
+        // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.
+        ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined,phase==='combat');
         shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
-      ready:()=>{sceneReady=true;syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
+      ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();},
       message:text=>{notice.textContent=text;},
     });
     if(paused)controller.scene.setPaused(true);

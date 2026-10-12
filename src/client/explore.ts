@@ -27,7 +27,7 @@ import type {UxMetrics} from './dev/ux-metrics.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
-/** Center banner while the socket is down (the client retries on its own). */
+/** Center banner while the socket stays down past RECONNECT_BANNER_MS (the client retries on its own). */
 const RECONNECTING='Reconectando à turma…';
 
 let active=false;
@@ -290,7 +290,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   extra:[...net.players.values()].filter(p=>ids.includes(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.hp,online:p.online,spectator:false,weapons:[],passives:[],
                     ...(run.members.find(m=>m.id===p.id)?.bot?{bot:true}:{})}))});
               }
-              hud.setNetwork(net.connected||net.fatal?undefined:RECONNECTING);
+              hud.setNetwork(net.showReconnecting()?RECONNECTING:undefined);
               hud.avoidHero(controller?.scene.heroScreenRect());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
               const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();

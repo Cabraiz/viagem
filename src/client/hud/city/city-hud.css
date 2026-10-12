@@ -1,0 +1,72 @@
+/* City HUD (NEW-20261012-ORQ-cidade-ux-01, design/cidade-hud.md): minimap of the Cidade Nevada and the lobby's map
+   selector. Tokens only (D-020): ficha 6 for the minimaps, etiqueta 4 for the segments, janela 12 for the landscape
+   window; Cone only for critters, mouths, caído and boss; Cartolina only for the base's life; Amarelo only for the
+   owner's choice. No animation: the big minimap opens dry and the blocked tap is a fixed border (A12, B9). */
+
+/* ---------- Minimap: collapsed (.rh-minimap slot of hud.css) and big ---------- */
+.ch-minimap>svg{display:block;width:100%;height:100%}
+.ch-minimap-grande{position:absolute;z-index:1;box-sizing:border-box;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-ficha);background:var(--c-breu);box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;overflow:hidden} /* solid: the collapsed one under it never shows through */
+.ch-minimap-grande[hidden]{display:none}
+.ch-minimap-aberto>svg{visibility:hidden}
+/* Tap blocked (a critter 2.5 u from the hero, or a notice up): Cone and dashed, so it does not rest on colour alone (B8). */
+.rh-minimap.ch-minimap-bloqueado{border:2px dashed var(--c-cone)}
+.ch-mm-offline{position:absolute;right:2px;top:2px;display:none;line-height:0;pointer-events:none}
+.ch-mm-offline .ic{width:16px;height:16px}
+.ch-minimap-offline .ch-mm-offline{display:block}
+.ch-minimap-offline .ch-mm-marks{opacity:.5}
+
+/* The fixed layer: the city as a diamond and the two avenues in X. */
+.ch-mm-city{fill:color-mix(in srgb,var(--c-papel) 12%,transparent);stroke:color-mix(in srgb,var(--c-papel) 50%,transparent);stroke-width:1}
+.ch-mm-avenue{fill:none;stroke:color-mix(in srgb,var(--c-papel) 28%,transparent);stroke-width:1}
+
+/* Marks, bottom to top (minimap.ts CITY_DRAW_ORDER). */
+.ch-mm-inicio rect{fill:none;stroke:color-mix(in srgb,var(--c-papel) 60%,transparent);stroke-width:1}
+.ch-mm-boca path{fill:none;stroke:color-mix(in srgb,var(--c-papel) 60%,transparent);stroke-width:2}
+.ch-mm-grupo circle{fill:var(--c-cone);stroke:var(--c-breu);stroke-width:.8}
+.ch-mm-aliado circle{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
+.ch-mm-base path{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2;stroke-linejoin:round}
+.ch-mm-base .ch-mm-flag{fill:var(--c-lilas);stroke:var(--c-papel);stroke-width:.8}
+.ch-mm-base .ch-mm-track{fill:none;stroke:color-mix(in srgb,var(--c-papel) 28%,transparent);stroke-width:2.5}
+.ch-mm-base .ch-mm-life{fill:none;stroke:var(--c-cartolina);stroke-width:2.5}
+.ch-mm-base .ch-mm-life.ch-mm-low{stroke:var(--c-cone)}
+.ch-mm-boca-ativa path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1}
+.ch-mm-chefe :is(circle,rect){fill:var(--c-papel);stroke:var(--c-cone);stroke-width:1.4}
+.ch-mm-chefe .ch-mm-eye{fill:var(--c-breu);stroke:none}
+.ch-mm-caido circle{fill:none;stroke:var(--c-cone);stroke-width:2.4}
+.ch-mm-caido .ch-mm-dot{fill:var(--c-papel);stroke:none}
+.ch-mm-caido .ch-mm-halo{stroke:var(--c-papel);stroke-width:1.4}
+.ch-mm-voce circle{fill:var(--c-voce);stroke:var(--c-papel);stroke-width:1.6}
+/* Big only: what the screen shows, the nearest closed chests (intermission) and the count beside groups of 10+. */
+.ch-mm-screen{fill:none;stroke:color-mix(in srgb,var(--c-papel) 60%,transparent);stroke-width:1}
+.ch-mm-bau{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:.8}
+.ch-mm-num{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:2;paint-order:stroke;font:800 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums}
+
+/* ---------- Map selector (lobby, .coop-wait) ---------- */
+.ch-selector{position:relative;box-sizing:border-box;text-align:left}
+.ch-selector[hidden]{display:none}
+.ch-selector-group{display:grid;grid-template-columns:1fr 1fr}
+.ch-selector .ch-segment{position:relative;box-sizing:border-box;display:flex;align-items:center;min-width:48px;min-height:64px;margin:0;padding:4px 8px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-lilas-escuro);color:var(--c-papel);box-shadow:none;font:inherit;text-align:left;opacity:1;cursor:pointer}
+:root[data-texto="125"] .ch-selector[data-orientation=portrait] .ch-segment{min-height:84px} /* the subtitle wraps into 2 lines */
+.ch-segment-text{min-width:0}
+.ch-segment strong{display:block;font:400 var(--t-16)/1.1 var(--f-cartaz)}
+.ch-segment small{display:block;font:700 var(--t-13)/1.15 var(--f-sistema)}
+.ch-segment small[hidden]{display:none}
+/* The sticker (pronto, relogio, cadeado) sits on the segment's top edge, so the name and the joke keep the whole width. */
+.ch-segment-mark{position:absolute;top:-10px;right:6px;width:20px;height:20px;line-height:0}
+.ch-segment-mark:empty{display:none}
+.ch-segment-mark .ic{width:20px;height:20px}
+.ch-selector.is-owner .ch-segment.is-selected{background:var(--c-amarelo);color:var(--c-breu)}
+.ch-selector:not(.is-owner) .ch-segment{cursor:default}
+.ch-selector:not(.is-owner) .ch-segment.is-selected{background:var(--c-papel);color:var(--c-lilas)} /* not their choice: no Amarelo */
+.ch-selector .ch-segment.is-pending{border:2px dashed var(--c-papel)}
+.ch-selector .ch-segment:disabled{cursor:default}
+.ch-selector-hint{display:flex;align-items:center;gap:4px;min-height:20px;margin:8px 0 0;font:700 var(--t-13)/1.3 var(--f-sistema);color:var(--c-papel)}
+.ch-selector-hint[hidden]{display:none}
+.ch-selector-hint .ic{flex:none;width:20px;height:20px}
+.ch-selector-crown{position:absolute;top:-10px;left:-10px;line-height:0;pointer-events:none}
+.ch-selector-crown[hidden]{display:none}
+/* Landscape: a small Lilás window (janela 12) in the column opposite the notch, segments stacked with the name only. */
+.ch-selector[data-orientation=landscape]{width:112px;height:144px;padding:4px;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2)}
+.ch-selector[data-orientation=landscape] .ch-selector-group{grid-template-columns:1fr;gap:4px}
+.ch-selector[data-orientation=landscape] .ch-segment{height:64px;justify-content:center;padding:4px;text-align:center}
+.ch-selector[data-orientation=landscape] .ch-selector-hint{display:none}

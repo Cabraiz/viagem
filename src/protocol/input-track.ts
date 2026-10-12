@@ -13,9 +13,7 @@
  * A skill tap is a separate one-shot message {t:'cast',round,id} (no held state, outside the 10 Hz slot), answered
  * with {t:'cast',seq:id,ok,readyTick} after the step that carried it.
  */
-import type {Point} from './world.ts';
-import type {TerrainField} from './terrain/field.ts';
-import type {PlayerInput,SimPlayer} from '../contract/index.ts';
+import type {PlayerInput,Point,SimPlayer} from '../contract/index.ts';
 import {SIM_HZ} from '../contract/index.ts';
 
 /** Joystick directions: 32 (11.25°); the client predicts with the very numbers it sends. */
@@ -156,7 +154,7 @@ export class InputTrack {
    * whole message is refused when anything in it is malformed or out of order. A segment may only start after the
    * last step the client already reported (`known`): rewriting reported steps is a contradiction, so it is refused.
    */
-  accept(value:unknown,_player?:SimPlayer,_terrain?:TerrainField,now=0):boolean{
+  accept(value:unknown,now=0):boolean{
     const batch=toBatch(value);
     if(!batch)return false;
     const batched=!!value&&Array.isArray((value as {steps?:unknown}).steps);

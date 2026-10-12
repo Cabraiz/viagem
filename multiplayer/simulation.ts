@@ -19,7 +19,7 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
-import {InputTrack,STEP_MS} from '../src/maps/index.ts';
+import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
 import type {ZueiraLab} from '../src/sim/index.ts';
 /**
@@ -181,7 +181,7 @@ export class Simulation {
   input(id:string,value:unknown,now=this.tick*STEP_MS){
     const p=this.players.get(id),t=this.tracks.get(id);
     if(!p?.online||p.spectator||!t)return false;
-    return t.accept(value,p,this.terrain,now);
+    return t.accept(value,now);
   }
   /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
   tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}

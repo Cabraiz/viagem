@@ -3,7 +3,6 @@ export * from './world.ts';
 export * from './terrain/field.ts';
 export * from './terrain/chunks.ts';
 export * from './tree-catalog.ts';
-export * from './input-track.ts';
 export * from './prediction.ts';
 export * from './city-asset.ts';
 export * from './flowfield.ts';

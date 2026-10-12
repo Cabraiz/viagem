@@ -9,7 +9,7 @@ import {heightAt,type CityAsset,type CityProp} from './asset.ts';
 import {ChunkTracker,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk} from './chunks.ts';
 import {groundQuads,pieceGeometry,type PieceGeometry} from './faces.ts';
 import {OcclusionFader,heroRelativeDepth,occluderFor,outlineAlpha,type Occluder} from './occlusion.ts';
-import {BLOCK_COLORS,CITY_PALETTE,GROUND_COLORS,OUTLINE_PX,PROP_COLORS,SHADOW,shadeColor} from './palette.ts';
+import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
@@ -75,10 +75,8 @@ export class CityLayer {
     const chunk=this.index.chunks.find(c=>c.key===key);
     if(!chunk||this.live.has(key))return;
     const ground=this.scene.add.graphics().setDepth(CITY_GROUND_DEPTH);
-    for(const quad of groundQuads(chunk,this.asset,view,this.pivot)){
-      const base=GROUND_COLORS[quad.kind].base;
-      ground.fillStyle(quad.shade?shadeColor(base,1+quad.shade*0.12):base,1).fillPoints(quad.points,true);
-    }
+    for(const quad of groundQuads(chunk,this.asset,view,this.pivot))
+      ground.fillStyle(groundColor(quad.kind,quad.shade),1).fillPoints(quad.points,true);
     const pieces:LivePiece[]=[];
     for(const piece of chunk.pieces){
       const geo=pieceGeometry(piece,this.asset,view,this.pivot);

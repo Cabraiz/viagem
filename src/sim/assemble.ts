@@ -7,7 +7,7 @@ import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../rules/index.ts';
 import {createDirector,type Director} from './director.ts';
-import {ELITE,createEnemy,isEnemyKind} from './enemies/catalog.ts';
+import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
 import {createEnemyAi,type EnemyAi} from './enemies/ai.ts';
 import {createBoss,type BossController} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
@@ -21,6 +21,8 @@ import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.t
 import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
 import {WALL_RADIUS} from './stonewards/wall.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
+import type {AvenuePlanner} from './city/avenues.ts';
+import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -52,6 +54,8 @@ export interface RunSystems {
   stonewards:StonewardsSystem;
   /** Zueira events in the middle of a round and the last critter's kill-cam (VGM-053B). */
   zueira:ZueiraSystem;
+  /** City world (cidade-05): the avenue planner shared by the director and the enemy steer (cidade-06: barricades → invalidate). */
+  avenues?:AvenuePlanner;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints. */
   state():unknown;
   dispose():void;
@@ -100,7 +104,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
   });
   structures=()=>{const {wall,wallDown,towers}=stonewards.state;return [...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];};
-  const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,
+  // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
+  const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
+  // TODO(cidade-05 steer hook): spread so tsc passes until EnemyAiOptions declares `steer` (the hook card types it).
+  const steer=avenues?{steer:citySteer(avenues)}:{};
+  const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,...steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });
@@ -122,6 +130,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
+    ...(avenues?{avenues,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined}:{}),
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 
@@ -146,7 +155,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state}),
     dispose(){offKill();offZero();},
   };

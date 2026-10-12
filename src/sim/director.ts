@@ -9,6 +9,10 @@
  *   player with the fewest enemies around, so spread players each get a horde. Enemies that end up farther than
  *   RECYCLE_DISTANCE from every player are moved back onto a ring (same id and hp: no kill, no xp). Siege groups
  *   come from off screen around the base, on their way to it. Timed-out hordes flee off screen.
+ * - city (cidade-05, with options.avenues): at the avenue tips through the AvenuePlanner (city/avenues.ts). The round is
+ *   planned once at its start for the warning ticks; each group is planned again just in time at its warning, at
+ *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s). Timed-out hordes
+ *   walk back up the avenues (exit flow field) and vanish at the avenue end or once hidden and far from the plaza.
  */
 import type {TerrainField} from '../maps/index.ts';
 import {RADIUS,SPEED,clearSegment,isLand,walkable,worldBase,worldSpawn,type Point} from '../maps/index.ts';
@@ -19,6 +23,8 @@ import {moveSafely} from './enemies/ai.ts';
 import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
+import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
+import {cityTerrainOf} from './city/grid.ts';
 import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
@@ -59,14 +65,26 @@ export interface DirectorOptions {
   siegeTarget?:(ctx:SimContext)=>Point|undefined;
   /** Endless world: the camera a client reported (042b/camera-segue). Without it every orientation and view counts. */
   cameraOf?:(ctx:SimContext,player:SimPlayer)=>CameraHint|undefined;
+  /**
+   * City world (cidade-05): the avenue planner. With it, a 'cidade' terrain spawns at the avenue tips (see the module
+   * comment) instead of throwing; ignored on the island and in the endless world.
+   */
+  avenues?:AvenuePlanner;
+  /** City: base speed (u/s) of an enemy kind, for the planner's arrival estimate (× plan.speed). Planner default when absent. */
+  enemySpeedOf?:(kind:string)=>number|undefined;
 }
 
 /**
  * side: angle the group must come from (single-side, alternating and surround modifiers); kept on re-warns.
  * Endless world: anchor is the player the group was sent to; retry marks a group that found no hidden spot yet.
  */
-interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number}
-type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'>;
+/**
+ * City: group is the plan group's index (its cadence slot), points the exact member positions, warnTick the tick the
+ * warning goes out when it is later than the planning (a cerco part released after the group's first part).
+ */
+interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number;
+  group?:number;points?:Point[];warnTick?:number}
+type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'|'points'|'warnTick'>;
 /** capTick (endless): hard end of a flight that keeps being extended while someone sees the enemy. */
 interface Retreat {id:string;x:number;y:number;untilTick:number;capTick?:number}
 /** JSON-safe director state, so a room checkpoint (VGM-047) can store and restore it. */
@@ -95,6 +113,11 @@ export interface DirectorState {
   served?:Record<string,number>;
   /** Endless world: the round's last call started (every group is out); see LAST_CALL_SECONDS. */
   called?:boolean;
+  /** City: the avenue planner's memory (open mouths, rotation, uses per mouth). */
+  avenues?:AvenueState;
+  /** City: per plan group, the tick after the round start when its warning goes out; groups go out in cityOrder. */
+  cityWarn?:number[];
+  cityOrder?:number[];
 }
 
 export interface Director extends SimSystem {
@@ -160,6 +183,12 @@ const DETOUR_TURNS=[Math.PI/3,Math.PI/2,2*Math.PI/3];
 const STUCK_UNITS=.5,STUCK_SECONDS=2;
 /** Endless retreat: fleeing is faster and may take longer than walking into the island's sea. */
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
+/**
+ * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end, or once
+ * hidden from everyone and CITY_GONE_DISTANCE from the plaza; FLEE_CAP_SECONDS is the liveness cap.
+ */
+export const CITY_EXIT_REACH=2,CITY_GONE_DISTANCE=25;
+const retreatDir={x:0,y:0};
 
 export function activePlayers(ctx:SimContext){
   let n=0;for(const p of ctx.players.values())if(p.online&&!p.spectator&&!p.eliminated)n++;
@@ -419,6 +448,106 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     }
   }
 
+  // ---------- City (cidade-05): the avenue planner ----------
+  const planner=options.avenues;
+  const city=(ctx:SimContext)=>!!planner&&ctx.terrain.world==='cidade';
+  const viewers=(ctx:SimContext)=>[...ctx.players.values()];
+  /** The round's first nominal dispatch tick (the planner's at0). */
+  function cityAt0(){
+    let at0=Infinity;for(const g of state.plan!.groups)at0=Math.min(at0,g.at);
+    return Number.isFinite(at0)?at0:0;
+  }
+  /**
+   * Planner request of a group: its members, nominal tick and, when known, its fastest member's speed this round, so
+   * no member reaches the plaza before the group's slot (slower ones trail behind).
+   */
+  function cityRequest(members:readonly string[],at:number):GroupRequest{
+    let fastest=0;
+    for(const kind of members){const v=options.enemySpeedOf?.(kind);if(v!==undefined&&Number.isFinite(v)&&v>fastest)fastest=v;}
+    return fastest>0?{at,size:members.length,speed:fastest*state.plan!.speed}:{at,size:members.length};
+  }
+  /**
+   * Round start: open the round's mouths and plan every group once, only for the tick each group's warning goes out
+   * (its earliest part); groups are dispatched in that order. A round of siege groups only (every regular group
+   * besieges) is a cerco; a modifier wins over it (modeForModifier).
+   */
+  function planCity(ctx:SimContext){
+    const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite);
+    const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||isSiege(g,i));
+    const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues);
+    const parts=planner!.planGroups(plan.groups.map(g=>cityRequest(g.members,g.at)),viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0});
+    const warnAt=plan.groups.map(()=>Infinity);
+    for(const part of parts)if(part.index<warnAt.length)warnAt[part.index]=Math.min(warnAt[part.index],part.warnTick);
+    const cityWarn=state.cityWarn=warnAt.map((w,i)=>Math.max(0,Number.isFinite(w)?w:plan.groups[i].at));
+    state.cityOrder=plan.groups.map((_,i)=>i).sort((a,b)=>cityWarn[a]-cityWarn[b]||a-b);
+  }
+  /**
+   * Just in time: plans this group alone (its cadence slot `spawn.group`, released no earlier than `delay` + the
+   * warning from now) at fresh hidden points, warns at the first point of each part (later parts warn at their own
+   * time, see cityWarnings) and queues the exact positions. Members without a spot try again a second later (retryLater).
+   */
+  function cityWarn(ctx:SimContext,spawn:SpawnRequest,delay:number){
+    const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
+    const parts=planner!.planGroups([cityRequest(spawn.members,at)],viewers(ctx),state.avenues!,random(),
+      {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning});
+    let used=0;
+    for(const part of parts){
+      const members=spawn.members.slice(used,used+part.points.length);
+      if(!members.length)continue;
+      used+=members.length;
+      const p=part.points[0],atTick=Math.max(state.roundStart+part.releaseTick,ctx.tick+delay+warning),warnTick=atTick-warning;
+      const entry:PendingSpawn={...spawn,members,x:p.x,y:p.y,atTick,points:part.points.slice(0,members.length).map(q=>({x:q.x,y:q.y}))};
+      if(warnTick>ctx.tick)entry.warnTick=warnTick;
+      else ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:members.length});
+      state.pending.push(entry);
+    }
+    if(used<spawn.members.length)retryLater(ctx,{...spawn,members:spawn.members.slice(used)},delay);
+  }
+  /** Every member spot still hidden from every viewer and >= minPlayerDistance away (the planner's rule). */
+  function cityHidden(ctx:SimContext,entry:PendingSpawn){
+    const players=viewers(ctx);
+    return (entry.points??[entry]).every(p=>planner!.hiddenFrom(players,p));
+  }
+  const requestOf=(entry:PendingSpawn):SpawnRequest=>({members:entry.members,elite:entry.elite,boss:entry.boss,side:entry.side,
+    ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{}),...(entry.group!==undefined?{group:entry.group}:{})});
+  const warnDue=(ctx:SimContext,p:PendingSpawn)=>p.warnTick!==undefined&&p.warnTick<=ctx.tick;
+  /** Deferred warnings that are due: still hidden, the warning goes out; seen meanwhile, the part is planned again. */
+  function cityWarnings(ctx:SimContext){
+    if(!state.pending.some(p=>warnDue(ctx,p)))return;
+    const due=state.pending.filter(p=>warnDue(ctx,p));
+    state.pending=state.pending.filter(p=>!warnDue(ctx,p));
+    for(const entry of due){
+      if(!cityHidden(ctx,entry)){cityWarn(ctx,requestOf(entry),0);continue;}
+      delete entry.warnTick;state.pending.push(entry);
+      ctx.emit({type:'spawn-warning',x:entry.x,y:entry.y,atTick:entry.atTick,count:entry.members.length});
+    }
+  }
+  /** The avenue end (the asset's spawn point) of a mouth. */
+  function avenueEnd(ctx:SimContext,mouth:Mouth|undefined):Point|undefined{
+    const points=mouth?cityTerrainOf(ctx.terrain)?.asset.points:undefined;
+    return points&&mouth?points[`spawn${mouth}` as const]:undefined;
+  }
+  /**
+   * City retreat: back up the avenues along the exit flow field (moveSafely: never through a building) at the island's
+   * retreat pace; gone near the avenue end, at the field's goal, once hidden and CITY_GONE_DISTANCE from the plaza, or
+   * at the FLEE_CAP_SECONDS cap.
+   */
+  function moveCityRetreats(ctx:SimContext){
+    const players=viewers(ctx),plaza=planner!.plazaCenter;
+    state.retreating=state.retreating.filter(r=>{
+      const e=ctx.enemies.get(r.id);if(!e)return false;
+      const step=Math.max(e.speed,1.5)*1.5/SIM_HZ;
+      planner!.retreatDirection(e,retreatDir);
+      if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
+      const end=avenueEnd(ctx,planner!.retreatMouth(e));
+      if(end){r.x=end.x;r.y=end.y;}
+      const gone=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||planner!.exitField.atGoal(e.x,e.y)
+        ||Math.hypot(e.x-plaza.x,e.y-plaza.y)>=CITY_GONE_DISTANCE&&planner!.hiddenFrom(players,e)||ctx.tick>=r.untilTick;
+      if(gone){ctx.enemies.delete(r.id);state.retreated++;return false;}
+      return true;
+    });
+  }
+
   /** Side of the n-th group: the plan's side, flipped every other group when the modifier alternates. */
   function sideFor(index:number){
     const plan=state.plan;
@@ -437,6 +566,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
 
   function warn(ctx:SimContext,spawn:SpawnRequest,delay=0){
+    if(city(ctx)){cityWarn(ctx,spawn,delay);return;}
     const found=locate(ctx,spawn);
     if(!found){retryLater(ctx,spawn,delay);return;}
     const p=found.point;
@@ -452,6 +582,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function dispatch(ctx:SimContext,group:SpawnGroup,index:number){
     const side=sideFor(index),special=!group.boss&&!group.elite,siege=special&&isSiege(group,index);
     const flag=siege?{siege:true}:{};
+    // City: one request per group; the planner lays it out along the avenue (cerco splits it over the 4 mouths).
+    if(city(ctx)){warn(ctx,{members:[...group.members],elite:group.elite,boss:group.boss,group:index,...flag});return;}
     if(special&&group.formation==='surround'&&group.members.length>1){
       // Surround: the group splits and arrives from evenly spaced sides at once (endless: around one player).
       const parts=Math.min(SURROUND_SIDES,group.members.length),base=side??random().range(0,Math.PI*2);
@@ -487,11 +619,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function spawnPending(ctx:SimContext,entry:PendingSpawn){
     const plan=state.plan!;
     const center={x:entry.x,y:entry.y};
-    const request:SpawnRequest={members:entry.members,elite:entry.elite,boss:entry.boss,side:entry.side,
-      ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{})};
+    const request=requestOf(entry),isCity=city(ctx);
     // Endless: no hidden spot was found earlier, or a player now sees the warned one. Island: a player walked onto it.
-    // Either way, warn again somewhere else.
-    if(entry.retry||(endless(ctx)?!hiddenBy(ctx,center,SPAWN_MARGIN):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
+    // City: a viewer now sees (or stands near) a member's spot. Either way, warn again somewhere else.
+    if(entry.retry||(isCity?!cityHidden(ctx,entry):endless(ctx)?!hiddenBy(ctx,center,SPAWN_MARGIN):nearestPlayer(ctx,center)<minDistance)){warn(ctx,request);return;}
     if(entry.boss){
       const before=new Set(ctx.enemies.keys());
       // Without VGM-038 the catalog's 'chefe' stands in, so the final round still has a boss to beat.
@@ -505,7 +636,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     }
     const room=Math.max(0,maxEnemies-ctx.enemies.size),count=Math.min(entry.members.length,room);
     for(let i=0;i<count;i++){
-      const p=placeInGroup(ctx,center,i);
+      // City: the planner's exact spot (walkable, hidden, outside the base); no jitter.
+      const p=isCity&&entry.points?.[i]?entry.points[i]:placeInGroup(ctx,center,i);
       const enemy=options.createEnemy(ctx,entry.members[i],p,entry.elite?plan.eliteHp:plan.hp);
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
@@ -534,6 +666,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});
     Object.assign(ctx.round,{phase:'wave',phaseEndsTick:ctx.tick+plan.durationTicks,remaining:plan.total});
+    if(city(ctx))planCity(ctx);
     ctx.emit({type:'round',index,phase:'wave',name:theme.name,modifier:theme.modifierLabel});
     // Only where the first bichos come from the off-screen ring (~25 s away): on the island they come from the coast in
     // a few seconds, and an early level there only lands on the first contact.
@@ -569,9 +702,16 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function beginRetreat(ctx:SimContext,timedOut:boolean){
     state.timedOut=timedOut;state.nextGroup=state.plan!.groups.length;state.pending=[];
     let barked=false;
-    const isEndless=endless(ctx),anchors=isEndless?anchorsOf(ctx):[];
+    const isEndless=endless(ctx),anchors=isEndless?anchorsOf(ctx):[],isCity=city(ctx);
     for(const id of state.tracked){
       const e=ctx.enemies.get(id);if(!e||state.retreating.some(r=>r.id===id))continue;
+      if(isCity){
+        // City: back up the avenues (moveCityRetreats), which keeps the avenue end it is heading to in x/y.
+        e.memory={...e.memory,retreat:1};e.damage=0;
+        state.retreating.push({id,x:e.x,y:e.y,untilTick:ctx.tick+ticks(FLEE_CAP_SECONDS)});
+        if(!barked){barked=true;ctx.emit({type:'bark',enemy:id,line:random().pick(RETREAT_LINES)});save();}
+        continue;
+      }
       let target:Point,until=ctx.tick+retreatTicks;
       const from=isEndless?nearestOf(anchors,e).player??worldBase(ctx.terrain):worldBase(ctx.terrain);
       const dx=e.x-from.x,dy=e.y-from.y,len=Math.hypot(dx,dy);
@@ -589,6 +729,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
 
   function moveRetreats(ctx:SimContext){
+    if(city(ctx)){moveCityRetreats(ctx);return;}
     const isEndless=endless(ctx);
     state.retreating=state.retreating.filter(r=>{
       const e=ctx.enemies.get(r.id);if(!e)return false;
@@ -627,7 +768,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function stepWave(ctx:SimContext){
     const plan=state.plan!,elapsed=ctx.tick-state.roundStart;
-    while(state.nextGroup<plan.groups.length&&plan.groups[state.nextGroup].at<=elapsed){dispatch(ctx,plan.groups[state.nextGroup],state.nextGroup);state.nextGroup++;}
+    // City: groups go out at their warning tick (planCity), in that order.
+    const order=city(ctx)?state.cityOrder:undefined,slot=(i:number)=>order?.[i]??i;
+    const dueAt=(i:number)=>order?state.cityWarn?.[i]??plan.groups[i].at:plan.groups[i].at;
+    while(state.nextGroup<plan.groups.length&&dueAt(slot(state.nextGroup))<=elapsed){const i=slot(state.nextGroup);dispatch(ctx,plan.groups[i],i);state.nextGroup++;}
+    if(order)cityWarnings(ctx);
     const due=state.pending.filter(p=>p.atTick<=ctx.tick);
     state.pending=state.pending.filter(p=>p.atTick>ctx.tick);
     for(const entry of due)spawnPending(ctx,entry);
@@ -646,7 +791,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     if(plan.boss&&state.bossId&&!ctx.enemies.has(state.bossId)&&state.tracked.length>state.retreating.length)beginRetreat(ctx,false);
     if(state.retreating.length){moveRetreats(ctx);alive();}
     let queued=0;
-    for(let i=state.nextGroup;i<plan.groups.length;i++)queued+=plan.groups[i].members.length;
+    for(let i=state.nextGroup;i<plan.groups.length;i++)queued+=plan.groups[slot(i)].members.length;
     for(const p of state.pending)queued+=p.members.length;
     ctx.round.remaining=queued+state.tracked.length;
     if(!ctx.round.remaining)endRound(ctx);

@@ -2,13 +2,40 @@
  * City avenue planner: where and when horde groups enter the city so they reach the plaza on time without popping up
  * in sight. The city is a cross of avenues from the 4 map edges to a central plaza; each avenue enters the plaza
  * through a mouth (barricade spot). Three shared flow fields drive the enemies:
- *  - plazaField: goal = the plaza (cells within plazaRadius); routes and the normal attack;
+ *  - plazaField: goal = the plaza; routes and the normal attack;
  *  - barricadeField: goal = cells around each mouth; used once barricades cut an enemy off the plaza (`targetFor`);
  *  - exitField: goal = the 4 avenue ends (spawns); retreat.
+ *
+ * The base: each mouth has a "mouth line", the cells within mouthHalfWidth (default 2.6 u) of the mouth point. The
+ * plaza goal is a flood fill (8-neighborhood, no corner cutting) over walkable cells from the plaza center (default:
+ * centroid of the 4 mouths), never entering a mouth line and never farther from the center than the farthest mouth
+ * (nor than layout.plazaRadius when given). So a closed barricade really cuts the plaza off its avenue, even when the
+ * plaza point sits a few u from a mouth. The constructor throws a RangeError when the mouth lines do not close the
+ * plaza (an unbounded flood reaches a spawn). "Inside the base" = a plaza goal cell or a mouth-line cell; groups
+ * never appear there and stand at least OUTSIDE_MOUTH (u, along their route) past the route's outermost base cell.
+ *
+ * Visibility (default): the union of every legal phone camera of the endless map (contract visibleOffset: portrait
+ * and landscape × 4 views, sprite/lag/offset margins), scaled to the city by CITY_VIEW_SCALE (drawn hero size of
+ * 'cidade-nevada' over 'infinito'), after shrinking the offset by a lead margin (hero speed × warning seconds), so a
+ * warned spot is still off screen when the group lands even if a player walks straight at it: `cityVisible`.
+ * Option viewRadius switches to a plain circle (radius + lead); option isVisible overrides both.
+ * Viewers: every player not spectating nor eliminated, offline ones included (they may reconnect, D-011); downed
+ * players still see.
+ *
+ * Director usage: openRound once per round; planGroups(all requests of the round) gives the schedule. Then, at each
+ * group's warnTick, plan that group again alone with {at0: the round's first nominal at, indexBase: its index,
+ * nowTick: the current tick} and a fresh rng, and check hiddenFrom on the returned points (players moved meanwhile);
+ * when unconstrained it reproduces the arrival tick of the full plan. Never advance state.alternate between batches:
+ * the rotation follows the global index (indexBase + position). A group that cannot make its arrival is released at
+ * nowTick and arrives late alone; the others keep their schedule. Rng draws are a fixed function of the request sizes.
+ *
  * Units: world u (x east, y south), speeds u/s, times in ticks at 20 Hz (ticks = Math.round(seconds × 20)).
- * Deterministic: randomness only from the injected RngLike. directionFor/retreatDirection allocate nothing with `out`.
+ * Deterministic: randomness only from the injected RngLike. State is JSON-safe. targetFor/directionFor/
+ * retreatDirection allocate nothing (with `out`).
  */
 import {FlowField,DIRS,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
+import {visibleOffset} from '../../contract/index.ts';
+import {SCALE_PROFILES} from '../../rules/index.ts';
 
 export type Mouth='N'|'S'|'L'|'O';
 /** Fixed mouth order (ties, iteration, cerco parts). */
@@ -17,11 +44,13 @@ export const MOUTHS:readonly Mouth[]=Object.freeze(['N','S','L','O'] as Mouth[])
 export const OPPOSITE:Readonly<Record<Mouth,Mouth>>=Object.freeze({N:'S',S:'N',L:'O',O:'L'});
 /** Random source in [0,1); the room's Rng fits structurally. */
 export interface RngLike {next():number}
-/** Structural player view (only position and activity flags are read). */
+/** Structural player view (only position and the spectator/eliminated flags are read; offline players still count). */
 export interface PlayerLike {id:string;x:number;y:number;online?:boolean;spectator?:boolean;eliminated?:boolean;downed?:unknown}
 export interface CityLayout {
   grid:FlowGrid;                       // walkable cells of the city at 0.88 u
-  plaza:FlowPoint; plazaRadius:number; // plaza center and radius (u) — goal area
+  plazaCenter?:FlowPoint;              // flood seed of the plaza goal; default: centroid of the 4 mouths
+  plaza?:FlowPoint;                    // fallback seed when the center's cell is not walkable
+  plazaRadius?:number;                 // extra cap (u from the plaza center) of the plaza flood
   mouths:Readonly<Record<Mouth,FlowPoint>>;  // barricade spots at the plaza's 4 entrances
   spawns:Readonly<Record<Mouth,FlowPoint>>;  // avenue ends (far spawn points)
 }
@@ -32,8 +61,28 @@ export type AvenueMode='normal'|'cerco'|'alternado'|'excursao';
 export const TICK_HZ=20;
 const ticks=(seconds:number)=>Math.round(seconds*TICK_HZ);
 
+const CITY=SCALE_PROFILES['cidade-nevada'];
+/** City u per endless-map u on screen: drawn hero size of the city over the endless map's (≈0.544). */
+export const CITY_VIEW_SCALE=CITY.hero.drawnSize/SCALE_PROFILES.infinito.hero.drawnSize;
+/** Default lead margin (u): what the city hero walks during the default 1.5 s spawn warning (≈2.99). */
+export const CITY_VIEW_LEAD=CITY.hero.speed*1.5;
+/** Visibility of an offset (dx,dy) shrunk by `lead`, against the city-scaled camera union. */
+function seen(dx:number,dy:number,lead:number){
+  const d=Math.sqrt(dx*dx+dy*dy);
+  if(d<=lead)return true;
+  const f=(d-lead)/d/CITY_VIEW_SCALE;
+  return visibleOffset(dx*f,dy*f);
+}
 /**
- * Maps modifier ids (src/game/sim/waves.ts) and the director's siege flag to a mode: 'company-trip'→excursao;
+ * True when p may show on the screen of a player at `viewer` within the next `lead` u of walking (default
+ * CITY_VIEW_LEAD): the offset is shrunk by lead, scaled by 1/CITY_VIEW_SCALE and tested against every legal camera.
+ */
+export function cityVisible(viewer:FlowPoint,p:FlowPoint,lead=CITY_VIEW_LEAD):boolean{
+  return seen(p.x-viewer.x,p.y-viewer.y,Number.isFinite(lead)&&lead>0?lead:0);
+}
+
+/**
+ * Maps modifier ids (src/rules/waves.ts) and the director's siege flag to a mode: 'company-trip'→excursao;
  * 'conga-line','frescobol'→alternado; 'surprise-party','uncle-hug' or siege→cerco; anything else→normal.
  * A named modifier wins over the siege flag.
  */
@@ -54,30 +103,36 @@ export function mouthCount(round:number,mode:AvenueMode):number{
   return r<=2?1:r<=5?2:r<=8?3:4;
 }
 
+/** Numeric options: non-finite → default; negative → 0 (speeds, spacing and mouthHalfWidth: ≤ 0 → default). */
 export interface AvenuePlannerOptions {
   enemySpeed?:number;        // u/s used for arrival estimates, default 1.79
   warningSeconds?:number;    // spawn-warning lead, default 1.5
-  viewRadius?:number;        // a point within this distance (u) of any active player counts as visible; default 18
-  isVisible?:(viewer:FlowPoint,p:FlowPoint)=>boolean; // overrides viewRadius when given
+  leadMargin?:number;        // u a viewer may walk before the group lands; default city hero speed × warningSeconds
+  viewRadius?:number;        // when given: visible = within viewRadius + leadMargin of a viewer (instead of cityVisible)
+  isVisible?:(viewer:FlowPoint,p:FlowPoint)=>boolean; // overrides cityVisible/viewRadius (no lead applied)
   minPlayerDistance?:number; // default 4
-  firstArrivalSeconds?:number; // target arrival of the first group at the plaza after round start, default 12
+  firstArrivalSeconds?:number; // arrival of the first group at the plaza after the round's first nominal at, default 12
   memberSpacing?:number;     // u between group members along the avenue, default 0.6
-  clearance?:number;         // flow-field clearance (cells) for the planner's fields, default 0
+  mouthHalfWidth?:number;    // u, radius of each mouth line, default 2.6
+  clearance?:number;         // flow-field clearance (cells, floored) for the planner's fields, default 0
 }
 /**
  * JSON-safe planner memory for the director checkpoint. `open`: mouths of this round, preferred first.
- * `alternate`: rotation offset — group k of planGroups uses open[(alternate+k) % open.length]; openRound resets it
- * to 0, a director planning one round in several batches advances it by the groups already planned.
+ * `alternate`: rotation offset — the group with global index i (indexBase + position) tries open[(alternate+i) % n]
+ * first; openRound resets it to 0 and planning in batches must NOT advance it (pass indexBase instead).
  * `uses`: how many rounds each mouth was opened (least used are preferred).
  */
 export interface AvenueState {round:number;mode:AvenueMode;open:Mouth[];alternate:number;uses:Record<Mouth,number>}
 
-export interface GroupRequest {at:number;size:number}   // `at` = nominal dispatch tick after round start (from the waves plan); size = members
+/** `at` = nominal dispatch tick after round start (from the waves plan); size = members; speed = u/s of this group (default enemySpeed). */
+export interface GroupRequest {at:number;size:number;speed?:number}
+/** at0: the round's first nominal at (default: min of the requests' at); indexBase: global index of requests[0]; nowTick: earliest release. */
+export interface PlanOptions {at0?:number;indexBase?:number;nowTick?:number}
 export interface PlannedGroup {
-  index:number;            // request index
+  index:number;            // indexBase + request position
   mouth:Mouth;
   points:FlowPoint[];      // one walkable, hidden point per member (length = size, or fewer only if the avenue truly has no room)
-  releaseTick:number;      // ticks after round start when they appear (>= 0)
+  releaseTick:number;      // ticks after round start when they appear (>= nowTick)
   warnTick:number;         // releaseTick - warning (may be negative = during the intermission)
   arrivalTick:number;      // estimated plaza arrival, ticks after round start
 }
@@ -90,29 +145,31 @@ const BARRICADE=Object.freeze({
 }) as Readonly<Record<Mouth,Target>>;
 /** Scan step (u) when walking a group back from the plaza toward the spawn. */
 const SCAN_STEP=.5;
-/** Groups never appear inside the base: the first member stands at least this far (u) past the mouth line, measured from the plaza center. */
+/** Members stand at least this far (u, along the route) past the route's outermost base cell. */
 export const OUTSIDE_MOUTH=2;
+/** Members of groups released within STACK_TICKS of each other stay at least STACK_GAP u apart. */
+const STACK_TICKS=2*TICK_HZ, STACK_GAP=.8;
 /** Lateral lanes (u from the route) used when single file does not fit; jitter (u) of each member around its lane. */
 const LANES=[0,.9,-.9,1.8,-1.8], JITTER=.35;
-/** Barricade goal radius (u) around each mouth; grown in steps while a barricade covers every cell in it. */
-const MOUTH_RADIUS=1.5, MOUTH_RADIUS_MAX=4.5;
-const NO_LABEL=255;
+/** Barricade goals: every cell within this radius (u) of each mouth (active while walkable), fixed for the planner's life. */
+const MOUTH_RADIUS=1.5;
+const NO_LABEL=255, MOUTH_LINE=1, PLAZA_CELL=2;
 
-/** Traced route; `cum[i]` = distance (u) from the spawn to points[i]. */
-interface Route {points:FlowPoint[];cum:number[];length:number;blocked:boolean;field:FlowField}
-interface Placed {index:number;mouth:Mouth;points:FlowPoint[];travel:number}
+/** Traced route; `cum[i]` = distance (u) from the spawn to points[i]; `minS` = first allowed distance from the plaza end. */
+interface Route {points:FlowPoint[];cum:number[];length:number;blocked:boolean;field:FlowField;minS:number}
+interface Placed {index:number;mouth:Mouth;points:FlowPoint[];release:number;travel:number}
 
 /** Lazily labels cells with the goal their flow leads to (memoized per field version, amortized O(1) per query). */
 class GoalMemo {
   private readonly field:FlowField; private readonly goal:(cx:number,cy:number)=>number;
   private readonly labels:Uint8Array; private readonly path:Int32Array; private ver=-1;
-  constructor(field:FlowField,goal:(cx:number,cy:number)=>number){
-    this.field=field; this.goal=goal;
-    const n=field.width*field.height; this.labels=new Uint8Array(n); this.path=new Int32Array(n);
+  /** `path` is a shared scratch of at least width × height. */
+  constructor(field:FlowField,goal:(cx:number,cy:number)=>number,path:Int32Array){
+    this.field=field; this.goal=goal; this.labels=new Uint8Array(field.width*field.height); this.path=path;
   }
   /** Goal label (0..253) the flow from (x,y) leads to (blocked cells follow their escape), or -1. Outside clamps to the edge. */
   at(x:number,y:number):number{
-    const f=this.field, w=f.width, h=f.height, {labels,path}=this;
+    const f=this.field, w=f.width, h=f.height, {labels,path}=this, n=w*h;
     let gx=(x-f.originX)/f.cellSize, gy=(y-f.originY)/f.cellSize;
     if(gx!==gx||gy!==gy)return -1;
     let cx=gx<0?0:gx>=w?w-1:Math.floor(gx), cy=gy<0?0:gy>=h?h-1:Math.floor(gy);
@@ -124,7 +181,7 @@ class GoalMemo {
       path[len++]=i;
       if(f.cellCost(cx,cy)===0){lab=this.goal(cx,cy)+1;break;}
       const d=f.nextCell(cx,cy);
-      if(d<0||len>=path.length)break;
+      if(d<0||len>=n)break;
       cx+=DIRS[d].dx; cy+=DIRS[d].dy;
     }
     for(let k=0;k<len;k++)labels[path[k]]=lab;
@@ -134,44 +191,65 @@ class GoalMemo {
 
 /** Plans which avenues a round uses and where/when groups appear on them; steers enemies to the plaza, barricades or out. */
 export class AvenuePlanner {
-  /** Goals: cells within plazaRadius of the plaza. */
+  /** Goals: the plaza flood (see the module doc). */
   readonly plazaField:FlowField;
-  /** Goals: walkable cells within 1.5 u of each mouth (radius grows while a barricade covers them all). */
+  /** Goals: every cell within 1.5 u of each mouth (active while walkable). */
   readonly barricadeField:FlowField;
   /** Goals: the 4 spawns (avenue ends). */
   readonly exitField:FlowField;
+  /** Plaza center the flood started from (u). */
+  readonly plazaCenter:FlowPoint;
   private readonly layout:CityLayout;
-  private readonly speed:number; private readonly warn:number; private readonly view2:number; private readonly near2:number;
-  private readonly firstArrival:number; private readonly spacing:number;
+  private readonly speed:number; private readonly warn:number; private readonly lead:number; private readonly near2:number;
+  private readonly radius:number|undefined; private readonly firstArrival:number; private readonly spacing:number;
   private readonly visible:((viewer:FlowPoint,p:FlowPoint)=>boolean)|undefined;
+  /** Per cell: MOUTH_LINE, PLAZA_CELL or 0. */
+  private readonly base:Uint8Array;
   private readonly plazaMemo:GoalMemo; private readonly mouthMemo:GoalMemo; private readonly exitMemo:GoalMemo;
   private routes:Partial<Record<Mouth,Route|null>>={};
-  private mouthKey:string;
   private readonly probe:FlowPoint={x:0,y:0}; private readonly along={x:0,y:0,tx:0,ty:0};
 
+  /** Throws a RangeError on a malformed layout, a plaza center on a mouth line or a plaza not closed by its mouths. */
   constructor(layout:CityLayout,options:AvenuePlannerOptions={}){
+    checkLayout(layout);
     this.layout=layout;
-    const pos=(v:number|undefined,def:number)=>v!==undefined&&Number.isFinite(v)&&v>0?v:def;
-    this.speed=pos(options.enemySpeed,1.79); this.spacing=pos(options.memberSpacing,.6);
-    this.warn=ticks(Math.max(0,options.warningSeconds??1.5)||0);
-    const view=Math.max(0,options.viewRadius??18), near=Math.max(0,options.minPlayerDistance??4);
-    this.view2=view*view; this.near2=near*near; this.visible=options.isVisible;
-    this.firstArrival=ticks(Math.max(0,options.firstArrivalSeconds??12)||0);
-    const opts={clearance:options.clearance??0}, g=layout.grid;
-    this.plazaField=new FlowField(g,this.disc(layout.plaza,Math.max(0,layout.plazaRadius),false),opts);
-    const mouths=this.mouthTargets(); this.mouthKey=key(mouths);
-    this.barricadeField=new FlowField(g,mouths,opts);
+    const o=options??{}, g=layout.grid, w=g.width, h=g.height, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0;
+    this.speed=pos(o.enemySpeed,1.79); this.spacing=pos(o.memberSpacing,.6);
+    const warnS=nonNeg(o.warningSeconds,1.5);
+    this.warn=ticks(warnS); this.lead=nonNeg(o.leadMargin,CITY.hero.speed*warnS);
+    const near=nonNeg(o.minPlayerDistance,4); this.near2=near*near;
+    this.radius=o.viewRadius===undefined||!Number.isFinite(o.viewRadius)?undefined:nonNeg(o.viewRadius,18); // non-finite → camera default
+    this.visible=typeof o.isVisible==='function'?o.isVisible:undefined;
+    this.firstArrival=ticks(nonNeg(o.firstArrivalSeconds,12));
+    const halfWidth=pos(o.mouthHalfWidth,2.6), opts={clearance:Math.floor(nonNeg(o.clearance,0))};
+    const scratch=new Int32Array(w*h), base=this.base=new Uint8Array(w*h);
+    const cellOf=(p:FlowPoint)=>{const cx=Math.floor((p.x-ox)/cs), cy=Math.floor((p.y-oy)/cs);return cx>=0&&cy>=0&&cx<w&&cy<h?cx+cy*w:-1;};
+    for(const m of MOUTHS)for(const i of this.disc(layout.mouths[m],halfWidth))base[i]=MOUTH_LINE;
+    const center=layout.plazaCenter??centroid(layout.mouths);
+    let seed=cellOf(center);
+    if((seed<0||!g.walkable(seed%w,(seed/w)|0))&&layout.plaza)seed=cellOf(layout.plaza);
+    if(seed<0||!g.walkable(seed%w,(seed/w)|0))throw new RangeError('plaza center (and plaza) cell is not walkable');
+    if(base[seed])throw new RangeError('plaza center lies on a mouth line');
+    this.plazaCenter={x:ox+(seed%w+.5)*cs,y:oy+(((seed/w)|0)+.5)*cs};
+    let cap=0;
+    for(const m of MOUTHS)cap=Math.max(cap,Math.hypot(layout.mouths[m].x-center.x,layout.mouths[m].y-center.y));
+    if(layout.plazaRadius!==undefined)cap=Math.min(cap,layout.plazaRadius);
+    const leak=this.flood(seed,Infinity,center,scratch);
+    for(const m of MOUTHS){const i=cellOf(layout.spawns[m]);if(i>=0&&leak[i])throw new RangeError(`mouth lines do not close the plaza: it reaches spawn ${m}`);}
+    const inside=this.flood(seed,cap,center,scratch), goals:FlowPoint[]=[];
+    for(let i=0;i<w*h;i++)if(inside[i]){base[i]=PLAZA_CELL;goals.push({x:ox+(i%w+.5)*cs,y:oy+(((i/w)|0)+.5)*cs});}
+    const cellPt=(i:number)=>({x:ox+(i%w+.5)*cs,y:oy+(((i/w)|0)+.5)*cs});
+    this.plazaField=new FlowField(g,goals,opts);
+    this.barricadeField=new FlowField(g,MOUTHS.flatMap(m=>this.disc(layout.mouths[m],MOUTH_RADIUS).map(cellPt)),opts);
     this.exitField=new FlowField(g,MOUTHS.map(m=>this.walkableNear(layout.spawns[m])),opts);
-    this.plazaMemo=new GoalMemo(this.plazaField,()=>0);
-    this.mouthMemo=new GoalMemo(this.barricadeField,(cx,cy)=>this.nearest(layout.mouths,cx,cy));
-    this.exitMemo=new GoalMemo(this.exitField,(cx,cy)=>this.nearest(layout.spawns,cx,cy));
+    this.plazaMemo=new GoalMemo(this.plazaField,()=>0,scratch);
+    this.mouthMemo=new GoalMemo(this.barricadeField,(cx,cy)=>this.nearest(layout.mouths,cx,cy),scratch);
+    this.exitMemo=new GoalMemo(this.exitField,(cx,cy)=>this.nearest(layout.spawns,cx,cy),scratch);
   }
 
-  /** Re-read walkability (barricade raised/fallen) in cell rects for all three fields (invalidateMany). */
+  /** Re-read walkability (barricade raised/fallen) in cell rects; each field recomputes once. Goals never change. */
   invalidate(rects:readonly CellRect[]):void{
     this.plazaField.invalidateMany(rects); this.exitField.invalidateMany(rects); this.barricadeField.invalidateMany(rects);
-    const mouths=this.mouthTargets(), k=key(mouths);
-    if(k!==this.mouthKey){this.mouthKey=k;this.barricadeField.setTargets(mouths);}
     this.routes={};
   }
 
@@ -184,6 +262,9 @@ export class AvenuePlanner {
     const r=this.routeData(mouth);
     return r&&{points:r.points.map(p=>({x:p.x,y:p.y})),length:r.length,blocked:r.blocked};
   }
+
+  /** True when the cell containing p is a plaza goal cell or a mouth-line cell. */
+  insideBase(p:FlowPoint):boolean{return this.inBase(p.x,p.y);}
 
   /**
    * Choose which mouths open this round; updates `state` in place (a fresh one when absent) and returns it.
@@ -212,39 +293,44 @@ export class AvenuePlanner {
   }
 
   /**
-   * Plan where/when each requested group appears so arrivals keep the requested spacing.
-   *  - group k uses open[(alternate+k) % open.length] (alternado: the pair alternates by k), falling back to the next
-   *    open mouths; 'cerco' splits each group across all 4 mouths (one PlannedGroup per non-empty part);
-   *  - members go along the mouth's route as close to the plaza as possible (scan every 0.5 u from the plaza toward
-   *    the spawn): the first at distance s, the rest stepping back by memberSpacing (extra lateral lanes only when
-   *    single file runs out of avenue), each with a small rng lateral jitter, all reachable and hiddenFrom every
-   *    active player; a mouth with no such spot is skipped; when none works the group has points=[];
-   *  - travel_k = s / enemySpeed (ticks); firstArrival = max(firstArrivalSeconds, travel of group 0's parts);
-   *    arrival_k = firstArrival + (at_k − at_0); release_k = max(0, arrival_k − travel_k); arrival_k = release_k + travel_k.
-   * Does not mutate `state`.
+   * Plan where/when each requested group appears so arrivals keep the requested spacing. Group at position k has the
+   * global index i = indexBase + k.
+   *  - desired arrival = firstArrivalSeconds (ticks) + (at_k − at0); release = max(nowTick, desired − travel),
+   *    arrival = release + travel, travel = route distance of the first member / speed (ticks). A late group arrives
+   *    late alone;
+   *  - normal/excursao: tries the open mouths in rotation order from open[(alternate+i) % n] and keeps the placement
+   *    with the most members, then the EARLIEST arrival (ties → rotation order); alternado: the pair alternates by i,
+   *    the other mouth only when the first has no spot; cerco: splits each group over the 4 mouths (one PlannedGroup
+   *    per non-empty part), a part moving to the next mouth only when its own has no spot;
+   *  - members go along the mouth's route as close to the plaza as possible (scan every 0.5 u from OUTSIDE_MOUTH past
+   *    the route's outermost base cell toward the spawn): the first at distance s, the rest stepping back by
+   *    memberSpacing (extra lateral lanes only when single file runs out of avenue), each with a small rng lateral
+   *    jitter, all reachable, outside the base, hiddenFrom every viewer and ≥ 0.8 u from members of groups of this
+   *    call released within 2 s; a mouth with no such spot is skipped; when none works the group has points=[].
+   * Draws exactly Σ size rng values. Does not mutate `state`.
    */
-  planGroups(requests:readonly GroupRequest[],players:readonly PlayerLike[],state:AvenueState,rng:RngLike):PlannedGroup[]{
-    const active=players.filter(isActive);
-    const open=(state.open??[]).filter(m=>MOUTHS.includes(m)), mouths=open.length?open:[...MOUTHS];
-    const off=Math.floor(Number(state.alternate))||0, placed:Placed[]=[];
+  planGroups(requests:readonly GroupRequest[],players:readonly PlayerLike[],state:AvenueState,rng:RngLike,opts:PlanOptions={}):PlannedGroup[]{
+    const viewers=players.filter(isViewer);
+    const now=Math.max(0,Math.floor(fin(opts?.nowTick,0))), indexBase=Math.max(0,Math.floor(fin(opts?.indexBase,0)));
+    let at0=fin(opts?.at0,Infinity);
+    if(at0===Infinity){for(const r of requests){const a=Number(r?.at);if(Number.isFinite(a)&&a<at0)at0=a;}if(at0===Infinity)at0=0;}
+    const open=(state?.open??[]).filter(m=>MOUTHS.includes(m)), mouths=open.length?open:[...MOUTHS];
+    const off=Math.floor(fin(state?.alternate,0)), mode=state?.mode, placed:Placed[]=[];
+    const sizes=requests.map(r=>Math.max(0,Math.floor(fin(r?.size,0))));
+    const jitter=sizes.map(n=>{const j:number[]=[];for(let q=0;q<n;q++)j.push((rng.next()*2-1)*JITTER);return j;});
     for(let k=0;k<requests.length;k++){
-      const size=Math.max(0,Math.floor(Number(requests[k].size))||0);
-      if(state.mode==='cerco'){
-        const base=Math.floor(size/4), rem=size%4;
-        for(let p=0;p<4;p++){
-          const n=base+(mod(p-off-k,4)<rem?1:0);
-          if(n>0)placed.push(this.placeOn(k,rotate(MOUTHS,p),n,active,rng));
+      const i=indexBase+k, size=sizes[k], speed=pos(requests[k]?.speed,this.speed);
+      const desired=this.firstArrival+Math.round(fin(requests[k]?.at,at0)-at0);
+      if(mode==='cerco'){
+        const part=Math.floor(size/4), rem=size%4;
+        for(let p=0,used=0;p<4;p++){
+          const n=part+(mod(p-off-i,4)<rem?1:0);
+          if(n>0)placed.push(this.placeOn(i,rotate(MOUTHS,p),false,jitter[k].slice(used,used+n),viewers,desired,now,speed,placed));
+          used+=n;
         }
-      }else placed.push(this.placeOn(k,rotate(mouths,mod(off+k,mouths.length)),size,active,rng));
+      }else placed.push(this.placeOn(i,rotate(mouths,mod(off+i,mouths.length)),mode!=='alternado',jitter[k],viewers,desired,now,speed,placed));
     }
-    let travel0=0;
-    for(const p of placed)if(p.index===0&&p.points.length)travel0=Math.max(travel0,p.travel);
-    const first=Math.max(this.firstArrival,travel0), at0=requests.length?Number(requests[0].at)||0:0;
-    return placed.map(p=>{
-      const desired=first+Math.round((Number(requests[p.index].at)||0)-at0);
-      const releaseTick=Math.max(0,desired-p.travel);
-      return {index:p.index,mouth:p.mouth,points:p.points,releaseTick,warnTick:releaseTick-this.warn,arrivalTick:releaseTick+p.travel};
-    });
+    return placed.map(p=>({index:p.index,mouth:p.mouth,points:p.points,releaseTick:p.release,warnTick:p.release-this.warn,arrivalTick:p.release+p.travel}));
   }
 
   /** Where an enemy at p should go: plaza if plazaField reaches it; else the mouth whose barricade barricadeField leads p to; else none. A point inside a wall counts from the cell its escape leads to. */
@@ -253,7 +339,10 @@ export class AvenuePlanner {
     const m=this.mouthMemo.at(p.x,p.y);
     return m>=0?BARRICADE[MOUTHS[m]]:NO_TARGET;
   }
-  /** Direction (unit vector, allocation-free with out) for an enemy heading to `target`; (0,0) for none or at the goal. */
+  /**
+   * Direction (unit vector, allocation-free with out) for an enemy heading to `target`; (0,0) for none or at the goal.
+   * A barricade target follows barricadeField (nearest reachable barricade); its `mouth` is informational.
+   */
   directionFor(p:FlowPoint,target:Target,out:FlowPoint={x:0,y:0}):FlowPoint{
     if(target.kind==='plaza')return this.plazaField.directionAt(p.x,p.y,out);
     if(target.kind==='barricade')return this.barricadeField.directionAt(p.x,p.y,out);
@@ -263,17 +352,38 @@ export class AvenuePlanner {
   retreatDirection(p:FlowPoint,out:FlowPoint={x:0,y:0}):FlowPoint{return this.exitField.directionAt(p.x,p.y,out);}
   /** Mouth whose avenue end the retreat from p leads to; undefined when no end is reachable. */
   retreatMouth(p:FlowPoint):Mouth|undefined{const m=this.exitMemo.at(p.x,p.y);return m>=0?MOUTHS[m]:undefined;}
-  /** True when p is not visible to any active player and ≥ minPlayerDistance from all (same rule as planGroups). */
+  /** True when p is not visible to any viewer (offline included) and ≥ minPlayerDistance from all (same rule as planGroups). */
   hiddenFrom(players:readonly PlayerLike[],p:FlowPoint):boolean{
-    for(const pl of players)if(isActive(pl)&&!this.hiddenFor(pl,p.x,p.y))return false;
+    for(const pl of players)if(isViewer(pl)&&!this.hiddenFor(pl,p.x,p.y))return false;
     return true;
   }
 
+  private inBase(x:number,y:number){
+    const g=this.layout.grid, cx=Math.floor((x-(g.originX??0))/g.cellSize), cy=Math.floor((y-(g.originY??0))/g.cellSize);
+    return cx>=0&&cy>=0&&cx<g.width&&cy<g.height&&this.base[cx+cy*g.width]!==0;
+  }
   private hiddenFor(pl:PlayerLike,x:number,y:number){
     const dx=x-pl.x, dy=y-pl.y, d2=dx*dx+dy*dy;
-    if(d2<this.near2)return false;
+    if(!(d2>=this.near2))return false;
     if(this.visible){const q=this.probe;q.x=x;q.y=y;return !this.visible(pl,q);}
-    return d2>this.view2;
+    if(this.radius!==undefined){const r=this.radius+this.lead;return d2>r*r;}
+    return !seen(dx,dy,this.lead);
+  }
+  /** Flood (8-neighborhood, no corner cutting) over walkable non-mouth-line cells within `cap` u of `c`. */
+  private flood(seed:number,cap:number,c:FlowPoint,queue:Int32Array):Uint8Array{
+    const g=this.layout.grid, w=g.width, h=g.height, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0, base=this.base;
+    const mark=new Uint8Array(w*h), ok=(x:number,y:number)=>x>=0&&y>=0&&x<w&&y<h&&base[x+y*w]!==MOUTH_LINE&&g.walkable(x,y);
+    let qa=0, qe=0; mark[seed]=1; queue[qe++]=seed;
+    while(qa<qe){
+      const u=queue[qa++], ux=u%w, uy=(u-ux)/w;
+      for(let d=0;d<8;d++){
+        const vx=ux+DIRS[d].dx, vy=uy+DIRS[d].dy, v=vx+vy*w;
+        if(vx<0||vy<0||vx>=w||vy>=h||mark[v]||!ok(vx,vy)||d>=4&&(!ok(vx,uy)||!ok(ux,vy)))continue;
+        if(Math.hypot(ox+(vx+.5)*cs-c.x,oy+(vy+.5)*cs-c.y)>cap)continue;
+        mark[v]=1; queue[qe++]=v;
+      }
+    }
+    return mark;
   }
   private routeData(mouth:Mouth):Route|undefined{
     let r=this.routes[mouth];
@@ -283,23 +393,27 @@ export class AvenuePlanner {
     }
     return r??undefined;
   }
-  /** Follow nextCell from `from` to a goal cell (escaping walls), merging collinear steps. */
+  /** Follow nextCell from `from` to a goal cell (escaping walls), merging collinear cell steps; notes the first base cell. */
   private trace(field:FlowField,from:FlowPoint,blocked:boolean):Route|undefined{
     const {cellSize:cs,originX:ox,originY:oy,width:w,height:h}=field;
     let cx=Math.floor((from.x-ox)/cs), cy=Math.floor((from.y-oy)/cs);
     if(!(cx>=0&&cy>=0&&cx<w&&cy<h))return undefined;
     const points:FlowPoint[]=[{x:from.x,y:from.y}];
+    let dist=0, baseAt=this.base[cx+cy*w]?0:-1;
     for(let n=0,last=-1;field.cellCost(cx,cy)!==0;n++){
       const d=field.nextCell(cx,cy);
       if(d<0||n>w*h)return undefined;
       cx+=DIRS[d].dx; cy+=DIRS[d].dy;
-      const p={x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs};
-      if(d===last)points[points.length-1]=p;else points.push(p);
+      const p={x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs}, q=points[points.length-1];
+      dist+=n===0?Math.hypot(p.x-q.x,p.y-q.y):DIRS[d].dx&&DIRS[d].dy?cs*Math.SQRT2:cs;
+      if(d===last&&points.length>2)points[points.length-1]=p;else points.push(p);
       last=d;
+      if(baseAt<0&&this.base[cx+cy*w])baseAt=dist;
     }
     const cum=[0];
     for(let i=1;i<points.length;i++)cum.push(cum[i-1]+Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y));
-    return {points,cum,length:cum[cum.length-1],blocked,field};
+    const length=cum[cum.length-1];
+    return {points,cum,length,blocked,field,minS:(baseAt<0?0:length-baseAt)+OUTSIDE_MOUTH};
   }
   /** Point at distance s (u) from the route's plaza end, with the unit tangent there (into `this.along`). */
   private pointAt(r:Route,s:number){
@@ -312,77 +426,81 @@ export class AvenuePlanner {
     if(seg>0){a.tx=(q.x-p.x)/seg;a.ty=(q.y-p.y)/seg;}else{a.tx=1;a.ty=0;}
     return a;
   }
-  /** Place `size` members on the first mouth of `order` that has a hidden spot. */
-  private placeOn(index:number,order:readonly Mouth[],size:number,active:readonly PlayerLike[],rng:RngLike):Placed{
-    const jitter:number[]=[];
-    for(let j=0;j<size;j++)jitter.push((rng.next()*2-1)*JITTER);
+  /**
+   * Place `size` members on the mouths of `order`: with `earliest` the placement with most members then earliest
+   * arrival wins (ties → order); otherwise the first mouth with any spot.
+   */
+  private placeOn(index:number,order:readonly Mouth[],earliest:boolean,jitter:readonly number[],viewers:readonly PlayerLike[],desired:number,now:number,speed:number,placed:readonly Placed[]):Placed{
+    let best:Placed|undefined;
     for(const mouth of order){
-      const r=this.routeData(mouth);
-      if(!r||!size)continue;
-      let best:FlowPoint[]|undefined, bestS=0;
-      for(let s=this.outsideStart(r,mouth);;s=Math.min(r.length,s+SCAN_STEP)){
-        const rows=Math.floor((r.length-s)/this.spacing+1e-9)+1;
-        for(let lanes=Math.min(LANES.length,Math.ceil(size/rows));lanes<=LANES.length;lanes++){
-          const pts=this.fill(r,s,rows,lanes,size,jitter,active);
-          if(!pts)break;
-          if(pts.length===size)return {index,mouth,points:pts,travel:ticks(s/this.speed)};
-          if(!best||pts.length>best.length){best=pts;bestS=s;}
-        }
-        if(s>=r.length)break;
-      }
-      if(best)return {index,mouth,points:best,travel:ticks(bestS/this.speed)};
+      const r=this.routeData(mouth), got=r&&jitter.length?this.scan(r,jitter,viewers,desired,now,speed,placed):undefined;
+      if(!got)continue;
+      const c:Placed={index,mouth,...got};
+      if(!earliest)return c;
+      if(!best||c.points.length>best.points.length||c.points.length===best.points.length&&c.release+c.travel<best.release+best.travel)best=c;
     }
-    return {index,mouth:order[0],points:[],travel:0};
+    const release=Math.max(now,desired);
+    return best??{index,mouth:order[0]??'N',points:[],release,travel:0};
   }
-  /** First route distance (u from the plaza end) whose point is OUTSIDE_MOUTH past the mouth line; the spawn end if none. */
-  private outsideStart(r:Route,mouth:Mouth){
-    const {plaza,mouths}=this.layout, m=mouths[mouth], min=Math.max(this.layout.plazaRadius,Math.hypot(m.x-plaza.x,m.y-plaza.y))+OUTSIDE_MOUTH;
-    for(let s=0;s<r.length;s+=SCAN_STEP){const a=this.pointAt(r,s);if(Math.hypot(a.x-plaza.x,a.y-plaza.y)>=min)return s;}
-    return r.length;
+  /** Closest spot of route r (from r.minS toward the spawn) where the group fits; partial when it never fully fits. */
+  private scan(r:Route,jitter:readonly number[],viewers:readonly PlayerLike[],desired:number,now:number,speed:number,placed:readonly Placed[]){
+    const size=jitter.length;
+    let best:{points:FlowPoint[];release:number;travel:number}|undefined;
+    if(r.minS>r.length)return undefined;
+    for(let s=r.minS;;s=Math.min(r.length,s+SCAN_STEP)){
+      const travel=ticks(s/speed), release=Math.max(now,desired-travel);
+      const rows=Math.floor((r.length-s)/this.spacing+1e-9)+1;
+      for(let lanes=Math.min(LANES.length,Math.ceil(size/rows));lanes<=LANES.length;lanes++){
+        const pts=this.fill(r,s,rows,lanes,jitter,viewers,release,placed);
+        if(!pts)break;
+        if(pts.length===size)return {points:pts,release,travel};
+        if(pts.length&&(!best||pts.length>best.points.length))best={points:pts,release,travel};
+      }
+      if(s>=r.length)break;
+    }
+    return best;
   }
-  /** Member points from distance s back toward the spawn; undefined as soon as a point is seen, [] when none fits. */
-  private fill(r:Route,s:number,rows:number,lanes:number,size:number,jitter:readonly number[],active:readonly PlayerLike[]){
-    const pts:FlowPoint[]=[], f=r.field;
+  /** Member points from distance s back toward the spawn; undefined as soon as a point is seen or stacks on a recent group. */
+  private fill(r:Route,s:number,rows:number,lanes:number,jitter:readonly number[],viewers:readonly PlayerLike[],release:number,placed:readonly Placed[]){
+    const pts:FlowPoint[]=[], f=r.field, size=jitter.length, gap2=STACK_GAP*STACK_GAP;
+    const ok=(x:number,y:number)=>f.reachable(x,y)&&!this.inBase(x,y);
     for(let i=0;i<rows&&pts.length<size;i++){
       const a=this.pointAt(r,s+i*this.spacing), nx=-a.ty, ny=a.tx;
       for(let l=0;l<lanes&&pts.length<size;l++){
         let o=LANES[l]+jitter[pts.length], x=a.x+nx*o, y=a.y+ny*o;
-        if(!f.reachable(x,y)){o=LANES[l];x=a.x+nx*o;y=a.y+ny*o;if(!f.reachable(x,y))continue;}
-        for(const pl of active)if(!this.hiddenFor(pl,x,y))return undefined;
+        if(!ok(x,y)){o=LANES[l];x=a.x+nx*o;y=a.y+ny*o;if(!ok(x,y))continue;}
+        for(const pl of viewers)if(!this.hiddenFor(pl,x,y))return undefined;
+        for(const q of placed){
+          if(Math.abs(q.release-release)>STACK_TICKS)continue;
+          for(const p of q.points)if((p.x-x)**2+(p.y-y)**2<gap2)return undefined;
+        }
         pts.push({x,y});
       }
     }
     return pts;
   }
-  /** Cell centers within `radius` (u) of c; only walkable ones when `walkableOnly`. Always includes c's own cell. */
-  private disc(c:FlowPoint,radius:number,walkableOnly:boolean):FlowPoint[]{
-    const g=this.layout.grid, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0, out:FlowPoint[]=[];
+  /** Cell indices whose centers lie within `radius` (u) of c; always includes c's own cell when inside the grid. */
+  private disc(c:FlowPoint,radius:number):number[]{
+    const g=this.layout.grid, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0, out:number[]=[];
     const x0=Math.max(0,Math.floor((c.x-radius-ox)/cs)), x1=Math.min(g.width-1,Math.floor((c.x+radius-ox)/cs));
     const y0=Math.max(0,Math.floor((c.y-radius-oy)/cs)), y1=Math.min(g.height-1,Math.floor((c.y+radius-oy)/cs));
     const ccx=Math.floor((c.x-ox)/cs), ccy=Math.floor((c.y-oy)/cs);
     for(let cy=y0;cy<=y1;cy++)for(let cx=x0;cx<=x1;cx++){
-      const x=ox+(cx+.5)*cs, y=oy+(cy+.5)*cs;
-      if((Math.hypot(x-c.x,y-c.y)<=radius||cx===ccx&&cy===ccy)&&(!walkableOnly||g.walkable(cx,cy)))out.push({x,y});
-    }
-    return out;
-  }
-  /** Barricade goals: walkable cells within 1.5 u of each mouth, the radius growing while none is walkable. */
-  private mouthTargets():FlowPoint[]{
-    const out:FlowPoint[]=[];
-    for(const m of MOUTHS){
-      for(let r=MOUTH_RADIUS;r<=MOUTH_RADIUS_MAX;r+=.5){
-        const d=this.disc(this.layout.mouths[m],r,true);
-        if(d.length){out.push(...d);break;}
-      }
+      if(Math.hypot(ox+(cx+.5)*cs-c.x,oy+(cy+.5)*cs-c.y)<=radius||cx===ccx&&cy===ccy)out.push(cx+cy*g.width);
     }
     return out;
   }
   /** p itself when its cell is walkable (or nothing nearer is), else the nearest walkable cell center within 4 u. */
   private walkableNear(p:FlowPoint):FlowPoint{
+    const g=this.layout.grid, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0, w=g.width;
+    const cx=Math.floor((p.x-ox)/cs), cy=Math.floor((p.y-oy)/cs);
+    if(cx>=0&&cy>=0&&cx<w&&cy<g.height&&g.walkable(cx,cy))return p;
     let best=p, bd=Infinity;
-    for(const q of this.disc(p,4,true)){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;best=q;}}
-    const g=this.layout.grid, cs=g.cellSize, cx=Math.floor((p.x-(g.originX??0))/cs), cy=Math.floor((p.y-(g.originY??0))/cs);
-    return cx>=0&&cy>=0&&cx<g.width&&cy<g.height&&g.walkable(cx,cy)?p:best;
+    for(const i of this.disc(p,4)){
+      const x=i%w, y=(i-x)/w, q={x:ox+(x+.5)*cs,y:oy+(y+.5)*cs}, d=Math.hypot(q.x-p.x,q.y-p.y);
+      if(g.walkable(x,y)&&d<bd){bd=d;best=q;}
+    }
+    return best;
   }
   /** Index in MOUTHS of the point of `set` nearest to cell (cx,cy)'s center. */
   private nearest(set:Readonly<Record<Mouth,FlowPoint>>,cx:number,cy:number){
@@ -393,7 +511,28 @@ export class AvenuePlanner {
   }
 }
 
-function isActive(p:PlayerLike){return p.online!==false&&!p.spectator&&!p.eliminated&&Number.isFinite(p.x)&&Number.isFinite(p.y);}
+/** Viewers: everyone but spectators and eliminated players (offline ones may reconnect, D-011; downed ones still see). */
+function isViewer(p:PlayerLike){return !!p&&!p.spectator&&!p.eliminated&&Number.isFinite(p.x)&&Number.isFinite(p.y);}
+function fin(v:unknown,def:number){const n=Number(v);return v===undefined||v===null||!Number.isFinite(n)?def:n;}
+function nonNeg(v:unknown,def:number){return Math.max(0,fin(v,def));}
+function pos(v:unknown,def:number){const n=fin(v,def);return n>0?n:def;}
 function mod(a:number,n:number){return ((a%n)+n)%n;}
 function rotate<T>(list:readonly T[],from:number):T[]{return list.map((_,i)=>list[(from+i)%list.length]);}
-function key(points:readonly FlowPoint[]){return points.map(p=>p.x+','+p.y).join(';');}
+function centroid(ps:Readonly<Record<Mouth,FlowPoint>>):FlowPoint{
+  let x=0, y=0;
+  for(const m of MOUTHS){x+=ps[m].x;y+=ps[m].y;}
+  return {x:x/MOUTHS.length,y:y/MOUTHS.length};
+}
+function checkLayout(l:CityLayout){
+  const g=l?.grid, finite=(v:unknown)=>typeof v==='number'&&Number.isFinite(v);
+  if(!g||!(Number.isInteger(g.width)&&g.width>0&&Number.isInteger(g.height)&&g.height>0)||!(finite(g.cellSize)&&g.cellSize>0)
+    ||typeof g.walkable!=='function'||g.originX!==undefined&&!finite(g.originX)||g.originY!==undefined&&!finite(g.originY))
+    throw new RangeError('layout.grid needs integer width/height > 0, a finite cellSize > 0, finite origins and walkable()');
+  const point=(name:string,p:FlowPoint|undefined,optional=false)=>{
+    if(p===undefined&&optional)return;
+    if(!p||!finite(p.x)||!finite(p.y))throw new RangeError(`layout.${name} must be a point with finite x and y`);
+  };
+  for(const m of MOUTHS){point(`mouths.${m}`,l.mouths?.[m]);point(`spawns.${m}`,l.spawns?.[m]);}
+  point('plaza',l.plaza,true); point('plazaCenter',l.plazaCenter,true);
+  if(l.plazaRadius!==undefined&&!(finite(l.plazaRadius)&&l.plazaRadius>=0))throw new RangeError('layout.plazaRadius must be a finite number >= 0');
+}

@@ -7,6 +7,9 @@
  * its seat and the run: a frozen page costs one quick reconnect, never the run. SILENT_MS stays (billing, VGM-048).
  */
 import test from 'node:test';
+// client.ts reads localStorage in a try/catch; a plain stub keeps node from warning about --localstorage-file.
+// Defined without reading it first: reading node's own localStorage getter is what prints the warning.
+Object.defineProperty(globalThis,'localStorage',{value:{getItem:()=>null,setItem:()=>{},removeItem:()=>{}},configurable:true,writable:true});
 import assert from 'node:assert/strict';
 import {Room,type Peer,SILENT_MS,silenceLimit} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';

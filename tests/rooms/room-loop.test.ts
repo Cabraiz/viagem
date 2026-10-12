@@ -40,12 +40,14 @@ function object(){
 }
 const join=(o:any,room:Room,name:string)=>{const s=new FakeSocket();o.attach(s,room);s.fire('message',{data:JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name,classId:'cidadao-comum'})});return s;};
 
-test('the last socket closing stops the clock; one of two does not',()=>{
+test('the last socket closing stops the clock; one of two does not',(t)=>{
+  t.mock.timers.enable({apis:['setTimeout']});
   const {o,room}=object();
   const a=join(o,room,'Tia'),b=join(o,room,'Zé');
   assert.equal(o.loop.active,true);
   a.fire('close');assert.equal(o.loop.active,true,'Zé is still there');
-  b.fire('error');assert.equal(o.loop.active,false,'nobody left: no more ticks, no more duration');
+  // An error waits up to 2 s for the close event that carries the code (reconecta-round2), then ends anyway.
+  b.fire('error');t.mock.timers.tick(2000);assert.equal(o.loop.active,false,'nobody left: no more ticks, no more duration');
   assert.equal(o.peers.size,0);
   // A phone back: the clock starts again.
   join(o,room,'Tia');assert.equal(o.loop.active,true);o.loop.stop();

@@ -716,12 +716,14 @@ export class Room {
     if(this.sampling){this.perf.encodeSamples.push(ms);if(this.perf.encodeSamples.length>PERF_SAMPLES)this.perf.encodeSamples.shift();}
     this.perf.frames++;this.perf.bytes+=bytes.length;c.frames++;c.bytes+=bytes.length;
     const slot=c.encoder!.lastSeq%FRAME_TIMES;(c.frameSeq??=new Int32Array(FRAME_TIMES).fill(-1))[slot]=c.encoder!.lastSeq;(c.frameAt??=new Float64Array(FRAME_TIMES))[slot]=now;
-    try{c.peer.send(bytes);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(bytes);}catch{this.sendFailed(c,now);}
   }
   private sendJson(c:Connection,message:object){
     const raw=JSON.stringify(message);this.perf.jsonBytes+=raw.length;c.bytes+=raw.length;
-    try{c.peer.send(raw);}catch{this.disconnect(c.peer);}
+    try{c.peer.send(raw);}catch{this.sendFailed(c);}
   }
+  /** A send that throws means the socket is gone: log it like any other end and close it, so it leaves `peers` too. */
+  private sendFailed(c:Connection,now=Date.now()){if(this.connections.get(c.peer)===c)this.close(c.peer,1011,'Falha ao enviar.',now);}
   private send(message:object){
     for(const c of [...this.connections.values()])if(c.playerId)this.sendJson(c,message);
   }

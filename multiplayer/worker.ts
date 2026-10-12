@@ -83,14 +83,20 @@ export class GameRoom extends DurableObject<Env>{
    * a close event after the room already closed the socket finds it gone from `peers` and logs nothing.
    */
   attach(server:RoomSocket,room:Room){
+    const ERROR_CLOSE_WAIT_MS=2000;
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>{this.drop(server);try{server.close(code,reason);}catch{/* already closed */}}};
     this.peers.set(server,peer);room.connect(peer);
     server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else if(this.room)this.room.close(peer,1003,'Texto esperado.');else peer.close(1003,'Texto esperado.');});
+    // An abnormal end may fire 'error' before 'close': the close event carries the code (1006) and wasClean the log
+    // is for, so an error only marks the socket and waits; with no close event in ERROR_CLOSE_WAIT_MS it ends anyway.
+    let errored=false,fallback:ReturnType<typeof setTimeout>|undefined;
     const close=(by:'client'|'error',e?:Partial<CloseEvent>)=>{
-      if(this.peers.has(server))this.room?.closed(peer,by==='error'?{by}:{by,code:e?.code,reason:e?.reason,clean:e?.wasClean});
+      clearTimeout(fallback);
+      if(this.peers.has(server))this.room?.closed(peer,{by,code:e?.code,reason:e?.reason,clean:e?.wasClean});
       this.drop(server);
     };
-    server.addEventListener('close',e=>close('client',e));server.addEventListener('error',()=>close('error'));
+    server.addEventListener('close',e=>close(errored?'error':'client',e));
+    server.addEventListener('error',()=>{if(errored)return;errored=true;fallback=setTimeout(()=>close('error'),ERROR_CLOSE_WAIT_MS);});
     this.loop.start();
   }
   private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();}

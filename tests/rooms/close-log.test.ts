@@ -69,8 +69,36 @@ test('a close event from the browser or the network: one line by the client, wit
   assert.ok(logs[0].frames>=1&&logs[0].received===1,JSON.stringify(logs[0]));
   // A second event for the same socket (error after close) logs nothing more.
   a.fire('error');assert.equal(logs.length,1);
-  const b=join(o,room,'Zé');b.fire('error');
-  assert.equal(logs.length,2);assert.equal(logs[1].by,'error');assert.equal(logs[1].code,null);
+});
+
+test('an error event waits for the close event, which carries the code; with no close event it ends after 2 s',(t)=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  const {o,room,logs}=object();
+  const b=join(o,room,'Zé');
+  b.fire('error');
+  assert.equal(logs.length,0,'nothing yet: the close event has the code');
+  b.fire('close',{code:1006,reason:'',wasClean:false});
+  assert.equal(logs.length,1);assert.deepEqual({by:logs[0].by,code:logs[0].code,clean:logs[0].clean},{by:'error',code:1006,clean:false});
+  t.mock.timers.tick(5000);assert.equal(logs.length,1,'the fallback does not log twice');
+  const c=join(o,room,'Lu');
+  c.fire('error');c.fire('error');
+  t.mock.timers.tick(1999);assert.equal(logs.length,1);
+  t.mock.timers.tick(1);
+  assert.equal(logs.length,2,'no close event: logged once by the fallback');assert.equal(logs[1].by,'error');assert.equal(logs[1].code,null);
+  assert.equal(o.peers.size,0,'both sockets left the object');
+});
+
+test('a send that throws is logged once as a room close (1011) and the socket is closed',()=>{
+  const {o,room,logs}=object();
+  const a=join(o,room,'Tia');
+  a.send=()=>{throw new Error('socket gone');};
+  room.advance(Date.now());room.advance(Date.now()+50);
+  const ends=logs.filter(l=>l.code===1011);
+  assert.equal(ends.length,1,JSON.stringify(logs));
+  assert.equal(ends[0].by,'room');assert.equal(ends[0].seated,true);
+  assert.deepEqual(a.closed,{code:1011,reason:'Falha ao enviar.'});
+  a.fire('close',{code:1011,reason:'',wasClean:true});
+  assert.equal(logs.filter(l=>l.code===1011).length,1,'its late close event adds nothing');
 });
 
 test('a socket the room cut for silence is logged once, by the room; its late close event adds nothing',()=>{

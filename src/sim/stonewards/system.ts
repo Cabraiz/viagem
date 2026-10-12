@@ -10,8 +10,12 @@
  *
  * The wall (D-017): in the run only the enemy-ai hits it (hitStructure -> damageWall); `siegeContact:false` turns
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
+ *
+ * City (cidade-06): the base is the fountain plaza; the wall stands at points.praca (the fountain, so the forge's camp
+ * is there too) and a barricade closes each mouth (barricades.ts). The enemy-ai hits both through `hit` (D-017); only
+ * the wall falling is the defeat.
  */
-import type {Obstacle} from '../../maps/index.ts';
+import type {CellRect,Obstacle} from '../../maps/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
@@ -19,7 +23,8 @@ import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge
 import {gatherStep,refillNodes} from './resources.ts';
 import {DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
-import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createBarricades,damageBarricade,syncBarricades} from './barricades.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -53,24 +58,47 @@ export interface StonewardsOptions {
   onHorn?(ctx:SimContext,line:string,endsTick:number):void;
   /** Moves the end of the current intermission (the director owns ctx.round). Without it the horn never stretches it. */
   extendPrepare?(ctx:SimContext,endsTick:number):void;
+  /**
+   * City: a barricade fell or was rebuilt (or a rematch reset moved them), changing the terrain's walkability in these
+   * flow-grid cells (asset.unitsPerCell, inclusive). The run refreshes the grid and invalidates the planner there.
+   * Not called when the system is created: the blockers are raised before the run builds its grid.
+   */
+  onTerrainChanged?(rect:CellRect):void;
 }
 
 export interface StonewardsSystem extends SimSystem {
   readonly id:'structures';
   readonly state:StonewardsState;
-  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string):BuyResult;
+  /** `targetId`: what 'reparo' repairs (forge.ts buy): the wall by default, or a city barricade id. */
+  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string,targetId?:string):BuyResult;
+  /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall or a barricade. */
+  hit(ctx:SimContext,structureId:string,amount:number):void;
   /** Fresh layer for a rematch: balance, nodes, wall, towers, ids and stream all start over. */
   reset():void;
 }
 
-export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'>):StonewardsState{
+export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'|'onTerrainChanged'>):StonewardsState{
+  // City only: the island and the endless world keep exactly their old state (and state hashes).
+  const city=createBarricades(options.terrain);
   return {
     balance:{coco:0,pedra:0},
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
-    towers:[],gathered:{},handled:[],
+    towers:[],
+    ...(city?{barricades:city.barricades}:{}),...(city?.unsealed.length?{unsealed:city.unsealed}:{}),
+    gathered:{},handled:[],
     refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,stretched:0,sayReady:{},wallDown:false,defeatReported:false,rng:null,
   };
+}
+
+/**
+ * What the enemy-ai may hit (EnemyAiOptions.structures): the wall while it stands, then the standing city barricades,
+ * flagged `blocking` (any body pressed against one bashes it, siege or not). Off the city: exactly the wall, as before.
+ */
+export function structureTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
+  const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
+  for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
+  return out;
 }
 
 /** Ticks the farthest standing hero needs to be back in the camp (0 when everyone is home). */
@@ -89,8 +117,10 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
   return true;
 }
 
+/** A given `state` (a checkpoint) rebuilds the terrain's barricade blockers from it. */
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
+  syncBarricades(options.terrain,state);
   function horn(ctx:SimContext){
     const round=ctx.round;
     if(round.index<=1||state.hornRound===round.index)return;
@@ -114,8 +144,8 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   return {
     id:'structures',
     state,
-    buy(ctx,playerId,recipeId,requestId){
-      const result=forgeBuy(ctx,state,playerId,recipeId,requestId);
+    buy(ctx,playerId,recipeId,requestId,targetId){
+      const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);
       return result;
     },
@@ -123,6 +153,11 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       const fresh=createStonewardsState(options) as unknown as Record<string,unknown>,target=state as unknown as Record<string,unknown>;
       for(const key of Object.keys(target))delete target[key];
       Object.assign(target,fresh);
+      for(const rect of syncBarricades(options.terrain,state))options.onTerrainChanged?.(rect);
+    },
+    hit(ctx,structureId,amount){
+      if(structureId===state.wall.id)damageWall(ctx,state,amount);
+      else damageBarricade(ctx,state,structureId,amount,options.onTerrainChanged);
     },
     step(ctx){
       if(state.defeatReported)return;

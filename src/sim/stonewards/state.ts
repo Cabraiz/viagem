@@ -28,6 +28,15 @@ export interface WallState extends Point {
   hitReady:Record<string,number>;
 }
 
+/**
+ * A barricade at one of the city plaza's mouths (cidade-06): ids 'barricada-N|S|L|O'. While standing it is a blocker
+ * disc of radius `r` on the room's CityTerrain fork (barricades.ts), sized once so it seals that mouth. A fallen one
+ * (`down`, hp 0) leaves the mouth open until a repair rebuilds it.
+ */
+export interface BarricadeState extends Point {
+  id:string; mouth:'N'|'S'|'L'|'O'; hp:number; maxHp:number; r:number; down:boolean;
+}
+
 export interface TowerState extends Point {
   id:string; kind:'torre-chinelo'; owner:string;
   hp:number; maxHp:number; untilTick:number; readyTick:number;
@@ -39,6 +48,10 @@ export interface StonewardsState {
   nodes:ResourceNode[];
   wall:WallState;
   towers:TowerState[];
+  /** City only (absent on the island and the endless world, so their state hashes do not move): one per sealed mouth. */
+  barricades?:BarricadeState[];
+  /** City only, when some mouth could not be sealed with a disc up to BARRICADE_MAX_R: those mouths stay open. */
+  unsealed?:('N'|'S'|'L'|'O')[];
   /** Resources gathered per player (fractional: each unit is split by work done), for the result awards. */
   gathered:Record<string,number>;
   /** `playerId:requestId` of purchases already applied, so a resent command applies once. */

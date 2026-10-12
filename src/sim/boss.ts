@@ -12,7 +12,7 @@
  * anything else that removes it (cleanup, rematch) must call abort() or reset() instead.
  * State that must survive a checkpoint lives in `enemy.memory` (numbers only) and `controller.state`.
  */
-import {clearSegment,walkable,type Point} from '../maps/index.ts';
+import {clearSegment,enemyTerrain,walkable,type Point} from '../maps/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {addTelegraph,cancelTelegraphs,canBeTargeted} from './telegraphs.ts';
 import {MAX_ENEMIES,hasRoom} from '../rules/index.ts';
@@ -329,7 +329,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
     const next={x:boss.x+dx/l*step,y:boss.y+dy/l*step};
     for(const c of [next,{x:next.x,y:boss.y},{x:boss.x,y:next.y}])
-      if(clearSegment(boss,c,ctx.terrain)){boss.x=c.x;boss.y=c.y;return;}
+      if(clearSegment(boss,c,enemyTerrain(ctx.terrain))){boss.x=c.x;boss.y=c.y;return;}
   }
 
   function windup(ctx:SimContext,boss:EnemyState,fireTick:number){
@@ -360,7 +360,7 @@ export function createBoss(options:BossOptions={}):BossController {
     if(l<1e-6)return false;
     const ux=dx/l,uy=dy/l;
     let reach=0;
-    while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;
+    while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},enemyTerrain(ctx.terrain)))reach+=.25;
     if(reach<2)return false;
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
     const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id},delay);

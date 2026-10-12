@@ -18,8 +18,8 @@ import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
-import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
-import {WALL_RADIUS} from './stonewards/wall.ts';
+import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
+import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
@@ -75,8 +75,18 @@ export function applyEliteExtras(ctx:SimContext){
   }
 }
 
-/** Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. */
-export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2;
+/**
+ * Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. A standing city
+ * barricade keeps prizes off its disc plus PRIZE_BARRICADE_MARGIN (cidade-06).
+ */
+export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2,PRIZE_BARRICADE_MARGIN=.3;
+/** Discs no prize falls in: the standing wall, every tower and (city) every standing barricade. */
+export function prizeBlocks(state:StonewardsState):{x:number;y:number;radius:number}[]{
+  const {wall,wallDown,towers,barricades}=state;
+  const blocks=[...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];
+  for(const b of barricades??[])if(!b.down)blocks.push({x:b.x,y:b.y,radius:b.r+PRIZE_BARRICADE_MARGIN});
+  return blocks;
+}
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
   const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}});
@@ -102,14 +112,17 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       const after=ctx.round.phaseEndsTick;
       if(after>before)for(const queue of ctx.offers.values())for(const offer of queue)if(offer.deadlineTick===before)offer.deadlineTick=after;
     },
+    // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
+    onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
   });
-  structures=()=>{const {wall,wallDown,towers}=stonewards.state;return [...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];};
+  structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
-    structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
-    hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
+    // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
+    structures:()=>structureTargets(stonewards.state),
+    hitStructure:(ctx,id,amount)=>{stonewards.hit(ctx,id,amount);},
   });
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?createEnemy(ctx,kind,at,1):undefined,

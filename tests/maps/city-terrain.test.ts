@@ -327,5 +327,7 @@ test("'cidade' only exists with the decoded city: no seed-built city, no silent 
   const {Simulation}=await import('../../multiplayer/simulation.ts');
   assert.throws(()=>new Simulation(7,{world:'cidade'}),/decoded city/);
   const sim=new Simulation(7,{world:'cidade',terrain:field});
-  assert.equal(sim.terrain,field);assert.equal(sim.terrain.world,'cidade');
+  // cidade-06: the room plays on its own fork of the decoded city (same asset and signature, its own blockers).
+  assert.ok(sim.terrain instanceof CityTerrain&&sim.terrain!==field&&sim.terrain.asset===real.asset);
+  assert.equal(sim.terrain.signature,field.signature);assert.equal(sim.terrain.world,'cidade');
 });

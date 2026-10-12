@@ -17,7 +17,7 @@
  *   from the plaza.
  */
 import type {TerrainField} from '../maps/index.ts';
-import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
+import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
 import {MAX_ENEMIES} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
@@ -423,7 +423,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function hurry(ctx:SimContext,e:EnemyState,dx:number,dy:number,squeeze:boolean){
     const x=e.x,y=e.y,want=Math.hypot(dx,dy);
     // Squeezing: straight through trees and rocks, on land only (moveSafely lets a body inside an obstacle walk out).
-    if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,ctx.terrain)){e.x=x+dx;e.y=y+dy;return true;}
+    // City: never through a barricade (enemyTerrain).
+    if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,enemyTerrain(ctx.terrain))){e.x=x+dx;e.y=y+dy;return true;}
     moveSafely(e,dx,dy,ctx.terrain,e.radius);
     if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     const side=(e.memory?.seed??0)<.5?1:-1;
@@ -574,7 +575,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       }
       plazaSpots=cells.sort((a,b)=>a.d-b.d).map(c=>c.p);
     }
-    for(const p of plazaSpots)if(field.atGoal(p.x,p.y)&&walkable(p,ctx.terrain)&&nearestPlayer(ctx,p)>=minDistance)return {x:p.x,y:p.y};
+    for(const p of plazaSpots)if(field.atGoal(p.x,p.y)&&walkable(p,enemyTerrain(ctx.terrain))&&nearestPlayer(ctx,p)>=minDistance)return {x:p.x,y:p.y};
     return {x:center.x,y:center.y};
   }
   /** Every member spot still hidden from every viewer and >= minPlayerDistance away (the planner's rule). */
@@ -688,7 +689,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const r=.45*Math.sqrt(i+attempt*.5),a=i*2.39996+attempt*1.3;
       const p={x:center.x+Math.cos(a)*r,y:center.y+Math.sin(a)*r};
       const ok=endless(ctx)?ctx.terrain.chunks!.clear(p.x,p.y,MEMBER_CLEARANCE)&&hiddenBy(ctx,p,SPAWN_MARGIN):nearestPlayer(ctx,p)>=minDistance;
-      if(walkable(p,ctx.terrain)&&clearSegment(center,p,ctx.terrain)&&ok)return p;
+      const ground=enemyTerrain(ctx.terrain);
+      if(walkable(p,ground)&&clearSegment(center,p,ground)&&ok)return p;
     }
     return center;
   }

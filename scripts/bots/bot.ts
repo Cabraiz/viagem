@@ -1,12 +1,12 @@
 /**
- * One protocol bot (VGM-045): the real CoopClient (src/game/net/client.ts, the phone's own network code: input-10hz
+ * One protocol bot (VGM-045): the real CoopClient (src/client/net/client.ts, the phone's own network code: input-10hz
  * batches, acks, ping, reconnection with the token) on a lab Link, driven by brain.ts every DECISION_MS like a thumb,
  * stepping 20 times per second like the scene. What it sees and what crossed the wire is kept for the artifacts.
  */
 import {Link,LabSocket} from './lab-socket.ts';
 import {decide,newMemory,type BrainMemory,type Decision} from './brain.ts';
-import type {RunView} from '../../src/game/sim/view.ts';
-import type {Point} from '../../src/game/world.ts';
+import type {RunView} from '../../src/contract/view.ts';
+import type {Point} from '../../src/maps/world.ts';
 
 // The page keeps the seat token in sessionStorage; each bot keeps it in its CoopClient (no shared storage, or six
 // bots in one process would take each other's seats).
@@ -14,7 +14,7 @@ const g=globalThis as any;
 g.sessionStorage??={getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
 // CoopClient reads WebSocket.OPEN/CLOSED; the class itself is swapped per bot while it connects (see Bot).
 g.WebSocket=LabSocket;
-const {CoopClient}=await import('../../src/game/net/client.ts');
+const {CoopClient}=await import('../../src/client/net/client.ts');
 
 /** How often the thumb changes its mind (ms): the stick is still sampled every 50 ms step. */
 export const DECISION_MS=200;

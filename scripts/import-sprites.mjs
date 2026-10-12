@@ -1,6 +1,6 @@
 // Sprite importer. Three modes:
 //   node --experimental-strip-types scripts/import-sprites.mjs <batchDir>
-//       the approved single-direction sheets (lote-N/<id>/), regenerates src/game/sprite-catalog.ts.
+//       the approved single-direction sheets (lote-N/<id>/), regenerates src/client/sprites/sprite-catalog.ts.
 //   node --experimental-strip-types scripts/import-sprites.mjs --dir4 <dir> [--lab] [--replace]
 //       4-direction atlases (<dir>/<id>/atlas-4dir.png or <dir>/<id>.dir4.png; format in docs/sprite-directions.md),
 //       all-or-nothing (scripts/import-dir4.mjs). Adds public/art/sprites/<id>.dir4.webp and the class's `dir4` entry
@@ -12,7 +12,7 @@
 import {readFile,writeFile,mkdir,stat} from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import {classes} from '../src/classes.ts';
+import {classes} from '../src/rules/classes.ts';
 import {validateSingleSheet,raw,figureBox} from './sprite-atlas.mjs';
 import {importDirectional,readCatalog,writeCatalog} from './import-dir4.mjs';
 

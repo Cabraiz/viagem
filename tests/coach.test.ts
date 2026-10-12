@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Coach,COACH_KEY,DONE_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson} from '../src/game/hud/coach.ts';
+import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson} from '../src/game/hud/coach.ts';
 import {fakeView} from '../src/game/hud/fixtures.ts';
 import type {RunView} from '../src/game/sim/view.ts';
 
@@ -31,7 +31,8 @@ test('copy: house voice, short, sentence case, no "A · B", no emoji, one sticke
     }
   }
   assert.match(LESSONS.walk.sub!,/atira sozinha/,'the walk hint says the weapons fire by themselves');
-  assert.match(LESSONS.rescue.text,/caído/);assert.match(LESSONS.rescue.sub!,/resgatar/);
+  assert.match(LESSONS.rescue.text,/caiu/);assert.match(LESSONS.rescue.sub!,/resgatar/);
+  assert.match(LESSONS.chip.text,/\+\{n\}/,'the chip hint names the chip as it looks (+1, +2)');assert.match(LESSONS.xp.sub!,/turma/,'XP is the team\'s');
 });
 
 test('round 1: walk first; it stays while the novice stands 15 s and goes (with a check) once the hero walks',()=>{
@@ -111,7 +112,7 @@ test('timed hints stop after their time in a run; the result marks what was show
   assert.equal(last,undefined,'xp hint gone after its time');
   assert.equal(coach.done.has('xp'),false,'not learned yet: only shown');
   coach.endRun();
-  assert.ok(coach.done.has('xp'),'the first run is over: shown counts as learned');
+  assert.ok(coach.done.has('xp'),`the first run is over: seen ${LESSONS.xp.maxMs} ms (≥ ${LEARNED_BY_SIGHT_MS}) counts as learned`);
   assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['walk','xp']);
   assert.equal(coach.done.has('rescue'),false,'never shown (solo): waits for a group run');
   const next=new Coach(store);
@@ -168,4 +169,32 @@ test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk
   assert.equal(coach.done.has('walk'),false);
   coach.step(input(round1(),{hero:{x:SNAP_DISTANCE+3+WALK_DISTANCE+.1,y:0}}),150);
   assert.ok(coach.done.has('walk'),'then a real step counts');
+});
+
+test('in and out in 3 s: a glimpse is not learning (andar stays for the next run); a long look is',()=>{
+  resetSessionMemory();
+  const store=memory();
+  const coach=new Coach(store);
+  for(let now=0;now<=3000;now+=100)assert.equal(coach.step(input(round1()),now)?.lesson,'walk');
+  coach.endRun();
+  assert.equal(coach.done.has('walk'),false,'3 s on screen, never walked: still to learn');
+  assert.equal(store.store.get(COACH_KEY),undefined,'nothing stored');
+  resetSessionMemory();
+  assert.equal(new Coach(store).step(input(round1()),0)?.lesson,'walk','the next run teaches it again');
+  // The novice who stood the whole 15 s and then left: seen long enough, it counts.
+  resetSessionMemory();
+  const stood=new Coach(store);
+  for(let now=0;now<=LEARNED_BY_SIGHT_MS+500;now+=100)stood.step(input(round1()),now);
+  stood.endRun();
+  assert.ok(stood.done.has('walk'));
+});
+
+test('two tabs of the same phone: saving joins what the other tab stored meanwhile',()=>{
+  resetSessionMemory();
+  const store=memory();
+  const a=new Coach(store),b=new Coach(store);
+  a.did('chip');a.step(input(round1()),0);
+  resetSessionMemory();
+  b.did('xp');b.step(input(round1()),0);
+  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['chip','xp'],'tab b did not erase tab a\'s chip');
 });

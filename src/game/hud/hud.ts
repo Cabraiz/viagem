@@ -89,6 +89,9 @@ export class RunHud {
   private hero?:{x:number;y:number};
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
+  private readonly forgeEl:HTMLElement;
+  /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
+  private coachRect?:Rect;
   /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
@@ -102,7 +105,7 @@ export class RunHud {
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,onChipTap:()=>this.coach.did('chip')});
     this.coach=new Coach(options.coachStorage);this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined});
-    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});
+    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
@@ -152,7 +155,8 @@ export class RunHud {
     const ended=this.el.classList.contains('rh-ended');
     // The kill-cam and its FEITO (VGM-053B) hold the slot too, even while yielding to a notice; and no hint while the
     // intermission window is open or a LEVEI stamp hits (one moment at a time).
-    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen();
+    // The forge window too (VGM-046B): the gathering hint never shows over an open forge.
+    const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
     const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:!this.chip.hidden&&this.chip.dataset.mode==='combat',blocked,banner},now);
@@ -163,6 +167,10 @@ export class RunHud {
     this.coachRow.render(show,view.offers.length);
     const lesson=show&&!show.done?show.lesson:'';
     if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
+    // The joystick keeps calling (Amarelo) while "andar" is still to learn and on screen, or only pushed aside by the
+    // rescue hint (a caído outranks it); explore.css reads data-coach-stick.
+    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue');
+    if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
   /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */
   private offerOpen(){return !this.offerEl.hidden&&(this.offerEl.dataset.mode!=='combat'||this.offerEl.classList.contains('rh-offer-stamping'));}
@@ -177,7 +185,7 @@ export class RunHud {
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
-    this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;
+    this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
     this.result.show(result,this.ctx);
   }
 
@@ -219,11 +227,14 @@ export class RunHud {
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).
-    const key=`${rows.map(r=>r.className).join('|')}:${low}`;
+    // The hint's lesson is in the key: another lesson may wrap to another height with the same classes.
+    const key=`${rows.map(r=>`${r.className}${r.dataset.lesson??''}`).join('|')}:${low}`;
     if(key!==this.rowsKey||this.rowsVersion!==this.layoutVersion||!this.rowsBox){
       this.rowsKey=key;this.rowsVersion=this.layoutVersion;
       const r=rows.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
       this.rowsBox={x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
+      const c=r[rows.indexOf(this.coachRow.el)];
+      this.coachRect=c&&{x:c.left,y:c.top,width:c.width,height:c.height};
       if(!low)this.topSlot=this.rowsBox;
       // In the low slot the rows may be taller or fewer now: keep the top slot's place with the rows' size.
       else if(this.topSlot)this.topSlot={...this.topSlot,height:this.rowsBox.height,width:Math.max(this.topSlot.width,this.rowsBox.width)};
@@ -240,9 +251,8 @@ export class RunHud {
    */
   private coachYield(hero:Rect,margin:number){
     const row=this.coachRow.el;
-    if(row.hidden){row.classList.remove('rh-coach-yield');return;}
-    const r=row.getBoundingClientRect();
-    row.classList.toggle('rh-coach-yield',crosses({x:r.left,y:r.top,width:r.width,height:r.height},hero,margin));
+    const over=!row.hidden&&!!this.coachRect&&crosses(this.coachRect,hero,margin);
+    if(row.classList.contains('rh-coach-yield')!==over)row.classList.toggle('rh-coach-yield',over);
   }
   /**
    * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or

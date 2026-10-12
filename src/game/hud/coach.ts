@@ -8,8 +8,9 @@
  *   the thumbs, and any notice, alert or round banner outranks it (danger over the lesson); it waits for the slot.
  * - A hint goes away when the player does the action (a check sticker for DONE_MS, then gone), or when its time in
  *   this run runs out (walk and rescue have none: they stay while they make sense).
- * - Once per phone: a lesson done is stored at once; when a run reaches its result, every lesson shown in it is stored
- *   too ("só na primeira run do aparelho"). Lessons whose moment never came (rescue in a solo run) wait for a later run.
+ * - Once per phone: a lesson done is stored at once; when a run ends (result or leaving), a hint seen for 8 s or more
+ *   counts as learned too ("só na primeira run do aparelho"). A glimpse, or a moment that never came (rescue in a solo
+ *   run), waits for a later run. Saving joins what another tab stored meanwhile.
  * - Purely local: nothing goes to the room, nothing pauses anyone; in a group each phone shows its own.
  * - Storage may be off or throw (private tab): the coach then remembers in memory for this page only, never throws.
  * Pure state (Coach) plus a small DOM part (createCoach); the state is unit-tested under node.
@@ -30,10 +31,12 @@ export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
 /** House voice (revisao-visual §2.6): short, informal imperative, sentence case; the instruction is dry. */
 export const LESSONS:Readonly<Record<Lesson,LessonCopy>>={
   walk:{text:'Arrasta o dedão pra andar',sub:'A arma atira sozinha',icon:'dedao',overBanner:true},
-  xp:{text:'Passa nas gotinhas de XP',sub:'Elas sobem o seu nível',icon:'gota',maxMs:9000},
-  chip:{text:'Toca pra escolher melhoria',icon:'chip',maxMs:9000},
+  // XP is the team's (one bar for everyone): the drops raise the turma's level, not "yours".
+  xp:{text:'Passa nas gotinhas de XP',sub:'Sobem o nível da turma',icon:'gota',maxMs:9000},
+  // "{n}" is the chip's own count ("+1", "+2"): the line names the control, as it looks right now.
+  chip:{text:'Toca no +{n} pra escolher',icon:'chip',maxMs:9000},
   // Two short lines: one line plus "Leva 3 s" wrapped to three rows in portrait at 125%.
-  rescue:{text:'Encosta no caído',sub:'Fica 3 s pra resgatar',icon:'boia'},
+  rescue:{text:'Encosta em quem caiu',sub:'Fica 3 s pra resgatar',icon:'boia'},
   gather:{text:'Encosta num coqueiro ou numa pedra pra catar',icon:'coco',maxMs:10000},
 };
 /** The check after the action, then the row goes. */
@@ -48,6 +51,8 @@ export const GATHER_NEAR=2.5;
 export const XP_NEAR=8;
 /** The hero jumping this far between two views is a snap (spawn, reconnection), not a step: the walk is measured anew. */
 export const SNAP_DISTANCE=2.5;
+/** At the end of a run (result or leaving), a hint on screen at least this long counts as learned even if never done. */
+export const LEARNED_BY_SIGHT_MS=8000;
 
 export const COACH_KEY='viagem:dicas';
 /** Hints of earlier cards: a phone that saw them does not see them again. */
@@ -72,10 +77,15 @@ export function loadDone(storage:Store|undefined=defaultStore()):Set<Lesson>{
   }
   return done;
 }
-/** Stores the learned lessons; a storage that throws only leaves them in this page's memory. */
+/**
+ * Stores the learned lessons, joined with what is stored now (another tab of this phone may have learned others since
+ * this page loaded); a storage that throws only leaves them in this page's memory.
+ */
 export function saveDone(done:ReadonlySet<Lesson>,storage:Store|undefined=defaultStore()){
   for(const lesson of done)sessionDone.add(lesson);
-  try{storage?.setItem(COACH_KEY,JSON.stringify(LESSON_ORDER.filter(l=>done.has(l))));}catch{/* quota or private tab */}
+  const all=new Set<Lesson>(done);
+  try{const raw=storage?.getItem(COACH_KEY),list=raw?JSON.parse(raw):[];if(Array.isArray(list))for(const id of list)if(isLesson(id))all.add(id);}catch{/* broken value: ours wins */}
+  try{storage?.setItem(COACH_KEY,JSON.stringify(LESSON_ORDER.filter(l=>all.has(l))));}catch{/* quota or private tab */}
 }
 /** Test hook: forgets this page's memory. */
 export function resetSessionMemory(){sessionDone.clear();}
@@ -199,12 +209,13 @@ export class Coach {
   }
 
   /**
-   * The run reached its result: what was shown in it counts as learned (first run of the phone only), and the next run
-   * starts with fresh per-run timers. Lessons that never showed (rescue in a solo run) stay for later.
+   * The run reached its result, or the player left it: a hint seen for LEARNED_BY_SIGHT_MS or more counts as learned
+   * (first run of the phone only; the done ones were stored at once), and the next run starts with fresh per-run timers.
+   * A hint glimpsed for less (in and out in 3 s), or never shown (rescue in a solo run), stays for a later run.
    */
   endRun(){
     let changed=false;
-    for(const [lesson,ms] of this.shownMs)if(ms>0&&!this.done.has(lesson)){this.done.add(lesson);changed=true;}
+    for(const [lesson,ms] of this.shownMs)if(ms>=LEARNED_BY_SIGHT_MS&&!this.done.has(lesson)){this.done.add(lesson);changed=true;}
     if(changed)saveDone(this.done,this.storage);
     this.shownMs.clear();this.current=undefined;this.walkOrigin=undefined;this.lastHero=undefined;this.lastStep=undefined;this.quietUntil=0;
   }
@@ -236,7 +247,7 @@ export function createCoachRow():CoachPart{
     row.hidden=false;row.dataset.lesson=show.lesson;row.classList.toggle('rh-coach-done',show.done);
     // The chip's own look ("+N" on Amarelo), so the line points at it without an arrow over the field.
     mark.innerHTML=show.done?icon('pronto',{size:32}):copy.icon==='chip'?`<span class="rh-coach-chip" aria-hidden="true">+${Math.max(1,pending)}</span>`:icon(copy.icon,{size:32});
-    text.textContent=copy.text;
+    text.textContent=copy.text.replace('{n}',String(Math.max(1,pending)));
     sub.textContent=show.done?'':copy.sub??'';
   }};
 }

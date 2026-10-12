@@ -63,7 +63,8 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-camera .explore-camera-hint{position:absolute;left:0;top:calc(100% + 8px);padding:4px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 13px/1.3 var(--f-sistema);white-space:nowrap;pointer-events:none}
 .explore-camera .explore-camera-hint[hidden]{display:none}
 .explore-exit .ic{margin-right:4px}
-/* First-run coach (VGM-056): while "Arrasta o dedão pra andar" shows, the stick wears the hint sticker's Amarelo
-   (edge and knob), so the line and the control read as one. Static: no motion, gone at the first steps. */
-.explore-layout:has(>.rh[data-coach=walk]) .explore-stick{border-color:var(--c-amarelo)}
-.explore-layout:has(>.rh[data-coach=walk]) .explore-stick span{background:var(--c-amarelo)}
+/* First-run coach (VGM-056): while "Arrasta o dedão pra andar" shows (or the rescue hint only pushed it aside), the
+   stick wears the hint sticker's Amarelo (edge and knob), so the line and the control read as one. Static: no motion,
+   gone at the first steps (RunHud sets data-coach-stick). */
+.explore-layout:has(>.rh[data-coach-stick]) .explore-stick{border-color:var(--c-amarelo)}
+.explore-layout:has(>.rh[data-coach-stick]) .explore-stick span{background:var(--c-amarelo)}

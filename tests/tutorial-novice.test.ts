@@ -184,26 +184,60 @@ test('first run of the phone only: the second run with the same storage shows no
   assert.deepEqual([...second.shown].filter(l=>l!=='rescue'&&l!=='gather'),[],'nothing but lessons whose moment never came');
 });
 
-test('round 1 lays the XP crumbs: one more than the first level, on walkable ground, on screen but out of the magnet',()=>{
-  for(const seed of SEEDS)for(const players of [1,6]){
-    const sim=new Simulation(seed,{world:DEFAULT_WORLD});
-    for(let i=0;i<players;i++)sim.add(`p${i}`,`P${i}`,SIX[i]);
-    sim.resetRun();
-    while(sim.world.round.phase!=='wave')sim.step();
-    const crumbs=[...sim.world.pickups.values()].filter(p=>p.kind==='xp');
-    assert.equal(crumbs.length,TUTORIAL_CRUMBS.count,`seed ${seed}, ${players}p: every crumb found ground`);
+/** Round 1's crumbs right after the wave starts (the director lays them on the 'wave' round event). */
+function crumbsAt(seed:number,players:number){
+  const sim=new Simulation(seed,{world:DEFAULT_WORLD});
+  for(let i=0;i<players;i++)sim.add(`p${i}`,`P${i}`,SIX[i]);
+  sim.resetRun();
+  while(sim.world.round.phase!=='wave')sim.step();
+  return {sim,crumbs:[...sim.world.pickups.values()].filter(p=>p.id.startsWith('migalha-'))};
+}
+
+test('round 1 lays the XP crumbs: one more than the first level, on walkable ground, on screen, out of every magnet',()=>{
+  for(const seed of SEEDS)for(const players of [1,2,3,6]){
+    const {sim,crumbs}=crumbsAt(seed,players);
+    const at=`seed ${seed}, ${players}p`;
+    assert.equal(crumbs.length,TUTORIAL_CRUMBS.count,`${at}: every crumb found ground`);
+    assert.ok(crumbs.every(c=>c.kind==='xp'));
     assert.ok(crumbs.reduce((n,p)=>n+p.value,0)>sim.world.team.nextXp,'enough for the first level');
     const hero=sim.players.get('p0')!;
     const team=[...sim.players.values()],mid={x:team.reduce((s,p)=>s+p.x,0)/team.length,y:team.reduce((s,p)=>s+p.y,0)/team.length};
     for(const c of crumbs){
       const d=Math.hypot(c.x-mid.x,c.y-mid.y);
-      assert.ok(d>=TUTORIAL_CRUMBS.radius[0]-.01&&d<=TUTORIAL_CRUMBS.radius[1]+2,`crumb ${d.toFixed(1)} u from the team`);
-      assert.ok(Math.hypot(c.x-hero.x,c.y-hero.y)<=XP_NEAR,'close enough to call the XP hint');
+      assert.ok(d>=TUTORIAL_CRUMBS.radius[0]-.01&&d<=TUTORIAL_CRUMBS.radius[1]+3,`${at}: crumb ${d.toFixed(1)} u from the team`);
+      assert.ok(Math.hypot(c.x-hero.x,c.y-hero.y)<=XP_NEAR,`${at}: close enough to call the XP hint`);
+      for(const p of team)assert.ok(Math.hypot(c.x-p.x,c.y-p.y)>p.stats.magnet,`${at}: out of ${p.id}'s magnet`);
     }
-    // A hero standing still never gets them (the magnet does not reach): the lesson needs a step.
-    for(let t=0;t<ticks(5);t++)sim.step();
-    if(players===1)assert.equal(sim.world.team.xp,0,'standing still: no crumb picked');
+    // A team standing still never gets them (no magnet reaches, mendigo's bonus included): the lesson needs a step.
+    for(let t=0;t<ticks(10);t++)sim.step();
+    assert.equal([...sim.world.pickups.keys()].filter(id=>id.startsWith('migalha-')).length,TUTORIAL_CRUMBS.count,`${at}: standing 10 s, none picked`);
+    assert.equal(sim.world.team.xp,0,`${at}: standing still, no XP`);
   }
+});
+
+test('the crumbs are deterministic and move nothing else: same seed, same crumbs; the bichos and their ids are the same without them',()=>{
+  const key=(c:{id:string;x:number;y:number;value:number})=>`${c.id}@${c.x.toFixed(4)},${c.y.toFixed(4)}=${c.value}`;
+  for(const seed of SEEDS)for(const players of [1,6])assert.deepEqual(crumbsAt(seed,players).crumbs.map(key),crumbsAt(seed,players).crumbs.map(key),`seed ${seed}, ${players}p`);
+  /** The first 30 s of round 1 with a team standing still: every bicho as it shows up (id, kind, spot). */
+  const spawns=(seed:number,players:number)=>{
+    const sim=new Simulation(seed,{world:DEFAULT_WORLD});
+    for(let i=0;i<players;i++)sim.add(`p${i}`,`P${i}`,SIX[i]);
+    sim.resetRun();
+    const seen=new Map<string,string>();
+    for(let t=0;t<ticks(3+30);t++){sim.step();for(const e of sim.world.enemies.values())if(!seen.has(e.id))seen.set(e.id,`${e.kind}@${e.x.toFixed(3)},${e.y.toFixed(3)}`);}
+    return [...seen];
+  };
+  const round1=ROUNDS[0] as {crumbs?:typeof TUTORIAL_CRUMBS};
+  for(const seed of SEEDS)for(const players of [1,6]){
+    const withCrumbs=spawns(seed,players);
+    round1.crumbs=undefined;
+    try{assert.deepEqual(spawns(seed,players),withCrumbs,`seed ${seed}, ${players}p: same bichos, same ids, same spots`);}
+    finally{round1.crumbs=TUTORIAL_CRUMBS;}
+    assert.ok(withCrumbs.length>0,'bichos came');
+  }
+});
+
+test('the crumbs only exist in the endless world, only in round 1',()=>{
   // The island (lab world) has no crumbs: its bichos come from the coast in a few seconds, the level comes from them.
   const island=new Simulation(SEEDS[0]);island.add('p0','P0','cidadao-comum');island.resetRun();
   while(island.world.round.phase!=='wave')island.step();

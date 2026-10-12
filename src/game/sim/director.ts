@@ -168,6 +168,9 @@ function nearestPlayer(ctx:SimContext,p:Point){
   return best;
 }
 
+/** Round 1 crumbs (VGM-056): tries per drop, and the gap beyond a hero's magnet radius (world units). */
+const CRUMB_TRIES=6,CRUMB_MAGNET_MARGIN=.4;
+
 export function createDirector(options:DirectorOptions,restore?:DirectorState):Director{
   const maxEnemies=options.maxEnemies??MAX_ENEMIES;
   const intermission=ticks(options.intermissionSeconds??20),opening=ticks(options.openingSeconds??3);
@@ -466,21 +469,24 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   }
 
   /**
-   * Round 1 (VGM-056): a ring of XP drops around the team's middle, evenly spread with a little jitter, each on walkable
-   * ground (a few tries farther out, else skipped). Out of the magnet's reach, so a hero standing still never gets them.
+   * Round 1 (VGM-056, D-026: balance of the endless world's round 1, every run): a ring of XP drops around the team's
+   * middle, evenly spread with a little jitter, each on walkable ground (a few tries farther out, else skipped), and
+   * out of every hero's magnet (plus a margin), so a team standing still never gets them: the lesson needs a step.
+   * Own id counter ("migalha") and own random stream: no other id or spawn of the run moves because of them.
    */
   function layCrumbs(ctx:SimContext,crumbs:NonNullable<RoundPlan['crumbs']>){
     const team=anchorsOf(ctx);
     const center=team.length?{x:team.reduce((s,p)=>s+p.x,0)/team.length,y:team.reduce((s,p)=>s+p.y,0)/team.length}:worldSpawn(ctx.terrain);
+    const clear=(at:{x:number;y:number})=>team.every(p=>Math.hypot(at.x-p.x,at.y-p.y)>p.stats.magnet+CRUMB_MAGNET_MARGIN);
     // A stream of its own, derived from the director's: the crumbs never shift the spawn plan of any round.
     const r=new Rng((state.rng^0x056c0de5)>>>0);
     const turn=r.range(0,Math.PI*2),[min,max]=crumbs.radius;
     for(let i=0;i<crumbs.count;i++){
-      for(let attempt=0;attempt<4;attempt++){
+      for(let attempt=0;attempt<CRUMB_TRIES;attempt++){
         const a=turn+i*2*Math.PI/crumbs.count+r.range(-.25,.25),d=r.range(min,max)+attempt*.5;
         const at={x:center.x+Math.cos(a)*d,y:center.y+Math.sin(a)*d};
-        if(!walkable(at,ctx.terrain)||ctx.terrain.chunks&&!ctx.terrain.chunks.clear(at.x,at.y,MEMBER_CLEARANCE))continue;
-        const id=ctx.nextId('xp');
+        if(!clear(at)||!walkable(at,ctx.terrain)||ctx.terrain.chunks&&!ctx.terrain.chunks.clear(at.x,at.y,MEMBER_CLEARANCE))continue;
+        const id=ctx.nextId('migalha');
         ctx.pickups.set(id,{id,kind:'xp',value:crumbs.value,x:at.x,y:at.y,spawnTick:ctx.tick});
         break;
       }

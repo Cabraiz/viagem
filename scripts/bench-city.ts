@@ -28,7 +28,7 @@ import type {SimContext,SimSystem} from '../src/sim/context.ts';
 import {SpatialHash} from '../src/sim/spatial.ts';
 import {EnemyAi} from '../src/sim/enemies/ai.ts';
 import {createEnemy,type EnemyKind} from '../src/sim/enemies/catalog.ts';
-import {clearSegment,walkable,worldBase,type Point} from '../src/maps/world.ts';
+import {clearSegment,maskSurface,walkable,worldBase,type Point} from '../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../src/maps/terrain/field.ts';
 import {decodeCityAsset} from '../src/maps/city-asset.ts';
 import {CityTerrain,cityAsField} from '../src/maps/city/terrain.ts';
@@ -167,6 +167,8 @@ function run(terrain:TerrainField,place:Layout,counter?:{walkable:number}):RunRe
   world.register(system);
   place.players.forEach((p,i)=>addPlayer(world,`p${i}`,p));
   place.spawns.forEach((p,i)=>createEnemy(world,kindAt(i),p));
+  const startMask=maskSurface(terrain),startClear=new Set<string>();
+  for(const e of world.enemies.values())if(!startMask||startMask.clearDisc(e.x,e.y,e.radius))startClear.add(e.id);
   const ai:number[]=[],tick:number[]=[],calls:number[]=[];
   let downed=0;
   for(let t=0;t<WARMUP+MEASURE;t++){
@@ -177,8 +179,10 @@ function run(terrain:TerrainField,place:Layout,counter?:{walkable:number}):RunRe
     if(t>=WARMUP){ai.push(system.last);tick.push(dt);calls.push(system.lastCalls);}
   }
   let offWalkable=0,sum=0;
+  // City: bodies wider than the hero must also keep their own disc out of the walls (ai.ts clearFrom).
+  const mask=maskSurface(terrain);
   for(const e of world.enemies.values()){
-    if(!walkable(e,terrain))offWalkable++;
+    if(!walkable(e,terrain)||(mask&&!mask.clearDisc(e.x,e.y,e.radius)&&startClear.has(e.id)))offWalkable++;
     let best=Infinity;for(const p of world.players.values())best=Math.min(best,dist(e,p));sum+=best;
   }
   return {ai,tick,calls,hash:stateHash(world.state()),offWalkable,downed,meanPlayerDistance:Math.round(sum/world.enemies.size*100)/100,world,terrain};

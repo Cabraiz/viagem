@@ -95,7 +95,9 @@ export class Simulation {
    */
   /** `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world. */
   constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField}={}){
-    this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:options.world==='cidade'?undefined:options.world});
+    if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
+    const generated=options.world==='cidade'?undefined:options.world;
+    this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }
@@ -376,7 +378,7 @@ export class Simulation {
     const enemies:EnemyWire[]=[...w.enemies.values()].map(packEnemy);
     for(const tomb of this.tombs.values())if(!w.enemies.has(tomb.wire[0]))enemies.push(tomb.wire);
     return {terrain:{seed:this.terrain.seed,version:TERRAIN_VERSION,signature:this.terrain.signature,
-      ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:{})},t:'state',tick:this.tick,full:true,
+      ...(this.terrain.chunks?{world:'infinito' as const,generator:CHUNK_VERSION}:this.terrain.world==='cidade'?{world:'cidade' as const}:{})},t:'state',tick:this.tick,full:true,
       players:[...this.players.values()].map(packPlayer),enemies,removed:[],victory:this.victory,
       x:{round:{...w.round},team:{...w.team},players:[...this.players.values()].map(p=>packPlayerExtra(p,this.statsOf(p.id))),
         pickups:[...w.pickups.values()].map(p=>[p.id,p.kind,round(p.x),round(p.y),p.value]),

@@ -630,7 +630,7 @@ test('protocol 8 (D-034): a city room says kind cidade, seed 0 and the asset sha
   const {readFileSync}=await import('node:fs');
   const json=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
   const {hash}=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
-  const built=cityTerrainFrom(json,hash);assert.ok(built.ok);
+  const built=await cityTerrainFrom(json,hash);assert.ok(built.ok);
   const d=worldDescriptor(built.terrain);
   assert.deepEqual({kind:d.kind,seed:d.seed,generatorVersion:d.generatorVersion,signature:d.signature},{kind:'cidade',seed:0,generatorVersion:0,signature:hash});
   const w=busyWorld(new Rng(5),2);(w.view as FrameInput).world=d;

@@ -7,7 +7,8 @@ import {clamp,mix,smooth,hash2d,fbm} from './noise.ts';
 import {BASE,ChunkWorld,endlessSignature} from './chunks.ts';
 import type {WorldKind} from '../../contract/index.ts';
 export type {WorldKind};
-export interface TerrainOptions {world?:WorldKind;maxLiveChunks?:number}
+/** Generated worlds only: the city (D-034) is built from its asset (city/terrain.ts), never from a seed. */
+export interface TerrainOptions {world?:Exclude<WorldKind,'cidade'>;maxLiveChunks?:number}
 /** Bilinear sample of an island grid. A module function, not a private method: TerrainField stays structurally typed,
  * so other surfaces with the same shape (city/terrain.ts) are accepted wherever a TerrainField is. */
 function sampleField(data:Float32Array,x:number,y:number){

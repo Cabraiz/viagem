@@ -231,6 +231,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function pickPoint(ctx:SimContext,side?:number):Point{
     const all=coastalSpawnPoints(ctx.terrain);
+    if(!all.length&&ctx.terrain.world==='cidade')throw new Error('cidade: rounds spawn at the avenue tips, which arrive with cidade-05');
     if(!all.length)throw new Error('terrain has no coastal spawn point');
     const center=worldBase(ctx.terrain);
     const inSide=side===undefined?all:all.filter(p=>{

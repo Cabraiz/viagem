@@ -37,6 +37,8 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/ind
  * (gather nodes) and the towers' `untilTick`; a 5 decoder would refuse the flags or misread the sections. 7 since
  * VGM-053B: the zueira events (`happening`: boleto rain, flash sale, blackout) and the round's last critter
  * (`last-bicho`, the kill-cam); a 6 decoder would skip them silently (no blackout, no kill-cam), so the version moves.
+ * 8 since D-034: the world kind 'cidade' (Cidade Nevada, seed 0 + asset sha256); a 7 decoder would refuse the frame's
+ * world byte, so it must ask to update instead.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=8;

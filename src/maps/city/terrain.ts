@@ -7,7 +7,7 @@
  * its disc overlaps is walkable (D-030: the hero's collision is half a cell, radius 0.22 u, so a 2-sample alley fits).
  */
 import type {CityAsset,CityPoint} from '../city-asset.ts';
-import {decodeCityAsset} from '../city-asset.ts';
+import {checkCityHash,decodeCityAsset} from '../city-asset.ts';
 import type {WorldKind} from '../../contract/index.ts';
 import type {TerrainField} from '../terrain/field.ts';
 
@@ -28,7 +28,6 @@ export class CityTerrain {
   /** The island's noise grids; empty for the city (rendered by render/city, not by the island renderer). */
   readonly heights=new Float32Array(0);
   readonly moisture=new Float32Array(0);
-  readonly isCity=true;
   private readonly minHeight:number;
   private readonly step:number;
   private readonly sw:number;
@@ -49,7 +48,7 @@ export class CityTerrain {
   clearDisc(x:number,y:number,r:number):boolean{
     if(!(Number.isFinite(x)&&Number.isFinite(y)&&r>=0))return false;
     const s=this.step,a=this.asset;
-    if(r===0)return a.walkableAt(x,y);
+    if(r<=TOUCH_EPS)return a.walkableAt(x,y); // a point, not a disc
     const reach=r-TOUCH_EPS,r2=reach*reach;
     const sx0=Math.floor((x-reach)/s),sx1=Math.floor((x+reach)/s),sy0=Math.floor((y-reach)/s),sy1=Math.floor((y+reach)/s);
     if(sx0<0||sy0<0||sx1>=this.sw||sy1>=this.sh)return false;
@@ -83,8 +82,14 @@ export class CityTerrain {
   get spawn():CityPoint{return this.asset.points.inicio;}
 }
 
-/** Decodes the committed asset text and builds the terrain; returns the decoder's error instead of throwing. */
-export function cityTerrainFrom(json:string|unknown,hash:string):{ok:true;terrain:CityTerrain}|{ok:false;error:string}{
+/**
+ * Decodes the asset text after checking it hashes to `hash` (the D-027 manifest / welcome signature) and registers it.
+ * One instance per hash per process: rooms and the client share the decoded city. Never throws.
+ */
+export async function cityTerrainFrom(json:string,hash:string):Promise<{ok:true;terrain:CityTerrain}|{ok:false;error:string}>{
+  const known=loaded.get(hash);if(known)return {ok:true,terrain:known};
+  const checked=await checkCityHash(json,hash);
+  if(!checked.ok)return checked;
   const decoded=decodeCityAsset(json);
   if(!decoded.ok)return decoded;
   const terrain=new CityTerrain(decoded.asset,hash);

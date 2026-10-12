@@ -26,10 +26,11 @@ const HASH=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest
 const MAX_STEP=SPEED*STEP+1e-9;
 const VIEWS=[0,1,2,3] as const;
 
+/** A fresh, unregistered decode (cityTerrainFrom shares one instance per hash; determinism needs two). */
 function build(json:string,hash:string):CityTerrain{
-  const r=cityTerrainFrom(json,hash);
+  const r=decodeCityAsset(json);
   if(!r.ok)throw new Error(r.error);
-  return r.terrain;
+  return new CityTerrain(r.asset,hash);
 }
 const real=build(TEXT,HASH);
 const field:TerrainField=cityAsField(real);
@@ -287,15 +288,44 @@ test('heights: finite, ≥ 0, the lowest corner is 0 and the hill rises in the e
   for(const [,p] of NAMED)assert.equal(other.height(p.x,p.y),real.height(p.x,p.y));
 });
 
-test('client welcome: terrainFor finds the decoded city by hash and refuses an unknown one',()=>{
-  const r=cityTerrainFrom(TEXT,HASH);assert.ok(r.ok);
+test('client welcome: terrainFor finds the decoded city by hash and refuses an unknown one',async()=>{
+  const r=await cityTerrainFrom(TEXT,HASH);assert.ok(r.ok);
+  assert.equal((await cityTerrainFrom(TEXT,HASH)).ok&&cityTerrainFor(HASH),r.terrain,'one shared instance per hash');
   const city={kind:'cidade' as const,terrainVersion:TERRAIN_VERSION,generatorVersion:0,seed:0,signature:HASH};
   assert.equal(cityTerrainFor(HASH),r.terrain);
   assert.equal(terrainFor(city),r.terrain);
   assert.equal(terrainFor({...city,signature:'0'.repeat(64)}),UPDATE_NEEDED);
   assert.equal(terrainFor({...city,terrainVersion:TERRAIN_VERSION+1}),UPDATE_NEEDED);
-  // A bad asset never registers anything.
-  const bad=cityTerrainFrom('{"format":"viagem-city"}','f'.repeat(64));
+  // A bad asset, or a good one under the wrong hash, never registers anything (D-034: different hash → update).
+  const bad=await cityTerrainFrom('{"format":"viagem-city"}','f'.repeat(64));
   assert.equal(bad.ok,false);assert.equal(cityTerrainFor('f'.repeat(64)),undefined);
+  const forged=await cityTerrainFrom(TEXT,'a'.repeat(64));
+  assert.equal(forged.ok,false);assert.equal(cityTerrainFor('a'.repeat(64)),undefined);
   assert.equal(decodeCityAsset(TEXT).ok,true);
+});
+
+test('bodies wider than the hero (elite, boss) keep their own disc out of city walls while pushing into them',async()=>{
+  const {moveSafely}=await import('../../src/sim/enemies/ai.ts');
+  const rng=new Rng(4242);let pushes=0;
+  for(const radius of [.32,.48,.9,1.5]){
+    for(let k=0;k<60;k++){
+      const p={x:rng.range(20,150),y:rng.range(20,150)};
+      if(!real.clearDisc(p.x,p.y,radius))continue;
+      const a=rng.range(0,Math.PI*2),dir={x:Math.cos(a),y:Math.sin(a)};
+      for(let t=0;t<120;t++)moveSafely(p,dir.x*.15,dir.y*.15,field,radius);
+      assert.ok(real.clearDisc(p.x,p.y,radius),`radius ${radius} ended inside a wall at (${p.x.toFixed(2)},${p.y.toFixed(2)})`);
+      pushes++;
+    }
+  }
+  assert.ok(pushes>40,`${pushes} pushes`);
+  // The reviewer's repro: a boss pushed north into a building from (17.48, 9.04).
+  const boss={x:17.48,y:9.04};
+  if(real.clearDisc(boss.x,boss.y,.9)){for(let t=0;t<60;t++)moveSafely(boss,0,-.15,field,.9);assert.ok(real.clearDisc(boss.x,boss.y,.9));}
+});
+
+test("'cidade' only exists with the decoded city: no seed-built city, no silent island",async()=>{
+  const {Simulation}=await import('../../multiplayer/simulation.ts');
+  assert.throws(()=>new Simulation(7,{world:'cidade'}),/decoded city/);
+  const sim=new Simulation(7,{world:'cidade',terrain:field});
+  assert.equal(sim.terrain,field);assert.equal(sim.terrain.world,'cidade');
 });

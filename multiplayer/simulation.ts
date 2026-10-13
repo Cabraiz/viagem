@@ -207,6 +207,8 @@ export class Simulation {
    * rooms never pass it (the city plays CITY_BALANCE). Ignored outside the city.
    */
   private readonly cityBalance?:RunSystemsOptions['cityBalance'];
+  /** D-040 rotation override (undefined: the run's default, on). */
+  private readonly rotation?:boolean;
   /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
@@ -216,12 +218,14 @@ export class Simulation {
    * `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world.
    * A CityTerrain is forked (cidade-06): the decoded city is shared by the process, the barricade blockers are this room's.
    */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField;cityStructures?:boolean;cityBalance?:RunSystemsOptions['cityBalance']}={}){
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField;cityStructures?:boolean;cityBalance?:RunSystemsOptions['cityBalance'];
+    /** D-040 rotation (RunSystemsOptions.rotation, default on); false plays the round table's nine kinds. */
+    rotation?:boolean}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -261,6 +265,7 @@ export class Simulation {
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
+      ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }
@@ -689,5 +694,5 @@ export type {SimEvent};
 export function defenseView(d:DefenseState,tick:number):StructureView{
   const def=DEFENSES[d.kind],turn=d.aim===undefined?undefined:((d.aim/(2*Math.PI))%1+1)%1;
   return {id:d.id,kind:d.kind,x:d.x,y:d.y,hp:d.ruined?0:d.hp,maxHp:d.maxHp,tier:def.tier,...(def.branch?{branch:def.branch}:{}),
-    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn})};
+    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn}),...(d.shots===undefined?{}:{shots:d.shots})};
 }

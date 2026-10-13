@@ -261,7 +261,8 @@ test('island and endless director: strong city knobs change nothing (with or wit
 function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?:CityBalance){
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},...(cityBalance?{cityBalance}:{})});
+  // The baselines were recorded with the round table's nine kinds (before the D-040 rotation).
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},rotation:false,...(cityBalance?{cityBalance}:{})});
   const s=terrain===city?P.plazaCenter:{x:12,y:12};
   for(const [id,dx] of [['a',0],['b',1]] as const)players.set(id,{id,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
     stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x:s.x+dx,y:s.y,ack:0,score:0} as SimPlayer);

@@ -11,6 +11,9 @@
  * occlusion.ts propCovers + CoverFader, the same rule, pivot, figure box and timings as the buildings).
  * Every procedural texture (bases, weapons, craters, effects) is a frame of one shared atlas (tower-atlas.ts), so the
  * defenses never break the sprite batch with textures of their own.
+ * Lighting card (render/light.ts): each defense casts a soft shadow away from the sun (tower-shadow.ts), baked per kind
+ * × phase × view × size in a layer of its own over the ground decals and under everything standing; off with `?luz=0`
+ * and in economy mode (`economy`, set by the scene).
  * Effects come from fixed pools of Images of frames baked once (craters and the wire's ring in a Layer on the ground):
  * nothing is tessellated per frame, a crater is placed once, an effect's depth is set when it spawns or crosses a
  * half-unit cell, the weapons re-scan the horde only when they fire or every RESCAN_MS (with the server's aim, never),
@@ -24,6 +27,8 @@ import {MATERIALS} from '../city/palette.ts';
 import {VIEW_PIVOT,depth as groundDepthKey,type Pt,type Rect} from '../city/projection.ts';
 import {tokenColor} from '../../ui/tokens.ts';
 import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
+import {SHADOW_SOFT_PX,castHeight,softShadow,towerShadowLook} from './tower-shadow.ts';
+import {lightEnabled} from '../light.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
   towerArt,towerPhase,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
@@ -52,15 +57,23 @@ export interface TowerRendererOptions {
    * and adds `shakeOffset` after its own centring instead.
    */
   camera?:Phaser.Cameras.Scene2D.Camera;
+  /** Economy mode when built (the scene's current choice; `economy` changes it live): no cast shadows. Default false. */
+  economy?:boolean;
+  /** The lighting is on (render/light.ts). Default lightEnabled() (`?luz=0` turns it off). */
+  light?:boolean;
 }
 
 interface Tower {
   view:TowerView;look:TowerLook;cal:CalibreLook;phase:TowerPhase;prevFire?:number;
+  /** Extra volleys of one snapshot still to draw (ms when each goes), staggered by VOLLEY_STAGGER_MS. */
+  queued?:number[];
   /** Next re-scan of the horde for the nearest target (ms); the alpha last set; the cover test's last answer. */
   scanAt:number;alpha:number;covers:boolean;
   base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
   /** The Gustavão's rails and sleepers: a decal in the ground layer, under the carriage and everything standing. */
   rail?:Phaser.GameObjects.Image;
+  /** Its cast shadow (lighting card): a baked decal in the shadow layer, over the ground decals, under the defenses. */
+  shadow?:Phaser.GameObjects.Image;
   /** The delivered base sheet is in use (else the baked procedural texture). */
   art:boolean;
   dir:Dir8;want:Dir8;turnMs:number;recoilUntil:number;drawnDir:number;drawnRecoil:boolean;drawnPhase:TowerPhase|'';drawnView:number;
@@ -84,6 +97,8 @@ export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
+/** Two or three volleys of one snapshot (the room's counter jumped) are drawn this far apart, not at once. */
+const VOLLEY_STAGGER_MS=70;
 /** Crater decals: a small frame, and a large one for the big shells and the Gustavão (no blur when scaled up). */
 const CRATER_FRAME='cratera',CRATER_TEX=128,CRATER_BIG='cratera-g',CRATER_BIG_TEX=512,CRATER_BIG_FROM=1;
 /** Effects sort just above the actors standing at their point (a pickup is +1, a projectile +2 in layers.ts). */
@@ -112,6 +127,10 @@ export class TowerRenderer {
   private readonly craterImages:Phaser.GameObjects.Image[];
   private readonly craterFrames:{small:AtlasFrame;big:AtlasFrame};
   private readonly ground:Phaser.GameObjects.Layer;
+  /** The defenses' cast shadows: at the ground layer's depth, added after it (over craters and rails, under the rest). */
+  private readonly shade:Phaser.GameObjects.Layer;
+  private readonly light:boolean;
+  private economyOn:boolean;
   /** Shots, explosions and flashes: pooled Images in the scene's display list, each at its own point's actor depth. */
   private readonly fxImages:Phaser.GameObjects.Image[]=[];
   private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,dz:0,trail:undefined,head:undefined,puff:undefined}));
@@ -152,11 +171,22 @@ export class TowerRenderer {
     });
     this.craterFrames={small:crater(CRATER_FRAME,CRATER_TEX),big:crater(CRATER_BIG,CRATER_BIG_TEX)};
     this.ground=scene.add.layer().setDepth(options.groundDepth);
+    this.shade=scene.add.layer().setDepth(options.groundDepth);
+    this.light=options.light??lightEnabled();this.economyOn=!!options.economy;
     const small=this.craterFrames.small;
     this.craterImages=this.craters.map(()=>{const img=scene.make.image({x:0,y:0,key:small.key,frame:small.frame},false).setVisible(false);this.ground.add(img);return img;});
     this.bakeEffects();
     this.atlas.flush();
     this.measure();
+  }
+  /** Economy mode (scene.setEconomy): the cast shadows hide (and come back baked as they were). */
+  get economy(){return this.economyOn;}
+  set economy(on:boolean){
+    if(on===this.economyOn)return;
+    this.economyOn=on;
+    const view=this.o.world.view();
+    for(const t of this.towers.values())this.placeShadow(t,view);
+    this.atlas.flush();
   }
   private get s(){const k=this.o.actorScale;return typeof k==='function'?k():k??1;}
   /** Size unit of the weapons and effects: world px of 1/24 u, so they keep their size against the boxes at any scale. */
@@ -179,7 +209,10 @@ export class TowerRenderer {
       t.view=view;t.seen=stamp;
       t.phase=view.phase??towerPhase(view,tick);
       if(view.aim!==undefined&&view.aim!==t.aimFor)this.aimAt(t,view.aim);
-      if(firedNow(t.prevFire,view,tick))this.fire(t,nowMs);
+      if(firedNow(t.prevFire,view,tick)){
+        this.fire(t,nowMs);
+        for(let k=1;k<(view.volleys??1);k++)(t.queued??=[]).push(nowMs+k*VOLLEY_STAGGER_MS);
+      }
       t.prevFire=view.fireTick;
     }
     for(const t of this.towers.values())if(t.seen!==stamp){this.drop(t);this.towers.delete(t.view.id);this.coverDirty=true;}
@@ -226,6 +259,7 @@ export class TowerRenderer {
     if(version!==this.depthSeen){this.depthSeen=version;this.redepth();}
     const view=this.o.world.view(),covered=this.covered;
     for(const t of this.towers.values()){
+      while(t.queued?.length&&t.queued[0]<=nowMs){t.queued.shift();this.fire(t,nowMs);}
       this.aim(t,dtMs);
       this.drawTower(t,view);
     }
@@ -261,7 +295,7 @@ export class TowerRenderer {
   }
   destroy(){
     for(const t of this.towers.values())this.drop(t);
-    this.towers.clear();this.bake.destroy();this.ground.destroy();
+    this.towers.clear();this.bake.destroy();this.ground.destroy();this.shade.destroy();
     for(const img of this.fxImages)img.destroy();this.fxImages.length=0;
     const cam=this.o.camera;if(cam){cam.scrollX-=this.applied.x;cam.scrollY-=this.applied.y;}
   }
@@ -277,7 +311,7 @@ export class TowerRenderer {
     t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
     return t;
   }
-  private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();}
+  private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();t.shadow?.destroy();}
 
   private aim(t:Tower,dtMs:number){
     if(t.look.calibre==='radar'){ // the dish sweeps on its own
@@ -321,7 +355,10 @@ export class TowerRenderer {
    * A volley: muzzle flash, recoil, and the shots toward its aim: with the server's `aim`, the reachable enemy along it
    * (or a point along it at AIM_FALLBACK of the range); without, the nearest reachable enemy.
    */
+  /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
+  volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
+    this.volleysDrawn++;
     const cal=t.cal,e=this.enemies,v=t.view;
     t.recoilUntil=nowMs+RECOIL_MS;
     let tx=NaN,ty=NaN;
@@ -547,6 +584,7 @@ export class TowerRenderer {
       if(t.art)this.placeArt(t,view);
       else this.placeBase(t,view);
       this.placeRail(t,view);
+      this.placeShadow(t,view);
     }
     const recoil=this.now<t.recoilUntil;
     if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil){t.drawnDir=t.dir;t.drawnRecoil=recoil;this.placeWeapon(t,recoil);}
@@ -612,6 +650,30 @@ export class TowerRenderer {
     });
     if(!t.rail){t.rail=this.scene.make.image({x:0,y:0,key:f.key,frame:f.frame},false);this.ground.add(t.rail);t.rail.setDepth(-1);}
     this.setFrame(t.rail,f).setOrigin(0,0).setPosition(ox,oy).setVisible(true);
+  }
+  /**
+   * The cast shadow (tower-shadow.ts): the footprint stretched away from the sun by the drawn height (obra and ruin by
+   * phase), baked once per kind × phase × view × size like the base and placed at its screen bounds. None with the
+   * light off or in economy mode.
+   */
+  private placeShadow(t:Tower,view:number){
+    const look=towerShadowLook(this.light,this.economyOn);
+    if(!look){t.shadow?.setVisible(false);return;}
+    const v=t.view,w=this.o.world,{hx,hy}=this.extents(t),H=castHeight(t.look.calibre,t.look.height*PHASE_HEIGHT[t.phase]);
+    const foot=[[-hx,-hy],[hx,-hy],[hx,hy],[-hx,hy]].map(([dx,dy])=>{const p=w.project(v.x+dx,v.y+dy,0,this.p);return {x:p.x,y:p.y};});
+    const soft=softShadow(foot,H,this.unitPx,look,SHADOW_SOFT_PX*this.s);
+    if(!soft.polys.length){t.shadow?.setVisible(false);return;}
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const p of soft.polys[0]){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+    const ox=Math.floor(minX)-2,oy=Math.floor(minY)-2,wpx=Math.ceil(maxX-ox)+2,hpx=Math.ceil(maxY-oy)+2;
+    const name=`sombra:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}:${v.half?`${v.half[0].toFixed(3)}x${v.half[1].toFixed(3)}`:''}:${Math.round(this.unitPx)}:${this.s.toFixed(3)}`;
+    const f=this.atlas.frame(name,wpx,hpx,this.bake,g=>{
+      g.translateCanvas(-ox,-oy);
+      for(const poly of soft.polys)g.fillStyle(look.color,soft.alpha).fillPoints(poly,true);
+    });
+    if(!t.shadow){t.shadow=this.scene.make.image({x:0,y:0,key:f.key,frame:f.frame},false);this.shade.add(t.shadow);}
+    // Like the base: the bake is at this defense's world position, another of the same kind and size reuses it shifted.
+    this.setFrame(t.shadow,f).setOrigin(0,0).setPosition(ox,oy).setVisible(true);
   }
   /** The procedural base, baked once per kind × phase × view × size, placed over its screen bounds. */
   private placeBase(t:Tower,view:number){

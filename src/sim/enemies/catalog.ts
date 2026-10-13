@@ -6,18 +6,25 @@ import type {Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
+import {ROLE_PROFILES,entryLines,isLegacyKind,isRosterId,rosterEntry,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
-/** Cast of D-033 (design/arte-v2.md §4), with the P1 trio (coach, motoboy, influencer: NEW-20261012-ORQ-elenco-p1). */
-export type EnemyKind='bebado'|'anao-molotov'|'pombos'|'tio-pave'|'agiota'|'coach'|'motoboy'|'influencer'|'chefe';
+/**
+ * Any roster id (rules/enemy-roster.ts, D-040): the nine hand-tuned kinds of D-033 and the P1 trio (LegacyKind, their
+ * own defs below) and the pack entries, whose defs are their role's profile on the role's base kind (enemyDef).
+ * isEnemyKind validates a string against the roster.
+ */
+export type EnemyKind=string;
+export type {LegacyKind};
 /**
  * stagger: drunk zig-zag chase plus a telegraphed burp cone (bebado); swarm: fast zig-zag plus poop (pombos);
  * joker: stops for a joke then charges (tio-pave); ranged: keeps distance and shoots (agiota);
  * thrower: keeps distance and lobs telegraphed molotovs (anao-molotov); coach: keeps distance, no melee, lectures and
  * buffs the allies around him (PALESTRA); kamikaze: warned locked charge that ends in a marmita blast (MOTOBOY);
  * poser: slow tank whose pose reflects friendly shots (POSE, REFLECT); chase: walks straight (siege, generic);
- * boss: driven by VGM-038.
+ * boss: driven by VGM-038. Roles of the roster (D-040): brute walks and shoves on contact (BRUTE); summoner keeps the
+ * coach's distance and calls minions with a spawn-warning (SUMMON); minichefe walks, shoves and slams (SLAM).
  */
-export type EnemyBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'coach'|'kamikaze'|'poser'|'boss';
+export type EnemyBehavior=RoleBehavior;
 
 export interface EnemyLines {
   /** Ambient speech balloons, picked rarely by enemy-ai. */
@@ -42,22 +49,27 @@ export interface EnemyDef extends EnemyLines {
   color:number; accent:number;
   /** Zig-zag walk (stagger and swarm behaviors). */
   zigzag?:Zigzag;
+  /** Ranged: the shot's source (AGIOTA_SHOT.source for the agiota, GENERIC_SHOT_SOURCE otherwise) and the mark it leaves. */
+  shotSource?:string;
+  marks?:'devendo';
   /**
    * Flies (torres-sim): only anti-air defenses (towers/catalog.ts hits 'air' or 'all') reach it; ground shells and
    * the barbed wire pass under it. Movement is unchanged (it still walks the enemy-ai's paths).
+   * The pombos and every roster entry of the role 'voador' (rosterDef).
    */
   flying?:true;
 }
 /** Multipliers applied on top of any kind. */
 export interface EliteDef extends EnemyLines {name:string;hp:number;speed:number;damage:number;radius:number;xp:number;accent:number}
 
-export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','coach','motoboy','influencer','chefe'] as const satisfies readonly EnemyKind[];
+/** The nine hand-tuned kinds (rules LEGACY_KINDS, same order). Every other roster id is a role-built def. */
+export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','coach','motoboy','influencer','chefe'] as const satisfies readonly LegacyKind[];
 
 /*
  * Lines are the D-033 joke pass (heavy tone, humor-reviewed). Every line is ≤ 30 characters and unique across the
  * catalog (the city's BARK_MAX). The bebado/anão/pombos/agiota reactionLines predate the pass (it wrote none for them).
  */
-export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
+export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze({
   // VGM-031 basic chaser numbers: hugs more than it hurts, 5 per second of contact (BUG round 1). The drunk wobble sways
   // on top of his walk (ai.ts stagger), so he still closes at 1.4 u/s.
   bebado:{
@@ -96,7 +108,7 @@ export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
   // VGM-031 ranged numbers: ranged; boletos with interest mark the hit player as "devendo" (AGIOTA_SHOT, DEVENDO).
   agiota:{
     id:'agiota',name:'Agiota do Bairro',behavior:'ranged',
-    hp:30,speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0xb9d3a0,accent:0x2f3f2f,
+    hp:30,speed:1.3,damage:6,radius:.3,xp:3,contactCooldown:ticks(1),color:0xb9d3a0,accent:0x2f3f2f,shotSource:'boleto-juros',marks:'devendo',
     barks:['Juros de 40% ao dia, campeão','Aceito dinheiro, rim ou carro','Eu sei onde tua tia mora','Boleto ou joelho? Escolhe.','Sorria, você tá sendo cobrado','Fiado? Fiado é o caralho','Juros sobre juros é poesia','Quitou? Nunca quita, amigo.','Teu nome tá sujo, meu anjo','Taxa de cobrança: um dente'],
     deathLines:['O boleto... venceu... eu...','Prescreveu! PRESCREVEU!','Perdoo a dívida... MENTIRA','Minha pochete! Meu tudo!','Volto com correção monetária','Cobra no inferno, já tô indo','Me paga no enterro, à vista'],
     reactionLines:['Toma o boleto!','Vence hoje, hein!','Recibo? Te dou um roxo.','Boleto com multa e mora!','Parcelo teus dentes, quer?'],
@@ -238,8 +250,8 @@ export interface CoachedEnemy {coachedUntil?:number}
 export const isCoached=(enemy:object,tick:number)=>tick<((enemy as CoachedEnemy).coachedUntil??-Infinity);
 /** Damage multiplier of an enemy right now (PALESTRA.damageMult while coached, else 1). */
 export const coachMult=(enemy:object,tick:number)=>isCoached(enemy,tick)?PALESTRA.damageMult:1;
-/** Kinds the auto-aim of the weapons prefers right after the tapped target (weapons/system.ts targets()). */
-export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coach';
+/** Kinds the auto-aim of the weapons prefers right after the tapped target (weapons/system.ts targets()): the supports. */
+export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coach'||!isLegacyKind(enemy.kind)&&enemyDef(enemy.kind).behavior==='coach';
 
 /**
  * Motoboy Kamikaze (P1): with a player within `trigger` and a free telegraph slot he honks (MOTOBOY_HONK_LINES, limiter;
@@ -271,23 +283,90 @@ export const POSE_STATE=6;
 export const POSE_LINES:readonly string[]=Object.freeze(['Ninguém atira! Tô gravando!','Pera, achei a luz boa!','Pose de bíceps: modo escudo!','Contrai o abdômen! Sorri!','Mais uma! Agora de perfil!','Para tudo: hora do pump!']);
 /** Said by the influencer after a reflection (the projectile system flags memory.reflectSay; enemy-ai says it). */
 export const REFLECT_LINES:readonly string[]=Object.freeze(['Bateu no shape e voltou!','Devolvido com filtro!','Teu tiro saiu no meu story!','Rebatido! Me marca, hein!','Volta pro remetente, monstro!']);
+
+/** Source of the hostile shot of an atirador that is not the agiota: the generic star (no devendo mark). */
+export const GENERIC_SHOT_SOURCE='tiro';
+/** Brutamontes (D-040): walks straight; every contact hit also shoves the player `shove` units away (the Tio's push, no joke). */
+export const BRUTE=Object.freeze({shove:.9});
+/**
+ * Invocador (D-040): keeps minRange..maxRange like the coach and never hits in melee. With a player within `trigger`, his
+ * cooldown over and room (fewer than `maxGlobal` summoned minions alive, enemy cap) he stops and calls `count` minions:
+ * each spot (`radius` around him, walkable, ≥ `safe` from every player) gets a 'spawn-warning' and the minion appears
+ * `warn` ticks later (EnemyView.phase 1 meanwhile), unless a player stands on it; killed first, nobody comes. Minions are
+ * the round's corredores and enxames (EnemyAiOptions.minionKinds), at `hp` × the round's hp, flagged memory.minion.
+ */
+export const SUMMON=Object.freeze({trigger:7,minRange:4,maxRange:6,warn:ticks(1.5),cooldown:ticks(10),retry:ticks(2),
+  count:[2,3] as const,radius:1.6,safe:1.2,maxGlobal:12,hp:.5,readyIn:ticks(.4)});
+/** memory.state of the call (enemies/ai.ts STATE.summon). */
+export const SUMMON_STATE=7;
+/**
+ * Mini-chefe (D-040, rounds 5 and 8): a big body that walks and shoves like the brutamontes and, with a player within
+ * `trigger`, stomps: a circle around himself (`radius` + his own) warned `delay` ticks ('pancada', owned by him: it
+ * fizzles if he dies), standing still until `recover` after it lands, then `cooldown` before the next.
+ */
+export const SLAM=Object.freeze({trigger:2.6,radius:1.6,damage:16,delay:ticks(1.2),recover:ticks(.4),cooldown:ticks(5)});
+export const SLAM_STATE=8;
 /**
  * True while `enemy` is a live influencer in his pose (reflects friendly shots). A retreating one (D-010, memory.retreat)
  * never reflects: retreaters deal no damage, and enemy-ai also drops his pose when the retreat starts.
  */
-export const isReflecting=(enemy:EnemyState,tick:number)=>enemy.kind==='influencer'&&enemy.hp>0&&enemy.memory?.retreat!==1
-  &&enemy.memory?.state===POSE_STATE&&tick<(enemy.memory.until??-Infinity);
+export const isReflecting=(enemy:EnemyState,tick:number)=>enemy.memory?.state===POSE_STATE&&enemy.hp>0&&enemy.memory.retreat!==1
+  &&tick<(enemy.memory.until??-Infinity)&&enemyDef(enemy.kind).behavior==='poser';
 
 /** Owner prefixes of the hazards that outlive their thrower (telegraphs.ts `env:` rule). */
 export const HAZARD_OWNERS=Object.freeze({molotov:'env:molotov:',explosion:'env:explosion:',poop:'env:poop:',marmita:'env:marmita:'});
-const HAZARD_KIND:Readonly<Record<string,EnemyKind>>=Object.freeze({molotov:'anao-molotov',explosion:'anao-molotov',poop:'pombos',marmita:'motoboy'});
-/** Enemy kind behind a hazard owner (`env:molotov:e7` → 'anao-molotov'), for "what got you" once the thrower is gone. */
-export const hazardKind=(owner:string):EnemyKind|undefined=>{const what=owner.startsWith('env:')?owner.split(':')[1]:undefined;return what!==undefined&&Object.hasOwn(HAZARD_KIND,what)?HAZARD_KIND[what]:undefined;};
+const HAZARD_KIND:Readonly<Record<string,LegacyKind>>=Object.freeze({molotov:'anao-molotov',explosion:'anao-molotov',poop:'pombos',marmita:'motoboy'});
+/**
+ * Owner of a hazard `enemy` leaves behind: `<prefix><id>` for the nine (as before), `<prefix><id>@<kind>` for a roster
+ * entry that borrows their behavior, so the fall still names who threw it once the thrower is gone (hazardKind).
+ */
+export const hazardOwner=(prefix:string,enemy:Pick<EnemyState,'id'|'kind'>)=>isLegacyKind(enemy.kind)?prefix+enemy.id:`${prefix}${enemy.id}@${enemy.kind}`;
+/**
+ * Enemy kind behind a hazard owner (`env:molotov:e7` → 'anao-molotov', `env:poop:e3@barata-voadora` → 'barata-voadora'),
+ * for "what got you" once the thrower is gone.
+ */
+export const hazardKind=(owner:string):EnemyKind|undefined=>{
+  if(!owner.startsWith('env:'))return undefined;
+  const what=owner.split(':')[1],at=owner.lastIndexOf('@'),kind=at>=0?owner.slice(at+1):undefined;
+  if(kind!==undefined&&isRosterId(kind))return kind;
+  return what!==undefined&&Object.hasOwn(HAZARD_KIND,what)?HAZARD_KIND[what]:undefined;
+};
 
-export const isEnemyKind=(value:string):value is EnemyKind=>Object.hasOwn(ENEMIES,value);
-export const enemyDef=(kind:string):EnemyDef=>isEnemyKind(kind)?ENEMIES[kind]:ENEMIES.bebado;
-/** Flying enemy (EnemyDef.flying; the pombos today): what anti-air reaches and ground fire does not (torres-sim). */
-export const isFlying=(enemy:Pick<EnemyState,'kind'>)=>isEnemyKind(enemy.kind)&&ENEMIES[enemy.kind].flying===true;
+/** A roster id (the nine and the pack entries). */
+export const isEnemyKind=(value:string):value is EnemyKind=>isRosterId(value);
+const ROSTER_DEFS=new Map<string,EnemyDef>();
+/**
+ * Def of a pack entry: its role's profile on the role's base kind (hp, speed, damage, radius × cell / role cell, xp;
+ * contact cooldown, zig-zag of a swarm), the entry's name and accent, and its lines (own or the role's, entryLines).
+ */
+function rosterDef(kind:string):EnemyDef|undefined{
+  const cached=ROSTER_DEFS.get(kind);if(cached)return cached;
+  const entry=rosterEntry(kind),lines=entryLines(kind);
+  if(!entry||!lines)return undefined;
+  const role=ROLE_PROFILES[entry.role],base=ENEMIES[role.base];
+  const def:EnemyDef=Object.freeze({
+    id:entry.id,name:entry.name,behavior:role.behavior,
+    hp:Math.max(1,Math.round(base.hp*role.hp)),speed:base.speed*role.speed,damage:Math.max(1,Math.round(base.damage*role.damage)),
+    radius:base.radius*role.radius*entry.cell/role.cell,xp:Math.max(1,Math.round(base.xp*role.xp)),
+    contactCooldown:base.contactCooldown,color:base.color,accent:entry.accent,
+    // The swarm's and the stagger's walk sway like their base's (pombos, bêbado).
+    ...((role.behavior==='swarm'||role.behavior==='stagger')&&base.zigzag?{zigzag:base.zigzag}:{}),
+    ...(role.behavior==='ranged'?{shotSource:GENERIC_SHOT_SOURCE}:{}),
+    // D-041: flying is per entry (RosterEntry.flying: every voador, the aerial swarms, the bodies whose concept flies):
+    // anti-air reaches it, ground fire and the wire pass under; it still walks like its role.
+    ...(entry.flying?{flying:true as const}:{}),
+    barks:lines.barks,deathLines:lines.deathLines,reactionLines:lines.reactionLines,
+  });
+  ROSTER_DEFS.set(kind,def);
+  return def;
+}
+/** Def of any roster id (the nine hand-tuned, the rest built from their role); an unknown kind reads as the bêbado. */
+export const enemyDef=(kind:string):EnemyDef=>(Object.hasOwn(ENEMIES,kind)?ENEMIES[kind as LegacyKind]:undefined)??rosterDef(kind)??ENEMIES.bebado;
+/**
+ * Flying enemy (EnemyDef.flying: the pombos and the roster entries with RosterEntry.flying): what anti-air reaches and ground fire does not
+ * (torres-sim).
+ */
+export const isFlying=(enemy:Pick<EnemyState,'kind'>)=>enemyDef(enemy.kind).flying===true;
 export const enemyName=(enemy:Pick<EnemyState,'kind'|'elite'>)=>enemy.elite?`${enemyDef(enemy.kind).name} ${ELITE.name}`:enemyDef(enemy.kind).name;
 
 /** FNV-1a of a string scaled to [0,1). Stable across server and client, consumes no rng. */
@@ -308,8 +387,8 @@ export interface CreateEnemyOptions {
  * `scale` multiplies max hp only (player count, elite hp when the director asks for it); speed and radius
  * modifiers are applied by the caller afterwards (D-010).
  */
-export function createEnemy(ctx:SimContext,kind:EnemyKind|(string&{}),point:Point,scale=1,options:CreateEnemyOptions={}):EnemyState{
-  const def=isEnemyKind(kind)?ENEMIES[kind]:undefined;
+export function createEnemy(ctx:SimContext,kind:EnemyKind,point:Point,scale=1,options:CreateEnemyOptions={}):EnemyState{
+  const def=isLegacyKind(kind)?ENEMIES[kind]:rosterDef(kind);
   if(!def)throw new Error(`unknown enemy kind: ${kind}`);
   const maxHp=Math.max(1,Math.round(def.hp*(Number.isFinite(scale)&&scale>0?scale:1)));
   const id=ctx.nextId('e');

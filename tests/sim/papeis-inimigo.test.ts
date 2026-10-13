@@ -25,8 +25,8 @@ import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
-import {CIDADE_MODIFIERS,LEGACY_KINDS,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
-  roundRoster} from '../../src/rules/index.ts';
+import {CIDADE_MODIFIERS,LEGACY_KINDS,MAX_ROUND_ENEMIES,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,THREAT,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
+  roundRoster,type RegularKind} from '../../src/rules/index.ts';
 import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src/sim/city/balance.ts';
 import {walkable,SPAWN,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
@@ -294,9 +294,22 @@ test('a full assembled run with the rotation (6 room bots, endless world) gets t
   sim.resetRun();
   const rotation=sim.run.director.state.rotation;
   const seen=new Set<string>();
+  // Round 6 (the swarm breather; acceptance run 2026-10-13 lost there with 211 alive): the bodies that appear in its wave
+  // are exactly its plan (no invocador minions, no mini-chefe: neither is in the mid band), never more alive than planned.
+  const r6={planned:0,spawned:0,peak:0,odd:[] as string[]};
   for(let i=0;i<24*60*SIM_HZ&&!sim.outcome;i++){
     bots.think(sim);sim.step(i*50);
-    for(const e of sim.world.enemies.values())seen.add(e.kind);
+    const wave6=sim.world.round.index===6&&sim.world.round.phase==='wave',director=sim.run.director.state;
+    if(wave6){r6.planned=director.plan?.total??0;r6.spawned=director.spawned;r6.peak=Math.max(r6.peak,sim.world.enemies.size);}
+    for(const e of sim.world.enemies.values()){
+      seen.add(e.kind);
+      if(wave6&&(e.memory?.[MINION_FLAG]===1||roleOf(e.kind)==='mini-chefe'||roleOf(e.kind)==='invocador'))r6.odd.push(e.kind);
+    }
+  }
+  if(r6.planned){
+    assert.deepEqual(r6.odd,[],'round 6: no minion, invocador nor mini-chefe');
+    assert.ok(r6.spawned<=r6.planned&&r6.planned<=MAX_ROUND_ENEMIES,`round 6 spawned ${r6.spawned} of a ${r6.planned}-body plan`);
+    assert.ok(r6.peak<=r6.planned,`round 6 peak ${r6.peak} alive, plan ${r6.planned}`);
   }
   // Decided, or still fighting the boss of round 10 (the boss round never times out in the sim: the Room adds that).
   assert.ok(sim.outcome==='victory'||sim.outcome==='defeat'||sim.world.round.index===10,`outcome ${sim.outcome} in round ${sim.world.round.index}`);
@@ -378,4 +391,36 @@ test('size modifiers never push the lone mini-chefe past the boss\'s radius (the
     ...CIDADE_MODIFIERS.filter(m=>!m.banRounds.includes(8)).map(m=>[m.id,Math.max(m.sizeMult??1,m.growth?.sizeMult??1)] as const)];
   for(const e of minis)for(const [id,size] of sizes)assert.ok(enemyDef(e.id).radius*size<=cap+1e-9,`${e.id} under ${id}: ${(enemyDef(e.id).radius*size).toFixed(3)}`);
   assert.ok(minis.some(e=>enemyDef(e.id).radius*1.5>cap),'giant-everyone would (hence the ban)');
+});
+
+// ---------- round 6 (acceptance run 2026-10-13: defeat in round 6 with 114 → 211 alive) ----------
+test('round 6 with the rotation: bodies, threat and hp within a few % of the round table, mid-band roles only (6 players also under the city knobs)',()=>{
+  // Measured over 300 rotations × 1/3/6 players × every round-6 modifier: bodies 1.00-1.04 of the table, threat and hp
+  // 0.97-1.07. The 211 alive of the bots' run is the table's own round 6 (6 players: ~266-290 bodies, two swarms; main
+  // peaks at 180-240 alive in the same harness), not a rotation balloon.
+  const thr=(k:string)=>k in THREAT?THREAT[k as RegularKind]:ROLE_PROFILES[roleOf(k)!].threat;
+  const mods=[undefined,...MODIFIERS.filter(m=>!m.banRounds.includes(6)).map(m=>m.id)];
+  const mid=new Set(['corredor','enxame','voador','palhaco','atirador','arremessador','suporte']);
+  let cases=0,ratio=0;
+  for(let i=0;i<60;i++){
+    const roster=roundRoster(drawRotation(new Rng(i*7919+13)),6);
+    for(const players of [1,3,6])for(const modifierId of mods){
+      const seed=6000+i*31+players,theme={name:'x',modifierId};
+      for(const city of players===6?[false,true]:[false]){
+        const knob=(p:ReturnType<typeof planRound>)=>city?applyCityBalance(p,roundKnobs(CITY_BALANCE,6,p.players)):p;
+        const table=knob(planRound(6,players,theme,new Rng(seed))),rot=knob(planRound(6,players,theme,new Rng(seed),roster));
+        const reg=(p:typeof table)=>p.groups.filter(g=>!g.boss&&!g.elite&&!g.solo).flatMap(g=>g.members);
+        const a=reg(table),b=reg(rot),hp=(p:typeof table,m:string[])=>m.reduce((n,k)=>n+enemyDef(k).hp,0)*p.hp;
+        const at=`${players}p ${modifierId??'none'}${city?' city':''}`;
+        assert.ok(!rot.groups.some(g=>g.elite||g.solo||g.boss),`${at}: no elite, mini-chefe nor boss`);
+        for(const k of b)assert.ok(mid.has(roleOf(k)!),`${at}: ${k} (${roleOf(k)}) is not a mid-band role`);
+        assert.ok(b.length>=a.length&&b.length<=Math.ceil(a.length*1.05)&&b.length<=MAX_ROUND_ENEMIES,`${at}: ${b.length} bodies vs the table's ${a.length}`);
+        const t=b.reduce((n,k)=>n+thr(k),0)/a.reduce((n,k)=>n+thr(k),0),h=hp(rot,b)/hp(table,a);
+        assert.ok(t>.94&&t<1.08,`${at}: threat ×${t.toFixed(3)}`);
+        assert.ok(h>.94&&h<1.08,`${at}: hp ×${h.toFixed(3)}`);
+        cases++;ratio+=b.length/a.length;
+      }
+    }
+  }
+  assert.ok(ratio/cases<1.03,`bodies ×${(ratio/cases).toFixed(3)} on average`);
 });

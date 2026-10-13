@@ -54,8 +54,8 @@ test('loads: the boot preload lists only the nine kinds; a roster piece loads by
   assert.ok(boot.includes('art:enemy:bebado:walk'));
   assert.ok(boot.every(k=>!k.includes('grauzeiro')&&!k.includes('rato-de-boteco')),'the roster is not in the preload');
   assert.deepEqual(enemyPieceLoads('grauzeiro').map(l=>[l.key,l.url,l.cell[0]]),[
-    ['art:enemy:grauzeiro:idle','/art/enemies/grauzeiro/idle.webp',160],['art:enemy:grauzeiro:aim','/art/enemies/grauzeiro/aim.webp',160],
-    ['art:enemy:grauzeiro:charge','/art/enemies/grauzeiro/charge.webp',160],['art:enemy:grauzeiro:crash','/art/enemies/grauzeiro/crash.webp',160]]);
+    ['art:enemy:grauzeiro:idle','/art/lite/enemies/grauzeiro/idle.webp',160],['art:enemy:grauzeiro:aim','/art/lite/enemies/grauzeiro/aim.webp',160],
+    ['art:enemy:grauzeiro:charge','/art/lite/enemies/grauzeiro/charge.webp',160],['art:enemy:grauzeiro:crash','/art/lite/enemies/grauzeiro/crash.webp',160]]);
   assert.deepEqual(enemyPieceLoads('pamonheiro'),[],'no piece: nothing');
 });
 
@@ -144,8 +144,9 @@ test('size by drawn height (D-037, Orquestrador): the role\'s target over the fi
   assert.equal(artTargetHeight('tio-do-isopor'),96*1.3,'brutamontes 1.3');
   const mini=ENEMY_ROSTER.find(r=>r.role==='mini-chefe')!,chefe=ENEMY_ROSTER.find(r=>r.role==='chefe'&&r.id!=='chefe')!;
   assert.equal(artTargetHeight(mini.id),96*2);assert.equal(artTargetHeight(chefe.id),96*3);assert.equal(artTargetHeight('chefe'),96*3);
-  // The barata's 39 px figure in its 96 px cell reaches 86.4 world px; the cell does not matter.
-  assert.ok(Math.abs(39*drawnScale('barata-voadora',39)!-86.4)<1e-9);
+  // The barata (voador 0.6, Orquestrador): its 39 px figure in its 96 px cell reaches 57.6 world px; the cell does not matter.
+  assert.equal(artTargetHeight('barata-voadora'),96*.6);
+  assert.ok(Math.abs(39*drawnScale('barata-voadora',39)!-57.6)<1e-9);
   assert.ok(Math.abs(22*drawnScale('rato-de-boteco',22)!-48)<1e-9,'the rat: 22 px drawn, 0.5× the hero');
   assert.ok(Math.abs(drawnScale('grauzeiro',80,true)!/drawnScale('grauzeiro',80)!-1.35)<1e-9,'the elite is bigger like today\'s');
   assert.equal(drawnScale('grauzeiro',undefined),undefined,'not measured: today\'s cell rule');

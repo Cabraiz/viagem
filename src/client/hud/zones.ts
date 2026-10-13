@@ -225,19 +225,31 @@ const safeInsets=(root:Element)=>{
   return {top:px('--rh-t'),right:px('--rh-r'),bottom:px('--rh-b'),left:px('--rh-l')};
 };
 
-/** Zones read from the live layout (HUD under `.rh`, controls of the explore shell). */
-export function measureZones(doc:Document=document):ScreenZones{
+/**
+ * The intermission windows that trim the useful area, first shown wins (they are never open together): the offer, the
+ * forge (VGM-046B, in the offer's place) and the obra window (torres-ligar: the forge yields to it while it is open, and
+ * an open offer closes it, explore.ts).
+ */
+export const ZONE_WINDOWS=['.rh-offer','.rh-forge','.rh-obra-janela'] as const;
+/** The same without the obra window: the obra HUD lays its own window out from this input (never from itself). */
+export const ZONE_WINDOWS_BESIDE_OBRA=['.rh-offer','.rh-forge'] as const;
+
+/** The zone input read from the live layout (HUD under `.rh`, controls of the explore shell); `windows` as ZONE_WINDOWS. */
+export function measureZoneInput(doc:Document=document,windows:readonly string[]=ZONE_WINDOWS):ZoneInput{
   const q=(s:string)=>doc.querySelector(s),all=(s:string)=>[...doc.querySelectorAll(s)].map(rectOf);
   const hud=q('.rh');
-  return computeZones({
+  let offer:Rect|undefined;
+  for(const selector of windows){offer=rectOf(q(selector));if(offer)break;}
+  return {
     viewport:{width:innerWidth,height:innerHeight},
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
     team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
-    // The forge (VGM-046B) is an intermission window in the offer's place; they are never open together.
-    offer:rectOf(q('.rh-offer'))??rectOf(q('.rh-forge')),minimap:rectOf(q('.rh-minimap')),
-  });
+    offer,minimap:rectOf(q('.rh-minimap')),
+  };
 }
+/** Zones read from the live layout (measureZoneInput, every intermission window included). */
+export function measureZones(doc:Document=document):ScreenZones{return computeZones(measureZoneInput(doc));}
 
 /** Every HUD box the audit looks at, as laid out now. */
 export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
@@ -272,6 +284,9 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   // The forge window (VGM-046B): an intermission window like the offer, in the field but never on the hero.
   add('.rh-forge','forja',{allowedInPlay:true,overHeroFails:true});add('.rh-forge .rh-forge-tag','forja-etiqueta',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-forge .rh-forge-close','forja-fechar',{allowedInPlay:true,target:true,overHeroFails:true});
+  // The obra window (torres-ligar): an intermission window like the forge, in the field but never on the hero.
+  add('.rh-obra-janela','obra',{allowedInPlay:true,overHeroFails:true});
+  add('.rh-obra-janela .rh-obra-card,.rh-obra-janela .rh-obra-ok,.rh-obra-janela .rh-obra-fechar','obra-alvo',{allowedInPlay:true,target:true,overHeroFails:true});
   add('.rh-offer-chip','chip',{target:true});
   add('.fun-emote-toggle','emote',{target:true});
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).

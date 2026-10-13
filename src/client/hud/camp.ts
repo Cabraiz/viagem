@@ -119,6 +119,8 @@ export interface CampPart extends HudPart {
   setHero(spot:HeroSpot|undefined):void;
   /** The city's 4 plaza mouths (the decoded asset's `bocas`), undefined off the city: barricade tags need them. */
   setBocas(bocas:CityBocas|undefined):void;
+  /** The obra window is open (torres-ligar): the forge steps aside (hidden, not dismissed) and comes back when it closes. */
+  yieldTo(obra:boolean):void;
 }
 
 export function createCamp(options:CampOptions):CampPart{
@@ -178,7 +180,7 @@ export function createCamp(options:CampOptions):CampPart{
   const overflow=watchOverflow(list);
 
   let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined,bocas:CityBocas|undefined;
-  let dismissed=false,stint=-1,lastPlace='';
+  let dismissed=false,stint=-1,lastPlace='',yielded=false;
   /** Where the hero stands now (render): in the camp, and the barricade he can repair (city only). */
   let home=false,spot:BarricadeSpot<StructureView>|undefined;
   let pending:{req:number;key:TagKey;recipe:RecipeId;done:string;timer:ReturnType<typeof setTimeout>}|undefined;
@@ -268,7 +270,7 @@ export function createCamp(options:CampOptions):CampPart{
     if(place.open&&place.key!==lastPlace)dismissed=false;
     lastPlace=place.open?place.key:'';
     const offerOpen=!!forge.parentElement?.querySelector('.rh-offer:not([hidden])');
-    const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed;
+    const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed&&!yielded;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
     if(title.textContent!==place.title){title.textContent=place.title;forge.setAttribute('aria-label',place.title);close.setAttribute('aria-label',home?'Fechar a forja':'Fechar a barricada');}
@@ -301,6 +303,7 @@ export function createCamp(options:CampOptions):CampPart{
     update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;render();},
     setHero(at){hero=at;if(last)render();},
     setBocas(next){bocas=next;},
+    yieldTo(obra){if(yielded===obra)return;yielded=obra;if(last)render();},
     forged(answer){
       if(!pending||answer.req!==pending.req)return;
       const {key,recipe,done}=pending;clearPending();

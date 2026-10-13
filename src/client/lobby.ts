@@ -6,7 +6,7 @@ import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
-import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef} from '../protocol/index.ts';
+import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
@@ -550,7 +550,10 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
   const plan=soloPlan(options.bots),nick=name.trim().slice(0,NICK_MAX)||'Capivara Veloz';
   let client:CoopClient|undefined;
   try{
-    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',signal:AbortSignal.timeout(10000)});const data=await r.json();
+    // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a
+    // room Worker from before reads none and opens the usual room, which the solo plan still switches to the city).
+    const body:RoomCreateOptions={map:plan.map,solo:true};
+    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
     if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
     client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();
     const {openExploration}=await import('./explore.ts');

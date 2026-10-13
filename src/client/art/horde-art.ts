@@ -173,11 +173,17 @@ export function projectileFrames(textures:{exists(key:string):boolean;get(key:st
 /** Frame of an animated projectile `elapsedMs` after it appeared (loops at the sheet's fps). */
 export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=>look.frames>1?Math.floor(Math.max(0,elapsedMs)/1000*look.fps)%look.frames:0;
 
+/**
+ * The enemy sheets load their lossy copy (scripts/art-lite.mjs, public/art/lite/enemies/<id>/<file>), like the hero
+ * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl).
+ */
+export const liteEnemyUrl=(url:string)=>url.replace('/art/enemies/','/art/lite/enemies/');
+
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
  * Every texture the horde art needs, from the current manifest (empty manifest → []). Enemies: each page of each file
- * (animations, actions, death and elite layers); per-source projectiles: their first page; statics: frame 0 sheet of
- * the first present id.
+ * (animations, actions, death and elite layers), as its lite copy; per-source projectiles: their first page; statics:
+ * frame 0 sheet of the first present id.
  */
 export function artLoads():ArtLoad[]{
   const out:ArtLoad[]=[];
@@ -201,7 +207,7 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
     const pages=artPages(file);
-    pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});});
+    pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url:liteEnemyUrl(url),cell:file.cell});});
   }
   return out;
 }

@@ -9,6 +9,7 @@
  * lecturing (phase 1, his gold ring) with two buffed critters (phase 2) beside him, the influencer posing (phase 1,
  * reflect ring, shots bouncing back) and the motoboy aiming (phase 1, headlight) with his investida line ending in an
  * explosão; above and below the cast in portrait, left and right of it in landscape.
+ * arte=<kind>:<roster id>,… draws a roster enemy's imported art in that kind's slot (artist preview of pack 04…).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -28,7 +29,7 @@ import {HordeRenderer} from '../render/layers.ts';
 import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
-import {queueHordeArt} from '../art/horde-art.ts';
+import {ENEMY_ART_ID,queueHordeArt} from '../art/horde-art.ts';
 import {artPiece} from '../art/manifest.ts';
 import {enemyKind} from '../render/keys.ts';
 import {artReady} from '../ui/art-boot.ts';
@@ -404,6 +405,9 @@ declare global {interface Window {__horde?:Record<string,unknown>}}
 export async function openHordeSandbox(){
   await artReady();
   const params=new URLSearchParams(location.search);
+  // ?arte=bebado:dono-do-boteco,anao-molotov:espetinho-suspeito — preview of roster art (pack 04…) in a current kind's
+  // slot, until the roster art is wired in the render. Sandbox only: the game never reads this.
+  for(const pair of (params.get('arte')??'').split(',')){const [kind,id]=pair.split(':');if(kind&&id&&Object.hasOwn(ENEMY_ART_ID,kind))(ENEMY_ART_ID as Record<string,string>)[kind]=id;}
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;
   const reduced=params.get('reduced')==='1';

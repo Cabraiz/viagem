@@ -121,8 +121,9 @@ export interface Gathered {player:string;node:ResourceNode;emptied:boolean}
 /**
  * One tick of gathering. Only call during 'prepare'. Each standing player works the nearest non-empty node in reach;
  * each finished unit adds the node's value to the team balance, credited to the gatherers in proportion to their work.
+ * `worked(id)`: called for each player who put work into a node this tick.
  */
-export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly Obstacle[]):Gathered[]{
+export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly Obstacle[],worked?:(playerId:string)=>void):Gathered[]{
   const done:Gathered[]=[];
   const ids=[...ctx.players.keys()].sort();
   for(const id of ids){
@@ -136,7 +137,7 @@ export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly
     }
     if(!best)continue;
     const node=touch(state,best);
-    node.work++;bump(node.workBy,id,1);
+    node.work++;bump(node.workBy,id,1);worked?.(id);
     if(node.work<WORK_PER_UNIT[node.kind])continue;
     for(const by of Object.keys(node.workBy).sort())bump(state.gathered,by,node.value*node.workBy[by]/node.work);
     node.work=0;node.workBy={};node.remaining--;

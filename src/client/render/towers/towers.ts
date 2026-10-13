@@ -282,6 +282,32 @@ export class TowerRenderer {
     this.drawEffects(nowMs);
     this.atlas.flush();
     this.applyShake(nowMs);
+    if(this.labHidden)this.hideAll(this.labHidden);
+  }
+  /**
+   * Lab only (the sandbox's FPS bench): draw nothing while everything still runs, so drawn and hidden frames can be
+   * compared on one page under the same load.
+   */
+  labHidden='';
+  private hideAll(what:string){
+    const all=what==='all';
+    if(all||what.includes('crateras'))this.ground.setVisible(false);
+    if(all||what.includes('efeitos'))for(const i of this.fxImages)i.setVisible(false);
+    if(all||what.includes('bases'))for(const t of this.towers.values()){t.base.setVisible(false);t.weapon.setVisible(false);t.rail?.setVisible(false);}
+  }
+  /** Lab only: what is drawn now, per kind — images shown and their area in world px² (× zoom² for screen px). */
+  labStats(){
+    const out:Record<string,{n:number;area:number}>={};
+    const add=(k:string,i:Phaser.GameObjects.Image|undefined)=>{if(!i||!i.visible||i.alpha<=0)return;const o=out[k]??={n:0,area:0};o.n++;o.area+=Math.abs(i.displayWidth*i.displayHeight);};
+    for(const t of this.towers.values()){add('bases',t.base);add('armas',t.weapon);add('trilho',t.rail);}
+    for(const i of this.craterImages)add('crateras',i);
+    for(const i of this.fxImages)add('efeitos',i);
+    return out;
+  }
+  /** Lab only: shows again what hideAll hid (effects come back as they are drawn, a defense is redrawn whole). */
+  labShow(){
+    this.ground.setVisible(true);
+    for(const t of this.towers.values()){t.base.setVisible(true);t.drawnPhase='';t.drawnView=-1;t.drawnDir=-1;}
   }
   /** The figures moved since the last cover test (and remembers where they are). */
   private figuresMoved(figures:readonly Figure[]):boolean{

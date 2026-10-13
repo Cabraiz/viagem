@@ -59,6 +59,13 @@ export const OWNER_ONLY='Só o dono da sala mexe na turma.';
 export const KICKED_TITLE='Tiraram você da sala';
 export const OWNER_NOT_NOW='No meio do Round não dá. Espera o resultado.';
 export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
+/** A second person knocking on a "Jogar sozinho" room (sala-solo-privada). */
+export const SOLO_ROOM_REFUSED='Essa sala é de alguém jogando sozinho. Peça um código de sala da turma.';
+/**
+ * What a POST /rooms may ask (sala-solo-privada): the map it opens on and a solo room (one person, the bots). Read from
+ * an optional JSON body; anything else is ignored, so an older client (no body) gets the room it always got.
+ */
+export interface RoomCreateOptions {map?:'infinito'|'cidade-nevada';solo?:true}
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
 export const MAX_PLAYERS = 6;

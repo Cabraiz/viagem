@@ -1,7 +1,7 @@
 import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,type CityTerrain} from '../src/maps/index.ts';
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
-import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
+import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
@@ -37,6 +37,8 @@ type Session={id:string;hash:string;token?:string;until:number};
 export interface RoomOptions {
   /** Combat safety limit in server ticks (tests shorten it). */
   durationTicks?:number;
+  /** "Jogar sozinho" (sala-solo-privada): one person and their bots; any other person's first join is refused. */
+  solo?:boolean;
   /** World of the room: DEFAULT_WORLD (the endless map) unless a test or the lab (LAB_WORLD=ilha) asks for the island. */
   world?:WorldKind;
   /**
@@ -311,6 +313,8 @@ export class Room {
   private nameBans=new Map<string,number>();
   /** The room's bots (D-025): played inside the tick, no socket. */
   readonly bots=new RoomBots();
+  /** "Jogar sozinho" (sala-solo-privada): only the person who opened it sits (their bots too). */
+  readonly solo:boolean;
   /**
    * 3g-rede-sem-teleporte: the same light brain plays the hero of a person whose connection dropped (Simulation
    * autopilot), apart from the room bots (not in the roster, not counted as bots, never removed for a newcomer).
@@ -339,6 +343,7 @@ export class Room {
   private fixedDuration:number|undefined;
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
+    this.solo=options.solo===true;
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
@@ -517,6 +522,8 @@ export class Room {
     c.seen=now;
     if(m.t==='join'&&!c.playerId){
       if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED,now);return;}
+      // A solo room with its person seated: a newcomer hears why at once, before any other check (review).
+      if(this.solo&&m.token===undefined&&this.sessions.size>0){this.reject(peer,SOLO_ROOM_REFUSED,now);return;}
       this.expire(now);
       // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
       const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);
@@ -541,6 +548,8 @@ export class Room {
         }
         this.sim.setOnline(session.id,true);this.autopilots.remove(session.id);session.token=m.token;
       }else{
+        // A solo room has its person already (a seat, online or away): nobody else sits (they come back with their token).
+        if(this.solo&&this.sessions.size>0){this.reject(peer,SOLO_ROOM_REFUSED,now);return;}
         if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}

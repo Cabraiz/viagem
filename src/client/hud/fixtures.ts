@@ -10,14 +10,16 @@ import type {RunResult} from './model.ts';
 /**
  * offer: 2 level offers held in combat (chip only); offer-open: the same with the compact panel opened from the chip
  * (the sandbox taps it); offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
- * round offer alone (4 tags); offer-heal: the full-build coxinha;
+ * round offer alone (4 tags); offer-heal: the full-build coxinha; offer-new: the production "Tudo novo!" window
+ * (BUG-20261012-ORQ-oferta-cortada-retrato): a level offer of three first picks (every tag Nv 1, one-line effects)
+ * with the round offer queued behind it, so "Levar os indicados" shows;
  * offer-downed / offer-open-downed: the same intermission window / combat strip with two allies down, the last of
  * the team column among them (the window and the strip must never cover SOS, the timer or the "caiu!" banner).
  * Stonewards (VGM-046B): camp-forge: the intermission with the hero in the camp (forge open, one tag short of pedra);
  * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave'];
 /** Where the fixtures put the wall, and the hero spots the sandbox hands the HUD (in the camp / far away). */
 export const FIXTURE_WALL={x:12,y:12};
 export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?:number}>>={
@@ -69,7 +71,7 @@ function fakeOffer(source:'level'|'round',deadlineTick:number,level=12):OfferVie
 }
 
 export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunView{
-  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal'||scenario==='offer-downed'||scenario==='camp-forge'||scenario==='camp-horn';
+  const prepare=scenario==='prepare'||scenario==='offer-round'||scenario==='offer-prepare'||scenario==='offer-heal'||scenario==='offer-new'||scenario==='offer-downed'||scenario==='camp-forge'||scenario==='camp-horn';
   const ends=tick+ticks(prepare?FIXTURE_INTERMISSION_SECONDS:60);
   const boss=scenario==='boss';
   const index=boss?10:prepare?4:3;
@@ -88,6 +90,7 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     offers:scenario==='offer'||scenario==='offer-open'||scenario==='offer-open-downed'?[fakeOffer('level',HELD_DEADLINE),fakeOffer('level',HELD_DEADLINE,13)]
       :scenario==='offer-prepare'||scenario==='offer-downed'?[fakeOffer('level',ends),fakeOffer('round',ends)]
       :scenario==='offer-round'?[fakeOffer('round',ends)]
+      :scenario==='offer-new'?[{id:'lvl-3-p1',source:'level',level:3,choices:[{itemId:'guarda-chuva',level:1},{itemId:'bone',level:1},{itemId:'pombo',level:1}],deadlineTick:ends,defaultIndex:0},fakeOffer('round',ends)]
       // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
       :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]:[],
     events:[],

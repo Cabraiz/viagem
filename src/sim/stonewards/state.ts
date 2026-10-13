@@ -71,6 +71,11 @@ export interface StonewardsState {
   defeatReported:boolean;
   /** Own Rng state (D-011), seeded from ctx.rng.fork('structures') on first use; null until then. */
   rng:number|null;
+  /**
+   * City only (cidade-07; absent on the island and the endless world, so their state hashes do not move): round index
+   * whose start already gave the left-behind line to the heroes outside the base.
+   */
+  leftBehindRound?:number;
 }
 
 /** Adds to a counter keyed by an arbitrary id, safe for ids like '__proto__' or 'constructor'. */

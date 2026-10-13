@@ -23,6 +23,7 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
+import {heroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -128,6 +129,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // touches, here. Island and endless keep the catalog speeds untouched.
   const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
+    // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
+    // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
+    // The hero's real walking speed on this terrain (cidade-04: the same source as moveStep), so the cap tracks it.
+    heroSpeed:heroSpeed(world.terrain),
+    // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
+    capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
     structures:()=>structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount)=>{stonewards.hit(ctx,id,amount);},

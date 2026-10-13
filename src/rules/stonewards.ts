@@ -54,14 +54,21 @@ export function nodeValue(distanceFromBase:number){
   return value;
 }
 
-/** Hero walking speed (world.ts SPEED, units per second); copied so this module stays import-free. */
+/**
+ * Hero walking speed on the island and in the endless world (world.ts SPEED, units per second); copied so this module
+ * stays import-free. The city hero is slower (world.ts CITY_HERO_SPEED ≈ 1.99): callers pass world.ts heroSpeed(terrain).
+ */
 export const WALK_SPEED=3.1;
 /** Return estimate: straight-line time × this factor (trees, lakes) plus the slack, in seconds. */
 export const RETURN_FACTOR=1.1,RETURN_SLACK_SECONDS=2;
-/** Ticks a hero `distance` units away from the camp's edge needs to get back (0 inside the camp). */
-export function returnTicks(distanceFromBase:number){
+/**
+ * Ticks a hero `distance` units away from the camp's edge needs to get back (0 inside the camp), walking at
+ * `walkSpeed` u/s (the room's world.ts heroSpeed(terrain); WALK_SPEED when omitted or not a positive number).
+ */
+export function returnTicks(distanceFromBase:number,walkSpeed=WALK_SPEED){
   const out=Math.max(0,(Number.isFinite(distanceFromBase)?distanceFromBase:0)-CAMP_RADIUS);
-  return out>0?Math.ceil((out/WALK_SPEED*RETURN_FACTOR+RETURN_SLACK_SECONDS)*SIM_HZ):0;
+  const speed=Number.isFinite(walkSpeed)&&walkSpeed>0?walkSpeed:WALK_SPEED;
+  return out>0?Math.ceil((out/speed*RETURN_FACTOR+RETURN_SLACK_SECONDS)*SIM_HZ):0;
 }
 
 export const HORN_LINES=[

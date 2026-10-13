@@ -3,14 +3,16 @@
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
  * explosion, neighbor separation, terrain collision, contact damage and rare barks.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
+ * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
+ * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MOLOTOV,POOP,TIO_JOKE,enemyDef,hashUnit,isDevendo,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+import {ACTION_PEAK_MAX,AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MOLOTOV,POOP,TIO_JOKE,enemyDef,hashUnit,isDevendo,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
@@ -44,8 +46,19 @@ export interface EnemyAiOptions {
   projectileCap?:number;
   /** City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean. */
   steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
-  /** Enemy hazards (burp, molotov, fire, poop, explosion) are not created at or above this many telegraphs. */
+  /** Enemy hazards (burp, molotov, fire, poop, explosion, the Tio's charge line) are not created at or above this many telegraphs. */
   telegraphCap?:number;
+  /**
+   * Walking speed (u/s) of the heroes in this world; no enemy step goes past ACTION_PEAK_MAX × it. Defaults to SPEED (maps/world.ts, 3.1: the endless world); the city passes its own hero's.
+   */
+  heroSpeed?:number;
+  /**
+   * Also clamp the whole move (the capped walk plus the neighbours' separation push, up to SEPARATION_MAX a tick) to the
+   * same peak, so a dense crowd never shoves a body past it (the city, where the peak is 2.29 u/s). Off by default: in
+   * the endless/island worlds a crowd's push past 1.15 × 3.1 is part of the tuned pacing (the round-end and novice
+   * balance and the boss digest change with it).
+   */
+  capPush?:boolean;
 }
 /** JSON-safe limiter and rng state, for checkpoints (VGM-047). */
 export interface EnemyAiState {rng:number|null;lastBarkTick:number|null;lastLine:Record<string,string>}
@@ -62,10 +75,17 @@ export const SEPARATION=.5,SEPARATION_MAX=.12;
 /** Largest enemy radius a neighbor query must reach (boss). */
 const NEIGHBOR_REACH=.9;
 const MAX_STEP=.25;
+/** An enemy touches a player when their bodies are this close (u): contact hits and the Tio's shove. */
+const CONTACT_MARGIN=.05;
+/** How far (u) the Tio may stray from his warned line and still be charging (float noise only: any real push ends it). */
+const PATH_EPS=1e-6;
 const TAU=Math.PI*2;
 /** Enemy memory flag of the besiegers (stonewards/wall.ts SIEGE_FLAG; not imported, to keep this module off Stonewards). */
 const SIEGE='siege';
-/** memory.state values. */
+/**
+ * memory.state values. The Tio's joke/charge also keep, JSON-safe in memory: the locked charge direction (cx, cy, unit),
+ * where it starts (ox, oy: where he stands for the joke) and how far it can go (reach, u).
+ */
 export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4} as const;
 
 /**
@@ -78,6 +98,9 @@ type HazardSpec=TelegraphSpec&{pulses?:number;enemyDamage?:number};
 const countOwned=(ctx:SimContext,prefix:string,exact=false)=>{
   let n=0;for(const t of ctx.telegraphs.values())if(exact?t.owner===prefix:t.owner.startsWith(prefix))n++;return n;
 };
+
+/** Forgets the Tio's locked charge line (see STATE). */
+const dropChargeLine=(memory:Record<string,number>)=>{delete memory.cx;delete memory.cy;delete memory.ox;delete memory.oy;delete memory.reach;};
 
 const live=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
@@ -156,7 +179,15 @@ export class EnemyAi implements SimSystem {
   private readonly neighbors:EnemyState[]=[];
   private readonly active:EnemyState[]=[];
   private readonly steerOut={x:0,y:0};
-  constructor(options:EnemyAiOptions={}){this.options=options;this.rng=options.rng;}
+  /** Hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
+  readonly heroSpeed:number;
+  /** options.capPush: the walk plus the crowd's push is clamped to the peak too (the city). */
+  readonly capPush:boolean;
+  constructor(options:EnemyAiOptions={}){
+    this.options=options;this.rng=options.rng;this.capPush=options.capPush===true;
+    const hero=options.heroSpeed;
+    this.heroSpeed=hero!==undefined&&Number.isFinite(hero)&&hero>0?hero:HERO_SPEED;
+  }
 
   step(ctx:SimContext){
     const rng=this.rng??=ctx.rng.fork('enemy-ai');
@@ -180,13 +211,20 @@ export class EnemyAi implements SimSystem {
       const memory=e.memory??={};
       memory.seed??=hashUnit(e.id);memory.state??=STATE.walk;memory.until??=0;memory.hitReady??=0;memory.actReady??=0;
       if(e.knock){
-        moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
-        e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
-        if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
+        // The Tio plants his feet for the joke: a knockback then is shrugged off, so his warned line still starts at
+        // him (any other displacement still calls the charge off, see chargeWarned).
+        if(memory.state===STATE.joke)delete e.knock;
+        else{
+          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
+          if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
+        }
       }
       if(ctx.tick<(e.frozenUntil??-1)||ctx.tick<e.readyTick)continue;
       active.push(e);
       const stunned=!!e.knock&&Math.hypot(e.knock.x,e.knock.y)>KNOCK_STUN;
+      // Joking or charging as this tick starts (the charge's last step still runs after endCharge below).
+      const planted=memory.state===STATE.joke||memory.state===STATE.charge;
       // Nearest live player, or a structure if its edge is closer; a valid taunt overrides both.
       let player:SimPlayer|undefined,structure:StructureTarget|undefined,best=Infinity;
       const taunter=tauntTarget(ctx,e);
@@ -196,8 +234,12 @@ export class EnemyAi implements SimSystem {
         if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
-      // Joke, charge and aim only make sense against a live player; drop them when that player is gone.
-      if(!player&&memory.state!==STATE.walk)memory.state=STATE.walk;
+      // Joke, charge and aim only make sense against a live player; drop them when that player is gone
+      // (an interrupted joke takes its charge line with it).
+      if(!player&&memory.state!==STATE.walk){
+        if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
+        memory.state=STATE.walk;
+      }
       let dirX=0,dirY=0,pace=1;
       if(target&&!stunned){
         const tx=target.x-e.x,ty=target.y-e.y,d=Math.max(1e-6,Math.hypot(tx,ty));
@@ -206,7 +248,7 @@ export class EnemyAi implements SimSystem {
         const ax=tx/d,ay=ty/d;
         let ux=ax,uy=ay;
         if(this.options.steer?.(ctx,e,target,this.steerOut)){ux=this.steerOut.x;uy=this.steerOut.y;}
-        const touching=best<=e.radius+PLAYER_RADIUS+.05;
+        const touching=best<=e.radius+PLAYER_RADIUS+CONTACT_MARGIN;
         const def=enemyDef(e.kind);
         switch(structure?'chase':def.behavior){
           case 'stagger':{
@@ -257,13 +299,22 @@ export class EnemyAi implements SimSystem {
           }
           case 'joker':{
             if(memory.state===STATE.joke){
-              if(ctx.tick>=memory.until){memory.state=STATE.charge;memory.until=ctx.tick+TIO_JOKE.charge;}
+              // A charge is never unwarned: no line (budget full, annulled) or knocked off its start → no charge.
+              if(ctx.tick>=memory.until){
+                if(this.chargeWarned(ctx,e,memory)){memory.state=STATE.charge;memory.until=ctx.tick+TIO_JOKE.charge;}
+                else this.endCharge(ctx,memory);
+              }
             }else if(memory.state===STATE.charge){
-              dirX=ux;dirY=uy;pace=TIO_JOKE.chargeSpeed;
-              if(ctx.tick>=memory.until)this.endCharge(ctx,memory);
+              // Along the locked line, no homing; knocked or slid off it (a wall), the charge is over.
+              if(!this.onChargePath(e,memory))this.endCharge(ctx,memory);
+              else{
+                dirX=memory.cx;dirY=memory.cy;pace=TIO_JOKE.chargeSpeed;
+                if(ctx.tick>=memory.until)this.endCharge(ctx,memory);
+              }
             }else if(player&&best<=TIO_JOKE.range&&ctx.tick>=memory.actReady&&this.react(ctx,rng,e,def,1)){
               // He only stops when the joke is actually on screen; otherwise he keeps walking and tries next tick.
               memory.state=STATE.joke;memory.until=ctx.tick+TIO_JOKE.pause;
+              this.warnCharge(ctx,e,memory,ax,ay);
             }else{dirX=ux;dirY=uy;}
             break;
           }
@@ -323,9 +374,19 @@ export class EnemyAi implements SimSystem {
       pushX*=SEPARATION;pushY*=SEPARATION;
       const push=Math.hypot(pushX,pushY);
       if(push>SEPARATION_MAX){pushX*=SEPARATION_MAX/push;pushY*=SEPARATION_MAX/push;}
+      // The Tio plants his feet for the joke and bulldozes through the crowd in the charge, so he stays on the line he
+      // warned; the neighbors still step off him on their own turn.
+      if(planted){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
-      const stepLength=dirLength>1e-6?e.speed*pace*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
-      moveSafely(e,dirX*stepLength+pushX,dirY*stepLength+pushY,ctx.terrain,e.radius);
+      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
+      // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
+      // shove a body past the hero; knockback, above, is the players' doing and is not capped).
+      let moveX=dirX*stepLength+pushX,moveY=dirY*stepLength+pushY;
+      if(this.capPush){
+        const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
+        if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
+      }
+      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
     }
     if(active.length&&this.canBark(ctx,AMBIENT_GAP_FACTOR)&&rng.chance(this.options.barkChance??BARK_CHANCE)){
       const e=active[rng.int(0,active.length-1)],elite=e.elite&&rng.chance(.5);
@@ -378,7 +439,43 @@ export class EnemyAi implements SimSystem {
   private react(ctx:SimContext,rng:Rng,e:EnemyState,def:EnemyDef,chance:number){
     return this.canBark(ctx)&&rng.chance(chance)&&this.bark(ctx,rng,e,def.reactionLines,`${def.id}:react`);
   }
-  private endCharge(ctx:SimContext,memory:Record<string,number>){memory.state=STATE.walk;memory.actReady=ctx.tick+TIO_JOKE.cooldown;}
+  private endCharge(ctx:SimContext,memory:Record<string,number>){
+    memory.state=STATE.walk;memory.actReady=ctx.tick+TIO_JOKE.cooldown;dropChargeLine(memory);
+  }
+  /**
+   * Speed (u/s) of a step at `pace` × the enemy's speed, at most ACTION_PEAK_MAX × the hero speed (catalog.ts,
+   * Orquestrador rule: walking included). Slows apply on top of this.
+   */
+  paceSpeed(e:Pick<EnemyState,'speed'>,pace:number){return Math.min(e.speed*pace,this.heroSpeed*ACTION_PEAK_MAX);}
+  /**
+   * The joke starts: the charge locks on the player's position now (a, unit) and its whole sweep is drawn as an
+   * 'investida' line that fires (0 damage, only a warning) when the joke ends. The line covers the band his body
+   * crosses: from his back to his front at full reach, his radius plus the contact margin to each side, so a player
+   * whose body stays out of it (telegraphHits with the player radius) is never touched by the charge.
+   * No room in the telegraph budget: no line, and chargeWarned then skips the charge.
+   */
+  private warnCharge(ctx:SimContext,e:EnemyState,memory:Record<string,number>,ax:number,ay:number){
+    const aimed=Math.hypot(ax,ay)>.5,cx=aimed?ax:1,cy=aimed?ay:0;
+    const reach=this.paceSpeed(e,TIO_JOKE.chargeSpeed)*TIO_JOKE.charge/SIM_HZ,body=e.radius+CONTACT_MARGIN;
+    memory.cx=cx;memory.cy=cy;memory.ox=e.x;memory.oy=e.y;memory.reach=reach;
+    // A line left behind by an earlier joke (the director's recycle resets his state) must not stand in for this one.
+    cancelTelegraphs(ctx,e.id);
+    if(!this.hazardRoom(ctx))return;
+    addTelegraph(ctx,{shape:'line',x:e.x-cx*body,y:e.y-cy*body,dx:cx,dy:cy,radius:reach+2*body,width:2*body,damage:0,owner:e.id,kind:'investida'},TIO_JOKE.pause);
+  }
+  /** The joke's line is on screen until this very tick (not annulled, not refused) and he still stands where it starts. */
+  private chargeWarned(ctx:SimContext,e:EnemyState,memory:Record<string,number>){
+    if(!Number.isFinite(memory.ox)||!Number.isFinite(memory.oy)||Math.hypot(e.x-memory.ox,e.y-memory.oy)>PATH_EPS)return false;
+    for(const t of ctx.telegraphs.values())if(t.owner===e.id&&t.kind==='investida'&&t.fireTick===ctx.tick)return true;
+    return false;
+  }
+  /** He is on the warned line: on its axis, between where he stood and his full reach. */
+  private onChargePath(e:EnemyState,memory:Record<string,number>){
+    const {cx,cy,ox,oy,reach}=memory;
+    if(![cx,cy,ox,oy,reach].every(Number.isFinite))return false;
+    const along=(e.x-ox)*cx+(e.y-oy)*cy,off=Math.abs((e.x-ox)*cy-(e.y-oy)*cx);
+    return off<=PATH_EPS&&along>=-PATH_EPS&&along<=reach+PATH_EPS;
+  }
 
   /** Room for one more enemy hazard telegraph (budget.ts MAX_TELEGRAPHS minus the boss reserve). */
   private hazardRoom(ctx:SimContext){return ctx.telegraphs.size<(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP);}

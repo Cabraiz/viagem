@@ -22,19 +22,33 @@
 .rh-top>*,.rh-member,.rh-alert{pointer-events:auto;touch-action:none}
 .rh .rh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-/* ---------- Top: round chip, XP, boss ---------- */
-.rh-top{position:absolute;top:var(--rh-t);left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px}
-.rh-round{margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + 166px);align-self:stretch;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46px;padding:5px 12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
+/* ---------- Top: one row (card hud-topo-uma-linha) ----------
+   Level + XP thread | Round N/10 · bichos (or "Intervalo N s") | base ficha (wall bar, life, coco, pedra), side by side
+   between the camera buttons (left, 140 px) and the gear (right, 48 px); the boss bar wraps under them only in a boss
+   fight. Narrow screens (portrait phones): the round chip alone between the buttons, the rest on a second row. */
+.rh-top{position:absolute;top:var(--rh-t);left:calc(var(--rh-l) + 152px);right:calc(var(--rh-r) + 60px);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}
+.rh-round{order:1;display:flex;flex-direction:row;align-items:baseline;justify-content:center;gap:6px;min-height:40px;padding:3px 8px;margin:0;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
 .rh-round-label{font:400 var(--t-21)/1 var(--f-cartaz);white-space:nowrap}
-.rh-round-detail{font-size:var(--t-13);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rh-round-detail{display:inline-flex;align-items:center;gap:3px;align-self:center;font-size:var(--t-13);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rh-round-detail .ic{width:20px;height:20px}
+.rh-round-detail b{font:400 var(--t-16)/1 var(--f-cartaz)}
 /* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
 .rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .6s ease-in-out infinite alternate}
-.rh-xp{position:relative;align-self:stretch;margin:20px calc(var(--rh-r) + 82px) 0 var(--rh-l);display:flex;align-items:center;gap:6px}
+/* Level badge with the XP as a thin thread under it (no full-width bar). */
+.rh-xp{order:0;position:relative;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;margin:0}
 .rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
-.rh-xp-track{flex:1;height:12px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);overflow:hidden;box-shadow:var(--s-2)}
+.rh-xp-track{flex:none;height:5px;border-radius:var(--r-etiqueta);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);overflow:hidden}
 .rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
 .rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
-.rh-boss{align-self:center;width:min(560px,calc(100% - 2*var(--rh-l) - 16px));padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
+.rh-boss{order:3;flex:1 0 100%;max-width:560px;padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
+@media (max-width:599px){
+  /* Row 1: the round chip right of the camera buttons (150 px), its margin filling the row, so the level, the base and
+     the resources start row 2. The band stops left of the gear and of the minimap under it (76 px + 8). */
+  .rh-top{left:var(--rh-l);right:calc(var(--rh-r) + 84px)}
+  .rh-top>.rh-round{order:0;flex:0 0 calc(100% - 150px);margin:0 0 0 150px;padding-inline:8px}
+  .rh-round-label{font-size:var(--t-16)}
+  .rh-xp{order:1}
+}
 .rh-boss-name{display:block;text-align:center;font:400 var(--t-16)/1.05 var(--f-cartaz);margin-bottom:3px}
 .rh-boss-track{height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-boss-fill{display:block;height:100%;transform-origin:left;background:var(--c-cone);transition:transform .2s}
@@ -130,11 +144,6 @@
 @keyframes rh-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
 
 @media (max-height:500px){
-  .rh-top{gap:4px}
-  .rh-round{min-height:40px;padding:3px 10px;flex-direction:row;gap:8px;align-self:center;margin-inline:auto;max-width:calc(100% - var(--rh-l) - var(--rh-r) - 220px)}
-  .rh-round-label{font-size:var(--t-21)}
-  .rh-xp{align-self:center;width:min(420px,calc(100% - var(--rh-l) - var(--rh-r) - 220px));margin:0}
-  .rh-boss{width:min(440px,calc(100% - var(--rh-l) - var(--rh-r) - 220px))}
   .rh-stack{top:calc(var(--rh-t) + 82px);left:calc(var(--rh-l) + 150px);right:calc(var(--rh-r) + 290px)}
   .rh-top:has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 118px)}
   .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 84px)}
@@ -703,14 +712,7 @@
   /* The base ficha (VGM-046B) is one row of the top band's flow under the XP bar (and the boss bar), left of the minimap
      (design onda 6 B2): the gear's corner has one owner, the band grows by one short row, and no ficha of the band can
      cover another (the audits check it). It stays clear of the team column on the left. */
-  .rh .rh-camp{position:static;align-self:stretch;flex-direction:row;align-items:center;justify-content:space-between;gap:10px;min-height:36px;
-    margin:0 calc(var(--rh-r) + 82px) 0 calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));padding:3px 8px}
   /* The wall bar takes what is left (it shrinks first at 125%), the numbers never get cut. */
-  .rh .rh-camp-wall{flex:1 1 auto;min-width:0}
-  .rh .rh-camp-track{flex:1 1 auto;width:auto;min-width:20px}
-  .rh .rh-camp-res{flex:none;gap:6px}
-  .rh .rh-top:has(.rh-camp:not([hidden])) :is(.rh-xp,.rh-boss){margin-right:calc(var(--rh-r) + 82px)}
-  .rh .rh-top:has(.rh-camp:not([hidden])) .rh-boss{align-self:stretch;width:auto;margin-left:var(--rh-l)}
   /* The announcement slot starts under the band (RunHud sets --rh-anuncio from the zones; the fallbacks cover pages
      that never measure, like the sandbox). */
   .rh .rh-top:has(.rh-camp:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 158px))}
@@ -725,16 +727,8 @@
   /* With the base ficha (VGM-046B) the top band is a grid, so the ficha is in the band's flow and can never cover the
      round chip (soma, 125%): row 1 = round chip + base ficha side by side between the camera buttons and the gear;
      row 2 = XP; row 3 = boss bar. The camp.css absolute placement is undone here. */
-  .rh-top:has(.rh-camp:not([hidden])){display:grid;grid-template-columns:calc(var(--rh-l) + 150px) minmax(0,1fr) auto auto minmax(0,1fr) calc(var(--rh-r) + 64px);
-    grid-auto-rows:auto;column-gap:8px;row-gap:4px;align-items:start}
-  .rh-top:has(.rh-camp:not([hidden]))>.rh-round{grid-column:3;grid-row:1;margin:0;max-width:none}
-  .rh-top:has(.rh-camp:not([hidden]))>.rh-camp{position:static;grid-column:4;grid-row:1;justify-self:start}
-  .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{grid-column:2/6;grid-row:2;justify-self:center;width:min(420px,100%);margin:0}
-  .rh-top:has(.rh-camp:not([hidden]))>.rh-boss{grid-column:2/6;grid-row:3;justify-self:center;width:min(440px,100%)}
   /* The intermission window or the forge takes the right column: the XP bar keeps to the left of it. */
-  .rh:is(:has(.rh-offer[data-mode=intermission]:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{justify-self:start;width:min(316px,100%);margin:0}
   /* The offer window is wider (--of-w, above): the XP bar ends 8 px before it (column 2 starts at --rh-l + 158 px). */
-  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{width:min(316px,100%,calc(100vw - var(--of-w) - var(--rh-l) - var(--rh-r) - 166px))}
 }
 
 /* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------

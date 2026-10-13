@@ -6,6 +6,7 @@ import type {RunView} from '../../contract/index.ts';
 import {bossInfo,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
+import {icon} from '../ui/icon.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -31,7 +32,14 @@ export function createTopBar():HudPart{
     chip.hidden=!round;
     if(round){
       put('label',round.label,v=>{label.textContent=v;});
-      put('detail',round.detail,v=>{detail.textContent=v;});
+      // One-row band (card hud-topo-uma-linha): the count as a sticker and a number ("onda" for the bichos left, the
+      // clock for the intermission); the full words stay for screen readers and the tooltip.
+      const n=round.phase==='prepare'?round.countdown:round.phase==='wave'?round.remaining:undefined;
+      put('detail',n===undefined?round.detail:`${round.phase}:${n}`,()=>{
+        detail.setAttribute('aria-label',round.detail);detail.title=round.detail;
+        if(n===undefined){detail.textContent=round.detail;return;}
+        detail.innerHTML=`${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b>`;
+      });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
       chip.classList.toggle('rh-urgent',round.phase==='prepare'&&(round.countdown??99)<=5);
     }

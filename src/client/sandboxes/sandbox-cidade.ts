@@ -337,7 +337,7 @@ class CitySandbox extends Phaser.Scene {
       if(l.calibre!=='arame')d.aim=(Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(Math.PI*2)+1)%1;
       d.fireTick=tick+Math.max(1,Math.round(l.cooldown*SIM_HZ));
       if(viaWire){
-        this.aims.set(d.id,((Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(2*Math.PI))%1+1)%1);
+        if(l.calibre!=='arame')this.aims.set(d.id,((Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(2*Math.PI))%1+1)%1); // no aim for the aura, like the sim
         this.shots.set(d.id,((this.shots.get(d.id)??0)+1)&255);this.fired++;
       }
     }

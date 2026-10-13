@@ -15,7 +15,7 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {directionalSheet} from '../sprites/sprite-sheets.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../sprites/art-urls.ts';
 import {artIndex} from '../art/manifest.ts';
-import {artLoads} from '../art/horde-art.ts';
+import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
 import {baseLoads} from '../art/base-art.ts';
 import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
@@ -68,7 +68,8 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     add(heroSheetUrl(id),'P1','hero');
     if(known(id))add(thumbUrl(id),'P1','icon');
   }
-  const enemyPrefix=index.groups.inimigos?`/${index.groups.inimigos.output.replace(/^public\//,'')}/`:undefined;
+  // The loader requests the enemies' lite copies (liteEnemyUrl): the same URLs here.
+  const enemyPrefix=index.groups.inimigos?liteEnemyUrl(`/${index.groups.inimigos.output.replace(/^public\//,'')}/`):undefined;
   const horde=artLoads();
   for(const l of horde)if(enemyPrefix&&l.url.startsWith(enemyPrefix))add(l.url,'P1','enemy');
   if(city)for(const s of city.sheets)if(!s.key.startsWith('city:ground:')&&!s.key.startsWith('city:prop:'))add(s.url,'P1','building');

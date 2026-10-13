@@ -269,3 +269,39 @@ test('6c. torre-contador-de-tiros: with the room\'s counter every change is a vo
   const w=(tick:number,shots:number)=>{const s=defenseView(defense('w',kind,{readyTick:0,aim:0,shots}),tick);const v=wrap.views([{...s,aim:byte(s.aim!)}],tick,CELL,{enemies:east})[0]!;const f=firedNow(p,v,tick);p=v.fireTick;return f?(v.volleys??1):0;};
   w(100,255);assert.equal(w(102,1),2,'255 → 1 across the wrap: 2 volleys');
 });
+
+test('6e. arame (BUG-20261013-E8-arame-nunca-dispara): the aura has no aim on the wire, yet its volleys draw — from the counter and, in an older room, from the cadence',()=>{
+  const kind='arame-e-sirene',cd=DEFENSES[kind].cooldown,near={n:1,xs:[11],ys:[20],air:[0]},none={n:1,xs:[40],ys:[20],air:[0]};
+  // Protocol 13: the room's counter moves, there is never an aim.
+  const feed=new TowerFeed();let prev:number|undefined;
+  const at=(tick:number,shots:number|undefined)=>{
+    const s=defenseView(defense('w',kind,{readyTick:0,...(shots===undefined?{}:{shots})}),tick);
+    assert.equal(s.aim,undefined,'the sim sends no aim for the aura');
+    const v=feed.views([s],tick,CELL,{enemies:near})[0]!;
+    const fired=firedNow(prev,v,tick);prev=v.fireTick;return fired;
+  };
+  assert.equal(at(100,3),false,'first sight');
+  assert.equal(at(100+cd,4),true,'the counter moved: the ring');
+  assert.equal(at(100+cd+2,4),false,'still: nothing');
+  // Protocol 12 (no counter): the cadence with an enemy in reach, no aim needed.
+  const old=new TowerFeed();let p:number|undefined;
+  const o=(tick:number,enemies:typeof near)=>{const v=old.views([defenseView(defense('w',kind,{readyTick:0}),tick)],tick,CELL,{enemies})[0]!;const f=firedNow(p,v,tick);p=v.fireTick;return f;};
+  assert.equal(o(100,near),false,'first sight');
+  assert.equal(o(100+cd-1,near),false,'before the cooldown');
+  assert.equal(o(100+cd,near),true,'a full cooldown and an enemy in reach: the ring');
+  assert.equal(o(100+3*cd,none),false,'nobody in reach: nothing');
+  assert.equal(volleyNow(kind,'pronta',undefined,false,cd,10,20,near),true);
+  assert.equal(volleyNow(kind,'obra-2',undefined,false,cd,10,20,near),false,'an obra never fires');
+});
+
+test('6f. torre-contador-de-tiros: a defense seen before its first volley (no counter yet) draws that first volley',()=>{
+  const kind='vigias-armados',feed=new TowerFeed(),east={n:1,xs:[13],ys:[20],air:[0]};let prev:number|undefined;
+  const at=(tick:number,shots:number|undefined)=>{
+    const s=defenseView(defense('d',kind,{readyTick:0,aim:0,...(shots===undefined?{}:{shots})}),tick);
+    const v=feed.views([{...s,aim:byte(s.aim!)}],tick,CELL,{enemies:east})[0]!;
+    const fired=firedNow(prev,v,tick);prev=v.fireTick;return fired;
+  };
+  assert.equal(at(100,undefined),false,'built, never fired: no counter');
+  assert.equal(at(102,1),true,'its first volley');
+  assert.equal(at(104,1),false);
+});

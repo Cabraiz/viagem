@@ -2,8 +2,9 @@
  * Upgrade offer (VGM-040, D-021, DSG-oferta-etiqueta): non-blocking, touch-only picker for the oldest pending offer.
  * - In combat (round phase "wave") nothing opens by itself: a "+N" chip waits in the right-thumb zone and a tap opens a
  *   compact panel (icon, name, price, one effect line; no joke, no clock while the server holds the offer).
- * - In the intermission the offers open by themselves, one after the other, as the full window: title, joke, the
- *   flat deadline bar and "vai no automático se acabar o tempo".
+ * - In the intermission the offers open by themselves, one after the other, as a compact window: the deadline as a thin
+ *   bar on its top edge, one header row (title, seconds, a clock icon labelled "vai no automático se acabar o tempo",
+ *   a small "Depois") and one row of whole tags (BUG-20261013-ORQ-oferta-e-dicas-menores).
  * Each choice is a price tag from the corner shop (etiqueta); picking one stamps "LEVEI" on it (the one show moment),
  * with a "tum" and a 15 ms buzz. The DOM is rebuilt only when the shown offer changes.
  */
@@ -13,7 +14,6 @@ import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
-import {FOOT_GAP,cueLayout,moreCue,nextCardScroll,prefersReducedMotion,scrollBehavior,watchOverflow,type CueLayout} from './overflow.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -126,7 +126,7 @@ export const TAKE_ALL_MIN=2;
 export const TAKE_ALL_LABEL='Levar os indicados';
 /** Folds the intermission window into the chip, which opens it again (UX review janela-caido). */
 export const LATER_LABEL='Depois';
-/** hud.css's landscape breakpoint: there the clock and the foot ride in the header row (no foot row). */
+/** hud.css's landscape breakpoint (the compact window keeps the same rows; only its place and sizes change there). */
 export const LANDSCAPE_QUERY='(max-height:500px)';
 
 export interface OfferPanelOptions {
@@ -142,62 +142,27 @@ export interface OfferPanelOptions {
 export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
   const root=el('section','rh-offer');root.hidden=true;
   root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
+  // BUG-20261013-ORQ-oferta-e-dicas-menores: a compact window. The clock is a thin bar along its top edge (no row of
+  // its own); the header is one row: title, "+N na fila", the "automático" clock icon, the seconds and a small "Depois".
+  // The tags are one row of small etiquetas (sticker, short name, price; the effect shows as a tooltip on hover, focus
+  // or a held finger), always whole: they shrink to fit, never scroll nor hide under a "Mais N". "Levar os indicados"
+  // is the row's last tile (Amarelo: a choice), right of the tags.
+  const track=el('div','rh-offer-deadline',root),fill=el('i','rh-offer-deadline-fill',track);
+  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const head=el('header','rh-offer-head',root);
   const title=el('strong','rh-offer-title',head);
-  const queue=el('span','rh-offer-queue',head),time=el('span','rh-offer-time',head);
+  const queue=el('span','rh-offer-queue',head);
+  // The old foot line ("vai no automático se acabar o tempo") is a clock icon; its words stay as the icon's label.
+  const note=el('span','rh-offer-auto',head);note.setAttribute('role','img');note.setAttribute('aria-label',AUTO_NOTE);note.title=AUTO_NOTE;
+  const time=el('span','rh-offer-time',head);
+  const later=el('button','rh-offer-later',head);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
+  later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
   // Someone fell while the window is open: a Cone ficha under the title, first name and live seconds (janela-caido).
   const fall=el('p','rh-window-fall',root);fall.hidden=true;fall.setAttribute('role','status');
   const joke=el('p','rh-offer-joke',root);
-  const track=el('div','rh-offer-deadline',root),fill=el('i','rh-offer-deadline-fill',track);
-  track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const cards=el('div','rh-offer-cards',root);
-  // Tags cut below the list (125%, a caído ficha, long effects): "Mais N", which brings the next tag up, inside the cut
-  // strip when its 48 px target fits there, else in its own row under the list, and a soft fade over the cut part only
-  // (BUG-20261012-ORQ-oferta-cortada-retrato: the old Breu edge read as a cut, not as "more below"; the cue never lies
-  // on a tag that is fully in view; overflow.ts cueLayout).
-  const foot=el('footer','rh-offer-foot');// (appended under the cue below; the cue reads where it is)
-  const more=el('div','rh-offer-more',root);more.hidden=true;
-  const moreButton=el('button','rh-offer-more-btn',more);moreButton.type='button';
-  const moreLabel=el('span','rh-offer-more-pill',moreButton);
-  let cue:CueLayout={mode:'none',hidden:0,fade:0,row:0},lastBelow=NaN,lastScrolled=false;
-  const overflow=watchOverflow(cards,({items,view})=>{
-    // Scrolled, the list's top padding (it sits under the header's or the clock's last 6 px, for the stars) is clipped,
-    // so a tag scrolled up never paints over (or takes the taps of) the clock, "Depois" or "Levar os indicados".
-    const scrolled=cards.scrollTop>0;
-    if(scrolled!==lastScrolled){lastScrolled=scrolled;cards.dataset.scrolled=String(scrolled);}
-    // The list as tall as without the row, and the room under it: the window's padding and edge (landscape), or 8 px
-    // kept from the foot's buttons (portrait).
-    const view0={top:view.top,bottom:view.bottom+(cue.mode==='row'?cue.row:0)};
-    const footBox=foot.parentElement===root?foot.getBoundingClientRect():undefined;
-    const below=footBox&&footBox.height>0?-FOOT_GAP:Math.max(0,root.getBoundingClientRect().bottom-view0.bottom);
-    const next=cueLayout(items,view0,below);
-    if(next.fade!==cue.fade)more.style.setProperty('--of-fade',`${next.fade}px`);
-    if(below!==lastBelow){lastBelow=below;more.style.setProperty('--of-below',`${below}px`);}
-    if(next.row!==cue.row)more.style.setProperty('--of-row',`${next.row}px`);
-    if(next.mode!==cue.mode){more.hidden=next.mode==='none';more.dataset.place=next.mode;}
-    if(next.hidden!==cue.hidden){const text=moreCue(next.hidden);moreLabel.textContent=text.label;moreButton.setAttribute('aria-label',text.aria);}
-    cue=next;
-  });
-  moreButton.addEventListener('click',()=>{
-    const view=cards.getBoundingClientRect();
-    const items=[...cards.children].map(card=>card.getBoundingClientRect());
-    cards.scrollBy({top:nextCardScroll(items,view),behavior:scrollBehavior(prefersReducedMotion())});
-  });
-  // Foot, in reading order: the "automático" note, "Depois" (secondary, left) and "Levar os indicados" (the Amarelo
-  // choice, right). In portrait it is the window's last row, so the header is only title and clock.
-  root.append(foot);
-  const note=el('p','rh-offer-auto',foot);note.textContent=AUTO_NOTE;
-  const later=el('button','rh-offer-later',foot);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
-  later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
+  const foot=el('footer','rh-offer-foot',root);
   const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
-  // Landscape is short (same breakpoint as hud.css): the clock and the foot ride in the header row, beside the title, so
-  // the window has no foot row and the tags get the height (hud.css).
-  const landscape=typeof matchMedia==='function'?matchMedia(LANDSCAPE_QUERY):undefined;
-  const place=()=>{
-    if(landscape?.matches){if(track.parentElement!==head)head.append(track,foot);}
-    else if(track.parentElement!==root){cards.before(track);root.append(foot);}
-  };
-  place();landscape?.addEventListener?.('change',place);
 
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
@@ -221,7 +186,6 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
-    cards.scrollTop=0;
     cards.replaceChildren(...offer.choices.map((choice,index)=>{
       const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
@@ -367,7 +331,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);landscape?.removeEventListener?.('change',place);overflow.destroy();}};
+  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);}};
 }
 
 /**

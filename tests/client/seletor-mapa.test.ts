@@ -311,7 +311,9 @@ test('review F1: a welcome held for the city keeps the socket alive and the seat
     assert.deepEqual(ws.sent.slice(before).map(m=>m.t),['ping']);
     // The socket dies mid-download: the retry joins with the token (same seat, no ghost).
     // The retry goes after 500 ms ±25% (3g-rede-sem-teleporte jitter): waited for, not timed.
-    ws.close(1006);for(let i=0;i<100&&FakeSocket.all.at(-1)===ws;i++)await sleep(20);
+    // Waited for the retry's join itself (the socket opens asynchronously after it is created), not for a fixed time.
+    const joined=()=>{const last=FakeSocket.all.at(-1)!;return last!==ws&&last.sent.length>0;};
+    ws.close(1006);for(let i=0;i<150&&!joined();i++)await sleep(20);
     const ws2=FakeSocket.all.at(-1)!;
     assert.notEqual(ws2,ws);
     assert.equal(ws2.sent[0].t,'join');assert.equal(ws2.sent[0].token,'tok2');

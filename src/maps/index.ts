@@ -7,4 +7,5 @@ export * from './prediction.ts';
 export * from './city-asset.ts';
 export * from './flowfield.ts';
 export * from './city/terrain.ts';
+export * from './city/relief.ts';
 export * from './build-sites.ts';

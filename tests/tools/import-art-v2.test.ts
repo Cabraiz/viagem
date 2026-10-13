@@ -17,7 +17,7 @@ import {GROUPS,DIRECTIONS,DIR4_FROM_DIR8,CARDINALS,ANCHOR,RIM,INDEX_FILE} from '
 import {makeDemoDelivery,DEMO_PIECES} from '../fixtures/art-v2/demo.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {importedSheet} from '../../src/client/sprites/sprite-sheets.ts';
-import {heroMeasures} from '../../scripts/art-v2/convert.mjs';
+import {heroMeasures,leanIndex} from '../../scripts/art-v2/convert.mjs';
 import {raw} from '../../scripts/sprite-atlas.mjs';
 import {renderReport} from '../../scripts/art-v2/report.mjs';
 import {
@@ -591,10 +591,13 @@ test('index public/art/manifest.json: every group manifest merged, meta from tab
   assert.ok(r.written.some(f=>norm(outRoot,f)===index.toLowerCase()),'index not listed in written');
   const idx=JSON.parse(readFileSync(index,'utf8'));
   assert.equal(idx.version,2);
+  assert.equal(readFileSync(index,'utf8').split(/\n/).length,2,'minified: one line + newline');
   assert.deepEqual(Object.keys(idx.groups),['base','chao','predios','ui']);
   for(const g of Object.keys(idx.groups) as (keyof typeof GROUPS)[]){
     assert.equal(idx.groups[g].output,GROUPS[g].output);
-    assert.deepEqual(idx.groups[g].pieces,readManifestOf(outRoot,g).pieces,`${g}: index differs from its manifest`);
+    // The index is the group manifest without its hashes (manifesto-enxuto-3g), minified.
+    assert.deepEqual(idx.groups[g].pieces,leanIndex(readManifestOf(outRoot,g).pieces),`${g}: index differs from its manifest`);
+    assert.ok(!JSON.stringify(idx.groups[g]).includes('sha256'),`${g}: index still carries hashes`);
   }
   const meta=(g:string,id:string)=>idx.groups[g].pieces[id].meta;
   assert.deepEqual(meta('chao','cidade-nevada/neve-fofa-1'),{ground:'snow'});

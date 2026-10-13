@@ -50,8 +50,12 @@ export interface EnemyAiOptions {
   barkChance?:number;
   /** Hostile projectiles are not created at or above this count (D-003; budget.ts MAX_PROJECTILES). */
   projectileCap?:number;
-  /** City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean. */
-  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  /**
+   * City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean.
+   * out.fit > 0 (BUG-20261013-E1): the steer led the body along a field narrower than it (its own size does not reach);
+   * this tick's walk then collides with the walls by that radius, so it squeezes through instead of standing at the gap.
+   */
+  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point&{fit?:number})=>boolean;
   /** Enemy hazards (burp, molotov, fire, poop, explosion, the Tio's charge line) are not created at or above this many telegraphs. */
   telegraphCap?:number;
   /**
@@ -193,7 +197,7 @@ export class EnemyAi implements SimSystem {
   private readonly targets:SimPlayer[]=[];
   private readonly neighbors:EnemyState[]=[];
   private readonly active:EnemyState[]=[];
-  private readonly steerOut={x:0,y:0};
+  private readonly steerOut={x:0,y:0,fit:0};
   private readonly detonate:EnemyState[]=[];
   /** Hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
   readonly heroSpeed:number;
@@ -262,7 +266,7 @@ export class EnemyAi implements SimSystem {
         if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
         memory.state=STATE.walk;
       }
-      let dirX=0,dirY=0,pace=1;
+      let dirX=0,dirY=0,pace=1,fit=e.radius;
       // Motoboy: his charge is over this tick (full length, a player, off the line); a blocked step is found after the move.
       let boom=false;
       if(target&&!stunned){
@@ -271,7 +275,11 @@ export class EnemyAi implements SimSystem {
         // direction, which the city flow field may bend around corners (it can point away from the target there).
         const ax=tx/d,ay=ty/d;
         let ux=ax,uy=ay;
-        if(this.options.steer?.(ctx,e,target,this.steerOut)){ux=this.steerOut.x;uy=this.steerOut.y;}
+        this.steerOut.fit=0;
+        if(this.options.steer?.(ctx,e,target,this.steerOut)){
+          ux=this.steerOut.x;uy=this.steerOut.y;
+          const f=this.steerOut.fit;if(f>0&&f<fit)fit=f;
+        }
         const touching=best<=e.radius+PLAYER_RADIUS+CONTACT_MARGIN;
         const def=enemyDef(e.kind);
         // Against a structure every kind walks up and hits it; the coach (no melee) lectures the besiegers instead.
@@ -472,7 +480,7 @@ export class EnemyAi implements SimSystem {
       }
       const fromX=e.x,fromY=e.y;
       // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
-      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),e.radius);
+      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),fit);
       // The motoboy crashes at the end of his run, on a player, off the line, or when a wall eats half of his step.
       if(memory.state===STATE.charge&&enemyDef(e.kind).behavior==='kamikaze'){
         const want=Math.hypot(moveX,moveY);

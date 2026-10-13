@@ -7,7 +7,9 @@
  *     envelope (none under prefers-reduced-motion).
  *  5. The art lookup through the manifest (group `torres`, base + idle + mount), procedural when absent.
  *  6. The wire (torres-fio): TowerFeed turns the snapshot's structures (multiplayer defenseView) into TowerViews — only
- *     the defenses, the server's phase and aim, the sim's footprint radius — and a changed aim into one volley.
+ *     the defenses, the server's phase and aim, the sim's footprint (the Gustavão's 12 × 4 rail) — and infers volleys:
+ *     an aim change, or the catalog cadence while an enemy is in reach along the aim, deduplicated; the scene builds
+ *     the renderer lazily.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +18,11 @@ import {SIM_HZ} from '../../src/contract/index.ts';
 import {setArtIndex,parseArtIndex} from '../../src/client/art/manifest.ts';
 import {defenseView} from '../../multiplayer/simulation.ts';
 import type {DefenseState} from '../../src/sim/index.ts';
-import {AIM_TOLERANCE,TowerFeed,aimMoved,aimedIndex,towerRadius,type TowerKind,type TowerView} from '../../src/client/render/towers/tower-rules.ts';
+import {AIM_DEDUPE,AIM_TOLERANCE,TowerFeed,aimMoved,aimedIndex,hasTowers,towerFootprint,volleyNow,type TowerKind,type TowerView} from '../../src/client/render/towers/tower-rules.ts';
+import {readFileSync} from 'node:fs';
+import {buildPlanFor,railRect} from '../../src/maps/index.ts';
+import {decodeCityAsset} from '../../src/maps/city-asset.ts';
+import {CityTerrain} from '../../src/maps/city/terrain.ts';
 import {CALIBRE,CRATER,DIRS8,TOWER_DAMAGED_AT,TOWER_KINDS,TOWER_LOOK,TOWER_PHASES,aimIndex,baseColumn,baseFrame,canFire,dir8,dirVector,firedNow,
   flightMs,lobHeight,phaseRow,shakeAt,shakeOffset,towerArt,towerPhase,turnToward,weaponFrame,type Dir8} from '../../src/client/render/towers/tower-rules.ts';
 
@@ -144,13 +150,19 @@ test('5. towerArt: the manifest piece (base sheet, idle sheet, mount), else proc
 });
 
 const CELL=.88;
+/** The real Cidade Nevada (its build plan: the sites' cell and the Gustavão's rail). */
+const CITY=(()=>{
+  const root=(p:string)=>new URL(`../../${p}`,import.meta.url);
+  const r=decodeCityAsset(readFileSync(root('public/maps/cidade-nevada.json'),'utf8'));if(!r.ok)throw new Error(r.error);
+  return new CityTerrain(r.asset,(JSON.parse(readFileSync(root('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
+})();
 const defense=(id:string,kind:TowerKind,extra:Partial<DefenseState>={}):DefenseState=>({id,kind,site:'s',owner:'p',x:10,y:20,hp:400,maxHp:400,
   r:(DEFENSES[kind].size??4)*CELL/2,startTick:0,readyTick:60,fireTick:0,...extra} as DefenseState);
 /** The wire's 1-byte aim (protocol 11 `unit`). */
 const byte=(turn:number)=>Math.round(turn*255)/255;
 
-test('6a. TowerFeed: only the defenses, with the server phase, the sim radius and no volley on first sight',()=>{
-  const feed=new TowerFeed(),tick=100;
+test('6a. TowerFeed: only the defenses, the server phase, the sim footprint, no volley on first sight',()=>{
+  const feed=new TowerFeed(),tick=100,plan=buildPlanFor(CITY),rail=plan.rail!;
   const structures=[
     {id:'muralha',kind:'muralha',x:0,y:0,hp:900,maxHp:1000},
     {id:'t1',kind:'torre-chinelo',x:1,y:1,hp:50,maxHp:50,untilTick:400},
@@ -158,40 +170,67 @@ test('6a. TowerFeed: only the defenses, with the server phase, the sim radius an
     defenseView(defense('d2','morteiro',{readyTick:10,aim:Math.PI/2}),tick),
     defenseView(defense('d3','gustavao',{readyTick:10,hp:0,ruined:true}),tick),
   ];
-  const views=feed.views(structures,tick,CELL);
-  assert.deepEqual(views.map(v=>v.id),['d1','d2','d3']);
+  assert.equal(hasTowers(structures.slice(0,2)),false);assert.equal(hasTowers(structures),true);
+  const views=feed.views(structures,tick,plan.cell,{railAxis:rail.axis});
+  assert.deepEqual(views.map(v=>v.id),['d1','d2','d3']);assert.equal(feed.count,3);
   const [v1,v2,v3]=views as [TowerView,TowerView,TowerView];
   assert.equal(v1.phase,'obra-1');assert.equal(v1.aim,undefined);
   assert.equal(v2.phase,'pronta');assert.ok(Math.abs(v2.aim!-.25)<1e-9);
   assert.equal(v3.phase,'ruina');assert.equal(v3.ruined,true);
-  // The sim's footprint radius: size × cell / 2 (the root takes size 1; the Gustavão its rail's width, 4 cells).
-  assert.equal(v1.r,CELL/2);assert.equal(v2.r,2*CELL/2);assert.equal(v3.r,4*CELL/2);
-  for(const kind of TOWER_KINDS)assert.equal(towerRadius(kind,CELL),defense('x',kind).r,kind);
+  // Against the sim's numbers: a site defense covers its catalog size in plan cells (the root size 1, the mortar 2,
+  // the A4 nest 3); the Gustavão covers the plan's rail rectangle, 12 × 4 cells along the city's x axis.
+  assert.equal(DEFENSES['vigia-do-predio'].size,1);assert.equal(DEFENSES.morteiro.size,2);assert.equal(DEFENSES['ninho-de-metralhadora'].size,3);
+  assert.equal(v1.r,plan.cell*1/2);assert.equal(v2.r,plan.cell*2/2);assert.equal(v1.half,undefined);
+  for(const kind of TOWER_KINDS)if(DEFENSES[kind].size!==null)assert.equal(towerFootprint(kind,plan.cell).r,DEFENSES[kind].size!*plan.cell/2,kind);
+  const box=railRect(rail,plan.cell);
+  assert.equal(rail.length,12);assert.equal(rail.width,4);assert.equal(rail.axis,'x');
+  assert.deepEqual(v3.half,[box.w/2,box.h/2]);
+  assert.deepEqual(towerFootprint('gustavao',plan.cell,'y').half,[box.h/2,box.w/2],'a rail along y swaps them');
   for(const v of views)assert.equal(firedNow(undefined,v,tick),false,'first sight is not a volley');
 });
 
-test('6b. TowerFeed: a changed (or new) aim is one volley; the same aim, or less than half a wire step, is none',()=>{
-  const feed=new TowerFeed();
-  const wire=(tick:number,aim?:number)=>{
-    const s=defenseView(defense('d','vigias-armados',{readyTick:0,...(aim===undefined?{}:{aim})}),tick);
-    return feed.views([{...s,...(s.aim===undefined?{}:{aim:byte(s.aim)})}],tick,CELL)[0]!;
+test('6b. TowerFeed: volleys from an aim change and, at the catalog cadence, from an enemy in reach along the aim; deduplicated',()=>{
+  const kind='vigias-armados',cd=DEFENSES[kind].cooldown,feed=new TowerFeed();
+  // One enemy 3 u east of the defense (x 10, y 20): the aim turns 0 points at it.
+  const east={n:1,xs:[13],ys:[20],air:[0]},none={n:0,xs:[] as number[],ys:[] as number[],air:[] as number[]};
+  let prev:number|undefined;
+  const at=(tick:number,aim:number|undefined,enemies:typeof east,extra:Partial<DefenseState>={})=>{
+    const s=defenseView(defense('d',kind,{readyTick:0,...(aim===undefined?{}:{aim}),...extra}),tick);
+    const v=feed.views([{...s,...(s.aim===undefined?{}:{aim:byte(s.aim)})}],tick,CELL,{enemies})[0]!;
+    const fired=firedNow(prev,v,tick);prev=v.fireTick;return fired;
   };
-  let prev=wire(10).fireTick;
-  const step=(tick:number,aim:number|undefined,volley:boolean)=>{
-    const v=wire(tick,aim);
-    assert.equal(firedNow(prev,v,tick),volley,`tick ${tick} aim ${aim}`);
-    prev=v.fireTick;
-  };
-  step(12,undefined,false);           // ready, never fired
-  step(14,0,true);                    // its first volley: the aim appears
-  step(16,0,false);                   // same aim: nothing new
-  step(18,Math.PI,true);              // turned and fired
-  step(20,Math.PI,false);
-  step(22,-Math.PI/2,true);           // atan2's negative half wraps to turns .75
-  assert.equal(aimMoved(.5,.5+.4/255),false);assert.equal(aimMoved(.5,.5+.6/255),true);assert.equal(aimMoved(.0005,.9995),false,"across the wrap");
+  assert.equal(at(100,0,east),false,'first sight beside a standing enemy: not at once');
+  assert.equal(at(102,0,east),false,'nor before a cooldown');
+  assert.equal(at(100+cd,0,east),true,'but one cooldown later, though the aim never changed');
+  assert.equal(at(102+cd,0,east),false);
+  assert.equal(at(100+2*cd,0,east),true,'and again at the cadence: a standing target keeps being shot');
+  assert.equal(at(102+2*cd,Math.PI/2,east),false,'an aim change right after a drawn volley is that same volley');
+  assert.equal(at(100+3*cd,Math.PI/2,east),false,'no enemy along the new aim (north): no cadence volley');
+  assert.equal(at(100+4*cd,Math.PI/2,east),false);
+  assert.equal(at(100+4*cd+2,0,east),true,'an aim change a cooldown after the last volley is a new volley');
+  assert.equal(at(100+6*cd,0,none),false,'nobody in reach: the cadence stops');
+  assert.equal(at(100+7*cd,0,east,{startTick:100+7*cd,readyTick:100+9*cd}),false,'in obra: no volley');
+  // Aim steps under half a wire step are the same aim; the wrap is handled.
+  assert.equal(aimMoved(.5,.5+.4/255),false);assert.equal(aimMoved(.5,.5+.6/255),true);assert.equal(aimMoved(.0005,.9995),false,'across the wrap');
+  // The rule itself: the arame's aura fires on any enemy in reach; a radar never (no aim).
+  assert.equal(volleyNow('arame-e-sirene','pronta',.5,false,cd*2,0,0,{n:1,xs:[0],ys:[2],air:[0]}),true);
+  assert.equal(volleyNow('posto-de-radar','pronta',undefined,false,1e6,0,0,east),false);
+  assert.equal(volleyNow(kind,'danificada',0,false,cd,10,20,east),true,"a damaged defense still fires (the sim's canFire)");
+  assert.equal(volleyNow(kind,'pronta',0,true,Math.ceil(cd*AIM_DEDUPE)-1,10,20,east),false);
   // A world swap forgets every defense: its next sight is a first one again.
-  feed.reset();
-  const again=wire(30,Math.PI/4);assert.equal(firedNow(undefined,again,30),false);
+  feed.reset();prev=undefined;assert.equal(at(1000,Math.PI/4,east),false);
+});
+
+test('6d. scene: the defenses renderer is lazy (built on the first snapshot with a defense) and towersInWorld reads it',()=>{
+  const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  assert.equal((scene.match(/new TowerRenderer\(/g)??[]).length,1,'built in one place');
+  assert.match(scene,/private makeTowers\(\)\{\s*return this\.towers=new TowerRenderer\(/);
+  // The only caller of makeTowers runs after the no-defense early return (nothing built, no enemy walked).
+  assert.equal((scene.match(/this\.makeTowers\(\)/g)??[]).length,1);
+  assert.match(scene,/if\(!this\.towers&&!hasTowers\(view\.structures\)\)return;[^\n]*\n\s*const towers=this\.towers\?\?this\.makeTowers\(\);/);
+  assert.match(scene,/towersInWorld\(\):boolean\{return !!this\.towers&&this\.towerFeed\.count>0;\}/);
+  // Elsewhere the scene only reaches it through optional chaining or a local after a guard.
+  assert.doesNotMatch(scene,/this\.towers\.(?!count)/);
 });
 
 test('6c. aimedIndex: the reachable enemy along the server aim (not the nearest), -1 off the aim',()=>{

@@ -12,8 +12,11 @@
  * - Shot detection from consecutive views (`firedNow`): the sim sets fireTick = tick + cooldown when a ready defense
  *   fires, and fireTick = readyTick on a new obra, so a changed fireTick at or after readyTick is a volley.
  * - The wire (torres-fio): `TowerFeed` turns the snapshot's structures (contract StructureView: kind, phase, aim in turns
- *   where it last fired) into TowerViews, a changed `aim` between two snapshots being a volley; `towerRadius` is the
- *   sim's footprint radius (size × the plan's cell / 2), which the snapshot does not carry.
+ *   where it last fired) into TowerViews. The snapshot has no shot counter, so the volleys are inferred: an `aim` that
+ *   changed since the previous snapshot is one, and a ready defense whose aim line has an enemy in reach fires again at
+ *   its catalog cadence (else a tower shooting a standing or head-on enemy would fire once and never again); the two
+ *   are deduplicated (`volleyNow`). `towerFootprint` is the sim's footprint (size × the plan's cell, the Gustavão on its
+ *   12 × 4 rail along the plan's axis), which the snapshot does not carry either.
  */
 import {artPiece,type ArtFile} from '../../art/manifest.ts';
 import {DEFENSES} from '../../../rules/index.ts';
@@ -31,8 +34,11 @@ export const TOWER_DAMAGED_AT=.5;
 /** What the client needs of a defense (the sim's DefenseState, or the wire's StructureView through TowerFeed). */
 export interface TowerView {
   id:string;kind:TowerKind;x:number;y:number;
-  /** Footprint radius (u). */
-  r:number;hp:number;maxHp:number;startTick:number;readyTick:number;fireTick:number;ruined?:boolean;
+  /** Footprint radius (u): half the side of its square site. */
+  r:number;
+  /** Half extents (u) along world x and y when the footprint is not a square site (the Gustavão's rail). */
+  half?:readonly [number,number];
+  hp:number;maxHp:number;startTick:number;readyTick:number;fireTick:number;ruined?:boolean;
   /** The server's phase (else derived from the ticks and hp, `towerPhase`). */
   phase?:TowerPhase;
   /** Where it last fired, in turns 0..1 of a circle from +x (the wire's `aim`): the weapon faces it, no horde scan. */
@@ -161,41 +167,73 @@ export function aimedIndex(look:TowerLook,x:number,y:number,aim:number,n:number,
   return best;
 }
 
-/** Footprint radius (u) of a defense on a plan of `cell` u: the sim's size × cell / 2 (the Gustavão: its rail's width). */
-export function towerRadius(kind:TowerKind,cell:number):number{
+/**
+ * Footprint of a defense on a plan of `cell` u, as the sim lays it: a square site of its catalog size (`r` = size × cell
+ * / 2), or for the Gustavão its rail, the catalog footprint (12 × 4 cells) with the long side along `railAxis`.
+ */
+export function towerFootprint(kind:TowerKind,cell:number,railAxis:'x'|'y'='x'):{r:number;half?:readonly [number,number]}{
   const def=DEFENSES[kind];
-  return (def.size??Math.min(def.footprint[0],def.footprint[1]))*cell/2;
+  if(def.size!==null)return {r:def.size*cell/2};
+  const long=Math.max(def.footprint[0],def.footprint[1])*cell/2,short=Math.min(def.footprint[0],def.footprint[1])*cell/2;
+  return {r:long,half:railAxis==='x'?[long,short]:[short,long]};
 }
 /** The wire's StructureView, as much of it as the towers read (structural: the client's contract type). */
 export interface WireStructure {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;phase?:string;aim?:number}
 const PHASES=new Set<string>(TOWER_PHASES);
 /** Two wire aims differ (1 byte on the wire: a change under half a step is the same aim). */
 export const aimMoved=(a:number,b:number)=>{const d=Math.abs(a-b)%1;return Math.min(d,1-d)>.5/255;};
+/** An aim change this soon after a drawn volley (share of the cooldown) is that same volley, not a second one. */
+export const AIM_DEDUPE=.5;
+/** Cooldown (sim ticks) of a defense, from the rules catalog. */
+export const cooldownTicks=(kind:TowerKind)=>DEFENSES[kind].cooldown;
+/** The enemies of a snapshot as parallel arrays (`air` 1 for flyers). */
+export interface EnemyArrays {n:number;xs:ArrayLike<number>;ys:ArrayLike<number>;air?:ArrayLike<number>}
 /**
- * Snapshot structures → TowerViews (torres-fio). Not towers are skipped. A volley is an `aim` that changed (or appeared)
- * since the previous snapshot of the same defense: its fireTick becomes tick + 1, which `firedNow` reads as a volley;
- * the first sight of a defense never is one (no burst on joining). Volleys at the same aim between two snapshots are
- * seen as one at most (the snapshot carries no shot counter).
+ * Whether a volley is drawn at this snapshot (pure): `since` ticks after the last drawn one. The server's aim changed:
+ * a volley, unless one was drawn under AIM_DEDUPE of a cooldown ago (that is the one it reports). Else, while it may
+ * fire and has an aim, the cadence: a full cooldown since the last one and an enemy in reach along the aim (the arame's
+ * aura: any enemy in reach). TODO(wire): shot counter — with a per-defense volley counter on the wire, a changed counter
+ * replaces both guesses here.
+ */
+export function volleyNow(kind:TowerKind,phase:TowerPhase|undefined,aim:number|undefined,aimChanged:boolean,since:number,x:number,y:number,enemies?:EnemyArrays):boolean{
+  const cd=cooldownTicks(kind),look=TOWER_LOOK[kind];
+  if(aimChanged)return since>=cd*AIM_DEDUPE;
+  if(aim===undefined||!phase||!canFire(phase)||since<cd||!enemies||!enemies.n)return false;
+  return (look.calibre==='arame'?aimIndex(look,x,y,enemies.n,enemies.xs,enemies.ys,enemies.air):aimedIndex(look,x,y,aim,enemies.n,enemies.xs,enemies.ys,enemies.air))>=0;
+}
+/**
+ * Snapshot structures → TowerViews (torres-fio). Not towers are skipped. A drawn volley sets fireTick to tick + 1, which
+ * `firedNow` reads as a volley (see volleyNow for when). The first sight of a defense is never one (no burst on
+ * joining); a ready one first seen beside a standing enemy fires one cooldown later.
  */
 export class TowerFeed {
-  private last=new Map<string,{aim?:number;fire:number}>();
-  views(structures:readonly WireStructure[],tick:number,cell:number):TowerView[]{
-    const out:TowerView[]=[],seen=new Map<string,{aim?:number;fire:number}>();
+  private last=new Map<string,{aim?:number;fire:number;at:number}>();
+  private next=new Map<string,{aim?:number;fire:number;at:number}>();
+  /** How many defenses the last snapshot had. */
+  count=0;
+  views(structures:readonly WireStructure[],tick:number,cell:number,options:{railAxis?:'x'|'y';enemies?:EnemyArrays}={}):TowerView[]{
+    const out:TowerView[]=[],seen=this.next;seen.clear();
     for(const s of structures){
       if(!isTowerKind(s.kind))continue;
       const prev=this.last.get(s.id),phase=s.phase&&PHASES.has(s.phase)?s.phase as TowerPhase:undefined;
-      let fire=prev?.fire??0;
-      if(prev&&s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim)))fire=tick+1;
-      seen.set(s.id,{aim:s.aim,fire});
-      out.push({id:s.id,kind:s.kind,x:s.x,y:s.y,r:towerRadius(s.kind,cell),hp:s.hp,maxHp:s.maxHp,startTick:0,readyTick:0,fireTick:fire,
+      let fire=prev?.fire??0,at=prev?.at??tick;
+      if(prev){
+        const changed=s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim));
+        if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies)){fire=tick+1;at=tick;}
+      }
+      seen.set(s.id,{aim:s.aim,fire,at});
+      const foot=towerFootprint(s.kind,cell,options.railAxis);
+      out.push({id:s.id,kind:s.kind,x:s.x,y:s.y,r:foot.r,...(foot.half?{half:foot.half}:{}),hp:s.hp,maxHp:s.maxHp,startTick:0,readyTick:0,fireTick:fire,
         ...(phase?{phase}:{}),...(phase==='ruina'?{ruined:true}:{}),...(s.aim!==undefined?{aim:s.aim}:{})});
     }
-    this.last=seen;
+    this.next=this.last;this.last=seen;this.count=out.length;
     return out;
   }
   /** Forgets every defense (a world swap). */
-  reset(){this.last.clear();}
+  reset(){this.last.clear();this.count=0;}
 }
+/** Any defense among a snapshot's structures (the scene builds its renderer on the first one). */
+export const hasTowers=(structures:readonly {kind:string}[])=>structures.some(s=>isTowerKind(s.kind));
 
 /** A volley happened between two views of the same defense (see the header). */
 export function firedNow(prevFireTick:number|undefined,d:Pick<TowerView,'fireTick'|'readyTick'|'ruined'>,tick:number):boolean{

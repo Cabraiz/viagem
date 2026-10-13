@@ -131,6 +131,9 @@ export class CityLayer {
    * on the cell, so they are gathered once per cell and cached until chunks change or the view turns.
    */
   private readonly cellColumns=new Map<number,ColumnRef[]>();
+  /** Moves whenever the live columns change (a chunk built or dropped), so actorDepth answers may differ: other
+   *  layers that cache an actor depth (the defenses, render/towers) re-sort when it moves. */
+  columnsVersion=0;
   private query=0;
   private readonly fader=new CoverFader();
   /** Drawn objects by fade id, kept in step with the live chunks; the ids faded last frame. */
@@ -198,6 +201,17 @@ export class CityLayer {
     const view=Math.max(0,this.view);
     if(cx<0||cy<0||cx>=width||cy>=height||!this.columns.size)return this.depthOf(depth(x,y,view,this.pivot));
     return this.depthOf(actorDepth(x,y,z,view,this.nearColumns(cx,cy,view),this.pivot,this.actorBox));
+  }
+  /**
+   * Draw depth for an effect in the air over (x, y) (a defense's shot, blast or light): actorDepth, except that over a
+   * building's footprint it stays below the building (inside counts as behind), so a shot from a defense hidden behind
+   * a block is covered until it has crossed it.
+   */
+  effectDepth(x:number,y:number,z=groundZ(this.asset,x,y)):number{
+    const {cell,origin,width,height}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell);
+    const view=Math.max(0,this.view);
+    if(cx<0||cy<0||cx>=width||cy>=height||!this.columns.size)return this.depthOf(depth(x,y,view,this.pivot));
+    return this.depthOf(actorDepth(x,y,z,view,this.nearColumns(cx,cy,view),this.pivot,this.actorBox,true));
   }
   /** The columns an actor standing in cell (cx, cy) could overlap on screen (cached per cell). */
   private nearColumns(cx:number,cy:number,view:number):ColumnRef[]{
@@ -291,7 +305,7 @@ export class CityLayer {
 
   // ---------- Building and dropping chunks ----------
   private buildChunk(key:string,view:number){
-    this.cellColumns.clear();
+    this.cellColumns.clear();this.columnsVersion++;
     const chunk=this.chunksByKey.get(key);
     if(!chunk||this.live.has(key))return;
     const {ground,glints}=this.bakeGround(chunk,view);
@@ -517,7 +531,7 @@ export class CityLayer {
     for(const s of live.sprites){s.obj.destroy();this.fadeDrop(s.fade,'sprites',(e:BlockSprite)=>e===s);}
     for(const p of live.props){p.obj.destroy();this.fadeDrop(p.fade,'props',(e:LiveProp)=>e===p);}
     for(const c of live.cells)this.columns.delete(c);
-    this.cellColumns.clear();
+    this.cellColumns.clear();this.columnsVersion++;
     this.live.delete(key);
   }
 

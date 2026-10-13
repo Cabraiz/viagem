@@ -37,14 +37,17 @@
  * 2×2-cell lots, b: as delivered).
  * `torres=1|12` (card torres-render): the game's TowerRenderer (render/towers/towers.ts) with defenses around the hero:
  *   `1` a showcase (A3 atiradores, B3 morteiro and C2 holofote firing, C3 arame, B5 obuseiro danificada, a Vigia in
- *   obra-2, a ruined A4 and the Gustavão on its rail to the north, whose shells shake the screen and leave a crater),
+ *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the north, whose shells shake the screen and leave a
+ *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
+ *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   The client may not import the sim (tests/arquitetura.test.ts), so a stand-in stepper fires like the sim's
  *   defensesStep (ready, cooldown, nearest reachable enemy) with the test-checked table of render/towers/tower-rules.ts,
  *   at the wandering stand-in enemies (`n`, default 60 here; every 10th one flies). The game feeds the same
  *   renderer from the wire instead (scene.ts, TowerFeed). Debug hooks for the checks and prints (sandbox only, nothing in the game reads them): `window.__cidade`
  *   `.torres()` the live effects (shots in flight with their kind and age, flashes, blasts, craters), `.shake()` the
- *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.at`/`.cell` the hero's spot and
+ *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.hidden` the building the hidden A3
+ *   stands behind, `.at`/`.cell` the hero's spot and
  *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
  * Fake data only; nothing talks to the server.
  */
@@ -69,7 +72,7 @@ import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
-import {TOWER_LOOK,aimIndex,type TowerKind,type TowerView} from '../render/towers/tower-rules.ts';
+import {TOWER_LOOK,aimIndex,towerFootprint,type TowerKind,type TowerView} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
 
 const params=new URLSearchParams(location.search);
@@ -144,6 +147,8 @@ class CitySandbox extends Phaser.Scene {
   private towers?:TowerRenderer;
   private ex=new Float32Array(0);private ey=new Float32Array(0);private air=new Uint8Array(0);
   private simStart=-1;
+  /** torres=1: the building the hidden A3 stands behind (for the checks). */
+  private hidden?:{x:number;y:number;w:number;h:number;height:number};
   constructor(){super('city-sandbox');}
   private art?:CityArtPlan;
   preload(){
@@ -267,9 +272,9 @@ class CitySandbox extends Phaser.Scene {
     const asset=this.asset,c=asset.cell,{x,y}=this.at,tick=0;
     let made=0;
     const make=(kind:TowerKind,dx:number,dy:number,extra:Partial<TowerView>={}):TowerView=>{
-      const l=TOWER_LOOK[kind],size=kind==='vigia-do-predio'?1:Math.min(3,Math.max(...l.footprint)),hp=100;
+      const hp=100,foot=towerFootprint(kind,c,'x'); // the sim's footprint (the Gustavão: its rail along x)
       made++;
-      return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:(kind==='gustavao'?6:size)*c/2,hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
+      return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:foot.r,...(foot.half?{half:foot.half}:{}),hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
     };
     if(towersParam===12){
       const kinds:TowerKind[]=['vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
@@ -280,14 +285,26 @@ class CitySandbox extends Phaser.Scene {
       this.defenses.push(make('atiradores-do-telhado',-2.4,-1.6),make('morteiro',2.6,-1.4),make('holofote',.2,-2.6),
         make('arame-e-sirene',-2.6,1.8),make('obuseiro',2.8,2.2,{hp:40}),make('vigia-do-predio',.3,3.2,{startTick:-far,readyTick:far}),
         make('ninho-de-metralhadora',-4.6,-.2,{ruined:true,hp:0}),make('gustavao',1,-12,{fireTick:tick+45}));
+      // Behind the tallest building within 9 u: one cell past its back corner along the view's depth axis (screen x kept).
+      let best:{x:number;y:number;w:number;h:number;height:number}|undefined;
+      for(const b of asset.blocks){
+        const bx=asset.origin.x+(b.x+b.w/2)*c,by=asset.origin.y+(b.y+b.h/2)*c;
+        if(Math.hypot(bx-x,by-y)<9&&b.height>=2.5&&(!best||b.height>best.height))best={x:bx,y:by,w:b.w*c,h:b.h*c,height:b.height};
+      }
+      if(best){ // its footprint just past the building's back corner (smaller x and y: farther from the camera in view 0)
+        const r=c,bx=best.x-best.w/2-r-.2,by=best.y-best.h/2-r-.2;
+        this.defenses.push(make('atiradores-do-telhado',(bx-x)/c,(by-y)/c,{id:'escondida'}));this.hidden=best;
+      }
     }
     const n=this.horde.length;this.ex=new Float32Array(n);this.ey=new Float32Array(n);this.air=new Uint8Array(n);
     for(let i=0;i<n;i++)this.air[i]=i%10===9?1:0;
     if(!towersDrawn)return;
     const view=()=>this.view;
-    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,fxDepth:1e9,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+      depthVersion:()=>this.layer?.columnsVersion??0,
       world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},
-        depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0}});
+        depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,
+        effectDepth:(px,py)=>this.layer?this.layer.effectDepth(px,py,groundZ(asset,px,py)):0}});
     this.towers.setEnemies(n,this.ex,this.ey,this.air);
   }
   /** Stand-in for the sim's defensesStep (ready, cooldown, nearest reachable enemy), then the renderer's frame. */
@@ -364,7 +381,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   private tick(dt:number){

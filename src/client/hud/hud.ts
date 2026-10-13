@@ -13,7 +13,7 @@ import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,crosses,measureZones,union,veiled,type Rect,type ScreenZones} from './zones.ts';
+import {chooseSlot,crosses,measureZoneInput,measureZones,union,veiled,ZONE_WINDOWS_BESIDE_OBRA,type Rect,type ScreenZones,type ZoneInput} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
 import type {RecipeId} from '../../rules/index.ts';
 import './zones.css';
@@ -99,6 +99,7 @@ export class RunHud {
   private readouts:{el:HTMLElement;rect:Rect}[]=[];private readoutVersion=-1;
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
+  private obraInput?:ZoneInput;private obraInputVersion=-1;
   private observer?:ResizeObserver;
   private columnObserver?:ResizeObserver;
   /** Shell rows that answer a tap (queueRow answer): they go ahead of the coach's hint. */
@@ -490,6 +491,17 @@ export class RunHud {
   }
   /** The zones only when they changed since the last call (resize, rotation, HUD part resized), else undefined. */
   zonesIfChanged(){const zones=this.zones();if(!this.zonesFresh)return undefined;this.zonesFresh=false;return zones;}
+  /** The zone input without the obra window (torres-ligar), for the obra HUD's own layout; cached per layout like zones(). */
+  zoneInputBesideObra():ZoneInput{
+    if(!this.obraInput||this.obraInputVersion!==this.layoutVersion){this.obraInputVersion=this.layoutVersion;this.obraInput=measureZoneInput(this.el.ownerDocument,ZONE_WINDOWS_BESIDE_OBRA);}
+    return this.obraInput;
+  }
+  /** Something outside the HUD's observed parts moved (the obra window opened or closed): zones are measured again. */
+  layoutChanged(){this.relayout();}
+  /** The obra window is open: the forge steps aside until it closes (they share the intermission's window place). */
+  yieldForge(obra:boolean){this.camp.yieldTo(obra);}
+  /** The offer window is on screen (round offer in the intermission, or a level offer): the obra menu waits for it. */
+  get offerShown(){return !this.offerEl.hidden;}
 
   /** The room refused the rematch (042a R2): the result button stops "waiting for the gang" and shows `label`. */
   rematchRefused(label:string){this.result.refuse(label);}

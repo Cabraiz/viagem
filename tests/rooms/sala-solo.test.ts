@@ -54,17 +54,26 @@ test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and o
   assert.deepEqual(createOptions({map:'lua',solo:'yes',extra:1}),{});assert.deepEqual(createOptions(null),{});
   const inits:unknown[]=[];
   const env={ALLOW_LOCAL:'false',CREATE_LIMIT:{limit:async()=>({success:true})},ROOMS:{idFromName:(n:string)=>n,get:()=>({init:async(_c:string,o:unknown)=>{inits.push(o);}})}} as any;
-  const post=(body?:string)=>worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/rooms',{method:'POST',headers:{Origin:'https://viagem.cyou'},...(body===undefined?{}:{body})}),env);
+  // A browser's string body comes with its Content-Length (the Worker reads only a small declared one).
+  const post=(body?:string)=>worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/rooms',{method:'POST',headers:{Origin:'https://viagem.cyou',...(body===undefined?{}:{'content-length':String(Buffer.byteLength(body))})},...(body===undefined?{}:{body})}),env);
   for(const body of [JSON.stringify({map:'cidade-nevada',solo:true}),undefined,'{nope','x'.repeat(500)])assert.equal((await post(body)).status,201);
   assert.deepEqual(inits,[{map:'cidade-nevada',solo:true},{},{},{}]);
   // The object stores what it was created with and a restart (load) builds the same solo city room.
   const store=new Map<string,unknown>();
   const storage={get:async(k:string)=>store.get(k),put:async(k:string|Record<string,unknown>,v?:unknown)=>{if(typeof k==='string')store.set(k,v);else for(const [a,b] of Object.entries(k))store.set(a,b);},setAlarm:async()=>{},delete:async()=>true};
   const g=new GameRoom({storage,id:{toString:()=>'obj'},waitUntil:()=>{}} as any,{ALLOW_LOCAL:'false'} as any) as any;
+  // The bundled city (wrangler's Text module; node cannot import the JSON as text): the object's own copy.
+  const CITY_ASSET={text:cityText,ref:CITY};g.city=CITY_ASSET;g.defaults={...g.defaults,cityPlayable:true};
   await g.init('ABCDEF1234',{map:'cidade-nevada',solo:true});
+  assert.equal(g.room.map.id,'cidade-nevada','born on the city through the Worker');
+  // Ana sits (the roster row goes to storage), then the object restarts.
+  const ana=peer();join(g.room,ana,'Ana',Date.now());
   assert.deepEqual(store.get('options'),{map:'cidade-nevada',solo:true});
   assert.equal(g.room.solo,true);
   const restarted=new GameRoom({storage,id:{toString:()=>'obj'},waitUntil:()=>{}} as any,{ALLOW_LOCAL:'false'} as any) as any;
+  restarted.city=CITY_ASSET;restarted.defaults={...restarted.defaults,cityPlayable:true};
   const room=await restarted.load(store.get('created'));
-  assert.equal(room.solo,true,'still solo after a restart');
+  assert.equal(room.solo,true,'still solo after a restart');assert.equal(room.map.id,'cidade-nevada');
+  const bia=peer();join(room,bia,'Bia',Date.now());
+  assert.deepEqual(bia.messages.map(m=>[m.t,m.message]),[['error',SOLO_ROOM_REFUSED]],'her seat came back from the roster: Bia is refused');
 });

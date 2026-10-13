@@ -2,6 +2,8 @@ import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOptions, type RoomRoster } from './room.ts';
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
+/** The largest create body read (bytes): {"map":"cidade-nevada","solo":true} is 37. */
+const CREATE_BODY_MAX=256;
 /** sala-solo-privada: what a create asks, from an optional small JSON body (or a stored row); anything else is dropped. */
 export function createOptions(v:unknown):RoomCreateOptions{
   const o=v as {map?:unknown;solo?:unknown}|null;
@@ -60,7 +62,9 @@ export default {
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
       // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada).
       let asked:RoomCreateOptions={};
-      try{const text=await request.text();if(text&&text.length<=200)asked=createOptions(JSON.parse(text));}catch{/* no body or junk: a plain room */}
+      // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
+      const length=Number(request.headers.get('content-length')??'0');
+      if(length>0&&length<=CREATE_BODY_MAX)try{asked=createOptions(JSON.parse(await request.text()));}catch{/* junk: a plain room */}
       await stub.init(code,asked);return Response.json({code},{status:201,headers});
     }
     // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.

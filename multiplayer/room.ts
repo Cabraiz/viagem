@@ -522,6 +522,8 @@ export class Room {
     c.seen=now;
     if(m.t==='join'&&!c.playerId){
       if(m.protocol!==ROOM_PROTOCOL){this.reject(peer,VERSION_REFUSED,now);return;}
+      // A solo room with its person seated: a newcomer hears why at once, before any other check (review).
+      if(this.solo&&m.token===undefined&&this.sessions.size>0){this.reject(peer,SOLO_ROOM_REFUSED,now);return;}
       this.expire(now);
       // Kicked from this room (D-025): the seat's token, presented to sit again or as `kicked` by a fresh join.
       const banned=this.banOf(m.token,now)??this.banOf(m.kicked,now);

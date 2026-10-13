@@ -31,6 +31,7 @@ import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,ty
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
+import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
 export type CreateEnemy=(ctx:SimContext,kind:string,point:Point,scale:number)=>EnemyState|undefined;
@@ -99,6 +100,12 @@ export interface DirectorOptions {
    * city; ignored on the island and in the endless world.
    */
   cityTutorial?:boolean;
+  /**
+   * City (cidade-11, city/balance.ts): the round knobs applied after planRound (count, hp, cadence) and the per-round
+   * siegeShare, rounds 2..10 only (round 1, the tutorial, is never touched). assemble.ts passes CITY_BALANCE (or the
+   * run's override) in the city; ignored on the island and in the endless world. Absent: the round table as it is.
+   */
+  cityBalance?:CityBalance;
 }
 
 /**
@@ -810,7 +817,14 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   /** Regular groups flagged by the plan or picked by siegeShare (every 1/share-th group, no rng). */
   const siegeFrom=options.siegeFromRound??1;
-  const isSiege=(group:SpawnGroup,index:number)=>!!group.siege||(siegeShare>0&&(state.plan?.index??0)>=siegeFrom&&Math.floor((index+1)*siegeShare)>Math.floor(index*siegeShare));
+  // City (cidade-11): a round's siegeShare knob replaces the option's. state.avenues marks a city run (set from round 1
+  // on, JSON-safe, never on the island or in the endless world even with a planner passed in); round 1 is neutral.
+  const shareOf=(round:number)=>options.cityBalance&&state.avenues?roundKnobs(options.cityBalance,round).siegeShare??siegeShare:siegeShare;
+  const isSiege=(group:SpawnGroup,index:number)=>{
+    if(group.siege)return true;
+    const round=state.plan?.index??0,share=shareOf(round);
+    return share>0&&round>=siegeFrom&&Math.floor((index+1)*share)>Math.floor(index*share);
+  };
 
   function dispatch(ctx:SimContext,group:SpawnGroup,index:number){
     const side=sideFor(index),special=!group.boss&&!group.elite,siege=special&&isSiege(group,index);
@@ -901,7 +915,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function startWave(ctx:SimContext){
     const index=ctx.round.index,theme=state.theme!;
-    const plan=tutorialRound(ctx)?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
+    const tutorial=tutorialRound(ctx);
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
+    // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
+    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index));
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});

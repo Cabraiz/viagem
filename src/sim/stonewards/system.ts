@@ -17,11 +17,12 @@ import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
-import {gatherStep,refillNodes,WORK_PER_UNIT} from './resources.ts';
+import {gatherStep,refillNodes,WORK_PER_UNIT,type Gathered} from './resources.ts';
 import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {cityCrateValue,type CityBalance} from '../city/balance.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -62,6 +63,11 @@ export interface StonewardsOptions {
   onHorn?(ctx:SimContext,line:string,endsTick:number):void;
   /** Moves the end of the current intermission (the director owns ctx.round). Without it the horn never stretches it. */
   extendPrepare?(ctx:SimContext,endsTick:number):void;
+  /**
+   * City only (cidade-11, city/balance.ts): lootValue × the units each crate pays and intermissionExtraSeconds added
+   * after the trip sizing. Read only where the crates are the nodes (cityLoot); absent or neutral: no change.
+   */
+  cityBalance?:Pick<CityBalance,'lootValue'|'intermissionExtraSeconds'>;
 }
 
 export interface StonewardsSystem extends SimSystem {
@@ -100,6 +106,20 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
 
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
+  const lootValue=options.cityBalance?.lootValue??1,extraTicks=ticks(Math.max(0,options.cityBalance?.intermissionExtraSeconds??0));
+  /**
+   * City loot knob: gatherStep already paid each crate its value; pay the difference to cityCrateValue (whole units per
+   * crate) and scale this tick's credits in `gathered` by the same ratio (the per-gatherer split is gone by then).
+   */
+  function scaleLoot(got:readonly Gathered[],before:Readonly<Record<string,number>>){
+    let raw=0,paid=0;
+    for(const g of got){const v=cityCrateValue(g.node.value,lootValue);raw+=g.node.value;paid+=v;state.balance[g.node.kind]+=v-g.node.value;}
+    if(!(raw>0)||paid===raw)return;
+    for(const id of Object.keys(state.gathered)){
+      const was=Object.hasOwn(before,id)?before[id]:0,now=state.gathered[id];
+      if(now!==was)Object.defineProperty(state.gathered,id,{value:was+(now-was)*paid/raw,enumerable:true,writable:true,configurable:true});
+    }
+  }
   function horn(ctx:SimContext,loot:CityLoot|undefined){
     const round=ctx.round;
     if(round.index<=1||state.hornRound===round.index)return;
@@ -152,9 +172,16 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
           // collect time and the horn's lead (loot.ts lootTripTicks), up to MAX_PREPARE_TICKS. It is the city's
           // intermission length, not a horn stretch: it does not spend MAX_STRETCH_PER_RUN (9 intermissions × ~9 s
           // would leave the horn almost nothing for a straggler, and nothing once the city hero walks at ~2 u/s).
-          if(loot&&round.index>1)stretch(ctx,ctx.tick+lootTripTicks(loot,kind=>WORK_PER_UNIT[kind],HORN_LEAD_CITY),false);
+          if(loot&&round.index>1){
+            stretch(ctx,ctx.tick+lootTripTicks(loot,kind=>WORK_PER_UNIT[kind],HORN_LEAD_CITY),false);
+            // City knob (cidade-11): extra seconds on top of the sized intermission, within MAX_PREPARE_TICKS.
+            if(extraTicks>0)stretch(ctx,ctx.round.phaseEndsTick+extraTicks,false);
+          }
         }
-        for(const g of gatherStep(ctx,state,options.obstacles))if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
+        const scale=loot&&lootValue!==1,before=scale?{...state.gathered}:undefined;
+        const got=gatherStep(ctx,state,options.obstacles);
+        if(before)scaleLoot(got,before);
+        for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
         horn(ctx,loot);
       }else if(round.phase!=='prepare'){
         state.hornEndsTick=-1;

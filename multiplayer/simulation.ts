@@ -6,7 +6,7 @@ import { worldSpawn, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
-import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../src/sim/index.ts';
+import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
@@ -95,14 +95,20 @@ export class Simulation {
   /** Lab only (LAB_ZUEIRA): the zueira plan every run of this simulation uses instead of the seed's. */
   zueiraLab?:ZueiraLab;
   /**
+   * City balance knobs of every run of this simulation (cidade-11, src/sim/city/balance.ts): headless benches only;
+   * rooms never pass it (the city plays CITY_BALANCE). Ignored outside the city.
+   */
+  private readonly cityBalance?:RunSystemsOptions['cityBalance'];
+  /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
    */
   /** `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world. */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField}={}){
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField;cityBalance?:RunSystemsOptions['cityBalance']}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
+    this.cityBalance=options.cityBalance;
     this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -135,6 +141,7 @@ export class Simulation {
       // after that the session expires and the Room ends an empty run (042a R1).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
+      ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
     });
   }
   resetRun(){

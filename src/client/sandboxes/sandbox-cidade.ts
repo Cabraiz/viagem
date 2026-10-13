@@ -37,7 +37,7 @@
  * 2×2-cell lots, b: as delivered).
  * `torres=1|12` (card torres-render): the game's TowerRenderer (render/towers/towers.ts) with defenses around the hero:
  *   `1` a showcase (A3 atiradores, B3 morteiro and C2 holofote firing, C3 arame, B5 obuseiro danificada, a Vigia in
- *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the north, whose shells shake the screen and leave a
+ *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the east (in a landscape print with the rest), whose shells shake the screen and leave a
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
  *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
@@ -284,7 +284,7 @@ class CitySandbox extends Phaser.Scene {
       const far=1e6;
       this.defenses.push(make('atiradores-do-telhado',-2.4,-1.6),make('morteiro',2.6,-1.4),make('holofote',.2,-2.6),
         make('arame-e-sirene',-2.6,1.8),make('obuseiro',2.8,2.2,{hp:40}),make('vigia-do-predio',.3,3.2,{startTick:-far,readyTick:far}),
-        make('ninho-de-metralhadora',-4.6,-.2,{ruined:true,hp:0}),make('gustavao',1,-12,{fireTick:tick+45}));
+        make('ninho-de-metralhadora',-4.6,-.2,{ruined:true,hp:0}),make('gustavao',4,-4,{fireTick:tick+45}));
       // Behind the tallest building within 9 u: one cell past its back corner along the view's depth axis (screen x kept).
       let best:{x:number;y:number;w:number;h:number;height:number}|undefined;
       for(const b of asset.blocks){

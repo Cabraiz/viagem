@@ -13,6 +13,7 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import {allItemDisplays} from '../hud/items.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -105,12 +106,17 @@ function lookOf(file:ArtFile,key:string):ProjectileLook{
   }
   return l;
 }
+/** Ids of the players' weapons and evolutions (hud/items.ts mirrors the server catalog): the sources of friendly shots. */
+const PLAYER_WEAPON_SOURCES:ReadonlySet<string>=new Set(allItemDisplays().filter(i=>i.kind==='weapon'||i.kind==='evolution').map(i=>i.id));
 /**
  * Look of a projectile from the manifest: its own art (`art:proj:<id>`), else for a friendly shot the shared
- * 'tiro-aliado' (loaded under FX.projFriendly), else undefined: the caller keeps keys.ts projectileTexture. The renderer
- * still checks that the key's texture loaded. Allocation-free after the first call per file.
+ * 'tiro-aliado' (loaded under FX.projFriendly), else undefined: the caller keeps keys.ts projectileTexture. A hostile
+ * shot whose source is a player's weapon (a shot the influencer reflected back, sim/projectiles.ts reflectShot) never
+ * wears that weapon's art: it reads as hostile (undefined → the hostile star). The renderer still checks that the key's
+ * texture loaded. Allocation-free after the first call per file.
  */
 export function projectileLook(hostile:boolean,source:string):ProjectileLook|undefined{
+  if(hostile&&PLAYER_WEAPON_SOURCES.has(source))return undefined;
   const id=projectileArtId(source),own=id!==undefined?projectileFile(id):undefined;
   if(own)return lookOf(own,PROJECTILE_KEYS.get(id as string) as string);
   if(!hostile){const shared=projectileFile('tiro-aliado');if(shared)return lookOf(shared,FX.projFriendly);}

@@ -36,8 +36,8 @@ export function phaseLook(kind:EnemyKind,phase:number|undefined):PhaseLook{
 }
 
 /**
- * Radius (world units) of the coach's lecture: allies inside it are buffed.
- * TODO: read PALESTRA.radius from src/sim/enemies/catalog.ts once the sim card exports it (3.5 u in the plan).
+ * Radius (world units) of the coach's lecture: allies inside it are buffed. The client cannot import the sim, so it is
+ * a copy of src/sim/enemies/catalog.ts PALESTRA.radius; tests/client/elenco-p1.test.ts pins the two equal.
  */
 export const PALESTRA_RADIUS=3.5;
 /**

@@ -7,13 +7,13 @@ import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {ACTING_KINDS,ENEMY_ART,ENEMY_KINDS,ELITE_SCALE,enemyKind,enemyTexture,hasActingPose,isEnemyKind} from '../../src/client/render/keys.ts';
+import {ACTING_KINDS,ENEMY_ART,ENEMY_KINDS,ELITE_SCALE,FX,enemyKind,enemyTexture,hasActingPose,isEnemyKind,projectileTexture} from '../../src/client/render/keys.ts';
 import {LOOK_BUFFED,LOOK_CHARGE,LOOK_LECTURE,LOOK_NONE,LOOK_POSE,PALESTRA_RADIUS,PHASE_ACTING,PHASE_BUFFED,SPARKLES,auraPulse,
   groundEllipse,headlightGlow,phaseLook,reflectGlint,sparkleFrame} from '../../src/client/render/phase-look.ts';
 import {DEATH_LINES,KIND_STYLES,deathLine,deathLines,kindStyle} from '../../src/client/render/jokes.ts';
 import {CAUSE_COPY,causeCopy,causeKind,emptyCauses,recordFall,resultCause} from '../../src/client/hud/cause.ts';
 import {CRITTER_NAMES,KILLCAM_KIND_LINES,killcamCaption} from '../../src/client/fun/zueira.ts';
-import {ENEMY_ART_ID,artLoads} from '../../src/client/art/horde-art.ts';
+import {ENEMY_ART_ID,artLoads,projectileLook} from '../../src/client/art/horde-art.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {Projector} from '../../src/client/render/projector.ts';
 import {elevation} from '../../src/maps/index.ts';
@@ -133,9 +133,9 @@ test('phase visuals: acting per kind, buffed for any regular critter, the chefe 
   for(const kind of NEW)assert.ok(phaseLook(kind,1).acting&&enemyTexture(kind,false,phaseLook(kind,1).acting).endsWith(':act'));
 });
 
-test('the client lecture ring matches the sim PALESTRA radius when the sim exports it',async()=>{
-  const catalog=await import('../../src/sim/enemies/catalog.ts') as {PALESTRA?:{radius:number}};
-  if(catalog.PALESTRA)assert.equal(PALESTRA_RADIUS,catalog.PALESTRA.radius,'keep render/phase-look.ts in step with the sim');
+test('the client lecture ring matches the sim PALESTRA radius',async()=>{
+  const {PALESTRA}=await import('../../src/sim/enemies/catalog.ts');
+  assert.equal(PALESTRA_RADIUS,PALESTRA.radius,'keep render/phase-look.ts in step with the sim');
 });
 
 test('the lecture ring is PALESTRA_RADIUS world units on the ground in every camera view (flat ground)',()=>{
@@ -180,4 +180,21 @@ test('no steady-state allocations: constant looks, caller-owned outputs and an a
   assert.match(layers,/if\(a\.look!==LOOK_NONE\)this\.drawPhase\(/,'nothing is drawn for a critter without a state');
   // The chefe keeps his boss phase; everyone else gets 1 there (no 'phase2-idle' on a buffed critter).
   assert.match(layers,/a\.bossPhase=kind==='chefe'\?view\.phase\?\?1:1;/);
+});
+
+test('a shot the influencer reflects reads as hostile: never the weapon art (R3)',()=>{
+  const strip=(file:string)=>({kind:'frames',files:{sheet:{file,cell:[64,64] as [number,number],frames:8}}});
+  setArtIndex(parseArtIndex({version:2,groups:{projeteis:{output:'public/art/projectiles',
+    pieces:{chinelo:strip('chinelo.webp'),boleto:strip('boleto.webp'),'boleto-evo':strip('boleto-evo.webp'),pombo:strip('pombo.webp'),
+      'boleto-juros':strip('boleto-juros.webp'),'garrafa-molotov':strip('garrafa-molotov.webp'),'tiro-aliado':strip('tiro-aliado.webp')}}}}));
+  // Friendly: the weapon's own sheet, as before.
+  for(const source of ['boleto','boleto-evo','pombo'])assert.equal(projectileLook(false,source)?.key,`art:proj:${source}`,source);
+  // Reflected (hostile, a player weapon's source): no look at all, so layers.ts falls back to the hostile star.
+  for(const source of ['boleto','boleto-evo','pombo','chinelo']){
+    assert.equal(projectileLook(true,source),undefined,source);
+    assert.equal(projectileTexture(true,source),FX.projHostile,source);
+  }
+  // Real hostile shots keep their art (the agiota's boleto com juros, the anão's bottle alias).
+  assert.equal(projectileLook(true,'boleto-juros')?.key,'art:proj:boleto-juros');
+  assert.equal(projectileLook(true,'molotov')?.key,'art:proj:garrafa-molotov');
 });

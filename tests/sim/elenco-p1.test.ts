@@ -10,6 +10,10 @@
  *   influencer: a friendly linear shot that hits him while posing comes back hostile and hurts its shooter; orbit/zone
  *     still hurt him; a shot outside the pose hurts him normally
  *   determinism: same seed → same state
+ * Review fixes: a retreating influencer never reflects (B1); the auto-aim and the homing retarget leave a posing influencer
+ * last / alone unless tapped (R2); a coached anão's fire pulses keep ×1.3 (N1); a siege coach lectures at the wall (N2);
+ * the ×1.3 of the reflected shot, the motoboy's charge hit and blast and the anão's death explosion, the boss's phase
+ * across a lecture and the motoboy's crash on a wall are pinned (N4).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +27,7 @@ import {createWeaponSystem} from '../../src/sim/weapons/system.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {RADIUS,SPEED,walkable,type Point} from '../../src/maps/world.ts';
+import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
 const TERRAIN=new TerrainField(DEFAULT_SEED,{world:'infinito'});
@@ -368,6 +372,213 @@ test('influencer: orbit and zone still hurt him in the pose; outside the pose a 
   assert.equal(P.e.memory!.state,STATE.walk,'pose over');
   assert.ok(!isReflecting(P.e,P.world.tick));
   assert.equal(P.e.phase,undefined);
+});
+
+// ---------- Review fixes ----------
+test('a coached influencer reflects ×REFLECT.mult × PALESTRA.damageMult (M1)',()=>{
+  const I=poser();
+  (I.e as CoachedEnemy).coachedUntil=1e9;
+  const s=shot(I,{x:I.p.x-.5,y:I.p.y},O);
+  I.step(SIM_HZ);
+  assert.ok(s.hostile,'reflected');
+  const got=damageTo(I.events,'p',I.e.id);
+  assert.equal(got.length,1);
+  assert.ok(near(got[0],10*REFLECT.mult*PALESTRA.damageMult,1e-9),`reflected ${got[0]}`);
+});
+
+test('a retreating influencer never reflects: isReflecting is false and enemy-ai drops his pose (B1)',()=>{
+  const I=poser();
+  assert.ok(isReflecting(I.e,I.world.tick));
+  I.e.memory!.retreat=1;
+  assert.ok(!isReflecting(I.e,I.world.tick),'retreating: no reflection, even mid-pose');
+  const hp=I.e.hp;
+  const s=shot(I,{x:I.p.x-.5,y:I.p.y},O);
+  I.step(1);
+  assert.notEqual(I.e.memory!.state,STATE.pose,'the retreat drops the pose');
+  assert.equal(I.e.memory!.reflectSay,undefined);
+  I.step(SIM_HZ/2);
+  assert.ok(!s.hostile,'not reflected');
+  assert.deepEqual(damageTo(I.events,'p',I.e.id),[],'the shooter is never hurt by him');
+  assert.equal(I.e.hp,hp-10,'the shot hits him');
+  assert.equal(I.e.phase,undefined,'no acting phase while retreating');
+});
+
+/** Makes `e` an influencer posing for good (frozen, so enemy-ai leaves the pose alone). */
+const posing=(e:{memory?:Record<string,number>;frozenUntil?:number})=>{e.memory!.state=STATE.pose;e.memory!.until=1e9;e.frozenUntil=1e9;};
+
+test('weapons aim at a posing influencer only after every other candidate; a tapped one still comes first (R2)',()=>{
+  const shoot=(setup:(A:ReturnType<typeof arena>,p:SimPlayer,infl:ReturnType<typeof createEnemy>)=>void)=>{
+    const A=arena(5,1,{},true);
+    const p=addPlayer(A.world,'p',O,{build:{weapons:[{id:'boleto',level:1}],passives:[]}});
+    const infl=createEnemy(A.world,'influencer',at(1.5));
+    setup(A,p,infl);
+    for(const e of A.world.enemies.values())e.frozenUntil=1e9;
+    posing(infl);
+    A.step(1);
+    const s=[...A.world.projectiles.values()].find(pr=>pr.owner==='p');
+    assert.ok(s,'fired');
+    const d=Math.hypot(s.vx,s.vy);
+    return {x:s.vx/d,y:s.vy/d};
+  };
+  const past=shoot(A=>{createEnemy(A.world,'bebado',at(-3));});
+  assert.ok(near(past.x,-1,1e-6)&&near(past.y,0,1e-6),`the farther bebado, not the nearer posing influencer (${past.x},${past.y})`);
+  const coach=shoot(A=>{createEnemy(A.world,'bebado',at(-3));createEnemy(A.world,'coach',at(0,-4));});
+  assert.ok(near(coach.x,0,1e-6)&&near(coach.y,-1,1e-6),'the coach still first');
+  const alone=shoot(()=>{});
+  assert.ok(near(alone.x,1,1e-6)&&near(alone.y,0,1e-6),'nobody else in range: him (last, not never)');
+  const tapped=shoot((A,p,infl)=>{createEnemy(A.world,'bebado',at(-3));p.target=infl.id;});
+  assert.ok(near(tapped.x,1,1e-6)&&near(tapped.y,0,1e-6),'tapped: the player asked for him');
+  // Not posing: he is just the nearest enemy again.
+  const A=arena(5,1,{},true);
+  addPlayer(A.world,'p',O,{build:{weapons:[{id:'boleto',level:1}],passives:[]}});
+  createEnemy(A.world,'influencer',at(1.5));createEnemy(A.world,'bebado',at(-3));
+  for(const e of A.world.enemies.values())e.frozenUntil=1e9;
+  A.step(1);
+  const s=[...A.world.projectiles.values()].find(pr=>pr.owner==='p')!;
+  assert.ok(s.vx>0&&near(s.vy,0,1e-6),'not posing: the nearest, as before');
+});
+
+test('a homing shot that retargets skips a posing influencer unless its owner tapped him (R2)',()=>{
+  const run=(tapped:boolean)=>{
+    const I=poser();
+    const other=createEnemy(I.world,'bebado',at(-2,3));other.frozenUntil=1e9;
+    if(tapped)I.p.target=I.e.id;
+    // From (4,0): the posing influencer is 4 u away, the bebado ~6.7 u (both within seek).
+    const s=shot(I,{x:I.p.x-.5,y:I.p.y},at(-2,3),{motion:'homing',homing:undefined,seek:8,turn:.3});
+    I.step(1);
+    return {I,s,other};
+  };
+  const free=run(false);
+  assert.equal(free.s.homing,free.other.id,'retargets past the posing influencer');
+  free.I.step(SIM_HZ);
+  assert.ok(!free.s.hostile,'never reflected');
+  assert.deepEqual(damageTo(free.I.events,'p',free.I.e.id),[]);
+  const tapped=run(true);
+  assert.equal(tapped.s.homing,tapped.I.e.id,'the tapped influencer still wins');
+});
+
+test('a coached anão: every fire pulse of his molotov keeps ×PALESTRA.damageMult, like the landing (N1)',()=>{
+  const fire=(coached:boolean)=>{
+    const A=arena(3,5);
+    addPlayer(A.world,'p',at(5));
+    const an=createEnemy(A.world,'anao-molotov',O);
+    if(coached)(an as CoachedEnemy).coachedUntil=1e9;
+    A.step(MOLOTOV.aim+MOLOTOV.flight+MOLOTOV.pulses*MOLOTOV.pulseEvery+SIM_HZ);
+    const mine=A.made.filter(m=>m.t.owner===`env:molotov:${an.id}`);
+    return {landing:mine.filter(m=>m.t.kind==='molotov').map(m=>m.t),pulses:mine.filter(m=>m.t.kind==='fogo').map(m=>m.t)};
+  };
+  const buffed=fire(true),plain=fire(false);
+  assert.ok(buffed.landing.length>=1&&buffed.pulses.length>=MOLOTOV.pulses,`${buffed.landing.length} landings, ${buffed.pulses.length} pulses`);
+  for(const t of buffed.landing)assert.ok(near(t.damage,MOLOTOV.damage*PALESTRA.damageMult),`landing ${t.damage}`);
+  for(const t of buffed.pulses)assert.ok(near(t.damage,MOLOTOV.pulseDamage*PALESTRA.damageMult),`pulse ${t.damage}`);
+  assert.ok(plain.pulses.length>=MOLOTOV.pulses);
+  for(const t of [...plain.landing,...plain.pulses]){
+    assert.equal(t.damage,t.kind==='molotov'?MOLOTOV.damage:MOLOTOV.pulseDamage,'uncoached: plain damage');
+    assert.ok(!('mult' in t),'no multiplier carried when there is none');
+  }
+});
+
+test('a siege coach lectures the besiegers at the wall instead of standing idle at it, and never hits it (N2)',()=>{
+  const hits:string[]=[];
+  const wall={id:'muralha',...O,radius:.8};
+  const A=arena(12,3,{structures:()=>[wall],hitStructure:(_ctx,_id,_amount,enemy)=>hits.push(enemy.id)});
+  addPlayer(A.world,'p',at(60));   // far away: the wall is every besieger's nearest target
+  const coach=createEnemy(A.world,'coach',at(-6));coach.memory!.siege=1;
+  const ally=createEnemy(A.world,'bebado',at(-6,1.5));ally.memory!.siege=1;ally.frozenUntil=1e9;
+  A.step(1);
+  assert.equal(coach.memory!.state,STATE.lecture,'the wall in reach: he lectures');
+  A.step(PALESTRA.lecture);
+  assert.ok(coachedUntil(ally)!==undefined,'the besieger beside him is coached');
+  let lectures=0,closest=Infinity;
+  A.step(SIM_HZ*20,()=>{
+    if(coach.memory!.state===STATE.lecture&&coach.phase===ENEMY_PHASE.acting)lectures++;
+    closest=Math.min(closest,Math.hypot(coach.x-wall.x,coach.y-wall.y)-wall.radius);
+  });
+  assert.ok(lectures>=PALESTRA.lecture,'he keeps lecturing between cooldowns');
+  assert.ok(closest>=PALESTRA.minRange-.5,`he keeps his distance from the wall (${closest.toFixed(2)})`);
+  assert.deepEqual(hits.filter(id=>id===coach.id),[],'no melee: the coach never hits the wall');
+  // A siege bebado at the same wall still walks up and hits it.
+  delete ally.frozenUntil;
+  A.step(SIM_HZ*6);
+  assert.ok(hits.includes(ally.id),'the other besiegers still hit the wall');
+});
+
+test('a lecture next to the boss leaves his phase alone and emits no boss-phase event (M3)',()=>{
+  for(const phase of [1,3]){
+    const A=arena(4,10);
+    addPlayer(A.world,'p',at(6));
+    const boss=createEnemy(A.world,'chefe',at(1,-1));boss.phase=phase;
+    createEnemy(A.world,'coach',O);
+    A.step(PALESTRA.lecture+PALESTRA.duration+2,()=>{
+      assert.equal(boss.phase,phase,`boss phase ${phase} untouched at tick ${A.world.tick}`);
+      assert.equal(coachedUntil(boss),undefined);
+    });
+    assert.equal(A.events.filter(e=>e.type==='boss-phase').length,0,'no boss-phase event');
+  }
+});
+
+test('a coached motoboy hits ×PALESTRA.damageMult with his charge and his marmita blast (M5, M7)',()=>{
+  const M=aim({},5);
+  (M.e as CoachedEnemy).coachedUntil=1e9;
+  M.step(MOTOBOY.aim+MOTOBOY.charge+2);
+  const hit=damageTo(M.events,'p',M.e.id);
+  assert.equal(hit.length,1);
+  assert.ok(near(hit[0],MOTOBOY.hitDamage*PALESTRA.damageMult),`charge hit ${hit[0]}`);
+  const blast=M.made.find(m=>m.t.owner===`env:marmita:${M.e.id}`);
+  assert.ok(blast,'the bag explodes');
+  assert.ok(near(blast.t.damage,MOTOBOY.blastDamage*PALESTRA.damageMult),`blast ${blast.t.damage}`);
+});
+
+test('a coached anão: his death explosion is set ×PALESTRA.damageMult (M6)',()=>{
+  const blast=(coached:boolean)=>{
+    const A=arena(4,3);
+    addPlayer(A.world,'p',at(9));
+    const an=createEnemy(A.world,'anao-molotov',O);
+    if(coached)(an as CoachedEnemy).coachedUntil=1e9;
+    A.step(1);
+    A.world.damageEnemy(an.id,1e6,'p');
+    A.step(1);
+    const t=A.made.find(m=>m.t.owner===`env:explosion:${an.id}`);
+    assert.ok(t,'he explodes');
+    return t.t.damage;
+  };
+  assert.ok(near(blast(true),MOLOTOV.deathDamage*PALESTRA.damageMult),'coached');
+  assert.equal(blast(false),MOLOTOV.deathDamage,'plain');
+});
+
+/** An obstacle with open ground in front of its west side (along its own row), and its east side walkable. */
+function rockAhead():{o:{x:number;y:number;radius:number};start:Point;target:Point}{
+  for(let x=-200;x<=200;x+=4)for(let y=-200;y<=200;y+=4)for(const o of obstaclesNear({x,y},2,TERRAIN)){
+    if(o.radius<.3)continue;
+    const start={x:o.x-o.radius-2.5,y:o.y},target={x:o.x+o.radius+.6,y:o.y};
+    let clear=walkable(target,TERRAIN);
+    for(let dx=-1.5;clear&&dx<=2;dx+=.05)for(const dy of [-.5,0,.5]){
+      const pt={x:start.x+dx,y:o.y+dy};
+      if(!walkable(pt,TERRAIN)||obstaclesNear(pt,.5,TERRAIN).some(b=>b!==o&&Math.hypot(pt.x-b.x,pt.y-b.y)<b.radius+.6)){clear=false;break;}
+    }
+    if(clear)return {o,start,target};
+  }
+  throw new Error('no rock with open ground in front of it');
+}
+
+test('motoboy: a rock that eats his step ends the charge at once in a crash, not at the end of the run (M8)',()=>{
+  const {o,start,target}=rockAhead();
+  const A=arena(6,3);
+  const p=addPlayer(A.world,'p',target);
+  const e=createEnemy(A.world,'motoboy',start);
+  A.step(1);
+  assert.equal(e.memory!.state,STATE.joke,'he aims at the hero behind the rock');
+  p.invulnerableUntil=1e9;
+  let crashedAt=-1,lastX=e.x;
+  for(let i=0;i<MOTOBOY.aim+MOTOBOY.charge+2&&crashedAt<0;i++){
+    if(A.world.enemies.has(e.id))lastX=e.x;
+    A.step(1);
+    if(!A.world.enemies.has(e.id))crashedAt=A.world.tick;
+  }
+  assert.ok(crashedAt>0,'he crashed');
+  assert.ok(A.made.some(m=>m.t.owner===`env:marmita:${e.id}`),'the bag explodes');
+  assert.ok(lastX<o.x-o.radius,'stopped on the near side of the rock');
+  assert.ok(crashedAt<1+MOTOBOY.aim+MOTOBOY.charge-5,`crashed when the rock stopped him (tick ${crashedAt}), not at the end of the run`);
 });
 
 // ---------- Determinism ----------

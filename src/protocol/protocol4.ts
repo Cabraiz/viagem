@@ -41,10 +41,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * 8 since D-034: the world kind 'cidade' (Cidade Nevada, seed 0 + asset sha256); a 7 decoder would refuse the frame's
  * world byte, so it must ask to update instead. 9 since D-036: the player's slow/slip state (prediction), the telegraph
  * kind and the D-033 cast in the DICT; an 8 decoder would refuse the player field mask and read the new dictionary
- * indexes as unknown strings.
+ * indexes as unknown strings. 10 since the P1 cast (NEW-20261012-ORQ-elenco-p1): 'coach', 'motoboy' and 'influencer'
+ * in the DICT (they went inline in 9: 1 + 1 + their UTF-8 bytes each, on every enemy, kill and downed event); a 9
+ * decoder would read their indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=9;
+export const PROTOCOL_VERSION=10;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -82,6 +84,8 @@ export const DICT:readonly string[]=[
   // kinds (TELEGRAPH_KINDS; 'coco' is above). Each was 1 + 1 + its UTF-8 bytes inline in protocol 8.
   'bebado','anao-molotov','pombos','agiota','boleto-juros',
   'arroto','molotov','fogo','explosao','pancada','investida','varredura','carimbo',
+  // Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast. Each was 1 + 1 + its UTF-8 bytes inline in protocol 9.
+  'coach','motoboy','influencer',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;

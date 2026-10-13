@@ -27,7 +27,8 @@ import type {TauntedEnemy} from '../skills.ts';
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
  * consider it, and go for whichever is closer: a player or the structure's edge (NEW-20261006-E8-wall-siege-single-path).
  * Everyone else ignores structures. Against a structure every kind walks up and hits it (the agiota and the anão too: a boleto does
- * not hurt a wall, a molotov is not thrown at it).
+ * not hurt a wall, a molotov is not thrown at it), except the coach, who has no melee: a siege coach keeps his support logic
+ * against the wall (PALESTRA.minRange..maxRange from its edge, lecturing the besiegers around him).
  */
 export interface StructureTarget extends Point {id:string;radius:number}
 export interface EnemyAiOptions {
@@ -96,10 +97,11 @@ const MOTOBOY_CHARGE:ChargeSpec={pause:MOTOBOY.aim,charge:MOTOBOY.charge,chargeS
 
 /**
  * Telegraph extras (D-002, JSON-safe; the wire only sends the shape fields): `pulses` left after this one lands
- * (molotov fire), `enemyDamage` dealt to enemies inside it when it fires (anão explosion).
+ * (molotov fire), `mult` the thrower's coach multiplier at the throw (PALESTRA.damageMult; absent = 1), which every
+ * fire pulse of the chain keeps, `enemyDamage` dealt to enemies inside it when it fires (anão explosion).
  */
-export interface HazardTelegraph extends Telegraph {pulses?:number;enemyDamage?:number}
-type HazardSpec=TelegraphSpec&{pulses?:number;enemyDamage?:number};
+export interface HazardTelegraph extends Telegraph {pulses?:number;mult?:number;enemyDamage?:number}
+type HazardSpec=TelegraphSpec&{pulses?:number;mult?:number;enemyDamage?:number};
 /** Pending telegraphs whose owner starts with `prefix` (or equals it, when `exact`). */
 const countOwned=(ctx:SimContext,prefix:string,exact=false)=>{
   let n=0;for(const t of ctx.telegraphs.values())if(exact?t.owner===prefix:t.owner.startsWith(prefix))n++;return n;
@@ -213,8 +215,13 @@ export class EnemyAi implements SimSystem {
       // Bosses belong to VGM-038; retreating enemies are walked into the sea by the director (D-010).
       if(e.hp<=0||e.boss)continue;
       // A retreating enemy never comes back for a taunt; drop it so checkpoints stay clean.
-      // Its pending burp is cancelled too (D-010: retreaters deal no damage).
-      if(e.memory?.retreat===1){delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);continue;}
+      // Its pending burp is cancelled too (D-010: retreaters deal no damage), and so is the influencer's pose (a
+      // retreater reflects nothing, catalog.ts isReflecting).
+      if(e.memory?.retreat===1){
+        delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);
+        if(e.memory.state===STATE.pose){e.memory.state=STATE.walk;delete e.memory.reflectSay;}
+        continue;
+      }
       const memory=e.memory??={};
       memory.seed??=hashUnit(e.id);memory.state??=STATE.walk;memory.until??=0;memory.hitReady??=0;memory.actReady??=0;
       if(e.knock){
@@ -242,8 +249,8 @@ export class EnemyAi implements SimSystem {
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
-      // (an interrupted joke takes its charge line with it).
-      if(!player&&memory.state!==STATE.walk){
+      // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
+      if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
         if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
         memory.state=STATE.walk;
       }
@@ -259,7 +266,8 @@ export class EnemyAi implements SimSystem {
         if(this.options.steer?.(ctx,e,target,this.steerOut)){ux=this.steerOut.x;uy=this.steerOut.y;}
         const touching=best<=e.radius+PLAYER_RADIUS+CONTACT_MARGIN;
         const def=enemyDef(e.kind);
-        switch(structure?'chase':def.behavior){
+        // Against a structure every kind walks up and hits it; the coach (no melee) lectures the besiegers instead.
+        switch(structure&&def.behavior!=='coach'?'chase':def.behavior){
           case 'stagger':{
             // Burp wind-up: he stands still until the cone fires.
             if(memory.state===STATE.burp){
@@ -360,7 +368,8 @@ export class EnemyAi implements SimSystem {
               if(ally)this.bark(ctx,rng,ally,BUFFED_LINES,'coach:buffed');
               delete memory.cheer;
             }
-            if(player&&best<=PALESTRA.trigger&&ctx.tick>=memory.actReady){
+            // A player (or, for a siege coach, the wall he besieges) in reach: he lectures the allies around him.
+            if(best<=PALESTRA.trigger&&ctx.tick>=memory.actReady){
               memory.state=STATE.lecture;memory.until=ctx.tick+PALESTRA.lecture;
               this.bark(ctx,rng,e,PALESTRA_LINES,'coach:palestra');
             }else if(best>PALESTRA.maxRange){dirX=ux;dirY=uy;}
@@ -603,7 +612,10 @@ export class EnemyAi implements SimSystem {
   private throwMolotov(ctx:SimContext,e:EnemyState,player:SimPlayer){
     const owner=HAZARD_OWNERS.molotov+e.id;
     if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
-    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage*coachMult(e,ctx.tick),owner,pulses:MOLOTOV.pulses,kind:'molotov'} as HazardSpec,MOLOTOV.flight);
+    // A coached anão's fire burns coached too: the landing carries the multiplier for its pulses (`mult`, landHazards).
+    const mult=coachMult(e,ctx.tick);
+    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage*mult,owner,pulses:MOLOTOV.pulses,
+      ...(mult!==1?{mult}:{}),kind:'molotov'} as HazardSpec,MOLOTOV.flight);
     return true;
   }
 
@@ -624,7 +636,9 @@ export class EnemyAi implements SimSystem {
     for(const t of ctx.telegraphs.values())if(t.fireTick<=ctx.tick&&t.owner.startsWith('env:'))due.push(t);
     for(const t of due){
       if((t.pulses??0)>0&&t.owner.startsWith(HAZARD_OWNERS.molotov)&&ctx.telegraphs.size<=(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP)){
-        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage,owner:t.owner,pulses:t.pulses!-1,kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
+        const mult=t.mult??1;
+        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage*mult,owner:t.owner,pulses:t.pulses!-1,
+          ...(mult!==1?{mult}:{}),kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
       }
       if((t.enemyDamage??0)>0){
         const victims:string[]=[];

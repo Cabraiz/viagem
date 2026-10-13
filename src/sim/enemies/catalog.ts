@@ -266,8 +266,12 @@ export const POSE_STATE=6;
 export const POSE_LINES:readonly string[]=Object.freeze(['Ninguém atira! Tô gravando!','Pera, achei a luz boa!','Pose de bíceps: modo escudo!','Contrai o abdômen! Sorri!','Mais uma! Agora de perfil!','Para tudo: hora do pump!']);
 /** Said by the influencer after a reflection (the projectile system flags memory.reflectSay; enemy-ai says it). */
 export const REFLECT_LINES:readonly string[]=Object.freeze(['Bateu no shape e voltou!','Devolvido com filtro!','Teu tiro saiu no meu story!','Rebatido! Me marca, hein!','Volta pro remetente, monstro!']);
-/** True while `enemy` is a live influencer in his pose (reflects friendly shots). */
-export const isReflecting=(enemy:EnemyState,tick:number)=>enemy.kind==='influencer'&&enemy.hp>0&&enemy.memory?.state===POSE_STATE&&tick<(enemy.memory.until??-Infinity);
+/**
+ * True while `enemy` is a live influencer in his pose (reflects friendly shots). A retreating one (D-010, memory.retreat)
+ * never reflects: retreaters deal no damage, and enemy-ai also drops his pose when the retreat starts.
+ */
+export const isReflecting=(enemy:EnemyState,tick:number)=>enemy.kind==='influencer'&&enemy.hp>0&&enemy.memory?.retreat!==1
+  &&enemy.memory?.state===POSE_STATE&&tick<(enemy.memory.until??-Infinity);
 
 /** Owner prefixes of the hazards that outlive their thrower (telegraphs.ts `env:` rule). */
 export const HAZARD_OWNERS=Object.freeze({molotov:'env:molotov:',explosion:'env:explosion:',poop:'env:poop:',marmita:'env:marmita:'});

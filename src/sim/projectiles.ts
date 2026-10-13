@@ -162,9 +162,11 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
 
   function steer(ctx:SimContext,p:WeaponProjectile){
     let target=p.homing?ctx.enemies.get(p.homing):undefined;
-    // Retarget when the current target died or was already hit (piercing pigeons move on).
+    // Retarget when the current target died or was already hit (piercing pigeons move on). A posing influencer
+    // (isReflecting) is skipped, so the shot does not seek its own reflection, unless the owner tapped him.
     if(!target||target.hp<=0||p.hit.includes(target.id)){
-      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&!p.hit.includes(e.id));
+      const tapped=ctx.players.get(p.owner)?.target;
+      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&!p.hit.includes(e.id)&&(e.id===tapped||!isReflecting(e,ctx.tick)));
       p.homing=target?.id;
     }
     if(!target)return;

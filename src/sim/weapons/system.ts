@@ -9,7 +9,7 @@ import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,spawnProjectile} from '../projectiles.ts';
-import {isPriorityTarget} from '../enemies/catalog.ts';
+import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
 
 /** Speed and life of sandals flung by the evolved orbit. */
 const FLING_SPEED=8,FLING_SECONDS=1,FLING_PIERCE=2;
@@ -38,7 +38,9 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
 
   /**
    * Up to `count` live enemies within range: the player's tap target first (if valid), then the live coaches in range
-   * (priority target, enemies/catalog.ts isPriorityTarget; nearest first), then nearest, ties by id.
+   * (priority target, enemies/catalog.ts isPriorityTarget; nearest first), then nearest, ties by id; influencers posing
+   * right now (isReflecting: the shot would come back) only after every other candidate. A tapped one still comes first:
+   * the player asked for it.
    */
   function targets(ctx:SimContext,player:SimPlayer,range:number,count:number):EnemyState[]{
     const out:EnemyState[]=[];
@@ -49,7 +51,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     scratch.length=0;
     ctx.enemyIndex.query(player.x,player.y,range,scratch);
     const rest=scratch.filter(e=>e!==preferred&&inRange(e))
-      .map(e=>({e,d:Math.hypot(e.x-player.x,e.y-player.y),first:isPriorityTarget(e)?0:1}))
+      .map(e=>({e,d:Math.hypot(e.x-player.x,e.y-player.y),first:isReflecting(e,ctx.tick)?2:isPriorityTarget(e)?0:1}))
       .sort((a,b)=>a.first-b.first||a.d-b.d||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
     for(const {e} of rest){if(out.length>=count)break;out.push(e);}
     return out;

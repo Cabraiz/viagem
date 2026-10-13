@@ -41,6 +41,8 @@ export interface DefenseState extends Point {
   startTick:number;readyTick:number;
   /** Next tick it may fire. */
   fireTick:number;
+  /** Where it last fired (radians, atan2 of the first target), for the client's turret (torres-fio). */
+  aim?:number;
   ruined?:true;
 }
 export interface RailState {owner:string;startTick:number;readyTick:number}
@@ -202,6 +204,7 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
     if(def.target==='strongest')picks=[...pool].sort((a,b)=>b.hp-a.hp).slice(0,def.shots); // stable: ties stay nearest-first
     else if(def.target==='cluster')picks=[densest(pool,def.area)];
     else picks=pool.slice(0,def.shots);
+    if(picks[0])d.aim=Math.atan2(picks[0].y-d.y,picks[0].x-d.x);
     for(let i=0;i<picks.length;i++){
       const e=picks[i],at={x:e.x,y:e.y};
       if(def.area>0)hitArea(ctx,def,at,def.area);

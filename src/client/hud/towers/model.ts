@@ -1,0 +1,156 @@
+/**
+ * Build menu view-model (torres-hud, D-041): what the intermission's obra menu shows for one build site, from the rules
+ * port's defense tree (src/rules/towers.ts) and a view of the team's towers. Pure (no DOM): node-tested.
+ * Until torres-fio puts the defenses on the wire, the HUD takes an ObraView injected by its host (the sandbox drives it
+ * from fake data shaped like the sim's TowersState). The refusals mirror src/sim/towers/system.ts in the same order, so
+ * a card the menu offers is one the sim accepts.
+ */
+import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,unitsOf,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+
+/** A tower as the menu sees it (the sim's DefenseState, reduced). */
+export interface ObraTower {id:string;kind:DefenseId;building?:boolean;ruined?:boolean}
+/** A build site at its screen point (CSS px, projected by the host). */
+export interface ObraSite {id:string;x:number;y:number;maxSize:DefenseSize;tower?:ObraTower}
+/** The Gustavão's rail ('trilho') at its screen point: laid once per run; `ready` once its obra is done. */
+export interface ObraRail {x:number;y:number;laid:boolean;ready:boolean}
+export interface ObraView {
+  /** Round phase 'prepare' (the intermission): the only time the menu shows. */
+  prepare:boolean;
+  sites:readonly ObraSite[];rail?:ObraRail;
+  balance:{coco:number;pedra:number};
+  /** Standing defenses of the team (ruins do not count) and Gustavões built this run (a ruined one counts). */
+  standing:number;gustavoes:number;
+}
+
+export type ObraBlock='balance'|'limit'|'unique'|'rail'|'size'|'building'|'root'|'origin';
+export type ObraAction={type:'build';site:string}|{type:'upgrade';defense:string;branch:string};
+export interface ObraCard {
+  key:string;name:string;label:string;branch:Branch|null;cost:number;effect:string;
+  /** buy: an option (blocked or not); have: the defense standing there; obra: under construction. */
+  status:'buy'|'have'|'obra';
+  block?:ObraBlock;
+  /** Units missing when block = 'balance'. */
+  missing?:number;
+  action?:ObraAction;
+  rail?:true;
+}
+export interface ObraTree {site:string;head:ObraCard;branches:ObraCard[]}
+
+export const RAIL_SITE_ID=RAIL.siteId;
+export const BRANCH_NAME:Readonly<Record<Branch,string>>=Object.freeze({A:'Mais atiradores',B:'Explosivos',C:'Controle e apoio'});
+/** One line per defense (pt-BR, at most one short joke). */
+export const EFFECT:Readonly<Record<DefenseId,string>>=Object.freeze({
+  'vigia-do-predio':'Um vigia e um 38',
+  'vigias-armados':'2 alvos por rajada',
+  'atiradores-do-telhado':'3 alvos por rajada',
+  'ninho-de-metralhadora':'Chuva de bala, 4 alvos',
+  'guarnicao-do-predio':'6 alvos, sem dó',
+  'ninho-do-sniper':'Mira no mais forte',
+  'equipe-antimaterial':'Chefe treme na base',
+  'rojao-de-festa':'Explode em área',
+  'morteiro':'Cai onde tem bolo',
+  'lanca-foguetes':'4 foguetes de uma vez',
+  'obuseiro':'Área grande, bem lento',
+  'gustavao':'Apaga meio mapa',
+  'holofote':'Ofusca e atrasa',
+  'arame-e-sirene':'Atrasa quem encosta',
+  'antiaerea-quadrupla':'Só no que voa',
+  'posto-de-radar':'+30% de alcance perto',
+});
+export const RAIL_NAME='Linha férrea',RAIL_EFFECT='Trilho do Gustavão';
+
+/** The short reason a card is blocked (shown with the lock and a dashed edge, never by colour alone; the tag's
+ * aria-label says it in full). Short enough to leave the name its line at 125 %. */
+export function blockText(card:Pick<ObraCard,'block'|'missing'>):string{
+  switch(card.block){
+    case 'balance':return `Falta ${card.missing??0}`;
+    case 'limit':return `Limite ${DEFENSE_LIMIT}`;
+    case 'unique':return `Já tem ${GUSTAVAO_LIMIT}`;
+    case 'rail':return 'Sem trilho';
+    case 'size':return 'Não cabe';
+    case 'building':return 'Em obra';
+    case 'root':return 'Vigia antes';
+    case 'origin':return 'Do Obuseiro';
+    default:return '';
+  }
+}
+/** The reason in full words, for the tag's aria-label. */
+export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
+  switch(card.block){
+    case 'balance':return `Falta ${card.missing??0} de material`;
+    case 'limit':return `O time já tem ${DEFENSE_LIMIT} defesas`;
+    case 'unique':return `Só ${GUSTAVAO_LIMIT} Gustavão por partida`;
+    case 'rail':return 'Precisa da linha férrea pronta';
+    case 'size':return 'Não cabe neste ponto';
+    case 'building':return 'Ainda em obra';
+    case 'root':return 'Primeiro construa a Vigia';
+    case 'origin':return 'Evolui do Obuseiro Pesado';
+    default:return '';
+  }
+}
+export const selectable=(card:ObraCard)=>card.status==='buy'&&!card.block&&!!card.action;
+
+function card(d:DefenseDef,status:ObraCard['status']):ObraCard{
+  return {key:d.id,name:d.name,label:d.label,branch:d.branch,cost:d.cost,effect:EFFECT[d.id],status,...(d.rail?{rail:true as const}:{})};
+}
+function pay(c:ObraCard,view:ObraView):ObraCard{
+  const have=unitsOf(view.balance);
+  return c.block||have>=c.cost?c:{...c,block:'balance',missing:Math.ceil(c.cost-have)};
+}
+/** Why `next` cannot grow out of the tower on `site` (the sim's upgrade order: rail, unique, size; then balance). */
+function childBlock(next:DefenseDef,site:ObraSite,view:ObraView):ObraBlock|undefined{
+  if(next.rail){
+    if(!view.rail?.ready)return 'rail';
+    if(view.gustavoes>=GUSTAVAO_LIMIT)return 'unique';
+  }else if(next.size!>site.maxSize)return 'size';
+  return undefined;
+}
+const liveTower=(site:ObraSite)=>site.tower&&!site.tower.ruined?site.tower:undefined;
+
+/** The tree for one site: the head (the Vigia to build, or what stands there) and its branches. */
+export function treeFor(site:ObraSite,view:ObraView):ObraTree{
+  const t=liveTower(site),root=DEFENSES[ROOT_DEFENSE];
+  if(!t){
+    // An empty site (or a ruin, cleared by the new obra): the head is the Vigia; its branches wait for it.
+    const block:ObraBlock|undefined=root.size!>site.maxSize?'size':view.standing>=DEFENSE_LIMIT?'limit':undefined;
+    const head=pay(block?{...card(root,'buy'),block}:card(root,'buy'),view);
+    if(!head.block)head.action={type:'build',site:site.id};
+    return {site:site.id,head,branches:childrenOf(root.id).map(d=>({...card(d,'buy'),block:'root' as const}))};
+  }
+  const now=DEFENSES[t.kind];
+  const head=card(now,t.building?'obra':'have');
+  const branches=childrenOf(now.id).map(d=>{
+    const c=card(d,'buy');
+    if(t.building)return {...c,block:'building' as const};
+    const block=childBlock(d,site,view);
+    const priced=pay(block?{...c,block}:c,view);
+    return priced.block?priced:{...priced,action:{type:'upgrade' as const,defense:t.id,branch:d.label}};
+  });
+  return {site:site.id,head,branches};
+}
+
+/** The rail's tree: laying it (once per run), with the Gustavão it unlocks shown locked (it grows from the Obuseiro). */
+export function railTree(view:ObraView):ObraTree{
+  const rail=view.rail,g=DEFENSES.gustavao;
+  const base:ObraCard={key:RAIL.id,name:RAIL_NAME,label:'',branch:'B',cost:RAIL.cost,effect:RAIL_EFFECT,rail:true,
+    status:rail?.laid?(rail.ready?'have':'obra'):'buy'};
+  let head=base.status==='buy'?pay(base,view):base;
+  if(head.status==='buy'&&!head.block)head={...head,action:{type:'build',site:RAIL_SITE_ID}};
+  const gust:ObraCard={...card(g,'buy'),block:view.gustavoes>=GUSTAVAO_LIMIT?'unique':'origin'};
+  return {site:RAIL_SITE_ID,head,branches:[gust]};
+}
+
+/** The evolve arrow: a ready tower with at least one child the team can build right now. */
+export function canEvolve(site:ObraSite,view:ObraView):boolean{
+  const t=liveTower(site);
+  if(!t||t.building)return false;
+  const have=unitsOf(view.balance);
+  return childrenOf(t.kind).some(d=>!childBlock(d,site,view)&&have>=d.cost);
+}
+
+/** The card a tap on the site preselects: the head when it is buyable, else the first open branch. */
+export function defaultPick(tree:ObraTree):string|undefined{
+  if(selectable(tree.head))return tree.head.key;
+  return tree.branches.find(selectable)?.key;
+}
+export const cardsOf=(tree:ObraTree)=>[tree.head,...tree.branches];

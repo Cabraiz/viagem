@@ -7,7 +7,7 @@
  * CityAsset type and the terrain's height scale.
  */
 import type {CityAsset as MapsCityAsset,CityBlock as MapsCityBlock} from '../../../maps/index.ts';
-import {CITY_HEIGHT_PX_PER_UNIT} from '../../../maps/index.ts';
+import {CITY_HEIGHT_PX_PER_UNIT,cityRelief} from '../../../maps/index.ts';
 import type {BlockKind,CityAsset,CityBlock,CityPointName,CityProp,PropKind} from './asset.ts';
 import {HEIGHT_PX} from './projection.ts';
 
@@ -113,7 +113,7 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
   const W=asset.cells.w,H=asset.cells.h,cell=asset.unitsPerCell,cells=W*H;
 
   // 1–2. Heights at corners, in render units, matching CityTerrain's pixel height.
-  const hw=W+1,hh=H+1,hc=asset.heightsCenti;
+  const hw=W+1,hh=H+1,hc=asset.heightsCenti,relief=cityRelief(asset);
   let min=terrainMinHeight;
   if(min===undefined||!Number.isFinite(min)){
     let m=Infinity;
@@ -121,7 +121,8 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
     min=Number.isFinite(m)?m/100:0;
   }
   const corners:number[]=new Array(hw*hh);
-  for(let i=0;i<hw*hh;i++)corners[i]=(hc[i]/100-min)*HEIGHT_SCALE;
+  // The relief (maps/city/relief.ts: ramps, snow undulation), the surface CityTerrain.bed puts actors on.
+  for(let i=0;i<hw*hh;i++)corners[i]=(relief[i]-min)*HEIGHT_SCALE;
   const heights:number[]=new Array(cells);
   for(let cy=0;cy<H;cy++)for(let cx=0;cx<W;cx++){
     const i=cy*hw+cx;

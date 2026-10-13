@@ -35,6 +35,14 @@
  * Imported art (card ligar-arte-v2): the city's buildings, rubble, props and fountain from `/art/manifest.json`
  * (render/city/art-plan.ts); `arte=0` draws without it, `altura=a|b` picks the building scale (a: 1 storey ≈ 2.4 u on
  * 2×2-cell lots, b: as delivered).
+ * `torres=1|12` (card torres-render): the game's TowerRenderer (render/towers/towers.ts) with defenses around the hero:
+ *   `1` a showcase (A3 atiradores, B3 morteiro and C2 holofote firing, C3 arame, B5 obuseiro danificada, a Vigia in
+ *   obra-2, a ruined A4 and the Gustavão on its rail to the north, whose shells shake the screen and leave a crater),
+ *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
+ *   The client may not import the sim (tests/arquitetura.test.ts), so a stand-in stepper fires like the sim's
+ *   defensesStep (ready, cooldown, nearest reachable enemy) with the test-checked table of render/towers/tower-rules.ts,
+ *   at the wandering stand-in enemies (`n`, default 60 here; every 10th one flies). Until torres-fio puts the defenses on
+ *   the wire. `window.__cidade.torres()` counts the live effects; `shake()` the current shake.
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
@@ -57,6 +65,9 @@ import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
+import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
+import {TOWER_LOOK,aimIndex,type TowerKind,type TowerView} from '../render/towers/tower-rules.ts';
+import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -64,7 +75,9 @@ const heroParam=params.get('hero');
 const cellsOverride=Number(params.get('cells'))||undefined;
 const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
-const enemies=Math.max(0,Math.min(600,Number(params.get('n'))|0));
+const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
+const towersDrawn=params.get('desenho')!=='0';
+const enemies=Math.max(0,Math.min(600,params.has('n')||!towersParam?Number(params.get('n'))|0:60));
 const base=params.get('base')==='1';
 const basePhase:'prepare'|'wave'=params.get('fase')==='wave'?'wave':'prepare';
 /** Distance (u) of the showcase barricades from the wall: compact, so all four fit a 390×844 screen. */
@@ -121,6 +134,11 @@ class CitySandbox extends Phaser.Scene {
   /** tele=1: the game's city-mode renderers. */
   private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
   private decoded?:CityTerrain;
+  /** torres=…: the stand-in defenses, the renderer and the enemies' parallel arrays it aims at. */
+  private defenses:TowerView[]=[];
+  private towers?:TowerRenderer;
+  private ex=new Float32Array(0);private ey=new Float32Array(0);private air=new Uint8Array(0);
+  private simStart=-1;
   constructor(){super('city-sandbox');}
   private art?:CityArtPlan;
   preload(){
@@ -129,6 +147,7 @@ class CitySandbox extends Phaser.Scene {
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
+    if(towersParam)queueTowerArt(this);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
   }
   create(){
@@ -154,6 +173,7 @@ class CitySandbox extends Phaser.Scene {
     this.spawnHorde();
     if(centre)this.mountBase(centre);
     if(tele)this.buildLab();
+    if(towersParam)this.mountTowers();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -164,7 +184,7 @@ class CitySandbox extends Phaser.Scene {
     });
     const turn=document.createElement('button');
     turn.className='cidade-turn';turn.type='button';turn.textContent='↻';turn.setAttribute('aria-label','Girar a câmera');
-    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();}});
+    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();}this.towers?.refresh();});
     host.append(turn);// inside the sandbox root: everything else in body is hidden
     if(enemies){this.fpsLabel=document.createElement('div');this.fpsLabel.className='cidade-fps';host.append(this.fpsLabel);}
     // Warm the fade so a covering building is already translucent on the first screenshot.
@@ -178,6 +198,7 @@ class CitySandbox extends Phaser.Scene {
     this.tick(dt);
     this.stone?.update(_t);
     this.drawLab(_t,dt);
+    this.stepTowers(_t,dt);
   }
   /**
    * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the
@@ -234,6 +255,48 @@ class CitySandbox extends Phaser.Scene {
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination};
     this.markDestination();
+  }
+  /** torres=1|12: the defenses around the hero (see the header) and the renderer on the city's projection. */
+  private mountTowers(){
+    const asset=this.asset,c=asset.cell,{x,y}=this.at,tick=0;
+    const make=(kind:TowerKind,dx:number,dy:number,extra:Partial<TowerView>={}):TowerView=>{
+      const l=TOWER_LOOK[kind],size=kind==='vigia-do-predio'?1:Math.min(3,Math.max(...l.footprint)),hp=100;
+      return {id:`defesa-${this.defenses.length+1}`,kind,x:x+dx*c,y:y+dy*c,r:(kind==='gustavao'?6:size)*c/2,hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((this.defenses.length*7)%20),...extra};
+    };
+    if(towersParam===12){
+      const kinds:TowerKind[]=['vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
+        'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','holofote','arame-e-sirene'];
+      kinds.forEach((k,i)=>{const a=i/12*Math.PI*2;this.defenses.push(make(k,Math.cos(a)*4.6,Math.sin(a)*4.6));});
+    }else{
+      const far=1e6;
+      this.defenses.push(make('atiradores-do-telhado',-2.4,-1.6),make('morteiro',2.6,-1.4),make('holofote',.2,-2.6),
+        make('arame-e-sirene',-2.6,1.8),make('obuseiro',2.8,2.2,{hp:40}),make('vigia-do-predio',.3,3.2,{startTick:-far,readyTick:far}),
+        make('ninho-de-metralhadora',-4.6,-.2,{ruined:true,hp:0}),make('gustavao',1,-12,{fireTick:tick+45}));
+    }
+    const n=this.horde.length;this.ex=new Float32Array(n);this.ey=new Float32Array(n);this.air=new Uint8Array(n);
+    for(let i=0;i<n;i++)this.air[i]=i%10===9?1:0;
+    if(!towersDrawn)return;
+    const view=()=>this.view;
+    this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,fxDepth:1e9,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+      world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},
+        depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0}});
+    this.towers.setEnemies(n,this.ex,this.ey,this.air);
+  }
+  /** Stand-in for the sim's defensesStep (ready, cooldown, nearest reachable enemy), then the renderer's frame. */
+  private stepTowers(time:number,dt:number){
+    if(!this.defenses.length)return;
+    if(this.simStart<0)this.simStart=time;
+    const tick=Math.floor((time-this.simStart)*SIM_HZ/1000),n=this.horde.length;
+    for(let i=0;i<n;i++){const w=this.horde[i];this.ex[i]=w.x;this.ey[i]=w.y;}
+    for(const d of this.defenses){
+      const l=TOWER_LOOK[d.kind];
+      if(d.ruined||tick<d.readyTick||tick<d.fireTick||l.calibre==='radar')continue;
+      if(aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air)<0)continue;
+      d.fireTick=tick+Math.max(1,Math.round(l.cooldown*SIM_HZ));
+    }
+    const t=this.towers;if(!t)return;
+    t.push(tick,this.defenses,time);
+    t.update(time,dt,[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
   private markDestination(){
@@ -293,7 +356,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   private tick(dt:number){

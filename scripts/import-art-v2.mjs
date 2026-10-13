@@ -2,16 +2,17 @@
 // scripts/art-v2/spec.mjs (board: design/inventario-sprites.md and design/arte-v2.md §5–6), validates every piece,
 // converts the approved ones to lossless WebP with a manifest per group, and writes an HTML report for the artist.
 // Partial delivery: approved pieces are written even when others fail; a rejected piece writes nothing; an absent one
-// stays "pendente" and the game keeps its current art. Never touches src/client/sprites/sprite-catalog.ts.
+// stays "pendente" (P0; a P1/P2 one is "opcional") and the game keeps its current art. After the group manifests, the
+// client index public/art/manifest.json is rewritten (not in --dry-run). Never touches src/client/sprites/sprite-catalog.ts.
 //
 //   node scripts/import-art-v2.mjs [--input <pasta>] [--dry-run] [--report <arquivo.html>]
-import {readdir,writeFile,stat} from 'node:fs/promises';
+import {readdir,writeFile,stat,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import sharp from 'sharp';
-import {GROUPS} from './art-v2/spec.mjs';
+import {GROUPS,priorityOf} from './art-v2/spec.mjs';
 import {validatePiece,relName,SILHOUETTE} from './art-v2/validate.mjs';
-import {convertPiece,writeManifest,readManifest,manifestPath,plannedOutputs} from './art-v2/convert.mjs';
+import {convertPiece,writeManifest,readManifest,manifestPath,plannedOutputs,writeIndex} from './art-v2/convert.mjs';
 
 export const DEFAULT_INPUT='D:/Gits/viagem-board/arte-entrada';
 export const REPORT_NAME='relatorio-importacao.html';
@@ -78,7 +79,9 @@ async function collect(group,spec,ctx){
       else reject(full,`fora de uma pasta de mapa. Coloque em ${spec.input}/<mapa>/ (ex.: ${spec.input}/cidade-nevada/${e.name}).`);
     }
   }else await pair(dir,'');
-  return {pieces,unknown,order:[...pieces.keys()].sort()};
+  // The inventory's list (spec `expected`) comes first, so an absent listed piece is reported; extra ids follow.
+  const listed=Object.keys(spec.expected??{});
+  return {pieces,unknown,order:[...listed,...[...pieces.keys()].filter(id=>!Object.hasOwn(spec.expected??{},id)).sort()]};
 }
 
 /**
@@ -118,6 +121,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
   const ctx={input,repoRoot};
   if(Object.values(selected).some(s=>s.pieces==='classes'))ctx.classes=await approvedClasses(repoRoot);
   const pieces=[],written=[],thumbFiles=new Map();
+  let wroteManifest=false;
   for(const [group,spec] of Object.entries(selected)){
     const {pieces:found,unknown,order}=await collect(group,spec,ctx);
     // The group's current manifest: lets the validator see pieces approved in earlier runs (e.g. an elite layer alone).
@@ -125,16 +129,18 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
     const entries={};
     for(const id of order){
       const files=found.get(id);
-      if(!files){pieces.push({group,id,status:'pendente',problems:[],notes:[],files:[],outputs:[]});continue;}
+      const priority=priorityOf(spec,id);
+      // Absent: a P0 piece is pending; a P1/P2 one is only optional (never counted as pending).
+      if(!files){pieces.push({group,id,status:priority==='P0'?'pendente':'opcional',priority,problems:[],notes:[],files:[],outputs:[]});continue;}
       files.sort();
-      const result={group,id,status:'aprovado',problems:[],notes:[],files:files.map(f=>relName(ctx,f)),outputs:[]};
+      const result={group,id,status:'aprovado',priority,problems:[],notes:[],files:files.map(f=>relName(ctx,f)),outputs:[]};
       result.source=spec.kind==='animations'?`${spec.input}/${id}`:relName(ctx,files.find(f=>/\.png$/i.test(f))??files[0]);
-      const {problems,notes,sheets,kind}=await validatePiece(group,id,files,{...ctx,spec,manifest});
+      const {problems,notes,sheets,kind,meta}=await validatePiece(group,id,files,{...ctx,spec,manifest});
       result.problems=problems;result.notes=Array.isArray(notes)?notes:[];
       if(!problems.length){
         try{
           if(write){
-            const {entry,written:out}=await convertPiece(spec,id,kind,sheets,{outRoot,previous:manifest?.pieces?.[id]});
+            const {entry,written:out}=await convertPiece(spec,id,kind,sheets,{outRoot,previous:manifest?.pieces?.[id],meta});
             entries[id]=entry;written.push(...out);result.outputs=out.map(f=>repoRel(outRoot,f));
           }else result.outputs=await plannedOutputs(spec,sheets);
         }catch(e){
@@ -153,8 +159,10 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
       if(!u.isDir)thumbFiles.set(result,[u.file]);
       pieces.push(result);
     }
-    if(Object.keys(entries).length)written.push(await writeManifest(group,spec,entries,{outRoot}));
+    if(Object.keys(entries).length){written.push(await writeManifest(group,spec,entries,{outRoot}));wroteManifest=true;}
   }
+  // The client reads one index (public/art/manifest.json): every group manifest on disk, rewritten after any change.
+  if(wroteManifest)written.push(await writeIndex({...GROUPS,...selected},{outRoot}));
   // Thumbnails last, for the first THUMB_LIMIT refused pieces only (keeps the HTML report small).
   const refused=pieces.filter(p=>p.status==='reprovado');
   for(const p of refused.slice(0,THUMB_LIMIT)){const files=thumbFiles.get(p);if(files)p.thumb=await thumbOf(files,p.problems,ctx);}
@@ -168,6 +176,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
       throw e;
     }
     reportFile=path.resolve(reportFile);
+    await mkdir(path.dirname(reportFile),{recursive:true});
     await writeFile(reportFile,report.renderReport(pieces,{generatedAt:new Date(),dryRun:!write,thumbsOmitted}));
     out.reportFile=reportFile;
   }
@@ -176,8 +185,8 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
 
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 function count(pieces){
-  const c={aprovado:0,reprovado:0,pendente:0};for(const p of pieces)c[p.status]++;
-  return `${plural(c.aprovado,'aprovada','aprovadas')}, ${plural(c.reprovado,'reprovada','reprovadas')}, ${plural(c.pendente,'pendente','pendentes')}`;
+  const c={aprovado:0,reprovado:0,pendente:0,opcional:0};for(const p of pieces)c[p.status]++;
+  return `${plural(c.aprovado,'aprovada','aprovadas')}, ${plural(c.reprovado,'reprovada','reprovadas')}, ${plural(c.pendente,'pendente','pendentes')}${c.opcional?` (+ ${plural(c.opcional,'opcional P1/P2 ainda não entregue','opcionais P1/P2 ainda não entregues')})`:''}`;
 }
 /** pt-BR summary printed by the CLI. */
 export function summaryText(result,{input,dryRun=false}={}){

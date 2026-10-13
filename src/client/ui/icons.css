@@ -6,6 +6,9 @@
 .ic-32{width:32px;height:32px}
 .ic-40{width:40px;height:40px}
 .ic-48{width:48px;height:48px}
+/* Arte v2 (importar-arte-b-ligacao): com a peça ui/<id> importada o ícone é <img class="ic"> do WebP 128×128, na mesma
+   caixa do <svg>: inteiro dentro dela, reduzido com suavização (a arte nova não é pixel art de 24 px). */
+img.ic{object-fit:contain;image-rendering:auto;max-width:none;max-height:none;border:0;padding:0}
 .ik-sombra{fill:var(--c-breu);stroke:var(--c-breu);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round;transform:translateY(3px)}
 .ik-papel{fill:var(--c-papel-claro);stroke:var(--c-papel-claro);stroke-width:12px;stroke-linejoin:round;stroke-linecap:round}
 .ik-arte{fill:none;stroke:var(--c-breu);stroke-width:3px;stroke-linejoin:round;stroke-linecap:round}

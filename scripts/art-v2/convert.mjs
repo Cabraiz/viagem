@@ -15,7 +15,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import {mkdir,readFile,writeFile,rm,rename} from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import {DIRECTIONS,MANIFEST_VERSION} from './spec.mjs';
+import {DIRECTIONS,MANIFEST_VERSION,INDEX_FILE} from './spec.mjs';
 import {raw,CELL,ROWS} from '../sprite-atlas.mjs';
 
 export const WEBP=Object.freeze({lossless:true,effort:6});
@@ -38,14 +38,54 @@ export async function writeAtomic(file,data){
   try{await rename(tmp,file);}catch(e){await rm(tmp,{force:true});throw e;}
 }
 
+/** [r,g,b] of '#rrggbb'. */
+const rgbOf=hex=>{const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);if(!m)throw new Error(`bad rim colour ${hex}`);return m.slice(1).map(h=>parseInt(h,16));};
+/**
+ * D-037 rim (spec.mjs RIM), baked into the RGBA pixels of a sheet of `cell` cells: every pixel gets a rim coverage
+ * D = max over the drawn pixels q within reach of (alpha_q / 255) × clamp(width + 0.5 − |p − q|, 0, 1), i.e. the alpha
+ * dilated by `width` px with a 1 px anti-aliased edge, minus the original coverage: the rim (colour at `alpha` × D) is
+ * written ONLY where the source pixel is fully transparent (alpha 0). Every pixel with any original alpha (opaque body,
+ * glass, smoke, soft interior edges) is left byte-identical, so the rim never darkens the inside of the sprite.
+ * Only neighbours inside the same cell count and nothing is written outside it, so a rim never crosses into the next
+ * frame. Returns a new buffer.
+ */
+export function applyRim({data,width,height},[cw,ch],{color,alpha,width:w}){
+  const [rr,rg,rb]=rgbOf(color),out=Buffer.from(data),reach=Math.ceil(w+.5),edge=w+.5;
+  const kernel=[];
+  for(let dy=-reach;dy<=reach;dy++)for(let dx=-reach;dx<=reach;dx++){
+    const cov=Math.min(1,Math.max(0,edge-Math.hypot(dx,dy)));
+    if(cov>0)kernel.push([dx,dy,cov]);
+  }
+  for(let y=0;y<height;y++){
+    const y0=y-y%ch,y1=y0+ch-1;
+    for(let x=0;x<width;x++){
+      const i=(y*width+x)*4;
+      if(data[i+3])continue;
+      const x0=x-x%cw,x1=x0+cw-1;
+      let d=0;
+      for(const [dx,dy,cov] of kernel){
+        const nx=x+dx,ny=y+dy;
+        if(nx<x0||nx>x1||ny<y0||ny>y1)continue;
+        const qa=data[(ny*width+nx)*4+3];
+        if(qa){const v=cov*qa/255;if(v>d)d=v;}
+      }
+      const ra=Math.round(alpha*d*255);
+      if(ra<=0)continue;
+      out[i]=rr;out[i+1]=rg;out[i+2]=rb;out[i+3]=ra;
+    }
+  }
+  return out;
+}
+
 /** Width/height of the image a sheet produces before paging (dir8: the stacked blocks). */
 async function sheetSize(sheet){
   const m=await sharp(sheet.source).metadata();
   return {width:m.width,height:sheet.blocks?CELL*ROWS*sheet.blocks.length:m.height};
 }
 /** RGBA pixels of a sheet: the source, or the DIRECTIONS blocks named in `blocks` (3 rows of 192 px each) stacked in that order. */
-async function pixelsOf(sheet){
+async function pixelsOf(sheet,rim){
   const {data,width,height}=await raw(sheet.source);
+  if(rim)return {data:applyRim({data,width,height},sheet.cell,rim),width,height};
   if(!sheet.blocks)return {data,width,height};
   const bytes=width*CELL*ROWS*4;
   const parts=sheet.blocks.map(d=>{const b=DIRECTIONS.indexOf(d);return data.subarray(b*bytes,(b+1)*bytes);});
@@ -98,17 +138,20 @@ const fileList=entry=>[...new Set([...(entry?.file?[entry.file]:[]),...(Array.is
  * sha256} and the absolute paths written. Every page is staged in a temp file first; targets are replaced only after
  * all of them converted, so on failure nothing previously approved changes. `previous`: this piece's entry in the
  * current manifest; files of the replaced keys that the new layout no longer uses (e.g. a sheet now paged) are removed
- * after the commit.
+ * after the commit. `meta`: the piece's render metadata (validatePiece), recorded as the entry's `meta`. When the group
+ * has a `rim` (enemies, D-037), it is baked into every animation sheet except the elite layer (`elite/*` keys) and
+ * recorded as `rim` on those files and on the piece.
  */
-export async function convertPiece(spec,id,kind,sheets,{outRoot,previous}={}){
+export async function convertPiece(spec,id,kind,sheets,{outRoot,previous,meta}={}){
   const dir=path.join(outRoot,spec.output),staged=[],files={};
+  const rimOf=sheet=>spec.rim&&kind==='animations'&&!sheet.blocks&&!String(sheet.key).startsWith('elite/')?spec.rim:undefined;
   try{
     for(const sheet of sheets){
       const {width,height}=await sheetSize(sheet);
       const pages=pageLayout(sheet,width,height),cols=width/sheet.cell[0];
       // Over the texture cap the frames are reflowed into pages (even when they all fit on one -p1 page).
-      const reflow=width>MAX_TEXTURE||height>MAX_TEXTURE;
-      const pixels=sheet.blocks||reflow?await pixelsOf(sheet):undefined;
+      const reflow=width>MAX_TEXTURE||height>MAX_TEXTURE,rim=rimOf(sheet);
+      const pixels=sheet.blocks||reflow||rim?await pixelsOf(sheet,rim):undefined;
       const entries=[];
       for(const page of pages){
         const image=reflow?pageImage(pixels,sheet.cell,cols,page)
@@ -120,6 +163,7 @@ export async function convertPiece(spec,id,kind,sheets,{outRoot,previous}={}){
       }
       const entry=pages.length===1?{file:pages[0].file}:{};
       for(const k of MANIFEST_FIELDS)if(sheet[k]!==undefined)entry[k]=sheet[k];
+      if(rim)entry.rim={...rim};
       entry.pages=entries;
       entry.sha256=entries.length===1?entries[0].sha256:sha256(entries.map(p=>`${p.file} ${p.sha256}`).join('\n'));
       files[sheet.key]=entry;
@@ -136,7 +180,8 @@ export async function convertPiece(spec,id,kind,sheets,{outRoot,previous}={}){
     const abs=path.resolve(dir,f);
     if(inside(dir,abs)&&!keep.has(abs.toLowerCase()))await rm(abs,{force:true});
   }
-  return {entry:{kind,files,sha256:pieceHash(files)},written};
+  const rim=spec.rim&&kind==='animations'?{rim:{...spec.rim}}:{};
+  return {entry:{kind,files,sha256:pieceHash(files),...(meta&&Object.keys(meta).length?{meta}:{}),...rim},written};
 }
 /** Piece hash: sha256 of the lines "<key> <sha256 of that file entry>" sorted, so it changes whenever any file changes. */
 const pieceHash=files=>sha256(Object.entries(files).map(([k,f])=>`${k} ${f.sha256}`).sort().join('\n'));
@@ -159,7 +204,9 @@ async function mergeEntry(old,entry,dir){
     if(!f||typeof f!=='object')continue;
     files[key]=typeof f.sha256==='string'?f:{...f,sha256:await hashOnDisk(dir,f)};
   }
-  return {kind:entry.kind,files,sha256:pieceHash(files)};
+  // `meta` is this run's (the table + sidecar of the piece just approved); `rim` stays while the kind does.
+  const rim=entry.rim??(sameKind?old.rim:undefined);
+  return {kind:entry.kind,files,sha256:pieceHash(files),...(entry.meta?{meta:entry.meta}:{}),...(rim?{rim}:{})};
 }
 
 /** Reads `<output>/manifest.json`; a missing or unreadable one (or an older version) gives undefined. */
@@ -175,5 +222,29 @@ export async function writeManifest(group,spec,entries,{outRoot}){
   for(const [id,entry] of Object.entries(entries))pieces[id]=await mergeEntry(pieces[id],entry,dir);
   const sorted=Object.fromEntries(Object.keys(pieces).sort().map(k=>[k,pieces[k]]));
   await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,group,pieces:sorted},null,2)}\n`);
+  return file;
+}
+
+export const indexPath=({outRoot})=>path.join(outRoot,...INDEX_FILE.split('/'));
+/** Reads the index; a missing, unreadable or older one gives undefined. */
+export async function readIndex(file){
+  try{const m=JSON.parse(await readFile(file,'utf8'));if(m&&m.version===MANIFEST_VERSION&&m.groups&&typeof m.groups==='object'&&!Array.isArray(m.groups))return m;}catch{}
+  return undefined;
+}
+/**
+ * (Re)writes the client index `public/art/manifest.json` (spec.mjs INDEX_FILE, read by src/client/art/manifest.ts)
+ * atomically: {version:2, groups:{[group]:{output, pieces}}} with every group of `specs` whose manifest exists on disk
+ * (its pieces exactly as in that manifest), over the previous index (groups without a manifest keep their entry).
+ * Groups and ids sorted, so a re-run gives the same bytes. Returns the file path.
+ */
+export async function writeIndex(specs,{outRoot}){
+  const file=indexPath({outRoot}),groups={...(await readIndex(file))?.groups};
+  for(const [group,spec] of Object.entries(specs)){
+    const manifest=await readManifest(manifestPath(spec,{outRoot}));
+    if(manifest)groups[group]={output:spec.output,pieces:manifest.pieces};
+  }
+  const sorted=Object.fromEntries(Object.keys(groups).sort().map(g=>[g,groups[g]]));
+  await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,groups:sorted},null,2)}
+`);
   return file;
 }

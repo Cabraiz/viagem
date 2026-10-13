@@ -7,14 +7,16 @@ import {GROUPS} from './spec.mjs';
 
 /** @typedef {import('./spec.mjs').PieceResult} PieceResult */
 
-const STATUS_ORDER={reprovado:0,aprovado:1,pendente:2};
+const STATUS_ORDER={reprovado:0,aprovado:1,pendente:2,opcional:3};
 const BADGES={
   aprovado:{cls:'ok',text:'✔ aprovada'},
   reprovado:{cls:'bad',text:'✖ reprovada'},
   pendente:{cls:'wait',text:'… pendente'},
+  opcional:{cls:'wait',text:'○ opcional'},
 };
 const FIX_HINT='Corrija as peças reprovadas e rode o importador de novo; o que já foi aprovado não precisa ser reenviado.';
 const PENDING_TEXT='Ainda não entregues — o jogo continua com a arte atual:';
+const OPTIONAL_TEXT='Opcionais (P1/P2), ainda não entregues — não bloqueiam o MVP:';
 const DRY_RUN_TEXT='Simulação — nada foi gravado. Os arquivos abaixo mostram o que seria gravado no jogo.';
 
 const ESCAPES={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
@@ -80,13 +82,16 @@ function renderGroup(title,pieces,options){
   const sorted=[...pieces].sort((a,b)=>(STATUS_ORDER[a.status]??3)-(STATUS_ORDER[b.status]??3)||String(a.id).localeCompare(String(b.id),'pt-BR'));
   const t=summarize(pieces);
   const counts=[t.reprovadas&&`${t.reprovadas} reprovada${t.reprovadas===1?'':'s'}`,t.aprovadas&&`${t.aprovadas} aprovada${t.aprovadas===1?'':'s'}`,
-    t.pendentes&&`${t.pendentes} pendente${t.pendentes===1?'':'s'}`].filter(Boolean).join(' · ');
-  // Pending pieces (groups with a known list) go in one line; those carrying notes also get their own entry.
-  const pending=sorted.filter(p=>p.status==='pendente');
-  const listed=sorted.filter(p=>p.status!=='pendente'||notesOf(p).length);
+    t.pendentes&&`${t.pendentes} pendente${t.pendentes===1?'':'s'}`,
+    (()=>{const n=pieces.filter(p=>p.status==='opcional').length;return n&&`${n} opciona${n===1?'l':'is'} (P1/P2)`;})()].filter(Boolean).join(' · ');
+  // Pending (P0) and optional (P1/P2) absent pieces go in one line each; those carrying notes also get their own entry.
+  const absent=status=>sorted.filter(p=>p.status===status);
+  const pending=absent('pendente'),optional=absent('opcional');
+  const listed=sorted.filter(p=>(p.status!=='pendente'&&p.status!=='opcional')||notesOf(p).length);
   const pendingLine=pending.length?`<p class="pending">${PENDING_TEXT} ${codes(pending.map(p=>String(p.id)))}</p>`:'';
+  const optionalLine=optional.length?`<p class="pending optional">${OPTIONAL_TEXT} ${codes(optional.map(p=>String(p.id)))}</p>`:'';
   const items=listed.length?`<ul class="pieces">${listed.map(p=>renderPiece(p,options)).join('')}</ul>`:'';
-  return `<section class="category"><h2>${escapeHtml(title)}</h2><p class="cat-counts">${counts}</p>${items}${pendingLine}</section>`;
+  return `<section class="category"><h2>${escapeHtml(title)}</h2><p class="cat-counts">${counts}</p>${items}${pendingLine}${optionalLine}</section>`;
 }
 
 const CSS=`

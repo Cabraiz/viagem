@@ -12,8 +12,10 @@ import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync,readd
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
-import {importArtV2} from '../../scripts/import-art-v2.mjs';
-import {GROUPS,DIRECTIONS,DIR4_FROM_DIR8,CARDINALS,ANCHOR} from '../../scripts/art-v2/spec.mjs';
+import {importArtV2,summaryText} from '../../scripts/import-art-v2.mjs';
+import {GROUPS,DIRECTIONS,DIR4_FROM_DIR8,CARDINALS,ANCHOR,RIM,INDEX_FILE} from '../../scripts/art-v2/spec.mjs';
+import {makeDemoDelivery,DEMO_PIECES} from '../fixtures/art-v2/demo.mjs';
+import {parseArtIndex} from '../../src/client/art/manifest.ts';
 import {renderReport} from '../../scripts/art-v2/report.mjs';
 import {
   makeCorrectSet,makeErrorSet,writeEnemy,TEST_ENEMY,TEST_TILE,TEST_ICON,TEST_VIEWS,TEST_NINESLICE,TEST_FRAMES,
@@ -26,7 +28,7 @@ import {
 sharp.cache(false);sharp.concurrency(1);
 
 const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-type Piece={group:string,id:string,status:'aprovado'|'reprovado'|'pendente',problems:string[],notes:string[],files:string[],outputs:string[],thumb?:string};
+type Piece={group:string,id:string,status:'aprovado'|'reprovado'|'pendente'|'opcional',priority?:string,problems:string[],notes:string[],files:string[],outputs:string[],thumb?:string};
 type Result={pieces:Piece[],written:string[],reportFile?:string};
 
 /** The real groups with small sizes; enemy pieces given explicitly (all with the reduced cell and anims). */
@@ -489,3 +491,186 @@ test('report: text is escaped and approved pieces carry no thumbnail',()=>{
   const approvedItem=html.slice(html.indexOf('>moeda</span>'));
   assert.ok(!/<img/.test(approvedItem.slice(0,approvedItem.indexOf('</li>'))),'approved piece with a thumbnail');
 });
+
+// ---------------------------------------------------------------- P0 table, index, D-037 rim, demo delivery
+test('P0 table: absent P0 pieces are pending, absent P1/P2 only optional; extra ids still accepted',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),reportFile=path.join(dir,'relatorio.html');
+  await writeFrames(path.join(input,'itens','gema-pequena.png'),{cell:64,frames:4});
+  await writeFrames(path.join(input,'itens','moeda.png'));
+  mkdirSync(path.join(input,'inimigos'),{recursive:true});
+  const r:Result=await importArtV2({input,repoRoot,outRoot:path.join(dir,'saida'),groups:{inimigos:GROUPS.inimigos,itens:GROUPS.itens},write:false,reportFile});
+  approved(piece(r,'itens','gema-pequena'));
+  approved(piece(r,'itens','moeda'));
+  for(const id of ['gema-media','gema-grande','coxinha','ima','bau','recurso-coco','recurso-pedra'])
+    assert.deepEqual([piece(r,'itens',id).status,piece(r,'itens',id).priority],['pendente','P0'],id);
+  assert.deepEqual([piece(r,'itens','boleto-chuva').status,piece(r,'itens','boleto-chuva').priority],['opcional','P1']);
+  for(const id of ['coach','motoboy','influencer'])assert.equal(piece(r,'inimigos',id).status,'opcional',id);
+  assert.equal(piece(r,'inimigos','bebado').status,'pendente');
+  const html=readFileSync(reportFile,'utf8');
+  const optional=[...html.matchAll(/<p class="pending optional">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
+  assert.match(optional,/Opcionais \(P1\/P2\).*<code>boleto-chuva<\/code>/);
+  const pending=[...html.matchAll(/<p class="pending">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
+  assert.match(pending,/<code>gema-media<\/code>/);
+  assert.doesNotMatch(pending,/boleto-chuva|coach/,'P1 piece listed as pending');
+  assert.match(summaryText(r,{input,dryRun:true}),/opcionais P1\/P2/);
+  // Every pieces:'any' group carries its inventory table, in kebab-case, each entry with a priority.
+  for(const g of ['chao','predios','base','props','itens','projeteis','efeitos','ui'] as const){
+    const table=(GROUPS[g] as any).expected;
+    assert.ok(table&&Object.keys(table).length,`${g} has no expected table`);
+    for(const [id,e] of Object.entries(table) as [string,any][]){
+      assert.match(id,/^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)?$/,`${g}/${id}`);
+      assert.ok(['P0','P1','P2'].includes(e.priority),`${g}/${id} priority`);
+    }
+  }
+}));
+
+test('expected ids without a sidecar take the table cell/frames (192×128 strip); a sidecar overrides; a frame range is enforced',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida');
+  await writeFrames(path.join(input,'efeitos','arroto.png'),{cell:[192,128],frames:6});
+  await writeFrames(path.join(input,'efeitos','sombra-contato.png'),{cell:[128,64],frames:1});
+  await writeFrames(path.join(input,'itens','gema-grande.png'),{cell:32,frames:4});
+  json(path.join(input,'itens','gema-grande.json'),{cell:[32,32]});
+  await writeFrames(path.join(input,'itens','gema-media.png'),{cell:32,frames:4});
+  await writeFrames(path.join(input,'projeteis','chinelo.png'),{cell:64,frames:7});
+  await writeFrames(path.join(input,'projeteis','boleto.png'),{cell:64,frames:5});
+  const r:Result=await importArtV2({input,repoRoot,outRoot,groups:{itens:GROUPS.itens,projeteis:GROUPS.projeteis,efeitos:GROUPS.efeitos},write:true});
+  for(const [g,id] of [['efeitos','arroto'],['efeitos','sombra-contato'],['itens','gema-grande'],['projeteis','chinelo']]){
+    const p=piece(r,g,id);approved(p);
+    assert.ok(!p.notes.some(n=>/assumi/.test(n)),`${g}/${id} should not assume square frames: ${p.notes.join(' | ')}`);
+  }
+  const sheet=(g:keyof typeof GROUPS,id:string)=>readManifestOf(outRoot,g).pieces[id].files.sheet;
+  assert.deepEqual([sheet('efeitos','arroto').cell,sheet('efeitos','arroto').frames],[[192,128],6]);
+  assert.deepEqual([sheet('efeitos','sombra-contato').cell,sheet('efeitos','sombra-contato').frames],[[128,64],1]);
+  assert.deepEqual([sheet('itens','gema-grande').cell,sheet('itens','gema-grande').frames],[[32,32],4],'sidecar cell wins');
+  assert.equal(sheet('projeteis','chinelo').frames,7);
+  refused(piece(r,'itens','gema-media'),/gema-media\.png: tamanho 128×32, esperado 256×64/);
+  refused(piece(r,'projeteis','boleto'),/boleto\.png: 5 quadros de 64×64 px, esperado de 6 a 8/);
+}));
+
+test('index public/art/manifest.json: every group manifest merged, meta from table + sidecar; dry-run writes nothing',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida'),index=path.join(outRoot,...INDEX_FILE.split('/'));
+  await writeSeamless(path.join(input,'cenario/chao/cidade-nevada','neve-fofa-1.png'));
+  await writeSeamless(path.join(input,'cenario/chao/cidade-nevada','trans-neve-asfalto.png'),{gray:true});
+  await writeViews(path.join(input,'cenario/predios','casa-terrea-1x1-1.png'),{rows:1});
+  json(path.join(input,'cenario/predios','casa-terrea-1x1-1.json'),{cell:TEST_VIEWS.cell,anchor:TEST_VIEWS.anchor,rows:['inteira'],meta:{framesPerView:1,neve:'muita'}});
+  await writeViews(path.join(input,'cenario/base','no-coco.png'),{rows:3});
+  json(path.join(input,'cenario/base','no-coco.json'),{cell:TEST_VIEWS.cell,anchor:TEST_VIEWS.anchor});
+  await writeIcon(path.join(input,'ui','chinelo.png'));
+  const groups={chao:{...GROUPS.chao,size:TEST_TILE},predios:GROUPS.predios,base:GROUPS.base,ui:{...GROUPS.ui,size:TEST_ICON}};
+  const dry:Result=await importArtV2({input,repoRoot,outRoot,groups,write:false});
+  for(const p of dry.pieces.filter(p=>p.files.length))approved(p);
+  assert.ok(!existsSync(outRoot),'dry run wrote something');
+
+  const r:Result=await importArtV2({input,repoRoot,outRoot,groups,write:true});
+  assert.ok(r.written.some(f=>norm(outRoot,f)===index.toLowerCase()),'index not listed in written');
+  const idx=JSON.parse(readFileSync(index,'utf8'));
+  assert.equal(idx.version,2);
+  assert.deepEqual(Object.keys(idx.groups),['base','chao','predios','ui']);
+  for(const g of Object.keys(idx.groups) as (keyof typeof GROUPS)[]){
+    assert.equal(idx.groups[g].output,GROUPS[g].output);
+    assert.deepEqual(idx.groups[g].pieces,readManifestOf(outRoot,g).pieces,`${g}: index differs from its manifest`);
+  }
+  const meta=(g:string,id:string)=>idx.groups[g].pieces[id].meta;
+  assert.deepEqual(meta('chao','cidade-nevada/neve-fofa-1'),{ground:'snow'});
+  assert.deepEqual(meta('chao','cidade-nevada/trans-neve-asfalto'),{mask:true,between:['snow','asphalt']});
+  assert.deepEqual(meta('predios','casa-terrea-1x1-1'),{footprint:[1,1],framesPerView:1,ruin:true,neve:'muita'});
+  assert.deepEqual(idx.groups.predios.pieces['casa-terrea-1x1-1'].files.sheet.anchor,TEST_VIEWS.anchor);
+  assert.deepEqual(meta('base','no-coco'),{states:['cheio','meio','vazio']});
+  assert.deepEqual(idx.groups.base.pieces['no-coco'].files.sheet.rows,['cheio','meio','vazio'],'rows from the table');
+  assert.deepEqual(meta('ui','chinelo'),{replaces:['i-chinelo','a-chinelo']});
+  // The client contract reads it as is.
+  const parsed=parseArtIndex(idx);
+  assert.deepEqual(Object.keys(parsed.groups).sort(),['base','chao','predios','ui']);
+  assert.ok(parsed.groups.chao.pieces['cidade-nevada/neve-fofa-1']);
+
+  // A later run of one group keeps the other groups in the index; a re-run gives the same bytes.
+  const before=readFileSync(index,'utf8');
+  await importArtV2({input,repoRoot,outRoot,groups:{ui:groups.ui},write:true});
+  assert.equal(readFileSync(index,'utf8'),before);
+}));
+
+test('D-037 rim: enemy sheets get #2A2018 at 85% only where the source alpha is 0, within 1.5 px; drawn pixels (even semi-transparent) are untouched; the elite layer has none',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida');
+  await writeEnemy(path.join(input,'inimigos','blob'));
+  // Semi-transparent details in the first cell: a 3×3 "glass" patch (alpha 128) inside the body and a soft edge pixel
+  // (alpha 128) just left of it. A rim composited under the whole sprite would darken both.
+  {
+    const file=path.join(input,'inimigos','blob','idle.png');
+    const {data,info}=await sharp(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const c=TEST_ENEMY.cell;let x0=c,y0=c,x1=-1,y1=-1;
+    for(let y=0;y<c;y++)for(let x=0;x<c;x++)if(data[(y*info.width+x)*4+3]){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+    const cx=Math.round((x0+x1)/2),cy=Math.round((y0+y1)/2);
+    const set=(x:number,y:number)=>{const i=(y*info.width+x)*4;data[i]=200;data[i+1]=220;data[i+2]=255;data[i+3]=128;};
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)set(cx+dx,cy+dy);
+    set(x0-1,cy);
+    await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).png({compressionLevel:1}).toFile(file+'.tmp');
+    writeFileSync(file,readFileSync(file+'.tmp'));rmSync(file+'.tmp');
+  }
+  await writeEliteLayer(path.join(input,'inimigos','elite','blob-idle.png'));
+  const r:Result=await importArtV2({input,repoRoot,outRoot,groups:{inimigos:testGroups(['blob']).inimigos},write:true});
+  approved(piece(r,'inimigos','blob'));
+  const rgba=async(file:string)=>{const {data,info}=await sharp(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});return {data,w:info.width,h:info.height};};
+  const src=await rgba(path.join(input,'inimigos','blob','idle.png')),dst=await rgba(out(outRoot,'inimigos','blob','idle.webp'));
+  assert.deepEqual([dst.w,dst.h],[src.w,src.h]);
+  const cell=TEST_ENEMY.cell,[rr,rg,rb]=[0x2a,0x20,0x18],rimAlpha=Math.round(RIM.alpha*255);
+  const a=(img:typeof src,x:number,y:number)=>img.data[(y*img.w+x)*4+3];
+  /** A source pixel matching `drawn` (by alpha) at Euclidean distance < `reach` from (x, y), in the same cell. */
+  const near=(x:number,y:number,reach:number,drawn=(sa:number)=>sa>0)=>{
+    const r=Math.ceil(reach);
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      const nx=x+dx,ny=y+dy;
+      if(Math.hypot(dx,dy)>=reach||nx<0||ny<0||nx>=src.w||ny>=src.h)continue;
+      if(Math.floor(nx/cell)!==Math.floor(x/cell)||Math.floor(ny/cell)!==Math.floor(y/cell))continue;
+      if(drawn(a(src,nx,ny)))return true;
+    }
+    return false;
+  };
+  let rim=0,inside=0,translucent=0;
+  for(let y=0;y<src.h;y++)for(let x=0;x<src.w;x++){
+    const i=(y*src.w+x)*4,sa=src.data[i+3],da=dst.data[i+3];
+    if(sa>0){
+      // Any original alpha (opaque body, the alpha-128 glass and soft edge): byte-identical.
+      inside++;if(sa<255)translucent++;
+      assert.deepEqual([...dst.data.subarray(i,i+4)],[...src.data.subarray(i,i+4)],`drawn pixel (alpha ${sa}) changed at ${x},${y}`);
+    }else if(near(x,y,1.01,sa=>sa===255)){
+      // Edge-adjacent to the opaque body: the full rim.
+      rim++;
+      assert.ok(Math.abs(dst.data[i]-rr)<=1&&Math.abs(dst.data[i+1]-rg)<=1&&Math.abs(dst.data[i+2]-rb)<=1&&Math.abs(da-rimAlpha)<=1,
+        `rim pixel at ${x},${y} is ${[...dst.data.subarray(i,i+4)]}`);
+    }else if(da>0){
+      // Any other rim pixel: was alpha 0, within the 1.5 px dilation (+ the 0.5 px anti-aliased edge) of the drawing.
+      assert.ok(near(x,y,2),`stray rim at ${x},${y}`);
+      assert.ok(Math.abs(dst.data[i]-rr)<=1&&Math.abs(dst.data[i+1]-rg)<=1&&Math.abs(dst.data[i+2]-rb)<=1&&da<=rimAlpha+1,
+        `rim pixel at ${x},${y} is ${[...dst.data.subarray(i,i+4)]}`);
+    }
+  }
+  assert.ok(rim>100&&inside>100,`rim ${rim}, inside ${inside}`);
+  assert.equal(translucent,10,'the 3×3 glass patch and the soft edge pixel reached the check');
+  // Nothing reaches the cell border (the 2 px padding is the rim's room).
+  for(let y=0;y<src.h;y++)for(let x=0;x<src.w;x+=cell)for(const bx of [x,x+cell-1])assert.equal(a(dst,bx,y),0,`cell border at ${bx},${y}`);
+  // Elite layer: no rim.
+  const esrc=await rgba(path.join(input,'inimigos','elite','blob-idle.png')),edst=await rgba(out(outRoot,'inimigos','elite','blob-idle.webp'));
+  for(let k=3;k<esrc.data.length;k+=4)if(esrc.data[k]===0)assert.equal(edst.data[k],0,'rim on the elite layer');
+  const entry=readManifestOf(outRoot,'inimigos').pieces.blob;
+  assert.deepEqual(entry.rim,{...RIM});
+  assert.deepEqual(entry.files.idle.rim,{...RIM});
+  assert.equal(entry.files['elite/idle'].rim,undefined);
+}));
+
+test('demo delivery (tests/fixtures/art-v2/demo.mjs): real sizes, every piece approved, all in the index',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida');
+  const pieces=await makeDemoDelivery(input,{repoRoot});
+  const groups=Object.fromEntries(Object.keys(pieces).map(g=>[g,GROUPS[g as keyof typeof GROUPS]]));
+  const r:Result=await importArtV2({input,repoRoot,outRoot,groups,write:true});
+  assert.deepEqual(r.pieces.filter(p=>p.status==='reprovado').map(p=>`${p.group}/${p.id}: ${p.problems.join(' | ')}`),[]);
+  const idx=JSON.parse(readFileSync(path.join(outRoot,...INDEX_FILE.split('/')),'utf8'));
+  for(const [g,ids] of Object.entries(DEMO_PIECES))for(const id of ids){
+    approved(piece(r,g,id));
+    assert.ok(idx.groups[g]?.pieces[id],`index lacks ${g}/${id}`);
+  }
+  assert.deepEqual(await sizeOf(out(outRoot,'inimigos','bebado','walk.webp')),[128*8,128*8,'webp']);
+  assert.deepEqual(await sizeOf(out(outRoot,'inimigos','pombos','fly.webp')),[96*6,96*8,'webp']);
+  assert.ok(existsSync(out(outRoot,'inimigos','elite','bebado-walk.webp')),'elite crown');
+  assert.deepEqual(Object.keys(idx.groups.inimigos.pieces.bebado.files).sort(),['elite/walk','idle','walk']);
+  assert.deepEqual(idx.groups.inimigos.pieces.bebado.rim,{...RIM});
+}));

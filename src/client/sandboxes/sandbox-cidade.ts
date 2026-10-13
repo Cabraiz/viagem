@@ -77,6 +77,8 @@ const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
 const towersDrawn=params.get('desenho')!=='0';
+/** torres=1: the stand-in horde keeps this far (u) from the hero, outside the ring of defenses, so the shots read. */
+const HORDE_INNER=towersParam===1?4.5:0;
 const enemies=Math.max(0,Math.min(600,params.has('n')||!towersParam?Number(params.get('n'))|0:60));
 const base=params.get('base')==='1';
 const basePhase:'prepare'|'wave'=params.get('fase')==='wave'?'wave':'prepare';
@@ -161,6 +163,7 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(centre&&!start)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
+    else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
     this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
@@ -259,9 +262,11 @@ class CitySandbox extends Phaser.Scene {
   /** torres=1|12: the defenses around the hero (see the header) and the renderer on the city's projection. */
   private mountTowers(){
     const asset=this.asset,c=asset.cell,{x,y}=this.at,tick=0;
+    let made=0;
     const make=(kind:TowerKind,dx:number,dy:number,extra:Partial<TowerView>={}):TowerView=>{
       const l=TOWER_LOOK[kind],size=kind==='vigia-do-predio'?1:Math.min(3,Math.max(...l.footprint)),hp=100;
-      return {id:`defesa-${this.defenses.length+1}`,kind,x:x+dx*c,y:y+dy*c,r:(kind==='gustavao'?6:size)*c/2,hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((this.defenses.length*7)%20),...extra};
+      made++;
+      return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:(kind==='gustavao'?6:size)*c/2,hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
     };
     if(towersParam===12){
       const kinds:TowerKind[]=['vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
@@ -334,7 +339,7 @@ class CitySandbox extends Phaser.Scene {
       t.generateTexture('cidade:bicho',48,52);t.destroy();
     }
     for(let i=0;i<enemies;i++){
-      const a=this.rng()*Math.PI*2,r=2+this.rng()*9;
+      const a=this.rng()*Math.PI*2,r=(HORDE_INNER||2)+this.rng()*9;
       const x=this.at.x+Math.cos(a)*r,y=this.at.y+Math.sin(a)*r;
       this.horde.push({x,y,tx:x,ty:y,speed:1.6+this.rng()*0.6,image:this.add.image(0,0,'cidade:bicho').setOrigin(.5,.85).setScale(CITY_VIEW_SCALE)});
     }
@@ -343,7 +348,7 @@ class CitySandbox extends Phaser.Scene {
     const s=Math.min(0.05,dt/1000);
     for(const w of this.horde){
       const dx=w.tx-w.x,dy=w.ty-w.y,d=Math.hypot(dx,dy);
-      if(d<0.2){const a=this.rng()*Math.PI*2,r=1.5+this.rng()*8;w.tx=this.at.x+Math.cos(a)*r;w.ty=this.at.y+Math.sin(a)*r;continue;}
+      if(d<0.2){const a=this.rng()*Math.PI*2,r=(HORDE_INNER||1.5)+this.rng()*8;w.tx=this.at.x+Math.cos(a)*r;w.ty=this.at.y+Math.sin(a)*r;continue;}
       w.x+=dx/d*w.speed*s;w.y+=dy/d*w.speed*s;
     }
   }
@@ -356,7 +361,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   private tick(dt:number){

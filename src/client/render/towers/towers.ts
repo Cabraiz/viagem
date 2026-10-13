@@ -55,6 +55,8 @@ export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
+/** The weapon's pivot stands this high over the roof (CSS px × actor scale), on a drum. */
+const POST_PX=10;
 
 const pool=<T>(n:number,make:()=>T):T[]=>Array.from({length:n},make);
 const BRANCH_MATERIAL={T:MATERIALS.pedra,A:MATERIALS.pedra,B:MATERIALS['metal-ferrugem'],C:MATERIALS['metal-pintado']} as const;
@@ -93,6 +95,8 @@ export class TowerRenderer {
     this.measure();
   }
   private get s(){return this.o.actorScale??1;}
+  /** Size unit of the weapons and effects: world px of 1/24 u, so they keep their size against the boxes at any scale. */
+  private get f(){return this.unitPx/24;}
   /** World px of 1 u along the ground (screen length of a unit step), for barrel lengths and blast ellipses. */
   private measure(){
     const w=this.o.world,a=w.project(0,0,0,{x:0,y:0}),b=w.project(1,0,0,{x:0,y:0});
@@ -121,7 +125,7 @@ export class TowerRenderer {
   /** Live effects (for checks): shots, flashes, blasts, craters. */
   live(){
     const n=(a:{on:boolean}[])=>{let c=0;for(const x of a)if(x.on)c++;return c;};
-    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),craters:n(this.craters)};
+    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),craters:n(this.craters),dbg:this.shots.filter(s=>s.on).map(s=>({k:s.cal.shot,age:this.now-s.born,ms:s.ms,x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1,z:s.z0}))};
   }
   /** Every frame: aim and turn, fade covering defenses, move the effects, shake. `figures`: the hero and the allies. */
   update(nowMs:number,dtMs:number,figures:readonly Figure[]){
@@ -187,7 +191,7 @@ export class TowerRenderer {
       t.dir=t.want=dir8(b.x-a.x,b.y-a.y,t.dir);
     }
     this.muzzle(t);
-    if(cal.flash>0)this.addFlash(this.v.x,this.v.y,cal.flash*this.s,cal.flashMs,nowMs);
+    if(cal.flash>0)this.addFlash(this.v.x,this.v.y,cal.flash*this.f,cal.flashMs,nowMs);
     if(cal.shot==='aura'){this.addBlast(t.view.x,t.view.y,t.look.range,cal.blastMs,nowMs,true);return;}
     if(target<0||cal.shot==='none')return;
     const tx=e.xs[target],ty=e.ys[target];
@@ -237,7 +241,7 @@ export class TowerRenderer {
   }
 
   private drawEffects(now:number){
-    const g=this.fx,w=this.o.world,u=this.unitPx,s=this.s;
+    const g=this.fx,w=this.o.world,u=this.unitPx,s=this.f;
     g.clear();this.ground.clear();
     for(const c of this.craters){
       if(!c.on)continue;
@@ -261,8 +265,9 @@ export class TowerRenderer {
       const dist=Math.hypot(sh.x1-sh.x0,sh.y1-sh.y0)||1,back=Math.min(t,c.trail/dist);
       const head=this.at(sh,t,this.p),tail=this.at(sh,t-back,this.q);
       if(c.shot==='tracer'){
-        g.lineStyle(Math.max(1,3*s),this.breu,.55).lineBetween(tail.x,tail.y,head.x,head.y)
-          .lineStyle(Math.max(1,1.6*s),this.amarelo,1).lineBetween(tail.x,tail.y,head.x,head.y);
+        g.lineStyle(Math.max(1,4*s),this.breu,.6).lineBetween(tail.x,tail.y,head.x,head.y)
+          .lineStyle(Math.max(1,2.2*s),this.amarelo,1).lineBetween(tail.x,tail.y,head.x,head.y)
+          .fillStyle(this.papel,1).fillCircle(head.x,head.y,1.6*s);
       }else{
         if(c.trail>0){
           g.lineStyle(Math.max(1,4*s),this.papel,.5).lineBetween(tail.x,tail.y,head.x,head.y);
@@ -321,7 +326,7 @@ export class TowerRenderer {
     const H=look.height*PHASE_HEIGHT[phase];
     if(t.drawnKey!==key){
       t.drawnKey=key;t.drawnDir=-1;t.height=look.height;
-      const top=w.project(v.x,v.y,H,this.p);t.mount.x=top.x;t.mount.y=top.y;
+      const top=w.project(v.x,v.y,H,this.p);t.mount.x=top.x;t.mount.y=top.y-POST_PX*this.f;
       if(t.art)this.placeArt(t,view);
       else this.drawBase(t,H);
     }
@@ -392,7 +397,7 @@ export class TowerRenderer {
   }
   /** Procedural weapon at the mount (turret disc + barrel toward the direction row), or the idle sheet's frame. */
   private drawWeapon(t:Tower,recoil:boolean){
-    const g=t.weapon,s=this.s,cal=t.cal;
+    const g=t.weapon,s=this.f,cal=t.cal;
     g.clear();
     const show=canFire(t.phase)||t.phase==='obra-3';
     if(t.gun){
@@ -403,19 +408,26 @@ export class TowerRenderer {
     if(!show||cal.shot==='aura')return this.drawWire(t);
     const d=dirVector(t.dir,this.v),k=recoil?-.12:0,len=cal.barrel*this.unitPx,mx=t.mount.x,my=t.mount.y;
     const x0=mx+d.x*len*k,y0=my+d.y*len*k*.5,x1=mx+d.x*len*(1+k),y1=my+d.y*len*.5*(1+k);
-    const gus=t.look.calibre==='gustavao',disc=(gus?14:7)*s,thick=(gus?9:cal.blast>1?6:4)*s;
+    const gus=t.look.calibre==='gustavao',disc=(gus?16:9)*s,thick=(gus?12:cal.blast>1?9:6)*s,post=POST_PX*s,line=Math.max(1,2*s);
     const metal=MATERIALS['metal-pintado'];
-    g.fillStyle(this.breu,1).fillEllipse(mx,my,disc*2.4,disc*1.4).fillStyle(metal.clara,1).fillEllipse(mx,my,disc*2,disc*1.05);
+    // The mount: a short drum from the roof up to the weapon's pivot (Breu contour, light top).
+    g.fillStyle(metal.escura,1).lineStyle(line,this.breu,1).fillRect(mx-disc,my,disc*2,post).strokeRect(mx-disc,my,disc*2,post)
+      .fillEllipse(mx,my+post,disc*2,disc).strokeEllipse(mx,my+post,disc*2,disc)
+      .fillStyle(metal.luz,1).fillEllipse(mx,my,disc*2,disc).strokeEllipse(mx,my,disc*2,disc);
     if(cal.shot==='beam'){ // the lamp: a light disc facing the target
-      g.fillStyle(this.breu,1).fillCircle(x1,y1-disc,disc*.95).fillStyle(this.papel,1).fillCircle(x1,y1-disc,disc*.7);
+      g.fillStyle(this.breu,1).fillCircle(x1,y1-disc*.6,disc*1.1).fillStyle(this.papel,1).fillCircle(x1,y1-disc*.6,disc*.8)
+        .fillStyle(this.amarelo,1).fillCircle(x1+d.x*disc*.2,y1-disc*.6+d.y*disc*.1,disc*.45);
       return;
     }
     if(cal.shot==='none'){ // radar dish
-      g.lineStyle(thick+2*s,this.breu,1).lineBetween(mx,my,x1,y1-disc*1.4).fillStyle(this.breu,1).fillEllipse(x1,y1-disc*1.4,disc*2.6,disc*1.6)
-        .fillStyle(this.papel,1).fillEllipse(x1,y1-disc*1.4,disc*2.1,disc*1.2);
+      g.lineStyle(thick*.6+2*s,this.breu,1).lineBetween(mx,my,x1,y1-disc*1.4).fillStyle(this.breu,1).fillEllipse(x1,y1-disc*1.4,disc*2.8,disc*1.8)
+        .fillStyle(this.papel,1).fillEllipse(x1,y1-disc*1.4,disc*2.3,disc*1.4);
       return;
     }
-    g.lineStyle(thick+2.5*s,this.breu,1).lineBetween(x0,y0,x1,y1).lineStyle(thick,metal.escura,1).lineBetween(x0,y0,x1,y1);
+    // Barrel: Breu contour, dark metal, a light highlight, and the muzzle ring.
+    g.lineStyle(thick+3*s,this.breu,1).lineBetween(x0,y0,x1,y1).lineStyle(thick,metal.escura,1).lineBetween(x0,y0,x1,y1)
+      .lineStyle(Math.max(1,thick*.3),metal.luz,1).lineBetween(x0,y0-thick*.2,x1,y1-thick*.2)
+      .fillStyle(this.breu,1).fillCircle(x1,y1,thick*.75);
   }
   /** C3: coils of wire around the post (no turning weapon). */
   private drawWire(t:Tower){

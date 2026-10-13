@@ -156,10 +156,10 @@ export interface CalibreLook {
 }
 const cal=(c:Partial<CalibreLook>&Pick<CalibreLook,'shot'>):CalibreLook=>Object.freeze({flash:0,flashMs:0,speed:30,arc:0,trail:0,blast:0,blastMs:0,shake:0,shakeMs:0,barrel:.35,...c});
 export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
-  pistola:cal({shot:'tracer',flash:5,flashMs:70,speed:34,trail:.5,barrel:.25}),
-  fuzil:cal({shot:'tracer',flash:6,flashMs:70,speed:42,trail:.8,barrel:.4}),
-  metralhadora:cal({shot:'tracer',flash:8,flashMs:60,speed:46,trail:.9,barrel:.5}),
-  rotativa:cal({shot:'tracer',flash:10,flashMs:60,speed:50,trail:1.1,barrel:.55}),
+  pistola:cal({shot:'tracer',flash:5,flashMs:90,speed:34,trail:.9,barrel:.25}),
+  fuzil:cal({shot:'tracer',flash:6,flashMs:90,speed:42,trail:1.3,barrel:.4}),
+  metralhadora:cal({shot:'tracer',flash:8,flashMs:80,speed:46,trail:1.4,barrel:.5}),
+  rotativa:cal({shot:'tracer',flash:10,flashMs:80,speed:50,trail:1.6,barrel:.55}),
   sniper:cal({shot:'tracer',flash:8,flashMs:90,speed:90,trail:2.6,barrel:.75}),
   antimaterial:cal({shot:'tracer',flash:12,flashMs:110,speed:80,trail:3,blast:.35,blastMs:220,barrel:.85}),
   rojao:cal({shot:'rocket',flash:7,flashMs:90,speed:9,arc:.9,trail:1.2,blast:1.2,blastMs:320,crater:'p',barrel:.3}),
@@ -169,17 +169,19 @@ export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
   gustavao:cal({shot:'shell',flash:40,flashMs:320,speed:18,arc:9,trail:2.2,blast:6,blastMs:900,crater:'gustavao',shake:14,shakeMs:900,barrel:3.2}),
   holofote:cal({shot:'beam',flash:0,flashMs:0,speed:0,blastMs:260,barrel:.3}),
   arame:cal({shot:'aura',blastMs:300,barrel:0}),
-  antiaerea:cal({shot:'tracer',flash:7,flashMs:60,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
+  antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
   radar:cal({shot:'none',barrel:.3}),
 });
 /** Crater decal radius (u) and how long it stays on the snow (ms). */
 export const CRATER:Readonly<Record<CraterSize,{radius:number;ms:number}>>=Object.freeze({
   p:{radius:.45,ms:6000},m:{radius:.75,ms:9000},g:{radius:1.2,ms:12000},gustavao:{radius:4.2,ms:30000}});
 
+/** Shortest flight drawn (ms): a point-blank tracer still reads as a streak. */
+export const MIN_FLIGHT_MS=110;
 /** Flight time (ms) of a shot over `dist` u (beams and auras land at once). */
 export function flightMs(c:CalibreLook,dist:number):number{
   if(c.shot==='beam'||c.shot==='aura'||c.shot==='none'||!(c.speed>0))return 0;
-  return Math.max(30,dist/c.speed*1000);
+  return Math.max(MIN_FLIGHT_MS,dist/c.speed*1000);
 }
 /** Height (u) of a lobbed shot at progress t∈[0,1] (a parabola peaking at `arc`, longer flights lob higher). */
 export const lobHeight=(c:CalibreLook,t:number)=>c.arc*4*t*(1-t);

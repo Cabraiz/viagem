@@ -48,3 +48,12 @@ export function destinationMark(k:number,css:number,city:boolean):DestinationMar
   const papel=2*css,edge=CITY_BREU_EDGE_CSS*css;
   return {width:28*k,height:14*k,breu:papel+2*edge,papel,breuAlpha:1,dotBreu:3*k+edge,dotPapel:3*k};
 }
+/**
+ * City Breu ring around the imported destination marker (art/frames-art.ts SceneMarks.destination, drawn at
+ * (28+5)×k wide, ~2:1): one Breu stroke of CITY_BREU_EDGE_CSS whose inner edge sits on the art's outer width.
+ * Only in the city (off the city the art is drawn alone, as main draws it).
+ */
+export function destinationArtRim(k:number,css:number):{width:number;height:number;breu:number}{
+  const breu=CITY_BREU_EDGE_CSS*css,w=(28+5)*k;
+  return {width:w+breu,height:w/2+breu,breu};
+}

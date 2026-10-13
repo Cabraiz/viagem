@@ -70,6 +70,18 @@ test('city: Breu dashed 2, Cone solid 3, Papel dashed 3 CSS px, outside in, on t
   }
 });
 
+test('city over the imported border (telegraph-art.ts): only the Breu dashed band, exactly the outermost band of drawCity',()=>{
+  const rnd=mulberry(77),edge=new TelegraphEdge();
+  for(let i=0;i<60;i++){
+    const t=randomShape(rnd),{pts,n}=outline(t,1),f=frame({css:1/(.25+rnd()*1.2),city:true,blink:rnd(),dashPhase:rnd()*15});
+    const full=new Recorder(),rim=new Recorder();
+    edge.draw(full,pts,n,f);edge.drawCityRim(rim,pts,n,f);
+    // drawCity's calls up to (not including) its second lineStyle: the Breu style and its dash polylines.
+    const second=full.calls.findIndex((c,k)=>k>0&&c[0]==='lineStyle');
+    assert.deepEqual(rim.calls,second<0?full.calls:full.calls.slice(0,second),`scene ${i} (${t.shape})`);
+  }
+});
+
 test('city: a zone too small for 8 CSS px shrinks every band together, never out of order',()=>{
   const {pts,n}=outline({shape:'circle',x:0,y:0,radius:.12,dx:1,dy:0},1);
   const limit=insetLimit(pts,n),b=cityEdgeBands(1.5,limit);

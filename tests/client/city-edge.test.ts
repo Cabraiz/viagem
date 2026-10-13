@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RING_CSS,RING_CITY_BREU_CSS,beakPoints,grownBeak,ringBands} from '../../src/client/render/you-rules.ts';
 import {plateRings} from '../../src/client/render/map-label-rules.ts';
-import {BREU,CITY_BREU_EDGE_CSS,CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,ISLAND_HERO_SHADOW,destinationMark,heroShadow,hordeShadowKey} from '../../src/client/render/city-edge-rules.ts';
+import {BREU,CITY_BREU_EDGE_CSS,CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,ISLAND_HERO_SHADOW,destinationArtRim,destinationMark,heroShadow,hordeShadowKey} from '../../src/client/render/city-edge-rules.ts';
 
 const edges=(band:{width:number;offset:number})=>[band.offset-band.width/2,band.offset+band.width/2];
 
@@ -61,6 +61,15 @@ test('destination mark: main\'s sizes off the city; Breu 2 CSS px edges in the c
     assert.ok(Math.abs(m.papel-2*css)<1e-12);
     assert.ok(Math.abs(m.dotBreu-m.dotPapel-2*css)<1e-12);
     assert.equal(m.breuAlpha,1);
+  }
+});
+
+test('imported destination mark in the city: a Breu ring of 2 CSS px whose inner edge is the outer width of the art',()=>{
+  for(const css of [.5,.933,1.4])for(const k of [.5445,1]){
+    const r=destinationArtRim(k,css),art=(28+5)*k;
+    assert.ok(Math.abs(r.breu-CITY_BREU_EDGE_CSS*css)<1e-12);
+    assert.ok(Math.abs((r.width-r.breu)-art)<1e-12,'inner edge on the art (frames-art.ts SceneMarks.destination width)');
+    assert.ok(Math.abs((r.height-r.breu)-art/2)<1e-12);
   }
 });
 

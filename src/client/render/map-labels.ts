@@ -8,6 +8,7 @@ import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 
 import {LABEL_CSS,labelScale,plateRings} from './map-label-rules.ts';
+import {dropSlice,hideSlice,placeSlice,sliceArt,sliceFor} from '../art/frames-art.ts';
 export {LABEL_CSS,plateRings,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
 export type {AllyStatus,LabelKind,PlateRing} from './map-label-rules.ts';
 
@@ -27,7 +28,11 @@ export class MapLabel {
   /** Screen box of the last frame it showed (CSS px from the camera's top-left), for the place fichas to step aside. */
   readonly screen={x:0,y:0,shown:false,sos:false};
   private readonly colors={breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone')};
-  constructor(private scene:Phaser.Scene,label:string){
+  /**
+   * `place`: a street or place name, drawn on the imported plaque (art/frames-art.ts `plaquinha`, 9-slice) when it is
+   * in; ally names and the caído ficha keep today's ficha.
+   */
+  constructor(private scene:Phaser.Scene,label:string,private readonly place=false){
     this.text=scene.add.text(0,0,label,{fontFamily:token('--f-sistema'),fontSize:`${LABEL_CSS*RASTER}px`,fontStyle:'700',color:token('--c-papel')}).setOrigin(.5,0);
     this.plate=scene.add.graphics();
     whenFontsReady(()=>{this.text.updateText();this.drawnW=-1;});
@@ -47,6 +52,8 @@ export class MapLabel {
   draw(zoom:number,visible:boolean){
     const tag=this.sos;
     this.text.setVisible(visible);this.plate.setVisible(visible);
+    const plaque=this.place&&!tag?sliceArt('plaque'):undefined;
+    if(this.place&&(!visible||!plaque))hideSlice(this);
     const cam=this.scene.cameras.main;
     this.screen.shown=visible;this.screen.sos=visible&&!!tag;this.screen.x=(this.x-cam.worldView.x)*zoom;this.screen.y=(this.y-cam.worldView.y)*zoom;
     if(!visible)return;
@@ -55,6 +62,9 @@ export class MapLabel {
     const w=tw+tagW+gap+2*PAD_X*s,h=th+2*PAD_Y*s,left=this.x-w/2;
     this.text.setScale(k).setPosition(left+PAD_X*s+tagW+gap+tw/2,this.y+PAD_Y*s).setDepth(this.depth+1);
     this.plate.setPosition(this.x,this.y).setDepth(this.depth);
+    // Imported plaque: stretched to today's ficha box, its corners at the ficha's scale; the code plate is not drawn.
+    const nine=plaque&&sliceFor(this.scene,this,plaque);
+    if(nine&&plaque){this.plate.setVisible(false);this.drawnW=-1;placeSlice(nine,plaque,left,this.y,w,h,s).setDepth(this.depth);return;}
     // Repaint the plate only when the text or the size changes (no per-frame string or triangulation).
     if(this.text.text===this.drawnText&&this.sos===this.drawnSos&&this.city===this.drawnCity&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
     this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;this.drawnSos=this.sos;this.drawnCity=this.city;
@@ -74,5 +84,5 @@ export class MapLabel {
       g.fillStyle(this.colors.breu,1).fillCircle(cx,cy,r*.46);
     }
   }
-  destroy(){this.text.destroy();this.plate.destroy();}
+  destroy(){dropSlice(this);this.text.destroy();this.plate.destroy();}
 }

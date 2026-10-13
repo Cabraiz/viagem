@@ -16,7 +16,7 @@ import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
-import {isRecipeId} from '../src/rules/index.ts';
+import {isForgeTarget,isRecipeId} from '../src/rules/index.ts';
 import type {ZueiraLab} from '../src/sim/index.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
@@ -668,15 +668,18 @@ export class Room {
     this.send({t:'sos',id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
   }
   /**
-   * Forge tap (VGM-046B): {t:'forge',round,recipe,req}. The simulation validates everything (phase, standing, in the
-   * camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once, everyone
-   * sees the balance in the next frame and the recipe's line as a `say` event.
+   * Forge tap (VGM-046B): {t:'forge',round,recipe,req,target?}. The simulation validates everything (phase, standing,
+   * in the camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once,
+   * everyone sees the balance in the next frame and the recipe's line as a `say` event. `target` (cidade-06, optional,
+   * so older phones are unchanged) names what 'reparo' repairs: 'muralha' or 'barricada-N|S|L|O' (isForgeTarget);
+   * absent means the wall, any other value drops the tap here.
    */
   private forge(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!isRecipeId(m.recipe)||!Number.isSafeInteger(m.req)||m.req<1)return;
-    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req));
+    if(m.target!==undefined&&!isForgeTarget(m.target))return;
+    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req),m.target);
     this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */

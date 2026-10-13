@@ -82,6 +82,19 @@ export class TelegraphEdge {
     this.strokeDashes(g,dashSegments(pts,n,dash,gap,phase,this.segments,this.papelPts));
   }
 
+  /**
+   * City edge over main's imported dashed border (telegraph-art.ts, drawn as a textured strip): only the outermost
+   * Breu 2 CSS px dashed band of drawCity, same dashes and phase, so the zone keeps its city rim around the art.
+   */
+  drawCityRim(g:EdgeGraphics,pts:Pt[],n:number,f:EdgeFrame){
+    const b=cityEdgeBands(f.css,insetLimit(pts,n),this.bands);
+    if(!(b.scale>0))return;
+    insetPolygon(pts,n,b.breu.d,this.breuPts);
+    const k=b.scale;
+    g.lineStyle(b.breu.width,f.colors.breu,CITY_BREU_ALPHA);
+    this.strokeDashes(g,dashSegments(pts,n,CITY_TELEGRAPH_CSS.dash*k,CITY_TELEGRAPH_CSS.gap*k,f.dashPhase*k,this.segments,this.breuPts));
+  }
+
   /** Strokes the segments, joining the pieces of a dash split at a vertex into one polyline (clean corner joins). */
   private strokeDashes(g:EdgeGraphics,count:number){
     const s=this.segments,run=this.run,cap=run.length;

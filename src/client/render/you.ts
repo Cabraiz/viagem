@@ -9,7 +9,7 @@
  */
 import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
-import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
+import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
 import {HAZARD} from './telegraph-look.ts';
 
 type Sprite=Phaser.GameObjects.Sprite;
@@ -38,6 +38,8 @@ export interface HeroMark {
 export class YouMarkers {
   private scene:Phaser.Scene;
   private reduced:boolean;
+  /** Cidade Nevada: the ring and its beak get an outer Breu edge (ringBands(true)). */
+  private city=false;
   private g:Phaser.GameObjects.Graphics;
   private label:Phaser.GameObjects.Text;
   private ghosts=new Map<string,Sprite>();
@@ -59,6 +61,8 @@ export class YouMarkers {
   }
 
   setReduced(reduced:boolean){this.reduced=reduced;}
+  /** City mode on/off (the markers survive a world swap; the scene sets it every frame). */
+  setCity(city:boolean){this.city=city;}
   /** Start of a round or the local hero back on their feet: the "Você" arrow shows for ARROW_MS. */
   showArrow(now:number){this.arrowAt=now;}
 
@@ -84,11 +88,18 @@ export class YouMarkers {
       this.drawContour(top,s);
       // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), never smaller than RING_CSS on screen.
       const w=Math.max(RING_CSS.width*s,sprite.displayWidth*.8),h=Math.max(RING_CSS.height*s,w*.5),{x,y}=mark.feet;
-      const bands=ringBands();
+      const bands=ringBands(this.city);
+      const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
+      // City: a Breu band outside the Papel, and a Breu beak grown by the same edge, under everything else (only Breu
+      // passes 3:1 on every city ground).
+      if(bands.outer){
+        g.lineStyle(bands.outer.width*s,c.breu,1).strokeEllipse(x,y,w+2*bands.outer.offset*s,h+2*bands.outer.offset*s);
+        const grown=grownBeak(RING_CSS.beak+2,RING_CSS.beak*.6+2,bands.outer.width),edge=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,grown.length*s,grown.half*s);
+        g.fillStyle(c.breu,1).fillTriangle(edge[0].x,edge[0].y,edge[1].x,edge[1].y,edge[2].x,edge[2].y);
+      }
       for(const [band,color] of [[bands.papel,c.papel],[bands.voce,c.voce],[bands.breu,c.breu]] as const)
         g.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
       // Beak toward where the hero faces: Papel edge, Lilás body.
-      const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
       const outer=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,(RING_CSS.beak+2)*s,(RING_CSS.beak*.6+2)*s);
       g.fillStyle(c.papel,1).fillTriangle(outer[0].x,outer[0].y,outer[1].x,outer[1].y,outer[2].x,outer[2].y);
       const inner=beakPoints(x,y,a,b,angle,RING_CSS.beak*s,RING_CSS.beak*.6*s);

@@ -7,9 +7,9 @@
 import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 
-import {LABEL_CSS,labelScale} from './map-label-rules.ts';
-export {LABEL_CSS,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
-export type {AllyStatus,LabelKind} from './map-label-rules.ts';
+import {LABEL_CSS,labelScale,plateRings} from './map-label-rules.ts';
+export {LABEL_CSS,plateRings,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
+export type {AllyStatus,LabelKind,PlateRing} from './map-label-rules.ts';
 
 /** Rasterized at 2× and scaled down, so the glyphs stay crisp if the canvas ever renders above 1×. */
 const RASTER=2;
@@ -21,7 +21,8 @@ export class MapLabel {
   readonly text:Phaser.GameObjects.Text;
   readonly plate:Phaser.GameObjects.Graphics;
   private sos=false;
-  private drawnText='';private drawnW=-1;private drawnH=-1;private drawnSos=false;
+  private city=false;
+  private drawnText='';private drawnW=-1;private drawnH=-1;private drawnSos=false;private drawnCity=false;
   private x=0;private y=0;private depth=0;
   /** Screen box of the last frame it showed (CSS px from the camera's top-left), for the place fichas to step aside. */
   readonly screen={x:0,y:0,shown:false,sos:false};
@@ -38,6 +39,8 @@ export class MapLabel {
    * place fichas by shape and color, not only by its words.
    */
   setSos(on:boolean){this.sos=on;return this;}
+  /** Cidade Nevada: a Breu ring of 2 CSS px outside the ficha (outside the caído's Cone ring), plateRings. */
+  setCity(on:boolean){this.city=on;return this;}
   /** World anchor (top center of the ficha) and depth; the ficha hangs below the anchor. */
   anchor(x:number,y:number,depth:number){this.x=x;this.y=y;this.depth=depth;return this;}
   /** Per frame: constant screen size at this zoom, and hidden when the rule says so. */
@@ -53,10 +56,14 @@ export class MapLabel {
     this.text.setScale(k).setPosition(left+PAD_X*s+tagW+gap+tw/2,this.y+PAD_Y*s).setDepth(this.depth+1);
     this.plate.setPosition(this.x,this.y).setDepth(this.depth);
     // Repaint the plate only when the text or the size changes (no per-frame string or triangulation).
-    if(this.text.text===this.drawnText&&this.sos===this.drawnSos&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
-    this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;this.drawnSos=this.sos;
+    if(this.text.text===this.drawnText&&this.sos===this.drawnSos&&this.city===this.drawnCity&&Math.abs(w-this.drawnW)<.01&&Math.abs(h-this.drawnH)<.01)return;
+    this.drawnText=this.text.text;this.drawnW=w;this.drawnH=h;this.drawnSos=this.sos;this.drawnCity=this.city;
     const g=this.plate.clear(),b=BORDER*s;
-    if(tag)g.lineStyle(b,this.colors.cone,1).strokeRoundedRect(-w/2-b/2,-b/2,w+b,h+b,(RADIUS+1)*s);
+    // Rings outside the body, outermost first (island: the caído's Cone ring; city: a Breu ring outside it all).
+    for(const ring of plateRings(tag,this.city)){
+      const o=ring.out*b;
+      g.lineStyle(b,this.colors[ring.color],1).strokeRoundedRect(-w/2-o,-o,w+2*o,h+2*o,(RADIUS+ring.out*BORDER)*s);
+    }
     g.fillStyle(this.colors.breu,.88).fillRoundedRect(-w/2,0,w,h,RADIUS*s);
     g.lineStyle(b,this.colors.papel,1).strokeRoundedRect(-w/2+b/2,b/2,w-b,h-b,(RADIUS-1)*s);
     if(tag){

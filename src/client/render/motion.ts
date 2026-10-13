@@ -90,6 +90,18 @@ export function telegraphBlink(timeMs:number,urgency:number,reduced:boolean){
   return .5+.5*Math.cos(timeMs/1000*TAU*hz);
 }
 
+/** City telegraph dash drift (CSS px per second): slow, so the edge reads as alive, never as a spinner. */
+export const TELEGRAPH_DASH_CSS_PER_S=6;
+/**
+ * Phase of the city telegraph's dashes in CSS px, 0..period: drifts slowly along the edge; reduced motion keeps it
+ * still at 0 (prefers-reduced-motion).
+ */
+export function telegraphDashPhase(timeMs:number,period:number,reduced:boolean){
+  if(reduced||!(period>0))return 0;
+  const p=(timeMs/1000*TELEGRAPH_DASH_CSS_PER_S)%period;
+  return p<0?p+period:p;
+}
+
 /** Frame-rate independent exponential smoothing; `rate` is 1/s. */
 export const smoothToward=(current:number,target:number,deltaMs:number,rate:number)=>
   target+(current-target)*Math.exp(-rate*Math.max(0,deltaMs)/1000);

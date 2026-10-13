@@ -13,6 +13,9 @@ export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readon
 /** Unknown kinds fall back to the bêbado (the basic chaser) so a newer server never crashes an older client. */
 export const enemyKind=(kind:string):EnemyKind=>isEnemyKind(kind)?kind:'bebado';
 export const enemyTexture=(kind:string,elite=false)=>`horde:enemy:${enemyKind(kind)}${elite&&kind!=='chefe'?':elite':''}`;
+/** enemyTexture per kind, [plain, elite], built once: the per-frame draw code reads it without building strings. */
+export const ENEMY_TEXTURES:Readonly<Record<EnemyKind,readonly [string,string]>>=Object.freeze(
+  Object.fromEntries(ENEMY_KINDS.map(k=>[k,[enemyTexture(k),enemyTexture(k,true)]])) as Record<EnemyKind,[string,string]>);
 export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'xp'}`;
 /** Hostile projectile look by source: the agiota's boleto com juros is a slip; every other hostile shot is the star. */
 export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.projFriendly:source==='boleto-juros'?FX.projBoleto:FX.projHostile;

@@ -9,6 +9,8 @@ import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ} from './ren
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
+import {CityOutlines} from './render/city-outline.ts';
+import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
@@ -27,6 +29,7 @@ import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
+import {HERO_SHADOW_SIZE,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
@@ -124,7 +127,10 @@ export class IslandScene extends Phaser.Scene {
   private position:Point={...SPAWN};
   private route:Point[]=[];
   private actor!:Phaser.GameObjects.Sprite;
-  private sprites=new CharacterSprites(this);
+  /** City mode (contorno-breu): screen-scale Breu outlines of every figure; built once, kept across world swaps. */
+  private outlines=new CityOutlines(this,{active:()=>isCityWorld(this.field),zoom:()=>this.cameras.main.zoom,
+    groundLuminance:(x,y)=>this.city?cityGroundLuminance(this.city.asset,x,y):undefined});
+  private sprites=new CharacterSprites(this,this.outlines);
   private shadow!:Phaser.GameObjects.Ellipse;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
@@ -162,7 +168,9 @@ export class IslandScene extends Phaser.Scene {
   private attackTarget?:string;
   private skillEffects?:Graphics;
   private displayed?:Point;
-  private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse}>();
+  private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse;
+    /** City only: the ally's contact shadow, Breu 38% like the hero's (created on demand, dropped off the city). */
+    shadow?:Phaser.GameObjects.Ellipse}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
   /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
@@ -250,6 +258,7 @@ export class IslandScene extends Phaser.Scene {
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
+    this.shadowLook();
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
@@ -276,7 +285,9 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
-        canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion});
+        canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
+        // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
+        city:()=>this.cityMode,cityOutlines:this.outlines});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
       // Caídos' light columns follow the figures' scale (CITY_VIEW_SCALE in the city).
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p),()=>this.actorScale);
@@ -285,7 +296,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.outlines.destroy();this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -345,10 +356,14 @@ export class IslandScene extends Phaser.Scene {
     this.route=[];this.destination.clear();
     // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
     if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;}
-    this.buildWorld();
+    this.buildWorld();this.shadowLook();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
   }
+  /** Cidade Nevada mode (the field says 'cidade'): the Breu edges and shadows of card cidade-contorno-breu. */
+  private get cityMode(){return isCityWorld(this.field);}
+  /** The hero's contact shadow for this world: Breu 38% in the city, main's teal 20% elsewhere. */
+  private shadowLook(){const look=heroShadow(this.cityMode);this.shadow?.setFillStyle(look.color,look.alpha);}
   /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
   private cityDepths(){if(this.projector)this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;}
   /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
@@ -453,11 +468,12 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
     const p=this.project(target);
-    // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
+    // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022); in the city the Breu
+    // edges are 2 CSS px at any zoom (city-edge-rules.ts destinationMark).
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
-    const k=this.actorScale;
-    this.destination.lineStyle(5*k,breu,.9).strokeEllipse(p.x,p.y,28*k,14*k).lineStyle(2*k,papel,1).strokeEllipse(p.x,p.y,28*k,14*k);
-    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5*k).fillStyle(papel,1).fillCircle(p.x,p.y,3*k);
+    const m=destinationMark(this.actorScale,1/Math.max(.05,this.cameras.main.zoom),this.cityMode);
+    this.destination.lineStyle(m.breu,breu,m.breuAlpha).strokeEllipse(p.x,p.y,m.width,m.height).lineStyle(m.papel,papel,1).strokeEllipse(p.x,p.y,m.width,m.height);
+    this.destination.fillStyle(breu,m.breuAlpha).fillCircle(p.x,p.y,m.dotBreu).fillStyle(papel,1).fillCircle(p.x,p.y,m.dotPapel);
   }
   private place(){
     const p=this.project(this.position),depth=this.depth(this.position);
@@ -492,6 +508,7 @@ export class IslandScene extends Phaser.Scene {
     this.marks.unshift({id:'self',sprite:this.actor,self:true,feet:p,covered:this.selfCovered,facing:this.facing,
       hp:self?.hp??1,maxHp:state?.maxHp??(self?Math.max(self.hp,1):1),downed:!!state?.downed||(!!self&&self.hp<=0),
       slow:effectOn(state?.slowUntil,this.horde?.tick??0),slip:effectOn(state?.slipUntil,this.horde?.tick??0)});
+    this.you.setCity(this.cityMode);
     this.you.update(time,this.cameras.main.zoom,this.marks);
     this.marks.length=0;
   }
@@ -621,7 +638,7 @@ export class IslandScene extends Phaser.Scene {
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
   private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
   private figureWorldBox(a:Phaser.GameObjects.Sprite,classId:string){
-    const f=a.texture.key.startsWith('sprite:')?this.sprites.figure(classId):undefined;
+    const f=a.texture.key.startsWith('sprite:')?this.sprites.figureIn(a,classId):undefined;
     if(!f)return a.getBounds();
     const sx=Math.abs(a.scaleX),sy=Math.abs(a.scaleY),w=a.frame.width,h=a.frame.height,ox=a.originX*w,oy=a.originY*h;
     const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;
@@ -686,10 +703,10 @@ export class IslandScene extends Phaser.Scene {
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
-    const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom;
+    const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
     for(const player of view.players){
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
@@ -704,10 +721,16 @@ export class IslandScene extends Phaser.Scene {
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
+      // City: a contact shadow under each ally too, the same as the hero's (Breu 38%); none elsewhere (main).
+      if(city){
+        const look=heroShadow(true);
+        objects.shadow??=this.add.ellipse(0,0,HERO_SHADOW_SIZE.width,HERO_SHADOW_SIZE.height,look.color,look.alpha);
+        objects.shadow.setScale(k).setPosition(q.x,q.y).setDepth(depth-2);
+      }else if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
-      objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
+      objects.label.setSos(downed).setCity(city).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*this.actorScale,zoomNow):q.y+15*this.actorScale,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
@@ -715,7 +738,7 @@ export class IslandScene extends Phaser.Scene {
     // Own caído ficha: same SOS ficha as an ally's, with "Você" and the seconds left.
     if(selfDown||this.selfLabel){
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
-      label.setSos(selfDown).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
+      label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.actorScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
     this.updateWatch(view.players);

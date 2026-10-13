@@ -48,6 +48,14 @@ export const HORN_LEAD=ticks(5);
  * "can the farthest hero get back" estimate is the real walk to the plaza (loot.ts cityFarthestReturn).
  */
 export const HORN_LEAD_CITY=ticks(10);
+/*
+ * City idle heroes (BUG-20261013-E4-corneta-jogador-longe): a hero who has neither walked (a non-zero stick,
+ * StonewardsOptions.steered) nor worked a crate since the intermission started does not hold the horn
+ * (StonewardsState.cityHornIdle): idle at the helicopter, ~42 s of walk from the plaza (about the whole intermission),
+ * they used to sound it on the first tick and call everyone home. Displacement alone (a shove) does not count. If one of
+ * them wakes after the horn and can no longer make it back, the horn is re-sized to their walk once per intermission,
+ * a stretch within MAX_STRETCH_PER_RUN like any other.
+ */
 /** `say` key of the left-behind line (a hero outside the base when the round starts, city only). */
 export const LEFT_BEHIND_KEY='ficou-pra-tras';
 /** Longest an intermission may get when the horn stretches it (150 units out needs ~55 s, rules.ts returnTicks). */
@@ -76,6 +84,11 @@ export interface StonewardsOptions {
   onWallDestroyed?(ctx:SimContext):void;
   /** Called once per intermission when the horn sounds, with its pt-BR line and the tick the next round starts. */
   onHorn?(ctx:SimContext,line:string,endsTick:number):void;
+  /**
+   * City horn (idle heroes, BUG-20261013-E4): whether this player walked on this tick's players step (a non-zero stick).
+   * Without it only working a crate wakes an idle hero.
+   */
+  steered?(playerId:string):boolean;
   /** Moves the end of the current intermission (the director owns ctx.round). Without it the horn never stretches it. */
   extendPrepare?(ctx:SimContext,endsTick:number):void;
   /**
@@ -173,11 +186,32 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     }
   }
   syncBarricades(options.terrain,state);
-  function horn(ctx:SimContext,loot:CityLoot|undefined){
+  /** City: drops from cityHornIdle who walked or worked (`worked`) this tick; true when someone woke. */
+  function wake(worked:ReadonlySet<string>){
+    const idle=state.cityHornIdle;
+    if(!idle?.length)return false;
+    const still=idle.filter(id=>!worked.has(id)&&!options.steered?.(id));
+    if(still.length===idle.length)return false;
+    state.cityHornIdle=still;
+    return true;
+  }
+  /** `woke`: a city hero left cityHornIdle this tick (after the horn: one re-size). */
+  function horn(ctx:SimContext,loot:CityLoot|undefined,woke=false){
     const round=ctx.round;
-    if(round.index<=1||state.hornRound===round.index)return;
-    const back=loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y))):farthestReturn(ctx,state);
-    const lead=Math.max(loot?HORN_LEAD_CITY:HORN_LEAD,back),left=round.phaseEndsTick-ctx.tick;
+    if(round.index<=1)return;
+    const idle=loot?state.cityHornIdle:undefined;
+    const back=()=>loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y)),idle?.length?id=>idle.includes(id):undefined):farthestReturn(ctx,state);
+    if(state.hornRound===round.index){
+      // City: a hero idle when it sounded started walking or working and cannot make it back any more: once.
+      if(!loot||!woke||state.cityHornResized)return;
+      const need=back();
+      if(round.phaseEndsTick-ctx.tick>=need)return;
+      state.cityHornResized=true;
+      stretch(ctx,ctx.tick+need);
+      state.hornEndsTick=round.phaseEndsTick;
+      return;
+    }
+    const lead=Math.max(loot?HORN_LEAD_CITY:HORN_LEAD,back()),left=round.phaseEndsTick-ctx.tick;
     if(left>lead)return;
     state.hornRound=round.index;
     if(left<lead)stretch(ctx,ctx.tick+lead);
@@ -243,18 +277,23 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
           // intermission length, not a horn stretch: it does not spend MAX_STRETCH_PER_RUN (9 intermissions × ~9 s
           // would leave the horn almost nothing for a straggler, and nothing once the city hero walks at ~2 u/s).
           if(loot&&round.index>1){
+            // The horn's idle heroes: everyone, until they walk or work (cityHornIdle).
+            state.cityHornIdle=[...ctx.players.keys()].sort();delete state.cityHornResized;
             stretch(ctx,ctx.tick+lootTripTicks(loot,kind=>WORK_PER_UNIT[kind],HORN_LEAD_CITY),false);
             // City knob (cidade-11): extra seconds on top of the sized intermission, within MAX_PREPARE_TICKS.
             if(extraTicks>0)stretch(ctx,ctx.round.phaseEndsTick+extraTicks,false);
           }
         }
         const lootValue=loot?lootValueNow():1,before=lootValue!==1?{...state.gathered}:undefined;
-        const got=gatherStep(ctx,state,options.obstacles);
+        const worked=new Set<string>();
+        const got=gatherStep(ctx,state,options.obstacles,state.cityHornIdle?.length?id=>worked.add(id):undefined);
         if(before)scaleLoot(got,before,lootValue);
         for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
-        horn(ctx,loot);
+        horn(ctx,loot,loot?wake(worked):false);
       }else if(round.phase!=='prepare'){
         state.hornEndsTick=-1;
+        if(state.cityHornIdle)delete state.cityHornIdle;
+        if(state.cityHornResized)delete state.cityHornResized;
         // City: the round started; each standing hero outside the base gets the left-behind line, once per round.
         // Not in round 1: everyone starts at the crashed vehicle, outside the base, by design.
         if(loot&&round.index>1&&!state.wallDown&&state.refilledRound===round.index&&state.leftBehindRound!==round.index){

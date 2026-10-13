@@ -89,6 +89,16 @@ export interface StonewardsState {
    */
   cityLootTeam?:number;
   /**
+   * City only, during an intermission after the opening (BUG-20261013-E4-corneta-jogador-longe; absent on the island
+   * and the endless world and outside 'prepare', so no other state hash moves): the ids, sorted, of the heroes idle
+   * since the intermission started: no non-zero stick (StonewardsOptions.steered) and no crate worked yet. Being
+   * shoved does not wake anyone. They do not hold the horn (idle at the helicopter, AFK); one who walks or works is
+   * dropped from the list for the rest of the intermission.
+   */
+  cityHornIdle?:string[];
+  /** City only: this intermission's horn was already re-sized once for a hero who woke after it sounded. */
+  cityHornResized?:true;
+  /**
    * The tower defenses (torres-sim, towers/system.ts): created by the first build, absent until then, so a run where
    * nobody builds keeps its old state hash on every world. The forge's chinelo towers stay in `towers`.
    */

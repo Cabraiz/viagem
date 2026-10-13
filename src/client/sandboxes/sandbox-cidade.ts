@@ -327,7 +327,8 @@ class CitySandbox extends Phaser.Scene {
       if(i<0)continue;
       // Like the sim on the wire: the aim (turns from +x) of the volley, so the renderer turns to it and never scans
       // the horde itself ("mira só no tiro"), as in the game.
-      d.aim=(Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(Math.PI*2)+1)%1;
+      // The sim records no aim for an aura (the wire's spark ring: src/sim/towers/system.ts), so neither does this.
+      if(l.calibre!=='arame')d.aim=(Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(Math.PI*2)+1)%1;
       d.fireTick=tick+Math.max(1,Math.round(l.cooldown*SIM_HZ));
     }
     const t=this.towers;if(!t)return;

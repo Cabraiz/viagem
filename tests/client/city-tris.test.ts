@@ -76,3 +76,21 @@ test('city layer draws blocks, glints and procedural props through TriBand, neve
   assert.match(band,/F\[o\+5\]=2/);
   assert.match(band,/getTintAppendFloatAlpha/);
 });
+
+test('TriBand guard: the installed Phaser still has the internals the frozen-triangle replay relies on',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const root=new URL('../../node_modules/phaser/',import.meta.url);
+  const {TRI_PHASER_VERSION}=await import('../../src/client/render/city/tri-band.ts').catch(()=>({TRI_PHASER_VERSION:'3.90.0'}));
+  const version=JSON.parse(readFileSync(new URL('package.json',root),'utf8')).version;
+  assert.equal(version,TRI_PHASER_VERSION,'Phaser changed: re-verify tri-band.ts (recording/replay) before bumping TRI_PHASER_VERSION');
+  const renderer=readFileSync(new URL('src/gameobjects/graphics/GraphicsWebGLRenderer.js',root),'utf8');
+  assert.match(renderer,/Utils\.getTintAppendFloatAlpha/,'GraphicsWebGLRenderer still packs tints through Utils.getTintAppendFloatAlpha');
+  const multi=readFileSync(new URL('src/renderer/webgl/pipelines/MultiPipeline.js',root),'utf8');
+  for(const name of ['batchFillPath','batchStrokePath','batchLine','batchFillRect','batchFillTriangle','batchStrokeTriangle'])
+    assert.match(multi,new RegExp(`${name}: function`),`MultiPipeline.${name}`);
+  // batchTri/batchQuad live on the base WebGLPipeline.
+  const base=readFileSync(new URL('src/renderer/webgl/WebGLPipeline.js',root),'utf8');
+  for(const name of ['batchTri','batchQuad'])assert.match(base,new RegExp(`${name}: function`),`WebGLPipeline.${name}`);
+  const tri=base.slice(base.indexOf('batchTri: function'));
+  assert.equal(tri.slice(tri.indexOf('(')+1,tri.indexOf(')')).split(',').length,17,'batchTri arity (tint is the 12th argument)');
+});

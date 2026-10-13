@@ -65,6 +65,18 @@ function capture(g:Phaser.GameObjects.Graphics,out:MeshBuilder){
   finally{utils.getTintAppendFloatAlpha=pack;g.setPosition(x,y).setAlpha(alpha);}
 }
 
+/**
+ * The replay writes Phaser 3.90 MultiPipeline vertices by hand and records through private renderer internals
+ * (tests/client/city-tris.test.ts checks them in the installed sources). Anywhere else (another Phaser version, a
+ * pipeline with another vertex layout) bands stay plain Graphics: slower, never wrong.
+ */
+export const TRI_PHASER_VERSION='3.90.0';
+function canFreeze(renderer:unknown):boolean{
+  if(!(renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer)||Phaser.VERSION!==TRI_PHASER_VERSION)return false;
+  const multi=(renderer.pipelines as unknown as {MULTI_PIPELINE?:string;get(name:string):unknown}).get?.('MultiPipeline') as {currentShader?:{vertexComponentCount?:number}}|undefined;
+  return !multi?.currentShader||multi.currentShader.vertexComponentCount===7;
+}
+
 export class TriBand extends Phaser.GameObjects.Graphics {
   private mesh:TriMesh|null=null;
   private tints:number[]=[];
@@ -78,7 +90,7 @@ export class TriBand extends Phaser.GameObjects.Graphics {
   static make(scene:Phaser.Scene,draw:((g:Phaser.GameObjects.Graphics)=>void)|((g:Phaser.GameObjects.Graphics)=>void)[],x=0,y=0):TriBand{
     const band=new TriBand(scene),parts=Array.isArray(draw)?draw:[draw];
     scene.add.existing(band);
-    if(scene.sys.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer){
+    if(canFreeze(scene.sys.renderer)){
       const out=new MeshBuilder();
       for(const part of parts){
         part(band);
@@ -98,13 +110,17 @@ export class TriBand extends Phaser.GameObjects.Graphics {
   renderWebGL(renderer:Phaser.Renderer.WebGL.WebGLRenderer,src:TriBand,camera:Phaser.Cameras.Scene2D.Camera,parentMatrix?:Matrix){
     const m=this.mesh;
     if(!m){
-      // Not frozen (nothing drawn, or drawn after make): behave as a plain Graphics.
+      // Not frozen (Canvas, or a Phaser/pipeline this replay was not written for): behave as a plain Graphics.
+      // A frozen band ignores later drawing: TriBands are static, draw them in make().
       (Phaser.GameObjects.Graphics.prototype as unknown as {renderWebGL:GraphicsRender}).renderWebGL(renderer,src,camera,parentMatrix);
       return;
     }
     if(!m.count)return;
     // On the scene list, unscaled and unrotated with scroll factor 1, local + position = world: cull by the world view.
-    const cull=!parentMatrix&&this.scaleX===1&&this.scaleY===1&&this.rotation===0&&this.scrollFactorX===1&&this.scrollFactorY===1;
+    // worldView ignores camera rotation and shake: never cull then (a band would pop at the screen edges).
+    const shaking=(camera as unknown as {shakeEffect?:{isRunning?:boolean}}).shakeEffect?.isRunning;
+    const cull=!parentMatrix&&this.scaleX===1&&this.scaleY===1&&this.rotation===0&&this.scrollFactorX===1&&this.scrollFactorY===1
+      &&!((camera as unknown as {rotation?:number}).rotation)&&!shaking;
     const view=camera.worldView;
     if(cull&&!meshOnScreen(m,this.x,this.y,view,CULL_MARGIN)){TRI_STATS.culled++;return;}
     TRI_STATS.drawn++;
@@ -117,7 +133,9 @@ export class TriBand extends Phaser.GameObjects.Graphics {
     const alpha=camera.alpha*src.alpha;
     if(alpha!==this.tintAlpha){
       this.tintAlpha=alpha;
-      this.tints=m.colors.map((color,i)=>tintOf(color,m.alphas[i]*alpha));
+      // Reused array: the glints change alpha every frame.
+      const tints=this.tints;tints.length=m.colors.length;
+      for(let i=0;i<m.colors.length;i++)tints[i]=tintOf(m.colors[i],m.alphas[i]*alpha);
     }
     const tints=this.tints,xy=m.xy,style=m.style,ends=m.ends;
     for(let s=0;s<ends.length;s++){

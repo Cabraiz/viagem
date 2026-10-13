@@ -7,8 +7,12 @@
  * iso boxes in the city's materials with the Breu contour (D-022 double edge), scaffold poles while in obra.
  * Occlusion: a hero or ally behind a defense keeps visible, the defense fades like the city's props (render/city/
  * occlusion.ts propCovers + CoverFader, the same rule and timings as the buildings).
- * Effects come from fixed pools drawn into two Graphics (craters on the ground, the rest on top): no allocation per
- * frame. Pure rules in tower-rules.ts. Pure drawing: the caller pushes the defenses (`push`) and the enemies
+ * Every procedural texture (bases, weapons, craters, effects) is a frame of one shared atlas (tower-atlas.ts), so the
+ * defenses never break the sprite batch with textures of their own.
+ * Effects come from fixed pools of Images of frames baked once (craters in a Layer on the ground, the rest in one on top):
+ * nothing is tessellated per frame, a crater is placed once, the weapons re-scan the horde only when they fire or every
+ * RESCAN_MS (else they follow the target they have), and a defense's depth and cover test run only when it or the
+ * figures changed. Pure rules in tower-rules.ts. Pure drawing: the caller pushes the defenses (`push`) and the enemies
  * (`setEnemies`) and calls `update` every frame.
  */
 import Phaser from 'phaser';
@@ -17,6 +21,7 @@ import {CoverFader,propCovers,type Figure} from '../city/occlusion.ts';
 import {MATERIALS} from '../city/palette.ts';
 import type {Pt,Rect} from '../city/projection.ts';
 import {tokenColor} from '../../ui/tokens.ts';
+import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
 import {CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
   towerArt,towerPhase,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
@@ -42,22 +47,35 @@ export interface TowerRendererOptions {
 
 interface Tower {
   view:TowerView;look:TowerLook;cal:CalibreLook;phase:TowerPhase;prevFire?:number;
+  /** Next re-scan of the horde for the nearest target (ms); the alpha last set; the cover test's last answer. */
+  scanAt:number;alpha:number;covers:boolean;
   base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
   /** The delivered base sheet is in use (else the baked procedural texture). */
   art:boolean;
   dir:Dir8;want:Dir8;turnMs:number;recoilUntil:number;drawnDir:number;drawnRecoil:boolean;drawnKey:string;
   rect:Rect;prop:{x:number;y:number;rect:Rect};mount:Pt;height:number;seen:number;target:number;
 }
-interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:number;y1:number;born:number;ms:number;mx:number;my:number}
-interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number}
-interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean}
+/** Pooled effect images are made on first use and only hidden afterwards. */
+type Img=Phaser.GameObjects.Image|undefined;
+interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:number;y1:number;born:number;ms:number;mx:number;my:number;trail:Img;head:Img;puff:Img}
+interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;img:Img}
+interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;img:Img}
 interface Crater {on:boolean;x:number;y:number;r:number;born:number;ms:number}
 
 export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
-const CRATER_KEY='torres:cratera',CRATER_TEX=128;
+const CRATER_FRAME='cratera',CRATER_TEX=128;
+/** A weapon with a target re-scans the horde for a nearer one this often (ms); it re-scans at once when it loses it. */
+export const RESCAN_MS=250;
+/** Baked effect textures: drawn once (bakeEffects), then placed, scaled, turned and faded per frame. */
+const FX={flash:'fx:flash',blast:'fx:blast',ring:'fx:anel',tracer:'fx:tracante',smoke:'fx:fumaca',
+  headPapel:'fx:ponta-papel',headShell:'fx:ponta-granada',headRocket:'fx:ponta-foguete',puff:'fx:baforada',
+  cone:'fx:cone',spot:'fx:foco'} as const;
+const FLASH_TEX=64,BLAST_R=48,BLAST_W=104,BLAST_H=60,BLAST_GROUND=44,RING_W=256,RING_H=132,STREAK_W=64,STREAK_H=12,STREAK_LINE=8,HEAD_TEX=32,CONE_W=128,CONE_H=64,SPOT_W=64,SPOT_H=32;
+/** Draw order inside the effects layer. */
+const FX_ORDER={shot:0,blast:1,flash:2} as const;
 /** The weapon's pivot stands this high over the roof (CSS px × actor scale), on a drum. */
 const POST_PX=10;
 
@@ -70,16 +88,22 @@ export class TowerRenderer {
   private readonly towers=new Map<string,Tower>();
   /** Scratch Graphics the procedural textures are drawn into (never on screen). */
   private readonly bake:Phaser.GameObjects.Graphics;
-  /** Crater decals: one baked texture, a fixed pool of Images on the ground. */
+  private readonly atlas:TowerAtlas;
+  /** Crater decals: one baked frame, a fixed pool of Images in a layer on the ground, placed once. */
   private readonly craterImages:Phaser.GameObjects.Image[];
-  private readonly fx:Phaser.GameObjects.Graphics;
-  private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0}));
-  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
-  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false}));
+  private readonly ground:Phaser.GameObjects.Layer;
+  /** Shots, explosions and flashes: Images in one layer over the actors (sorted once, not with the city's actors). */
+  private readonly fx:Phaser.GameObjects.Layer;
+  private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,trail:undefined,head:undefined,puff:undefined}));
+  private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,img:undefined}));
+  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,img:undefined}));
   private readonly craters=pool<Crater>(CRATER_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
   private cursor={shot:0,flash:0,blast:0,crater:0};
   private readonly fader=new CoverFader();
   private readonly covered=new Set<string>();
+  /** The figures of the last cover test (x, y, z each) and whether a defense changed since: else the test is skipped. */
+  private readonly lastFigures:number[]=[];
+  private coverDirty=true;
   private enemies={n:0,xs:new Float32Array(0) as ArrayLike<number>,ys:new Float32Array(0) as ArrayLike<number>,air:undefined as ArrayLike<number>|undefined};
   private shake={born:-1e9,cal:CALIBRE.pistola as CalibreLook};
   private applied={x:0,y:0};
@@ -97,14 +121,17 @@ export class TowerRenderer {
   constructor(scene:Phaser.Scene,options:TowerRendererOptions){
     this.scene=scene;this.o=options;
     this.bake=scene.make.graphics({x:0,y:0},false);
-    if(!scene.textures.exists(CRATER_KEY)){
-      const g=this.bake,w=CRATER_TEX,h=w/2;g.clear();
+    this.atlas=new TowerAtlas(scene.textures);
+    const crater=this.atlas.frame(CRATER_FRAME,CRATER_TEX,CRATER_TEX/2,this.bake,g=>{
+      const w=CRATER_TEX,h=w/2;
       g.fillStyle(this.breu,.42).fillEllipse(w/2,h/2,w-4,h-2).fillStyle(MATERIALS.pedra.escura,.55).fillEllipse(w/2,h/2+h*.05,(w-4)*.7,(h-2)*.65)
         .lineStyle(3,this.breu,.7).strokeEllipse(w/2,h/2,w-4,h-2);
-      g.generateTexture(CRATER_KEY,w,h);g.clear();
-    }
-    this.craterImages=this.craters.map(()=>scene.add.image(0,0,CRATER_KEY).setDepth(options.groundDepth).setVisible(false));
-    this.fx=scene.add.graphics().setDepth(options.fxDepth);
+    });
+    this.ground=scene.add.layer().setDepth(options.groundDepth);
+    this.craterImages=this.craters.map(()=>{const img=scene.make.image({x:0,y:0,key:crater.key,frame:crater.frame},false).setVisible(false);this.ground.add(img);return img;});
+    this.bakeEffects();
+    this.atlas.flush();
+    this.fx=scene.add.layer().setDepth(options.fxDepth);
     this.measure();
   }
   private get s(){return this.o.actorScale??1;}
@@ -124,16 +151,19 @@ export class TowerRenderer {
     const stamp=++this.stamp;
     for(const view of list){
       let t=this.towers.get(view.id);
-      if(!t||t.view.kind!==view.kind){if(t)this.drop(t);t=this.make(view);this.towers.set(view.id,t);}
+      if(!t||t.view.kind!==view.kind){if(t)this.drop(t);t=this.make(view);this.towers.set(view.id,t);this.coverDirty=true;}
       t.view=view;t.seen=stamp;
       t.phase=towerPhase(view,tick);
       if(firedNow(t.prevFire,view,tick))this.fire(t,nowMs);
       t.prevFire=view.fireTick;
     }
-    for(const t of this.towers.values())if(t.seen!==stamp){this.drop(t);this.towers.delete(t.view.id);}
+    for(const t of this.towers.values())if(t.seen!==stamp){this.drop(t);this.towers.delete(t.view.id);this.coverDirty=true;}
   }
-  /** Redraws after a camera turn. */
-  refresh(){this.measure();for(const t of this.towers.values())t.drawnKey='';}
+  /** Redraws after a camera turn (the defenses and the craters on the snow). */
+  refresh(){
+    this.measure();for(const t of this.towers.values())t.drawnKey='';
+    for(let i=0;i<this.craters.length;i++)if(this.craters[i].on)this.placeCrater(this.craters[i],this.craterImages[i]);
+  }
   get count(){return this.towers.size;}
   /** Live effects (for checks): shots, flashes, blasts, craters. */
   live(){
@@ -143,31 +173,49 @@ export class TowerRenderer {
   /** Every frame: aim and turn, fade covering defenses, move the effects, shake. `figures`: the hero and the allies. */
   update(nowMs:number,dtMs:number,figures:readonly Figure[]){
     this.now=nowMs;
-    const view=this.o.world.view(),covered=this.covered;covered.clear();
+    const view=this.o.world.view(),covered=this.covered;
     for(const t of this.towers.values()){
       this.aim(t,dtMs);
       this.drawTower(t,view);
-      t.prop.x=t.view.x;t.prop.y=t.view.y;
-      for(let i=0;i<figures.length;i++)if(propCovers(t.prop,figures[i],view)){covered.add(t.view.id);break;}
     }
+    if(this.figuresMoved(figures)||this.coverDirty){
+      this.coverDirty=false;
+      for(const t of this.towers.values()){
+        t.prop.x=t.view.x;t.prop.y=t.view.y;t.covers=false;
+        for(let i=0;i<figures.length;i++)if(propCovers(t.prop,figures[i],view)){t.covers=true;break;}
+      }
+    }
+    covered.clear();
+    for(const t of this.towers.values())if(t.covers)covered.add(t.view.id);
     const alpha=this.fader.update(covered,dtMs);
     for(const t of this.towers.values()){
       const a=alpha.get(t.view.id)??1;
-      t.base.setAlpha(a);t.weapon.setAlpha(a);
+      if(a!==t.alpha){t.alpha=a;t.base.setAlpha(a);t.weapon.setAlpha(a);}
     }
     this.drawEffects(nowMs);
+    this.atlas.flush();
     this.applyShake(nowMs);
+  }
+  /** The figures moved since the last cover test (and remembers where they are). */
+  private figuresMoved(figures:readonly Figure[]):boolean{
+    const last=this.lastFigures;let moved=last.length!==figures.length*3;
+    if(moved)last.length=figures.length*3;
+    for(let i=0;i<figures.length;i++){
+      const f=figures[i],j=i*3;
+      if(last[j]!==f.x||last[j+1]!==f.y||last[j+2]!==f.z){moved=true;last[j]=f.x;last[j+1]=f.y;last[j+2]=f.z;}
+    }
+    return moved;
   }
   destroy(){
     for(const t of this.towers.values())this.drop(t);
-    this.towers.clear();this.bake.destroy();this.fx.destroy();for(const i of this.craterImages)i.destroy();
+    this.towers.clear();this.bake.destroy();this.fx.destroy();this.ground.destroy();
     const cam=this.o.camera;if(cam){cam.scrollX-=this.applied.x;cam.scrollY-=this.applied.y;}
   }
 
   private make(view:TowerView):Tower{
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
-      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,
+      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,scanAt:0,alpha:1,covers:false,
       dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnKey:'',
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1};
     t.prop.rect=t.rect;
@@ -183,7 +231,11 @@ export class TowerRenderer {
       return;
     }
     const e=this.enemies;
-    t.target=canFire(t.phase)?aimIndex(t.look,t.view.x,t.view.y,e.n,e.xs,e.ys,e.air):-1;
+    if(!canFire(t.phase))t.target=-1;
+    else if(this.now>=t.scanAt||!this.reaches(t,t.target)){
+      t.target=aimIndex(t.look,t.view.x,t.view.y,e.n,e.xs,e.ys,e.air);
+      t.scanAt=this.now+RESCAN_MS;
+    }
     if(t.target>=0){
       const w=this.o.world,a=w.project(t.view.x,t.view.y,0,this.p),b=w.project(e.xs[t.target],e.ys[t.target],0,this.q);
       t.want=dir8(b.x-a.x,b.y-a.y,t.want);
@@ -193,11 +245,21 @@ export class TowerRenderer {
     while(t.turnMs>=TURN_MS&&t.dir!==t.want){t.turnMs-=TURN_MS;t.dir=turnToward(t.dir,t.want);}
   }
 
+  /** Enemy `i` is still there and in reach of the defense (the cheap check between re-scans). */
+  private reaches(t:Tower,i:number):boolean{
+    const e=this.enemies;
+    if(i<0||i>=e.n)return false;
+    const flying=!!e.air?.[i],hits=t.look.hits;
+    if(hits==='air'?!flying:hits==='ground'&&flying)return false;
+    const d=Math.hypot(e.xs[i]-t.view.x,e.ys[i]-t.view.y);
+    return d<=t.look.range&&d>=t.look.minRange;
+  }
   /** A volley: muzzle flash, recoil, and the shots toward the current aim (the nearest reachable enemy). */
   private fire(t:Tower,nowMs:number){
     const cal=t.cal,e=this.enemies;
     t.recoilUntil=nowMs+RECOIL_MS;
     const target=aimIndex(t.look,t.view.x,t.view.y,e.n,e.xs,e.ys,e.air);
+    t.target=target;t.scanAt=nowMs+RESCAN_MS;
     if(target>=0&&cal.shot!=='aura'){ // snap the weapon to the target it fired at
       const w=this.o.world,a=w.project(t.view.x,t.view.y,0,this.p),b=w.project(e.xs[target],e.ys[target],0,this.q);
       t.dir=t.want=dir8(b.x-a.x,b.y-a.y,t.dir);
@@ -243,6 +305,12 @@ export class TowerRenderer {
   }
   private addCrater(x:number,y:number,r:number,ms:number,born:number){
     const c=this.next(this.craters,'crater');c.on=true;c.x=x;c.y=y;c.r=r;c.ms=ms;c.born=born;
+    this.placeCrater(c,this.craterImages[this.craters.indexOf(c)]);
+  }
+  /** A crater decal is placed once (and again after a camera turn); only its last fifth fades. */
+  private placeCrater(c:Crater,img:Phaser.GameObjects.Image){
+    const p=this.o.world.project(c.x,c.y,0,this.p);
+    img.setVisible(true).setPosition(p.x,p.y).setScale(c.r*this.unitPx*2/CRATER_TEX).setAlpha(1);
   }
   private impact(s:Shot,now:number){
     const c=s.cal;
@@ -253,67 +321,97 @@ export class TowerRenderer {
   }
 
   private drawEffects(now:number){
-    const g=this.fx,w=this.o.world,u=this.unitPx,s=this.f;
-    g.clear();
+    const w=this.o.world,u=this.unitPx,s=this.f;
     for(let i=0;i<this.craters.length;i++){
-      const c=this.craters[i],img=this.craterImages[i];
-      if(!c.on){if(img.visible)img.setVisible(false);continue;}
-      const k=(now-c.born)/c.ms;if(k>=1){c.on=false;img.setVisible(false);continue;}
-      const a=k<.8?1:1-(k-.8)/.2,p=w.project(c.x,c.y,0,this.p);
-      img.setVisible(true).setPosition(p.x,p.y).setScale(c.r*u*2/CRATER_TEX).setAlpha(a);
+      const c=this.craters[i];if(!c.on)continue;
+      const k=(now-c.born)/c.ms,img=this.craterImages[i];
+      if(k>=1){c.on=false;img.setVisible(false);continue;}
+      if(k>=.8)img.setAlpha(1-(k-.8)/.2);
     }
     for(const sh of this.shots){
-      if(!sh.on||now<sh.born)continue;
+      if(!sh.on)continue;
+      if(now<sh.born){this.hideShot(sh);continue;}
       const c=sh.cal,t=sh.ms>0?(now-sh.born)/sh.ms:1;
       if(c.shot==='beam'){
-        if(t>=1){sh.on=false;continue;}
+        if(t>=1){sh.on=false;this.hideShot(sh);continue;}
         const p=w.project(sh.x1,sh.y1,0,this.p),a=(1-t)*.6,half=c.barrel*u*.9;
-        // Light cone with the Breu double edge (a pale beam alone vanishes on the snow).
-        g.fillStyle(this.amarelo,a).fillTriangle(sh.mx,sh.my,p.x-half,p.y,p.x+half,p.y)
-          .lineStyle(Math.max(1,1.5*s),this.breu,a).strokeTriangle(sh.mx,sh.my,p.x-half,p.y,p.x+half,p.y)
-          .fillStyle(this.amarelo,a*1.4).fillEllipse(p.x,p.y,half*2.4,half*1.2)
-          .lineStyle(Math.max(1,1.5*s),this.breu,a).strokeEllipse(p.x,p.y,half*2.4,half*1.2);
+        // Light cone with the Breu double edge (a pale beam alone vanishes on the snow), and its spot.
+        const dx=p.x-sh.mx,dy=p.y-sh.my;
+        sh.trail=this.fxImage(sh.trail,FX.cone,FX_ORDER.shot,0,.5).setPosition(sh.mx,sh.my).setRotation(Math.atan2(dy,dx))
+          .setScale(Math.max(1,Math.hypot(dx,dy))/CONE_W,half*2/CONE_H).setAlpha(a);
+        sh.head=this.fxImage(sh.head,FX.spot,FX_ORDER.shot).setPosition(p.x,p.y).setScale(half*2.4/SPOT_W,half*1.2/SPOT_H).setAlpha(Math.min(1,a*1.4));
         continue;
       }
-      if(t>=1){sh.on=false;this.impact(sh,now);continue;}
+      if(t>=1){sh.on=false;this.hideShot(sh);this.impact(sh,now);continue;}
       const dist=Math.hypot(sh.x1-sh.x0,sh.y1-sh.y0)||1,back=Math.min(t,c.trail/dist);
       const head=this.at(sh,t,this.p),tail=this.at(sh,t-back,this.q);
+      const dx=head.x-tail.x,dy=head.y-tail.y,len=Math.hypot(dx,dy),rot=Math.atan2(dy,dx),thick=Math.max(1,4*s)/STREAK_LINE;
       if(c.shot==='tracer'){
-        g.lineStyle(Math.max(1,4*s),this.breu,.6).lineBetween(tail.x,tail.y,head.x,head.y)
-          .lineStyle(Math.max(1,2.2*s),this.amarelo,1).lineBetween(tail.x,tail.y,head.x,head.y)
-          .fillStyle(this.papel,1).fillCircle(head.x,head.y,1.6*s);
-      }else{
-        if(c.trail>0){
-          g.lineStyle(Math.max(1,4*s),this.papel,.5).lineBetween(tail.x,tail.y,head.x,head.y);
-          if(c.shot==='rocket')g.fillStyle(this.papel,.45).fillCircle(tail.x,tail.y,4*s);
-        }
-        const r=(c.shot==='rocket'?3:c.crater==='gustavao'?9:4.5)*s;
-        g.fillStyle(this.breu,1).fillCircle(head.x,head.y,r+1.5*s)
-          .fillStyle(c.shot==='rocket'?this.cone:MATERIALS.pedra.clara,1).fillCircle(head.x,head.y,r);
+        sh.trail=this.fxImage(sh.trail,FX.tracer,FX_ORDER.shot,0,.5).setPosition(tail.x,tail.y).setRotation(rot).setScale(Math.max(1,len)/STREAK_W,thick).setAlpha(1);
+        sh.head=this.fxImage(sh.head,FX.headPapel,FX_ORDER.shot).setPosition(head.x,head.y).setScale(3.2*s/HEAD_TEX).setAlpha(1);
+        continue;
       }
+      if(c.trail>0&&len>.5){
+        sh.trail=this.fxImage(sh.trail,FX.smoke,FX_ORDER.shot,0,.5).setPosition(tail.x,tail.y).setRotation(rot).setScale(len/STREAK_W,thick).setAlpha(.5);
+        if(c.shot==='rocket')sh.puff=this.fxImage(sh.puff,FX.puff,FX_ORDER.shot).setPosition(tail.x,tail.y).setScale(8*s/HEAD_TEX).setAlpha(.45);
+      }else{sh.trail?.setVisible(false);sh.puff?.setVisible(false);}
+      const r=(c.shot==='rocket'?3:c.crater==='gustavao'?9:4.5)*s;
+      sh.head=this.fxImage(sh.head,c.shot==='rocket'?FX.headRocket:FX.headShell,FX_ORDER.shot).setPosition(head.x,head.y).setScale((r+1.5*s)*2/HEAD_TEX).setAlpha(1);
     }
     for(const b of this.blasts){
       if(!b.on)continue;
-      const k=(now-b.born)/b.ms;if(k>=1){b.on=false;continue;}
-      const p=w.project(b.x,b.y,0,this.p),rw=b.r*u*(.35+.65*Math.sqrt(k)),rh=rw*.5;
+      const k=(now-b.born)/b.ms;if(k>=1){b.on=false;b.img?.setVisible(false);continue;}
+      const p=w.project(b.x,b.y,0,this.p),rw=b.r*u*(.35+.65*Math.sqrt(k));
       if(b.ring){
-        g.lineStyle(Math.max(1,3*s),this.breu,.5*(1-k)).strokeEllipse(p.x,p.y,rw*2,rh*2)
-          .lineStyle(Math.max(1,1.5*s),this.papel,.9*(1-k)).strokeEllipse(p.x,p.y,rw*2,rh*2);
+        b.img=this.fxImage(b.img,FX.ring,FX_ORDER.blast).setPosition(p.x,p.y).setScale(rw*2/(RING_W-8)).setAlpha(1-k);
         continue;
       }
-      const lift=rh*1.2*k;
-      g.fillStyle(this.breu,.35*(1-k)).fillEllipse(p.x,p.y-lift,rw*2.1,rh*2.4)
-        .fillStyle(this.cone,.85*(1-k)).fillEllipse(p.x,p.y-lift*.6,rw*1.6,rh*1.9)
-        .fillStyle(this.amarelo,(1-k)).fillEllipse(p.x,p.y-lift*.4,rw*.9,rh*1.1);
+      // The fireball rises as it fades (the baked one is drawn at half its rise).
+      b.img=this.fxImage(b.img,FX.blast,FX_ORDER.blast,.5,BLAST_GROUND/BLAST_H).setPosition(p.x,p.y-rw*.3*(k-.5))
+        .setScale(rw/BLAST_R).setAlpha(1-k);
     }
     for(const f of this.flashes){
       if(!f.on)continue;
-      const k=(now-f.born)/f.ms;if(k>=1){f.on=false;continue;}
-      const r=f.r*(1-.4*k);
-      g.fillStyle(this.cone,.7*(1-k)).fillCircle(f.x,f.y,r*1.25)
-        .fillStyle(this.amarelo,1-k).fillCircle(f.x,f.y,r)
-        .fillStyle(this.papel,1-k).fillCircle(f.x,f.y,r*.45);
+      const k=(now-f.born)/f.ms;if(k>=1){f.on=false;f.img?.setVisible(false);continue;}
+      f.img=this.fxImage(f.img,FX.flash,FX_ORDER.flash).setPosition(f.x,f.y).setScale(f.r*(1-.4*k)*2.5/FLASH_TEX).setAlpha(1-k);
     }
+  }
+  private hideShot(sh:Shot){sh.trail?.setVisible(false);sh.head?.setVisible(false);sh.puff?.setVisible(false);}
+  /** A pooled effect image showing `key`, visible (made in the effects layer on first use). */
+  private fxImage(img:Img,name:string,order:number,ox=.5,oy=.5):Phaser.GameObjects.Image{
+    const f=this.atlas.get(name)!;
+    if(!img){img=this.scene.make.image({x:0,y:0,key:f.key,frame:f.frame},false);this.fx.add(img);img.setDepth(order);}
+    if(img.frame.name!==f.frame||img.texture.key!==f.key)img.setTexture(f.key,f.frame);
+    if(img.originX!==ox||img.originY!==oy)img.setOrigin(ox,oy);
+    if(img.rotation!==0&&ox!==0)img.setRotation(0);
+    return img.visible?img:img.setVisible(true);
+  }
+  /** The effect textures, drawn once into the scratch Graphics (kept by the texture manager for every renderer). */
+  private bakeEffects(){
+    const g=this.bake,make=(name:string,w:number,h:number,draw:()=>void)=>{this.atlas.frame(name,w,h,g,draw);};
+    const c=FLASH_TEX/2;
+    make(FX.flash,FLASH_TEX,FLASH_TEX,()=>g.fillStyle(this.cone,.7).fillCircle(c,c,c).fillStyle(this.amarelo,1).fillCircle(c,c,c/1.25)
+      .fillStyle(this.papel,1).fillCircle(c,c,c/1.25*.45));
+    {
+      const R=BLAST_R,rh=R*.5,lift=rh*1.2*.5,cx=BLAST_W/2,cy=BLAST_GROUND;
+      make(FX.blast,BLAST_W,BLAST_H,()=>g.fillStyle(this.breu,.35).fillEllipse(cx,cy-lift,R*2.1,rh*2.4)
+        .fillStyle(this.cone,.85).fillEllipse(cx,cy-lift*.6,R*1.6,rh*1.9).fillStyle(this.amarelo,1).fillEllipse(cx,cy-lift*.4,R*.9,rh*1.1));
+    }
+    make(FX.ring,RING_W,RING_H,()=>g.lineStyle(6,this.breu,.5).strokeEllipse(RING_W/2,RING_H/2,RING_W-8,RING_H-8)
+      .lineStyle(3,this.papel,.9).strokeEllipse(RING_W/2,RING_H/2,RING_W-8,RING_H-8));
+    const m=STREAK_H/2;
+    make(FX.tracer,STREAK_W,STREAK_H,()=>g.lineStyle(STREAK_LINE,this.breu,.6).lineBetween(0,m,STREAK_W,m)
+      .lineStyle(STREAK_LINE*.55,this.amarelo,1).lineBetween(0,m,STREAK_W,m));
+    make(FX.smoke,STREAK_W,STREAK_H,()=>g.lineStyle(STREAK_LINE,this.papel,1).lineBetween(0,m,STREAK_W,m));
+    const h=HEAD_TEX/2,rim=h*.25;
+    make(FX.headPapel,HEAD_TEX,HEAD_TEX,()=>g.fillStyle(this.papel,1).fillCircle(h,h,h));
+    make(FX.puff,HEAD_TEX,HEAD_TEX,()=>g.fillStyle(this.papel,1).fillCircle(h,h,h));
+    make(FX.headShell,HEAD_TEX,HEAD_TEX,()=>g.fillStyle(this.breu,1).fillCircle(h,h,h).fillStyle(MATERIALS.pedra.clara,1).fillCircle(h,h,h-rim));
+    make(FX.headRocket,HEAD_TEX,HEAD_TEX,()=>g.fillStyle(this.breu,1).fillCircle(h,h,h).fillStyle(this.cone,1).fillCircle(h,h,h-rim*1.4));
+    make(FX.cone,CONE_W,CONE_H,()=>g.fillStyle(this.amarelo,1).fillTriangle(2,CONE_H/2,CONE_W-2,2,CONE_W-2,CONE_H-2)
+      .lineStyle(2.5,this.breu,1).strokeTriangle(2,CONE_H/2,CONE_W-2,2,CONE_W-2,CONE_H-2));
+    make(FX.spot,SPOT_W,SPOT_H,()=>g.fillStyle(this.amarelo,1).fillEllipse(SPOT_W/2,SPOT_H/2,SPOT_W-4,SPOT_H-4)
+      .lineStyle(2.5,this.breu,1).strokeEllipse(SPOT_W/2,SPOT_H/2,SPOT_W-4,SPOT_H-4));
   }
   /** World px of a shot at progress t (the line from the muzzle height down to the ground plus the lob). */
   private at(s:Shot,t:number,out:Pt):Pt{
@@ -338,11 +436,11 @@ export class TowerRenderer {
    */
   private drawTower(t:Tower,view:number){
     const w=this.o.world,v=t.view;
-    const depth=w.depth(v.x,v.y);
-    t.base.setDepth(depth);t.weapon.setDepth(depth+.001);
     const key=`${t.phase}|${view}`;
-    if(t.drawnKey!==key){
-      t.drawnKey=key;t.drawnDir=-1;t.height=t.look.height;
+    if(t.drawnKey!==key){ // a defense stands still: its depth and drawing change only with its phase or the camera
+      t.drawnKey=key;t.drawnDir=-1;t.height=t.look.height;this.coverDirty=true;
+      const depth=w.depth(v.x,v.y);
+      t.base.setDepth(depth);t.weapon.setDepth(depth+.001);
       const top=w.project(v.x,v.y,t.look.height*PHASE_HEIGHT[t.phase],this.p);t.mount.x=top.x;t.mount.y=top.y-POST_PX*this.f;
       if(t.art)this.placeArt(t,view);
       else this.placeBase(t,view);
@@ -366,13 +464,12 @@ export class TowerRenderer {
   }
   /** The procedural base, baked once per kind × phase × view × size, placed over its screen bounds. */
   private placeBase(t:Tower,view:number){
-    const v=t.view,w=this.o.world,{ex,ey}=this.extents(t),pad=Math.ceil(10*this.f);
+    const v=t.view,w=this.o.world,{ex,ey}=this.extents(t),pad=Math.ceil(3*this.s)+2;
     let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
     for(const sx of [-1,1])for(const sy of [-1,1])for(const z of [0,t.look.height]){
       const p=w.project(v.x+sx*ex,v.y+sy*ey,z,this.p);
       minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);
     }
-    minY-=POST_PX*this.f*3; // the weapon's drum and barrel over the roof
     // Occlusion rect: the box itself up to its drum (not the rails, wire or barrel reach), like a building's silhouette.
     {
       const {hx,hy}=this.extents(t),H=t.look.height*PHASE_HEIGHT[t.phase];
@@ -385,14 +482,14 @@ export class TowerRenderer {
       t.rect.x=x0;t.rect.y=y0;t.rect.w=x1-x0;t.rect.h=y1-y0;
     }
     const ox=Math.floor(minX)-pad,oy=Math.floor(minY)-pad,wpx=Math.ceil(maxX-ox)+pad,hpx=Math.ceil(maxY-oy)+pad;
-    const key=`torres:base:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}`;
-    if(!this.scene.textures.exists(key)){
-      const g=this.bake;g.clear();g.translateCanvas(-ox,-oy);
+    const name=`base:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}:${Math.round(this.unitPx)}`;
+    const f=this.atlas.frame(name,wpx,hpx,this.bake,g=>{
+      g.translateCanvas(-ox,-oy);
       this.drawBase(g,t,t.look.height*PHASE_HEIGHT[t.phase]);
       if(t.look.calibre==='arame'&&canFire(t.phase))this.drawWire(g,t);
-      g.generateTexture(key,wpx,hpx);g.clear();
-    }
-    t.base.setTexture(key).setOrigin(0,0).setPosition(ox,oy).setScale(1);
+    });
+    // The bake is at the defense's own world position: another one of the same kind and size reuses it shifted.
+    this.setFrame(t.base,f).setOrigin(0,0).setPosition(ox,oy).setScale(1);
   }
   /** Procedural base: an iso box of the footprint in the branch's material, by phase (absolute world px into g). */
   private drawBase(g:Phaser.GameObjects.Graphics,t:Tower,H:number){
@@ -450,23 +547,41 @@ export class TowerRenderer {
       t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(t.base.scaleX).setFrame(weaponFrame(t.dir,0,frames));
       return;
     }
-    const f=this.f,half=Math.ceil(t.cal.barrel*this.unitPx*1.2+30*f);
-    const key=`torres:arma:${t.view.kind}:${t.dir}:${recoil?1:0}:${Math.round(this.unitPx)}`;
-    if(!this.scene.textures.exists(key)){
-      const g=this.bake;g.clear();
-      const mx=t.mount.x,my=t.mount.y;t.mount.x=half;t.mount.y=half;
-      this.drawWeapon(g,t,recoil);
-      t.mount.x=mx;t.mount.y=my;
-      g.generateTexture(key,half*2,half*2);g.clear();
+    const name=(d:number,r:boolean)=>`arma:${t.view.kind}:${d}:${r?1:0}:${Math.round(this.unitPx)}`;
+    if(!this.atlas.get(name(t.dir,recoil))){ // all 16 poses at once: one upload, no bake while it turns
+      for(let d=0;d<8;d++)for(const r of [false,true]){
+        const b=this.weaponBounds(t,r,d as Dir8);
+        this.atlas.frame(name(d,r),b.x1-b.x0,b.y1-b.y0,this.bake,g=>this.drawWeapon(g,t,r,d as Dir8,-b.x0,-b.y0));
+      }
     }
-    t.weapon.setTexture(key).setOrigin(.5,.5).setPosition(t.mount.x,t.mount.y).setScale(1);
+    // Each pose is cropped to what it draws (fill rate: a padded square per weapon tripled the defenses' pixels).
+    const b=this.weaponBounds(t,recoil,t.dir),f=this.atlas.get(name(t.dir,recoil))!;
+    this.setFrame(t.weapon,f).setOrigin(-b.x0/f.w,-b.y0/f.h).setPosition(t.mount.x,t.mount.y).setScale(1);
   }
-  /** Procedural weapon at t.mount: a drum, then a barrel toward the direction row (a lamp, a dish). */
-  private drawWeapon(g:Phaser.GameObjects.Graphics,t:Tower,recoil:boolean){
-    const s=this.f,cal=t.cal;
-    const d=dirVector(t.dir,this.v),k=recoil?-.12:0,len=cal.barrel*this.unitPx,mx=t.mount.x,my=t.mount.y;
-    const x0=mx+d.x*len*k,y0=my+d.y*len*k*.5,x1=mx+d.x*len*(1+k),y1=my+d.y*len*.5*(1+k);
-    const gus=t.look.calibre==='gustavao',disc=(gus?16:9)*s,thick=(gus?12:cal.blast>1?9:6)*s,post=POST_PX*s,line=Math.max(1,2*s);
+  /** The weapon's drawing, relative to its pivot (the mount), for a pose. */
+  private weaponGeom(t:Tower,recoil:boolean,dir:Dir8){
+    const s=this.f,cal=t.cal,d=dirVector(dir,this.v),k=recoil?-.12:0,len=cal.barrel*this.unitPx;
+    const gus=t.look.calibre==='gustavao';
+    return {d,x0:d.x*len*k,y0:d.y*len*k*.5,x1:d.x*len*(1+k),y1:d.y*len*.5*(1+k),
+      disc:(gus?16:9)*s,thick:(gus?12:cal.blast>1?9:6)*s,post:POST_PX*s,line:Math.max(1,2*s),s};
+  }
+  /** Bounds (px, relative to the mount, rounded out) of a pose's drawing. */
+  private weaponBounds(t:Tower,recoil:boolean,dir:Dir8){
+    const g=this.weaponGeom(t,recoil,dir),shot=t.cal.shot;
+    let x0=-g.disc-g.line,x1=g.disc+g.line,y0=-g.disc/2-g.line,y1=g.post+g.disc/2+g.line;
+    const add=(x:number,y:number,rx:number,ry:number)=>{x0=Math.min(x0,x-rx);x1=Math.max(x1,x+rx);y0=Math.min(y0,y-ry);y1=Math.max(y1,y+ry);};
+    if(shot==='beam')add(g.x1,g.y1-g.disc*.6,g.disc*1.1,g.disc*1.1);
+    else if(shot==='none')add(g.x1,g.y1-g.disc*1.4,g.disc*1.4+g.line,g.disc*.9+g.line);
+    else{const r=(g.thick+3*g.s)/2;add(g.x0,g.y0,r,r);add(g.x1,g.y1,Math.max(r,g.thick*.75),Math.max(r,g.thick*.75));}
+    return {x0:Math.floor(x0)-2,y0:Math.floor(y0)-2,x1:Math.ceil(x1)+2,y1:Math.ceil(y1)+2};
+  }
+  private setFrame(img:Phaser.GameObjects.Image,f:AtlasFrame){
+    return img.texture.key===f.key&&img.frame.name===f.frame?img:img.setTexture(f.key,f.frame);
+  }
+  /** Procedural weapon with its pivot at (mx, my): a drum, then a barrel toward the direction row (a lamp, a dish). */
+  private drawWeapon(g:Phaser.GameObjects.Graphics,t:Tower,recoil:boolean,dir:Dir8,mx:number,my:number){
+    const cal=t.cal,w=this.weaponGeom(t,recoil,dir),{d,disc,thick,post,line,s}=w;
+    const x0=mx+w.x0,y0=my+w.y0,x1=mx+w.x1,y1=my+w.y1;
     const metal=MATERIALS['metal-pintado'];
     // The mount: a short drum from the roof up to the weapon's pivot (Breu contour, light top).
     g.fillStyle(metal.escura,1).lineStyle(line,this.breu,1).fillRect(mx-disc,my,disc*2,post).strokeRect(mx-disc,my,disc*2,post)

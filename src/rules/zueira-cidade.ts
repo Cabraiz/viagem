@@ -211,6 +211,36 @@ export const CIDADE_HORN_LINES:readonly string[]=deepFreeze([
   'Larga tudo! Os pombos tão vindo armados!','Solta o quentão, porra! Pra praça!',
 ]);
 
+/** Longest left-behind line (cidade-07): a balloon over the hero, a bit wider than the enemy barks. */
+export const LEFT_BEHIND_MAX=34;
+/**
+ * Said over each hero still outside the base when the round starts (cidade-07, key 'ficou-pra-tras'): "ficou pra trás
+ * no rolê". The gameplay consequence is the director's (it aims groups at a team away from the base, cidade-05c).
+ */
+export const CIDADE_LEFT_BEHIND_LINES:readonly string[]=deepFreeze([
+  'Ficou pra trás no rolê. Boa sorte!',
+  'Saiu pra comprar cigarro. Rodou.',
+  'Foi buscar quentão e se lascou.',
+  'Perdeu a corneta e o juízo.',
+  'Ficou na rua. A horda agradece.',
+  'Errou o caminho de casa. De novo.',
+  'Ouviu a corneta e pediu mais uma.',
+  'Último gole saiu caro, parceiro.',
+  'Sem praça, sem muro, sem quentão.',
+  'Vai brigar na rua de pantufa?',
+]);
+/** Said by the hero who empties a loot crate in the city (cidade-07); the island keeps its coconut/rock lines. */
+export const CIDADE_CRATE_LINES:readonly string[]=deepFreeze([
+  'Caixa limpa. Nem o rato quis.',
+  'Saque feito. Crime? Talvez.',
+  'Achado não é roubado. É saque.',
+  'Tinha mais teia que tesouro.',
+  'Caixa vazia, consciência também.',
+  'Levou até o papelão. Respeito.',
+  'Isso aqui era do síndico? Era.',
+  'Sobrou só o cheiro de cachaça.',
+]);
+
 // ---------- Crashed vehicle (start, south of the city; D-026: a helicopter) ----------
 export interface CidadeVehicle {
   id:string;name:string;
@@ -256,5 +286,5 @@ export const CIDADE_ZUEIRA=deepFreeze({
   roundNames:CIDADE_ROUND_NAMES,eliteRoundNames:CIDADE_ELITE_ROUND_NAMES,bossRoundNames:CIDADE_BOSS_ROUND_NAMES,
   modifiers:CIDADE_MODIFIERS,barks:CIDADE_BARKS,reactionLines:CIDADE_REACTION_LINES,deathLines:CIDADE_DEATH_LINES,
   retreatLines:CIDADE_RETREAT_LINES,
-  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,vehicle:CIDADE_VEHICLE,tutorial:CIDADE_TUTORIAL,
+  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,leftBehindLines:CIDADE_LEFT_BEHIND_LINES,crateLines:CIDADE_CRATE_LINES,vehicle:CIDADE_VEHICLE,tutorial:CIDADE_TUTORIAL,
 });

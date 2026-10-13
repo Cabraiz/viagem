@@ -17,8 +17,9 @@ import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
-import {gatherStep,refillNodes} from './resources.ts';
-import {DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
+import {gatherStep,refillNodes,WORK_PER_UNIT} from './resources.ts';
+import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
+import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 
@@ -30,6 +31,13 @@ export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
  * Not in the opening countdown before round 1 (prepare with index 1): nobody is out gathering yet.
  */
 export const HORN_LEAD=ticks(5);
+/**
+ * City (cidade-07): the horn sounds at least 10 s before the intermission ends (the island keeps HORN_LEAD), and the
+ * "can the farthest hero get back" estimate is the real walk to the plaza (loot.ts cityFarthestReturn).
+ */
+export const HORN_LEAD_CITY=ticks(10);
+/** `say` key of the left-behind line (a hero outside the base when the round starts, city only). */
+export const LEFT_BEHIND_KEY='ficou-pra-tras';
 /** Longest an intermission may get when the horn stretches it (150 units out needs ~55 s, rules.ts returnTicks). */
 export const MAX_PREPARE_TICKS=ticks(75);
 /**
@@ -92,25 +100,32 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
 
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
-  function horn(ctx:SimContext){
+  function horn(ctx:SimContext,loot:CityLoot|undefined){
     const round=ctx.round;
     if(round.index<=1||state.hornRound===round.index)return;
-    const lead=Math.max(HORN_LEAD,farthestReturn(ctx,state)),left=round.phaseEndsTick-ctx.tick;
+    const back=loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y))):farthestReturn(ctx,state);
+    const lead=Math.max(loot?HORN_LEAD_CITY:HORN_LEAD,back),left=round.phaseEndsTick-ctx.tick;
     if(left>lead)return;
     state.hornRound=round.index;
-    if(left<lead&&options.extendPrepare){
-      const budget=Math.max(0,MAX_STRETCH_PER_RUN-state.stretched);
-      const endsTick=Math.min(ctx.tick+lead,state.prepareStart+MAX_PREPARE_TICKS,round.phaseEndsTick+budget);
-      if(endsTick>round.phaseEndsTick){
-        const before=round.phaseEndsTick;
-        options.extendPrepare(ctx,endsTick);
-        state.stretched+=Math.max(0,round.phaseEndsTick-before);
-      }
-    }
-    const line=draw(ctx,state,HORN_LINES);
+    if(left<lead)stretch(ctx,ctx.tick+lead);
+    const line=draw(ctx,state,loot?CIDADE_HORN_LINES:HORN_LINES); // one draw either way: island rng unchanged
     state.hornEndsTick=round.phaseEndsTick;
     ctx.emit({type:'horn',endsTick:round.phaseEndsTick,line});
     options.onHorn?.(ctx,line,round.phaseEndsTick);
+  }
+  /**
+   * Moves the end of the intermission to `endsTick`, within MAX_PREPARE_TICKS; a horn stretch (`budgeted`) also within
+   * the run's MAX_STRETCH_PER_RUN, and counts against it.
+   */
+  function stretch(ctx:SimContext,endsTick:number,budgeted=true){
+    const round=ctx.round;
+    if(!options.extendPrepare)return;
+    const budget=budgeted?Math.max(0,MAX_STRETCH_PER_RUN-state.stretched):Infinity;
+    const capped=Math.min(endsTick,state.prepareStart+MAX_PREPARE_TICKS,round.phaseEndsTick+budget);
+    if(capped<=round.phaseEndsTick)return;
+    const before=round.phaseEndsTick;
+    options.extendPrepare(ctx,capped);
+    if(budgeted)state.stretched+=Math.max(0,round.phaseEndsTick-before);
   }
   return {
     id:'structures',
@@ -128,11 +143,39 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     step(ctx){
       if(state.defeatReported)return;
       const round=ctx.round;
+      // City (cidade-07): the crates are the nodes (loot.ts); `options.obstacles` (tests) keeps the island path.
+      const loot=options.obstacles?undefined:cityLoot(ctx.terrain);
       if(!state.wallDown&&round.phase==='prepare'){
-        if(state.refilledRound!==round.index){state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);}
-        for(const g of gatherStep(ctx,state,options.obstacles))if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,DEPLETED_LINES[g.node.kind]));
-        horn(ctx);
-      }else if(round.phase!=='prepare')state.hornEndsTick=-1;
+        if(state.refilledRound!==round.index){
+          state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);
+          // City: an intermission (not the opening countdown) long enough for the farthest good crate and back, its
+          // collect time and the horn's lead (loot.ts lootTripTicks), up to MAX_PREPARE_TICKS. It is the city's
+          // intermission length, not a horn stretch: it does not spend MAX_STRETCH_PER_RUN (9 intermissions × ~9 s
+          // would leave the horn almost nothing for a straggler, and nothing once the city hero walks at ~2 u/s).
+          if(loot&&round.index>1)stretch(ctx,ctx.tick+lootTripTicks(loot,kind=>WORK_PER_UNIT[kind],HORN_LEAD_CITY),false);
+        }
+        for(const g of gatherStep(ctx,state,options.obstacles))if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
+        horn(ctx,loot);
+      }else if(round.phase!=='prepare'){
+        state.hornEndsTick=-1;
+        // City: the round started; each standing hero outside the base gets the left-behind line, once per round.
+        // Not in round 1: everyone starts at the crashed vehicle, outside the base, by design.
+        if(loot&&round.index>1&&!state.wallDown&&state.refilledRound===round.index&&state.leftBehindRound!==round.index){
+          state.leftBehindRound=round.index;
+          const used=new Set<string>();
+          for(const id of [...ctx.players.keys()].sort()){
+            const p=ctx.players.get(id)!;
+            if(!isStanding(p)||loot.insideBase(p))continue;
+            // Straight to the event (not `say`): its SAY_GAP must not drop it after a crate's line a moment ago.
+            Object.defineProperty(state.sayReady,id,{value:ctx.tick+SAY_GAP,enumerable:true,writable:true,configurable:true});
+            // Different lines for heroes left behind in the same tick (a few extra draws at most, still deterministic).
+            let line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            for(let t=0;t<4&&used.has(line);t++)line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            used.add(line);
+            ctx.emit({type:'say',source:id,key:LEFT_BEHIND_KEY,line});
+          }
+        }
+      }
       if(!state.wallDown){towerStep(ctx,state);if(contact)siegeStep(ctx,state);}
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}

@@ -14,6 +14,7 @@
  */
 import type {CityAsset,CityPoint} from '../city-asset.ts';
 import {checkCityHash,decodeCityAsset} from '../city-asset.ts';
+import {cityRelief,sampleRelief} from './relief.ts';
 import type {WorldKind} from '../../contract/index.ts';
 import type {TerrainField} from '../terrain/field.ts';
 
@@ -45,6 +46,8 @@ export class CityTerrain {
   private readonly blocking=new Map<string,CityBlocker>();
   private sorted:readonly CityBlocker[]=Object.freeze([]);
   private version=0;
+  /** The asset's relief (relief.ts), fetched on the first height query: the simulation never asks. */
+  private relief:Float64Array|undefined=undefined;
   /** Cached `forEnemies()` view (created on first use). */
   private enemyView:CityTerrain|undefined=undefined;
 
@@ -144,8 +147,11 @@ export class CityTerrain {
     const p=this.asset.playable;
     return Math.min(x-p.x,p.x+p.w-x,y-p.y,p.y+p.h-y);
   }
-  /** Ground height in the iso pixel scale used by world.project/elevation (the lowest corner is 0). */
-  bed(x:number,y:number){return (this.asset.heightAt(x,y)-this.minHeight)*CITY_HEIGHT_PX_PER_UNIT;}
+  /**
+   * Ground height in the iso pixel scale used by world.project/elevation (the lowest corner is 0): the relief (ramps
+   * and snow undulation over the asset's terraces, relief.ts), the same corners the client draws. Never read by the sim.
+   */
+  bed(x:number,y:number){return (sampleRelief(this.relief??=cityRelief(this.asset),this.asset,x,y)-this.minHeight)*CITY_HEIGHT_PX_PER_UNIT;}
   height(x:number,y:number){return this.bed(x,y);}
   wetness(x:number,y:number){return this.asset.water(x/this.step,y/this.step)?1:0;}
   slope(x:number,y:number){return Math.hypot(this.height(x+.125,y)-this.height(x-.125,y),this.height(x,y+.125)-this.height(x,y-.125))/.25;}

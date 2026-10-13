@@ -176,7 +176,8 @@ void main(){
  color=mix(color,stone,rock);
  // Cliff ridges: rock on the steep flanks, in the cliff box's own wall tones and convention (the flank facing screen
  // left-down light, right-down dark, whatever the sun), broken by snow streaks; the crest keeps the box's cap snow.
- float flank=smoothstep(0.85,0.6,normal.z)*cliff;
+ // Only the flanks facing the camera (towards larger qx + qy): a back flank grazed by the ray stays snow, not a dotted line.
+ float flank=smoothstep(0.85,0.6,normal.z)*cliff*smoothstep(-0.1,0.2,normal.x+normal.y);
  vec3 cliffRock=mix(CLIFF_LIGHT,CLIFF_DARK,smoothstep(-0.25,0.25,normal.x-normal.y));
  cliffRock=mix(cliffRock,CLIFF_DARK,smoothstep(0.5,0.8,grain)*0.35);
  color=mix(color,mix(CLIFF_CAP,SNOW_SUN,0.5),cliff*(1.0-flank)*0.5);

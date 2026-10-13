@@ -17,7 +17,7 @@ import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './fa
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
 import {ART_CELL,fountainLot,planHasArt,planLots,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
-import {borderFog} from './border-fog.ts';
+import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
@@ -285,7 +285,7 @@ export class CityLayer {
     this.fog?.destroy();
     const parts=borderFog(this.asset,view,this.pivot);
     this.fog=TriBand.make(this.scene,parts.map(part=>(g:Phaser.GameObjects.Graphics)=>{
-      for(const q of part)g.fillStyle(q.color,1).fillPoints(q.points,true);
+      for(const ring of part)drawFogRing(g,ring);
     })).setDepth(FOG_DEPTH);
   }
 

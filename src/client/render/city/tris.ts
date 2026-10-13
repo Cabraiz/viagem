@@ -11,8 +11,13 @@ export interface TriMesh {
   readonly count:number;
   /** x0,y0,x1,y1,x2,y2 per triangle, in local px; float64 so they transform exactly as Phaser's own numbers. */
   readonly xy:Float64Array;
-  /** Style index per triangle. */
+  /** Style index per triangle (its first vertex's for a gradient triangle). */
   readonly style:Uint16Array;
+  /**
+   * Style index per vertex (3 per triangle) when some triangle is a gradient (tri3 with different styles, e.g. the
+   * border fog); null otherwise, and then every vertex uses its triangle's style.
+   */
+  readonly vstyle:Uint16Array|null;
   /** Colour (0xRRGGBB) and alpha (the fillStyle/lineStyle alpha, before the object's alpha) per style. */
   readonly colors:readonly number[];
   readonly alphas:readonly number[];
@@ -34,6 +39,8 @@ export class MeshBuilder {
   private readonly alphas:number[]=[];
   private readonly styles=new Map<string,number>();
   private readonly ends:number[]=[];
+  /** Per-vertex styles, made on the first gradient triangle (then kept for every triangle). */
+  private vs:number[]|null=null;
 
   /** Triangles recorded so far. */
   get count(){return this.styleOf.length;}
@@ -51,6 +58,13 @@ export class MeshBuilder {
   }
   tri(style:number,x0:number,y0:number,x1:number,y1:number,x2:number,y2:number){
     this.xy.push(x0,y0,x1,y1,x2,y2);this.styleOf.push(style);
+    if(this.vs)this.vs.push(style,style,style);
+  }
+  /** A triangle with a style per vertex (the GPU blends the colours across it); one style = tri(). */
+  tri3(s0:number,s1:number,s2:number,x0:number,y0:number,x1:number,y1:number,x2:number,y2:number){
+    if(s0===s1&&s1===s2){this.tri(s0,x0,y0,x1,y1,x2,y2);return;}
+    if(!this.vs){this.vs=[];for(const s of this.styleOf)this.vs.push(s,s,s);}
+    this.xy.push(x0,y0,x1,y1,x2,y2);this.styleOf.push(s0);this.vs.push(s0,s1,s2);
   }
 
   /** Closes the current segment (no-op when it is empty). */
@@ -73,7 +87,7 @@ export class MeshBuilder {
       bounds[s*4]=sx0;bounds[s*4+1]=sy0;bounds[s*4+2]=sx1;bounds[s*4+3]=sy1;
       if(sx0<x0)x0=sx0;if(sy0<y0)y0=sy0;if(sx1>x1)x1=sx1;if(sy1>y1)y1=sy1;
     }
-    return {count:style.length,xy,style,colors:[...this.colors],alphas:[...this.alphas],x0,y0,x1,y1,ends,bounds};
+    return {count:style.length,xy,style,vstyle:this.vs?Uint16Array.from(this.vs):null,colors:[...this.colors],alphas:[...this.alphas],x0,y0,x1,y1,ends,bounds};
   }
 }
 
@@ -93,4 +107,4 @@ export function segmentOnScreen(m:TriMesh,s:number,ox:number,oy:number,view:{x:n
 }
 
 /** Bytes held by a frozen mesh (positions, styles, segments), for memory estimates. */
-export function meshBytes(m:TriMesh){return m.xy.byteLength+m.style.byteLength+m.ends.byteLength+m.bounds.byteLength+m.colors.length*16;}
+export function meshBytes(m:TriMesh){return m.xy.byteLength+m.style.byteLength+(m.vstyle?.byteLength??0)+m.ends.byteLength+m.bounds.byteLength+m.colors.length*16;}

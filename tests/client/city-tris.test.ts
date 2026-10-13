@@ -5,6 +5,18 @@ import {MeshBuilder,meshBytes,meshOnScreen,segmentOnScreen} from '../../src/clie
 
 const view=(x:number,y:number,width:number,height:number)=>({x,y,width,height});
 
+test('MeshBuilder gradient triangles: a style per vertex only when some triangle needs it (the border fog)',()=>{
+  const plain=new MeshBuilder(),s=plain.style(0x112233,1);
+  plain.tri3(s,s,s,0,0,1,0,0,1);
+  assert.equal(plain.freeze().vstyle,null,'one style three times is a plain triangle');
+  const b=new MeshBuilder(),a=b.style(0x112233,1),c=b.style(0x445566,1);
+  b.tri(a,0,0,1,0,0,1);b.tri3(a,a,c,1,1,2,1,1,2);b.tri(c,3,3,4,3,3,4);
+  const m=b.freeze();
+  assert.deepEqual([...m.style],[a,a,c],'first vertex style per triangle');
+  assert.deepEqual([...m.vstyle!],[a,a,a,a,a,c,c,c,c]);
+  assert.ok(meshBytes(m)>=m.xy.byteLength+m.style.byteLength+m.vstyle!.byteLength);
+});
+
 test('MeshBuilder keeps triangles in draw order with one style per (colour, alpha)',()=>{
   const b=new MeshBuilder();
   const red=b.style(0xff0000,1),faint=b.style(0xff0000,0.35),again=b.style(0xff0000,1);

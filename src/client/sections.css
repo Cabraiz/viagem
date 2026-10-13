@@ -1,59 +1,153 @@
-:root { --section-nav-height: 56px; }
-html { scroll-padding-top: var(--section-nav-height); }
-.section-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; padding: 6px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left)); background: var(--c-lilas-escuro); border-bottom: 2px solid var(--c-breu); }
-.section-nav a { text-decoration: none; font-size: 12px; font-weight: 800; color: var(--c-papel); border: 1px solid transparent; border-radius: var(--r-janela); padding: 11px 18px; min-height: 40px; }
-.section-nav a[aria-current] { background: var(--c-papel); border-color: var(--c-breu); color: var(--c-lilas); }
-.section-nav .sheet-link { display: none; }
-.world { padding-top: 0; padding-bottom: 0; }
-.journey-screen { min-height: calc(100svh - var(--section-nav-height)); min-height: calc(100dvh - var(--section-nav-height)); padding: 22px 0 12px; display: flex; flex-direction: column; gap: 18px; }
-.journey-screen[hidden] { display: none; }
-.journey-screen .masthead { margin-bottom: 0; }
-.journey-screen .creation-window { flex: 1; display: flex; flex-direction: column; }
-.journey-screen .window-content { flex: 1; }
-.journey-screen .portrait-panel { min-height: 0; }
-.journey-screen .portrait { min-height: 180px; aspect-ratio: auto; }
-.journey-screen .character-sheet { display: flex; flex-direction: column; }
-.journey-screen .selection-footer { margin-top: auto; }
-.section-next { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 44px; color: var(--c-papel); text-decoration: none; font-size: 12px; font-weight: 800; }
-.section-next span { font-size: 20px; color: var(--c-amarelo); }
-.journey-screen .roster { margin-top: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; }
-.journey-screen .roster-tools { margin: 0; }
-.journey-screen .class-list { flex: 1; grid-auto-rows: minmax(114px,1fr); }
-.journey-screen .class-card { justify-content: center; }
-.journey-screen .card-portrait { width: clamp(76px,11vh,150px); height: clamp(76px,11vh,150px); max-width: 100%; }
-.journey-screen .roster-pagination { margin-top: 0; }
-.journey-screen .page-footer { padding-top: 0; }
-.section-heading h2 { font: 400 28px/1.1 var(--f-cartaz); color: var(--c-papel); margin: 3px 0 0; }
-@media (min-width:621px) and (max-height:950px) {
-  .journey-screen { gap: 10px; padding-top: 12px; }
-  .journey-screen .wordmark { font-size: 35px; }
-  .journey-screen .wordmark small { font-size: 10px; }
-  .journey-screen .character-sheet { padding: 12px 16px; }
-  .journey-screen .sheet-heading h2 { font-size: 24px; }
-  .journey-screen .identity-row { margin-top: 0; }
-  .journey-screen .stats-and-story { margin-top: 12px; gap: 12px; }
-  .journey-screen .radar-wrap { max-width: 130px; }
-  .journey-screen .window-content { padding: 12px; }
-  .journey-screen .sheet-heading p { margin-bottom: 8px; }
-  .journey-screen .sprite-preview { min-height: 110px; }
-  .journey-screen .selection-footer { padding-top: 8px; }
-}
-@media (max-width:620px) {
-  .section-nav .sheet-link { display: block; }
-  .section-nav a { padding-inline: 12px; font-size: 11px; }
-  .journey-screen { gap: 14px; padding: 16px 0 10px; }
-  .journey-screen .window-content { min-height: 0; }
-  .journey-screen .portrait-panel { flex: 1; }
-  .journey-screen .portrait { flex: 1; width: 100%; height: auto; min-height: 180px; margin-top: 12px; }
-  #ficha > .character-sheet { flex: 1; gap: 12px; }
-  #ficha { gap: 10px; }
-  #ficha .stats-and-story { margin-top: 0; }
-  #ficha .selection-footer { flex-shrink: 0; }
-  #ficha .sheet-heading p { margin-bottom: 0; }
-  .journey-screen .class-list { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .journey-screen .card-portrait { width: clamp(78px,12vh,125px); height: clamp(78px,12vh,125px); }
+/* Creation screen: two tabs, each exactly one viewport, no scrolling anywhere (NEW-20261012-ORQ-criacao-tela-cheia).
+   Landscape and desktop: card on the left, sheet on the right. Portrait: compact card on top, sheet below.
+   Sizes follow the available height with clamp() and container queries; ornaments go first when space runs out. */
+html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
+.world.criacao {
+  max-width: none; margin: 0; min-height: 0;
+  height: 100vh; height: 100dvh;
+  padding: 0 max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  display: grid; grid-template-rows: auto minmax(0,1fr); gap: 8px; overflow: hidden;
 }
 
-@media(max-width:620px) and (max-height:900px) { #ficha .sprite-preview { min-height:132px; } }
+/* Tab bar */
+.criacao .section-nav {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 12px;
+  min-height: 48px; padding: max(4px,env(safe-area-inset-top)) 0 4px;
+  margin: 0 calc(-1 * max(10px,env(safe-area-inset-right))) 0 calc(-1 * max(10px,env(safe-area-inset-left)));
+  background: var(--c-lilas-escuro); border-bottom: 2px solid var(--c-breu);
+}
+.criacao .section-nav .wordmark { position: absolute; left: max(14px,env(safe-area-inset-left)); display: inline-flex; align-items: center; min-height: 44px; font: 400 26px/1 var(--f-cartaz); color: var(--c-papel); text-decoration: none; }
+.criacao .section-tabs { display: flex; gap: 6px; }
+.criacao .section-tabs [role=tab] {
+  min-height: 44px; min-width: 112px; padding: 8px 18px; border: 2px solid transparent; border-radius: var(--r-janela);
+  background: none; color: var(--c-papel); font: 800 var(--t-13)/1 var(--f-sistema); cursor: pointer;
+}
+.criacao .section-tabs [role=tab][aria-selected=true] { background: var(--c-papel); border-color: var(--c-breu); color: var(--c-lilas); }
+
+/* Panels fill the row */
+.criacao .journey-screen { min-height: 0; height: 100%; margin: 0; overflow: hidden; }
+.criacao .journey-screen[hidden] { display: none; }
+
+/* Personagem */
+.criacao .creation-window { display: flex; flex-direction: column; }
+.criacao .window-title { margin: 0; min-height: 0; padding: 8px 18px; font: 400 var(--t-21)/1.1 var(--f-cartaz); }
+.criacao .window-content {
+  flex: 1; min-height: 0; padding: 10px; gap: 10px;
+  display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.25fr);
+}
+.criacao .portrait-panel { min-height: 0; display: grid; grid-template-rows: minmax(0,1fr) auto auto; container-type: size; }
+.criacao .portrait { min-height: 0; height: 100%; width: 100%; aspect-ratio: auto; margin: 0; padding: 8px 8px 0; }
+.criacao .portrait img { width: 100%; height: 100%; object-fit: contain; }
+.criacao .portrait-caption { padding: 2px 12px 8px; }
+.criacao .portrait-caption > span { font-size: 11px; }
+.criacao .portrait-caption blockquote { margin: 6px 0 0; font-size: clamp(var(--t-13),2.4vh,var(--t-21)); line-height: 1.2; }
+.criacao .portrait-navigation { padding: 6px 10px; justify-content: space-between; }
+.criacao .round-button { width: 44px; height: 44px; }
+
+.criacao .character-sheet {
+  min-height: 0; padding: clamp(10px,2vh,20px) clamp(12px,2vw,22px);
+  display: grid; grid-template-rows: auto auto minmax(0,1fr) auto; gap: clamp(8px,1.6vh,16px); container-type: size;
+}
+.criacao .character-sheet h2 { margin: 0; font: 400 clamp(22px,4vh,32px)/1.05 var(--f-cartaz); color: var(--c-lilas); }
+.criacao .identity-fields { display: grid; gap: 8px; }
+.criacao .identity-fields input { min-height: 44px; font-size: var(--t-16); }
+.criacao .palette { margin: 0; }
+.criacao .palette > div { display: grid; grid-template-columns: repeat(6,minmax(0,44px)); gap: 6px; }
+.criacao .swatch { width: 100%; height: 44px; }
+.criacao .swatch[aria-pressed=true]:after { line-height: 40px; }
+.criacao .stats-and-story {
+  min-height: 0; margin: 0; gap: clamp(10px,2vw,20px); overflow: hidden;
+  display: grid; grid-template-columns: minmax(120px,.9fr) minmax(0,1.2fr); grid-template-rows: minmax(0,1fr); align-items: center;
+}
+/* The radar takes the height the row gives it (no blank band), never more than its box: labels stay inside. */
+.criacao .radar-wrap { grid-column: auto; grid-row: auto; margin: 0 auto; height: 100%; max-height: 230px; width: auto; max-width: 100%; aspect-ratio: 220/180; }
+.criacao .radar-wrap svg { padding: 14px 18px; }
+.criacao .stat-label { font-size: 11px; white-space: nowrap; }
+/* Side labels are centered on the axis, so a short radar never pushes them out of its box. */
+.criacao .stat-label.agility, .criacao .stat-label.charm { top: 50%; transform: translateY(-50%); }
+.criacao .radar-wrap { min-height: 112px; }
+.criacao .stat-label b { font-size: 15px; }
+.criacao .skill-box { border: 0; padding: 0; align-items: flex-start; }
+.criacao .skill-box h3 { margin: 0 0 4px; font-size: var(--t-16); }
+.criacao .skill-box p { font-size: var(--t-13); line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.criacao .selection-footer { margin: 0; padding-top: clamp(6px,1.2vh,12px); justify-content: flex-end; }
+.criacao .primary-button { min-height: 48px; font-size: var(--t-16); padding: 10px 26px; }
+
+/* Classes */
+.criacao .roster { display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; padding: 10px 12px 8px; }
+.criacao .roster-tools { margin: 0; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+.criacao .search { flex: 1 1 200px; max-width: 320px; width: auto; padding-block: 2px; }
+.criacao .search input { width: 100%; min-height: 40px; font-size: var(--t-13); }
+.criacao .role-filters { gap: 4px; }
+.criacao .filter { min-height: 44px; font-size: 12px; padding: 6px 12px; }
+.criacao #results-count { font-size: 12px; color: var(--c-papel); margin-left: auto; }
+.criacao .class-list {
+  min-height: 0; overflow: hidden; margin: 0; touch-action: pan-y;
+  display: grid; gap: 8px; align-content: start;
+  grid-template-columns: repeat(var(--cols,4),minmax(0,1fr)); grid-template-rows: repeat(var(--rows,3),minmax(0,1fr));
+}
+.criacao .class-card { touch-action: pan-y; min-height: 0; min-width: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.criacao .card-portrait { width: auto; height: auto; max-width: 100%; max-height: calc(100% - 34px); aspect-ratio: 1; min-height: 0; flex: 1 1 0; }
+.criacao .card-label { text-align: center; min-width: 0; }
+.criacao .card-label strong { font-size: 12px; line-height: 1.15; display: block; overflow-wrap: anywhere; hyphens: auto; }
+.criacao .card-label small { font-size: 11px; }
+.criacao .roster-pagination { margin: 0; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.criacao .selected-mark { width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; }
+.criacao .roster-pagination #page-count { font-size: 13px; font-weight: 800; color: var(--c-papel); min-width: 54px; text-align: center; }
+
+/* Low height (landscape phone, short desktop windows): the window title goes, everything tightens. */
+@media (max-height: 520px) {
+  .criacao .section-nav { min-height: 44px; }
+  .criacao .section-tabs [role=tab] { padding: 6px 14px; }
+  .criacao .window-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0; }
+  .criacao .window-content { padding: 6px; gap: 8px; }
+  .criacao .portrait-caption blockquote { display: none; }
+  .criacao .identity-fields { grid-template-columns: minmax(0,1fr) auto; align-items: center; }
+  .criacao .palette > div { grid-template-columns: repeat(6,40px); gap: 4px; }
+  .criacao .swatch { height: 44px; }
+  .criacao .primary-button { min-height: 44px; }
+}
+
+/* Portrait: compact card on top (art left, quote and arrows right), sheet below. */
+@media (orientation: portrait), (max-width: 620px) {
+  .criacao .window-title { padding: 6px 14px; font-size: var(--t-16); }
+  .criacao .window-content { grid-template-columns: 1fr; grid-template-rows: minmax(0,.8fr) minmax(0,1.7fr); padding: 8px; gap: 8px; }
+  .criacao .portrait-panel { grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); grid-template-rows: minmax(0,1fr) auto; }
+  .criacao .portrait { grid-row: 1 / span 2; padding: 6px; }
+  .criacao .portrait-caption { align-self: center; padding: 8px 10px 0 0; text-align: left; }
+  .criacao .portrait-caption blockquote { display: block; font-size: clamp(14px,2.2vh,18px); }
+  .criacao .portrait-navigation { grid-column: 2; border-radius: 0 0 var(--r-ficha) 0; }
+  .criacao .character-sheet { padding: 10px 12px; gap: 8px; }
+  /* One column: skill (name + two lines) on top, the radar takes the rest of the height, centered. */
+  .criacao .stats-and-story { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 6px; align-items: stretch; }
+  .criacao .skill-box { order: -1; }
+  .criacao .skill-box p { font-size: 12px; }
+  .criacao .radar-wrap { justify-self: center; min-height: 96px; max-height: 200px; }
+  .criacao .radar-wrap svg { padding: 14px 18px; }
+  .criacao .stat-label b { font-size: 13px; }
+  .criacao .selection-footer { justify-content: stretch; }
+  .criacao .primary-button { width: 100%; }
+  .criacao .search { flex: 1 1 100%; max-width: none; }
+  .criacao .role-filters { flex: 1 1 auto; }
+  .criacao .filter { padding: 6px 9px; }
+  .criacao #results-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .criacao .section-nav .wordmark { display: none; }
+}
+@media (orientation: portrait) and (max-height: 600px) {
+  .criacao .window-content { grid-template-rows: minmax(0,.75fr) minmax(0,1.7fr); }
+  .criacao .swatch { height: 40px; }
+  .criacao .character-sheet h2 { font-size: 20px; }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  /* Too short for a readable radar: the same four numbers as a 2x2 grid. */
+  .criacao .stats-and-story { grid-template-rows: auto auto; align-content: center; }
+  .criacao .radar-wrap { display: grid; grid-template-columns: repeat(2,auto); gap: 4px 20px; justify-content: center; height: auto; min-height: 0; aspect-ratio: auto; }
+  .criacao .radar-wrap svg { display: none; }
+  .criacao .radar-wrap .stat-label { position: static; transform: none; writing-mode: horizontal-tb; font-size: 12px; }
+  .criacao .window-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0; }
+  .criacao .skill-box p { font-size: 12px; }
+  .criacao .character-sheet h2 { font-size: 22px; }
+}
+
 #enter-island { display:block; width:100%; margin:12px auto; }
 #explore-error { color:var(--c-papel); font-size:13px; text-align:center; }

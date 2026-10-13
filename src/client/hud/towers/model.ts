@@ -9,10 +9,13 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,units
 
 /** A tower as the menu sees it (the sim's DefenseState, reduced). */
 export interface ObraTower {id:string;kind:DefenseId;building?:boolean;ruined?:boolean}
-/** A build site at its screen point (CSS px, projected by the host). */
-export interface ObraSite {id:string;x:number;y:number;maxSize:DefenseSize;tower?:ObraTower}
+/**
+ * A build site at its screen point (CSS px, projected by the host). `distance`: world units from the hero, when the host
+ * knows it (the edge arrow of an off-screen site picks the nearest and shows it in metres).
+ */
+export interface ObraSite {id:string;x:number;y:number;maxSize:DefenseSize;tower?:ObraTower;distance?:number}
 /** The Gustavão's rail ('trilho') at its screen point: laid once per run; `ready` once its obra is done. */
-export interface ObraRail {x:number;y:number;laid:boolean;ready:boolean}
+export interface ObraRail {x:number;y:number;laid:boolean;ready:boolean;distance?:number}
 export interface ObraView {
   /** Round phase 'prepare' (the intermission): the only time the menu shows. */
   prepare:boolean;
@@ -170,3 +173,15 @@ export function defaultPick(tree:ObraTree):string|undefined{
   return tree.branches.find(selectable)?.key;
 }
 export const cardsOf=(tree:ObraTree)=>[tree.head,...tree.branches];
+
+/**
+ * The tree a tap opens on a site (its marker, or the edge arrow of an off-screen one: E4-obras-visiveis-da-base), from
+ * the view alone: the rail's or the site's, wherever its point is on screen. Undefined in the intermission's absence,
+ * for a site the plan does not have, or while a request on it waits for the room (no second tap).
+ */
+export function treeToOpen(siteId:string|undefined,view:ObraView|undefined):ObraTree|undefined{
+  if(siteId===undefined||!view?.prepare||view.pending?.includes(siteId))return undefined;
+  if(siteId===RAIL_SITE_ID)return view.rail?railTree(view):undefined;
+  const site=view.sites.find(s=>s.id===siteId);
+  return site&&treeFor(site,view);
+}

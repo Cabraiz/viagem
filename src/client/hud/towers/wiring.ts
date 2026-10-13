@@ -76,6 +76,8 @@ export interface ObraSource {
   project:(p:{x:number;y:number})=>{x:number;y:number};
   /** What this client knows of the rail (not on the wire: ObraRequests.rail). */
   rail?:{laid:boolean;ready:boolean};
+  /** The local hero (world units): each site's distance from it, for the edge arrows of the off-screen sites. */
+  hero?:{x:number;y:number};
   pending?:readonly string[];done?:readonly string[];drawnInWorld?:boolean;
   /** Watching (a spectator): the plan shows, nothing can be confirmed. */
   readOnly?:boolean;
@@ -119,12 +121,13 @@ export function obraViewFrom(src:ObraSource):ObraView{
   const rail=src.prepare&&src.plan.rail?{laid:snap.onRail||!!src.rail?.laid,ready:snap.onRail||!!src.rail?.ready}:undefined;
   const revision=`${src.prepare?1:0}|${snap.sig}|${rail?`${rail.laid?1:0}${rail.ready?1:0}`:'-'}|${src.pending?.join(',')??''}|${src.done?.join(',')??''}|${src.drawnInWorld?1:0}${src.readOnly?1:0}`;
   if(!src.prepare)return {prepare:false,sites:[],balance,standing,gustavoes,revision,...extra};
+  const hero=src.hero,far=(p:{x:number;y:number})=>hero?{distance:Math.hypot(p.x-hero.x,p.y-hero.y)}:{};
   const sites:ObraSite[]=src.plan.sites.map((site,i)=>{
     const at=src.project(site),tower=snap.towers[i];
-    return {id:site.id,x:at.x,y:at.y,maxSize:site.maxSize,...(tower?{tower}:{})};
+    return {id:site.id,x:at.x,y:at.y,maxSize:site.maxSize,...(tower?{tower}:{}),...far(site)};
   });
   const railAt=rail&&src.project(src.plan.rail!);
-  return {prepare:true,sites,...(rail&&railAt?{rail:{x:railAt.x,y:railAt.y,...rail}}:{}),balance,standing,gustavoes,revision,...extra};
+  return {prepare:true,sites,...(rail&&railAt?{rail:{x:railAt.x,y:railAt.y,...rail,...far(src.plan.rail!)}}:{}),balance,standing,gustavoes,revision,...extra};
 }
 
 /** The site an action is about (the upgrade names the defense: its site in the view). */

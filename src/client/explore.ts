@@ -120,7 +120,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       obra=new ObraHud($('.explore-layout'),{zoneInput:()=>host.zoneInputBesideObra(),
         onConfirm:action=>{const text=obraRequests.send(action,siteOf(action,obraView),net,{connected:net.connected,spectator:!!net.players.get(net.id)?.spectator});if(text)obraSay(text);},
         // Open: the forge steps aside (the same place on screen) and the camera's field leaves the window out.
-        onWindow:open=>{host.yieldForge(open);host.layoutChanged();}});
+        onWindow:open=>{host.yieldForge(open);host.layoutChanged();},
+        // Off-screen sites' edge arrows (E4-obras-visiveis-da-base): clear of the hero and of the HUD's arrows (the base).
+        heroRect:()=>controller?.scene.heroScreenRect(),edgeArrows:()=>host.edges?.shown});
       net.onBuilt=answer=>{const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);};
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
@@ -384,7 +386,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(run.phase!=='combat')obraRequests.resetRun();
                 else if(obraRequests.expire())obraSay(OBRA_NO_ANSWER);
                 const prepare=run.phase==='combat'&&view?.round?.phase==='prepare'&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
-                obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),
+                obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),hero:net.predicted,
                   pending:obraRequests.pendingSites(),done:obraRequests.doneSites(),
                   // Watching: the plan shows, the confirm says "Assistindo" (the room would refuse it anyway).
                   readOnly:!!member?.spectator||!!net.players.get(net.id)?.spectator,

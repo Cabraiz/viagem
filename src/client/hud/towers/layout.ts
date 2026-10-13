@@ -9,8 +9,11 @@
  *   the status rows, and leaves the field a band that holds the hero ± HERO_MARGIN (computeZones with it as `offer`).
  * - Cards are ≥ 44 px targets; the confirm and close buttons 48 px. Heights follow the text scale (100 % or 125 %).
  * - Ground markers are 48 px targets centred on the sites' screen points, clamped into the useful area.
+ * - Sites off screen get edge arrows (obraArrows, card E4-obras-visiveis-da-base): the 1–3 nearest, laid out by the edge
+ *   arrows' layoutEdges around the arrows already on the rim (the base's ficha), so they never cover it nor each other.
  */
 import {MIN_PLAY_SIDE,bottom,computeZones,right,type Orientation,type Rect,type ScreenZones,type ZoneInput} from '../zones.ts';
+import {arrowHalf,layoutEdges,type EdgeArrow,type EdgeTarget} from '../edges.ts';
 
 export const OBRA_PAD=8,OBRA_GAP=6,OBRA_BUTTON=48,OBRA_TARGET=44,OBRA_MARKER=48,OBRA_EDGE=8;
 /** Widest window (landscape); the left column's share there. */
@@ -101,15 +104,11 @@ export function markerRect(point:{x:number;y:number},area:Rect,size=OBRA_MARKER)
  * live test had six sites and the rail on one point, only the top one tappable).
  */
 export const MARKER_SLACK=8;
-/** The one "+N obras" hint for the sites off screen: a small etiqueta, never a touch target. */
-export const HINT_WIDTH=96,HINT_HEIGHT=28;
 export interface MarkerPlan {
   /** The markers on screen, in DOM order (the last one is on top), at their final boxes. */
   shown:{id:string;rect:Rect}[];
-  /** Sites whose point is off the useful area (no marker). */
+  /** Sites whose point is off the useful area (no marker): the nearest of them get edge arrows (obraArrows). */
   hidden:string[];
-  /** One hint for the hidden sites: on the area's inner rim towards them, with their count. Absent when none hide. */
-  hint?:{rect:Rect;count:number};
 }
 
 /**
@@ -119,9 +118,9 @@ export interface MarkerPlan {
  * - Markers closer than OBRA_MARKER on both axes are nudged apart symmetrically (a few passes over the pairs in id
  *   order, along the axis that needs the shorter move), then clamped back into `area`. Should two still cross (a
  *   crowd against an edge), the one nearest the area's centre is last, on top, so the tap there is deterministic.
- * - The hidden ones get at most one non-interactive hint ("+N obras") on the area's rim towards their mean point.
+ * - The hidden ones are listed (no marker): obraArrows points at the nearest of them from the rim.
  */
-export function planMarkers(points:readonly {id:string;x:number;y:number}[],area:Rect,options:{keep?:string;hint?:boolean}={}):MarkerPlan{
+export function planMarkers(points:readonly {id:string;x:number;y:number}[],area:Rect,options:{keep?:string}={}):MarkerPlan{
   const S=OBRA_MARKER,half=S/2,slack=MARKER_SLACK;
   const fits=(p:{x:number;y:number})=>p.x-half>=area.x-slack&&p.x+half<=right(area)+slack&&p.y-half>=area.y-slack&&p.y+half<=bottom(area)+slack;
   const visible=points.filter(p=>p.id===options.keep||fits(p)),hiddenPts=points.filter(p=>!visible.includes(p));
@@ -144,15 +143,61 @@ export function planMarkers(points:readonly {id:string;x:number;y:number}[],area
   const mid={x:area.x+area.width/2,y:area.y+area.height/2},far=(m:{x:number;y:number})=>Math.hypot(m.x-mid.x,m.y-mid.y);
   // Farthest from the centre first: the nearest is drawn last (on top). Ties by id.
   const shown=[...c].sort((a,b)=>far(b)-far(a)||(a.id<b.id?-1:a.id>b.id?1:0)).map(m=>({id:m.id,rect:{x:m.x-half,y:m.y-half,width:S,height:S}}));
-  const plan:MarkerPlan={shown,hidden:hiddenPts.map(p=>p.id)};
-  if(options.hint!==false&&hiddenPts.length){
-    const mx=hiddenPts.reduce((s,p)=>s+p.x,0)/hiddenPts.length,my=hiddenPts.reduce((s,p)=>s+p.y,0)/hiddenPts.length;
-    // The mean point pushed onto the rim (inset by the hint's half size), like an edge arrow.
-    const x0=area.x+HINT_WIDTH/2+4,x1=right(area)-HINT_WIDTH/2-4,y0=area.y+HINT_HEIGHT/2+4,y1=bottom(area)-HINT_HEIGHT/2-4;
-    let hx=Math.min(Math.max(mx,x0),x1),hy=Math.min(Math.max(my,y0),y1);
-    // Sites hidden on opposite sides average to a point inside: the hint still goes to the nearest rim, never mid-field.
-    if(hx===mx&&hy===my){const d=[mx-x0,x1-mx,my-y0,y1-my],k=d.indexOf(Math.min(...d));if(k===0)hx=x0;else if(k===1)hx=x1;else if(k===2)hy=y0;else hy=y1;}
-    plan.hint={count:hiddenPts.length,rect:{x:hx-HINT_WIDTH/2,y:hy-HINT_HEIGHT/2,width:HINT_WIDTH,height:HINT_HEIGHT}};
-  }
-  return plan;
+  return {shown,hidden:hiddenPts.map(p=>p.id)};
 }
+
+/** At most this many edge arrows for the sites off screen (the card: the 1–3 nearest). */
+export const OBRA_ARROWS=3;
+/** A site's screen point and, when the host knows it, its world distance from the hero. */
+export interface ObraPoint {id:string;x:number;y:number;distance?:number}
+/**
+ * The `max` nearest of the `hidden` sites: by world distance from the hero when every one has it, else (the sandbox) by
+ * screen distance from the field's centre. Ties by id, so the pick never flickers between equals.
+ */
+export function nearestHidden(points:readonly ObraPoint[],hidden:readonly string[],area:Rect,max=OBRA_ARROWS):ObraPoint[]{
+  const set=new Set(hidden),list=points.filter(p=>set.has(p.id));
+  const world=list.every(p=>p.distance!==undefined&&Number.isFinite(p.distance));
+  const mid={x:area.x+area.width/2,y:area.y+area.height/2};
+  const d=(p:ObraPoint)=>world?p.distance!:Math.hypot(p.x-mid.x,p.y-mid.y);
+  return list.sort((a,b)=>d(a)-d(b)||(a.id<b.id?-1:a.id>b.id?1:0)).slice(0,Math.max(0,max));
+}
+export interface ObraArrowOptions {
+  /** The hero's box on screen: no arrow covers it (layoutEdges' keep-out). */
+  hero?:Rect;
+  /** The edge arrows already drawn (EdgeArrows.shown: the base's ficha, a caído…): the obra arrows step aside from them. */
+  placed?:readonly EdgeArrow[];
+  /** The viewport: every beak stays inside it (the city's rim rules). */
+  viewport?:{width:number;height:number};
+  /** Text scale (1 or 1.25): the ficha's width grows with it. */
+  scale?:number;
+  max?:number;
+}
+/** How many of the nearest hidden sites are tried for the `max` arrows (a short landscape rim may refuse some). */
+export const OBRA_ARROW_TRIES=8;
+/**
+ * The hero's keep-out for the obra arrows (CSS px): beside the hero, never on it. The HUD's HERO_MARGIN (40) plus the
+ * top and bottom rims' HEAD_ROOM left no rim at all at the camp: the forge takes the lower half and the live field was
+ * 310 x 169 px around a 103 x 59 hero (portrait), so no arrow could show. The intermission has no danger to read
+ * around the hero, and these arrows are where the player looks next.
+ */
+export const OBRA_HERO_MARGIN=12;
+/**
+ * The edge arrows of the off-screen sites (pure): the nearest hidden ones (nearestHidden), as kind 'obra' with the site
+ * id as key, placed one by one by layoutEdges on the useful area's rim around the arrows already there (the HUD's, then
+ * the obra ones before). Never covers the hero, a placed arrow or another obra arrow, and never folds two sites into
+ * one "+1" (each arrow opens exactly the site it points at): a site with no free spot left is skipped for the next
+ * nearest, up to `max` arrows out of OBRA_ARROW_TRIES tries.
+ */
+export function obraArrows(points:readonly ObraPoint[],hidden:readonly string[],area:Rect,options:ObraArrowOptions={}):EdgeArrow[]{
+  const max=options.max??OBRA_ARROWS,v=options.viewport,out:EdgeArrow[]=[];
+  if(max<=0)return out;
+  const base={city:true,max:1,margin:OBRA_HERO_MARGIN,mustPoint:()=>false,half:arrowHalf(options.scale??1),...(v?{bounds:{x:0,y:0,width:v.width,height:v.height}}:{})};
+  for(const p of nearestHidden(points,hidden,area,Math.max(max,OBRA_ARROW_TRIES))){
+    const t:EdgeTarget={key:p.id,kind:'obra',screen:{x:p.x,y:p.y},distance:p.distance??0};
+    const [a]=layoutEdges([t],area,options.hero,{...base,placed:[...options.placed??[],...out]});
+    if(a)out.push(a);
+    if(out.length>=max)break;
+  }
+  return out;
+}
+

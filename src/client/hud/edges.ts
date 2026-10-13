@@ -13,15 +13,19 @@ import {faceHtml,portraitClass} from '../ui/face-crop.ts';
 import {secondsText} from './model.ts';
 
 export interface Point {x:number;y:number}
-/** `grupo`: a group of critters off screen in the city (design/cidade-hud.md §3): its count in the body, the distance on the tag. */
-export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau';
+/**
+ * `grupo`: a group of critters off screen in the city (design/cidade-hud.md §3): its count in the body, the distance on the tag.
+ * `obra`: a build site off screen in the intermission (card E4-obras-visiveis-da-base): the obra HUD lays it out on top of
+ * the arrows already drawn (EdgeOptions.placed) and draws it itself, as a button that opens the site's tree.
+ */
+export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra';
 /** Lower is more urgent (UX card: caído > chefe > spawn > aliado; base and baú are the Stonewards and loot extras; the city's grupo goes before spawn). */
-export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6};
+export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7};
 /**
  * The ficha's sticker. grupo: the doc's new `bichos` sticker (a gosma silhouette, design/cidade-hud.md §3) has no art yet,
  * so it wears `onda` ("Bichos chegando") until the art lane draws it; its count in the body tells it from a mouth.
  */
-export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau'};
+export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined};
 /** At most this many arrows on screen (UX card). */
 export const MAX_ARROWS=6;
 /** Arrows closer than this (CSS px) step aside along their side; when no spot is left they become one ("+N"). */
@@ -118,7 +122,13 @@ export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:numbe
    */
   mustPoint?:(t:EdgeTarget)=>boolean;
   /** The order the targets are placed in (lower first): EDGE_PRIORITY of the kind unless given. */
-  rank?:(t:EdgeTarget)=>number}
+  rank?:(t:EdgeTarget)=>number;
+  /**
+   * Arrows another layer already drew this frame (EdgeArrows.shown: the base's ficha, a caído…). They stay where they are
+   * and the new ones step aside from them as from each other; they are never in the result, never merged into and do
+   * not count towards `max`. Default none (every existing layout is unchanged).
+   */
+  placed?:readonly EdgeArrow[]}
 /**
  * The HUD pieces that hide the map under them (readouts, base ficha, team, controls, minimap, the open offer or forge,
  * the announcement slot with the kill-cam), viewport CSS px: a target under them is not in plain view and gets an
@@ -202,6 +212,8 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
   }
   const must=options.mustPoint??((t:EdgeTarget)=>MUST_POINT.includes(t.kind));
   const out:EdgeArrow[]=[];
+  // Arrows of another layer (EdgeOptions.placed): their boxes are taken as they are; never merged into, never returned.
+  const seeded=options.placed?.length??0;
   // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Zé: Me salva, 24 s").
   const scale=Math.max(1,(2*half.w-44)/32);
   let current:EdgeTarget|undefined,compact=false;
@@ -242,6 +254,11 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
   const rim=()=>{const pts:Point[]=[],{x,y,width:w,height:h}=inner;
     for(let d=0;d<=w;d+=12)pts.push({x:x+d,y},{x:x+d,y:y+h});for(let d=0;d<=h;d+=12)pts.push({x,y:y+d},{x:x+w,y:y+d});return pts;};
   const windows=(options.windows??[]).filter((w):w is Rect=>!!w&&w.width>0&&w.height>0);
+  for(const p of options.placed??[]){
+    current=p;compact=!!p.compact;
+    const a:EdgeArrow={...p};out.push(a);boxes.set(a,box(p.x,p.y));
+  }
+  current=undefined;compact=false;
   for(const t of sorted){
     // Behind an open window: on the rim right beside it, level with the target (UX review janela-caido, item 11).
     const behind=windows.some(w=>t.screen.x>=w.x&&t.screen.x<=w.x+w.width&&t.screen.y>=w.y&&t.screen.y<=w.y+w.height);
@@ -295,12 +312,12 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
       if(!spot&&own&&city)spot=[{x,y},...next].find(p=>fits(p,0));
       // The caído and the boss never hide inside another kind's arrow while the rim has a free spot.
       if(!spot&&own)spot=[...corners().sort(byDist),...rim().sort(byDist)].find(p=>fits(p));
-      if(!spot){if(by.kind===t.kind)by.count++;else if(own)out.push(arrowAt(t,x,y));continue;}
+      if(!spot){if(by.kind===t.kind&&out.indexOf(by)>=seeded)by.count++;else if(own)out.push(arrowAt(t,x,y));continue;}
       x=spot.x;y=spot.y;side=sideOf(x,y,inner);
     }
     // Past the limit, the target still counts in the nearest arrow of its own kind ("+N"), else the minimap has it.
-    if(out.length>=max){
-      const same=out.filter(a=>a.kind===t.kind);
+    if(out.length-seeded>=max){
+      const same=out.slice(seeded).filter(a=>a.kind===t.kind);
       if(same.length)same.reduce((best,a)=>(a.side===side?0:1e6)+Math.hypot(a.x-x,a.y-y)<(best.side===side?0:1e6)+Math.hypot(best.x-x,best.y-y)?a:best).count++;
       continue;
     }
@@ -312,7 +329,7 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
     const a:EdgeArrow={...t,...(compact?{compact}:{}),x,y,side:sideOf(x,y,inner),count:1,tagEnd,angle:Math.atan2(t.screen.y-y,t.screen.x-x),...(city?{slideBeak:true}:{})};
     boxes.set(a,box(x,y));return a;
   }
-  return out;
+  return seeded?out.slice(seeded):out;
 }
 
 function sideOf(x:number,y:number,r:Rect):Side{
@@ -410,6 +427,8 @@ const put=(slot:Slot,key:string,value:string,write:(v:string)=>void)=>{if(slot.l
 export class EdgeArrows {
   readonly el:HTMLElement;
   private readonly slots:Slot[]=[];
+  /** The arrows drawn by the last render (none after clear): another layer lays its own out around them (EdgeOptions.placed). */
+  shown:readonly EdgeArrow[]=[];
   constructor(parent:HTMLElement){
     this.el=document.createElement('div');this.el.className='rh-edges';this.el.setAttribute('aria-hidden','true');
     for(let i=0;i<MAX_ARROWS;i++){
@@ -434,6 +453,7 @@ export class EdgeArrows {
   /** Text scale of the page (100% or 125%), for the layout's half size; cached until a resize or a text-size change. */
   scale(){return this.scaleCache??=parseFloat(getComputedStyle(this.el).getPropertyValue('--t-escala'))||1;}
   render(arrows:readonly EdgeArrow[],half=arrowHalf(this.scale())){
+    this.shown=arrows;
     // Keep each target in the slot it had, so a ping's one-shot bump does not jump to another arrow.
     const free=this.slots.filter(s=>!arrows.some(a=>a.key===s.key));
     const assigned=new Map<EdgeArrow,Slot>();
@@ -474,6 +494,6 @@ export class EdgeArrows {
     const v=needKinds(targets,must).join(' ');
     if((this.el.dataset.need??'')!==v)this.el.dataset.need=v;
   }
-  clear(){for(const s of this.slots){s.el.hidden=true;s.key='';}if(this.el.dataset.need)this.el.dataset.need='';}
+  clear(){this.shown=[];for(const s of this.slots){s.el.hidden=true;s.key='';}if(this.el.dataset.need)this.el.dataset.need='';}
   destroy(){removeEventListener('resize',this.invalidate);this.observer?.disconnect();this.el.remove();}
 }

@@ -93,8 +93,9 @@ export interface RoomRoster {
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
-/** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client or a
- *  saved room seat plays as the default class instead of being refused. Not a string at all is still invalid. */
+/** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
+ *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
+ *  roster stays strict (junk is dropped; that player joins again and lands here). */
 const DEFAULT_CLASS=classes[0].id;
 const knownClass=(id:unknown)=>typeof id==='string'&&classIds.has(id)?id:DEFAULT_CLASS;
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
@@ -294,10 +295,10 @@ export class Room {
     if(roster?.v!==2||!Array.isArray(roster.players))return;
     const lost=roster.running===true?{round:Number(roster.lost?.round)||0,level:Number(roster.lost?.level)||0}:undefined;
     for(const r of roster.players.slice(0,6)){
-      if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||typeof r.classId!=='string'||this.sim.players.has(r.id))continue;
+      if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
-      this.sim.add(r.id,r.name,knownClass(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
+      this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);
       if(lost)this.lostRun.set(r.id,lost);
     }
@@ -306,8 +307,8 @@ export class Room {
     for(const b of Array.isArray(roster.nameBans)?roster.nameBans:[])if(typeof b?.name==='string'&&b.name.length<=40&&Number.isFinite(b.until)&&b.until>now)this.nameBans.set(b.name,b.until);
     this.botsAdded=Number.isSafeInteger(roster.botsAdded)&&roster.botsAdded!>0?roster.botsAdded!:0;
     if(this.sessions.size)for(const b of Array.isArray(roster.bots)?roster.bots:[]){
-      if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||typeof b.classId!=='string'||this.sim.players.has(b.id))continue;
-      this.seatBot(b.id,b.name.slice(0,20),knownClass(b.classId),Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
+      if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
+      this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
     // D-035: the map the owner had picked; a city this room cannot play now comes back as the endless map (logged).

@@ -11,6 +11,9 @@
  *     the island ignores both (same state, same keys). bossHp: the city boss only (assemble and Simulation option).
  *  6. Team-size knobs (CityBalance.players): JSON validation; a knob for 1 player changes only the 1-player city
  *     (keyed by RoundPlan.players), round 1 untouched; loot by the team standing at the intermission start.
+ *  7. Team damage and boss hp (players[n].damage, players[n].bossHp): damage ×0.5 for a team of 1 halves the contact,
+ *     hostile projectile and telegraph hits on a solo city hero (the real systems through the core's damagePlayer)
+ *     and changes nothing for 2 heroes, before round 2 nor on the island; bossHp for 1 changes only the solo city boss.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -28,7 +31,7 @@ import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {createEnemy as catalogEnemy,enemyDef,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {citySpeed} from '../../src/sim/city/speed.ts';
-import {CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,isNeutralRound,roundKnobs,type CityBalance} from '../../src/sim/city/balance.ts';
+import {CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,hasTeamBossHp,hasTeamDamage,isNeutralRound,roundKnobs,teamBossHp,teamDamage,type CityBalance} from '../../src/sim/city/balance.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -36,6 +39,10 @@ import {createRunSystems} from '../../src/sim/assemble.ts';
 import {BOSS_TUNING,bossMaxHp} from '../../src/sim/boss.ts';
 import {createStonewardsSystem,MAX_PREPARE_TICKS,type StonewardsOptions,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {nodesNear} from '../../src/sim/stonewards/resources.ts';
+import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
+import {createProjectileSystem} from '../../src/sim/projectiles.ts';
+import {MIN_TELEGRAPH_TICKS,addTelegraph,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
+import type {ProjectileState} from '../../src/contract/types.ts';
 import {MAX_ROUND_ENEMIES,ROUND_COUNT,drawTheme,planRound} from '../../src/rules/waves.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
@@ -433,4 +440,107 @@ test('loot by team size: × players[n].lootValue × the global lootValue, n = he
   const near=[{x:obstacles[12].x+obstacles[12].radius+.3,y:obstacles[12].y}];
   const i0=intermission(defaultTerrain,near,ticks(35)),i1=intermission(defaultTerrain,near,ticks(35),{...knobs,players:{1:{lootValue:3}}});
   assert.equal(JSON.stringify(i1.sys.state),JSON.stringify(i0.sys.state),'island state untouched');
+});
+
+// ---------- 7. team damage and boss hp (players[n].damage, players[n].bossHp) ----------
+test('damage and bossHp team knobs: JSON validation (> 0), neutral before round 2, not round knobs',()=>{
+  assert.ok(!hasTeamDamage(CITY_BALANCE)&&!hasTeamBossHp(CITY_BALANCE),'CITY_BALANCE: neither');
+  const b=cityBalanceFrom({players:{1:{damage:.5,bossHp:.6},3:{damage:1}}});
+  assert.ok(hasTeamDamage(b)&&hasTeamBossHp(b));
+  assert.ok(!hasTeamDamage(cityBalanceFrom({players:{3:{damage:1}}})),'damage 1 everywhere: no hook');
+  assert.deepEqual(roundKnobs(b,3,1),NEUTRAL_ROUND,'damage/bossHp are not round knobs');
+  const plan=(index:number,players:number)=>({index,players});
+  assert.equal(teamDamage(b,plan(3,1)),.5);assert.equal(teamDamage(b,plan(ROUND_COUNT,1)),.5);
+  assert.equal(teamDamage(b,plan(3,2)),1,'team 2 has no entry');assert.equal(teamDamage(b,plan(3,3)),1);
+  assert.equal(teamDamage(b,plan(1,1)),1,'round 1 (the tutorial) and its intermission: neutral');
+  assert.equal(teamDamage(b,undefined),1,'before the first wave: neutral');
+  assert.equal(teamDamage(b,plan(ROUND_COUNT+1,1)),1);
+  assert.equal(teamBossHp(b,1),.6);assert.equal(teamBossHp(b,2),1);assert.equal(teamBossHp(b,undefined),1);
+  for(const bad of [{players:{1:{damage:0}}},{players:{1:{damage:-.5}}},{players:{1:{damage:Infinity}}},{players:{1:{damage:'1'}}},
+    {players:{1:{bossHp:0}}},{players:{1:{bossHp:-1}}},{players:{1:{bossHp:Number.NaN}}},{players:{1:{bossHp:null}}}])
+    assert.throws(()=>cityBalanceFrom(bad),undefined,JSON.stringify(bad));
+});
+
+type Source='contact'|'projectile'|'telegraph';
+/**
+ * One hit of each hostile source on hero 'a' (armor 0, hp 1000) through the real systems (enemy-ai contact of a pombo,
+ * the projectile system's hostile shot, the telegraph system), on a world wired by createRunSystems on `terrain` with
+ * `heroes` heroes (the others 10 u away) and the director's plan for `round` drawn for them, as a checkpoint restores it
+ * (round 0: no plan yet). Returns the hp each source took and the world.
+ */
+function hostileHits(terrain:SimWorld['terrain'],heroes:number,cityBalance?:CityBalance,round=3){
+  const players=new Map<string,SimPlayer>();
+  const world=new SimWorld({terrain,seed:5,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},...(cityBalance?{cityBalance}:{})});
+  const s=terrain===city?P.plazaCenter:worldSpawn(terrain);
+  for(let i=0;i<heroes;i++){
+    const h=hero(i?`h${i}`:'a',{x:s.x+10*i,y:s.y});
+    players.set(h.id,{...h,hp:1000,stats:{...h.stats,maxHp:1000}});
+  }
+  if(round){
+    const rng=new Rng(9);
+    sys.director.state.plan=planRound(round,heroes,drawTheme(round,rng,[]),rng);
+    assert.equal(sys.director.state.plan.players,heroes);
+  }
+  const a=players.get('a')!,taken={} as Record<Source,number>;
+  const hit=(source:Source,step:()=>void,max:number)=>{
+    a.hp=1000;
+    for(let i=0;i<max&&a.hp===1000;i++){world.tick++;step();}
+    taken[source]=1000-a.hp;
+  };
+  const ai=createEnemyAi({}),pombo=catalogEnemy(world,'pombos',{x:a.x+.4,y:a.y},1);
+  hit('contact',()=>{world.enemyIndex.rebuild(world.enemies.values());ai.step(world);},ticks(10));
+  world.enemies.delete(pombo.id);
+  const shots=createProjectileSystem();
+  world.projectiles.set('p-test',{id:'p-test',owner:'env:test',source:'test',x:a.x-1.5,y:a.y,vx:6,vy:0,radius:.2,damage:12,pierce:0,untilTick:world.tick+ticks(3),hostile:true,hit:[]} as ProjectileState);
+  hit('projectile',()=>shots.step(world),ticks(3));
+  const zones=createTelegraphSystem();
+  addTelegraph(world,{shape:'circle',x:a.x,y:a.y,radius:1,damage:20,owner:'env:test'},0);
+  hit('telegraph',()=>zones.step(world),MIN_TELEGRAPH_TICKS+2);
+  return {taken,world,sys,pomboDamage:pombo.damage};
+}
+
+test('damage per team: ×0.5 for 1 player halves contact, projectile and telegraph hits on a solo city hero; 2 heroes, round 1 and the island untouched',()=>{
+  const half=cityBalanceFrom({players:{1:{damage:.5}}});
+  const solo=hostileHits(city,1);
+  assert.deepEqual(solo.taken,{contact:solo.pomboDamage,projectile:12,telegraph:20},'every source hit at its raw damage');
+  assert.equal(solo.world.playerDamageScale,undefined,'default city: no hook');
+  const tuned=hostileHits(city,1,half);
+  console.log(`[cidade-11] solo city hits ${JSON.stringify(solo.taken)} → ${JSON.stringify(tuned.taken)} (players[1].damage ×0.5)`);
+  for(const source of ['contact','projectile','telegraph'] as const)assert.equal(tuned.taken[source],solo.taken[source]*.5,`solo city ${source} ×0.5`);
+  // Two heroes (the plan for 2): the same hits as without the knob.
+  assert.deepEqual(hostileHits(city,2,half).taken,hostileHits(city,2).taken,'2 heroes: unchanged');
+  // Before round 2: round 1's plan (the tutorial; also its intermission, which keeps it) and no plan yet.
+  assert.deepEqual(hostileHits(city,1,half,1).taken,solo.taken,'round 1: neutral');
+  assert.deepEqual(hostileHits(city,1,half,0).taken,solo.taken,'no plan yet: neutral');
+  // The island: no hook, the same hits.
+  const island=hostileHits(new TerrainField(3),1),islandTuned=hostileHits(new TerrainField(3),1,half);
+  assert.equal(islandTuned.world.playerDamageScale,undefined,'island: no hook');
+  assert.deepEqual(islandTuned.taken,island.taken,'island: unchanged');
+  assert.deepEqual(island.taken,{contact:island.pomboDamage,projectile:12,telegraph:20});
+  // The run's dispose removes its hook (a rematch wires its own).
+  tuned.sys.dispose();
+  assert.equal(tuned.world.playerDamageScale,undefined,'disposed');
+});
+
+test('bossHp per team: × the global bossHp for the plan count at the spawn; only the solo city boss changes',()=>{
+  const spawn=(terrain:SimWorld['terrain'],heroes:number,cityBalance?:CityBalance)=>{
+    const players=new Map<string,SimPlayer>(),world=new SimWorld({terrain,seed:2,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},...(cityBalance?{cityBalance}:{})});
+    const s=terrain===city?P.plazaCenter:worldSpawn(terrain);
+    for(let i=0;i<heroes;i++)players.set(`h${i}`,hero(`h${i}`,{x:s.x+8,y:s.y+i}));
+    const rng=new Rng(4);
+    sys.director.state.plan=planRound(ROUND_COUNT,heroes,drawTheme(ROUND_COUNT,rng,[]),rng);
+    const boss=sys.boss.spawnBoss(world,{x:s.x,y:s.y})!;
+    assert.equal(sys.boss.tuning.baseHp,BOSS_TUNING.baseHp*(cityBalance&&terrain===city?cityBalance.bossHp:1),'the controller tuning keeps the global knob only');
+    return boss.maxHp;
+  };
+  const team=cityBalanceFrom({players:{1:{bossHp:.6}}}),both=cityBalanceFrom({bossHp:1.5,players:{1:{bossHp:.6}}});
+  assert.equal(spawn(city,1,team),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*.6}),'solo city: ×0.6');
+  assert.equal(spawn(city,1,both),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*1.5*.6}),'solo city: × the global 1.5');
+  assert.equal(spawn(city,2,team),spawn(city,2),'2 heroes: unchanged');
+  assert.equal(spawn(city,2,both),bossMaxHp(2,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*1.5}),'2 heroes: the global knob only');
+  assert.equal(spawn(city,1),bossMaxHp(1),'default city boss');
+  assert.equal(spawn(new TerrainField(3),1,both),bossMaxHp(1),'island ignores both');
+  console.log(`[cidade-11] solo city boss hp ${bossMaxHp(1)} → ${spawn(city,1,team)} (players[1].bossHp ×0.6)`);
 });

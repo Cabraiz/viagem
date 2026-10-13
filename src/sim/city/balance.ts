@@ -13,13 +13,19 @@
  *  - `bossHp` × the city boss's hp (assemble.ts: BossTuning.baseHp for the city's boss controller);
  *  - `players[n]` (cidade-11 run): knobs by team size, on top of all of the above, so a small team can be eased without
  *    touching the shared playerScale (rules/waves.ts). Its count/hp/cadence multiply `all` × `rounds[i]` (rounds 2..10
- *    only), its siegeShare replaces theirs, and its lootValue multiplies the global lootValue. The team size `n` is:
+ *    only), its siegeShare replaces theirs, its lootValue multiplies the global lootValue, its `damage` scales every hit
+ *    a player takes (core.ts SimWorld.playerDamageScale, wired by assemble.ts) and its `bossHp` multiplies the global
+ *    bossHp. The team size `n` is:
  *      · for the round knobs, the count planRound scaled the round with (RoundPlan.players: the director's
  *        scalePlayers at the wave start, the highest activePlayers — online, not spectator, not eliminated — of the
  *        current tick and the last 60 one-second samples, clamped 1..6);
  *      · for the loot, the heroes standing at the intermission's start (revive.ts isStanding: online, not spectator,
  *        not downed, not eliminated, hp > 0), clamped 1..6, counted once on the intermission's first tick and kept in
- *        StonewardsState.cityLootTeam for the whole intermission (only when some players entry has a lootValue).
+ *        StonewardsState.cityLootTeam for the whole intermission (only when some players entry has a lootValue);
+ *      · for `damage`, the round knobs' count (RoundPlan.players) of the current round, kept through the intermission
+ *        that follows it (the director keeps state.plan until the next wave); neutral before round 2 (the opening,
+ *        round 1 / the tutorial and its intermission), like the round knobs (teamDamage below);
+ *      · for `bossHp`, the same plan count when the boss spawns (round 10's plan), fixed for the fight.
  *    A team size with no entry, and any knob an entry leaves out, is neutral.
  *
  * Round 1 is the tutorial walk (cidade-08, TUTORIAL_PLAN): no knob ever touches it (roundKnobs(…, 1) is neutral), so a
@@ -27,15 +33,20 @@
  * so CITY_BALANCE at its defaults plays the city exactly as before this module (same plans, same state hashes).
  *
  * Injection: createRunSystems({cityBalance}) (assemble.ts; default CITY_BALANCE), which hands the round knobs to the
- * director (DirectorOptions.cityBalance) and the loot/intermission ones to Stonewards (StonewardsOptions.cityBalance),
+ * director (DirectorOptions.cityBalance), the loot/intermission ones to Stonewards (StonewardsOptions.cityBalance),
+ * the team damage to the core (SimWorld.playerDamageScale) and the boss hp to the boss (tuning, BossOptions.hpScale),
  * only on a city terrain. A headless runner reads a JSON with cityBalanceFrom.
  */
 import {MAX_ROUND_ENEMIES,ROUND_COUNT,type RoundPlan,type SpawnGroup} from '../../rules/index.ts';
 
 /** Knobs of one round. count/hp/cadence are multipliers (1 = the table); siegeShare (0..1) replaces the director's. */
 export interface CityRoundKnobs {count:number;hp:number;cadence:number;siegeShare?:number}
-/** Knobs of one team size: the round knobs (count/hp/cadence ×, siegeShare replacing) and lootValue × the global one. */
-export type CityTeamKnobs=Partial<CityRoundKnobs&{lootValue:number}>;
+/**
+ * Knobs of one team size: the round knobs (count/hp/cadence ×, siegeShare replacing), lootValue × the global one,
+ * damage × every hit the players take (contact, hostile projectiles, telegraphs: the core's damagePlayer, before armor)
+ * and bossHp × the global bossHp.
+ */
+export type CityTeamKnobs=Partial<CityRoundKnobs&{lootValue:number;damage:number;bossHp:number}>;
 /** Team sizes a `players` entry may name (the director's scaling clamps to 1..6). */
 export const CITY_TEAM_SIZES=[1,2,3,4,5,6] as const;
 export interface CityBalance {
@@ -51,8 +62,9 @@ export interface CityBalance {
   readonly bossHp:number;
   /**
    * By team size (1..6; see the module comment for which count each knob reads): count/hp/cadence × the round's
-   * all × rounds (rounds 2..ROUND_COUNT only), siegeShare replacing theirs, lootValue × the global lootValue. Absent
-   * sizes and knobs are neutral.
+   * all × rounds (rounds 2..ROUND_COUNT only), siegeShare replacing theirs, lootValue × the global lootValue, damage ×
+   * the damage players take (rounds 2..ROUND_COUNT and their intermissions), bossHp × the global bossHp. Absent sizes
+   * and knobs are neutral.
    */
   readonly players?:Readonly<Record<number,Readonly<CityTeamKnobs>>>;
 }
@@ -87,6 +99,21 @@ export function roundKnobs(balance:CityBalance,index:number,team?:number):CityRo
 export const teamLootValue=(balance:Pick<CityBalance,'lootValue'|'players'>,team?:number)=>balance.lootValue*(teamKnobs(balance,team).lootValue??1);
 /** Whether some team size has its own lootValue (Stonewards only then counts the team at the intermission start). */
 export const hasTeamLoot=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.lootValue!==undefined&&k.lootValue!==1);
+/**
+ * × every hit a player takes in the city for the round planned as `plan` (the director's state.plan: the current round,
+ * or during an intermission the round that just ended): players[plan.players].damage; 1 before round 2 (no plan, or
+ * round 1 / the tutorial) and outside 2..ROUND_COUNT.
+ */
+export function teamDamage(balance:Pick<CityBalance,'players'>,plan:Pick<RoundPlan,'index'|'players'>|undefined):number{
+  if(!plan||!Number.isInteger(plan.index)||plan.index<2||plan.index>ROUND_COUNT)return 1;
+  return teamKnobs(balance,plan.players).damage??1;
+}
+/** Whether some team size has its own damage (assemble.ts only then hooks the core's damagePlayer). */
+export const hasTeamDamage=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.damage!==undefined&&k.damage!==1);
+/** × the city boss's base hp for a team of `team` (the plan count at the spawn), on top of the global bossHp. */
+export const teamBossHp=(balance:Pick<CityBalance,'players'>,team?:number)=>teamKnobs(balance,team).bossHp??1;
+/** Whether some team size has its own bossHp (assemble.ts only then hands the boss an hpScale). */
+export const hasTeamBossHp=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.bossHp!==undefined&&k.bossHp!==1);
 export const isNeutralRound=(k:CityRoundKnobs)=>k.count===1&&k.hp===1&&k.cadence===1&&k.siegeShare===undefined;
 
 /**
@@ -142,8 +169,8 @@ function knobsFrom(input:unknown,where:string):Partial<CityRoundKnobs>{
   }
   return out;
 }
-const TEAM_KEYS=[...KNOB_KEYS,'lootValue'] as const;
-/** A `players` entry: the round knobs plus lootValue, every number finite and > 0 (siegeShare also ≤ 1). */
+const TEAM_KEYS=[...KNOB_KEYS,'lootValue','damage','bossHp'] as const;
+/** A `players` entry: the round knobs plus lootValue, damage and bossHp, every number finite and > 0 (siegeShare also ≤ 1). */
 function teamFrom(input:unknown,where:string):CityTeamKnobs{
   if(!input||typeof input!=='object'||Array.isArray(input))throw new Error(`${where}: an object of knobs`);
   const out:CityTeamKnobs={};

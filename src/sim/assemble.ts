@@ -25,7 +25,7 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,heroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {CITY_BALANCE,type CityBalance} from './city/balance.ts';
+import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -165,6 +165,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),
     // City boss hp knob (cidade-11): the city controller's baseHp; neutral leaves BOSS_TUNING as it is.
     ...(cityBalance&&cityBalance.bossHp!==1?{tuning:{baseHp:BOSS_TUNING.baseHp*cityBalance.bossHp}}:{}),
+    // × players[n].bossHp, n the director's plan count when the boss spawns (round 10's plan; scalePlayers without one).
+    ...(cityBalance&&hasTeamBossHp(cityBalance)?{hpScale:(ctx:SimContext)=>teamBossHp(cityBalance,director?.state.plan?.players??director?.scalePlayers(ctx))}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
@@ -187,6 +189,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // Round 1 is the walk from the wreck to the plaza (cidade-08).
       cityTutorial:options.cityTutorial??true,...(cityBalance?{cityBalance}:{})}:{}),
   });
+  // City team damage (cidade-11, CityBalance.players[n].damage): × every hit a player takes, through the core's single
+  // damage path; n is the director's plan count (the current round, kept through its intermission), neutral before
+  // round 2. Set (or cleared) on every run; absent unless some team size has a damage knob, so damagePlayer is unchanged.
+  const damageScale=cityBalance&&hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
+  world.playerDamageScale=damageScale;
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 
   world.clearSystems();
@@ -214,6 +221,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state}),
-    dispose(){offKill();offZero();},
+    dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

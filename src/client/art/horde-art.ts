@@ -366,9 +366,10 @@ export function enemyDrawScale(kind:EnemyKind,file:ArtFile,elite=false):number{
 export const HERO_FIGURE_PX=96;
 /**
  * Target feet-to-top height of an imported enemy, × the hero's (Orquestrador, 13/10/2026, on D-037's 0.9×): the
- * default 0.9; an enxame 0.5 (0.4-0.6); a brutamontes 1.3 (1.2-1.4); a mini-chefe 2; the chefe 3.
+ * default 0.9; an enxame 0.5 (0.4-0.6); a voador 0.6 (a giant cockroach still reads huge); a brutamontes 1.3
+ * (1.2-1.4); a mini-chefe 2; the chefe 3.
  */
-export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,brutamontes:1.3,'mini-chefe':2,chefe:3};
+export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,voador:.6,brutamontes:1.3,'mini-chefe':2,chefe:3};
 export const DEFAULT_HEIGHT=.9;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
 export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT);

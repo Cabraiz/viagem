@@ -4,6 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL,GRACE_MS} from '../../src/protocol/room.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 function peer(){
   const messages:any[]=[],frames:Uint8Array[]=[],closes:{code:number;reason:string}[]=[];

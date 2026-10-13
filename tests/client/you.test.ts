@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ALLY_RING_SIZE,ALLY_RING_WIDTH} from '../../src/client/art/hud-art.ts';
 import assert from 'node:assert/strict';
 import {ARROW_BOB_MS,ARROW_MS,HP_LINGER_MS,RING_CSS,RING_SCALE,RING_UNDER,ringSize,arrowFrame,arrowTrigger,beakPoints,canopyCovers,facingFrom,hpBarStep,hurtStrength,ringBands} from '../../src/client/render/you-rules.ts';
 import {HURT_MIN_GAP_MS,canFlash,hitsOn} from '../../src/client/hud/hurt.ts';
@@ -102,4 +103,6 @@ test('ring (BUG-20261013-ORQ-anel-voce-atras): 30 % smaller than before, under t
   }
   // Under the sticker contour (−0.2, −0.1 under the sprite) and above the contact shadow (−1).
   assert.ok(RING_UNDER>.2&&RING_UNDER<1);
+  // The allies' ring shrinks the same (it already sits under its figure).
+  assert.deepEqual(ALLY_RING_SIZE,{width:46*.7,height:20*.7});assert.equal(ALLY_RING_WIDTH,46*.7+2);
 });

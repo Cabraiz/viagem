@@ -114,6 +114,8 @@ export class YouMarkers {
       const fig=this.figureOf(sprite);
       const {w,h}=ringSize(fig.width,s),{x,y}=mark.feet,r=this.ring,ringDepth=top.depth-RING_UNDER;
       r.setDepth(ringDepth).setVisible(top.visible);
+      // The bar, arrow and chips stay over the ring and its beak wherever the hero's depth is (island: just under SELF_DEPTH).
+      const over=Math.max(MARK_DEPTH,ringDepth+.05);g.setDepth(over);
       const bands=ringBands(this.city),art=markArt('you');
       const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
       // City: a Breu band outside the Papel, and a Breu beak grown by the same edge, under everything else (only Breu
@@ -123,8 +125,8 @@ export class YouMarkers {
         const grown=grownBeak(RING_CSS.beak+2,RING_CSS.beak*.6+2,bands.outer.width),edge=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,grown.length*s,grown.half*s);
         r.fillStyle(c.breu,1).fillTriangle(edge[0].x,edge[0].y,edge[1].x,edge[1].y,edge[2].x,edge[2].y);
       }
-      // Imported ring at today's outer width (Papel band included), just under the code beak and bar.
-      if(!(art&&this.art.mark('you',art,ringDepth+.01,markFrame(art,now,this.reduced),x,y,w+bands.papel.width*s)))
+      // Imported ring at the ring's outer width (Papel band included), just under the code beak.
+      if(!(art&&this.art.mark('you',art,ringDepth-.01,markFrame(art,now,this.reduced),x,y,w+bands.papel.width*s)))
         for(const [band,color] of [[bands.papel,c.papel],[bands.voce,c.voce],[bands.breu,c.breu]] as const)
           r.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
       // Beak toward where the hero faces: Papel edge, Lilás body.
@@ -142,9 +144,9 @@ export class YouMarkers {
         // the fill over the track, stretched to the hp share and tinted as today. Missing either piece: today's bar.
         const art=barArt(false);
         if(art&&this.art.ready(art.frame)&&this.art.ready(art.fill)){
-          this.art.slice(this.barOwner.frame,art.frame,MARK_DEPTH+.01,left-s,top2-s,bw+2*s,bh+2*s,s);
+          this.art.slice(this.barOwner.frame,art.frame,over+.01,left-s,top2-s,bw+2*s,bh+2*s,s);
           const fw=barFillWidth(bw,fraction,(art.fill.left+art.fill.right)*s);
-          if(fw>0)this.art.slice(this.barOwner.fill,art.fill,MARK_DEPTH+.02,left,top2,fw,bh,s)?.setTint(low?c.cone:c.cartolina);
+          if(fw>0)this.art.slice(this.barOwner.fill,art.fill,over+.02,left,top2,fw,bh,s)?.setTint(low?c.cone:c.cartolina);
         }else{
           g.fillStyle(c.papel,1).fillRect(left-s,top2-s,bw+2*s,bh+2*s);
           g.fillStyle(c.breu,1).fillRect(left,top2,bw,bh);

@@ -44,9 +44,7 @@ function realCity(){
 
 test('empty manifest (and arte=0): empty plan, the real city keeps every block, prop and key of today', ()=>{
   const before=realCity();
-  for(const plan of [buildCityArtPlan(parseArtIndex({version:2,groups:{}})),buildCityArtPlan(demoIndex(),{enabled:false}),
-    buildCityArtPlan(parseArtIndex(JSON.parse(readFileSync(path.join(ROOT,'public/art/manifest.json'),'utf8'))))]){
-    // The repo's own manifest is the empty one (the delivery is not committed).
+  for(const plan of [buildCityArtPlan(parseArtIndex({version:2,groups:{}})),buildCityArtPlan(demoIndex(),{enabled:false})]){
     assert.equal(planHasArt(plan),false);
     assert.deepEqual(plan.sheets,[]);
     const asset=realCity();
@@ -195,4 +193,10 @@ test('rotation: the demo house frame the layer picks shows the walls that face t
       assert.equal(world(art.right),want.right,`view ${view}, turns ${turns}: right-front wall`);
     }
   }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('the repo manifest (codex-706 delivery, eca61ed) gives the city art', ()=>{
+  const plan=buildCityArtPlan(parseArtIndex(JSON.parse(readFileSync(path.join(ROOT,'public/art/manifest.json'),'utf8'))));
+  assert.equal(planHasArt(plan),true);
+  assert.ok(plan.sheets.length>0);
 });

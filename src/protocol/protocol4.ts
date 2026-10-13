@@ -43,10 +43,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * kind and the D-033 cast in the DICT; an 8 decoder would refuse the player field mask and read the new dictionary
  * indexes as unknown strings. 10 since the P1 cast (NEW-20261012-ORQ-elenco-p1): 'coach', 'motoboy' and 'influencer'
  * in the DICT (they went inline in 9: 1 + 1 + their UTF-8 bytes each, on every enemy, kill and downed event); a 9
- * decoder would read their indexes as unknown strings.
+ * decoder would read their indexes as unknown strings. 11 since torres-fio: the tower defenses in the structures (four
+ * optional fields: tier, branch, phase, aim) and their ids, phases and branches in the DICT; a 10 decoder would refuse
+ * the structure field mask.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=10;
+export const PROTOCOL_VERSION=11;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -86,6 +88,10 @@ export const DICT:readonly string[]=[
   'arroto','molotov','fogo','explosao','pancada','investida','varredura','carimbo',
   // Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast. Each was 1 + 1 + its UTF-8 bytes inline in protocol 9.
   'coach','motoboy','influencer',
+  // Protocol 11 (torres-fio): the tower defenses (src/sim/towers/catalog.ts DefenseId), their phases and branches.
+  'vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
+  'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','obuseiro','gustavao','holofote','arame-e-sirene',
+  'antiaerea-quadrupla','posto-de-radar','obra-1','obra-2','obra-3','pronta','danificada','ruina','A','B','C',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -294,7 +300,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
   }},
-  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel))}},
+  // Protocol 11 (torres-fio): a defense's tier, branch, building phase and aim (turns of a circle, 1 byte); each only when it changes.
+  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel)),
+    tier:c(optional(count)),branch:c(optional(str)),phase:c(optional(str)),aim:c(optional(unit))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };

@@ -131,6 +131,8 @@ export const ROOM_LIFETIME_MS=50*60_000;
  */
 const AUTOPILOT_SLOT=7;
 const NO_SEATS:ReadonlySet<string>=new Set();
+/** torres-fio: what a {t:'build'} may name (a build site or the Gustavão's rail) and an upgrade's branch. */
+const BUILD_SITE=/^(obra-\d{2}|trilho)$/,BRANCH=/^(A|B|C|A4b|A5b)$/;
 /**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
@@ -459,6 +461,7 @@ export class Room {
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
     else if(m.t==='forge')this.forge(c,m);
+    else if(m.t==='build'||m.t==='upgrade')this.tower(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -719,6 +722,26 @@ export class Room {
     const result=this.sim.forge(c.playerId!,m.recipe,String(m.req),m.target);
     this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
+  /**
+   * torres-fio: {t:'build',round,req,site} (a build site id 'obra-NN' or the rail 'trilho') or {t:'upgrade',round,req,
+   * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative). Anything malformed is
+   * dropped here; the sim says no with a reason. The sender hears {t:'built',req,ok,reason?,kind?}.
+   */
+  private tower(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(!Number.isSafeInteger(m.req)||m.req<1)return;
+    let result;
+    if(m.t==='build'){
+      if(typeof m.site!=='string'||!BUILD_SITE.test(m.site))return;
+      result=this.sim.build(c.playerId!,m.site,`p:${m.req}`);
+    }else{
+      const id=typeof m.defense==='string'&&m.defense.length<=12?this.ids.resolve(m.defense):undefined;
+      if(!id||(m.branch!==undefined&&(typeof m.branch!=='string'||!BRANCH.test(m.branch))))return;
+      result=this.sim.upgrade(c.playerId!,id,m.branch,`p:${m.req}`);
+    }
+    this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind}:{reason:result.reason})});
+  }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){
     if(!c.playerId)return;
@@ -913,7 +936,7 @@ export class Room {
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

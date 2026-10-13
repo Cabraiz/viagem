@@ -8,8 +8,13 @@ export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;ma
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean}
 export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx?:number;dy?:number;width?:number;fireTick:number;kind?:TelegraphKind}
-/** The wall ('muralha') and the forge's towers ('torre-chinelo', with the tick they go away). */
-export interface StructureView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;untilTick?:number}
+/**
+ * The wall ('muralha') and the forge's towers ('torre-chinelo', with the tick they go away), the city barricades, and
+ * the tower defenses (torres-fio: kind = the DefenseId, `tier` 1-6, `branch` A/B/C from tier 2, `phase` obra-1..3,
+ * pronta, danificada, ruina, and `aim` where it last fired, in turns 0..1 of a circle from +x).
+ */
+export interface StructureView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;untilTick?:number;
+  tier?:number;branch?:string;phase?:string;aim?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

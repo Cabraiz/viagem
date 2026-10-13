@@ -852,7 +852,7 @@ test('protocol 7+: zueira events and the kill-cam reach every client, wherever t
 const D036_STRINGS=['bebado','anao-molotov','pombos','agiota','boleto-juros',...TELEGRAPH_KINDS.filter(k=>k!=='coco')];
 
 test('protocol 9+: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
-  assert.equal(PROTOCOL_VERSION,10);
+  assert.ok(PROTOCOL_VERSION>=10);
   const plain=busyWorld(new Rng(4),3).view,burped=busyWorld(new Rng(4),3).view;
   const slip={x:Math.SQRT1_2,y:-Math.SQRT1_2};
   burped.players[0]={...burped.players[0],slowUntil:1030,slipUntil:1010,slip};
@@ -940,13 +940,13 @@ test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are
 });
 
 // ---------- Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast in the DICT ----------
-test('protocol 10: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
-  assert.equal(PROTOCOL_VERSION,10);
+test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
+  assert.ok(PROTOCOL_VERSION>=10);
   assert.ok(DICT.length<255,'255 is the inline escape');
   // Append only: protocol 8 and 9 indexes did not move; the trio comes right after the last protocol 9 string.
   assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
-  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.length-4);
-  assert.deepEqual(DICT.slice(-3),['coach','motoboy','influencer']);
+  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.indexOf('coach')-1);
+  assert.deepEqual(DICT.slice(DICT.indexOf('coach'),DICT.indexOf('coach')+3),['coach','motoboy','influencer']);
   for(const s of ['coach','motoboy','influencer'])assert.equal(DICT.lastIndexOf(s),DICT.indexOf(s),`${s} once`);
   // One byte each where it travels (enemy kind, kill and downed events), and the acting/coached phase round-trips.
   const frame=(kind:string,phase?:number)=>{
@@ -965,10 +965,10 @@ test('protocol 10: the P1 cast is dictionary bytes appended after protocol 9 (ev
   }
 });
 
-test('protocol 10: a frame from a 9 or 11 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 11: a frame from a 10 or 12 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],10);
-  for(const version of [8,9,11]){
+  assert.equal(bytes[1],11);
+  for(const version of [9,10,12]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }
@@ -1055,4 +1055,59 @@ test('N27 chained frames: an event goes once, never again every 5 s; a resync se
   enc.resync();w.view.tick+=2;
   const fresh=new FrameDecoder(),r=fresh.decode(enc.encode(w.view));
   assert.ok(r.ok&&r.view.events.some(e=>e.type==='levelup'),'after a resync it goes again');
+});
+
+// ---------- Protocol 11 (torres-fio): the tower defenses in the structures ----------
+/** Twelve defenses (D-009 with the team's limit), a Gustavão among them; `tick` turns their aim and wears their hp. */
+function defenses(tick:number):StructureView[]{
+  const kinds=['vigia-do-predio','vigias-armados','ninho-de-metralhadora','rojao-de-festa','morteiro','obuseiro','holofote','arame-e-sirene',
+    'antiaerea-quadrupla','posto-de-radar','atiradores-do-telhado','gustavao'];
+  const phases=['pronta','pronta','danificada','obra-2','pronta','pronta','pronta','obra-3','pronta','pronta','pronta','pronta'];
+  return kinds.map((kind,i)=>({id:`defesa-${i+1}`,kind,x:6+i,y:18-(i%3),hp:Math.max(1,300-((tick*7+i*13)%120)),maxHp:300,
+    tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1)}));
+}
+
+test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; the old structures (wall, chinelo) cost the same as before',()=>{
+  assert.equal(PROTOCOL_VERSION,11);
+  for(const s of ['vigia-do-predio','gustavao','obra-1','pronta','ruina','A','C'])assert.ok(DICT.includes(s),s);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  const v=busyWorld(new Rng(2),1).view,plain=new FrameEncoder().encode(v).length;
+  const withDefs={...v,structures:[...v.structures,...defenses(0)]};
+  const r=new FrameDecoder().decode(new FrameEncoder().encode(withDefs));assert.ok(r.ok);
+  const back=r.view.structures.filter(s=>s.kind!=='muralha');
+  assert.equal(back.length,12);
+  for(const [i,s] of back.entries()){
+    const want=defenses(0)[i];
+    assert.equal(s.kind,want.kind);assert.equal(s.tier,want.tier);assert.equal(s.branch,want.branch);assert.equal(s.phase,want.phase);
+    assert.ok(Math.abs(s.aim!-want.aim!)<=1/255,`aim ${s.aim} vs ${want.aim}`);
+  }
+  assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.tier,undefined,'the wall has none of the new fields');
+  assert.equal(new FrameEncoder().encode(v).length,plain);
+});
+
+test('D-009 with 12 defenses firing: 6 clients x 300 enemies stay inside the 4G budget at 10 and 20 Hz',t=>{
+  const results:Record<string,number>={};
+  for(const hz of [10,20]){
+    const rng=new Rng(8),w=busyWorld(rng);
+    const clients=Array.from({length:CLIENTS},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+    const seconds=10,every=20/hz;
+    let bytes=0;
+    for(let i=0;i<seconds*20;i++){
+      const events=stepWorld(w,rng);
+      // Every defense turns and loses hp every tick (worse than real: they fire on a cooldown).
+      w.view.structures=[w.view.structures[0],...defenses(w.view.tick)];
+      for(const c of clients)c.enc.pushEvents(events);
+      if(i%every)continue;
+      for(const c of clients){
+        const frame=c.enc.encode(w.view);bytes+=frame.length;
+        const res=c.dec.decode(frame);assert.ok(res.ok);
+        c.inFlight.push({seq:res.seq,event:res.ack.event,at:i+3});
+        while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+      }
+    }
+    results[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
+  }
+  t.diagnostic(`protocol 11 bytes/s per client with 12 defenses turning every tick: ${JSON.stringify(results)}`);
+  assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
+  assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });

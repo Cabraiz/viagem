@@ -20,7 +20,7 @@ import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
-import {CityMinimap,BigMapState,cityHudLayout,type NoticeKind,type BlockReason} from './city/index.ts';
+import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -62,6 +62,9 @@ export function playStamp(){
 export const OFFER_AFTER_KILLCAM_MS=1000;
 /** Clearance kept between the hero's sprite and the center banner, in CSS px. */
 export const HERO_MARGIN_PX=40;
+
+/** What rescue.ts hands the HUD for the city's walk to the plaza (RunHud.setCityRoute). */
+export interface CityRouteInput {terrain:unknown;hero:{x:number;y:number};view:number}
 
 export const defaultPortrait=(classId:string,detailed=false)=>`/art/portraits/${classId}${detailed?'':'-thumb'}.webp`;
 
@@ -117,6 +120,15 @@ export class RunHud {
   readonly cityMap=new BigMapState();
   private cityBlock?:BlockReason;
   private cityBigCache?:{side:number;coversAnnounce:boolean};private cityBigVersion=-1;
+  /**
+   * The city's round-1 walk to the plaza (card cidade-08, city/route.ts): a row of the announcement slot, driven by
+   * setCityRoute (rescue.ts, every frame) and by the views (round, the local hero standing).
+   */
+  private readonly objectiveRow:ObjectivePart;
+  private readonly objective=new CityObjectiveTracker();
+  private routeInput?:CityRouteInput;
+  /** What the objective wants to show now (before the slot's turn), and its box (read with the slot's other rows). */
+  private objectiveWant?:CityObjective;private objectiveRect?:Rect;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue};
@@ -126,6 +138,7 @@ export class RunHud {
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
     this.coach=new Coach(options.coachStorage);this.heroRectOf=options.heroRect;this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
+    this.objectiveRow=createObjectiveRow(parent.ownerDocument);
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
     const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
@@ -133,8 +146,9 @@ export class RunHud {
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
-    // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056).
-    stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
+    // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
+    stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
@@ -142,7 +156,7 @@ export class RunHud {
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
-    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
+    for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
     if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);
@@ -229,7 +243,67 @@ export class RunHud {
     const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.turnRows();
+    this.stepObjective();
     this.updateCoach(view);
+    this.renderObjective();
+  }
+
+  /**
+   * The city's round-1 walk (card cidade-08): the run's terrain, the local hero's predicted spot and the camera's view,
+   * every frame (rescue.ts); undefined out of a run. The row shows from the opening countdown through round 1 while the
+   * hero is out of the plaza (CityObjectiveTracker), when the announcement slot is free for it (renderObjective).
+   */
+  setCityRoute(input:CityRouteInput|undefined){
+    this.routeInput=input;
+    const was=!!this.objectiveWant;
+    this.stepObjective();
+    // The walk just became wanted (the first city frame of the run) while the coach shows its own "andar": the coach
+    // folds it into the walk now, not at the next view, so the two rows never take turns.
+    if(!was&&this.objectiveWant&&this.coachShow&&this.last)this.updateCoach(this.last);
+    this.renderObjective();
+  }
+  /**
+   * The run's world as soon as it is known (rescue.ts, every frame from the lobby on): a city gets its walking route
+   * built on an idle moment now, so round 1's first frame never pays for it (city/route.ts prewarmCityRoute). Once per terrain.
+   */
+  prewarmCity(terrain:unknown){prewarmCityRoute(terrain);}
+  private stepObjective(){
+    const view=this.last,me=view?.players.find(p=>p.id===this.ctx.localId);
+    const standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed&&me.hp>0;
+    const input=this.routeInput,ended=this.el.classList.contains('rh-ended');
+    this.objectiveWant=this.objective.step({terrain:ended?undefined:input?.terrain,round:view?.round,standing,hero:input?.hero,view:input?.view??0});
+  }
+  /**
+   * One row at a time: the objective waits for a notice, the kill-cam, a shell row, an open window and the coach's rescue
+   * hint (the coach holds every other hint while the objective is wanted, coach.ts), and for the round banner (1.8 s),
+   * except in round 1 while "andar" is still to learn: then it is the joystick lesson and takes the banner's slot, as
+   * the coach's "andar" does (UX-1; city/route.ts objectiveSlot): the round name folds into the round chip.
+   */
+  private renderObjective(){
+    const want=this.objectiveWant,marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    const held=!!this.el.hidden||this.offerOpen()||!!this.coachShow||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])');
+    const slot=objectiveSlot({wanted:!!want,round:this.last?.round?.index,walkLearned:this.coach.done.has('walk'),banner:!!marquee&&!marquee.hidden,held});
+    if(slot.foldBanner)marquee!.hidden=true;
+    if(this.objectiveRow.render(slot.show?want:undefined,!this.coach.done.has('walk'))){
+      const r=this.objectiveRow.el.hidden?undefined:this.objectiveRow.el.getBoundingClientRect();
+      this.objectiveRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};
+      this.turnRows();
+    }
+    this.lightStick();
+    const hero=this.heroRectOf?.();
+    if(hero)this.objectiveYield(hero,HERO_MARGIN_PX);
+  }
+  /** The city's walk to the plaza is on screen (the sandbox and the playtest metrics). */
+  get objectiveShown(){return !this.objectiveRow.el.hidden;}
+  /**
+   * The joystick keeps calling (Amarelo) while "andar" is still to learn and its hint is on screen, or only pushed aside
+   * by the rescue hint (a caído outranks it), or folded into the city's walk to the plaza while that walk is wanted (its
+   * row on screen or only waiting for a notice or a shell row: the light never blinks); explore.css reads data-coach-stick.
+   */
+  private lightStick(){
+    const lesson=this.coachShow&&!this.coachShow.done?this.coachShow.lesson:'';
+    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue'||!!this.objectiveWant);
+    if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
 
   /**
@@ -245,7 +319,7 @@ export class RunHud {
     const blocked=ended||!!this.el.hidden||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])')||this.offerOpen()||!this.forgeEl.hidden;
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
-    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner},now);
+    const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner,objective:!!this.objectiveWant},now);
     // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
     // does for a notice or the offer window.
     if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
@@ -257,10 +331,7 @@ export class RunHud {
     if(hero)this.coachYield(hero,HERO_MARGIN_PX);
     const lesson=show&&!show.done?show.lesson:'';
     if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
-    // The joystick keeps calling (Amarelo) while "andar" is still to learn and on screen, or only pushed aside by the
-    // rescue hint (a caído outranks it); explore.css reads data-coach-stick.
-    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue');
-    if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
+    this.lightStick();
   }
   /** The hint on screen now (playtest metrics, dev/ux-metrics.ts). */
   get coachHint():CoachShow|undefined{return this.coachShow;}
@@ -280,6 +351,7 @@ export class RunHud {
     this.el.classList.add('rh-ended');this.hurt.reset();
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
     this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
+    this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined,false);
     this.result.show(result,this.ctx);
   }
 
@@ -319,14 +391,21 @@ export class RunHud {
   }
   /** The row leaves the line and the slot (its own button answered it). */
   dropRow(el:HTMLElement){this.rows.drop(el);if(!el.hidden){el.hidden=true;this.relayout();}}
-  /** Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on. */
+  /**
+   * Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on.
+   * The city's walk to the plaza may last the whole round 1: a row waits for it ROW_WAITS_OBJECTIVE_MS at most, then the
+   * walk steps out for the row's time and comes back after it (interleaved, never a row lost behind a 40 s walk).
+   */
   private turnRows(now=performance.now()){
     const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
     const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
-    const {show,hide}=this.rows.turn(now,busy);
+    const walk=!answer&&!this.objectiveRow.el.hidden;
+    const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
     for(const el of hide)el.hidden=true;
     if(show)show.hidden=false;
     if(show||hide.length)this.relayout();
+    // The row took the slot from the walk: the walk's row leaves in the same task (never two rows on screen).
+    if(show&&!this.objectiveRow.el.hidden)this.renderObjective();
   }
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){
@@ -342,7 +421,7 @@ export class RunHud {
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
-    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-coach:not([hidden]),.rh-row:not([hidden])')];
+    const rows=[...this.stack.querySelectorAll<HTMLElement>('.rh-marquee:not([hidden]),.rh-killcam:not([hidden]):not(.rh-killcam-yield),.rh-alert:not([hidden]),.rh-objetivo:not([hidden]),.rh-coach:not([hidden]),.rh-row:not([hidden])')];
     if(!rows.length)return;
     const low=this.stack.classList.contains('rh-stack-low');
     // Layout is read only when it can have changed: rows shown/hidden, slot switched, or a resize (window or HUD part).
@@ -352,8 +431,9 @@ export class RunHud {
       this.rowsKey=key;this.rowsVersion=this.layoutVersion;
       const r=rows.map(el=>el.getBoundingClientRect()),x=Math.min(...r.map(b=>b.left)),y=Math.min(...r.map(b=>b.top));
       this.rowsBox={x,y,width:Math.max(...r.map(b=>b.right))-x,height:Math.max(...r.map(b=>b.bottom))-y};
-      const c=r[rows.indexOf(this.coachRow.el)];
+      const c=r[rows.indexOf(this.coachRow.el)],o=r[rows.indexOf(this.objectiveRow.el)];
       this.coachRect=c&&{x:c.left,y:c.top,width:c.width,height:c.height};
+      this.objectiveRect=o&&{x:o.left,y:o.top,width:o.width,height:o.height};
       if(!low)this.topSlot=this.rowsBox;
       // In the low slot the rows may be taller or fewer now: keep the top slot's place with the rows' size.
       else if(this.topSlot)this.topSlot={...this.topSlot,height:this.rowsBox.height,width:Math.max(this.topSlot.width,this.rowsBox.width)};
@@ -362,7 +442,7 @@ export class RunHud {
     const lowSlot=low?this.rowsBox:{...this.topSlot,y:innerHeight};
     const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
     if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
-    this.coachYield(hero,margin);
+    this.coachYield(hero,margin);this.objectiveYield(hero,margin);
   }
   /**
    * The first-run hint never sits on the hero (VGM-056): if neither slot clears it (a camera still catching up after a
@@ -372,6 +452,12 @@ export class RunHud {
     const row=this.coachRow.el;
     const over=!row.hidden&&!!this.coachRect&&crosses(this.coachRect,hero,margin);
     if(row.classList.contains('rh-coach-yield')!==over)row.classList.toggle('rh-coach-yield',over);
+  }
+  /** The city's walk to the plaza steps aside the same way (visibility only) while its box is over the hero. */
+  private objectiveYield(hero:Rect,margin:number){
+    const row=this.objectiveRow.el;
+    const over=!row.hidden&&!!this.objectiveRect&&crosses(this.objectiveRect,hero,margin);
+    if(row.classList.contains('rh-objetivo-yield')!==over)row.classList.toggle('rh-objetivo-yield',over);
   }
   /**
    * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or
@@ -406,6 +492,7 @@ export class RunHud {
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){
     resetTally(this.tally);
+    this.objective.reset();
   }
 
   get view(){return this.last;}

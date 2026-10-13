@@ -16,6 +16,7 @@ import {SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
+import {enemyDef} from '../enemies/catalog.ts';
 import {AvenuePlanner,type AvenuePlannerOptions,type CityLayout} from './avenues.ts';
 
 /**
@@ -163,6 +164,14 @@ const WIDE_GOAL_RING=2,WIDE_SEGMENT_STEP=.2;
 const NUDGE=.15;
 /** The AI's chase targets (enemies/ai.ts `live`): only these are goals of the players fields. */
 const chased=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
+/**
+ * Enemy memory flag of a body that holds the plaza (cidade-08: the tutorial's plaza group, set by the director). Unlike
+ * SIEGE_FLAG it never targets a structure (enemies/ai.ts only lets siege bodies hit the wall): the body walks the
+ * planner's flow into the plaza and waits there, facing its target, until a live hero is inside the base
+ * (planner.insideBase) or within PLAZA_HOLD_RADIUS u of it; then the flag drops to 0 for good and it chases like any
+ * body. JSON-safe (a number in memory).
+ */
+export const PLAZA_HOLD_FLAG='plazaHold',PLAZA_HOLD_RADIUS=6;
 
 /** A players field on grid `on`, with the player cells it was last built from and its scratch (no per-tick allocation). */
 interface PlayersLayer {
@@ -187,6 +196,9 @@ interface PlayersLayer {
  *    In a player's cell → false (straight). Unreachable (or no live player) → the planner's flow (plaza, or the
  *    barricade that cut it off); zero → false.
  *    A players-field step that would clip a wall's end heads for the next cell's centre instead (NUDGE).
+ * A body holding the plaza (memory PLAZA_HOLD_FLAG === 1, cidade-08) follows the planner's flow and stands in the
+ * plaza (never the straight chase) until a live hero is in the base or within PLAZA_HOLD_RADIUS; from then on it is
+ * steered as above.
  * Retreating enemies are never steered. Each players field is built on its first call and rebuilt (setTargets, the
  * only O(cells) work) at most once every refreshTicks ticks (a fixed phase per field), when a live player's cell
  * changed (and `refresh(ctx)` rebuilds `playersField` on demand for the director's plans), so it depends on ctx.tick
@@ -320,8 +332,26 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const mouth=t.kind==='barricade'&&out.x===0&&out.y===0?cityTerrainOf(ctx.terrain)?.asset.points.bocas[t.mouth]:undefined;
     if(mouth){const mx=mouth.x-e.x,my=mouth.y-e.y,l=Math.hypot(mx,my);if(l>1e-6){out.x=mx/l;out.y=my/l;}}
   };
+  /** A holding body (PLAZA_HOLD_FLAG) is released when a live hero is inside the base or within PLAZA_HOLD_RADIUS of it. */
+  const holdReleased=(ctx:SimContext,e:EnemyState)=>{
+    for(const p of ctx.players.values()){
+      if(!chased(p))continue;
+      const dx=p.x-e.x, dy=p.y-e.y;
+      if(dx*dx+dy*dy<=PLAZA_HOLD_RADIUS*PLAZA_HOLD_RADIUS||planner.insideBase(p))return true;
+    }
+    return false;
+  };
+  /** Holding: the planner's flow into the plaza; standing in it on a zero direction. Always steers. */
+  const hold=(e:EnemyState,target:Point,out:Point)=>{
+    planner.directionFor(e,planner.targetFor(e),out);
+    return true;
+  };
   const run=(ctx:SimContext,e:EnemyState,target:Point,out:Point,hero:boolean)=>{
     if(e.memory?.retreat===1)return false;
+    if(e.memory?.[PLAZA_HOLD_FLAG]===1){
+      if(!holdReleased(ctx,e))return hold(e,target,out);
+      e.memory[PLAZA_HOLD_FLAG]=0;
+    }
     const field=view(ctx), dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(field):undefined;
     if(dx*dx+dy*dy<=range2&&clear(e,target,field)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
     if(narrow&&e.memory?.[SIEGE_FLAG]!==1&&isPlayer(ctx,target)){

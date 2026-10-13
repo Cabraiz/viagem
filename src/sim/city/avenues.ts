@@ -279,6 +279,8 @@ export class AvenuePlanner {
 
   /** True when the cell containing p is a plaza goal cell or a mouth-line cell. */
   insideBase(p:FlowPoint):boolean{return this.inBase(p.x,p.y);}
+  /** Ticks after the round's first nominal `at` when the first group is aimed at the plaza (firstArrivalSeconds). */
+  get firstArrivalTicks():number{return this.firstArrival;}
 
   /**
    * Choose which mouths open this round; updates `state` in place (a fresh one when absent) and returns it.

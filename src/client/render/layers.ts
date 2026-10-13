@@ -13,7 +13,7 @@ import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../a
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
+import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
@@ -469,7 +469,7 @@ export class HordeRenderer{
       case 'skill':this.spawnSkillBubble(event.player,skillBubbleLine(event));break;
       // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
       // D-033: the agiota's boleto marks a player as owing money: a short red tag over them instead of the line.
-      case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line);break;}
+      case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line,false,sayPriority(event.key));break;}
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss){boss.flashAt=this.now;boss.bossPhase=event.phase;}break;}
     }
   }
@@ -567,10 +567,10 @@ export class HordeRenderer{
   private skillBubbleAt=new Map<string,number>();
   /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
   say(player:string,line:string){this.spawnSkillBubble(player,line);}
-  private spawnSkillBubble(player:string,line:string,tag=false){
-    // A status tag is game information (the mark makes the player take more damage): it never waits for the gap.
-    const last=this.skillBubbleAt.get(player)??-Infinity;
-    if(!tag&&this.now-last<SKILL_BUBBLE_GAP_MS)return;
+  private spawnSkillBubble(player:string,line:string,tag=false,priority=false){
+    // A status tag is game information (the mark makes the player take more damage) and a priority line must be seen
+    // (sayPriority): neither waits for the gap.
+    if(!bubbleAllowed(this.now,this.skillBubbleAt.get(player)??-Infinity,{tag,priority}))return;
     const p=this.options.locate?.(player);if(!p)return;
     this.skillBubbleAt.set(player,this.now);
     let own:BubbleFx|undefined;this.bubbles.forEach(b=>{if(b.player===player)own=b;});

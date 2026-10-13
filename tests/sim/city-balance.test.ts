@@ -251,8 +251,8 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(let i=0;i<n;i++)world.step();
   return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
 }
-/** Recorded on 4906ef9 (before cidade-11) with `assembled` and no cityBalance option. */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'760ded62dba03be0',ilha:'0d4d774d9e279384',infinito:'e155870fac9620e5'};
+/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11). */
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'16a84cd56d5977cb',ilha:'0d4d774d9e279384',infinito:'e155870fac9620e5'};
 
 test('assembled run: the city default (and CITY_BALANCE) as before cidade-11; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000);

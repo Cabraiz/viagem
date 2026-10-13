@@ -10,8 +10,12 @@
  *
  * The wall (D-017): in the run only the enemy-ai hits it (hitStructure -> damageWall); `siegeContact:false` turns
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
+ *
+ * City (cidade-06): the base is the fountain plaza; the wall stands at points.praca (the fountain, so the forge's camp
+ * is there too) and a barricade closes each mouth (barricades.ts). The enemy-ai hits both through `hit` (D-017); only
+ * the wall falling is the defeat.
  */
-import type {Obstacle} from '../../maps/index.ts';
+import type {CellRect,Obstacle} from '../../maps/index.ts';
 import {heroSpeed} from '../../maps/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
@@ -21,7 +25,8 @@ import {gatherStep,refillNodes,WORK_PER_UNIT,type Gathered} from './resources.ts
 import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
-import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createBarricades,damageBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,type CityBalance} from '../city/balance.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
@@ -52,6 +57,10 @@ export const SAY_GAP=ticks(2);
 export interface StonewardsOptions {
   /** The room's terrain; the wall is placed on it and the nodes are its obstacles. */
   terrain:SimContext['terrain'];
+  /** City only: raise the four plaza barricades (default true). Travel/reach measurements (cidade-05c tests) turn them off. */
+  barricades?:boolean;
+  /** City tutorial (cidade-08): the barricades start down and go up at the first intermission. */
+  barricadesLater?:boolean;
   /** Replaces the island's obstacles as nodes (tests). */
   obstacles?:readonly Obstacle[];
   wallMaxHp?:number;
@@ -68,24 +77,48 @@ export interface StonewardsOptions {
    * after the trip sizing. Read only where the crates are the nodes (cityLoot); absent or neutral: no change.
    */
   cityBalance?:Pick<CityBalance,'lootValue'|'intermissionExtraSeconds'>;
+  /**
+   * City: a barricade fell or was rebuilt (or a rematch reset moved them), changing the terrain's walkability in these
+   * flow-grid cells (asset.unitsPerCell, inclusive). The run refreshes the grid and invalidates the planner there.
+   * Not called when the system is created: the blockers are raised before the run builds its grid.
+   */
+  onTerrainChanged?(rect:CellRect):void;
 }
 
 export interface StonewardsSystem extends SimSystem {
   readonly id:'structures';
   readonly state:StonewardsState;
-  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string):BuyResult;
+  /** `targetId`: what 'reparo' repairs (forge.ts buy): the wall by default, or a city barricade id. */
+  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string,targetId?:string):BuyResult;
+  /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall or a barricade. */
+  hit(ctx:SimContext,structureId:string,amount:number):void;
   /** Fresh layer for a rematch: balance, nodes, wall, towers, ids and stream all start over. */
   reset():void;
 }
 
-export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'>):StonewardsState{
+export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'|'onTerrainChanged'>):StonewardsState{
+  // City only: the island and the endless world keep exactly their old state (and state hashes).
+  const city=options.barricades===false?undefined:createBarricades(options.terrain,undefined,options.barricadesLater===true);
   return {
     balance:{coco:0,pedra:0},
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
-    towers:[],gathered:{},handled:[],
+    towers:[],
+    ...(city?{barricades:city.barricades}:{}),...(city?.unsealed.length?{unsealed:city.unsealed}:{}),
+    ...(city&&options.barricadesLater===true?{raiseBarricades:true}:{}),
+    gathered:{},handled:[],
     refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,stretched:0,sayReady:{},wallDown:false,defeatReported:false,rng:null,
   };
+}
+
+/**
+ * What the enemy-ai may hit (EnemyAiOptions.structures): the wall while it stands, then the standing city barricades,
+ * flagged `blocking` (any body pressed against one bashes it, siege or not). Off the city: exactly the wall, as before.
+ */
+export function structureTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
+  const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
+  for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
+  return out;
 }
 
 /** Ticks the farthest standing hero needs to be back in the camp (0 when everyone is home). */
@@ -104,6 +137,7 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
   return true;
 }
 
+/** A given `state` (a checkpoint) rebuilds the terrain's barricade blockers from it. */
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
   const lootValue=options.cityBalance?.lootValue??1,extraTicks=ticks(Math.max(0,options.cityBalance?.intermissionExtraSeconds??0));
@@ -120,6 +154,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       if(now!==was)Object.defineProperty(state.gathered,id,{value:was+(now-was)*paid/raw,enumerable:true,writable:true,configurable:true});
     }
   }
+  syncBarricades(options.terrain,state);
   function horn(ctx:SimContext,loot:CityLoot|undefined){
     const round=ctx.round;
     if(round.index<=1||state.hornRound===round.index)return;
@@ -150,8 +185,8 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   return {
     id:'structures',
     state,
-    buy(ctx,playerId,recipeId,requestId){
-      const result=forgeBuy(ctx,state,playerId,recipeId,requestId);
+    buy(ctx,playerId,recipeId,requestId,targetId){
+      const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);
       return result;
     },
@@ -159,10 +194,18 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       const fresh=createStonewardsState(options) as unknown as Record<string,unknown>,target=state as unknown as Record<string,unknown>;
       for(const key of Object.keys(target))delete target[key];
       Object.assign(target,fresh);
+      for(const rect of syncBarricades(options.terrain,state))options.onTerrainChanged?.(rect);
+    },
+    hit(ctx,structureId,amount){
+      if(structureId===state.wall.id)damageWall(ctx,state,amount);
+      else damageBarricade(ctx,state,structureId,amount,options.onTerrainChanged);
     },
     step(ctx){
       if(state.defeatReported)return;
       const round=ctx.round;
+      // City tutorial: the team raises the barricades at the first intermission, the prepare phase of round 2 (round 1's
+      // prepare is the tutorial's opening, the director's startPrepare(index)); raiseDue retries while a body is on one.
+      if(state.raiseBarricades&&round.phase==='prepare'&&round.index>=2&&raiseDue(ctx,state,options.onTerrainChanged))delete state.raiseBarricades;
       // City (cidade-07): the crates are the nodes (loot.ts); `options.obstacles` (tests) keeps the island path.
       const loot=options.obstacles?undefined:cityLoot(ctx.terrain);
       if(!state.wallDown&&round.phase==='prepare'){

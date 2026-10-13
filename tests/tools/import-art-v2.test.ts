@@ -15,7 +15,10 @@ import {fileURLToPath} from 'node:url';
 import {importArtV2,summaryText} from '../../scripts/import-art-v2.mjs';
 import {GROUPS,DIRECTIONS,DIR4_FROM_DIR8,CARDINALS,ANCHOR,RIM,INDEX_FILE} from '../../scripts/art-v2/spec.mjs';
 import {makeDemoDelivery,DEMO_PIECES} from '../fixtures/art-v2/demo.mjs';
-import {parseArtIndex} from '../../src/client/art/manifest.ts';
+import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {importedSheet} from '../../src/client/sprites/sprite-sheets.ts';
+import {heroMeasures} from '../../scripts/art-v2/convert.mjs';
+import {raw} from '../../scripts/sprite-atlas.mjs';
 import {renderReport} from '../../scripts/art-v2/report.mjs';
 import {
   makeCorrectSet,makeErrorSet,writeEnemy,TEST_ENEMY,TEST_TILE,TEST_ICON,TEST_VIEWS,TEST_NINESLICE,TEST_FRAMES,
@@ -120,6 +123,17 @@ test('correct set: every piece approved, WebP of the expected size, manifest wit
   assert.deepEqual(await signatures(path.join(input,'personagens',`${DIR8_OK}.dir8.png`)),[...DIRECTIONS],'input block order');
   assert.deepEqual(await signatures(out(outRoot,'personagens',`${DIR8_OK}.dir4.webp`)),[...DIR4_FROM_DIR8],'dir4 = SE, SW, NE, NW');
   assert.deepEqual(await signatures(out(outRoot,'personagens',`${DIR8_OK}.dir4c.webp`)),[...CARDINALS],'dir4c = S, W, N, E');
+
+  // The hero atlas carries the measures the game scales it by (96 world px, D-030), taken from the written pixels;
+  // the client turns that entry into the sheet it loads for `sprite:<id>:dir4`.
+  const heroEntry=JSON.parse(readFileSync(out(outRoot,'personagens','manifest.json'),'utf8')).pieces[DIR8_OK];
+  const measured=heroMeasures(await raw(out(outRoot,'personagens',`${DIR8_OK}.dir4.webp`)));
+  assert.ok(measured&&measured.height>0,'atlas measured');
+  assert.deepEqual([heroEntry.files.dir4.height,heroEntry.files.dir4.figure],[measured!.height,measured!.figure]);
+  assert.equal(heroEntry.files.dir4c.height,undefined,'only the diagonal atlas is measured');
+  setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:GROUPS.personagens.output,pieces:{[DIR8_OK]:heroEntry}}}}));
+  assert.deepEqual(importedSheet(DIR8_OK),{url:`/art/sprites/${DIR8_OK}.dir4.webp`,height:measured!.height,figure:measured!.figure});
+  setArtIndex(parseArtIndex(undefined));
 
   // Per-file manifest merge: a later delivery of only the downed sheet keeps the dir4/dir4c entries and files.
   const charManifest=()=>JSON.parse(readFileSync(out(outRoot,'personagens','manifest.json'),'utf8')).pieces[DIR8_OK];
@@ -686,3 +700,13 @@ test('demo delivery (tests/fixtures/art-v2/demo.mjs): real sizes, every piece ap
   assert.deepEqual(Object.keys(idx.groups.inimigos.pieces.bebado.files).sort(),['elite/walk','idle','walk']);
   assert.deepEqual(idx.groups.inimigos.pieces.bebado.rim,{...RIM});
 }));
+
+test('heroMeasures: standing height of the first cell and the figure box over every cell (alpha > 20)',()=>{
+  const width=192*6,height=192*12,data=Buffer.alloc(width*height*4);
+  const paint=(x0:number,y0:number,x1:number,y1:number,a=255)=>{for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)data[(y*width+x)*4+3]=a;};
+  paint(80,68,110,169);                 // first idle cell of front-right: 101 px tall
+  paint(192+30,192*4+60,192+150,192*4+168);  // a wider attack cell elsewhere widens the box
+  paint(5,5,8,8,20);                    // alpha 20 does not count
+  assert.deepEqual(heroMeasures({data,width,height}),{height:101,figure:{left:30,top:60,right:150,bottom:169}});
+  assert.equal(heroMeasures({data:Buffer.alloc(width*height*4),width,height}),undefined,'empty first cell');
+});

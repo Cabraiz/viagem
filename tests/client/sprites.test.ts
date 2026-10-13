@@ -170,10 +170,12 @@ test('4 directions: the 36 classes without a 4-direction batch keep exactly the 
   // No class ships a 4-direction batch yet: every class (the 35 others and the lab one outside the lab) uses its
   // approved single sheet, under the same texture key and clips as before.
   assert.equal(directionalSheets.size,Object.values(spriteCatalog).filter(c=>c.dir4).length);
+  const v2Heroes=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
   for(const hero of classes){
     if(spriteCatalog[hero.id].dir4)continue;
     assert.equal(sheetKey(hero.id),`sprite:${hero.id}`,hero.id);
-    assert.ok(!existsSync(`public/art/sprites/${hero.id}.dir4.webp`),`${hero.id}: a 4-direction atlas without its catalog entry`);
+    // An atlas from the art v2 import is fine: the index lists it (the game only uses it once the index is in).
+    assert.ok(!existsSync(`public/art/sprites/${hero.id}.dir4.webp`)||v2Heroes[hero.id]?.files?.dir4,`${hero.id}: a 4-direction atlas without its catalog entry`);
   }
   // The flip of the single sheets, copied from the code before this card.
   const old=(flipped:boolean,dx:number,dy:number,view:number)=>{const d=rotateVector({x:dx,y:dy},view);return Math.abs(d.x-d.y)>.001?d.x-d.y<0:flipped;};
@@ -183,7 +185,9 @@ test('4 directions: the 36 classes without a 4-direction batch keep exactly the 
     assert.equal(legacyFlip(flipped,dx,dy,view),old(flipped,dx,dy,view));
   }
   // Every approved sheet is still in place and valid: the new directions only add files.
-  for(const file of readdirSync('public/art/sprites'))assert.match(file,/^[a-z-]+(\.dir4)?\.webp$/);
+  // Next to them, only what the art v2 import lists (dir4c, downed, the silhouette) and its group manifest.
+  const v2Files=new Set(Object.values(v2Heroes).flatMap((p:any)=>Object.values(p.files??{}).map((f:any)=>f.file)));
+  for(const file of readdirSync('public/art/sprites'))if(!v2Files.has(file)&&file!=='manifest.json')assert.match(file,/^[a-z-]+(\.dir4)?\.webp$/);
 });
 
 test('4 directions: the local hero faces its joystick, so a 0.5 or 1 tile reconciliation snap never shows its back',()=>{

@@ -1,0 +1,403 @@
+{
+  "version": 2,
+  "group": "base",
+  "pieces": {
+    "anel-area": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "anel-area.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "anel-area.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "44c6d84553c9af4b59dd499a18ad9ce9f81f05e7caaa174918480076ce116b27"
+            }
+          ],
+          "sha256": "44c6d84553c9af4b59dd499a18ad9ce9f81f05e7caaa174918480076ce116b27"
+        }
+      },
+      "sha256": "1a885e5c39af934dbef11137497e0bb666370bfd0b0955016614278fe7173a4a"
+    },
+    "caixa-saque": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "caixa-saque.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "views": 1,
+          "rows": [
+            "fechada",
+            "abrindo-1",
+            "abrindo-2",
+            "abrindo-3",
+            "abrindo-4",
+            "abrindo-5",
+            "abrindo-6"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "caixa-saque.webp",
+              "columns": 1,
+              "rows": 7,
+              "firstFrame": 0,
+              "frameCount": 7,
+              "sha256": "d456a94e7effe67de395d230d06f5bd1824fa51cf3486c81d74a60f8b8442ddf"
+            }
+          ],
+          "sha256": "d456a94e7effe67de395d230d06f5bd1824fa51cf3486c81d74a60f8b8442ddf"
+        }
+      },
+      "sha256": "d55d9a55d237bf929fb4121831c84c623f0ebe559ab6d399798a3807be0b3148",
+      "meta": {
+        "states": [
+          "fechada",
+          "abrindo"
+        ],
+        "stateFrames": {
+          "fechada": 1,
+          "abrindo": 6
+        }
+      }
+    },
+    "chafariz-congelado": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "chafariz-congelado.webp",
+          "cell": [
+            504,
+            472
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.966102
+          ],
+          "pages": [
+            {
+              "file": "chafariz-congelado.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606"
+            }
+          ],
+          "sha256": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606"
+        }
+      },
+      "sha256": "1349ce06a457d38cc228fec441f826b0b9230b0085567bcac68517add5724968",
+      "meta": {
+        "footprint": [
+          3,
+          3
+        ]
+      }
+    },
+    "forja": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "forja.webp",
+          "cell": [
+            344,
+            216
+          ],
+          "views": 4,
+          "rows": [
+            "parada",
+            "acesa-1",
+            "acesa-2",
+            "acesa-3",
+            "acesa-4",
+            "acesa-5",
+            "acesa-6"
+          ],
+          "anchor": [
+            0.5,
+            0.962963
+          ],
+          "pages": [
+            {
+              "file": "forja.webp",
+              "columns": 4,
+              "rows": 7,
+              "firstFrame": 0,
+              "frameCount": 28,
+              "sha256": "f6e77ec20e7c5ce05f385da45973f03034e9d1657b1d6839208db7821b1cd3fb"
+            }
+          ],
+          "sha256": "f6e77ec20e7c5ce05f385da45973f03034e9d1657b1d6839208db7821b1cd3fb"
+        }
+      },
+      "sha256": "dab3d32ad750659efb162eea04b2ba056bb4986a0813b385788b2221ed27893b",
+      "meta": {
+        "states": [
+          "parada",
+          "acesa"
+        ],
+        "stateFrames": {
+          "parada": 1,
+          "acesa": 6
+        }
+      }
+    },
+    "helicoptero-caido": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "helicoptero-caido.webp",
+          "cell": [
+            800,
+            384
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.979167
+          ],
+          "pages": [
+            {
+              "file": "helicoptero-caido.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "82d6aaeea6698efb931ffcb2286e02c4162e45e14e6d173a28d989a0b21cc394"
+            }
+          ],
+          "sha256": "82d6aaeea6698efb931ffcb2286e02c4162e45e14e6d173a28d989a0b21cc394"
+        }
+      },
+      "sha256": "4a8e51863932969acc2cb8d7a13b061b8e1701c0f3577e45cce90638325d5440"
+    },
+    "helicoptero-fumaca": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "helicoptero-fumaca.webp",
+          "cell": [
+            192,
+            256
+          ],
+          "frames": 8,
+          "fps": 8,
+          "pages": [
+            {
+              "file": "helicoptero-fumaca.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "717c9a1784b61b0047a2e4bc887fc52f29b81ad361ad8419b56ee5666ff76bc4"
+            }
+          ],
+          "sha256": "717c9a1784b61b0047a2e4bc887fc52f29b81ad361ad8419b56ee5666ff76bc4"
+        }
+      },
+      "sha256": "7db1e6b9d6e1d38a768a14f58aef67bd15748b20c1235a6cc0b8ad073690467a"
+    },
+    "muralha-acampamento": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muralha-acampamento.webp",
+          "cell": [
+            328,
+            272
+          ],
+          "views": 4,
+          "rows": [
+            "inteira",
+            "avariada",
+            "quase-caindo",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.970588
+          ],
+          "pages": [
+            {
+              "file": "muralha-acampamento.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1"
+            }
+          ],
+          "sha256": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1"
+        }
+      },
+      "sha256": "44e2eccb6bfdc9b7734f15a78f2b7cf93e3e9aab8312a5e63d02a785e695aeb6",
+      "meta": {
+        "states": [
+          "inteira",
+          "avariada",
+          "quase-caindo",
+          "ruina"
+        ]
+      }
+    },
+    "no-coco": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "no-coco.webp",
+          "cell": [
+            576,
+            480
+          ],
+          "views": 4,
+          "rows": [
+            "cheio",
+            "meio",
+            "vazio"
+          ],
+          "anchor": [
+            0.5,
+            0.983333
+          ],
+          "pages": [
+            {
+              "file": "no-coco.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "4f50a108e7175f9c8d04975210d27e01a80fbc8ab77d4da2e314fb0cd42d9739"
+            }
+          ],
+          "sha256": "4f50a108e7175f9c8d04975210d27e01a80fbc8ab77d4da2e314fb0cd42d9739"
+        }
+      },
+      "sha256": "027f0b9314a0713bbc84536ddca27f16c1b7068c48e9bf218070730b9dcb908b",
+      "meta": {
+        "states": [
+          "cheio",
+          "meio",
+          "vazio"
+        ]
+      }
+    },
+    "no-pedra": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "no-pedra.webp",
+          "cell": [
+            312,
+            216
+          ],
+          "views": 4,
+          "rows": [
+            "cheio",
+            "meio",
+            "vazio"
+          ],
+          "anchor": [
+            0.5,
+            0.962963
+          ],
+          "pages": [
+            {
+              "file": "no-pedra.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "e7e092f4e149e964c36bf2dab58622fc40965f6628d61d46800d9017249ef76c"
+            }
+          ],
+          "sha256": "e7e092f4e149e964c36bf2dab58622fc40965f6628d61d46800d9017249ef76c"
+        }
+      },
+      "sha256": "b3caf0af6b233c88141f230412e6067aa6a642b3a0a914a7bd7c5d98e6c6803c",
+      "meta": {
+        "states": [
+          "cheio",
+          "meio",
+          "vazio"
+        ]
+      }
+    },
+    "torre-chinelo": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "torre-chinelo.webp",
+          "cell": [
+            192,
+            256
+          ],
+          "views": 1,
+          "rows": [
+            "mira-1",
+            "mira-2",
+            "mira-3",
+            "mira-4",
+            "mira-5",
+            "mira-6",
+            "mira-7",
+            "mira-8",
+            "aparecendo-1",
+            "aparecendo-2",
+            "aparecendo-3",
+            "aparecendo-4",
+            "aparecendo-5",
+            "aparecendo-6"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "torre-chinelo.webp",
+              "columns": 1,
+              "rows": 14,
+              "firstFrame": 0,
+              "frameCount": 14,
+              "sha256": "affe5fbffac219a2205c2fe751239326e263dec4d3385d94debb2faa3c4ca884"
+            }
+          ],
+          "sha256": "affe5fbffac219a2205c2fe751239326e263dec4d3385d94debb2faa3c4ca884"
+        }
+      },
+      "sha256": "d21256676fba1602ee2570f5617213321f9b645fddbc752a3a861d5697cd1308",
+      "meta": {
+        "states": [
+          "mira",
+          "aparecendo"
+        ],
+        "stateFrames": {
+          "mira": 8,
+          "aparecendo": 6
+        }
+      }
+    }
+  }
+}

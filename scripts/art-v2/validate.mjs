@@ -507,7 +507,7 @@ async function validateOneFile(spec,id,files,ctx,r){
       problems.push(`${label}: ${frames} ${frames===1?'quadro':'quadros'} de ${cell[0]}×${cell[1]} px, esperado de ${sc.framesRange[0]} a ${sc.framesRange[1]} (inventário de sprites). Exporte entre ${sc.framesRange[0]} e ${sc.framesRange[1]} quadros${side?'':`, ou diga quantos são em ${stem}.json, como {"frames":${frames}}`}.`);
     if(!checkTransparent(img,label,problems))return {kind};
     const anchor=checkAnchor(sc.anchor,sideLabel,problems);
-    checkGrid(problems,label,img,{cw:cell[0],ch:cell[1],cols:frames,rows:1,hint,character});
+    checkGrid(problems,label,img,{cw:cell[0],ch:cell[1],cols:frames,rows:1,hint,character,padding:!spec.fullBleed?.[stem]});
     sheets.push({key:'sheet',source:png,output,cell,frames,...(anchor?{anchor}:{}),...(fps!==undefined?{fps}:{})});
     return {kind};
   }

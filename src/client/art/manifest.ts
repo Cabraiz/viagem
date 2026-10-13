@@ -15,6 +15,11 @@ export interface ArtFile {
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
+  /**
+   * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn
+   * figure over every cell (alpha > 20, cell px), measured by the importer; unchecked here (sprite-sheets.ts checks).
+   */
+  height?:number;figure?:{left:number;top:number;right:number;bottom:number};
 }
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.

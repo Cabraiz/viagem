@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
-import {directionalSheets,type DirectionalSheet} from './sprite-sheets.ts';
+import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl} from './art-urls.ts';
 import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 
@@ -11,6 +11,8 @@ const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 interface Sheet {
   key:string;
   directional?:DirectionalSheet;
+  /** The atlas comes from the art v2 index (sprite-sheets.ts importedSheet): a failed download falls back to today's. */
+  imported?:boolean;
   scale:number;
   figure?:FigureBox;
   /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas); set once the texture is in. */
@@ -28,11 +30,14 @@ export class CharacterSprites {
   private sheets=new Map<string,Sheet>();
   /** Fallback boxes measured from the texture (only a sheet the catalog does not measure; see measure()). */
   private measured=new Map<string,FigureBox|null>();
+  /** Classes whose imported v2 atlas failed to download: they keep today's sheet for the session. */
+  private failed=new Set<string>();
+  private watching=false;
   private sheet(id:string):Sheet{
     let sheet=this.sheets.get(id);
     if(!sheet){
-      const directional=directionalSheets.get(id),catalog=spriteCatalog[id];
-      sheet={key:directional?`sprite:${id}:dir4`:`sprite:${id}`,directional,scale:96/(directional?.height??catalog?.height??96),figure:directional?directional.figure:catalog?.figure};
+      const today=directionalSheets.get(id),directional=this.failed.has(id)?today:directionalSheet(id),catalog=spriteCatalog[id];
+      sheet={key:directional?`sprite:${id}:dir4`:`sprite:${id}`,directional,imported:!!directional&&directional!==today,scale:96/(directional?.height??catalog?.height??96),figure:directional?directional.figure:catalog?.figure};
       this.sheets.set(id,sheet);
     }
     return sheet;
@@ -76,7 +81,18 @@ export class CharacterSprites {
     // The figure box is read when the sheet arrives (loading time), never in the middle of a frame (review onda 4).
     this.scene.load.once(`filecomplete-spritesheet-${key}`,()=>this.measure(id));
     this.scene.load.once('complete',()=>this.measure(id));
+    if(this.sheet(id).imported)this.watchErrors();
     this.scene.load.spritesheet(key,directional?.url??spriteUrl(id),{frameWidth:192,frameHeight:192});
+  }
+  /** An imported atlas that fails (missing in a deploy, bad cache) is forgotten: the next animate() asks today's sheet. */
+  private watchErrors(){
+    if(this.watching)return;
+    this.watching=true;
+    this.scene.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>{
+      for(const [id,sheet] of this.sheets)if(sheet.imported&&file.key===sheet.key){
+        this.failed.add(id);this.sheets.delete(id);this.requested.delete(id);this.measured.delete(id);
+      }
+    });
   }
   /** Creates the class's animations once and keeps their keys (no string building or lookups per frame). */
   private animations(sheet:Sheet){

@@ -11,16 +11,18 @@
 import Phaser from 'phaser';
 import {tokenColor} from '../ui/tokens.ts';
 
-import {ringPoints,progressPoints,COLUMN,type Pt,type DownedMark} from './downed-rules.ts';
-export {ringPoints,progressPoints,COLUMN,type Pt,type DownedMark};
+import {ringPoints,progressPoints,columnSize,COLUMN,type Pt,type DownedMark} from './downed-rules.ts';
+export {ringPoints,progressPoints,columnSize,COLUMN,type Pt,type DownedMark};
 
 export class DownedLayer {
   private readonly ground:Phaser.GameObjects.Graphics;
   private readonly light:Phaser.GameObjects.Graphics;
   private readonly colors={breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cartolina:tokenColor('--c-cartolina')};
   private readonly project:(p:Pt)=>Pt;private readonly depth:(p:Pt)=>number;
-  constructor(scene:Phaser.Scene,project:(p:Pt)=>Pt,depth:(p:Pt)=>number){
-    this.project=project;this.depth=depth;
+  /** The figures' world px multiplier (framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere): the column follows the body. */
+  private readonly scale:()=>number;
+  constructor(scene:Phaser.Scene,project:(p:Pt)=>Pt,depth:(p:Pt)=>number,scale:()=>number=()=>1){
+    this.project=project;this.depth=depth;this.scale=scale;
     this.ground=scene.add.graphics();this.light=scene.add.graphics();
   }
   /**
@@ -31,6 +33,7 @@ export class DownedLayer {
     const g=this.ground.clear(),l=this.light.clear();
     if(!marks.length)return;
     let low=Infinity,high=-Infinity;
+    const {width:w,height:h}=columnSize(this.scale());
     for(const m of marks){
       const ring=ringPoints(m.at,view).map(p=>this.project(p));
       g.lineStyle(5*css,this.colors.breu,.85).strokePoints(ring,false);
@@ -39,7 +42,6 @@ export class DownedLayer {
       if(done.length>1)g.lineStyle(5*css,this.colors.breu,1).strokePoints(done,false).lineStyle(3.5*css,this.colors.cartolina,1).strokePoints(done,false);
       const feet=this.project(m.at),d=this.depth(m.at);low=Math.min(low,d);high=Math.max(high,d);
       // Static column: Papel fading upwards, edged in Breu at the foot so it reads on the light sand too.
-      const w=COLUMN.width,h=COLUMN.height;
       l.fillGradientStyle(this.colors.papel,this.colors.papel,this.colors.papel,this.colors.papel,0,0,.5,.5).fillRect(feet.x-w/2,feet.y-h,w,h);
       l.fillStyle(this.colors.breu,.35).fillEllipse(feet.x,feet.y,w*1.6,w*.6);
     }

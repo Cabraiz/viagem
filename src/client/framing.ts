@@ -1,5 +1,6 @@
 import type {TerrainField} from '../maps/index.ts';
-import {SPEED,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
+import {SPEED,heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
+import {SCALE_PROFILES,zoomFor} from '../rules/index.ts';
 import {projectView,normalizeView} from './projection.ts';
 import {HERO_MARGIN} from './hud/zones.ts';
 import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
@@ -69,8 +70,6 @@ export const FOLLOW_TAU_S=.16;
 export const LOOK_AHEAD=.15;
 /** The look-ahead eases in and out over this time constant, so stopping never jerks the view. */
 export const LOOK_TAU_S=.4;
-/** Hero screen speed (world px/s) when walking at SPEED along the screen's x and y axes: the look-ahead is full there. */
-const WALK_PX_X=SPEED*TILE_X*Math.SQRT2,WALK_PX_Y=SPEED*TILE_Y*Math.SQRT2;
 /** Where the hero's body sits over its feet (the figure is 96 world px tall, feet at the sprite origin): its middle. */
 export const HERO_BODY_UP_PX=HERO_WORLD_PX/2;
 /** Hero figure size on screen (CSS px) when the scene does not say: 96 world px tall, about as wide. */
@@ -80,27 +79,73 @@ export const LAG_X_PX=TILE_X*Math.SQRT2*CAMERA_LAG_UNITS,LAG_Y_PX=TILE_Y*Math.SQ
 
 const clamp=(v:number,lo:number,hi:number)=>Math.min(hi,Math.max(lo,v));
 
+// ---------- City camera (cidade-04: D-026 world proportions, D-030 hero floor) ----------
+
+const CITY_PROFILE=SCALE_PROFILES['cidade-nevada'];
+/**
+ * City world px per endless-map world px for everything drawn at the endless map's size (hero and ally sheets, enemy
+ * art, the camera's world-px offsets): the city's drawn hero (1 cell, 0.88 u) over the endless map's (96 world px =
+ * 1.616 u), ≈0.5445. The city zoom is 1/CITY_VIEW_SCALE times the endless one, so a figure scaled by it keeps its CSS
+ * size (hero ≈56 px on 390×844 and 844×390) while the ground shows the city's faithful proportions.
+ * Same expression as sim/city/avenues.ts CITY_VIEW_SCALE (the client may not import the sim; tests/client/city-camera.test.ts keeps them equal).
+ */
+export const CITY_VIEW_SCALE=CITY_PROFILE.hero.drawnSize/SCALE_PROFILES.infinito.hero.drawnSize;
+
+/**
+ * How the follow camera reads one world: `scale` multiplies its world-px constants (offset budget, lag, body height,
+ * default hero box), `speed` is the hero's walking speed (u/s) that gives a full look-ahead. Island and endless map: 1 and SPEED.
+ */
+export interface FollowWorld {readonly scale:number;readonly speed:number}
+export const ENDLESS_FOLLOW:FollowWorld=Object.freeze({scale:1,speed:SPEED});
+/** A terrain as the scene or the net has it (TerrainField; CityTerrain says world 'cidade'). */
+type WorldOf=Parameters<typeof heroSpeed>[0];
+export const isCityWorld=(terrain:WorldOf)=>terrain?.world==='cidade';
+/** The follow camera's world for a terrain: CITY_VIEW_SCALE and the city hero speed (maps heroSpeed) in the city. */
+export function followWorld(terrain:WorldOf):FollowWorld{
+  return isCityWorld(terrain)?Object.freeze({scale:CITY_VIEW_SCALE,speed:heroSpeed(terrain)}):ENDLESS_FOLLOW;
+}
+
+/**
+ * City zoom (D-030): rules zoomFor (the faithful 18 / 10.5 cells, narrowed so the drawn hero is never under 56 CSS px:
+ * ≈15.07 cells on 844×390, ≈6.96 on 390×844) in Phaser terms, pixelsPerUnit over the 42·√2 world px of one unit along
+ * screen x: ≈1.0713 on both reference phones. zoomFor is width-only, so followZoom's caps apply too, in city world px:
+ * never more world than the off-screen contract scaled by CITY_VIEW_SCALE (what sim/city/avenues.ts cityVisible
+ * assumes). On a wider phone that keeps the hero at the endless map's share of the short side.
+ */
+export function cityZoom(viewport:Viewport){
+  const w=Math.max(1,viewport.width),h=Math.max(1,viewport.height),short=Math.min(w,h),long=Math.max(w,h);
+  const floor=zoomFor(CITY_PROFILE,w,h).pixelsPerUnit/(TILE_X*Math.SQRT2);
+  return Math.max(floor,short/(VISIBLE_SHORT_PX*CITY_VIEW_SCALE),long/(VISIBLE_LONG_PX*CITY_VIEW_SCALE));
+}
+/** The follow zoom of a terrain: cityZoom in the city, followZoom (unchanged) on the island and the endless map. */
+export function worldZoom(viewport:Viewport,terrain:WorldOf){return isCityWorld(terrain)?cityZoom(viewport):followZoom(viewport);}
+/**
+ * The horde's legibility multiplier for text, balloons and markers (HordeRendererOptions.uiScale): ≥ 1 under ~0.55 of
+ * the endless-map-equivalent zoom (zoom × scale), times `scale`, so a city number or balloon reads at the same CSS size.
+ */
+export function hordeUiScale(zoom:number,scale=1){return Math.max(1,Math.min(2.5,.55/(zoom*scale)))*scale;}
+
 /** Offset budget (world px) of the hero's feet from the camera centre along screen x and y, for this viewport. */
-export function offsetBudget(viewport:Viewport){
+export function offsetBudget(viewport:Viewport,scale=1){
   const portrait=viewport.height>=viewport.width;
-  return portrait?{x:CAMERA_OFFSET_SHORT_PX,y:CAMERA_OFFSET_LONG_PX}:{x:CAMERA_OFFSET_LONG_PX,y:CAMERA_OFFSET_SHORT_PX};
+  return portrait?{x:CAMERA_OFFSET_SHORT_PX*scale,y:CAMERA_OFFSET_LONG_PX*scale}:{x:CAMERA_OFFSET_LONG_PX*scale,y:CAMERA_OFFSET_SHORT_PX*scale};
 }
 
 /**
  * Where the hero's feet should sit on screen (CSS px, canvas coordinates): the body centred in the useful area
  * (UX-zonas-tela), or the screen centre when there is no HUD (solo exploration, waiting room).
  */
-export function anchorOf(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size):Point{
+export function anchorOf(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size,scale=1):Point{
   const area=areaOf(viewport,useful);
-  return {x:area.x+area.width/2,y:area.y+area.height/2+(hero?hero.height/2:HERO_BODY_UP_PX*zoom)};
+  return {x:area.x+area.width/2,y:area.y+area.height/2+(hero?hero.height/2:HERO_BODY_UP_PX*scale*zoom)};
 }
 const areaOf=(viewport:Viewport,useful?:Rect):Rect=>useful&&useful.width>0&&useful.height>0?useful:{x:0,y:0,width:viewport.width,height:viewport.height};
 /**
  * Largest look-ahead (world px per screen axis): LOOK_AHEAD of the useful area's half extent, but never so much that
  * the hero's box ± HERO_MARGIN leaves the useful area (landscape: the area is ~155 px tall, so it is ~8 px there).
  */
-export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size):Point{
-  const area=areaOf(viewport,useful),h=hero??{width:HERO_WORLD_PX*zoom,height:HERO_WORLD_PX*zoom};
+export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size,scale=1):Point{
+  const area=areaOf(viewport,useful),h=hero??{width:HERO_WORLD_PX*scale*zoom,height:HERO_WORLD_PX*scale*zoom};
   const axis=(half:number,heroHalf:number)=>Math.max(0,Math.min(LOOK_AHEAD*half,half-heroHalf-HERO_MARGIN))/zoom;
   return {x:axis(area.width/2,h.width/2),y:axis(area.height/2,h.height/2)};
 }
@@ -108,10 +153,10 @@ export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size)
 /**
  * Camera centre (world px, Phaser camera.centerOn) that puts the hero's feet (`hero`, projected world px) at the
  * anchor, shifted by the look-ahead (world px, towards where the hero walks), with the hero-to-centre offset kept
- * inside the off-screen contract budget.
+ * inside the off-screen contract budget. `scale`: FollowWorld.scale (CITY_VIEW_SCALE in the city).
  */
-export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,look:Point={x:0,y:0},size?:Size,free=false):Point{
-  const anchor=anchorOf(viewport,zoom,useful,size),budget=free?{x:Infinity,y:Infinity}:offsetBudget(viewport);
+export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,look:Point={x:0,y:0},size?:Size,free=false,scale=1):Point{
+  const anchor=anchorOf(viewport,zoom,useful,size,scale),budget=free?{x:Infinity,y:Infinity}:offsetBudget(viewport,scale);
   // Feet minus centre, in world px: positive x means the hero sits right of the screen centre.
   const dx=clamp((anchor.x-viewport.width/2)/zoom-look.x,-budget.x,budget.x);
   const dy=clamp((anchor.y-viewport.height/2)/zoom-look.y,-budget.y,budget.y);
@@ -134,12 +179,14 @@ export class FollowCamera {
    * to a band far from the screen centre (beside the waiting panel). Back in the round the camera cuts into the budget.
    */
   free=false;
+  /** The world's scale and hero speed (followWorld): set by the scene on every fit (first frame, resize, map switch). */
+  world:FollowWorld=ENDLESS_FOLLOW;
   private last?:Point;
   private ready=false;
   get placed(){return this.ready;}
   snap(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     this.look={x:0,y:0};this.last={...hero};this.ready=true;
-    this.center=followTarget(hero,viewport,zoom,useful,this.look,size,this.free);
+    this.center=followTarget(hero,viewport,zoom,useful,this.look,size,this.free,this.world.scale);
     return this.center;
   }
   /** Moves the whole frame by (dx, dy) world px (a re-based projection): no visible change on screen. */
@@ -147,11 +194,13 @@ export class FollowCamera {
   step(hero:Point,seconds:number,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     if(!this.ready||!this.last)return this.snap(hero,viewport,zoom,useful,size);
     const dt=clamp(seconds,0,.25);
-    const limit=this.lookAhead?lookLimit(viewport,zoom,useful,size):{x:0,y:0};
+    const scale=this.world.scale,limit=this.lookAhead?lookLimit(viewport,zoom,useful,size,scale):{x:0,y:0};
     if(dt>0){
       // Look-ahead from the hero's screen velocity; a jump (teleport, respawn) does not count as walking.
-      // Speed as a share of walking speed per screen axis (isometric: 1 u is 59.4 px across, 29.7 px down).
-      const nx=(hero.x-this.last.x)/dt/WALK_PX_X,ny=(hero.y-this.last.y)/dt/WALK_PX_Y,speed=Math.hypot(nx,ny);
+      // Speed as a share of walking speed per screen axis (isometric: 1 u is 59.4 px across, 29.7 px down): the hero
+      // screen speed (world px/s) walking at the world's hero speed along the screen's x and y axes is a full look-ahead.
+      const walkX=this.world.speed*TILE_X*Math.SQRT2,walkY=this.world.speed*TILE_Y*Math.SQRT2;
+      const nx=(hero.x-this.last.x)/dt/walkX,ny=(hero.y-this.last.y)/dt/walkY,speed=Math.hypot(nx,ny);
       const k=speed>.05&&speed<3?Math.min(1,speed)/speed:0;
       const want={x:nx*k*limit.x,y:ny*k*limit.y};
       const ease=1-Math.exp(-dt/LOOK_TAU_S);
@@ -160,13 +209,13 @@ export class FollowCamera {
     // A smaller useful area (offer opened, rotation) shrinks the limit at once, the easing only applies inside it.
     this.look.x=clamp(this.look.x,-limit.x,limit.x);this.look.y=clamp(this.look.y,-limit.y,limit.y);
     this.last={...hero};
-    const target=followTarget(hero,viewport,zoom,useful,this.look,size,this.free);
+    const target=followTarget(hero,viewport,zoom,useful,this.look,size,this.free,scale);
     const blend=1-Math.exp(-dt/FOLLOW_TAU_S);
     let x=this.center.x+(target.x-this.center.x)*blend,y=this.center.y+(target.y-this.center.y)*blend;
     // The off-screen contract: the hero is never farther from the camera centre than the offset budget plus
-    // CAMERA_LAG_UNITS of trailing. A target that moves inside the budget (useful area changed) is still eased.
-    const budget=this.free?{x:Infinity,y:Infinity}:offsetBudget(viewport);
-    x=clamp(x,hero.x-budget.x-LAG_X_PX,hero.x+budget.x+LAG_X_PX);y=clamp(y,hero.y-budget.y-LAG_Y_PX,hero.y+budget.y+LAG_Y_PX);
+    // CAMERA_LAG_UNITS of trailing (both × the world's scale). A target that moves inside the budget is still eased.
+    const budget=this.free?{x:Infinity,y:Infinity}:offsetBudget(viewport,scale),lagX=LAG_X_PX*scale,lagY=LAG_Y_PX*scale;
+    x=clamp(x,hero.x-budget.x-lagX,hero.x+budget.x+lagX);y=clamp(y,hero.y-budget.y-lagY,hero.y+budget.y+lagY);
     this.center={x,y};
     return this.center;
   }

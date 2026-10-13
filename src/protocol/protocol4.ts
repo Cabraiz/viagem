@@ -45,10 +45,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * in the DICT (they went inline in 9: 1 + 1 + their UTF-8 bytes each, on every enemy, kill and downed event); a 9
  * decoder would read their indexes as unknown strings. 11 since torres-fio: the tower defenses in the structures (four
  * optional fields: tier, branch, phase, aim) and their ids, phases and branches in the DICT; a 10 decoder would refuse
- * the structure field mask.
+ * the structure field mask. 12 since the roster of D-040
+ * (NEW-20261013-ORQ-papeis-de-inimigo): the atiradores' generic shot 'tiro' and the 64 P0 pack enemies in the DICT
+ * (the P1/P2 ids stay inline: 0xFF + length + UTF-8); an 11 decoder would read their indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=11;
+export const PROTOCOL_VERSION=12;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -92,6 +94,27 @@ export const DICT:readonly string[]=[
   'vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
   'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','obuseiro','gustavao','holofote','arame-e-sirene',
   'antiaerea-quadrupla','posto-de-radar','obra-1','obra-2','obra-3','pronta','danificada','ruina','A','B','C',
+  // Protocol 12 (NEW-20261013-ORQ-papeis-de-inimigo, D-040): the generic hostile shot of the atiradores and the 64 P0
+  // pack entries of the roster (rules/enemy-roster.ts), in roster order; the nine legacy kinds were already above. P1/P2
+  // roster ids go inline (0xFF + uvar length + UTF-8): 96 + 1 + 164 = 261 would not fit under the escape.
+  // 161 strings: index 255 is the inline escape, so 94 slots are left.
+  'tiro',
+  // pack 1 (design/proximos/04-INIMIGOS-*.md)
+  'flanelinha-interdimensional','ambulante-guarda-chuva','malabarista-do-sinal','bebado-do-karaoke','dono-do-boteco',
+  'tiozinho-da-sinuca','rato-de-boteco','barata-voadora','perueiro','marronzinho','pamonheiro','espetinho-suspeito',
+  'tio-do-isopor','bebum-de-carrinho','grauzeiro','moco-do-gas','ressaca-ambulante','paredao-ambulante',
+  // pack 2 (design/proximos/05-INIMIGOS-*.md)
+  'gerente-vampiro','boleto-vivo','carimbador','estagiario-imortal','chefe-pizza','telemarketing','subsindico',
+  'vizinho-da-furadeira','cliente-do-gerente','caixa-eletronico','guru-cripto','vendedor-de-piramide',
+  'impressora-possuida','seguranca-de-shopping','leao-da-receita','robo-de-atendimento',
+  // pack 3 (design/proximos/06-INIMIGOS-*.md)
+  'tia-do-zap','primo-do-violao','cunhado-sabe-tudo','sogra-do-chinelo','dj-de-casamento','bolo-vivo',
+  'balao-rancoroso','hater-anonimo','bot-de-curtida','torcedor-fanatico','juiz-vendido','crossfiteiro-do-pneu',
+  'quadrilheiro','fogueteiro','boneco-gigante','noel-derretendo',
+  // pack 4 (design/proximos/07-INIMIGOS-*.md)
+  'capivara-blindada','pombo-tres-cabecas','pernilongo-vampiro','cachorro-de-madame','furry-de-convencao',
+  'poste-gambiarra','rei-do-boteco','caminhao-do-lixo','pombo-rei','trio-eletrico','rainha-das-baratas',
+  'o-grande-credor','dj-do-fim-do-mundo','o-algoritmo',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;

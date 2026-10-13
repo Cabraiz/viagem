@@ -21,6 +21,11 @@ export const BOT_THINK_EVERY=4;
  */
 export const BOT_FORGE_LEFT=15*HZ;
 /**
+ * With a person in the room (bot-gasta-material) the bot spends only in the last seconds of the intermission: the
+ * team's material is the people's first (a 13 s intermission left them no window when the bot went at 15 s).
+ */
+export const BOT_FORGE_LEFT_WITH_PEOPLE=5*HZ;
+/**
  * Funny names, all within NICK_MAX (20). The HUD rail and the caído ficha show only the first word (railName, 9
  * letters), so every first word is its own and none is "Bot": the robot sticker already says bot.
  */
@@ -91,9 +96,12 @@ export class RoomBots {
       const p=sim.players.get(mind.id);
       if(!p)continue;
       view??=sim.botView();
-      if(forger===undefined)forger=this.forger(view,minds);
+      if(forger===undefined)forger=this.forger(view,minds,view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator));
       // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder).
-      if(forger===mind.id&&!towers){const st=sim.run.stonewards;towers=towerBrainView(st.state,st.plan,view.tick,view.round?.index??0);}
+      if(forger===mind.id&&!towers){
+        const st=sim.run.stonewards,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
+        towers=towerBrainView(st.state,st.plan,view.tick,view.round?.index??0,person);
+      }
       // The person to walk with: the nearest one standing (bots follow people, never each other).
       let escort:{x:number;y:number}|undefined,near=Infinity;
       for(const q of view.players){
@@ -121,9 +129,9 @@ export class RoomBots {
     return sos;
   }
   /** The bot that may buy now: the first standing bot by slot, and only in the late part of an intermission. */
-  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[]):string|null{
+  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false):string|null{
     const round=view.round;
-    if(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>BOT_FORGE_LEFT)return null;
+    if(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>(people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT))return null;
     for(const m of minds){
       const p=view.players.find(q=>q.id===m.id);
       if(p&&p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)return m.id;

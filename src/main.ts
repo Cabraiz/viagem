@@ -8,10 +8,12 @@ import { startArt } from './client/ui/art-boot.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
+import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
 // Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
 const session=()=>{try{return sessionStorage;}catch{return undefined;}};
+const storage=()=>{try{return localStorage;}catch{return undefined;}};
 linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
   reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
@@ -67,7 +69,7 @@ app.innerHTML = `
     <nav class="roster-pagination" aria-label="Páginas de classes"><button id="page-prev" class="round-button" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" class="round-button" aria-label="Próxima página">›</button></nav>
   </section>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title">Seu personagem está escolhido!</h2><div id="chosen-art" class="class-art" aria-hidden="true"></div><strong id="chosen-name"></strong><p id="chosen-class"></p><p id="save-status"></p><p class="coming-next">Sua primeira parada: a Ilha do Começo.<br/>Para se verem, entrem na mesma sala em Jogar com amigos.</p><button id="enter-island" class="primary-button">Explorar a ilha</button><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="primary-button">Voltar às classes</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="link-button">Voltar às classes</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
@@ -278,13 +280,15 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   const saved={version:1,classId:selected.id,name:nickname.trim(),color};
   let persisted=false;
   try {localStorage.setItem('viagem:hero:v1',JSON.stringify(saved));persisted=true;} catch { /* fallback explícito abaixo */ }
-  text('chosen-name',saved.name);text('chosen-class',selected.name);setArt('chosen-art',selected);
-  text('save-status',persisted?'Ficha salva neste navegador.':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
+  text('chosen-name',saved.name);setArt('chosen-art',selected);
+  // The class with its suit, like the creation's seal (confirmacao-70h).
+  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role">${suit(selected.role)}${selected.role}</span> ${selected.name}`;
+  // Saved: nothing to say. Only a failure to save is worth a line.
+  text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
   dialog.showModal();
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
-const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.getElementById('enter-island')!.before(coopButton);
-const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar os bêbados do boteco.';
+const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.querySelector('#confirmation .solo-row')!.before(coopButton);
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;
@@ -295,14 +299,35 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
 }
 coopButton.addEventListener('click',()=>void openCoop());
 document.getElementById('back-to-classes')!.addEventListener('click',()=>{dialog.close();sections.show('classes');});
+// "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
+// (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
+const island=islandFlag(location.search);
+const soloBots=document.querySelector<HTMLElement>('#confirmation .solo-bots')!;
+let bots=readBots(storage());
+const showBots=()=>{
+  soloBots.querySelector('.solo-bots-value [aria-hidden]')!.textContent=String(bots);
+  soloBots.querySelector('.solo-bots-value .sr-only')!.textContent=botsLabel(bots);
+  for(const b of soloBots.querySelectorAll<HTMLButtonElement>('.solo-bots-step'))b.disabled=Number(b.dataset.step)<0?bots<=BOTS_MIN:bots>=BOTS_MAX;
+};
+soloBots.hidden=island;showBots();
+soloBots.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.solo-bots-step');if(b&&!b.disabled){bots=saveBots(storage(),bots+Number(b.dataset.step));showBots();}});
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   button.disabled=true;text('explore-error','');
+  if(island){
+    try {
+      const {openExploration}=await import('./client/explore.ts');
+      dialog.close();await openExploration(selected,nickname.trim());
+    } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
+    finally {button.disabled=false;}
+    return;
+  }
+  const label=button.textContent;button.textContent='Preparando…';
   try {
-    const {openExploration}=await import('./client/explore.ts');
-    dialog.close();await openExploration(selected,nickname.trim());
-  } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
-  finally {button.disabled=false;}
+    const {openSolo}=await import('./client/lobby.ts');
+    await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{button.textContent=label;dialog.close();}});
+  } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
+  finally {button.disabled=false;button.textContent=label;}
 });
 // Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
 const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});

@@ -85,7 +85,8 @@ function assembled(terrain:SimWorld['terrain'],seed:number):Rig{
   const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   // Travel and reach are measured with the plaza open: the barricades (cidade-06) are a defense, tested in city-barricades.
   // Neutral city knobs (cidade-11): speed and reach are measured on the round table itself, not the tuned difficulty.
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},barricades:false,cityTutorial:false,cityBalance:NEUTRAL_CITY_BALANCE});
+  // The round table's nine kinds (no D-040 rotation): the seeds below were picked for its rounds and modifiers.
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},barricades:false,cityTutorial:false,cityBalance:NEUTRAL_CITY_BALANCE,rotation:false});
   return {world,sys,players};
 }
 /** A player without weapons (nothing dies) and too much hp to go down: only positions matter here. */

@@ -9,6 +9,7 @@
 import Phaser from 'phaser';
 import {Baker} from '../../../terrain/renderer.ts';
 import type {CityAsset} from '../asset.ts';
+import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import type {Pt,Rect} from '../projection.ts';
 import {reliefTextures,type ReliefTextures} from './field.ts';
 import {RELIEF_RAY_STEPS,RELIEF_STEP_UNITS,reliefShader} from './shader.ts';
@@ -49,7 +50,9 @@ export class CityRelief {
     this.cellTop=new Float32Array(asset.width*asset.height);
     for(let cy=0;cy<asset.height;cy++)for(let cx=0;cx<asset.width;cx++){
       const at=(i:number,j:number)=>t.field[(j*W+i)*4];
-      this.cellTop[cy*asset.width+cx]=Math.max(at(cx,cy),at(cx+1,cy),at(cx,cy+1),at(cx+1,cy+1))/255*t.maxHeight;
+      // A cliff ridge rises CLIFF_LIP_HEIGHT over its ground (shader.ts BERM).
+      const ridge=t.cover[(cy*asset.width+cx)*4+2]?CLIFF_LIP_HEIGHT:0;
+      this.cellTop[cy*asset.width+cx]=Math.max(at(cx,cy),at(cx+1,cy),at(cx,cy+1),at(cx+1,cy+1))/255*t.maxHeight+ridge;
     }
     // Uploaded now, before any bake: made inside the first chunk's bake, the new textures read back wrong in that
     // chunk (a lake of water, holes). release() frees them; a bake after it uploads them again, but the scene never
@@ -78,7 +81,7 @@ export class CityRelief {
    * above them (terrain in front, up to maxHeight / cell cells away along each axis).
    */
   rayTop(cells:CellRect):number{
-    const {width,height}=this.asset,reach=Math.ceil(this.textures.maxHeight/this.asset.cell)+1;
+    const {width,height}=this.asset,reach=Math.ceil((this.textures.maxHeight+CLIFF_LIP_HEIGHT)/this.asset.cell)+1;
     let top=0;
     for(let cy=Math.max(0,cells.y0-reach);cy<Math.min(height,cells.y1+reach);cy++)
       for(let cx=Math.max(0,cells.x0-reach);cx<Math.min(width,cells.x1+reach);cx++)top=Math.max(top,this.cellTop[cy*width+cx]);

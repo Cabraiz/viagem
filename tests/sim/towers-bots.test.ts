@@ -121,3 +121,11 @@ test('headless city run: the bots build roots and evolve them along branches; sa
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });
+
+test('bot-gasta-material: a defense a person here built is never the bot\'s to evolve; it still counts on the map',()=>{
+  const two=[{...def('d1','vigia-do-predio','s2'),person:true},def('d2','vigia-do-predio','s3')];
+  assert.deepEqual(pickTowerOrder(view({defenses:two})),{upgrade:'d2',branch:BOT_BRANCHES[2]},'the bot evolves its own, not the person\'s d1');
+  const theirs=[{...def('d1','vigia-do-predio','s2'),person:true},{...def('d2','vigia-do-predio','s3'),person:true}];
+  const order=pickTowerOrder(view({defenses:theirs}));
+  assert.ok(!(order&&typeof order==='object'&&'upgrade' in order),'nothing of theirs evolved');
+});

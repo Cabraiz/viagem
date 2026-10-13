@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {groundAt,groundZ,parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {CITY_PALETTE,MATERIALS} from '../../src/client/render/city/palette.ts';
-import {cornerHeights,reliefHeight,reliefTextures,MIN_RELIEF_HEIGHT} from '../../src/client/render/city/relevo/field.ts';
+import {cliffCells,cornerHeights,reliefHeight,reliefTextures,withoutCliffs,MIN_RELIEF_HEIGHT} from '../../src/client/render/city/relevo/field.ts';
 import {previewHills} from '../../src/client/render/city/relevo/preview.ts';
 import {RELIEF_RAY_STEPS,reliefShader} from '../../src/client/render/city/relevo/shader.ts';
+import {CLIFF_LIP_HEIGHT} from '../../src/client/render/city/from-maps.ts';
 import {makeSampleCity} from '../../src/client/render/city/sample.ts';
 
 const mini=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -49,6 +50,20 @@ test('relief masks: one texel per cell, so a single-cell patch keeps its full va
   for(let i=3;i<t.cover.length;i+=4)assert.equal(t.cover[i],255);
   // The field keeps only the height.
   for(let i=0;i<t.field.length;i+=4){assert.equal(t.field[i+1],0);assert.equal(t.field[i+2],0);}
+});
+
+test('cliff slopes: cliff blocks leave the boxes and become the blue channel of the cover mask; walls stay boxes',()=>{
+  const withCliff={...tiny,blocks:[{id:'c1',kind:'cliff' as const,x:1,y:2,w:2,h:1,height:0.35},{id:'w1',kind:'wall' as const,x:3,y:2,w:1,h:1,height:1.6}]};
+  const t=reliefTextures(withCliff),blue=(cx:number,cy:number)=>t.cover[(cy*4+cx)*4+2];
+  assert.equal(blue(1,2),255);assert.equal(blue(2,2),255);
+  assert.equal(blue(3,2),0,'a wall stays a box');assert.equal(blue(0,2),0);assert.equal(blue(1,1),0);
+  assert.deepEqual(Array.from(cliffCells(withCliff)),[0,0,0,0, 0,0,0,0, 0,1,1,0]);
+  const drawn=withoutCliffs(withCliff);
+  assert.deepEqual(drawn.blocks.map(b=>b.id),['w1']);
+  assert.equal(withCliff.blocks.length,2,'the asset itself keeps its cliffs (sim, relief mask)');
+  // The ridge rises as high as the box did, and the ray marches it like the hills.
+  assert.ok(reliefShader.includes(`BERM=${CLIFF_LIP_HEIGHT.toFixed(2)}`));
+  assert.ok(reliefShader.includes('if(z<=Hs(cellAt(s,z)))'));
 });
 
 test('relief field without corners spreads each cell height to its corners (averaged where cells meet)',()=>{

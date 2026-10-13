@@ -1,0 +1,509 @@
+{
+  "_comment": "pt-BR copy of the enemy roster (D-033 tone), merged with the board packs by scripts/import-roster.mjs. P0: barks (4, <=30), death (3, <=30), pop (ALL CAPS, <=21), gag (<=60). P1/P2: gag only. names: display-name overrides (reason in the import script).",
+  "names": {
+    "peladeiro-de-vidro": "Boleiro com Joelho de Vidro",
+    "guru-do-linkedin": "Guru do Networking",
+    "crossfiteiro-do-pneu": "Marombeiro do Pneu",
+    "homem-surdo": "Homem-Tambor"
+  },
+  "legacy": {
+    "bebado": {"gag": "Abraça o poste, declara amor e dorme ali mesmo"},
+    "anao-molotov": {"gag": "Acende a cinta errada e vira o próprio churrasco"},
+    "pombos": {"gag": "Viram travesseiro numa nuvem de penas"},
+    "tio-pave": {"gag": "Engasga no próprio trocadilho e cai rindo sozinho"},
+    "agiota": {"gag": "O boleto vence nele mesmo e ele vira papel"},
+    "coach": {"gag": "Tropeça no próprio slogan numa chuva de post-it"},
+    "motoboy": {"gag": "Freia no poste e espalha o pedido pela rua toda"},
+    "influencer": {"gag": "A panturrilha estoura ao vivo, no melhor ângulo"},
+    "chefe": {"gag": "Lavra a própria morte em ata e é despejado"}
+  },
+  "entries": {
+    "flanelinha-interdimensional": {
+      "barks": ["Pode deixar que eu olho, chefe", "Volta um carro. Não é o teu", "Essa vaga dá em Saturno", "Vem, vem, vem... BATEU!"],
+      "death": ["Me estacionaram, porra!", "Agora o carro sou eu. Bibi!", "Saí da vaga sozinho, valeu"],
+      "pop": "ESTACIONADO!",
+      "gag": "O portal estaciona ele: vira carrinho e sai dirigindo"
+    },
+    "ambulante-guarda-chuva": {
+      "barks": ["Olha o guarda-chuva, dez real", "Choveu fogo? Tenho o modelo", "Dois por quinze no apocalipse", "Aceito cartão e alma"],
+      "death": ["Guarda-chuva não segura piano", "Era previsão de piano...", "Comprei o meu no camelô"],
+      "pop": "CHOVEU PIANO!",
+      "gag": "Abre o guarda-chuva pra se proteger e cai um piano em cima"
+    },
+    "camelo-pirata": {"gag": "Pula da prancha da banca e se afoga numa poça de 2 cm"},
+    "vendedor-de-bala": {"gag": "Come uma bala dele e a alma sai feito papel de bala"},
+    "malabarista-do-sinal": {
+      "barks": ["Sinal fechou, show começou", "Uma moeda pra cada clone", "Eu jogo eu que joga eu", "Meu menorzinho tá mais famoso"],
+      "death": ["Meu clone me demitiu", "Fui malabarizado, caralho", "O menorzinho era o chefe..."],
+      "pop": "VIROU BRINQUEDO!",
+      "gag": "O clone menorzinho agarra ele e sai fazendo malabares"
+    },
+    "rodinho-do-sinal": {"gag": "Se limpa tanto que fica transparente; sobra só o contorno"},
+    "bebado-do-karaoke": {
+      "barks": ["Essa vai pra minha ex!", "Aumenta o retorno, porra!", "Errei a letra? A letra errou", "Nota cem ou briga"],
+      "death": ["Quebrei os copos e a voz", "O agudo me levou...", "Morri e a máquina deu nota 40"],
+      "pop": "AGUDO FATAL!",
+      "gag": "Solta o agudo, estoura os copos e desmaia de costas"
+    },
+    "dono-do-boteco": {
+      "barks": ["Fiado só amanhã. Sempre.", "Barriga cheia é balcão firme", "Meu umbigo é porta-copo", "Aqui é família: paga e some"],
+      "death": ["Todo mundo pediu a conta...", "Fechei o caixa. E a vida.", "Virei amendoim e tampinha"],
+      "pop": "A CONTA, PORRA!",
+      "gag": "Os fregueses pedem a conta juntos e ele estoura em amendoim"
+    },
+    "garcom-equilibrista": {"gag": "Recusam os 10% e ele vira guardanapo de vergonha"},
+    "tiozinho-da-sinuca": {
+      "barks": ["Bola sete na tua testa", "Mira de ouvido, filho", "Na caçapa do canto: tu", "Joguei com teu avô. Ganhei."],
+      "death": ["Meu olho caiu no bueiro!", "Perdi a bola oito da cara", "Encaçapado pelo próprio olho"],
+      "pop": "NA CAÇAPA!",
+      "gag": "Um olho cai no bueiro e ele mergulha atrás"
+    },
+    "domino-humano": {"gag": "Cai, derruba o próximo, e a fila nunca mais acaba"},
+    "rato-de-boteco": {
+      "barks": ["Rrrooar! (iiic)", "Sou tigre de bengala, porra", "Gato? CADÊ?! Ah, nada. Roar.", "Listra de caneta é listra"],
+      "death": ["Era um gato... desmaiei", "A listra borrou, caralho", "Tigre... de mentirinha..."],
+      "pop": "VIROU RATO DE NOVO!",
+      "gag": "Vê a sombra de um gato, desmaia e as listras escorregam"
+    },
+    "barata-voadora": {
+      "barks": ["Tô indo na tua cara, ás!", "Esquadrilha da Cozinha!", "Meu copiloto é a gordura", "Abre a boca, vou pousar!"],
+      "death": ["Abatido por chinelo! Mayday!", "Pernas pro alto. Clássico.", "Diz pra baronesa que..."],
+      "pop": "CAIU EM PARAFUSO!",
+      "gag": "Leva uma chinelada e cai em parafuso soltando fumaça"
+    },
+    "perueiro": {
+      "barks": ["Tem lugar no colo, sobe!", "Cabe mais um! Cabe mais dez!", "Sem troco pra nota de cem", "Desce no ponto? Desce rolando"],
+      "death": ["Alguém puxou a cordinha!", "Ponto final, todo mundo desce", "Freei com a alma junto"],
+      "pop": "DESCEU DE VEZ!",
+      "gag": "Um passageiro puxa a cordinha e todo mundo voa, ele junto"
+    },
+    "cobrador-do-busao": {"gag": "Pulam a catraca sem pagar; ele dá curto e afunda girando"},
+    "marronzinho": {
+      "barks": ["Multa por andar torto!", "Respirou na faixa? Multa.", "Teu tênis tá sem placa. Multa", "Pode recorrer. Lá no céu."],
+      "death": ["Minha sombra me multou!", "Recurso indeferido... eu...", "Infração gravíssima: morrer"],
+      "pop": "MULTADO!",
+      "gag": "Multa a própria sombra, ela multa de volta e os dois somem"
+    },
+    "ciclista-de-lycra": {"gag": "Não consegue soltar a sapatilha e tomba em câmera lenta"},
+    "executivo-de-patinete": {"gag": "O app cobra a corrida e suga ele pra dentro do celular"},
+    "taxista-reclamao": {"gag": "O taxímetro gira cada vez mais rápido até explodir"},
+    "manobrista": {"gag": "Estaciona a si mesmo numa vaguinha e dobra feito sanfona"},
+    "pamonheiro": {
+      "barks": ["PAMONHA QUENTINHA, PORRA!", "Pamonha no talo do volume", "É o puro creme do milho, ó!", "Pamonha de sal e de ódio"],
+      "death": ["Queimou o alto-falante...", "No mudo. A rua agradece.", "Pa... mo... (chiado)"],
+      "pop": "PAMONHA FRIA!",
+      "gag": "O alto-falante estoura e o corpo senta, sem entender nada"
+    },
+    "espetinho-suspeito": {
+      "barks": ["Espetinho de... carne. Juro.", "O gato é só fiscal, relaxa", "Três por dez, origem incerta", "Tempero da casa: mistério"],
+      "death": ["O gato confiscou tudo!", "O gato era o dono do ponto", "Sou eu no próximo espeto?"],
+      "pop": "FISCALIZADO!",
+      "gag": "O gato confisca os espetinhos e expulsa ele da tela"
+    },
+    "tio-do-isopor": {
+      "barks": ["Cerveja, água, gelo e eu", "Isopor é casa, carro e caixão", "Sai da sombra que é minha", "Guarda-sol eu finquei às 5h"],
+      "death": ["Fecha a tampa, fui...", "Vou boiando até Cabo Frio", "Guarda uma gelada pra mim"],
+      "pop": "BOIOU!",
+      "gag": "Deita no isopor, fecha a tampa e sai boiando no gelo"
+    },
+    "bebum-de-carrinho": {
+      "barks": ["Meu corcel tem rodinha torta", "Avante, cavaleiros do bar!", "Corredor sete, ataque!", "Freio de carrinho é o muro"],
+      "death": ["A rodinha fugiu de mim", "Capotei no hortifrúti", "Devolve o carrinho no lugar"],
+      "pop": "LIMPEZA NO CORREDOR!",
+      "gag": "Uma rodinha se solta e o carrinho capota com ele dentro"
+    },
+    "pichador-ninja": {"gag": "Pinta uma porta, abre, e atrás dela tem outra parede"},
+    "skatista-de-47": {"gag": "Tenta um ollie, a coluna estala e o skate leva ele embora"},
+    "pipoqueiro-turbinado": {"gag": "O carrinho explode num cogumelo de pipoca"},
+    "homem-placa-do-fim": {"gag": "O fim do mundo chega, só pra ele: um meteoro bem na cabeça"},
+    "rapa-da-prefeitura": {"gag": "Apreende a si mesmo e se arrasta num saco de provas"},
+    "grauzeiro": {
+      "barks": ["Roda da frente é enfeite", "Grau até no velório", "Escuta esse ronco, mãe!", "Me filma, me filma!"],
+      "death": ["Dei grau até o espaço", "Houston, tô de grau", "Subi e esqueci de descer"],
+      "pop": "GRAU ORBITAL!",
+      "gag": "Empina pra trás e sobe empinado pro céu feito foguete"
+    },
+    "homem-wifi": {"gag": "Alguém tira da tomada: pisca laranja, reinicia e cai de cara"},
+    "moco-do-gas": {
+      "barks": ["Olha o gás! Olha a explosão!", "Musiquinha do gás: corre!", "Treze quilos de pura fé", "Entrego até no inferno"],
+      "death": ["O botijão decolou comigo", "Vou de vassoura de gás...", "Alguém fecha o registro?!"],
+      "pop": "DECOLOU!",
+      "gag": "O botijão decola e ele sai montado feito bruxa na vassoura"
+    },
+    "filosofo-de-balcao": {"gag": "Percebe que nada importa e derrete numa poça sorridente"},
+    "forrozeiro-centrifugo": {"gag": "Perfura o chão girando; só o chapéu fica rodando"},
+    "alambiqueiro": {"gag": "Ferve demais e dispara a tampa da cabeça, com ele junto"},
+    "homem-galao": {"gag": "Enchem um copo na torneira dele e ele murcha num galãozinho"},
+    "rolo-lava-rapido": {"gag": "Acaba o sabão, pega fogo e uma garoa triste apaga"},
+    "ressaca-ambulante": {
+      "barks": ["Fala baixo, pelo amor...", "Óculos escuros é estilo, tá", "Meu duende bate ponto às 6h", "Me bate, mas sem barulho"],
+      "death": ["O duende venceu...", "Nunca mais bebo. Até sexta.", "Me enterra no escuro"],
+      "pop": "BANDEIRA FINCADA!",
+      "gag": "O duende vence e finca uma bandeirinha em cima dele"
+    },
+    "paredao-ambulante": {
+      "barks": ["Grave no talo, vizinho!", "Bateria? Peguei a do vizinho", "Sente o tum-tum no fígado", "Polícia? Aumenta o volume"],
+      "death": ["Estourou o grave, e eu junto", "Tum... tum... tum...", "Desliga não, ainda tô vivo"],
+      "pop": "VIZINHO VENCEU!",
+      "gag": "As caixas de som estouram e ele sai voando de costas"
+    },
+    "coco-que-vende-gente": {"gag": "Bebem ele pelo próprio canudo até virar casca vazia"},
+    "rei-do-camarote": {"gag": "Os carregadores entram em greve e largam ele no chão"},
+
+    "gerente-vampiro": {
+      "barks": ["Teu limite é meu jantar", "Juros? Eu chamo de sangue", "Agência abre à meia-noite", "Assina aqui. Com sangue."],
+      "death": ["Abriram a persiana, porra!", "Virei cartão de crédito", "Meu score tá virando pó"],
+      "pop": "ESTORNADO!",
+      "gag": "Abrem a persiana e o sol vira ele num monte de cartões"
+    },
+    "boleto-vivo": {
+      "barks": ["Venci! Venci ontem!", "Me paga ou eu me multiplico", "Sou só um boletinho, paga", "Pagou na sexta? Cai segunda"],
+      "death": ["Fui pago... com juros, ai", "Virei dois boletinhos", "Pagou? Chegou a segunda via"],
+      "pop": "PARCELOU EM DOIS!",
+      "gag": "É pago, mas os juros dividem ele em dois boletinhos"
+    },
+    "carimbador": {
+      "barks": ["Carimba, autentica e chora", "Falta uma via, volta amanhã", "Firma reconhecida na testa", "Indeferido com força"],
+      "death": ["Me autentiquei sem querer", "Virei cópia autenticada", "Dei fé... do meu fim"],
+      "pop": "AUTENTICADO!",
+      "gag": "Carimba a si mesmo e vira um desenho de tinta que descola"
+    },
+    "despachante": {"gag": "A maleta engole ele, que acena lá de dentro"},
+    "estagiario-imortal": {
+      "barks": ["Doze cafés. Nenhum é meu.", "Cinquenta anos de estágio!", "Me efetiva, pelo amor", "Vale-transporte é salário"],
+      "death": ["Efetivado! Demitido! Ai!", "Subi na carreira e caí", "Assinaram minha carteira..."],
+      "pop": "DEMITIDO NO AR!",
+      "gag": "É efetivado, sobe num raio de luz, é demitido e cai"
+    },
+    "chefe-pizza": {
+      "barks": ["Vamos alinhar essa porrada", "Feedback: tu tá morto", "Sinergia de soco, time!", "Tua fatia é a menor"],
+      "death": ["Comeram meu terceiro tri!", "Faltou uma fatia de mim", "Morri fora do escopo"],
+      "pop": "FATIADO!",
+      "gag": "Um estagiário come uma fatia da cabeça dele e ele desaba"
+    },
+    "rh-sorridente": {"gag": "Os balões levam ela, estouram, e ela cai sorrindo"},
+    "auditor-das-sombras": {"gag": "Acha um erro na própria existência e se recorta do mundo"},
+    "telemarketing": {
+      "barks": ["Senhor, é rapidinho!", "Tua ligação é importante", "Te ligo de outro número, tá", "Não desliga! NÃO DESLIGA!"],
+      "death": ["Ele disse SIM?! Bzzzt!", "Ninguém nunca disse sim...", "Avalia meu atendimento..."],
+      "pop": "LIGAÇÃO CAIU!",
+      "gag": "Alguém finalmente diz sim e ela entra em curto de susto"
+    },
+    "vendedor-de-caixao": {"gag": "Cai no caixão que vendia, a tampa fecha e ele sai pulando"},
+    "subsindico": {
+      "barks": ["Prezado morador: MORRA.", "Deixei um bilhete pra você", "Conforme a ata... apanha", "O síndico sabe de tudo"],
+      "death": ["Soterrado de recadinho", "Último aviso: eu morri", "Quem mexeu no meu bilhete?"],
+      "pop": "AVISADO ESTAVA!",
+      "gag": "Some soterrado numa nevasca de bilhetinhos"
+    },
+    "vizinho-da-furadeira": {
+      "barks": ["Domingo, sete horas: obra!", "Só um furinho, rapidinho", "Furo, logo existo", "Bom dia! VRRRRRRR!"],
+      "death": ["O de baixo me puxou!", "Desci um andar. Sem escada.", "Era parede de gesso..."],
+      "pop": "FUROU O CHÃO!",
+      "gag": "Fura o chão e uma mão do andar de baixo puxa ele"
+    },
+    "zelador-hidraulico": {"gag": "Pisam no braço-mangueira, ele incha feito balão e estoura"},
+    "entregador-matrioska": {"gag": "A cópia menorzinha assume a rota e sai pedalando"},
+    "cliente-do-gerente": {
+      "barks": ["Quero falar com o gerente!", "Sabe quem eu sou? CLIENTE!", "Vou dar uma estrela, viu?", "Tô filmando! TÔ FILMANDO!"],
+      "death": ["Finalmente o gerente!", "Quero o gerente do céu!", "Me arrastaram sem cupom"],
+      "pop": "CHAMOU O GERENTE!",
+      "gag": "Uma mão gigante, a do gerente, arrasta ela pra fora"
+    },
+    "caixa-eletronico": {
+      "barks": ["Saldo insuficiente de vida", "Retire seu soco abaixo", "Digite a senha. ERRADA.", "Tarifa de porrada: R$ 9,90"],
+      "death": ["Volte mais tarde. Ou nunca.", "Sistema em manutenção. Eu.", "Engoli meu próprio cartão"],
+      "pop": "FORA DE SERVIÇO!",
+      "gag": "A tela apaga em fora de serviço e ele desaba"
+    },
+    "cofre-mimico": {"gag": "Abre, e um velhinho contando moedas lá dentro fecha de novo"},
+    "contador-de-almas": {"gag": "A conta não fecha, divide por zero e implode num pontinho"},
+    "leiloeiro": {"gag": "Leiloa até o barril e é arrematado junto"},
+    "cobrador-fantasma": {"gag": "A dívida prescreve e ele vira pó, suspirando de alívio"},
+    "corretor-de-imoveis": {"gag": "A caixa é interditada e desaba em cima dele"},
+    "tabeliao-mumia": {"gag": "Pedem firma reconhecida e ele se desfaz em fita no vento"},
+    "guru-cripto": {
+      "barks": ["Compra na alta, vende chorando", "Rumo à lua, investidor!", "Não é golpe, é tecnologia", "Senha? Tá num papel. Perdi."],
+      "death": ["Gráfico caiu. Eu também.", "Liquidado na alavancagem", "Era golpe? ERA GOLPE?"],
+      "pop": "CORREÇÃO DE 100%!",
+      "gag": "Um gráfico invisível despenca e ele cai assobiando"
+    },
+    "vendedor-de-piramide": {
+      "barks": ["Seja seu próprio chefe!", "Traz três amigos e enriquece", "Não é pirâmide, é triângulo", "Minha rede vai te pegar"],
+      "death": ["A pirâmide caiu em mim", "Base fraca, topo morto", "Indica um amigo pro velório"],
+      "pop": "DESMORONOU!",
+      "gag": "Uma pirâmide de caixas desaba bem em cima dele"
+    },
+    "engenheiro-obra-parada": {"gag": "Inauguram a obra, cortam a fita, e ele vira pó"},
+    "betoneira-ambulante": {"gag": "Endurece numa estátua heroica e um pombo pousa na cabeça"},
+    "tijolo-pai": {"gag": "Esfarela, e os tijolinhos se juntam em volta pra chorar"},
+    "reuniao-que-podia-ser-email": {"gag": "Dorme nos próprios slides e a bolha de catarro estoura"},
+    "impressora-possuida": {
+      "barks": ["Atolei de propósito, tá?", "Sem tinta, com ódio", "Imprimindo tua sentença...", "Bandeja dois vazia: morre"],
+      "death": ["Tinta acabou. A preta e eu.", "Erro desconhecido: morri", "Reinicia que eu volto"],
+      "pop": "PAPEL ATOLADO!",
+      "gag": "Dá papel atolado e explode numa chuva de folhas"
+    },
+    "grampeador-carente": {"gag": "Cospe o último grampo e morre todo dramático"},
+    "cafeteira-burnout": {"gag": "Limpam o filtro pela 1ª vez em dez anos: morre de susto"},
+    "seguranca-de-shopping": {
+      "barks": ["Câmbio, alvo na área", "Senhor, me acompanhe. JÁ.", "O pombo é meu parceiro, tá", "Mochila na frente, cidadão"],
+      "death": ["O pombo me traiu! Câmbio!", "Volta com o rádio, Juvenal!", "Câmbio... desligo..."],
+      "pop": "TRAÍDO, CÂMBIO!",
+      "gag": "O pombo trai ele, foge com o rádio e ele persegue pra sempre"
+    },
+    "revendedora-de-catalogo": {"gag": "Tira a maquiagem e acha outra embaixo, até virar um borrão"},
+    "promotor-infinito": {"gag": "Come uma amostra mínima e é sugado pra dentro dela"},
+    "leao-da-receita": {
+      "barks": ["Declara ou devora, escolhe", "Malha fina é minha juba", "Rugido com multa de 20%", "Mordo 27,5% da tua perna"],
+      "death": ["Restituição? Virei gatinho", "Miau... digo, ROAR...", "Morri. Declara no carnê-leão"],
+      "pop": "MIAU FISCAL!",
+      "gag": "Recebe uma restituição e encolhe até virar um gatinho"
+    },
+    "servidor-fossilizado": {"gag": "Hora do café: afunda no chão e a porta de aço desce"},
+    "robo-de-atendimento": {
+      "barks": ["Digite 1 para apanhar", "Não entendi. Repita a dor.", "Pra falar com humano: morra", "Um momento, transfiro o soco"],
+      "death": ["Loop infinito... loop inf...", "Opção 9: desparafusar", "Encerrando atendimento"],
+      "pop": "TRANSFERIDO PRO CÉU!",
+      "gag": "Entra em loop infinito e gira até se desparafusar"
+    },
+    "guru-do-linkedin": {"gag": "Tira uma selfie chorando e se dissolve"},
+    "cadeira-giratoria": {"gag": "Uma rodinha cai e ela gira pra sempre feito pião"},
+    "bebedouro-da-fofoca": {"gag": "Todo mundo para de falar; ele seca e racha"},
+    "fiscal-da-garagem": {"gag": "Mede a si mesmo, a trena recolhe e puxa ele embora"},
+
+    "tia-do-zap": {
+      "barks": ["Bom dia, flores do campo!", "Repassa pra dez ou morre", "Vi no grupo, é verdade", "Áudio de 9 minutos: ouve!"],
+      "death": ["Encaminhada com frequência", "Mensagem apagada", "Visualizou e não respondeu"],
+      "pop": "SAIU DO GRUPO!",
+      "gag": "Encaminha a si mesma e vira uma setinha quadriculada"
+    },
+    "primo-do-violao": {
+      "barks": ["Só sei uma, mas é longa", "Lá menor pra sempre, primo", "Alguém pediu? Vou tocar igual", "Violão no churrasco é lei"],
+      "death": ["Meu violão me trocou...", "Traído no lá menor", "Arrebentou a corda. E eu."],
+      "pop": "VIOLÃO FUGIU!",
+      "gag": "O violão sai andando de mãos dadas com outro primo"
+    },
+    "cunhado-sabe-tudo": {
+      "barks": ["Na verdade, é diferente...", "Pesquisei, sou quase médico", "Deixa eu desenhar pra você", "Fonte: confia em mim"],
+      "death": ["Eu tava errado? IMPOSSÍVEL", "Me escondi na gola", "Vou pesquisar e já volto"],
+      "pop": "CUNHADO ERROU!",
+      "gag": "Provam que ele tá errado e ele some dentro da gola polo"
+    },
+    "sogra-do-chinelo": {
+      "barks": ["Volta aqui, que eu te acho", "Chinelo teleguiado, filho", "Minha filha merecia mais", "Mira de sogra não erra"],
+      "death": ["O chinelo voltou pra mim!", "Chinelada até a lua", "Nem no meu enterro, viu"],
+      "pop": "VOLTOU PRA SOGRA!",
+      "gag": "O chinelo volta e manda ela pra estratosfera"
+    },
+    "vo-tricoteira": {"gag": "O novelo foge e desmancha ela num suéter que sai andando"},
+    "noivo-em-fuga": {"gag": "A noiva, só véu e mão, finalmente alcança e arrasta ele"},
+    "madrinha-velociraptor": {"gag": "Pega o buquê, mas o buquê era uma granada de confete"},
+    "dj-de-casamento": {
+      "barks": ["Agora é a vez das tias!", "Solta o bonde, galera!", "Tira o sapato e vem!", "Gravata na cabeça, já!"],
+      "death": ["A caixa de som caiu em mim", "A tia dançou em cima de mim", "Toca a da despedida..."],
+      "pop": "SOM DESABOU!",
+      "gag": "A aparelhagem de som tomba bem em cima dele"
+    },
+    "trenzinho-da-festa": {"gag": "A fila descarrila feito trem"},
+    "palhaco-de-aniversario": {"gag": "O cachorro de balão estoura e ele murcha junto"},
+    "animador-necromante": {"gag": "A festa acaba, a luz apaga e ele vira cadeira de plástico"},
+    "bolo-vivo": {
+      "barks": ["Parabéns pra você! Morre!", "Sou bolo, mas casca-grossa", "O recheio é doce. Eu não.", "Faz um pedido: meu soco"],
+      "death": ["Apagaram minhas velas...", "Virei poça de glacê", "Corta a primeira fatia..."],
+      "pop": "DOCE FIM!",
+      "gag": "Alguém sopra as velas e ele derrete numa poça de glacê"
+    },
+    "balao-rancoroso": {
+      "barks": ["Ninguém lembrou de mim!", "Faz três anos que tô murcho", "Confete com rancor, toma!", "Parabéns pra mim, sozinho"],
+      "death": ["POW! E outro pow...", "Murchei com mágoa", "Tinha outro balão em mim..."],
+      "pop": "RANCOR DUPLO!",
+      "gag": "Estoura e de dentro sai outro balão, que também estoura"
+    },
+    "unboxer": {"gag": "Uma caixa desembala ela"},
+    "hater-anonimo": {
+      "barks": ["Ninguém pediu tua opinião", "Desinstala, novato", "Kkkk chorou?", "Te dei unfollow mental"],
+      "death": ["Toquei na grama... ARDE!", "Saí da internet. Socorro.", "Meu teclado ficou mudo"],
+      "pop": "LOGOFF FORÇADO!",
+      "gag": "Toca na grama, numa folhinha só, e se desfaz"
+    },
+    "bot-de-curtida": {
+      "barks": ["Curti! Curti! Curti!", "Engajamento orgânico!", "Segue de volta? Segue?", "Sou 4 mil seguidores teus"],
+      "death": ["Fui pro spam...", "Virei dedo pra baixo", "Conta suspensa... bip"],
+      "pop": "DESCURTIDO!",
+      "gag": "Vira de ponta-cabeça num joinha pra baixo e afunda"
+    },
+    "dancinha-viral": {"gag": "A trend acaba; ela congela na pose e tomba feito estátua"},
+    "gamer-rage-quit": {"gag": "Lag: congela, volta no tempo e explode em peças de plástico"},
+    "podcaster-de-garagem": {"gag": "O episódio acaba e ele deixa de existir no meio da fr..."},
+    "torcedor-fanatico": {
+      "barks": ["Juiz ladrão! Sempre!", "Foi o VAR! Nem tem VAR aqui!", "Casei de camisa do time, tá?", "Vai, laranja e roxo! VAI!"],
+      "death": ["Perdemos... de novo...", "Chorei uma piscina", "Rebaixado junto com o time"],
+      "pop": "SEGUNDONA!",
+      "gag": "O time perde, ele chora uma poça e derrete dentro dela"
+    },
+    "juiz-vendido": {
+      "barks": ["Cartão vermelho por existir", "Aceito bala de coco, tá?", "Foi pênalti, pros meus", "Apita quem tem bala"],
+      "death": ["Expulso pelo céu?!", "Devolve minhas balas, ô!", "Pede revisão lá de cima"],
+      "pop": "EXPULSO!",
+      "gag": "Uma mão gigante desce do céu e mostra o vermelho pra ele"
+    },
+    "bandeirinha-existencial": {"gag": "Percebe que viveu impedido a vida toda e entra no vazio"},
+    "peladeiro-de-vidro": {"gag": "Um chute e ele estilhaça em esparadrapo e bolsa de gelo"},
+    "bola-depressiva": {"gag": "Alguém enche ela e ela explode de tanto ar"},
+    "frango-de-academia": {"gag": "Um forno abre atrás dele e ele sai assado e sorrindo"},
+    "personal-gritao": {"gag": "Grita tão alto que a boca-megafone sai voando feito pássaro"},
+    "crossfiteiro-do-pneu": {
+      "barks": ["Pneu é meu cardio, mano", "Mais uma série! Tu é peso", "Dor é fraqueza saindo", "Pneu, marmita e grito"],
+      "death": ["Recorde pessoal! Ai.", "O pneu passou por cima", "Joinha... de dentro do chão"],
+      "pop": "AMASSOU O SHAPE!",
+      "gag": "O pneu passa por cima dele e ele faz joinha de recorde"
+    },
+    "maratonista-eterno": {"gag": "Cruza uma linha de chegada de fita e vira pó, feliz"},
+    "quadrilheiro": {
+      "barks": ["Olha a cobra! É mentira!", "Anarriê, sobe a porrada!", "Balancê no teu queixo", "Meu par é de palha, e daí?"],
+      "death": ["O espantalho me largou", "Foi pra outra quadrilha...", "Olha a chuva! É verdade..."],
+      "pop": "LARGADO NO ARRAIÁ!",
+      "gag": "O espantalho larga ele e vai dançar com outro"
+    },
+    "noiva-da-quadrilha": {"gag": "O noivo espantalho foge e ela sai correndo atrás"},
+    "fogueteiro": {
+      "barks": ["Rojão no teu peito, aceita", "Tenho sobrancelha? Nem eu sei", "Tapa o ouvido, vai doer", "Pavio curto, paciência menor"],
+      "death": ["Acendi o errado... de novo", "Virei carinha triste no céu", "Pum... pfff... BUM!"],
+      "pop": "BUM TRISTE!",
+      "gag": "Um rojão acende sozinho e ele explode em carinha triste"
+    },
+    "boneco-gigante": {
+      "barks": ["Braço mole, tapa duro", "Carnaval o ano inteiro!", "Cabeção é cultura, respeita", "Abraço de boneco: inescapável"],
+      "death": ["O cara de dentro fugiu!", "Murchei sem ninguém dentro", "Alguém me veste? Alguém?"],
+      "pop": "BONECO VAZIO!",
+      "gag": "Quem tava dentro escapa correndo e o boneco desaba"
+    },
+    "glitter-senciente": {"gag": "Passam o aspirador; sobra um brilhinho que dá risada"},
+    "homem-surdo": {"gag": "Bate tão forte na barriga que vira eco e some"},
+    "cosplayer": {"gag": "A peruca cai e ele foge morrendo de vergonha"},
+    "fa-de-novela": {"gag": "A gêmea má joga ela no sofá, toma o lugar e desmaia também"},
+    "noel-derretendo": {
+      "barks": ["Ho ho ho... que calor, porra", "Quarenta graus de veludo", "Foto no colo: vinte reais", "Teu presente é uma lapada"],
+      "death": ["Derreti antes do Natal", "Sobrou só a barba", "Ho... ho... ploft..."],
+      "pop": "NOEL DERRETEU!",
+      "gag": "Derrete numa poça vermelha e só a barba fica boiando"
+    },
+    "coelho-falsificado": {"gag": "A cabeça cai e embaixo tem outra cabeça de coelho"},
+    "ex-que-voltou": {"gag": "Bloqueado: some dentro de um cadeadinho"},
+    "drone-ansioso": {"gag": "Ansiedade de bateria: pousa numa árvore e chora"},
+    "sommelier-de-ipa": {"gag": "Chovem mangas de verdade em cima dele"},
+
+    "capivara-blindada": {
+      "barks": ["Paz. Empurrão. Paz.", "Não corro. Chego.", "A lagoa me espera", "Placa de pare? Eu não paro."],
+      "death": ["Paz. Glub. Paz.", "Nem senti. Nem ligo.", "Zen até o fundo"],
+      "pop": "NIRVANA!",
+      "gag": "Senta numa poça, atinge o nirvana e afunda bem devagar"
+    },
+    "pombo-tres-cabecas": {
+      "barks": ["Esquerda! Não, direita! CRUU", "Três cabeças, zero juízo", "Cocô radioativo, brilha!", "Cala a boca, cabeça dois!"],
+      "death": ["Bicamos a gente mesmo...", "A do meio que começou!", "Cruu ao cubo... ploft"],
+      "pop": "BICADA TRIPLA!",
+      "gag": "As cabeças se bicam entre si e o pombo despenca"
+    },
+    "ratazana-mafiosa": {"gag": "Cai no próprio bueiro e os capangas levam o terno dela"},
+    "gato-preto-azarado": {"gag": "Um último espelho quebra na cabeça dele e ele evapora"},
+    "urubu-fiscal": {"gag": "Um urubu maior come ele"},
+    "caramujo-financiado": {"gag": "O banco toma a casca e o caramujo foge gritando"},
+    "pernilongo-vampiro": {
+      "barks": ["Zzzzz no teu ouvido", "Teu sangue tem gosto de pastel", "Tipo O? Delícia.", "Ventilador? Eu treino nele"],
+      "death": ["Sou quadro na parede agora", "Morri na palma da mão", "Fiquei no contorno de giz"],
+      "pop": "CLAP!",
+      "gag": "CLAP! Esmagado entre duas mãos, sobra um contorno de giz"
+    },
+    "lagartixa-de-terno": {"gag": "Solta o rabo, e o rabo continua na reunião"},
+    "sapo-cururu": {"gag": "Alguém beija, vira um príncipe-sapo mais feio e vai embora"},
+    "cachorro-de-madame": {
+      "barks": ["Au! Au! Au! AU!", "Meu suéter é de grife, au", "Late primeiro, pensa nunca", "Me carrega, sou frágil. AU!"],
+      "death": ["Desmaiei no veludo...", "Chama minha dona, ai", "Meu psicólogo vai saber disso"],
+      "pop": "DESMAIOU CHIQUE!",
+      "gag": "Desmaia todo dramático numa almofada de veludo"
+    },
+    "furry-de-convencao": {
+      "barks": ["Auuuu! Abraço grupal!", "A fantasia custou um rim", "Sou lobo de alma, tá?", "Vem pro meu clube do uivo!"],
+      "death": ["Peraí, quem tava aqui dentro?", "A cabeça caiu... e aí?", "Auuu... tchau, gente"],
+      "pop": "ERA LOBO MESMO!",
+      "gag": "A cabeça cai: dentro tem um lobinho de verdade, que sai"
+    },
+    "quati-influencer": {"gag": "Vê a própria cara na tela, entra em pânico e bate na árvore"},
+    "marimbondo-sindical": {"gag": "Os marimbondos se sindicalizam e saem; a casa desaba"},
+    "cupim-mansao": {"gag": "Come o último pilar e desaba"},
+    "jacare-do-bueiro": {"gag": "Escorrega de volta pro bueiro; só o chapéu fica na rua"},
+    "mico-da-dentadura": {"gag": "A dentadura morde ele e corre atrás dele pra fora da tela"},
+    "morcego-insone": {"gag": "Finalmente dorme no meio do voo e cai feito pedra"},
+    "bueiro-raivoso": {"gag": "Vira de volta no buraco e um rato fecha a tampa"},
+    "poste-gambiarra": {
+      "barks": ["Gato de luz é patrimônio", "Choque grátis pra todo mundo", "Fio desencapado, alma também", "Bzzzt! Tá ligado?"],
+      "death": ["Quem puxou meu gato?!", "Timber! Digo, bzzt!", "Desliguei de vez"],
+      "pop": "APAGOU!",
+      "gag": "Dá curto, solta fumaça de apagão e cai feito árvore"
+    },
+    "orelhao-zumbi": {"gag": "Finalmente atendem: é engano. Morre de decepção"},
+    "sofa-abandonado": {"gag": "As molas explodem pra fora dele"},
+    "geladeira-do-feijao": {"gag": "Abrem o pote atrás de sorvete, é feijão: ela chora e desliga"},
+    "buraco-de-rua": {"gag": "A prefeitura tapa ele com uma placa de asfalto"},
+    "carrinho-da-vo": {"gag": "Acha o último tomate perfeito, fica satisfeito e para"},
+    "rei-do-boteco": {
+      "barks": ["Pendurou? Agora é meu súdito", "Engradado na tua cabeça!", "Fecha a conta ou fecha o olho", "Banquinho voador, toma!"],
+      "death": ["Última rodada... zzz", "Toca o sino, fechou", "Dormi no meu balcão"],
+      "pop": "BAR FECHADO!",
+      "gag": "Toca o sino da saideira e dorme em cima do balcão"
+    },
+    "caminhao-do-lixo": {
+      "barks": ["Lixo é comida, comida é lixo", "Tô com fome de vocês", "Coleta seletiva: tu", "Lá vem o caminhão, plim!"],
+      "death": ["Me compactei sozinho...", "Reciclado? Nem isso...", "Um pombo me chutou..."],
+      "pop": "COMPACTADO!",
+      "gag": "Se compacta num cubo e um pombo sai chutando"
+    },
+    "pombo-rei": {
+      "barks": ["Ajoelha pro rei. CRUU!", "Migalha é imposto real", "Meu trono é a estátua", "Súditos, caguem em todos!"],
+      "death": ["A coroa caiu... cruu...", "Vida longa ao... ai", "Tempestade de pena real"],
+      "pop": "REI DEPOSTO!",
+      "gag": "Explode numa tempestade de penas e a coroa cai quicando"
+    },
+    "tia-do-pudim": {"gag": "Ela se liberta, pisca confusa, e o pudim foge tremendo"},
+    "bate-estaca": {"gag": "O poste rejeita ele, que se crava no chão de tristeza"},
+    "trio-eletrico": {
+      "barks": ["Bloco na rua, tu no chão", "Corda do bloco é decoração", "Pipoca ou camarote? Chão.", "Quem não pula, apanha!"],
+      "death": ["Acabou o diesel...", "Cadê o confete? Ah, sou eu", "Quarta-feira de cinzas"],
+      "pop": "FIM DE BLOCO!",
+      "gag": "O gerador morre e cai uma chuva de confete"
+    },
+    "capivara-ancia": {"gag": "Deita numa fonte termal, em paz"},
+    "gerente-regional": {"gag": "O estagiário pede demissão e o robô de arquivo desmonta"},
+    "rainha-das-baratas": {
+      "barks": ["Meus filhos, ataquem!", "Sobrevivi a bomba, tu não", "Lustre é coroa, plebe", "Quando eu voar, corram"],
+      "death": ["O chinelo divino! Não!", "Chinelo de vó. Respeito.", "Avisem meus mil filhos"],
+      "pop": "CHINELO DO CÉU!",
+      "gag": "Um chinelo gigante cai do céu bem em cima dela"
+    },
+    "o-grande-credor": {
+      "barks": ["Tua dívida tem filhos", "Juros compostos, dor composta", "Parcela um de novecentas", "Eu sou o rotativo"],
+      "death": ["Quitado?! Ninguém quita!", "Viro avião de papel...", "Nome limpo... o meu?"],
+      "pop": "DÍVIDA QUITADA!",
+      "gag": "É quitado e evapora em aviõezinhos de papel"
+    },
+    "dj-do-fim-do-mundo": {
+      "barks": ["Prepara pro drop final!", "Mãos pro alto! Pro céu!", "Esse set acaba com o mundo", "Laser no olho é estilo"],
+      "death": ["Riscou o disco... silêncio", "Fim da festa. Da Terra.", "Sem bis pra mim"],
+      "pop": "AGULHA ASSASSINA!",
+      "gag": "A agulha risca, tudo silencia e ele desmorona"
+    },
+    "boitata-de-sacolinha": {"gag": "É reciclado em cubinhos bem arrumados"},
+    "mapinguari-do-shopping": {"gag": "Dorme numa cadeira de massagem"},
+    "o-algoritmo": {
+      "barks": ["Eu sei o que tu quer", "Recomendado pra você: dor", "Teu tempo de tela acabou", "Aceitou os cookies? Era eu."],
+      "death": ["Alguém me tirou da tomada", "Erro 404: eu", "Desconectado... finalmente"],
+      "pop": "DESPLUGADO!",
+      "gag": "Uma mãozinha tira ele da tomada"
+    },
+    "polvo-da-enchente": {"gag": "O ralo desentope e ele é sugado feito espaguete"},
+    "o-engarrafamento": {"gag": "O sinal abre, cada carro vai pra um lado e ele desmonta"},
+    "sogra-tita": {"gag": "É convidada pro almoço de domingo, sorri e some"}
+  }
+}

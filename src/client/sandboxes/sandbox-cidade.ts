@@ -1,6 +1,23 @@
 /**
- * Cidade Nevada render sandbox (cards cidade-03a, cidade-04, cidade-03):
- * `?sandbox=cidade[&mapa=real][&n=300][&view=0..3][&hero=cx,cy][&class=id][&cells=N]`.
+ * Cidade Nevada render sandbox (cards cidade-03a, cidade-04, cidade-03, barricadas-cliente):
+ * `?sandbox=cidade[&mapa=real][&n=300][&view=0..3][&hero=cx,cy][&class=id][&cells=N][&base=1[&fase=prepare|wave]]`.
+ *
+ * Query params:
+ *  - `mapa=real`: the real asset instead of the stand-in city.
+ *  - `n=N` (0..600): stand-in enemies wandering around the hero.
+ *  - `view=0..3`: camera view (quarter turns); the round button turns it too.
+ *  - `hero=cx,cy`: hero start in cells.
+ *  - `class=id`: the hero's class sheet (default cidadao-comum).
+ *  - `cells=N`: visible width in cells instead of the game's city zoom.
+ *  - `base=1`: mounts the game's StonewardsRenderer (render/stonewards.ts) with fake, fixed views around the plaza
+ *    (asset point `praca`; else the hero start), in a compact layout that fits a 390×844 screen (not the real mouth
+ *    positions): the wall at the centre (70% life), the 4 barricades at 2.2 u — N whole (inteira, 100%), L damaged
+ *    (avariada, 50%), S about to fall (quase-caindo, 20%: low bar) and O broken (quebrada, 0 = down) —, a chinelo tower,
+ *    2 gather nodes (coco ×2 being gathered, pedra) and 1 loot crate (`caixa-0`). Without `hero`, the hero stands just
+ *    south of the wall. Deterministic: one view pushed once, no clock in it (no hit flash, no pops).
+ *  - `fase=prepare|wave` (with base=1, default prepare): the intermission shows the camp ring and the nodes; the wave
+ *    hides them (wall, barricades and tower stay).
+ * The imported `base` art is used when /art/manifest.json has it (art/base-art.ts); otherwise the Graphics fallback.
  * Draws the stand-in city (render/city/sample.ts) or, with `mapa=real`, the real asset (public/maps/cidade-nevada.json,
  * decoded by the maps sector and converted by render/city/from-maps.ts) with the real city layer and the real hero
  * sheet at its actor depth, framed like the game in the city (D-030): framing.ts cityZoom (rules zoomFor with the 56 px
@@ -17,8 +34,13 @@ import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom} from '../framing.ts';
-import {CITY_HERO_SPEED,decodeCityAsset} from '../../maps/index.ts';
-import {HERO_WORLD_PX,TILE_X} from '../../contract/index.ts';
+import {CITY_HERO_SPEED,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
+import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
+import {TOWER_SECONDS} from '../../rules/index.ts';
+import {Projector} from '../render/projector.ts';
+import {StonewardsRenderer} from '../render/stonewards.ts';
+import {loadArtManifest} from '../art/manifest.ts';
+import {queueBaseArt} from '../art/base-art.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -27,6 +49,12 @@ const cellsOverride=Number(params.get('cells'))||undefined;
 const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const enemies=Math.max(0,Math.min(600,Number(params.get('n'))|0));
+const base=params.get('base')==='1';
+const basePhase:'prepare'|'wave'=params.get('fase')==='wave'?'wave':'prepare';
+/** Distance (u) of the showcase barricades from the wall: compact, so all four fit a 390×844 screen. */
+const BASE_R=2.2;
+/** Where the hero stands without `hero`, from the wall (u): just south of it, in front of the camera. */
+const BASE_HERO={x:.6,y:1.2};
 
 const style=document.createElement('style');
 style.textContent=`html,body{margin:0;height:100%;overflow:hidden;background:#2B2542}body>:not(#cidade){display:none!important}
@@ -61,11 +89,14 @@ class CitySandbox extends Phaser.Scene {
   private horde:Wanderer[]=[];
   private rng=mulberry(7);
   private fpsLabel?:HTMLElement;
+  private stone?:StonewardsRenderer;
+  private projector?:Projector;
   constructor(){super('city-sandbox');}
   preload(){
     this.load.spritesheet(PINE_TEXTURE,'/art/lite/trees/arvore-nevada.webp',{frameWidth:256,frameHeight:384});
     this.sprites.queue(classId);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
+    if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
   }
   create(){
     if(real){
@@ -75,6 +106,8 @@ class CitySandbox extends Phaser.Scene {
     }else this.asset=parseCityAsset(makeSampleCity());
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
+    const centre=base?this.asset.points.praca??{...this.at}:undefined;
+    if(centre&&!start)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
     this.layer=new CityLayer(this,this.asset);
     this.layer.setActorScale(CITY_VIEW_SCALE);
@@ -85,6 +118,7 @@ class CitySandbox extends Phaser.Scene {
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     this.spawnHorde();
+    if(centre)this.mountBase(centre);
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -95,7 +129,7 @@ class CitySandbox extends Phaser.Scene {
     });
     const turn=document.createElement('button');
     turn.className='cidade-turn';turn.type='button';turn.textContent='↻';turn.setAttribute('aria-label','Girar a câmera');
-    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();});
+    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();}});
     host.append(turn);// inside the sandbox root: everything else in body is hidden
     if(enemies){this.fpsLabel=document.createElement('div');this.fpsLabel.className='cidade-fps';host.append(this.fpsLabel);}
     // Warm the fade so a covering building is already translucent on the first screenshot.
@@ -107,6 +141,40 @@ class CitySandbox extends Phaser.Scene {
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     this.moveHorde(dt);
     this.tick(dt);
+    this.stone?.update(_t);
+  }
+  /**
+   * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the
+   * city's ground height in px, the layer's actor depth), fed one fixed RunView around `c` (see the header).
+   */
+  private mountBase(c:{x:number;y:number}){
+    const asset=this.asset,layer=this.layer;
+    // World px per unit of city height, from the city projection itself (no second constant).
+    const heightPx=project(0,0,0,0).y-project(0,0,1,0).y;
+    const ground={height:(x:number,y:number)=>groundZ(asset,x,y)*heightPx} as unknown as TerrainField;
+    const projector=new Projector(this.view,ground);
+    projector.depthOverride=(x,y)=>layer?layer.actorDepth(x,y,groundZ(asset,x,y)):0;
+    this.projector=projector;
+    this.stone=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
+    const at=(dx:number,dy:number)=>({x:+(c.x+dx).toFixed(3),y:+(c.y+dy).toFixed(3)});
+    const tick=1000,R=BASE_R;
+    const structures:StructureView[]=[
+      {id:'s1',kind:'muralha',...at(0,0),hp:420,maxHp:600},
+      {id:'s2',kind:'barricada',...at(0,-R),hp:300,maxHp:300},
+      {id:'s3',kind:'barricada',...at(R,0),hp:150,maxHp:300},
+      {id:'s4',kind:'barricada',...at(0,R),hp:60,maxHp:300},
+      {id:'s5',kind:'barricada',...at(-R,0),hp:0,maxHp:300},
+      {id:'s6',kind:'torre-chinelo',...at(-1.5,1.1),hp:80,maxHp:80,untilTick:tick+Math.round(TOWER_SECONDS*SIM_HZ*.6)},
+    ];
+    const nodes:NodeView[]=[
+      {id:'n1',kind:'coco',...at(1.4,-1.3),remaining:3,capacity:4,value:2,progress:.5},
+      {id:'n2',kind:'pedra',...at(-1.5,-1.2),remaining:2,capacity:4,value:1,progress:0},
+      {id:'caixa-0',kind:'pedra',...at(1.9,.9),remaining:1,capacity:1,value:6,progress:0},
+    ];
+    const view:RunView={tick,team:{xp:0,level:1,nextXp:10},round:{index:1,total:10,phase:basePhase,phaseEndsTick:tick+600,remaining:0},
+      enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{coco:4,pedra:4},
+      players:[],offers:[],events:[]};
+    this.stone.push(view);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -145,7 +213,7 @@ class CitySandbox extends Phaser.Scene {
     const viewport={width:this.scale.width,height:this.scale.height};
     const c=this.camera.snap(feet,viewport,zoom);
     cam.centerOn(c.x,c.y);
-    (window as unknown as {__cidade:unknown}).__cidade={...meter,zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,
+    (window as unknown as {__cidade:unknown}).__cidade={...meter,zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
@@ -162,5 +230,7 @@ class CitySandbox extends Phaser.Scene {
   }
 }
 
-new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
+const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
+// base=1: the art manifest first (as the game does at boot), so the base art is queued when present.
+if(base)void loadArtManifest().then(start);else start();

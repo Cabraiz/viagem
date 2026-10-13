@@ -58,8 +58,7 @@ export function shameText(m:ShameMoment,name:string):{text:string;line:string;jo
     recaida:()=>({verb:`levantou e caiu de novo em ${m.seconds??1} s.`,joke:'O resgate pediu reembolso.'}),
     apagao:()=>({verb:`caiu no apagão ${r}.`,joke:'Disse que tropeçou no fio.'}),
     coxinha:()=>({verb:`caiu com uma coxinha do lado ${r}.`,joke:'Tava ali. Do ladinho.'}),
-    // The contract key is still 'pernilongo' (src/contract/run.ts); the swarm is the pombos now (D-033).
-    pernilongo:()=>({verb:`caiu pra um pombo ${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
+    pombos:()=>({verb:`caiu pra um pombo ${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
     cedo:()=>({verb:`caiu no Round 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
     'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva ${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
     'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia ${r}.`,joke:'Era só fome mesmo.'}),

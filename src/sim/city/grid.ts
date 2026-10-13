@@ -7,10 +7,11 @@
  * `walkable(cell centre)` of the maps port holds (the hero's disc against the walkable mask, the same rule moveSafely
  * uses), so a body following the field is never sent to a cell its own movement refuses. The cells are cached in a
  * Uint8Array; when the terrain's walkability changes (barricades, cidade-06) call `refresh(rect)` on the grid first,
- * then `planner.invalidate([rect])`. Everything here is for enemies, so it reads the terrain through `enemyTerrain`
- * (the barricades' blocker discs are solid for enemies only; heroes walk through them).
+ * then `planner.invalidate([rect])`; citySteer's fields (players and every size class) follow the grid's `version` on
+ * their own (see citySteer). Everything here is for enemies, so it reads the terrain through `enemyTerrain` (the
+ * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
-import {DIRS,FlowField,RADIUS,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
+import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
 import {SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
@@ -19,13 +20,20 @@ import {AvenuePlanner,type AvenuePlannerOptions,type CityLayout} from './avenues
 
 /**
  * FlowGrid over the city with its cached cells; `refresh` re-reads walkability inside a cell rect (inclusive, clamped)
- * and bumps `version`, so a field built outside the planner (citySteer's players field) re-reads the grid too.
+ * and bumps `version`, so a field built outside the planner (citySteer's fields) re-reads the grid too.
  */
 export interface CityFlowGrid extends FlowGrid {
   readonly cells:Uint8Array;
   readonly version:number;
   refresh(rect:CellRect):void;
+  /**
+   * Cell rect (clamped) covering every refresh after `version`; undefined when nothing changed since. The whole grid
+   * when that history is older than the last CHANGE_LOG refreshes.
+   */
+  changedSince(version:number):CellRect|undefined;
 }
+/** Refreshes a CityFlowGrid remembers for changedSince. */
+const CHANGE_LOG=64;
 
 /** The city terrain behind a TerrainField (D-034: world === 'cidade' with its decoded asset), else undefined. */
 export function cityTerrainOf(terrain:TerrainField|undefined):CityTerrain|undefined{
@@ -45,6 +53,7 @@ export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
   };
   read(0,0,width-1,height-1);
   let version=0;
+  const log:{version:number;rect:CellRect}[]=[];
   return {
     width,height,cellSize,originX:0,originY:0,cells,
     get version(){return version;},
@@ -52,7 +61,21 @@ export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
     refresh(rect){
       const x0=Math.max(0,Math.floor(Math.min(rect.x0,rect.x1))), x1=Math.min(width-1,Math.floor(Math.max(rect.x0,rect.x1)));
       const y0=Math.max(0,Math.floor(Math.min(rect.y0,rect.y1))), y1=Math.min(height-1,Math.floor(Math.max(rect.y0,rect.y1)));
-      if(x0<=x1&&y0<=y1){read(x0,y0,x1,y1);version++;}
+      if(x0<=x1&&y0<=y1){
+        read(x0,y0,x1,y1);version++;
+        log.push({version,rect:{x0,y0,x1,y1}});
+        if(log.length>CHANGE_LOG)log.shift();
+      }
+    },
+    changedSince(since){
+      if(!(since<version))return undefined;
+      if(!log.length||log[0].version>since+1)return {x0:0,y0:0,x1:width-1,y1:height-1};
+      let out:CellRect|undefined;
+      for(const {version:v,rect:r} of log){
+        if(v<=since)continue;
+        out=out?{x0:Math.min(out.x0,r.x0),y0:Math.min(out.y0,r.y0),x1:Math.max(out.x1,r.x1),y1:Math.max(out.y1,r.y1)}:{...r};
+      }
+      return out;
     },
   };
 }
@@ -67,7 +90,10 @@ export function cityLayoutFrom(terrain:CityTerrain,grid:FlowGrid=cityFlowGrid(te
   };
 }
 
-/** Common enemy speed of the city profile (u/s), the planner's default arrival estimate. */
+/**
+ * Common enemy speed of the city profile (u/s, ≈1.79), the planner's default arrival estimate. It is also
+ * citySpeed(the endless common enemy) (city/speed.ts maps that fraction exactly onto this one).
+ */
 export const CITY_ENEMY_SPEED=enemySpeed(SCALE_PROFILES['cidade-nevada']);
 
 /** AvenuePlanner of a city; `grid` exposes the cached cells for `refresh` before `planner.invalidate`. */
@@ -83,6 +109,20 @@ export type CitySteer=((ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boo
   readonly playersField:FlowField|undefined;
   /** Wide-body fields per WIDE_RADII class (cell centres, then corners from half a cell); empty until a body needs them. */
   readonly widePlayersFields:readonly (readonly FlowField[])[];
+  /**
+   * Rebuilds `playersField` for this tick now when a live player changed cells (or the grid changed), outside the
+   * refreshTicks throttle: the director calls it only when it plans (round start, a group's warning), and nothing may
+   * have asked the steer for a while (intermission). Deterministic: ctx.tick and the players only.
+   */
+  refresh(ctx:SimContext):void;
+  /** Path distance (u, wall penalties included) from p to the nearest live player on `playersField`; Infinity when unreachable or unbuilt. */
+  costTo(p:Point):number;
+  /**
+   * The same steer for a body that collides by the hero rule whatever its radius (the boss, boss.ts clearSegment;
+   * cidade-05c v2): the hero-size `playersField` only, no size class, its straight chase and corner nudge by the hero
+   * rule. Shares this steer's fields (no extra build).
+   */
+  readonly hero:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
 };
 export interface CitySteerOptions {
   /** Within this distance (u) of its target, with a clear straight segment, an enemy goes straight. Default 6. */
@@ -93,22 +133,26 @@ export interface CitySteerOptions {
   grid?:FlowGrid;
   /** The city: builds every wide-body field now (reading the terrain, tens of ms) instead of on the first wide body. */
   terrain?:CityTerrain;
+  /** Every body steers like `CitySteer.hero` (the hero-size players field only, no size classes). Default false. */
+  heroOnly?:boolean;
 }
 /** Sampling step of the straight-segment check (maps world.ts clearSegment). */
 const SEGMENT_STEP=.08;
 /**
- * Wide bodies (radius > WIDE_FROM, wider than the hero: gosma 0.32, fiscal 0.3, tio-pavê 0.48, elites, big-size
- * rounds) do not fit every gap the hero rule opens (the city's narrowest passages clear a disc of ~0.44 u), and the
+ * Wide bodies (radius > WIDE_FROM, wider than the hero: bêbado 0.32, agiota 0.3, tio-pavê 0.52, elites, big-size
+ * rounds, the round-10 boss 0.9) do not fit every gap the hero rule opens (the city's narrowest passages clear a disc
+ * of ~0.44 u), and the
  * wider ones fit a two-cell street only along its middle line, which runs on cell corners; moveSafely keeps their whole
  * disc out of the walls, so a field that sends them there parks them. They follow the players field of their class
- * (WIDE_RADII: the smallest class ≥ the body, else the largest): on the cell centres and, from half a cell of radius,
+ * (WIDE_RADII: the smallest class ≥ the body, else the largest; where that class does not reach the body, the next
+ * smaller classes in turn, cidade-05c v2): on the cell centres and, from half a cell of radius,
  * also on the cell corners (the cheaper of the two at the body), a node being open iff the terrain clears a disc of the
  * class radius there. Its goals around each player are the open nodes of the smallest Chebyshev ring
  * (0..WIDE_GOAL_RING) that has any, so a player hugging a wall still has goals next to it (none: that player is out of
  * this field's reach). Their straight chase also needs their own disc clear along the way (WIDE_SEGMENT_STEP): a
  * straight line along a wall that only the hero fits would park them against it.
  */
-export const WIDE_FROM=.25,WIDE_RADII:readonly number[]=Object.freeze([.35,.5,.75]);
+export const WIDE_FROM=.25,WIDE_RADII:readonly number[]=Object.freeze([.35,.5,.75,1]);
 const WIDE_GOAL_RING=2,WIDE_SEGMENT_STEP=.2;
 /** Look-ahead (u) of the corner check of a players-field direction (see `follow` in citySteer). */
 const NUDGE=.15;
@@ -117,7 +161,8 @@ const chased=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.
 
 /** A players field on grid `on`, with the player cells it was last built from and its scratch (no per-tick allocation). */
 interface PlayersLayer {
-  field:FlowField;on:FlowGrid;ring:number;phase:number;
+  /** pad: cells a grid change spreads to on this field (its class radius; 0 for the players field). */
+  field:FlowField;on:FlowGrid;ring:number;phase:number;pad:number;
   built:number[];scratch:number[];goals:FlowPoint[];pool:FlowPoint[];checked:number;ready:boolean;gridVersion:number;
 }
 
@@ -126,19 +171,27 @@ interface PlayersLayer {
  *  - target within chaseRange with a clear straight segment (the maps clearSegment rule, sampled without allocating)
  *    → false: the AI's straight line;
  *  - a siege body (memory.siege === 1) or a target that is not a player (a structure) → the planner's flow toward
- *    planner.targetFor(e) (plaza, else the barricade that cut it off); a player inside the base too, until the body
- *    stands in the plaza goal (where that flow is zero; then the players fields walk it around the plaza's props);
- *    a wide body follows its own players field first while that one reaches it;
- *  - otherwise → `playersField`, whose goals are the cells of the live players (online, not spectating, downed nor
- *    eliminated, hp > 0: the AI's chase targets), so bodies follow the streets to a team away from the plaza. A wide
- *    body (WIDE_FROM) follows its `widePlayersFields` class where that reaches it, to its goal ring, then straight.
- *    In a player's cell → false (straight). Unreachable (or no live player) → the plaza flow; zero → false.
+ *    planner.targetFor(e) (plaza, else the barricade that cut it off);
+ *  - a player, in the base or not (cidade-05c: no plaza-flow-first for a player in the base, see the steer's note) →
+ *    `playersField`, whose goals are the cells of the live players (online, not spectating, downed nor eliminated,
+ *    hp > 0: the AI's chase targets), so bodies follow the streets to the team wherever it stands. A wide body
+ *    (WIDE_FROM) follows its `widePlayersFields` class first where that reaches it, to its goal ring, then straight;
+ *    where its class does not reach it, the next smaller classes (cidade-05c v2: a gap one class too narrow still
+ *    keeps it on a field nearer its size), then the hero-size `playersField`. `hero` (the boss, which collides by the
+ *    hero rule) and opts.heroOnly skip the classes.
+ *    In a player's cell → false (straight). Unreachable (or no live player) → the planner's flow (plaza, or the
+ *    barricade that cut it off); zero → false.
  *    A players-field step that would clip a wall's end heads for the next cell's centre instead (NUDGE).
  * Retreating enemies are never steered. Each players field is built on its first call and rebuilt (setTargets, the
  * only O(cells) work) at most once every refreshTicks ticks (a fixed phase per field), when a live player's cell
- * changed, so it depends on ctx.tick only (deterministic in a run). A restored sim builds them afresh on the first
- * call: up to refreshTicks − 1 ticks of a slightly fresher field than the original run had. When the city grid's
- * `version` moves (CityFlowGrid.refresh, barricades), a field re-reads the whole grid once.
+ * changed (and `refresh(ctx)` rebuilds `playersField` on demand for the director's plans), so it depends on ctx.tick
+ * and the players only (deterministic in a run). A restored sim builds them afresh on the first
+ * call: up to refreshTicks − 1 ticks of a slightly fresher field than the original run had.
+ * Barricades (cidade-06): when the city grid's `version` moves (CityFlowGrid.refresh), every field — the players
+ * field and each class's centre and corner fields — re-reads the changed cells (CityFlowGrid.changedSince, grown by
+ * its class radius; the whole grid when the grid cannot tell) and recomputes once, lazily: on its first use on one of
+ * its own rebuild ticks (its fixed phase), so the work of a barricade is spread like the rebuilds and depends on
+ * ctx.tick only. Until then a field may lag the barricade by up to refreshTicks − 1 ticks (moveSafely still blocks).
  */
 export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:CitySteerOptions={}):CitySteer{
   const range=Number.isFinite(opts.chaseRange)&&opts.chaseRange!>=0?opts.chaseRange!:6, range2=range*range;
@@ -150,7 +203,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     return true;
   };
   const grid=opts.grid??planner.grid, cityGrid=grid as Partial<CityFlowGrid>|undefined;
-  const layer=(on:FlowGrid,ring:number,phase:number):PlayersLayer=>({field:new FlowField(on,[]),on,ring,phase,
+  const layer=(on:FlowGrid,ring:number,phase:number,pad=0):PlayersLayer=>({field:new FlowField(on,[]),on,ring,phase,pad,
     built:[],scratch:[],goals:[],pool:[],checked:NaN,ready:false,gridVersion:cityGrid?.version??0});
   const narrow=grid?layer(grid,0,0):undefined;
   const wide:PlayersLayer[][]=WIDE_RADII.map(()=>[]);
@@ -168,20 +221,26 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
       const ox=(g.originX??0)-shift, oy=(g.originY??0)-shift, extra=shift?1:0;
       const on:FlowGrid={width:g.width+extra,height:g.height+extra,cellSize:cs,originX:ox,originY:oy,
         walkable:(cx,cy)=>terrain.clearDisc(ox+(cx+.5)*cs,oy+(cy+.5)*cs,radius)};
-      return layer(on,WIDE_GOAL_RING,Math.floor(every*slotOf(k,shift>0)/slots));
+      // A grid cell that changes moves the nodes whose disc (the class radius) reaches it: pad by that, plus the shift.
+      return layer(on,WIDE_GOAL_RING,Math.floor(every*slotOf(k,shift>0)/slots),Math.ceil(radius/cs)+1);
     });
   };
-  if(grid&&opts.terrain)for(let k=0;k<WIDE_RADII.length;k++)wide[k]=wideLayers(opts.terrain,k);
+  if(grid&&opts.terrain&&opts.heroOnly!==true)for(let k=0;k<WIDE_RADII.length;k++)wide[k]=wideLayers(opts.terrain,k);
   /**
    * Once per tick and field: build on the first call, then when a live player's cell changed, on ticks t with
    * (t − phase) a multiple of `every`; the phases spread the fields' rebuilds over different ticks.
    */
-  const update=(ctx:SimContext,l:PlayersLayer)=>{
-    if(ctx.tick===l.checked)return;
+  const update=(ctx:SimContext,l:PlayersLayer,force=false)=>{
+    if(ctx.tick===l.checked&&!force)return;
     l.checked=ctx.tick;
+    const due=force||!l.ready||(ctx.tick-l.phase)%every===0;
+    if(!due)return;
     const v=cityGrid?.version??0, field=l.field, ox=field.originX, oy=field.originY, cs=field.cellSize;
-    if(v!==l.gridVersion){l.gridVersion=v;field.invalidate({x0:0,y0:0,x1:field.width-1,y1:field.height-1});}
-    if(l.ready&&(ctx.tick-l.phase)%every!==0)return;
+    if(v!==l.gridVersion){
+      const r=cityGrid?.changedSince?.(l.gridVersion);
+      l.gridVersion=v;
+      field.invalidate(r?{x0:r.x0-l.pad,y0:r.y0-l.pad,x1:r.x1+l.pad,y1:r.y1+l.pad}:{x0:0,y0:0,x1:field.width-1,y1:field.height-1});
+    }
     const cells=l.scratch, built=l.built;
     let n=0;
     for(const p of ctx.players.values()){
@@ -232,7 +291,9 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     f.directionAt(e.x,e.y,out);
     if(out.x===0&&out.y===0)return false;
     probe.x=e.x+out.x*NUDGE; probe.y=e.y+out.y*NUDGE;
-    const clips=terrain?!terrain.clearDisc(probe.x,probe.y,e.radius)&&terrain.clearDisc(e.x,e.y,e.radius):!walkable(probe,enemyTerrain(ctx.terrain));
+    // A wide body that fits where it stands is checked with its own disc; one that does not (overlapping a wall, or the
+    // boss, which collides by the hero rule, in a street only the hero fits) with the hero rule.
+    const clips=terrain&&terrain.clearDisc(e.x,e.y,e.radius)?!terrain.clearDisc(probe.x,probe.y,e.radius):!walkable(probe,enemyTerrain(ctx.terrain));
     if(clips){
       const cs=f.cellSize, cx=Math.floor((e.x-f.originX)/cs), cy=Math.floor((e.y-f.originY)/cs), d=f.nextCell(cx,cy);
       if(d>=0){
@@ -253,39 +314,51 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const mouth=t.kind==='barricade'&&out.x===0&&out.y===0?cityTerrainOf(ctx.terrain)?.asset.points.bocas[t.mouth]:undefined;
     if(mouth){const mx=mouth.x-e.x,my=mouth.y-e.y,l=Math.hypot(mx,my);if(l>1e-6){out.x=mx/l;out.y=my/l;}}
   };
-  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>{
+  const run=(ctx:SimContext,e:EnemyState,target:Point,out:Point,hero:boolean)=>{
     if(e.memory?.retreat===1)return false;
-    const field=enemyTerrain(ctx.terrain), dx=target.x-e.x, dy=target.y-e.y, terrain=e.radius>WIDE_FROM?cityTerrainOf(field):undefined;
+    const field=enemyTerrain(ctx.terrain), dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(field):undefined;
     if(dx*dx+dy*dy<=range2&&clear(e,target,field)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
     if(narrow&&e.memory?.[SIEGE_FLAG]!==1&&isPlayer(ctx,target)){
-      // A player in the base: the plaza flow (barricades, cidade-06) until the body stands in the plaza itself; a wide
-      // body first tries its own field (the plaza flow may squeeze it through a mouth only the hero fits).
-      const base=planner.insideBase(target);
-      if(base&&!terrain&&(baseFlow(ctx,e,out),out.x!==0||out.y!==0))return true;
+      // cidade-05c: one fixed order, wherever the player stands (base or not): the body's own size-class field, then
+      // the hero-size players field, then the planner's flow (plaza, or the barricade that cut it off). A field is
+      // left only where it does not reach the body, so the choice cannot flip back and forth across the edge of a
+      // goal (v2 used the plaza flow first for a player in the base: a wide body its own field could not carry
+      // ping-ponged at the plaza goal's edge between the plaza flow, zero inside, and the players field).
       if(terrain){
         let k=0;while(k<WIDE_RADII.length-1&&WIDE_RADII[k]<e.radius)k++;
-        const ls=wide[k].length?wide[k]:wide[k]=wideLayers(terrain,k);
-        let best:FlowField|undefined, low=UNREACHABLE;
-        for(const l of ls){
-          update(ctx,l);
-          const c=l.field.costAt(e.x,e.y);
-          // In its goal ring: as close as it fits, the straight line from here.
-          if(c===0)return false;
-          if(c<low){low=c;best=l.field;}
+        // Its own class, then (where that does not reach it) each smaller class, before the hero-size field.
+        for(;k>=0;k--){
+          const ls=wide[k].length?wide[k]:wide[k]=wideLayers(terrain,k);
+          let best:FlowField|undefined, low=UNREACHABLE;
+          for(const l of ls){
+            update(ctx,l);
+            const c=l.field.costAt(e.x,e.y);
+            // In its goal ring: as close as it fits, the straight line from here.
+            if(c===0)return false;
+            if(c<low){low=c;best=l.field;}
+          }
+          if(best&&follow(best,e,out,ctx,terrain))return true;
         }
-        if(best&&follow(best,e,out,ctx,terrain))return true;
-        if(base&&(baseFlow(ctx,e,out),out.x!==0||out.y!==0))return true;
       }
       update(ctx,narrow);
       if(narrow.field.atGoal(e.x,e.y))return false;
       if(follow(narrow.field,e,out,ctx,terrain))return true;
-      if(base)return false;
     }
     baseFlow(ctx,e,out);
     return out.x!==0||out.y!==0;
   };
+  const heroOnly=opts.heroOnly===true;
+  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,heroOnly);
+  const hero=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,true);
   return Object.defineProperties(steer,{
+    hero:{value:hero,enumerable:true},
     playersField:{get:()=>narrow?.field,enumerable:true},
     widePlayersFields:{get:()=>wide.map(ls=>ls.map(l=>l.field)),enumerable:true},
+    refresh:{value:(ctx:SimContext)=>{if(narrow)update(ctx,narrow,true);},enumerable:true},
+    costTo:{value:(p:Point)=>{
+      if(!narrow?.ready)return Infinity;
+      const c=narrow.field.costAt(p.x,p.y);
+      return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*narrow.field.cellSize;
+    },enumerable:true},
   }) as CitySteer;
 }

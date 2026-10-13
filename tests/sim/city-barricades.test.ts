@@ -413,3 +413,41 @@ test('prizes keep off the standing barricades (and only there): island lists unc
   const island=createStonewardsState({terrain:defaultTerrain});
   assert.deepEqual(prizeBlocks(island),[{x:island.wall.x,y:island.wall.y,radius:PRIZE_WALL_CLEAR}]);
 });
+
+test('boss spawn and summon spots use the enemy view (never inside a barricade disc); its walk and charge ignore the barricades',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const boss=readFileSync(new URL('../../src/sim/boss.ts',import.meta.url),'utf8');
+  // Placement of enemy bodies (boss spawn, summons) on the enemy view; the boss's own walk and charge on the base terrain
+  // (it walks over the barricades: it spawns inside the base and never bashes structures, D-010).
+  const place=boss.split('\n').filter(l=>/walkable\(/.test(l)&&/ctx\.terrain/.test(l));
+  assert.ok(place.length>=3&&place.every(l=>/enemyTerrain\(ctx\.terrain\)/.test(l)),'spawn and summon spots use enemyTerrain');
+  const moves=boss.split('\n').filter(l=>/clearSegment\(/.test(l));
+  assert.ok(moves.length>=2&&moves.every(l=>!/enemyTerrain/.test(l)),'walk and charge ignore the barricades');
+});
+
+test('with the four barricades up, the boss (spawned in the plaza) walks out over them and reaches a team standing at inicio',async()=>{
+  const {SpatialHash}=await import('../../src/sim/spatial.ts');
+  const {createTelegraphSystem}=await import('../../src/sim/telegraphs.ts');
+  const P=shared.asset.points,BOSS_REACH=3;
+  for(const seed of [1,2,3,4]){
+    const terrain=shared.fork(),players=new Map<string,SimPlayer>();
+    const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
+    assert.equal(terrain.blockers().length,4,'the four barricades are up');
+    Object.assign(world.round,{index:10,total:10,phase:'wave',phaseEndsTick:1e9,remaining:1});
+    const team=[P.inicio,{x:P.inicio.x+1,y:P.inicio.y}];
+    team.forEach((p,i)=>players.set(`p${i}`,{id:`p${i}`,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},
+      build:{weapons:[],passives:[]},stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x:p.x,y:p.y,ack:0,score:0} as SimPlayer));
+    const boss=sys.boss.spawnBoss(world,P.praca)!;
+    assert.ok(boss,'the boss spawned');
+    const telegraphs=createTelegraphSystem();
+    let reached=-1;
+    for(let i=0;i<ticks(240)&&reached<0;i++){
+      world.tick++;sys.boss.step(world);telegraphs.step(world);
+      const b=world.enemies.get(boss.id)!;
+      if(Math.min(...team.map(p=>Math.hypot(p.x-b.x,p.y-b.y)))<=BOSS_REACH)reached=i;
+    }
+    assert.ok(reached>=0,`seed ${seed}: the boss never got within ${BOSS_REACH} u of the team (stuck at ${JSON.stringify(world.enemies.get(boss.id))})`);
+    assert.equal(terrain.blockers().length,4,'it did not break any barricade on the way (it never hits structures, D-010)');
+  }
+});

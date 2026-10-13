@@ -47,6 +47,8 @@ export const SAY_GAP=ticks(2);
 export interface StonewardsOptions {
   /** The room's terrain; the wall is placed on it and the nodes are its obstacles. */
   terrain:SimContext['terrain'];
+  /** City only: raise the four plaza barricades (default true). Travel/reach measurements (cidade-05c tests) turn them off. */
+  barricades?:boolean;
   /** Replaces the island's obstacles as nodes (tests). */
   obstacles?:readonly Obstacle[];
   wallMaxHp?:number;
@@ -79,7 +81,7 @@ export interface StonewardsSystem extends SimSystem {
 
 export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'|'onTerrainChanged'>):StonewardsState{
   // City only: the island and the endless world keep exactly their old state (and state hashes).
-  const city=createBarricades(options.terrain);
+  const city=options.barricades===false?undefined:createBarricades(options.terrain);
   return {
     balance:{coco:0,pedra:0},
     nodes:[],

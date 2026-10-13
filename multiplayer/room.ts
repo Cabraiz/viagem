@@ -8,6 +8,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
+import {TELEGRAPH_KINDS,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -629,7 +630,10 @@ export class Room {
     // so the blackout is photographed with danger on screen.
     const lab=(v:unknown)=>v&&typeof v==='object'&&Number.isFinite((v as {x:number}).x)&&Number.isFinite((v as {y:number}).y)&&
       Math.hypot((v as {x:number}).x-worldBase(this.sim.terrain).x,(v as {y:number}).y-worldBase(this.sim.terrain).y)<=LAB_REACH?v as {x:number;y:number}:undefined;
-    const tg=lab(m.telegraph);if(tg)addTelegraph(this.sim.world,{shape:'circle',x:tg.x,y:tg.y,radius:1.8,damage:0,owner:'env:lab'},50);
+    // D-036 proofs: `telegraph.kind` (one of TELEGRAPH_KINDS) gives it a hazard's look, and 'arroto'/'coco' its effect.
+    const tg=lab(m.telegraph),tgKind=(m.telegraph as {kind?:unknown}|undefined)?.kind;
+    if(tg)addTelegraph(this.sim.world,{shape:'circle',x:tg.x,y:tg.y,radius:1.8,damage:0,owner:'env:lab',
+      ...(TELEGRAPH_KINDS.includes(tgKind as TelegraphKind)?{kind:tgKind as TelegraphKind}:{})},50);
     const at=lab(m.spawn),kind=typeof m.kind==='string'?m.kind:'';
     if(at&&isEnemyKind(kind)&&kind!=='chefe'&&walkable(at,this.sim.terrain))createEnemy(this.sim.world,kind,at);
     const to=m.to;

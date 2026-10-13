@@ -217,7 +217,7 @@ export class EnemyAi implements SimSystem {
             }
             if(player&&ctx.round.index>=BURP.fromRound&&best<=BURP.trigger&&ctx.tick>=memory.actReady&&inFront(memory,ax,ay,BURP.angle/2)
               &&this.hazardRoom(ctx)&&rng.chance(BURP.chance)){
-              addTelegraph(ctx,{shape:'cone',x:e.x,y:e.y,dx:ax,dy:ay,radius:BURP.range,width:BURP.angle,damage:BURP.damage,owner:e.id},BURP.delay);
+              addTelegraph(ctx,{shape:'cone',x:e.x,y:e.y,dx:ax,dy:ay,radius:BURP.range,width:BURP.angle,damage:BURP.damage,owner:e.id,kind:'arroto'},BURP.delay);
               memory.state=STATE.burp;memory.until=ctx.tick+BURP.delay;memory.actReady=ctx.tick+BURP.cooldown;
               this.react(ctx,rng,e,def,1);
               break;
@@ -234,7 +234,7 @@ export class EnemyAi implements SimSystem {
             [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
             if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
               &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
-              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage,owner:HAZARD_OWNERS.poop+e.id},POOP.delay);
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage,owner:HAZARD_OWNERS.poop+e.id,kind:'coco'},POOP.delay);
               memory.actReady=ctx.tick+POOP.cooldown;
               this.react(ctx,rng,e,def,.3);
             }
@@ -341,7 +341,7 @@ export class EnemyAi implements SimSystem {
   onKill(ctx:SimContext,enemy:EnemyState){
     if(enemy.boss||enemyDef(enemy.kind).behavior!=='thrower'||!this.hazardRoom(ctx))return;
     addTelegraph(ctx,{shape:'circle',x:enemy.x,y:enemy.y,radius:MOLOTOV.deathRadius,damage:MOLOTOV.deathDamage,
-      owner:HAZARD_OWNERS.explosion+enemy.id,enemyDamage:MOLOTOV.deathEnemyDamage} as HazardSpec,MOLOTOV.deathDelay);
+      owner:HAZARD_OWNERS.explosion+enemy.id,enemyDamage:MOLOTOV.deathEnemyDamage,kind:'explosao'} as HazardSpec,MOLOTOV.deathDelay);
   }
 
   /** True when the global limiter allows a bark now (factor > 1 for low-priority ambient barks). */
@@ -391,7 +391,7 @@ export class EnemyAi implements SimSystem {
   private throwMolotov(ctx:SimContext,e:EnemyState,player:SimPlayer){
     const owner=HAZARD_OWNERS.molotov+e.id;
     if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
-    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage,owner,pulses:MOLOTOV.pulses} as HazardSpec,MOLOTOV.flight);
+    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage,owner,pulses:MOLOTOV.pulses,kind:'molotov'} as HazardSpec,MOLOTOV.flight);
     return true;
   }
 
@@ -412,7 +412,7 @@ export class EnemyAi implements SimSystem {
     for(const t of ctx.telegraphs.values())if(t.fireTick<=ctx.tick&&t.owner.startsWith('env:'))due.push(t);
     for(const t of due){
       if((t.pulses??0)>0&&t.owner.startsWith(HAZARD_OWNERS.molotov)&&ctx.telegraphs.size<=(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP)){
-        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage,owner:t.owner,pulses:t.pulses!-1} as HazardSpec,MOLOTOV.pulseEvery);
+        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage,owner:t.owner,pulses:t.pulses!-1,kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
       }
       if((t.enemyDamage??0)>0){
         const victims:string[]=[];

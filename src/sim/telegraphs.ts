@@ -15,6 +15,10 @@
  * Owner rule: owner is an enemy id, a player id, or `env:<name>` for world hazards. When a telegraph fires,
  * a non-`env:` owner that is in neither ctx.players nor ctx.enemies, or is an enemy with hp<=0, is gone and the
  * telegraph resolves without damage (a boss killed earlier in the tick does not hit posthumously).
+ *
+ * D-036: `kind` names the hazard for the client's look, and two kinds also move the player they hit
+ * (player-effects.ts): 'arroto' slows, 'coco' makes them slide. The effect lands before the damage (so a hit that
+ * downs the player leaves nothing behind: the fall clears it) and lands even when armor takes the damage to 0.
  */
 import {RADIUS} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
@@ -23,6 +27,7 @@ import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeD
 export {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData};
 import type {SimPlayer,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
+import {applyTelegraphEffect} from './player-effects.ts';
 
 /** Minimum warning before any telegraph deals damage: 0.8 s. */
 export const MIN_TELEGRAPH_TICKS=ticks(.8);
@@ -79,7 +84,7 @@ export function createTelegraphSystem():SimSystem{
       ctx.telegraphs.delete(t.id);
       if(ownerGone(ctx,t.owner))continue;
       const hit=[...ctx.players.values()].filter(p=>canBeHit(p)&&telegraphHits(t,p,RADIUS));
-      for(const p of hit)ctx.damagePlayer(p.id,t.damage,t.owner);
+      for(const p of hit){applyTelegraphEffect(p,t,ctx.tick);ctx.damagePlayer(p.id,t.damage,t.owner);}
     }
   }};
 }

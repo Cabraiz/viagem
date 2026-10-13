@@ -47,8 +47,9 @@ function capture(g:Phaser.GameObjects.Graphics,out:MeshBuilder){
     strokeTint:{TL:0,TR:0,BL:0,BR:0},fillTint:{TL:0,TR:0,BL:0,BR:0},currentFrame:{u0:0,v0:0,u1:1,v1:1},
     firstQuad:[0,0,0,0,0],prevQuad:[0,0,0,0,0],polygonCache:[],
     tempTriangle:[{x:0,y:0,width:0},{x:0,y:0,width:0},{x:0,y:0,width:0},{x:0,y:0,width:0}],
-    batchTri:(_o:unknown,x0:number,y0:number,x1:number,y1:number,x2:number,y2:number,_u0:number,_v0:number,_u1:number,_v1:number,t:number)=>{
-      out.tri(t,x0,y0,x1,y1,x2,y2);return false;
+    // A tint per vertex (fillGradientStyle + fillTriangle draws a gradient; solid fills pass the same one three times).
+    batchTri:(_o:unknown,x0:number,y0:number,x1:number,y1:number,x2:number,y2:number,_u0:number,_v0:number,_u1:number,_v1:number,t0:number,t1:number,t2:number)=>{
+      out.tri3(t0,t1,t2,x0,y0,x1,y1,x2,y2);return false;
     },
     // batchQuad writes (0,1,2) and (0,2,3).
     batchQuad:(_o:unknown,x0:number,y0:number,x1:number,y1:number,x2:number,y2:number,x3:number,y3:number,_u0:number,_v0:number,_u1:number,_v1:number,t:number)=>{
@@ -159,7 +160,7 @@ export class TriBand extends Phaser.GameObjects.Graphics {
       const tints=this.tints;tints.length=m.colors.length;
       for(let i=0;i<m.colors.length;i++)tints[i]=tintOf(m.colors[i],m.alphas[i]*alpha);
     }
-    const tints=this.tints,xy=m.xy,style=m.style,ends=m.ends,segAlpha=this.segAlpha;
+    const tints=this.tints,xy=m.xy,style=m.style,vs=m.vstyle,ends=m.ends,segAlpha=this.segAlpha;
     for(let s=0;s<ends.length;s++){
       const n=ends[s];
       let t=s?ends[s-1]:0;
@@ -177,13 +178,20 @@ export class TriBand extends Phaser.GameObjects.Graphics {
         let o=pipeline.vertexCount*stride;
         const start=t;
         for(;t<end;t++){
-          const k=t*6,st=style[t],tint=own===1?tints[st]:tintOf(m.colors[st],m.alphas[st]*alpha*own);
+          const k=t*6,st=style[t];
+          let tint=own===1?tints[st]:tintOf(m.colors[st],m.alphas[st]*alpha*own),tint1=tint,tint2=tint;
+          // A gradient triangle (mesh with per-vertex styles): the second and third vertices' own tints.
+          if(vs){
+            const s1=vs[t*3+1],s2=vs[t*3+2];
+            if(s1!==st)tint1=own===1?tints[s1]:tintOf(m.colors[s1],m.alphas[s1]*alpha*own);
+            if(s2!==st)tint2=own===1?tints[s2]:tintOf(m.colors[s2],m.alphas[s2]*alpha*own);
+          }
           let x=xy[k],y=xy[k+1];
           F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=0;F[o+3]=0;F[o+4]=unit;F[o+5]=2;U[o+6]=tint;o+=stride;
           x=xy[k+2];y=xy[k+3];
-          F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=0;F[o+3]=1;F[o+4]=unit;F[o+5]=2;U[o+6]=tint;o+=stride;
+          F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=0;F[o+3]=1;F[o+4]=unit;F[o+5]=2;U[o+6]=tint1;o+=stride;
           x=xy[k+4];y=xy[k+5];
-          F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=1;F[o+3]=1;F[o+4]=unit;F[o+5]=2;U[o+6]=tint;o+=stride;
+          F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=1;F[o+3]=1;F[o+4]=unit;F[o+5]=2;U[o+6]=tint2;o+=stride;
         }
         pipeline.vertexCount+=(t-start)*3;
         const batch=pipeline.currentBatch!;

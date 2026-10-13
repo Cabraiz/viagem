@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {Pool,KeyedPool,Ring} from '../../src/client/render/pool.ts';
-import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,smoothToward,POOF_MS,POP_TEXT_MS} from '../../src/client/render/motion.ts';
+import {squash,gemBounce,hitFlash,flashStartOnHit,HIT_FLASH_MS,HIT_FLASH_REST_MS,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,smoothToward,POOF_MS,POP_TEXT_MS} from '../../src/client/render/motion.ts';
 import {deathLine,deathLines,kindStyle,damageLabel,GENERIC_LINES} from '../../src/client/render/jokes.ts';
 import {ENEMY_KINDS,enemyTexture} from '../../src/client/render/keys.ts';
 
@@ -312,4 +313,31 @@ test('telegraph stroke is inset: its outer edge never leaves the damage zone (D-
     }
     assert.ok(worstLeak<=.08*half+1e-6,`${zone.shape} w=${zone.width} ui=${ui}: leak ${worstLeak.toFixed(2)}px (was ${before}px = ${(before/PX).toFixed(2)} un)`);
   }
+});
+
+// BUG silhueta-branca: every hit restarted the flash, so a critter under steady fire (the boss takes >12 hits/s in the
+// horde sandbox) stayed a solid white silhouette. A flash now runs once, then rests before the next hit may flash.
+test('hit flash: steady fire never keeps a critter white; each flash keeps its designed length; a fresh critter flashes at once',()=>{
+  assert.equal(flashStartOnHit(1000,-1e9),1000,'first hit flashes');
+  assert.equal(flashStartOnHit(1050,1000),1000,'a hit during the flash does not restart it');
+  assert.equal(flashStartOnHit(1000+HIT_FLASH_MS+HIT_FLASH_REST_MS-1,1000),1000,'nor during the rest');
+  assert.equal(flashStartOnHit(1000+HIT_FLASH_MS+HIT_FLASH_REST_MS,1000),1000+HIT_FLASH_MS+HIT_FLASH_REST_MS,'after it, a hit flashes again');
+  for(const gap of [16,50,78,120,333]){
+    // Hits every `gap` ms for 5 s, drawn at 60 fps: count white frames and the longest white run.
+    let flashAt=-1e9,nextHit=0,white=0,run=0,longest=0,flashes=0,minPeriod=Infinity;const frames=300;
+    for(let f=0;f<frames;f++){
+      const now=f*1000/60;
+      while(nextHit<=now){const s=flashStartOnHit(nextHit,flashAt);if(s!==flashAt){flashes++;minPeriod=Math.min(minPeriod,s-flashAt);}flashAt=s;nextHit+=gap;}
+      const on=hitFlash(now-flashAt);
+      if(on){white++;run+=1000/60;longest=Math.max(longest,run);}else run=0;
+    }
+    assert.ok(longest<=HIT_FLASH_MS+1000/60,`gap ${gap}: a flash lasts its ${HIT_FLASH_MS} ms (${longest.toFixed(0)})`);
+    assert.ok(white/frames<=(HIT_FLASH_MS+1000/60)/(HIT_FLASH_MS+HIT_FLASH_REST_MS),`gap ${gap}: white ${(100*white/frames).toFixed(0)}% of the time`);
+    assert.ok(minPeriod>1000/3,`gap ${gap}: flashes ${minPeriod.toFixed(0)} ms apart (under 3 per second, WCAG 2.3.1)`);
+    assert.ok(flashes>0);
+  }
+  // The renderer goes through the rule on damage (the boss phase cue still flashes at once).
+  const layers=readFileSync(new URL('../../src/client/render/layers.ts',import.meta.url),'utf8');
+  assert.match(layers,/case 'damage':\{[^}]*enemy\.flashAt=flashStartOnHit\(this\.now,enemy\.flashAt\)/);
+  assert.equal((layers.match(/\.flashAt=this\.now/g)??[]).length,1,'only the boss-phase cue sets the flash directly');
 });

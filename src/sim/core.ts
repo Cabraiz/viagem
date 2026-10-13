@@ -85,6 +85,13 @@ export class SimWorld implements SimContext {
   private pendingKills:{enemy:EnemyState;by:string|undefined}[]=[];
   private dispatchingKills=false;
   private zeroHandlers:PlayerZeroHandler[]=[];
+  /**
+   * City only (cidade-11, city/balance.ts CityBalance.players[n].damage): × the raw damage of every hit a player takes
+   * (contact, hostile projectiles, telegraphs: all of them come through damagePlayer, D-001), before armor. Set by
+   * createRunSystems (assemble.ts) for the run it wires, and only when some team size has a damage knob; absent (island,
+   * endless, a neutral city) damagePlayer is exactly as before. A result that is not a finite number > 0, or 1, is ignored.
+   */
+  playerDamageScale?:(ctx:SimContext)=>number;
 
   constructor(options:SimWorldOptions){
     this.terrain=options.terrain;
@@ -186,6 +193,10 @@ export class SimWorld implements SimContext {
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
+    if(this.playerDamageScale){
+      const scale=this.playerDamageScale(this);
+      if(scale!==1&&scale>0&&Number.isFinite(scale))amount*=scale;
+    }
     let dealt=Math.min(player.hp,Math.max(0,amount-player.stats.armor));
     if(!(dealt>0))return;
     if(player.hp-dealt<1e-9)dealt=player.hp;

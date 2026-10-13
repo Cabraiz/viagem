@@ -16,7 +16,7 @@ const pombos:ArtPiece={kind:'animations',files:{fly:sheet(6,{file:'pombos/fly.we
 
 test('every enemy kind maps to an importer id (identity after the D-033/D-036 renames)',()=>{
   for(const kind of ENEMY_KINDS)assert.equal(typeof ENEMY_ART_ID[kind],'string');
-  assert.deepEqual(Object.values(ENEMY_ART_ID),['bebado','anao-molotov','pombos','tio-pave','agiota','chefe']);
+  assert.deepEqual(Object.values(ENEMY_ART_ID),['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer']);
 });
 
 test('static art replaces today\'s keys: pickups, the boleto, projectiles and FX',()=>{

@@ -5,7 +5,10 @@
  * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
  * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
  * shows one telegraph of every kind (arroto, molotov, fogo, cocô, explosão and the boss's pancada, investida, varredura,
- * carimbo, plus one without a kind) and the first player wears the slow and slip status chips.
+ * carimbo, plus one without a kind) and the first player wears the slow and slip status chips. Elenco P1: the coach
+ * lecturing (phase 1, his gold ring) with two buffed critters (phase 2) beside him, the influencer posing (phase 1,
+ * reflect ring, shots bouncing back) and the motoboy aiming (phase 1, headlight) with his investida line ending in an
+ * explosão; above and below the cast in portrait, left and right of it in landscape.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -37,7 +40,10 @@ const SAY_DEMO=new URLSearchParams(location.search).get('say');
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
   {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
   {kind:'tio-pave',weight:12,hp:100,speed:.55},{kind:'agiota',weight:14,hp:40,speed:.8},{kind:'anao-molotov',weight:12,hp:36,speed:.7},
+  // Elenco P1: they act now and then in the stress run too (phase 1 on a slow cycle).
+  {kind:'coach',weight:4,hp:60,speed:.6},{kind:'motoboy',weight:4,hp:30,speed:1.2},{kind:'influencer',weight:4,hp:50,speed:.7},
 ];
+const ACTS=new Set(['coach','motoboy','influencer']);
 const BARKS:Record<string,string[]>={
   bebado:['Tu é meu irmão, sabia?','Hic… saideira!','Me empresta dez conto'],
   pombos:['Cruu cruu','Miolo ou morte!','Alvo na cabeça: confirmado'],
@@ -45,6 +51,9 @@ const BARKS:Record<string,string[]>={
   agiota:['Venceu ontem, parceiro','Juros de 30% ao dia','Tá devendo, hein?'],
   'anao-molotov':['Segura essa, porra!','Cachaça boa pega fogo','FOGO NO PARQUINHO!'],
   chefe:['Reunião de condomínio AGORA!','Quem deixou o lixo aqui?'],
+  coach:['Aula grátis. A surra é paga','Cansaço é crença limitante'],
+  motoboy:['Freio é coisa de iniciante','Sinal vermelho é sugestão'],
+  influencer:['Bom dia, família! Tá pago!','Shape não se faz, se posta'],
 };
 const PLAYER_COUNT=6;
 /**
@@ -56,6 +65,24 @@ const LINEUP:[string,boolean,number,number][]=[
   ['tio-pave',false,-170,40],['agiota',false,170,40],
   ['bebado',true,-255,235],['chefe',false,0,200],['agiota',true,300,228],
 ];
+/**
+ * Elenco P1 line-up, in two groups placed by the phone's orientation (P1_GROUPS): [kind, phase, screen x, y from the
+ * group's anchor, group]. Group 0: the coach lecturing with a buffed bêbado and buffed pombos beside him. Group 1: the
+ * motoboy aiming (his line and blast come from lineUpCharge) and the influencer posing.
+ */
+const P1_LINEUP:[string,number,number,number,0|1][]=[
+  ['coach',1,0,0,0],['bebado',2,-110,40,0],['pombos',2,115,20,0],
+  ['motoboy',1,-150,-20,1],['influencer',1,175,50,1],
+];
+/**
+ * Landscape has little room on the sides: group 1 stacks the motoboy over the influencer (P1_CHARGE points left) and
+ * the buffed pombos fly over the trees next to the coach.
+ */
+const P1_LANDSCAPE:Record<string,readonly [number,number]>={motoboy:[110,-150],influencer:[40,150],pombos:[70,-150]};
+/** Anchors (screen offsets from the first player) of the two P1 groups: above/below in portrait, left/right in landscape. */
+const P1_GROUPS={portrait:[[0,-470],[0,465]],landscape:[[-500,-60],[540,-40]]} as const;
+/** The motoboy's charge, in screen directions: towards screen right in portrait, back at the cast in landscape. */
+const P1_CHARGE={portrait:[1,0],landscape:[-1,0]} as const;
 const fromScreen=(origin:Point,sx:number,sy:number):Point=>({x:origin.x+(sx/42+sy/21)/2,y:origin.y+(sy/21-sx/42)/2});
 /** World direction of a screen direction (view 0), as a unit vector. */
 const screenDir=(sx:number,sy:number)=>{const x=(sx/42+sy/21)/2,y=(sy/21-sx/42)/2,l=Math.hypot(x,y)||1;return {dx:x/l,dy:y/l};};
@@ -84,7 +111,9 @@ class FakeHorde {
   enemies:FakeEnemy[]=[];pickups:FakePickup[]=[];projectiles:FakeProjectile[]=[];telegraphs:TelegraphView[]=[];
   players:{id:string;classId:string;x:number;y:number;attackTick:number;angle:number}[]=[];
   private events:(SimEvent&{eventId:number})[]=[];
-  constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false){
+  /** Elenco P1 line-up: the motoboy (his charge starts at his spawn) and the influencer (who bounces shots back). */
+  private moto?:FakeEnemy;private motoHome?:Point;private posing?:FakeEnemy;
+  constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false,private portrait=true){
     this.rng=new Rng(seed);
     for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:classes[(i*5)%classes.length].id,x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
     this.movePlayers();
@@ -99,6 +128,34 @@ class FakeHorde {
     for(const [kind,elite,sx,sy] of LINEUP){
       const e=this.spawn(fromScreen(me,sx,sy),kind);
       e.speed=0;e.elite=elite||undefined;e.boss=kind==='chefe'||undefined;e.phase=kind==='chefe'?1:undefined;e.hp=e.maxHp*(elite?.7:1);
+    }
+    const groups=this.portrait?P1_GROUPS.portrait:P1_GROUPS.landscape;
+    for(const [kind,phase,x,y,g] of P1_LINEUP){
+      const [sx,sy]=(!this.portrait&&P1_LANDSCAPE[kind])||[x,y];
+      const [ax,ay]=groups[g],e=this.spawn(fromScreen(me,ax+sx,ay+sy),kind);
+      e.speed=0;e.phase=phase;
+      if(kind==='motoboy'){this.moto=e;this.motoHome={x:e.x,y:e.y};}
+      if(kind==='influencer')this.posing=e;
+    }
+  }
+  /**
+   * The motoboy's charge (Elenco P1): the investida line from his spot (P1_CHARGE), then the explosão at its end; he
+   * creeps along the line while it fills (so he faces it) and goes back when it fires.
+   */
+  private lineUpCharge(){
+    const moto=this.moto,home=this.motoHome;if(!moto||!home)return;
+    const [cx,cy]=this.portrait?P1_CHARGE.portrait:P1_CHARGE.landscape,dir=screenDir(cx,cy),length=3;
+    if(!this.telegraphs.some(t=>t.id.startsWith('m:'))){
+      moto.x=home.x;moto.y=home.y;
+      const line:TelegraphView={id:`m:${this.next++}`,shape:'line',kind:'investida',x:home.x,y:home.y,radius:length,dx:dir.dx,dy:dir.dy,width:1.2,fireTick:this.tick+88};
+      const blast:TelegraphView={id:`m:${this.next++}`,shape:'circle',kind:'explosao',x:home.x+dir.dx*length,y:home.y+dir.dy*length,radius:1.6,dx:1,dy:0,fireTick:this.tick+90};
+      this.telegraphs.push(line,blast);this.emit({type:'telegraph',telegraph:line.id});this.emit({type:'telegraph',telegraph:blast.id});
+    }else{moto.x+=dir.dx*.004;moto.y+=dir.dy*.004;}
+    const pose=this.posing,me=this.players[0];
+    if(pose&&this.tick%25===3){
+      // A shot bounced off the pose: a hostile projectile flying back at the hero.
+      const d=Math.hypot(me.x-pose.x,me.y-pose.y)||1;
+      this.projectiles.push({id:`r${this.next++}`,source:'reflexo',x:pose.x,y:pose.y,vx:(me.x-pose.x)/d*.14,vy:(me.y-pose.y)/d*.14,radius:.2,hostile:true,until:this.tick+Math.floor(d/.14)});
     }
   }
   private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
@@ -151,7 +208,7 @@ class FakeHorde {
   step(){
     this.tick++;
     if(this.lineup){
-      this.lineUpDanger();
+      this.lineUpDanger();this.lineUpCharge();
       for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
       this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
       this.telegraphs=this.telegraphs.filter(t=>t.fireTick>this.tick);
@@ -184,6 +241,7 @@ class FakeHorde {
       const p=this.rng.pick(this.players),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
       this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:e.x,y:e.y,vx:(p.x-e.x)/d*.22,vy:(p.y-e.y)/d*.22,radius:.2,hostile:true,until:this.tick+40});
     }
+    for(const e of this.enemies)if(ACTS.has(e.kind))e.phase=Math.sin(this.tick*.03+e.wobble)>.4?1:undefined;
     for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
     this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
     this.pickups=this.pickups.filter(p=>p.until>this.tick);
@@ -256,7 +314,7 @@ class HordeSandboxScene extends Phaser.Scene {
       this.props.push({point:o,image});
     }
     const lineup=new URLSearchParams(location.search).get('elenco')==='1';
-    this.horde=new FakeHorde(this.field,this.count,this.seed,lineup);
+    this.horde=new FakeHorde(this.field,this.count,this.seed,lineup,this.scale.height>=this.scale.width);
     this.projector=new Projector(this.view,this.field);
     // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,

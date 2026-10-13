@@ -14,7 +14,8 @@ import {groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,ty
 import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius} from './chunks.ts';
 import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
-import {CityMaterials,buildingAnchor,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,type TextureLookup} from './materials.ts';
+import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
+import {ART_CELL,fountainLot,planHasArt,planLots,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {HERO_SCREEN,OcclusionFader,actorDepth,covers,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
@@ -47,6 +48,8 @@ function reducedMotion(){
   try{return typeof window!=='undefined'&&!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}catch{return false;}
 }
 const lerp=(a:Pt,b:Pt,t:number):Pt=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
+/** The cell a lot is drawn from (its sheet belongs to the chunk holding this cell). */
+const lotCentre=(lot:CityLot):[number,number]=>[lot.x+Math.floor((lot.w-1)/2),lot.y+Math.floor((lot.h-1)/2)];
 
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
@@ -66,6 +69,23 @@ export interface CityLayerOptions {
   depthOf?:(key:number)=>number;
   /** Baked ground texels per world px (default GROUND_RESOLUTION); lower saves memory, higher is sharper when zoomed in. */
   groundResolution?:number;
+  /**
+   * Imported art (art-plan.ts): buildings and rubble cut into lots that each show a sheet, prop and fountain sheets.
+   * A lot draws its sheet once the texture is loaded (queueCityArt), else its cells stay procedural.
+   */
+  art?:CityArtPlan;
+}
+
+/** Queues the plan's sheets not loaded yet (the caller starts the loader if it is idle). Returns how many. */
+export function queueCityArt(scene:Phaser.Scene,plan:CityArtPlan|undefined):number{
+  let n=0;
+  for(const s of plan?.sheets??[]){
+    if(scene.textures.exists(s.key))continue;
+    if(s.key.startsWith('city:ground:'))scene.load.image(s.key,s.url);
+    else scene.load.spritesheet(s.key,s.url,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});
+    n++;
+  }
+  return n;
 }
 
 /**
@@ -105,6 +125,11 @@ export class CityLayer {
   private readonly chunksByKey=new Map<string,CityChunk>();
   private view=-1;
   private clock=0;
+  /** Imported art: the plan, each cell's lot, the drawn height of each block with lots, the fountain lot. */
+  private readonly art?:CityArtPlan;
+  private readonly lotAt=new Map<number,CityLot>();
+  private readonly artHeight=new Map<string,number>();
+  private readonly fountain?:CityLot;
   private readonly still=reducedMotion();
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
@@ -117,6 +142,21 @@ export class CityLayer {
     this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
     for(const b of asset.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
+    if(planHasArt(options.art)){
+      const art=this.art=options.art!;
+      for(const b of asset.blocks)for(const lot of planLots(b,art)){
+        for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
+        this.artHeight.set(b.id,Math.max(this.artHeight.get(b.id)??0,lot.height));
+      }
+      this.fountain=fountainLot(asset,art);
+      // Art can be taller than the procedural box: chunk bounds (ChunkTracker) reach the drawn top.
+      for(const c of this.index.chunks){
+        for(const p of c.pieces){const lot=this.lotAt.get(p.y*asset.width+p.x);if(lot)c.maxTop=Math.max(c.maxTop,p.base+lot.height);}
+        for(const p of c.props){const s=propSheet(p,art);if(s)c.maxTop=Math.max(c.maxTop,c.minBase+s.height);}
+      }
+      const f=this.fountain,c=f&&this.chunkOfCell(...lotCentre(f));
+      if(f&&c)c.maxTop=Math.max(c.maxTop,c.minBase+f.height);
+    }
     const textures=scene.textures;
     // Painted ground is drawn with a Mesh, which only renders in WebGL: under Canvas the ground stays flat.
     const webgl=scene.sys.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
@@ -126,6 +166,8 @@ export class CityLayer {
     };
     this.materials=new CityMaterials(lookup);
   }
+
+  private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
   liveChunks(){return [...this.live.keys()].sort();}
@@ -205,6 +247,13 @@ export class CityLayer {
     }
   }
 
+  /** Rebuilds the live chunks now (e.g. art textures arrived after they were built with the procedural look). */
+  refresh(){
+    if(this.view<0)return;
+    for(const key of [...this.live.keys()]){this.dropChunk(key);this.buildChunk(key,this.view);}
+    this.occluders.clear();
+  }
+
   /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
   destroy(){for(const key of [...this.live.keys()])this.dropChunk(key);this.tracker.reset();this.fader.reset();this.view=-1;}
 
@@ -216,19 +265,34 @@ export class CityLayer {
     const {ground,glints}=this.bakeGround(chunk,view);
     const cells:number[]=[];
     // Buildings with a painted sheet: one image, drawn by the chunk that holds the block's centre cell.
-    const sprites:BlockSprite[]=[],painted=new Set<string>();
+    const sprites:BlockSprite[]=[],painted=new Set<string>(),paintedCells=new Set<number>();
+    const inChunk=([cx,cy]:[number,number])=>cx>=chunk.x0&&cx<chunk.x1&&cy>=chunk.y0&&cy<chunk.y1;
     for(const piece of chunk.pieces){
+      if(this.art){
+        // Imported art: the piece's lot (art-plan.ts planLots), drawn once by the chunk holding the lot's centre cell.
+        const cellIndex=piece.y*this.asset.width+piece.x,lot=this.lotAt.get(cellIndex);
+        if(!lot||!this.scene.textures.exists(lot.sheet.key))continue;
+        paintedCells.add(cellIndex);
+        const [cx,cy]=lotCentre(lot);
+        if(cx===piece.x&&cy===piece.y)sprites.push(this.drawLot(lot,piece.base,view,cells));
+        continue;
+      }
       if(painted.has(piece.blockId))continue;
       const block=this.blocks.get(piece.blockId);
       if(!block||!this.materials.building(block,view))continue;
       painted.add(block.id);
-      const cx=Math.floor(block.x+(block.w-1)/2),cy=Math.floor(block.y+(block.h-1)/2);
-      if(cx>=chunk.x0&&cx<chunk.x1&&cy>=chunk.y0&&cy<chunk.y1)sprites.push(this.drawBuilding(block,piece.base,view,cells));
+      if(inChunk([Math.floor(block.x+(block.w-1)/2),Math.floor(block.y+(block.h-1)/2)]))sprites.push(this.drawBuilding(block,piece.base,view,cells));
+    }
+    const f=this.fountain;
+    if(f&&inChunk(lotCentre(f))&&this.scene.textures.exists(f.sheet.key)){
+      let base=Infinity;
+      for(let j=f.y;j<f.y+f.h;j++)for(let i=f.x;i<f.x+f.w;i++)base=Math.min(base,heightAt(this.asset,i,j));
+      sprites.push(this.drawLot(f,base,view,cells));
     }
     // Group the chunk's procedural columns by (block, depth key); draw each band back-to-front.
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const piece of chunk.pieces){
-      if(painted.has(piece.blockId))continue;
+      if(painted.has(piece.blockId)||paintedCells.has(piece.y*this.asset.width+piece.x))continue;
       const geo=pieceGeometry(piece,this.asset,view,this.pivot),id=`${piece.blockId}|${geo.depthKey}`;
       const g=groups.get(id);
       if(g)g.items.push({piece,geo});else groups.set(id,{blockId:piece.blockId,key:geo.depthKey,items:[{piece,geo}]});
@@ -279,6 +343,24 @@ export class CityLayer {
     const column:ColumnRef={key,occ:occluderFor(block,this.asset,base,view,this.pivot)};
     for(let j=block.y;j<block.y+block.h;j++)for(let i=block.x;i<block.x+block.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
     return {blockId:block.id,key,obj};
+  }
+
+  /**
+   * A lot of imported art (art-plan.ts): its sheet's view frame with the lot's front-bottom corner on the anchor (x from
+   * the footprint convention, y from the sheet's anchor), at the plan's scale, sorted by that corner; one column covering
+   * the lot at its drawn height, registered on every lot cell (for actorDepth).
+   */
+  private drawLot(lot:CityLot,base:number,view:number,cells:number[]):BlockSprite{
+    const {cell,origin,width}=this.asset,fc=frontCorner(view),s=lot.sheet;
+    const wx=origin.x+(lot.x+fc.i*lot.w)*cell,wy=origin.y+(lot.y+fc.j*lot.h)*cell;
+    const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
+    const frame=buildingFrame(view,lot.turns,this.materials.frames(s.key));
+    const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth,s.frameHeight,ART_CELL);
+    const obj=this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key));
+    const box:CityBlock={id:lot.id,kind:'building',x:lot.x,y:lot.y,w:lot.w,h:lot.h,height:lot.height};
+    const column:ColumnRef={key,occ:occluderFor(box,this.asset,base,view,this.pivot)};
+    for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
+    return {blockId:lot.blockId,key,obj};
   }
 
   /**
@@ -404,6 +486,9 @@ export class CityLayer {
     const z=heightAt(this.asset,cx,cy);
     const at=project(prop.x,prop.y,z,view,this.pivot);
     const order=this.depthOf(depth(prop.x,prop.y,view,this.pivot));
+    const art=this.art&&propSheet(prop,this.art);
+    if(art&&this.scene.textures.exists(art.key))
+      return this.scene.add.image(at.x,at.y,art.key,propFrame(view,this.materials.frames(art.key))).setOrigin(.5,art.originY).setScale(art.scale).setDepth(order);
     const sheet=this.materials.prop(prop.kind,view);
     if(sheet){
       const a=propAnchor(this.scene.textures.getFrame(sheet.key,sheet.frame).height);
@@ -475,7 +560,11 @@ export class CityLayer {
   private occluder(block:CityBlock,base:number,view:number):Occluder{
     const key=`${block.id}|${view}`;
     let occ=this.occluders.get(key);
-    if(!occ){occ=occluderFor(block,this.asset,base,view,this.pivot);this.occluders.set(key,occ);}
+    if(!occ){
+      // A block shown by taller art fades by the drawn height.
+      const h=this.artHeight.get(block.id);
+      occ=occluderFor(h&&h>block.height?{...block,height:h}:block,this.asset,base,view,this.pivot);this.occluders.set(key,occ);
+    }
     return occ;
   }
 }

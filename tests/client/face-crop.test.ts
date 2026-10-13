@@ -22,9 +22,9 @@ function assertCovers(classId:string){
   assert.ok(f.left+side>=100-1e-3&&f.top+side>=100-1e-3,`${classId}: image ends at or after the circle`);
 }
 
-test('FACE_CROP: one entry per playable class (all 36), sorted by id, every value a sane crop',()=>{
+test('FACE_CROP: one entry per playable class (all 35), sorted by id, every value a sane crop',()=>{
   const ids=classes.map(c=>c.id);
-  assert.equal(ids.length,36);
+  assert.equal(ids.length,35);
   assert.deepEqual(Object.keys(FACE_CROP).sort(),[...ids].sort(),'same ids as src/rules/classes.ts');
   assert.deepEqual(Object.keys(FACE_CROP),[...Object.keys(FACE_CROP)].sort(),'the table is kept sorted by id');
   for(const id of ids){
@@ -185,9 +185,9 @@ test('faceHtml: circle + img with the crop vars, empty circle for an unknown cla
 });
 
 test('portraitClass: the class id of a portrait URL (edge arrows get a URL only)',()=>{
-  assert.equal(portraitClass('/art/portraits/tia-festa-thumb.webp'),'tia-festa');
-  assert.equal(portraitClass('/art/portraits/tia-festa.webp'),'tia-festa');
-  assert.equal(portraitClass('/art/portraits/tia-festa-768.webp'),'tia-festa');
+  assert.equal(portraitClass('/art/portraits/merendeira-thumb.webp'),'merendeira');
+  assert.equal(portraitClass('/art/portraits/merendeira.webp'),'merendeira');
+  assert.equal(portraitClass('/art/portraits/merendeira-768.webp'),'merendeira');
   assert.equal(portraitClass('https://x.test/art/portraits/gamer-mobile-thumb.webp?v=2'),'gamer-mobile');
   assert.equal(portraitClass('/art/lite/sprites/mendigo.webp'),undefined);
   assert.equal(portraitClass(undefined),undefined);

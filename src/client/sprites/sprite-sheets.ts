@@ -1,5 +1,6 @@
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {spriteUrl} from './art-urls.ts';
+import {artPiece,artUrl} from '../art/manifest.ts';
 
 /** A class's 4-direction atlas (docs/sprite-directions.md): where it is served and its measured standing height. */
 export interface DirectionalSheet {url:string;height:number;figure?:FigureBox}
@@ -17,8 +18,37 @@ export const directionalSheets=new Map<string,DirectionalSheet>(
  * the test fixture. It never enters the production catalog nor the build.
  */
 export const LAB_SHEETS:Record<string,DirectionalSheet>={'cidadao-comum':{url:'/tests/fixtures/sprites-4dir/cidadao-comum.dir4.webp',height:128,figure:{left:25,top:41,right:167,bottom:170}}};
-if(typeof location!=='undefined'&&import.meta.env.DEV&&new URLSearchParams(location.search).get('lab')==='sprites4')
-  for(const [id,sheet] of Object.entries(LAB_SHEETS))directionalSheets.set(id,sheet);
+const LAB=typeof location!=='undefined'&&import.meta.env.DEV&&new URLSearchParams(location.search).get('lab')==='sprites4';
+if(LAB)for(const [id,sheet] of Object.entries(LAB_SHEETS))directionalSheets.set(id,sheet);
+
+const CELL=192;
+const isFigure=(v:unknown):v is FigureBox=>{
+  if(!v||typeof v!=='object')return false;
+  const b=v as Record<string,unknown>,n=[b.left,b.top,b.right,b.bottom];
+  return n.every(x=>Number.isInteger(x)&&(x as number)>=0&&(x as number)<=CELL)&&(b.left as number)<(b.right as number)&&(b.top as number)<(b.bottom as number);
+};
+/**
+ * The art v2 hero atlas (group `personagens`, file `dir4`: the 4 diagonals of the 8-direction delivery, same layout as
+ * today's `<id>.dir4.webp`), when the index lists it with the standing height the importer measured
+ * (scripts/art-v2/convert.mjs: first idle cell of front-right, alpha > 20) — so the hero keeps its 96 world px figure
+ * (D-030). An entry without a usable height, another grid or a paged sheet is ignored (today's art stays).
+ * `dir4c` (cardinals) and `downed` have no slot in the renderer yet and are not used.
+ */
+export function importedSheet(id:string):DirectionalSheet|undefined{
+  const file=artPiece('personagens',id)?.files.dir4;
+  if(!file?.file||file.cell[0]!==CELL||file.cell[1]!==CELL)return undefined;
+  // One 1152×2304 page: 6 frames × (4 facings × idle/walk/attack rows).
+  const pages=file.pages;
+  if(pages?pages.length!==1||pages[0].columns!==6||pages[0].rows!==12:file.frames!==6||file.directions!==4)return undefined;
+  const height=file.height;
+  if(typeof height!=='number'||!Number.isFinite(height)||height<8||height>CELL)return undefined;
+  // The game downloads the lossy copy (scripts/art-lite.mjs, ~460 KB instead of ~960 KB), as for today's sheets.
+  const url=artUrl('personagens',file.file)?.replace('/art/sprites/','/art/lite/sprites/');
+  if(!url)return undefined;
+  return {url,height,...(isFigure(file.figure)?{figure:file.figure}:{})};
+}
+/** The 4-direction atlas a class draws with: the lab batch (dev flag), else the imported v2 one, else the catalog's. */
+export const directionalSheet=(id:string):DirectionalSheet|undefined=>(LAB?LAB_SHEETS[id]:undefined)??importedSheet(id)??directionalSheets.get(id);
 
 /** Texture key of a class's sheet: the 4-direction atlas when the class has one, the approved single sheet otherwise. */
-export const sheetKey=(id:string)=>directionalSheets.has(id)?`sprite:${id}:dir4`:`sprite:${id}`;
+export const sheetKey=(id:string)=>directionalSheet(id)?`sprite:${id}:dir4`:`sprite:${id}`;

@@ -183,13 +183,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Água, mate, biscoito de polvilho!','Tá trincando de gelada, ó!','Passa no cartão, sem problema!','Protetor? Tenho. Cadeira? Também.'],
   },
   {
-    classId:'tia-festa',role:'Suporte',weapon:'cafe',
-    classBonus:{maxHp:20,revive:0.25},
-    skill:{name:'Levanta e Vem',cooldown:20,
-      effect:'Cura os aliados em volta e, nos caídos por perto, adianta o resgate e dá mais 5 s antes de sangrarem (até o dobro do tempo normal).'},
-    lines:['Levanta, que essa música é boa!','Leva um pratinho pra viagem!','Nossa, como você cresceu!','Vem tirar foto com a tia!'],
-  },
-  {
     classId:'pagodeiro',role:'Suporte',weapon:'audio',
     classBonus:{regen:0.4,cooldown:-0.05},
     skill:{name:'Deixa Acontecer',cooldown:18,

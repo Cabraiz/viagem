@@ -3,6 +3,7 @@ import { setupSections } from './client/sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
+import { suit } from './client/ui/suit.ts';
 import { artReady } from './client/ui/art-boot.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
@@ -42,7 +43,7 @@ app.innerHTML = `
     <div class="section-tabs" role="tablist" aria-label="Seções da criação"><button type="button" role="tab" id="tab-personagem" aria-controls="personagem" aria-selected="true">Personagem</button><button type="button" role="tab" id="tab-classes" aria-controls="classes" aria-selected="false" tabindex="-1">Classes</button></div>
   </nav>
   <section id="personagem" class="journey-screen creation-window" role="tabpanel" aria-labelledby="tab-personagem">
-    <h1 id="screen-title" class="window-title">Crie seu personagem</h1>
+    <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
     <div class="window-content">
       <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
         <div id="portrait" class="portrait" role="img"></div>
@@ -58,7 +59,7 @@ app.innerHTML = `
     </div>
   </section>
   <section id="classes" class="journey-screen roster" role="tabpanel" aria-labelledby="tab-classes" hidden>
-    <div class="roster-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div>
+    <div class="roster-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${suit(value)}${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div>
     <div id="class-list" class="class-list"></div>
     <nav class="roster-pagination" aria-label="Páginas de classes"><button id="page-prev" class="round-button" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" class="round-button" aria-label="Próxima página">›</button></nav>
   </section>
@@ -148,7 +149,7 @@ function setArt(id: string,hero: HeroClass) {
 }
 function renderSelected(announce=false) {
   const index=classes.indexOf(selected);
-  text('portrait-role',selected.role);
+  document.getElementById('portrait-role')!.innerHTML=`${suit(selected.role)}${selected.role}`;
   text('quote',`“${selected.quote}”`);
   text('class-name',selected.name);
   text('skill-name',selected.skill);
@@ -178,6 +179,20 @@ function rosterPageSize() {
   list.style.setProperty('--cols',String(cols)); list.style.setProperty('--rows',String(rows));
   return lastPageSize=cols*rows;
 }
+// Card names stay on ONE line: a name that does not fit shrinks 0.5 px at a time down to NAME_MIN_PX (the CSS
+// ellipsis covers anything still too long at the floor). The text is measured with a Range, in sub-pixels:
+// scrollWidth rounds, so a name 0.4 px too wide would read as fitting and still show the ellipsis.
+const NAME_MIN_PX=8;
+function fitCardNames(container: HTMLElement) {
+  const range=document.createRange();
+  container.querySelectorAll<HTMLElement>('.card-label strong').forEach(name=>{
+    name.style.fontSize='';
+    let size=parseFloat(getComputedStyle(name).fontSize);
+    range.selectNodeContents(name);
+    const tooWide=()=>range.getBoundingClientRect().width>name.getBoundingClientRect().width;
+    while(tooWide()&&size>NAME_MIN_PX){ size=Math.max(NAME_MIN_PX,size-.5); name.style.fontSize=`${size}px`; }
+  });
+}
 let renderedPageSize=0;
 function renderRoster() {
   const results=filterClasses(query,role);
@@ -186,10 +201,13 @@ function renderRoster() {
   page=Math.max(0,Math.min(page,pages-1));
   const container=document.getElementById('class-list')!;
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazyArt.unobserve(img));
-  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong><small>${hero.role}</small></span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
+  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong></span><span class="card-suit">${suit(hero.role,{label:true})}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
+  fitCardNames(container);
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
   text('page-count',`${page+1} / ${pages}`);
+  // One page only: the pager says nothing, so it goes (and gives its row back to the grid).
+  (document.querySelector('.roster-pagination') as HTMLElement).hidden=pages<=1;
   (document.getElementById('page-prev') as HTMLButtonElement).disabled=page===0;
   (document.getElementById('page-next') as HTMLButtonElement).disabled=page>=pages-1;
 }
@@ -283,8 +301,14 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
   finally {button.disabled=false;}
 });
-const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}});
+// Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
+const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});
 renderRoster();renderSelected();
+// The display font arrives after the first render and is wider than the fallback: fit the names again.
+// A face may start loading only when the names first use it, after `ready` already settled: refit on every load too.
+const refitNames=()=>fitCardNames(document.getElementById('class-list')!);
+document.fonts?.ready.then(refitNames);
+document.fonts?.addEventListener('loadingdone',refitNames);
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());

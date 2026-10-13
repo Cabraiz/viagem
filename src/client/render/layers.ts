@@ -14,6 +14,7 @@ import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
+import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,phaseLook,reflectGlint,sparkleFrame,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
@@ -75,8 +76,12 @@ interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
   phase:number;flashAt:number;flashing:boolean;screenX:number;flip:boolean;moving:boolean;
-  /** EnemyView.phase (the boss's phase; 1 otherwise): the imported chefe idles with 'phase2-idle' from phase 2. */
+  /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
   bossPhase:number;
+  /** What EnemyView.phase shows on a regular critter (phase-look.ts: acting pose, lecture ring, buff, reflect, headlight). */
+  look:PhaseLook;
+  /** Procedural texture key in use (the acting pose swaps it). */
+  tex:string;
 }
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
@@ -189,6 +194,9 @@ export const HERO_BALLOON_DEPTH=96550;
 export {TELEGRAPH_STROKE,TELEGRAPH_BANDS_CSS} from './telegraph-edge.ts';
 /** Hatch of the zone: Breu diagonals, 1,5 px CSS wide every 9 px CSS, at 18%. */
 const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
+/** Elenco P1 state cues (drawPhase): ring smoothness, the buff gold and the motoboy's lamp on his texture (feet origin). */
+const PHASE_RING_POINTS=32,PHASE_GOLD=0xf6c84a;
+const MOTOBOY_LAMP={x:29,y:38} as const;
 /** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
 const DECOR_ELLIPSE_SEGMENTS=20;
 
@@ -282,7 +290,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false,bossPhase:1}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado')}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -410,17 +418,19 @@ export class HordeRenderer{
   // ---------- reconciliation ----------
   private syncEnemy(view:EnemyView){
     const used=this.enemies.use(view.id),a=used.item,kind=enemyKind(view.kind),elite=!!view.elite&&kind!=='chefe';
-    if(used.fresh||a.kind!==kind||a.elite!==elite){
-      a.image.setTexture(enemyTexture(kind,elite)).setOrigin(.5,ENEMY_ART[kind].originY);
-      a.kind=kind;a.elite=elite;
+    const look=phaseLook(kind,view.phase),tex=ENEMY_TEXTURES[kind][(elite?1:0)+(look.acting?2:0)];
+    if(used.fresh||a.kind!==kind||a.elite!==elite||a.tex!==tex){
+      a.image.setTexture(tex).setOrigin(.5,ENEMY_ART[kind].originY);
+      a.kind=kind;a.elite=elite;a.tex=tex;
     }
+    a.look=look;
     if(used.fresh){
       a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
-    a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=view.phase??1;
+    a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,look=pickupLook(view.kind,view.resource);
@@ -645,6 +655,7 @@ export class HordeRenderer{
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8*body);
+    if(a.look!==LOOK_NONE)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size);
   };
@@ -671,6 +682,62 @@ export class HordeRenderer{
       g.fillStyle(PALETTE.breu,alpha).fillCircle(ex+lx,head+ly,EYES_CSS.pupil*c);
     }
   }
+  /**
+   * Elenco P1 state cues (phase-look.ts), drawn with Graphics calls on scratch points only (no allocation): the coach's
+   * lecture ring on the ground (PALESTRA_RADIUS world units, gold: a buff zone, never the orange of danger), the golden
+   * sparkle of a buffed critter, the influencer's shiny reflect ring and the motoboy's headlight glow.
+   * (x,y): feet on the ground; (bx,by): where the body is drawn (lifted for flyers).
+   */
+  private drawPhase(a:EnemyActor,x:number,y:number,bx:number,by:number,size:number){
+    const look=a.look,art=ENEMY_ART[a.kind],body=this.body,css=this.css(),now=this.now,reduced=this.reduced;
+    const height=art.height*art.originY*size*body;
+    if(look.aura){
+      const e=groundEllipse(PALESTRA_RADIUS,this.ellipseAxes),k=auraPulse(now,reduced);
+      this.ellipse(x,y,e.rx*k,e.ry*k);
+      const g=this.ground,n=PHASE_RING_POINTS;
+      g.fillStyle(PHASE_GOLD,.1).fillPoints(this.ringPts,true,true,n);
+      g.lineStyle(5*css,PALETTE.breu,.35).strokePoints(this.ringPts,true,true,n);
+      g.lineStyle(3*css,PHASE_GOLD,.95).strokePoints(this.ringPts,true,true,n);
+      this.ellipse(x,y,e.rx*k*.94,e.ry*k*.94);
+      g.lineStyle(1.5*css,0xfff3c0,.7).strokePoints(this.ringPts,true,true,n);
+    }
+    if(look.sparkle){
+      const g=this.overlay,top=by-height,s=body*size,f=this.sparkle;
+      for(let i=0;i<SPARKLES;i++){
+        sparkleFrame(i,now,a.phase,reduced,f);
+        this.star4(g,bx+f.dx*s*1.4,top+f.dy*s*1.4,Math.max(f.r*s,2.2*css),PHASE_GOLD,f.alpha);
+      }
+    }
+    if(look.reflect){
+      const g=this.overlay,cy=by-height*.5,rx=art.width*.56*size*body,ry=height*.6;
+      this.ellipse(bx,cy,rx,ry);
+      g.lineStyle(4*css,0xffffff,.35).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
+      g.lineStyle(2*css,0x9be8f0,.9).strokePoints(this.ringPts,true,true,PHASE_RING_POINTS);
+      const t=reflectGlint(now,reduced);
+      this.star4(g,bx+Math.cos(t)*rx,cy+Math.sin(t)*ry,6*body,0xffffff,.95);
+      this.star4(g,bx+Math.cos(t+Math.PI)*rx,cy+Math.sin(t+Math.PI)*ry,4*body,0xffffff,.7);
+    }
+    if(look.headlight){
+      const g=this.overlay,k=headlightGlow(now,a.phase,reduced),m=size>1?1.2:1;
+      const lx=bx+(a.flip?-1:1)*MOTOBOY_LAMP.x*m*body*this.scale2.sx,ly=by-MOTOBOY_LAMP.y*m*body*this.scale2.sy;
+      g.fillStyle(0xfff2a8,.18*k).fillCircle(lx,ly,16*body*k);
+      g.fillStyle(0xfff6c8,.35*k).fillCircle(lx,ly,9*body);
+      g.fillStyle(0xffffff,.9).fillCircle(lx,ly,3.2*body);
+    }
+  }
+  /** Four-point star from four triangles (no point arrays). */
+  private star4(g:Phaser.GameObjects.Graphics,x:number,y:number,r:number,color:number,alpha:number){
+    const w=r*.28;
+    g.fillStyle(color,alpha).fillTriangle(x-w,y,x+w,y,x,y-r).fillTriangle(x-w,y,x+w,y,x,y+r)
+      .fillTriangle(x,y-w,x,y+w,x-r,y).fillTriangle(x,y-w,x,y+w,x+r,y);
+  }
+  /** Writes an ellipse into the phase ring's scratch points. */
+  private ellipse(cx:number,cy:number,rx:number,ry:number){
+    for(let i=0;i<PHASE_RING_POINTS;i++){const an=i/PHASE_RING_POINTS*TAU,p=this.ringPts[i];p.x=cx+Math.cos(an)*rx;p.y=cy+Math.sin(an)*ry;}
+  }
+  private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
+  private ellipseAxes={rx:0,ry:0};
+  private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
   private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*this.body;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){

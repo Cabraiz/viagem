@@ -61,7 +61,6 @@ export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze
   'sensei':{cx:.467,cy:.23,size:.46},
   'streamer':{cx:.466,cy:.23,size:.46},
   'tecnico-ti':{cx:.476,cy:.197,size:.395},
-  'tia-festa':{cx:.487,cy:.232,size:.447},
   'tio-do-churrasco':{cx:.517,cy:.23,size:.46},
   'universitario':{cx:.492,cy:.214,size:.429},
   'vendedor-praia':{cx:.497,cy:.195,size:.391},

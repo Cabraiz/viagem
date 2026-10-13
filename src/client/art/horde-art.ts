@@ -13,15 +13,19 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import {allItemDisplays} from '../hud/items.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
  * client kinds (gosma → bebado, pernilongo → pombos, fiscal → agiota; tio-pave, anao-molotov and chefe kept theirs),
  * so the map is the identity today; it stays a table so a later rename on either side is one line.
+ * Elenco P1 (coach, motoboy, influencer): no piece in the importer yet, so they stay procedural (render/textures.ts,
+ * with their acting pose) until the manifest lists them under these ids; nothing else changes when it does.
  */
 export const ENEMY_ART_ID:Readonly<Record<EnemyKind,string>>={
   bebado:'bebado','anao-molotov':'anao-molotov',pombos:'pombos','tio-pave':'tio-pave',agiota:'agiota',chefe:'chefe',
+  coach:'coach',motoboy:'motoboy',influencer:'influencer',
 };
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;
@@ -103,12 +107,17 @@ function lookOf(file:ArtFile,key:string):ProjectileLook{
   }
   return l;
 }
+/** Ids of the players' weapons and evolutions (hud/items.ts mirrors the server catalog): the sources of friendly shots. */
+const PLAYER_WEAPON_SOURCES:ReadonlySet<string>=new Set(allItemDisplays().filter(i=>i.kind==='weapon'||i.kind==='evolution').map(i=>i.id));
 /**
  * Look of a projectile from the manifest: its own art (`art:proj:<id>`), else for a friendly shot the shared
- * 'tiro-aliado' (loaded under FX.projFriendly), else undefined: the caller keeps keys.ts projectileTexture. The renderer
- * still checks that the key's texture loaded. Allocation-free after the first call per file.
+ * 'tiro-aliado' (loaded under FX.projFriendly), else undefined: the caller keeps keys.ts projectileTexture. A hostile
+ * shot whose source is a player's weapon (a shot the influencer reflected back, sim/projectiles.ts reflectShot) never
+ * wears that weapon's art: it reads as hostile (undefined → the hostile star). The renderer still checks that the key's
+ * texture loaded. Allocation-free after the first call per file.
  */
 export function projectileLook(hostile:boolean,source:string):ProjectileLook|undefined{
+  if(hostile&&PLAYER_WEAPON_SOURCES.has(source))return undefined;
   const id=projectileArtId(source),own=id!==undefined?projectileFile(id):undefined;
   if(own)return lookOf(own,PROJECTILE_KEYS.get(id as string) as string);
   if(!hostile){const shared=projectileFile('tiro-aliado');if(shared)return lookOf(shared,FX.projFriendly);}

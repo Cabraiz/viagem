@@ -23,7 +23,7 @@ const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const owner=params.get('papel')!=='convidado';
 const NAMES=['Capivara Turbo','Pastel de Feira','Zé do Pix Parcelado','Tia da Festa Junina','Pombo Sem Wi-Fi','Marmita Brabo'];
 /** Each one's class, for the chip's face (rostos-hud). */
-const CLASSES=['cidadao-comum','rei-pastel','viciado-em-bet','tia-festa','aposentado','gamer-mobile'];
+const CLASSES=['cidadao-comum','rei-pastel','viciado-em-bet','merendeira','aposentado','gamer-mobile'];
 const CITY:MapRef={id:'cidade-nevada',version:1,hash:'c8acc6580b975beeaa4146330862597daa73cbe77b794c7287044ac97d1e6bb9'};
 const refOf=(id:MapId)=>id==='cidade-nevada'?CITY:INFINITO_REF;
 

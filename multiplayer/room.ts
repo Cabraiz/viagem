@@ -99,6 +99,11 @@ export interface RoomRoster {
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
+/** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
+ *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
+ *  roster stays strict (junk is dropped; that player joins again and lands here). */
+const DEFAULT_CLASS=classes[0].id;
+const knownClass=(id:unknown)=>typeof id==='string'&&classIds.has(id)?id:DEFAULT_CLASS;
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
 /** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
@@ -387,14 +392,14 @@ export class Room {
         }
         this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
-        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.',now);return;}
+        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
-        this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
+        this.sim.add(id,m.name.trim(),knownClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
       session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;this.catalogs.set(session.id,maps.maps);

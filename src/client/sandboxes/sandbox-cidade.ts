@@ -32,10 +32,14 @@
  * gem on their Breu 38% shadows; the "você" ring (YouMarkers), a plain and a caído map ficha (MapLabel) and the
  * destination mark (city-edge-rules.ts). One static view is pushed: nothing animates but the dash drift (none with
  * prefers-reduced-motion) and the hero's idle sheet.
+ * Imported art (card ligar-arte-v2): the city's buildings, rubble, props and fountain from `/art/manifest.json`
+ * (render/city/art-plan.ts); `arte=0` draws without it, `altura=a|b` picks the building scale (a: 1 storey ≈ 2.4 u on
+ * 2×2-cell lots, b: as delivered).
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
-import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,unproject,type CityAsset} from '../render/city/index.ts';
+import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
+import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
@@ -52,7 +56,6 @@ import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
-import {loadArtManifest} from '../art/manifest.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 
 const params=new URLSearchParams(location.search);
@@ -119,8 +122,11 @@ class CitySandbox extends Phaser.Scene {
   private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
   private decoded?:CityTerrain;
   constructor(){super('city-sandbox');}
+  private art?:CityArtPlan;
   preload(){
     this.load.spritesheet(PINE_TEXTURE,'/art/lite/trees/arvore-nevada.webp',{frameWidth:256,frameHeight:384});
+    this.art=buildCityArtPlan(artIndex(),cityArtOptions(location.search));
+    queueCityArt(this,this.art);
     this.sprites.queue(classId);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
@@ -137,7 +143,7 @@ class CitySandbox extends Phaser.Scene {
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(centre&&!start)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
-    this.layer=new CityLayer(this,this.asset);
+    this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;
@@ -305,8 +311,8 @@ class CitySandbox extends Phaser.Scene {
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
-// base=1: the art manifest first (as the game does at boot), so the base art is queued when present.
-if(base)void loadArtManifest().then(start);else start();
+// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art.
+if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start();
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{

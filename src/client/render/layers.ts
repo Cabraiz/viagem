@@ -8,13 +8,13 @@ import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackTint,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtRow,hasDeathArt,playEnemyAction,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtOn,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
+import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
@@ -76,6 +76,8 @@ export interface HordeRendererOptions{
 
 interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
+  /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
+  art:string;act:string|undefined;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
   phase:number;flashAt:number;flashing:boolean;
   /** The sun tint (render/light.ts ACTOR_TINT) is on: set once per spawn and after each hit flash. */
@@ -115,7 +117,7 @@ interface BubbleFx{text:Text;born:number;enemy:string;player:string;x:number;y:n
   tag:boolean}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 /** Imported death animation (art v2) at the enemy's last spot and facing; `top` is its elite layer. Only with death art. */
-interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;elite:boolean;row:number;x:number;y:number;lift:number}
+interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number}
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16,deaths:24} as const;
 const TAU=Math.PI*2;
@@ -307,7 +309,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -323,7 +325,7 @@ export class HordeRenderer{
     this.bubbles=new Ring<BubbleFx>(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',player:'',x:0,y:0,lift:0,tag:false}),showText,CAPS.bubbles);
     this.warnings=new Ring(()=>({image:image(FX.warning)(),born:0,x:0,y:0,atTick:0,size:1}),showImage,CAPS.warnings);
     // Made on the first kill with imported death art only (empty manifest: never), then reused.
-    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),born:0,kind:'bebado',elite:false,row:0,x:0,y:0,lift:0}),
+    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),born:0,kind:'bebado',art:'bebado',elite:false,row:0,x:0,y:0,lift:0}),
       (o,active)=>{showImage(o,active);if(!active)o.top.setVisible(false).setAlpha(1);},CAPS.deaths);
   }
 
@@ -443,14 +445,18 @@ export class HordeRenderer{
       a.image.setTexture(tex).setOrigin(.5,ENEMY_ART[kind].originY);
       a.kind=kind;a.elite=elite;a.tex=tex;
     }
-    a.look=look;
+    a.look=look;a.act=actAnim(view.kind,kind,view.phase);
+    // The roster's art loads per match, the first time one of its enemies shows up (horde-art.ts queueEnemyArt).
+    const art=enemyArtId(view.kind,kind);
+    if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}
     if(used.fresh){
       a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
     // A pooled actor may come back as another kind: its accent tint follows (the hit flash owns the tint while it lasts).
-    const tint=fallbackTint(view.kind);
+    // Imported art has its own colours: the accent only tints the reserve.
+    const tint=enemyArtOn(a.image)?undefined:fallbackTint(view.kind);
     // A new accent re-lights the actor on its next frame (sunlit multiplies the light by the roster accent).
     if(used.fresh||a.tint!==tint){a.tint=tint;a.lit=false;}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
@@ -548,7 +554,7 @@ export class HordeRenderer{
     },
     telegraph:id=>{const t=this.viewTelegraphs;for(let i=0;i<t.length;i++)if(t[i].id===id)return t[i];return undefined;},
   };
-  private playCue(cue:ActionCue){const a=this.enemies.get(cue.enemy);if(a)playEnemyAction(a.image,a.kind,cue.action,this.now);}
+  private playCue(cue:ActionCue){const a=this.enemies.get(cue.enemy);if(a)playEnemyAction(a.image,a.art,cue.action,this.now);}
   private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,self:boolean,priority:boolean,eventId:number){
     // Hits on the same target within DAMAGE_MERGE_MS add up into the number already flying.
     const merged=this.numberByTarget.get(target);
@@ -591,9 +597,10 @@ export class HordeRenderer{
     // Art v2: the imported death plays on a pooled death actor where (and facing where) the enemy was last drawn,
     // instead of today's puff and stars; the death joke below stays.
     const dying=this.enemies.get(id);
-    if(hasDeathArt(this.scene.textures,k,dying?.image)){
+    const art=enemyArtId(kind,k);
+    if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
-      d.born=this.now;d.kind=k;d.elite=elite;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
+      d.born=this.now;d.kind=k;d.art=art;d.elite=elite;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
       d.lift=ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
       d.image.clearTint();
     }else{
@@ -1022,7 +1029,7 @@ export class HordeRenderer{
   private drawDeath=(d:DeathFx)=>{
     this.place(d.image,d.x,d.y,d.lift);
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
-    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.body);
+    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.body,d.art);
   };
   private drawStar=(s:StarFx)=>{
     const age=this.now-s.born;if(age>=STAR_MS)return false;

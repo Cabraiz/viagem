@@ -8,7 +8,7 @@
  * and imports Phaser as a type, so this module loads without Phaser.
  */
 import type Phaser from 'phaser';
-import {artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
+import {artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
@@ -28,6 +28,13 @@ export const ENEMY_ART_ID:Readonly<Record<EnemyKind,string>>={
   bebado:'bebado','anao-molotov':'anao-molotov',pombos:'pombos','tio-pave':'tio-pave',agiota:'agiota',chefe:'chefe',
   coach:'coach',motoboy:'motoboy',influencer:'influencer',
 };
+const LEGACY=new Set<string>(ENEMY_KINDS);
+/**
+ * Art id of an enemy (arte-do-roster-no-render): a legacy kind keeps ENEMY_ART_ID; any roster id (D-040) is its own
+ * art id in the `inimigos` group. A roster id never borrows its base kind's art: without its own piece it keeps the
+ * role's procedural reserve (render/textures.ts with the roster accent).
+ */
+export const enemyArtId=(viewKind:string,kind:EnemyKind)=>LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind;
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;
 /** Texture key of one page of an enemy sheet: `art:enemy:<id>:<file>` plus `:p<n>` (1-based) when the sheet is paged. */
@@ -173,13 +180,7 @@ export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:
  */
 export function artLoads():ArtLoad[]{
   const out:ArtLoad[]=[];
-  for(const kind of ENEMY_KINDS){
-    const id=ENEMY_ART_ID[kind],piece=artPiece('inimigos',id);if(!piece)continue;
-    for(const [name,file] of Object.entries(piece.files)){
-      const pages=artPages(file);
-      pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});});
-    }
-  }
+  for(const kind of ENEMY_KINDS)out.push(...enemyPieceLoads(ENEMY_ART_ID[kind]));
   // Per-source projectiles: the first page of each sheet (projectileLook only plays the frames of that page).
   for(const id of PROJECTILE_ART_IDS){
     const file=projectileFile(id),page=file&&artPages(file)[0],url=page&&artUrl('projeteis',page.file);
@@ -191,6 +192,15 @@ export function artLoads():ArtLoad[]{
     const page=file&&artPages(file)[0],url=page&&artUrl(s.group,page.file);
     if(!file||!url||!validCell(file))continue;
     out.push(s.mode==='sheet'?{key:s.key,url,cell:file.cell}:{key:`art:${s.group}:${id}`,url,cell:file.cell,bake:{key:s.key,size:s.size as [number,number],fit:s.fit??'contain'}});
+  }
+  return out;
+}
+/** Every page of every file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
+export function enemyPieceLoads(id:string):ArtLoad[]{
+  const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
+  for(const [name,file] of Object.entries(piece.files)){
+    const pages=artPages(file);
+    pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});});
   }
   return out;
 }
@@ -206,6 +216,25 @@ export function queueHordeArt(scene:Phaser.Scene){
   }
   queueFramesArt(scene); // 9-slice frames and ground marks (art/frames-art.ts)
   queueTelegraphArt(scene,false); // telegraph hatch + dashed border (render/telegraph-art.ts), ready on the first frame
+}
+/**
+ * Per match (arte-do-roster-no-render): the roster's sheets are not in the preload (173 ids, 12-18 drawn per run);
+ * the renderer asks for art `id` when an enemy of it shows up (or the room names the run's rotation) and its pages load
+ * in the background. Until they do, the enemy keeps its reserve; applyEnemyArt switches by itself once they exist.
+ * Each id is asked once per scene; true when something was queued. A failed page keeps the reserve.
+ */
+const asked=new WeakMap<object,Set<string>>();
+export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  let seen=asked.get(scene);if(!seen){seen=new Set();asked.set(scene,seen);}
+  if(seen.has(id))return false;
+  seen.add(id);
+  let queued=false;
+  for(const l of enemyPieceLoads(id)){
+    if(scene.textures.exists(l.key))continue;
+    scene.load.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
+  }
+  if(queued&&!scene.load.isLoading())scene.load.start();
+  return queued;
 }
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
 function bakeFrame(scene:Phaser.Scene,from:string,cell:[number,number],key:string,[w,h]:readonly [number,number],fit:'contain'|'fill'){
@@ -335,7 +364,9 @@ export function enemyDrawScale(kind:EnemyKind,file:ArtFile,elite=false):number{
  * The looping animation of an enemy that is not acting: chooseAnim (cached), except the chefe from boss phase 2
  * (BOSS_PHASE2) standing still, who idles with 'phase2-idle' when the piece has it.
  */
-export function loopAnim(piece:ArtPiece,moving:boolean,elite:boolean,bossPhase=1):string|undefined{
+export function loopAnim(piece:ArtPiece,moving:boolean,elite:boolean,bossPhase=1,act?:string):string|undefined{
+  // The acting pose of the server phase (render/phase-look.ts actAnim: lecture, aim, pose, summon) loops while it lasts.
+  if(act&&piece.files[act]&&(!elite||piece.files[eliteFile(act)]))return act;
   if(!moving&&!elite&&bossPhase>=BOSS_PHASE2&&piece.files['phase2-idle'])return 'phase2-idle';
   return cachedAnim(piece,moving,elite);
 }
@@ -352,6 +383,19 @@ export interface ActionState {action?:string;at:number;end:number;hitAt?:number}
  */
 export const HIT_GAP_MIN_MS=1500,HIT_GAP_HITS=3;
 export const hitGap=(hitMs:number)=>Math.max(HIT_GAP_MIN_MS,HIT_GAP_HITS*hitMs);
+/**
+ * Cues come from the base kind's events (horde-actions.ts: the pombos poop, the anão throws, the Tio jokes...). A
+ * roster piece has its role's animations (scripts/art-v2/enemies-table.mjs): an action it lacks plays the first of
+ * these it has (an enxame's poop is its attack, a brutamontes' joke is its shove); none → the loop goes on.
+ */
+export const ACTION_ALIASES:Readonly<Record<string,readonly string[]>>={
+  poop:['attack'],throw:['attack'],joke:['shove','attack'],shove:['attack'],slam:['shove','attack'],charge:['crash','attack'],
+};
+export function pieceAction(piece:ArtPiece,action:string):string|undefined{
+  if(piece.files[action])return action;
+  for(const a of ACTION_ALIASES[action]??[])if(piece.files[a])return a;
+  return undefined;
+}
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
   // A hit never starts while another action plays, and the same action already playing is not restarted.
@@ -376,15 +420,19 @@ const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0};
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
 export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=false;s.action=s.hitAt=undefined;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
-export function enemyArtActive(){for(const kind of ENEMY_KINDS)if(artPiece('inimigos',ENEMY_ART_ID[kind]))return true;return false;}
+export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
+/** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
+export const enemyArtOn=(image:object)=>!!states.get(image)?.on;
 /**
  * Starts action `action` (horde-actions.ts cue) on a pooled enemy image of `kind` at `now`: false (nothing changes)
  * when the kind has no art or its piece lacks that animation (fallback: the walk/idle loop). applyEnemyArt plays it.
  */
-export function playEnemyAction(image:object,kind:EnemyKind,action:string,now:number):boolean{
-  const piece=artPiece('inimigos',ENEMY_ART_ID[kind]);
-  return !!piece&&startAction(stateOf(image),piece,action,now);
+export function playEnemyAction(image:object,art:string,action:string,now:number):boolean{
+  const piece=artPiece('inimigos',artOf(art)),played=piece&&pieceAction(piece,action);
+  return !!piece&&!!played&&startAction(stateOf(image),piece,played,now);
 }
+/** A legacy kind → its ENEMY_ART_ID; anything else (a roster id) is already an art id. */
+const artOf=(id:string)=>LEGACY.has(id)?ENEMY_ART_ID[id as EnemyKind]:id;
 /** Last facing row of a pooled enemy image (0 = facing the camera when it never had art): the death plays on it. */
 export function enemyArtRow(image:object){const s=states.get(image);return s&&s.row>=0?s.row:0;}
 
@@ -398,11 +446,12 @@ export function enemyArtRow(image:object){const s=states.get(image);return s&&s.
  * frame's sheet is shown instead (CityOutlines.show maps origin and scale); elsewhere, and always outside the city, the
  * imported sheet with its baked umber rim.
  */
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
-  const id=ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
+  // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
+  const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
   if(!piece){const s=states.get(image);return s?off(image,actor,s):false;}
-  const s=stateOf(image),loop=loopAnim(piece,moving,actor.elite,actor.bossPhase);
+  const s=stateOf(image),loop=loopAnim(piece,moving,actor.elite,actor.bossPhase,actor.act);
   if(moving||s.row<0)s.row=facingRow(dx,dy,view,s.row);
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.
@@ -474,16 +523,16 @@ function overlayOf(image:Phaser.GameObjects.Image,s:ArtState){
  * Whether a kill of `kind` plays the imported death: the piece has 'death', its pages loaded, and the dying actor (its
  * pooled image, when the renderer still had it) was showing the art (an elite drawn procedurally keeps today's puff).
  */
-export function hasDeathArt(textures:{exists(key:string):boolean},kind:EnemyKind,image?:object):boolean{
-  const id=ENEMY_ART_ID[kind],file=artPiece('inimigos',id)?.files.death;if(!file)return false;
+export function hasDeathArt(textures:{exists(key:string):boolean},art:string,image?:object):boolean{
+  const id=artOf(art),file=artPiece('inimigos',id)?.files.death;if(!file)return false;
   if(image){const s=states.get(image);if(!s||!s.on)return false;}
   const keys=fileInfo(id,'death',file).keys;
   for(let i=0;i<keys.length;i++)if(!textures.exists(keys[i]))return false;
   return true;
 }
-/** Duration (ms) of the imported death of `kind` (0 without one). */
-export function deathDuration(kind:EnemyKind){
-  const id=ENEMY_ART_ID[kind],file=artPiece('inimigos',id)?.files.death;
+/** Duration (ms) of the imported death of art `art` (a legacy kind or a roster id; 0 without one). */
+export function deathDuration(art:string){
+  const id=artOf(art),file=artPiece('inimigos',id)?.files.death;
   if(!file)return 0;
   const info=fileInfo(id,'death',file);return actionDuration(info.frames,info.fps);
 }
@@ -493,8 +542,9 @@ export function deathDuration(kind:EnemyKind){
  * and today's size; the elite layer `elite/death` over it for an elite (hidden when absent). False when it is over:
  * the renderer then releases the death actor.
  */
-export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1):boolean{
-  const id=ENEMY_ART_ID[kind],piece=artPiece('inimigos',id),file=piece?.files.death;
+export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string):boolean{
+  // `kind` sizes it (enemyDrawScale); `art` (the roster id) picks the sheet, the kind's own art without it.
+  const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),file=piece?.files.death;
   if(!piece||!file){overlay.setVisible(false);return false;}
   const info=fileInfo(id,'death',file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
   const frame=alpha>0?enemyFrame(id,piece,'death',row,elapsedMs,base,true):undefined;

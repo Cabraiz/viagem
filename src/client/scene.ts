@@ -2,6 +2,8 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
+import {Vignette} from './render/vignette.ts';
+import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
@@ -27,7 +29,7 @@ import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
 import {buildPlanFor,elevation} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
-import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
+import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
@@ -41,6 +43,7 @@ import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
+import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -154,6 +157,10 @@ export class IslandScene extends Phaser.Scene {
   /** Imported ally ground rings (art/hud-art.ts); without the art, each ally's Breu ellipse. */
   private allyRings?:AllyRings;
   private goal?:Point;
+  /** Desktop (controles-desktop): the held mouse button follows the cursor (Warcraft 3), re-targeted on a throttle. */
+  private hold=new HoldFollow();
+  /** A mouse walk's marker shows until this time (MARKER_MS after the click or the release); undefined: to the end. */
+  private markerUntil?:number;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
@@ -294,11 +301,13 @@ export class IslandScene extends Phaser.Scene {
     // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
+    // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
+    this.vignette=new Vignette(this);this.applyGrade();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     this.shadowLook();
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
-    this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
+    this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.artMarks=new SceneMarks(this,p=>this.project(p));
@@ -307,12 +316,18 @@ export class IslandScene extends Phaser.Scene {
     this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
     const rings=this.allyRings=new AllyRings(this,tokenColor('--c-breu')),dropRings=()=>{rings.destroy();if(this.allyRings===rings)this.allyRings=undefined;};
     this.events.once('shutdown',dropRings);this.events.once('destroy',dropRings);
+    // Only the canvas's own presses land here (POINTER_DOWN needs the canvas as the down element): a press on the DOM HUD
+    // never walks. A mouse press on the ground also starts the hold-to-follow (followHold); one on an enemy targets it.
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=this.enemyAt(p);
+      this.hold.release();
       if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.message('Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
-      this.goTo(unprojectView(p,this.view,this.field));
+      const target=unprojectView(p,this.view,this.field),mouse=!pointer.wasTouch;
+      this.goTo(target,mouse?{markerMs:MARKER_MS}:undefined);
+      // Held from a spot with no way there (water) too: dragging out of it starts the walk.
+      if(mouse)this.hold.press(target,this.time.now);
     });
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
@@ -414,7 +429,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;this.correction.clear();}
     // The old world's defenses and their craters go; the next snapshot brings this world's (no volley on first sight).
     this.towers?.reset();this.towerFeed.reset();this.buildPlan=undefined;
-    this.buildWorld();this.shadowLook();
+    this.buildWorld();this.shadowLook();this.applyGrade();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
   }
@@ -519,14 +534,52 @@ export class IslandScene extends Phaser.Scene {
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
-  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
-  goTo(target:Point){
+  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.input.keyboard?.resetKeys();}
+  /**
+   * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
+   * mouse button's follow (a walk already ordered by a click goes on to its marker, like a tap's).
+   */
+  releaseInput(){this.hold.release();this.input.keyboard?.resetKeys();}
+  /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
+  goTo(target:Point,options:{markerMs?:number}={}){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
     this.route=findPath(this.position,target,this.field);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
+    this.markerUntil=options.markerMs!==undefined?this.time.now+options.markerMs:undefined;
+    this.drawDestination(target);
+  }
+  /**
+   * Hold-to-follow, every frame while the mouse button that pressed the ground stays down: the ground point under the
+   * cursor (it moves with the follow camera too) becomes the new walk at most every HOLD_RETARGET_MS, silently (no
+   * "Seguindo a trilha…", no marker). Keys and the stick win over it, as over any route. Letting go shows the marker
+   * at the last target for MARKER_MS.
+   */
+  private followHold(time:number,steering:boolean){
+    if(!this.hold.held)return;
+    const pointer=this.input.mousePointer??this.input.activePointer;
+    if(this.paused||!pointer?.primaryDown){
+      const last=this.hold.release();
+      if(last&&!this.paused&&this.route.length){this.markerUntil=time+MARKER_MS;this.destination.clear();this.drawDestination(last);}
+      return;
+    }
+    if(steering)return;
+    const world=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+    const next=this.hold.move(unprojectView(world,this.view,this.field),time);
+    if(!next)return;
+    // A point with no way there (water, a wall) keeps the walk already under way.
+    const route=findPath(this.position,next,this.field);
+    if(route.length){this.route=route;this.attackTarget=undefined;}
+  }
+  /** Keys held this frame (cursor keys and W,A,S,D) as the stick's screen vector (desktop-input.ts keyVector). */
+  private keyAxis(){
+    const c=this.cursors,k=this.keys;
+    return keyVector({up:!!(c?.up.isDown||k?.W.isDown),down:!!(c?.down.isDown||k?.S.isDown),left:!!(c?.left.isDown||k?.A.isDown),right:!!(c?.right.isDown||k?.D.isDown)});
+  }
+  /** The destination marker at `target` (the imported art is drawn every frame by drawYou while it shows). */
+  private drawDestination(target:Point){
     const p=this.project(target);
     this.goal=target;
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel'),css=1/Math.max(.05,this.cameras.main.zoom);
@@ -566,7 +619,9 @@ export class IslandScene extends Phaser.Scene {
   /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
-    this.artMarks?.destination(this.route.length?this.goal:undefined,this.actorScale,time,this.reduced,100000);
+    const marker=this.route.length>0&&markerVisible(this.markerUntil,time);
+    if(!marker&&this.markerUntil!==undefined)this.destination.clear();
+    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,100000);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -586,6 +641,9 @@ export class IslandScene extends Phaser.Scene {
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
     this.city?.setEconomy(on);
+    this.applyGrade();
+    if(this.stone)this.stone.economy=on;
+    const towers=this.towers;if(towers)towers.economy=on; // their cast shadows (a renderer built later reads this.economy)
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
@@ -598,6 +656,9 @@ export class IslandScene extends Phaser.Scene {
     const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
+  private vignette?:Vignette;
+  /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
+  private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
   private readonly catchUp=new CatchUp();
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
@@ -618,6 +679,7 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.artMarks?.begin();
@@ -634,10 +696,10 @@ export class IslandScene extends Phaser.Scene {
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
       this.updateCamera(delta);this.shakeCamera();this.drawYou(_time);return;
     }
-    if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
-    const axis=this.hooks.direction();
-    const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
-    const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
+    if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
+    const axis=this.hooks.direction(),keys=this.keyAxis();
+    const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
+    this.followHold(_time,Math.hypot(sx,sy)>.05);
     const old=this.position,seconds=Math.min(delta/1000,.1);
     if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.intent=screenDirection(sx,sy,this.view);this.position=moveDirection(old,this.intent,seconds,this.field);}
     else{this.position=moveAlong(old,this.route,seconds,this.field);this.intent={x:this.position.x-old.x,y:this.position.y-old.y};}
@@ -660,7 +722,7 @@ export class IslandScene extends Phaser.Scene {
    * change (columnsVersion).
    */
   private makeTowers(){
-    return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,
+    return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,economy:this.economy,
       depthVersion:()=>this.city?.columnsVersion??0,
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
         project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});
@@ -714,10 +776,12 @@ export class IslandScene extends Phaser.Scene {
     return best;
   }
   private icons=new Map<string,string>();
-  /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
-  critterIcon(kind:string){
+  /** Sticker of the critter `id` (any roster id) for the HUD ("what got you"): the horde atlas texture of the kind drawn for it, as a data URL, cached per drawn kind. */
+  critterIcon(id:string){
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
-    if(!isEnemyKind(kind))return undefined;
+    // A roster entry without art (D-040) shows its role's stand-in, like the horde draws it.
+    const kind=drawnKind(id);
+    if(!kind)return undefined;
     let url=this.icons.get(kind);
     if(url===undefined){
       // Imported art first (art/hud-art.ts: the ui icon, else the enemy sheet's still frame); none or not loaded: today's.
@@ -777,10 +841,12 @@ export class IslandScene extends Phaser.Scene {
     const phase=net.run?.phase;
     if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
     this.lastPhase=phase;
-    const axis=this.paused?{x:0,y:0}:this.hooks.direction();
-    const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
-    const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
-    if(this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||net.players.get(net.id)?.spectator){this.attackTarget=undefined;this.route=[];}
+    const axis=this.paused?{x:0,y:0}:this.hooks.direction(),keys=this.paused?{sx:0,sy:0}:this.keyAxis();
+    const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
+    const still=this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
+    // No walk to follow while the hero cannot walk (no path search every 150 ms in the waiting room or while down).
+    this.followHold(time,still||Math.hypot(sx,sy)>.05);
+    if(still){this.attackTarget=undefined;this.route=[];}
     if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. A arma segue atirando sozinha.');}
     this.horde?.setTarget(this.attackTarget);
     // Only a new tick moves the horde: an offers-only change (push from the room) refreshes the HUD alone,
@@ -844,7 +910,7 @@ export class IslandScene extends Phaser.Scene {
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
       const k=this.actorScale;
-      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);

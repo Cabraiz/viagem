@@ -2,8 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {controlsFor,applyControls,CONTROLS_HINTS,STICK_HTML,SKILL_HTML,CONTROLS_HINT_HTML,type Controls} from '../../src/client/controls-phase.ts';
+import {controlsFor,applyControls,controlsHintLines,CONTROLS_HINTS,CONTROLS_HINTS_MOUSE,STICK_HTML,SKILL_HTML,CONTROLS_HINT_HTML,type Controls} from '../../src/client/controls-phase.ts';
 import type {RunPhase} from '../../src/contract/index.ts';
+import {INPUT_TEXTS} from '../../src/client/desktop-input.ts';
 
 const read=(path:string)=>readFileSync(new URL(`../../${path}`,import.meta.url),'utf8');
 const FLAGS=[{},{spectator:true},{eliminated:true},{downed:true},{offline:true},{spectator:true,eliminated:true,downed:true,offline:true}];
@@ -31,16 +32,20 @@ test('controlsFor: the skill button answers only in the round (the old disabled 
     assert.equal(controlsFor({phase}).skill==='live',phase==='combat',phase);
 });
 
+/** The desktop variant may name its keys (controles-desktop): the only uppercase words any etiqueta may hold. */
+const KEY_NAMES=new Set(['WASD']);
 test('etiqueta lines: pt-BR zueira, at most 2 short lines, the D-020 voice rules',()=>{
   assert.deepEqual(Object.keys(CONTROLS_HINTS).sort(),['countdown','lobby']);
-  for(const [phase,lines] of Object.entries(CONTROLS_HINTS)){
+  const all:[string,readonly string[],boolean][]=[...Object.entries(CONTROLS_HINTS).map(([p,l]):[string,readonly string[],boolean]=>[p,l,false]),
+    ...Object.entries(CONTROLS_HINTS_MOUSE).map(([p,l]):[string,readonly string[],boolean]=>[`${p} (mouse)`,l,true])];
+  for(const [phase,lines,keysAllowed] of all){
     assert.ok(lines.length>=1&&lines.length<=2,`${phase}: ${lines.length} lines`);
     for(const line of lines){
       // ~36 characters of 13 px text fit one row of the 280 px etiqueta at 390 px wide.
       assert.ok(line.length>0&&line.length<=36,`${phase}: "${line}" is ${line.length} characters`);
       assert.doesNotMatch(line,/\p{Extended_Pictographic}/u,`${phase}: emoji in "${line}"`);
       assert.doesNotMatch(line,/[·→]|->/,`${phase}: "A · B" or arrow in "${line}"`);
-      assert.doesNotMatch(line,/\b\p{Lu}{2,}\b/u,`${phase}: uppercase word in "${line}"`);
+      for(const word of line.match(/\b\p{Lu}{2,}\b/gu)??[])assert.ok(keysAllowed&&KEY_NAMES.has(word),`${phase}: uppercase word "${word}" in "${line}"`);
       assert.match(line,/^\p{Lu}/u,`${phase}: "${line}" starts as a sentence`);
       assert.match(line,/[.!?]$/,`${phase}: "${line}" ends as a sentence`);
     }
@@ -49,9 +54,21 @@ test('etiqueta lines: pt-BR zueira, at most 2 short lines, the D-020 voice rules
   assert.match(CONTROLS_HINTS.lobby.join(' '),/arrasta/i);assert.ok(CONTROLS_HINTS.lobby.includes('A arma atira sozinha.'),'the glossary line');
   // Same words as the room notice (explore.ts); the coach writes no walk row in combat (one written walk hint: this
   // label, BUG-dica-tutorial-duplicada), it only lights the joystick.
-  assert.match(read('src/client/explore.ts'),/A arma atira sozinha/);
+  // The room notice's words per input kind live in desktop-input.ts (controles-desktop); explore.ts writes them.
+  for(const kind of ['touch','mouse'] as const)assert.match(INPUT_TEXTS[kind].coopNotice,/A arma atira sozinha/);
+  assert.match(read('src/client/explore.ts'),/INPUT_TEXTS\.touch\.coopNotice/);
   assert.doesNotMatch(read('src/client/hud/coach.ts').replace(/\/\*\*[\s\S]*?\*\/|\/\/.*$/gm,''),/atira sozinha|pra andar/,'no coach copy repeats the label');
   assert.equal(CONTROLS_HINTS.countdown.length,1);
+});
+test('etiqueta lines on the desktop: keys and a click walk, the same glossary line, the countdown nudges the mouse',()=>{
+  assert.deepEqual(controlsHintLines('lobby','mouse'),['WASD, setas ou clique pra andar.','A arma atira sozinha.']);
+  assert.deepEqual(controlsHintLines('lobby','touch'),CONTROLS_HINTS.lobby);assert.deepEqual(controlsHintLines('lobby'),CONTROLS_HINTS.lobby);
+  assert.deepEqual(Object.keys(CONTROLS_HINTS_MOUSE).sort(),Object.keys(CONTROLS_HINTS).sort(),'every phase has its desktop words');
+  assert.deepEqual(controlsHintLines('countdown','mouse'),['Aquece o mouse!']);
+  assert.deepEqual(controlsHintLines('countdown','touch'),['Prepara o dedão!']);assert.deepEqual(controlsHintLines('countdown'),['Prepara o dedão!']);
+  for(const lines of Object.values(CONTROLS_HINTS_MOUSE))assert.doesNotMatch(lines.join(' '),/arrasta|dedão|joystick/i);
+  // The phone's own lines never name a key.
+  for(const lines of Object.values(CONTROLS_HINTS))for(const line of lines)assert.doesNotMatch(line,/WASD|setas|clique/);
 });
 
 /** A tiny DOM stand-in: a root with a dataset and the etiqueta. */
@@ -73,6 +90,13 @@ test('applyControls: data-controls off with the etiqueta lines; back to live hid
   assert.equal(root.dataset.controls,'live');assert.equal(hint.hidden,true);
   assert.equal(apply(controlsFor({phase:'combat',eliminated:true})),false);assert.equal(root.dataset.controls,'live','out is dimmed (data-out), not hidden');
   assert.equal(apply(controlsFor({phase:'result'})),true);assert.equal(root.dataset.controls,'off');assert.equal(hint.hidden,true);
+});
+test('applyControls: the root\'s data-input picks the etiqueta\'s words, and a switch rewrites them',()=>{
+  const {root,hint}=fakeShell();
+  root.dataset.input='mouse';applyControls(root,controlsFor({phase:'lobby'}));
+  assert.deepEqual(hint.rows,[...CONTROLS_HINTS_MOUSE.lobby]);assert.equal(hint.hidden,false);
+  root.dataset.input='touch';applyControls(root,controlsFor({phase:'lobby'}));
+  assert.deepEqual(hint.rows,[...CONTROLS_HINTS.lobby]);
 });
 
 test('explore.ts: the stick and the skill come from the shared markup; the phase drives data-controls and the stick gate',()=>{

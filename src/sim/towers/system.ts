@@ -43,6 +43,11 @@ export interface DefenseState extends Point {
   fireTick:number;
   /** Where it last fired (radians, atan2 of the first target), for the client's turret (torres-fio). */
   aim?:number;
+  /**
+   * Volleys fired, mod 256 (torre-contador-de-tiros): the client draws a shot whenever it changes, also at a target
+   * that does not move (the aim alone then never changes).
+   */
+  shots?:number;
   ruined?:true;
 }
 export interface RailState {owner:string;startTick:number;readyTick:number}
@@ -198,7 +203,7 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
     ctx.enemyIndex.query(d.x,d.y,range,found);
     const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
     if(!pool.length)continue;
-    d.fireTick=ctx.tick+def.cooldown;
+    d.fireTick=ctx.tick+def.cooldown;d.shots=((d.shots??0)+1)&255;
     if(def.target==='aura'){hitArea(ctx,def,d,range);continue;}
     let picks:EnemyState[];
     if(def.target==='strongest')picks=[...pool].sort((a,b)=>b.hp-a.hp).slice(0,def.shots); // stable: ties stay nearest-first

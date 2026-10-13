@@ -249,3 +249,23 @@ test('6c. aimedIndex: the reachable enemy along the server aim (not the nearest)
   assert.equal(aimedIndex(TOWER_LOOK.morteiro,0,0,0,2,[1,5],[0,0],[0,1]),-1,'mortar: under minRange, and a flyer');
   assert.equal(aimedIndex(TOWER_LOOK['antiaerea-quadrupla'],0,0,0,2,[3,5],[0,0],[0,1]),1,'flak: only the flyer');
 });
+
+test('6c. torre-contador-de-tiros: with the room\'s counter every change is a volley (also at a still target), the cadence guess is off, 2-3 at most per snapshot',()=>{
+  const kind='vigias-armados',cd=DEFENSES[kind].cooldown,feed=new TowerFeed();
+  const east={n:1,xs:[13],ys:[20],air:[0]};
+  let prev:number|undefined;
+  const at=(tick:number,shots:number)=>{
+    const s=defenseView(defense('d',kind,{readyTick:0,aim:0,shots}),tick);
+    const v=feed.views([{...s,aim:byte(s.aim!)}],tick,CELL,{enemies:east})[0]!;
+    const fired=firedNow(prev,v,tick);prev=v.fireTick;return {fired,volleys:v.volleys??(fired?1:0)};
+  };
+  assert.deepEqual(at(100,7),{fired:false,volleys:0},'first sight is not a volley');
+  assert.deepEqual(at(100+cd,7),{fired:false,volleys:0},'counter still: no cadence guess, though an enemy stands in the aim');
+  assert.deepEqual(at(100+cd+2,8),{fired:true,volleys:1},'one more: a volley, the aim never moved');
+  assert.deepEqual(at(100+cd+4,10),{fired:true,volleys:2},'two between snapshots');
+  assert.deepEqual(at(100+cd+6,40),{fired:true,volleys:3},'a backlog is at most 3');
+  assert.deepEqual(at(100+cd+8,40),{fired:false,volleys:0});
+  const wrap=new TowerFeed();let p:number|undefined;
+  const w=(tick:number,shots:number)=>{const s=defenseView(defense('w',kind,{readyTick:0,aim:0,shots}),tick);const v=wrap.views([{...s,aim:byte(s.aim!)}],tick,CELL,{enemies:east})[0]!;const f=firedNow(p,v,tick);p=v.fireTick;return f?(v.volleys??1):0;};
+  w(100,255);assert.equal(w(102,1),2,'255 → 1 across the wrap: 2 volleys');
+});

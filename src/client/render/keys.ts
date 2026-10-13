@@ -3,6 +3,7 @@
  * Pure module (no Phaser import) so node tests can read it.
  */
 import type {PickupKind} from '../../contract/index.ts';
+import {fallbackAccent,fallbackKind} from '../../rules/index.ts';
 
 /**
  * Enemy cast of D-033 (design/arte-v2.md §4): procedural stand-ins until the prerendered art arrives (art/horde-art.ts
@@ -14,8 +15,23 @@ export type EnemyKind=typeof ENEMY_KINDS[number];
 export const PICKUP_KINDS:readonly PickupKind[]=['xp','heal','magnet','chest','resource'];
 
 export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readonly string[]).includes(kind);
+/**
+ * The procedural kind drawn for any roster id (D-040): itself for the nine, else its role's base (rules/enemy-cast.ts
+ * fallbackKind) until the entry has art; undefined for a string the roster does not know.
+ */
+export const drawnKind=(kind:string):EnemyKind|undefined=>fallbackKind(kind);
 /** Unknown kinds fall back to the bêbado (the basic chaser) so a newer server never crashes an older client. */
-export const enemyKind=(kind:string):EnemyKind=>isEnemyKind(kind)?kind:'bebado';
+export const enemyKind=(kind:string):EnemyKind=>fallbackKind(kind)??'bebado';
+/**
+ * Tint of a roster entry drawn with its role's fallback texture: its accent mixed halfway with white (a multiply tint, so
+ * the stand-in keeps its shading and reads as a different critter). The nine and unknown kinds: undefined (no tint).
+ */
+export function fallbackTint(kind:string):number|undefined{
+  const accent=fallbackAccent(kind);
+  if(accent===undefined)return undefined;
+  const mix=(shift:number)=>Math.round((((accent>>shift)&255)+255)/2)<<shift;
+  return mix(16)|mix(8)|mix(0);
+}
 /**
  * Kinds with a second pose while they act (EnemyView.phase 1, render/phase-look.ts): the coach's raised whiteboard,
  * the motoboy's lit headlight and the influencer's flex. Their `:act` texture sits next to the idle one.

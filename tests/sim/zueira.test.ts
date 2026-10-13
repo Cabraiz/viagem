@@ -115,7 +115,9 @@ test('rain and sale drop what they say: boletos are XP, coxinhas heal and go awa
 });
 
 test('seed plan in a real run: each planned event fires in its round (no lab)', ()=>{
-  const sim=new Simulation(5);
+  // The round table's nine kinds: with this seed their crowd is around the hero when the blackout is due (with the D-040
+  // rotation's layout it may pass behind the next kind, as designed, which this order check does not model).
+  const sim=new Simulation(5,{rotation:false});
   sim.add('a','A','cidadao-comum');sim.resetRun();
   const plan=sim.run.zueira.state.plan.map(p=>({...p}));
   const fired:{round:number;kind:string}[]=[];

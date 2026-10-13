@@ -34,3 +34,13 @@
 #confirmation .suit-espadas{fill:var(--c-breu)}
 #confirmation .suit-paus{fill:var(--arte-azul-sombra)}
 #confirmation .suit-copas,#confirmation .suit-ouros{fill:var(--arte-vermelho)}
+/* "Jogar sozinho" and its bots stepper share one row (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): no height added, so
+   the dialog stays within 70dvh. Short landscape: the three controls side by side in a wider dialog. */
+#confirmation .solo-row{display:flex;align-items:stretch;gap:8px;min-width:0}
+#confirmation .solo-row #enter-island{display:block;flex:1;min-width:0;width:auto;margin:0;padding:10px 12px}
+#confirmation .solo-bots{flex:none;display:flex;align-items:center;gap:2px;padding:0 2px 0 10px;border:2px solid var(--c-papel);border-radius:var(--r-janela);color:var(--c-papel-claro)}
+#confirmation .solo-bots[hidden]{display:none}
+#confirmation .solo-bots-title{font-size:11px;font-weight:800}
+#confirmation .solo-bots-step{width:36px;min-height:40px;padding:0;border:0;background:none;color:inherit;font:900 var(--t-21)/1 var(--f-sistema)}
+#confirmation .solo-bots-value{min-width:2ch;text-align:center;font-weight:900;font-size:var(--t-16)}
+@media (max-height:520px){#confirmation{width:min(560px,calc(100vw - 28px));max-width:min(560px,calc(100vw - 28px))}#confirmation .solo-row{flex:1.6}}

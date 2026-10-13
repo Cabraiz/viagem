@@ -4,6 +4,7 @@
  * among the latest kills. Pure (no DOM): the HUD banner and the result screen read it.
  */
 import type {RunView} from '../../contract/index.ts';
+import {entryLines} from '../../rules/index.ts';
 
 /** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them with more hp. */
 export const CAUSE_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer'] as const;
@@ -24,7 +25,18 @@ export const CAUSE_COPY:Record<CauseKind|'bichos',{name:string;line:string}>={
   bichos:{name:'Bichos',line:'Os bichos te pegaram de jeito'},
 };
 export const causeKind=(kind:string|undefined):CauseKind|undefined=>(CAUSE_KINDS as readonly string[]).includes(kind??'')?kind as CauseKind:undefined;
-export const causeCopy=(kind:string|undefined)=>CAUSE_COPY[causeKind(kind)??'bichos'];
+const ROSTER_COPY=new Map<string,{name:string;line:string}>();
+/**
+ * Copy of a kind: the nine's own; a roster entry (D-040): its name and its role's cause line (rules/enemy-roles.ts);
+ * anything else: 'bichos'.
+ */
+export const causeCopy=(kind:string|undefined):{name:string;line:string}=>{
+  const own=causeKind(kind);
+  if(own||kind===undefined)return CAUSE_COPY[own??'bichos'];
+  let copy=ROSTER_COPY.get(kind);
+  if(!copy){const lines=entryLines(kind);if(!lines)return CAUSE_COPY.bichos;copy=Object.freeze({name:lines.name,line:lines.cause});ROSTER_COPY.set(kind,copy);}
+  return copy;
+};
 
 /**
  * Kinds of the latest enemy ids seen (live in a view or in a kill), to name a hitter that is already gone: one that died

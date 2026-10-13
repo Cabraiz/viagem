@@ -29,7 +29,9 @@ import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../co
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
-import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
+import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawRotation,drawTheme,isRotation,planRound,roundRoster,
+  type RoundPlan,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
+import {SUMMON,hashUnit} from './enemies/catalog.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
@@ -112,6 +114,13 @@ export interface DirectorOptions {
    * run's override) in the city; ignored on the island and in the endless world. Absent: the round table as it is.
    */
   cityBalance?:CityBalance;
+  /**
+   * The run's rotation (D-040, rules/enemy-rotation.ts): drawn once when the run starts, from the director's stream
+   * salted with the world kind (so the same seed rotates differently per map), and every regular round composes its
+   * members from it by role (planRound with roundRoster). Off by default here (the round table's nine kinds); the run
+   * (assemble.ts) turns it on. The city's tutorial round 1 never uses it.
+   */
+  rotation?:boolean;
 }
 
 /**
@@ -122,7 +131,7 @@ export interface DirectorOptions {
  * City: group is the plan group's index (its cadence slot), points the exact member positions, warnTick the tick the
  * warning goes out when it is later than the planning (a cerco part released after the group's first part).
  */
-interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number;
+interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;solo?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number;
   group?:number;points?:Point[];warnTick?:number;
   /** City tutorial (cidade-08): searches the group behind the team already made without a hidden spot (BEHIND_TRIES). */
   tries?:number}
@@ -162,6 +171,8 @@ export interface DirectorState {
   cityOrder?:number[];
   /** City round-1 tutorial (cidade-08): who said the intro, who reached the plaza first and when. */
   tutorial?:TutorialState;
+  /** The run's rotation (DirectorOptions.rotation, D-040), drawn on the first step. */
+  rotation?:Rotation;
 }
 
 export interface Director extends SimSystem {
@@ -179,9 +190,19 @@ export interface Director extends SimSystem {
    * outside the city, without a planner grid or without a live player. Inspection only: no director state changes.
    */
   cityTeamField(ctx:SimContext):FlowField|undefined;
+  /**
+   * Invocador (D-040): one minion of `kind` at `at`, as a member of the current round: SUMMON.hp × the round's hp, the
+   * round's speed and size (and the city's speed), tracked (it counts in `remaining`, retreats with the horde) and ready
+   * after SUMMON.readyIn. Undefined outside a wave or at the enemy cap.
+   */
+  summon(ctx:SimContext,kind:string,at:Point):EnemyState|undefined;
+  /** Kinds an invocador calls this round: the rotation's corredores and enxames of the round; undefined without a rotation. */
+  minionKinds():readonly string[]|undefined;
 }
 
 const BAND_MAX=2.2;
+/** Salt of the rotation's stream (DirectorState.rotation), apart from every other stream of the director. */
+const ROTATION_SALT=0x0d040a11;
 const LINE_GAP=ticks(.3);
 const SURROUND_SIDES=4;
 /** Endless world: tries per ring pick (each one a bit farther out), recycling cadence and cap. */
@@ -300,6 +321,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     stage:'idle',rng:0,roundStart:0,nextGroup:0,pending:[],tracked:[],retreating:[],
     spawned:0,retreated:0,timedOut:false,samples:[],usedNames:[],round:{index:0,total:0,phase:'prepare',phaseEndsTick:0,remaining:0},
   };
+  // A stored rotation that names entries the roster no longer has (an old checkpoint) is drawn again on the next step.
+  if(state.rotation&&!isRotation(state.rotation))delete state.rotation;
   const siegeShare=Math.max(0,Math.min(1,options.siegeShare??0));
   let rng:Rng|undefined=restore&&restore.stage!=='idle'?new Rng(restore.rng):undefined;
   let restored=!!restore;
@@ -553,12 +576,12 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    */
   function planCity(ctx:SimContext){
     if(tutorialRound(ctx)){planTutorial(ctx);return;}
-    const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite);
-    const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||isSiege(g,i));
+    const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite&&!g.solo);
+    const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||g.solo||isSiege(g,i));
     const chaseCost=cityChaseCost(ctx),aim=chaseCost?{chaseCost}:{};
     const avenues=state.avenues=planner!.openRound(plan.index,modeForModifier(state.theme?.modifierId,siege),random(),state.avenues,aim);
     // The boss appears in the plaza (cityWarn), not on an avenue: an empty request keeps every other group's index.
-    const requests=plan.groups.map((g,i)=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at,!g.elite&&isSiege(g,i)));
+    const requests=plan.groups.map((g,i)=>g.boss?{at:g.at,size:0}:cityRequest(g.members,g.at,!g.elite&&!g.solo&&isSiege(g,i)));
     const parts=planner!.planGroups(requests,viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:0,nowTick:0,...aim});
     const warnAt=plan.groups.map(()=>Infinity);
     for(const part of parts)if(part.index<warnAt.length)warnAt[part.index]=Math.min(warnAt[part.index],part.warnTick);
@@ -609,7 +632,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(const part of parts){
       const group=plan.groups[part.index];
       if(!group||group.boss)continue;
-      const siege=!group.elite&&isSiege(group,part.index);
+      const siege=!group.elite&&!group.solo&&isSiege(group,part.index);
       part.points.forEach((p,j)=>{
         const kind=group.members[used[part.index]+j],known=kind===undefined?undefined:options.enemySpeedOf?.(kind);
         const speed=known!==undefined&&Number.isFinite(known)&&known>0?citySpeedOf(known*plan.speed):CITY_ENEMY_SPEED*plan.speed;
@@ -677,7 +700,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     return (entry.points??[entry]).every(p=>planner!.hiddenFrom(players,p));
   }
   const requestOf=(entry:PendingSpawn):SpawnRequest=>({members:entry.members,elite:entry.elite,boss:entry.boss,side:entry.side,
-    ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{}),...(entry.group!==undefined?{group:entry.group}:{}),
+    ...(entry.siege?{siege:true}:{}),...(entry.solo?{solo:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{}),...(entry.group!==undefined?{group:entry.group}:{}),
     ...(entry.tries!==undefined?{tries:entry.tries}:{})});
   const warnDue=(ctx:SimContext,p:PendingSpawn)=>p.warnTick!==undefined&&p.warnTick<=ctx.tick;
   /** Deferred warnings that are due: still hidden, the warning goes out; seen meanwhile, the part is planned again. */
@@ -845,8 +868,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   };
 
   function dispatch(ctx:SimContext,group:SpawnGroup,index:number){
-    const side=sideFor(index),special=!group.boss&&!group.elite,siege=special&&isSiege(group,index);
-    const flag=siege?{siege:true}:{};
+    const side=sideFor(index),special=!group.boss&&!group.elite&&!group.solo,siege=special&&isSiege(group,index);
+    const flag=siege?{siege:true}:group.solo?{solo:true}:{};
     // City: one request per group; the planner lays it out along the avenue (cerco splits it over the 4 mouths).
     if(city(ctx)){warn(ctx,{members:[...group.members],elite:group.elite,boss:group.boss,group:index,...flag});return;}
     if(special&&group.formation==='surround'&&group.members.length>1){
@@ -905,7 +928,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(let i=0;i<count;i++){
       // City: the planner's exact spot (walkable, hidden, outside the base); no jitter.
       const p=isCity&&entry.points?.[i]?entry.points[i]:placeInGroup(ctx,center,i);
-      const enemy=options.createEnemy(ctx,entry.members[i],p,entry.elite?plan.eliteHp:plan.hp);
+      const enemy=options.createEnemy(ctx,entry.members[i],p,entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp);
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
       enemy.speed*=plan.speed;enemy.radius*=plan.size*(entry.elite?ELITE_SIZE:1);
@@ -935,7 +958,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function startWave(ctx:SimContext){
     const index=ctx.round.index,theme=state.theme!;
     const tutorial=tutorialRound(ctx);
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
+    const roster=state.rotation?roundRoster(state.rotation,index):undefined;
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random(),roster);
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
     // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
     if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
@@ -1080,6 +1104,24 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   return {
     id:'director',state,scalePlayers,
     cityTeamField:ctx=>planner&&city(ctx)?cityTeamField(ctx):undefined,
+    summon(ctx,kind,at){
+      const plan=state.plan;
+      if(state.stage!=='wave'||!plan||ctx.enemies.size>=maxEnemies)return undefined;
+      const enemy=options.createEnemy(ctx,kind,at,plan.hp*SUMMON.hp);
+      if(!enemy)return undefined;
+      if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
+      enemy.speed*=plan.speed;enemy.radius*=plan.size;
+      if(city(ctx))enemy.speed=citySpeedOf(enemy.speed);
+      enemy.readyTick=Math.max(enemy.readyTick,ctx.tick+SUMMON.readyIn);
+      enemy.memory={...enemy.memory,round:plan.index};
+      state.tracked.push(enemy.id);state.spawned++;
+      return enemy;
+    },
+    minionKinds(){
+      if(!state.rotation)return undefined;
+      const roles=roundRoster(state.rotation,state.plan?.index??1).roles;
+      return [...roles.corredor??[],...roles.enxame??[]];
+    },
     extendPrepare(ctx,endsTick){
       if(state.stage!=='prepare'||ctx.round.phase!=='prepare'||!Number.isSafeInteger(endsTick)||endsTick<=ctx.round.phaseEndsTick)return;
       ctx.round.phaseEndsTick=endsTick;state.round={...ctx.round};
@@ -1088,6 +1130,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(restored){restored=false;Object.assign(ctx.round,state.round);}
       if(state.stage==='done')return;
       if(!rng){rng=ctx.rng.fork('director');save();}
+      // D-040: the run's rotation, from its own stream (salted per world kind) so the director's stream is untouched.
+      if(options.rotation&&!state.rotation){
+        const world=city(ctx)?'cidade':endless(ctx)?'infinito':'ilha';
+        state.rotation=drawRotation(new Rng((state.rng^ROTATION_SALT^Math.floor(hashUnit(world)*2**32))>>>0));
+      }
       sample(ctx);
       if(state.stage==='idle')startPrepare(ctx,1,opening);
       else if(state.stage==='wave'||ctx.tick>=ctx.round.phaseEndsTick){

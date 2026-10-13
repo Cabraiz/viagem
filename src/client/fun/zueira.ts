@@ -4,6 +4,7 @@
  */
 import type {HappeningKind} from '../../contract/index.ts';
 import type {ShameKey,ShameMoment} from '../../contract/index.ts';
+import {entryLines} from '../../rules/index.ts';
 
 /** Street banner of an event (the round banner's faixa: title + one dry line). */
 export const HAPPENING_COPY:Readonly<Record<HappeningKind,{title:string;subtitle:string}>>={
@@ -24,7 +25,12 @@ export const CRITTER_NAMES:Readonly<Record<string,{one:string;the:string}>>={
   coach:{one:'um coach quântico',the:'o coach'},motoboy:{one:'um motoboy kamikaze',the:'o motoboy'},
   influencer:{one:'um influencer de academia',the:'o influencer'},
 };
-const critter=(kind?:string)=>CRITTER_NAMES[kind??'']??{one:'um bicho',the:'o bicho'};
+/** Caption name of a kind: the nine's, a roster entry's own name (D-040, a proper noun: no article), else "um bicho". */
+const critter=(kind?:string)=>{
+  const own=CRITTER_NAMES[kind??''];if(own)return own;
+  const name=kind===undefined?undefined:entryLines(kind)?.name;
+  return name?{one:name,the:name}:{one:'um bicho',the:'o bicho'};
+};
 
 /** Kill-cam captions (design review D5): varied, by critter when it has its own joke; never the round number (the chip
  * on top already shows the next round, M1). `{n}` is who closed the round. */
@@ -40,12 +46,18 @@ export const KILLCAM_KIND_LINES:Readonly<Record<string,readonly string[]>>={
   influencer:['{n} tirou o último influencer do ar.'],
 };
 export const KILLCAM_ALONE:readonly string[]=['Caiu sozinho. Ninguém assume.','Desistiu de cansaço.'];
+/** Kill-cam lines of a kind: the nine's own, a roster entry's death gag (D-040, as a sentence), else none. */
+export function killcamKindLines(kind:string):readonly string[]{
+  const own=KILLCAM_KIND_LINES[kind];if(own)return own;
+  const gag=entryLines(kind)?.gag;
+  return gag?[/[.!?…]$/.test(gag)?gag:`${gag}.`]:[];
+}
 /**
  * Kill-cam caption: "Último bicho!" and a line that does not repeat inside the run (`used` holds the lines already shown);
  * the pick is deterministic by `seed` (the event id), so every phone shows the same one.
  */
 export function killcamCaption(byName:string|undefined,kind:string,seed:number,used:ReadonlySet<string>=new Set()){
-  const pool=byName?[...(KILLCAM_KIND_LINES[kind]??[]),...KILLCAM_LINES]:KILLCAM_ALONE;
+  const pool=byName?[...killcamKindLines(kind),...KILLCAM_LINES]:KILLCAM_ALONE;
   const fresh=pool.filter(l=>!used.has(l)),list=fresh.length?fresh:pool;
   const template=list[Math.abs(Math.floor(seed))%list.length];
   return {title:'Último bicho!',line:template.replace('{n}',byName??''),template};

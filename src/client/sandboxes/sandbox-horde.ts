@@ -20,7 +20,7 @@ import {obstacles,walkable,type Point} from '../../maps/index.ts';
 import {treeCatalog} from '../../maps/index.ts';
 import {treeUrl} from '../sprites/art-urls.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
-import {classes} from '../../rules/index.ts';
+import {classes,ROSTER} from '../../rules/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,type SimEvent,type PickupKind} from '../../contract/index.ts';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView,TelegraphKind} from '../../contract/index.ts';
@@ -56,6 +56,8 @@ const BARKS:Record<string,string[]>={
   influencer:['Bom dia, família! Tá pago!','Shape não se faz, se posta'],
 };
 const PLAYER_COUNT=6;
+/** ?roster=1: one new (non-legacy) P0 roster enemy per role, in roster order, for the fallback-look line-up. */
+const rosterSample=()=>{const seen=new Set<string>(),out:string[]=[];for(const r of ROSTER)if(r.priority==='P0'&&!r.legacy&&r.role!=='chefe'&&!seen.has(r.role)){seen.add(r.role);out.push(r.id);}return out;};
 /**
  * ?elenco=1 line-up: [kind, elite, screen offset x, y] of each critter's feet from the first player's feet, in world px
  * at view 0 (x right, y down), so the whole D-033 cast fits a phone in portrait and landscape.
@@ -125,7 +127,11 @@ class FakeHorde {
   private lineUp(){
     const me=this.players[0];me.x=12;me.y=12.5;
     this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
-    for(const [kind,elite,sx,sy] of LINEUP){
+    // `roster=1` (papeis-de-inimigo): the same slots filled with new P0 roster enemies of different roles, drawn with
+    // their role's fallback look until their art exists.
+    const roster=new URLSearchParams(location.search).get('roster')==='1'?rosterSample():undefined;
+    for(const [i,[slotKind,elite,sx,sy]] of LINEUP.entries()){
+      const kind=roster&&slotKind!=='chefe'?roster[i%roster.length]:slotKind;
       const e=this.spawn(fromScreen(me,sx,sy),kind);
       e.speed=0;e.elite=elite||undefined;e.boss=kind==='chefe'||undefined;e.phase=kind==='chefe'?1:undefined;e.hp=e.maxHp*(elite?.7:1);
     }

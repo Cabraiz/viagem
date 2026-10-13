@@ -7,10 +7,20 @@
  * least one passes 3:1 on dark sea, light water, grass, sand and the horde (double-edge rule, §2.1).
  * Layers: heroes sit above the horde, pops and balloons; the hit number on a player and telegraphs go higher.
  */
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
 import {HAZARD} from './telegraph-look.ts';
+import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
+
+/**
+ * What the markers ask of render/city-outline.ts CityOutlines: the city copy a sprite shows now, if any, and the city
+ * "você" sticker baked for that copy (CITY_STICKER), once built.
+ */
+export interface MarkCopies {
+  copyOf(key:string):{geom:VariantGeometry}|undefined;
+  sticker?(copyKey:string):{key:string;geom:VariantGeometry}|undefined;
+}
 
 type Sprite=Phaser.GameObjects.Sprite;
 type Pt={x:number;y:number};
@@ -49,12 +59,18 @@ export class YouMarkers {
   private fullSince:number|undefined;
   private readonly color={voce:tokenColor('--c-voce'),breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone'),cartolina:tokenColor('--c-cartolina')};
   /** Last frame, for the acceptance probe (dev) and tests of the scene wiring. */
-  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,slow:false,slip:false};
+  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false};
   /** Scratch for the slip swirl (no allocation per frame). */
   private swirl=Array.from({length:14},()=>({x:0,y:0}));
+  /** City copies (contorno-breu): the ring, arrow and chips size from the base frame even while the copy shows. */
+  private copies?:MarkCopies;
+  private figure={width:0,height:0,originX:0,originY:0};
+  /** City: the one sprite that shows the baked sticker in place of the 16 offset copies. */
+  private stickerSprite?:Sprite;
+  private stickerOrigin={x:0,y:0};
 
-  constructor(scene:Phaser.Scene,reduced=false){
-    this.scene=scene;this.reduced=reduced;
+  constructor(scene:Phaser.Scene,reduced=false,copies?:MarkCopies){
+    this.scene=scene;this.reduced=reduced;this.copies=copies;
     this.g=scene.add.graphics().setDepth(MARK_DEPTH);
     this.label=scene.add.text(0,0,'Você',{fontFamily:token('--f-sistema'),fontSize:'32px',fontStyle:'800',color:token('--c-papel')}).setOrigin(.5,.5).setDepth(MARK_DEPTH+2).setVisible(false);
     whenFontsReady(()=>this.label.updateText());
@@ -69,7 +85,7 @@ export class YouMarkers {
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
     g.clear();
-    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.slow=false;this.last.slip=false;
+    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;
     const live=new Set<string>();
     let selfShown=false;
     for(const mark of marks){
@@ -87,7 +103,8 @@ export class YouMarkers {
       selfShown=true;
       this.drawContour(top,s);
       // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), never smaller than RING_CSS on screen.
-      const w=Math.max(RING_CSS.width*s,sprite.displayWidth*.8),h=Math.max(RING_CSS.height*s,w*.5),{x,y}=mark.feet;
+      const fig=this.figureOf(sprite);
+      const w=Math.max(RING_CSS.width*s,fig.width*.8),h=Math.max(RING_CSS.height*s,w*.5),{x,y}=mark.feet;
       const bands=ringBands(this.city);
       const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
       // City: a Breu band outside the Papel, and a Breu beak grown by the same edge, under everything else (only Breu
@@ -120,7 +137,7 @@ export class YouMarkers {
       const arrow=arrowFrame(now-this.arrowAt,this.reduced);
       this.label.setVisible(arrow.visible);
       if(arrow.visible){
-        const head=y-sprite.displayHeight*sprite.originY,tail=7*s,bob=arrow.bob*6*s;
+        const head=y-fig.height*fig.originY,tail=7*s,bob=arrow.bob*6*s;
         const lw=this.label.width*.5*s,lh=this.label.height*.5*s,bw=lw+14*s,bh=lh+4*s;
         const cy=head-tail-bh/2-6*s-bob;
         this.label.setScale(.5*s).setPosition(x,cy);
@@ -131,7 +148,7 @@ export class YouMarkers {
         this.last.arrow=true;
       }
     }
-    if(!selfShown)for(const copy of this.contour)copy.setVisible(false);
+    if(!selfShown){for(const copy of this.contour)copy.setVisible(false);this.stickerSprite?.setVisible(false);}
     for(const [id,ghost] of this.ghosts)if(!live.has(id))ghost.setVisible(false);
     this.last.ghosts=live.size;
   }
@@ -141,8 +158,8 @@ export class YouMarkers {
    * slipping. Papel disc with a Breu edge (reads on sea, sand, grass and the horde); they bob unless motion is reduced.
    */
   private drawStatus(mark:HeroMark,now:number,s:number){
-    const g=this.g,sprite=mark.sprite,R=STATUS_CSS.radius*s,e=STATUS_CSS.edge*s;
-    const head=mark.feet.y-sprite.displayHeight*sprite.originY,x=mark.feet.x+Math.max(sprite.displayWidth*.3,18*s)+R;
+    const g=this.g,fig=this.figureOf(mark.sprite),R=STATUS_CSS.radius*s,e=STATUS_CSS.edge*s;
+    const head=mark.feet.y-fig.height*fig.originY,x=mark.feet.x+Math.max(fig.width*.3,18*s)+R;
     let y=head+R+4*s;
     const bob=this.reduced?0:Math.sin(now*.006)*1.5*s;
     if(mark.slow){
@@ -167,11 +184,41 @@ export class YouMarkers {
     }
   }
 
+  /**
+   * The sprite's drawn size and origin as its BASE frame gives them: a city copy (padded, cropped, resampled) is mapped
+   * back (city-outline-rules.ts baseDisplay), so the markers keep their size and place whether the copy is built or not.
+   */
+  private figureOf(sprite:Sprite){
+    const f=this.figure,copy=this.copies?.copyOf(sprite.texture.key);
+    if(copy)return baseDisplay(copy.geom,sprite.originX,sprite.originY,sprite.scaleX,sprite.scaleY,f);
+    f.width=sprite.displayWidth;f.height=sprite.displayHeight;f.originX=sprite.originX;f.originY=sprite.originY;
+    return f;
+  }
+
   /** ms left on the arrow (0 when hidden), for tests and the probe. */
   arrowLeft(now:number){return Math.max(0,ARROW_MS-(now-this.arrowAt));}
 
-  /** Hard sticker contour (§2.4): tint-filled copies offset in 8 directions, Breu farther out, Papel inside, under `top`. */
+  /**
+   * Hard sticker contour (§2.4): tint-filled copies offset in 8 directions, Breu farther out, Papel inside, under `top`.
+   * City (contorno-breu): where `top` shows its city copy and the sticker is built, ONE sprite with the bands baked as
+   * true distances (CITY_STICKER: Papel 2, then a solid Breu 2 CSS px outermost), placed from the base frame like the
+   * ring (figureOf), so it hugs the figure exactly; the offset copies only before it is built and off the city.
+   */
   private drawContour(top:Sprite,s:number){
+    const sticker=this.city&&this.copies?.copyOf(top.texture.key)?this.copies.sticker?.(top.texture.key):undefined;
+    if(sticker){
+      for(const copy of this.contour)copy.setVisible(false);
+      const fig=this.figureOf(top),g=sticker.geom,o=variantOrigin(g,fig.originX,fig.originY,this.stickerOrigin);
+      const sx=fig.width/g.cellW*g.kx*(top.scaleX<0?-1:1),sy=fig.height/g.cellH*g.ky*(top.scaleY<0?-1:1);
+      const sp=this.stickerSprite??=this.scene.add.sprite(0,0,sticker.key,top.frame.name);
+      if(sp.texture.key!==sticker.key)sp.setTexture(sticker.key,top.frame.name);
+      else if(sp.frame.name!==top.frame.name)sp.setFrame(top.frame.name);
+      sp.setOrigin(o.x,o.y).setScale(sx,sy).setFlipX(top.flipX).setRotation(top.rotation).setPosition(top.x,top.y)
+        .setDepth(top.depth-.2).setAlpha(top.alpha).setVisible(top.visible);
+      this.last.contour=top.visible;this.last.sticker=top.visible;
+      return;
+    }
+    this.stickerSprite?.setVisible(false);
     if(!this.contour.length)for(let i=0;i<16;i++)this.contour.push(this.scene.add.sprite(0,0,top.texture.key,top.frame.name).setTintFill(i<8?this.color.breu:this.color.papel));
     const depth=top.depth;
     for(let i=0;i<16;i++){
@@ -188,5 +235,5 @@ export class YouMarkers {
     return ghost;
   }
   forget(id:string){this.ghosts.get(id)?.destroy();this.ghosts.delete(id);}
-  destroy(){this.g.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;}
+  destroy(){this.g.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
 }

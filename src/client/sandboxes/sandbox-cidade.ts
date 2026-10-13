@@ -156,7 +156,7 @@ class CitySandbox extends Phaser.Scene {
       enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     horde.push(cast?withCast(view,x,y):view);
-    const you=new YouMarkers(this,reducedMotion);you.setCity(true);you.showArrow(-1e9);
+    const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
     const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination};

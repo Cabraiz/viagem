@@ -135,11 +135,28 @@ test('dashSegments: dash/gap by arc length, phase shifts them, pieces at a verte
 });
 
 test('dash phase: drifts slowly, stays still with prefers-reduced-motion',()=>{
+  assert.equal(telegraphDashPhase(0,false),0);
+  assert.equal(telegraphDashPhase(123456,true),0);
+  assert.equal(telegraphDashPhase(98765,true),0);
+  const a=telegraphDashPhase(1000,false),b=telegraphDashPhase(1500,false);
+  assert.ok(a>0&&b>a&&b-a<=4,'≤ 8 CSS px per second');
+});
+
+test('dash phase on a huge zone: wrapped on the STRETCHED period, so the dashes never jump back',()=>{
+  // A 3000×1500 rectangle: perimeter 9000 px ≫ DASH_MAX periods of 15, so the pattern stretches (period 93.75).
+  const huge=[{x:0,y:0},{x:3000,y:0},{x:3000,y:1500},{x:0,y:1500}],out=new Float64Array(DASH_MAX_SEGMENTS*4);
   const period=CITY_TELEGRAPH_CSS.dash+CITY_TELEGRAPH_CSS.gap;
-  assert.equal(telegraphDashPhase(0,period,false),0);
-  assert.equal(telegraphDashPhase(123456,period,true),0);
-  assert.equal(telegraphDashPhase(98765,period,true),0);
-  const a=telegraphDashPhase(1000,period,false),b=telegraphDashPhase(1500,period,false);
-  assert.ok(a>=0&&a<period&&b>a&&b-a<=4,'≤ 8 CSS px per second');
-  for(let t=0;t<60000;t+=777){const p=telegraphDashPhase(t,period,false);assert.ok(p>=0&&p<period);}
+  const firstStart=(phase:number)=>{dashSegments(huge,4,CITY_TELEGRAPH_CSS.dash,CITY_TELEGRAPH_CSS.gap,phase,out);
+    // The dash that starts after x=0 on the top edge (the one at x=0 may be a dash's tail).
+    for(let i=0;i<DASH_MAX_SEGMENTS;i++){const o=i*4;if(out[o+1]===0&&out[o+3]===0&&out[o]>0)return out[o];}return NaN;};
+  // Every frame for 10 s, across the old wrap at 15 CSS px (2.5 s): the drift between two frames stays tiny.
+  let prev=firstStart(telegraphDashPhase(1,false)),jumps=0;
+  for(let t=17;t<10000;t+=16){
+    const x=firstStart(telegraphDashPhase(t,false));
+    if(Math.abs(x-prev)>1&&Math.abs(x-prev)<93)jumps++;
+    prev=x;
+  }
+  assert.equal(jumps,0);
+  // What a phase wrapped on the unstretched period (15 CSS px) did there: 14.9 → 0.1 moved the dashes back 14.8 px.
+  assert.ok(Math.abs(firstStart(14.9)-firstStart((14.9+.2)%period)-14.8)<1e-6);
 });

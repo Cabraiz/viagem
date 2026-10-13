@@ -14,7 +14,7 @@ import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegr
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
 import type {Projector} from './projector.ts';
-import {CITY_TELEGRAPH_CSS,HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,telegraphOutline} from './telegraph-shape.ts';
+import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,telegraphOutline} from './telegraph-shape.ts';
 import {TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
 import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
@@ -653,9 +653,10 @@ export class HordeRenderer{
     }
     const body=this.body;
     a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body).setRotation(rotation);
-    // City mode (contorno-breu): the pickup's Breu-ring copy at screen scale; the base outside the city.
+    // City mode (contorno-breu): the pickup's Breu-ring copy at screen scale, made for the scale it is drawn at (a big
+    // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
-    if(outlines)outlines.show(a.image,outlines.variant(a.look,body),a.look,undefined,.5,.92,scale*body,scale*body);
+    if(outlines)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
     const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
@@ -697,7 +698,7 @@ export class HordeRenderer{
     // City (§7): Breu dashed, Cone solid, Papel dashed in the same phase; the dashes drift slowly (still when reduced).
     const e=this.edgeFrame;
     e.css=css;e.ui=w;e.blink=blink;e.city=this.cityOn;e.colors=c;
-    e.dashPhase=this.cityOn?telegraphDashPhase(this.now,CITY_TELEGRAPH_CSS.dash+CITY_TELEGRAPH_CSS.gap,this.reduced):0;
+    e.dashPhase=this.cityOn?telegraphDashPhase(this.now,this.reduced):0;
     this.edge.draw(top,this.pts,n,e);
     // What is in the air or sticks out of a small zone (bottle, flames, poop, stamp, charge arrow) goes over the edge.
     if(ops)this.replayDecor(top,LAYER_AIR);

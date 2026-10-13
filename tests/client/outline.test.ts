@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {distanceToFigure,outlineRgba,ringTexturePx} from '../../src/client/render/outline.ts';
+import {distanceToFigure,outlineRgba} from '../../src/client/render/outline.ts';
 
 const BREU=0x1e1530;
 /** w×h RGBA with an opaque white disc of radius rad at (cx,cy). */
@@ -62,8 +62,3 @@ test('sheet cells are outlined independently: no ring bleeds into the neighbouri
   assert.ok(alphaAt(out,w,6,8)>0,'ring inside the left cell');
 });
 
-test('ring radius in texture px for a target on screen',()=>{
-  // A 192 px sheet drawn at 56 px on screen: 56/192 screen px per texture px → 2 px on screen ≈ 6.86 texture px.
-  assert.ok(Math.abs(ringTexturePx(2,56/192)-6.857)<0.01);
-  assert.equal(ringTexturePx(2,0),0);
-});

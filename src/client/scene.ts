@@ -262,7 +262,7 @@ export class IslandScene extends Phaser.Scene {
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
-    this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
+    this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
@@ -274,6 +274,10 @@ export class IslandScene extends Phaser.Scene {
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
+    // The city copies (contorno-breu) are freed on shutdown or game destroy, with or without a net session: an offline
+    // scene's heroes draw copies too.
+    const dropOutlines=()=>this.outlines.destroy();
+    this.events.once('shutdown',dropOutlines);this.events.once('destroy',dropOutlines);
     if(this.hooks.net){
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
@@ -296,7 +300,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.outlines.destroy();this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl} from './art-urls.ts';
@@ -89,7 +89,9 @@ export class CharacterSprites {
    * `city`: the scene's screen-scale Breu outlines (card contorno-breu, render/city-outline.ts). In city mode every
    * sheet draws its Breu-ring copy with the same frames and animations; omitted or outside the city, the sheet itself.
    */
-  constructor(private scene:Phaser.Scene,private city?:CityOutlines){}
+  private scene:Phaser.Scene;
+  private city?:CityOutlines;
+  constructor(scene:Phaser.Scene,city?:CityOutlines){this.scene=scene;this.city=city;}
   queue(id:string){
     if(!spriteCatalog[id]||this.requested.has(id))return;
     this.requested.add(id);

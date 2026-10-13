@@ -141,8 +141,9 @@ export const DASH_MAX=96;
 export const DASH_MAX_SEGMENTS=DASH_MAX+OUTLINE_MAX_POINTS+2;
 /**
  * Dashes along the closed polygon ref[0..n), by arc length: a dash covers [s, s+dash) wherever (s - phase) is a
- * multiple of dash+gap. Writes them as segments x0,y0,x1,y1 into out and returns how many; a dash that runs over a
- * vertex is split there, and its pieces share that vertex exactly (the caller joins them into one polyline).
+ * multiple of dash+gap. `phase` may be any size (an unwrapped drift): it is wrapped here, on the period actually drawn
+ * (stretched with the dash for a huge zone), so a drifting pattern never jumps. Writes them as segments x0,y0,x1,y1
+ * into out and returns how many; a dash that runs over a vertex is split there, and its pieces share that vertex exactly (the caller joins them into one polyline).
  * `onto` (same count, corresponding vertices, e.g. an inset of ref) is where the segments are placed, at the same
  * fraction of each edge: two insets dashed from the same ref get their dashes side by side, in the same phase.
  * Allocation-free.
@@ -155,6 +156,7 @@ export function dashSegments(ref:readonly Pt[],n:number,dash:number,gap:number,p
   let period=dash+gap;
   const stretch=Math.max(1,perimeter/(period*DASH_MAX));
   dash*=stretch;period*=stretch;
+  phase=((phase%period)+period)%period;
   const max=out.length>>2;
   let count=0,s=0;
   for(let i=0;i<n&&count<max;i++){

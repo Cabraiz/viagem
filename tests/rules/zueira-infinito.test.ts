@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {INFINITO_POI_NAMES,infinitoPoiName} from '../../src/rules/index.ts';
-import {landmarks} from '../../src/maps/index.ts';
+import {TerrainField,landmarks} from '../../src/maps/index.ts';
 
 const all=INFINITO_POI_NAMES.flat();
 
@@ -14,7 +14,7 @@ test('three kinds, several names each, short enough for a map label, no duplicat
   for(const list of INFINITO_POI_NAMES)assert.ok(list.length>=5);
   assert.equal(new Set(all).size,all.length);
   for(const s of all){
-    assert.ok(s.length>=6&&s.length<=30&&s===s.trim(),`"${s}" fits a label`);
+    assert.ok(s.length>=6&&s.length<=26&&s===s.trim(),`"${s}" fits a label`);
     for(const l of landmarks)assert.notEqual(s,l.name);
   }
 });
@@ -38,9 +38,18 @@ test('a chunk always shows the same name per kind, the names vary over the map, 
     assert.equal(seen.size,INFINITO_POI_NAMES[kind].length,`kind ${kind}: every name shows up somewhere`);
   }
   assert.ok(INFINITO_POI_NAMES[0].includes(infinitoPoiName(9,3,4)));
+  const bySeed=new Set([1,2,3,4,5,6,7,8].map(seed=>infinitoPoiName(2,0,0,seed)));
+  assert.ok(bySeed.size>1,'another map, other names near the spawn');
 });
 
 test('the tables are deep-frozen', () => {
   assert.throws(()=>{(INFINITO_POI_NAMES as string[][]).push([]);});
   assert.throws(()=>{(INFINITO_POI_NAMES[0] as string[])[0]='x';});
+});
+
+test('every endless chunk POI carries an island landmark name, so the scene can tell its kind', () => {
+  const names=new Set(landmarks.map(l=>l.name));let pois=0;
+  for(const seed of [3,77,4242]){const t=new TerrainField(seed,{world:'infinito'});
+    for(let cx=-4;cx<=4;cx++)for(let cy=-4;cy<=4;cy++)for(const p of t.chunks!.chunk(cx,cy).pois){pois++;assert.ok(names.has(p.name),p.name);}}
+  assert.ok(pois>20,`${pois} POIs`);
 });

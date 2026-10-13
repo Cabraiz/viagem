@@ -949,7 +949,7 @@ export class IslandScene extends Phaser.Scene {
         if(tree){this.useTree(tree.id,1);if(!this.textures.exists(`tree:${tree.id}`)){this.loadTree(tree.id);loads=true;}}
         props.push(this.makeProp(o,tree));
       }
-      for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,infinitoPoiName(index,cx,cy)));}
+      for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,infinitoPoiName(index,cx,cy,this.field.seed)));}
       this.chunkProps.set(key,{cx,cy,props,signs});changed=true;
     }
     // Sheets of the next ring of chunks load before their trees can show (fewer shadows waiting on screen), but in the

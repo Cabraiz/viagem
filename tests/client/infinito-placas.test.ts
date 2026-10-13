@@ -12,11 +12,12 @@ const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'u
 test('chunk POIs get infinitoPoiName for their kind and chunk, not the island name they carry', () => {
   const loop=scene.slice(scene.indexOf('for(const p of c.pois)'),scene.indexOf('this.chunkProps.set(key'));
   assert.ok(loop.length>0,'chunk POI loop found');
-  assert.match(loop,/this\.drawLandmark\(p,index,infinitoPoiName\(index,cx,cy\)\)/);
+  assert.match(loop,/this\.drawLandmark\(p,index,infinitoPoiName\(index,cx,cy,this\.field\.seed\)\)/);
   assert.doesNotMatch(loop,/drawLandmark\([^)]*p\.name\)/);
 });
 
 test('the island still draws its own landmarks by name, only on the island', () => {
   const build=scene.slice(scene.indexOf('buildWorld('));
-  assert.ok(build.indexOf('if(city||this.field.chunks)return;')<build.indexOf('landmarks.forEach'));
+  const guard=build.indexOf('if(city||this.field.chunks)return;'),draw=build.indexOf('landmarks.forEach');
+  assert.ok(guard>=0&&draw>=0&&guard<draw);
 });

@@ -93,3 +93,90 @@ export function hatchSegments(src:readonly Pt[],n:number,spacing:number,out:Floa
   }
   return count;
 }
+
+/**
+ * Largest inset insetPolygon applies to the closed polygon src[0..n) (half its inradius estimate, 2*area/perimeter):
+ * the same clamp, so a caller can fit several bands inside a small zone before insetting.
+ */
+export function insetLimit(src:readonly Pt[],n:number):number{
+  let area=0,perimeter=0;
+  for(let i=0;i<n;i++){const a=src[i],b=src[(i+1)%n];area+=a.x*b.y-b.x*a.y;perimeter+=Math.hypot(b.x-a.x,b.y-a.y);}
+  area/=2;
+  // Same arithmetic as insetPolygon's clamp, so an inset of exactly this much is never clamped.
+  const inradius=perimeter>0?2*Math.abs(area)/perimeter:0;
+  return inradius*.5;
+}
+
+/**
+ * City telegraph edge (cidade-nevada-arte.md §7, cidade-nevada/parametros.md §10), CSS px, outside in: Breu 2 dashed,
+ * Laranja Cone 3 solid at 100%, Papel 3 dashed in the SAME dash and phase as the Breu (the D-020 signature); then the
+ * fill. Dash 9, gap 6. Contiguous bands, inset on the server's zone (D-015): the outer edge of the Breu is the zone edge.
+ */
+export const CITY_TELEGRAPH_CSS={breu:2,cone:3,papel:3,dash:9,gap:6} as const;
+export const CITY_TELEGRAPH_EDGE_CSS=CITY_TELEGRAPH_CSS.breu+CITY_TELEGRAPH_CSS.cone+CITY_TELEGRAPH_CSS.papel;
+/** One band of the edge: inset of its center line `d` and stroke width, in scene px. */
+export interface EdgeBand {d:number;width:number}
+export interface CityEdgeBands {breu:EdgeBand;cone:EdgeBand;papel:EdgeBand;
+  /** Scene px per CSS px of the bands: `css`, or less when the zone is too small for 8 CSS px of edge. */
+  scale:number}
+/**
+ * Band layout of the city edge for `css` scene px per CSS px and the polygon's insetLimit: every band keeps its CSS
+ * width (screen-constant at any zoom); a zone too small for it shrinks all bands together so the innermost center
+ * line stays within the limit (insetPolygon never clamps one band out of order).
+ */
+export function cityEdgeBands(css:number,limit:number,out?:CityEdgeBands):CityEdgeBands{
+  const C=CITY_TELEGRAPH_CSS,deepest=C.breu+C.cone+C.papel/2;
+  const k=Math.max(0,Math.min(css,limit/deepest));
+  const o=out??{breu:{d:0,width:0},cone:{d:0,width:0},papel:{d:0,width:0},scale:0};
+  o.scale=k;
+  o.breu.d=k*C.breu/2;o.breu.width=k*C.breu;
+  o.cone.d=k*(C.breu+C.cone/2);o.cone.width=k*C.cone;
+  o.papel.d=k*deepest;o.papel.width=k*C.papel;
+  return o;
+}
+
+/** Most dashes one outline draws (the pattern stretches past it, so a huge zone stays bounded). */
+export const DASH_MAX=96;
+/** Segments dashSegments can write: every dash, plus one more piece per vertex a dash runs over. */
+export const DASH_MAX_SEGMENTS=DASH_MAX+OUTLINE_MAX_POINTS+2;
+/**
+ * Dashes along the closed polygon ref[0..n), by arc length: a dash covers [s, s+dash) wherever (s - phase) is a
+ * multiple of dash+gap. `phase` may be any size (an unwrapped drift): it is wrapped here, on the period actually drawn
+ * (stretched with the dash for a huge zone), so a drifting pattern never jumps. Writes them as segments x0,y0,x1,y1
+ * into out and returns how many; a dash that runs over a vertex is split there, and its pieces share that vertex exactly (the caller joins them into one polyline).
+ * `onto` (same count, corresponding vertices, e.g. an inset of ref) is where the segments are placed, at the same
+ * fraction of each edge: two insets dashed from the same ref get their dashes side by side, in the same phase.
+ * Allocation-free.
+ */
+export function dashSegments(ref:readonly Pt[],n:number,dash:number,gap:number,phase:number,out:Float64Array,onto:readonly Pt[]=ref):number{
+  if(n<2||!(dash>0)||!(gap>=0))return 0;
+  let perimeter=0;
+  for(let i=0;i<n;i++){const a=ref[i],b=ref[(i+1)%n];perimeter+=Math.hypot(b.x-a.x,b.y-a.y);}
+  if(!(perimeter>0))return 0;
+  let period=dash+gap;
+  const stretch=Math.max(1,perimeter/(period*DASH_MAX));
+  dash*=stretch;period*=stretch;
+  phase=((phase%period)+period)%period;
+  const max=out.length>>2;
+  let count=0,s=0;
+  for(let i=0;i<n&&count<max;i++){
+    const a=ref[i],b=ref[(i+1)%n],length=Math.hypot(b.x-a.x,b.y-a.y);
+    if(!(length>0))continue;
+    const p=onto[i],q=onto[(i+1)%n];
+    // Pattern position at the start of this edge, then walk its on-runs.
+    // minStep: the walk always moves on, even where rounding puts m a hair under a dash or gap boundary.
+    const minStep=length*1e-9+1e-12;
+    let t=0;
+    while(t<length&&count<max){
+      const m=(((s+t-phase)%period)+period)%period;
+      if(m<dash){
+        const end=Math.min(length,t+Math.max(minStep,dash-m)),f0=t/length,f1=end/length,o=count*4;
+        out[o]=f0===0?p.x:p.x+(q.x-p.x)*f0;out[o+1]=f0===0?p.y:p.y+(q.y-p.y)*f0;
+        out[o+2]=f1===1?q.x:p.x+(q.x-p.x)*f1;out[o+3]=f1===1?q.y:p.y+(q.y-p.y)*f1;
+        count++;t=end;
+      }else t=Math.min(length,t+Math.max(minStep,period-m));
+    }
+    s+=length;
+  }
+  return count;
+}

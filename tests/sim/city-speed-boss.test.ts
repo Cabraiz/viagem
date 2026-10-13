@@ -82,7 +82,8 @@ interface Rig {world:SimWorld;sys:RunSystems;players:Map<string,SimPlayer>}
 function assembled(terrain:SimWorld['terrain'],seed:number):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false});
+  // Travel and reach are measured with the plaza open: the barricades (cidade-06) are a defense, tested in city-barricades.
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},barricades:false,cityTutorial:false});
   return {world,sys,players};
 }
 /** A player without weapons (nothing dies) and too much hp to go down: only positions matter here. */

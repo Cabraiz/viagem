@@ -7,7 +7,7 @@
  * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
@@ -24,7 +24,15 @@ import type {TauntedEnemy} from '../skills.ts';
  * Everyone else ignores structures. Against a structure every kind walks up and hits it (the agiota and the anão too: a boleto does
  * not hurt a wall, a molotov is not thrown at it).
  */
-export interface StructureTarget extends Point {id:string;radius:number}
+export interface StructureTarget extends Point {
+  id:string;radius:number;
+  /**
+   * A city barricade (cidade-06): not a siege target, but any body (siege or not, never a retreating one nor the boss)
+   * in contact with it hits it on its contact cooldown, through hitStructure (D-017): the steer leads bodies the
+   * barricades cut off the plaza to the mouth they must break.
+   */
+  blocking?:boolean;
+}
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
   rng?:Rng;
@@ -114,7 +122,7 @@ function tauntTarget(ctx:SimContext,e:EnemyState):SimPlayer|undefined{
  * Moves `body` by (dx,dy) without entering sea, rocks or trees (world.ts rules), sliding along blockers.
  * Bodies wider than a player also keep their own radius out of obstacles (they may only move away from one they overlap).
  * A body that starts off walkable ground (spawned in shallow water or inside a blocker) moves freely until it is walkable,
- * so once on land it never leaves it.
+ * so once on land it never leaves it. In the city the barricades are solid (enemyTerrain: blockers stop enemies only).
  */
 export function moveSafely(body:Point,dx:number,dy:number,terrain:TerrainField,radius=PLAYER_RADIUS){
   const distance=Math.hypot(dx,dy);
@@ -206,7 +214,7 @@ export class EnemyAi implements SimSystem {
         // him (any other displacement still calls the charge off, see chargeWarned).
         if(memory.state===STATE.joke)delete e.knock;
         else{
-          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          moveSafely(e,e.knock.x,e.knock.y,enemyTerrain(ctx.terrain),e.radius);
           e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
           if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
         }
@@ -222,7 +230,7 @@ export class EnemyAi implements SimSystem {
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else{
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        if(memory[SIEGE]===1)for(const s of structures){const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
+        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
@@ -344,6 +352,13 @@ export class EnemyAi implements SimSystem {
             }else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
           }else if(structure)this.options.hitStructure?.(ctx,structure.id,e.damage,e);
         }
+        // Barricades (cidade-06): pressed against a blocking structure, the body bashes it (one hit per contact cooldown).
+        if(memory.state!==STATE.joke&&ctx.tick>=memory.hitReady)for(const s of structures){
+          if(!s.blocking||!(Math.hypot(s.x-e.x,s.y-e.y)-s.radius<=e.radius+PLAYER_RADIUS+.05))continue;
+          memory.hitReady=ctx.tick+def.contactCooldown;
+          this.options.hitStructure?.(ctx,s.id,e.damage,e);
+          break;
+        }
       }
       // Separation from overlapping neighbors (order-stable: same index, same iteration).
       let pushX=0,pushY=0;
@@ -371,7 +386,8 @@ export class EnemyAi implements SimSystem {
         const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
         if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
       }
-      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
+      // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
+      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),e.radius);
     }
     if(active.length&&this.canBark(ctx,AMBIENT_GAP_FACTOR)&&rng.chance(this.options.barkChance??BARK_CHANCE)){
       const e=active[rng.int(0,active.length-1)],elite=e.elite&&rng.chance(.5);

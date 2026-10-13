@@ -45,3 +45,19 @@ export function placeYieldsToSos(place:{x:number;y:number},sos:readonly {x:numbe
 /** World units per CSS px at a camera zoom (never below the floor, so a zoomed-in camera keeps 13 px too). */
 export const labelScale=(zoom:number)=>1/Math.max(.05,zoom);
 
+/** A ring stroked around the ficha: color and how far its center line sits outside the body, in border widths. */
+export interface PlateRing {color:'breu'|'cone';out:number}
+/**
+ * Rings outside the ficha's body (the Papel edge is inside it), outermost first. Island and endless map: the caído
+ * ficha's Cone ring only (main). Cidade Nevada (card cidade-contorno-breu, contraste.md: Papel and Cone vanish on the
+ * snow, only Breu passes 3:1 on every ground): a Breu ring outside everything, so the caído keeps its Cone ring
+ * between the Papel edge and the Breu.
+ */
+export function plateRings(sos:boolean,city:boolean):readonly PlateRing[]{
+  if(!city)return sos?SOS_RINGS:NO_RINGS;
+  return sos?CITY_SOS_RINGS:CITY_RINGS;
+}
+const NO_RINGS:readonly PlateRing[]=Object.freeze([]);
+const SOS_RINGS:readonly PlateRing[]=Object.freeze([{color:'cone',out:.5}]);
+const CITY_RINGS:readonly PlateRing[]=Object.freeze([{color:'breu',out:.5}]);
+const CITY_SOS_RINGS:readonly PlateRing[]=Object.freeze([{color:'breu',out:1.5},{color:'cone',out:.5}]);

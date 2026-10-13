@@ -31,6 +31,8 @@ import {artReady} from '../ui/art-boot.ts';
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
 type FakeProjectile=ProjectileView&{until:number};
+/** `?say=ficou`: demo of the left-behind balloon right after a crate's line (cidade-07 / BUG-…-balao-ficou-pra-tras). */
+const SAY_DEMO=new URLSearchParams(location.search).get('say');
 /** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
   {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
@@ -118,7 +120,11 @@ class FakeHorde {
       const d=Math.hypot(me.x-agiota.x,me.y-agiota.y)||1;
       this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:agiota.x,y:agiota.y,vx:(me.x-agiota.x)/d*.12,vy:(me.y-agiota.y)/d*.12,radius:.22,hostile:true,until:this.tick+Math.floor(d/.12)});
     }
-    if(this.tick%30===1)this.emit({type:'say',source:me.id,key:'devendo',line:'Tá devendo!'});
+    if(SAY_DEMO==='ficou'){
+      // BUG-…-balao-ficou-pra-tras: a crate's line, then the left-behind line 0.5 s later (inside the 2 s gap).
+      if(this.tick%100===20)this.emit({type:'say',source:me.id,key:'no-coco',line:'Caixa limpa. Nem o rato quis.'});
+      if(this.tick%100===30){this.emit({type:'say',source:me.id,key:'ficou-pra-tras',line:'Ficou pra trás no rolê. Boa sorte!'});(window as {__ficouAt?:number}).__ficouAt=this.tick;}
+    }else if(this.tick%30===1)this.emit({type:'say',source:me.id,key:'devendo',line:'Tá devendo!'});
   }
   private emit(event:SimEvent){this.events.push({...event,eventId:++this.eventId});}
   private landPoint(min:number,max:number):Point{

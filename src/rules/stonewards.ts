@@ -25,6 +25,12 @@ export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
 export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
 export const canPay=(b:Balance,c:Balance)=>b.coco>=c.coco&&b.pedra>=c.pedra;
+/**
+ * What a forge tap may name as its optional `target` (cidade-06): the wall or one of the city's 4 barricades
+ * (sim/stonewards/barricades.ts barricadeId). The room drops a tap with any other target before the simulation.
+ */
+export const FORGE_TARGET=/^(muralha|barricada-[NSLO])$/;
+export const isForgeTarget=(id:unknown):id is string=>typeof id==='string'&&FORGE_TARGET.test(id);
 
 /** How long a chinelo tower stays (the forge's third recipe). */
 export const TOWER_SECONDS=45;
@@ -95,4 +101,6 @@ export const FORGE_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   duplicate:'Esse pedido já foi.',
   'wall-down':'A muralha caiu.',
   away:'Volta pro acampamento pra forjar.',
+  blocked:'Tem bicho no meio da barricada. Tira ele daí que a gente monta.',
+  target:'Essa barricada não existe nem no papel.',
 });

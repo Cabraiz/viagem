@@ -6,6 +6,10 @@
  *   buy stay readable with a padlock and say why on tap (no dead button);
  * - the horn notice (announcement slot): "Volta pra base" with the seconds left and an arrow to the base; inside the
  *   camp it says when the critters arrive. In a wave, the wall crossing 50% and 25% shows here for 3 s.
+ * City barricades (card NEW-20261012-E5-cidade-barricadas-cliente): standing within CAMP_RADIUS of a barricade in the
+ * intermission opens the same window, even away from the wall, with one more tag that repairs (or raises) THAT barricade
+ * ({t:'forge',recipe:'reparo',target:'barricada-N'}); away from the wall the forge's own tags stay readable but refuse
+ * with 'away', as the server would.
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
@@ -16,6 +20,7 @@ import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
+import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -35,20 +40,29 @@ const recipeArt=(art:IconName|{sticker:StickerName})=>typeof art==='string'?icon
 
 export interface ForgeAnswer {req:number;recipe:string;ok:boolean;reason?:string}
 export interface CampOptions {
-  /** Sends the purchase; returns the request id, or undefined when it cannot reach the room now. */
-  onForge(recipe:RecipeId):number|undefined;
+  /**
+   * Sends the purchase; returns the request id, or undefined when it cannot reach the room now. `target` names what a
+   * 'reparo' repairs ('barricada-N'), only for a city barricade; the wall's tags never send one.
+   */
+  onForge(recipe:RecipeId,target?:string):number|undefined;
 }
 /** Where the hero is (client prediction) and where the base lies on screen (degrees, 0 = right, clockwise). */
 export interface HeroSpot {x:number;y:number;bearing?:number}
 
-/** Why a tag cannot be bought right now, or undefined when it can (pure, tested). */
-export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structures'|'players'>,localId:string):string|undefined{
+/** A forge tower on the wire ('torre-chinelo'): the wall and the city barricades are structures too, never towers. */
+export const isTower=(s:Pick<StructureView,'kind'>)=>s.kind.startsWith('torre-');
+/**
+ * Why a tag cannot be bought right now, or undefined when it can (pure, tested). `away`: the hero is out of the camp
+ * (the window is open at a city barricade): the forge's own tags refuse like the server, after the wall-down check.
+ */
+export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structures'|'players'>,localId:string,away=false):string|undefined{
   const camp=view.camp;
   if(!camp)return 'phase';
   if(camp.wallDown)return 'wall-down';
+  if(away)return 'away';
   if(!canPay(camp,RECIPES[recipe].cost))return 'balance';
   if(recipe==='reparo'){const w=wallOf(view.structures);if(w&&w.hp>=w.maxHp)return 'full';}
-  if(recipe==='torre-chinelo'&&view.structures.filter(s=>s.kind!=='muralha').length>=MAX_TOWERS)return 'full';
+  if(recipe==='torre-chinelo'&&view.structures.filter(isTower).length>=MAX_TOWERS)return 'full';
   if(recipe==='gambiarra'){
     const me=view.players.find(p=>p.id===localId);
     if(me&&!me.weapons.some(w=>!w.id.endsWith('-evo')&&w.level<MAX_WEAPON_LEVEL))return 'no-weapon';
@@ -65,6 +79,30 @@ export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.
 /** Whether the hero stands in the camp (the forge works there). */
 export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!hero&&!!wall&&Math.hypot(hero.x-wall.x,hero.y-wall.y)<=CAMP_RADIUS;
 
+/** Why the barricade tag cannot be bought now, or undefined (pure, tested; the server's order: wall, balance, full). */
+export function barricadeBlocked(spot:Pick<BarricadeSpot<StructureView>,'structure'|'down'>,camp:RunView['camp']):string|undefined{
+  if(!camp)return 'phase';
+  if(camp.wallDown)return 'wall-down';
+  if(!canPay(camp,RECIPES.reparo.cost))return 'balance';
+  if(!spot.down&&spot.structure.hp>=spot.structure.maxHp)return 'full';
+  return undefined;
+}
+/** The barricade tag's texts: its name, its line and the stamp's note once the room says yes (pure, tested). */
+export function barricadeText(spot:Pick<BarricadeSpot,'name'|'down'>){
+  return spot.down
+    ?{name:`Reerguer barricada ${spot.name}`,describe:'Levanta de novo com 25% da vida',done:`Barricada ${spot.name} de pé!`}
+    :{name:`Reparar barricada ${spot.name}`,describe:'Conserta 25% da barricada',done:`Barricada ${spot.name} consertada!`};
+}
+/**
+ * Where the window stands (pure, tested): open in the camp or at a barricade; the title names the place; away from the
+ * wall the barricade tag goes first and the forge's own tags refuse with 'away'.
+ */
+export function forgePlace(home:boolean,spot:BarricadeSpot|undefined){
+  // The key names the place only: inside the camp it stays 'base' whichever barricade is in reach (boca S is ~2.4 u from
+  // the wall, so its reach covers most of the camp and must not reopen a window the player closed there).
+  return {open:home||!!spot,away:!home,title:home?'Forja':'Barricada',barricadeFirst:!home,key:home?'base':spot?.target??''};
+}
+
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
 };
@@ -79,6 +117,8 @@ export interface CampPart extends HudPart {
   /** The room's answer to a forge tap. */
   forged(answer:ForgeAnswer):void;
   setHero(spot:HeroSpot|undefined):void;
+  /** The city's 4 plaza mouths (the decoded asset's `bocas`), undefined off the city: barricade tags need them. */
+  setBocas(bocas:CityBocas|undefined):void;
 }
 
 export function createCamp(options:CampOptions):CampPart{
@@ -108,13 +148,16 @@ export function createCamp(options:CampOptions):CampPart{
   const title=el('h2','rh-forge-title',head);title.textContent='Forja';
   const close=el('button','rh-forge-close',head);close.type='button';close.setAttribute('aria-label','Fechar a forja');close.insertAdjacentHTML('beforeend',icon('fechar',{size:32}));
   const list=el('div','rh-forge-tags',forge);
-  const tags=new Map<RecipeId,{button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement}>();
-  for(const id of RECIPE_IDS){
-    const r=RECIPES[id],button=el('button','rh-forge-tag',list);button.type='button';button.dataset.recipe=id;
-    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${recipeArt(RECIPE_ICON[id])}</span>`);
+  /** A tag of the window: the forge's three recipes, plus 'barricada' (a 'reparo' with the barricade as target). */
+  type TagKey=RecipeId|'barricada';
+  interface Tag {button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement;name:HTMLElement;desc:HTMLElement}
+  const tags=new Map<TagKey,Tag>();
+  const makeTag=(key:TagKey,art:IconName|{sticker:StickerName},recipe:RecipeId):Tag=>{
+    const r=RECIPES[recipe],button=el('button','rh-forge-tag',list);button.type='button';button.dataset.recipe=recipe;
+    button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${recipeArt(art)}</span>`);
     const body=el('span','rh-forge-body',button);
-    el('strong','rh-forge-name',body).textContent=r.name;
-    el('span','rh-forge-desc',body).textContent=r.describe;
+    const name=el('strong','rh-forge-name',body);name.textContent=r.name;
+    const desc=el('span','rh-forge-desc',body);desc.textContent=r.describe;
     const price=el('span','rh-forge-price',button);
     for(const kind of ['coco','pedra'] as const){
       const part=el('span','rh-forge-cost',price);el('b','',part).textContent=String(r.cost[kind]);
@@ -124,16 +167,21 @@ export function createCamp(options:CampOptions):CampPart{
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
     const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
     el('span','rh-forge-stamp',button).textContent='LEVEI';
-    tags.set(id,{button,lock,full});
-  }
+    const tag={button,lock,full,name,desc};tags.set(key,tag);return tag;
+  };
+  for(const id of RECIPE_IDS)makeTag(id,RECIPE_ICON[id],id);
+  // The city barricade's repair: the wall repair's price (one recipe), hidden until the hero stands at a barricade.
+  const fence=makeTag('barricada','muralha','reparo');fence.button.hidden=true;
   const note=el('p','rh-forge-note',head);note.setAttribute('aria-live','polite');
   // Someone fell while the forge is open: a Cone ficha in the note's place (the note comes back for a tap's answer).
   const fall=el('p','rh-window-fall rh-forge-fall',head);fall.hidden=true;fall.setAttribute('role','status');
   const overflow=watchOverflow(list);
 
-  let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined;
-  let dismissed=false,stint=-1,wasInCamp=false;
-  let pending:{req:number;recipe:RecipeId;timer:ReturnType<typeof setTimeout>}|undefined;
+  let last:RunView|undefined,ctxId='',hero:HeroSpot|undefined,bocas:CityBocas|undefined;
+  let dismissed=false,stint=-1,lastPlace='';
+  /** Where the hero stands now (render): in the camp, and the barricade he can repair (city only). */
+  let home=false,spot:BarricadeSpot<StructureView>|undefined;
+  let pending:{req:number;key:TagKey;recipe:RecipeId;done:string;timer:ReturnType<typeof setTimeout>}|undefined;
   let stampTimer:ReturnType<typeof setTimeout>|undefined,noteTimer:ReturnType<typeof setTimeout>|undefined;
   let lastFraction:number|undefined,warning:{text:string;until:number}|undefined,warnTimer:ReturnType<typeof setTimeout>|undefined;
 
@@ -143,32 +191,39 @@ export function createCamp(options:CampOptions):CampPart{
   };
   const DEFAULT_NOTE='O saldo é da turma. Toca pra comprar.';
   note.textContent=DEFAULT_NOTE;
+  const refusal=(reason:string,recipe:RecipeId)=>reason==='balance'?(last?.camp&&missing(last.camp,recipe))||FORGE_REFUSALS.balance:FORGE_REFUSALS[reason]??'Agora não dá.';
 
-  const tap=(id:RecipeId)=>{
+  const tap=(key:TagKey)=>{
     if(!last||pending)return;
-    const reason=blockedReason(id,last,ctxId);
-    if(reason){say(reason==='balance'&&last.camp?missing(last.camp,id):FORGE_REFUSALS[reason]??'Agora não dá.');return;}
-    const req=options.onForge(id);
+    const at=key==='barricada'?spot:undefined;
+    if(key==='barricada'&&!at)return;
+    const recipe:RecipeId=key==='barricada'?'reparo':key;
+    const reason=at?barricadeBlocked(at,last.camp):blockedReason(recipe,last,ctxId,!home);
+    if(reason){say(refusal(reason,recipe));return;}
+    const req=at?options.onForge(recipe,at.target):options.onForge(recipe);
     if(req===undefined){say('Sem conexão com a sala. Tenta de novo.');return;}
-    tags.get(id)!.button.classList.add('rh-forge-pending');tags.get(id)!.button.setAttribute('aria-busy','true');
+    tags.get(key)!.button.classList.add('rh-forge-pending');tags.get(key)!.button.setAttribute('aria-busy','true');
     say('Forjando…',true);
-    pending={req,recipe:id,timer:setTimeout(()=>{if(pending?.req===req){clearPending();say('Sem resposta da sala. Tenta de novo.');}},FORGE_TIMEOUT_MS)};
+    pending={req,key,recipe,done:at?barricadeText(at).done:`${RECIPES[recipe].name}: feito!`,
+      timer:setTimeout(()=>{if(pending?.req===req){clearPending();say('Sem resposta da sala. Tenta de novo.');}},FORGE_TIMEOUT_MS)};
   };
   const clearPending=()=>{
     if(!pending)return;
     clearTimeout(pending.timer);
-    const t=tags.get(pending.recipe)!;t.button.classList.remove('rh-forge-pending');t.button.removeAttribute('aria-busy');
+    const t=tags.get(pending.key)!;t.button.classList.remove('rh-forge-pending');t.button.removeAttribute('aria-busy');
     pending=undefined;
   };
-  for(const [id,{button}] of tags){
+  for(const [key,{button}] of tags){
     // Pointer down answers at once (the tap is the purchase); a keyboard click (detail 0) is the debug fallback (D-009).
-    button.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();tap(id);});
-    button.addEventListener('click',e=>{if(e.detail===0)tap(id);});
+    button.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();tap(key);});
+    button.addEventListener('click',e=>{if(e.detail===0)tap(key);});
   }
   close.addEventListener('click',()=>{dismissed=true;forge.hidden=true;});
   // The window holds its own taps (VGM-040): nothing leaks to the joystick or the map.
   for(const node of [forge,readout,notice])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)node.addEventListener(type,event=>event.stopPropagation());
 
+  const label=(name:string,describe:string,cost:Balance,reason:string|undefined,recipe:RecipeId)=>
+    `${name}: ${describe}. Custa ${cost.coco} coco e ${cost.pedra} pedra.${reason?` ${refusal(reason,recipe)}`:''}`;
   const render=()=>{
     const view=last;
     const camp=view?.camp;
@@ -191,7 +246,7 @@ export function createCamp(options:CampOptions):CampPart{
     lastFraction=fraction;
     // ---------- notice ----------
     const me=view.players.find(p=>p.id===ctxId),standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed;
-    const home=inCamp(hero,wall);
+    home=inCamp(hero,wall);
     if(warning&&performance.now()<warning.until){
       notice.hidden=false;notice.dataset.kind='wall';noticeText.textContent=warning.text;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
     }else if(prepare&&camp.hornEndsTick!==undefined&&standing){
@@ -205,37 +260,56 @@ export function createCamp(options:CampOptions):CampPart{
       if(bearing!==undefined)arrow.style.setProperty('--rumo',`${Math.round(bearing)+180}deg`);
     }else{warning=undefined;notice.hidden=true;}
     // ---------- forge ----------
+    // A barricade within CAMP_RADIUS of the hero (city only): the window opens there too, even away from the wall.
+    spot=barricadeAt(hero,view.structures,bocas,CAMP_RADIUS);
+    const place=forgePlace(home,spot);
     if(!prepare||round?.index!==stint){stint=prepare?round!.index:-1;dismissed=false;}
-    if(home&&!wasInCamp)dismissed=false;
-    wasInCamp=home;
+    // Walking into a new place (the camp, another barricade) opens a window the player closed somewhere else.
+    if(place.open&&place.key!==lastPlace)dismissed=false;
+    lastPlace=place.open?place.key:'';
     const offerOpen=!!forge.parentElement?.querySelector('.rh-offer:not([hidden])');
-    const show=prepare&&home&&standing&&!camp.wallDown&&!offerOpen&&!dismissed;
+    const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
+    if(title.textContent!==place.title){title.textContent=place.title;forge.setAttribute('aria-label',place.title);close.setAttribute('aria-label',home?'Fechar a forja':'Fechar a barricada');}
     const line=fallLine(view,ctxId),quiet=note.textContent===DEFAULT_NOTE;
     if(fall.textContent!==line)writeFallLine(fall,line);
     fall.hidden=!line||!quiet;note.hidden=!!line&&quiet;
-    for(const [id,{button,lock,full}] of tags){
-      const reason=blockedReason(id,view,ctxId);
+    for(const id of RECIPE_IDS){
+      const {button,lock,full}=tags.get(id)!,reason=blockedReason(id,view,ctxId,place.away);
       button.classList.toggle('rh-forge-blocked',!!reason);
       lock.hidden=reason!=='balance';full.hidden=reason!=='full';
-      button.setAttribute('aria-label',`${RECIPES[id].name}: ${RECIPES[id].describe}. Custa ${RECIPES[id].cost.coco} coco e ${RECIPES[id].cost.pedra} pedra.${reason?` ${reason==='balance'?missing(camp,id):FORGE_REFUSALS[reason]}`:''}`);
+      button.setAttribute('aria-label',label(RECIPES[id].name,RECIPES[id].describe,RECIPES[id].cost,reason,id));
+    }
+    // ---------- barricade tag ----------
+    if(fence.button.hidden===!!spot)fence.button.hidden=!spot;
+    if(spot){
+      const text=barricadeText(spot),reason=barricadeBlocked(spot,camp);
+      if(fence.name.textContent!==text.name){fence.name.textContent=text.name;fence.desc.textContent=text.describe;}
+      fence.button.dataset.target=spot.target;
+      fence.button.classList.toggle('rh-forge-blocked',!!reason);
+      fence.lock.hidden=reason!=='balance';fence.full.hidden=reason!=='full';
+      fence.button.setAttribute('aria-label',label(text.name,text.describe,RECIPES.reparo.cost,reason,'reparo'));
+      // Away from the wall it is why the window opened: first. In the camp it follows the forge's own tags.
+      if(place.barricadeFirst&&list.firstElementChild!==fence.button)list.prepend(fence.button);
+      else if(!place.barricadeFirst&&list.lastElementChild!==fence.button)list.append(fence.button);
     }
   };
 
   return {
     el:forge,readout,notice,forge,
     update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;render();},
-    setHero(spot){hero=spot;if(last)render();},
+    setHero(at){hero=at;if(last)render();},
+    setBocas(next){bocas=next;},
     forged(answer){
       if(!pending||answer.req!==pending.req)return;
-      const id=pending.recipe;clearPending();
+      const {key,recipe,done}=pending;clearPending();
       if(answer.ok){
-        const button=tags.get(id)!.button;
+        const button=tags.get(key)!.button;
         button.classList.add('rh-forge-done');clearTimeout(stampTimer);
         stampTimer=setTimeout(()=>button.classList.remove('rh-forge-done'),FORGE_STAMP_MS);
-        say(`${RECIPES[id].name}: feito!`);
-      }else say(answer.reason==='balance'&&last?.camp?missing(last.camp,id)||FORGE_REFUSALS.balance:FORGE_REFUSALS[answer.reason??'']??'Agora não dá.');
+        say(done);
+      }else say(refusal(answer.reason??'',recipe));
     },
     destroy(){overflow.destroy();clearTimeout(stampTimer);clearTimeout(noteTimer);clearTimeout(warnTimer);if(pending)clearTimeout(pending.timer);readout.remove();notice.remove();forge.remove();},
   };

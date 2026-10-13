@@ -1,4 +1,5 @@
 @import url('./ui/tokens.css');
+@import url('./ui/face.css');
 @import url('./world.css');
 /* Retratos de seleção. O atlas não é uma folha de animação do combate. */
 :root{font-family:var(--f-sistema);color:var(--c-papel);background:var(--c-lilas);font-synthesis:none}

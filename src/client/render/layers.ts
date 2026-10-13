@@ -5,17 +5,20 @@
 import Phaser from 'phaser';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
 import type {SimEvent} from '../../contract/index.ts';
-import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
 import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtRow,hasDeathArt,playEnemyAction,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
+import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
-import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
+import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
+import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
+import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
 import {FILL_TEXEL_CSS,TELEGRAPH_BORDER_KEY,TELEGRAPH_FILL_KEY,TELEGRAPH_STRIP_POINTS,borderStrip,fillStrip,queueTelegraphArt,repeatable} from './telegraph-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
@@ -56,6 +59,16 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /**
+   * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
+   * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
+   */
+  city?:()=>boolean;
+  /**
+   * Screen-scale Breu outlines of enemies and pickups (card contorno-breu, render/city-outline.ts): built once by the
+   * scene and kept across world swaps; it shows the city copies only while its host says the city is on.
+   */
+  cityOutlines?:CityOutlines;
 }
 
 interface EnemyActor{
@@ -172,14 +185,8 @@ export const BALLOON_BODY_DEPTH=95990;
  * It floats over the head (PLAYER_BUBBLE_LIFT), not over the body.
  */
 export const HERO_BALLOON_DEPTH=96550;
-/** Width of the telegraph's outer (light) stroke at UI scale 1, in world px; the red core is half of it. */
-export const TELEGRAPH_STROKE=8;
-/**
- * Telegraph edge bands in CSS px (onda 4: every band ≥ 1,5 px on screen at the follow camera's 0,583 zoom):
- * Breu 2 | Papel 2 | Cone 3 | Papel 2 | Breu 2, so the full edge is 11 px wide, inside the zone (D-015).
- */
-export const TELEGRAPH_BANDS_CSS={breu:2,papel:2,cone:3} as const;
-const TELEGRAPH_EDGE_CSS=2*TELEGRAPH_BANDS_CSS.breu+2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone;
+/** Telegraph edge widths (island: Breu | Papel | Cone | Papel | Breu bands; city: dashed variant): render/telegraph-edge.ts. */
+export {TELEGRAPH_STROKE,TELEGRAPH_BANDS_CSS} from './telegraph-edge.ts';
 /** Hatch of the zone: Breu diagonals, 1,5 px CSS wide every 9 px CSS, at 18%. */
 const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
 /** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
@@ -225,6 +232,8 @@ export class HordeRenderer{
   private ui=1;
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
   private body=1;
+  /** options.city, read once per frame; the shadows' texture follows it. */
+  private cityOn=false;
   private numbersThisPush=0;
   private q:Pt={x:0,y:0};
   private pushAt=0;
@@ -237,7 +246,11 @@ export class HordeRenderer{
   private snapNext=false;
   private at:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
+  /** Inset centre line of the imported border strip (drawBorderArt). */
   private ptsIn:Pt[]=Array.from({length:OUTLINE_MAX_POINTS},()=>({x:0,y:0}));
+  /** The danger edge painter (render/telegraph-edge.ts) and its per-frame input. */
+  private edge=new TelegraphEdge();
+  private edgeFrame:EdgeFrame={css:1,ui:1,blink:1,city:false,dashPhase:0,colors:PALETTE};
   private scale2:Scale2={sx:1,sy:1};
   private poofFrame:PoofFrame={scale:0,alpha:0,done:false};
   private textFrame:TextFrame={y:0,scale:1,alpha:1,done:false};
@@ -259,9 +272,13 @@ export class HordeRenderer{
       o.image.setVisible(active).setActive(active);
       if(!active)o.image.clearTint().setAlpha(1).setScale(1).setRotation(0).setFlipX(false);
     };
-    const shadow=()=>this.track(scene.add.image(0,0,FX.shadow).setDepth(-9980).setVisible(false).setActive(false));
+    ensureCityShadow(scene);
+    const shadow=()=>this.track(scene.add.image(0,0,hordeShadowKey(this.cityOn,FX.shadow)).setDepth(-9980).setVisible(false).setActive(false));
     const bar=(key:string,depth:number)=>this.track(scene.add.image(0,0,key).setOrigin(0,0).setDepth(depth).setVisible(false).setActive(false));
-    const showActor=(o:{image:Image;shadow:Image},active:boolean)=>{showImage(o,active);o.shadow.setVisible(active).setActive(active);};
+    const showActor=(o:{image:Image;shadow:Image},active:boolean)=>{
+      showImage(o,active);o.shadow.setVisible(active).setActive(active);
+      if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
+    };
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
@@ -318,6 +335,8 @@ export class HordeRenderer{
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.body=this.options.actorScale?.()??1;
+    const city=!!this.options.city?.();
+    if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
     this.drawTelegraphs();
     this.enemies.forEach(this.drawEnemy);
@@ -341,6 +360,12 @@ export class HordeRenderer{
     this.snapNext=true;this.update(this.now,0);
   }
 
+  /** City on/off: every live shadow takes the city's Breu 38% texture, or FX.shadow back (idle ones on reuse). */
+  private swapShadows(){
+    const swap=(a:{shadow:Image})=>this.shadowLook(a.shadow);
+    this.enemies.forEach(swap);this.pickups.forEach(swap);this.projectiles.forEach(swap);
+  }
+  private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
   get tick(){return this.nowTick;}
@@ -469,7 +494,7 @@ export class HordeRenderer{
       case 'skill':this.spawnSkillBubble(event.player,skillBubbleLine(event));break;
       // D-013 (VGM-046B): the forge's line and a node running dry, over the player who did it.
       // D-033: the agiota's boleto marks a player as owing money: a short red tag over them instead of the line.
-      case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line);break;}
+      case 'say':{const tag=sayTag(event.key);if(tag)this.spawnSkillBubble(event.source,tag,true);else this.spawnSkillBubble(event.source,event.line,false,sayPriority(event.key));break;}
       case 'boss-phase':{const boss=this.enemies.get(event.enemy);if(boss){boss.flashAt=this.now;boss.bossPhase=event.phase;}break;}
     }
   }
@@ -567,10 +592,10 @@ export class HordeRenderer{
   private skillBubbleAt=new Map<string,number>();
   /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
   say(player:string,line:string){this.spawnSkillBubble(player,line);}
-  private spawnSkillBubble(player:string,line:string,tag=false){
-    // A status tag is game information (the mark makes the player take more damage): it never waits for the gap.
-    const last=this.skillBubbleAt.get(player)??-Infinity;
-    if(!tag&&this.now-last<SKILL_BUBBLE_GAP_MS)return;
+  private spawnSkillBubble(player:string,line:string,tag=false,priority=false){
+    // A status tag is game information (the mark makes the player take more damage) and a priority line must be seen
+    // (sayPriority): neither waits for the gap.
+    if(!bubbleAllowed(this.now,this.skillBubbleAt.get(player)??-Infinity,{tag,priority}))return;
     const p=this.options.locate?.(player);if(!p)return;
     this.skillBubbleAt.set(player,this.now);
     let own:BubbleFx|undefined;this.bubbles.forEach(b=>{if(b.player===player)own=b;});
@@ -608,7 +633,12 @@ export class HordeRenderer{
     const flashing=hitFlash(now-a.flashAt);
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
-    applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body);
+    const outlines=this.options.cityOutlines;
+    if(!applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines)&&outlines){
+      // City mode (contorno-breu): the procedural texture's Breu-ring copy at screen scale; the base outside the city.
+      const base=ENEMY_TEXTURES[a.kind][a.elite?1:0];
+      outlines.show(a.image,outlines.variant(base,body),base,undefined,.5,art.originY,sx*body,sy*body);
+    }
     const shadow=art.width*size*(a.kind==='pombos'?.45:.66)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
@@ -700,6 +730,10 @@ export class HordeRenderer{
     }
     const body=this.body;
     a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body).setRotation(rotation);
+    // City mode (contorno-breu): the pickup's Breu-ring copy at screen scale, made for the scale it is drawn at (a big
+    // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
+    const outlines=this.options.cityOutlines;
+    if(outlines)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
     const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
@@ -743,15 +777,18 @@ export class HordeRenderer{
       if(hatch){top.lineStyle(HATCH_CSS.width*css,c.breu,HATCH_CSS.alpha);for(let i=0;i<hatch;i++){const o=i*4;top.lineBetween(this.hatch[o],this.hatch[o+1],this.hatch[o+2],this.hatch[o+3]);}}
     }
     if(ops)this.replayDecor(top,LAYER_ZONE);
-    // Bands in CSS px (never thinner on screen when the camera zooms in); never below the old UI-scaled width either.
-    const want=Math.max(TELEGRAPH_EDGE_CSS*css,TELEGRAPH_STROKE*w)/2,half=insetPolygon(this.pts,n,want,this.ptsIn),k=2*half/TELEGRAPH_EDGE_CSS;
-    // Imported dashed border (telegraph-borda): the band those strokes cover, outer edge on the zone (above this layer).
-    if(this.borderTex)this.drawBorderArt(t,n,half,blink);
-    else{
-      top.lineStyle(2*half,c.breu,.95).strokePoints(this.ptsIn,true,true,n);
-      top.lineStyle(k*(2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone),c.papel,.55+.45*blink).strokePoints(this.ptsIn,true,true,n);
-      top.lineStyle(k*TELEGRAPH_BANDS_CSS.cone,c.cone,1).strokePoints(this.ptsIn,true,true,n);
-    }
+    // Bands in CSS px (never thinner on screen when the camera zooms in); island: never below the old UI-scaled width.
+    // City (§7): Breu dashed, Cone solid, Papel dashed in the same phase; the dashes drift slowly (still when reduced).
+    const e=this.edgeFrame;
+    e.css=css;e.ui=w;e.blink=blink;e.city=this.cityOn;e.colors=c;
+    e.dashPhase=this.cityOn?telegraphDashPhase(this.now,this.reduced):0;
+    if(this.borderTex){
+      // Imported dashed border (telegraph-borda): the band the island's strokes cover, outer edge on the zone (above
+      // this layer). In the city its Breu dashed rim (contorno-breu) goes over it, under what is in the air.
+      const want=Math.max(TELEGRAPH_EDGE_CSS*css,TELEGRAPH_STROKE*w)/2,half=insetPolygon(this.pts,n,want,this.ptsIn);
+      this.drawBorderArt(t,n,half,blink);
+      if(this.cityOn)this.edge.drawCityRim(this.airLayer(),this.pts,n,e);
+    }else this.edge.draw(top,this.pts,n,e);
     // What is in the air or sticks out of a small zone (bottle, flames, poop, stamp, charge arrow) goes over the edge.
     // With the imported border (a strip above `top`), what is in the air goes on a layer above it.
     if(ops)this.replayDecor(this.borderTex?this.airLayer():top,LAYER_AIR);
@@ -923,4 +960,12 @@ export class HordeRenderer{
   private depth(p:Pt){return this.options.projector.depth(p.x,p.y);}
   private count(pool:{created:number;active:number}){return {created:pool.created,active:pool.active};}
   private track<T extends Phaser.GameObjects.GameObject>(object:T):T{this.objects.push(object);return object;}
+}
+
+/** The city's contact shadow texture (city-edge-rules.ts): flat Breu 38% in FX.shadow's frame, generated once. */
+function ensureCityShadow(scene:Phaser.Scene){
+  if(scene.textures.exists(CITY_SHADOW_KEY))return;
+  const t=CITY_SHADOW_TEXTURE,e=t.ellipse,g=scene.make.graphics({x:0,y:0},false);
+  g.fillStyle(CITY_CONTACT_SHADOW.color,CITY_CONTACT_SHADOW.alpha).fillEllipse(e.x,e.y,e.width,e.height,32);
+  g.generateTexture(CITY_SHADOW_KEY,t.width,t.height);g.destroy();
 }

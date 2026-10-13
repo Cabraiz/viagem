@@ -66,17 +66,26 @@ const CITY_PLAN:BuildPlan=Object.freeze({
     x:round3((CITY_RAIL.x0+CITY_RAIL.length/2)*CITY_BUILD_CELL),y:round3((CITY_RAIL.y0+CITY_RAIL.width/2)*CITY_BUILD_CELL)}) as RailSite,
 });
 const ISLAND_PLAN:BuildPlan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:Object.freeze([]),rail:null});
-const endlessPlans=new Map<string,BuildPlan>();
+// The 3×3 ápices (A4, A5, B5) do not fit inside that guaranteed ground, so each diagonal also tries a 3×3 just past
+// the clearing, on this seed's ground: the first candidate (nearest first, then turning off the diagonal) that fits.
+const ENDLESS_BIG_RADII=[11.4,12.4,13.4,14.4],ENDLESS_BIG_TURNS=[0,-10,10,-20,20,-30,30];
+const endlessPlans=new WeakMap<TerrainField,BuildPlan>();
 
-/** The build sites of a world: the city's, the endless camp's (around its base), none on the island. */
+/** The build sites of a world: the city's, the endless camp's (around its base, per seed), none on the island. */
 export function buildPlanFor(terrain?:TerrainField):BuildPlan{
   if(maskSurface(terrain))return CITY_PLAN;
   if(!terrain?.chunks)return ISLAND_PLAN;
-  const base=worldBase(terrain),key=`${base.x},${base.y}`;
-  let plan=endlessPlans.get(key);
+  let plan=endlessPlans.get(terrain);
   if(!plan){
-    plan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:freezeSites(ENDLESS_SITES,(dx,dy)=>({x:base.x+dx,y:base.y+dy})),rail:null});
-    endlessPlans.set(key,plan);
+    const base=worldBase(terrain),rows:(readonly [number,number,BuildSize])[]=[...ENDLESS_SITES];
+    const taken=rows.map(([x,y,s])=>footprint({x:base.x+x,y:base.y+y},s,ENDLESS_BUILD_CELL));
+    for(const q of [45,135,225,315])search:for(const r of ENDLESS_BIG_RADII)for(const turn of ENDLESS_BIG_TURNS){
+      const a=(q+turn)*Math.PI/180,dx=r*Math.cos(a),dy=r*Math.sin(a),rect=footprint({x:base.x+dx,y:base.y+dy},3,ENDLESS_BUILD_CELL);
+      if(taken.some(t=>overlaps(t,rect))||!rectFits(rect,terrain))continue;
+      rows.push([dx,dy,3]);taken.push(rect);break search;
+    }
+    plan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:freezeSites(rows,(dx,dy)=>({x:base.x+dx,y:base.y+dy})),rail:null});
+    endlessPlans.set(terrain,plan);
   }
   return plan;
 }
@@ -94,7 +103,7 @@ export function rectDistance(r:Rect,p:Point):number{
   const dx=Math.max(r.x-p.x,0,p.x-(r.x+r.w)),dy=Math.max(r.y-p.y,0,p.y-(r.y+r.h));
   return Math.hypot(dx,dy);
 }
-const overlaps=(a:Rect,b:Rect)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+function overlaps(a:Rect,b:Rect){return a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;}
 const inside=(r:Rect,x:number,y:number)=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h;
 
 /** True when every point of the rectangle (sampled at `step`, edges included) is ground a hero may stand on. */

@@ -41,11 +41,13 @@ test('the plan is fixed data: frozen, stable ids, the same object every call', (
   assert.deepEqual(plan.sites.map(s=>s.id),plan.sites.map((_,i)=>`obra-${String(i+1).padStart(2,'0')}`));
 });
 
-test('the endless camp has 12 valid sites around its base on every seed, no rail; the island has none', () => {
+test('the endless camp has 12 fixed sites plus 3×3 ones past the clearing, valid on every seed, no rail; the island has none', () => {
   for(let k=1;k<=40;k++){
     const t=endless(k*2654435761>>>0),plan=buildPlanFor(t);
     assert.equal(plan.cell,ENDLESS_BUILD_CELL);
-    assert.equal(plan.sites.length,12);assert.equal(plan.rail,null);
+    assert.ok(plan.sites.length>=MIN_SITES&&plan.sites.length<=MAX_SITES);assert.equal(plan.rail,null);
+    assert.ok(plan.sites.filter(s=>s.maxSize===3).length>=2,`seed ${k}: room for the 3×3 ápices`);
+    assert.equal(buildPlanFor(t),plan);
     assert.deepEqual(reasons(plan,t),[],`seed ${k}`);
   }
   const t=endless(7),plan=buildPlanFor(t),base=worldBase(t);

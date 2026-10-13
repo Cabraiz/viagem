@@ -219,8 +219,8 @@ const UI_STICKERS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chi
   'antena','ima-ferradura','camera','coxinhas','bau-aberto','galo','borboleta','halter','foto'];
 const UI_MARKS=['voce','aliado','caido','spawn','coco','pedra','barricada'];
 const UI_EMOTES=new Set(['risada','boia','chamar','suor']);
-/** The D-033 cast with a HUD icon `ui/inimigo-<id>` (client src/client/render/keys.ts ENEMY_KINDS). */
-export const UI_ENEMIES=Object.freeze(['bebado','anao-molotov','pombos','tio-pave','agiota','chefe']);
+/** The cast with a HUD icon `ui/inimigo-<id>` (D-033 plus the elenco P1; client src/client/render/keys.ts ENEMY_KINDS). */
+export const UI_ENEMIES=Object.freeze(['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer']);
 const UI=(()=>{
   const out={},add=(id,symbol,priority=P0)=>{
     const e=out[id]??={priority,meta:{replaces:[]}};
@@ -240,12 +240,12 @@ const UI=(()=>{
 
 // ---------------------------------------------------------------- face avatars (board design/PACOTE-ROSTOS.md, §4b)
 /**
- * The 36 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
+ * The 35 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
  * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
  */
 export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','pedreiro',
   'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
-  'vendedor-praia','tia-festa','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
+  'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
   'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
   'conspiracionista','gamer-mobile','rainha-bateria']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */

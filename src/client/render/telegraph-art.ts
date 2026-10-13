@@ -16,6 +16,7 @@
 import type Phaser from 'phaser';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 import {OUTLINE_MAX_POINTS,type Pt} from './telegraph-shape.ts';
+import {DECOR_ART_IDS} from './telegraph-look.ts';
 
 export const TELEGRAPH_FILL_ART='telegraph-enchimento',TELEGRAPH_BORDER_ART='telegraph-borda';
 /** Texture keys of the two pieces (loaded as whole images: the frame is the full texture, so UV 0..1 = one tile). */
@@ -45,6 +46,35 @@ export function telegraphArtLoads():TelegraphArtLoad[]{
   return out;
 }
 /**
+ * Imported telegraph decorations (NEW-20261012-ORQ-importar-arte-d-restos item 4), `efeitos` strips by slot of
+ * telegraph-look.ts DECOR_ART_IDS: the charge's chevron, the explosion's target and the burp cloud. Each is drawn in place
+ * of today's vector decoration of that kind, at the same spot and turned the same way; the zone and its edge stay.
+ */
+export const decorArtKey=(id:string)=>`art:telegraph:decor:${id}`;
+export interface DecorArtInfo {key:string;cell:[number,number];frames:number}
+const decorCache=new WeakMap<object,DecorArtInfo|null>();
+/** The imported strip of decoration `id` (texture key, cell, frames of its first page), or undefined: today's drawing. */
+export function decorArtInfo(id:string):DecorArtInfo|undefined{
+  const piece=artPiece('efeitos',id);if(!piece)return undefined;
+  let info=decorCache.get(piece);
+  if(info===undefined){
+    const file:ArtFile|undefined=piece.files.sheet??Object.values(piece.files)[0],page=file&&artPages(file)[0];
+    info=file&&page&&file.cell[0]>0&&file.cell[1]>0?{key:decorArtKey(id),cell:[file.cell[0],file.cell[1]],frames:Math.max(1,page.frameCount)}:null;
+    decorCache.set(piece,info);
+  }
+  return info??undefined;
+}
+/** Decoration sheets to load (empty manifest → []). */
+export function telegraphDecorLoads(ids:readonly string[]):TelegraphArtLoad[]{
+  const out:TelegraphArtLoad[]=[];
+  for(const id of ids){
+    const piece=artPiece('efeitos',id),info=decorArtInfo(id);if(!piece||!info)continue;
+    const file=piece.files.sheet??Object.values(piece.files)[0],page=file&&artPages(file)[0],url=page&&artUrl('efeitos',page.file);
+    if(url)out.push({id,key:info.key,url,cell:info.cell});
+  }
+  return out;
+}
+/**
  * Queues the imported telegraph textures that are not loaded yet and starts the loader if it is idle (the renderer is
  * built in create(), after preload). Nothing with an empty manifest; a failed load keeps today's drawing.
  */
@@ -52,6 +82,9 @@ export function queueTelegraphArt(scene:Phaser.Scene,start=true){
   const loader=scene.load;if(!loader)return;
   let queued=false;
   for(const l of telegraphArtLoads()){if(scene.textures.exists(l.key))continue;loader.image(l.key,l.url);queued=true;}
+  for(const l of telegraphDecorLoads(DECOR_ART_IDS)){
+    if(scene.textures.exists(l.key))continue;loader.spritesheet(l.key,l.url,{frameWidth:l.cell[0],frameHeight:l.cell[1]});queued=true;
+  }
   // From preload (start=false) the scene's own loader run picks them up; later calls start it themselves.
   if(start&&queued&&!loader.isLoading())loader.start();
 }

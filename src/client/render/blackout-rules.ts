@@ -29,6 +29,15 @@ export function blackoutAlpha(now:number,start:number,end:number,reduced:boolean
 /** Every critter blinks now and then (once each ~3 s, 120 ms), staggered by its phase; reduced motion: eyes never blink. */
 export const BLINK_EVERY_MS=2900,BLINK_MS=120;
 export const eyesOpen=(now:number,phase:number,reduced:boolean)=>reduced||((now+phase*BLINK_EVERY_MS)%BLINK_EVERY_MS)>=BLINK_MS;
+/**
+ * Frame of the imported eyes strip (`olhos-escuro`, art-d item 5) on the same clock as eyesOpen: frame 0 while open;
+ * during a blink the other frames play once over BLINK_MS (1..frames-1). One frame or reduced motion: always 0.
+ */
+export function eyesFrame(now:number,phase:number,reduced:boolean,frames:number):number{
+  if(reduced||frames<=1)return 0;
+  const t=(now+phase*BLINK_EVERY_MS)%BLINK_EVERY_MS;
+  return t>=BLINK_MS?0:1+Math.min(frames-2,Math.floor(Math.max(0,t)/BLINK_MS*(frames-1)));
+}
 
 /** One drawn layer for the audit: what it is and its depth (and whether it is shown). */
 export interface LayerDepth {name:string;depth:number;visible?:boolean}

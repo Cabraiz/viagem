@@ -32,15 +32,15 @@ const savePng=async(data:Buffer,file:string,size=FACE_DEMO_SIZE)=>{
   await sharp(data,{raw:{width:size,height:size,channels:4}}).png().toFile(file);
 };
 
-test('the 36 face classes are the game catalog (src/rules/classes.ts), in order; 5 expressions, normal first',()=>{
+test('the 35 face classes are the game catalog (src/rules/classes.ts), in order; 5 expressions, normal first',()=>{
   assert.deepEqual([...FACE_CLASSES],classes.map(c=>c.id));
-  assert.equal(FACE_CLASSES.length,36);
+  assert.equal(FACE_CLASSES.length,35);
   assert.deepEqual([...FACE_EXPRESSIONS],['normal','ferido','caido','rindo','bravo']);
   const spec=GROUPS.rostos as any;
   assert.deepEqual([spec.input,spec.output,spec.kind,spec.size,spec.circle],['rostos','public/art/rostos','icon',256,240]);
   assert.equal([FACE_SIZE,FACE_CIRCLE].join(),'256,240');
   const table=Object.entries(spec.expected) as [string,{priority:string,meta:{face:string,expression:string}}][];
-  assert.equal(table.length,36*5);
+  assert.equal(table.length,35*5);
   for(const [id,e] of table){
     assert.equal(`${e.meta.face}-${e.meta.expression}`,id);
     assert.equal(e.priority,e.meta.expression==='normal'?'P0':'P1',id);
@@ -70,7 +70,7 @@ test('demo faces: every one approved, 256×256 WebP with face/expression meta in
   assert.deepEqual(pending.sort(),FACE_CLASSES.filter(c=>!withNormal.includes(c)).map(c=>`${c}-normal`).sort());
   assert.equal(piece(r,'mendigo-rindo').status,'opcional');
   assert.equal(piece(r,'mendigo-rindo').priority,'P1');
-  assert.equal(r.pieces.filter(p=>p.status==='opcional').length,36*4-(4+1));
+  assert.equal(r.pieces.filter(p=>p.status==='opcional').length,35*4-(4+1));
   const html=readFileSync(reportFile,'utf8');
   assert.match(html,/<h2>10\. Rostos \(avatares\)<\/h2>/);
   const pendingLine=html.match(/<p class="pending">[^\n]*?<\/p>/)?.[0]??'';
@@ -111,7 +111,7 @@ test('unknown expression or class, or a wrong size, is refused with a pt-BR mess
   const expr=piece(r,'mendigo-chorando'),cls=piece(r,'palhaco-normal'),size=piece(r,'streamer-normal');
   for(const p of [expr,cls,size])assert.equal(p.status,'reprovado',p.id);
   assert.deepEqual(expr.problems,[`rostos/mendigo-chorando.png: expressão "chorando" desconhecida. O nome precisa terminar com uma das expressões normal, ferido, caido, rindo, bravo (ex.: rostos/mendigo-rindo.png).`]);
-  assert.match(cls.problems[0],/^rostos\/palhaco-normal\.png: classe "palhaco" desconhecida\. Use o id de uma das 36 classes/);
+  assert.match(cls.problems[0],/^rostos\/palhaco-normal\.png: classe "palhaco" desconhecida\. Use o id de uma das 35 classes/);
   assert.match(size.problems[0],/^rostos\/streamer-normal\.png: tamanho 128×128, esperado 256×256 .*Exporte o ícone em 256×256\./);
   // The pure helper agrees with the table.
   assert.equal(faceIdProblem('rei-pastel-rindo'),undefined);

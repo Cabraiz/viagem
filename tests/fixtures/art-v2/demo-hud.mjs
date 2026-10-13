@@ -4,7 +4,7 @@
  * passes for finished art:
  *  - ui/inimigo-<id>.png 128×128, transparent, nothing within 2 px of the border (the importer's margin rule), for the
  *    D-033 cast: bebado B (lime), anao-molotov M (orange), pombos P (cyan), tio-pave T (pink), agiota A (yellow),
- *    chefe C (violet).
+ *    chefe C (violet); elenco P1: coach H (white), motoboy O (salmon), influencer I (mint).
  * The ally ring and plaque reuse the "Você" ring and the place plaque, written by demo-frames.mjs.
  *
  *   node tests/fixtures/art-v2/demo-hud.mjs <pasta>     then: node scripts/import-art-v2.mjs --dry-run --input <pasta>
@@ -16,7 +16,8 @@ import {pathToFileURL} from 'node:url';
 
 /** What writeDemoHud writes, by group (every one must be approved by the importer). */
 export const DEMO_HUD=Object.freeze({
-  ui:Object.freeze(['inimigo-bebado','inimigo-anao-molotov','inimigo-pombos','inimigo-tio-pave','inimigo-agiota','inimigo-chefe']),
+  ui:Object.freeze(['inimigo-bebado','inimigo-anao-molotov','inimigo-pombos','inimigo-tio-pave','inimigo-agiota','inimigo-chefe',
+    'inimigo-coach','inimigo-motoboy','inimigo-influencer']),
 });
 
 const INK=[20,10,30,255],YELLOW=[255,230,0,255];
@@ -24,6 +25,7 @@ const INK=[20,10,30,255],YELLOW=[255,230,0,255];
 const LOOK=Object.freeze({
   'inimigo-bebado':['B',[120,255,40,255]],'inimigo-anao-molotov':['M',[255,140,0,255]],'inimigo-pombos':['P',[0,230,255,255]],
   'inimigo-tio-pave':['T',[255,40,200,255]],'inimigo-agiota':['A',[255,230,0,255]],'inimigo-chefe':['C',[150,60,255,255]],
+  'inimigo-coach':['H',[255,255,255,255]],'inimigo-motoboy':['O',[255,90,90,255]],'inimigo-influencer':['I',[90,255,200,255]],
 });
 /** 5×7 pixel glyphs (rows top to bottom, '#' drawn). */
 const GLYPHS=Object.freeze({
@@ -33,6 +35,9 @@ const GLYPHS=Object.freeze({
   T:['#####','..#..','..#..','..#..','..#..','..#..','..#..'],
   A:['.###.','#...#','#...#','#####','#...#','#...#','#...#'],
   C:['.####','#....','#....','#....','#....','#....','.####'],
+  H:['#...#','#...#','#...#','#####','#...#','#...#','#...#'],
+  O:['.###.','#...#','#...#','#...#','#...#','#...#','.###.'],
+  I:['#####','..#..','..#..','..#..','..#..','..#..','#####'],
 });
 const SIZE=128,GLYPH_SCALE=10;
 

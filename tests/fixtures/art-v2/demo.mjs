@@ -199,12 +199,17 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
     // plus the city pieces (ground tiles, a ruined building, a prop) for the cidade-03 hookup.
     // `--base` keeps only the part B delivery.
     if(!process.argv.includes('--base')){
-      const [{writeDemoActions},{writeDemoTelegraph},{writeDemoFrames},{writeDemoCity}]=await Promise.all([
-        import('./demo-actions.mjs'),import('./demo-telegraph.mjs'),import('./demo-frames.mjs'),import('./demo-city.mjs')]);
+      const [{writeDemoActions},{writeDemoTelegraph},{writeDemoFrames},{writeDemoCity},{writeDemoHud},{writeDemoFaces},{writeDemoRestos}]=await Promise.all([
+        import('./demo-actions.mjs'),import('./demo-telegraph.mjs'),import('./demo-frames.mjs'),import('./demo-city.mjs'),
+        import('./demo-hud.mjs'),import('./demo-faces.mjs'),import('./demo-restos.mjs')]);
       await writeDemoActions(path.resolve(dir));await writeDemoTelegraph(path.resolve(dir));await writeDemoFrames(path.resolve(dir));
       await writeDemoCity(path.resolve(dir));
+      // Part D (importar-arte-d-restos): critter HUD icons, face avatars, and the leftovers (hostile shot, telegraph
+      // chevron/target/burp cloud, blackout eyes, death poof strip).
+      await writeDemoHud(path.resolve(dir));await writeDemoFaces(path.resolve(dir));await writeDemoRestos(path.resolve(dir));
       console.log('  + ações (bebado, chefe), projéteis por arma, telegraph (hachura e borda), molduras 9-slice e anéis');
       console.log('  + cidade: chão neve-fofa-1 e neve-pisada-1, casa-terrea-2x1-1 (ruína, 4 vistas), banco-praca (4 vistas)');
+      console.log('  + ícones de bicho no HUD, rostos, tiro inimigo, seta/alvo/arroto do telegraph, olhos do apagão, poof animado');
     }
     console.log(`Entrega de demonstração (sintética) em ${path.resolve(dir)}:`);
     for(const [group,ids] of Object.entries(pieces))console.log(`  ${group}: ${ids.join(', ')}`);

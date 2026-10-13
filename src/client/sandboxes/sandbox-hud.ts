@@ -29,7 +29,7 @@
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
- * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe` (arte v2): with state=downed the local fall names that critter
+ * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe|coach|motoboy|influencer` (arte v2): with state=downed the local fall names that critter
  * (the banner's cause line), with state=result every fall does ("Te derrubou"); its icon is the imported `ui/inimigo-<id>`
  * (art/hud-art.ts). Without that piece the line is text only here (the game then shows the enemy's sprite).
  */

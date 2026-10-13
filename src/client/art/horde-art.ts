@@ -12,6 +12,7 @@ import {artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type 
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
+import {POOF_MS} from '../render/motion.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
@@ -63,6 +64,29 @@ export const STATIC_ART:readonly StaticArt[]=[
   {key:FX.puff,group:'efeitos',ids:['poof','morte-poof'],mode:'bake',size:[64,64]},
   {key:FX.warning,group:'efeitos',ids:['aviso-spawn'],mode:'bake',size:[40,40]},
 ];
+/**
+ * The death poof without a `death` sheet (art-d item 6). The 'bake' above keeps frame 0 under FX.puff (the kill-cam and
+ * any other FX.puff user); the in-game poof plays the whole strip, already loaded as a sheet under `art:efeitos:<id>`
+ * (artLoads), one frame after the other over today's POOF_MS, at today's 64×64 size (`fit`, contain) and tint.
+ */
+export interface PoofArt {key:string;frames:number;fit:number}
+const POOF_ART=STATIC_ART.find(s=>s.key===FX.puff) as StaticArt;
+const poofCache=new WeakMap<ArtPiece,PoofArt|null>();
+/** The imported poof strip, or undefined (today's FX.puff; always with an empty manifest). */
+export function poofArt():PoofArt|undefined{
+  let id:string|undefined,piece:ArtPiece|undefined;
+  for(let i=0;i<POOF_ART.ids.length&&!piece;i++){id=POOF_ART.ids[i];piece=artPiece('efeitos',id);}
+  if(!piece||!id)return undefined;
+  let art=poofCache.get(piece);
+  if(art===undefined){
+    const file=piece.files.sheet??Object.values(piece.files)[0],page=file&&artPages(file)[0],[w,h]=POOF_ART.size as readonly [number,number];
+    art=file&&page&&validCell(file)?{key:`art:efeitos:${id}`,frames:Math.max(1,page.frameCount),fit:Math.min(w/file.cell[0],h/file.cell[1])}:null;
+    poofCache.set(piece,art);
+  }
+  return art??undefined;
+}
+/** Frame of a poof strip of `frames` frames `ageMs` after the kill: once over POOF_MS, the last frame holds. */
+export const poofSheetFrame=(ageMs:number,frames:number)=>frames<=1?0:Math.min(frames-1,Math.floor(Math.max(0,ageMs)/POOF_MS*frames));
 /**
  * Per-source projectiles (item 2 of NEW-20261012-ORQ-importar-arte-c-completa). The `projeteis` ids of the weapons are
  * the weapon ids (ProjectileView.source, evolutions included); the hostile ones are the agiota's 'boleto-juros' (a real

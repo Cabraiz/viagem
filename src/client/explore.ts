@@ -137,6 +137,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   $('#explorer-name').textContent=name;
   shell.querySelector('img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
   document.body.append(shell);shell.showModal();
+  // In a room the thumbs start off (waiting room): the per-frame update below only runs once the scene is up, and on
+  // a slow network the waiting room shows long before that (manifesto-enxuto-3g; lobby-dead-controls).
+  if(net)applyControls(shell,controlsFor({phase:net.run?.phase??'lobby'}));
   const abort=new AbortController(),signal=abort.signal;
   const direction=new JoystickInput();
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;

@@ -249,14 +249,23 @@ export async function readIndex(file){
  * (its pieces exactly as in that manifest), over the previous index (groups without a manifest keep their entry).
  * Groups and ids sorted, so a re-run gives the same bytes. Returns the file path.
  */
+/** A group entry without its `sha256` fields (at every depth). */
+export function leanIndex(value){
+  if(Array.isArray(value))return value.map(leanIndex);
+  if(!value||typeof value!=='object')return value;
+  const out={};for(const [k,v] of Object.entries(value))if(k!=='sha256')out[k]=leanIndex(v);
+  return out;
+}
 export async function writeIndex(specs,{outRoot}){
   const file=indexPath({outRoot}),groups={...(await readIndex(file))?.groups};
   for(const [group,spec] of Object.entries(specs)){
     const manifest=await readManifest(manifestPath(spec,{outRoot}));
     if(manifest)groups[group]={output:spec.output,pieces:manifest.pieces};
   }
-  const sorted=Object.fromEntries(Object.keys(groups).sort().map(g=>[g,groups[g]]));
-  await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,groups:sorted},null,2)}
+  const sorted=Object.fromEntries(Object.keys(groups).sort().map(g=>[g,leanIndex(groups[g])]));
+  // Lean and minified (manifesto-enxuto-3g): the client never checks hashes, and every phone downloads this file
+  // before the game starts (246 KB → ~84 KB, ~7 KB gzip). The group manifests keep every sha256.
+  await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,groups:sorted})}
 `);
   return file;
 }

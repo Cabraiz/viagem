@@ -8,7 +8,7 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {decide,newMemory,HZ,type BrainMemory} from '../src/sim/index.ts';
+import {decide,newMemory,towerBrainView,HZ,type BrainMemory,type TowerBrainView} from '../src/sim/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {railName} from '../src/rules/index.ts';
@@ -62,6 +62,8 @@ export class RoomBots {
   thinkMs=0;thinks=0;
   /** Forge buys that went through (lab and bench). */
   forged=0;
+  /** Tower builds and upgrades that went through (torres-fio: lab and tests). */
+  built=0;
   get ids(){return [...this.minds.keys()];}
   get size(){return this.minds.size;}
   has(id:string){return this.minds.has(id);}
@@ -83,13 +85,15 @@ export class RoomBots {
     if(!this.minds.size)return [];
     const started=performance.now(),tick=sim.tick,sos:string[]=[];
     const minds=[...this.minds.values()].sort((a,b)=>a.slot-b.slot);
-    let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined;
+    let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,towers:TowerBrainView|undefined;
     for(const mind of minds){
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
       if(!p)continue;
       view??=sim.botView();
       if(forger===undefined)forger=this.forger(view,minds);
+      // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder).
+      if(forger===mind.id&&!towers){const st=sim.run.stonewards;towers=towerBrainView(st.state,st.plan,view.tick,view.round?.index??0);}
       // The person to walk with: the nearest one standing (bots follow people, never each other).
       let escort:{x:number;y:number}|undefined,near=Infinity;
       for(const q of view.players){
@@ -97,13 +101,19 @@ export class RoomBots {
         const at=q as typeof q&{x:number;y:number},d=Math.hypot(at.x-p.x,at.y-p.y);
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
-      const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort});
+      const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+        ...(forger===mind.id&&towers?{towers}:{})});
       sim.setBotInput(mind.id,d.direction,d.cast);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);
         if(result.ok)this.forged++;
         else if(RECIPE_REFUSALS.has(result.reason))mind.memory.refused[d.forge as RecipeId]=view.round?.index??0;
+      }
+      if(d.build){
+        const order=d.build,req=`bot-${mind.id}-${++mind.req}`;
+        const result='build' in order?sim.build(mind.id,order.build,req):sim.upgrade(mind.id,order.upgrade,order.branch,req);
+        if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);
     }

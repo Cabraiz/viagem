@@ -270,6 +270,8 @@ export class CoopClient {
   onEmote:(e:EmoteNote)=>void=()=>{};
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
+  /** The room's answer to a build or upgrade (torres-fio): the new kind, or why not. */
+  onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string})=>void=()=>{};
   /**
    * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
    * point: a reloaded page keeps its seat (token) but not this counter, and a restarted count would read as a resend.
@@ -283,6 +285,19 @@ export class CoopClient {
   forge(recipe:string,target?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'forge',round:this.run.round,recipe,req,...(target===undefined?{}:{target})});return req;
+  }
+  /**
+   * Tower defense (torres-fio): builds the root on a build site ('obra-NN', maps buildPlanFor) or lays the rail
+   * ('trilho'); the room answers {t:'built'} (onBuilt). Same request ids and reach rules as forge().
+   */
+  build(site:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,site});return req;
+  }
+  /** Upgrades a ready defense (its structure's wire id) to the next tier; `branch` A/B/C at tier 2, or 'A4b'/'A5b'. */
+  upgrade(defense:string,branch?:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'upgrade',round:this.run.round,req,defense,...(branch===undefined?{}:{branch})});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -468,6 +483,7 @@ export class CoopClient {
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
     else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
+    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
     // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.

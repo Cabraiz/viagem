@@ -18,6 +18,7 @@ import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
+import {DEFENSES,phaseOf,type DefenseState,type TowerResult} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
@@ -307,7 +308,27 @@ export class Simulation {
       const rows=(st as {barricades?:readonly BarricadeRow[]}).barricades??[];
       for(const b of rows)out.push({id:b.id,kind:'barricada',x:b.x,y:b.y,hp:b.down?0:b.hp,maxHp:b.maxHp});
     }
+    // torres-fio: the tower defenses (a ruin stays, hp 0, until a new root is built on its site).
+    for(const d of this.defenses())out.push(defenseView(d,this.world.tick));
     return out;
+  }
+  /** The run's tower defenses (none until the first build). */
+  defenses():readonly DefenseState[]{return this.systems.stonewards.state.defenses?.list??[];}
+  /**
+   * Tower defense (torres-fio): the root on a free build site, or the Gustavão's rail ('trilho'), validated by the sim
+   * (intermission, standing, wall, balance, limits). `requestId` makes a resent tap apply once. Refused once the run
+   * is decided, or for an offline or spectating player.
+   */
+  build(id:string,siteId:string,requestId?:string):TowerResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.build(this.world,id,siteId,requestId);
+  }
+  /** Upgrades a ready defense to its next tier (`branch`: A/B/C at tier 2, or a label like 'A4b' for the alternative). */
+  upgrade(id:string,defenseId:string,branch?:string,requestId?:string):TowerResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.upgrade(this.world,id,defenseId,branch,requestId);
   }
   /**
    * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area
@@ -488,3 +509,10 @@ export class Simulation {
 }
 
 export type {SimEvent};
+
+/** A tower defense as the client sees it (torres-fio): its kind, tier, branch, building phase and aim in turns. */
+export function defenseView(d:DefenseState,tick:number):StructureView{
+  const def=DEFENSES[d.kind],turn=d.aim===undefined?undefined:((d.aim/(2*Math.PI))%1+1)%1;
+  return {id:d.id,kind:d.kind,x:d.x,y:d.y,hp:d.ruined?0:d.hp,maxHp:d.maxHp,tier:def.tier,...(def.branch?{branch:def.branch}:{}),
+    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn})};
+}

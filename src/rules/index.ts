@@ -13,3 +13,4 @@ export * from './stonewards.ts';
 export * from './telegraph-geometry.ts';
 export * from './waves.ts';
 export * from './zueira-cidade.ts';
+export * from './towers.ts';

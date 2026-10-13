@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-export const ADAPTERS=['cenario','personagens','geral'];
+export const ADAPTERS=['cenario','personagens','inimigos','geral'];
 
 export async function adaptarEntrega(entrega,saida,{clean=false,log=()=>{}}={}){
   const src=fs.existsSync(path.join(entrega,'arte-entrada'))?path.join(entrega,'arte-entrada'):entrega;

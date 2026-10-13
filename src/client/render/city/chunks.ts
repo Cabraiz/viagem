@@ -4,7 +4,7 @@
  * for a camera rect. Pure logic (no Phaser); screen space is the one of projection.ts (world px, no zoom).
  */
 import type {BlockKind,CityAsset,CityBlock,CityProp} from './asset.ts';
-import {cellOf,heightAt} from './asset.ts';
+import {cellOf,groundZ,heightAt} from './asset.ts';
 import type {Pt,Rect} from './projection.ts';
 import {HEIGHT_PX,VIEW_PIVOT,boundsOf,normalizeView,project,rectsOverlap} from './projection.ts';
 
@@ -141,6 +141,16 @@ export function buildChunks(asset:CityAsset,chunkCells=CHUNK_CELLS):ChunkIndex{
     for(let y=Math.max(0,c.y0-1);y<Math.min(asset.height,c.y1+1);y++)for(let x=Math.max(0,c.x0-1);x<Math.min(asset.width,c.x1+1);x++){
       const h=heightAt(asset,x,y);if(h<lo)lo=h;if(h>hi)hi=h;
     }
+    // Relief (cidade-relevo): the ground and the props follow the corner heights (groundZ), which can dip below or rise
+    // above a cell's average height; bound them too so a chunk is not culled a few pixels early on a hill.
+    const corners=asset.corners;
+    if(corners){
+      const W=asset.width+1;
+      for(let y=Math.max(0,c.y0-1);y<=Math.min(asset.height,c.y1+1);y++)for(let x=Math.max(0,c.x0-1);x<=Math.min(asset.width,c.x1+1);x++){
+        const h=corners[y*W+x];if(h<lo)lo=h;if(h>hi)hi=h;
+      }
+    }
+    for(const p of c.props){const z=groundZ(asset,p.x,p.y);if(z<lo)lo=z;if(z>hi)hi=z;}
     for(const p of c.pieces)hi=Math.max(hi,p.base+p.height);
     c.minBase=lo;c.maxTop=hi;
   }

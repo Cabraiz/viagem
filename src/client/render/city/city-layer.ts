@@ -190,8 +190,8 @@ export class CityLayer {
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
 
-  /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps from the next chunk built. */
-  setEconomy(on:boolean){this.relief?.setEconomy(on);}
+  /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
+  setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
@@ -288,6 +288,8 @@ export class CityLayer {
   destroy(){
     for(const key of [...this.live.keys()])this.dropChunk(key);
     this.tracker.reset();this.fader.reset();this.faded.clear();this.fog?.destroy();this.fog=undefined;this.view=-1;
+    // Its GPU side too (made again by the next bake if the layer is updated again).
+    this.relief?.release();
   }
 
   /** The snow and Breu fog beyond the map edge for this view, just under the ground layer (border-fog.ts). */

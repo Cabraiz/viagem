@@ -31,7 +31,10 @@ export class CityRelief {
   readonly textures:ReliefTextures;
   private readonly baker:Baker;
   private readonly targets=new Map<string,{shader:Phaser.GameObjects.Shader;key:string}>();
-  private readonly keys:[string,string];
+  private readonly keys:[string,string,string];
+  /** Textures uploaded and the restore listener on (released by release(), made again by the next bake). */
+  private live=false;
+  private readonly restore=()=>this.dropTargets();
   private readonly id=serial++;
   /** Highest corner (render units) per cell, for each chunk's ray ceiling. */
   private readonly cellTop:Float32Array;
@@ -41,23 +44,30 @@ export class CityRelief {
   constructor(private readonly scene:Phaser.Scene,private readonly asset:CityAsset,private readonly pivot:Pt){
     this.baker=new Baker(scene);
     const t=this.textures=reliefTextures(asset);
-    this.keys=[`city-relief-field-${this.id}`,`city-relief-kinds-${this.id}`];
-    scene.textures.addUint8Array(this.keys[0],t.field,t.fieldWidth,t.fieldHeight);
-    scene.textures.addUint8Array(this.keys[1],t.kinds,asset.width,asset.height);
+    this.keys=[`city-relief-field-${this.id}`,`city-relief-kinds-${this.id}`,`city-relief-cover-${this.id}`];
     const W=t.fieldWidth;
     this.cellTop=new Float32Array(asset.width*asset.height);
     for(let cy=0;cy<asset.height;cy++)for(let cx=0;cx<asset.width;cx++){
       const at=(i:number,j:number)=>t.field[(j*W+i)*4];
       this.cellTop[cy*asset.width+cx]=Math.max(at(cx,cy),at(cx+1,cy),at(cx,cy+1),at(cx+1,cy+1))/255*t.maxHeight;
     }
-    // A lost WebGL context drops the scratch targets: they are made again on the next bake.
-    const renderer=scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer,restore=()=>this.dropTargets();
-    renderer.on?.(Phaser.Renderer.Events.RESTORE_WEBGL,restore);
-    scene.events.once('shutdown',()=>{renderer.off?.(Phaser.Renderer.Events.RESTORE_WEBGL,restore);this.destroy();});
+    scene.events.once('shutdown',()=>this.release());
+  }
+  private get renderer(){return this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;}
+  /** Uploads the textures and listens for a lost WebGL context (its scratch targets are made again on the next bake). */
+  private ensure(){
+    if(this.live)return;
+    const t=this.textures,{width,height}=this.asset,tex=this.scene.textures;
+    for(const k of this.keys)if(tex.exists(k))tex.remove(k);
+    tex.addUint8Array(this.keys[0],t.field,t.fieldWidth,t.fieldHeight);
+    tex.addUint8Array(this.keys[1],t.kinds,width,height);
+    tex.addUint8Array(this.keys[2],t.cover,width,height);
+    this.renderer.on?.(Phaser.Renderer.Events.RESTORE_WEBGL,this.restore);
+    this.live=true;
   }
 
-  /** Economy mode: fewer shadow taps (the next chunks built use it; a view turn rebuilds them all). */
-  setEconomy(on:boolean){this.shadowSamples=on?RELIEF_SHADOW_SAMPLES_LOW:RELIEF_SHADOW_SAMPLES;}
+  /** Economy mode: fewer shadow taps. True when it changed (the layer then rebuilds its chunks, so no seam shows). */
+  setEconomy(on:boolean){const n=on?RELIEF_SHADOW_SAMPLES_LOW:RELIEF_SHADOW_SAMPLES,changed=n!==this.shadowSamples;this.shadowSamples=n;return changed;}
 
   /**
    * Ray ceiling of a chunk: the highest corner of its cells and of the cells a ray through its pixels may cross
@@ -79,6 +89,7 @@ export class CityRelief {
   bake(box:Pt,scale:number,w:number,h:number,view:number,cells:CellRect):string{
     const tw=Math.ceil(w/SIZE_STEP)*SIZE_STEP,th=Math.ceil(h/SIZE_STEP)*SIZE_STEP;
     const target=this.target(tw,th),shader=target.shader,{asset,pivot}=this;
+    this.ensure();
     const top=this.rayTop(cells),t0=performance.now();
     this.baker.bake(shader,()=>{
       const set=(name:string,value:unknown)=>shader.setUniform(`${name}.value`,value);
@@ -119,9 +130,13 @@ export class CityRelief {
     this.targets.clear();
   }
 
-  destroy(){
+  /** Frees the GPU side (scratch targets, textures, listener): the city layer's destroy, or the scene's shutdown. */
+  release(){
     this.dropTargets();
+    if(!this.live)return;
     for(const k of this.keys)if(this.scene.textures.exists(k))this.scene.textures.remove(k);
+    this.renderer.off?.(Phaser.Renderer.Events.RESTORE_WEBGL,this.restore);
+    this.live=false;
   }
 }
 

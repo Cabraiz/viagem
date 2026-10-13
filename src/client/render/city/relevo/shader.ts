@@ -6,8 +6,8 @@
  *
  * Colours are the closed city palette (palette.ts, "copy, don't invent") and light only ever blends between two of its
  * measured tones per material or lightens toward white (the contrast rule of palette.ts: the ground never goes darker
- * than its darkest palette tone, so the Breu outlines keep 3:1). Flat ground shows exactly the palette base colour,
- * the same pixels the flat-quad bake drew before.
+ * than its darkest palette tone, so the Breu outlines keep 3:1). Flat ground in full light sits on the palette base
+ * colour, with drifts, grain and sparkles blending only toward that material's own palette tones.
  *
  * Coordinates: the quad covers `areaSize` projected px from `areaOrigin` (projection.ts screen space, z = 0 plane);
  * the bake is drawn with flipY (framebuffer rows run bottom-up), as in terrain/renderer.ts.
@@ -27,6 +27,7 @@ precision highp float;
 uniform vec2 resolution;
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
+uniform sampler2D iChannel2;
 uniform vec2 areaOrigin;
 uniform vec2 areaSize;
 uniform float view;
@@ -70,6 +71,7 @@ vec2 cellAt(vec2 s,float z){
 vec4 field(vec2 f){return texture2D(iChannel0,(clamp(f,vec2(0.0),gridSize)+0.5)/(gridSize+1.0));}
 float H(vec2 f){return field(f).r*maxHeight;}
 vec3 kinds(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel1,clamp(f/gridSize,e,1.0-e)).rgb;}
+vec3 cover(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel2,clamp(f/gridSize,e,1.0-e)).rgb;}
 
 // Sine-free hash (Hoskins) and value noise, as in terrain/shaders.ts.
 float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
@@ -121,13 +123,14 @@ void main(){
  float d=diffuse*mix(1.0,shadow,0.85)-flatLit-hollow;
 
  float macro=fbm(w*0.32),grain=n(w*9.0),fine=n(w*31.0+vec2(17.0,3.0));
- vec3 kd=kinds(f);vec4 fd=field(f);
+ vec3 kd=kinds(f),cv=cover(f);
  float slope=length(g);
 
  // Fresh snow: soft drifts (bluer hollows of the macro noise), fine grain and a few sparkles in the sun.
  vec3 snow=snowRamp(d);
  snow=mix(snow,SNOW_SHADE,smoothstep(0.58,0.82,macro)*0.22);
- snow=mix(snow,SNOW_SUN,(grain-0.5)*0.35*detail+0.0);
+ // Grain: towards the sun tone or the shade tone, never outside the pair.
+ snow=mix(snow,grain>0.5?SNOW_SUN:SNOW_SHADE,abs(grain-0.5)*0.35*detail);
  snow=mix(snow,vec3(1.0),step(0.93,fine)*step(0.0,d)*0.35*detail);
  vec3 color=snow;
 
@@ -147,23 +150,23 @@ void main(){
  // Broken ground: blotches of the two rubble tones under patchy snow.
  vec3 rubble=ramp(mix(RUBBLE,RUBBLE_DETAIL,smoothstep(0.4,0.7,grain)),mix(RUBBLE,vec3(1.0),0.12),RUBBLE_DETAIL,RUBBLE_DETAIL,d);
  rubble=mix(rubble,snow,smoothstep(0.55,0.8,macro)*0.6);
- color=mix(color,rubble,smoothstep(0.3,0.7,fd.g));
+ color=mix(color,rubble,smoothstep(0.3,0.7,cv.r));
 
  // Ice sheets: long streaks and a cold glint.
  float streak=n(rotv(w)*vec2(0.6,5.0)+macro*2.0);
  vec3 ice=mix(ICE,ICE_DETAIL,smoothstep(0.45,0.8,streak)*0.7);
- ice=mix(ice,ICE_GLINT,smoothstep(0.82,0.95,fine)*0.6*detail+max(0.0,d)*1.5);
+ ice=mix(ice,ICE_GLINT,clamp(smoothstep(0.82,0.95,fine)*0.6*detail+max(0.0,d)*1.5,0.0,1.0));
  color=mix(color,ice,smoothstep(0.3,0.7,kd.b));
 
  // Exposed rock where the slope is steep (terrace edges, hillsides), snow kept on its flatter ledges.
- float rock=smoothstep(0.55,1.05,slope+(macro-0.5)*0.35)*(1.0-smoothstep(0.2,0.6,kd.g))*(1.0-fd.b);
+ float rock=smoothstep(0.55,1.05,slope+(macro-0.5)*0.35)*(1.0-smoothstep(0.2,0.6,kd.g))*(1.0-cv.g);
  vec3 stone=ramp(mix(ROCK,ROCK_SHADE,smoothstep(0.5,0.8,grain)*0.5),ROCK_SUN,ROCK_SHADE,ROCK_SHADE,d);
  stone=mix(stone,snow,smoothstep(0.62,0.8,fine)*0.45);
  color=mix(color,stone,rock);
 
  // Water (fountain, lake): deep blue, shallow at its edge. The layer's decor still draws its rim and glints.
- vec3 water=mix(WATER,WATER_SHALLOW,1.0-smoothstep(0.55,1.0,fd.b));
- color=mix(color,water,smoothstep(0.45,0.55,fd.b));
+ vec3 water=mix(WATER,WATER_SHALLOW,1.0-smoothstep(0.55,0.95,cv.g));
+ color=mix(color,water,smoothstep(0.42,0.52,cv.g));
 
  gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
 }`;

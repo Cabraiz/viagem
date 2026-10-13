@@ -36,20 +36,19 @@ test('relief field: one texel per corner, R is the corner over maxHeight, so the
   }
 });
 
-test('relief masks: streets, plaza and ice per cell; rubble and water per corner as the share of the cells around it',()=>{
+test('relief masks: one texel per cell, so a single-cell patch keeps its full value at its centre',()=>{
   const t=reliefTextures(tiny);
   const kind=(cx:number,cy:number)=>Array.from(t.kinds.slice((cy*4+cx)*4,(cy*4+cx)*4+3));
-  assert.deepEqual(kind(0,0),[0,0,0]);       // snow
+  const cover=(cx:number,cy:number)=>Array.from(t.cover.slice((cy*4+cx)*4,(cy*4+cx)*4+3));
+  assert.deepEqual(kind(0,0),[0,0,0]);assert.deepEqual(cover(0,0),[0,0,0]);   // snow
   assert.deepEqual(kind(1,0),[255,0,0]);     // packed
   assert.deepEqual(kind(2,0),[0,255,0]);     // cobble
   assert.deepEqual(kind(3,0),[0,0,255]);     // ice
-  assert.equal(groundAt(tiny,0,1),'water');assert.equal(groundAt(tiny,1,1),'rubble');
-  const corner=(i:number,j:number)=>Array.from(t.field.slice((j*5+i)*4+1,(j*5+i)*4+3));
-  // Corner (1,1) touches cells (0,0) snow, (1,0) packed, (0,1) water, (1,1) rubble.
-  assert.deepEqual(corner(1,1),[Math.round(255/4),Math.round(255/4)]);
-  // Corner (0,2) on the west edge touches only (0,1) water and (0,2) snow.
-  assert.deepEqual(corner(0,2),[0,Math.round(255/2)]);
-  assert.deepEqual(corner(4,3),[0,0]);
+  assert.equal(groundAt(tiny,0,1),'water');assert.deepEqual(cover(0,1),[0,255,0]);
+  assert.equal(groundAt(tiny,1,1),'rubble');assert.deepEqual(cover(1,1),[255,0,0]);
+  for(let i=3;i<t.cover.length;i+=4)assert.equal(t.cover[i],255);
+  // The field keeps only the height.
+  for(let i=0;i<t.field.length;i+=4){assert.equal(t.field[i+1],0);assert.equal(t.field[i+2],0);}
 });
 
 test('relief field without corners spreads each cell height to its corners (averaged where cells meet)',()=>{

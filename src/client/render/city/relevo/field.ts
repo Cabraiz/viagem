@@ -1,16 +1,18 @@
 /**
- * Relief ground of the Cidade Nevada (card NEW-20261013-ORQ-cidade-relevo-pseudo-realista): the two small textures the
- * relief shader (shader.ts) reads, packed from the render asset. Pure, no Phaser.
+ * Relief ground of the Cidade Nevada (card NEW-20261013-ORQ-cidade-relevo-pseudo-realista): the small textures the
+ * relief shader (shader.ts) reads, packed from the render asset (three, with the cover masks). Pure, no Phaser.
  *
  * Field: one texel per cell CORNER, (width+1)×(height+1), so the GPU's bilinear filter at uv = (f + 0.5) / (width + 1)
  * is exactly asset.ts groundZ (the ground actors stand on).
- *   R height / maxHeight (render units) · G rubble share of the 4 cells around the corner · B water share · A 255.
- * Kinds: one texel per CELL, width×height, sampled bilinear at uv = f / width so masks blend over half a cell.
- *   R trodden snow (streets) · G plaza stones · B ice · A 255.
+ *   R height / maxHeight (render units) · G, B unused (0) · A 255.
+ * Kinds and cover: one texel per CELL, width×height, sampled bilinear at the cell centre (uv = f / width), so masks
+ * blend over half a cell and a single cell still shows (a per-corner share would wash a 1-cell patch out).
+ *   kinds: R trodden snow (streets) · G plaza stones · B ice · A 255.
+ *   cover: R rubble · G water · B unused · A 255.
  * Fresh snow is what none of the masks claims. Alpha stays 255: an uploaded texture with alpha < 1 would be
  * premultiplied and lose its colour channels.
  */
-import {groundAt,type CityAsset,type GroundKind} from '../asset.ts';
+import {groundAt,type CityAsset} from '../asset.ts';
 
 export interface ReliefTextures {
   /** RGBA, (width+1)×(height+1), row-major from the north-west corner. */
@@ -19,6 +21,8 @@ export interface ReliefTextures {
   fieldHeight:number;
   /** RGBA, width×height. */
   kinds:Uint8Array;
+  /** RGBA, width×height. */
+  cover:Uint8Array;
   /** Height (render units) that R = 255 stands for: the highest corner, at least MIN_RELIEF_HEIGHT. */
   maxHeight:number;
 }
@@ -41,17 +45,6 @@ export function cornerHeights(asset:CityAsset):Float32Array{
   return out;
 }
 
-/** Share (0..1) of the up to 4 cells around corner (i, j) whose kind is `kind`. */
-function cornerShare(asset:CityAsset,i:number,j:number,kind:GroundKind){
-  let hit=0,all=0;
-  for(const [dx,dy] of [[-1,-1],[0,-1],[-1,0],[0,0]]){
-    const cx=i+dx,cy=j+dy;
-    if(cx<0||cy<0||cx>=asset.width||cy>=asset.height)continue;
-    all++;if(groundAt(asset,cx,cy)===kind)hit++;
-  }
-  return all?hit/all:0;
-}
-
 export function reliefTextures(asset:CityAsset):ReliefTextures{
   const W=asset.width+1,H=asset.height+1,corners=cornerHeights(asset);
   let top=0;for(const h of corners)if(h>top)top=h;
@@ -60,16 +53,15 @@ export function reliefTextures(asset:CityAsset):ReliefTextures{
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){
     const t=(j*W+i)*4;
     field[t]=byte(corners[j*W+i]/maxHeight);
-    field[t+1]=byte(cornerShare(asset,i,j,'rubble'));
-    field[t+2]=byte(cornerShare(asset,i,j,'water'));
     field[t+3]=255;
   }
-  const kinds=new Uint8Array(asset.width*asset.height*4);
+  const kinds=new Uint8Array(asset.width*asset.height*4),cover=new Uint8Array(asset.width*asset.height*4);
   for(let cy=0;cy<asset.height;cy++)for(let cx=0;cx<asset.width;cx++){
     const t=(cy*asset.width+cx)*4,k=groundAt(asset,cx,cy);
     kinds[t]=k==='packed'?255:0;kinds[t+1]=k==='cobble'?255:0;kinds[t+2]=k==='ice'?255:0;kinds[t+3]=255;
+    cover[t]=k==='rubble'?255:0;cover[t+1]=k==='water'?255:0;cover[t+3]=255;
   }
-  return {field,fieldWidth:W,fieldHeight:H,kinds,maxHeight};
+  return {field,fieldWidth:W,fieldHeight:H,kinds,cover,maxHeight};
 }
 
 /** Height (render units) the shader reads back at fractional cell coordinates (f in cells from the grid origin). */

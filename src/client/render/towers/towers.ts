@@ -22,7 +22,7 @@ import {MATERIALS} from '../city/palette.ts';
 import type {Pt,Rect} from '../city/projection.ts';
 import {tokenColor} from '../../ui/tokens.ts';
 import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
-import {CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
+import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
   towerArt,towerPhase,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
 /** Where the defenses sit: the city's projection and depth (the sandbox and, after torres-fio, the scene). */
@@ -39,9 +39,12 @@ export interface TowerRendererOptions {
   reduced:boolean;
   /** Depth of the crater decals (just over the ground) and of the shots and explosions (over the actors). */
   groundDepth:number;fxDepth:number;
-  /** World px per CSS px of drawn sizes (the city's CITY_VIEW_SCALE). Default 1. */
-  actorScale?:number;
-  /** The camera to shake (the scene's main camera). */
+  /** World px per CSS px of drawn sizes (the city's CITY_VIEW_SCALE; a getter when it changes with the world). Default 1. */
+  actorScale?:number|(()=>number);
+  /**
+   * The camera this renderer shakes by itself (the sandbox). A scene that re-centres its camera every frame passes none
+   * and adds `shakeOffset` after its own centring instead.
+   */
   camera?:Phaser.Cameras.Scene2D.Camera;
 }
 
@@ -134,7 +137,7 @@ export class TowerRenderer {
     this.fx=scene.add.layer().setDepth(options.fxDepth);
     this.measure();
   }
-  private get s(){return this.o.actorScale??1;}
+  private get s(){const k=this.o.actorScale;return typeof k==='function'?k():k??1;}
   /** Size unit of the weapons and effects: world px of 1/24 u, so they keep their size against the boxes at any scale. */
   private get f(){return this.unitPx/24;}
   /** World px of 1 u along the ground (screen length of a unit step), for barrel lengths and blast ellipses. */
@@ -153,11 +156,21 @@ export class TowerRenderer {
       let t=this.towers.get(view.id);
       if(!t||t.view.kind!==view.kind){if(t)this.drop(t);t=this.make(view);this.towers.set(view.id,t);this.coverDirty=true;}
       t.view=view;t.seen=stamp;
-      t.phase=towerPhase(view,tick);
+      t.phase=view.phase??towerPhase(view,tick);
       if(firedNow(t.prevFire,view,tick))this.fire(t,nowMs);
       t.prevFire=view.fireTick;
     }
     for(const t of this.towers.values())if(t.seen!==stamp){this.drop(t);this.towers.delete(t.view.id);this.coverDirty=true;}
+  }
+  /** Another world (a map switch): no defense and no effect of the old one stays. */
+  reset(){
+    for(const t of this.towers.values())this.drop(t);
+    this.towers.clear();this.coverDirty=true;this.fader.reset();
+    for(const sh of this.shots){sh.on=false;this.hideShot(sh);}
+    for(const f of this.flashes){f.on=false;f.img?.setVisible(false);}
+    for(const b of this.blasts){b.on=false;b.img?.setVisible(false);}
+    for(let i=0;i<this.craters.length;i++){this.craters[i].on=false;this.craterImages[i].setVisible(false);}
+    this.shake.born=-1e9;
   }
   /** Redraws after a camera turn (the defenses and the craters on the snow). */
   refresh(){
@@ -231,12 +244,18 @@ export class TowerRenderer {
       return;
     }
     const e=this.enemies;
-    if(!canFire(t.phase))t.target=-1;
+    if(t.view.aim!==undefined){ // the server's aim (where it last fired): no scan of the horde at all
+      if(canFire(t.phase)){
+        const w=this.o.world,a=w.project(t.view.x,t.view.y,0,this.p),turn=t.view.aim*Math.PI*2;
+        const b=w.project(t.view.x+Math.cos(turn),t.view.y+Math.sin(turn),0,this.q);
+        t.want=dir8(b.x-a.x,b.y-a.y,t.want);
+      }
+    }else if(!canFire(t.phase))t.target=-1;
     else if(this.now>=t.scanAt||!this.reaches(t,t.target)){
       t.target=aimIndex(t.look,t.view.x,t.view.y,e.n,e.xs,e.ys,e.air);
       t.scanAt=this.now+RESCAN_MS;
     }
-    if(t.target>=0){
+    if(t.view.aim===undefined&&t.target>=0){
       const w=this.o.world,a=w.project(t.view.x,t.view.y,0,this.p),b=w.project(e.xs[t.target],e.ys[t.target],0,this.q);
       t.want=dir8(b.x-a.x,b.y-a.y,t.want);
     }
@@ -254,21 +273,31 @@ export class TowerRenderer {
     const d=Math.hypot(e.xs[i]-t.view.x,e.ys[i]-t.view.y);
     return d<=t.look.range&&d>=t.look.minRange;
   }
-  /** A volley: muzzle flash, recoil, and the shots toward the current aim (the nearest reachable enemy). */
+  /**
+   * A volley: muzzle flash, recoil, and the shots toward its aim: with the server's `aim`, the reachable enemy along it
+   * (or a point along it at AIM_FALLBACK of the range); without, the nearest reachable enemy.
+   */
   private fire(t:Tower,nowMs:number){
-    const cal=t.cal,e=this.enemies;
+    const cal=t.cal,e=this.enemies,v=t.view;
     t.recoilUntil=nowMs+RECOIL_MS;
-    const target=aimIndex(t.look,t.view.x,t.view.y,e.n,e.xs,e.ys,e.air);
-    t.target=target;t.scanAt=nowMs+RESCAN_MS;
-    if(target>=0&&cal.shot!=='aura'){ // snap the weapon to the target it fired at
-      const w=this.o.world,a=w.project(t.view.x,t.view.y,0,this.p),b=w.project(e.xs[target],e.ys[target],0,this.q);
+    let tx=NaN,ty=NaN;
+    if(v.aim!==undefined){
+      const i=aimedIndex(t.look,v.x,v.y,v.aim,e.n,e.xs,e.ys,e.air),turn=v.aim*Math.PI*2,reach=t.look.range*AIM_FALLBACK;
+      if(i>=0){tx=e.xs[i];ty=e.ys[i];}else{tx=v.x+Math.cos(turn)*reach;ty=v.y+Math.sin(turn)*reach;}
+    }else{
+      const i=aimIndex(t.look,v.x,v.y,e.n,e.xs,e.ys,e.air);
+      t.target=i;t.scanAt=nowMs+RESCAN_MS;
+      if(i>=0){tx=e.xs[i];ty=e.ys[i];}
+    }
+    const has=Number.isFinite(tx);
+    if(has&&cal.shot!=='aura'){ // snap the weapon to what it fired at
+      const w=this.o.world,a=w.project(v.x,v.y,0,this.p),b=w.project(tx,ty,0,this.q);
       t.dir=t.want=dir8(b.x-a.x,b.y-a.y,t.dir);
     }
     this.muzzle(t);
     if(cal.flash>0)this.addFlash(this.v.x,this.v.y,cal.flash*this.f,cal.flashMs,nowMs);
-    if(cal.shot==='aura'){this.addBlast(t.view.x,t.view.y,t.look.range,cal.blastMs,nowMs,true);return;}
-    if(target<0||cal.shot==='none')return;
-    const tx=e.xs[target],ty=e.ys[target];
+    if(cal.shot==='aura'){this.addBlast(v.x,v.y,t.look.range,cal.blastMs,nowMs,true);return;}
+    if(!has||cal.shot==='none')return;
     if(cal.shot==='beam'){this.addBeam(t,tx,ty,nowMs);return;}
     const n=Math.min(BURST_MAX,t.look.shots),h=t.height*PHASE_HEIGHT[t.phase];
     for(let i=0;i<n;i++){
@@ -426,6 +455,11 @@ export class TowerRenderer {
     cam.scrollX+=off.x-this.applied.x;cam.scrollY+=off.y-this.applied.y;
     this.applied.x=off.x;this.applied.y=off.y;
   }
+  /** The shake's camera offset now (world px at camera `zoom`), for a scene that centres its camera itself. */
+  shakeOffset(zoom:number,out:Pt):Pt{
+    const ms=this.now-this.shake.born,amp=shakeAt(this.shake.cal,ms,this.o.reduced);
+    return shakeOffset(amp/(zoom||1),ms,out);
+  }
   /** Current shake amplitude (CSS px), for checks. */
   shakeNow(){return shakeAt(this.shake.cal,this.now-this.shake.born,this.o.reduced);}
 
@@ -482,7 +516,7 @@ export class TowerRenderer {
       t.rect.x=x0;t.rect.y=y0;t.rect.w=x1-x0;t.rect.h=y1-y0;
     }
     const ox=Math.floor(minX)-pad,oy=Math.floor(minY)-pad,wpx=Math.ceil(maxX-ox)+pad,hpx=Math.ceil(maxY-oy)+pad;
-    const name=`base:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}:${Math.round(this.unitPx)}`;
+    const name=`base:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}:${Math.round(this.unitPx)}:${this.s.toFixed(3)}`;
     const f=this.atlas.frame(name,wpx,hpx,this.bake,g=>{
       g.translateCanvas(-ox,-oy);
       this.drawBase(g,t,t.look.height*PHASE_HEIGHT[t.phase]);

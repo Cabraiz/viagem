@@ -6,12 +6,17 @@
  *  4. Calibre → effects (explosives leave craters, the Gustavão the largest and the only map-wide shake) and the shake
  *     envelope (none under prefers-reduced-motion).
  *  5. The art lookup through the manifest (group `torres`, base + idle + mount), procedural when absent.
+ *  6. The wire (torres-fio): TowerFeed turns the snapshot's structures (multiplayer defenseView) into TowerViews — only
+ *     the defenses, the server's phase and aim, the sim's footprint radius — and a changed aim into one volley.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFENSES,DEFENSE_IDS,phaseOf,DAMAGED_AT} from '../../src/sim/towers/catalog.ts';
 import {SIM_HZ} from '../../src/contract/index.ts';
 import {setArtIndex,parseArtIndex} from '../../src/client/art/manifest.ts';
+import {defenseView} from '../../multiplayer/simulation.ts';
+import type {DefenseState} from '../../src/sim/index.ts';
+import {AIM_TOLERANCE,TowerFeed,aimMoved,aimedIndex,towerRadius,type TowerKind,type TowerView} from '../../src/client/render/towers/tower-rules.ts';
 import {CALIBRE,CRATER,DIRS8,TOWER_DAMAGED_AT,TOWER_KINDS,TOWER_LOOK,TOWER_PHASES,aimIndex,baseColumn,baseFrame,canFire,dir8,dirVector,firedNow,
   flightMs,lobHeight,phaseRow,shakeAt,shakeOffset,towerArt,towerPhase,turnToward,weaponFrame,type Dir8} from '../../src/client/render/towers/tower-rules.ts';
 
@@ -136,4 +141,72 @@ test('5. towerArt: the manifest piece (base sheet, idle sheet, mount), else proc
   assert.equal(a?.base?.cell[0],448);assert.equal(a?.idle?.frames,4);
   assert.equal(towerArt('holofote'),undefined,'no base sheet: procedural');
   setArtIndex(parseArtIndex({version:2,groups:{}}));
+});
+
+const CELL=.88;
+const defense=(id:string,kind:TowerKind,extra:Partial<DefenseState>={}):DefenseState=>({id,kind,site:'s',owner:'p',x:10,y:20,hp:400,maxHp:400,
+  r:(DEFENSES[kind].size??4)*CELL/2,startTick:0,readyTick:60,fireTick:0,...extra} as DefenseState);
+/** The wire's 1-byte aim (protocol 11 `unit`). */
+const byte=(turn:number)=>Math.round(turn*255)/255;
+
+test('6a. TowerFeed: only the defenses, with the server phase, the sim radius and no volley on first sight',()=>{
+  const feed=new TowerFeed(),tick=100;
+  const structures=[
+    {id:'muralha',kind:'muralha',x:0,y:0,hp:900,maxHp:1000},
+    {id:'t1',kind:'torre-chinelo',x:1,y:1,hp:50,maxHp:50,untilTick:400},
+    defenseView(defense('d1','vigia-do-predio',{startTick:90,readyTick:150}),tick),
+    defenseView(defense('d2','morteiro',{readyTick:10,aim:Math.PI/2}),tick),
+    defenseView(defense('d3','gustavao',{readyTick:10,hp:0,ruined:true}),tick),
+  ];
+  const views=feed.views(structures,tick,CELL);
+  assert.deepEqual(views.map(v=>v.id),['d1','d2','d3']);
+  const [v1,v2,v3]=views as [TowerView,TowerView,TowerView];
+  assert.equal(v1.phase,'obra-1');assert.equal(v1.aim,undefined);
+  assert.equal(v2.phase,'pronta');assert.ok(Math.abs(v2.aim!-.25)<1e-9);
+  assert.equal(v3.phase,'ruina');assert.equal(v3.ruined,true);
+  // The sim's footprint radius: size × cell / 2 (the root takes size 1; the Gustavão its rail's width, 4 cells).
+  assert.equal(v1.r,CELL/2);assert.equal(v2.r,2*CELL/2);assert.equal(v3.r,4*CELL/2);
+  for(const kind of TOWER_KINDS)assert.equal(towerRadius(kind,CELL),defense('x',kind).r,kind);
+  for(const v of views)assert.equal(firedNow(undefined,v,tick),false,'first sight is not a volley');
+});
+
+test('6b. TowerFeed: a changed (or new) aim is one volley; the same aim, or less than half a wire step, is none',()=>{
+  const feed=new TowerFeed();
+  const wire=(tick:number,aim?:number)=>{
+    const s=defenseView(defense('d','vigias-armados',{readyTick:0,...(aim===undefined?{}:{aim})}),tick);
+    return feed.views([{...s,...(s.aim===undefined?{}:{aim:byte(s.aim)})}],tick,CELL)[0]!;
+  };
+  let prev=wire(10).fireTick;
+  const step=(tick:number,aim:number|undefined,volley:boolean)=>{
+    const v=wire(tick,aim);
+    assert.equal(firedNow(prev,v,tick),volley,`tick ${tick} aim ${aim}`);
+    prev=v.fireTick;
+  };
+  step(12,undefined,false);           // ready, never fired
+  step(14,0,true);                    // its first volley: the aim appears
+  step(16,0,false);                   // same aim: nothing new
+  step(18,Math.PI,true);              // turned and fired
+  step(20,Math.PI,false);
+  step(22,-Math.PI/2,true);           // atan2's negative half wraps to turns .75
+  assert.equal(aimMoved(.5,.5+.4/255),false);assert.equal(aimMoved(.5,.5+.6/255),true);assert.equal(aimMoved(.0005,.9995),false,"across the wrap");
+  // A world swap forgets every defense: its next sight is a first one again.
+  feed.reset();
+  const again=wire(30,Math.PI/4);assert.equal(firedNow(undefined,again,30),false);
+});
+
+test('6c. aimedIndex: the reachable enemy along the server aim (not the nearest), -1 off the aim',()=>{
+  const look=TOWER_LOOK['vigias-armados'];
+  // Nearest is straight north (+y, turns .25 is +y); the aim points east (turns 0), where a farther one stands.
+  const xs=[0,4,0],ys=[1,0.2,-5],air=[0,0,0];
+  assert.equal(aimIndex(look,0,0,3,xs,ys,air),0);
+  assert.equal(aimedIndex(look,0,0,0,3,xs,ys,air),1);
+  assert.equal(aimedIndex(look,0,0,.25,3,xs,ys,air),0);
+  assert.equal(aimedIndex(look,0,0,.75,3,xs,ys,air),2);
+  // Nothing along the aim (west), past the tolerance, out of range, or the wrong layer: none.
+  assert.equal(aimedIndex(look,0,0,.5,3,xs,ys,air),-1);
+  const off=AIM_TOLERANCE+.05;
+  assert.equal(aimedIndex(look,0,0,0,1,[Math.cos(off)*3],[Math.sin(off)*3],[0]),-1);
+  assert.equal(aimedIndex(look,0,0,0,1,[look.range+.1],[0],[0]),-1);
+  assert.equal(aimedIndex(TOWER_LOOK.morteiro,0,0,0,2,[1,5],[0,0],[0,1]),-1,'mortar: under minRange, and a flyer');
+  assert.equal(aimedIndex(TOWER_LOOK['antiaerea-quadrupla'],0,0,0,2,[3,5],[0,0],[0,1]),1,'flak: only the flyer');
 });

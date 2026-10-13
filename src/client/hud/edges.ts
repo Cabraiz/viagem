@@ -128,7 +128,12 @@ export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:numbe
    * and the new ones step aside from them as from each other; they are never in the result, never merged into and do
    * not count towards `max`. Default none (every existing layout is unchanged).
    */
-  placed?:readonly EdgeArrow[]}
+  placed?:readonly EdgeArrow[];
+  /**
+   * Boxes of another layer no arrow may touch (the obra HUD's on-screen markers, inflated by the arrows' hit area): the
+   * arrows step aside from them as from a placed arrow, never fold into them. Default none.
+   */
+  avoid?:readonly Rect[]}
 /**
  * The HUD pieces that hide the map under them (readouts, base ficha, team, controls, minimap, the open offer or forge,
  * the announcement slot with the kill-cam), viewport CSS px: a target under them is not in plain view and gets an
@@ -213,7 +218,10 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
   const must=options.mustPoint??((t:EdgeTarget)=>MUST_POINT.includes(t.kind));
   const out:EdgeArrow[]=[];
   // Arrows of another layer (EdgeOptions.placed): their boxes are taken as they are; never merged into, never returned.
-  const seeded=options.placed?.length??0;
+  const seeded=(options.placed?.length??0)+(options.avoid?.length??0);
+  // The avoided boxes ride in `out` as obstacles: no kind of theirs ever matches a target's (no merge, rim search on).
+  const obstacles=new Set<EdgeArrow>();
+  const sameKind=(a:EdgeArrow,t:EdgeTarget)=>!obstacles.has(a)&&a.kind===t.kind;
   // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Zé: Me salva, 24 s").
   const scale=Math.max(1,(2*half.w-44)/32);
   let current:EdgeTarget|undefined,compact=false;
@@ -259,6 +267,11 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
     const a:EdgeArrow={...p};out.push(a);boxes.set(a,box(p.x,p.y));
   }
   current=undefined;compact=false;
+  (options.avoid??[]).forEach((r,i)=>{
+    const a:EdgeArrow={key:`avoid:${i}`,kind:'aliado',screen:{x:r.x+r.width/2,y:r.y+r.height/2},distance:0,x:r.x+r.width/2,y:r.y+r.height/2,
+      angle:0,side:'top',count:1,tagEnd:'left'};
+    obstacles.add(a);out.push(a);boxes.set(a,{...r});
+  });
   for(const t of sorted){
     // Behind an open window: on the rim right beside it, level with the target (UX review janela-caido, item 11).
     const behind=windows.some(w=>t.screen.x>=w.x&&t.screen.x<=w.x+w.width&&t.screen.y>=w.y&&t.screen.y<=w.y+w.height);
@@ -305,14 +318,14 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
       next.sort(byDist);
       // Another kind in the way and no step left on this side: the rim nearby, round the corner (a short landscape
       // field dropped the east mouth while the next side had room, visual review cidade-04). The same kind folds instead.
-      if(city&&by.kind!==t.kind)next.push(...rim().filter(p=>Math.hypot(p.x-x,p.y-y)<=NEAR_RIM).sort(byDist));
-      const own=must(t)&&by.kind!==t.kind,fits=(p:Point,pad?:number)=>onRim(p.x,p.y)&&clear(p.x,p.y,wide)&&!crowded(p.x,p.y,pad);
+      if(city&&!sameKind(by,t))next.push(...rim().filter(p=>Math.hypot(p.x-x,p.y-y)<=NEAR_RIM).sort(byDist));
+      const own=must(t)&&!sameKind(by,t),fits=(p:Point,pad?:number)=>onRim(p.x,p.y)&&clear(p.x,p.y,wide)&&!crowded(p.x,p.y,pad);
       let spot=next.find(p=>fits(p));
       // A caído, the boss (or the city's base) rather touches a neighbour's box than goes to the far side of the field.
       if(!spot&&own&&city)spot=[{x,y},...next].find(p=>fits(p,0));
       // The caído and the boss never hide inside another kind's arrow while the rim has a free spot.
       if(!spot&&own)spot=[...corners().sort(byDist),...rim().sort(byDist)].find(p=>fits(p));
-      if(!spot){if(by.kind===t.kind&&out.indexOf(by)>=seeded)by.count++;else if(own)out.push(arrowAt(t,x,y));continue;}
+      if(!spot){if(sameKind(by,t)&&out.indexOf(by)>=seeded)by.count++;else if(own)out.push(arrowAt(t,x,y));continue;}
       x=spot.x;y=spot.y;side=sideOf(x,y,inner);
     }
     // Past the limit, the target still counts in the nearest arrow of its own kind ("+N"), else the minimap has it.

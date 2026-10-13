@@ -21,6 +21,8 @@
 .rh-obra-seta{display:block;width:22px;height:22px;fill:var(--c-amarelo);stroke:var(--c-breu);stroke-width:2;stroke-linejoin:round;paint-order:stroke}
 
 /* The window: an inner Breu edge and Papel line (inset shadows) so children sit at layout.ts's exact px. */
+/* Focused by script when it opens (Escape keeps working); no ring for that, the keyboard's :focus-visible keeps one. */
+.rh-obra-janela:focus:not(:focus-visible){outline:none}
 .rh-obra-janela{position:absolute;box-sizing:border-box;pointer-events:auto;border-radius:var(--r-janela);background:var(--c-lilas);
   box-shadow:inset 0 0 0 2px var(--c-breu),inset 0 0 0 4px var(--c-papel),var(--s-2)}
 

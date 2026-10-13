@@ -93,6 +93,10 @@ export class ObraHud {
   private byId=new Map<string,Mark>();
   /** The sites off screen at the last plan (the arrows point at the nearest of them); none while the window is open. */
   private hidden:string[]=[];
+  /** The on-screen markers' boxes at the last plan: the arrows keep off them (a tap there is the marker's). */
+  private markerRects:Rect[]=[];
+  /** Move the focus into the window at the next full render (a site was just opened). */
+  private focusWindow=false;
   /** What the arrows were last laid out for (points, distances, hero, the HUD's arrows, field): unchanged, no layout. */
   private arrowKey=STALE;
   private windowOpen=false;
@@ -129,7 +133,7 @@ export class ObraHud {
   }
   open(siteId:string){
     const tree=treeToOpen(siteId,this.view);if(!tree)return;
-    this.openSite=siteId;this.pick=defaultPick(tree);this.render();
+    this.openSite=siteId;this.pick=defaultPick(tree);this.focusWindow=true;this.render();
   }
   close(){this.openSite=undefined;this.pick=undefined;this.render();}
   get isOpen(){return this.openSite!==undefined;}
@@ -176,6 +180,9 @@ export class ObraHud {
     // The match gives a revision (wiring.ts): no per-frame comparison of the whole view. The sandbox does not.
     const key=v.revision!==undefined?`${v.revision}|${this.openSite??''}|${this.pick??''}|${scale}`:JSON.stringify([shape(v),this.openSite??null,this.pick??null,input,scale]);
     if(key===this.key&&input===this.lastInput&&this.area){this.move(v);return;}
+    // A rebuild drops the focused node (the arrow, the marker or the card just tapped): it goes to the window, so Escape
+    // still closes it (the key listener is on this.el).
+    const active=document.activeElement,hadFocus=!!active&&active!==this.el&&this.el.contains(active);
     this.key=key;this.lastInput=input;this.lastPoints=[];this.el.replaceChildren(this.arrowLayer);this.markers.clear();this.arrowKey=STALE;
     const layout=tree&&layoutObra(input,scale,tree.branches.length);
     // Closed: the markers live in the whole field (no window trims it).
@@ -185,7 +192,7 @@ export class ObraHud {
     const all=this.marks(v),byId=this.byId=new Map(all.map(m=>[m.id,m]));
     const marks=all.filter(m=>!layout||m.id===this.openSite);
     const plan=planMarkers(marks,area,{keep:this.openSite});
-    this.shown=shownKey(plan);this.hidden=layout?[]:plan.hidden;
+    this.shown=shownKey(plan);this.hidden=layout?[]:plan.hidden;this.markerRects=plan.shown.map(m=>m.rect);
     this.arrows(v,input.viewport,scale);
     plan.shown.forEach(({id,rect},i)=>{
       const m=byId.get(id)!;
@@ -203,9 +210,9 @@ export class ObraHud {
       b.addEventListener('click',()=>{if(m.pending)return;if(m.id===this.openSite)this.close();else this.open(m.id);});
       this.markers.set(m.id,b);
     });
-    if(!tree||!layout)return;
+    if(!tree||!layout){this.focusWindow=false;return;}
     const panel=el('section','rh-obra-janela',this.el);place(panel,layout.panel);panel.style.zIndex=String(plan.shown.length+2);
-    panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);
+    panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);panel.tabIndex=-1;
     panel.dataset.orientation=layout.orientation;
     const cards=cardsOf(tree),rects=[layout.head,...layout.branches];
     cards.forEach((c,i)=>this.card(panel,c,rects[i],i===0,layout.panel));
@@ -223,6 +230,7 @@ export class ObraHud {
       if(!chosen?.action||this.view?.readOnly)return;
       this.options.onConfirm(chosen.action);this.close();
     });
+    if(this.focusWindow||hadFocus){this.focusWindow=false;panel.focus({preventScroll:true});}
   }
   /**
    * Same DOM, new screen points: each marker moves to its planned box in the field of the last full render and takes
@@ -236,7 +244,7 @@ export class ObraHud {
       this.lastPoints=points.flatMap(p=>[p.x,p.y]);
       const plan=planMarkers(points,this.area!,{keep:this.openSite});
       if(shownKey(plan)!==this.shown){this.key='';this.render();return;}
-      this.hidden=this.openSite?[]:plan.hidden;
+      this.hidden=this.openSite?[]:plan.hidden;this.markerRects=plan.shown.map(m=>m.rect);
       plan.shown.forEach((m,i)=>{
         const b=this.markers.get(m.id)!,z=String(i+1);place(b,m.rect);
         if(b.style.zIndex!==z)b.style.zIndex=z;
@@ -253,10 +261,10 @@ export class ObraHud {
     const hero=this.hidden.length?this.options.heroRect?.():undefined,placed=this.hidden.length?this.options.edgeArrows?.()??[]:[];
     const pts=this.hidden.length?pointsOf(v).filter(p=>this.hidden.includes(p.id)):[];
     const key=pts.length?`${pts.map(p=>`${p.id}:${Math.round(p.x)},${Math.round(p.y)},${p.distance===undefined?'':Math.round(p.distance)}`).join(';')}`
-      +`|${rectKey(hero)}|${placed.map(a=>`${a.key}@${Math.round(a.x)},${Math.round(a.y)}`).join(';')}|${rectKey(this.area)}|${scale}`:'';
+      +`|${rectKey(hero)}|${placed.map(a=>`${a.key}@${Math.round(a.x)},${Math.round(a.y)}`).join(';')}|${rectKey(this.area)}|${scale}|${this.markerRects.map(rectKey).join(';')}`:'';
     if(key===this.arrowKey)return;
     this.arrowKey=key;
-    const laid=key?obraArrows(pts,this.hidden,this.area!,{hero,placed,viewport,scale}):[];
+    const laid=key?obraArrows(pts,this.hidden,this.area!,{hero,placed,viewport,scale,markers:this.markerRects}):[];
     const half=arrowHalf(scale),dist=new Map(pts.map(p=>[p.id,p.distance]));
     // Each site keeps the slot it had (no button swaps under a finger).
     const free=this.arrowSlots.filter(s=>!laid.some(a=>a.key===s.id));

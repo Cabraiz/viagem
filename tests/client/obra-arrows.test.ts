@@ -7,7 +7,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {OBRA_ARROWS,OBRA_ARROW_TRIES,OBRA_HERO_MARGIN,nearestHidden,obraArrows,planMarkers,type ObraPoint} from '../../src/client/hud/towers/layout.ts';
+import {OBRA_ARROWS,OBRA_ARROW_HIT,OBRA_ARROW_TRIES,OBRA_HERO_MARGIN,aimOf,nearestHidden,obraArrows,planMarkers,type ObraPoint} from '../../src/client/hud/towers/layout.ts';
 import {RAIL_SITE_ID,treeToOpen,type ObraView} from '../../src/client/hud/towers/model.ts';
 import {arrowHalf,layoutEdges,EDGE_PRIORITY,TAG_ROOM,type EdgeArrow,type EdgeTarget} from '../../src/client/hud/edges.ts';
 import {layoutCityEdges,type CityEdgeTarget} from '../../src/client/hud/city/edges.ts';
@@ -161,7 +161,7 @@ test('tapping an off-screen site\'s arrow opens its tree (wherever its point is)
 test('the obra HUD wires the arrows: a pooled button per arrow that opens its site, and the host feeds hero, HUD arrows and distances',()=>{
   const obra=readFileSync(new URL('../../src/client/hud/towers/obra.ts',import.meta.url),'utf8');
   assert.match(obra,/addEventListener\('click',\(\)=>\{if\(slot\.id\)this\.open\(slot\.id\);\}\)/,'tap → open(site)');
-  assert.match(obra,/obraArrows\(pts,this\.hidden,this\.area!,\{hero,placed,viewport,scale\}\)/,'laid out around the HUD\'s arrows');
+  assert.match(obra,/obraArrows\(pts,this\.hidden,this\.area!,\{hero,placed,viewport,scale,markers:this\.markerRects\}\)/,'laid out around the HUD\'s arrows and the markers');
   assert.doesNotMatch(obra,/rh-obra-fora/,'no more "+N obras"');
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
   assert.match(explore,/edgeArrows:\(\)=>host\.edges\?\.shown/);
@@ -181,4 +181,39 @@ test('the match view carries each site\'s (and the rail\'s) distance from the he
   const moved=obraViewFrom({prepare:true,view,plan,project:p=>p,hero:{x:13,y:10}});
   assert.equal(moved.revision,v.revision,'the hero walking changes no revision (only the arrows move)');
   assert.equal(obraViewFrom({prepare:true,view,plan,project:p=>p}).sites[0].distance,undefined);
+});
+
+// ---------- review fixes (02002c0) ----------
+test('review 1: an obra arrow never covers an on-screen marker (nor its hit area): the tap there stays the marker\'s',()=>{
+  const area:Rect={x:0,y:100,width:400,height:500};
+  const m={id:'m',x:24,y:345},h={id:'h',x:-300,y:300};
+  const plan=planMarkers([m,h],area);
+  assert.deepEqual(plan.shown.map(s=>s.id),['m'],'m shows, clamped onto the left edge');assert.deepEqual(plan.hidden,['h']);
+  const before=obraArrows([m,h],plan.hidden,area);
+  assert.ok(crosses(ficha(before[0]),plan.shown[0].rect),'without the markers its arrow sat on m (the repro)');
+  const arrows=obraArrows([m,h],plan.hidden,area,{markers:plan.shown.map(s=>s.rect)});
+  assert.equal(arrows.length,1,'h still gets its arrow');
+  const f=ficha(arrows[0]),hit={x:f.x-4,y:f.y-OBRA_ARROW_HIT,width:f.width+8,height:f.height+2*OBRA_ARROW_HIT};
+  assert.ok(!crosses(hit,plan.shown[0].rect),'the arrow\'s hit area keeps off the marker');
+  assert.ok(inside(f,area));
+});
+
+test('review 2: a site just inside the edge (no room for its marker) gets an arrow, so it is never lost',()=>{
+  const area:Rect={x:0,y:100,width:400,height:500};
+  const a={id:'a',x:10,y:300};
+  const plan=planMarkers([a],area);
+  assert.deepEqual(plan.hidden,['a'],'planMarkers hides it (less than 16 px inside)');
+  const arrows=obraArrows([a],plan.hidden,area);
+  assert.deepEqual(arrows.map(x=>x.key),['a']);
+  assert.ok(Math.cos(arrows[0].angle)<0,'pointing left, at the edge it hides behind');
+  assert.deepEqual(aimOf(a,area),{x:-1,y:300});
+  assert.deepEqual(aimOf({x:-50,y:20},area),{x:-50,y:20},'an off-field point is aimed at as it is');
+});
+
+test('review 3: opening a site moves the focus into the window (Escape keeps closing it after an arrow tap)',()=>{
+  const obra=readFileSync(new URL('../../src/client/hud/towers/obra.ts',import.meta.url),'utf8');
+  assert.match(obra,/this\.openSite=siteId;this\.pick=defaultPick\(tree\);this\.focusWindow=true;/);
+  assert.match(obra,/panel\.tabIndex=-1;/);
+  assert.match(obra,/if\(this\.focusWindow\|\|hadFocus\)\{this\.focusWindow=false;panel\.focus\(\{preventScroll:true\}\);\}/);
+  assert.match(obra,/this\.el\.addEventListener\('keydown',e=>\{if\(e\.key==='Escape'\)this\.close\(\);\}\)/,'the window is inside this.el');
 });

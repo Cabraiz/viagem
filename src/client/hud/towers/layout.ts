@@ -171,6 +171,25 @@ export interface ObraArrowOptions {
   /** Text scale (1 or 1.25): the ficha's width grows with it. */
   scale?:number;
   max?:number;
+  /**
+   * The on-screen markers' 48 px boxes (MarkerPlan.shown): no arrow (nor its hit area, OBRA_ARROW_HIT) may touch one, or
+   * a tap there would open the arrow's site instead of the marker's. A marker may stick MARKER_SLACK past the field's
+   * edge, right where the arrows run.
+   */
+  markers?:readonly Rect[];
+}
+/** How far an obra arrow's hit area reaches past its ficha (obra.css .rh-obra-borda::after: 8 px above and below). */
+export const OBRA_ARROW_HIT=8;
+/**
+ * Where an arrow aims for a hidden site: its screen point, or, when that point is still inside the field (a marker less
+ * than 16 px inside the edge does not fit, planMarkers hides it), the field's nearest edge 1 px outside, level with it.
+ * layoutEdges only points at targets outside the field, and such a site must not end up with no marker and no arrow.
+ */
+export function aimOf(p:{x:number;y:number},area:Rect):{x:number;y:number}{
+  const x0=area.x,x1=right(area),y0=area.y,y1=bottom(area);
+  if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)return {x:p.x,y:p.y};
+  const d=[p.x-x0,x1-p.x,p.y-y0,y1-p.y],k=d.indexOf(Math.min(...d));
+  return k===0?{x:x0-1,y:p.y}:k===1?{x:x1+1,y:p.y}:k===2?{x:p.x,y:y0-1}:{x:p.x,y:y1+1};
 }
 /** How many of the nearest hidden sites are tried for the `max` arrows (a short landscape rim may refuse some). */
 export const OBRA_ARROW_TRIES=8;
@@ -184,16 +203,18 @@ export const OBRA_HERO_MARGIN=12;
 /**
  * The edge arrows of the off-screen sites (pure): the nearest hidden ones (nearestHidden), as kind 'obra' with the site
  * id as key, placed one by one by layoutEdges on the useful area's rim around the arrows already there (the HUD's, then
- * the obra ones before). Never covers the hero, a placed arrow or another obra arrow, and never folds two sites into
+ * the obra ones before). Never covers the hero, a placed arrow, an on-screen marker or another obra arrow, and never folds two sites into
  * one "+1" (each arrow opens exactly the site it points at): a site with no free spot left is skipped for the next
  * nearest, up to `max` arrows out of OBRA_ARROW_TRIES tries.
  */
 export function obraArrows(points:readonly ObraPoint[],hidden:readonly string[],area:Rect,options:ObraArrowOptions={}):EdgeArrow[]{
   const max=options.max??OBRA_ARROWS,v=options.viewport,out:EdgeArrow[]=[];
   if(max<=0)return out;
-  const base={city:true,max:1,margin:OBRA_HERO_MARGIN,mustPoint:()=>false,half:arrowHalf(options.scale??1),...(v?{bounds:{x:0,y:0,width:v.width,height:v.height}}:{})};
+  const h=OBRA_ARROW_HIT,avoid=(options.markers??[]).map(r=>({x:r.x-h,y:r.y-h,width:r.width+2*h,height:r.height+2*h}));
+  const base={city:true,max:1,margin:OBRA_HERO_MARGIN,mustPoint:()=>false,half:arrowHalf(options.scale??1),...(v?{bounds:{x:0,y:0,width:v.width,height:v.height}}:{}),
+    ...(avoid.length?{avoid}:{})};
   for(const p of nearestHidden(points,hidden,area,Math.max(max,OBRA_ARROW_TRIES))){
-    const t:EdgeTarget={key:p.id,kind:'obra',screen:{x:p.x,y:p.y},distance:p.distance??0};
+    const t:EdgeTarget={key:p.id,kind:'obra',screen:aimOf(p,area),distance:p.distance??0};
     const [a]=layoutEdges([t],area,options.hero,{...base,placed:[...options.placed??[],...out]});
     if(a)out.push(a);
     if(out.length>=max)break;

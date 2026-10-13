@@ -88,7 +88,8 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .search input { width: 100%; min-height: 40px; font-size: var(--t-13); }
 .criacao .role-filters { gap: 4px; }
 .criacao .filter { min-height: 44px; font-size: 12px; padding: 6px 12px; }
-.criacao #results-count { font-size: 12px; color: var(--c-papel); margin-left: auto; }
+/* The count stays for screen readers only (aria-live); on screen it only took space from the filters. */
+.criacao #results-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .criacao .class-list {
   min-height: 0; overflow: hidden; margin: 0; touch-action: pan-y;
   display: grid; gap: 8px; align-content: start;
@@ -97,21 +98,25 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .class-card { position: relative; touch-action: pan-y; min-height: 0; min-width: 0; padding: 6px 4px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 /* Only the name under the art now (the role is the suit in the corner), so the portrait takes almost the whole card. */
 .criacao .card-portrait { width: auto; height: auto; max-width: 100%; max-height: calc(100% - 18px); aspect-ratio: 1; min-height: 0; flex: 1 1 0; }
-.criacao .card-label { text-align: center; min-width: 0; }
-.criacao .card-label strong { font-size: 12px; line-height: 1.15; display: block; overflow-wrap: anywhere; hyphens: auto; }
+.criacao .card-label { text-align: center; min-width: 0; width: 100%; }
+/* One line only: main.ts fitCardNames shrinks a long name until it fits. */
+.criacao .card-label strong { font-size: 12px; line-height: 1.15; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .criacao .card-label small { font-size: 11px; }
 .criacao .roster-pagination { margin: 0; display: flex; align-items: center; justify-content: center; gap: 14px; }
 .criacao .selected-mark { left: 5px; right: auto; top: 5px; width: 22px; height: 22px; font-size: 12px; line-height: 22px; text-align: center; }
-/* Role as a playing-card suit (♠ Linha de frente, ♦ Dano, ♥ Suporte, ♣ Controle): a 26 px circle in the top-right
-   corner of the card, next to the role name on the filters and on the class badge. */
+/* Role as a playing-card suit (♠ Linha de frente, ♦ Dano, ♥ Suporte, ♣ Controle): a 26 px tab glued to the card's
+   top-right corner (straight top and right edges, only the bottom-left corner rounded), next to the role name on the
+   filters and on the class badge. */
 .criacao .suit { display: block; width: 16px; height: 16px; flex: none; }
 /* ♠ black, ♣ blue: at 24 px two black suits read alike. ♦ and ♥ red. */
 .criacao .suit-espadas { fill: var(--c-breu); }
 .criacao .suit-paus { fill: var(--arte-azul-sombra); }
 .criacao .suit-copas, .criacao .suit-ouros { fill: var(--arte-vermelho); }
 .criacao .card-suit {
-  position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; display: grid; place-items: center;
-  background: var(--c-papel-claro); border: 2px solid var(--c-breu); border-radius: 50%; box-shadow: var(--s-1);
+  position: absolute; top: 0; right: 0; margin: 0; width: 28px; height: 28px; display: grid; place-items: center;
+  background: var(--c-papel-claro); border: solid var(--c-breu); border-width: 0 0 2px 2px;
+  /* The top-right corner follows the card's inner curve so the tab sits flush inside the card border. */
+  border-radius: 0 max(0px, calc(var(--r-etiqueta) - 2px)) 0 12px;
 }
 .criacao .filter { display: inline-flex; align-items: center; gap: 5px; }
 .criacao .filter .suit { width: 14px; height: 14px; }

@@ -179,6 +179,20 @@ function rosterPageSize() {
   list.style.setProperty('--cols',String(cols)); list.style.setProperty('--rows',String(rows));
   return lastPageSize=cols*rows;
 }
+// Card names stay on ONE line: a name that does not fit shrinks 0.5 px at a time down to NAME_MIN_PX (the CSS
+// ellipsis covers anything still too long at the floor). The text is measured with a Range, in sub-pixels:
+// scrollWidth rounds, so a name 0.4 px too wide would read as fitting and still show the ellipsis.
+const NAME_MIN_PX=8;
+function fitCardNames(container: HTMLElement) {
+  const range=document.createRange();
+  container.querySelectorAll<HTMLElement>('.card-label strong').forEach(name=>{
+    name.style.fontSize='';
+    let size=parseFloat(getComputedStyle(name).fontSize);
+    range.selectNodeContents(name);
+    const tooWide=()=>range.getBoundingClientRect().width>name.getBoundingClientRect().width;
+    while(tooWide()&&size>NAME_MIN_PX){ size=Math.max(NAME_MIN_PX,size-.5); name.style.fontSize=`${size}px`; }
+  });
+}
 let renderedPageSize=0;
 function renderRoster() {
   const results=filterClasses(query,role);
@@ -189,6 +203,7 @@ function renderRoster() {
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazyArt.unobserve(img));
   container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong></span><span class="card-suit">${suit(hero.role,{label:true})}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
+  fitCardNames(container);
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
   text('page-count',`${page+1} / ${pages}`);
   // One page only: the pager says nothing, so it goes (and gives its row back to the grid).
@@ -286,8 +301,14 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
   finally {button.disabled=false;}
 });
-const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}});
+// Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
+const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});
 renderRoster();renderSelected();
+// The display font arrives after the first render and is wider than the fallback: fit the names again.
+// A face may start loading only when the names first use it, after `ready` already settled: refit on every load too.
+const refitNames=()=>fitCardNames(document.getElementById('class-list')!);
+document.fonts?.ready.then(refitNames);
+document.fonts?.addEventListener('loadingdone',refitNames);
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());

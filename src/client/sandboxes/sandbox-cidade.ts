@@ -49,9 +49,12 @@
  *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.hidden` the building the hidden A3
  *   stands behind, `.at`/`.cell` the hero's spot and
  *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
+ * `relevo=0` draws the flat ground (no relief shader); `relevo=morros` (with `mapa=real`) adds stand-in snow hills to the
+ * real map (render/city/relevo/preview.ts) to judge the relief shader before the real height field lands.
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
+import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
@@ -165,6 +168,7 @@ class CitySandbox extends Phaser.Scene {
       const decoded=decodeCityAsset(this.cache.text.get('cidade-real'));
       if(!decoded.ok)throw new Error(`city asset: ${decoded.error}`);
       this.asset=cityRenderAsset(decoded.asset);
+      if(params.get('relevo')==='morros')this.asset=previewHills(this.asset);
       if(tele)this.decoded=new CityTerrain(decoded.asset,'sandbox');
     }else this.asset=parseCityAsset(makeSampleCity());
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
@@ -380,7 +384,7 @@ class CitySandbox extends Phaser.Scene {
     const c=this.camera.snap(feet,viewport,zoom);
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
-    (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
+    (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }

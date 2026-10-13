@@ -103,6 +103,20 @@ export class RunLifecycle {
     }
     return {started:false,finished:false};
   }
+  /**
+   * A restarted room resumes a checkpointed run (E5-checkpoint-por-round): straight into combat, with the run's round
+   * (the number clients echo) and elapsed ticks, from the lobby only, members already joined. Members listed in
+   * `spectators`, and members the checkpoint never knew (`players` given and not in it), watch. False, unchanged, when
+   * not in the lobby or the numbers are off (elapsed past the combat cap included).
+   */
+  resume(run:{round:number;elapsed:number;spectators:readonly string[]},players?:ReadonlySet<string>){
+    if(this.phase!=='lobby'||!Number.isSafeInteger(run.round)||run.round<1||!Number.isSafeInteger(run.elapsed)||run.elapsed<0||run.elapsed>=this.durationTicks)return false;
+    const watching=new Set(run.spectators);
+    this.phase='combat';this.round=run.round;this.elapsed=run.elapsed;this.countdown=RUN_COUNTDOWN_TICKS;
+    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;
+    for(const m of this.members.values()){m.spectator=watching.has(m.id)||!!players&&!players.has(m.id);m.ready=!m.spectator;}
+    return true;
+  }
   /** The map's combat cap (D-043), set while the map changes in the lobby; never during a match. */
   setDurationTicks(ticks:number){
     if(this.phase==='combat'||!Number.isSafeInteger(ticks)||ticks<1)return false;

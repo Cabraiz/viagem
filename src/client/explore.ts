@@ -1,6 +1,6 @@
 import './explore.css';
 import type { HeroClass } from '../rules/index.ts';
-import {landmarks} from '../maps/index.ts';
+import {buildPlanFor,landmarks} from '../maps/index.ts';
 import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import {JoystickInput} from './joystick.ts';
@@ -17,8 +17,12 @@ import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
+import {ObraHud} from './hud/towers/obra.ts';
+import type {ObraView} from './hud/towers/model.ts';
+import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
+import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
@@ -59,6 +63,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let skill:SkillButton|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
   let rescue:RescueBoard|undefined;
+  /**
+   * The obra menu (torres-ligar, D-041): the build sites in the intermission, its build/upgrade to the room and the
+   * room's {t:'built'} answer (a stamp on the marker, or the refusal as a row of the announcement slot).
+   */
+  let obra:ObraHud|undefined,obraView:ObraView|undefined,obraSay:(text:string)=>void=()=>undefined;
+  const obraRequests=new ObraRequests();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -93,6 +103,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
     net.onForged=answer=>hud?.forged(answer);
+    {
+      const host=hud;
+      const note=document.createElement('div');note.className='rh-obra-aviso';note.setAttribute('role','status');note.hidden=true;
+      // An answer to the player's own tap: it goes ahead of the coach's hint (like "Gira no intervalo").
+      obraSay=text=>{note.textContent=text;host.queueRow(note,OBRA_TOAST_MS,{answer:true});};
+      obra=new ObraHud($('.explore-layout'),{zoneInput:()=>host.zoneInputBesideObra(),
+        onConfirm:action=>{const text=obraRequests.send(action,siteOf(action,obraView),net,{connected:net.connected,spectator:!!net.players.get(net.id)?.spectator});if(text)obraSay(text);},
+        // Open: the forge steps aside (the same place on screen) and the camera's field leaves the window out.
+        onWindow:open=>{host.yieldForge(open);host.layoutChanged();}});
+      net.onBuilt=answer=>{const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);};
+    }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
@@ -175,7 +196,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();net?.leave();rescue?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
   };
@@ -193,6 +214,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const runHud=hud;
     updateSlot={take:el=>{if(!sceneReady||closed||net.fatal||net.run?.phase!=='combat')return false;runHud.queueRow(el,UPDATE_ROW_MS);return true;},drop:el=>runHud.dropRow(el)};
     setMatchSlot(updateSlot);
+    // The room restarted and the run came back (E5-checkpoint-por-round): the news once, a row of the same slot. It waits
+    // in line while the HUD is still hidden (the scene loading), so news that came with the welcome shows with the round.
+    const resumedRow=document.createElement('div');resumedRow.className='economy-toast resumed-toast';resumedRow.setAttribute('role','status');resumedRow.hidden=true;
+    resumedRow.innerHTML='<p class="economy-toast-text"><strong></strong><span></span></p>';
+    const showResumed=resumedOnce(news=>{resumedRow.querySelector('strong')!.textContent=news.title;resumedRow.querySelector('span')!.textContent=news.body;runHud.queueRow(resumedRow,RESUMED_ROW_MS);});
+    // The run came back from an older moment: the skill button's last answer (from before the crash) no longer holds.
+    net.onResumed=news=>{skill?.reset();showResumed(news);};if(net.resumedNotice)skill?.reset();showResumed(net.resumedNotice);
   }
   const syncTurn=()=>{
     const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
@@ -340,6 +368,22 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               let bearing:number|undefined;
               if(wall&&heroBox&&controller){const at=controller.scene.locate(wall).screen;bearing=Math.atan2(at.y-(heroBox.y+heroBox.height*.85),at.x-(heroBox.x+heroBox.width/2))*180/Math.PI;}
               hud.setHero({x:net.predicted.x,y:net.predicted.y,bearing});
+              // The obra menu (torres-ligar): the intermission only, and never with the offer window up. The offer keeps
+              // priority: the obra window closes and its markers hide until the offer is chosen or put away ('Depois').
+              if(obra&&controller){
+                const view=hud.view,scene=controller.scene;
+                if(run.phase!=='combat')obraRequests.resetRun();
+                else if(obraRequests.expire())obraSay(OBRA_NO_ANSWER);
+                const prepare=run.phase==='combat'&&view?.round?.phase==='prepare'&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
+                obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),
+                  pending:obraRequests.pendingSites(),done:obraRequests.doneSites(),
+                  // Watching: the plan shows, the confirm says "Assistindo" (the room would refuse it anyway).
+                  readOnly:!!member?.spectator||!!net.players.get(net.id)?.spectator,
+                  // The scene's optional towersInWorld() (card NEW-20261013-ORQ-torres-render): false until it draws the towers,
+                  // so today the marker is the tower everyone sees.
+                  drawnInWorld:towersInWorld(scene)});
+                obra.update(obraView);
+              }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.

@@ -20,6 +20,22 @@ export interface ObraView {
   balance:{coco:number;pedra:number};
   /** Standing defenses of the team (ruins do not count) and Gustavões built this run (a ruined one counts). */
   standing:number;gustavoes:number;
+  /**
+   * The world draws the towers (Executor-3's TowerRenderer, torres-render): a built site's marker goes light (its suit
+   * and the evolve arrow only). Default false: until that renderer is in the scene, the marker IS the tower everyone sees.
+   */
+  drawnInWorld?:boolean;
+  /** Sites (or RAIL_SITE_ID) with a build/upgrade sent and not answered yet (torres-ligar): "Obra pedida…", no tap. */
+  pending?:readonly string[];
+  /** Sites whose obra the room just accepted: the marker's short stamp (played once per acceptance). */
+  done?:readonly string[];
+  /** Watching (a spectator): the markers and the tree show, the confirm stays off and says "Assistindo". */
+  readOnly?:boolean;
+  /**
+   * Changes exactly when anything but the screen points changed (wiring.ts obraViewFrom). Given, the HUD compares it
+   * instead of the whole view; absent (the sandbox), the HUD compares the view's content.
+   */
+  revision?:string;
 }
 
 export type ObraBlock='balance'|'limit'|'unique'|'rail'|'size'|'building'|'root'|'origin';

@@ -585,6 +585,7 @@ export class IslandScene extends Phaser.Scene {
     // A tap before the scene booted: create() applies it.
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
+    this.city?.setEconomy(on);
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
@@ -945,6 +946,7 @@ export class IslandScene extends Phaser.Scene {
       const art=this.cityArt();
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
       city.setActorScale(this.actorScale);
+      city.setEconomy(this.economy);
       // A map switch into the city: its sheets arrive after the first chunks, which are rebuilt with them.
       if(queueCityArt(this,art)){
         this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});

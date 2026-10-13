@@ -21,3 +21,5 @@ export type {DefenseState,TowerResult,TowerRefusal} from './towers/system.ts';
 export * from './systems/players.ts';
 export * from './telegraphs.ts';
 export * from './zueira.ts';
+// E5-checkpoint-por-round: the item catalog, so a room validates a checkpoint's builds.
+export {ITEMS} from './items.ts';

@@ -21,6 +21,7 @@ import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
+import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -152,6 +153,8 @@ export class CityLayer {
   private readonly lotAt=new Map<number,CityLot>();
   private readonly fountain?:CityLot;
   private readonly still=reducedMotion();
+  /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
+  private readonly relief?:CityRelief;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -185,9 +188,16 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
+    if(reliefEnabled(scene))this.relief=new CityRelief(scene,asset,this.pivot);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
+
+  /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
+  setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
+
+  /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
+  reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
   liveChunks(){return [...this.live.keys()].sort();}
@@ -292,6 +302,8 @@ export class CityLayer {
   destroy(){
     for(const key of [...this.live.keys()])this.dropChunk(key);
     this.tracker.reset();this.fader.reset();this.faded.clear();this.fog?.destroy();this.fog=undefined;this.view=-1;
+    // Its GPU side too (made again by the next bake if the layer is updated again).
+    this.relief?.release();
   }
 
   /** The snow and Breu fog beyond the map edge for this view, just under the ground layer (border-fog.ts). */
@@ -450,16 +462,23 @@ export class CityLayer {
     const rt=this.scene.add.renderTexture(bx,by,Math.ceil(bw*s),Math.ceil(bh*s)).setOrigin(0,0).setScale(1/s).setDepth(CITY_GROUND_DEPTH);
     const place=<T extends Phaser.GameObjects.Components.Transform>(o:T)=>{o.setScale(s);o.setPosition(-bx*s,-by*s);return o;};
 
+    // Relief (relevo/baker.ts): the shader bakes lit, textured ground for every cell of the ring, replacing passes 1-2.
+    const relief=this.relief;
+    if(relief){
+      const key=relief.bake({x:bx,y:by},s,Math.ceil(bw*s),Math.ceil(bh*s),view,ring);
+      const img=this.scene.make.image({key},false).setOrigin(0,0).setFlipY(true);
+      rt.draw(img);img.destroy();
+    }
     // Pass 1: flat cells.
     const flat=place(this.scene.make.graphics({},false));
-    for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
+    if(!relief)for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
     // Pass 2: painted cells, one Mesh per texture.
     const meshes:Phaser.GameObjects.Mesh[]=[];
-    for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
+    if(!relief)for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
     // Pass 3: slope shading over painted cells, decor, shadows.
     const over=place(this.scene.make.graphics({},false));
     for(const q of quads){
-      if(!painted.has(q.kind))continue;
+      if(relief||!painted.has(q.kind))continue;
       const o=groundShadeOverlay(q.kind,q.shade);
       if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
     }
@@ -540,8 +559,8 @@ export class CityLayer {
    * (frame = view); the rest are small procedural shapes with a contact shadow and a 2 px Breu outline.
    */
   private drawProp(prop:CityProp,view:number):Phaser.GameObjects.Graphics|Phaser.GameObjects.Image{
-    const {cx,cy}={cx:Math.floor((prop.x-this.asset.origin.x)/this.asset.cell),cy:Math.floor((prop.y-this.asset.origin.y)/this.asset.cell)};
-    const z=heightAt(this.asset,cx,cy);
+    // Feet on the ground under the prop's own point (groundZ, like actors): on a slope a cell's mean floats or sinks.
+    const z=groundZ(this.asset,prop.x,prop.y);
     const at=project(prop.x,prop.y,z,view,this.pivot);
     const order=this.depthOf(depth(prop.x,prop.y,view,this.pivot));
     const art=this.art&&propSheet(prop,this.art);
@@ -600,7 +619,7 @@ export class CityLayer {
       const b=obj.getBounds();
       return {x:b.x+b.width*0.15,y:b.y,w:b.width*0.7,h:b.height};
     }
-    const {cx,cy}=cellOf(this.asset,prop.x,prop.y),at=project(prop.x,prop.y,heightAt(this.asset,cx,cy),view,this.pivot),e=propExtentPx(prop);
+    const at=project(prop.x,prop.y,groundZ(this.asset,prop.x,prop.y),view,this.pivot),e=propExtentPx(prop);
     return {x:at.x-e.side,y:at.y-e.up,w:e.side*2,h:e.up};
   }
 

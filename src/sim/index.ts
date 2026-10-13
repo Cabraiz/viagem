@@ -16,7 +16,7 @@ export {SpatialHash,DEFAULT_CELL_SIZE} from './spatial.ts';
 export * from './stonewards/forge.ts';
 export * from './stonewards/resources.ts';
 // torres-fio: what the rooms put on the wire and validate (the defenses' ids, phases and results).
-export {DEFENSES,DEFENSE_PHASES,isDefenseId,phaseOf,type DefenseId,type DefensePhase,type Branch} from './towers/catalog.ts';
+export {DEFENSES,DEFENSE_PHASES,RAIL,isDefenseId,phaseOf,type DefenseId,type DefensePhase,type Branch} from './towers/catalog.ts';
 export type {DefenseState,TowerResult,TowerRefusal} from './towers/system.ts';
 export * from './systems/players.ts';
 export * from './telegraphs.ts';

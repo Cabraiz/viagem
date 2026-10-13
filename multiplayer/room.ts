@@ -6,7 +6,7 @@ import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
-import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
+import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
 import {TELEGRAPH_KINDS,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
@@ -132,7 +132,13 @@ export const ROOM_LIFETIME_MS=50*60_000;
 const AUTOPILOT_SLOT=7;
 const NO_SEATS:ReadonlySet<string>=new Set();
 /** torres-fio: what a {t:'build'} may name (a build site or the Gustavão's rail) and an upgrade's branch. */
-const BUILD_SITE=/^(obra-\d{2}|trilho)$/,BRANCH=/^(A|B|C|A4b|A5b)$/;
+const BUILD_SITE=/^(obra-\d{2}|trilho)$/;
+/**
+ * An upgrade's branch, in any form the sim's pickChild takes: A/B/C, a tree label (A2…A5, A4b, A5b, B2…B6, C2…C5: what
+ * the HUD's tree sends, trilho-no-snapshot) or the child's DefenseId.
+ */
+const BRANCH=/^([ABC]|[ABC][2-6]b?)$/;
+const branchOk=(b:unknown)=>b===undefined||(typeof b==='string'&&(BRANCH.test(b)||isDefenseId(b)));
 /**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
@@ -737,7 +743,7 @@ export class Room {
       result=this.sim.build(c.playerId!,m.site,`p:${m.req}`);
     }else{
       const id=typeof m.defense==='string'&&m.defense.length<=12?this.ids.resolve(m.defense):undefined;
-      if(!id||(m.branch!==undefined&&(typeof m.branch!=='string'||!BRANCH.test(m.branch))))return;
+      if(!id||!branchOk(m.branch))return;
       result=this.sim.upgrade(c.playerId!,id,m.branch,`p:${m.req}`);
     }
     this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind}:{reason:result.reason})});
@@ -936,7 +942,7 @@ export class Room {
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

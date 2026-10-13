@@ -6,6 +6,8 @@ import {ticks} from '../../contract/index.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';
 import type {StonewardsState} from './state.ts';
+import type {CellRect} from '../../maps/index.ts';
+import {barricadeOccupied,findBarricade,setBlocking} from './barricades.ts';
 import {CAMP_RADIUS,RECIPES,TOWER_SECONDS,canPay,type RecipeId} from '../../rules/index.ts';
 
 export const REPAIR_FRACTION=.25;
@@ -22,7 +24,7 @@ export {RECIPES,RECIPE_IDS,type Recipe,type RecipeId} from '../../rules/index.ts
 
 export type BuyResult=
   | {ok:true;recipe:RecipeId;line:string;item?:string;level?:number;tower?:string}
-  | {ok:false;reason:'phase'|'player'|'recipe'|'balance'|'full'|'no-weapon'|'duplicate'|'wall-down'|'away'};
+  | {ok:false;reason:'phase'|'player'|'recipe'|'balance'|'full'|'no-weapon'|'duplicate'|'wall-down'|'away'|'target'|'blocked'};
 
 /**
  * Buys a recipe for the team, validated on the server. Commands are applied one at a time, so two
@@ -37,10 +39,14 @@ export function draw<T>(ctx:SimContext,state:StonewardsState,items:readonly T[])
   return item;
 }
 
-export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,requestId?:string):BuyResult{
+/**
+ * `targetId` (cidade-06) picks what 'reparo' repairs: the wall when omitted (or 'muralha'), else a city barricade by id
+ * ('target' when there is none). `onTerrainChanged` gets the cells a rebuilt barricade closes again.
+ */
+export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,requestId?:string,targetId?:string,onTerrainChanged?:(rect:CellRect)=>void):BuyResult{
   const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
   if(key!==undefined&&state.handled.includes(key))return {ok:false,reason:'duplicate'};
-  const result=apply(ctx,state,playerId,recipeId);
+  const result=apply(ctx,state,playerId,recipeId,targetId,onTerrainChanged);
   if(result.ok&&key!==undefined){
     state.handled.push(key);
     if(state.handled.length>HANDLED_LIMIT)state.handled.splice(0,state.handled.length-HANDLED_LIMIT);
@@ -48,19 +54,33 @@ export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeI
   return result;
 }
 
-function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string):BuyResult{
+function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,targetId:string|undefined,onTerrainChanged:((rect:CellRect)=>void)|undefined):BuyResult{
   if(state.wallDown)return {ok:false,reason:'wall-down'};
   if(ctx.round.phase!=='prepare')return {ok:false,reason:'phase'};
   const player=ctx.players.get(playerId);
   if(!player||!isStanding(player))return {ok:false,reason:'player'};
   if(!Object.hasOwn(RECIPES,recipeId))return {ok:false,reason:'recipe'};
-  // The forge stands in the camp (base-stonewards-mapa): what was gathered out there is spent back home.
-  if(!(Math.hypot(player.x-state.wall.x,player.y-state.wall.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
   const recipe=RECIPES[recipeId as RecipeId];
+  // A barricade repair is done at that barricade (cidade-06); everything else at the forge.
+  const barricade=recipe.id==='reparo'&&targetId!==undefined&&targetId!==state.wall.id?findBarricade(state,targetId):undefined;
+  if(recipe.id==='reparo'&&targetId!==undefined&&targetId!==state.wall.id&&!barricade)return {ok:false,reason:'target'};
+  // The forge stands in the camp (base-stonewards-mapa): what was gathered out there is spent back home.
+  const site=barricade??state.wall;
+  if(!(Math.hypot(player.x-site.x,player.y-site.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
   if(!canPay(state.balance,recipe.cost))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.
   const line=()=>draw(ctx,state,recipe.lines);
   const charge=()=>{state.balance.coco-=recipe.cost.coco;state.balance.pedra-=recipe.cost.pedra;};
+  if(barricade){
+    // A fallen barricade is rebuilt only on a clear mouth: never inside a body (it would trap it in the blocker).
+    if(barricade.down&&barricadeOccupied(ctx,barricade))return {ok:false,reason:'blocked'};
+    if(!barricade.down&&barricade.hp>=barricade.maxHp)return {ok:false,reason:'full'};
+    charge();
+    barricade.hp=Math.min(barricade.maxHp,barricade.hp+Math.ceil(barricade.maxHp*REPAIR_FRACTION));
+    if(barricade.down){barricade.down=false;setBlocking(ctx.terrain,barricade,onTerrainChanged);}
+    ctx.emit({type:'structure',id:barricade.id,hp:barricade.hp,maxHp:barricade.maxHp});
+    return {ok:true,recipe:recipe.id,line:line()};
+  }
   if(recipe.id==='reparo'){
     const w=state.wall;
     if(w.hp>=w.maxHp)return {ok:false,reason:'full'};

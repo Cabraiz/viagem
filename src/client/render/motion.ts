@@ -90,6 +90,19 @@ export function telegraphBlink(timeMs:number,urgency:number,reduced:boolean){
   return .5+.5*Math.cos(timeMs/1000*TAU*hz);
 }
 
+/** City telegraph dash drift (CSS px per second): slow, so the edge reads as alive, never as a spinner. */
+export const TELEGRAPH_DASH_CSS_PER_S=6;
+/**
+ * Drift of the city telegraph's dashes in CSS px (≥ 0, unwrapped): it moves slowly along the edge; reduced motion keeps
+ * it still at 0 (prefers-reduced-motion). It is NOT wrapped here: a huge zone stretches its dash pattern
+ * (telegraph-shape.ts dashSegments, DASH_MAX), so only the painter knows the real period, and dashSegments wraps the
+ * phase on it; wrapping on the unstretched 15 px would make those dashes jump back every 2.5 s.
+ */
+export function telegraphDashPhase(timeMs:number,reduced:boolean){
+  if(reduced||!(timeMs>0))return 0;
+  return timeMs/1000*TELEGRAPH_DASH_CSS_PER_S;
+}
+
 /** Frame-rate independent exponential smoothing; `rate` is 1/s. */
 export const smoothToward=(current:number,target:number,deltaMs:number,rate:number)=>
   target+(current-target)*Math.exp(-rate*Math.max(0,deltaMs)/1000);

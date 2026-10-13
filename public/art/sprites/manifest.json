@@ -1,0 +1,2654 @@
+{
+  "version": 2,
+  "group": "personagens",
+  "pieces": {
+    "_silhueta": {
+      "kind": "dir8",
+      "files": {
+        "silhueta": {
+          "file": "_silhueta.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 1,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "_silhueta.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "70d99541defce79e822cdd93176d32a2da95985e2be6195b0758926124dc7bcc"
+            }
+          ],
+          "sha256": "70d99541defce79e822cdd93176d32a2da95985e2be6195b0758926124dc7bcc"
+        }
+      },
+      "sha256": "dbce99689845de1ded68c92daa1931a3e64241f70640b76ff006eb5a44d7d4e2"
+    },
+    "aposentado": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "aposentado.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 9,
+            "top": 60,
+            "right": 183,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "aposentado.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6"
+            }
+          ],
+          "sha256": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6"
+        },
+        "dir4c": {
+          "file": "aposentado.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "aposentado.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "cbd07eb7a2dcfc5772e65ef221e0b18f64e51b917bf5d61dd4748c65ca507ad9"
+            }
+          ],
+          "sha256": "cbd07eb7a2dcfc5772e65ef221e0b18f64e51b917bf5d61dd4748c65ca507ad9"
+        },
+        "downed": {
+          "file": "aposentado.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "aposentado.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "1b8ff8b8c9b6b737212a9a388a95f5e78e44f7d81000d1d59eacc0f7c27ee357"
+            }
+          ],
+          "sha256": "1b8ff8b8c9b6b737212a9a388a95f5e78e44f7d81000d1d59eacc0f7c27ee357"
+        }
+      },
+      "sha256": "14eabd111d751d1b4c2ac3ec6a88c2a369799dd7c70173cdc8e31e28ec7f06b7"
+    },
+    "astrologa": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "astrologa.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 34,
+            "top": 65,
+            "right": 158,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "astrologa.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "77d07f974741bc9215f889888ab44e7e43f7a3c2f2835ffbd4e1eeb28e013d13"
+            }
+          ],
+          "sha256": "77d07f974741bc9215f889888ab44e7e43f7a3c2f2835ffbd4e1eeb28e013d13"
+        },
+        "dir4c": {
+          "file": "astrologa.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "astrologa.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "4a550b9383639dbd6b20f5ee196b69587cbc7af944da9034f8410ac59e7188ad"
+            }
+          ],
+          "sha256": "4a550b9383639dbd6b20f5ee196b69587cbc7af944da9034f8410ac59e7188ad"
+        },
+        "downed": {
+          "file": "astrologa.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "astrologa.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "faafac66631c0ba2fcb88a376f92884f7715cb1890c2db7918d6e2e9ddb3991f"
+            }
+          ],
+          "sha256": "faafac66631c0ba2fcb88a376f92884f7715cb1890c2db7918d6e2e9ddb3991f"
+        }
+      },
+      "sha256": "14223204ebe6732388e20767a838c075dc67552dd3f6e216dce379c284528e3f"
+    },
+    "caca-promocao": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "caca-promocao.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 100,
+          "figure": {
+            "left": 29,
+            "top": 66,
+            "right": 163,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "caca-promocao.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "92049047ea274869bbf102143d69f6f3e000a58303a0541a6dd1bf2687e6cca1"
+            }
+          ],
+          "sha256": "92049047ea274869bbf102143d69f6f3e000a58303a0541a6dd1bf2687e6cca1"
+        },
+        "dir4c": {
+          "file": "caca-promocao.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "caca-promocao.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "632cc6de9184fe6cc6ca48370faedc23a9b24e7d7ad5bcf0ee80d23a473b9e5d"
+            }
+          ],
+          "sha256": "632cc6de9184fe6cc6ca48370faedc23a9b24e7d7ad5bcf0ee80d23a473b9e5d"
+        },
+        "downed": {
+          "file": "caca-promocao.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "caca-promocao.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a50497da6e093ea2a7ece4061b0a39cc4138dd5afc9af79345d81b8e4f5c642c"
+            }
+          ],
+          "sha256": "a50497da6e093ea2a7ece4061b0a39cc4138dd5afc9af79345d81b8e4f5c642c"
+        }
+      },
+      "sha256": "efde78bfdfccf4347ea87fd1aed886b9c6a5beb79c9f5e2836bbcd19d2ff4832"
+    },
+    "cidadao-comum": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "cidadao-comum.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 3,
+            "top": 62,
+            "right": 189,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "cidadao-comum.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "7712cb3bb3ba21670999fe695dbb7251178c6487ecf5c4b51f5bb74c617e1294"
+            }
+          ],
+          "sha256": "7712cb3bb3ba21670999fe695dbb7251178c6487ecf5c4b51f5bb74c617e1294"
+        },
+        "dir4c": {
+          "file": "cidadao-comum.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "cidadao-comum.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "586d7ad76ac129194b5f38b65efbca9635355dd24ca798e7d87c51eae6dcd6fa"
+            }
+          ],
+          "sha256": "586d7ad76ac129194b5f38b65efbca9635355dd24ca798e7d87c51eae6dcd6fa"
+        },
+        "downed": {
+          "file": "cidadao-comum.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "cidadao-comum.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "0beb70849ca06ed21db447d8a49d4cd8ec3db5a24539fee883f2fc0848f28455"
+            }
+          ],
+          "sha256": "0beb70849ca06ed21db447d8a49d4cd8ec3db5a24539fee883f2fc0848f28455"
+        }
+      },
+      "sha256": "4eadbdcb0a07c26954ffe98bab2c091026ad752724d8cdd4115052173c80b356"
+    },
+    "clt-cansado": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "clt-cansado.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 19,
+            "top": 64,
+            "right": 173,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "61c68aed2dfd936ff5b4e01ec6bbb464e20f8c77893b3e1a0aaafbfba76eb1cc"
+            }
+          ],
+          "sha256": "61c68aed2dfd936ff5b4e01ec6bbb464e20f8c77893b3e1a0aaafbfba76eb1cc"
+        },
+        "dir4c": {
+          "file": "clt-cansado.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "clt-cansado.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "bb5164fc6ca5b132093c10b8e6d63d35a44459a86e4fac3210a4ae29186e4c10"
+            }
+          ],
+          "sha256": "bb5164fc6ca5b132093c10b8e6d63d35a44459a86e4fac3210a4ae29186e4c10"
+        },
+        "downed": {
+          "file": "clt-cansado.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "clt-cansado.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "f9834d403da475fc0dc74aba3bdbcccfd32d81138812b9ad06194c12fccac2e2"
+            }
+          ],
+          "sha256": "f9834d403da475fc0dc74aba3bdbcccfd32d81138812b9ad06194c12fccac2e2"
+        }
+      },
+      "sha256": "43201f1e69bf1bea2b754301551cfc80f49852a936c6ac062dfaf5e4ca3717fc"
+    },
+    "coach": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "coach.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 25,
+            "top": 63,
+            "right": 167,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "coach.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "df0a2ab2c7e549f31f2b01ad6fb8c67daec773482f7e6764f627609cc2697c60"
+            }
+          ],
+          "sha256": "df0a2ab2c7e549f31f2b01ad6fb8c67daec773482f7e6764f627609cc2697c60"
+        },
+        "dir4c": {
+          "file": "coach.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "coach.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "75cd2a2747f70b40f5d588d719320585f0d160b8f9cd01f6c9b656d166601889"
+            }
+          ],
+          "sha256": "75cd2a2747f70b40f5d588d719320585f0d160b8f9cd01f6c9b656d166601889"
+        },
+        "downed": {
+          "file": "coach.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "coach.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9e675d1cf773136b24be89136b88c556b0e24abae21cb1b22fe17bf866e3dfaa"
+            }
+          ],
+          "sha256": "9e675d1cf773136b24be89136b88c556b0e24abae21cb1b22fe17bf866e3dfaa"
+        }
+      },
+      "sha256": "71ee60d629e1ab751927491bec5188d5a2162f90488dc348c1060e5c5689344a"
+    },
+    "concurseira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "concurseira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 32,
+            "top": 65,
+            "right": 160,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "concurseira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "89d6893d2a7b8da00635aeac69831f6becf78936bf9f17b683b770ec6c4eb40e"
+            }
+          ],
+          "sha256": "89d6893d2a7b8da00635aeac69831f6becf78936bf9f17b683b770ec6c4eb40e"
+        },
+        "dir4c": {
+          "file": "concurseira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "concurseira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "e6bc3455405f5cf59a883416de3bea9659aedab8a7fc7709dd061a6ffac10501"
+            }
+          ],
+          "sha256": "e6bc3455405f5cf59a883416de3bea9659aedab8a7fc7709dd061a6ffac10501"
+        },
+        "downed": {
+          "file": "concurseira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "concurseira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "6df796d58325586ff22bff735bf7d27d49ec07e86d7e763f31eed6d6c7fe9559"
+            }
+          ],
+          "sha256": "6df796d58325586ff22bff735bf7d27d49ec07e86d7e763f31eed6d6c7fe9559"
+        }
+      },
+      "sha256": "74b2afd3efe205bc1c3e7d2dac519ca58cdf2f711b339062ae2415456a8c6b1a"
+    },
+    "faxineira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "faxineira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 20,
+            "top": 65,
+            "right": 172,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "faxineira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "26e91e36b72e38015df3ea1b9f948663286f4f24a3e4f237df99604bd4d6fe84"
+            }
+          ],
+          "sha256": "26e91e36b72e38015df3ea1b9f948663286f4f24a3e4f237df99604bd4d6fe84"
+        },
+        "dir4c": {
+          "file": "faxineira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "faxineira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "0f0194300dd6b11587d3f843b166ec1cf06e3ac76c611aad44a716661b1037f3"
+            }
+          ],
+          "sha256": "0f0194300dd6b11587d3f843b166ec1cf06e3ac76c611aad44a716661b1037f3"
+        },
+        "downed": {
+          "file": "faxineira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "faxineira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "06e2cdefe0de55e28ec4194718597939123ac69bbfb18fe29f22582b357fa5db"
+            }
+          ],
+          "sha256": "06e2cdefe0de55e28ec4194718597939123ac69bbfb18fe29f22582b357fa5db"
+        }
+      },
+      "sha256": "916256a1dbf185f98594dacb6d7e0a030b8186e2ca0c7e189cc7607294be8f45"
+    },
+    "feirante": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "feirante.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 35,
+            "top": 66,
+            "right": 157,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "feirante.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "e1ee3d74d96e1389441f1363957aeed41d86ba0b410e3d38cf627038972fb5ad"
+            }
+          ],
+          "sha256": "e1ee3d74d96e1389441f1363957aeed41d86ba0b410e3d38cf627038972fb5ad"
+        },
+        "dir4c": {
+          "file": "feirante.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "feirante.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "87ed94bdea7f1b04c055b29050cca53cb9442d0f1588f43ffc0f515c38e232c4"
+            }
+          ],
+          "sha256": "87ed94bdea7f1b04c055b29050cca53cb9442d0f1588f43ffc0f515c38e232c4"
+        },
+        "downed": {
+          "file": "feirante.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "feirante.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "511be5fc0cf4706b588f57672e210cadf1a9c743db5b9693900c28e2d7294794"
+            }
+          ],
+          "sha256": "511be5fc0cf4706b588f57672e210cadf1a9c743db5b9693900c28e2d7294794"
+        }
+      },
+      "sha256": "853f01f4f0c20c4fc8408a9e6766ed84939328304877dba4f5cdbfc5758d5f22"
+    },
+    "gambiarreiro": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "gambiarreiro.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 100,
+          "figure": {
+            "left": 30,
+            "top": 65,
+            "right": 162,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "gambiarreiro.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "2ddbfd6d9e8486492375744cbc625efa94452ef0e32662cf786d540f7383ea17"
+            }
+          ],
+          "sha256": "2ddbfd6d9e8486492375744cbc625efa94452ef0e32662cf786d540f7383ea17"
+        },
+        "dir4c": {
+          "file": "gambiarreiro.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "gambiarreiro.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "732db62adaa8c8ad90ec2743c6ee62483ff7a80f1646e7d9017f8922edc58b9c"
+            }
+          ],
+          "sha256": "732db62adaa8c8ad90ec2743c6ee62483ff7a80f1646e7d9017f8922edc58b9c"
+        },
+        "downed": {
+          "file": "gambiarreiro.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "gambiarreiro.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9d5d5d056805c8ed375c579313ff07d9eadb588a100803165861b58847a568ed"
+            }
+          ],
+          "sha256": "9d5d5d056805c8ed375c579313ff07d9eadb588a100803165861b58847a568ed"
+        }
+      },
+      "sha256": "db92d14f347798843c8b4d1a5d243ee7a645d2c08a07d1400a81a4438c25a116"
+    },
+    "gamer-mobile": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "gamer-mobile.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 18,
+            "top": 61,
+            "right": 174,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "gamer-mobile.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "c6ad7ba07a9526f72cadd4b50d96bb47cd34fb96b655f6d804789f17b650a95d"
+            }
+          ],
+          "sha256": "c6ad7ba07a9526f72cadd4b50d96bb47cd34fb96b655f6d804789f17b650a95d"
+        },
+        "dir4c": {
+          "file": "gamer-mobile.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "gamer-mobile.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "6a133f3152eccc5400d73e0b44d7eaf890499092d734ba77f2978419de4bde25"
+            }
+          ],
+          "sha256": "6a133f3152eccc5400d73e0b44d7eaf890499092d734ba77f2978419de4bde25"
+        },
+        "downed": {
+          "file": "gamer-mobile.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "gamer-mobile.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a14859591b4b83665101f42db8b0aa67ce6a3573656956854cd9f0b5657e2c4b"
+            }
+          ],
+          "sha256": "a14859591b4b83665101f42db8b0aa67ce6a3573656956854cd9f0b5657e2c4b"
+        }
+      },
+      "sha256": "ad3da73cc797d75d46f63713cde1da8f8f6abc1819a460f88b80854d5f59300b"
+    },
+    "goleira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "goleira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 100,
+          "figure": {
+            "left": 37,
+            "top": 65,
+            "right": 155,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "goleira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "d7a4eede4a35a3018fb2d83b0a461ec131114fdb5ae839d59f14a89ee2ec3242"
+            }
+          ],
+          "sha256": "d7a4eede4a35a3018fb2d83b0a461ec131114fdb5ae839d59f14a89ee2ec3242"
+        },
+        "dir4c": {
+          "file": "goleira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "goleira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "7fec999949c098c72360ed66d967bb003a85ecef594bb29b8f9792063c9b0444"
+            }
+          ],
+          "sha256": "7fec999949c098c72360ed66d967bb003a85ecef594bb29b8f9792063c9b0444"
+        },
+        "downed": {
+          "file": "goleira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "goleira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "513d41c7558e1cb0e4aa308126e407b80ca6a234a4725e07b24eece4506f5ce9"
+            }
+          ],
+          "sha256": "513d41c7558e1cb0e4aa308126e407b80ca6a234a4725e07b24eece4506f5ce9"
+        }
+      },
+      "sha256": "c4ec80fffec2d9ef737a28726e4068505d9ee211a7e0e93f7300d74972695850"
+    },
+    "mae-pet": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "mae-pet.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 36,
+            "top": 64,
+            "right": 156,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "mae-pet.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "1579ac822b2f6a17bc010ca5d4553373d93aa91d90520248201bf0a941cd1a74"
+            }
+          ],
+          "sha256": "1579ac822b2f6a17bc010ca5d4553373d93aa91d90520248201bf0a941cd1a74"
+        },
+        "dir4c": {
+          "file": "mae-pet.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "mae-pet.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "a002616afa12083f121bc942316a14107429fe65877a1d7512c7431926555853"
+            }
+          ],
+          "sha256": "a002616afa12083f121bc942316a14107429fe65877a1d7512c7431926555853"
+        },
+        "downed": {
+          "file": "mae-pet.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "mae-pet.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "3cbb7b5849b708c12d92bff6e9d1bdc65ee8aa93d73043735f8188efd28e680d"
+            }
+          ],
+          "sha256": "3cbb7b5849b708c12d92bff6e9d1bdc65ee8aa93d73043735f8188efd28e680d"
+        }
+      },
+      "sha256": "b99fc9de779948aad525aeda773f31d8863970da19ef865bf63a8714e9ec61b0"
+    },
+    "maromba": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "maromba.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 47,
+            "top": 65,
+            "right": 145,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "maromba.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c"
+            }
+          ],
+          "sha256": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c"
+        },
+        "dir4c": {
+          "file": "maromba.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "maromba.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "7ca31ec86ec51b8f57c939aa51d2e40638948f57a3cbc46167fce21935e6c85d"
+            }
+          ],
+          "sha256": "7ca31ec86ec51b8f57c939aa51d2e40638948f57a3cbc46167fce21935e6c85d"
+        },
+        "downed": {
+          "file": "maromba.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "maromba.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "2f60bf672bd00a976cf1ca9e5478ecc4ae4abc0240eab523bb64a44447f7e821"
+            }
+          ],
+          "sha256": "2f60bf672bd00a976cf1ca9e5478ecc4ae4abc0240eab523bb64a44447f7e821"
+        }
+      },
+      "sha256": "5ed19c9c1a452780088097dfad3729f6c48677065db520b76fe2a75cd630fbc8"
+    },
+    "mendigo": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "mendigo.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 37,
+            "top": 63,
+            "right": 155,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "mendigo.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8"
+            }
+          ],
+          "sha256": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8"
+        },
+        "dir4c": {
+          "file": "mendigo.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "mendigo.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "25751c8bd14887b0aa9430140c1e67fe0f3f4130197c7f4515539618b57fe45a"
+            }
+          ],
+          "sha256": "25751c8bd14887b0aa9430140c1e67fe0f3f4130197c7f4515539618b57fe45a"
+        },
+        "downed": {
+          "file": "mendigo.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "mendigo.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "3881210f20e22ec0b5869fd4427dca21014ebd98823071088c9c8699664553a8"
+            }
+          ],
+          "sha256": "3881210f20e22ec0b5869fd4427dca21014ebd98823071088c9c8699664553a8"
+        }
+      },
+      "sha256": "b2fadecc940537e9b03c78c8cce9c539603298f5b008d834be0baa4fbcb4cbad"
+    },
+    "merendeira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "merendeira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 33,
+            "top": 59,
+            "right": 160,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "merendeira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "7d8a78e5b6cc2b3cb357ee2a43810b90f1d0d519a5efa249cfd61badd3d917b4"
+            }
+          ],
+          "sha256": "7d8a78e5b6cc2b3cb357ee2a43810b90f1d0d519a5efa249cfd61badd3d917b4"
+        },
+        "dir4c": {
+          "file": "merendeira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "merendeira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "b7ae2df455d52f6f7de6b83b855a1dad1055267426222a0703e73f83416c70a7"
+            }
+          ],
+          "sha256": "b7ae2df455d52f6f7de6b83b855a1dad1055267426222a0703e73f83416c70a7"
+        },
+        "downed": {
+          "file": "merendeira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "merendeira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "40ba0733ebc6cf4602c7a0a1080256110f3525ccadd02d4e0ebbdfbbdde52867"
+            }
+          ],
+          "sha256": "40ba0733ebc6cf4602c7a0a1080256110f3525ccadd02d4e0ebbdfbbdde52867"
+        }
+      },
+      "sha256": "5cbc86f907a75f4e6f2f02bd0b42245c83df9805e70f36e41e30e3b4ed28871e"
+    },
+    "motogirl": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "motogirl.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 40,
+            "top": 65,
+            "right": 152,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "motogirl.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "ab213077c7418a2f6d58de79b5fc0039968e029ecb9ac72235f077f550e49efb"
+            }
+          ],
+          "sha256": "ab213077c7418a2f6d58de79b5fc0039968e029ecb9ac72235f077f550e49efb"
+        },
+        "dir4c": {
+          "file": "motogirl.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "motogirl.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "a12e97acf9b3047bf4dacc447c349d02cb08e26d66d18ec3b16d6de441a90868"
+            }
+          ],
+          "sha256": "a12e97acf9b3047bf4dacc447c349d02cb08e26d66d18ec3b16d6de441a90868"
+        },
+        "downed": {
+          "file": "motogirl.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "motogirl.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "ca4d48b4c9494fb33e545bd8ae1148fb45f00580ee0da777f764c3ec33480d27"
+            }
+          ],
+          "sha256": "ca4d48b4c9494fb33e545bd8ae1148fb45f00580ee0da777f764c3ec33480d27"
+        }
+      },
+      "sha256": "758a6cd3cc82b4cb99d03740cfb1a7c5b951e7da4e8beb82d450476ad8463fb0"
+    },
+    "pagodeiro": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "pagodeiro.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 43,
+            "top": 65,
+            "right": 149,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "pagodeiro.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "ca5e7e30ed5f0553b9481b46c4ce0c4bcc946b10195e88e64c266dfcd21de7bb"
+            }
+          ],
+          "sha256": "ca5e7e30ed5f0553b9481b46c4ce0c4bcc946b10195e88e64c266dfcd21de7bb"
+        },
+        "dir4c": {
+          "file": "pagodeiro.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "pagodeiro.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "2cdf041de44780a650354487547568f441647a062ff3c70a0152106bfd806dcd"
+            }
+          ],
+          "sha256": "2cdf041de44780a650354487547568f441647a062ff3c70a0152106bfd806dcd"
+        },
+        "downed": {
+          "file": "pagodeiro.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "pagodeiro.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "193d9c77cab1e4bb56859803ac6981c67229c4e7742b648538664c3cfaaf3795"
+            }
+          ],
+          "sha256": "193d9c77cab1e4bb56859803ac6981c67229c4e7742b648538664c3cfaaf3795"
+        }
+      },
+      "sha256": "d852809bc6870bed612084e9e3f310af27a57a196698e049ed393390c80c13d5"
+    },
+    "passageira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "passageira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 29,
+            "top": 57,
+            "right": 163,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "passageira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "74a991c0322db11f6432614351767846f407d49413dc38412839053200ea83f8"
+            }
+          ],
+          "sha256": "74a991c0322db11f6432614351767846f407d49413dc38412839053200ea83f8"
+        },
+        "dir4c": {
+          "file": "passageira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "passageira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "060fb93fd4a11ad2485f0080a0b320f6293fb0d1b123cbbd069281d382c68832"
+            }
+          ],
+          "sha256": "060fb93fd4a11ad2485f0080a0b320f6293fb0d1b123cbbd069281d382c68832"
+        },
+        "downed": {
+          "file": "passageira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "passageira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c2516dbf945eaca112a4e5703ae5889f4849321d1ba5c623e847abca25485c08"
+            }
+          ],
+          "sha256": "c2516dbf945eaca112a4e5703ae5889f4849321d1ba5c623e847abca25485c08"
+        }
+      },
+      "sha256": "52a49d1097779719023456e752b257fc6ab7042fa1d85e3a30c1b5143702cd41"
+    },
+    "pedreiro": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "pedreiro.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 33,
+            "top": 65,
+            "right": 159,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "pedreiro.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "1e7efdff45196e89ab2001a3412bc7cf868c6e382ee10e3e9fb0160d6b241f43"
+            }
+          ],
+          "sha256": "1e7efdff45196e89ab2001a3412bc7cf868c6e382ee10e3e9fb0160d6b241f43"
+        },
+        "dir4c": {
+          "file": "pedreiro.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "pedreiro.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "695ea1fe7551fad09732c8cfd983a93edefbb9881731e5377a6569ef478ba3ac"
+            }
+          ],
+          "sha256": "695ea1fe7551fad09732c8cfd983a93edefbb9881731e5377a6569ef478ba3ac"
+        },
+        "downed": {
+          "file": "pedreiro.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "pedreiro.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "420af94194258eec27b29cf36a2d6d56304c4acf64751fe1ede6c42a52f06fa0"
+            }
+          ],
+          "sha256": "420af94194258eec27b29cf36a2d6d56304c4acf64751fe1ede6c42a52f06fa0"
+        }
+      },
+      "sha256": "543df87621eb069ccce9857801941ca76f9af6fde08bc66e925ba183c5d8ccbc"
+    },
+    "porteiro": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "porteiro.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 31,
+            "top": 62,
+            "right": 161,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "porteiro.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "3c084d8f1d34ddc3c5de5c5b8515e8b7e8cb6e26c7f2a023d0687f9415ba76a3"
+            }
+          ],
+          "sha256": "3c084d8f1d34ddc3c5de5c5b8515e8b7e8cb6e26c7f2a023d0687f9415ba76a3"
+        },
+        "dir4c": {
+          "file": "porteiro.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "porteiro.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "4e203a872d43c81eb20a5f3df33a7a0cb30132856371c83a530b8904e54da20e"
+            }
+          ],
+          "sha256": "4e203a872d43c81eb20a5f3df33a7a0cb30132856371c83a530b8904e54da20e"
+        },
+        "downed": {
+          "file": "porteiro.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "porteiro.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "7f1b395a0fd700361dd9bdc7cb3a174b5b7b4106fcecb349befc72a65bbd6125"
+            }
+          ],
+          "sha256": "7f1b395a0fd700361dd9bdc7cb3a174b5b7b4106fcecb349befc72a65bbd6125"
+        }
+      },
+      "sha256": "d8f8ad95d1824c69baf62d758cc9294c2fa17e09af2ac411a54510d2e834ca4f"
+    },
+    "rainha-bateria": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "rainha-bateria.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 35,
+            "top": 63,
+            "right": 157,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "rainha-bateria.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "862267c1952347f172a6d23fb07f307aec1367c609f965349df359a26053c612"
+            }
+          ],
+          "sha256": "862267c1952347f172a6d23fb07f307aec1367c609f965349df359a26053c612"
+        },
+        "dir4c": {
+          "file": "rainha-bateria.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "rainha-bateria.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "eb9202db4dbe0ea7b186c584176f97f9e4d109102ca939e6672864462c256146"
+            }
+          ],
+          "sha256": "eb9202db4dbe0ea7b186c584176f97f9e4d109102ca939e6672864462c256146"
+        },
+        "downed": {
+          "file": "rainha-bateria.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "rainha-bateria.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "84f50c0282750ae9596493b18d99f76838a59b7c934fd518673df2ef0efa78f0"
+            }
+          ],
+          "sha256": "84f50c0282750ae9596493b18d99f76838a59b7c934fd518673df2ef0efa78f0"
+        }
+      },
+      "sha256": "769fbfa86cd8182fc2dfa4ad155b99d85be1500b0e44929f6f9326084375b5db"
+    },
+    "rei-arraia": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "rei-arraia.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 40,
+            "top": 59,
+            "right": 152,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "rei-arraia.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "1e2fcc6bf92a135fad529a31669d7b04a5cb2912b38b985fdc826f14b286c00c"
+            }
+          ],
+          "sha256": "1e2fcc6bf92a135fad529a31669d7b04a5cb2912b38b985fdc826f14b286c00c"
+        },
+        "dir4c": {
+          "file": "rei-arraia.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "rei-arraia.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "b1bb2ad0bc5b1ceb50cb845c1c86f7b66653522c6129c04adedd2f1219c4e044"
+            }
+          ],
+          "sha256": "b1bb2ad0bc5b1ceb50cb845c1c86f7b66653522c6129c04adedd2f1219c4e044"
+        },
+        "downed": {
+          "file": "rei-arraia.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "rei-arraia.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "87991a9ae7e5a2a04a70f05954aa7a00c87df894c05f367d9bf3feba61d49f11"
+            }
+          ],
+          "sha256": "87991a9ae7e5a2a04a70f05954aa7a00c87df894c05f367d9bf3feba61d49f11"
+        }
+      },
+      "sha256": "38a22b41b4f25559064db332537b7d4d1a8d9f6b2f38cb4d77a1573b99669a35"
+    },
+    "rei-pastel": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "rei-pastel.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 105,
+          "figure": {
+            "left": 4,
+            "top": 63,
+            "right": 188,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "rei-pastel.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "cd9222279e92af600796a64498afb2f7d32f82ace8d9815590ca2a9c69107e22"
+            }
+          ],
+          "sha256": "cd9222279e92af600796a64498afb2f7d32f82ace8d9815590ca2a9c69107e22"
+        },
+        "dir4c": {
+          "file": "rei-pastel.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "rei-pastel.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "d21728125c38c26d062e6df83c34de03ef8477bde15b39876754f593c3e3c9b0"
+            }
+          ],
+          "sha256": "d21728125c38c26d062e6df83c34de03ef8477bde15b39876754f593c3e3c9b0"
+        },
+        "downed": {
+          "file": "rei-pastel.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "rei-pastel.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d8d65dd2fd411b6a8a0e3fa777265ed017bddfe008979243a6658b5a60570538"
+            }
+          ],
+          "sha256": "d8d65dd2fd411b6a8a0e3fa777265ed017bddfe008979243a6658b5a60570538"
+        }
+      },
+      "sha256": "fb3cdc046b9a23c9698ad614e0356579192609884760b0d5d18ed06c8111318f"
+    },
+    "roqueira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "roqueira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 29,
+            "top": 65,
+            "right": 162,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "roqueira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "4f49e81532a7c1ca23e39573c50a134990e3ce66b16d5aaee258fac4036ee167"
+            }
+          ],
+          "sha256": "4f49e81532a7c1ca23e39573c50a134990e3ce66b16d5aaee258fac4036ee167"
+        },
+        "dir4c": {
+          "file": "roqueira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "roqueira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "0e3e1b1bebb8bc07b2ac8ca54cdadbafd62bd70528629ff121c6b2a7c2c487c3"
+            }
+          ],
+          "sha256": "0e3e1b1bebb8bc07b2ac8ca54cdadbafd62bd70528629ff121c6b2a7c2c487c3"
+        },
+        "downed": {
+          "file": "roqueira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "roqueira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c05fd22e27031b666a40cad754820cd199f3a28489b09b59e3057cb8d4dd1d09"
+            }
+          ],
+          "sha256": "c05fd22e27031b666a40cad754820cd199f3a28489b09b59e3057cb8d4dd1d09"
+        }
+      },
+      "sha256": "ba1297236a5289d68f8858fdb09e2ed189e58195f99926be2685932e1c5bf11a"
+    },
+    "salva-vidas": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "salva-vidas.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 14,
+            "top": 65,
+            "right": 178,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "salva-vidas.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "6400aeffb9e1063f243a6355c4356452da47410f7a7b88697b2a52714dd606a6"
+            }
+          ],
+          "sha256": "6400aeffb9e1063f243a6355c4356452da47410f7a7b88697b2a52714dd606a6"
+        },
+        "dir4c": {
+          "file": "salva-vidas.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "salva-vidas.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "84bfc3061e72fb3263b8d71436ae912b777d3a4e484f8b74e7470fafce05d20a"
+            }
+          ],
+          "sha256": "84bfc3061e72fb3263b8d71436ae912b777d3a4e484f8b74e7470fafce05d20a"
+        },
+        "downed": {
+          "file": "salva-vidas.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "salva-vidas.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "97e4872f954785829b805310908fef5294ca574955ff239c64ec154105af169c"
+            }
+          ],
+          "sha256": "97e4872f954785829b805310908fef5294ca574955ff239c64ec154105af169c"
+        }
+      },
+      "sha256": "af32f28736349ee481a4fbe34ad01d529addeb803ae84af4a7dcc468452a6020"
+    },
+    "sensei": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "sensei.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 102,
+          "figure": {
+            "left": 39,
+            "top": 62,
+            "right": 153,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "sensei.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "2fee373a3b7e332722bce0df05aa8edc0c37cbf152bc57ed43c56ae0a75d450f"
+            }
+          ],
+          "sha256": "2fee373a3b7e332722bce0df05aa8edc0c37cbf152bc57ed43c56ae0a75d450f"
+        },
+        "dir4c": {
+          "file": "sensei.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "sensei.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "9b188afc6971fd41f116c0187945a7a4940faf974c9e2e683525924e778d00b9"
+            }
+          ],
+          "sha256": "9b188afc6971fd41f116c0187945a7a4940faf974c9e2e683525924e778d00b9"
+        },
+        "downed": {
+          "file": "sensei.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "sensei.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "87f4fcf54dc3357001463d260b3459a2206f2601afc1decb216c820e6f5db1e2"
+            }
+          ],
+          "sha256": "87f4fcf54dc3357001463d260b3459a2206f2601afc1decb216c820e6f5db1e2"
+        }
+      },
+      "sha256": "cd8e12c7f271a890b6fca8ae668c7883ad6cb4e3404977a3bc69126a3683304e"
+    },
+    "streamer": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "streamer.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 37,
+            "top": 66,
+            "right": 155,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "streamer.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "cc513b949d0fbc5e70afa60c505bcaaa60db6dee10b72df9c0d12ebf720ffdf6"
+            }
+          ],
+          "sha256": "cc513b949d0fbc5e70afa60c505bcaaa60db6dee10b72df9c0d12ebf720ffdf6"
+        },
+        "dir4c": {
+          "file": "streamer.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "streamer.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "8561798c458ef895154e41512d196e60a97bcbea001571c834d100474715a6bb"
+            }
+          ],
+          "sha256": "8561798c458ef895154e41512d196e60a97bcbea001571c834d100474715a6bb"
+        },
+        "downed": {
+          "file": "streamer.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "streamer.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "eabbd98e0a5481f0b96a66c04ae09b402de81d202bd0d98491aa5bc1f3da728e"
+            }
+          ],
+          "sha256": "eabbd98e0a5481f0b96a66c04ae09b402de81d202bd0d98491aa5bc1f3da728e"
+        }
+      },
+      "sha256": "46972371bdda254fca6b2d6c2fb4d2c2f15bd800c884c313cbaaea1c453e2455"
+    },
+    "tecnico-ti": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "tecnico-ti.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 13,
+            "top": 61,
+            "right": 179,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "tecnico-ti.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "b16100b023ee6361905a5325f531076807f34accff43563f50bf3b25c855285e"
+            }
+          ],
+          "sha256": "b16100b023ee6361905a5325f531076807f34accff43563f50bf3b25c855285e"
+        },
+        "dir4c": {
+          "file": "tecnico-ti.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "tecnico-ti.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "536365552ee845adba0a4db686134095fe6ad49b3ef0989fa0e1ce1de7a3d17f"
+            }
+          ],
+          "sha256": "536365552ee845adba0a4db686134095fe6ad49b3ef0989fa0e1ce1de7a3d17f"
+        },
+        "downed": {
+          "file": "tecnico-ti.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "tecnico-ti.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a3bc05c516d30338a6da33a60bd4b1878cca546ddcbcc7f66eab4c1458111e1d"
+            }
+          ],
+          "sha256": "a3bc05c516d30338a6da33a60bd4b1878cca546ddcbcc7f66eab4c1458111e1d"
+        }
+      },
+      "sha256": "2973706a52d71cc0dc2ae3cd1fabb8175653ec543c2cfe462560a10927d88af9"
+    },
+    "tia-festa": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "tia-festa.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 35,
+            "top": 64,
+            "right": 157,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "tia-festa.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "bc6f9fb762801c03df74d6b05362299ae537ffbaadd9b42ee97a8b7aafc08c8f"
+            }
+          ],
+          "sha256": "bc6f9fb762801c03df74d6b05362299ae537ffbaadd9b42ee97a8b7aafc08c8f"
+        },
+        "dir4c": {
+          "file": "tia-festa.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "tia-festa.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "afb697246699bf7dcf21ad7f95a9850921d5c38fbdd918a954f9573e6148402f"
+            }
+          ],
+          "sha256": "afb697246699bf7dcf21ad7f95a9850921d5c38fbdd918a954f9573e6148402f"
+        },
+        "downed": {
+          "file": "tia-festa.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "tia-festa.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "b3f45f8461579bc317102fae1f915d08dbe50510f08660ac39d05cc009696094"
+            }
+          ],
+          "sha256": "b3f45f8461579bc317102fae1f915d08dbe50510f08660ac39d05cc009696094"
+        }
+      },
+      "sha256": "3b7f88f19c5109d52a72afadf6b1f56480eb1bf6e52d35f2380d95cb4ac49034"
+    },
+    "universitario": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "universitario.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 33,
+            "top": 65,
+            "right": 159,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "universitario.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "efeb86b299dd67ff47ead0b009c14c06b22b9a5861e1985cb638b294978899fd"
+            }
+          ],
+          "sha256": "efeb86b299dd67ff47ead0b009c14c06b22b9a5861e1985cb638b294978899fd"
+        },
+        "dir4c": {
+          "file": "universitario.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "universitario.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "545ad8f63e457a52b582a64e076347311c778c1b3b4e064d5b3ffe13775c2d26"
+            }
+          ],
+          "sha256": "545ad8f63e457a52b582a64e076347311c778c1b3b4e064d5b3ffe13775c2d26"
+        },
+        "downed": {
+          "file": "universitario.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "universitario.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d192ed335fd8d7bd3816158803d725d9f2238d3a8a418d21903e4683cc1fe945"
+            }
+          ],
+          "sha256": "d192ed335fd8d7bd3816158803d725d9f2238d3a8a418d21903e4683cc1fe945"
+        }
+      },
+      "sha256": "3e2a87650aa7382f3f5303364518440ee5a21767ba0ae0c974a01e136312f05a"
+    },
+    "vendedor-praia": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "vendedor-praia.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 103,
+          "figure": {
+            "left": 29,
+            "top": 65,
+            "right": 163,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926"
+            }
+          ],
+          "sha256": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926"
+        },
+        "dir4c": {
+          "file": "vendedor-praia.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "vendedor-praia.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "a0dbe61f29beab967b632675717fe451822b28eb859f826c556d9f55d13b2fab"
+            }
+          ],
+          "sha256": "a0dbe61f29beab967b632675717fe451822b28eb859f826c556d9f55d13b2fab"
+        },
+        "downed": {
+          "file": "vendedor-praia.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "vendedor-praia.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "39c0a4344d15c25aef17c4d8b1c81c0c20a2886500381b812b00d0c73503054e"
+            }
+          ],
+          "sha256": "39c0a4344d15c25aef17c4d8b1c81c0c20a2886500381b812b00d0c73503054e"
+        }
+      },
+      "sha256": "dd5a313bea158b141ca0014c2ea74db513c62c73626b56c159cfed93372df0d1"
+    },
+    "viciado-em-bet": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "viciado-em-bet.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 32,
+            "top": 63,
+            "right": 160,
+            "bottom": 169
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "00775f0c3cc6ae158750ca679d0db34a9617af68544aa5e0bfb735dd39461a78"
+            }
+          ],
+          "sha256": "00775f0c3cc6ae158750ca679d0db34a9617af68544aa5e0bfb735dd39461a78"
+        },
+        "dir4c": {
+          "file": "viciado-em-bet.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "viciado-em-bet.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "dadf01a6af76baa661066ff7d9e032d167801cb057a1ada79b9f4f61cb6caa62"
+            }
+          ],
+          "sha256": "dadf01a6af76baa661066ff7d9e032d167801cb057a1ada79b9f4f61cb6caa62"
+        },
+        "downed": {
+          "file": "viciado-em-bet.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "viciado-em-bet.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "1f4b301137d8cc4aa13ccdc58a2af0f542e99b0e51af76f7a8def1511f54d4df"
+            }
+          ],
+          "sha256": "1f4b301137d8cc4aa13ccdc58a2af0f542e99b0e51af76f7a8def1511f54d4df"
+        }
+      },
+      "sha256": "3eb452438381ccbcb5d776f8daa18d060cef7f463825c005df49ff5b442a33d8"
+    },
+    "vizinha-fofoqueira": {
+      "kind": "dir8",
+      "files": {
+        "dir4": {
+          "file": "vizinha-fofoqueira.dir4.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "height": 101,
+          "figure": {
+            "left": 49,
+            "top": 67,
+            "right": 142,
+            "bottom": 168
+          },
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira.dir4.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "b017144a72935231fd9247d0943145decf41129cab88d73ada7f661f4f32bfcc"
+            }
+          ],
+          "sha256": "b017144a72935231fd9247d0943145decf41129cab88d73ada7f661f4f32bfcc"
+        },
+        "dir4c": {
+          "file": "vizinha-fofoqueira.dir4c.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 4,
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira.dir4c.webp",
+              "columns": 6,
+              "rows": 12,
+              "firstFrame": 0,
+              "frameCount": 72,
+              "sha256": "a2811523ecab9be56a0097bb7247b5a5b2711d95736f7754262bded5ef955680"
+            }
+          ],
+          "sha256": "a2811523ecab9be56a0097bb7247b5a5b2711d95736f7754262bded5ef955680"
+        },
+        "downed": {
+          "file": "vizinha-fofoqueira.downed.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira.downed.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d28176d5918d00ebf0f0dfca7bf0325a6eb165d541ed511095f5a85ce09805b4"
+            }
+          ],
+          "sha256": "d28176d5918d00ebf0f0dfca7bf0325a6eb165d541ed511095f5a85ce09805b4"
+        }
+      },
+      "sha256": "15999b45a26ac3d159a66d6026ca0cfd9c818c963aae0842bf4d19d1892961b7"
+    }
+  }
+}

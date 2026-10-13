@@ -59,3 +59,11 @@ export const skillBubbleLine=(e:{line:string;outcome?:keyof typeof DICE_LINE})=>
 /** `say` keys that show a short red status tag over the player instead of the line (D-033: the agiota's boleto). */
 export const SAY_TAGS:Readonly<Record<string,string>>={devendo:'DEVENDO'};
 export const sayTag=(key:string|undefined):string|undefined=>key!==undefined&&Object.hasOwn(SAY_TAGS,key)?SAY_TAGS[key]:undefined;
+/**
+ * `say` keys whose line must not be swallowed by the 2 s per-player gap (D-013), shown as a normal balloon (not a
+ * status tag): the city's "ficou pra trás no rolê" at the wave start (cidade-07) often lands right after a crate's line.
+ */
+export const SAY_PRIORITY:ReadonlySet<string>=new Set(['ficou-pra-tras']);
+export const sayPriority=(key:string|undefined)=>key!==undefined&&SAY_PRIORITY.has(key);
+/** The per-player balloon gate (D-013): a status tag or a priority line always shows; anything else waits SKILL_BUBBLE_GAP_MS. */
+export const bubbleAllowed=(nowMs:number,lastMs:number,o:{tag?:boolean;priority?:boolean}={})=>!!o.tag||!!o.priority||nowMs-lastMs>=SKILL_BUBBLE_GAP_MS;

@@ -10,7 +10,7 @@
  * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
@@ -30,7 +30,15 @@ import type {TauntedEnemy} from '../skills.ts';
  * not hurt a wall, a molotov is not thrown at it), except the coach, who has no melee: a siege coach keeps his support logic
  * against the wall (PALESTRA.minRange..maxRange from its edge, lecturing the besiegers around him).
  */
-export interface StructureTarget extends Point {id:string;radius:number}
+export interface StructureTarget extends Point {
+  id:string;radius:number;
+  /**
+   * A city barricade (cidade-06): not a siege target, but any body (siege or not, never a retreating one nor the boss)
+   * in contact with it hits it on its contact cooldown, through hitStructure (D-017): the steer leads bodies the
+   * barricades cut off the plaza to the mouth they must break.
+   */
+  blocking?:boolean;
+}
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
   rng?:Rng;
@@ -130,7 +138,7 @@ function tauntTarget(ctx:SimContext,e:EnemyState):SimPlayer|undefined{
  * Moves `body` by (dx,dy) without entering sea, rocks or trees (world.ts rules), sliding along blockers.
  * Bodies wider than a player also keep their own radius out of obstacles (they may only move away from one they overlap).
  * A body that starts off walkable ground (spawned in shallow water or inside a blocker) moves freely until it is walkable,
- * so once on land it never leaves it.
+ * so once on land it never leaves it. In the city the barricades are solid (enemyTerrain: blockers stop enemies only).
  */
 export function moveSafely(body:Point,dx:number,dy:number,terrain:TerrainField,radius=PLAYER_RADIUS){
   const distance=Math.hypot(dx,dy);
@@ -229,7 +237,7 @@ export class EnemyAi implements SimSystem {
         // him (any other displacement still calls the charge off, see chargeWarned).
         if(memory.state===STATE.joke)delete e.knock;
         else{
-          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          moveSafely(e,e.knock.x,e.knock.y,enemyTerrain(ctx.terrain),e.radius);
           e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
           if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
         }
@@ -245,7 +253,7 @@ export class EnemyAi implements SimSystem {
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else{
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        if(memory[SIEGE]===1)for(const s of structures){const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
+        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
@@ -285,8 +293,9 @@ export class EnemyAi implements SimSystem {
             // The wobble is on top of the walk: he still closes at his own speed (like the VGM-031 chaser, so rounds end
             // on time), the sideways sway adds up to √(1+amp²) to the step (1.04 × at amp 0.3, far under a hero; 0.5 made round 1-2 balance tests flaky).
             const length=Math.hypot(dirX,dirY);pace=length;
-            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact).
-            memory.fx=dirX/length;memory.fy=dirY/length;
+            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact or on a
+            // zero direction, e.g. holding the plaza: dividing by a zero length would store NaN).
+            if(length>1e-9){memory.fx=dirX/length;memory.fy=dirY/length;}
             break;
           }
           case 'swarm':{
@@ -425,6 +434,13 @@ export class EnemyAi implements SimSystem {
             else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
           }else if(structure)this.options.hitStructure?.(ctx,structure.id,amount,e);
         }
+        // Barricades (cidade-06): pressed against a blocking structure, the body bashes it (one hit per contact cooldown).
+        if(memory.state!==STATE.joke&&ctx.tick>=memory.hitReady)for(const s of structures){
+          if(!s.blocking||!(Math.hypot(s.x-e.x,s.y-e.y)-s.radius<=e.radius+PLAYER_RADIUS+.05))continue;
+          memory.hitReady=ctx.tick+def.contactCooldown;
+          this.options.hitStructure?.(ctx,s.id,e.damage,e);
+          break;
+        }
       }
       // Separation from overlapping neighbors (order-stable: same index, same iteration).
       let pushX=0,pushY=0;
@@ -455,7 +471,8 @@ export class EnemyAi implements SimSystem {
         if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
       }
       const fromX=e.x,fromY=e.y;
-      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
+      // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
+      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),e.radius);
       // The motoboy crashes at the end of his run, on a player, off the line, or when a wall eats half of his step.
       if(memory.state===STATE.charge&&enemyDef(e.kind).behavior==='kamikaze'){
         const want=Math.hypot(moveX,moveY);

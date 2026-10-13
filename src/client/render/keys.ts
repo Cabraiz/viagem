@@ -27,6 +27,12 @@ export const enemyTexture=(kind:string,elite=false,acting=false)=>{
   const k=enemyKind(kind);
   return `horde:enemy:${k}${elite&&k!=='chefe'?':elite':''}${acting&&hasActingPose(k)?':act':''}`;
 };
+/**
+ * enemyTexture per kind, [plain, elite, plain acting, elite acting], built once: the per-frame draw code reads it
+ * without building strings. Kinds without an acting pose repeat their plain keys in the acting slots.
+ */
+export const ENEMY_TEXTURES:Readonly<Record<EnemyKind,readonly [string,string,string,string]>>=Object.freeze(
+  Object.fromEntries(ENEMY_KINDS.map(k=>[k,[enemyTexture(k),enemyTexture(k,true),enemyTexture(k,false,true),enemyTexture(k,true,true)]])) as Record<EnemyKind,[string,string,string,string]>);
 export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'xp'}`;
 /** Hostile projectile look by source: the agiota's boleto com juros is a slip; every other hostile shot is the star. */
 export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.projFriendly:source==='boleto-juros'?FX.projBoleto:FX.projHostile;

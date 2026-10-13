@@ -15,11 +15,14 @@
  * so the LRU tops out at BOT_ROUTE_FIELDS × 720 KiB = 5.6 MiB per isolate, plus the grid's cells (36 KiB per city).
  * Building one costs one Dial pass over the grid (a few ms); the bots ask for one when they change goals, not per tick.
  *
- * The grid is read once per city: when barricades (cidade-06) change the city's walkability, drop the routes
- * (dropBotRoutes) so the next route re-reads it. Until then a bot may be routed through a closed gap; its unstick
- * sidestep (bot-brain finish) still frees it.
+ * The grid is the HERO view of the city: the barricades (cidade-06) are blocker discs solid for enemies only, and the
+ * bots, like the heroes, walk through them (their movement, moveSafely on the room's terrain, ignores the blockers).
+ * cityFlowGrid reads the enemy view (enemyTerrain), so the grid is built on a blocker-free terrain over the same asset:
+ * routed around a barricade the bot's way home pointed away from the plaza next to a mouth, and the bot paced there
+ * between the lure of a gem and its circle around the wall (city-room-bots, after cidade-06). Since no blocker reaches
+ * the grid, routes are per asset: every room (each on its own fork of the city) shares one grid and the LRU.
  */
-import {FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityTerrain,type Point} from '../../maps/index.ts';
+import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type Point} from '../../maps/index.ts';
 import {cityFlowGrid,type CityFlowGrid} from './grid.ts';
 
 /** Flow fields the bots keep (LRU, all cities of the isolate): home, one crate per bot slot, two moving targets. */
@@ -42,7 +45,8 @@ const SEGMENT_STEP=.2;
 
 interface CityRoutes {id:number;grid:CityFlowGrid}
 interface RouteField {routes:CityRoutes;cell:number;field:FlowField}
-const cities=new WeakMap<CityTerrain,CityRoutes>();
+/** By asset (not by terrain): a room's fork and the decoded city share one grid, the blockers never reach it. */
+const cities=new WeakMap<CityAsset,CityRoutes>();
 let cityIds=0;
 /** Least recently used first (Map insertion order). */
 const lru=new Map<string,RouteField>();
@@ -50,15 +54,16 @@ const lru=new Map<string,RouteField>();
 export const botRouteStats={builds:0,hits:0};
 
 function routesOf(city:CityTerrain):CityRoutes{
-  let r=cities.get(city);
-  if(!r){r={id:++cityIds,grid:cityFlowGrid(city)};cities.set(city,r);}
+  let r=cities.get(city.asset);
+  // The hero view: a fresh terrain over the asset has no blockers, so cityFlowGrid's enemy view of it is the hero rule.
+  if(!r){r={id:++cityIds,grid:cityFlowGrid(new CityTerrain(city.asset,city.signature))};cities.set(city.asset,r);}
   return r;
 }
-/** Forget a city's grid and fields (its walkability changed); the next route re-reads it. */
+/** Forget a city's grid and fields (tests; the asset never changes, and the barricades never reach the grid). */
 export function dropBotRoutes(city:CityTerrain){
-  const r=cities.get(city);
+  const r=cities.get(city.asset);
   if(!r)return;
-  cities.delete(city);
+  cities.delete(city.asset);
   for(const [key,f] of lru)if(f.routes===r)lru.delete(key);
 }
 /** Cached fields now (tests). */

@@ -93,16 +93,17 @@ test('older clients are rejected before joining a procedural room',()=>{
   // Protocol 3 is the JSON room before VGM-042b, 4 the frames without event sizes (before E7) and 5 the frames without
   // Stonewards (before VGM-046B), 6 the frames without the zueira events (before VGM-053B), 7 the frames without the
   // city world (before D-034), 8 the frames without the slow/slip state and telegraph kinds (before D-036), 9 the frames
-  // without the P1 cast in the DICT (before NEW-20261012-ORQ-elenco-p1) and 11 a newer page: a tab left open across the
-  // release gets a readable refusal, no frames.
-  for(const version of [1,3,4,5,6,7,8,9,11]){
+  // without the P1 cast in the DICT (before NEW-20261012-ORQ-elenco-p1), 10 the frames without the D-040 roster in the
+  // DICT (before NEW-20261013-ORQ-papeis-de-inimigo) and 12 a newer page: a tab left open across the release gets a
+  // readable refusal, no frames.
+  for(const version of [1,3,4,5,6,7,8,9,10,12]){
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
     assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
-  assert.equal(ROOM_PROTOCOL,10);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
+  assert.equal(ROOM_PROTOCOL,11);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);

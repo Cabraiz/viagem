@@ -23,7 +23,7 @@ import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
-import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
+import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
@@ -644,9 +644,11 @@ export class IslandScene extends Phaser.Scene {
   }
   private icons=new Map<string,string>();
   /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
-  critterIcon(kind:string){
+  critterIcon(roster:string){
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
-    if(!isEnemyKind(kind))return undefined;
+    // A roster entry without art (D-040) shows its role's stand-in, like the horde draws it.
+    const kind=drawnKind(roster);
+    if(!kind)return undefined;
     let url=this.icons.get(kind);
     if(url===undefined){
       // Imported art first (art/hud-art.ts: the ui icon, else the enemy sheet's still frame); none or not loaded: today's.

@@ -2,9 +2,12 @@
  * enemy-ai system (VGM-031, cast of D-033): bêbado drunk chase + burp cone, pombos swarm zig-zag + poop, Tio do Pavê
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
  * explosion; the P1 trio: coach lecture + ally buff (PALESTRA), motoboy warned charge + marmita blast (MOTOBOY),
- * influencer pose (POSE; the reflection itself is in projectiles.ts); neighbor separation, terrain collision, contact
- * damage and rare barks. EnemyState.phase of regular enemies (on the wire, EnemyView.phase): 1 while the P1 trio acts
- * (lecturing, aiming/charging, posing), 2 while coached and not acting, absent otherwise.
+ * influencer pose (POSE; the reflection itself is in projectiles.ts); the roster roles of D-040: the brutamontes' shove
+ * (BRUTE), the invocador's call (SUMMON) and the mini-chefe's stomp (SLAM), every other role on the behavior of its base
+ * kind; neighbor separation, terrain collision, contact damage and rare barks. EnemyState.phase of regular enemies (on
+ * the wire, EnemyView.phase): 1 while the P1 trio acts (lecturing, aiming/charging, posing) and while an invocador
+ * calls or a mini-chefe stomps, 2 while coached and not acting, absent otherwise. A roster entry acting like one of the
+ * nine says its own (or its role's) reaction lines where the nine have their behavior's lists.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
  * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
@@ -15,11 +18,11 @@ import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ACTION_PEAK_MAX,AGIOTA_SHOT,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
-  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,TIO_JOKE,coachMult,enemyDef,hashUnit,isCoached,isDevendo,
-  type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
+  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUMMON,SUMMON_STATE,TIO_JOKE,coachMult,createEnemy,enemyDef,hashUnit,
+  hazardOwner,isCoached,isDevendo,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
-import {MAX_TELEGRAPHS} from '../../rules/index.ts';
+import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
 
@@ -63,6 +66,16 @@ export interface EnemyAiOptions {
    */
   heroSpeed?:number;
   /**
+   * Invocador (SUMMON): the kinds his minions are drawn from (the run's rotation: the round's corredores and enxames).
+   * Default MINION_KINDS.
+   */
+  minionKinds?:(ctx:SimContext)=>readonly string[];
+  /**
+   * Invocador: creates one minion of `kind` at `at` and returns it (the director tracks it, scales it to the round and
+   * converts its speed in the city); undefined when refused. Default: createEnemy at SUMMON.hp within MAX_ENEMIES.
+   */
+  summon?:(ctx:SimContext,kind:string,at:Point)=>EnemyState|undefined;
+  /**
    * Also clamp the whole move (the capped walk plus the neighbours' separation push, up to SEPARATION_MAX a tick) to the
    * same peak, so a dense crowd never shoves a body past it (the city, where the peak is 2.29 u/s). Off by default: in
    * the endless/island worlds a crowd's push past 1.15 × 3.1 is part of the tuned pacing (the round-end and novice
@@ -96,7 +109,17 @@ const SIEGE='siege';
  * memory.state values. The Tio's joke/charge also keep, JSON-safe in memory: the locked charge direction (cx, cy, unit),
  * where it starts (ox, oy: where he stands for the joke) and how far it can go (reach, u).
  */
-export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4,lecture:5,pose:POSE_STATE} as const;
+export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4,lecture:5,pose:POSE_STATE,summon:SUMMON_STATE,slam:SLAM_STATE} as const;
+/** Invocador minions when no rotation names them (EnemyAiOptions.minionKinds). */
+export const MINION_KINDS:readonly string[]=Object.freeze(['bebado','pombos']);
+/** memory flag of a summoned minion (SUMMON.maxGlobal counts them). */
+export const MINION_FLAG='minion';
+/**
+ * Lines a roster entry says where one of the nine says its behavior's own list (the coach's lecture, the motoboy's honk,
+ * the influencer's pose and reflection): the nine keep theirs and their keys, everyone else its reaction lines.
+ */
+const actLines=(e:EnemyState,def:EnemyDef,legacy:string,lines:readonly string[],what:string):[readonly string[],string]=>
+  e.kind===legacy?[lines,`${legacy}:${what}`]:[def.reactionLines,`${e.kind}:${what}`];
 /** EnemyView.phase values of regular enemies (the boss uses its own, boss.ts). */
 export const ENEMY_PHASE={acting:1,coached:2} as const;
 /**
@@ -172,7 +195,9 @@ function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:numbe
   return true;
 }
 
-const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower'||def.behavior==='coach';
+const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower'||def.behavior==='coach'||def.behavior==='summoner';
+/** No melee against players: the coach and the invocador (a siege invocador still hits the wall). */
+const noMelee=(def:EnemyDef)=>def.behavior==='coach'||def.behavior==='summoner';
 /** Zig-zag direction (not normalized) toward (ux,uy), from the kind's zigzag (stagger, swarm). */
 function zigzag(ctx:SimContext,e:EnemyState,def:EnemyDef,ux:number,uy:number):[number,number]{
   const z=def.zigzag;
@@ -310,7 +335,7 @@ export class EnemyAi implements SimSystem {
             [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
             if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
               &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
-              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage*coachMult(e,ctx.tick),owner:HAZARD_OWNERS.poop+e.id,kind:'coco'},POOP.delay);
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage*coachMult(e,ctx.tick),owner:hazardOwner(HAZARD_OWNERS.poop,e),kind:'coco'},POOP.delay);
               memory.actReady=ctx.tick+POOP.cooldown;
               this.react(ctx,rng,e,def,.3);
             }
@@ -369,7 +394,7 @@ export class EnemyAi implements SimSystem {
             }else if(player&&ctx.round.phase==='wave'&&best<=MOTOBOY.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
               memory.state=STATE.joke;memory.until=ctx.tick+MOTOBOY_CHARGE.pause;
               this.warnCharge(ctx,e,memory,ax,ay,MOTOBOY_CHARGE);
-              this.bark(ctx,rng,e,MOTOBOY_HONK_LINES,'motoboy:honk');
+              this.bark(ctx,rng,e,...actLines(e,def,'motoboy',MOTOBOY_HONK_LINES,'honk'));
             }else{dirX=ux;dirY=uy;}
             break;
           }
@@ -381,14 +406,14 @@ export class EnemyAi implements SimSystem {
             }
             if((memory.cheer??-1)>ctx.tick&&this.canBark(ctx)){
               let ally:EnemyState|undefined;
-              for(const o of ctx.enemies.values())if(o.hp>0&&!o.boss&&o.kind!=='coach'&&isCoached(o,ctx.tick)){ally=o;break;}
+              for(const o of ctx.enemies.values())if(o.hp>0&&!o.boss&&enemyDef(o.kind).behavior!=='coach'&&isCoached(o,ctx.tick)){ally=o;break;}
               if(ally)this.bark(ctx,rng,ally,BUFFED_LINES,'coach:buffed');
               delete memory.cheer;
             }
             // A player (or, for a siege coach, the wall he besieges) in reach: he lectures the allies around him.
             if(best<=PALESTRA.trigger&&ctx.tick>=memory.actReady){
               memory.state=STATE.lecture;memory.until=ctx.tick+PALESTRA.lecture;
-              this.bark(ctx,rng,e,PALESTRA_LINES,'coach:palestra');
+              this.bark(ctx,rng,e,...actLines(e,def,'coach',PALESTRA_LINES,'palestra'));
             }else if(best>PALESTRA.maxRange){dirX=ux;dirY=uy;}
             else if(best<PALESTRA.minRange){dirX=-ux;dirY=-uy;}
             else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
@@ -396,12 +421,12 @@ export class EnemyAi implements SimSystem {
           }
           case 'poser':{
             // A reflection (projectiles.ts) asks for one line; it waits for the limiter while the pose lasts.
-            if(memory.reflectSay===1&&this.canBark(ctx)){this.bark(ctx,rng,e,REFLECT_LINES,'influencer:reflect');delete memory.reflectSay;}
+            if(memory.reflectSay===1&&this.canBark(ctx)){this.bark(ctx,rng,e,...actLines(e,def,'influencer',REFLECT_LINES,'reflect'));delete memory.reflectSay;}
             if(memory.state===STATE.pose){
               if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+POSE.cooldown;delete memory.reflectSay;}
             }else if(player&&best<=POSE.trigger&&ctx.tick>=memory.actReady){
               memory.state=STATE.pose;memory.until=ctx.tick+POSE.duration;
-              this.bark(ctx,rng,e,POSE_LINES,'influencer:pose');
+              this.bark(ctx,rng,e,...actLines(e,def,'influencer',POSE_LINES,'pose'));
             }else{dirX=ux;dirY=uy;}
             break;
           }
@@ -413,8 +438,9 @@ export class EnemyAi implements SimSystem {
                 if(ctx.projectiles.size>=(this.options.projectileCap??PROJECTILE_CAP))break;
                 const sx=e.x+ax*e.radius,sy=e.y+ay*e.radius;
                 const id=ctx.nextId('p');
-                // `marks` (D-002): projectiles.ts marks the player this boleto hurts as devendo.
-                ctx.projectiles.set(id,{id,owner:e.id,source:AGIOTA_SHOT.source,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage*coachMult(e,ctx.tick),pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],marks:AGIOTA_SHOT.marks} as ProjectileState);
+                // `marks` (D-002): projectiles.ts marks the player this boleto hurts as devendo. Only the agiota's boleto
+                // marks (EnemyDef.marks); the other atiradores fire the generic shot.
+                ctx.projectiles.set(id,{id,owner:e.id,source:def.shotSource??GENERIC_SHOT_SOURCE,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage*coachMult(e,ctx.tick),pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],...(def.marks?{marks:def.marks}:{})} as ProjectileState);
               }
             }else if(player&&best<=AGIOTA_SHOT.fireRange&&ctx.tick>=memory.actReady){
               memory.state=STATE.aim;memory.until=ctx.tick+AGIOTA_SHOT.aim;
@@ -424,12 +450,42 @@ export class EnemyAi implements SimSystem {
             else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
             break;
           }
+          case 'summoner':{
+            // The call: he stands still while the warned minions are on their way; they arrive when it ends.
+            if(memory.state===STATE.summon){
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+SUMMON.cooldown;this.arriveMinions(ctx,rng,e,memory);}
+              break;
+            }
+            if(player&&ctx.round.phase==='wave'&&best<=SUMMON.trigger&&ctx.tick>=memory.actReady){
+              if(this.callMinions(ctx,rng,e,memory)){this.react(ctx,rng,e,def,1);break;}
+              memory.actReady=ctx.tick+SUMMON.retry;
+            }
+            if(best>SUMMON.maxRange){dirX=ux;dirY=uy;}
+            else if(best<SUMMON.minRange){dirX=-ux;dirY=-uy;}
+            else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
+            break;
+          }
+          case 'minichefe':{
+            // The stomp: warned circle around him; he stands still until it lands (plus a short recovery).
+            if(memory.state===STATE.slam){
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+SLAM.cooldown;}
+              break;
+            }
+            if(player&&best<=SLAM.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:SLAM.radius+e.radius,damage:SLAM.damage*coachMult(e,ctx.tick),owner:e.id,kind:'pancada'},SLAM.delay);
+              memory.state=STATE.slam;memory.until=ctx.tick+SLAM.delay+SLAM.recover;
+              this.react(ctx,rng,e,def,1);
+              break;
+            }
+            dirX=ux;dirY=uy;
+            break;
+          }
           default:{dirX=ux;dirY=uy;}
         }
         // Melee kinds stop at contact; the agiota, the anão and the coach keep backing off (from players). Tio and motoboy
         // do not hit mid wind-up; the coach never hits (no melee). A coached enemy hits for PALESTRA.damageMult × damage.
         if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
-        if(touching&&memory.state!==STATE.joke&&def.behavior!=='coach'&&ctx.tick>=memory.hitReady){
+        if(touching&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&noMelee(def))&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           const charging=memory.state===STATE.charge;
           const amount=(def.behavior==='kamikaze'&&charging?MOTOBOY.hitDamage:e.damage)*coachMult(e,ctx.tick);
@@ -439,6 +495,7 @@ export class EnemyAi implements SimSystem {
               if(live(player))moveSafely(player,ax*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ay*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ctx.terrain);
               if(charging)this.endCharge(ctx,memory);
             }else if(def.behavior==='kamikaze'){if(charging){boom=true;this.react(ctx,rng,e,def,1);}}
+            else if(def.behavior==='brute'||def.behavior==='minichefe'){if(live(player))moveSafely(player,ax*BRUTE.shove,ay*BRUTE.shove,ctx.terrain);}
             else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
           }else if(structure)this.options.hitStructure?.(ctx,structure.id,amount,e);
         }
@@ -503,7 +560,7 @@ export class EnemyAi implements SimSystem {
   onKill(ctx:SimContext,enemy:EnemyState){
     if(enemy.boss||enemyDef(enemy.kind).behavior!=='thrower'||!this.hazardRoom(ctx))return;
     addTelegraph(ctx,{shape:'circle',x:enemy.x,y:enemy.y,radius:MOLOTOV.deathRadius,damage:MOLOTOV.deathDamage*coachMult(enemy,ctx.tick),
-      owner:HAZARD_OWNERS.explosion+enemy.id,enemyDamage:MOLOTOV.deathEnemyDamage,kind:'explosao'} as HazardSpec,MOLOTOV.deathDelay);
+      owner:hazardOwner(HAZARD_OWNERS.explosion,enemy),enemyDamage:MOLOTOV.deathEnemyDamage,kind:'explosao'} as HazardSpec,MOLOTOV.deathDelay);
   }
 
   /** True when the global limiter allows a bark now (factor > 1 for low-priority ambient barks). */
@@ -552,10 +609,11 @@ export class EnemyAi implements SimSystem {
     if(!(e.hp>0)||ctx.enemies.get(e.id)!==e)return;
     const memory=e.memory??={};
     memory.state=STATE.walk;dropChargeLine(memory);cancelTelegraphs(ctx,e.id);
-    this.bark(ctx,rng,e,MARMITA_BOOM_LINES,'motoboy:boom');
+    // The marmita lines are the motoboy's; another kamikaze's crash is said by its death pop.
+    if(e.kind==='motoboy')this.bark(ctx,rng,e,MARMITA_BOOM_LINES,'motoboy:boom');
     if(ctx.round.phase==='wave'&&this.hazardRoom(ctx)){
       addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:MOTOBOY.blastRadius,damage:MOTOBOY.blastDamage*coachMult(e,ctx.tick),
-        owner:HAZARD_OWNERS.marmita+e.id,kind:'explosao'},MOTOBOY.blastDelay);
+        owner:hazardOwner(HAZARD_OWNERS.marmita,e),kind:'explosao'},MOTOBOY.blastDelay);
     }
     ctx.damageEnemy(e.id,e.hp,undefined,'env:marmita');
   }
@@ -567,12 +625,13 @@ export class EnemyAi implements SimSystem {
     const until=ctx.tick+PALESTRA.duration;
     let any=false;
     for(const o of ctx.enemies.values()){
-      if(o===coach||!(o.hp>0)||o.boss||o.kind==='coach'||o.memory?.retreat===1)continue;
+      if(o===coach||!(o.hp>0)||o.boss||enemyDef(o.kind).behavior==='coach'||o.memory?.retreat===1)continue;
       if(Math.hypot(o.x-coach.x,o.y-coach.y)>PALESTRA.radius)continue;
       const held=o as EnemyState&CoachedEnemy;
       held.coachedUntil=Math.max(held.coachedUntil??0,until);any=true;
     }
-    if(any)memory.cheer=until;
+    // BUFFED_LINES are the coach's mentees; another suporte's buff goes without the cheer.
+    if(any&&coach.kind==='coach')memory.cheer=until;
   }
   /**
    * EnemyView.phase of the regular enemies (ENEMY_PHASE): acting (the coach lecturing, the motoboy aiming or charging,
@@ -585,7 +644,7 @@ export class EnemyAi implements SimSystem {
       if(held.coachedUntil!==undefined&&(retreat||!isCoached(held,ctx.tick)))delete held.coachedUntil;
       const behavior=enemyDef(e.kind).behavior,state=m?.state;
       const acting=!retreat&&(behavior==='coach'&&state===STATE.lecture||behavior==='kamikaze'&&(state===STATE.joke||state===STATE.charge)
-        ||behavior==='poser'&&state===STATE.pose);
+        ||behavior==='poser'&&state===STATE.pose||behavior==='summoner'&&state===STATE.summon||behavior==='minichefe'&&state===STATE.slam);
       const phase=acting?ENEMY_PHASE.acting:held.coachedUntil!==undefined?ENEMY_PHASE.coached:undefined;
       if(phase===undefined){if(e.phase!==undefined)delete e.phase;}
       else e.phase=phase;
@@ -626,6 +685,49 @@ export class EnemyAi implements SimSystem {
     return off<=PATH_EPS&&along>=-PATH_EPS&&along<=reach+PATH_EPS;
   }
 
+  /**
+   * The invocador starts a call: SUMMON.count spots around him (walkable for an enemy, ≥ SUMMON.safe from every player
+   * body), each announced by a 'spawn-warning' that lands SUMMON.warn ticks later; the spots wait in his memory
+   * (s<i>x, s<i>y, JSON-safe). Refused (false, nothing announced) while SUMMON.maxGlobal minions live or the enemy cap is
+   * near, or when no spot fits.
+   */
+  private callMinions(ctx:SimContext,rng:Rng,e:EnemyState,memory:Record<string,number>){
+    // Spots of a call that never landed (he lost his target mid-call) go first.
+    for(let i=0;i<SUMMON.count[1];i++){delete memory[`s${i}x`];delete memory[`s${i}y`];}
+    let minions=0;for(const o of ctx.enemies.values())if(o.hp>0&&o.memory?.[MINION_FLAG]===1)minions++;
+    const want=Math.min(rng.int(SUMMON.count[0],SUMMON.count[1]),SUMMON.maxGlobal-minions,MAX_ENEMIES-ctx.enemies.size);
+    if(want<=0)return false;
+    const terrain=enemyTerrain(ctx.terrain),start=rng.next()*TAU,atTick=ctx.tick+SUMMON.warn;
+    let made=0;
+    for(let i=0;i<8&&made<want;i++){
+      const a=start+i/8*TAU,p={x:e.x+Math.cos(a)*SUMMON.radius,y:e.y+Math.sin(a)*SUMMON.radius};
+      if(!walkable(p,terrain))continue;
+      let clear=true;for(const pl of ctx.players.values())if(!pl.spectator&&Math.hypot(pl.x-p.x,pl.y-p.y)<SUMMON.safe){clear=false;break;}
+      if(!clear)continue;
+      memory[`s${made}x`]=p.x;memory[`s${made}y`]=p.y;made++;
+      ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:1});
+    }
+    if(!made)return false;
+    memory.sn=made;memory.state=STATE.summon;memory.until=atTick;
+    return true;
+  }
+  /** The call lands: one minion per announced spot nobody stands on (EnemyAiOptions.summon), flagged MINION_FLAG. */
+  private arriveMinions(ctx:SimContext,rng:Rng,e:EnemyState,memory:Record<string,number>){
+    const n=memory.sn??0,kinds=this.options.minionKinds?.(ctx)??MINION_KINDS;
+    for(let i=0;i<n;i++){
+      const p={x:memory[`s${i}x`],y:memory[`s${i}y`]};
+      delete memory[`s${i}x`];delete memory[`s${i}y`];
+      if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!kinds.length)continue;
+      let clear=true;for(const pl of ctx.players.values())if(!pl.spectator&&Math.hypot(pl.x-p.x,pl.y-p.y)<PLAYER_RADIUS+.3){clear=false;break;}
+      if(!clear||ctx.round.phase!=='wave')continue;
+      const kind=kinds[rng.int(0,kinds.length-1)];
+      const minion=this.options.summon?this.options.summon(ctx,kind,p)
+        :ctx.enemies.size<MAX_ENEMIES?createEnemy(ctx,kind,p,SUMMON.hp,{readyIn:SUMMON.readyIn}):undefined;
+      if(minion)minion.memory={...minion.memory,[MINION_FLAG]:1};
+    }
+    delete memory.sn;
+  }
+
   /** Room for one more enemy hazard telegraph (budget.ts MAX_TELEGRAPHS minus the boss reserve). */
   private hazardRoom(ctx:SimContext){return ctx.telegraphs.size<(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP);}
 
@@ -635,7 +737,7 @@ export class EnemyAi implements SimSystem {
    * or the telegraph budget is full.
    */
   private throwMolotov(ctx:SimContext,e:EnemyState,player:SimPlayer){
-    const owner=HAZARD_OWNERS.molotov+e.id;
+    const owner=hazardOwner(HAZARD_OWNERS.molotov,e);
     if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
     // A coached anão's fire burns coached too: the landing carries the multiplier for its pulses (`mult`, landHazards).
     const mult=coachMult(e,ctx.tick);

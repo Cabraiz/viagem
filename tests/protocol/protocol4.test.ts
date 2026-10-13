@@ -9,6 +9,7 @@ import {
   DICT,FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
+import {ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,roundRoster} from '../../src/rules/index.ts';
 
 /**
  * Size of the bandwidth measurements. The default suite uses 2 clients (bytes per client do not depend on how many
@@ -34,6 +35,25 @@ const POS_EPS=1/POS_SCALE;
 const CAST_SHARE:Readonly<Record<string,number>>={bebado:17,pombos:22,'tio-pave':22,agiota:20,'anao-molotov':7,coach:4,motoboy:4,influencer:4};
 const CAST=Object.entries(CAST_SHARE).flatMap(([kind,n])=>Array.from({length:n},()=>kind));
 const P1_CAST=new Set(['coach','motoboy','influencer']);
+/** The kinds castEnemy draws from and the ones that act (phase 1); withCast swaps them for one measurement. */
+let castPool:readonly string[]=CAST,castActors:ReadonlySet<string>=P1_CAST;
+function withCast<T>(pool:readonly string[],actors:ReadonlySet<string>,run:()=>T):T{
+  const before=[castPool,castActors] as const;castPool=pool;castActors=actors;
+  try{return run();}finally{[castPool,castActors]=before;}
+}
+/**
+ * A late-round horde with the D-040 rotation (protocol 11): one run's rotation, round 9's role shares
+ * (rules/waves.ts ROTATION_WEIGHTS), split evenly among the rotation's entries of each role; the roles that act like the
+ * P1 trio (suporte, kamikaze, refletor, invocador) churn the acting phase like it.
+ */
+const ROTATION_CAST=(()=>{
+  const roles=roundRoster(drawRotation(new Rng(40)),9).roles,pool:string[]=[];
+  for(const [role,w] of Object.entries(ROTATION_WEIGHTS[8]) as [keyof typeof roles,number][]){
+    const ids=roles[role]??[];for(const id of ids)for(let i=0;i<Math.round(w*100/ids.length);i++)pool.push(id);
+  }
+  return pool;
+})();
+const ROTATION_ACTORS=new Set(ROTATION_CAST.filter(k=>['suporte','kamikaze','refletor','invocador'].includes(roleOf(k)??'')));
 /**
  * EnemyView.phase of a regular enemy (sim/enemies/ai.ts ENEMY_PHASE), from the catalog numbers: the trio acts (1) about
  * a third of the time (a 2 s pose every 7 s, a 1.5 s lecture every 7.5 s, the motoboy's 2.6 s aim and run) in ~2 s
@@ -41,11 +61,11 @@ const P1_CAST=new Set(['coach','motoboy','influencer']);
  * each) in 6 s windows (off 1/120 per tick). `castEnemy` draws a kind and its phase, `churnPhase` flips it per tick.
  */
 function castEnemy(rng:Rng):{kind:string;phase?:number}{
-  const kind=rng.pick(CAST),p1=P1_CAST.has(kind);
+  const kind=rng.pick(castPool),p1=castActors.has(kind);
   return rng.chance(p1?1/3:.12)?{kind,phase:p1?1:2}:{kind};
 }
 function churnPhase(e:EnemyView,rng:Rng){
-  const p1=P1_CAST.has(e.kind);
+  const p1=castActors.has(e.kind);
   if(e.phase===undefined){if(rng.chance(p1?.0125:.0011))e.phase=p1?1:2;}
   else if(rng.chance(p1?.025:.0083))delete e.phase;
 }
@@ -671,6 +691,48 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
 });
 
+test('protocol 11: the wide-map budget holds with a D-040 rotation horde (every roster kind is one dictionary byte)',t=>{
+  assert.ok(ROTATION_CAST.length>=90&&new Set(ROTATION_CAST).size>=10,'a varied rotation horde');
+  assert.ok(ROTATION_CAST.every(k=>DICT.includes(k)));
+  const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
+  const [together,apart,legacy]=[
+    withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
+    withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true)),
+    measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true),
+  ];
+  t.diagnostic(`protocol 11, wide map, rotation horde (${new Set(ROTATION_CAST).size} kinds): together ${together.bytesPerSecond} B/s, spread ${apart.bytesPerSecond} B/s (the nine-kind cast, spread: ${legacy.bytesPerSecond})`);
+  // The D-042 guard (32 500 B/s, wide map spread) holds with the rotation: a roster kind costs what a legacy kind costs.
+  // Measured with this rotation (seed 40, round 9's shares): inline as in protocol 10 (0xFF + utf8 per kind) 35 343
+  // together / 35 928 spread; in the DICT (protocol 11) 31 789 / 32 288, vs the nine-kind cast's 32 256 spread (the
+  // difference is the phase churn of the acting roles, not the kinds).
+  assert.ok(together.bytesPerSecond<32_500,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<32_500,`spread ${apart.bytesPerSecond}`);
+});
+
+test('protocol 11: the roster is dictionary bytes appended after protocol 10 (every older index unchanged), within the escape',()=>{
+  assert.equal(PROTOCOL_VERSION,11);
+  assert.ok(DICT.length<=255,'255 is the inline escape');
+  assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer'],'protocol 10 indexes unchanged');
+  assert.equal(DICT.indexOf('tiro'),71);
+  // Every roster id is in the DICT exactly once; the pack entries come in roster order right after 'tiro'.
+  const packs=ROSTER.filter(e=>!e.legacy).map(e=>e.id);
+  assert.equal(packs.length,164);
+  assert.deepEqual(DICT.slice(72,72+packs.length),packs);
+  for(const e of ROSTER)assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
+  for(const e of ROSTER)assert.ok(DICT.includes(e.id),e.id);
+  // One byte where it travels (enemy kind, kill and downed events) and the generic shot as a projectile source.
+  const frame=(kind:string,source='boleto')=>{
+    const v=busyWorld(new Rng(2),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;v.projectiles=[{...v.projectiles[0],source}];
+    const enc=new FrameEncoder();enc.pushEvents([{type:'kill',enemy:'e-1',kind,x:1,y:2},{type:'downed',player:'uuid-0',by:'e-1',source:kind}]);
+    const bytes=enc.encode(v),r=new FrameDecoder().decode(bytes);assert.ok(r.ok);
+    assert.equal(r.view.enemies[0].kind,kind);assert.equal(r.view.projectiles[0].source,source);
+    return bytes.length;
+  };
+  const base=frame('tio-pave');
+  for(const kind of ['flanelinha-interdimensional','rei-do-boteco','o-algoritmo','sogra-tita','peladeiro-de-vidro'])assert.equal(frame(kind),base,kind);
+  assert.equal(frame('bebado','tiro'),base,'the generic shot costs a byte');
+});
+
 test('the server world descriptor rebuilds the same terrain on the client, island and endless',async()=>{
   const {worldDescriptor}=await import('../../multiplayer/simulation.ts');
   const {TerrainField}=await import('../../src/maps/terrain/field.ts');
@@ -852,7 +914,7 @@ test('protocol 7+: zueira events and the kill-cam reach every client, wherever t
 const D036_STRINGS=['bebado','anao-molotov','pombos','agiota','boleto-juros',...TELEGRAPH_KINDS.filter(k=>k!=='coco')];
 
 test('protocol 9+: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
-  assert.equal(PROTOCOL_VERSION,10);
+  assert.ok(PROTOCOL_VERSION>=9);
   const plain=busyWorld(new Rng(4),3).view,burped=busyWorld(new Rng(4),3).view;
   const slip={x:Math.SQRT1_2,y:-Math.SQRT1_2};
   burped.players[0]={...burped.players[0],slowUntil:1030,slipUntil:1010,slip};
@@ -940,13 +1002,13 @@ test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are
 });
 
 // ---------- Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast in the DICT ----------
-test('protocol 10: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
-  assert.equal(PROTOCOL_VERSION,10);
+test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
+  assert.ok(PROTOCOL_VERSION>=10);
   assert.ok(DICT.length<255,'255 is the inline escape');
   // Append only: protocol 8 and 9 indexes did not move; the trio comes right after the last protocol 9 string.
   assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
-  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.length-4);
-  assert.deepEqual(DICT.slice(-3),['coach','motoboy','influencer']);
+  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),67);
+  assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer']);
   for(const s of ['coach','motoboy','influencer'])assert.equal(DICT.lastIndexOf(s),DICT.indexOf(s),`${s} once`);
   // One byte each where it travels (enemy kind, kill and downed events), and the acting/coached phase round-trips.
   const frame=(kind:string,phase?:number)=>{
@@ -965,10 +1027,10 @@ test('protocol 10: the P1 cast is dictionary bytes appended after protocol 9 (ev
   }
 });
 
-test('protocol 10: a frame from a 9 or 11 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 11: a frame from a 10 or 12 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],10);
-  for(const version of [8,9,11]){
+  assert.equal(bytes[1],11);
+  for(const version of [8,9,10,12]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }

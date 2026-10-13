@@ -1,8 +1,8 @@
 // VGM-047: reconnection on phones, the old socket still open, two tabs, and a restart of the room's Durable Object.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Room,type Peer,type RoomRoster} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice} from '../../src/protocol/room.ts';
+import {Room,CHECKPOINT_FROM_ROUND,CHECKPOINT_V,type Peer,type RoomCheckpoint,type RoomRoster} from '../../multiplayer/room.ts';
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice,resumedNotice} from '../../src/protocol/room.ts';
 import {sha256Hex} from '../../src/protocol/sha256.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
@@ -107,7 +107,7 @@ test('the seat survives the mobile grace (held through the run while someone pla
   assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Sua sessão expirou. Entre novamente.');
 });
 
-test('restart of the room: the roster comes back from storage, the run is lost honestly, each player hears it once',()=>{
+test('restart of the room before any checkpoint (round 1): the roster comes back from storage, the run is lost honestly, each player hears it once',()=>{
   const writes:RoomRoster[]=[];
   const room=new Room(1000,4242,{onRoster:r=>writes.push(structuredClone(r))}),a=peer(),b=peer();
   join(room,a,'Ana',1000);join(room,b,'Bia',1000);
@@ -123,7 +123,8 @@ test('restart of the room: the roster comes back from storage, the run is lost h
   assert.ok(!JSON.stringify(writes).includes(welcome(a).token),'no plain token in storage');
   assert.equal(roster.players.find(p=>p.id===welcome(a).id)!.tokenHash,sha256Hex(welcome(a).token));
   assert.equal(roster.lost?.round,room.sim.world.round.index);assert.equal(roster.lost?.level,room.sim.world.team.level);
-  restarted.restore(roster,t);
+  assert.equal(roster.checkpoint,undefined,'round 1 is never checkpointed');
+  restarted.restore(roster,t);assert.equal(restarted.resume(undefined),false);
   assert.equal(restarted.sim.players.size,2);assert.equal(restarted.run.snapshot().phase,'lobby');
   assert.ok([...restarted.sim.players.values()].every(p=>!p.online));
   const back=peer();join(restarted,back,'Ana',t+100,welcome(a).token);
@@ -142,6 +143,85 @@ test('restart of the room: the roster comes back from storage, the run is lost h
   // Restarted outside a run: back in the lobby without any notice.
   const quiet=new Room(1000,4242);quiet.restore({...roster,running:false},t);
   const q=peer();join(quiet,q,'Ana',t+100,welcome(a).token);assert.deepEqual(q.messages.filter(m=>m.t==='notice'),[]);
+});
+
+/**
+ * E5-checkpoint-por-round: Ana, Bia and two room bots play into the round-2 intermission, with the room's storage (the
+ * roster rows and the checkpoints, as JSON like the Durable Object keeps them). Played once, read by the tests below.
+ */
+function playToRound2(){
+  const writes:RoomRoster[]=[],checkpoints:RoomCheckpoint[]=[];
+  const room=new Room(1000,4242,{onRoster:r=>writes.push(structuredClone(r)),onCheckpoint:c=>checkpoints.push(JSON.parse(JSON.stringify(c)))}),a=peer(),b=peer();
+  join(room,a,'Ana',1000);join(room,b,'Bia',1000);
+  say(room,a,{t:'bot-add',round:1},1000);say(room,a,{t:'bot-add',round:1},1400);
+  let t=combat(room,[a,b],1500);
+  const w=room.sim.world;
+  for(let i=0;i<20*180&&!(w.round.index===CHECKPOINT_FROM_ROUND&&w.round.phase==='prepare');i++){
+    room.advance(t+=50);if(i%20===0){say(room,a,{t:'ack',seq:0},t);say(room,b,{t:'ack',seq:0},t);}
+  }
+  assert.equal(room.run.snapshot().phase,'combat');assert.equal(w.round.index,CHECKPOINT_FROM_ROUND);assert.equal(w.round.phase,'prepare');
+  return {room,a,b,writes,checkpoints,t};
+}
+let round2:ReturnType<typeof playToRound2>|undefined;
+const buildsOf=(room:Room)=>Object.fromEntries([...room.sim.players.values()].map(p=>[p.id,JSON.stringify(p.build)]));
+
+test('restart of the room mid-run: everyone comes back to the start of the round that was going, same level, weapons and wall; each player hears it once',()=>{
+  const f=round2??=playToRound2(),{room,a,b,writes,checkpoints}=f,w=room.sim.world;
+  let t=f.t;
+  assert.equal(checkpoints.length,1,'one checkpoint so far: the round-2 intermission (round 1 has none)');
+  const cp=checkpoints[0],roster=writes.at(-1)!;
+  assert.equal(cp.v,CHECKPOINT_V);assert.equal(cp.round,2);assert.equal(cp.tick,w.tick);
+  assert.deepEqual(roster.checkpoint,{round:2,tick:cp.tick},'the roster row of the new round links it (no extra roster row)');
+  assert.ok(!JSON.stringify(cp).includes(welcome(a).token),'no plain token in the checkpoint either');
+  const level=w.team.level,builds=buildsOf(room),wall=room.sim.run.stonewards.state.wall.hp,run=room.run.snapshot();
+  assert.ok(level>1,'the team levelled up in round 1');
+  // The object restarts (deploy, eviction): a new Room from the same storage, the checkpoint applied once the map is in.
+  const rows:RoomRoster[]=[],restarted=new Room(1000,4242,{onRoster:r=>rows.push(structuredClone(r))});
+  restarted.restore(roster,t);
+  assert.equal(restarted.resume(cp),true);
+  const s=restarted.run.snapshot(),rw=restarted.sim.world;
+  assert.equal(s.phase,'combat');assert.equal(s.round,run.round);assert.equal(s.elapsed,run.elapsed);
+  assert.deepEqual(s.members.map(m=>[m.id,m.spectator,!!m.bot]).sort(),run.members.map(m=>[m.id,m.spectator,!!m.bot]).sort());
+  assert.equal(rw.tick,cp.tick);assert.equal(rw.round.index,2);assert.equal(rw.round.phase,'prepare');assert.equal(rw.round.phaseEndsTick,w.round.phaseEndsTick);
+  assert.equal(rw.team.level,level);assert.deepEqual(buildsOf(restarted),builds);assert.equal(restarted.sim.run.stonewards.state.wall.hp,wall);
+  assert.equal(rw.enemies.size,0,'the round-1 stragglers are not part of it');
+  assert.ok([...restarted.sim.players.values()].every(p=>p.online===restarted.sim.bots.has(p.id)),'people come back offline (their hero on autopilot), bots online');
+  // Ana is back: in combat, told once what happened.
+  const back=peer();join(restarted,back,'Ana',t+=100,welcome(a).token);
+  assert.equal(welcome(back).id,welcome(a).id);assert.equal(welcome(back).run.phase,'combat');assert.equal(welcome(back).tick,cp.tick);
+  const news=back.messages.filter(m=>m.t==='notice');
+  assert.deepEqual(news.map(m=>[m.kind,m.title,m.body]),[['resumed',resumedNotice(2).title,resumedNotice(2).body]]);
+  assert.match(news[0].title,/recomeçando o Round 2/);assert.doesNotMatch(news[0].message,/se perdeu/);
+  assert.equal(rows.at(-1)?.running,true);assert.deepEqual(rows.at(-1)?.checkpoint,{round:2,tick:cp.tick},'the roster says running again, same link');
+  restarted.disconnect(back,t+=50);const again=peer();join(restarted,again,'Ana',t+=50,welcome(a).token);
+  assert.deepEqual(again.messages.filter(m=>m.t==='notice'),[],'said once');
+  const bia=peer();join(restarted,bia,'Bia',t+=50,welcome(b).token);assert.equal(bia.messages.filter(m=>m.t==='notice')[0]?.kind,'resumed');
+  // The run goes on from there: the round-2 wave starts, nobody is sent back to the lobby.
+  for(let i=0;i<20*120&&rw.round.phase==='prepare';i++){restarted.advance(t+=50);if(i%20===0){say(restarted,again,{t:'ack',seq:0},t);say(restarted,bia,{t:'ack',seq:0},t);}}
+  assert.equal(rw.round.index,2);assert.equal(rw.round.phase,'wave');assert.equal(restarted.run.snapshot().phase,'combat');
+});
+
+test('restart with a checkpoint that does not fit (none, another version, map or shape, an older or unlinked row, a broken sim part): lobby and the restarted notice, as before',()=>{
+  const f=round2??=playToRound2(),cp=f.checkpoints[0],roster=f.writes.at(-1)!;
+  const variants:[string,RoomRoster,unknown][]=[
+    ['missing',roster,undefined],
+    ['version',roster,{...cp,v:CHECKPOINT_V+1}],
+    ['map',roster,{...cp,map:{id:'cidade-nevada',version:1,hash:'0'.repeat(64)}}],
+    ['stale',{...roster,checkpoint:{round:2,tick:cp.tick-1}},cp],
+    ['no-link',{...roster,checkpoint:undefined},cp],
+    // Written by a build whose run state had another shape (shape fingerprint), or a sim part that does not check out.
+    ['shape',roster,{...cp,sim:{...cp.sim,shape:'0badc0de'}}],
+    ['sim',roster,{...cp,sim:{...cp.sim,runs:cp.sim.runs+1}}],
+  ];
+  for(const [why,row,value] of variants){
+    const logs:any[]=[],restarted=new Room(1000,4242,{log:line=>logs.push(JSON.parse(line))});
+    restarted.restore(row,f.t);
+    assert.equal(restarted.resume(value),false,why);assert.equal(restarted.run.snapshot().phase,'lobby',why);
+    assert.deepEqual(logs.filter(l=>l.ev==='checkpoint').map(l=>l.fallback),[why]);
+    const back=peer();join(restarted,back,'Ana',f.t+100,welcome(f.a).token);
+    assert.equal(welcome(back).run.phase,'lobby',why);
+    assert.deepEqual(back.messages.filter(m=>m.t==='notice').map(m=>[m.kind,m.title]),[['restarted',restartedNotice(roster.lost).title]],why);
+  }
 });
 
 test('roster rows per run stay small (free plan: 100k rows written per day)',()=>{

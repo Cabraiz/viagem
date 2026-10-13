@@ -19,6 +19,7 @@ import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
+import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
@@ -193,6 +194,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const runHud=hud;
     updateSlot={take:el=>{if(!sceneReady||closed||net.fatal||net.run?.phase!=='combat')return false;runHud.queueRow(el,UPDATE_ROW_MS);return true;},drop:el=>runHud.dropRow(el)};
     setMatchSlot(updateSlot);
+    // The room restarted and the run came back (E5-checkpoint-por-round): the news once, a row of the same slot. It waits
+    // in line while the HUD is still hidden (the scene loading), so news that came with the welcome shows with the round.
+    const resumedRow=document.createElement('div');resumedRow.className='economy-toast resumed-toast';resumedRow.setAttribute('role','status');resumedRow.hidden=true;
+    resumedRow.innerHTML='<p class="economy-toast-text"><strong></strong><span></span></p>';
+    const showResumed=resumedOnce(news=>{resumedRow.querySelector('strong')!.textContent=news.title;resumedRow.querySelector('span')!.textContent=news.body;runHud.queueRow(resumedRow,RESUMED_ROW_MS);});
+    net.onResumed=showResumed;showResumed(net.resumedNotice);
   }
   const syncTurn=()=>{
     const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);

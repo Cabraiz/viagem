@@ -61,6 +61,8 @@ export interface ReviveOptions {
   runEnded?():boolean;
   /** Freeze bleed-out during the intermission, which exists to pick up the fallen. Default true. */
   pauseBleedInPrepare?:boolean;
+  /** A room checkpoint's revive credits (RunSystems.state().revives), so the run resumes with the rescues it had. */
+  revives?:Iterable<[string,number]>;
 }
 
 export interface ReviveSystem extends SimSystem {
@@ -79,7 +81,7 @@ const revivedHp=(p:SimPlayer)=>{const m=p.stats.maxHp;return Number.isFinite(m)&
 const droppedStanding=(p:SimPlayer)=>!p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
 export function createReviveSystem(options:ReviveOptions={}):ReviveSystem{
-  const revives=new Map<string,number>();
+  const revives=new Map<string,number>(options.revives??[]);
   const pauseInPrepare=options.pauseBleedInPrepare??true;
   const grace=options.reconnectGraceTicks??RECONNECT_GRACE_TICKS;
   let defeated=false,outSince:number|undefined;

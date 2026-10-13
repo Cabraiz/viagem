@@ -1,6 +1,6 @@
 import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
-import { Room, ROOM_LIFETIME_MS, type Peer, type RoomOptions, type RoomRoster } from './room.ts';
+import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOptions, type RoomRoster } from './room.ts';
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,readMapRef,type MapRef} from '../src/protocol/index.ts';
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -85,6 +85,8 @@ export class GameRoom extends DurableObject<Env>{
   /** The roster's last word: a match is on (the run is in combat). */
   private matchOn=false;
   private rosterPlayers=0;
+  /** A 'checkpoint' row may be in storage (E5-checkpoint-por-round): deleted once a roster no longer links one. */
+  private checkpointStored=false;
   /**
    * The row says "in a match" while the run is in combat AND someone is connected: a match everybody left does not
    * tick (no socket, no clock) and a deploy costs it nothing more, so it must not hold a deploy back for 50 min.
@@ -129,17 +131,25 @@ export class GameRoom extends DurableObject<Env>{
     // deploy-worker-sem-derrubar: the RoomIndex hears when the match starts and ends (the roster says `running`).
     const onRoster=(roster:RoomRoster)=>{
       void this.ctx.storage.put('roster',roster);
+      // The run that checkpointed is over (result, rematch, everyone gone): its row goes, once.
+      if(!roster.checkpoint&&this.checkpointStored){this.checkpointStored=false;void this.ctx.storage.delete('checkpoint');}
       this.matchOn=roster.running===true;this.rosterPlayers=roster.players?.length??0;this.created||=created;
       this.syncIndex();
     };
     // BUG-20261012-ORQ-reconecta-round2: one JSON line per socket end (closeLogLine), read with `wrangler tail`.
     const log=(line:string)=>console.log(line);
+    // E5-checkpoint-por-round: the run at each round's intermission, in its own row (the roster links it).
+    const onCheckpoint=(checkpoint:RoomCheckpoint)=>{void this.ctx.storage.put('checkpoint',checkpoint);this.checkpointStored=true;};
     const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
-    if(!local(this.env))return new Room(created,seed,{onRoster,log,...city,...this.defaults});
+    if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
-    return new Room(created,seed,{onRoster,log,...city,...this.defaults,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
+    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
   }
-  /** A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. */
+  /**
+   * A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. A run that
+   * was in combat comes back from its checkpoint (E5-checkpoint-por-round) once the map is in (ready): the room checks
+   * it is the one the roster links, of this version and map; otherwise the room stays in the lobby with the notice.
+   */
   private load(created:number){
     return this.loading??=(async()=>{
       this.city??=await loadCity();
@@ -149,6 +159,11 @@ export class GameRoom extends DurableObject<Env>{
       if(roster)room.restore(roster);
       // A room restored on the city waits for it to decode before anyone is seated again.
       await room.ready();
+      if(roster?.running===true){
+        const checkpoint=await this.ctx.storage.get<RoomCheckpoint>('checkpoint');
+        this.checkpointStored=checkpoint!==undefined;
+        if(roster.checkpoint)room.resume(checkpoint);
+      }
       return this.room=room;
     })();
   }

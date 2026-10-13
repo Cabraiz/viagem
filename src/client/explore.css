@@ -96,6 +96,8 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .economy-toast{box-sizing:border-box;max-width:100%;display:flex;align-items:center;gap:8px;padding:0 0 0 8px;
   border:var(--borda-mapa);border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-texto-mapa);box-shadow:var(--s-1);pointer-events:auto}
 .economy-toast[hidden]{display:none}
+/* E5-checkpoint-por-round: "a sala caiu e voltou" over the match, the economy row's look without its button. */
+.resumed-toast{padding:0 8px}
 .economy-toast-icon{flex:none;display:grid;place-items:center}
 .economy-toast-text{display:grid;margin:0;padding:3px 0;font:400 var(--t-13)/1.2 var(--f-sistema);text-align:left}
 .economy-toast-text strong{font-weight:800}

@@ -6,13 +6,14 @@ import { worldSpawn, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
-import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions} from '../src/sim/index.ts';
+import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions,type RunSystemsState,type WorldCheckpoint} from '../src/sim/index.ts';
+import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
-import {BASE_STATS} from '../src/contract/index.ts';
+import {BASE_STATS,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -72,6 +73,103 @@ const STEP_TICKS_KEPT=64;
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
 const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
+/**
+ * Seat fields a checkpoint never carries (E5-checkpoint-por-round): who sits there and its connection (the restored
+ * seat's own), the tap target (an enemy id of the cut round) and what equip/refreshStats derive from class and build.
+ */
+const SEAT_FIELDS:ReadonlySet<string>=new Set(['id','name','classId','online','ack','spectator','target','stats','classBonus']);
+/** A player's run in a checkpoint: the class it was played with (checked on resume) and every other own field. */
+export interface PlayerCheckpoint {id:string;classId:string;run:Record<string,unknown>}
+/**
+ * The simulation part of a room checkpoint (E5-checkpoint-por-round), taken at a round's intermission: the run's seed
+ * and number (runSeed(seed, runs) must give the world's seed back), the world without live entities, every system's
+ * state, each player's run (position, hp, build, absolute ticks...) and the prize counters. JSON-safe.
+ */
+export interface SimCheckpoint {seed:number;runs:number;world:WorldCheckpoint;systems:RunSystemsState;players:PlayerCheckpoint[];stats:[string,RunStats][];
+  /** checkpointShape of the writing code's fresh run on this world (Simulation.checkpointShape): see CheckpointShape. */
+  shape:string}
+/**
+ * The shape of a JSON value (E5-checkpoint-por-round): its type, an object's keys (undefined values left out, sorted
+ * when hashed) and an array's FIRST element (cheap and deterministic; tuples such as [id, value] keep their head's type).
+ */
+export type CheckpointShape={t:'number'|'string'|'boolean'|'null'}|{t:'array';of?:CheckpointShape}|{t:'object';keys:Record<string,CheckpointShape>};
+export function shapeOf(v:unknown):CheckpointShape|undefined{
+  if(v===null)return {t:'null'};
+  if(Array.isArray(v)){const of=v.length?shapeOf(v[0]):undefined;return of?{t:'array',of}:{t:'array'};}
+  if(typeof v==='object'){
+    const keys:Record<string,CheckpointShape>={};
+    for(const k of Object.keys(v as object).sort()){const shape=shapeOf((v as Record<string,unknown>)[k]);if(shape)Object.defineProperty(keys,k,{value:shape,enumerable:true,writable:true,configurable:true});}
+    return {t:'object',keys};
+  }
+  return typeof v==='number'||typeof v==='string'||typeof v==='boolean'?{t:typeof v as 'number'|'string'|'boolean'}:undefined;
+}
+/** The fingerprint of a value's shape (stateHash of shapeOf): what a checkpoint stores of its code's fresh run. */
+export const shapeFingerprint=(v:unknown)=>stateHash(shapeOf(v)??null);
+/**
+ * Fields a fresh run holds and a run deletes later (path from the capture's root, `[]` for an array's head), so a
+ * stored checkpoint may lack them: the city's "raise the barricades" flag, gone once they rose (round 2). Found by
+ * playing whole runs (tests/sim/checkpoint-cidade.test.ts plays the city into round 2 and resumes it).
+ */
+const DROPPED_LATER:ReadonlySet<string>=new Set(['systems.stonewards.raiseBarricades']);
+/**
+ * `stored` has everything `fresh` (the current code's fresh run) has, DROPPED_LATER aside: every key with the same
+ * type, an array's head against the fresh head when both have one. Extra keys are fine: what only appears later in a
+ * run (a plan, the defenses, a downed mark) is not in a fresh run. A fresh null takes anything (rng states start null).
+ */
+function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
+  if(fresh.t==='null')return true;
+  if(fresh.t==='array')return Array.isArray(stored)&&(!fresh.of||!stored.length||conforms(fresh.of,stored[0],`${path}[]`));
+  if(fresh.t==='object')return isObject(stored)&&Object.entries(fresh.keys).every(([k,shape])=>{
+    const at=path?`${path}.${k}`:k;
+    return Object.hasOwn(stored,k)&&stored[k]!==undefined?conforms(shape,stored[k],at):DROPPED_LATER.has(at);
+  });
+  return typeof stored===fresh.t;
+}
+/** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
+const SHAPE_CLASS='cidadao-comum';
+/** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string}>();
+const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
+const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
+const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
+const pointOk=(v:unknown)=>isObject(v)&&finite(v.x)&&finite(v.y);
+/** Owned items of one kind: known ids of that kind, levels 1..maxLevel, no duplicates, at most `max`. */
+function itemsOk(list:unknown,kind:'weapon'|'passive',max:number){
+  if(!Array.isArray(list)||list.length>max)return false;
+  const seen=new Set<string>();
+  for(const item of list){
+    const def=isObject(item)&&typeof item.id==='string'?ITEMS.get(item.id):undefined;
+    if(!def||(kind==='passive')!==(def.kind==='passive')||seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
+    seen.add(def.id);
+  }
+  return true;
+}
+/** A player's stored run: a body where it can be, a build of this game's items, finite ticks. */
+function playerRunOk(run:unknown){
+  if(!isObject(run)||!finite(run.x)||!finite(run.y)||!finite(run.hp)||run.hp<0||!pointOk(run.facing))return false;
+  const build=run.build;
+  if(!isObject(build)||!itemsOk(build.weapons,'weapon',MAX_WEAPONS)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
+  if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
+  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
+}
+/** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
+function simCheckpointOk(cp:unknown,seed:number):cp is SimCheckpoint{
+  if(!isObject(cp)||!tickOk(cp.runs)||cp.seed!==runSeed(seed,cp.runs))return false;
+  const w=cp.world,sys=cp.systems;
+  if(!isObject(w)||w.seed!==cp.seed||!tickOk(w.tick)||!tickOk(w.runStartTick)||w.runStartTick>w.tick||!tickOk(w.eventSeq))return false;
+  if(!Array.isArray(w.counters)||!w.counters.every(c=>Array.isArray(c)&&typeof c[0]==='string'&&tickOk(c[1])))return false;
+  if(!isObject(w.team)||!finite(w.team.xp)||!finite(w.team.level)||!finite(w.team.nextXp))return false;
+  const r=w.round;
+  if(!isObject(r)||!Number.isSafeInteger(r.index)||!Number.isSafeInteger(r.total)||(r.phase!=='prepare'&&r.phase!=='wave')||!tickOk(r.phaseEndsTick))return false;
+  if(!Array.isArray(w.offers)||!w.offers.every(o=>Array.isArray(o)&&typeof o[0]==='string'&&Array.isArray(o[1])))return false;
+  if(!Array.isArray(w.pickups)||!w.pickups.every(p=>isObject(p)&&typeof p.id==='string'&&finite(p.x)&&finite(p.y)))return false;
+  if(!isObject(sys)||!isObject(sys.director)||typeof sys.director.stage!=='string'||!isObject(sys.director.round)||!isObject(sys.progression)||!isObject(sys.boss)||!isObject(sys.enemyAi))return false;
+  if(!Array.isArray(sys.revives)||!sys.revives.every(e=>Array.isArray(e)&&typeof e[0]==='string'&&finite(e[1])))return false;
+  if(!isObject(sys.stonewards)||!isObject(sys.stonewards.wall)||!isObject(sys.stonewards.balance)||!isObject(sys.zueira)||!Array.isArray(sys.zueira.plan))return false;
+  if(!Array.isArray(cp.players)||!cp.players.every(p=>isObject(p)&&typeof p.id==='string'&&typeof p.classId==='string'&&playerRunOk(p.run)))return false;
+  return Array.isArray(cp.stats)&&cp.stats.every(e=>Array.isArray(e)&&typeof e[0]==='string'&&isObject(e[1]))&&typeof cp.shape==='string';
+}
 /** A city barricade as the stonewards state keeps it (cidade-06); read structurally so rooms do not pin its whole type. */
 interface BarricadeRow {id:string;x:number;y:number;hp:number;maxHp:number;down?:boolean}
 
@@ -146,7 +244,7 @@ export class Simulation {
   readonly autopilot=new Set<string>();
   private botInputs=new Map<string,PlayerInput>();
   private botSeq=0;
-  private assemble(){
+  private assemble(checkpoint?:RunSystemsState){
     return createRunSystems(this.world,{
       takeInput:id=>{
         const bot=this.botInputs.get(id);
@@ -163,7 +261,76 @@ export class Simulation {
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
+      ...(checkpoint?{checkpoint}:{}),
     });
+  }
+  /**
+   * The run as it stands at a round's intermission, for a restart of the room (E5-checkpoint-por-round): see
+   * SimCheckpoint. Deep copies only; live enemies, projectiles and telegraphs are left out (WorldCheckpoint).
+   */
+  checkpoint():SimCheckpoint{return {...this.capture(),shape:this.freshShape().fingerprint};}
+  /**
+   * What this code's fresh run on this world captures, and its fingerprint (E5-checkpoint-por-round): a throwaway
+   * simulation on the same world kind (the city on this room's decoded city), one seat, never stepped. Any change to
+   * a field a system, the world or a seat holds from the start changes it, so a checkpoint written by another build
+   * is refused without a manual CHECKPOINT_V bump. Fields that only appear later in a run are not in it (see conforms).
+   */
+  freshShape(){
+    const kind=worldDescriptor(this.terrain).kind,key=kind==='cidade'?`cidade:${this.terrain.signature}`:kind;
+    let entry=SHAPES.get(key);
+    if(!entry){
+      const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city}):new Simulation(DEFAULT_SEED,{world:kind});
+      sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
+      const capture=sim.capture();sim.systems.dispose();
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture)};SHAPES.set(key,entry);
+    }
+    return entry;
+  }
+  /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
+  checkpointShapeOk(cp:unknown){
+    if(!isObject(cp))return false;
+    const fresh=this.freshShape();
+    const {shape,...rest}=cp;
+    return shape===fresh.fingerprint&&conforms(fresh.shape,rest);
+  }
+  private capture():Omit<SimCheckpoint,'shape'>{
+    return {seed:this.world.seed,runs:this.runs,world:this.world.checkpoint(),systems:structuredClone(this.systems.state()),
+      players:[...this.players.values()].map(p=>({id:p.id,classId:p.classId,
+        run:structuredClone(Object.fromEntries(Object.entries(p).filter(([k,v])=>!SEAT_FIELDS.has(k)&&v!==undefined)))})),
+      stats:[...this.counters].map(([id,s])=>[id,{...s}])};
+  }
+  /**
+   * Resumes a checkpointed run on this simulation (a restarted room, its seats already added): the systems are rebuilt
+   * from the checkpoint (the city's barricade blockers too), the world gets its clock, round, offers and pickups back,
+   * and each seat its run (equip, then the stored fields, stats from class and build, hp within them). A seat the
+   * checkpoint does not know starts fresh at the spawn (the room makes it a spectator). False, with nothing changed,
+   * when the checkpoint is malformed, from another room seed or names another class for a seat; false after a fresh
+   * run (resetRun) when a system cannot take its stored state.
+   */
+  resume(cp:unknown):boolean{
+    if(!simCheckpointOk(cp,this.seed)||!this.checkpointShapeOk(cp))return false;
+    const saved=new Map(cp.players.map(p=>[p.id,p]));
+    for(const p of this.players.values()){const s=saved.get(p.id);if(s&&s.classId!==p.classId)return false;}
+    this.systems.dispose();
+    if(this.city)for(const b of this.city.blockers())this.city.setBlocker(b.id,undefined);
+    this.world.load(cp.world);this.runs=cp.runs;
+    // A state this build cannot run (a system throws on it): a fresh run instead, and the room falls back to the lobby.
+    try{this.systems=this.assemble(cp.systems);}catch{this.resetRun();return false;}
+    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.shame.reset();this.botInputs.clear();this.effectEnd.clear();
+    this.counters.clear();for(const [id,stats] of cp.stats)if(this.players.has(id))this.counters.set(id,{...emptyStats(),...stats});
+    coastalSpawnPoints(this.terrain);
+    let slot=0;
+    for(const p of this.players.values()){
+      const s=saved.get(p.id);this.equip(p);
+      if(s){
+        // hp after the stats: refreshStats would add the build's extra max hp on top of the stored hp.
+        const {hp,...run}=structuredClone(s.run);
+        Object.assign(p,run);refreshStats(p);
+        p.hp=p.eliminated?0:Math.min(hp as number,p.stats.maxHp);
+      }else Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,attackTick:0,skillTick:0,skillReadyTick:0});
+      p.ack=0;this.track(p.id).reset(0);this.trackReset(p.id);
+    }
+    return true;
   }
   resetRun(){
     this.systems.dispose();

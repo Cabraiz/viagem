@@ -226,6 +226,11 @@ export class CoopClient {
    * next run starts.
    */
   roomNotice?:{title:string;body:string};
+  /**
+   * The room restarted and the run came back at the start of its round (E5-checkpoint-por-round), title and body: news
+   * over the match, not the waiting room, so the next combat does not clear it; it goes when the run changes (rematch).
+   */
+  resumedNotice?:{title:string;body:string};
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
@@ -301,6 +306,8 @@ export class CoopClient {
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
+  /** The run came back after a restart of the room (E5-checkpoint-por-round): the match shows it once (resumedNotice keeps it). */
+  onResumed:(news:{title:string;body:string})=>void=()=>{};
   readonly endpoint:string;readonly code:string;readonly name:string;readonly classId:string;
   // Plain fields, not parameter properties: node's type stripping loads this file, so the client has unit tests.
   constructor(endpoint:string,code:string,name:string,classId:string){this.endpoint=endpoint;this.code=code;this.name=name;this.classId=classId;}
@@ -478,7 +485,13 @@ export class CoopClient {
       if(this.mapLoad?.failed&&this.run?.phase==='combat')this.fail(ws,this.mapLoad.failed);
     }
     else if(m.t==='pong'){this.rtt=Math.round(performance.now()-m.at);if(this.rtt<SETTLE_RTT_MS)this.backlog.settle(performance.now());}
-    else if(m.t==='notice'&&typeof m.message==='string'){if(m.kind==='restarted'&&typeof m.title==='string'&&typeof m.body==='string')this.roomNotice={title:m.title,body:m.body};this.onStatus(m.message);this.onNotice(m.message);}
+    else if(m.t==='notice'&&typeof m.message==='string'){
+      const news=typeof m.title==='string'&&typeof m.body==='string'?{title:m.title,body:m.body}:undefined;
+      if(news&&m.kind==='restarted')this.roomNotice=news;
+      // The run resumed: no lobby news (an older 'restarted' one is stale now).
+      else if(news&&m.kind==='resumed'){this.resumedNotice=news;this.roomNotice=undefined;this.onResumed(news);}
+      this.onStatus(m.message);this.onNotice(m.message);
+    }
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
@@ -588,7 +601,7 @@ export class CoopClient {
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;this.resumedNotice=undefined;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};

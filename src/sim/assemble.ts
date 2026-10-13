@@ -97,11 +97,13 @@ export function applyEliteExtras(ctx:SimContext){
  * barricade keeps prizes off its disc plus PRIZE_BARRICADE_MARGIN (cidade-06).
  */
 export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2,PRIZE_BARRICADE_MARGIN=.3;
-/** Discs no prize falls in: the standing wall, every tower and (city) every standing barricade. */
+/** Discs no prize falls in: the standing wall, every tower, (city) every standing barricade and every defense. */
 export function prizeBlocks(state:StonewardsState):{x:number;y:number;radius:number}[]{
-  const {wall,wallDown,towers,barricades}=state;
+  const {wall,wallDown,towers,barricades,defenses}=state;
   const blocks=[...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];
   for(const b of barricades??[])if(!b.down)blocks.push({x:b.x,y:b.y,radius:b.r+PRIZE_BARRICADE_MARGIN});
+  // Tower defenses (torres-sim), ruins included (still rubble on the ground): their footprint disc.
+  for(const d of defenses?.list??[])blocks.push({x:d.x,y:d.y,radius:d.r});
   return blocks;
 }
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{

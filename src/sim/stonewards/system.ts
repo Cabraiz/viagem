@@ -11,6 +11,10 @@
  * The wall (D-017): in the run only the enemy-ai hits it (hitStructure -> damageWall); `siegeContact:false` turns
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
  *
+ * Tower defense (torres-sim, D-041): on the terrain's build sites (towers/sites.ts) the team builds and evolves the
+ * defenses of towers/catalog.ts in the intermission (`build`, `upgrade`); they fire in combat (towers/system.ts
+ * defensesStep) and are hit through the same `hit` (D-017). The forge's 'torre-chinelo' recipe is unchanged.
+ *
  * City (cidade-06): the base is the fountain plaza; the wall stands at points.praca (the fountain, so the forge's camp
  * is there too) and a barricade closes each mouth (barricades.ts). The enemy-ai hits both through `hit` (D-017); only
  * the wall falling is the defeat.
@@ -26,8 +30,10 @@ import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
-import {createBarricades,damageBarricade,raiseDue,syncBarricades} from './barricades.ts';
+import {createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
+import {build as buildDefense,damageDefense,defenseTargets,defensesStep,upgrade as upgradeDefense,type TowerResult} from '../towers/system.ts';
+import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -91,8 +97,14 @@ export interface StonewardsSystem extends SimSystem {
   readonly state:StonewardsState;
   /** `targetId`: what 'reparo' repairs (forge.ts buy): the wall by default, or a city barricade id. */
   buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string,targetId?:string):BuyResult;
-  /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall or a barricade. */
+  /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall, a barricade or a defense. */
   hit(ctx:SimContext,structureId:string,amount:number):void;
+  /** The terrain's build sites and rail (towers/sites.ts; empty on the island). */
+  readonly plan:BuildPlan;
+  /** Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id. No wire message yet. */
+  build(ctx:SimContext,playerId:string,siteId:string,requestId?:string):TowerResult;
+  /** Tower defense: evolves a ready defense (`branch`: 'A'|'B'|'C' at the root, a child id or label like 'A4b' at a fork). */
+  upgrade(ctx:SimContext,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult;
   /** Fresh layer for a rematch: balance, nodes, wall, towers, ids and stream all start over. */
   reset():void;
 }
@@ -119,6 +131,8 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
 export function structureTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
   const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
   for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
+  // Tower defenses (torres-sim): non-blocking siege targets, like the wall; none until the first build.
+  if(state.defenses)out.push(...defenseTargets(state));
   return out;
 }
 
@@ -189,6 +203,9 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   return {
     id:'structures',
     state,
+    get plan(){return buildPlanFor(options.terrain);},
+    build(ctx,playerId,siteId,requestId){return buildDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,siteId,requestId);},
+    upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId);},
     buy(ctx,playerId,recipeId,requestId,targetId){
       const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);
@@ -202,6 +219,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     },
     hit(ctx,structureId,amount){
       if(structureId===state.wall.id)damageWall(ctx,state,amount);
+      else if(state.defenses&&!findBarricade(state,structureId))damageDefense(state,structureId,amount);
       else damageBarricade(ctx,state,structureId,amount,options.onTerrainChanged);
     },
     step(ctx){
@@ -255,7 +273,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
           }
         }
       }
-      if(!state.wallDown){towerStep(ctx,state);if(contact)siegeStep(ctx,state);}
+      if(!state.wallDown){towerStep(ctx,state);defensesStep(ctx,state);if(contact)siegeStep(ctx,state);}
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}
     },

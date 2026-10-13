@@ -2,6 +2,8 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
+import {Vignette} from './render/vignette.ts';
+import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
@@ -294,11 +296,13 @@ export class IslandScene extends Phaser.Scene {
     // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
+    // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
+    this.vignette=new Vignette(this);this.applyGrade();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     this.shadowLook();
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
-    this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
+    this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.artMarks=new SceneMarks(this,p=>this.project(p));
@@ -414,7 +418,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;this.correction.clear();}
     // The old world's defenses and their craters go; the next snapshot brings this world's (no volley on first sight).
     this.towers?.reset();this.towerFeed.reset();this.buildPlan=undefined;
-    this.buildWorld();this.shadowLook();
+    this.buildWorld();this.shadowLook();this.applyGrade();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
   }
@@ -586,6 +590,8 @@ export class IslandScene extends Phaser.Scene {
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
     this.city?.setEconomy(on);
+    this.applyGrade();
+    if(this.stone)this.stone.economy=on;
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
@@ -598,6 +604,9 @@ export class IslandScene extends Phaser.Scene {
     const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
+  private vignette?:Vignette;
+  /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
+  private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
   private readonly catchUp=new CatchUp();
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
@@ -618,6 +627,7 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.artMarks?.begin();
@@ -844,7 +854,7 @@ export class IslandScene extends Phaser.Scene {
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
       const k=this.actorScale;
-      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);

@@ -41,6 +41,7 @@ import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
+import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -154,6 +155,10 @@ export class IslandScene extends Phaser.Scene {
   /** Imported ally ground rings (art/hud-art.ts); without the art, each ally's Breu ellipse. */
   private allyRings?:AllyRings;
   private goal?:Point;
+  /** Desktop (controles-desktop): the held mouse button follows the cursor (Warcraft 3), re-targeted on a throttle. */
+  private hold=new HoldFollow();
+  /** A mouse walk's marker shows until this time (MARKER_MS after the click or the release); undefined: to the end. */
+  private markerUntil?:number;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
@@ -307,12 +312,18 @@ export class IslandScene extends Phaser.Scene {
     this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
     const rings=this.allyRings=new AllyRings(this,tokenColor('--c-breu')),dropRings=()=>{rings.destroy();if(this.allyRings===rings)this.allyRings=undefined;};
     this.events.once('shutdown',dropRings);this.events.once('destroy',dropRings);
+    // Only the canvas's own presses land here (POINTER_DOWN needs the canvas as the down element): a press on the DOM HUD
+    // never walks. A mouse press on the ground also starts the hold-to-follow (followHold); one on an enemy targets it.
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=this.enemyAt(p);
+      this.hold.release();
       if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.message('Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
-      this.goTo(unprojectView(p,this.view,this.field));
+      const target=unprojectView(p,this.view,this.field),mouse=!pointer.wasTouch;
+      this.goTo(target,mouse?{markerMs:MARKER_MS}:undefined);
+      // Held from a spot with no way there (water) too: dragging out of it starts the walk.
+      if(mouse)this.hold.press(target,this.time.now);
     });
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
@@ -519,14 +530,52 @@ export class IslandScene extends Phaser.Scene {
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
-  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.input.keyboard?.resetKeys();}
-  goTo(target:Point){
+  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.input.keyboard?.resetKeys();}
+  /**
+   * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
+   * mouse button's follow (a walk already ordered by a click goes on to its marker, like a tap's).
+   */
+  releaseInput(){this.hold.release();this.input.keyboard?.resetKeys();}
+  /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
+  goTo(target:Point,options:{markerMs?:number}={}){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
     this.route=findPath(this.position,target,this.field);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
+    this.markerUntil=options.markerMs!==undefined?this.time.now+options.markerMs:undefined;
+    this.drawDestination(target);
+  }
+  /**
+   * Hold-to-follow, every frame while the mouse button that pressed the ground stays down: the ground point under the
+   * cursor (it moves with the follow camera too) becomes the new walk at most every HOLD_RETARGET_MS, silently (no
+   * "Seguindo a trilha…", no marker). Keys and the stick win over it, as over any route. Letting go shows the marker
+   * at the last target for MARKER_MS.
+   */
+  private followHold(time:number,steering:boolean){
+    if(!this.hold.held)return;
+    const pointer=this.input.mousePointer??this.input.activePointer;
+    if(this.paused||!pointer?.primaryDown){
+      const last=this.hold.release();
+      if(last&&!this.paused&&this.route.length){this.markerUntil=time+MARKER_MS;this.destination.clear();this.drawDestination(last);}
+      return;
+    }
+    if(steering)return;
+    const world=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+    const next=this.hold.move(unprojectView(world,this.view,this.field),time);
+    if(!next)return;
+    // A point with no way there (water, a wall) keeps the walk already under way.
+    const route=findPath(this.position,next,this.field);
+    if(route.length){this.route=route;this.attackTarget=undefined;}
+  }
+  /** Keys held this frame (cursor keys and W,A,S,D) as the stick's screen vector (desktop-input.ts keyVector). */
+  private keyAxis(){
+    const c=this.cursors,k=this.keys;
+    return keyVector({up:!!(c?.up.isDown||k?.W.isDown),down:!!(c?.down.isDown||k?.S.isDown),left:!!(c?.left.isDown||k?.A.isDown),right:!!(c?.right.isDown||k?.D.isDown)});
+  }
+  /** The destination marker at `target` (the imported art is drawn every frame by drawYou while it shows). */
+  private drawDestination(target:Point){
     const p=this.project(target);
     this.goal=target;
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel'),css=1/Math.max(.05,this.cameras.main.zoom);
@@ -566,7 +615,9 @@ export class IslandScene extends Phaser.Scene {
   /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
-    this.artMarks?.destination(this.route.length?this.goal:undefined,this.actorScale,time,this.reduced,100000);
+    const marker=this.route.length>0&&markerVisible(this.markerUntil,time);
+    if(!marker&&this.markerUntil!==undefined)this.destination.clear();
+    this.artMarks?.destination(marker?this.goal:undefined,this.actorScale,time,this.reduced,100000);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -634,10 +685,10 @@ export class IslandScene extends Phaser.Scene {
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
       this.updateCamera(delta);this.shakeCamera();this.drawYou(_time);return;
     }
-    if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
-    const axis=this.hooks.direction();
-    const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
-    const sy=axis.y+Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown));
+    if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
+    const axis=this.hooks.direction(),keys=this.keyAxis();
+    const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
+    this.followHold(_time,Math.hypot(sx,sy)>.05);
     const old=this.position,seconds=Math.min(delta/1000,.1);
     if(Math.hypot(sx,sy)>.05){this.route=[];this.destination.clear();this.intent=screenDirection(sx,sy,this.view);this.position=moveDirection(old,this.intent,seconds,this.field);}
     else{this.position=moveAlong(old,this.route,seconds,this.field);this.intent={x:this.position.x-old.x,y:this.position.y-old.y};}
@@ -777,10 +828,12 @@ export class IslandScene extends Phaser.Scene {
     const phase=net.run?.phase;
     if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
     this.lastPhase=phase;
-    const axis=this.paused?{x:0,y:0}:this.hooks.direction();
-    const sx=axis.x+(this.paused?0:Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown)));
-    const sy=axis.y+(this.paused?0:Number(!!(this.cursors?.down.isDown||this.keys?.S.isDown))-Number(!!(this.cursors?.up.isDown||this.keys?.W.isDown)));
-    if(this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||net.players.get(net.id)?.spectator){this.attackTarget=undefined;this.route=[];}
+    const axis=this.paused?{x:0,y:0}:this.hooks.direction(),keys=this.paused?{sx:0,sy:0}:this.keyAxis();
+    const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
+    const still=this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
+    // No walk to follow while the hero cannot walk (no path search every 150 ms in the waiting room or while down).
+    this.followHold(time,still||Math.hypot(sx,sy)>.05);
+    if(still){this.attackTarget=undefined;this.route=[];}
     if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. A arma segue atirando sozinha.');}
     this.horde?.setTarget(this.attackTarget);
     // Only a new tick moves the horde: an offers-only change (push from the room) refreshes the HUD alone,

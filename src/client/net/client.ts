@@ -2,7 +2,7 @@ import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
 import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,clientCatalog,parseWelcomeMap,checkClientMap,
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,clientCatalog,parseWelcomeMap,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
@@ -71,6 +71,19 @@ export const RECONNECT_BANNER_MS=1500;
 export function reconnectBanner(net:{connected:boolean;fatal?:string;offlineMs(now?:number):number},now=Date.now()){
   return !net.connected&&!net.fatal&&net.offlineMs(now)>=RECONNECT_BANNER_MS;
 }
+/**
+ * A join that went without the city (its manifest came after the lobby's MANIFEST_BUDGET_MS on a slow phone) and found
+ * the room on the city waits at most this long for the manifest, then knocks once more with the full catalog (cidade-10).
+ */
+export const CITY_RETRY_WAIT_MS=6000;
+/** Lobby status while that join waits for the city's manifest. */
+export const CITY_RETRY_STATUS='A sala está na Cidade Nevada. Buscando o mapa…';
+/** `promise`'s value if it settles within `ms`, else undefined (a rejection is undefined too). Never rejects. */
+function settleWithin<T>(promise:Promise<T>,ms:number):Promise<T|undefined>{
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const late=new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),Math.max(0,ms));});
+  return Promise.race([promise.catch(()=>undefined),late]).finally(()=>clearTimeout(timer));
+}
 /** Back on screen with nothing heard for this long: the socket is probably dead (network changed), reconnect now. */
 const WAKE_SILENCE_MS=3000;
 /** Full frames (base 0) that fail to decode in a row before the client gives up: the page and the room disagree. */
@@ -97,6 +110,18 @@ export class CoopClient {
    * join() (lobby.ts); undefined when the manifest could not be read: the join then offers the endless map only.
    */
   cityRef?:MapRef&{bytes?:number};
+  /**
+   * Reads the city manifest again (lobby.ts: loadCityManifest, which refetches after a failure). Set: a join refused
+   * because the room is on the city and cityRef was missing (the manifest was late) waits for it, at most cityWaitMs,
+   * and retries once with the full catalog and the same seat token. Unset: such a join ends with the update text.
+   */
+  cityManifest?:()=>Promise<(MapRef&{bytes?:number})|undefined>;
+  /** CITY_RETRY_WAIT_MS by default (tests shorten it). */
+  cityWaitMs=CITY_RETRY_WAIT_MS;
+  /** The one retry for a late manifest was used (never two: a build that really lacks the city stops at the second refusal). */
+  private cityRetried=false;
+  /** That retry is waiting for the manifest: no socket, and nothing else may connect meanwhile. */
+  private cityWaiting=false;
   /** The room's map as applied (welcome or {t:'map'}); an older room that does not say plays the endless map. */
   map:MapRef=INFINITO_REF;
   /** A map the room switched to whose asset is still downloading (progress 0..1), or did not arrive (`failed`, the text). */
@@ -148,7 +173,7 @@ export class CoopClient {
   showReconnecting(now=Date.now()){return reconnectBanner(this,now);}
   /** "Tentar de novo" (UX onda 5): a fresh attempt now, backoff reset. */
   retryNow(){
-    if(this.stopped||this.connected)return;
+    if(this.stopped||this.connected||this.cityWaiting)return;
     this.attempts=0;
     const ws=this.socket;
     // An attempt already on its way (connecting, or open and joining): let it finish.
@@ -358,7 +383,7 @@ export class CoopClient {
     if(m.t==='welcome'){
       if(m.protocol!==ROOM_PROTOCOL||!m.run){this.fail(ws,UPDATE_NEEDED);return;}
       const map=this.roomMap(m,true);
-      if(typeof map==='string'){this.fail(ws,map);return;}
+      if(typeof map==='string'){if(readMapRef(m.map)?.id==='cidade-nevada'&&this.retryWithCity(ws,m))return;this.fail(ws,map);return;}
       const city=this.cityToLoad(m.world);
       // The download may outlast the 8 s connect timer: the loader has its own timeout.
       if(city){clearTimeout(this.joinTimer);this.waitForCity(ws,m,city);return;}
@@ -395,7 +420,43 @@ export class CoopClient {
       try{if(token)localStorage.setItem(KICKED_KEY+this.code,JSON.stringify({token,until:Number(m.until)||Date.now()}));}catch{}
       this.kicked=true;this.forgetToken();this.fail(ws,m.message);
     }
-    else if(m.t==='error'){const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;this.forgetToken();this.fail(ws,message);}
+    else if(m.t==='error'){
+      const message=typeof m.message==='string'?m.message:UPDATE_NEEDED;
+      // The room checks join.maps before any seat or token (D-026): refused for the map, the seat token is still good.
+      if(message===MAP_TEXT.update&&this.retryWithCity(ws))return;
+      this.forgetToken();this.fail(ws,message);
+    }
+  }
+  /**
+   * The room is on the city and this join went without it (cityRef missing: the manifest came after the lobby's budget
+   * on a slow phone). Once per client: drop this socket (its close is not a drop), wait for the manifest (at most
+   * cityWaitMs) and join again with the full catalog. The seat token is kept: the room refused before touching it, or
+   * (`seat`, a welcome that already seated this phone) the retry takes that same seat back, so no ghost. No manifest
+   * in time: the join ends with the room's update text, as before. False when there is no retry to make.
+   */
+  private retryWithCity(ws:WebSocket,seat?:{id?:unknown;token?:unknown}){
+    if(this.cityRef||this.cityRetried||!this.cityManifest||this.stopped)return false;
+    this.cityRetried=true;this.cityWaiting=true;
+    if(seat){
+      if(typeof seat.id==='string'&&seat.id)this.id=seat.id;
+      if(typeof seat.token==='string'&&seat.token){this.token=seat.token;this.saveToken();}
+    }
+    clearTimeout(this.joinTimer);clearInterval(this.heartbeat);clearTimeout(this.retry);this.retry=undefined;
+    this.socket=undefined;
+    try{ws.close();}catch{}
+    this.onStatus(CITY_RETRY_STATUS);
+    const manifest=this.cityManifest;
+    void settleWithin(Promise.resolve().then(manifest),this.cityWaitMs).then(ref=>{
+      this.cityWaiting=false;
+      if(this.stopped)return;
+      if(ref?.id!=='cidade-nevada'){
+        // Never came: the room's answer stands (the lobby shows the update panel). A held seat waits out its grace.
+        if(!seat)this.forgetToken();
+        this.fail(ws,MAP_TEXT.update);return;
+      }
+      this.cityRef=ref;this.connect();
+    });
+    return true;
   }
   /** The character went to a newer connection (REPLACED_CLOSE): terminal here, token kept, no retry, so no tab ping-pong. */
   private replaced(ws:WebSocket){
@@ -432,7 +493,7 @@ export class CoopClient {
     this.hiddenAt=undefined;
     if(!this.away){this.resume();return;}
     this.away=false;this.attempts=0;if(this.droppedAt)this.droppedAt=Date.now();
-    if(!this.stopped&&!this.connected&&(!this.socket||this.socket.readyState>=WebSocket.CLOSING))this.connect();
+    if(!this.stopped&&!this.connected&&!this.cityWaiting&&(!this.socket||this.socket.readyState>=WebSocket.CLOSING))this.connect();
   }
   /** Visible again: a socket silent for WAKE_SILENCE_MS is dropped now, and a waiting retry goes at once. */
   private resume(){

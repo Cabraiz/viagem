@@ -12,7 +12,13 @@ import {Room,type Peer} from '../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
 import {FrameRunFeed} from '../src/client/net/run-feed.ts';
 import {ACK_EVERY_MS} from '../src/client/net/client.ts';
+import {readFileSync} from 'node:fs';
+import {clientCatalog} from '../src/protocol/map-catalog.ts';
+import {readMapRef} from '../src/protocol/map-select.ts';
 
+/** join.maps of a current build (D-026): the endless map and the city of this checkout's manifest. */
+const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
+const maps=clientCatalog(readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash}));
 const horde=Number(process.argv[2]??300),seconds=Number(process.argv[3]??60),mode=process.argv[4]??'still',seed=Number(process.argv[5]??4242);
 const feed=new FrameRunFeed();
 let jsonBytes=0,frameBytes=0,frames=0,lastSeq=0,decodeErrors=0,inCombat=false,welcome:any;
@@ -25,9 +31,10 @@ const peer:Peer={send:data=>{
   if(inCombat){frameBytes+=data.length;frames++;sizes.push(data.length);held.push(feed.enemies.size);}
 },close:()=>{}};
 let t=0;
-const room=new Room(0,seed,{lab:true,labHorde:horde});
+// The endless map, explicitly: the bytes stay comparable whatever ROOM_DEFAULT_MAP becomes (cidade-10).
+const room=new Room(0,seed,{lab:true,labHorde:horde,map:'infinito'});
 const say=(m:object)=>room.receive(peer,JSON.stringify(m),t);
-room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa do lab',classId:'cidadao-comum'});
+room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa do lab',classId:'cidadao-comum',maps});
 for(let i=0;i<5;i++)say({t:'bot-add',round:1});
 say({t:'ready',round:1,ready:true});
 for(let i=0;i<20*30&&room.run.snapshot().phase!=='combat';i++){t+=50;room.advance(t);say({t:'ack',seq:lastSeq});}

@@ -68,7 +68,10 @@ export interface RoomOptions {
   cityRef?:MapRef;
   /** Whether the owner may pick the city: CITY_PLAYABLE (false until cidade-10) unless a test says otherwise. */
   cityPlayable?:boolean;
-  /** The map a new room opens on (ROOM_DEFAULT_MAP); a city that cannot be played falls back to the endless map. */
+  /**
+   * The map a new room opens on: ROOM_DEFAULT_MAP unless the Worker (the lab pins the endless map) or a test says
+   * otherwise. A city that cannot be played here (locked, or no asset) falls back to the endless map, logged.
+   */
   map?:MapId;
 }
 /** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
@@ -89,7 +92,10 @@ export interface RoomRoster {
   botsAdded?:number;
   bans?:{hash:string;until:number}[];
   nameBans?:{name:string;until:number}[];
-  /** D-035 (optional): the map the owner picked, when it is not the endless default. */
+  /**
+   * D-035: the map the room plays, always written (the endless map too, so a room switched back to it stays there
+   * whatever ROOM_DEFAULT_MAP is). Rows from before cidade-10 have none: they were on the endless map.
+   */
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
@@ -254,7 +260,8 @@ export class Room {
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.log=options.log;
-    if(options.map!==undefined&&options.map!==ROOM_DEFAULT_MAP)this.openMap(options.map,'create');
+    // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
+    const map=options.map??ROOM_DEFAULT_MAP;if(map!=='infinito')this.openMap(map,'create');
   }
   /** The maps this room accepts: the endless one, and the city once it is playable and its asset was handed over. */
   private catalog(){return roomCatalog(this.cityText!==undefined?this.cityRef:undefined,this.cityPlayable);}
@@ -264,13 +271,15 @@ export class Room {
   private logMap(line:object){try{this.log?.(JSON.stringify({ev:'map',...line}));}catch{/* a log line never ends a room */}}
   /**
    * A room opened or restored on `id` (RoomOptions.map, the stored roster): the city only when this room may play it,
-   * else the endless map, logged; never a crash. False when it fell back.
+   * else the endless map, logged; never a crash. False when it fell back. Supersedes whatever the room was heading to
+   * (a restore after the constructor started the default city), and changes nothing when already going there.
    */
   private openMap(id:unknown,why:'create'|'restore'){
-    if(id==='infinito')return true;
-    const ref=isMapId(id)?this.catalog().get(id):undefined;
-    if(!ref){this.logMap({fallback:typeof id==='string'?id.slice(0,20):typeof id,why,to:'infinito'});return false;}
-    this.switchTo(ref);return true;
+    const ref=id==='infinito'?INFINITO_REF:isMapId(id)?this.catalog().get(id):undefined;
+    if(!ref)this.logMap({fallback:typeof id==='string'?id.slice(0,20):typeof id,why,to:'infinito'});
+    const to=ref??INFINITO_REF;
+    if(!sameMap(to,this.target??this.map))this.switchTo(to);
+    return ref!==undefined;
   }
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
@@ -279,7 +288,7 @@ export class Room {
     const bots=[...this.sim.players.values()].filter(p=>this.sim.bots.has(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,slot:this.bots.slotOf(p.id)}));
     return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
       const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
-    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{}),...(this.map.id!=='infinito'?{map:this.map.id}:{})};
+    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{}),map:this.map.id};
   }
   /**
    * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
@@ -306,8 +315,9 @@ export class Room {
       this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
-    // D-035: the map the owner had picked; a city this room cannot play now comes back as the endless map (logged).
-    const kept=roster.map===undefined||this.openMap(roster.map,'restore');
+    // D-035: the map the owner had picked (a row from before cidade-10 names none: the endless map, whatever the
+    // default now is); a city this room cannot play now comes back as the endless map (logged).
+    const kept=this.openMap(roster.map??'infinito','restore');
     this.syncSpectators();const restored=this.roster();
     // Keyed as the stored row reads (it may still name a city that is decoding): a decode that lands writes nothing
     // new, while one that fails (or a newer pick of the endless map) differs from it and rewrites the row.

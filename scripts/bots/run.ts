@@ -6,6 +6,7 @@
  *     scenarios: base | lag300 | reconnect20 | rematch | smoke | all (base lag300 reconnect20 rematch)
  *     --spawn: start `wrangler dev` here (MULTIPLAYER_PORT, see scripts/local-worker.mjs) and stop it at the end
  *     --out <dir>: artifacts folder (default artifacts/bots)
+ *     --map <infinito|cidade-nevada>: the owner bot picks that map in the lobby (default: the Worker's ROOM_DEFAULT_MAP)
  *
  * The endpoint must run with ALLOW_LOCAL (the room's /lab gives the tick samples; the rematch scenario puts the team
  * down with the lab command). Exit code 1 when any scenario failed its checks.
@@ -20,11 +21,31 @@ import {rates,TickStitcher,freePlan,percentile,mean,type MatchCost} from './metr
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../src/protocol/room.ts';
 import {RECIPES} from '../../src/rules/stonewards.ts';
+import {clientCatalog} from '../../src/protocol/map-catalog.ts';
+import {isMapId,readMapRef,type MapId,type MapRef} from '../../src/protocol/map-select.ts';
+import {cityTerrainFrom} from '../../src/maps/index.ts';
 
 const ORIGIN='http://127.0.0.1:4187';
 const CLASSES=['cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum'];
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 const now=()=>performance.now();
+/**
+ * The city this checkout ships (public/maps/cidade-nevada.manifest.json), as the page reads it before joining: the bots
+ * send it in join.maps (D-026), so a room on the city seats them, and decode it from disk instead of downloading it.
+ */
+const MAPS_DIR=new URL('../../public/maps/',import.meta.url);
+const manifest=JSON.parse(readFileSync(new URL('cidade-nevada.manifest.json',MAPS_DIR),'utf8'));
+export const CITY_REF:MapRef|undefined=readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash});
+const JOIN_MAPS=clientCatalog(CITY_REF);
+let cityText:string|undefined;
+/** A bot's CoopClient ships the city like the page: its ref for join.maps, the asset read from this checkout. */
+function shipCity(client:Bot['client']){
+  client.cityRef=CITY_REF;
+  client.loadCity=async ref=>{
+    try{cityText??=readFileSync(new URL('cidade-nevada.json',MAPS_DIR),'utf8');}catch(e){return String(e);}
+    const decoded=await cityTerrainFrom(cityText,ref.hash??'');return decoded.ok?undefined:decoded.error;
+  };
+}
 
 export interface Fault {kind:'drop'|'outage';bot:number;ms?:number;
   /** Seconds after the combat start; with `phase`, the first moment in that round phase from then on. */
@@ -59,7 +80,7 @@ async function knock(endpoint:string,code:string,protocol:number,name:string):Pr
   return new Promise(resolve=>{
     let message:string|undefined;
     const timer=setTimeout(()=>{ws.terminate();resolve({message});},8000);
-    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:'cidadao-comum'})));
+    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:'cidadao-comum',maps:JOIN_MAPS})));
     ws.on('message',(d,binary)=>{if(!binary){const m=JSON.parse(String(d));if(m.t==='error')message=m.message;}});
     ws.on('close',code=>{clearTimeout(timer);resolve({message,close:code});});
     ws.on('error',()=>{});
@@ -70,7 +91,8 @@ async function until(predicate:()=>boolean,label:string,timeoutMs:number,every=1
   while(!predicate()){if(now()-start>timeoutMs)throw new Error(`Timeout: ${label}`);await sleep(every);}
 }
 
-export async function runScenario(endpoint:string,scenario:Scenario,log:(line:string)=>void){
+/** `map`: the owner bot switches the room to it in the lobby (the room otherwise plays the Worker's default map). */
+export async function runScenario(endpoint:string,scenario:Scenario,log:(line:string)=>void,map?:MapId){
   const checks:Check[]=[];
   const check=(name:string,ok:boolean,detail?:string)=>{checks.push({name,ok,...(detail?{detail}:{})});log(`${ok?'ok ':'FALHOU'} ${name}${detail?` (${detail})`:''}`);};
   const health=await (await fetch(`${endpoint}/health`)).json() as {protocol:number};
@@ -95,11 +117,19 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   try{
     for(let i=0;i<6;i++){
       const link=new Link(ORIGIN,{rttMs:scenario.rttMs,jitterMs:scenario.jitterMs});
-      const bot=new Bot({endpoint,code,name:`Bot ${i+1}`,classId:CLASSES[i],index:i,link,log});
+      const bot=new Bot({endpoint,code,name:`Bot ${i+1}`,classId:CLASSES[i],index:i,link,log});shipCity(bot.client);
       bots.push(bot);await bot.join();
     }
     await until(()=>bots.every(b=>b.client.players.size===6),'six players in every frame',15000);
     check('seis bots na mesma sala, seis jogadores em cada quadro',true);
+    log(`mapa da sala: ${bots[0].client.map.id}`);
+    if(map&&bots[0].client.map.id!==map){
+      const owner=bots.find(b=>b.client.isOwner),notices=owner?.notices.length??0;
+      owner?.client.setMap(map);
+      await until(()=>bots.every(b=>b.client.map.id===map&&!b.client.mapLoad)||(owner?.notices.length??0)>notices,`troca para ${map}`,30000);
+      check(`o dono trocou a sala para ${map} e os seis receberam`,bots.every(b=>b.client.map.id===map),owner?.notices.at(-1));
+      await until(()=>bots.every(b=>b.client.players.size===6),'six players on the new map',15000);
+    }
     const world=bots[0].client.terrain.signature;
     check('mesmo mundo (assinatura do terreno) nos seis',bots.every(b=>b.client.terrain.signature===world),world);
     if(scenario.gate){
@@ -232,7 +262,7 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   const cost:MatchCost={incomingMessages:incoming,connections,otherRequests:2,activeSeconds,rowsWritten:(lastLab?.rosterWrites??0)+3};
   const combatSeconds=Math.round(((combatEnd||leftAt)-combatStart)/1000);
   const simTicks=result.simTicks??0;
-  return {scenario:scenario.name,title:scenario.title,code,rttMs:scenario.rttMs,jitterMs:scenario.jitterMs,
+  return {scenario:scenario.name,title:scenario.title,code,map:bots[0]?.client.map,rttMs:scenario.rttMs,jitterMs:scenario.jitterMs,
     ok:checks.every(c=>c.ok),checks,result,combatSeconds,activeSeconds,
     tick:{...ticks.summary(),simTicksPerSecond:combatSeconds?Math.round(simTicks/combatSeconds*100)/100:0,encodeP50:lastLab?.encodeP50,encodeP95:lastLab?.encodeP95,note:'workerd local: relógio em ms inteiros (p50 0 = menos de 1 ms); medida de laboratório, 2 núcleos'},
     perClientMean:{upMsgsPerSec:round2(mean(perClient.map(c=>c.combat.upMsgs.mean))),downMsgsPerSec:round2(mean(perClient.map(c=>c.combat.downMsgs.mean))),
@@ -284,7 +314,8 @@ export function summaryMarkdown(reports:any[]){
 async function main(){
   const args=process.argv.slice(2);
   const opt=(name:string)=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};
-  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out'].includes(args[i-1])));
+  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out','--map'].includes(args[i-1])));
+  const map=opt('--map');if(args.includes('--map')&&!isMapId(map))throw new Error(`--map: infinito ou cidade-nevada, não ${map}`);
   const list=(names.length?names:['smoke']).flatMap(n=>n==='all'?['base','lag300','reconnect20','rematch']:[n]);
   for(const n of list)if(!SCENARIOS[n])throw new Error(`Cenário desconhecido: ${n}`);
   const out=opt('--out')??join('artifacts','bots');mkdirSync(out,{recursive:true});
@@ -301,7 +332,7 @@ async function main(){
       const started=Date.now();
       const log=(line:string)=>console.log(`[${name} ${Math.round((Date.now()-started)/1000)}s] ${line}`);
       let report:any;
-      try{report=await runScenario(endpoint!,SCENARIOS[name],log);}
+      try{report=await runScenario(endpoint!,SCENARIOS[name],log,map as MapId|undefined);}
       catch(e){report={scenario:name,title:SCENARIOS[name].title,ok:false,error:String((e as Error)?.stack??e),checks:[{name:'cenário rodou até o fim',ok:false,detail:String(e)}],result:{},tick:{},perClientMean:{},cost:{},freePlan:{}};log(`ERRO ${e}`);}
       reports.push(report);
       writeFileSync(join(out,`${name}-${stamp}.json`),JSON.stringify(report,null,1));

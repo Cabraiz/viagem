@@ -71,7 +71,7 @@ test('D-035: the city is locked by default; even with its asset the room answers
   assert.deepEqual(notices(a),[CITY_SOON]);
   assert.deepEqual(room.map,INFINITO_REF);assert.equal(room.sim.terrain.world,'infinito');
   assert.deepEqual([...maps(a),...maps(b)],[]);
-  assert.equal(room.roster().map,undefined);
+  assert.equal(room.roster().map,'infinito');
 });
 
 test('the welcome carries the map next to world',async()=>{
@@ -153,12 +153,12 @@ test('the switch: everyone gets the same {t:map} (city ref, world cidade seed 0,
   assert.ok(r.ok);world=r.world??feed.world;
   assert.equal(world.kind,'cidade');assert.equal(world.signature,CITY.hash);
   // The stored row names the city once the bots/map gap (one row a second after the joins) let the tick write it.
-  assert.equal(rows.at(-1)!.map,undefined);
+  assert.equal(rows.at(-1)!.map,'infinito');
   room.advance(1000+ROSTER_BOTS_MS);assert.equal(rows.at(-1)!.map,'cidade-nevada');
   // And back to the endless map, at once (no asset to decode).
   setMap(room,a,'infinito',3000);
   assert.deepEqual(maps(a).at(-1).map,INFINITO_REF);assert.equal(maps(a).at(-1).world.kind,'infinito');
-  assert.equal(room.sim.terrain.world,'infinito');assert.equal(room.roster().map,undefined);
+  assert.equal(room.sim.terrain.world,'infinito');assert.equal(room.roster().map,'infinito');
 });
 
 test('a switch to the map already in use changes nothing (no broadcast, readies kept)',async()=>{
@@ -244,13 +244,13 @@ test('roster: map switches are written at most one row a second like the bots, t
   // The owner flips four times in under a second: no row until the gap, then one with the last pick.
   let t=3000;
   for(const map of ['infinito','cidade-nevada','infinito','cidade-nevada']){t=setMap(room,a,map,t);await room.ready();}
-  assert.equal(rows.length,3,'the first flip after a quiet second is written at once');assert.equal(rows.at(-1)!.map,undefined);
+  assert.equal(rows.length,3,'the first flip after a quiet second is written at once');assert.equal(rows.at(-1)!.map,'infinito');
   room.advance(t+1);assert.equal(rows.length,3);
   room.advance(3000+ROSTER_BOTS_MS);assert.equal(rows.length,4);assert.equal(rows.at(-1)!.map,'cidade-nevada');
   // A pick still waiting when the last phone goes: the socket end writes it (the room's clock stops with no socket).
   t=setMap(room,a,'infinito',4100);assert.equal(rows.length,4);
   room.closed(a,{code:1001},t+10);
-  assert.equal(rows.length,5);assert.equal(rows.at(-1)!.map,undefined);assert.notEqual(rows.at(-1)!.players[0].until,null);
+  assert.equal(rows.length,5);assert.equal(rows.at(-1)!.map,'infinito');assert.notEqual(rows.at(-1)!.players[0].until,null);
   // Restarted from that row: the endless map, as picked last.
   const again=cityRoom();again.restore(rows.at(-1)!,t+20);await again.ready();assert.deepEqual(again.map,INFINITO_REF);
 });
@@ -269,7 +269,7 @@ test('restore with a city that fails to decode: the room plays the endless map a
   await again.ready();
   assert.deepEqual(again.map,INFINITO_REF);assert.equal(again.sim.terrain.world,'infinito');
   assert.equal(JSON.parse(logs[0]).failed,'cidade-nevada');
-  assert.equal(stored.length,1);assert.equal(stored[0].map,undefined);assert.equal(stored[0].players.length,1);
+  assert.equal(stored.length,1);assert.equal(stored[0].map,'infinito');assert.equal(stored[0].players.length,1);
 });
 
 test('R4: a seated phone that keeps talking (pings while it downloads the city) stays; one silent for SILENT_MS is closed',()=>{
@@ -313,7 +313,7 @@ test('a restarted room keeps the city; a city it can no longer play comes back a
     assert.equal(locked.sim.players.size,1);
     assert.deepEqual(logs.map(l=>JSON.parse(l)),[{ev:'map',fallback:'cidade-nevada',why:'restore',to:'infinito'}]);
     locked.advance(1600);
-    assert.equal(stored.length,1);assert.equal(stored[0].map,undefined);
+    assert.equal(stored.length,1);assert.equal(stored[0].map,'infinito');
   }
 });
 

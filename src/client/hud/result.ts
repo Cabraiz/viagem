@@ -14,6 +14,7 @@ import {resultCause} from './cause.ts';
 import {icon} from '../ui/icon.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
+import type {MapId} from '../../protocol/index.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -43,6 +44,13 @@ export function resultHeadline(result:Pick<RunResult,'victory'|'seed'|'wall'>){
   // The wall fell (VGM-046B): the subtitle says so, with one of its jokes.
   const lines=result.victory?VICTORY_LINES:result.wall?WALL_DOWN_LINES:DEFEAT_LINES;
   return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:lines[seedIndex(result.seed,lines.length)]};
+}
+
+/** RunResult plus the room's map (cidade-10, explore.ts runResult): absent on the island and in older callers. */
+export type MapRunResult=RunResult&{map?:MapId};
+/** The stats line's last item: the city by name (its seed is always 0 and says nothing), else "seed N" as before. */
+export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
+  return result.map==='cidade-nevada'?'Cidade Nevada':`seed ${result.seed}`;
 }
 
 /** 980 → "980", 9120 → "9,1k", 18420 → "18,4k", 123456 → "123k". */
@@ -331,14 +339,14 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
 
   return {
     el:root,
-    show(result:RunResult,ctx:HudContext){
+    show(result:MapRunResult,ctx:HudContext){
       const headline=resultHeadline(result);
       root.dataset.outcome=result.victory?'victory':'defeat';
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
       round.textContent=`Round ${result.round}/${result.totalRounds}`;
-      seed.textContent=`seed ${result.seed}`;
+      seed.textContent=resultSeedText(result);
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;
       if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}

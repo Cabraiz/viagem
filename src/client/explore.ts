@@ -7,8 +7,9 @@ import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
-import {besideSelector} from './lobby.ts';
-import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
+import {besideSelector,mapInfoText} from './lobby.ts';
+import {TOTAL_ROUNDS} from './hud/model.ts';
+import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
@@ -146,13 +147,23 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   /** The economy toast's own clock (VGM-048), cleared on close. */
   let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
+  /** The map line of the settings panel (one line, rewritten when the room switches maps): mapInfoText. */
+  let mapInfo:HTMLElement|undefined,mapInfoSeed=0,mapInfoMap:CoopClient['map']|undefined,mapInfoTerrain:CoopClient['terrain']|undefined;
+  const showMapInfo=()=>{
+    if(!mapInfo)return;
+    mapInfoMap=net?.map;mapInfoTerrain=net?.terrain;
+    const text=mapInfoText(net?net.terrain.seed:mapInfoSeed,!!net?.terrain.chunks,net?.map);
+    if(mapInfo.textContent!==text)mapInfo.textContent=text;
+  };
   /** Result screen data from the last view: the room sends outcome and duration, the HUD view has round, players and build. */
-  const runResult=(victory:boolean,durationTicks:number):RunResult=>{
+  const runResult=(victory:boolean,durationTicks:number):MapRunResult=>{
     const view:RunView|undefined=hud?.view;
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
       // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
       players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}})),
       ...(!victory&&view?.camp?.wallDown?{wall:true}:{}),
+      // In the city the stats line says "Cidade Nevada", not "seed 0" (cidade-10).
+      ...(net?.map.id==='cidade-nevada'?{map:net.map.id}:{}),
       // The run's most embarrassing moment comes with the result state (VGM-053B).
       ...(net?.run?.shame?{shame:{...net.run.shame}}:{})};
   };
@@ -276,10 +287,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
-      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=net?.terrain.chunks?`Mapa ${seed}`:`Ilha ${seed}, relevo procedural`;settingsContent.append(info);},
+      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
+          // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
+          if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.

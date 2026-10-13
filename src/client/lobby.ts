@@ -116,7 +116,8 @@ export function readyBlock(load:{progress:number;failed?:string}|undefined):stri
 /**
  * How long a join waits for the city manifest (counted from the lobby opening, review cidade-09): the lobby never
  * blocks on it, and a manifest later than this leaves the city out of join.maps (the room then offers this phone the
- * endless map only).
+ * endless map only). A room already on the city refuses that join: the client waits for the manifest and retries once
+ * (client.ts retryWithCity, cidade-10).
  */
 export const MANIFEST_BUDGET_MS=1000;
 /** `promise`'s value if it settles within `ms`, else undefined (a rejection is undefined too). Never rejects. */
@@ -127,6 +128,14 @@ export function within<T>(promise:Promise<T>,ms:number):Promise<T|undefined>{
 }
 /** The map the selector shows as the room's: the one being downloaded (the room already switched), else the applied one. */
 export const roomMapId=(client:{map?:MapRef;mapLoad?:{ref:MapRef}}):MapId=>client.mapLoad?.ref.id??client.map?.id??DEFAULT_MAP;
+/**
+ * The map line of the settings panel (explore.ts): the city by name with its asset version and a short hash (cidade-10:
+ * not "Ilha 0, relevo procedural"); the endless map and the island as they always were.
+ */
+export function mapInfoText(seed:number,endless:boolean,map?:MapRef):string{
+  if(map?.id==='cidade-nevada')return `Cidade Nevada, versão ${map.version}${map.hash?` (${map.hash.slice(0,8)})`:''}`;
+  return endless?`Mapa ${seed}`:`Ilha ${seed}, relevo procedural`;
+}
 /** Lobby orientation, as coop.css and the HUD zones decide it (zones.ts orientationOf): landscape up to 500 px tall. */
 export const lobbyOrientation=(viewport:{width:number;height:number}):Orientation=>viewport.height<=500?'landscape':'portrait';
 /**
@@ -411,6 +420,9 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   // the lobby opened (later, the join offers the endless map only).
   const manifestBy=performance.now()+MANIFEST_BUDGET_MS;
   const manifest=import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest()).catch(()=>undefined);
+  // A room already on the city refuses a join without it: the client then waits for the manifest (the running fetch, or
+  // a new one if it failed) and knocks once more (client.ts CITY_RETRY_WAIT_MS), so a slow phone is never left out.
+  const manifestAgain=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
   const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
@@ -428,7 +440,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
       const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
       const cityRef=await within(manifest,manifestBy-performance.now());
       if(closed)return;
-      client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.onStatus=m=>{status.textContent=m;};await client.join();
+      client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=manifestAgain;client.onStatus=m=>{status.textContent=m;};await client.join();
       if(closed){client.leave();return;}
       // In the room: a version reload from here comes back to it (update-toast.ts resumeOf reads it).
       dialog.dataset.room=code;

@@ -1,7 +1,7 @@
 // VGM-047 / input-10hz on the real CoopClient: an in-memory socket bridges it to a real Room (no network, fake clock).
 import test,{mock,after} from 'node:test';
 import assert from 'node:assert/strict';
-import {Room,type Peer} from '../../multiplayer/room.ts';
+import {Room,CHECKPOINT_FROM_ROUND,type Peer,type RoomCheckpoint,type RoomRoster} from '../../multiplayer/room.ts';
 import {REPLACED_MESSAGE} from '../../src/protocol/room.ts';
 
 const store=new Map<string,string>();
@@ -90,7 +90,7 @@ test('client: a second tab with the same token takes over, the first stops with 
   }finally{stop();cleanup();}
 });
 
-test('client: after a restart of the room the player is seated again and the waiting room carries the notice',async()=>{
+test('client: after a restart of the room in round 1 (no checkpoint yet) the player is seated again and the waiting room carries the notice',async()=>{
   store.clear();const created=Date.now();net.room=new Room(created,4242);net.down=false;let stop=ticking(net.room);
   try{
     const ana=client();await ana.join();
@@ -109,6 +109,40 @@ test('client: after a restart of the room the player is seated again and the wai
     ana.ready(true);
     for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
     assert.equal(ana.run?.phase,'combat');assert.equal(ana.roomNotice,undefined,'gone once the next run starts');
+    ana.leave();
+  }finally{stop();cleanup();}
+});
+
+test('client: after a restart of the room mid-run the player is back in combat at the start of the round, the news shown over the match',async()=>{
+  store.clear();const created=Date.now();net.down=false;
+  let roster:RoomRoster|undefined,checkpoint:RoomCheckpoint|undefined;
+  const first=new Room(created,4242,{onRoster:r=>{roster=JSON.parse(JSON.stringify(r));},onCheckpoint:c=>{checkpoint=JSON.parse(JSON.stringify(c));}});
+  net.room=first;let stop=ticking(first);
+  try{
+    const ana=client();await ana.join();
+    // Two bots carry the round while the phone is away (the owner adds them in the lobby).
+    ana.addBot();await sleep(400);ana.addBot();await sleep(400);
+    ana.ready(true);
+    for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+    assert.equal(ana.run?.phase,'combat');
+    // The phone loses the network; the room plays on (Ana's hero on autopilot) into the round-2 intermission. Driven
+    // here tick by tick, ahead of the page's clock, so the test does not wait the ~50 s of round 1.
+    stop();net.down=true;sockets(ana).vanish();
+    for(let i=0;i<40&&ana.connected;i++)await sleep(10);
+    const w=first.sim.world;let t=Date.now();
+    for(let i=0;i<20*180&&!(w.round.index===CHECKPOINT_FROM_ROUND&&w.round.phase==='prepare');i++)first.advance(t+=50);
+    assert.equal(first.run.snapshot().phase,'combat');assert.equal(checkpoint?.round,CHECKPOINT_FROM_ROUND);assert.deepEqual(roster?.checkpoint,{round:checkpoint!.round,tick:checkpoint!.tick,run:checkpoint!.run.round});
+    // Deploy: a new object from the stored roster and checkpoint; the phone's network comes back.
+    const next=new Room(created,4242);next.restore(roster!);assert.equal(next.resume(checkpoint),true);
+    const shown:string[]=[];ana.onResumed=news=>shown.push(news.title);
+    net.room=next;stop=ticking(next);net.down=false;
+    for(let i=0;i<80&&!ana.connected;i++)await sleep(50);
+    await sleep(100);
+    assert.equal(ana.connected,true);assert.equal(ana.run?.phase,'combat');assert.equal(ana.roomNotice,undefined,'no lobby news');
+    assert.match(ana.resumedNotice?.title??'',/recomeçando o Round 2/);assert.match(ana.resumedNotice?.body??'',/armas/);
+    assert.deepEqual(shown,[ana.resumedNotice!.title],'the match is told once (its row in the HUD slot)');
+    // It stays over the match (combat does not clear it, unlike the lobby's).
+    await sleep(500);assert.equal(ana.run?.phase,'combat');assert.ok(ana.resumedNotice);
     ana.leave();
   }finally{stop();cleanup();}
 });

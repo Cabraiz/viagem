@@ -2,7 +2,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
-import { classes } from '../rules/index.ts';
+import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -951,7 +951,7 @@ export class IslandScene extends Phaser.Scene {
         if(tree){this.useTree(tree.id,1);if(!this.textures.exists(`tree:${tree.id}`)){this.loadTree(tree.id);loads=true;}}
         props.push(this.makeProp(o,tree));
       }
-      for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,p.name));}
+      for(const p of c.pois){const index=Math.max(0,landmarks.findIndex(l=>l.name===p.name));signs.push(this.drawLandmark(p,index,infinitoPoiName(index,cx,cy,this.field.seed)));}
       this.chunkProps.set(key,{cx,cy,props,signs});changed=true;
     }
     // Sheets of the next ring of chunks load before their trees can show (fewer shadows waiting on screen), but in the

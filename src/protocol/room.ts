@@ -36,6 +36,16 @@ export function restartedNotice(lost?:{round:number;level:number}){
   const body='Não foi ninguém da turma. Toca em Tô pronto pra começar outra.';
   return {title,body,message:`${title} ${body}`};
 }
+/**
+ * The room's Durable Object restarted in the middle of a run and the run came back (E5-checkpoint-por-round): everyone
+ * is at the start of the round that was going, with the level, weapons, wall and defenses they had then. `kind`
+ * 'resumed' (the lost run keeps 'restarted'). Shown once, as news over the match; `message` is both lines.
+ */
+export function resumedNotice(round:number){
+  const title=round>0?`A sala caiu e voltou: recomeçando o Round ${round}.`:'A sala caiu e voltou: recomeçando o round.';
+  const body='Nível, armas, muralha e defesas estão como no começo dele.';
+  return {title,body,message:`${title} ${body}`};
+}
 /** A kicked player stays out of the same room this long (D-025): by the seat's token, which the page keeps. */
 export const KICK_BAN_MS=10*60_000;
 /** What the kicked phone reads (and reads again if it knocks before the time is up): who, until when, what to do. */

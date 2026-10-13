@@ -94,3 +94,65 @@ export function markerRect(point:{x:number;y:number},area:Rect,size=OBRA_MARKER)
   const cx=Math.min(Math.max(point.x,area.x+half),right(area)-half),cy=Math.min(Math.max(point.y,area.y+half),bottom(area)-half);
   return {x:cx-half,y:cy-half,width:size,height:size,clamped:cx!==point.x||cy!==point.y};
 }
+
+/**
+ * How far (px) a marker's 48 px box may stick out of the useful area and still show (clamped those few px back in).
+ * Farther out its site is off screen: the marker hides instead of piling up on the area's edge with the others (the
+ * live test had six sites and the rail on one point, only the top one tappable).
+ */
+export const MARKER_SLACK=8;
+/** The one "+N obras" hint for the sites off screen: a small etiqueta, never a touch target. */
+export const HINT_WIDTH=96,HINT_HEIGHT=28;
+export interface MarkerPlan {
+  /** The markers on screen, in DOM order (the last one is on top), at their final boxes. */
+  shown:{id:string;rect:Rect}[];
+  /** Sites whose point is off the useful area (no marker). */
+  hidden:string[];
+  /** One hint for the hidden sites: on the area's inner rim towards them, with their count. Absent when none hide. */
+  hint?:{rect:Rect;count:number};
+}
+
+/**
+ * The markers of one frame (pure): which sites show, where, and in which order.
+ * - A site shows when its marker box sticks out of `area` by at most MARKER_SLACK; then it is clamped in. `keep` (the
+ *   open site) always shows, clamped: the player is working on it.
+ * - Markers closer than OBRA_MARKER on both axes are nudged apart symmetrically (a few passes over the pairs in id
+ *   order, along the axis that needs the shorter move), then clamped back into `area`. Should two still cross (a
+ *   crowd against an edge), the one nearest the area's centre is last, on top, so the tap there is deterministic.
+ * - The hidden ones get at most one non-interactive hint ("+N obras") on the area's rim towards their mean point.
+ */
+export function planMarkers(points:readonly {id:string;x:number;y:number}[],area:Rect,options:{keep?:string;hint?:boolean}={}):MarkerPlan{
+  const S=OBRA_MARKER,half=S/2,slack=MARKER_SLACK;
+  const fits=(p:{x:number;y:number})=>p.x-half>=area.x-slack&&p.x+half<=right(area)+slack&&p.y-half>=area.y-slack&&p.y+half<=bottom(area)+slack;
+  const visible=points.filter(p=>p.id===options.keep||fits(p)),hiddenPts=points.filter(p=>!visible.includes(p));
+  const clampX=(x:number)=>Math.min(Math.max(x,area.x+half),right(area)-half),clampY=(y:number)=>Math.min(Math.max(y,area.y+half),bottom(area)-half);
+  const order=[...visible].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  const c=order.map(p=>({id:p.id,x:clampX(p.x),y:clampY(p.y)}));
+  for(let pass=0;pass<4;pass++){
+    let moved=false;
+    for(let i=0;i<c.length;i++)for(let j=i+1;j<c.length;j++){
+      const dx=c[j].x-c[i].x,dy=c[j].y-c[i].y,ox=S-Math.abs(dx),oy=S-Math.abs(dy);
+      if(ox<=0||oy<=0)continue;
+      moved=true;
+      // Same point: the lower id goes left (deterministic).
+      if(ox<=oy){const s=dx<0?-1:1;c[i].x-=s*ox/2;c[j].x+=s*ox/2;}
+      else{const s=dy<0?-1:1;c[i].y-=s*oy/2;c[j].y+=s*oy/2;}
+    }
+    for(const m of c){m.x=clampX(m.x);m.y=clampY(m.y);}
+    if(!moved)break;
+  }
+  const mid={x:area.x+area.width/2,y:area.y+area.height/2},far=(m:{x:number;y:number})=>Math.hypot(m.x-mid.x,m.y-mid.y);
+  // Farthest from the centre first: the nearest is drawn last (on top). Ties by id.
+  const shown=[...c].sort((a,b)=>far(b)-far(a)||(a.id<b.id?-1:a.id>b.id?1:0)).map(m=>({id:m.id,rect:{x:m.x-half,y:m.y-half,width:S,height:S}}));
+  const plan:MarkerPlan={shown,hidden:hiddenPts.map(p=>p.id)};
+  if(options.hint!==false&&hiddenPts.length){
+    const mx=hiddenPts.reduce((s,p)=>s+p.x,0)/hiddenPts.length,my=hiddenPts.reduce((s,p)=>s+p.y,0)/hiddenPts.length;
+    // The mean point pushed onto the rim (inset by the hint's half size), like an edge arrow.
+    const x0=area.x+HINT_WIDTH/2+4,x1=right(area)-HINT_WIDTH/2-4,y0=area.y+HINT_HEIGHT/2+4,y1=bottom(area)-HINT_HEIGHT/2-4;
+    let hx=Math.min(Math.max(mx,x0),x1),hy=Math.min(Math.max(my,y0),y1);
+    // Sites hidden on opposite sides average to a point inside: the hint still goes to the nearest rim, never mid-field.
+    if(hx===mx&&hy===my){const d=[mx-x0,x1-mx,my-y0,y1-my],k=d.indexOf(Math.min(...d));if(k===0)hx=x0;else if(k===1)hx=x1;else if(k===2)hy=y0;else hy=y1;}
+    plan.hint={count:hiddenPts.length,rect:{x:hx-HINT_WIDTH/2,y:hy-HINT_HEIGHT/2,width:HINT_WIDTH,height:HINT_HEIGHT}};
+  }
+  return plan;
+}

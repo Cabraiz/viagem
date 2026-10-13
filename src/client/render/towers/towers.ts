@@ -125,7 +125,7 @@ export class TowerRenderer {
   /** Live effects (for checks): shots, flashes, blasts, craters. */
   live(){
     const n=(a:{on:boolean}[])=>{let c=0;for(const x of a)if(x.on)c++;return c;};
-    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),craters:n(this.craters),dbg:this.shots.filter(s=>s.on).map(s=>({k:s.cal.shot,age:this.now-s.born,ms:s.ms,x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1,z:s.z0}))};
+    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),craters:n(this.craters),inFlight:this.shots.filter(s=>s.on).map(s=>({k:s.cal.shot,age:this.now-s.born,ms:s.ms,x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1,z:s.z0}))};
   }
   /** Every frame: aim and turn, fade covering defenses, move the effects, shake. `figures`: the hero and the allies. */
   update(nowMs:number,dtMs:number,figures:readonly Figure[]){
@@ -256,9 +256,12 @@ export class TowerRenderer {
       const c=sh.cal,t=sh.ms>0?(now-sh.born)/sh.ms:1;
       if(c.shot==='beam'){
         if(t>=1){sh.on=false;continue;}
-        const p=w.project(sh.x1,sh.y1,0,this.p),a=(1-t)*.55,half=c.barrel*u*.9;
-        g.fillStyle(this.papel,a).fillTriangle(sh.mx,sh.my,p.x-half,p.y,p.x+half,p.y)
-          .fillStyle(this.amarelo,a*.8).fillEllipse(p.x,p.y,half*2.2,half*1.1);
+        const p=w.project(sh.x1,sh.y1,0,this.p),a=(1-t)*.6,half=c.barrel*u*.9;
+        // Light cone with the Breu double edge (a pale beam alone vanishes on the snow).
+        g.fillStyle(this.amarelo,a).fillTriangle(sh.mx,sh.my,p.x-half,p.y,p.x+half,p.y)
+          .lineStyle(Math.max(1,1.5*s),this.breu,a).strokeTriangle(sh.mx,sh.my,p.x-half,p.y,p.x+half,p.y)
+          .fillStyle(this.amarelo,a*1.4).fillEllipse(p.x,p.y,half*2.4,half*1.2)
+          .lineStyle(Math.max(1,1.5*s),this.breu,a).strokeEllipse(p.x,p.y,half*2.4,half*1.2);
         continue;
       }
       if(t>=1){sh.on=false;this.impact(sh,now);continue;}

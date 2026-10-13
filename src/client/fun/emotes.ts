@@ -51,6 +51,7 @@ export interface Box {width:number;height:number}
 /**
  * Top-left corner for a balloon centered above (x,y) (the head of the character), kept inside the viewport
  * with `margin`. When there is no room above, the balloon flips below and `below` is true.
+ * No face avatar in the balloon (rostos-hud): it sits over the hero itself, who is already who speaks.
  */
 export function placeBalloon(x:number,y:number,balloon:Box,viewport:Box,margin=8,lift=10){
   let left=Math.round(x-balloon.width/2),top=Math.round(y-lift-balloon.height),below=false;

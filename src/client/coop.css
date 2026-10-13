@@ -150,6 +150,8 @@
 .coop-wait-members li.is-asking button{font-weight:800}
 .coop-wait-members li .coop-wait-crown{margin:-4px -2px -4px 2px}
 .coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
+/* Rosto da pessoa à esquerda do nome (rostos-hud): círculo de 24 px com filete Breu, dentro da altura do chip (32/48 px). */
+.coop-wait-members .coop-wait-face{width:24px;height:24px;margin:-2px 2px -2px 0;box-shadow:0 0 0 1px var(--c-breu)}
 /* Troca de dono: faixa Breu de 4 s acima dos nomes ("Bia saiu. Agora quem manda é Caio."). */
 .coop-wait-owner{margin:6px 0;padding:8px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:700 var(--t-13)/1.3 var(--f-sistema)}
 .coop-wait-owner[hidden]{display:none}

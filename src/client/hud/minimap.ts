@@ -43,6 +43,7 @@ export const DRAW_ORDER:Readonly<Record<MinimapKind,number>>={coco:0,pedra:0,bau
 /**
  * Each mark is the arrow's sticker simplified to its silhouette (design onda 6 D5: one symbol per thing): base = the tent
  * with its flag, chefe = the skull, spawn = the three-crest wave, caído = the boia; allies are people (dots), you the Lilás disc.
+ * No face avatars here (rostos-hud): a mark is 6-12 px, too small for a face to read; faces live in the team strip.
  */
 const shape=(kind:MinimapKind)=>{
   switch(kind){

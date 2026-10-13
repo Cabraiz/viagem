@@ -30,12 +30,19 @@ test('no match on: it publishes; matches on: it waits, gives up after --wait (0 
   }finally{busy.close();}
 });
 
-test('a Worker from before /health/rooms is published without waiting; an unreadable one needs --force',async()=>{
-  const old=await worker(404,{});
-  try{const r=await run(['--endpoint',old.endpoint,'--wait','0']);assert.equal(r.code,0);assert.match(r.out,/anterior a este card/);}finally{old.close();}
+test('a Worker from before /health/rooms (404, or 403 from its origin check) is published without waiting; an unreadable one needs --force',async()=>{
+  for(const status of [404,403]){
+    const old=await worker(status,{});
+    try{const r=await run(['--endpoint',old.endpoint,'--wait','0']);assert.equal(r.code,0);assert.match(r.out,/anterior a este card/);}finally{old.close();}
+  }
   const broken=await worker(500,{});
   try{
     const r=await run(['--endpoint',broken.endpoint,'--wait','0']);assert.equal(r.code,2);
     assert.equal((await run(['--endpoint',broken.endpoint,'--force'])).code,0);
   }finally{broken.close();}
+});
+
+test('--skip-if-busy (CI): matches still on when the wait runs out: no deploy, exit 0',async()=>{
+  const busy=await worker(200,{rooms:1,running:1,players:2,endsBy:Date.now()+600_000});
+  try{const r=await run(['--endpoint',busy.endpoint,'--wait','0','--skip-if-busy']);assert.equal(r.code,0);assert.match(r.out,/não foi publicado agora/);assert.doesNotMatch(r.out,/publicaria/);}finally{busy.close();}
 });

@@ -49,37 +49,53 @@ test('/health/rooms answers the index summary to anyone; /health stays the same 
   assert.equal(none.status,503);
 });
 
-test('a room tells the index when its match starts and ends (only while someone is connected), once each',async()=>{
+/** A GameRoom on a fake index, in combat with one connected socket (the object's clock stopped: the test ticks). */
+async function inMatch(){
   const rows:any[]=[];
   const env={ALLOW_LOCAL:'false',INDEX:{idFromName:(n:string)=>n,get:()=>({report:async(code:string,row:any)=>{rows.push([code,row]);}})}} as any;
-  const storage={put:async()=>{},get:async()=>undefined};
-  const g=new GameRoom({storage,id:{toString:()=>'obj'},waitUntil:()=>{}} as any,env) as any;
+  const g=new GameRoom({storage:{put:async()=>{},get:async()=>undefined},id:{toString:()=>'obj'},waitUntil:()=>{}} as any,env) as any;
   const t0=Date.now();g.code='ROOM123456';g.created=t0;
-  const room=g.create(t0,1);await room.ready();
-  // A socket as the Durable Object sees it; the object's own clock is stopped, the test drives the ticks.
+  const room=g.create(t0,1);await room.ready();g.room=room;
   const on:Record<string,(e:any)=>void>={};
-  const server={send(){},close(){},addEventListener(type:string,fn:(e:any)=>void){on[type]=fn;}};
-  g.room=room;g.attach(server,room);g.loop.stop();
+  g.attach({send(){},close(){},addEventListener(type:string,fn:(e:any)=>void){on[type]=fn;}},room);g.loop.stop();
   const p=[...g.peers.values()][0];
   room.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum'}),t0);
   room.receive(p,JSON.stringify({t:'ready',round:room.run.snapshot().round,ready:true}),t0+100);
-  let t=t0+100;for(let i=0;i<400&&room.run.snapshot().phase!=='combat';i++,t+=50)room.advance(t);
+  let t=t0+100;for(let n=0;n<400&&room.run.snapshot().phase!=='combat';n++,t+=50)room.advance(t);
   assert.equal(room.run.snapshot().phase,'combat');
-  for(let i=0;i<40;i++)room.advance(t+=50);
-  await new Promise(r=>setTimeout(r,0));
-  const running=rows.filter(([,r])=>r?.running);
+  for(let n=0;n<20;n++)room.advance(t+=50);
+  const settle=async()=>{await g.reports;};
+  await settle();
+  return {g,room,rows,on,t0,settle,tick:()=>room.advance(t+=50)};
+}
+
+test('a room tells the index when its match starts and when it ends with people still in it, once each',async()=>{
+  const {room,rows,t0,settle,tick}=await inMatch();
+  const running=rows.filter(([,r])=>r.running);
   assert.equal(running.length,1,'one row when the match starts');
   assert.deepEqual(running[0],['ROOM123456',{running:true,players:1,until:t0+ROOM_LIFETIME_MS}]);
-  // Everybody gone mid-match: the room stops ticking, the row stops holding deploys back; back: in a match again.
-  on.close({code:1006,reason:'',wasClean:false});
-  assert.equal(rows.at(-1)[1].running,false,'nobody connected');
-  const again={send(){},close(){},addEventListener(){}};g.attach(again,room);g.loop.stop();
-  assert.equal(rows.at(-1)[1].running,true,'someone back in the match');
+  const before=rows.length;
   room.run.finish('defeat',room.sim.shameMoment());
-  for(let i=0;i<4;i++)room.advance(t+=50);
-  await new Promise(r=>setTimeout(r,0));
-  assert.equal(rows.at(-1)[1].running,false,'one row when it ends');
-  assert.equal(rows.filter(([,r])=>r?.running).length,2);
-  const n=rows.length;await g.alarm().catch(()=>{});
-  assert.deepEqual(rows.slice(n),[['ROOM123456',null]],'the room is gone: its row too');
+  for(let n=0;n<4;n++)tick();
+  await settle();
+  assert.deepEqual(rows.slice(before).map(([,r])=>r.running),[false],'one row when it ends, the socket still connected');
+});
+
+test('everybody gone mid-match: the row stops holding deploys back; someone back: in a match again; in order',async()=>{
+  const {g,room,rows,on,settle}=await inMatch();
+  const before=rows.length;
+  on.close({code:1006,reason:'',wasClean:false});
+  g.attach({send(){},close(){},addEventListener(){}},room);g.loop.stop();
+  await settle();
+  assert.deepEqual(rows.slice(before).map(([,r])=>r.running),[false,true],'a quick false-true lands in order');
+});
+
+test('a failed report is sent again on the next change',async()=>{
+  const {g,room,rows,on,settle}=await inMatch();
+  let fail=true;const report=g.indexStub.report;g.indexStub={report:async(...a:any[])=>{if(fail){fail=false;throw new Error('lost');}return report(...a);}};
+  const before=rows.length;
+  on.close({code:1006,reason:'',wasClean:false});await settle();
+  assert.equal(rows.length,before,'lost');assert.equal(g.indexed,undefined,'forgotten');
+  g.attach({send(){},close(){},addEventListener(){}},room);g.loop.stop();await settle();
+  assert.deepEqual(rows.slice(before).map(([,r])=>r.running),[true]);
 });

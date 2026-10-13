@@ -95,12 +95,20 @@ export class GameRoom extends DurableObject<Env>{
     this.indexed=running;
     this.index({running,players:this.rosterPlayers,until:this.created+ROOM_LIFETIME_MS});
   }
-  /** Tells the RoomIndex (a match started or ended, or the room is gone: null). Never fails the room. */
-  private index(row:IndexRow|null){
+  /** One stub for the index (calls on the same stub arrive in order) and the chain of reports in flight. */
+  private indexStub?:DurableObjectStub<RoomIndex>;
+  private reports:Promise<unknown>=Promise.resolve();
+  /**
+   * Tells the RoomIndex (a match started or ended). Reports go one after the other, so a quick false-true (a phone that
+   * drops and comes back at once) lands in order; a failed one forgets what was sent, so the next change resends.
+   * Never fails the room.
+   */
+  private index(row:IndexRow){
     const ns=this.env.INDEX,code=this.code??this.ctx.id?.toString?.();
     if(!ns||!code)return;
-    const done=ns.get(ns.idFromName('index')).report(code,row).catch(()=>{});
-    try{this.ctx.waitUntil?.(done);}catch{/* outside a request: the promise still runs */}
+    const stub=this.indexStub??=ns.get(ns.idFromName('index'));
+    this.reports=this.reports.then(()=>stub.report(code,row)).catch(()=>{if(this.indexed===row.running)this.indexed=undefined;});
+    try{this.ctx.waitUntil?.(this.reports);}catch{/* outside a request: the promise still runs */}
   }
   /**
    * A new room (POST /rooms). A room on the city waits for it to decode before anyone is seated (like load()): the
@@ -179,5 +187,5 @@ export class GameRoom extends DurableObject<Env>{
     this.loop.start();
   }
   private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();this.syncIndex();}
-  async alarm(){this.index(null);for(const peer of [...this.peers.values()])if(this.room)this.room.close(peer,4004,'Sala encerrada.');else peer.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
+  async alarm(){for(const peer of [...this.peers.values()])if(this.room)this.room.close(peer,4004,'Sala encerrada.');else peer.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

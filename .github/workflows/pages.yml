@@ -69,8 +69,9 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        # Waits (up to 25 min, the city's combat cap) for no room to be in a match: a deploy restarts them all.
-        run: node scripts/deploy-rooms.mjs --wait 25
+        # Waits (up to 30 min: the city's 25 min combat cap plus the countdown) for no room to be in a match, since a
+        # deploy restarts them all; still busy, it skips the deploy and the next step decides whether the site may go.
+        run: node scripts/deploy-rooms.mjs --wait 30 --skip-if-busy
       - name: Live Worker speaks the site's protocol (never publish the site in front of an older Worker)
         env:
           WANT: ${{ steps.proto.outputs.n }}

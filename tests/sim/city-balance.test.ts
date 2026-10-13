@@ -3,10 +3,11 @@
  *  1. applyCityBalance on real plans (planRound, every round, 1..6 players): neutral knobs keep the plan itself, round
  *     1 is never touched, and each knob does what it says (count, hp, cadence) and nothing else.
  *  2. cityBalanceFrom (a runner's --knobs JSON) and roundKnobs (all × round).
- *  3. The director on the REAL city: no option and CITY_BALANCE give the digests recorded before this card; a knob
- *     changes rounds 2+ only (round 1, the tutorial, spawns the same bodies); siegeShare per round.
+ *  3. The director on the REAL city: no option and NEUTRAL_CITY_BALANCE give the digests recorded before this card; a
+ *     knob changes rounds 2+ only (round 1, the tutorial, spawns the same bodies); siegeShare per round.
  *  4. Island and endless untouched: the director and the assembled run with strong knobs give the same output as
- *     without them (assembled digests recorded before this card); the city's assembled default too.
+ *     without them (assembled digests recorded before this card); the city's assembled run with NEUTRAL_CITY_BALANCE
+ *     too, and its default is CITY_BALANCE (the tuning).
  *  5. Stonewards: lootValue pays whole units per crate, intermissionExtraSeconds lengthens the city intermission;
  *     the island ignores both (same state, same keys). bossHp: the city boss only (assemble and Simulation option).
  *  6. Team-size knobs (CityBalance.players): JSON validation; a knob for 1 player changes only the 1-player city
@@ -14,6 +15,8 @@
  *  7. Team damage and boss hp (players[n].damage, players[n].bossHp): damage ×0.5 for a team of 1 halves the contact,
  *     hostile projectile and telegraph hits on a solo city hero (the real systems through the core's damagePlayer)
  *     and changes nothing for 2 heroes, before round 2 nor on the island; bossHp for 1 changes only the solo city boss.
+ *  8. CITY_BALANCE (the tuned default): team entries for 1, 3 and 6 players only, and cityBalanceFrom round-trips it.
+ * "Neutral" tests build their knobs over NEUTRAL_CITY_BALANCE, never over the tuned default.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -31,7 +34,7 @@ import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {createEnemy as catalogEnemy,enemyDef,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {citySpeed} from '../../src/sim/city/speed.ts';
-import {CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,hasTeamBossHp,hasTeamDamage,isNeutralRound,roundKnobs,teamBossHp,teamDamage,type CityBalance} from '../../src/sim/city/balance.ts';
+import {CITY_BALANCE,CITY_TEAM_SIZES,NEUTRAL_CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,hasTeamBossHp,hasTeamDamage,hasTeamLoot,isNeutralRound,roundKnobs,teamBossHp,teamDamage,type CityBalance} from '../../src/sim/city/balance.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -56,7 +59,7 @@ const city=loaded.terrain,P=cityPlanner(city);
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);
 
 /** Knobs strong enough to change every city round (used where they must change nothing: island, endless). */
-const STRONG:CityBalance=cityBalanceFrom({all:{count:1.6,hp:1.4,cadence:.7,siegeShare:.5},rounds:{2:{count:2},10:{hp:2}},lootValue:2,intermissionExtraSeconds:9,bossHp:1.5});
+const STRONG:CityBalance=cityBalanceFrom({all:{count:1.6,hp:1.4,cadence:.7,siegeShare:.5},rounds:{2:{count:2},10:{hp:2}},lootValue:2,intermissionExtraSeconds:9,bossHp:1.5},NEUTRAL_CITY_BALANCE);
 
 /** Every round's plan as the director draws it (theme then plan from one stream), for `players`. */
 function plans(seed:number,players:number){
@@ -70,11 +73,12 @@ const regularOf=(plan:ReturnType<typeof planRound>)=>plan.groups.filter(g=>!g.bo
 const count=(groups:readonly {members:readonly string[]}[])=>groups.reduce((n,g)=>n+g.members.length,0);
 
 // ---------- 1. applyCityBalance ----------
-test('defaults: CITY_BALANCE is neutral on every round and applyCityBalance keeps the plan object itself',()=>{
-  for(let index=1;index<=ROUND_COUNT;index++)assert.ok(isNeutralRound(roundKnobs(CITY_BALANCE,index)),`round ${index} neutral`);
+test('defaults: NEUTRAL_CITY_BALANCE is neutral on every round and team, and applyCityBalance keeps the plan object itself',()=>{
+  for(let index=1;index<=ROUND_COUNT;index++)for(const team of [undefined,...CITY_TEAM_SIZES])
+    assert.ok(isNeutralRound(roundKnobs(NEUTRAL_CITY_BALANCE,index,team)),`round ${index} team ${team} neutral`);
   for(const seed of [1,2,3])for(const players of [1,3,6])for(const plan of plans(seed,players)){
     const before=JSON.stringify(plan);
-    assert.equal(applyCityBalance(plan,roundKnobs(CITY_BALANCE,plan.index)),plan,`seed ${seed} ${players}p round ${plan.index}: same object`);
+    assert.equal(applyCityBalance(plan,roundKnobs(NEUTRAL_CITY_BALANCE,plan.index,plan.players)),plan,`seed ${seed} ${players}p round ${plan.index}: same object`);
     assert.equal(applyCityBalance(plan,NEUTRAL_ROUND),plan);
     assert.equal(JSON.stringify(plan),before,'not mutated');
   }
@@ -202,22 +206,24 @@ const CITY_BASELINE:Readonly<Record<string,string>>={
   'tutorial seed 3 r4':'6e26ca9cb09c90d1','tutorial seed 8 r4':'88c195c76b062ff1','plain seed 21 r10':'5861426c3ece3a1a',
 };
 
-test('city director: no option and CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
+test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
   const got:Record<string,string>={},explicit:Record<string,string>={};
   for(const [key,seed,rounds,tutorial] of [['tutorial seed 3 r4',3,4,true],['tutorial seed 8 r4',8,4,true],['plain seed 21 r10',21,10,false]] as const){
     const plain=cityRun(seed,rounds,tutorial);
     assert.equal(plain.ends,rounds,`${key}: every round played`);
     got[key]=plain.hash;
-    explicit[key]=cityRun(seed,rounds,tutorial,{cityBalance:CITY_BALANCE}).hash;
+    explicit[key]=cityRun(seed,rounds,tutorial,{cityBalance:NEUTRAL_CITY_BALANCE}).hash;
   }
   console.log(`[cidade-11] city director digests: ${JSON.stringify(got)}`);
   assert.deepEqual(got,CITY_BASELINE,'city director output differs from the pre-cidade-11 baseline');
-  assert.deepEqual(explicit,CITY_BASELINE,'CITY_BALANCE passed explicitly changes the city');
+  assert.deepEqual(explicit,CITY_BASELINE,'NEUTRAL_CITY_BALANCE passed explicitly changes the city');
+  // The tuning has no entry for 2 players (the recorded scenario): the 2-player city director plays as before.
+  assert.equal(cityRun(3,4,true,{cityBalance:CITY_BALANCE}).hash,CITY_BASELINE['tutorial seed 3 r4'],'CITY_BALANCE, 2 players');
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
   const base=cityRun(3,4,true);
-  const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}});
+  const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
   const tuned=cityRun(3,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
@@ -265,11 +271,13 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
 /** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11). */
 const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'16a84cd56d5977cb',ilha:'0d4d774d9e279384',infinito:'e155870fac9620e5'};
 
-test('assembled run: the city default (and CITY_BALANCE) as before cidade-11; island and endless ignore strong knobs',()=>{
-  const c=assembled(city,4,4000);
-  console.log(`[cidade-11] assembled city default: ${c.hash} (round ${c.round} at tick 4000)`);
-  assert.equal(c.hash,ASSEMBLED_BASELINE.cidade,'assembled city default differs from the pre-cidade-11 baseline');
-  assert.equal(assembled(city,4,4000,CITY_BALANCE).hash,c.hash,'explicit CITY_BALANCE');
+test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
+  const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);
+  console.log(`[cidade-11] assembled city neutral: ${c.hash} (round ${c.round} at tick 4000)`);
+  assert.equal(c.hash,ASSEMBLED_BASELINE.cidade,'assembled city with neutral knobs differs from the pre-cidade-11 baseline');
+  const tuned=assembled(city,4,4000);
+  assert.equal(assembled(city,4,4000,CITY_BALANCE).hash,tuned.hash,'no option: CITY_BALANCE');
+  assert.notEqual(tuned.hash,c.hash,'CITY_BALANCE is not neutral in the city');
   for(const [name,terrain] of [['ilha',new TerrainField(3)],['infinito',new TerrainField(3,{world:'infinito'})]] as const){
     assert.equal(assembled(terrain,4,1500).hash,ASSEMBLED_BASELINE[name],`${name}: as before cidade-11`);
     assert.equal(assembled(terrain,4,1500,STRONG).hash,ASSEMBLED_BASELINE[name],`${name}: strong knobs ignored`);
@@ -284,14 +292,15 @@ test('bossHp: the city boss only (createRunSystems and the Simulation option); t
     players.set('a',{id:'a',classId:'x',hp:100,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},stats:{...BASE_STATS},weaponReady:{},x:s.x+8,y:s.y});
     return sys.boss.spawnBoss(world,{x:s.x,y:s.y})!.maxHp;
   };
-  assert.equal(spawn(city),bossMaxHp(1));
+  assert.equal(spawn(city,NEUTRAL_CITY_BALANCE),bossMaxHp(1));
+  assert.equal(spawn(city),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*teamBossHp(CITY_BALANCE,1)}),'default: CITY_BALANCE (solo team bossHp)');
   assert.equal(spawn(city,STRONG),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*1.5}));
   assert.equal(spawn(new TerrainField(3),STRONG),bossMaxHp(1),'island ignores bossHp');
   const sim=new Simulation(7,{world:'cidade',terrain:city,cityBalance:STRONG});
   assert.equal(sim.run.boss.tuning.baseHp,BOSS_TUNING.baseHp*1.5,'Simulation passes cityBalance to the run');
   sim.resetRun();
   assert.equal(sim.run.boss.tuning.baseHp,BOSS_TUNING.baseHp*1.5,'and to every new run');
-  assert.equal(new Simulation(7,{world:'cidade',terrain:city}).run.boss.tuning.baseHp,BOSS_TUNING.baseHp,'default city boss');
+  assert.equal(new Simulation(7,{world:'cidade',terrain:city}).run.boss.tuning.baseHp,BOSS_TUNING.baseHp*CITY_BALANCE.bossHp,'default city boss (global knob of CITY_BALANCE)');
   assert.equal(new Simulation(7,{cityBalance:STRONG}).run.boss.tuning.baseHp,BOSS_TUNING.baseHp,'island Simulation ignores it');
 });
 
@@ -355,8 +364,8 @@ test('lootValue pays whole units per crate (balance and credits); intermissionEx
 
 // ---------- 6. team-size knobs (CityBalance.players) ----------
 test('players knobs: JSON validation (sizes 1..6, numbers > 0); roundKnobs multiplies all × round × team, rounds 2..10 only',()=>{
-  assert.equal(CITY_BALANCE.players,undefined,'CITY_BALANCE has no team knobs');
-  const b=cityBalanceFrom({all:{hp:1.2},rounds:{3:{count:.8,siegeShare:.5}},players:{1:{count:.5,hp:.5,cadence:1.5,siegeShare:.25,lootValue:2},3:{hp:.8}}});
+  assert.equal(NEUTRAL_CITY_BALANCE.players,undefined,'NEUTRAL_CITY_BALANCE has no team knobs');
+  const b=cityBalanceFrom({all:{hp:1.2},rounds:{3:{count:.8,siegeShare:.5}},players:{1:{count:.5,hp:.5,cadence:1.5,siegeShare:.25,lootValue:2},3:{hp:.8}}},NEUTRAL_CITY_BALANCE);
   assert.deepEqual(roundKnobs(b,3),{count:.8,hp:1.2,cadence:1,siegeShare:.5},'no team: as before');
   assert.deepEqual(roundKnobs(b,3,1),{count:.8*.5,hp:1.2*.5,cadence:1.5,siegeShare:.25},'team 1: × its knobs, its siegeShare first');
   assert.deepEqual(roundKnobs(b,3,3),{count:.8,hp:1.2*.8,cadence:1,siegeShare:.5},'team 3: hp only');
@@ -372,7 +381,7 @@ test('players knobs: JSON validation (sizes 1..6, numbers > 0); roundKnobs multi
 });
 
 test('players knobs on the city director: a knob for 1 player changes only 1-player runs (rounds 2+, keyed by RoundPlan.players)',()=>{
-  const knobs=cityBalanceFrom({players:{1:{count:2,hp:1.5,siegeShare:1}}});
+  const knobs=cityBalanceFrom({players:{1:{count:2,hp:1.5,siegeShare:1}}},NEUTRAL_CITY_BALANCE);
   // Two heroes (the recorded scenario) and three: byte-identical to no knobs.
   assert.equal(cityRun(3,4,true,{cityBalance:knobs}).hash,CITY_BASELINE['tutorial seed 3 r4'],'2 players: the pre-cidade-11 digest');
   const three=cityRun(3,3,true,{},city,3);
@@ -444,10 +453,11 @@ test('loot by team size: × players[n].lootValue × the global lootValue, n = he
 
 // ---------- 7. team damage and boss hp (players[n].damage, players[n].bossHp) ----------
 test('damage and bossHp team knobs: JSON validation (> 0), neutral before round 2, not round knobs',()=>{
-  assert.ok(!hasTeamDamage(CITY_BALANCE)&&!hasTeamBossHp(CITY_BALANCE),'CITY_BALANCE: neither');
-  const b=cityBalanceFrom({players:{1:{damage:.5,bossHp:.6},3:{damage:1}}});
+  assert.ok(!hasTeamDamage(NEUTRAL_CITY_BALANCE)&&!hasTeamBossHp(NEUTRAL_CITY_BALANCE),'NEUTRAL_CITY_BALANCE: neither');
+  assert.ok(hasTeamDamage(CITY_BALANCE)&&hasTeamBossHp(CITY_BALANCE),'CITY_BALANCE: both');
+  const b=cityBalanceFrom({players:{1:{damage:.5,bossHp:.6},3:{damage:1}}},NEUTRAL_CITY_BALANCE);
   assert.ok(hasTeamDamage(b)&&hasTeamBossHp(b));
-  assert.ok(!hasTeamDamage(cityBalanceFrom({players:{3:{damage:1}}})),'damage 1 everywhere: no hook');
+  assert.ok(!hasTeamDamage(cityBalanceFrom({players:{3:{damage:1}}},NEUTRAL_CITY_BALANCE)),'damage 1 everywhere: no hook');
   assert.deepEqual(roundKnobs(b,3,1),NEUTRAL_ROUND,'damage/bossHp are not round knobs');
   const plan=(index:number,players:number)=>({index,players});
   assert.equal(teamDamage(b,plan(3,1)),.5);assert.equal(teamDamage(b,plan(ROUND_COUNT,1)),.5);
@@ -501,15 +511,19 @@ function hostileHits(terrain:SimWorld['terrain'],heroes:number,cityBalance?:City
 }
 
 test('damage per team: ×0.5 for 1 player halves contact, projectile and telegraph hits on a solo city hero; 2 heroes, round 1 and the island untouched',()=>{
-  const half=cityBalanceFrom({players:{1:{damage:.5}}});
-  const solo=hostileHits(city,1);
+  const half=cityBalanceFrom({players:{1:{damage:.5}}},NEUTRAL_CITY_BALANCE);
+  const solo=hostileHits(city,1,NEUTRAL_CITY_BALANCE);
   assert.deepEqual(solo.taken,{contact:solo.pomboDamage,projectile:12,telegraph:20},'every source hit at its raw damage');
-  assert.equal(solo.world.playerDamageScale,undefined,'default city: no hook');
+  assert.equal(solo.world.playerDamageScale,undefined,'neutral city knobs: no hook');
+  // The default city is CITY_BALANCE: hooked, the same hits as passing it explicitly.
+  const byDefault=hostileHits(city,1);
+  assert.notEqual(byDefault.world.playerDamageScale,undefined,'default city (CITY_BALANCE): hooked');
+  assert.deepEqual(byDefault.taken,hostileHits(city,1,CITY_BALANCE).taken,'default city: CITY_BALANCE');
   const tuned=hostileHits(city,1,half);
   console.log(`[cidade-11] solo city hits ${JSON.stringify(solo.taken)} → ${JSON.stringify(tuned.taken)} (players[1].damage ×0.5)`);
   for(const source of ['contact','projectile','telegraph'] as const)assert.equal(tuned.taken[source],solo.taken[source]*.5,`solo city ${source} ×0.5`);
   // Two heroes (the plan for 2): the same hits as without the knob.
-  assert.deepEqual(hostileHits(city,2,half).taken,hostileHits(city,2).taken,'2 heroes: unchanged');
+  assert.deepEqual(hostileHits(city,2,half).taken,hostileHits(city,2,NEUTRAL_CITY_BALANCE).taken,'2 heroes: unchanged');
   // Before round 2: round 1's plan (the tutorial; also its intermission, which keeps it) and no plan yet.
   assert.deepEqual(hostileHits(city,1,half,1).taken,solo.taken,'round 1: neutral');
   assert.deepEqual(hostileHits(city,1,half,0).taken,solo.taken,'no plan yet: neutral');
@@ -535,12 +549,27 @@ test('bossHp per team: × the global bossHp for the plan count at the spawn; onl
     assert.equal(sys.boss.tuning.baseHp,BOSS_TUNING.baseHp*(cityBalance&&terrain===city?cityBalance.bossHp:1),'the controller tuning keeps the global knob only');
     return boss.maxHp;
   };
-  const team=cityBalanceFrom({players:{1:{bossHp:.6}}}),both=cityBalanceFrom({bossHp:1.5,players:{1:{bossHp:.6}}});
+  const team=cityBalanceFrom({players:{1:{bossHp:.6}}},NEUTRAL_CITY_BALANCE),both=cityBalanceFrom({bossHp:1.5,players:{1:{bossHp:.6}}},NEUTRAL_CITY_BALANCE);
   assert.equal(spawn(city,1,team),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*.6}),'solo city: ×0.6');
   assert.equal(spawn(city,1,both),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*1.5*.6}),'solo city: × the global 1.5');
-  assert.equal(spawn(city,2,team),spawn(city,2),'2 heroes: unchanged');
+  assert.equal(spawn(city,2,team),spawn(city,2,NEUTRAL_CITY_BALANCE),'2 heroes: unchanged');
   assert.equal(spawn(city,2,both),bossMaxHp(2,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*1.5}),'2 heroes: the global knob only');
-  assert.equal(spawn(city,1),bossMaxHp(1),'default city boss');
+  assert.equal(spawn(city,1,NEUTRAL_CITY_BALANCE),bossMaxHp(1),'neutral city boss');
+  assert.equal(spawn(city,1),bossMaxHp(1,{...BOSS_TUNING,baseHp:BOSS_TUNING.baseHp*teamBossHp(CITY_BALANCE,1)}),'default city boss: CITY_BALANCE');
   assert.equal(spawn(new TerrainField(3),1,both),bossMaxHp(1),'island ignores both');
   console.log(`[cidade-11] solo city boss hp ${bossMaxHp(1)} → ${spawn(city,1,team)} (players[1].bossHp ×0.6)`);
+});
+
+// ---------- 8. CITY_BALANCE, the tuned default ----------
+test('CITY_BALANCE: team entries for 1, 3 and 6 players on neutral globals; cityBalanceFrom round-trips it',()=>{
+  assert.deepEqual(Object.keys(CITY_BALANCE.players??{}),['1','3','6'],'team entries 1, 3 and 6');
+  const {players,...globals}=CITY_BALANCE;
+  assert.deepEqual(globals,NEUTRAL_CITY_BALANCE,'the global knobs are neutral');
+  for(const team of [1,3,6])assert.ok(Object.keys(players![team]).length>0,`players[${team}] tunes something`);
+  assert.ok(hasTeamLoot(CITY_BALANCE)&&hasTeamDamage(CITY_BALANCE)&&hasTeamBossHp(CITY_BALANCE));
+  // Its JSON read back (over the neutral knobs, and over itself) gives CITY_BALANCE again.
+  const json=JSON.parse(JSON.stringify(CITY_BALANCE));
+  assert.deepEqual(cityBalanceFrom(json,NEUTRAL_CITY_BALANCE),CITY_BALANCE,'over NEUTRAL_CITY_BALANCE');
+  assert.deepEqual(cityBalanceFrom(json),CITY_BALANCE,'over the default');
+  assert.equal(cityBalanceFrom(undefined),CITY_BALANCE,'no JSON: the default itself');
 });

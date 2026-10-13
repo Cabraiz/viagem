@@ -31,6 +31,7 @@ import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} fro
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
+import {cliffCells,withoutCliffs} from './relevo/field.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -141,6 +142,9 @@ export class CityLayer {
    * on the cell, so they are gathered once per cell and cached until chunks change or the view turns.
    */
   private readonly cellColumns=new Map<number,ColumnRef[]>();
+  /** Moves whenever the live columns change (a chunk built or dropped), so actorDepth answers may differ: other
+   *  layers that cache an actor depth (the defenses, render/towers) re-sort when it moves. */
+  columnsVersion=0;
   private query=0;
   private readonly fader=new CoverFader();
   /** Drawn objects by fade id, kept in step with the live chunks; the ids faded last frame. */
@@ -161,6 +165,8 @@ export class CityLayer {
   private readonly still=reducedMotion();
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
+  /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
+  private readonly cliffs?:Uint8Array;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -168,13 +174,19 @@ export class CityLayer {
     this.depthOf=options.depthOf??(k=>k);
     const res=options.groundResolution;
     this.groundResolution=res!==undefined&&Number.isFinite(res)&&res>0?Math.min(res,4):GROUND_RESOLUTION;
-    this.index=buildChunks(asset);
-    this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
-    for(const b of asset.blocks)this.blocks.set(b.id,b);
+    // With the relief shader the WC3 cliff lines are rock slopes painted on the ground (relevo/shader.ts), not boxes:
+    // they get no pieces, columns, fades or ground decor (cidade-caixas-de-cliff). The flat ground (?relevo=0, Canvas)
+    // keeps them.
+    const relief=reliefEnabled(scene);
+    const drawn=relief?withoutCliffs(asset):asset;
+    if(relief)this.cliffs=cliffCells(asset);
+    this.index=buildChunks(drawn);
+    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
+    for(const b of drawn.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
-      for(const b of asset.blocks)for(const lot of planLots(b,art)){
+      for(const b of drawn.blocks)for(const lot of planLots(b,art)){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
       this.fountain=fountainLot(asset,art);
@@ -194,7 +206,7 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
-    if(reliefEnabled(scene))this.relief=new CityRelief(scene,asset,this.pivot);
+    if(relief)this.relief=new CityRelief(scene,asset,this.pivot);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
@@ -217,6 +229,17 @@ export class CityLayer {
     const view=Math.max(0,this.view);
     if(cx<0||cy<0||cx>=width||cy>=height||!this.columns.size)return this.depthOf(depth(x,y,view,this.pivot));
     return this.depthOf(actorDepth(x,y,z,view,this.nearColumns(cx,cy,view),this.pivot,this.actorBox));
+  }
+  /**
+   * Draw depth for an effect in the air over (x, y) (a defense's shot, blast or light): actorDepth, except that over a
+   * building's footprint it stays below the building (inside counts as behind), so a shot from a defense hidden behind
+   * a block is covered until it has crossed it.
+   */
+  effectDepth(x:number,y:number,z=groundZ(this.asset,x,y)):number{
+    const {cell,origin,width,height}=this.asset,cx=Math.floor((x-origin.x)/cell),cy=Math.floor((y-origin.y)/cell);
+    const view=Math.max(0,this.view);
+    if(cx<0||cy<0||cx>=width||cy>=height||!this.columns.size)return this.depthOf(depth(x,y,view,this.pivot));
+    return this.depthOf(actorDepth(x,y,z,view,this.nearColumns(cx,cy,view),this.pivot,this.actorBox,true));
   }
   /** The columns an actor standing in cell (cx, cy) could overlap on screen (cached per cell). */
   private nearColumns(cx:number,cy:number,view:number):ColumnRef[]{
@@ -312,7 +335,7 @@ export class CityLayer {
 
   // ---------- Building and dropping chunks ----------
   private buildChunk(key:string,view:number){
-    this.cellColumns.clear();
+    this.cellColumns.clear();this.columnsVersion++;
     const chunk=this.chunksByKey.get(key);
     if(!chunk||this.live.has(key))return;
     const {ground,glints}=this.bakeGround(chunk,view);
@@ -441,9 +464,10 @@ export class CityLayer {
     for(const q of quads)if(!painted.has(q.kind)){const k=this.materials.ground(q.kind);if(k)painted.set(q.kind,k);}
     // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
     const decor:DecorPrim[]=[];
-    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind))
+    const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
+    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
@@ -497,7 +521,7 @@ export class CityLayer {
     let glintCells=0;
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
-      if(!this.materials.decorOver(kind))continue;
+      if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
       let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
@@ -545,7 +569,7 @@ export class CityLayer {
     for(const s of live.sprites){s.obj.destroy();this.fadeDrop(s.fade,'sprites',(e:BlockSprite)=>e===s);}
     for(const p of live.props){p.obj.destroy();this.fadeDrop(p.fade,'props',(e:LiveProp)=>e===p);}
     for(const c of live.cells)this.columns.delete(c);
-    this.cellColumns.clear();
+    this.cellColumns.clear();this.columnsVersion++;
     this.live.delete(key);
   }
 

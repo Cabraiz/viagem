@@ -24,6 +24,10 @@ import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
+import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
+import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
+import {HEIGHT_PX} from './render/city/projection.ts';
+import {buildPlanFor,elevation} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
@@ -42,6 +46,8 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
+/** Tower defenses (torres-render): crater decals just over the ground's shadows (the effects sort with the actors). */
+const TOWER_GROUND_DEPTH=-9985;
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
 /**
@@ -191,6 +197,18 @@ export class IslandScene extends Phaser.Scene {
   private horde?:HordeRenderer;
   /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
   private stone?:StonewardsRenderer;
+  /**
+   * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
+   * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
+   * view.structures through TowerFeed on every new snapshot and drawn every frame; released with the scene.
+   */
+  private towers?:TowerRenderer;
+  private readonly towerFeed=new TowerFeed();
+  /** The live enemies the weapons aim at (parallel arrays, grown as needed) and the world's build plan (cell, rail). */
+  private towerAim={n:0,xs:new Float32Array(64),ys:new Float32Array(64),air:new Uint8Array(64)};
+  private buildPlan?:ReturnType<typeof buildPlanFor>;
+  private readonly towerFigures:{x:number;y:number;z:number}[]=[];
+  private readonly shakeAt={x:0,y:0};
   private projector?:Projector;
   private stateVersion=-1;
   private offersVersion=-1;
@@ -240,6 +258,7 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
+    queueTowerArt(this); // imported defense sheets (torres) when the manifest has them; else procedural
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -337,7 +356,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -397,6 +416,8 @@ export class IslandScene extends Phaser.Scene {
     this.route=[];this.destination.clear();
     // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
     if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;this.correction.clear();}
+    // The old world's defenses and their craters go; the next snapshot brings this world's (no volley on first sight).
+    this.towers?.reset();this.towerFeed.reset();this.buildPlan=undefined;
     this.buildWorld();this.shadowLook();this.applyGrade();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
@@ -462,6 +483,7 @@ export class IslandScene extends Phaser.Scene {
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
     this.city?.setDepthOf(this.cityDepthOf);
     if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();}
+    this.towers?.refresh();
   }
   /**
    * Endless world and city: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen
@@ -619,7 +641,7 @@ export class IslandScene extends Phaser.Scene {
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
-      this.updateCamera(delta);this.drawYou(_time);return;
+      this.updateCamera(delta);this.shakeCamera();this.drawYou(_time);return;
     }
     if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction();
@@ -638,6 +660,54 @@ export class IslandScene extends Phaser.Scene {
     // After the move, so the ring and the camera are never a frame behind the hero.
     this.rebaseDepth();this.updateCamera(delta);
     this.drawYou(_time);
+  }
+  /** True while the scene draws defenses: the renderer exists and the latest snapshot had at least one (HUD hint). */
+  towersInWorld():boolean{return !!this.towers&&this.towerFeed.count>0;}
+  /**
+   * The defenses' renderer, built on the first snapshot with a defense: crater decals just over the ground's shadows,
+   * every effect at its own point's actor depth (under the blackout like the actors), re-sorted when the city's chunks
+   * change (columnsVersion).
+   */
+  private makeTowers(){
+    return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,
+      depthVersion:()=>this.city?.columnsVersion??0,
+      world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
+        project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});
+  }
+  /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
+  private pushTowers(view:RunView,time:number){
+    if(!this.towers&&!hasTowers(view.structures))return; // no defense yet: nothing built, nothing walked
+    const towers=this.towers??this.makeTowers();
+    const plan=this.buildPlan??=buildPlanFor(this.field);
+    const enemies=view.enemies;let a=this.towerAim;
+    if(a.xs.length<enemies.length){const n=Math.max(enemies.length,a.xs.length*2);a=this.towerAim={n:0,xs:new Float32Array(n),ys:new Float32Array(n),air:new Uint8Array(n)};}
+    let n=0;
+    for(const e of enemies){
+      if(e.hp<=0)continue;
+      a.xs[n]=e.x;a.ys[n]=e.y;a.air[n]=ENEMY_ART[enemyKind(e.kind)].hover>0?1:0;n++;
+    }
+    a.n=n;towers.setEnemies(n,a.xs,a.ys,a.air);
+    towers.push(view.tick,this.towerFeed.views(view.structures,view.tick,plan.cell,{railAxis:plan.rail?.axis,enemies:a}),time);
+  }
+  /**
+   * Every frame: the defenses turn, fire and fade over the figures, like the city layer: the hero, or while spectating
+   * the watched figure, and the allies (their feet at the ground's height). Reuses its figure objects.
+   */
+  private updateTowers(time:number,delta:number){
+    const towers=this.towers;if(!towers)return;
+    const figures=this.towerFigures,allies=this.allyFeet,n=1+allies.length;
+    while(figures.length<n)figures.push({x:0,y:0,z:0});
+    figures.length=n;
+    const set=(f:{x:number;y:number;z:number},p:Point)=>{f.x=p.x;f.y=p.y;f.z=elevation(p.x,p.y,this.field)/HEIGHT_PX;};
+    set(figures[0],this.watchPoint??this.position);
+    for(let i=0;i<allies.length;i++)set(figures[i+1],allies[i]);
+    towers.update(time,delta,figures);
+  }
+  /** A heavy impact shakes the screen (none with reduced motion): added after the camera's own centring. */
+  private shakeCamera(){
+    const towers=this.towers;if(!towers)return;
+    const cam=this.cameras.main,o=towers.shakeOffset(cam.zoom,this.shakeAt);
+    if(o.x||o.y){cam.scrollX+=o.x;cam.scrollY+=o.y;}
   }
   /** Live enemy under a tap (world point), nearest first; the radius never drops below ENEMY_TAP_RADIUS_PX on screen. */
   private enemyAt(p:Point){
@@ -729,14 +799,14 @@ export class IslandScene extends Phaser.Scene {
       const runView=net.feed.take();
       this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){

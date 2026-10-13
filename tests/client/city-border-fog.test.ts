@@ -98,7 +98,7 @@ test('city only: the see-through and the fog live in the city layer; the scene f
   assert.match(scene,/const city=this\.city=new CityLayer\(/);
   // Allies are collected for the see-through only in city mode.
   assert.match(scene,/if\(city&&player\.online&&!player\.spectator\)this\.allyFeet\.push/);
-  assert.equal((scene.match(/allyFeet/g)??[]).length,4,'declared, reset, pushed (city only), read in updateCity');
+  assert.equal((scene.match(/allyFeet/g)??[]).length,5,'declared, reset, pushed (city only), read in updateCity and in updateTowers (the defenses fade over them too)');
   // Nothing outside render/city imports the new modules.
   for(const f of ['scene.ts','render/layers.ts','render/you.ts','render/outline.ts','render/projector.ts'])
     assert.doesNotMatch(read(f),/border-fog|CoverFader|coveringColumns/,f);

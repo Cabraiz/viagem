@@ -4,6 +4,11 @@ export type {RunMember,RunOutcome,RunPhase,RunState} from '../contract/index.ts'
 export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
+/**
+ * D-043: the city's combat cap. Its 10 rounds stretch for the walk and the crate intermissions: in the cidade-11 balance
+ * the boss spawned at 15.6–21.9 sim minutes and runs ended by 22.2, so the endless map's 20 min cut them before the boss.
+ */
+export const CITY_RUN_DURATION_TICKS=25*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 /**
  * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,
@@ -25,7 +30,7 @@ export class RunLifecycle {
   private shame?:ShameMoment;
   private owner?:string;
   private readonly roomId:string;
-  private readonly durationTicks:number;
+  private durationTicks:number;
   constructor(roomId:string,durationTicks=RUN_DURATION_TICKS){
     if(!roomId||!Number.isSafeInteger(durationTicks)||durationTicks<1)throw new Error('Invalid run configuration');
     this.roomId=roomId;this.durationTicks=durationTicks;
@@ -97,6 +102,11 @@ export class RunLifecycle {
       if(this.elapsed>=this.durationTicks)return {started:false,finished:this.finish('timeout',shame)};
     }
     return {started:false,finished:false};
+  }
+  /** The map's combat cap (D-043), set while the map changes in the lobby; never during a match. */
+  setDurationTicks(ticks:number){
+    if(this.phase==='combat'||!Number.isSafeInteger(ticks)||ticks<1)return false;
+    this.durationTicks=ticks;return true;
   }
   /** This method accepts simulation output, never a client message. True exactly once per run (the first outcome wins). */
   finish(outcome:RunOutcome,shame?:ShameMoment){

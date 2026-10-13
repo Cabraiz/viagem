@@ -10,6 +10,13 @@
  *   repair when the wall is hurt, else a chinelo tower, else a gambiarra;
  * - offers: picks the default card after a human-ish reaction (longer in combat, where the offer is a chip);
  * - fallen: asks for help ("Me salva") every few seconds.
+ * In the city (cidade-10, terrain.world === 'cidade') the long walks (home, the crate, a fallen friend, the person
+ * walked with) follow the streets (city/bot-routes.ts: a flow field per goal cell, small shared LRU) instead of a
+ * straight line, the walk home is timed by the street distance and the crates are ranked by it. The plaza is a maze of
+ * planters, so in combat the bot also: walks back all the way to HOME_SLACK inside its leash once pulled, is lured only
+ * by critters and gems in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
+ * when its pulls cancel out (HOLD_BELOW), and a roamer hunts the wave's last few critters (HUNT_LEFT). Everywhere else
+ * the bot is the same as before, byte for byte.
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {telegraphHits} from './telegraphs.ts';
@@ -17,6 +24,8 @@ import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/ind
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {heroSpeed,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
+import {cityTerrainOf} from './city/grid.ts';
+import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 
 export const HZ=20;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */
@@ -41,6 +50,15 @@ export const SIEGE_REACH=4;
 export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
 export const ESCORT_LEASH=3;
+/** City: a bot pulled back to its anchor walks until this far (u) inside the leash. */
+export const HOME_SLACK=2;
+/** City: critters and gems lure the bot only this far (u) inside its leash, and only those it can answer from there. */
+export const ROAM_IN=1;
+/** City: a roamer hunts when the wave is down to this many critters and none is near the wall; it closes to HUNT_LEASH (u). */
+export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
+/** City, combat: a wanted move shorter than this (the pulls cancel out) is no move. */
+export const HOLD_BELOW=.15;
+type Chase='rescueGoal'|'escortGoal'|'huntGoal';
 
 export interface BrainMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
@@ -49,6 +67,10 @@ export interface BrainMemory {
   orbit:1|-1;
   /** Recipes the forge refused, by round index (Bot fills it from {t:'forged'}): not asked again this intermission. */
   refused:Partial<Record<RecipeId,number>>;
+  /** City only: the goal cells of the moving targets (fallen friend, person walked with, critter hunted) last routed to (bot-routes keep). */
+  rescueGoal?:number;escortGoal?:number;huntGoal?:number;
+  /** City only: walking back to the anchor until HOME_SLACK inside the leash. */
+  homing?:boolean;
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -108,8 +130,17 @@ export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>
   return undefined;
 }
 
-/** The node this bot works: the nodes in sight with something left, nearest to home first, one per bot index. */
-export function nodeFor(nodes:readonly NodeView[],home:Point,index:number):NodeView|undefined{
+/**
+ * The node this bot works: the nodes in sight with something left, nearest to home first, one per bot index.
+ * `measure`: distance from a node to home (default straight; the city passes the street distance, and a node it
+ * cannot reach is left out).
+ */
+export function nodeFor(nodes:readonly NodeView[],home:Point,index:number,measure?:(p:Point)=>number):NodeView|undefined{
+  if(measure){
+    const far=new Map(nodes.filter(n=>n.remaining>0).map(n=>[n,measure(n)] as const));
+    const open=[...far.keys()].filter(n=>far.get(n)!<Infinity).sort((a,b)=>far.get(a)!-far.get(b)!||a.id.localeCompare(b.id));
+    return open.length?open[index%Math.min(open.length,6)]:undefined;
+  }
   const open=nodes.filter(n=>n.remaining>0).sort((a,b)=>dist(a,home)-dist(b,home)||a.id.localeCompare(b.id));
   if(!open.length)return undefined;
   return open[index%Math.min(open.length,6)];
@@ -147,6 +178,23 @@ export function decide(input:BrainInput):Decision{
     return decision;
   }
   const home=homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
+  // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
+  // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
+  const city=cityTerrainOf(terrain);
+  const way=(to:Point,chase?:Chase):Point|undefined=>{
+    const out={x:0,y:0},goal=city?botRoute(city,at,to,out,chase?memory[chase]??-1:-1):-1;
+    if(goal===-2)return undefined;
+    if(goal<0)return toward(at,to);
+    if(chase)memory[chase]=goal;
+    return out;
+  };
+  const go=(to:Point,weight=1,chase?:Chase):Point=>{
+    if(!city)return toward(at,to,weight);
+    const w=way(to,chase)??toward(at,to);return {x:w.x*weight,y:w.y*weight};
+  };
+  /** City: the nearest of these with a clear straight line from `from` (the hero rule). */
+  const nearestSeen=<T extends Point>(list:readonly T[],from:Point):T|undefined=>
+    city?[...list].sort((a,b)=>dist(a,from)-dist(b,from)).find(p=>straightClear(city,from,p)):nearest(list,from);
   let want:Point={x:0,y:0};
   // Telegraphs: step out of any area about to fire (the nearest safe direction of eight).
   const danger=view.telegraphs.filter(t=>telegraphHits(t,at,.4));
@@ -162,25 +210,25 @@ export function decide(input:BrainInput):Decision{
     if(best){decision.direction=best;decision.mode='dodge';return finish(decision,input);}
   }
   if(prepare&&round){
-    const toHome=dist(at,home),left=round.phaseEndsTick-tick;
+    const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
     const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId,recipe=forger?pickRecipe(view,memory.refused):undefined;
-    const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
+    const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
     if(recipe){
       // The forge measures the camp from the base, the bot from the wall next to it: tap from close to the wall.
       if(toHome<FORGE_REACH){
         decision.mode='forge';
         if(tick-memory.lastForgeTick>=FORGE_GAP){decision.forge=recipe;memory.lastForgeTick=tick;}
-      }else{decision.mode='forge';want=toward(at,home);}
+      }else{decision.mode='forge';want=go(home);}
     }else if(goHome){
       decision.mode='home';
-      if(toHome>CAMP_RADIUS-2)want=toward(at,home);
+      if(toHome>CAMP_RADIUS-2)want=go(home);
     }else{
-      const node=nodeFor(view.nodes??[],home,index);
+      const node=nodeFor(view.nodes??[],home,index,city&&(p=>botRouteDistance(city,p,home)));
       decision.mode='gather';
       if(node){
         // Stand just outside the node's edge, on our side of it (the room gathers within its radius + 0.9).
         const d=dist(at,node);
-        if(d>.9)want=toward(at,node);
+        if(d>.9)want=go(node);
       }
     }
     // Leftover critters of the wave still bite: keep a little distance while gathering.
@@ -191,8 +239,19 @@ export function decide(input:BrainInput):Decision{
   // Combat.
   const boss=view.enemies.some(e=>e.boss),guard=index%2===0;
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
-  const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH,anchor=escorting?input.escort!:home;
-  const leash=escorting?ESCORT_LEASH:boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
+  const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH;
+  // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
+  // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
+  let prey=city&&!guard&&!escorting&&!boss&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LEASH+3)?nearest(view.enemies,at):undefined;
+  if(prey&&!way(prey,'huntGoal'))prey=undefined;
+  const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
+  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
+  // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
+  const b=city?way(anchor,chase)??toward(at,anchor):undefined;
+  // How far out of the leash. City: once pulled back, all the way to HOME_SLACK inside the leash (no pacing on its edge
+  // between planters), and nothing lures the bot out again on the way.
+  const out=dist(at,anchor)-leash,homing=!!b&&(out>0||memory.homing===true&&out>-HOME_SLACK);
+  if(b)memory.homing=homing;
   const close=view.enemies.filter(e=>dist(e,at)<DANGER);
   // Skill: something close and it is ready (the room answers whether it went off).
   if(close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
@@ -212,27 +271,39 @@ export function decide(input:BrainInput):Decision{
   }
   if(fallen?.at&&close.length<4){
     decision.mode='rescue';
-    if(dist(fallen.at,at)>.7)want=add(want,toward(at,fallen.at,2.2));
+    if(dist(fallen.at,at)>.7)want=add(want,go(fallen.at,2.2,'rescueGoal'));
   }else{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
     const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
-    const target=siege??nearest(view.enemies.filter(e=>dist(e,anchor)<leash+3&&dist(e,at)<ENGAGE),at);
-    if(target&&dist(target,at)>DANGER+(siege?.2:.6))want=add(want,toward(at,target,siege?1.2:.7));
+    // City: only what is in plain sight (a critter or a gem behind a planter would pin the bot against it).
+    // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
+    // stand-off point (DANGER+.6 short of it) or a gem that lies there. One past it (a gem 7 u from the wall) pulled the
+    // bot out to the band's edge, where the lure stopped and the circle pulled it back in: pacing in place for seconds.
+    const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
+    // City: a critter or a gem lures the bot only well inside the leash; at its edge it holds (weapons have range).
+    const roam=!b||!homing&&out<-ROAM_IN;
+    if(target&&(siege||roam)&&dist(target,at)>DANGER+(siege?.2:.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.
-    const pickup=nearest(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<leash+4),at);
-    if(pickup&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
+    const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
+    if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
     // Keep moving around the wall, or the person walked with (a still target gets surrounded).
+    // City: across the way back along the streets, and only where that side is open (between the plaza's planters a
+    // turn into one would have the bot pace against it, looking stuck: it holds its place instead).
     const r=dist(at,anchor);
-    if(r>.5){const t={x:-(at.y-anchor.y)/r*memory.orbit,y:(at.x-anchor.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
+    if(b&&r>.5){
+      const t={x:b.y*memory.orbit,y:-b.x*memory.orbit};
+      if(walkable({x:at.x+t.x*.8,y:at.y+t.y*.8},terrain))want=add(want,{x:t.x*.35,y:t.y*.35});
+    }else if(r>.5){const t={x:-(at.y-anchor.y)/r*memory.orbit,y:(at.x-anchor.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
     else want=add(want,{x:.3*memory.orbit,y:0});
   }
   // Home pulls harder the farther out we are.
-  const out=dist(at,anchor)-leash;
-  if(out>0)want=add(want,toward(at,anchor,Math.min(3,.5+out*.6)));
+  if(out>0||homing){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
   if(decision.mode==='fight'&&escorting)decision.mode='escort';
-  else if(decision.mode==='fight'&&dist(at,home)>leash+2)decision.mode='home';
-  decision.direction=norm(want);
+  else if(decision.mode==='fight'&&!prey&&dist(at,home)>leash+2)decision.mode='home';
+  // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
+  // the bot where it stands, instead of a full step one way and the other each think.
+  decision.direction=city&&Math.hypot(want.x,want.y)<HOLD_BELOW?{x:0,y:0}:norm(want);
   return finish(decision,input);
 }
 

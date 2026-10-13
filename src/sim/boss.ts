@@ -95,6 +95,11 @@ export interface BossOptions {
   scalePlayers?:(ctx:SimContext)=>number;
   tuning?:Partial<BossTuning>;
   /**
+   * × tuning.baseHp for this spawn, read once when the boss spawns (the city's team-size bossHp knob, cidade-11:
+   * assemble.ts). Absent, 1 or not a finite number > 0: the tuning as it is.
+   */
+  hpScale?:(ctx:SimContext)=>number;
+  /**
    * Walking direction around the map (same signature as EnemyAiOptions.steer; the city passes citySteer, cidade-05c):
    * writes a unit vector into `out` and returns true to replace the straight line to `target`. The boss keeps its own
    * collision (clearSegment with the axis slides). Absent (island, endless): the straight walk.
@@ -215,7 +220,9 @@ export function createBoss(options:BossOptions={}):BossController {
       return existing;
     }
     const players=[...ctx.players.values()].filter(inRun);
-    const maxHp=bossMaxHp(Math.max(players.length,options.scalePlayers?.(ctx)??0),tuning);
+    const hpScale=options.hpScale?.(ctx)??1;
+    const hpTuning=hpScale!==1&&hpScale>0&&Number.isFinite(hpScale)?{...tuning,baseHp:tuning.baseHp*hpScale}:tuning;
+    const maxHp=bossMaxHp(Math.max(players.length,options.scalePlayers?.(ctx)??0),hpTuning);
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.
     // Spots for enemy bodies use the enemy view (cidade-06): never inside a barricade disc.

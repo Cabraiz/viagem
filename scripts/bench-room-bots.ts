@@ -6,14 +6,21 @@
  */
 import {Room,type Peer} from '../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
+import {readFileSync} from 'node:fs';
+import {clientCatalog} from '../src/protocol/map-catalog.ts';
+import {readMapRef} from '../src/protocol/map-select.ts';
 
+/** join.maps of a current build (D-026): the endless map and the city of this checkout's manifest. */
+const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
+const maps=clientCatalog(readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash}));
 const seed=Number(process.argv[2]??4242),count=Math.max(0,Math.min(5,Number(process.argv[3]??5)));
 const messages:any[]=[];
 const peer:Peer={send:s=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};
 const say=(m:object,now:number)=>room.receive(peer,JSON.stringify(m),now);
-const room=new Room(0,seed,{lab:true});
+// The endless map, explicitly: the measure stays comparable whatever ROOM_DEFAULT_MAP becomes (cidade-10).
+const room=new Room(0,seed,{lab:true,map:'infinito'});
 let t=0;
-room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa parada',classId:'cidadao-comum'},t);
+room.connect(peer,t);say({t:'join',protocol:ROOM_PROTOCOL,name:'Pessoa parada',classId:'cidadao-comum',maps},t);
 for(let i=0;i<count;i++)say({t:'bot-add',round:1},t);
 say({t:'ready',round:1,ready:true},t);
 const ticks:number[]=[],thinks:number[]=[];

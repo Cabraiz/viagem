@@ -1,15 +1,26 @@
 // Manual check of a rooms Worker with six protocol clients (room protocol 6: JSON control + binary frames).
-// Usage: node --experimental-strip-types scripts/check-multiplayer.mjs <https endpoint> [origin] [--lab]
+// Usage: node --experimental-strip-types scripts/check-multiplayer.mjs <https endpoint> [origin] [--lab] [--map <id>]
 // Ported from the protocol 3 JSON script (E7-skill-hud-wiring, rodada 4); the frames are decoded with the client's own
 // decoder. --lab (a local Worker with ALLOW_LOCAL, npm run test:multiplayer:local) adds the run's end and the rematch
 // (NEW-20261006-E5-check-multiplayer-horde): the lab puts the whole team down, the room answers {t:'result'} with the
 // simulation's defeat, and the rematch starts a fresh run. A whole run played to its end is the bots' job (VGM-045,
 // scripts/bots/run.ts): it takes about 13 minutes.
+// Maps (D-026/D-035, cidade-10): every join sends `maps` like a current build (the endless map and the city of
+// public/maps/cidade-nevada.manifest.json), so a room on the city seats them. The room plays the Worker's default map
+// (ROOM_DEFAULT_MAP); --map <id> has the owner pick that map in the lobby first (the city only once it is playable).
 import WebSocket from 'ws';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {writeFile} from 'node:fs/promises';
 import {FrameDecoder,PROTOCOL_VERSION} from '../src/protocol/protocol4.ts';
-const args=process.argv.slice(2).filter(a=>a!=='--lab'),labMode=process.argv.includes('--lab');
+import {clientCatalog} from '../src/protocol/map-catalog.ts';
+import {isMapId,readMapRef} from '../src/protocol/map-select.ts';
+const argv=process.argv.slice(2),mapAt=argv.indexOf('--map'),wantMap=mapAt>=0?argv[mapAt+1]:undefined;
+if(mapAt>=0&&!isMapId(wantMap))throw new Error(`--map takes infinito or cidade-nevada, not ${wantMap}.`);
+const args=argv.filter((a,i)=>a!=='--lab'&&!(mapAt>=0&&(i===mapAt||i===mapAt+1))),labMode=argv.includes('--lab');
+const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
+const cityRef=readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash});
+const maps=clientCatalog(cityRef);
 const endpoint=args[0];if(!endpoint)throw new Error('Pass the multiplayer HTTPS endpoint.');
 const origin=args[1]??'https://viagem.cyou';
 const peers=[],checks=[];
@@ -19,7 +30,7 @@ async function create(){const r=await fetch(`${endpoint}/rooms`,{method:'POST',h
 function connect(code,name,token){
   const url=new URL(`/room/${code}`,endpoint);url.protocol=url.protocol==='https:'?'wss:':'ws:';
   const p={ws:new WebSocket(url,{origin}),dec:new FrameDecoder(),players:new Map(),enemies:new Map(),bytes:0,seq:0,code,decodeErrors:0,results:[],offersAnswers:0,notices:[]};peers.push(p);
-  p.ws.on('open',()=>p.ws.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION,name,classId:'cidadao-comum',...(token?{token}:{})})));
+  p.ws.on('open',()=>p.ws.send(JSON.stringify({t:'join',protocol:PROTOCOL_VERSION,name,classId:'cidadao-comum',maps,...(token?{token}:{})})));
   p.ws.on('error',e=>{p.error=e.message;});p.ws.on('close',(code)=>{p.closed=code;});
   p.ws.on('message',(data,binary)=>{
     p.bytes+=data.length;
@@ -33,7 +44,8 @@ function connect(code,name,token){
     }
     const m=JSON.parse(data);
     if(m.t==='error'){p.error=m.message;return;}
-    if(m.t==='welcome'){p.id=m.id;p.token=m.token;p.run=m.run;p.world=m.world;p.seq=m.ack??0;p.dec.reset();}
+    if(m.t==='welcome'){p.id=m.id;p.token=m.token;p.run=m.run;p.world=m.world;p.map=m.map;p.seq=m.ack??0;p.dec.reset();}
+    else if(m.t==='map'){p.map=m.map;p.world=m.world;}
     else if(m.t==='run'&&m.run)p.run=m.run;
     else if(m.t==='result')p.results.push(m);
     else if(m.t==='offers'){p.offersAnswers++;p.offers=m.offers;}
@@ -47,6 +59,16 @@ try{
   checks.push(`/health speaks room protocol ${PROTOCOL_VERSION}`);
   const code=await create(),group=Array.from({length:6},(_,i)=>connect(code,`Prova ${i+1}`));
   await until(()=>group.every(p=>p.id&&p.players.size===6),'six joined');checks.push('six WebSocket clients in one room, six players in every decoded frame');
+  checks.push(`the room opened on ${group[0].map?.id??'(no map in the welcome)'}`);
+  if(wantMap&&group[0].map?.id!==wantMap){
+    // The owner picks the map in the lobby; everyone gets the same {t:'map'} (or the owner hears why not).
+    const owner=group.find(p=>p.run?.owner===p.id);assert.ok(owner,'one of the six owns the room');
+    owner.ws.send(JSON.stringify({t:'setMap',map:wantMap}));
+    await until(()=>group.every(p=>p.map?.id===wantMap)||owner.notices.length>0,`switch to ${wantMap}`);
+    assert.ok(group.every(p=>p.map?.id===wantMap),`the room refused ${wantMap}: ${owner.notices.at(-1)}`);
+    await until(()=>group.every(p=>p.players.size===6),'six on the new map');
+    checks.push(`the owner switched the room to ${wantMap}, all six got the same {t:"map"}`);
+  }
   // The class kit's max hp as the room said it right after the welcome (cidadao-comum: 110), before any forged input.
   const startMaxHp=group[0].players.get(group[0].id).maxHp;assert.ok(startMaxHp>0);
   assert.ok(group[0].world?.signature);for(const p of group)assert.deepEqual(p.world,group[0].world);checks.push('all six receive identical world descriptor (seed, versions, signature)');
@@ -98,7 +120,7 @@ try{
     checks.push(`rematch run starts fresh: everyone standing at full hp (${startMaxHp}, as after the welcome)`);
   }
   assert.ok(group.every(p=>p.decodeErrors===0),'no frame failed to decode');checks.push('every frame decoded on all six clients');
-  const report={checkedAt:new Date().toISOString(),endpoint,origin,transport:'WebSocket',protocol:PROTOCOL_VERSION,clients:6,world:group[0].world,checks,incomingBytes:group.map(p=>p.bytes),
+  const report={checkedAt:new Date().toISOString(),endpoint,origin,transport:'WebSocket',protocol:PROTOCOL_VERSION,clients:6,map:group[0].map,world:group[0].world,checks,incomingBytes:group.map(p=>p.bytes),
     note:`Node protocol clients, not six phones or browser rendering.${labMode?' The run end is the lab\'s quick defeat;':''} whole runs: scripts/bots/run.ts (VGM-045).`};
   await writeFile('docs/multiplayer-websocket-proof.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{clearInterval(timer);for(const p of peers){if(p.ws.readyState===WebSocket.OPEN){p.ws.send(JSON.stringify({t:'leave'}));p.ws.close();}else if(p.ws.readyState!==WebSocket.CLOSED)p.ws.terminate();}}

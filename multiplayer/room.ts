@@ -4,7 +4,7 @@ import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoin
 import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
-import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
+import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
@@ -68,7 +68,10 @@ export interface RoomOptions {
   cityRef?:MapRef;
   /** Whether the owner may pick the city: CITY_PLAYABLE (false until cidade-10) unless a test says otherwise. */
   cityPlayable?:boolean;
-  /** The map a new room opens on (ROOM_DEFAULT_MAP); a city that cannot be played falls back to the endless map. */
+  /**
+   * The map a new room opens on: ROOM_DEFAULT_MAP unless the Worker (the lab pins the endless map) or a test says
+   * otherwise. A city that cannot be played here (locked, or no asset) falls back to the endless map, logged.
+   */
   map?:MapId;
 }
 /** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
@@ -89,7 +92,10 @@ export interface RoomRoster {
   botsAdded?:number;
   bans?:{hash:string;until:number}[];
   nameBans?:{name:string;until:number}[];
-  /** D-035 (optional): the map the owner picked, when it is not the endless default. */
+  /**
+   * D-035: the map the room plays, always written (the endless map too, so a room switched back to it stays there
+   * whatever ROOM_DEFAULT_MAP is). Rows from before cidade-10 have none: they were on the endless map.
+   */
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
@@ -117,7 +123,8 @@ export const ROSTER_BOTS_MS=1000;
  */
 export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
-export const ROOM_LIFETIME_MS=30*60_000;
+/** 50 min (D-043): a lobby plus the city's 25 min combat cap fit, with room for a rematch's countdown. */
+export const ROOM_LIFETIME_MS=50*60_000;
 /**
  * Autopilot slots (3g-rede-sem-teleporte): 7, 9, 11… — apart from the room bots' 0..5 (own gather node and think tick)
  * and odd, so the bot brain makes them roamers that follow the team, not wall guards.
@@ -264,15 +271,22 @@ export class Room {
   private target?:MapRef;
   /** Bumped by every switch: a waiting switch that finds a newer one when its decode lands gives way to it. */
   private mapGen=0;
+  /** A test/tool's explicit combat cap; otherwise the map decides (D-043). */
+  private fixedDuration:number|undefined;
+  private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
+    this.fixedDuration=options.durationTicks;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.log=options.log;
-    if(options.map!==undefined&&options.map!==ROOM_DEFAULT_MAP)this.openMap(options.map,'create');
+    // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
+    // The default needs the city asset (the Worker always passes it); a room built without it (tests, tools) is simply
+    // the endless map, without a fallback log. An explicit options.map still asks and logs when it can't be played.
+    const map=options.map??(this.cityText!==undefined?ROOM_DEFAULT_MAP:'infinito');if(map!=='infinito')this.openMap(map,'create');
   }
   /** The maps this room accepts: the endless one, and the city once it is playable and its asset was handed over. */
   private catalog(){return roomCatalog(this.cityText!==undefined?this.cityRef:undefined,this.cityPlayable);}
@@ -282,13 +296,15 @@ export class Room {
   private logMap(line:object){try{this.log?.(JSON.stringify({ev:'map',...line}));}catch{/* a log line never ends a room */}}
   /**
    * A room opened or restored on `id` (RoomOptions.map, the stored roster): the city only when this room may play it,
-   * else the endless map, logged; never a crash. False when it fell back.
+   * else the endless map, logged; never a crash. False when it fell back. Supersedes whatever the room was heading to
+   * (a restore after the constructor started the default city), and changes nothing when already going there.
    */
   private openMap(id:unknown,why:'create'|'restore'){
-    if(id==='infinito')return true;
-    const ref=isMapId(id)?this.catalog().get(id):undefined;
-    if(!ref){this.logMap({fallback:typeof id==='string'?id.slice(0,20):typeof id,why,to:'infinito'});return false;}
-    this.switchTo(ref);return true;
+    const ref=id==='infinito'?INFINITO_REF:isMapId(id)?this.catalog().get(id):undefined;
+    if(!ref)this.logMap({fallback:typeof id==='string'?id.slice(0,20):typeof id,why,to:'infinito'});
+    const to=ref??INFINITO_REF;
+    if(!sameMap(to,this.target??this.map))this.switchTo(to);
+    return ref!==undefined;
   }
   /** Who sits in the room, whether a run is going and how far it got, for storage (token hashes only). */
   roster():RoomRoster{
@@ -297,7 +313,7 @@ export class Room {
     const bots=[...this.sim.players.values()].filter(p=>this.sim.bots.has(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,slot:this.bots.slotOf(p.id)}));
     return {v:2,running,...(running?{lost:{round:w.round.index,level:w.team.level}}:{}),players:[...this.sim.players.values()].flatMap(p=>{
       const s=this.sessions.get(p.id);return s?[{id:p.id,name:p.name,classId:p.classId,tokenHash:s.hash,until:Number.isFinite(s.until)?s.until:null}]:[];
-    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{}),...(this.map.id!=='infinito'?{map:this.map.id}:{})};
+    }),...(this.owner?{owner:this.owner}:{}),...(bots.length?{bots}:{}),...(this.botsAdded?{botsAdded:this.botsAdded}:{}),...(bans.length?{bans}:{}),...(nameBans.length?{nameBans}:{}),map:this.map.id};
   }
   /**
    * A restarted Durable Object seats the stored roster again (VGM-047): same ids, token hashes and seat expiries
@@ -324,8 +340,9 @@ export class Room {
       this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
-    // D-035: the map the owner had picked; a city this room cannot play now comes back as the endless map (logged).
-    const kept=roster.map===undefined||this.openMap(roster.map,'restore');
+    // D-035: the map the owner had picked (a row from before cidade-10 names none: the endless map, whatever the
+    // default now is); a city this room cannot play now comes back as the endless map (logged).
+    const kept=this.openMap(roster.map??'infinito','restore');
     this.syncSpectators();const restored=this.roster();
     // Keyed as the stored row reads (it may still name a city that is decoding): a decode that lands writes nothing
     // new, while one that fails (or a newer pick of the endless map) differs from it and rewrites the row.
@@ -600,7 +617,7 @@ export class Room {
       next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
     }
     for(const id of old.shameOptOut)if(sim.players.has(id))sim.shameOptOut.add(id);
-    this.sim=sim;this.map=ref;
+    this.sim=sim;this.map=ref;this.run.setDurationTicks(this.durationFor(ref));
     this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
     for(const c of this.connections.values())c.encoder?.resync();
     this.run.resetReady();this.syncSpectators();this.rosterDirty=true;

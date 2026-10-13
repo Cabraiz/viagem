@@ -8,7 +8,7 @@
 .coop-nick{margin-top:14px;text-align:left}.coop-nick>div{display:flex;gap:8px}.coop-nick input{letter-spacing:0;font-size:var(--t-16)}.coop-lobby button.coop-nick-roll{flex:none;width:auto;margin-top:0;padding:0 14px;border-color:var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel);white-space:nowrap}
 .coop-lobby button.coop-nick-roll:active{transform:rotate(-8deg) scale(.96)}
 .coop-wait{position:absolute;z-index:var(--z-hud);top:max(122px,calc(env(safe-area-inset-top) + 114px));left:50%;transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100% - 32px));max-height:calc(100% - 300px);overflow:auto;padding:14px;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-lilas);color:var(--c-papel);font:700 14px/1.3 var(--f-sistema);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);pointer-events:auto;text-align:center}
-.coop-wait[hidden]{display:none}
+.coop-wait[hidden]{display:none!important}
 .coop-wait-code{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap}.coop-wait-code small{font-size:var(--t-13);color:var(--c-papel)}.coop-wait-code strong{font:400 var(--t-28)/1 var(--f-cartaz);color:var(--c-papel);font-variant-numeric:tabular-nums}
 .coop-wait button{min-height:44px;border-radius:var(--r-janela);font:800 14px/1.2 var(--f-sistema);cursor:pointer}
 .coop-wait-share{padding:0 14px;border:2px solid var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel);box-shadow:var(--s-1)}
@@ -152,6 +152,11 @@
 .coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
 /* Rosto da pessoa à esquerda do nome (rostos-hud): círculo de 24 px com filete Breu, dentro da altura do chip (32/48 px). */
 .coop-wait-members .coop-wait-face{width:24px;height:24px;margin:-2px 2px -2px 0;box-shadow:0 0 0 1px var(--c-breu)}
+/* Pré-carga da partida: anel enchendo em volta do próprio rosto (--preload 0..1); some quando o essencial (P0) chegou. */
+.coop-wait-members .coop-wait-ring{display:inline-grid;place-items:center;flex:none;padding:3px;margin:-5px 2px -5px -3px;border-radius:50%;
+  background:conic-gradient(var(--c-amarelo) calc(var(--preload,0)*360deg),color-mix(in srgb,var(--c-breu) 22%,transparent) 0)}
+.coop-wait-members .coop-wait-ring>.coop-wait-face{margin:0}
+.coop-wait-members .coop-wait-ring[data-done]{background:none}
 /* Troca de dono: faixa Breu de 4 s acima dos nomes ("Bia saiu. Agora quem manda é Caio."). */
 .coop-wait-owner{margin:6px 0;padding:8px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:700 var(--t-13)/1.3 var(--f-sistema)}
 .coop-wait-owner[hidden]{display:none}

@@ -20,7 +20,8 @@ import {cityTerrainFrom,type CityTerrain} from '../../src/maps/city/terrain.ts';
 import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {prizeBlocks} from '../../src/sim/assemble.ts';
-import {ENEMIES,isFlying} from '../../src/sim/enemies/catalog.ts';
+import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
+import {ROSTER} from '../../src/rules/index.ts';
 import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DEFENSE,TIER_BUILD_SECONDS,TIER_COST,childrenOf,payUnits,phaseOf,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {defensePhase,defensesStep,radarBonus,type DefenseState} from '../../src/sim/towers/system.ts';
@@ -113,7 +114,19 @@ test('catalog: the tree of 08-TORRES §3 with its ids, parents, costs and sizes'
   for(const id of ['rojao-de-festa','morteiro','lanca-foguetes','obuseiro','gustavao','arame-e-sirene'] as DefenseId[])assert.equal(DEFENSES[id].hits,'ground',id);
   assert.ok(DEFENSES.gustavao.cooldown>=ticks(15)&&DEFENSES.gustavao.area>=5,'the Gustavão fires rarely, with a huge area');
   assert.equal(isFlying(enemy('p',0,0,{kind:'pombos'})),true);
-  assert.deepEqual(Object.values(ENEMIES).filter(e=>e.flying).map(e=>e.id),['pombos'],'the pombos are the flyers today');
+  assert.deepEqual(Object.values(ENEMIES).filter(e=>e.flying).map(e=>e.id),['pombos'],'the pombos are the flyers of the nine');
+  // The roster (D-040/D-041): flying is per entry, every voador and the two aerial swarms (the mosquito, the hovering
+  // thumbs-up); the other enxames walk like the pombos without flying.
+  const FLYERS=['pombos','barata-voadora','balao-rancoroso','bot-de-curtida','ex-que-voltou','drone-ansioso','pombo-tres-cabecas',
+    'urubu-fiscal','pernilongo-vampiro','morcego-insone'];
+  assert.deepEqual(ROSTER.filter(r=>r.flying).map(r=>r.id),FLYERS,'the flying list');
+  for(const e of ROSTER)assert.equal(isFlying(enemy('r',0,0,{kind:e.id})),FLYERS.includes(e.id),`${e.id} (${e.role})`);
+  for(const e of ROSTER.filter(r=>r.role==='voador'))assert.ok(e.flying,`${e.id}: every voador flies`);
+  assert.ok(ROSTER.some(r=>r.role==='enxame'&&!r.legacy&&!r.flying),'some enxames stay on the ground');
+  assert.ok(ROSTER.some(r=>r.role==='voador'&&r.priority==='P0'));
+  const air=DEFENSES['antiaerea-quadrupla'],ground=DEFENSES.morteiro,flyer=enemy('v',0,0,{kind:'barata-voadora'}),walker=enemy('w',0,0,{kind:'rato-de-boteco'});
+  assert.equal(enemyDef('barata-voadora').behavior,'swarm','movement unchanged');
+  assert.deepEqual([air.hits,ground.hits,isFlying(flyer),isFlying(walker)],['air','ground',true,false]);
 });
 
 test('catalog: branch picks (root A/B/C, A3 → A4 or the alternative A4b, single children by default)',()=>{
@@ -363,6 +376,22 @@ test('combat: C2 slows and dazzles (deterministic), C3 scratches and slows the g
   assert.ok(ctx.enemies.get('g')!.slowUntil!>ctx.tick);assert.equal(ctx.enemies.get('bird')!.slowUntil,undefined);assert.equal(ctx.enemies.get('out')!.slowUntil,undefined);
 });
 
+test('combat: the roster flyers (a voador, the two aerial swarms) are hit by anti-air and the Vigia, never by ground fire',()=>{
+  const FLY=['barata-voadora','pernilongo-vampiro','bot-de-curtida'],WALK='rato-de-boteco';
+  assert.ok(!isFlying(enemy('w',0,0,{kind:WALK})));
+  const place=(ctx:FakeCtx,d:{x:number;y:number},dx:number)=>{
+    FLY.forEach((kind,i)=>ctx.enemies.set(`f${i}`,enemy(`f${i}`,d.x+dx+i*.3,d.y,{kind,hp:500,maxHp:500})));
+    ctx.enemies.set('w',enemy('w',d.x+dx+.15,d.y+.2,{kind:WALK,hp:500,maxHp:500}));
+  };
+  const air=armed('antiaerea-quadrupla',['C',undefined,undefined]);place(air.ctx,air.d,2);defensesStep(air.ctx,air.sys.state);
+  assert.deepEqual(dmg(air.ctx).map(e=>e.target).sort(),['f0','f1','f2'],'anti-air: the three flyers, not the walker');
+  const ground=armed('morteiro',['B',undefined]);place(ground.ctx,ground.d,5);defensesStep(ground.ctx,ground.sys.state);
+  assert.deepEqual(dmg(ground.ctx).map(e=>e.target),['w'],'the mortar: the walker only, the flyers pass over');
+  const all=armed('vigia-do-predio',[]);
+  all.ctx.enemies.set('f',enemy('f',all.d.x+3,all.d.y,{kind:'pernilongo-vampiro'}));defensesStep(all.ctx,all.sys.state);
+  assert.deepEqual(dmg(all.ctx).map(e=>e.target),['f'],"the Vigia ('all') hits a flyer");
+});
+
 test('combat: C4 anti-air hits only the flyers; C5 radar gives the defenses around it more range',()=>{
   const {ctx,sys,d}=armed('antiaerea-quadrupla',['C',undefined,undefined]);
   ctx.enemies.set('walker',enemy('walker',d.x+1,d.y));
@@ -445,4 +474,16 @@ test('the island is untouched: no sites, every build refused, no defenses key, s
   assert.equal('defenses' in sys.state,false);
   assert.deepEqual(JSON.stringify(sys.state),JSON.stringify(plain.state));
   assert.deepEqual(structureTargets(sys.state),[{id:'muralha',x:sys.state.wall.x,y:sys.state.wall.y,radius:sys.state.wall.radius}]);
+});
+
+test('torre-contador-de-tiros: every volley counts (mod 256), also at a target that never moves; no volley, no count',()=>{
+  const {ctx,sys,d}=armed('vigia-do-predio',[]);
+  ctx.enemies.set('e1',enemy('e1',d.x+3,d.y,{hp:1e6,maxHp:1e6}));
+  at(ctx,d.readyTick,'prepare');defensesStep(ctx,sys.state);
+  assert.equal(d.shots,undefined,'nothing fired: no counter yet');
+  at(ctx,d.readyTick,'wave');
+  const cd=DEFENSES['vigia-do-predio'].cooldown,aims=new Set<number>();
+  for(let i=0;i<300;i++){ctx.tick=d.readyTick+i*cd;defensesStep(ctx,sys.state);aims.add(d.aim!);}
+  assert.equal(aims.size,1,'the target never moved: the aim alone would show one shot');
+  assert.equal(d.shots,300%256,'300 volleys, mod 256');
 });

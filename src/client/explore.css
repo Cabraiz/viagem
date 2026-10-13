@@ -16,6 +16,9 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-stick.is-dragging{cursor:grabbing;background:color-mix(in srgb,var(--c-papel-claro) 19%,transparent)}
 .explore-stick.is-dragging span{background:color-mix(in srgb,var(--c-papel-claro) 69%,transparent)}
 .explore-stick:not(.is-dragging) span{transition:transform .1s ease-out}
+/* Desktop (controles-desktop, D-044): WASD, the arrows or a click walk; no joystick in any phase, so the useful area
+   (zones.ts measures it missing) is the same in the waiting room and in the round. A finger brings it back. */
+.explore-shell[data-input=mouse] .explore-stick{display:none}
 .explore-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--c-papel);background:var(--c-lilas);z-index:4;text-align:center;padding:30px}
 .explore-loading[hidden]{display:none}
 .explore-paused::after{content:'Controles pausados. Mexe o joystick pra voltar.';position:absolute;top:20%;left:50%;transform:translateX(-50%);max-width:80%;width:max-content;padding:10px 16px;border-radius:var(--r-ficha);border:2px solid var(--c-papel);background:var(--c-ficha);color:var(--c-papel);font-size:14px;text-align:center;pointer-events:none}

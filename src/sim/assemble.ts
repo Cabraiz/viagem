@@ -8,7 +8,7 @@ import type {SimContext,SimSystem} from './context.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
-import {createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
+import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
 import {BOSS_TUNING,createBoss,type BossController,type BossState} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
@@ -64,6 +64,11 @@ export interface RunSystemsOptions {
    * CITY_BALANCE; ignored on the island and in the endless world.
    */
   cityBalance?:CityBalance;
+  /**
+   * D-040: the run's rotation of 12-18 roster entries (DirectorOptions.rotation, rules/enemy-rotation.ts). Default true;
+   * false plays the round table's nine kinds (tests that pin the old composition).
+   */
+  rotation?:boolean;
   /**
    * A room checkpoint (E5-checkpoint-por-round): the systems resume from this state (RunSystems.state() of the run that
    * was cut, taken at a round's intermission) instead of starting fresh. The world must already hold the checkpoint's
@@ -179,6 +184,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
     structures:()=>structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount)=>{stonewards.hit(ctx,id,amount);},
+    // Invocador (D-040): the round's corredores and enxames, spawned and tracked by the director as round members.
+    minionKinds:()=>director?.minionKinds()??MINION_KINDS,
+    summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
   });
   if(cp)enemyAi.restore(cp.enemyAi);
   const boss=createBoss({
@@ -205,6 +213,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       zueira.roundEnded(ctx,summary,director!.state.roundStart);
     },
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
+    rotation:options.rotation??true,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
     // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);

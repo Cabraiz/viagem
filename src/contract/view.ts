@@ -14,7 +14,9 @@ export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;
  * pronta, danificada, ruina, and `aim` where it last fired, in turns 0..1 of a circle from +x).
  */
 export interface StructureView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;untilTick?:number;
-  tier?:number;branch?:string;phase?:string;aim?:number}
+  tier?:number;branch?:string;phase?:string;aim?:number;
+  /** A defense's volleys, mod 256 (torre-contador-de-tiros): a change is a shot. */
+  shots?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

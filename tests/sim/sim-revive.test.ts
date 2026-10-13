@@ -309,7 +309,7 @@ test('downed names the kind of the enemy that dealt the last hit (UX-voce-e-dano
 
 test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceite: 100% of downed)',async()=>{
   const {Simulation}=await import('../../multiplayer/simulation.ts');
-  const {CAUSE_KINDS}=await import('../../src/client/hud/cause.ts');
+  const {CAUSE_COPY,causeCopy}=await import('../../src/client/hud/cause.ts');
   for(const seed of [7,12345,0x042a5eed]){
     const sim=new Simulation(seed);
     const ids=Array.from({length:6},(_,i)=>`bot${i}`);
@@ -320,6 +320,7 @@ test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceit
     const downs:{source?:string}[]=[];
     for(let t=0;t<ticks(240)&&downs.length<6;t++){disarm();for(const e of sim.step())if(e.type==='downed')downs.push(e);}
     assert.ok(downs.length>=3,`seed ${seed}: only ${downs.length} downed`);
-    for(const d of downs)assert.ok((CAUSE_KINDS as readonly string[]).includes(d.source??''),`seed ${seed}: downed without a kind: ${JSON.stringify(d)}`);
+    // Any critter the HUD can name: the nine and every roster entry of the D-040 rotation (never the 'bichos' fallback).
+    for(const d of downs)assert.ok(d.source!==undefined&&causeCopy(d.source)!==CAUSE_COPY.bichos,`seed ${seed}: downed without a kind: ${JSON.stringify(d)}`);
   }
 });

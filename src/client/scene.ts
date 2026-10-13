@@ -15,6 +15,7 @@ import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,
 import {HordeRenderer} from './render/layers.ts';
 import {queueHordeArt} from './art/horde-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
+import {ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
@@ -131,6 +132,8 @@ export class IslandScene extends Phaser.Scene {
   private destination!:Graphics;
   /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
   private artMarks?:SceneMarks;
+  /** Imported ally ground rings (art/hud-art.ts); without the art, each ally's Breu ellipse. */
+  private allyRings?:AllyRings;
   private goal?:Point;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
@@ -263,6 +266,8 @@ export class IslandScene extends Phaser.Scene {
     // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
     const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
     this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
+    const rings=this.allyRings=new AllyRings(this,tokenColor('--c-breu')),dropRings=()=>{rings.destroy();if(this.allyRings===rings)this.allyRings=undefined;};
+    this.events.once('shutdown',dropRings);this.events.once('destroy',dropRings);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
@@ -596,7 +601,13 @@ export class IslandScene extends Phaser.Scene {
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
     if(!isEnemyKind(kind))return undefined;
     let url=this.icons.get(kind);
-    if(url===undefined){const key=enemyTexture(kind);url=this.textures.exists(key)?this.textures.getBase64(key):'';if(url)this.icons.set(kind,url);}
+    if(url===undefined){
+      // Imported art first (art/hud-art.ts: the ui icon, else the enemy sheet's still frame); none or not loaded: today's.
+      const art=critterIconSource(kind);
+      if(art&&'url' in art)url=art.url;
+      else{const own=art&&this.textures.exists(art.key)?art:undefined,key=enemyTexture(kind);url=own?this.textures.getBase64(own.key,own.frame):this.textures.exists(key)?this.textures.getBase64(key):'';}
+      if(url)this.icons.set(kind,url);
+    }
     return url||undefined;
   }
   /**
@@ -698,7 +709,7 @@ export class IslandScene extends Phaser.Scene {
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom;
@@ -716,6 +727,9 @@ export class IslandScene extends Phaser.Scene {
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
+      // Imported ring (the "Você" ring tinted Breu) at today's outer width and depth: the ellipse hides while it draws.
+      if(this.allyRings?.draw(player.id,q.x,q.y,ALLY_RING_WIDTH*k,depth-1,time,this.reduced))objects.ring.setVisible(false);
+      else if(!objects.ring.visible)objects.ring.setVisible(true);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).

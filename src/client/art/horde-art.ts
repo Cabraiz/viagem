@@ -36,10 +36,10 @@ export const enemyArtKey=(id:string,file:string,page=0,pages=1)=>`art:enemy:${id
  *   into a canvas under today's key at today's size: pickups and FX are drawn at their texture size, and the
  *   shadow/bars scale by fixed constants.
  * Either way textures.ts's `exists(key)` check then skips the procedural drawing.
- * Not mapped: the hostile star (no piece in the inventory), the life bars (9-slice; today they stretch by scale) and
- * per-resource pickups (today one generic 'resource' texture: only the generic 'recurso' may replace it, never a
- * coconut or a stone). Per-source projectiles (each weapon, the agiota's boleto) load under their own key
- * (projectileArtKey, see projectileLook); 'tiro-aliado' stays here as the look of a friendly shot without its own art.
+ * Not mapped: the hostile star (its look is the per-source 'tiro-inimigo', HOSTILE_SHOT_ART), the life bars (9-slice;
+ * today they stretch by scale) and per-resource pickups (today one generic 'resource' texture: only the generic
+ * 'recurso' may replace it, never a coconut or a stone). Per-source projectiles (each weapon, the agiota's boleto)
+ * load under their own key (projectileArtKey, see projectileLook); 'tiro-aliado' stays here as the look of a friendly shot without its own art.
  */
 export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mode:'sheet'|'bake';size?:readonly [number,number];fit?:'contain'|'fill'}
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
@@ -64,10 +64,14 @@ export const STATIC_ART:readonly StaticArt[]=[
  * projectile) and the anão's bottle and the pigeon's poop, which today are telegraphs, not projectiles (aliases below,
  * in case a source ever carries them). Each one present in the manifest loads under its own key `art:proj:<id>`;
  * absent, the shot keeps today's key (keys.ts projectileTexture), so no art = the same textures as before.
+ * The sim fires no other hostile shot today (src/sim/enemies/ai.ts: only AGIOTA_SHOT); any other hostile source (a newer
+ * server, the sandboxes) is today's star (FX.projHostile), whose look is HOSTILE_SHOT_ART under `art:proj:tiro-inimigo`.
  */
 export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov'] as const;
 export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
-export const HOSTILE_PROJECTILE_IDS=['boleto-juros','coco-pombo'] as const;
+/** The shared look of a hostile shot without its own art (the friendly one is 'tiro-aliado'). */
+export const HOSTILE_SHOT_ART='tiro-inimigo';
+export const HOSTILE_PROJECTILE_IDS=['boleto-juros','coco-pombo',HOSTILE_SHOT_ART] as const;
 /** Every `projeteis` id with its own key ('tiro-aliado' is not one: it is the shared friendly look, STATIC_ART). */
 export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS];
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
@@ -111,6 +115,8 @@ export function projectileLook(hostile:boolean,source:string):ProjectileLook|und
   const id=projectileArtId(source),own=id!==undefined?projectileFile(id):undefined;
   if(own)return lookOf(own,PROJECTILE_KEYS.get(id as string) as string);
   if(!hostile){const shared=projectileFile('tiro-aliado');if(shared)return lookOf(shared,FX.projFriendly);}
+  // Hostile without its own art: the shared critter shot under its own key (a failed load keeps today's star).
+  else{const shared=projectileFile(HOSTILE_SHOT_ART);if(shared)return lookOf(shared,PROJECTILE_KEYS.get(HOSTILE_SHOT_ART) as string);}
   return undefined;
 }
 /**

@@ -410,6 +410,26 @@ function seamProblems(img,label,problems,{wrap='xy',alpha=false}={}){
   if(wrap.includes('x'))axis(true);
   if(wrap.includes('y'))axis(false);
 }
+/** pt-BR side of the image for a direction from its centre (8 sectors, screen y down). */
+const SIDES=['à direita','no canto inferior direito','embaixo','no canto inferior esquerdo','à esquerda','no canto superior esquerdo','em cima','no canto superior direito'];
+/**
+ * Circle-cropped pieces (rostos): every drawn pixel (alpha > ALPHA_THRESHOLD) must have its centre inside the central
+ * circle of diameter `diameter`; one message with the count, the farthest distance and where they sit.
+ */
+export function circleProblems(img,label,problems,diameter){
+  const cx=img.width/2,cy=img.height/2,r=diameter/2,where=new Set();
+  let outside=0,far=0;
+  for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++){
+    if(img.data[(y*img.width+x)*4+3]<=ALPHA_THRESHOLD)continue;
+    const dx=x+.5-cx,dy=y+.5-cy,d=Math.hypot(dx,dy);
+    if(d<=r)continue;
+    outside++;far=Math.max(far,d);
+    where.add(SIDES[(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8]);
+  }
+  if(!outside)return;
+  const sides=SIDES.filter(s=>where.has(s));
+  problems.push(`${label}: ${outside} ${outside===1?'pixel desenhado':'pixels desenhados'} fora do círculo central de ${diameter} px (${list(sides)}; o mais longe a ${Math.round(far-r)} px além da borda do círculo). O jogo recorta o rosto em círculo e isso sumiria. Traga o desenho (cabelo, chapéu, ombros) para dentro do círculo de ${diameter} px centrado na imagem ${img.width}×${img.height} e deixe o resto transparente.`);
+}
 function expectedCell(sc,spec,label,problems){
   if(sc.cell===undefined)return;
   if(!isPair(sc.cell)){problems.push(`${label}: cell ${json(sc.cell)} inválido; use [largura,altura] em px inteiros, como [128,128].`);return null;}
@@ -429,6 +449,9 @@ async function validateOneFile(spec,id,files,ctx,r){
   const base=files[0]?relName(ctx,path.join(path.dirname(files[0]),stem)):id;
   const bad=id.split('/').filter(part=>!ID_PATTERN.test(part));
   if(bad.length)problems.push(`${base}.png: nome ${list(bad.map(b=>`"${b}"`))} inválido. Use só letras minúsculas sem acento, números e hífen (ex.: cidade-nevada/neve-fofa-1).`);
+  // Groups with a closed id list (rostos: class × expression) refuse any other name before reading the image.
+  const idProblem=!bad.length&&spec.checkId?.(id);
+  if(idProblem){problems.push(`${base}.png: ${idProblem}`);return {kind:spec.kind};}
   const sideLabel=`${base}.json`;
   const sc=withExpected(spec,id,await readSidecar(side,sideLabel,problems),sideLabel,problems);
   if(sc.meta)r.meta=sc.meta;
@@ -469,9 +492,11 @@ async function validateOneFile(spec,id,files,ctx,r){
     if(img.width!==s||img.height!==s){problems.push(sizeProblem(label,img,s,s,'ícone quadrado',`Exporte o ícone em ${s}×${s}.`));return {kind};}
     const opaque=checkBool(sc.opaque,'opaque',sideLabel,problems)??spec.opaque?.[stem]??false;
     if(opaque===null)return {kind};
-    // A full-bleed opaque icon (the app icon): only the size counts, no transparency nor margin rule.
-    if(opaque){sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});return {kind};}
+    // A full-bleed opaque icon (the app icon): only the size counts, no transparency nor margin rule. Never for a
+    // circle-cropped group (rostos): its corners must stay empty.
+    if(opaque&&!spec.circle){sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});return {kind};}
     if(!checkTransparent(img,label,problems))return {kind};
+    if(spec.circle)circleProblems(img,label,problems,spec.circle);
     checkGrid(problems,label,img,{cw:s,ch:s,cols:1,rows:1,colName:()=>'ícone'});
     sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});
     return {kind};

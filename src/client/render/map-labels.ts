@@ -8,7 +8,8 @@ import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 
 import {LABEL_CSS,labelScale} from './map-label-rules.ts';
-import {dropSlice,hideSlice,placeSlice,sliceArt,sliceFor} from '../art/frames-art.ts';
+import {dropSlice,hideSlice,placeSlice,sliceFor} from '../art/frames-art.ts';
+import {labelPlaque} from '../art/hud-art.ts';
 export {LABEL_CSS,allyLabelText,labelScale,mapLabelVisible,placeYieldsToSos,railName,shortName} from './map-label-rules.ts';
 export type {AllyStatus,LabelKind} from './map-label-rules.ts';
 
@@ -28,8 +29,9 @@ export class MapLabel {
   readonly screen={x:0,y:0,shown:false,sos:false};
   private readonly colors={breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone')};
   /**
-   * `place`: a street or place name, drawn on the imported plaque (art/frames-art.ts `plaquinha`, 9-slice) when it is
-   * in; ally names and the caído ficha keep today's ficha.
+   * `place`: a street or place name. Place and ally names are drawn on the imported plaque (art/frames-art.ts
+   * `plaquinha`, 9-slice) when it is in (the inventory has no ally variant, so allies reuse it); the caído (SOS) ficha
+   * keeps today's ficha, its boia and Cone ring.
    */
   constructor(private scene:Phaser.Scene,label:string,private readonly place=false){
     this.text=scene.add.text(0,0,label,{fontFamily:token('--f-sistema'),fontSize:`${LABEL_CSS*RASTER}px`,fontStyle:'700',color:token('--c-papel')}).setOrigin(.5,0);
@@ -49,8 +51,8 @@ export class MapLabel {
   draw(zoom:number,visible:boolean){
     const tag=this.sos;
     this.text.setVisible(visible);this.plate.setVisible(visible);
-    const plaque=this.place&&!tag?sliceArt('plaque'):undefined;
-    if(this.place&&(!visible||!plaque))hideSlice(this);
+    const plaque=labelPlaque(this.place?'place':'ally',tag);
+    if(!visible||!plaque)hideSlice(this);
     const cam=this.scene.cameras.main;
     this.screen.shown=visible;this.screen.sos=visible&&!!tag;this.screen.x=(this.x-cam.worldView.x)*zoom;this.screen.y=(this.y-cam.worldView.y)*zoom;
     if(!visible)return;

@@ -114,7 +114,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
   input=path.resolve(input??process.env.ARTE_ENTRADA??DEFAULT_INPUT);
   const info=await stat(input).catch(()=>undefined);
   if(!info?.isDirectory()){
-    const error=new Error(`Pasta de entrada não encontrada: ${input}. Crie a pasta com as subpastas da entrega (inimigos/, personagens/, cenario/, itens/, projeteis/, efeitos/, ui/) ou indique outra com --input <pasta> ou a variável ARTE_ENTRADA.`);
+    const error=new Error(`Pasta de entrada não encontrada: ${input}. Crie a pasta com as subpastas da entrega (inimigos/, personagens/, cenario/, itens/, projeteis/, efeitos/, ui/, rostos/) ou indique outra com --input <pasta> ou a variável ARTE_ENTRADA.`);
     error.code='ARTE_ENTRADA_AUSENTE';throw error;
   }
   const selected=Array.isArray(groups)?Object.fromEntries(groups.map(g=>{if(!GROUPS[g])throw new Error(`grupo desconhecido: ${g}`);return [g,GROUPS[g]];})):groups;

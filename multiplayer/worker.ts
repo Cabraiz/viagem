@@ -1,7 +1,15 @@
 import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOptions, type RoomRoster } from './room.ts';
-import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,readMapRef,type MapRef} from '../src/protocol/index.ts';
+import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
+/** The largest create body read (bytes): {"map":"cidade-nevada","solo":true} is 37. */
+const CREATE_BODY_MAX=256;
+/** sala-solo-privada: what a create asks, from an optional small JSON body (or a stored row); anything else is dropped. */
+export function createOptions(v:unknown):RoomCreateOptions{
+  const o=v as {map?:unknown;solo?:unknown}|null;
+  if(!o||typeof o!=='object')return {};
+  return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{})};
+}
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
@@ -52,7 +60,12 @@ export default {
       if(!limit.success)return Response.json({error:'Aguarde um minuto antes de criar outra sala.'},{status:429,headers});
       const code=crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
-      await stub.init(code);return Response.json({code},{status:201,headers});
+      // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada).
+      let asked:RoomCreateOptions={};
+      // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
+      const length=Number(request.headers.get('content-length')??'0');
+      if(length>0&&length<=CREATE_BODY_MAX)try{asked=createOptions(JSON.parse(await request.text()));}catch{/* junk: a plain room */}
+      await stub.init(code,asked);return Response.json({code},{status:201,headers});
     }
     // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.
     const lab=url.pathname.match(/^\/lab\/([A-F0-9]{10})$/);
@@ -77,6 +90,8 @@ export class GameRoom extends DurableObject<Env>{
    * touching the constants.
    */
   private defaults:Pick<RoomOptions,'map'|'cityPlayable'>={map:ROOM_DEFAULT_MAP};
+  /** sala-solo-privada: what this room was created with (map, solo), kept in storage for a restart. */
+  private asked:RoomCreateOptions={};
   /** The room code (stored at init) and creation time: this room's row in the RoomIndex. */
   private code?:string;
   private created=0;
@@ -116,12 +131,15 @@ export class GameRoom extends DurableObject<Env>{
    * A new room (POST /rooms). A room on the city waits for it to decode before anyone is seated (like load()): the
    * first welcome already names the city, with no {t:'map'} right after it. The code goes back only after this.
    */
-  async init(code?:string){
+  async init(code?:string,asked:RoomCreateOptions={}){
     this.city??=await loadCity();
     if(await this.ctx.storage.get('created'))return;
     const now=Date.now(),seed=randomSeed();
-    this.code=code;this.created=now;
-    await this.ctx.storage.put({created:now,terrainSeed:seed,...(code?{code}:{})});
+    this.code=code;this.created=now;this.asked=createOptions(asked);
+    const row:Record<string,unknown>={created:now,terrainSeed:seed};
+    if(code)row.code=code;
+    if(Object.keys(this.asked).length)row.options=this.asked;
+    await this.ctx.storage.put(row);
     const room=this.create(now,seed);
     await (this.loading=room.ready().then(()=>this.room=room));
     await this.ctx.storage.setAlarm(now+ROOM_LIFETIME_MS+60_000);
@@ -141,9 +159,11 @@ export class GameRoom extends DurableObject<Env>{
     // E5-checkpoint-por-round: the run at each round's intermission, in its own row (the roster links it).
     const onCheckpoint=(checkpoint:RoomCheckpoint)=>{void this.ctx.storage.put('checkpoint',checkpoint);this.checkpointStored=true;};
     const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
-    if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults});
+    // sala-solo-privada: the map it was opened on and a solo room, as created (the defaults otherwise).
+    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{})};
+    if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
-    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
+    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
   }
   /**
    * A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. A run that
@@ -154,6 +174,7 @@ export class GameRoom extends DurableObject<Env>{
     return this.loading??=(async()=>{
       this.city??=await loadCity();
       this.code??=await this.ctx.storage.get<string>('code');this.created=created;
+      this.asked=createOptions(await this.ctx.storage.get('options'));
       const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
       const roster=await this.ctx.storage.get<RoomRoster>('roster');
       if(roster)room.restore(roster);

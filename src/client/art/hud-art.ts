@@ -54,7 +54,10 @@ type Image=Phaser.GameObjects.Image;
  */
 export class AllyRings {
   private readonly images=new Map<string,Image>();
-  constructor(private readonly scene:Phaser.Scene,private readonly tint:number){}
+  // Plain fields (no parameter properties): npm test strips types only (node --experimental-strip-types).
+  private readonly scene:Phaser.Scene;
+  private readonly tint:number;
+  constructor(scene:Phaser.Scene,tint:number){this.scene=scene;this.tint=tint;}
   /** Ring of ally `id` with its centre on (x, y), `width` world px wide (today's outer width), at `depth`. */
   draw(id:string,x:number,y:number,width:number,depth:number,now:number,reduced:boolean):boolean{
     const art=allyRingArt();

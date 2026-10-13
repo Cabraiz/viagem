@@ -14,3 +14,33 @@
 .portrait{position:relative;will-change:transform}.portrait-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}img.class-art{display:block;min-width:0;object-fit:contain}
 /* Changed from the carousel with the catalog off-screen, the pressed state flips without a fade (two 140 ms repaint runs per class change). */
 .class-list[data-quiet] .class-card{transition:none}
+/* Character chosen (BUG-20261013-ORQ-confirmacao-70h): at most 70% of the screen height, never a scrollbar. Portrait,
+   name and the class with its suit in one compact block; one primary, one secondary, "Voltar" as a link. */
+#confirmation{max-height:70dvh;overflow:hidden;padding:20px 20px 8px;width:min(420px,calc(100vw - 28px))}
+#confirmation .chosen-card{display:flex;align-items:center;gap:14px;text-align:left;margin:0 36px 0 0;min-width:0}
+#confirmation .chosen-card .class-art{flex:none;width:clamp(64px,17dvh,128px);height:clamp(64px,17dvh,128px);margin:0}
+#confirmation .chosen-id{min-width:0}
+#confirmation #chosen-name{display:block;font:400 var(--t-21)/1.1 var(--f-cartaz);color:var(--c-papel-claro);overflow-wrap:anywhere}
+#confirmation #chosen-class{margin:6px 0 0;font-size:12px;line-height:1.5}
+#confirmation .chosen-role{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;padding:3px 10px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);font-size:10px;font-weight:800;box-shadow:0 2px 0 var(--c-breu);margin-right:4px}
+#confirmation .save-status{font-size:11px;margin:8px 0 0}
+#confirmation .save-status:empty,#confirmation .explore-error:empty{display:none}
+#confirmation .chosen-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+#confirmation .chosen-actions>button{width:100%;margin:0}
+.secondary-button{min-height:44px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:transparent;color:var(--c-papel-claro);font-weight:800;padding:10px 20px;font-size:var(--t-13);white-space:nowrap}
+.link-button{min-height:44px;border:0;background:none;color:var(--c-papel);text-decoration:underline;font-size:12px;font-weight:700;padding:8px 12px}
+@media (max-height:520px){#confirmation .chosen-actions{flex-direction:row}#confirmation .chosen-actions>button{flex:1;width:auto}}
+#confirmation .suit{display:block;width:14px;height:14px;flex:none}
+#confirmation .suit-espadas{fill:var(--c-breu)}
+#confirmation .suit-paus{fill:var(--arte-azul-sombra)}
+#confirmation .suit-copas,#confirmation .suit-ouros{fill:var(--arte-vermelho)}
+/* "Jogar sozinho" and its bots stepper share one row (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): no height added, so
+   the dialog stays within 70dvh. Short landscape: the three controls side by side in a wider dialog. */
+#confirmation .solo-row{display:flex;align-items:stretch;gap:8px;min-width:0}
+#confirmation .solo-row #enter-island{display:block;flex:1;min-width:0;width:auto;margin:0;padding:10px 12px}
+#confirmation .solo-bots{flex:none;display:flex;align-items:center;gap:2px;padding:0 2px 0 10px;border:2px solid var(--c-papel);border-radius:var(--r-janela);color:var(--c-papel-claro)}
+#confirmation .solo-bots[hidden]{display:none}
+#confirmation .solo-bots-title{font-size:11px;font-weight:800}
+#confirmation .solo-bots-step{width:36px;min-height:40px;padding:0;border:0;background:none;color:inherit;font:900 var(--t-21)/1 var(--f-sistema)}
+#confirmation .solo-bots-value{min-width:2ch;text-align:center;font-weight:900;font-size:var(--t-16)}
+@media (max-height:520px){#confirmation{width:min(560px,calc(100vw - 28px));max-width:min(560px,calc(100vw - 28px))}#confirmation .solo-row{flex:1.6}}

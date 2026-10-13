@@ -12,7 +12,16 @@
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {CHUNK_CELLS,ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
-import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
+import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim,type ShadowLook} from './decor.ts';
+import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.ts';
+
+/**
+ * Lighting card (render/light.ts): with the light on, cast shadows as long as the sun says (×0.75: the city's blocks are
+ * tall; the sun is ~40° up) at its opacity, and building art tinted warm on the sun side, cold on the shade side.
+ */
+const LIGHT=lightEnabled();
+const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha}):undefined;
+const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
 import {ART_CELL,fountainLot,planHasArt,planLots,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
@@ -22,6 +31,7 @@ import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} fro
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
+import {cliffCells,withoutCliffs} from './relevo/field.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -155,6 +165,8 @@ export class CityLayer {
   private readonly still=reducedMotion();
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
+  /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
+  private readonly cliffs?:Uint8Array;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -162,13 +174,19 @@ export class CityLayer {
     this.depthOf=options.depthOf??(k=>k);
     const res=options.groundResolution;
     this.groundResolution=res!==undefined&&Number.isFinite(res)&&res>0?Math.min(res,4):GROUND_RESOLUTION;
-    this.index=buildChunks(asset);
-    this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
-    for(const b of asset.blocks)this.blocks.set(b.id,b);
+    // With the relief shader the WC3 cliff lines are rock slopes painted on the ground (relevo/shader.ts), not boxes:
+    // they get no pieces, columns, fades or ground decor (cidade-caixas-de-cliff). The flat ground (?relevo=0, Canvas)
+    // keeps them.
+    const relief=reliefEnabled(scene);
+    const drawn=relief?withoutCliffs(asset):asset;
+    if(relief)this.cliffs=cliffCells(asset);
+    this.index=buildChunks(drawn);
+    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
+    for(const b of drawn.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
-      for(const b of asset.blocks)for(const lot of planLots(b,art)){
+      for(const b of drawn.blocks)for(const lot of planLots(b,art)){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
       this.fountain=fountainLot(asset,art);
@@ -188,7 +206,7 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
-    if(reliefEnabled(scene))this.relief=new CityRelief(scene,asset,this.pivot);
+    if(relief)this.relief=new CityRelief(scene,asset,this.pivot);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
@@ -404,7 +422,7 @@ export class CityLayer {
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=this.scene.textures.getFrame(m.key,m.frame);
     const a=buildingAnchor(m.a,m.b,m.frame,frame.width,frame.height,cell);
-    const obj=this.scene.add.image(at.x,at.y,m.key,m.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(this.depthOf(key));
+    const obj=sunTint(this.scene.add.image(at.x,at.y,m.key,m.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(this.depthOf(key)));
     const fade=`s:${block.id}`,column:ColumnRef={key,occ:occluderFor(block,this.asset,base,view,this.pivot),fade};
     for(let j=block.y;j<block.y+block.h;j++)for(let i=block.x;i<block.x+block.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
     return {blockId:block.id,key,fade,obj};
@@ -421,7 +439,7 @@ export class CityLayer {
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=buildingFrame(view,lot.turns,this.materials.frames(s.key));
     const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth,s.frameHeight,ART_CELL);
-    const obj=this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key));
+    const obj=sunTint(this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key)));
     const box:CityBlock={id:lot.id,kind:'building',x:lot.x,y:lot.y,w:lot.w,h:lot.h,height:lot.height};
     const fade=`l:${lot.id}`,column:ColumnRef={key,occ:occluderFor(box,this.asset,base,view,this.pivot),fade};
     // The see-through tests the sheet's own height (a ruin draws lower than its block).
@@ -446,13 +464,14 @@ export class CityLayer {
     for(const q of quads)if(!painted.has(q.kind)){const k=this.materials.ground(q.kind);if(k)painted.set(q.kind,k);}
     // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
     const decor:DecorPrim[]=[];
-    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind))
+    const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
+    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
-    const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot);
+    const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
 
     const box=boundsOf(quads.flatMap(q=>q.points));
     let s=this.groundResolution;
@@ -502,7 +521,7 @@ export class CityLayer {
     let glintCells=0;
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
-      if(!this.materials.decorOver(kind))continue;
+      if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
       let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);

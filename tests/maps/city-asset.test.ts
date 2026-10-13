@@ -906,7 +906,9 @@ test('access: heightAt outside the map never throws', (t)=>{
 // =====================================================================
 // Performance (≤ 50 ns per query in node)
 // =====================================================================
-test('perf: walkable / walkableAt / height / heightAt ≤ 50 ns per query on the full city', (t)=>{
+// D-031: a wall-clock limit, so it only runs with BENCH=1 (it failed under 100% CPU with several executors):
+//   BENCH=1 node --experimental-strip-types --test tests/maps/city-asset.test.ts
+test('perf: walkable / walkableAt / height / heightAt ≤ 50 ns per query on the full city (BENCH=1 only)', {skip:process.env.BENCH!=='1'&&'bench: run with BENCH=1 (D-031)'}, (t)=>{
   const {asset}=full();
   const N=1<<20,MASK=N-1,PASSES=6;
   const rnd=lcg(7);
@@ -938,6 +940,7 @@ test('perf: walkable / walkableAt / height / heightAt ≤ 50 ns per query on the
     report.push(`${name}: ${best.toFixed(2)} ns/query (best of 3 × ${N*PASSES/1e6}M)`);
   }
   t.diagnostic(report.join(' | ')+` (sink ${Number.isFinite(sink)?'ok':'nan'})`);
+  console.log(`[bench] city-asset queries: ${report.join(' | ')}`);
   for(const [name,ns] of Object.entries(results))assert.ok(ns<=50,`${name}: ${ns.toFixed(2)} ns/query > 50`);
 });
 

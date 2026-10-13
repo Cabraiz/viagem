@@ -12,6 +12,7 @@ import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,download
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader} from './preload/preloader.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
+import {soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -219,7 +220,9 @@ export const REARM_MS=1500;
 export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'|'setMap'|'map'|'mapLoad'|'classId'>>,
   options:{origin?:string;now?:()=>number;cityPlayable?:boolean;
     /** false: no pre-download of the match's art (and no ready gate on it). */
-    preload?:boolean}={}){
+    preload?:boolean;
+    /** "Jogar sozinho": the room is driven by itself (the city, the bots, "pronto" when the gate opens); no invite. */
+    solo?:SoloPlan}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
   // The match's art, downloaded while the room waits (NEW-20261013-ORQ-3g-precarga-partida, preload/): the list follows
@@ -252,6 +255,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       say(`Código: ${client.code}`);
     }
   });
+  if(options.solo)shareButton.hidden=true;
+  let soloMem=soloMemory();
   const readyButton=$<HTMLButtonElement>('.coop-wait-ready');
   let lastView:WaitingView|undefined;
   readyButton.addEventListener('click',()=>client.ready(!lastView?.selfReady));
@@ -394,6 +399,14 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       if(panel.dataset.preloadBytes!==bytes)panel.dataset.preloadBytes=bytes;
     }
     readyButton.disabled=!client.connected||!!blocked;
+    if(options.solo&&!soloMem.done){
+      const step=soloNext(options.solo,{connected:client.connected,phase:client.run?.phase,owner:view.canManage,map:roomMap,
+        bots:view.members.filter(m=>m.bot).length,seatsLeft:view.seatsLeft,selfReady:view.selfReady,readyBlocked:!!blocked},soloMem,now());
+      soloMem=step.mem;
+      if(step.action==='map')client.setMap?.(options.solo.map);
+      else if(step.action==='bot')client.addBot?.();
+      else if(step.action==='ready')client.ready(true);
+    }
     setText(readyButton,blocked??(view.selfReady?'Ops, peraí':'Tô pronto!'));
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
     readyButton.classList.toggle('is-ready',view.selfReady);
@@ -516,4 +529,41 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   for(const b of actionButtons())b.disabled=false;
   status.textContent=endpoint?'':'As salas ainda não estão disponíveis neste endereço.';
   if(options.autoJoin&&endpoint&&codeInput.value)void enter(false);
+}
+/** How long "Jogar sozinho" waits for the city's manifest (a few bytes): the solo match is on the city, so it needs it. */
+export const SOLO_MANIFEST_MS=8000;
+export const SOLO_TEXT={noRooms:'As partidas ainda não estão disponíveis neste endereço.',noCity:'A cidade não baixou. Tente novamente.'} as const;
+/**
+ * "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): creates a room, joins it with the city in join.maps and
+ * opens the match shell with the waiting room driving itself (setMap city, the bots, ready). `onJoined` closes the
+ * confirmation dialog only once the room is joined, so an error before that shows under its buttons (the caller
+ * catches it). The room's own countdown starts the match.
+ */
+export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void}){
+  const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
+  const loadManifest=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
+  const manifest=loadManifest().catch(()=>undefined);
+  const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
+  if(!endpoint)throw new Error(SOLO_TEXT.noRooms);
+  const cityRef=await within(manifest,SOLO_MANIFEST_MS);
+  if(!cityRef)throw new Error(SOLO_TEXT.noCity);
+  const plan=soloPlan(options.bots),nick=name.trim().slice(0,NICK_MAX)||'Capivara Veloz';
+  let client:CoopClient|undefined;
+  try{
+    const r=await fetch(new URL('/rooms',endpoint),{method:'POST',signal:AbortSignal.timeout(10000)});const data=await r.json();
+    if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
+    client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();
+    const {openExploration}=await import('./explore.ts');
+    options.onJoined?.();
+    const joined=client;
+    const opening=openExploration(hero,nick,joined);
+    const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
+    if(layout)mountWaitingRoom(layout,joined,{solo:plan});
+    await opening;
+  }catch(e){
+    // A stale chunk with the reload underway: the resume comes back to this room (same rule as openLobby).
+    if(chunkFailed(e)&&reloadUnderway())return;
+    const fatal=client?.fatal;client?.leave();
+    throw fatal?new Error(fatal):e;
+  }
 }

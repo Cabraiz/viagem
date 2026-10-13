@@ -93,6 +93,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
     net.onForged=answer=>hud?.forged(answer);
+    // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
+    net.onEmote=note=>hud?.emote(note.player,note.id);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
     if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{

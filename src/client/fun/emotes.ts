@@ -22,6 +22,21 @@ export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from '../../
 export const BALLOON_MS=2200;
 export const isEmoteId=(value:unknown):value is EmoteId=>typeof value==='string'&&EMOTES.some(e=>e.id===value);
 export const emoteDef=(id:EmoteId)=>EMOTES.find(e=>e.id===id)!;
+/** An emote relayed by the room (rostos-kkkk): who sent it and which one. */
+export interface EmoteNote {player:string;id:EmoteId}
+/** Longest player id accepted from the wire (the same bound as parseSos). */
+export const EMOTE_PLAYER_MAX=64;
+/**
+ * Reads a {t:'emote',player,id,round?} message strictly: a non-empty player id up to 64 chars, a known emote id and,
+ * when present, a whole round >= 0. Anything else (forged, oversized, unknown emote) is null and is ignored.
+ */
+export function parseEmote(m:unknown):EmoteNote|null{
+  if(m===null||typeof m!=='object')return null;
+  const {t,player,id,round}=m as Record<string,unknown>;
+  if(t!=='emote'||typeof player!=='string'||player.length===0||player.length>EMOTE_PLAYER_MAX||!isEmoteId(id))return null;
+  if(round!==undefined&&!(Number.isSafeInteger(round)&&(round as number)>=0))return null;
+  return {player,id};
+}
 
 
 /** Per-player anti-spam (2 s). The client greys the button; the room (VGM-043) can drop floods with the same rule. */

@@ -2,6 +2,7 @@
  * Pure HUD model (VGM-040): derives display data from RunView without touching the DOM,
  * so it can be unit-tested under node. DOM parts in this folder consume these helpers.
  */
+import type {EmoteId} from '../fun/emotes.ts';
 import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
@@ -29,6 +30,8 @@ export interface HudContext {
   worldRescue?:boolean;
   /** Sticker of a critter kind (data URL of the horde atlas texture), for "what got you"; undefined = text only. */
   critterIcon?(kind:string):string|undefined;
+  /** The emote a player is showing now (rostos-kkkk: KKKK puts the `rindo` face on the team strip); undefined = none. */
+  mood?(playerId:string):EmoteId|undefined;
 }
 
 /** Common shape of every DOM part of the HUD. */

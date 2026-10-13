@@ -200,7 +200,7 @@ test('wiring: team strip, result cards, edge arrows and lobby chips draw faces t
   // Team strip: the face replaces the full-body <img>; the ring, the badge and the state filters stay.
   assert.match(team,/faceImg\(document,player\.classId,\{className:'rh-member-img'/);
   assert.match(team,/setFace\(nodes\.face,player\.classId,\{expression/);
-  assert.match(team,/faceExpression\(\{hp:player\.hp,maxHp:player\.maxHp,downed:!!player\.downed,eliminated:player\.eliminated\}\)/);
+  assert.match(team,/faceExpression\(\{hp:player\.hp,maxHp:player\.maxHp,downed:!!player\.downed,eliminated:player\.eliminated,emote:ctx\.mood\?\.\(player\.id\)\}\)/);
   assert.doesNotMatch(team,/el\('img','rh-member-img'/);
   assert.match(team,/el\('div','rh-member-ring',item\)/);
   // Result card: face with the run's outcome.

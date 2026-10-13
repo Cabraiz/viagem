@@ -18,6 +18,8 @@ import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts
 import type {RecipeId} from '../../rules/index.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
+import {MoodBoard} from './moods.ts';
+import type {EmoteId} from '../fun/emotes.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
 import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
@@ -77,6 +79,8 @@ export class RunHud {
   private readonly parts:HudPart[];
   private readonly result;
   private readonly ctx:HudContext;
+  /** Who is laughing now (rostos-kkkk): fed by emote(), read by the team strip through ctx.mood. */
+  readonly moods=new MoodBoard();
   private last?:RunView;
   private readonly stack:HTMLElement;
   /** The shell's quiet rows (queueRow): one at a time in the announcement slot. */
@@ -134,7 +138,7 @@ export class RunHud {
   private objectiveWant?:CityObjective;private objectiveRect?:Rect;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
-    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue};
+    this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
     this.el=document.createElement('div');
     this.el.className='rh';
     this.el.setAttribute('aria-label','Placar da partida');
@@ -226,6 +230,8 @@ export class RunHud {
   }
   /** The connection notice is up (reconnecting): the city minimap's marks stay still at 50% with sem-linha (B13). */
   get offline(){return !!this.ctx.network;}
+  /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
+  emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}
 
   update(view:RunView){
     this.last=view;

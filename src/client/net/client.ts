@@ -9,7 +9,7 @@ import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher} from '../../protocol/index.ts';
-import {parseSos,type SosPing} from '../fun/emotes.ts';
+import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
@@ -247,6 +247,8 @@ export class CoopClient {
   lastCast?:{seq:number;ok:boolean;readyTick:number};
   /** "Me salva" pings relayed by the room (UX-resgate-e-ping), the local player's own included. */
   onSos:(ping:SosPing)=>void=()=>{};
+  /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
+  onEmote:(e:EmoteNote)=>void=()=>{};
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
   /**
@@ -440,6 +442,7 @@ export class CoopClient {
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
+    else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
     // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.

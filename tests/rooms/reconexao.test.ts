@@ -171,7 +171,7 @@ test('restart of the room mid-run: everyone comes back to the start of the round
   assert.equal(checkpoints.length,1,'one checkpoint so far: the round-2 intermission (round 1 has none)');
   const cp=checkpoints[0],roster=writes.at(-1)!;
   assert.equal(cp.v,CHECKPOINT_V);assert.equal(cp.round,2);assert.equal(cp.tick,w.tick);
-  assert.deepEqual(roster.checkpoint,{round:2,tick:cp.tick},'the roster row of the new round links it (no extra roster row)');
+  assert.deepEqual(roster.checkpoint,{round:2,tick:cp.tick,run:cp.run.round},'the roster row of the new round links it (no extra roster row)');
   assert.ok(!JSON.stringify(cp).includes(welcome(a).token),'no plain token in the checkpoint either');
   const level=w.team.level,builds=buildsOf(room),wall=room.sim.run.stonewards.state.wall.hp,run=room.run.snapshot();
   assert.ok(level>1,'the team levelled up in round 1');
@@ -192,7 +192,7 @@ test('restart of the room mid-run: everyone comes back to the start of the round
   const news=back.messages.filter(m=>m.t==='notice');
   assert.deepEqual(news.map(m=>[m.kind,m.title,m.body]),[['resumed',resumedNotice(2).title,resumedNotice(2).body]]);
   assert.match(news[0].title,/recomeçando o Round 2/);assert.doesNotMatch(news[0].message,/se perdeu/);
-  assert.equal(rows.at(-1)?.running,true);assert.deepEqual(rows.at(-1)?.checkpoint,{round:2,tick:cp.tick},'the roster says running again, same link');
+  assert.equal(rows.at(-1)?.running,true);assert.deepEqual(rows.at(-1)?.checkpoint,{round:2,tick:cp.tick,run:cp.run.round},'the roster says running again, same link');
   restarted.disconnect(back,t+=50);const again=peer();join(restarted,again,'Ana',t+=50,welcome(a).token);
   assert.deepEqual(again.messages.filter(m=>m.t==='notice'),[],'said once');
   const bia=peer();join(restarted,bia,'Bia',t+=50,welcome(b).token);assert.equal(bia.messages.filter(m=>m.t==='notice')[0]?.kind,'resumed');
@@ -270,4 +270,25 @@ test('the roster is written only when it changes, never per message or tick',()=
   let t=1100;for(let i=0;i<100;i++){say(room,a,{t:'ping',at:i},t);room.advance(t+=50);}
   assert.equal(rows,1,'pings and lobby ticks write nothing');
   room.disconnect(a,t);room.advance(t+=50);assert.equal(rows,2,'the seat expiry changed');
+});
+
+test('checkpoint review: after a restart the event ids start above anything the crashed room handed out; a map switch carries them on',()=>{
+  const f=round2??=playToRound2(),{room,writes,checkpoints}=f,before=room.sim.world.lastEventId;
+  assert.ok(before>0);
+  const t=f.t,restarted=new Room(1000,4242,{});
+  restarted.restore(writes.at(-1)!,t);assert.equal(restarted.resume(checkpoints[0]),true);
+  restarted.afterRestart(t);
+  assert.ok(restarted.sim.world.lastEventId>=before,'raised past the last id of the crashed room');
+  assert.ok(restarted.sim.world.lastEventId>=(t-1000)*50,'by the age of the room: whatever the crashed room emitted after its checkpoint');
+  // Lobby fallback too: a restart with no checkpoint raises them the same way.
+  const lobby=new Room(1000,4242,{});lobby.restore(writes.at(-1)!,t);lobby.resume(undefined);lobby.afterRestart(t);
+  assert.ok(lobby.sim.world.lastEventId>=before);
+});
+
+test('checkpoint review: a resume that throws on the stored data ends in the lobby, never half-loaded',()=>{
+  const f=round2??=playToRound2(),{writes,checkpoints}=f;
+  const restarted=new Room(1000,4242,{});restarted.restore(writes.at(-1)!,f.t);
+  (restarted.sim as any).resume=()=>{throw new Error('bad state');};
+  assert.equal(restarted.resume(checkpoints[0]),false);
+  assert.equal(restarted.run.snapshot().phase,'lobby');
 });

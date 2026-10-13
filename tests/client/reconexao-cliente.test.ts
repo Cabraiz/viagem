@@ -131,7 +131,7 @@ test('client: after a restart of the room mid-run the player is back in combat a
     for(let i=0;i<40&&ana.connected;i++)await sleep(10);
     const w=first.sim.world;let t=Date.now();
     for(let i=0;i<20*180&&!(w.round.index===CHECKPOINT_FROM_ROUND&&w.round.phase==='prepare');i++)first.advance(t+=50);
-    assert.equal(first.run.snapshot().phase,'combat');assert.equal(checkpoint?.round,CHECKPOINT_FROM_ROUND);assert.deepEqual(roster?.checkpoint,{round:checkpoint!.round,tick:checkpoint!.tick});
+    assert.equal(first.run.snapshot().phase,'combat');assert.equal(checkpoint?.round,CHECKPOINT_FROM_ROUND);assert.deepEqual(roster?.checkpoint,{round:checkpoint!.round,tick:checkpoint!.tick,run:checkpoint!.run.round});
     // Deploy: a new object from the stored roster and checkpoint; the phone's network comes back.
     const next=new Room(created,4242);next.restore(roster!);assert.equal(next.resume(checkpoint),true);
     const shown:string[]=[];ana.onResumed=news=>shown.push(news.title);

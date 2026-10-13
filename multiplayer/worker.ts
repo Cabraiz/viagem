@@ -160,10 +160,13 @@ export class GameRoom extends DurableObject<Env>{
       // A room restored on the city waits for it to decode before anyone is seated again.
       await room.ready();
       if(roster?.running===true){
-        const checkpoint=await this.ctx.storage.get<RoomCheckpoint>('checkpoint');
-        this.checkpointStored=checkpoint!==undefined;
-        if(roster.checkpoint)room.resume(checkpoint);
+        try{
+          const checkpoint=await this.ctx.storage.get<RoomCheckpoint>('checkpoint');
+          this.checkpointStored=checkpoint!==undefined;
+          if(roster.checkpoint)room.resume(checkpoint);
+        }catch{/* storage failed: today's lobby (room.resume never throws) */}
       }
+      if(roster)room.afterRestart();
       return this.room=room;
     })();
   }

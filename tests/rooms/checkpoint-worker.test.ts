@@ -53,7 +53,7 @@ test('Worker: the checkpoint has its own row, linked from the roster; a restarte
   const {store,created,room,a,t}=await firstObject();
   const cp=store.data.get('checkpoint') as RoomCheckpoint,roster=store.data.get('roster') as RoomRoster;
   assert.ok(cp,'the checkpoint row');assert.equal(cp.round,CHECKPOINT_FROM_ROUND);
-  assert.deepEqual(roster.checkpoint,{round:cp.round,tick:cp.tick});assert.equal(roster.running,true);
+  assert.deepEqual(roster.checkpoint,{round:cp.round,tick:cp.tick,run:cp.run.round});assert.equal(roster.running,true);
   assert.equal(JSON.stringify(roster).length<2000,true,'the roster row stays small: the run is not in it');
   // Deploy: a new object on the same storage.
   const next=gameRoom(store),restored=await next.load(created) as Room;

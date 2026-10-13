@@ -19,7 +19,7 @@ test('the resumed news shows once: the field read when the match opens and the m
 
 test('the match wires it: the client\'s onResumed and its stored notice go to the HUD slot (queueRow) for RESUMED_ROW_MS',()=>{
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.match(explore,/net\.onResumed=showResumed;showResumed\(net\.resumedNotice\);/);
+  assert.ok(explore.includes('net.onResumed=news=>{skill?.reset();showResumed(news);};if(net.resumedNotice)skill?.reset();showResumed(net.resumedNotice);'),'the news goes to the slot, and the skill button forgets its pre-crash answer (review)');
   assert.match(explore,/runHud\.queueRow\(resumedRow,RESUMED_ROW_MS\)/);
   assert.match(explore,/textContent=news\.title[^]*textContent=news\.body/,'text, never HTML');
 });

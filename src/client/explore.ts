@@ -199,7 +199,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const resumedRow=document.createElement('div');resumedRow.className='economy-toast resumed-toast';resumedRow.setAttribute('role','status');resumedRow.hidden=true;
     resumedRow.innerHTML='<p class="economy-toast-text"><strong></strong><span></span></p>';
     const showResumed=resumedOnce(news=>{resumedRow.querySelector('strong')!.textContent=news.title;resumedRow.querySelector('span')!.textContent=news.body;runHud.queueRow(resumedRow,RESUMED_ROW_MS);});
-    net.onResumed=showResumed;showResumed(net.resumedNotice);
+    // The run came back from an older moment: the skill button's last answer (from before the crash) no longer holds.
+    net.onResumed=news=>{skill?.reset();showResumed(news);};if(net.resumedNotice)skill?.reset();showResumed(net.resumedNotice);
   }
   const syncTurn=()=>{
     const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);

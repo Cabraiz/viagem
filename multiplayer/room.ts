@@ -95,7 +95,7 @@ export interface RoomRoster {
    * E5-checkpoint-por-round: the checkpoint this run stored last (its round and tick), only while running. A restart
    * resumes a stored checkpoint only when it is this one: an older row (a write that failed, or another run's) is ignored.
    */
-  checkpoint?:{round:number;tick:number};
+  checkpoint?:{round:number;tick:number;run?:number};
   /** tokenHash = sha256(token); until = seat expiry of an offline player (null: connected when saved). */
   players:{id:string;name:string;classId:string;tokenHash:string;until:number|null}[];
   /** D-025 (optional, older rows have none): the owner, the room bots (seat slot), bots added so far, kicked seats. */
@@ -138,8 +138,10 @@ export interface RoomCheckpoint {
   sim:SimCheckpoint;
 }
 const linkOf=(v:unknown)=>{
-  const l=v as {round?:unknown;tick?:unknown}|undefined;
-  return l&&typeof l==='object'&&Number.isSafeInteger(l.round)&&Number.isSafeInteger(l.tick)?{round:l.round as number,tick:l.tick as number}:undefined;
+  const l=v as {round?:unknown;tick?:unknown;run?:unknown}|undefined;
+  // run (review): the run counter too, so two runs of one room (the tick starts over) never share a link.
+  return l&&typeof l==='object'&&Number.isSafeInteger(l.round)&&Number.isSafeInteger(l.tick)
+    ?{round:l.round as number,tick:l.tick as number,...(Number.isSafeInteger(l.run)?{run:l.run as number}:{})}:undefined;
 };
 const classIds=new Set(classes.map(c=>c.id));
 /** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
@@ -167,6 +169,8 @@ export const ROSTER_BOTS_MS=1000;
 export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 /** 50 min (D-043): a lobby plus the city's 25 min combat cap fit, with room for a rematch's countdown. */
+/** No room emits this many events per ms (20 ticks/s: 2 500 per tick): the floor of event ids after a restart. */
+const EVENTS_PER_MS_CEIL=50;
 export const ROOM_LIFETIME_MS=50*60_000;
 /**
  * Autopilot slots (3g-rede-sem-teleporte): 7, 9, 11… — apart from the room bots' 0..5 (own gather node and think tick)
@@ -291,9 +295,9 @@ export class Room {
   private resumedRun=new Map<string,number>();
   private readonly onCheckpoint?:(checkpoint:RoomCheckpoint)=>void;
   /** The checkpoint this run stored last (RoomRoster.checkpoint); cleared when the combat ends. */
-  private checkpointRef?:{round:number;tick:number};
+  private checkpointRef?:{round:number;tick:number;run?:number};
   /** The checkpoint the restored roster linked (restore), which resume() accepts; used once. */
-  private restoredRef?:{round:number;tick:number};
+  private restoredRef?:{round:number;tick:number;run?:number};
   /**
    * The owner ("chefe da sala", D-025): the first person seated, then the oldest person left when the owner leaves for
    * good (leave, seat expired). A short drop changes nothing. Only the owner's kick and bot commands are accepted.
@@ -349,7 +353,11 @@ export class Room {
   /** The maps this room accepts: the endless one, and the city once it is playable and its asset was handed over. */
   private catalog(){return roomCatalog(this.cityText!==undefined?this.cityRef:undefined,this.cityPlayable);}
   /** Resolves once no map switch is waiting for the city to decode (the Durable Object awaits it after a restore). */
-  async ready(){while(this.switching)await this.switching;}
+  async ready(){
+    while(this.switching)await this.switching;
+    // The checkpoint fingerprint's throwaway run (50-130 ms once per process and map) is built here, not inside a tick.
+    try{this.sim.freshShape();}catch{/* built (or not) on the first checkpoint instead */}
+  }
   /** One JSON line about the map (fallbacks, decode failures) for `wrangler tail`; without a sink (tests, lab) nothing. */
   private logMap(line:object){try{this.log?.(JSON.stringify({ev:'map',...line}));}catch{/* a log line never ends a room */}}
   /**
@@ -418,13 +426,23 @@ export class Room {
    * whose simulation part checks out; otherwise false and the room stays as restore() left it (lobby, 'restarted').
    */
   resume(checkpoint:unknown):boolean{
+    // Never a half-loaded run (review): anything that throws on the stored data ends in today's lobby.
+    try{return this.resumeChecked(checkpoint);}
+    catch(e){try{this.sim.resetRun();}catch{/* the lobby's next run starts over anyway */}this.logCheckpoint({fallback:'throw',error:String(e).slice(0,120)});return false;}
+  }
+  /**
+   * After a restart (worker load, resumed or not): event ids jump past anything the crashed process could have handed
+   * out (EVENTS_PER_MS_CEIL per ms of the room's life), or the phones would drop the new events as already seen.
+   */
+  afterRestart(now=Date.now()){this.sim.world.raiseEventSeq(Math.max(0,now-this.createdAt)*EVENTS_PER_MS_CEIL);}
+  private resumeChecked(checkpoint:unknown):boolean{
     const ref=this.restoredRef;this.restoredRef=undefined;
     const fallback=(why:string)=>{this.logCheckpoint({fallback:why});return false;};
     if(!ref)return fallback('no-link');
     const cp=checkpoint as Partial<RoomCheckpoint>|undefined;
     if(!cp||typeof cp!=='object')return fallback('missing');
     if(cp.v!==CHECKPOINT_V)return fallback('version');
-    if(cp.round!==ref.round||cp.tick!==ref.tick)return fallback('stale');
+    if(cp.round!==ref.round||cp.tick!==ref.tick||(ref.run!==undefined&&cp.run?.round!==ref.run))return fallback('stale');
     const map=readMapRef(cp.map);
     if(this.switching||!map||!sameMap(map,this.map))return fallback('map');
     const run=cp.run;
@@ -458,7 +476,7 @@ export class Room {
     let size=Infinity;try{size=JSON.stringify(cp).length;}catch{/* not JSON-safe: not stored */}
     if(size>CHECKPOINT_MAX_BYTES){this.logCheckpoint({skipped:Number.isFinite(size)?size:'json',round:cp.round});return;}
     try{this.onCheckpoint(cp);}catch{return;}
-    this.checkpointRef={round:cp.round,tick:cp.tick};
+    this.checkpointRef={round:cp.round,tick:cp.tick,run:cp.run.round};
   }
   /** Something stored in the roster changed (seat, expiry, combat start/end, round): flush at the end of this call. */
   private rosterDirty=false;
@@ -730,6 +748,8 @@ export class Room {
       next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
     }
     for(const id of old.shameOptOut)if(sim.players.has(id))sim.shameOptOut.add(id);
+    // The event ids go on from the old simulation's (phones drop an id they already saw).
+    sim.world.raiseEventSeq(old.world.lastEventId);
     this.sim=sim;this.map=ref;this.run.setDurationTicks(this.durationFor(ref));
     this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
     for(const c of this.connections.values())c.encoder?.resync();

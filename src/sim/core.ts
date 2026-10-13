@@ -170,6 +170,13 @@ export class SimWorld implements SimContext {
   }
 
   emit(event:SimEvent){this.queue.push({...event,eventId:++this.eventSeq});}
+  /** The last event id handed out (a new Simulation carries it on, so phones never see an id again). */
+  get lastEventId(){return this.eventSeq;}
+  /**
+   * Event ids from here on start above `min` (checkpoint-por-round review): a restarted room cannot know the last id
+   * the crashed process handed out, and phones drop any id they saw (FrameDecoder keeps them across a welcome).
+   */
+  raiseEventSeq(min:number){if(Number.isFinite(min))this.eventSeq=Math.max(this.eventSeq,Math.floor(min));}
 
   /** Advances one tick: runs registered systems in order and returns this tick's events. */
   step(){

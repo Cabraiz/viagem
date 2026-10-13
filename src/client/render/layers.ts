@@ -26,6 +26,7 @@ import {token,tokenColor} from '../ui/tokens.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
+import {sunlit} from './light-actors.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -76,7 +77,11 @@ export interface HordeRendererOptions{
 interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
-  phase:number;flashAt:number;flashing:boolean;screenX:number;flip:boolean;moving:boolean;
+  phase:number;flashAt:number;flashing:boolean;
+  /** The sun tint (render/light.ts ACTOR_TINT) is on: set once per spawn and after each hit flash. */
+  lit:boolean;
+  /** The flip the sun tint was set for (a flipped sprite needs its corners swapped). */
+  litFlip:boolean;screenX:number;flip:boolean;moving:boolean;
   /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
   bossPhase:number;
   /** What EnemyView.phase shows on a regular critter (phase-look.ts: acting pose, lecture ring, buff, reflect, headlight). */
@@ -299,10 +304,10 @@ export class HordeRenderer{
       showImage(o,active);o.shadow.setVisible(active).setActive(active);
       if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
     };
-    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);}};
+    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -446,7 +451,8 @@ export class HordeRenderer{
     else{a.px=a.x;a.py=a.y;}
     // A pooled actor may come back as another kind: its accent tint follows (the hit flash owns the tint while it lasts).
     const tint=fallbackTint(view.kind);
-    if(used.fresh||a.tint!==tint){a.tint=tint;if(!a.flashing){if(tint===undefined)a.image.clearTint();else a.image.setTint(tint);}}
+    // A new accent re-lights the actor on its next frame (sunlit multiplies the light by the roster accent).
+    if(used.fresh||a.tint!==tint){a.tint=tint;a.lit=false;}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
@@ -665,7 +671,7 @@ export class HordeRenderer{
     a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx*body,sy*body).setRotation(rotation).setFlipX(a.flip);
     const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
-    if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else if(a.tint!==undefined)a.image.setTint(a.tint);else a.image.clearTint();}
+    if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image,a.tint);}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
     if(!applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines)&&outlines){

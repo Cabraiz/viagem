@@ -3,6 +3,13 @@
 // D-022 (tropical claro): the scene palette below recolors the approved materials by their luminance.
 // Island: one bake of the whole map, field texture 129² every 0.25 u from -4. Endless world (terreno-em-blocos): one bake
 // per screen tile, field texture 32² every 0.5 u on the global chunk lattice (tiles.ts), trail in the blue channel.
+import {SUN_VIEW,gradeGlsl,lightEnabled} from '../render/light.ts';
+
+/**
+ * Lighting card: with the light on, the scene's one sun (render/light.ts), fixed on the screen like the city's: `rot`
+ * turns it with the view into field space. `?luz=0`: the old field-space sun (it turned with the view).
+ */
+const SUN=lightEnabled()?`normalize(vec3(rot(vec2(${SUN_VIEW[0].toFixed(5)},${SUN_VIEW[1].toFixed(5)})),${SUN_VIEW[2].toFixed(5)}))`:'normalize(vec3(-0.65,-0.32,0.80))';
 const common=`
 precision highp float;
 uniform vec2 resolution;
@@ -44,6 +51,8 @@ const vec3 TRAIL_DARK=vec3(.74,.58,.38),TRAIL_LIGHT=vec3(.88,.74,.52);
 const vec3 ROCK_DARK=vec3(.58,.60,.58),ROCK_LIGHT=vec3(.80,.80,.74);
 const vec3 SEA_DEEP=vec3(.08,.52,.62),SEA_SHALLOW=vec3(.36,.82,.80),FOAM=vec3(.96,.98,.95);
 vec2 world(){return areaOrigin+vec2(fragCoord.x,resolution.y-fragCoord.y)/resolution*areaSize;}
+// Lighting card: the warm/cool grade, baked with the ground (identity with ?luz=0).
+${gradeGlsl('infinito')}
 `;
 export const landShader=common+`
 float segment(vec2 p,vec2 a,vec2 b){vec2 d=b-a;return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.0,1.0));}
@@ -55,7 +64,7 @@ void main(){
  if(ground<0.25){gl_FragColor=vec4(0);return;}
  vec4 data=field(g);float e=0.125;
  vec2 grad=vec2(bed(g+vec2(e,0))-bed(g-vec2(e,0)),bed(g+vec2(0,e))-bed(g-vec2(0,e)))/(e*84.0);
- vec3 sun=normalize(vec3(-0.65,-0.32,0.80)),normal=normalize(vec3(-grad,1.0));
+ vec3 sun=${SUN},normal=normalize(vec3(-grad,1.0));
  float diffuse=max(0.0,dot(normal,sun)),shadow=1.0;
  for(int i=1;i<=6;i++){float t=float(i)*0.35;float obstruction=h(g+sun.xy*t)-ground-sun.z*t*42.0;shadow=min(shadow,1.0-smoothstep(-4.0,8.0,obstruction)*0.65);}
  float macro=fbm(g*2.3),clumps=fbm(g*14.7+vec2(macro*6.0));
@@ -89,7 +98,7 @@ void main(){
  color=mix(color,sand,beach);
  // Simple light: soft slope shading and a short, light self-shadow (no heavy real-time lighting).
  color*=0.84+0.24*diffuse*mix(1.0,shadow,0.55);
- gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
+ gl_FragColor=vec4(clamp(lightGrade(color),0.0,1.0),1.0);
 }`;
 export const waterShader=common+`
 void main(){
@@ -116,5 +125,5 @@ void main(){
  water+=vec3(.30,.32,.30)*glint*.30+vec3(.06,.08,.07)*caustic*(.2+transmission);
  float foam=(1.0-smoothstep(0.0,1.1,depth))*smoothstep(.58,.78,fbm(flow*1.6));
  water=mix(water,FOAM,foam*.6);
- gl_FragColor=vec4(clamp(water,0.0,1.0),1.0);
+ gl_FragColor=vec4(clamp(lightGrade(water),0.0,1.0),1.0);
 }`;

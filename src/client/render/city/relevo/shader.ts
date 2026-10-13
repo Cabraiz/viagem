@@ -15,6 +15,7 @@
 import {CITY_PALETTE,MATERIALS} from '../palette.ts';
 import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y} from '../projection.ts';
+import {SUN_GLSL,gradeGlsl} from '../../light.ts';
 
 const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toFixed(4)).join(',')})`;
 
@@ -97,6 +98,7 @@ vec3 ramp(vec3 base,vec3 sun,vec3 shade,vec3 deep,float d){
 // Snow has one more step: the lilac of a cast shadow's core (still a palette tone, luminance well over 0.131).
 vec3 snowRamp(float d){return d>-0.42?ramp(SNOW,SNOW_SUN,SNOW_SHADE,SNOW_DEEP,d):mix(SNOW_DEEP,SNOW_CORE,clamp((-d-0.42)/0.35,0.0,0.6));}
 
+${gradeGlsl('cidade')}
 void main(){
  vec2 s=areaOrigin+vec2(fragCoord.x,resolution.y-fragCoord.y)/resolution*areaSize;
  // March from the chunk's own ceiling down to 0, then refine: terraces and hills can hide the ground behind them.
@@ -117,7 +119,7 @@ void main(){
  float cliff=smoothstep(0.3,0.6,cv.b);
  float e=0.12;
  vec2 g=vec2(Hs(f+vec2(e,0.0))-Hs(f-vec2(e,0.0)),Hs(f+vec2(0.0,e))-Hs(f-vec2(0.0,e)))/(2.0*e*cellSize)*RISE*RELIEF_GAIN;
- vec3 sun=normalize(vec3(-0.65,-0.32,0.62));
+ vec3 sun=${SUN_GLSL}; // the scene's one sun (render/light.ts), fixed on the screen
  vec3 normal=normalize(vec3(-rotv(g),1.0));
  float diffuse=max(0.0,dot(normal,sun));
  // Soft self-shadow: a few taps towards the sun; terrain above the light ray darkens, never to black.
@@ -187,5 +189,5 @@ void main(){
  vec3 water=mix(WATER,WATER_SHALLOW,1.0-smoothstep(0.55,0.95,cv.g));
  color=mix(color,water,smoothstep(0.42,0.52,cv.g));
 
- gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
+ gl_FragColor=vec4(clamp(lightGrade(color),0.0,1.0),1.0); // lighting card: warm/cool grade, baked (identity with ?luz=0)
 }`;

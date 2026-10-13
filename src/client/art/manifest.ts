@@ -24,7 +24,7 @@ export interface ArtFile {
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.
  * chao {ground:'snow'|'packed'|…} or {mask:true,between:[a,b]}; predios {footprint:[a,b],ruin?,framesPerView?};
- * props {prop:'poste'}; base {states:[…]}.
+ * props {prop:'poste'}; base {states:[…]}; torres {footprint:[a,b],mount?:[x,y]}.
  */
 export type ArtMeta=Record<string,unknown>;
 export interface ArtPiece {kind:string;files:Record<string,ArtFile>;meta?:ArtMeta}
@@ -32,7 +32,7 @@ export interface ArtGroup {output:string;pieces:Record<string,ArtPiece>}
 export interface ArtIndex {version:number;groups:Record<string,ArtGroup>}
 
 /** Group keys as the importer names them (scripts/art-v2/spec.mjs GROUPS). */
-export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos';
+export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos'|'torres';
 
 const EMPTY:ArtIndex={version:2,groups:{}};
 let index:ArtIndex=EMPTY;

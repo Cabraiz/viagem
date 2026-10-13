@@ -13,7 +13,7 @@ import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../a
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
-  POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
+  POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
@@ -838,7 +838,8 @@ export class HordeRenderer{
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor)=>{
-    const lead=Math.min(2,Math.max(0,(this.now-this.pushAt)/this.tickMs));
+    // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
+    const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
     const q=this.project(this.at),depth=this.depth(this.at);
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).

@@ -477,10 +477,12 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   assert.equal(w.round.phase,'wave');assert.equal(w.round.index,1);
   for(let i=0;i<ticks(1);i++)step();
   assert.deepEqual(log.filter(x=>x.e.type==='say'&&x.e.key==='ficou-pra-tras'),[],'round 1: everyone starts at the crashed vehicle, nobody is told');
-  // End round 1 now: nothing queued, nobody alive (the director's own round end, not a forced phase).
+  // End round 1 now: nothing queued, nobody alive and, since round 1 in the city is the crash walk (cidade-08), a hero
+  // standing in the plaza (the director's own round end, not a forced phase).
   const d=s.run.director.state;
   d.nextGroup=d.plan!.groups.length;d.pending=[];
   for(const id of [...w.enemies.keys()])w.damageEnemy(id,1e9);
+  Object.assign(s.players.get('p0')!,{x:city.asset.points.praca.x,y:city.asset.points.praca.y});
   step();
   assert.equal(w.round.phase,'prepare');assert.equal(w.round.index,2);
   const start=st.prepareStart,end0=w.round.phaseEndsTick;

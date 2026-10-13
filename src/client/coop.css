@@ -152,6 +152,11 @@
 .coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
 /* Rosto da pessoa à esquerda do nome (rostos-hud): círculo de 24 px com filete Breu, dentro da altura do chip (32/48 px). */
 .coop-wait-members .coop-wait-face{width:24px;height:24px;margin:-2px 2px -2px 0;box-shadow:0 0 0 1px var(--c-breu)}
+/* Pré-carga da partida: anel enchendo em volta do próprio rosto (--preload 0..1); some quando o essencial (P0) chegou. */
+.coop-wait-members .coop-wait-ring{display:inline-grid;place-items:center;flex:none;padding:3px;margin:-5px 2px -5px -3px;border-radius:50%;
+  background:conic-gradient(var(--c-amarelo) calc(var(--preload,0)*360deg),color-mix(in srgb,var(--c-breu) 22%,transparent) 0)}
+.coop-wait-members .coop-wait-ring>.coop-wait-face{margin:0}
+.coop-wait-members .coop-wait-ring[data-done]{background:none}
 /* Troca de dono: faixa Breu de 4 s acima dos nomes ("Bia saiu. Agora quem manda é Caio."). */
 .coop-wait-owner{margin:6px 0;padding:8px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:700 var(--t-13)/1.3 var(--f-sistema)}
 .coop-wait-owner[hidden]{display:none}

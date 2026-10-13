@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
+// @ts-expect-error plain ESM build helper without typings
+import { artVersionsPlugin } from './scripts/art-versions.mjs';
 
 // Executors share one node_modules through a junction, so each dev server needs its own
 // pre-bundle cache: VITE_CACHE_DIR=node_modules/.vite-e<N> npx vite --port 42NN (cloud: .vite-n<k>, port 43k0).
@@ -30,7 +32,8 @@ const versionFile: Plugin = {
 
 export default defineConfig({
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
-  plugins: [versionFile],
+  // dist/art-versions.json: per-file content versions for the art cache (public/sw.js).
+  plugins: [versionFile, artVersionsPlugin()],
   cacheDir: process.env.VITE_CACHE_DIR || 'node_modules/.vite',
   build: {
     rolldownOptions: {

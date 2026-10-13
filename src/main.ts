@@ -17,6 +17,9 @@ linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fe
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
 // the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
 void artReady();
+// Art cache (NEW-20261013-ORQ-3g-precarga-partida): public/sw.js keeps /art and /assets by content version, so a second
+// match downloads no art. Production builds only: the dev server never gets a worker.
+if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./client/sandboxes/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];

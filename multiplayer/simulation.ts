@@ -99,8 +99,8 @@ export class Simulation {
   /** This room's own fork of the decoded city (cidade-06): its blockers (barricades) never leak into other rooms. */
   private readonly city?:CityTerrain;
   /**
-   * cidade-06 (E5): the city barricades go into the frames' structures as kind 'barricada' only when true. Off until the
-   * client draws them (render/stonewards.ts and hud/camp.ts count any non-'muralha' structure as a tower).
+   * cidade-06 (E5): the city barricades go into the frames' structures as kind 'barricada' only when true. The city room
+   * turns it on (barricadas-cliente: the client draws them and repairs them from the camp window); default off.
    */
   cityStructures:boolean;
   /**

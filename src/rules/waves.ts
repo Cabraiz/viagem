@@ -19,13 +19,15 @@ import {ticks} from '../contract/index.ts';
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
 export type Formation='cluster'|'line'|'surround';
 /** Regular cast of D-033 (sim/enemies/catalog.ts EnemyKind without the boss). */
-export type RegularKind='bebado'|'pombos'|'tio-pave'|'agiota'|'anao-molotov';
-export const REGULAR_KINDS:readonly RegularKind[]=['bebado','pombos','tio-pave','agiota','anao-molotov'];
+export type RegularKind='bebado'|'pombos'|'tio-pave'|'agiota'|'anao-molotov'|'coach'|'motoboy'|'influencer';
+export const REGULAR_KINDS:readonly RegularKind[]=['bebado','pombos','tio-pave','agiota','anao-molotov','coach','motoboy','influencer'];
 /**
  * Relative threat per enemy (hp x danger). The heavier tio (100 hp, harder shove) went 2.5 → 2.8; the anão (40 hp,
- * telegraphed molotov with pulsing fire and a death explosion) is 2.
+ * telegraphed molotov with pulsing fire and a death explosion) is 2. P1 trio: the coach (40 hp, no melee, but his
+ * lecture makes the crowd around him hit ×1.3) 1.5, the motoboy (18 hp, one warned charge and a blast, then he is gone)
+ * 1.2, the influencer (80 hp, slow, reflects shots while posing) 2.5.
  */
-export const THREAT:Readonly<Record<RegularKind,number>>={bebado:1,pombos:.5,'tio-pave':2.8,agiota:1.5,'anao-molotov':2};
+export const THREAT:Readonly<Record<RegularKind,number>>={bebado:1,pombos:.5,'tio-pave':2.8,agiota:1.5,'anao-molotov':2,coach:1.5,motoboy:1.2,influencer:2.5};
 
 /** Round 5 (elite tio-pavê with a chest) and round 10 (the boss) draw from their own names (D-033 joke pass). */
 export const ELITE_ROUND_NAMES:readonly string[]=[
@@ -69,18 +71,19 @@ export const TUTORIAL_CRUMBS={count:6,value:1,radius:[2.5,4.5] as const};
 
 export const ROUNDS:readonly RoundDef[]=[
   // D-033 cast: the anão debuts in round 3 with a modest share (taken from the bêbados), 4-8% after that.
+  // P1 trio (taken from the bêbados too): motoboy from round 3, coach from 4, influencer from 5, a few % each.
   {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,crumbs:TUTORIAL_CRUMBS},
   {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
-  {index:3,budget:32,weights:{bebado:.57,pombos:.25,'tio-pave':.15,'anao-molotov':.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
-  {index:4,budget:46,weights:{bebado:.49,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
-  {index:5,budget:54,weights:{bebado:.44,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
+  {index:3,budget:32,weights:{bebado:.54,pombos:.25,'tio-pave':.15,'anao-molotov':.03,motoboy:.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
+  {index:4,budget:46,weights:{bebado:.43,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
+  {index:5,budget:54,weights:{bebado:.35,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03,influencer:.03},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},
-  {index:6,budget:76,weights:{bebado:.4,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
+  {index:6,budget:76,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05,coach:.02,motoboy:.03,influencer:.02},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
     swarm:{size:[14,18],at:[.3,.7]}},
-  {index:7,budget:64,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.2,'anao-molotov':.07},group:[6,9],cadence:5,maxDuration:65,hpScale:1.9},
-  {index:8,budget:72,weights:{bebado:.28,pombos:.2,'tio-pave':.25,agiota:.2,'anao-molotov':.07},group:[6,10],cadence:5,maxDuration:70,hpScale:2.1},
-  {index:9,budget:82,weights:{bebado:.27,pombos:.25,'tio-pave':.2,agiota:.2,'anao-molotov':.08},group:[7,11],cadence:5,maxDuration:75,hpScale:2.35},
-  {index:10,budget:30,weights:{bebado:.35,pombos:.3,'tio-pave':.15,agiota:.15,'anao-molotov':.05},group:[4,6],cadence:8,maxDuration:90,hpScale:2.5,
+  {index:7,budget:64,weights:{bebado:.21,pombos:.2,'tio-pave':.2,agiota:.2,'anao-molotov':.07,coach:.04,motoboy:.04,influencer:.04},group:[6,9],cadence:5,maxDuration:65,hpScale:1.9},
+  {index:8,budget:72,weights:{bebado:.16,pombos:.2,'tio-pave':.25,agiota:.2,'anao-molotov':.07,coach:.04,motoboy:.04,influencer:.04},group:[6,10],cadence:5,maxDuration:70,hpScale:2.1},
+  {index:9,budget:82,weights:{bebado:.15,pombos:.25,'tio-pave':.2,agiota:.2,'anao-molotov':.08,coach:.04,motoboy:.04,influencer:.04},group:[7,11],cadence:5,maxDuration:75,hpScale:2.35},
+  {index:10,budget:30,weights:{bebado:.29,pombos:.3,'tio-pave':.15,agiota:.15,'anao-molotov':.05,coach:.02,motoboy:.02,influencer:.02},group:[4,6],cadence:8,maxDuration:90,hpScale:2.5,
     boss:{atSeconds:2},fixedNames:BOSS_ROUND_NAMES},
 ];
 export const ROUND_COUNT=ROUNDS.length;

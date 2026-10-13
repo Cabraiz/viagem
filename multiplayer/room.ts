@@ -93,6 +93,11 @@ export interface RoomRoster {
   map?:MapId;
 }
 const classIds=new Set(classes.map(c=>c.id));
+/** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
+ *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
+ *  roster stays strict (junk is dropped; that player joins again and lands here). */
+const DEFAULT_CLASS=classes[0].id;
+const knownClass=(id:unknown)=>typeof id==='string'&&classIds.has(id)?id:DEFAULT_CLASS;
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
 /** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
@@ -377,14 +382,14 @@ export class Room {
         }
         this.sim.setOnline(session.id,true);session.token=m.token;
       }else{
-        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||!classIds.has(m.classId)){this.reject(peer,'Nome ou classe inválidos.',now);return;}
+        if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
-        this.sim.add(id,m.name.trim(),m.classId);this.sessions.set(id,session);
+        this.sim.add(id,m.name.trim(),knownClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
       session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;this.catalogs.set(session.id,maps.maps);
@@ -574,7 +579,8 @@ export class Room {
    */
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city)}):new Simulation(old.seed,{world:this.baseWorld});
+    // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true}):new Simulation(old.seed,{world:this.baseWorld});
     sim.botState=()=>this.bots.state();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
@@ -847,12 +853,15 @@ export class Room {
     const p=this.perf;p.ticks++;p.tickMs+=ms;p.maxTickMs=Math.max(p.maxTickMs,ms);
     if(this.sampling){p.samples.push(ms);if(p.samples.length>PERF_SAMPLES)p.samples.shift();}
   }
-  /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
+  /**
+   * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

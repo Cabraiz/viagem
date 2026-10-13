@@ -22,6 +22,8 @@ const params=new URLSearchParams(location.search);
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const owner=params.get('papel')!=='convidado';
 const NAMES=['Capivara Turbo','Pastel de Feira','Zé do Pix Parcelado','Tia da Festa Junina','Pombo Sem Wi-Fi','Marmita Brabo'];
+/** Each one's class, for the chip's face (rostos-hud). */
+const CLASSES=['cidadao-comum','rei-pastel','viciado-em-bet','merendeira','aposentado','gamer-mobile'];
 const CITY:MapRef={id:'cidade-nevada',version:1,hash:'c8acc6580b975beeaa4146330862597daa73cbe77b794c7287044ac97d1e6bb9'};
 const refOf=(id:MapId)=>id==='cidade-nevada'?CITY:INFINITO_REF;
 
@@ -52,7 +54,7 @@ const run:RunState={round:1,phase,elapsed:0,remaining:phase==='countdown'?50:0,
   owner:owner||players>1?'p1':'dono-fora',members:ids.map((id,i)=>({id,online:true,ready:i%2===1,spectator:false,...(i>=4?{bot:true as const}:{})}))};
 const client={
   code:'C1DADE0909',id:self,run,connected:params.get('offline')!=='1',
-  players:new Map(ids.map((id,i)=>[id,{name:NAMES[i]}])) as never,
+  players:new Map(ids.map((id,i)=>[id,{name:NAMES[i],classId:CLASSES[i]}])) as never,
   map:refOf(params.get('mapa')==='cidade-nevada'?'cidade-nevada':'infinito'),
   mapLoad:params.has('baixando')?{ref:CITY,progress:Number(params.get('baixando'))||0}:undefined as {ref:MapRef;progress:number}|undefined,
   ready(ready:boolean){const me=run.members.find(m=>m.id===self);if(me)me.ready=ready;},

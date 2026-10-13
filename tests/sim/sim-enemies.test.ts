@@ -104,7 +104,7 @@ function placePlayers(ctx:FakeCtx,count:number,spawn:Rng){for(let i=0;i<count;i+
 
 // ---------- 1. Catalog ----------
 test('catalog: the six D-033 kinds plus elite, with enough short unique lines and positive stats',()=>{
-  assert.deepEqual([...ENEMY_KINDS],['bebado','anao-molotov','pombos','tio-pave','agiota','chefe']);
+  assert.deepEqual([...ENEMY_KINDS],['bebado','anao-molotov','pombos','tio-pave','agiota','coach','motoboy','influencer','chefe']);
   assert.deepEqual(Object.keys(ENEMIES).sort(),[...ENEMY_KINDS].sort());
   const all:string[]=[];
   for(const kind of ENEMY_KINDS){

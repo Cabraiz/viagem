@@ -419,12 +419,12 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
   const json=JSON.stringify({events:ctx.events,sentAt:ctx.sentAt,created:log.created,ends:log.ends,state:director.state,round:ctx.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-/** city-director.test.ts BASELINE (recorded before cidade-05). */
+/** Same values as city-director.test.ts BASELINE (re-recorded with the P1 round table; the director itself unchanged). */
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'d98b496235de6e81','ilha kill=40 seed 1':'7ae1e2388b5d42c3',
-  'ilha kill=Infinity seed 0':'6b50e7fb7d8c36ee',
-  'infinito kill=40 seed 0':'2dba07886dacfe7a','infinito kill=40 seed 1':'93c150d8da968569',
-  'infinito kill=Infinity seed 0':'b2b533356079e5ed',
+  'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'86b157f14b0e8736',
+  'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
+  'infinito kill=40 seed 0':'f9c337c51e590c1b','infinito kill=40 seed 1':'648bbcf72c5dacd6',
+  'infinito kill=Infinity seed 0':'9a35543634679798',
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

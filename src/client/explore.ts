@@ -88,7 +88,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
-      onForge:recipe=>net.forge(recipe),
+      onForge:(recipe,target)=>net.forge(recipe,target),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.

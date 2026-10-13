@@ -7,6 +7,7 @@ import type {PlayerRunView,RunView} from '../../contract/index.ts';
 import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../ui/icon.ts';
+import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -27,7 +28,7 @@ export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;img:HTMLImageElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
+interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -41,14 +42,14 @@ export function createTeamStrip():HudPart{
   const make=(player:PlayerRunView,ctx:HudContext):MemberNodes=>{
     const item=el('div','rh-member');
     const ring=el('div','rh-member-ring',item);
-    const img=el('img','rh-member-img',ring);img.alt='';img.decoding='async';img.draggable=false;
+    // The face, not the whole body squeezed in the ring (rostos-hud): ui/face-crop.ts crops the portrait thumb.
+    const face=faceImg(document,player.classId,{className:'rh-member-img',portrait:ctx.portrait});ring.append(face);
     const badge=el('span','rh-member-badge',item),timer=el('span','rh-member-timer',item);
     // Room bot (D-025): the robot sticker on the portrait's other corner (the state sticker keeps its own).
     const bot=el('span','rh-member-bot',item);bot.hidden=true;
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
-    img.src=ctx.portrait(player.classId);
-    return {root:item,img,ring,fill,badge,bot,name,timer,classId:player.classId,last:new Map()};
+    return {root:item,face,ring,fill,badge,bot,name,timer,classId:player.classId,last:new Map()};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -58,7 +59,9 @@ export function createTeamStrip():HudPart{
     ordered.forEach((player,index)=>{
       let nodes=members.get(player.id);
       if(!nodes){nodes=make(player,ctx);nodes.root.dataset.id=player.id;members.set(player.id,nodes);}
-      if(nodes.classId!==player.classId){nodes.classId=player.classId;nodes.img.src=ctx.portrait(player.classId);}
+      // Class and expression (normal, ferido at 30%, caido when down or out): setFace writes only what changed.
+      const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated});
+      if(nodes.classId!==player.classId||nodes.face.dataset.face!==expression){nodes.classId=player.classId;setFace(nodes.face,player.classId,{expression,portrait:ctx.portrait});}
       if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
       const state=memberState(player),n=nodes;
       put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});

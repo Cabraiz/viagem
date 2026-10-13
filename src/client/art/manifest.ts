@@ -15,6 +15,11 @@ export interface ArtFile {
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
+  /**
+   * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn
+   * figure over every cell (alpha > 20, cell px), measured by the importer; unchecked here (sprite-sheets.ts checks).
+   */
+  height?:number;figure?:{left:number;top:number;right:number;bottom:number};
 }
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.
@@ -27,7 +32,7 @@ export interface ArtGroup {output:string;pieces:Record<string,ArtPiece>}
 export interface ArtIndex {version:number;groups:Record<string,ArtGroup>}
 
 /** Group keys as the importer names them (scripts/art-v2/spec.mjs GROUPS). */
-export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui';
+export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos';
 
 const EMPTY:ArtIndex={version:2,groups:{}};
 let index:ArtIndex=EMPTY;
@@ -87,11 +92,15 @@ export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;
 }
 
 export const artPiece=(group:ArtGroupId,id:string):ArtPiece|undefined=>index.groups[group]?.pieces[id];
+/** The current index (read-only use: pure planners enumerate a group's pieces from it). */
+export const artIndex=():ArtIndex=>index;
+/** Public URL of a file inside a group's output folder (`public/art/x` is served at `/art/x`). */
+export const groupFileUrl=(group:ArtGroup,file:string)=>`/${group.output.replace(/^public\//,'')}/${file}`;
 export const hasArt=(group:ArtGroupId,id:string)=>!!artPiece(group,id);
 /** Public URL of a file of a group (`public/art/x` is served at `/art/x`). */
 export const artUrl=(group:ArtGroupId,file:string)=>{
-  const out=index.groups[group]?.output;
-  return out?`/${out.replace(/^public\//,'')}/${file}`:undefined;
+  const g=index.groups[group];
+  return g?groupFileUrl(g,file):undefined;
 };
 /** Every page of a file (a single-page sheet as one page), for loaders. */
 export function artPages(file:ArtFile):ArtPage[]{

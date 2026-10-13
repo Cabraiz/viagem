@@ -20,3 +20,4 @@ export {CityRoute,CityObjectiveTracker,cityRouteOf,cityRouteReady,prewarmCityRou
 export {createObjectiveRow,type ObjectivePart} from './objective.ts';
 export {minimapMode,cityAssetOf,cityMapInfo,mouthOfWarning,trackMouths,screenCorners,hornSeconds,BigMapState,MOUTH_IDS,AVENUE_MATCH,GATE_RADIUS,MOUTH_TAIL_TICKS,
   type MinimapMode,type CityAssetLike} from './wiring.ts';
+export {barricadeAt,barricadeTarget,mouthOf,BARRICADE_KIND,MOUTH_NAMES,type BarricadeSpot,type CityBocas} from './barricade.ts';

@@ -235,10 +235,10 @@ const burst=(spec:BurstSpec):SkillFn=>(ctx,player,source)=>{
 };
 /** Classes whose own skill refunds others; they are never refunded themselves (no refund loops). */
 export const REFUNDERS:ReadonlySet<string>=new Set(['pagodeiro','caca-promocao']);
-interface RallySpec {radius:number;heal?:number;shield?:number;refreshWeapons?:boolean;skillRefund?:number;reviveBoost?:number;bleedBonus?:number;mostHurt?:boolean}
+interface RallySpec {radius:number;heal?:number;shield?:number;refreshWeapons?:boolean;skillRefund?:number;mostHurt?:boolean}
 /**
  * Team support around the caster (caster included): heal, shield, weapons ready now, skill cooldown refund
- * for the others, and help for downed allies (rescue progress and extra bleed-out time).
+ * for the others.
  * mostHurt: only the single most hurt standing ally (caster included); nobody hurt = nothing happens.
  */
 const rally=(spec:RallySpec):SkillFn=>(ctx,player)=>{
@@ -260,18 +260,6 @@ const rally=(spec:RallySpec):SkillFn=>(ctx,player)=>{
       if(s.skillReady!==undefined)s.skillReady=Math.max(ctx.tick,s.skillFloor??0,s.skillReady-ticks(spec.skillRefund));
     }
     helped.push(ally.id);
-  }
-  if(spec.reviveBoost||spec.bleedBonus){
-    // Offline downed players cannot be picked up, so they get no help.
-    const downed=[...ctx.players.values()].filter(p=>p.downed&&p.online&&!p.eliminated&&!p.spectator&&dist(p,player)<=radius).sort(byId);
-    for(const p of downed){
-      const d=p.downed!;
-      // Capped below 1: the revive system still finishes the rescue, which needs a rescuer in range.
-      if(spec.reviveBoost)d.progress=Math.max(d.progress,Math.min(0.95,d.progress+spec.reviveBoost));
-      // Never more than twice the normal bleed-out since the fall, so stacking casts cannot keep someone down forever.
-      if(spec.bleedBonus)d.bleedOutTick=Math.max(d.bleedOutTick,Math.min(d.bleedOutTick+ticks(spec.bleedBonus),d.sinceTick+2*BLEED_OUT_TICKS));
-      helped.push(p.id);
-    }
   }
   return helped.length?{hits:[],helped}:null;
 };
@@ -395,7 +383,6 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   feirante:rally({radius:4,heal:10,refreshWeapons:true}),
   coach:rally({radius:5,heal:5,shield:1.5}),
   'vendedor-praia':rally({radius:5,heal:18}),
-  'tia-festa':rally({radius:5,heal:12,reviveBoost:0.35,bleedBonus:5}),
   pagodeiro:rally({radius:5,heal:8,skillRefund:3}),
   merendeira:rally({radius:6,heal:35,shield:1,mostHurt:true}),
   'mae-pet':fetchFood({range:8,heal:30}),

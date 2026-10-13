@@ -21,6 +21,14 @@ test('six slots, seventh refused, and rooms isolated',()=>{
   assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
   const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,6);
 });
+test('a class this build no longer has (old client with tia-festa) plays as the default class, a non-string is refused',()=>{
+  const r=new Room(1000),old=peer();r.connect(old,1000);
+  r.receive(old,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Tia Cleide',classId:'tia-festa'}),1000);
+  const w=old.messages.find(m=>m.t==='welcome');
+  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,'cidadao-comum');
+  const bad=peer();r.connect(bad,1000);r.receive(bad,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Zé',classId:42}),1000);
+  assert.equal(bad.closes[0]?.code,4003);
+});
 test('reconnect preserves identity, health, score, enemies and refuses stolen display name',()=>{
   const r=new Room(1000),a=peer();join(r,a);const w=a.messages.find(m=>m.t==='welcome');
   const original=r.sim.players.get(w.id)!;original.hp=64;original.score=10;

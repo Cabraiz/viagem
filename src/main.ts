@@ -3,6 +3,7 @@ import { setupSections } from './client/sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
+import { suit } from './client/ui/suit.ts';
 import { artReady } from './client/ui/art-boot.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
@@ -58,7 +59,7 @@ app.innerHTML = `
     </div>
   </section>
   <section id="classes" class="journey-screen roster" role="tabpanel" aria-labelledby="tab-classes" hidden>
-    <div class="roster-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div>
+    <div class="roster-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${suit(value)}${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div>
     <div id="class-list" class="class-list"></div>
     <nav class="roster-pagination" aria-label="Páginas de classes"><button id="page-prev" class="round-button" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" class="round-button" aria-label="Próxima página">›</button></nav>
   </section>
@@ -148,7 +149,7 @@ function setArt(id: string,hero: HeroClass) {
 }
 function renderSelected(announce=false) {
   const index=classes.indexOf(selected);
-  text('portrait-role',selected.role);
+  document.getElementById('portrait-role')!.innerHTML=`${suit(selected.role)}${selected.role}`;
   text('quote',`“${selected.quote}”`);
   text('class-name',selected.name);
   text('skill-name',selected.skill);
@@ -186,7 +187,7 @@ function renderRoster() {
   page=Math.max(0,Math.min(page,pages-1));
   const container=document.getElementById('class-list')!;
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazyArt.unobserve(img));
-  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong><small>${hero.role}</small></span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
+  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong></span><span class="card-suit">${suit(hero.role,{label:true})}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
   text('page-count',`${page+1} / ${pages}`);

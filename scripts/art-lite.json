@@ -478,22 +478,6 @@
    "psnr": 42,
    "shownPsnr": 46.1
   },
-  "sprites/tia-festa.dir4.webp": {
-   "source": "bc6f9fb762801c03df74d6b05362299ae537ffbaadd9b42ee97a8b7aafc08c8f",
-   "lite": "b6da1d405d4cc2f4d5cb1fd6e1ca2b6896115e82642cde1537068f3f0c17378a",
-   "bytes": 1241724,
-   "liteBytes": 583078,
-   "psnr": 39.5,
-   "shownPsnr": 43.6
-  },
-  "sprites/tia-festa.webp": {
-   "source": "dd368f36e0081d0c0ea43f851a9af553983ac9d2c331bba94979cf8c5ce4d0e5",
-   "lite": "fb708bcbb675115ebe1423ccc1b2ae47798f58f69d3e03366d50803c7ce6d23f",
-   "bytes": 395294,
-   "liteBytes": 167606,
-   "psnr": 37.2,
-   "shownPsnr": 44.1
-  },
   "sprites/tio-do-churrasco.webp": {
    "source": "c6a9b7ae7a97cb1a4b4d6c27cf545c2eb1a56e75a03d07dab12ac11e41ff727f",
    "lite": "01589e9c05de6870780babb47c37b8e1520de84a6b2b4b9ce46fb2e3d11444a0",

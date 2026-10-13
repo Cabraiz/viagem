@@ -146,15 +146,6 @@ export const spriteCatalog:Record<string,{height:number;figure?:FigureBox;dir4?:
       "bottom": 171
     }
   },
-  "tia-festa": {
-    "height": 120,
-    "figure": {
-      "left": 30,
-      "top": 49,
-      "right": 162,
-      "bottom": 171
-    }
-  },
   "roqueira": {
     "height": 120,
     "figure": {

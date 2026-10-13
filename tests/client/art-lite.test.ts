@@ -13,7 +13,7 @@ const sha=(path:string)=>createHash('sha256').update(readFileSync(path)).digest(
 test('every tree and class sheet has its copy, made from the approved file as it is now (else: node scripts/art-lite.mjs)',()=>{
   const sheets=[...treeCatalog.map(t=>['trees',t.id,treeUrl(t.id)]),...Object.entries(spriteCatalog).flatMap(([id,c])=>[
     ['sprites',id,spriteUrl(id)],...(c.dir4?[['sprites',`${id}.dir4`,spriteUrl(id,true)]]:[])])];
-  assert.ok(sheets.length>=76);
+  assert.ok(sheets.length>=74);
   for(const [kind,id,url] of sheets){
     const key=`${kind}/${id}.webp`,entry=manifest.files[key];
     assert.ok(entry,`${key}: no copy in scripts/art-lite.json`);

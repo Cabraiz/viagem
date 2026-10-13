@@ -28,7 +28,7 @@ export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?
 
 const roster=[
   {id:'p1',name:'Mateus',classId:'cidadao-comum'},
-  {id:'p2',name:'Tia Cleide',classId:'tia-festa'},
+  {id:'p2',name:'Tia Cleide',classId:'merendeira'},
   {id:'p3',name:'Zé do Pix',classId:'viciado-em-bet'},
   {id:'p4',name:'Bruninha',classId:'motogirl'},
   {id:'p5',name:'Seu Jorge',classId:'aposentado'},

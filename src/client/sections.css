@@ -94,13 +94,29 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   display: grid; gap: 8px; align-content: start;
   grid-template-columns: repeat(var(--cols,4),minmax(0,1fr)); grid-template-rows: repeat(var(--rows,3),minmax(0,1fr));
 }
-.criacao .class-card { touch-action: pan-y; min-height: 0; min-width: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-.criacao .card-portrait { width: auto; height: auto; max-width: 100%; max-height: calc(100% - 34px); aspect-ratio: 1; min-height: 0; flex: 1 1 0; }
+.criacao .class-card { position: relative; touch-action: pan-y; min-height: 0; min-width: 0; padding: 6px 4px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+/* Only the name under the art now (the role is the suit in the corner), so the portrait takes almost the whole card. */
+.criacao .card-portrait { width: auto; height: auto; max-width: 100%; max-height: calc(100% - 18px); aspect-ratio: 1; min-height: 0; flex: 1 1 0; }
 .criacao .card-label { text-align: center; min-width: 0; }
 .criacao .card-label strong { font-size: 12px; line-height: 1.15; display: block; overflow-wrap: anywhere; hyphens: auto; }
 .criacao .card-label small { font-size: 11px; }
 .criacao .roster-pagination { margin: 0; display: flex; align-items: center; justify-content: center; gap: 14px; }
-.criacao .selected-mark { width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; }
+.criacao .selected-mark { left: 5px; right: auto; top: 5px; width: 22px; height: 22px; font-size: 12px; line-height: 22px; text-align: center; }
+/* Role as a playing-card suit (♠ Linha de frente, ♦ Dano, ♥ Suporte, ♣ Controle): a 26 px circle in the top-right
+   corner of the card, next to the role name on the filters and on the class badge. */
+.criacao .suit { display: block; width: 16px; height: 16px; flex: none; }
+.criacao .suit-espadas, .criacao .suit-paus { fill: var(--c-breu); }
+.criacao .suit-copas, .criacao .suit-ouros { fill: var(--arte-vermelho); }
+.criacao .card-suit {
+  position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; display: grid; place-items: center;
+  background: var(--c-papel-claro); border: 2px solid var(--c-breu); border-radius: 50%; box-shadow: var(--s-1);
+}
+.criacao .filter { display: inline-flex; align-items: center; gap: 5px; }
+.criacao .filter .suit { width: 14px; height: 14px; }
+.criacao .filter .suit-espadas, .criacao .filter .suit-paus { fill: currentColor; }
+.criacao .filter[aria-pressed=true] .suit-espadas, .criacao .filter[aria-pressed=true] .suit-paus { fill: var(--c-breu); }
+.criacao .portrait-caption > span { display: inline-flex; align-items: center; gap: 5px; }
+.criacao .portrait-caption > span .suit { width: 14px; height: 14px; }
 .criacao .roster-pagination #page-count { font-size: 13px; font-weight: 800; color: var(--c-papel); min-width: 54px; text-align: center; }
 
 /* Low height (landscape phone, short desktop windows): the window title goes, everything tightens. */

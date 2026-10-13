@@ -129,14 +129,6 @@ export const CLASS_LINES:Readonly<Record<string,Readonly<Record<Situation,readon
     win:['Vitória! A rodada de água é minha!','Hoje o sol tá pra gente!'],
     lose:['Choveu. Dia perdido, galera.','Nem o protetor salvou.'],
   },
-  'tia-festa':{
-    levelUp:['Ai, que lindo! Cresceu tanto!','Mandei no grupo da família!'],
-    down:['Ai, minha pressão! Me acode!','Alguém traz um copo de água?'],
-    revive:['Levanta, menino! Tem bolo ainda!','De pé! A festa nem começou!'],
-    upgrade:['Esse eu guardo na bolsa.','Esse vai no guardanapo.'],
-    win:['Bora pra pista, até o síndico!','E o casamento, quando sai, hein?'],
-    lose:['Leva um docinho pra consolar.','Pelo menos a comida tava boa.'],
-  },
   'roqueira':{
     levelUp:['Aumenta o volume desse nível!','Subiu meio tom! Rock!'],
     down:['Arrebentou a corda! Ajuda!','Caí no mosh! Me levanta!'],

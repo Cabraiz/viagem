@@ -62,8 +62,8 @@ const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
 
 // ---------- 1. Kit data ----------
-test('kits: 36 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
-  assert.equal(KITS.length,36);
+test('kits: 35 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
+  assert.equal(KITS.length,35);
   assert.deepEqual([...WEAPON_IDS].sort(),[...FIXED_WEAPONS].sort());
   for(const kit of KITS){
     assert.ok(getClass(kit.classId),`class ${kit.classId} exists`);
@@ -75,7 +75,7 @@ test('kits: 36 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
     assert.equal(kitFor(kit.classId),kit);
     assert.ok(hasSkill(kit.classId),kit.classId);
   }
-  assert.equal(new Set(KITS.map(k=>k.classId)).size,36);
+  assert.equal(new Set(KITS.map(k=>k.classId)).size,35);
   assert.deepEqual(KITS.map(k=>k.classId).sort(),classes.map(c=>c.id).sort());
   for(const id of SKILL_IDS)assert.ok(kitFor(id),id);
 });
@@ -92,7 +92,7 @@ test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
     assert.equal(kit.skill.name,getClass(kit.classId)!.skill,kit.classId);
   }
   // Every card class with the same skill name maps 1:1.
-  assert.equal(classes.filter(c=>kitFor(c.id)).length,36);
+  assert.equal(classes.filter(c=>kitFor(c.id)).length,35);
   // Lines fit the phone balloon and never repeat across classes.
   const all=KITS.flatMap(k=>k.lines.map(l=>l.trim().toLocaleLowerCase('pt-BR')));
   assert.equal(new Set(all).size,all.length,'no line repeated across classes');
@@ -751,16 +751,6 @@ test('burst variants: Aposentado pushes and freezes one, Gambiarreiro traps the 
   assert.ok((t.slowUntil??0)>100&&(n.slowUntil??0)>100);assert.equal(far.slowUntil,undefined);
 });
 
-test('rally (Tia da Festa): heals standing allies and helps downed ones without finishing the rescue itself',()=>{
-  const {fake,ctx}=makeCtx(6,100);
-  const p=addPlayer(fake,'p1','tia-festa',10,10);p.hp-=40;
-  const down=addPlayer(fake,'p2','mendigo',11,10,{hp:0,downed:{sinceTick:50,bleedOutTick:650,progress:0.8}});
-  const res=cast(ctx,p)!;
-  assert.equal(p.hp,p.stats.maxHp-28);
-  assert.ok(near(down.downed!.progress,0.95),'capped below 1');
-  assert.equal(down.downed!.bleedOutTick,650+ticks(5));
-  assert.deepEqual(res.helped,['p1','p2']);
-});
 
 test('rally (Pagodeiro, Caça-Promoção, Feirante): refunds the others\' skills and readies everyone\'s weapons',()=>{
   const {fake,ctx}=makeCtx(7,100);
@@ -857,7 +847,7 @@ test('reused effects with new numbers: Passageira dashes ~3 and only shields her
   assert.equal((e as TauntedEnemy).taunt?.player,'p1');assert.ok((e.slowUntil??0)>100);
 });
 
-test('no real-betting vocabulary anywhere in the 36 kits',()=>{
+test('no real-betting vocabulary anywhere in the 35 kits',()=>{
   const banned=/\b(aposta\w*|apostar|bet|cassino|odds?|tigrinho|roleta|jackpot|loteria|bingo)\b/i;
   for(const kit of KITS){
     for(const text of [kit.skill.effect,...kit.lines])assert.ok(!banned.test(text),`${kit.classId}: ${text}`);
@@ -921,15 +911,6 @@ test('freeze traps skip the boss first; Salva-Vidas needs a hurt ally and leaves
   assert.equal(rescuer.hp,30);assert.equal(res.movedTo,undefined,'movedTo is only for the caster');
 });
 
-test('Tia da Festa: bleed bonus capped at twice the normal bleed-out and never for offline downed players',()=>{
-  const {fake,ctx}=makeCtx(24,100);
-  const tia=addPlayer(fake,'p1','tia-festa',10,10);
-  const down=addPlayer(fake,'p2','mendigo',11,10,{hp:0,downed:{sinceTick:100,bleedOutTick:100+BLEED_OUT_TICKS,progress:0}});
-  const away=addPlayer(fake,'p3','mendigo',10,11,{hp:0,online:false,downed:{sinceTick:100,bleedOutTick:100+BLEED_OUT_TICKS,progress:0.2}});
-  for(let i=0;i<20;i++){resetSkill(tia);cast(ctx,tia);fake.tick++;}
-  assert.equal(down.downed!.bleedOutTick,100+2*BLEED_OUT_TICKS);
-  assert.equal(away.downed!.bleedOutTick,100+BLEED_OUT_TICKS);assert.equal(away.downed!.progress,0.2);
-});
 
 test('a refunded skill never comes back before half of the cooldown its owner paid',()=>{
   const {fake,ctx}=makeCtx(25,100);

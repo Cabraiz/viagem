@@ -201,9 +201,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
   }
   return {hash:digest({events:ctx.events,sentAt:ctx.sentAt,created,ends,state:director.state,round:ctx.round}),ends:ends.length,bodies,plan:director.state.plan};
 }
-/** Recorded on 4906ef9 (before cidade-11) with cityRun's scenario and no cityBalance option. */
+/** cityRun's scenario with neutral knobs (= the city without cidade-11): first recorded on 4906ef9, re-recorded on df2bf97 because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool. */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'6e26ca9cb09c90d1','tutorial seed 8 r4':'88c195c76b062ff1','plain seed 21 r10':'5861426c3ece3a1a',
+  'tutorial seed 3 r4':'5e7dbddfd82a6b97','tutorial seed 8 r4':'f859230078d07664','plain seed 21 r10':'668976903df01451',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

@@ -41,9 +41,9 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   // Malformed: dropped without an answer.
   for(const bad of [{site:'obra-1'},{site:'muralha'},{site:7},{req:0,site:'obra-02'}])say(room,a,{t:'build',round,req:2,...bad},s.t);
   assert.equal(a.messages.filter(m=>m.t==='built').length,1);
-  // The same request again (a resent tap) applies once.
-  say(room,a,{t:'build',round,req:1,site:'obra-01'},s.t);
-  assert.equal(a.messages.findLast(m=>m.t==='built').ok,false);
+  // The same request again (a resent tap) applies once: even on another free site it is a duplicate, not a second root.
+  say(room,a,{t:'build',round,req:1,site:'obra-05'},s.t);
+  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:false,reason:'duplicate'});
   for(let i=0;i<4;i++)s.tick();
   let mine=lastStructures(a.frames).find(x=>x.kind==='vigia-do-predio');
   assert.ok(mine,'the phone sees the root');
@@ -65,7 +65,7 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   assert.equal(a.messages.findLast(m=>m.t==='built').req,4);
 });
 
-test('outside an intermission a build is refused (phase); a spectator or an old round is never heard',()=>{
+test('outside an intermission a build is refused (phase); an old round is never heard',()=>{
   const s=atIntermission(),{room,a}=s;
   for(let i=0;i<20_000&&room.sim.world.round.phase==='prepare';i++)s.tick();
   say(room,a,{t:'build',round:room.run.snapshot().round,req:9,site:'obra-03'},s.t);
@@ -128,4 +128,24 @@ test('the Gustavão\'s rail is in the snapshot once laid (kind linha-ferrea, its
   for(let i=0;i<60;i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
   const later=lastStructures(a.frames).find(x=>x.kind==='linha-ferrea');
   assert.equal(later.phase,'pronta');assert.equal(later.id,rail.id);
+});
+
+test('torres-fio review: a spectator is answered no (player); a ruin goes on the wire (hp 0, ruina) and a new root on its site is a new id',()=>{
+  const s=atIntermission(),{room,a}=s,round=room.run.snapshot().round;
+  // Bia arrives mid-run: she watches (spectator).
+  const b=peer();join(room,b,'Bia',s.t);
+  say(room,b,{t:'build',round,req:1,site:'obra-02'},s.t);
+  assert.deepEqual(b.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:false,reason:'player'});
+  say(room,a,{t:'build',round,req:1,site:'obra-01'},s.t);
+  for(let i=0;i<4;i++)s.tick();
+  const first=lastStructures(a.frames).find(x=>x.kind==='vigia-do-predio');
+  const d=room.sim.defenses()[0];d.hp=0;d.ruined=true;
+  for(let i=0;i<4;i++)s.tick();
+  const ruin=lastStructures(a.frames).find(x=>x.id===first.id);
+  assert.equal(ruin.phase,'ruina');assert.equal(ruin.hp,0);
+  say(room,a,{t:'build',round,req:2,site:'obra-01'},s.t);
+  assert.equal(a.messages.findLast(m=>m.t==='built').ok,true);
+  for(let i=0;i<4;i++)s.tick();
+  const now=lastStructures(a.frames).filter(x=>x.kind==='vigia-do-predio');
+  assert.equal(now.length,1,'the ruin is gone');assert.notEqual(now[0].id,first.id,'a new defense, a new id');assert.notEqual(now[0].phase,'ruina');
 });

@@ -146,7 +146,10 @@ export interface RoundModifier {
   singleSide?:boolean;
   /** Groups come from one side, then the opposite one, alternating. */
   alternateSide?:boolean;
-  /** Rounds where this modifier is never drawn (it would hide the elite or break the round's identity). */
+  /**
+   * Rounds where this modifier is never drawn (it would hide the elite or break the round's identity; giant-everyone in
+   * round 8: its sizeMult would push the lone mini-chefe past the enemy AI's neighbor reach, sim/enemies/ai.ts).
+   */
   banRounds:readonly number[];
 }
 /**
@@ -159,7 +162,7 @@ export const MODIFIERS:readonly RoundModifier[]=[
   {id:'mosquito-swarm',name:'Revoada de Pombos',description:'Quem jogou milho?!',
     share:{pombos:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},
   {id:'giant-everyone',name:'Todo Mundo Gigante',description:'Exageraram no fermento.',
-    sizeMult:1.5,hpMult:1.3,countMult:.7,banRounds:[5]},
+    sizeMult:1.5,hpMult:1.3,countMult:.7,banRounds:[5,8]},
   {id:'shrunk-in-wash',name:'Encolheu na Lavagem',description:'Lavaram com água quente.',
     sizeMult:.75,hpMult:.8,countMult:1.3,speedMult:1.1,banRounds:[]},
   {id:'lovesick-slimes',name:'Bêbados Abraçados',description:'Em fila, de mãozinha dada.',

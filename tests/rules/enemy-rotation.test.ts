@@ -11,8 +11,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/index.ts';
-import {MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
-  roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
+import {MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
+  drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
 
 const SEEDS=Array.from({length:300},(_,i)=>i*7919+13);
 const rotations=SEEDS.map(s=>drawRotation(new Rng(s)));
@@ -108,4 +108,52 @@ test('planRound with the rotation reads the modifiers by role (uncle-party → p
   for(let round=1;round<=10;round++)for(const g of planRound(round,6,{name:'x'},new Rng(round)).groups)
     for(const k of g.members)assert.ok(k==='chefe'||k in THREAT,`table round ${round}: ${k}`);
   assert.equal(ROTATION_WEIGHTS.length,10);
+});
+
+test('round 8: the lone mini-chefe takes its threat (ROLE_PROFILES threat x the count scale) out of the regular budget',()=>{
+  // The same plan without the solo is the control: every uncapped case gives up the mini-chefe's threat in regular
+  // bodies (within the body-count rounding and the role apportion: 0.75..1.25 of it, about 1 on average).
+  const ratios:number[]=[];
+  for(const [i,r] of rotations.slice(0,60).entries())for(const players of [1,2,3,4,5,6]){
+    const roster=roundRoster(r,8),seed=7000+i*10+players;
+    const {solo:_,...noSolo}=roster;
+    const withMini=planRound(8,players,{name:'x'},new Rng(seed),roster),control=planRound(8,players,{name:'x'},new Rng(seed),noSolo);
+    assert.equal(withMini.groups.filter(g=>g.solo).length,1);assert.equal(control.groups.filter(g=>g.solo).length,0);
+    if(control.groups.filter(g=>!g.boss&&!g.elite).flatMap(g=>g.members).length>=MAX_ROUND_ENEMIES)continue;
+    const soloThreat=ROLE_PROFILES['mini-chefe'].threat*(1+.5*(players-1)),given=regularThreat(control)-regularThreat(withMini);
+    assert.ok(given>=soloThreat*.75&&given<=soloThreat*1.25,`${players}p: gave up ${given.toFixed(2)} for ${soloThreat}`);
+    ratios.push(given/soloThreat);
+  }
+  assert.ok(ratios.length>=200,`${ratios.length} uncapped cases`);
+  const mean=ratios.reduce((a,b)=>a+b,0)/ratios.length;
+  assert.ok(mean>.9&&mean<1.1,`on average ${mean.toFixed(3)} of the mini-chefe's threat`);
+});
+
+test('isRotation: each slot within its min..max, two mini-chefes, no repeats; a corrupt checkpoint is refused, not planned',()=>{
+  const good=rotations[0];
+  const with_=(roles:Rotation['roles'],mini=good.mini):Rotation=>({roles,mini});
+  assert.ok(isRotation(good));
+  for(const s of ROTATION_SLOTS){
+    const roles={...good.roles};delete roles[s.role];
+    assert.equal(isRotation(with_(roles)),s.min===0,`${s.role} missing`);
+    const many=ROSTER.filter(e=>e.role===s.role).slice(0,s.max+1).map(e=>e.id);
+    assert.ok(!isRotation(with_({...good.roles,[s.role]:many})),`${s.role}: ${many.length} > max ${s.max}`);
+    if(s.min>0)assert.ok(!isRotation(with_({...good.roles,[s.role]:[]})),`${s.role}: empty`);
+  }
+  assert.ok(!isRotation(with_({})),'no roles at all');
+  assert.ok(!isRotation(with_(good.roles,[good.mini[0]])),'one mini-chefe');
+  assert.ok(!isRotation(with_(good.roles,[good.mini[0],good.mini[0]])),'the same mini-chefe twice');
+  assert.ok(!isRotation(with_({...good.roles,'mini-chefe':[good.mini[0]]} as Rotation['roles'])),'a role that is not a slot');
+  const corredor=good.roles.corredor!;
+  if(corredor.length<ROTATION_SLOTS.find(s=>s.role==='corredor')!.max)assert.ok(!isRotation(with_({...good.roles,corredor:[corredor[0],corredor[0]]})),'repeated entry');
+  // Every drawn rotation passes, and every round of it plans.
+  for(const r of rotations){assert.ok(isRotation(r));for(let round=1;round<=10;round++)planRound(round,3,{name:'x'},new Rng(round),roundRoster(r,round));}
+});
+
+test('giant-everyone is never drawn in round 8 (its size would push the lone mini-chefe past the neighbor reach)',()=>{
+  assert.ok(MODIFIERS.find(m=>m.id==='giant-everyone')!.banRounds.includes(8));
+  for(let seed=1;seed<=400;seed++){
+    const used:string[]=[];
+    for(let round=3;round<=9;round++){const t=drawTheme(round,new Rng(seed*13+round),used);if(t.modifierId)used.push(t.modifierId);if(round===8)assert.notEqual(t.modifierId,'giant-everyone');}
+  }
 });

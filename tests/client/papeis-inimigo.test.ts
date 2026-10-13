@@ -10,6 +10,9 @@ import {DEATH_LINES,GENERIC_LINES,GENERIC_STYLE,KIND_STYLES,deathLine,deathLines
 import {CAUSE_COPY,causeCopy,emptyCauses,recordFall,resultCause} from '../../src/client/hud/cause.ts';
 import {KILLCAM_KIND_LINES,killcamCaption,killcamKindLines,shameText} from '../../src/client/fun/zueira.ts';
 import {ROLE_PROFILES,ROSTER} from '../../src/rules/index.ts';
+import {LOOK_BUFFED,LOOK_LECTURE,LOOK_NONE,PHASE_ACTING,PHASE_BUFFED,phaseLook,viewPhaseLook} from '../../src/client/render/phase-look.ts';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 
 const packs=ROSTER.filter(e=>!e.legacy);
 const p0=packs.find(e=>e.priority==='P0')!,p1=packs.find(e=>e.priority==='P1')!;
@@ -69,4 +72,21 @@ test('kill-cam and shame: a roster entry\'s death gag as the kind line, its name
   assert.ok(shame.text.includes(p0.name),shame.text);
   assert.ok(shameText({player:'a',key:'caiu',round:4,tick:1,source:'bebado'},'Rita').text.includes('um bêbado do boteco'));
   assert.ok(shameText({player:'a',key:'caiu',round:4,tick:1,source:'gosma'},'Rita').text.includes('um bicho'));
+});
+
+test('phase look by roster id: the invocador (drawn as the coach) calling shows no lecture ring nor whiteboard; the suporte lectures',()=>{
+  const invocadores=ROSTER.filter(e=>e.role==='invocador'),suportes=ROSTER.filter(e=>e.role==='suporte');
+  assert.ok(invocadores.length&&suportes.length);
+  for(const e of invocadores){
+    assert.equal(enemyKind(e.id),'coach',`${e.id} borrows the coach's texture`);
+    assert.equal(viewPhaseLook(e.id,enemyKind(e.id),PHASE_ACTING),LOOK_NONE,`${e.id}: calling is not a lecture`);
+    assert.equal(viewPhaseLook(e.id,enemyKind(e.id),PHASE_BUFFED),LOOK_BUFFED,`${e.id}: buffed reads as on anyone`);
+  }
+  for(const e of suportes)assert.equal(viewPhaseLook(e.id,enemyKind(e.id),PHASE_ACTING),LOOK_LECTURE,e.id);
+  for(const k of ENEMY_KINDS)for(const phase of [undefined,PHASE_ACTING,PHASE_BUFFED,7])assert.equal(viewPhaseLook(k,k,phase),phaseLook(k,phase),`${k} ${phase}`);
+  // The horde renderer reads the look by the view's roster id, and the tint is set apart from the position snap.
+  const layers=readFileSync(fileURLToPath(new URL('../../src/client/render/layers.ts',import.meta.url)),'utf8');
+  assert.match(layers,/const look=viewPhaseLook\(view\.kind,kind,view\.phase\)/);
+  assert.doesNotMatch(layers,/\bphaseLook\(/,'no lookup by the drawn kind alone');
+  assert.doesNotMatch(layers,/setTint\(tint\);\}\}else if/,'the tint change does not skip the snap');
 });

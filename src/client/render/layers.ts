@@ -14,7 +14,7 @@ import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,phaseLook,reflectGlint,sparkleFrame,type PhaseLook,type SparkleFrame} from './phase-look.ts';
+import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
@@ -433,7 +433,7 @@ export class HordeRenderer{
   // ---------- reconciliation ----------
   private syncEnemy(view:EnemyView){
     const used=this.enemies.use(view.id),a=used.item,kind=enemyKind(view.kind),elite=!!view.elite&&kind!=='chefe';
-    const look=phaseLook(kind,view.phase),tex=ENEMY_TEXTURES[kind][(elite?1:0)+(look.acting?2:0)];
+    const look=viewPhaseLook(view.kind,kind,view.phase),tex=ENEMY_TEXTURES[kind][(elite?1:0)+(look.acting?2:0)];
     if(used.fresh||a.kind!==kind||a.elite!==elite||a.tex!==tex){
       a.image.setTexture(tex).setOrigin(.5,ENEMY_ART[kind].originY);
       a.kind=kind;a.elite=elite;a.tex=tex;
@@ -442,11 +442,11 @@ export class HordeRenderer{
     if(used.fresh){
       a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
-    }
+    }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
+    else{a.px=a.x;a.py=a.y;}
     // A pooled actor may come back as another kind: its accent tint follows (the hit flash owns the tint while it lasts).
     const tint=fallbackTint(view.kind);
-    if(used.fresh||a.tint!==tint){a.tint=tint;if(!a.flashing){if(tint===undefined)a.image.clearTint();else a.image.setTint(tint);}}else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
-    else{a.px=a.x;a.py=a.y;}
+    if(used.fresh||a.tint!==tint){a.tint=tint;if(!a.flashing){if(tint===undefined)a.image.clearTint();else a.image.setTint(tint);}}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }

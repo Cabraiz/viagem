@@ -11,7 +11,12 @@
  * need 4 barks, 3 death lines, a pop and the death gag; P1/P2 rows the gag only. The nine hand-tuned kinds come first
  * (pack 0); their lines stay in sim/enemies/catalog.ts and the client, only the gag is here.
  * Display-name overrides (copy file `names`): 'pelad' is a lint trap of the D-033 text rules, LinkedIn and CrossFit are
- * real brands (D-033: no real brands); the ids (the art folders) stay as the packs have them.
+ * real brands (D-033: no real brands), "Homem-Surdo" (the drum) alone reads as a deafness joke (D-033: no disability
+ * jokes), so he is the Homem-Tambor; the ids (the art folders) stay as the packs have them.
+ * Flying (`flying`, D-041: anti-air reaches it, ground towers do not) is per entry: every voador, the pombos, the aerial
+ * swarms in FLYING and any entry whose concept (before "Death:") says it flies/hovers/floats; a concept that matches
+ * FLY_WORDS but whose subject is not the body itself is listed in GROUNDED with the reason, and an unlisted match stops
+ * the import until someone decides.
  */
 import {readFileSync,writeFileSync,readdirSync,existsSync} from 'node:fs';
 import {dirname,join,resolve} from 'node:path';
@@ -35,6 +40,16 @@ const LEGACY=[
   ['motoboy','Motoboy Kamikaze','kamikaze',160,0xc23b2a],['influencer','Influencer de Academia','refletor',160,0xe0407a],
   ['chefe','Síndico Supremo','chefe',384,0x6b3f7a],
 ];
+/** Entries that fly although their role (enxame) does not: aerial swarms. */
+const FLYING={'pernilongo-vampiro':'a mosquito swarm','bot-de-curtida':'"a tiny hovering thumbs-up creature"'};
+/** FLY_WORDS matches in a concept (before "Death:") that do not make the body fly. */
+const GROUNDED={
+  'executivo-de-patinete':'his tie flies like a cape, he rides a scooter',
+  'sogra-do-chinelo':'her flip-flop flies, she does not',
+  'rainha-das-baratas':'a chefe: she hovers only in her phase 2 (the boss is sim/boss.ts, never a flying def)',
+  'o-algoritmo':'a chefe: a floating eye on spider legs (walks)',
+};
+const FLY_WORDS=/\b(fly|flies|flying|hover|hovers|hovering|airborne|float|floats|floating)\b/i;
 /** Accent text → color: the first color word in the pack's Accent column (tint of the fallback sprite and the pop). */
 const COLORS={
   orange:0xe07a2a,red:0xc8322c,yellow:0xe8c22a,blue:0x2f6bc4,green:0x3e9a3e,lime:0x9acd32,cyan:0x2ec4d0,teal:0x2a9d8f,
@@ -61,10 +76,14 @@ files.forEach((file,i)=>{
     if(!/^\|\s*\d+\s*\|/.test(line))continue;
     const cells=line.split('|').slice(1,-1).map(s=>s.trim());
     if(cells.length!==8)throw new Error(`${file}: bad row ${line}`);
-    const [,id,name,role,cell,,accent,priority]=cells;
+    const [,id,name,role,cell,concept,accent,priority]=cells;
     if(!ROLES.includes(role))throw new Error(`${id}: unknown role ${role}`);
     if(!/^P[012]$/.test(priority))throw new Error(`${id}: bad priority ${priority}`);
-    rows.push({id,name:copy.names?.[id]??name,role,cell:Number(cell),priority,pack:i+1,accent:accentColor(accent,id)});
+    const said=FLY_WORDS.test(concept.split(/\bDeath:/)[0]);
+    if(said&&role!=='voador'&&!(id in FLYING)&&!(id in GROUNDED))throw new Error(`${id}: its concept says it flies; add it to FLYING or GROUNDED`);
+    const flying=role==='voador'||id in FLYING||said&&!(id in GROUNDED);
+    if(id in GROUNDED&&!said)throw new Error(`${id}: in GROUNDED but its concept no longer says it flies`);
+    rows.push({id,name:copy.names?.[id]??name,role,cell:Number(cell),priority,pack:i+1,accent:accentColor(accent,id),...(flying?{flying:true}:{})});
   }
 });
 
@@ -73,10 +92,12 @@ const seen=new Set(LEGACY.map(l=>l[0]));
 for(const r of rows){if(seen.has(r.id))problems.push(`duplicate id ${r.id}`);seen.add(r.id);}
 for(const id of Object.keys(copy.entries))if(!rows.some(r=>r.id===id))problems.push(`copy for unknown id ${id}`);
 for(const id of Object.keys(copy.names??{}))if(!rows.some(r=>r.id===id))problems.push(`name override for unknown id ${id}`);
+for(const id of [...Object.keys(FLYING),...Object.keys(GROUNDED)])if(!rows.some(r=>r.id===id))problems.push(`flying rule for unknown id ${id}`);
 const entries=[
   ...LEGACY.map(([id,name,role,cell,accent])=>{
     const gag=copy.legacy?.[id]?.gag;if(!gag)problems.push(`${id}: no gag`);
-    return {id,name,role,cell,priority:'P0',pack:0,accent,gag,legacy:true};
+    // The pombos fly (sim/enemies/catalog.ts ENEMIES.pombos.flying); the flag here only mirrors it.
+    return {id,name,role,cell,priority:'P0',pack:0,accent,gag,legacy:true,...(id==='pombos'?{flying:true}:{})};
   }),
   ...rows.map(r=>{
     const t=copy.entries[r.id];
@@ -97,6 +118,7 @@ const list=a=>`[${a.map(str).join(',')}]`;
 const line=e=>{
   const parts=[`id:${str(e.id)}`,`name:${str(e.name)}`,`role:${str(e.role)}`,`cell:${e.cell}`,`priority:${str(e.priority)}`,`pack:${e.pack}`,`accent:${hex(e.accent)}`];
   if(e.legacy)parts.push('legacy:true');
+  if(e.flying)parts.push('flying:true');
   parts.push(`gag:${str(e.gag)}`);
   if(e.barks)parts.push(`\n    barks:${list(e.barks)},\n    deathLines:${list(e.deathLines)},pop:${str(e.pop)}`);
   return `  {${parts.join(',')}},`;
@@ -124,6 +146,11 @@ export interface RosterEntry {
   accent:number;
   /** The nine hand-tuned kinds of sim/enemies/catalog.ts. */
   legacy?:true;
+  /**
+   * Flies (D-041): anti-air towers reach it, ground fire and the wire pass under it (sim/enemies/catalog.ts rosterDef).
+   * Every voador, the pombos, the aerial swarms and the entries whose pack concept says the body flies or hovers.
+   */
+  flying?:true;
   /** The death gag (from the pack's "Death:"), pt-BR. */
   gag:string;
   barks?:readonly string[];deathLines?:readonly string[];pop?:string;

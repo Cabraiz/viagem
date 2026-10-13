@@ -6,6 +6,7 @@
  * Every answer is one of a few frozen constants: no allocation per call, per enemy or per frame.
  */
 import type {EnemyKind} from './keys.ts';
+import {roleOf} from '../../rules/index.ts';
 
 export const PHASE_ACTING=1,PHASE_BUFFED=2;
 
@@ -33,6 +34,14 @@ export function phaseLook(kind:EnemyKind,phase:number|undefined):PhaseLook{
   if(phase===PHASE_ACTING)return kind==='coach'?LOOK_LECTURE:kind==='motoboy'?LOOK_CHARGE:kind==='influencer'?LOOK_POSE:LOOK_NONE;
   if(phase===PHASE_BUFFED)return LOOK_BUFFED;
   return LOOK_NONE;
+}
+/**
+ * Look of an EnemyView's kind (any roster id, D-040) drawn as `kind` (keys.ts enemyKind): phaseLook, except that the
+ * invocador only borrows the coach's texture: its phase 1 is calling minions (the spawn warning shows where), not a
+ * lecture, so it gets no lecture ring and no raised whiteboard. Buffed (phase 2) reads as on anyone.
+ */
+export function viewPhaseLook(id:string,kind:EnemyKind,phase:number|undefined):PhaseLook{
+  return phase===PHASE_ACTING&&roleOf(id)==='invocador'?LOOK_NONE:phaseLook(kind,phase);
 }
 
 /**

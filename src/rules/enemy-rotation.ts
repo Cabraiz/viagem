@@ -89,12 +89,23 @@ export function roundRoster(rotation:Rotation,index:number):RoundRoster{
 
 /** Every id a rotation can spawn (for the client preload and the tests). */
 export const rotationIds=(r:Rotation)=>[...Object.values(r.roles).flatMap(ids=>ids??[]),...r.mini];
-/** A stored rotation (checkpoint, restore) that only names roster entries of the right role. */
+/**
+ * A stored rotation (checkpoint, restore) drawRotation could have made: only ROTATION_SLOTS roles, each with its
+ * min..max entries of that role, MINI_COUNT mini-chefes, no entry twice. Anything else (a corrupt or old checkpoint)
+ * is refused, and the director draws a new one instead of planning rounds from a rotation missing a role.
+ */
 export function isRotation(value:unknown):value is Rotation{
   if(!value||typeof value!=='object')return false;
   const r=value as Rotation;
-  if(!Array.isArray(r.mini)||!r.roles||typeof r.roles!=='object')return false;
+  if(!Array.isArray(r.mini)||r.mini.length!==MINI_COUNT||!r.roles||typeof r.roles!=='object'||Array.isArray(r.roles))return false;
   const role=new Map(ROSTER.map(e=>[e.id,e.role]));
-  return r.mini.every(id=>role.get(id)==='mini-chefe')
-    &&Object.entries(r.roles).every(([k,ids])=>Array.isArray(ids)&&ids.every(id=>role.get(id)===k));
+  if(!r.mini.every(id=>role.get(id)==='mini-chefe'))return false;
+  if(!Object.keys(r.roles).every(k=>ROTATION_SLOTS.some(s=>s.role===k)))return false;
+  const ok=ROTATION_SLOTS.every(s=>{
+    const ids=r.roles[s.role];
+    if(ids===undefined)return s.min===0;
+    return Array.isArray(ids)&&ids.length>=s.min&&ids.length<=s.max&&ids.every(id=>role.get(id)===s.role);
+  });
+  const all=rotationIds(r);
+  return ok&&new Set(all).size===all.length;
 }

@@ -135,10 +135,10 @@ export const isNeutralRound=(k:CityRoundKnobs)=>k.count===1&&k.hp===1&&k.cadence
 
 /**
  * The round's plan with the knobs applied (pure, no rng). Neutral knobs (or round 1) return `plan` itself.
- *  - count: the regular members (not elite, not boss) become round(total × count), at most MAX_ROUND_ENEMIES, split
+ *  - count: the regular members (not elite, not boss, not the solo mini-chefe) become round(total × count), at most MAX_ROUND_ENEMIES, split
  *    over the same groups in proportion to their sizes (largest remainder, ties by group order), at least one each;
  *    a group grows by repeating its own members in order and shrinks by dropping its last ones;
- *  - hp: plan.hp and plan.eliteHp (the elite and the catalog stand-in boss; the real boss is `bossHp`);
+ *  - hp: plan.hp, plan.eliteHp (the elite and the catalog stand-in boss; the real boss is `bossHp`) and plan.miniHp;
  *  - cadence: every non-boss group's `at` becomes at0 + (at − at0) × cadence (at0: the earliest of them), and the
  *    round's time grows by however much later its last group now goes out (never shorter).
  * siegeShare is read by the director itself (isSiege), not stored in the plan.
@@ -146,7 +146,7 @@ export const isNeutralRound=(k:CityRoundKnobs)=>k.count===1&&k.hp===1&&k.cadence
 export function applyCityBalance(plan:RoundPlan,knobs:CityRoundKnobs):RoundPlan{
   if(plan.index<2||knobs.count===1&&knobs.hp===1&&knobs.cadence===1)return plan;
   let groups:SpawnGroup[]=plan.groups.map(g=>({...g,members:[...g.members]}));
-  const regular=groups.filter(g=>!g.boss&&!g.elite);
+  const regular=groups.filter(g=>!g.boss&&!g.elite&&!g.solo);
   if(knobs.count!==1&&regular.length){
     const sizes=regular.map(g=>g.members.length),sum=sizes.reduce((a,b)=>a+b,0);
     const target=Math.max(regular.length,Math.min(MAX_ROUND_ENEMIES,Math.round(sum*Math.max(0,knobs.count))));
@@ -167,7 +167,8 @@ export function applyCityBalance(plan:RoundPlan,knobs:CityRoundKnobs):RoundPlan{
     // Stable: equal ticks keep the plan's order.
     groups=groups.map((g,i)=>({g,i})).sort((a,b)=>a.g.at-b.g.at||a.i-b.i).map(x=>x.g);
   }
-  return {...plan,groups,total:groups.reduce((n,g)=>n+g.members.length,0),durationTicks,hp:plan.hp*knobs.hp,eliteHp:plan.eliteHp*knobs.hp};
+  return {...plan,groups,total:groups.reduce((n,g)=>n+g.members.length,0),durationTicks,hp:plan.hp*knobs.hp,eliteHp:plan.eliteHp*knobs.hp,
+    ...(plan.miniHp!==undefined?{miniHp:plan.miniHp*knobs.hp}:{})};
 }
 
 /** Units a crate of `value` pays with the loot knob (whole units, ≥ 0). */

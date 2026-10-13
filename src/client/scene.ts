@@ -643,11 +643,11 @@ export class IslandScene extends Phaser.Scene {
     return best;
   }
   private icons=new Map<string,string>();
-  /** Sticker of a critter kind for the HUD ("what got you"): the horde atlas texture as a data URL, cached. */
-  critterIcon(roster:string){
+  /** Sticker of the critter `id` (any roster id) for the HUD ("what got you"): the horde atlas texture of the kind drawn for it, as a data URL, cached per drawn kind. */
+  critterIcon(id:string){
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
     // A roster entry without art (D-040) shows its role's stand-in, like the horde draws it.
-    const kind=drawnKind(roster);
+    const kind=drawnKind(id);
     if(!kind)return undefined;
     let url=this.icons.get(kind);
     if(url===undefined){

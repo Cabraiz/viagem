@@ -25,7 +25,9 @@ import {createProjectileSystem} from '../../src/sim/projectiles.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
-import {LEGACY_KINDS,ROLE_PROFILES,ROSTER,entryLines,isRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
+import {CIDADE_MODIFIERS,LEGACY_KINDS,MINI_SOLO_HP,MODIFIERS,ROLE_PROFILES,ROSTER,drawRotation,entryLines,isRotation,planRound,roleOf,rotationIds,
+  roundRoster} from '../../src/rules/index.ts';
+import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src/sim/city/balance.ts';
 import {walkable,SPAWN,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
@@ -302,4 +304,78 @@ test('a full assembled run with the rotation (6 room bots, endless world) gets t
   for(const k of seen)assert.ok(ids.has(k),`${k} outside the rotation (or the boss's minions)`);
   assert.ok(rotation===undefined||isRotation(rotation));
   assert.ok(seen.size>=8,`${seen.size} kinds met`);
+});
+
+// ---------- review fixes ----------
+test('invocador: a spot behind a wall is never announced (clear line from him to it, the enemy view of the terrain)',()=>{
+  // A thin wall east of him (a mask terrain over the open field): spots east of it are walkable but out of his reach.
+  const WALL=[O.x+.5,O.x+.8];
+  const walled=Object.assign(Object.create(TERRAIN),{
+    base:{x:O.x-20,y:O.y},spawn:{x:O.x-20,y:O.y},
+    clearDisc(x:number,y:number,r:number){return x+r<WALL[0]||x-r>WALL[1];},
+  }) as TerrainField;
+  let calls=0;
+  for(let seed=1;seed<=12;seed++){
+    const world=new SimWorld({terrain:walled,seed});
+    world.round.index=7;world.round.phase='wave';
+    const ai=new EnemyAi({projectileCap:MAX_PROJECTILES,minionKinds:()=>['bebado']});
+    world.register(ai).register(createTelegraphSystem());
+    addPlayer(world,'p',at(-5));
+    const caller=createEnemy(world,ofRole('invocador'),O);
+    const events:SimEvent[]=[];
+    for(let i=0;i<ticks(1)+SUMMON.warn+2;i++)events.push(...world.step());
+    const warnings=events.filter(e=>e.type==='spawn-warning');
+    calls+=warnings.length?1:0;
+    for(const w of warnings)if(w.type==='spawn-warning')assert.ok(w.x<WALL[0],`seed ${seed}: a spot behind the wall at x ${(w.x-O.x).toFixed(2)}`);
+    for(const m of [...world.enemies.values()].filter(e=>e.memory?.[MINION_FLAG]===1))assert.ok(m.x<WALL[0],`seed ${seed}: a minion behind the wall`);
+    assert.ok(caller.x<WALL[0]);
+  }
+  assert.ok(calls>=10,`${calls} of 12 called`);
+});
+
+test('the lone mini-chefe spawns with exactly plan.miniHp (not the elite\'s hp), a tampered checkpoint rotation is drawn again',()=>{
+  const created:{round:number;kind:string;scale:number}[]=[];
+  const ctx=fakeCtx(51,new TerrainField(2));ctx.players.set('a',{id:'a',classId:'x',hp:100,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},stats:{...BASE_STATS},weaponReady:{},...SPAWN});
+  const d=createDirector(directorOptions(created,{rotation:true,intermissionSeconds:1}));
+  let plan8:ReturnType<typeof structuredClone<NonNullable<typeof d.state.plan>>>|undefined;
+  for(let i=0;i<ticks(60*25)&&!created.some(c=>c.round===8&&c.kind===d.state.rotation!.mini[1]);i++){
+    runDirector(ctx,d,1);
+    if(d.state.plan?.index===8)plan8=d.state.plan;
+  }
+  const solo=created.find(c=>c.round===8&&c.kind===d.state.rotation!.mini[1]);
+  assert.ok(solo&&plan8,'the round-8 mini-chefe came');
+  assert.ok(plan8!.miniHp!>0&&plan8!.miniHp!<plan8!.eliteHp);
+  assert.equal(solo!.scale,plan8!.miniHp,'its hp is the plan\'s miniHp');
+  // A checkpoint whose rotation is missing a role (corrupt) or names a wrong entry: refused, a valid one drawn on the
+  // next step, and the caller's object is left as it was.
+  for(const bad of [{roles:{},mini:[]},{roles:{corredor:['tio-pave']},mini:['bebado','bebado']},{...d.state.rotation!,roles:{...d.state.rotation!.roles,corredor:[]}}]){
+    const snapshot={...JSON.parse(JSON.stringify(d.state)),rotation:bad},copy=JSON.parse(JSON.stringify(snapshot));
+    const restored=createDirector(directorOptions([],{rotation:true,intermissionSeconds:1}),snapshot);
+    assert.deepEqual(snapshot,copy,'the restore object is not mutated');
+    assert.equal(restored.state.rotation,undefined);
+    const c2=fakeCtx(51,new TerrainField(2));c2.players=ctx.players;c2.tick=ctx.tick;
+    runDirector(c2,restored,ticks(30));
+    assert.ok(isRotation(restored.state.rotation),'drawn again');
+  }
+});
+
+test('city balance in round 8: exactly one mini-chefe whatever the team, its hp scaled by the hp knob like the elite\'s',()=>{
+  const rotation=drawRotation(new Rng(3));
+  for(const players of [1,3,6]){
+    const plan=planRound(8,players,{name:'x'},new Rng(9),roundRoster(rotation,8));
+    const knobs=roundKnobs(CITY_BALANCE,8,plan.players),out=applyCityBalance(plan,knobs);
+    assert.ok(!isNeutralRound(knobs),`${players}p: the knobs act`);
+    const solo=out.groups.filter(g=>g.solo);
+    assert.equal(solo.length,1);assert.deepEqual(solo[0].members,[rotation.mini[1]],`${players}p: one mini-chefe`);
+    assert.equal(out.miniHp,plan.miniHp!*knobs.hp);assert.equal(out.eliteHp,plan.eliteHp*knobs.hp);
+    assert.ok(Math.abs(out.miniHp!/out.eliteHp-MINI_SOLO_HP)<1e-12,`${players}p: miniHp/eliteHp ${(out.miniHp!/out.eliteHp).toFixed(3)}`);
+  }
+});
+
+test('size modifiers never push the lone mini-chefe past the boss\'s radius (the neighbor reach): giant-everyone banned in round 8',()=>{
+  const cap=ENEMIES.chefe.radius,minis=ROSTER.filter(e=>e.role==='mini-chefe');
+  const sizes=[...MODIFIERS.filter(m=>!m.banRounds.includes(8)).map(m=>[m.id,m.sizeMult??1] as const),
+    ...CIDADE_MODIFIERS.filter(m=>!m.banRounds.includes(8)).map(m=>[m.id,Math.max(m.sizeMult??1,m.growth?.sizeMult??1)] as const)];
+  for(const e of minis)for(const [id,size] of sizes)assert.ok(enemyDef(e.id).radius*size<=cap+1e-9,`${e.id} under ${id}: ${(enemyDef(e.id).radius*size).toFixed(3)}`);
+  assert.ok(minis.some(e=>enemyDef(e.id).radius*1.5>cap),'giant-everyone would (hence the ban)');
 });

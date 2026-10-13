@@ -352,8 +352,9 @@ function rosterDef(kind:string):EnemyDef|undefined{
     // The swarm's and the stagger's walk sway like their base's (pombos, bêbado).
     ...((role.behavior==='swarm'||role.behavior==='stagger')&&base.zigzag?{zigzag:base.zigzag}:{}),
     ...(role.behavior==='ranged'?{shotSource:GENERIC_SHOT_SOURCE}:{}),
-    // D-041: the voador flies (anti-air reaches it, ground fire and the wire pass under); it still walks like the swarm.
-    ...(entry.role==='voador'?{flying:true as const}:{}),
+    // D-041: flying is per entry (RosterEntry.flying: every voador, the aerial swarms, the bodies whose concept flies):
+    // anti-air reaches it, ground fire and the wire pass under; it still walks like its role.
+    ...(entry.flying?{flying:true as const}:{}),
     barks:lines.barks,deathLines:lines.deathLines,reactionLines:lines.reactionLines,
   });
   ROSTER_DEFS.set(kind,def);
@@ -362,7 +363,7 @@ function rosterDef(kind:string):EnemyDef|undefined{
 /** Def of any roster id (the nine hand-tuned, the rest built from their role); an unknown kind reads as the bêbado. */
 export const enemyDef=(kind:string):EnemyDef=>(Object.hasOwn(ENEMIES,kind)?ENEMIES[kind as LegacyKind]:undefined)??rosterDef(kind)??ENEMIES.bebado;
 /**
- * Flying enemy (EnemyDef.flying: the pombos and the roster's voadores): what anti-air reaches and ground fire does not
+ * Flying enemy (EnemyDef.flying: the pombos and the roster entries with RosterEntry.flying): what anti-air reaches and ground fire does not
  * (torres-sim).
  */
 export const isFlying=(enemy:Pick<EnemyState,'kind'>)=>enemyDef(enemy.kind).flying===true;

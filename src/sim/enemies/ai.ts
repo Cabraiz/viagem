@@ -701,7 +701,9 @@ export class EnemyAi implements SimSystem {
     let made=0;
     for(let i=0;i<8&&made<want;i++){
       const a=start+i/8*TAU,p={x:e.x+Math.cos(a)*SUMMON.radius,y:e.y+Math.sin(a)*SUMMON.radius};
-      if(!walkable(p,terrain))continue;
+      // Walkable and in the open from him (the enemy view: barricades are solid), so a minion never appears behind a
+      // wall or a barricade he is not on the side of.
+      if(!clearFrom(e,p.x-e.x,p.y-e.y,terrain,PLAYER_RADIUS))continue;
       let clear=true;for(const pl of ctx.players.values())if(!pl.spectator&&Math.hypot(pl.x-p.x,pl.y-p.y)<SUMMON.safe){clear=false;break;}
       if(!clear)continue;
       memory[`s${made}x`]=p.x;memory[`s${made}y`]=p.y;made++;

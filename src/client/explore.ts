@@ -3,6 +3,11 @@ import type { HeroClass } from '../rules/index.ts';
 import {buildPlanFor,landmarks} from '../maps/index.ts';
 import type { CoopClient } from './net/client.ts';
 import './coop.css';
+import './fun/fun.css';
+import {EmoteBar} from './fun/emotes.ts';
+import {ZONE_WINDOWS} from './hud/zones.ts';
+/** The match windows a thumb control must not cover (the emote bar hides while one is open). */
+const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
@@ -61,6 +66,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
   let skill:SkillButton|undefined;
+  let emotes:EmoteBar|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
   let rescue:RescueBoard|undefined;
   /**
@@ -94,6 +100,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
     $('.explore-actions').innerHTML=`${SKILL_HTML}<button class="explore-pause" aria-pressed="false">Pausar controles</button>`;
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
+    // Quick emotes (emote-relay-sala): the bar above the skill button (fun.css, zones 'emote'), shown in a match only;
+    // a tap goes to the room, which relays it to everyone, this phone included (net.onEmote: the laughing face).
+    emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
@@ -196,7 +205,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
   };
@@ -419,6 +428,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         damage.add(view,id=>net!.players.has(id));
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
+        // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
+        if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
+          if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
         if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.

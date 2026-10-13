@@ -12,7 +12,7 @@ import {TELEGRAPH_KINDS,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
-import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/index.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
@@ -283,6 +283,8 @@ export class Room {
   private readonly labOn:boolean;
   /** Last "Me salva" ping per player (wall clock), for the room-side anti-spam (UX-resgate-e-ping). */
   private readonly sosAt=new Map<string,number>();
+  /** When each player's last relayed emote went out (emote-relay-sala anti-spam). */
+  private readonly emoteAt=new Map<string,number>();
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   private readonly onRoster?:(roster:RoomRoster)=>void;
@@ -452,7 +454,7 @@ export class Room {
     if(!this.sim.checkpointShapeOk(cp.sim))return fallback('shape');
     if(!this.sim.resume(cp.sim))return fallback('sim');
     if(!this.run.resume(run,new Set(cp.sim!.players.map(p=>p.id)))){this.sim.resetRun();return fallback('run');}
-    this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
     this.syncSpectators();
     // This round is the one stored: no new checkpoint until the next round, and the roster says running again.
     this.rosterRound=this.sim.world.round.index;this.checkpointRef=ref;this.rosterDirty=true;
@@ -600,6 +602,7 @@ export class Room {
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
     else if(m.t==='sos')this.sos(c,m,now);
+    else if(m.t==='emote')this.emote(c,m,now);
     // Consent for the result's "momento mais vergonhoso" (VGM-053B): {t:'pref',shame:false} leaves this player out.
     else if(m.t==='pref'&&typeof m.shame==='boolean')this.sim.setShamePref(c.playerId,m.shame);
     // Lab only (wrangler dev with ALLOW_LOCAL, tests): put the sender down, or move it to a walkable spot, for the
@@ -751,7 +754,7 @@ export class Room {
     // The event ids go on from the old simulation's (phones drop an id they already saw).
     sim.world.raiseEventSeq(old.world.lastEventId);
     this.sim=sim;this.map=ref;this.run.setDurationTicks(this.durationFor(ref));
-    this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
     for(const c of this.connections.values())c.encoder?.resync();
     this.run.resetReady();this.syncSpectators();this.rosterDirty=true;
     this.send({t:'map',map:welcomeMap(ref),world:worldDescriptor(sim.terrain)});
@@ -761,7 +764,7 @@ export class Room {
     this.sim.addBot(id,name,classId);this.run.join(id,{bot:true});this.bots.add(id,slot);this.rosterDirty=true;
   }
   private removeBot(id:string){
-    this.sim.remove(id);this.run.leave(id);this.bots.remove(id);this.sosAt.delete(id);this.rosterDirty=true;this.syncSpectators();
+    this.sim.remove(id);this.run.leave(id);this.bots.remove(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.rosterDirty=true;this.syncSpectators();
   }
   /**
    * A person leaves for good (leave, kicked, seat expired): out of the run and the room; the owner's post goes to the
@@ -769,7 +772,7 @@ export class Room {
    */
   private dropPerson(id:string){
     this.autopilots.remove(id);
-    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
+    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
     if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
     if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
   }
@@ -827,6 +830,21 @@ export class Room {
     if(last!==undefined&&now>=last&&now-last<SOS_COOLDOWN_MS-SOS_SLACK_MS)return;
     this.sosAt.set(p.id,now);
     this.send({t:'sos',id:p.id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
+  }
+  /**
+   * Quick emote (emote-relay-sala): {t:'emote',round,id} in a match (wave or intermission), relayed once to everyone as
+   * {t:'emote',player,id,round}, the sender included (its confirmation: the bar never shows its own tap twice), at most
+   * once per EMOTE_COOLDOWN_MS − EMOTE_SLACK_MS per player. Spectators watch; unknown ids, stale rounds and floods drop.
+   */
+  private emote(c:Connection,m:any,now:number){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round||!isEmoteId(m.id))return;
+    const p=this.sim.players.get(c.playerId!);
+    if(!p||p.spectator)return;
+    const last=this.emoteAt.get(p.id);
+    if(last!==undefined&&now>=last&&now-last<EMOTE_COOLDOWN_MS-EMOTE_SLACK_MS)return;
+    this.emoteAt.set(p.id,now);
+    this.send({t:'emote',player:p.id,id:m.id,round:state.round});
   }
   /** "Me salva" of a fallen bot: the same relay and anti-spam as a person's (UX-resgate-e-ping). */
   private botSos(id:string,now:number){
@@ -957,7 +975,7 @@ export class Room {
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
     this.checkpointRef=undefined;
-    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
+    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
     for(const p of this.sim.players.values()){

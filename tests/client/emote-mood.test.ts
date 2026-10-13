@@ -21,11 +21,11 @@ test('parseEmote: a well-formed relay passes; forged, oversized and unknown ones
     assert.equal(parseEmote(bad),null,JSON.stringify(bad));
 });
 
-test('the client handles {t:emote} like {t:sos}: parsed strictly, then onEmote; nothing new is sent',()=>{
+test('the client handles {t:emote} like {t:sos}: parsed strictly, then onEmote; it sends {t:emote,round,id} (emote-relay-sala)',()=>{
   const client=src('src/client/net/client.ts');
   assert.match(client,/onEmote:\(e:EmoteNote\)=>void=\(\)=>\{\};/);
   assert.match(client,/else if\(m\.t==='emote'\)\{const note=parseEmote\(m\);if\(note\)this\.onEmote\(note\);\}/);
-  assert.doesNotMatch(client,/t:'emote'/,'the room relay is a separate card: the client sends no emote yet');
+  assert.ok(client.includes("this.out(this.socket,{t:'emote',round:this.run.round,id});"),'the room relays it (emote-relay-sala)');
 });
 
 test('MoodBoard: shows from the send up to 2200 ms, latest wins, time injected',()=>{

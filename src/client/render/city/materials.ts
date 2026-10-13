@@ -166,6 +166,8 @@ export interface TextureLookup {
 export class CityMaterials {
   private readonly textures:TextureLookup;
   constructor(textures:TextureLookup){this.textures=textures;}
+  /** Frames of a loaded texture (1 for a plain image). */
+  frames(key:string):number{return this.textures.frames(key);}
   /** Ground texture key of a kind, or undefined (flat colour). */
   ground(kind:GroundKind):string|undefined{const k=groundTextureKey(kind);return this.textures.has(k)?k:undefined;}
   /** Whether the procedural ground decor is drawn over cells of this kind (not over painted ground). */

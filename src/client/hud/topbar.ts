@@ -77,7 +77,7 @@ export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name
 
 /**
  * Round/boss banner (UX-zonas-tela): lives in the top band's announcement slot, two lines at most, MARQUEE_MS on
- * screen, then shrinks into the round chip. A title that wraps drops the subtitle (the joke goes first).
+ * screen, then fades out inside its own slot (the chip shows the round). A title that wraps drops the subtitle (the joke goes first).
  */
 export function createAnnouncer():HudPart{
   const root=el('div','rh-marquee');root.setAttribute('aria-live','polite');root.hidden=true;

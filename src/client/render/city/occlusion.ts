@@ -1,18 +1,23 @@
 /**
- * Building see-through for the city layer (card cidade-03a). Pure logic, no Phaser.
- * A building that covers the local hero (hero behind it in view space AND its screen silhouette over the
- * hero sprite box) fades as a whole block to FADE_ALPHA over FADE_MS; walls, cliffs and rubble never fade
- * (art lane: walls <= 1.6 u, buildings 2-4 u, rubble <= 0.3 u). Same idea as the island's `canopyCovers`
- * (src/game/render/you-rules.ts), but box-exact and with a short fade instead of an instant switch.
+ * See-through for the city layer (cards cidade-03a, cidade-borda-e-quadras). Pure logic, no Phaser.
+ * Any city piece drawn over a figure (the local hero or an ally) and standing in front of it (the figure is behind it
+ * in view space AND its screen silhouette is over the figure's box) fades to FADE_ALPHA over FADE_MS, and back after
+ * HOLD_MS without cover. Every kind fades (buildings, the maps' walls and the map's edge wall, cliff lips, rubble,
+ * imported art lots, tall props), one drawn piece at a time: a band of unit columns, a lot's image, a prop. Fading
+ * only the pieces in front (the same test actorDepth uses to draw the figure under them) keeps the rest of a long wall
+ * or a big block opaque, like the cutout of classic isometric games. Terrain relief never hides a figure: the ground
+ * is drawn under every actor.
  * Also gives `heroRelativeDepth`, the draw-order fix that keeps the hero above a block it stands in front of.
  */
 import type {BlockKind,CityAsset,CityBlock} from './asset.ts';
-import {type Pt,type Rect,VIEW_PIVOT,boundsOf,depth,project,viewPoint} from './projection.ts';
+import {type Pt,type Rect,VIEW_PIVOT,boundsOf,depth,project,rectsOverlap,viewPoint} from './projection.ts';
 
 export const FADE_ALPHA=0.35;
 /** Outline (edge lines) alpha when its block is fully faded: edges stay a bit stronger so the shape still reads. */
 export const OUTLINE_FADE_ALPHA=0.6;
-export const FADE_MS=120;
+export const FADE_MS=150;
+/** A piece that stops covering stays faded this long first: no flicker when a figure walks along a wall's edge. */
+export const HOLD_MS=160;
 /** Hero sprite box in screen px, centred on the feet and extending upward from them. */
 /** The scene's hero figure: 96 px tall (framing.ts HERO_WORLD_PX), ~58 px wide (canopy half width in you-rules.ts). */
 export const HERO_SCREEN:Readonly<{w:number;h:number}>=Object.freeze({w:58,h:96});
@@ -122,34 +127,70 @@ export function outlineAlpha(blockAlpha:number):number{
   return Math.min(1,Math.max(0,a));
 }
 
+/** A figure the see-through protects: feet in world units, z the ground height under them. */
+export interface Figure {x:number;y:number;z:number}
+
 /**
- * Per-block fade state. `update` once per frame; the returned map holds every block with alpha < 1,
- * ordered by id. Only buildings fade; a block that leaves `occluders` (chunk hidden) is dropped at once;
- * no hero (dead, spectating) eases everything back to 1.
+ * Fade state per drawn piece (any string id). `update` once per frame with the ids covering some figure now; the
+ * returned map holds every piece with alpha < 1. A covered piece eases to FADE_ALPHA in FADE_MS; once uncovered it
+ * holds HOLD_MS, then eases back to 1 and is dropped. A bad dt changes nothing.
  */
-export class OcclusionFader {
-  private state:Map<string,number>=new Map();
-  update(occluders:readonly Occluder[],hero:{x:number;y:number;z:number}|undefined,view:number,dtMs:number,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):ReadonlyMap<string,number>{
-    const byId=new Map<string,Occluder>();
-    for(const o of occluders)if(!byId.has(o.id))byId.set(o.id,o);
-    const next=new Map<string,number>();
-    for(const id of [...byId.keys()].sort((a,b)=>a<b?-1:a>b?1:0)){
-      const o=byId.get(id)!,cur=this.state.get(id)??1;
-      const target=o.kind==='building'&&hero&&covers(o,hero,view,pivot,size)?FADE_ALPHA:1;
-      if(cur>=1&&target>=1)continue;
-      const a=stepAlpha(cur,target,dtMs);
-      if(a<1)next.set(id,a);
+export class CoverFader {
+  private state=new Map<string,{alpha:number;hold:number}>();
+  private readonly out=new Map<string,number>();
+  update(covered:ReadonlySet<string>,dtMs:number):ReadonlyMap<string,number>{
+    const ok=Number.isFinite(dtMs)&&dtMs>=0;
+    for(const id of covered)if(!this.state.has(id))this.state.set(id,{alpha:1,hold:HOLD_MS});
+    const out=this.out;out.clear();
+    for(const [id,s] of this.state){
+      if(ok){
+        if(covered.has(id))s.hold=HOLD_MS;else s.hold=Math.max(0,s.hold-dtMs);
+        s.alpha=stepAlpha(s.alpha,s.hold>0?FADE_ALPHA:1,dtMs);
+      }
+      if(s.alpha>=1&&!covered.has(id)&&s.hold<=0){this.state.delete(id);continue;}
+      if(s.alpha<1)out.set(id,s.alpha);
     }
-    this.state=next;
-    return next;
+    return out;
   }
-  /** Current alpha of a block (1 when not fading). */
-  alpha(id:string):number{return this.state.get(id)??1;}
-  reset():void{this.state=new Map();}
+  /** Current alpha of a piece (1 when not fading). */
+  alpha(id:string):number{return this.state.get(id)?.alpha??1;}
+  reset():void{this.state=new Map();this.out.clear();}
+}
+
+/**
+ * Adds to `out` the fade id of every column that covers one of the figures (covers(): the figure behind it and its
+ * silhouette over the figure's box), i.e. the columns actorDepth draws above that figure (tested with `cover` when
+ * set). Columns without a fade id are skipped.
+ */
+export function coveringColumns(columns:Iterable<ColumnRef>,figure:Figure,view:number,out:Set<string>,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):Set<string>{
+  const r=heroRect(figure.x,figure.y,figure.z,view,pivot,size),rx1=r.x+r.w,ry1=r.y+r.h;
+  for(const c of columns){
+    if(!c.fade||out.has(c.fade))continue;
+    const o=c.cover??c.occ,b=o.box;
+    if(rx1<=b.x0||b.x1<=r.x||ry1<=b.y0||b.y1<=r.y)continue;
+    if(isBehind(o,figure.x,figure.y,view,pivot)&&rectHitsConvex(r,o.silhouette))out.add(c.fade);
+  }
+  return out;
+}
+
+/**
+ * A point prop (tree, lamp, car) over a figure: drawn in front (its depth key above the figure's) and its screen rect
+ * over the figure's box. `rect` is the prop's drawn bounds in projected px.
+ */
+export function propCovers(prop:{x:number;y:number;rect:Rect},figure:Figure,view:number,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):boolean{
+  if(!(depth(prop.x,prop.y,view,pivot)>depth(figure.x,figure.y,view,pivot)))return false;
+  return rectsOverlap(prop.rect,heroRect(figure.x,figure.y,figure.z,view,pivot,size));
 }
 
 /** A unit column as actorDepth sees it: its sort key and its occluder in the current view. */
 export interface ColumnRef {key:number;occ:Occluder;
+  /** Id of the drawn piece that fades when this column covers a figure (CoverFader). */
+  fade?:string;
+  /**
+   * What the piece really draws, when lower than `occ` (an art lot keeps its block's height for the draw order, but a
+   * ruin's sheet is shorter): the see-through tests this box instead, so a short ruin in front never fades for nothing.
+   */
+  cover?:Occluder;
   /** Scratch for callers that gather columns from several cells: the last query that saw it (dedupe, no Set). */
   mark?:number}
 

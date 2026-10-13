@@ -6,7 +6,9 @@
  * ends of the 4 avenues (Norte, Sul, Leste, Oeste) are the telegraphed spawns; the crashed vehicle in the south is the
  * start; the round 10 boss fights in the plaza.
  *
- * Nothing is wired yet: the director, the enemy AI, the forge and the HUD read these tables in later cards. Every
+ * Wired so far (cidade-08): round 1 is the tutorial walk, so the director sends CIDADE_TUTORIAL's name and banner line
+ * in its `round` events and heroes `say` a CIDADE_TUTORIAL intro line and arrival line (balloons; keys in
+ * CIDADE_TUTORIAL_SAY). The enemy AI, the forge and the HUD read the other tables in later cards. Every
  * modifier states its whole effect as data (fields below), balanced like waves.ts MODIFIERS: ~0.9-1.15 of the round's
  * threat, normalizeThreat for composition changes and multiplier products near 1.
  *
@@ -25,7 +27,7 @@ export type CidadeRecipeId=RecipeId;
 
 export type Avenue='norte'|'sul'|'leste'|'oeste';
 export const AVENUES:readonly Avenue[]=Object.freeze(['norte','sul','leste','oeste']);
-export const CIDADE_REGULAR_KINDS:readonly CidadeRegularKind[]=Object.freeze(['bebado','pombos','tio-pave','agiota','anao-molotov']);
+export const CIDADE_REGULAR_KINDS:readonly CidadeRegularKind[]=Object.freeze(['bebado','pombos','tio-pave','agiota','anao-molotov','coach','motoboy','influencer']);
 export const CIDADE_RECIPE_IDS:readonly CidadeRecipeId[]=Object.freeze(['reparo','gambiarra','torre-chinelo']);
 
 /** Longest modifier label (name + ': ' + description) and round name (VGM-033 banner rule). */
@@ -158,6 +160,13 @@ export const CIDADE_BARKS:Readonly<Record<CidadeEnemyKind,readonly string[]>>=de
     'Quentão do tio tem segredo'],
   agiota:['O iglu tá no meu nome, viu?','Paga ou vira boneco de neve','Boleto chegou de trenó, hein',
     'Dívida não hiberna, meu anjo','Nevasca tem taxa de 30%','Pochete térmica, juros quentes'],
+  // P1 trio (NEW-20261012-ORQ-elenco-p1): snow lines reviewed by an independent humor pass (D-033).
+  coach:['Caiu o dedo? É desapego!','Palestra na nevasca: 997 reais','Congela teu medo. E teu pé.',
+    'Meu quadro branco é a rua toda','Hipotermia é zona de conforto'],
+  motoboy:['Avalanche? Buzina que ela sai','Atalho pelo lago congelado!','Escada com neve? Subo de moto',
+    'Pediu sopa? Chega em cubo','Buzina congelou. Faço BIBI!'],
+  influencer:['Shape de inverno: casaco zero','Bíceps não sente frio, sente?','Tremendo? Não, é o pump!',
+    'Frio queima caloria, família!','Gelo no abdômen: definição!'],
   'anao-molotov':['Frio? Taca fogo que passa!','Aquecimento central: EU','Barba congelou. Vou acender','Iglu? Iglu é forno, caralho!',
     'Vou fazer um quentão. Na rua.','Cachaça não congela. Eu testei','Boneco de neve? Agora é poça.'],
   chefe:['Proibido morrer no chafariz!','Quem autorizou nevar? NINGUÉM!','Floco caiu na tua vaga? Multa!',
@@ -183,6 +192,9 @@ export const CIDADE_DEATH_LINES:Readonly<Record<CidadeRegularKind,readonly strin
   agiota:['Fiador! Chama o fiador!','Meu filho herda a cobrança!','Boleto molhado não vale! NÃÃO!',
     'Congelei os juros. Que dor.'],
   'anao-molotov':['Pelo menos derreti a neve!','Pavio molhou... ah, pegou.','Virei fogueira da praça!','Explodi e esquentei a galera'],
+  coach:['Me congela. Volto versão 2.0','Virei estátua motivacional','Roxo é a cor da prosperidade'],
+  motoboy:['O lago... não era atalho...','Avalanche buzinou de volta','Escorreguei pro CEP errado...'],
+  influencer:['Perna congelou. Nem uso mesmo','Câimbra de frio ao vivo...','Filtro de neve me apagou'],
 });
 /** Said by one enemy when a timed-out horde gives up and walks back up the avenues. */
 export const CIDADE_RETREAT_LINES:readonly string[]=deepFreeze([
@@ -209,10 +221,40 @@ export const CIDADE_HORN_LINES:readonly string[]=deepFreeze([
   'Larga tudo! Os pombos tão vindo armados!','Solta o quentão, porra! Pra praça!',
 ]);
 
+/** Longest left-behind line (cidade-07): a balloon over the hero, a bit wider than the enemy barks. */
+export const LEFT_BEHIND_MAX=34;
+/**
+ * Said over each hero still outside the base when the round starts (cidade-07, key 'ficou-pra-tras'): "ficou pra trás
+ * no rolê". The gameplay consequence is the director's (it aims groups at a team away from the base, cidade-05c).
+ */
+export const CIDADE_LEFT_BEHIND_LINES:readonly string[]=deepFreeze([
+  'Ficou pra trás no rolê. Boa sorte!',
+  'Saiu pra comprar cigarro. Rodou.',
+  'Foi buscar quentão e se lascou.',
+  'Perdeu a corneta e o juízo.',
+  'Ficou na rua. A horda agradece.',
+  'Errou o caminho de casa. De novo.',
+  'Ouviu a corneta e pediu mais uma.',
+  'Último gole saiu caro, parceiro.',
+  'Sem praça, sem muro, sem quentão.',
+  'Vai brigar na rua de pantufa?',
+]);
+/** Said by the hero who empties a loot crate in the city (cidade-07); the island keeps its coconut/rock lines. */
+export const CIDADE_CRATE_LINES:readonly string[]=deepFreeze([
+  'Caixa limpa. Nem o rato quis.',
+  'Saque feito. Crime? Talvez.',
+  'Achado não é roubado. É saque.',
+  'Tinha mais teia que tesouro.',
+  'Caixa vazia, consciência também.',
+  'Levou até o papelão. Respeito.',
+  'Isso aqui era do síndico? Era.',
+  'Sobrou só o cheiro de cachaça.',
+]);
+
 // ---------- Crashed vehicle (start, south of the city; D-026: a helicopter) ----------
 export interface CidadeVehicle {
   id:string;name:string;
-  /** Lines shown in sequence at the run start (≤ LABEL_MAX each). */
+  /** Banner lines shown in sequence at the run start (≤ LABEL_MAX each; the hero balloon is CIDADE_TUTORIAL.intro). */
   intro:readonly string[];
   /** Balloon when a hero inspects the wreck (≤ BARK_MAX each). */
   inspect:readonly string[];
@@ -226,10 +268,33 @@ export const CIDADE_VEHICLE:CidadeVehicle=deepFreeze({
     'Caixa-preta: só karaokê.','Financiado pelo agiota. Eita.'],
 });
 
+// ---------- Round 1 tutorial (cidade-08): the walk from the wreck to the plaza ----------
+export interface CidadeTutorial {
+  /** Round 1's name and banner line: the `round` event's name and modifier (≤ LABEL_MAX each). */
+  roundName:string;modifier:string;
+  /**
+   * Balloon (`say`) of one hero right after the crash (≤ BARK_MAX each: a balloon, not a banner; CIDADE_VEHICLE.intro
+   * stays the banner sequence).
+   */
+  intro:readonly string[];
+  /** Balloon (`say`) of the first hero who reaches the plaza (≤ BARK_MAX each). */
+  arrival:readonly string[];
+}
+/** `say` keys of the tutorial: a hero's intro line at the run start (CIDADE_TUTORIAL.intro) and the arrival line. */
+export const CIDADE_TUTORIAL_SAY=deepFreeze({intro:'heli-firma:intro',arrival:'heli-firma:praca'} as const);
+export const CIDADE_TUTORIAL:CidadeTutorial=deepFreeze({
+  roundName:'Pouso Forçado',
+  modifier:'O estagiário pousou de cara. Corre pra praça!',
+  intro:['Helicóptero da firma. Óbvio.','O estagiário pilotou. Bêbado.','Neve? E eu de chinelo, porra!',
+    'Sobrevivi. O RH vai descontar.','Cadê o piloto? Ah, no boteco.'],
+  arrival:['Praça! Chão firme, enfim.','Cheguei! Alguém avisa o RH?','Ufa! Praça com chafariz e tudo','Pousei de cara, mas cheguei.',
+    'Cadê o reembolso do voo, RH?'],
+});
+
 /** Everything above in one object (same array references), for the director, the AI, the forge and the HUD. */
 export const CIDADE_ZUEIRA=deepFreeze({
   roundNames:CIDADE_ROUND_NAMES,eliteRoundNames:CIDADE_ELITE_ROUND_NAMES,bossRoundNames:CIDADE_BOSS_ROUND_NAMES,
   modifiers:CIDADE_MODIFIERS,barks:CIDADE_BARKS,reactionLines:CIDADE_REACTION_LINES,deathLines:CIDADE_DEATH_LINES,
   retreatLines:CIDADE_RETREAT_LINES,
-  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,vehicle:CIDADE_VEHICLE,
+  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,leftBehindLines:CIDADE_LEFT_BEHIND_LINES,crateLines:CIDADE_CRATE_LINES,vehicle:CIDADE_VEHICLE,tutorial:CIDADE_TUTORIAL,
 });

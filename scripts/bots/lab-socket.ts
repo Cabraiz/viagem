@@ -11,6 +11,10 @@
  *   while the outage lasts. When it ends, the dead socket is cut for good (the room sees it close then, if it has not
  *   already dropped it) and the client's own retry takes the seat back with its token;
  * - drop(): the connection breaks for real (both sides see it close at once) and the client reconnects at once.
+ * - kbps (3g-rede-sem-teleporte): the phone's bandwidth each way; a message waits for the ones before it to go out
+ *   (bytes·8/kbps ms each), so a burst queues like on a real 3G link;
+ * - lossPct: a share of messages loses a segment; TCP sends it again a round trip later and, keeping the order, the
+ *   ones behind it wait too (head-of-line blocking: the stutter a lossy link really shows).
  * Every message and byte that crosses is counted (per second too) for the artifacts.
  */
 import WebSocket from 'ws';
@@ -66,6 +70,12 @@ export class Link {
   rttMs=0;
   /** Up to this much extra per message and direction (uniform), still in order. */
   jitterMs=0;
+  /** Bandwidth each way (kbit/s = bit/ms); 0: unlimited. */
+  kbps=0;
+  /** Messages (%) that lose a segment and wait one more round trip (TCP retransmission). */
+  lossPct=0;
+  /** When each direction's line is free again (performance.now ms). */
+  private busy={up:0,down:0};
   readonly stats:LinkStats=emptyStats();
   /** Per-second counters since `epoch` (index = whole seconds since the link was made). */
   readonly seconds:SecondSample[]=[];
@@ -74,8 +84,15 @@ export class Link {
   private downUntil=0;
   private readonly origin:string;
   private rng:()=>number;
-  constructor(origin:string,options:{rttMs?:number;jitterMs?:number;rng?:()=>number}={}){
-    this.origin=origin;this.rttMs=options.rttMs??0;this.jitterMs=options.jitterMs??0;this.rng=options.rng??Math.random;
+  constructor(origin:string,options:{rttMs?:number;jitterMs?:number;kbps?:number;lossPct?:number;rng?:()=>number}={}){
+    this.origin=origin;this.rttMs=options.rttMs??0;this.jitterMs=options.jitterMs??0;this.kbps=options.kbps??0;this.lossPct=options.lossPct??0;this.rng=options.rng??Math.random;
+  }
+  /** Delay of a message of `bytes` handed in now in direction `dir`: the line's queue, the trip, a retransmission. */
+  delayOf(dir:'up'|'down',bytes:number){
+    let d=this.oneWay();
+    if(this.kbps>0){const now=performance.now(),start=Math.max(now,this.busy[dir]);this.busy[dir]=start+bytes*8/this.kbps;d+=this.busy[dir]-now;}
+    if(this.lossPct>0&&this.rng()*100<this.lossPct)d+=Math.max(200,this.rttMs);
+    return d;
   }
   get down(){return performance.now()<this.downUntil;}
   /** One-way delay for the next message. */
@@ -131,23 +148,23 @@ export class LabSocket {
     }
     const inner=this.inner=new WebSocket(this.url,{origin,perMessageDeflate:false});
     inner.binaryType='arraybuffer';
-    inner.on('open',()=>this.later(this.inQueue,()=>{if(this.dead||this.readyState!==0)return;this.readyState=1;link.stats.opened++;this.onopen?.({});}));
+    inner.on('open',()=>this.later(this.inQueue,'down',200,()=>{if(this.dead||this.readyState!==0)return;this.readyState=1;link.stats.opened++;this.onopen?.({});}));
     inner.on('message',(data:ArrayBuffer|Buffer,isBinary:boolean)=>{
       if(this.dead)return;
       const size=isBinary?(data as ArrayBuffer).byteLength:(data as Buffer).length;
       const payload:string|ArrayBuffer=isBinary?data as ArrayBuffer:data.toString();
-      this.later(this.inQueue,()=>{
+      this.later(this.inQueue,'down',size,()=>{
         if(this.dead||this.readyState!==1)return;
         link.stats.recvMessages++;link.stats.recvBytes+=size;if(isBinary)link.stats.recvFrames++;else link.stats.recvJson++;
         link.sample('down',size,isBinary);
         this.onmessage?.({data:payload});
       });
     });
-    inner.on('close',(code:number,reason:Buffer)=>{if(this.dead)return;this.later(this.inQueue,()=>this.fireClose(code,reason.toString()));});
-    inner.on('error',()=>{if(this.dead)return;this.later(this.inQueue,()=>this.onerror?.({}));});
+    inner.on('close',(code:number,reason:Buffer)=>{if(this.dead)return;this.later(this.inQueue,'down',40,()=>this.fireClose(code,reason.toString()));});
+    inner.on('error',()=>{if(this.dead)return;this.later(this.inQueue,'down',40,()=>this.onerror?.({}));});
   }
-  private later(queue:OrderedDelay,fn:()=>void){
-    const delay=this.link.oneWay();
+  private later(queue:OrderedDelay,dir:'up'|'down',bytes:number,fn:()=>void){
+    const delay=this.link.delayOf(dir,bytes);
     if(delay<=0){fn();return;}
     queue.schedule(delay,fn);
   }
@@ -158,7 +175,7 @@ export class LabSocket {
     const s=this.link.stats;s.sentMessages++;s.sentBytes+=size;this.link.sample('up',size);
     if(typeof data==='string'){const type=/^\{"t":"([a-z-]+)"/.exec(data)?.[1]??'other';s.sentByType[type]=(s.sentByType[type]??0)+1;}
     if(this.dead)return;
-    this.later(this.outQueue,()=>{if(!this.dead&&this.inner?.readyState===WebSocket.OPEN)this.inner.send(data as string);});
+    this.later(this.outQueue,'up',size,()=>{if(!this.dead&&this.inner?.readyState===WebSocket.OPEN)this.inner.send(data as string);});
   }
   close(code=1000,reason=''){
     if(this.readyState>=2)return;
@@ -166,7 +183,7 @@ export class LabSocket {
     // A dead socket closes only on this side (the room never hears it); the client sees its close event at once.
     if(this.dead||!this.inner){setTimeout(()=>this.fireClose(1006,'closed while offline'),0);return;}
     const inner=this.inner;
-    this.later(this.outQueue,()=>{try{inner.close(code,reason);}catch{inner.terminate();}});
+    this.later(this.outQueue,'up',40,()=>{try{inner.close(code,reason);}catch{inner.terminate();}});
   }
   /** Outage: from now on nothing crosses this socket. */
   blackhole(){if(this.readyState<3)this.dead=true;}

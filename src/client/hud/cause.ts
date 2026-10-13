@@ -6,7 +6,7 @@
 import type {RunView} from '../../contract/index.ts';
 
 /** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them with more hp. */
-export const CAUSE_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe'] as const;
+export const CAUSE_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer'] as const;
 export type CauseKind=typeof CAUSE_KINDS[number];
 
 /** One word (or name) for combat, and the joke that goes on the optional second line. */
@@ -17,6 +17,10 @@ export const CAUSE_COPY:Record<CauseKind|'bichos',{name:string;line:string}>={
   'tio-pave':{name:'Tio do Pavê',line:'O Tio do Pavê te venceu no trocadilho'},
   agiota:{name:'Agiota do Bairro',line:'O agiota cobrou com juros. Em você'},
   chefe:{name:'Síndico Supremo',line:'O síndico lavrou teu óbito em ata'},
+  // Elenco P1 (humor-reviewed).
+  coach:{name:'Coach Quântico',line:'O coach te motivou até o caixão'},
+  motoboy:{name:'Motoboy Kamikaze',line:'O motoboy te entregou no além'},
+  influencer:{name:'Influencer de Academia',line:'Teu tiro voltou. E ele filmou tudo'},
   bichos:{name:'Bichos',line:'Os bichos te pegaram de jeito'},
 };
 export const causeKind=(kind:string|undefined):CauseKind|undefined=>(CAUSE_KINDS as readonly string[]).includes(kind??'')?kind as CauseKind:undefined;

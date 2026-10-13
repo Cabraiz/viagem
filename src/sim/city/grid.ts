@@ -8,13 +8,15 @@
  * uses), so a body following the field is never sent to a cell its own movement refuses. The cells are cached in a
  * Uint8Array; when the terrain's walkability changes (barricades, cidade-06) call `refresh(rect)` on the grid first,
  * then `planner.invalidate([rect])`; citySteer's fields (players and every size class) follow the grid's `version` on
- * their own (see citySteer).
+ * their own (see citySteer). Everything here is for enemies, so it reads the terrain through `enemyTerrain` (the
+ * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
-import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
+import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
 import {SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
+import {enemyDef} from '../enemies/catalog.ts';
 import {AvenuePlanner,type AvenuePlannerOptions,type CityLayout} from './avenues.ts';
 
 /**
@@ -41,8 +43,8 @@ export function cityTerrainOf(terrain:TerrainField|undefined):CityTerrain|undefi
 }
 
 /** Walkable cells of the city at asset.unitsPerCell, by the hero rule at each cell centre (see the module doc). */
-export function cityFlowGrid(terrain:CityTerrain):CityFlowGrid{
-  const asset=terrain.asset, width=asset.cells.w, height=asset.cells.h, cellSize=asset.unitsPerCell;
+export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
+  const terrain=enemyTerrain(city), asset=terrain.asset, width=asset.cells.w, height=asset.cells.h, cellSize=asset.unitsPerCell;
   const cells=new Uint8Array(width*height), probe={x:0,y:0};
   const read=(x0:number,y0:number,x1:number,y1:number)=>{
     for(let cy=y0;cy<=y1;cy++)for(let cx=x0;cx<=x1;cx++){
@@ -102,8 +104,14 @@ export function cityPlanner(terrain:CityTerrain,options:AvenuePlannerOptions={})
   return Object.assign(planner,{grid});
 }
 
+/**
+ * The steer's output: the walking direction, plus `fit` (BUG-20261013-E1): when > 0, the radius of the field it followed,
+ * narrower than the body (its own size class does not reach the target); the enemy-ai then collides with the walls by
+ * that radius, so the body squeezes through the gap that field led it to instead of standing at it. 0: its own radius.
+ */
+export type SteerOut=Point&{fit?:number};
 /** EnemyAiOptions.steer: writes a unit direction into `out` and returns true to replace the straight line to `target`. */
-export type CitySteer=((ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean)&{
+export type CitySteer=((ctx:SimContext,e:EnemyState,target:Point,out:SteerOut)=>boolean)&{
   /** Goals: the cells of the live players (see citySteer); undefined when there is no grid to build it on. */
   readonly playersField:FlowField|undefined;
   /** Wide-body fields per WIDE_RADII class (cell centres, then corners from half a cell); empty until a body needs them. */
@@ -121,7 +129,7 @@ export type CitySteer=((ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boo
    * cidade-05c v2): the hero-size `playersField` only, no size class, its straight chase and corner nudge by the hero
    * rule. Shares this steer's fields (no extra build).
    */
-  readonly hero:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  readonly hero:(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut)=>boolean;
 };
 export interface CitySteerOptions {
   /** Within this distance (u) of its target, with a clear straight segment, an enemy goes straight. Default 6. */
@@ -134,6 +142,11 @@ export interface CitySteerOptions {
   terrain?:CityTerrain;
   /** Every body steers like `CitySteer.hero` (the hero-size players field only, no size classes). Default false. */
   heroOnly?:boolean;
+  /**
+   * Whether the steer's own checks see the barricades (the enemy view, cidade-06). Default true. The boss walks over them
+   * (D-010: it never bashes structures), so its steer is built on a barricade-free planner with `blockers:false`.
+   */
+  blockers?:boolean;
 }
 /** Sampling step of the straight-segment check (maps world.ts clearSegment). */
 const SEGMENT_STEP=.08;
@@ -157,6 +170,14 @@ const WIDE_GOAL_RING=2,WIDE_SEGMENT_STEP=.2;
 const NUDGE=.15;
 /** The AI's chase targets (enemies/ai.ts `live`): only these are goals of the players fields. */
 const chased=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
+/**
+ * Enemy memory flag of a body that holds the plaza (cidade-08: the tutorial's plaza group, set by the director). Unlike
+ * SIEGE_FLAG it never targets a structure (enemies/ai.ts only lets siege bodies hit the wall): the body walks the
+ * planner's flow into the plaza and waits there, facing its target, until a live hero is inside the base
+ * (planner.insideBase) or within PLAZA_HOLD_RADIUS u of it; then the flag drops to 0 for good and it chases like any
+ * body. JSON-safe (a number in memory).
+ */
+export const PLAZA_HOLD_FLAG='plazaHold',PLAZA_HOLD_RADIUS=6;
 
 /** A players field on grid `on`, with the player cells it was last built from and its scratch (no per-tick allocation). */
 interface PlayersLayer {
@@ -181,6 +202,9 @@ interface PlayersLayer {
  *    In a player's cell → false (straight). Unreachable (or no live player) → the planner's flow (plaza, or the
  *    barricade that cut it off); zero → false.
  *    A players-field step that would clip a wall's end heads for the next cell's centre instead (NUDGE).
+ * A body holding the plaza (memory PLAZA_HOLD_FLAG === 1, cidade-08) follows the planner's flow and stands in the
+ * plaza (never the straight chase) until a live hero is in the base or within PLAZA_HOLD_RADIUS; from then on it is
+ * steered as above.
  * Retreating enemies are never steered. Each players field is built on its first call and rebuilt (setTargets, the
  * only O(cells) work) at most once every refreshTicks ticks (a fixed phase per field), when a live player's cell
  * changed (and `refresh(ctx)` rebuilds `playersField` on demand for the director's plans), so it depends on ctx.tick
@@ -196,6 +220,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
   const range=Number.isFinite(opts.chaseRange)&&opts.chaseRange!>=0?opts.chaseRange!:6, range2=range*range;
   const every=Number.isFinite(opts.refreshTicks)&&opts.refreshTicks!>=1?Math.floor(opts.refreshTicks!):10;
   const probe={x:0,y:0};
+  const view=opts.blockers===false?(ctx:SimContext)=>ctx.terrain:(ctx:SimContext)=>enemyTerrain(ctx.terrain);
   const clear=(a:Point,b:Point,terrain:TerrainField)=>{
     const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/SEGMENT_STEP));
     for(let i=0;i<=n;i++){probe.x=a.x+(b.x-a.x)*i/n;probe.y=a.y+(b.y-a.y)*i/n;if(!walkable(probe,terrain))return false;}
@@ -214,8 +239,8 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
    * half a cell of radius, also on the corner grid, node (cx,cy) on the corner (cx,cy) of the cells (a two-cell street
    * fits such a body only along its middle line, on the corners). The steer follows the cheaper of the two.
    */
-  const wideLayers=(terrain:CityTerrain,k:number)=>{
-    const radius=WIDE_RADII[k], g=grid!, cs=g.cellSize;
+  const wideLayers=(city:CityTerrain,k:number)=>{
+    const terrain=enemyTerrain(city), radius=WIDE_RADII[k], g=grid!, cs=g.cellSize;
     return (radius<half?[0]:[0,half]).map(shift=>{
       const ox=(g.originX??0)-shift, oy=(g.originY??0)-shift, extra=shift?1:0;
       const on:FlowGrid={width:g.width+extra,height:g.height+extra,cellSize:cs,originX:ox,originY:oy,
@@ -292,7 +317,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     probe.x=e.x+out.x*NUDGE; probe.y=e.y+out.y*NUDGE;
     // A wide body that fits where it stands is checked with its own disc; one that does not (overlapping a wall, or the
     // boss, which collides by the hero rule, in a street only the hero fits) with the hero rule.
-    const clips=terrain&&terrain.clearDisc(e.x,e.y,e.radius)?!terrain.clearDisc(probe.x,probe.y,e.radius):!walkable(probe,ctx.terrain);
+    const clips=terrain&&terrain.clearDisc(e.x,e.y,e.radius)?!terrain.clearDisc(probe.x,probe.y,e.radius):!walkable(probe,view(ctx));
     if(clips){
       const cs=f.cellSize, cx=Math.floor((e.x-f.originX)/cs), cy=Math.floor((e.y-f.originY)/cs), d=f.nextCell(cx,cy);
       if(d>=0){
@@ -302,10 +327,56 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     }
     return true;
   };
-  const run=(ctx:SimContext,e:EnemyState,target:Point,out:Point,hero:boolean)=>{
+  /**
+   * The planner's flow toward planner.targetFor(e). At a barricade's goal cells that flow is zero: there the body heads
+   * straight for that mouth, so it presses against the barricade it must break (cidade-06) instead of walking at its
+   * target (a player or the wall behind the barricade) into the avenue's corner.
+   */
+  const baseFlow=(ctx:SimContext,e:EnemyState,out:Point)=>{
+    const t=planner.targetFor(e);
+    planner.directionFor(e,t,out);
+    const mouth=t.kind==='barricade'&&out.x===0&&out.y===0?cityTerrainOf(ctx.terrain)?.asset.points.bocas[t.mouth]:undefined;
+    if(mouth){const mx=mouth.x-e.x,my=mouth.y-e.y,l=Math.hypot(mx,my);if(l>1e-6){out.x=mx/l;out.y=my/l;}}
+  };
+  /** A holding body (PLAZA_HOLD_FLAG) is released when a live hero is inside the base or within PLAZA_HOLD_RADIUS of it. */
+  const holdReleased=(ctx:SimContext,e:EnemyState)=>{
+    for(const p of ctx.players.values()){
+      if(!chased(p))continue;
+      const dx=p.x-e.x, dy=p.y-e.y;
+      if(dx*dx+dy*dy<=PLAZA_HOLD_RADIUS*PLAZA_HOLD_RADIUS||planner.insideBase(p))return true;
+    }
+    return false;
+  };
+  /** Holding: the planner's flow into the plaza; standing in it on a zero direction. Always steers. */
+  const hold=(e:EnemyState,target:Point,out:Point)=>{
+    planner.directionFor(e,planner.targetFor(e),out);
+    return true;
+  };
+  /**
+   * A field toward a structure target (the wall, BUG-20261013-E1) on the hero-size grid: rebuilt when the target moves
+   * (never, in a run: the wall is placed once) and, like the players fields, re-reads the cells a barricade changed.
+   * Built on its first use.
+   */
+  let structure:{field:FlowField;x:number;y:number;gridVersion:number}|undefined;
+  const towardStructure=(ctx:SimContext,e:EnemyState,target:Point,out:Point,terrain:CityTerrain|undefined)=>{
+    const v=cityGrid?.version??0, s=structure??={field:new FlowField(grid!,[]),x:NaN,y:NaN,gridVersion:v};
+    if(s.x!==target.x||s.y!==target.y){s.x=target.x;s.y=target.y;s.gridVersion=v;s.field.setTargets([target]);}
+    else if(v!==s.gridVersion){
+      const r=cityGrid?.changedSince?.(s.gridVersion);
+      s.gridVersion=v;
+      s.field.invalidate(r??{x0:0,y0:0,x1:s.field.width-1,y1:s.field.height-1});
+    }
+    return follow(s.field,e,out,ctx,terrain);
+  };
+  const run=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut,hero:boolean)=>{
+    out.fit=0;
     if(e.memory?.retreat===1)return false;
-    const dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(ctx.terrain):undefined;
-    if(dx*dx+dy*dy<=range2&&clear(e,target,ctx.terrain)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
+    if(e.memory?.[PLAZA_HOLD_FLAG]===1){
+      if(!holdReleased(ctx,e))return hold(e,target,out);
+      e.memory[PLAZA_HOLD_FLAG]=0;
+    }
+    const field=view(ctx), dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(field):undefined;
+    if(dx*dx+dy*dy<=range2&&clear(e,target,field)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
     if(narrow&&e.memory?.[SIEGE_FLAG]!==1&&isPlayer(ctx,target)){
       // cidade-05c: one fixed order, wherever the player stands (base or not): the body's own size-class field, then
       // the hero-size players field, then the planner's flow (plaza, or the barricade that cut it off). A field is
@@ -325,19 +396,29 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
             if(c===0)return false;
             if(c<low){low=c;best=l.field;}
           }
-          if(best&&follow(best,e,out,ctx,terrain))return true;
+          // BUG-20261013-E1: a class narrower than the body (its own does not reach) lets it squeeze at that radius.
+          if(best&&follow(best,e,out,ctx,terrain)){if(WIDE_RADII[k]<e.radius)out.fit=WIDE_RADII[k];return true;}
         }
       }
       update(ctx,narrow);
       if(narrow.field.atGoal(e.x,e.y))return false;
-      if(follow(narrow.field,e,out,ctx,terrain))return true;
+      if(follow(narrow.field,e,out,ctx,terrain)){if(terrain)out.fit=RADIUS;return true;}
     }
-    planner.directionFor(e,planner.targetFor(e),out);
-    return out.x!==0||out.y!==0;
+    baseFlow(ctx,e,out);
+    if(out.x!==0||out.y!==0)return true;
+    // BUG-20261013-E1: inside the plaza (its flow is zero there) a siege body walked straight at the wall or a player
+    // and stood against the fountain. Its own field instead: the players field for a player, the structure's field
+    // for the wall, both hero-size (a wide body squeezes by the hero rule, like the boss).
+    if(!narrow)return false;
+    const body=!hero&&e.radius>RADIUS?cityTerrainOf(field):undefined;
+    if(isPlayer(ctx,target)){update(ctx,narrow);if(!follow(narrow.field,e,out,ctx,body))return false;}
+    else if(!towardStructure(ctx,e,target,out,body))return false;
+    if(body)out.fit=RADIUS;
+    return true;
   };
   const heroOnly=opts.heroOnly===true;
-  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,heroOnly);
-  const hero=(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>run(ctx,e,target,out,true);
+  const steer=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut)=>run(ctx,e,target,out,heroOnly);
+  const hero=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut)=>run(ctx,e,target,out,true);
   return Object.defineProperties(steer,{
     hero:{value:hero,enumerable:true},
     playersField:{get:()=>narrow?.field,enumerable:true},

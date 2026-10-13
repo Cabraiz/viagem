@@ -1,4 +1,4 @@
-import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,type WorldKind} from '../src/maps/index.ts';
+import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,CityTerrain,type WorldKind} from '../src/maps/index.ts';
 import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
@@ -6,7 +6,7 @@ import { worldSpawn, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
-import {createRunSystems,type RunOutcomeKind,type RunSystems} from '../src/sim/index.ts';
+import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
@@ -71,6 +71,8 @@ const STEP_TICKS_KEPT=64;
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
 const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
+/** A city barricade as the stonewards state keeps it (cidade-06); read structurally so rooms do not pin its whole type. */
+interface BarricadeRow {id:string;x:number;y:number;hp:number;maxHp:number;down?:boolean}
 
 export class Simulation {
   readonly terrain:TerrainField;
@@ -94,16 +96,34 @@ export class Simulation {
   private shame=new ShameTracker();
   /** Lab only (LAB_ZUEIRA): the zueira plan every run of this simulation uses instead of the seed's. */
   zueiraLab?:ZueiraLab;
+  /** This room's own fork of the decoded city (cidade-06): its blockers (barricades) never leak into other rooms. */
+  private readonly city?:CityTerrain;
+  /**
+   * cidade-06 (E5): the city barricades go into the frames' structures as kind 'barricada' only when true. The city room
+   * turns it on (barricadas-cliente: the client draws them and repairs them from the camp window); default off.
+   */
+  cityStructures:boolean;
+  /**
+   * City balance knobs of every run of this simulation (cidade-11, src/sim/city/balance.ts): headless benches only;
+   * rooms never pass it (the city plays CITY_BALANCE). Ignored outside the city.
+   */
+  private readonly cityBalance?:RunSystemsOptions['cityBalance'];
   /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
    */
-  /** `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world. */
-  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField}={}){
+  /**
+   * `terrain` injects a prebuilt surface (the decoded city, D-034); otherwise the seed builds the island or endless world.
+   * A CityTerrain is forked (cidade-06): the decoded city is shared by the process, the barricade blockers are this room's.
+   */
+  constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField;cityStructures?:boolean;cityBalance?:RunSystemsOptions['cityBalance']}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
-    this.seed=seed;this.terrain=options.terrain??new TerrainField(seed,{world:generated});
+    this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
+    this.cityStructures=options.cityStructures??false;
+    this.cityBalance=options.cityBalance;
+    this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
   }
@@ -118,6 +138,11 @@ export class Simulation {
   get run():RunSystems{return this.systems;}
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
+  /**
+   * 3g-rede-sem-teleporte: people whose connection is gone; the room's light bot plays their hero (setBotInput) until
+   * they are back, so a drop does not leave a statue in the horde.
+   */
+  readonly autopilot=new Set<string>();
   private botInputs=new Map<string,PlayerInput>();
   private botSeq=0;
   private assemble(){
@@ -129,16 +154,20 @@ export class Simulation {
         if(step)this.recordStep(id,step.seq);
         return step;
       },
+      autopilot:id=>this.autopilot.has(id),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
-      // The run waits for its last player standing who dropped exactly as long as the room keeps the seat (VGM-047);
-      // after that the session expires and the Room ends an empty run (042a R1).
+      // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
+      // seat itself may be held longer (the whole run while someone is connected, 3g-rede-sem-teleporte).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
+      ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
     });
   }
   resetRun(){
     this.systems.dispose();
+    // The old run's barricades go with it; the new run's stonewards raises its own.
+    if(this.city)for(const b of this.city.blockers())this.city.setBlocker(b.id,undefined);
     this.world.reset(runSeed(this.seed,++this.runs));
     this.world.runStartTick=this.world.tick;
     this.systems=this.assemble();
@@ -175,7 +204,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -185,13 +214,18 @@ export class Simulation {
   }
   /** The bot's stick for the next steps (held until changed) and a one-shot skill tap. */
   setBotInput(id:string,direction:Point,skill=false){
-    if(!this.bots.has(id))return;
+    if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
     this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack:false,skill:skill||!!held?.skill});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
-  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);this.trackReset(id);delete p.target;}}
+  setOnline(id:string,online:boolean){
+    const p=this.players.get(id);if(!p)return;
+    p.online=online;this.track(id).reset(p.ack);this.trackReset(id);delete p.target;
+    // Away: the room's light bot plays the hero (autopilot); back: the person's own inputs again, nothing of the bot held.
+    if(online){this.autopilot.delete(id);this.botInputs.delete(id);}else if(!this.bots.has(id))this.autopilot.add(id);
+  }
   /**
    * A batch of change segments `{seq,steps}` (input-10hz) or one legacy step `{seq,x,y,attack,skill?,target?}`.
    * Refused (false) for offline or spectating players and for anything malformed or out of order; see InputTrack.
@@ -255,19 +289,25 @@ export class Simulation {
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
   /**
    * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
-   * balance). `requestId` makes a resent tap apply once. Refused once the run is decided.
+   * balance). `requestId` makes a resent tap apply once. `targetId` (cidade-06): what 'reparo' repairs, the wall when
+   * omitted or a city barricade id (the room checks its shape, stonewards whether it exists). Refused once the run is decided.
    */
-  forge(id:string,recipeId:string,requestId?:string):BuyResult{
+  forge(id:string,recipeId:string,requestId?:string,targetId?:string):BuyResult{
     const p=this.players.get(id);
     if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
-    return this.systems.stonewards.buy(this.world,id,recipeId,requestId);
+    return this.systems.stonewards.buy(this.world,id,recipeId,requestId,targetId);
   }
   /** Node ids of the last frame (the Room prunes the wire ids of the rest). */
   nodeIds:string[]=[];
-  /** The wall and the towers as the client sees them. */
+  /** The wall and the towers as the client sees them, plus the city barricades (hp 0 once down) behind `cityStructures`. */
   private structureViews():StructureView[]{
     const st=this.systems.stonewards.state,w=st.wall;
-    return [{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp},...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
+    const out:StructureView[]=[{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp},...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
+    if(this.cityStructures&&this.city){
+      const rows=(st as {barricades?:readonly BarricadeRow[]}).barricades??[];
+      for(const b of rows)out.push({id:b.id,kind:'barricada',x:b.x,y:b.y,hp:b.down?0:b.hp,maxHp:b.maxHp});
+    }
+    return out;
   }
   /**
    * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area

@@ -1,18 +1,23 @@
 /**
  * enemy-ai system (VGM-031, cast of D-033): bêbado drunk chase + burp cone, pombos swarm zig-zag + poop, Tio do Pavê
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
- * explosion, neighbor separation, terrain collision, contact damage and rare barks.
+ * explosion; the P1 trio: coach lecture + ally buff (PALESTRA), motoboy warned charge + marmita blast (MOTOBOY),
+ * influencer pose (POSE; the reflection itself is in projectiles.ts); neighbor separation, terrain collision, contact
+ * damage and rare barks. EnemyState.phase of regular enemies (on the wire, EnemyView.phase): 1 while the P1 trio acts
+ * (lecturing, aiming/charging, posing), 2 while coached and not acting, absent otherwise.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
  * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
  * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
-import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,enemyTerrain,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ACTION_PEAK_MAX,AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MOLOTOV,POOP,TIO_JOKE,enemyDef,hashUnit,isDevendo,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+import {ACTION_PEAK_MAX,AGIOTA_SHOT,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
+  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,TIO_JOKE,coachMult,enemyDef,hashUnit,isCoached,isDevendo,
+  type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
@@ -22,9 +27,18 @@ import type {TauntedEnemy} from '../skills.ts';
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
  * consider it, and go for whichever is closer: a player or the structure's edge (NEW-20261006-E8-wall-siege-single-path).
  * Everyone else ignores structures. Against a structure every kind walks up and hits it (the agiota and the anão too: a boleto does
- * not hurt a wall, a molotov is not thrown at it).
+ * not hurt a wall, a molotov is not thrown at it), except the coach, who has no melee: a siege coach keeps his support logic
+ * against the wall (PALESTRA.minRange..maxRange from its edge, lecturing the besiegers around him).
  */
-export interface StructureTarget extends Point {id:string;radius:number}
+export interface StructureTarget extends Point {
+  id:string;radius:number;
+  /**
+   * A city barricade (cidade-06): not a siege target, but any body (siege or not, never a retreating one nor the boss)
+   * in contact with it hits it on its contact cooldown, through hitStructure (D-017): the steer leads bodies the
+   * barricades cut off the plaza to the mouth they must break.
+   */
+  blocking?:boolean;
+}
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
   rng?:Rng;
@@ -36,8 +50,12 @@ export interface EnemyAiOptions {
   barkChance?:number;
   /** Hostile projectiles are not created at or above this count (D-003; budget.ts MAX_PROJECTILES). */
   projectileCap?:number;
-  /** City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean. */
-  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  /**
+   * City flow field: returns true after writing the walking direction into out (unit vector); best/touching stay Euclidean.
+   * out.fit > 0 (BUG-20261013-E1): the steer led the body along a field narrower than it (its own size does not reach);
+   * this tick's walk then collides with the walls by that radius, so it squeezes through instead of standing at the gap.
+   */
+  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point&{fit?:number})=>boolean;
   /** Enemy hazards (burp, molotov, fire, poop, explosion, the Tio's charge line) are not created at or above this many telegraphs. */
   telegraphCap?:number;
   /**
@@ -78,14 +96,24 @@ const SIEGE='siege';
  * memory.state values. The Tio's joke/charge also keep, JSON-safe in memory: the locked charge direction (cx, cy, unit),
  * where it starts (ox, oy: where he stands for the joke) and how far it can go (reach, u).
  */
-export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4} as const;
+export const STATE={walk:0,joke:1,charge:2,aim:3,burp:4,lecture:5,pose:POSE_STATE} as const;
+/** EnemyView.phase values of regular enemies (the boss uses its own, boss.ts). */
+export const ENEMY_PHASE={acting:1,coached:2} as const;
+/**
+ * A warned locked charge: the wind-up (`pause`, STATE.joke: the Tio's joke, the motoboy's honk and aim) draws the
+ * 'investida' line, then STATE.charge runs it for `charge` ticks at `chargeSpeed` × his speed (capped).
+ */
+interface ChargeSpec {pause:number;charge:number;chargeSpeed:number}
+const TIO_CHARGE:ChargeSpec={pause:TIO_JOKE.pause,charge:TIO_JOKE.charge,chargeSpeed:TIO_JOKE.chargeSpeed};
+const MOTOBOY_CHARGE:ChargeSpec={pause:MOTOBOY.aim,charge:MOTOBOY.charge,chargeSpeed:MOTOBOY.chargeSpeed};
 
 /**
  * Telegraph extras (D-002, JSON-safe; the wire only sends the shape fields): `pulses` left after this one lands
- * (molotov fire), `enemyDamage` dealt to enemies inside it when it fires (anão explosion).
+ * (molotov fire), `mult` the thrower's coach multiplier at the throw (PALESTRA.damageMult; absent = 1), which every
+ * fire pulse of the chain keeps, `enemyDamage` dealt to enemies inside it when it fires (anão explosion).
  */
-export interface HazardTelegraph extends Telegraph {pulses?:number;enemyDamage?:number}
-type HazardSpec=TelegraphSpec&{pulses?:number;enemyDamage?:number};
+export interface HazardTelegraph extends Telegraph {pulses?:number;mult?:number;enemyDamage?:number}
+type HazardSpec=TelegraphSpec&{pulses?:number;mult?:number;enemyDamage?:number};
 /** Pending telegraphs whose owner starts with `prefix` (or equals it, when `exact`). */
 const countOwned=(ctx:SimContext,prefix:string,exact=false)=>{
   let n=0;for(const t of ctx.telegraphs.values())if(exact?t.owner===prefix:t.owner.startsWith(prefix))n++;return n;
@@ -114,7 +142,7 @@ function tauntTarget(ctx:SimContext,e:EnemyState):SimPlayer|undefined{
  * Moves `body` by (dx,dy) without entering sea, rocks or trees (world.ts rules), sliding along blockers.
  * Bodies wider than a player also keep their own radius out of obstacles (they may only move away from one they overlap).
  * A body that starts off walkable ground (spawned in shallow water or inside a blocker) moves freely until it is walkable,
- * so once on land it never leaves it.
+ * so once on land it never leaves it. In the city the barricades are solid (enemyTerrain: blockers stop enemies only).
  */
 export function moveSafely(body:Point,dx:number,dy:number,terrain:TerrainField,radius=PLAYER_RADIUS){
   const distance=Math.hypot(dx,dy);
@@ -144,7 +172,7 @@ function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:numbe
   return true;
 }
 
-const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower';
+const keepsDistance=(def:EnemyDef)=>def.behavior==='ranged'||def.behavior==='thrower'||def.behavior==='coach';
 /** Zig-zag direction (not normalized) toward (ux,uy), from the kind's zigzag (stagger, swarm). */
 function zigzag(ctx:SimContext,e:EnemyState,def:EnemyDef,ux:number,uy:number):[number,number]{
   const z=def.zigzag;
@@ -169,7 +197,8 @@ export class EnemyAi implements SimSystem {
   private readonly targets:SimPlayer[]=[];
   private readonly neighbors:EnemyState[]=[];
   private readonly active:EnemyState[]=[];
-  private readonly steerOut={x:0,y:0};
+  private readonly steerOut={x:0,y:0,fit:0};
+  private readonly detonate:EnemyState[]=[];
   /** Hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
   readonly heroSpeed:number;
   /** options.capPush: the walk plus the crowd's push is clamped to the peak too (the city). */
@@ -193,12 +222,18 @@ export class EnemyAi implements SimSystem {
     this.announceDevendo(ctx,rng);
     // D-004: positions are snapshotted on rebuild; the core rebuilds again after enemy-ai for later systems.
     ctx.enemyIndex.rebuild(ctx.enemies.values());
+    const detonate=this.detonate;detonate.length=0;
     for(const e of ctx.enemies.values()){
       // Bosses belong to VGM-038; retreating enemies are walked into the sea by the director (D-010).
       if(e.hp<=0||e.boss)continue;
       // A retreating enemy never comes back for a taunt; drop it so checkpoints stay clean.
-      // Its pending burp is cancelled too (D-010: retreaters deal no damage).
-      if(e.memory?.retreat===1){delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);continue;}
+      // Its pending burp is cancelled too (D-010: retreaters deal no damage), and so is the influencer's pose (a
+      // retreater reflects nothing, catalog.ts isReflecting).
+      if(e.memory?.retreat===1){
+        delete (e as TauntedEnemy).taunt;cancelTelegraphs(ctx,e.id);
+        if(e.memory.state===STATE.pose){e.memory.state=STATE.walk;delete e.memory.reflectSay;}
+        continue;
+      }
       const memory=e.memory??={};
       memory.seed??=hashUnit(e.id);memory.state??=STATE.walk;memory.until??=0;memory.hitReady??=0;memory.actReady??=0;
       if(e.knock){
@@ -206,7 +241,7 @@ export class EnemyAi implements SimSystem {
         // him (any other displacement still calls the charge off, see chargeWarned).
         if(memory.state===STATE.joke)delete e.knock;
         else{
-          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          moveSafely(e,e.knock.x,e.knock.y,enemyTerrain(ctx.terrain),e.radius);
           e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
           if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
         }
@@ -222,26 +257,33 @@ export class EnemyAi implements SimSystem {
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else{
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        if(memory[SIEGE]===1)for(const s of structures){const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
+        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
-      // (an interrupted joke takes its charge line with it).
-      if(!player&&memory.state!==STATE.walk){
+      // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
+      if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
         if(memory.state===STATE.joke||memory.state===STATE.charge){cancelTelegraphs(ctx,e.id);dropChargeLine(memory);}
         memory.state=STATE.walk;
       }
-      let dirX=0,dirY=0,pace=1;
+      let dirX=0,dirY=0,pace=1,fit=e.radius;
+      // Motoboy: his charge is over this tick (full length, a player, off the line); a blocked step is found after the move.
+      let boom=false;
       if(target&&!stunned){
         const tx=target.x-e.x,ty=target.y-e.y,d=Math.max(1e-6,Math.hypot(tx,ty));
         // (ax,ay): straight line to the target, for what is aimed (boleto, burp cone, Tio's shove); (ux,uy): walking
         // direction, which the city flow field may bend around corners (it can point away from the target there).
         const ax=tx/d,ay=ty/d;
         let ux=ax,uy=ay;
-        if(this.options.steer?.(ctx,e,target,this.steerOut)){ux=this.steerOut.x;uy=this.steerOut.y;}
+        this.steerOut.fit=0;
+        if(this.options.steer?.(ctx,e,target,this.steerOut)){
+          ux=this.steerOut.x;uy=this.steerOut.y;
+          const f=this.steerOut.fit;if(f>0&&f<fit)fit=f;
+        }
         const touching=best<=e.radius+PLAYER_RADIUS+CONTACT_MARGIN;
         const def=enemyDef(e.kind);
-        switch(structure?'chase':def.behavior){
+        // Against a structure every kind walks up and hits it; the coach (no melee) lectures the besiegers instead.
+        switch(structure&&def.behavior!=='coach'?'chase':def.behavior){
           case 'stagger':{
             // Burp wind-up: he stands still until the cone fires.
             if(memory.state===STATE.burp){
@@ -250,7 +292,7 @@ export class EnemyAi implements SimSystem {
             }
             if(player&&ctx.round.index>=BURP.fromRound&&best<=BURP.trigger&&ctx.tick>=memory.actReady&&inFront(memory,ax,ay,BURP.angle/2)
               &&this.hazardRoom(ctx)&&rng.chance(BURP.chance)){
-              addTelegraph(ctx,{shape:'cone',x:e.x,y:e.y,dx:ax,dy:ay,radius:BURP.range,width:BURP.angle,damage:BURP.damage,owner:e.id,kind:'arroto'},BURP.delay);
+              addTelegraph(ctx,{shape:'cone',x:e.x,y:e.y,dx:ax,dy:ay,radius:BURP.range,width:BURP.angle,damage:BURP.damage*coachMult(e,ctx.tick),owner:e.id,kind:'arroto'},BURP.delay);
               memory.state=STATE.burp;memory.until=ctx.tick+BURP.delay;memory.actReady=ctx.tick+BURP.cooldown;
               this.react(ctx,rng,e,def,1);
               break;
@@ -259,15 +301,16 @@ export class EnemyAi implements SimSystem {
             // The wobble is on top of the walk: he still closes at his own speed (like the VGM-031 chaser, so rounds end
             // on time), the sideways sway adds up to √(1+amp²) to the step (1.04 × at amp 0.3, far under a hero; 0.5 made round 1-2 balance tests flaky).
             const length=Math.hypot(dirX,dirY);pace=length;
-            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact).
-            memory.fx=dirX/length;memory.fy=dirY/length;
+            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact or on a
+            // zero direction, e.g. holding the plaza: dividing by a zero length would store NaN).
+            if(length>1e-9){memory.fx=dirX/length;memory.fy=dirY/length;}
             break;
           }
           case 'swarm':{
             [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
             if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
               &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
-              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage,owner:HAZARD_OWNERS.poop+e.id,kind:'coco'},POOP.delay);
+              addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage*coachMult(e,ctx.tick),owner:HAZARD_OWNERS.poop+e.id,kind:'coco'},POOP.delay);
               memory.actReady=ctx.tick+POOP.cooldown;
               this.react(ctx,rng,e,def,.3);
             }
@@ -292,7 +335,7 @@ export class EnemyAi implements SimSystem {
             if(memory.state===STATE.joke){
               // A charge is never unwarned: no line (budget full, annulled) or knocked off its start → no charge.
               if(ctx.tick>=memory.until){
-                if(this.chargeWarned(ctx,e,memory)){memory.state=STATE.charge;memory.until=ctx.tick+TIO_JOKE.charge;}
+                if(this.chargeWarned(ctx,e,memory)){memory.state=STATE.charge;memory.until=ctx.tick+TIO_CHARGE.charge;}
                 else this.endCharge(ctx,memory);
               }
             }else if(memory.state===STATE.charge){
@@ -305,7 +348,60 @@ export class EnemyAi implements SimSystem {
             }else if(player&&best<=TIO_JOKE.range&&ctx.tick>=memory.actReady&&this.react(ctx,rng,e,def,1)){
               // He only stops when the joke is actually on screen; otherwise he keeps walking and tries next tick.
               memory.state=STATE.joke;memory.until=ctx.tick+TIO_JOKE.pause;
-              this.warnCharge(ctx,e,memory,ax,ay);
+              this.warnCharge(ctx,e,memory,ax,ay,TIO_CHARGE);
+            }else{dirX=ux;dirY=uy;}
+            break;
+          }
+          case 'kamikaze':{
+            if(memory.state===STATE.joke){
+              // Honk and aim: he stands on the warned line; no line on screen at its end (annulled, displaced) → no charge.
+              if(ctx.tick>=memory.until){
+                if(this.chargeWarned(ctx,e,memory)){memory.state=STATE.charge;memory.until=ctx.tick+MOTOBOY_CHARGE.charge;}
+                else{memory.state=STATE.walk;memory.actReady=ctx.tick+MOTOBOY.retry;dropChargeLine(memory);}
+              }
+            }else if(memory.state===STATE.charge){
+              // Straight along the locked line at the cap; off it (knocked, slid on a wall) he crashes where he is.
+              if(!this.onChargePath(e,memory))boom=true;
+              else{
+                dirX=memory.cx;dirY=memory.cy;pace=MOTOBOY_CHARGE.chargeSpeed;
+                if(ctx.tick>=memory.until)boom=true;
+              }
+            }else if(player&&ctx.round.phase==='wave'&&best<=MOTOBOY.trigger&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)){
+              memory.state=STATE.joke;memory.until=ctx.tick+MOTOBOY_CHARGE.pause;
+              this.warnCharge(ctx,e,memory,ax,ay,MOTOBOY_CHARGE);
+              this.bark(ctx,rng,e,MOTOBOY_HONK_LINES,'motoboy:honk');
+            }else{dirX=ux;dirY=uy;}
+            break;
+          }
+          case 'coach':{
+            if(memory.state===STATE.lecture){
+              // He stands still for the lecture; the buff lands when it ends (killed mid-lecture: nothing).
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+PALESTRA.cooldown;this.palestra(ctx,e,memory);}
+              break;
+            }
+            if((memory.cheer??-1)>ctx.tick&&this.canBark(ctx)){
+              let ally:EnemyState|undefined;
+              for(const o of ctx.enemies.values())if(o.hp>0&&!o.boss&&o.kind!=='coach'&&isCoached(o,ctx.tick)){ally=o;break;}
+              if(ally)this.bark(ctx,rng,ally,BUFFED_LINES,'coach:buffed');
+              delete memory.cheer;
+            }
+            // A player (or, for a siege coach, the wall he besieges) in reach: he lectures the allies around him.
+            if(best<=PALESTRA.trigger&&ctx.tick>=memory.actReady){
+              memory.state=STATE.lecture;memory.until=ctx.tick+PALESTRA.lecture;
+              this.bark(ctx,rng,e,PALESTRA_LINES,'coach:palestra');
+            }else if(best>PALESTRA.maxRange){dirX=ux;dirY=uy;}
+            else if(best<PALESTRA.minRange){dirX=-ux;dirY=-uy;}
+            else{const side=memory.seed<.5?.4:-.4;dirX=-uy*side;dirY=ux*side;}
+            break;
+          }
+          case 'poser':{
+            // A reflection (projectiles.ts) asks for one line; it waits for the limiter while the pose lasts.
+            if(memory.reflectSay===1&&this.canBark(ctx)){this.bark(ctx,rng,e,REFLECT_LINES,'influencer:reflect');delete memory.reflectSay;}
+            if(memory.state===STATE.pose){
+              if(ctx.tick>=memory.until){memory.state=STATE.walk;memory.actReady=ctx.tick+POSE.cooldown;delete memory.reflectSay;}
+            }else if(player&&best<=POSE.trigger&&ctx.tick>=memory.actReady){
+              memory.state=STATE.pose;memory.until=ctx.tick+POSE.duration;
+              this.bark(ctx,rng,e,POSE_LINES,'influencer:pose');
             }else{dirX=ux;dirY=uy;}
             break;
           }
@@ -318,7 +414,7 @@ export class EnemyAi implements SimSystem {
                 const sx=e.x+ax*e.radius,sy=e.y+ay*e.radius;
                 const id=ctx.nextId('p');
                 // `marks` (D-002): projectiles.ts marks the player this boleto hurts as devendo.
-                ctx.projectiles.set(id,{id,owner:e.id,source:AGIOTA_SHOT.source,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage,pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],marks:AGIOTA_SHOT.marks} as ProjectileState);
+                ctx.projectiles.set(id,{id,owner:e.id,source:AGIOTA_SHOT.source,x:sx,y:sy,vx:ax*AGIOTA_SHOT.speed,vy:ay*AGIOTA_SHOT.speed,radius:AGIOTA_SHOT.radius,damage:AGIOTA_SHOT.damage*coachMult(e,ctx.tick),pierce:0,untilTick:ctx.tick+AGIOTA_SHOT.life,hostile:true,hit:[],marks:AGIOTA_SHOT.marks} as ProjectileState);
               }
             }else if(player&&best<=AGIOTA_SHOT.fireRange&&ctx.tick>=memory.actReady){
               memory.state=STATE.aim;memory.until=ctx.tick+AGIOTA_SHOT.aim;
@@ -330,18 +426,28 @@ export class EnemyAi implements SimSystem {
           }
           default:{dirX=ux;dirY=uy;}
         }
-        // Melee kinds stop at contact; the agiota and the anão keep backing off (from players). Tio does not hit mid-joke.
+        // Melee kinds stop at contact; the agiota, the anão and the coach keep backing off (from players). Tio and motoboy
+        // do not hit mid wind-up; the coach never hits (no melee). A coached enemy hits for PALESTRA.damageMult × damage.
         if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
-        if(touching&&memory.state!==STATE.joke&&ctx.tick>=memory.hitReady){
+        if(touching&&memory.state!==STATE.joke&&def.behavior!=='coach'&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
+          const charging=memory.state===STATE.charge;
+          const amount=(def.behavior==='kamikaze'&&charging?MOTOBOY.hitDamage:e.damage)*coachMult(e,ctx.tick);
           if(player){
-            ctx.damagePlayer(player.id,e.damage,e.id);
+            ctx.damagePlayer(player.id,amount,e.id);
             if(def.behavior==='joker'){
-              const charging=memory.state===STATE.charge;
               if(live(player))moveSafely(player,ax*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ay*(charging?TIO_JOKE.shove:TIO_JOKE.bump),ctx.terrain);
               if(charging)this.endCharge(ctx,memory);
-            }else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
-          }else if(structure)this.options.hitStructure?.(ctx,structure.id,e.damage,e);
+            }else if(def.behavior==='kamikaze'){if(charging){boom=true;this.react(ctx,rng,e,def,1);}}
+            else if(def.behavior==='stagger')this.react(ctx,rng,e,def,.5);
+          }else if(structure)this.options.hitStructure?.(ctx,structure.id,amount,e);
+        }
+        // Barricades (cidade-06): pressed against a blocking structure, the body bashes it (one hit per contact cooldown).
+        if(memory.state!==STATE.joke&&ctx.tick>=memory.hitReady)for(const s of structures){
+          if(!s.blocking||!(Math.hypot(s.x-e.x,s.y-e.y)-s.radius<=e.radius+PLAYER_RADIUS+.05))continue;
+          memory.hitReady=ctx.tick+def.contactCooldown;
+          this.options.hitStructure?.(ctx,s.id,e.damage,e);
+          break;
         }
       }
       // Separation from overlapping neighbors (order-stable: same index, same iteration).
@@ -358,9 +464,11 @@ export class EnemyAi implements SimSystem {
       pushX*=SEPARATION;pushY*=SEPARATION;
       const push=Math.hypot(pushX,pushY);
       if(push>SEPARATION_MAX){pushX*=SEPARATION_MAX/push;pushY*=SEPARATION_MAX/push;}
-      // The Tio plants his feet for the joke and bulldozes through the crowd in the charge, so he stays on the line he
-      // warned; the neighbors still step off him on their own turn.
-      if(planted){pushX=0;pushY=0;}
+      // The Tio (and the motoboy) plants his feet for the wind-up and bulldozes through the crowd in the charge, so he
+      // stays on the line he warned; the neighbors still step off him on their own turn. The motoboy is planted from the
+      // tick his aim starts too: a push then would move him off the start of the line he just drew and call the charge
+      // off. (The Tio still takes that first push, as tuned; in a crowd it often cancels his charge.)
+      if(planted||memory.state===STATE.joke&&enemyDef(e.kind).behavior==='kamikaze'){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
       const stepLength=dirLength>1e-6?this.paceSpeed(e,pace)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
       // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
@@ -370,8 +478,17 @@ export class EnemyAi implements SimSystem {
         const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
         if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
       }
-      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
+      const fromX=e.x,fromY=e.y;
+      // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
+      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),fit);
+      // The motoboy crashes at the end of his run, on a player, off the line, or when a wall eats half of his step.
+      if(memory.state===STATE.charge&&enemyDef(e.kind).behavior==='kamikaze'){
+        const want=Math.hypot(moveX,moveY);
+        if(boom||(want>1e-6&&Math.hypot(e.x-fromX,e.y-fromY)<want*.5))detonate.push(e);
+      }
     }
+    for(const e of detonate)this.crash(ctx,rng,e);
+    this.updatePhases(ctx);
     if(active.length&&this.canBark(ctx,AMBIENT_GAP_FACTOR)&&rng.chance(this.options.barkChance??BARK_CHANCE)){
       const e=active[rng.int(0,active.length-1)],elite=e.elite&&rng.chance(.5);
       this.bark(ctx,rng,e,elite?ELITE.barks:enemyDef(e.kind).barks,elite?'elite:barks':`${e.kind}:barks`);
@@ -385,7 +502,7 @@ export class EnemyAi implements SimSystem {
    */
   onKill(ctx:SimContext,enemy:EnemyState){
     if(enemy.boss||enemyDef(enemy.kind).behavior!=='thrower'||!this.hazardRoom(ctx))return;
-    addTelegraph(ctx,{shape:'circle',x:enemy.x,y:enemy.y,radius:MOLOTOV.deathRadius,damage:MOLOTOV.deathDamage,
+    addTelegraph(ctx,{shape:'circle',x:enemy.x,y:enemy.y,radius:MOLOTOV.deathRadius,damage:MOLOTOV.deathDamage*coachMult(enemy,ctx.tick),
       owner:HAZARD_OWNERS.explosion+enemy.id,enemyDamage:MOLOTOV.deathEnemyDamage,kind:'explosao'} as HazardSpec,MOLOTOV.deathDelay);
   }
 
@@ -427,6 +544,54 @@ export class EnemyAi implements SimSystem {
     memory.state=STATE.walk;memory.actReady=ctx.tick+TIO_JOKE.cooldown;dropChargeLine(memory);
   }
   /**
+   * The motoboy's charge is over: one MARMITA_BOOM_LINES line (limiter), the bag's blast (an 'explosao' circle owned by
+   * env:marmita:<id>, warned MOTOBOY.blastDelay, only during the wave and inside the telegraph budget) and his death
+   * through ctx.damageEnemy with no player credit (the kill hook drops XP and loot once).
+   */
+  private crash(ctx:SimContext,rng:Rng,e:EnemyState){
+    if(!(e.hp>0)||ctx.enemies.get(e.id)!==e)return;
+    const memory=e.memory??={};
+    memory.state=STATE.walk;dropChargeLine(memory);cancelTelegraphs(ctx,e.id);
+    this.bark(ctx,rng,e,MARMITA_BOOM_LINES,'motoboy:boom');
+    if(ctx.round.phase==='wave'&&this.hazardRoom(ctx)){
+      addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:MOTOBOY.blastRadius,damage:MOTOBOY.blastDamage*coachMult(e,ctx.tick),
+        owner:HAZARD_OWNERS.marmita+e.id,kind:'explosao'},MOTOBOY.blastDelay);
+    }
+    ctx.damageEnemy(e.id,e.hp,undefined,'env:marmita');
+  }
+  /**
+   * End of a lecture: every live ally within PALESTRA.radius of the coach (not a coach, not the boss, not retreating) is
+   * coached until tick + PALESTRA.duration (refreshed, never stacked); one of them may cheer while it lasts (memory.cheer).
+   */
+  private palestra(ctx:SimContext,coach:EnemyState,memory:Record<string,number>){
+    const until=ctx.tick+PALESTRA.duration;
+    let any=false;
+    for(const o of ctx.enemies.values()){
+      if(o===coach||!(o.hp>0)||o.boss||o.kind==='coach'||o.memory?.retreat===1)continue;
+      if(Math.hypot(o.x-coach.x,o.y-coach.y)>PALESTRA.radius)continue;
+      const held=o as EnemyState&CoachedEnemy;
+      held.coachedUntil=Math.max(held.coachedUntil??0,until);any=true;
+    }
+    if(any)memory.cheer=until;
+  }
+  /**
+   * EnemyView.phase of the regular enemies (ENEMY_PHASE): acting (the coach lecturing, the motoboy aiming or charging,
+   * the influencer posing) wins over coached; nothing otherwise. Expired or retreating buffs are dropped.
+   */
+  private updatePhases(ctx:SimContext){
+    for(const e of ctx.enemies.values()){
+      if(e.boss)continue;
+      const held=e as EnemyState&CoachedEnemy,m=e.memory,retreat=m?.retreat===1;
+      if(held.coachedUntil!==undefined&&(retreat||!isCoached(held,ctx.tick)))delete held.coachedUntil;
+      const behavior=enemyDef(e.kind).behavior,state=m?.state;
+      const acting=!retreat&&(behavior==='coach'&&state===STATE.lecture||behavior==='kamikaze'&&(state===STATE.joke||state===STATE.charge)
+        ||behavior==='poser'&&state===STATE.pose);
+      const phase=acting?ENEMY_PHASE.acting:held.coachedUntil!==undefined?ENEMY_PHASE.coached:undefined;
+      if(phase===undefined){if(e.phase!==undefined)delete e.phase;}
+      else e.phase=phase;
+    }
+  }
+  /**
    * Speed (u/s) of a step at `pace` × the enemy's speed, at most ACTION_PEAK_MAX × the hero speed (catalog.ts,
    * Orquestrador rule: walking included). Slows apply on top of this.
    */
@@ -438,14 +603,14 @@ export class EnemyAi implements SimSystem {
    * whose body stays out of it (telegraphHits with the player radius) is never touched by the charge.
    * No room in the telegraph budget: no line, and chargeWarned then skips the charge.
    */
-  private warnCharge(ctx:SimContext,e:EnemyState,memory:Record<string,number>,ax:number,ay:number){
+  private warnCharge(ctx:SimContext,e:EnemyState,memory:Record<string,number>,ax:number,ay:number,spec:ChargeSpec){
     const aimed=Math.hypot(ax,ay)>.5,cx=aimed?ax:1,cy=aimed?ay:0;
-    const reach=this.paceSpeed(e,TIO_JOKE.chargeSpeed)*TIO_JOKE.charge/SIM_HZ,body=e.radius+CONTACT_MARGIN;
+    const reach=this.paceSpeed(e,spec.chargeSpeed)*spec.charge/SIM_HZ,body=e.radius+CONTACT_MARGIN;
     memory.cx=cx;memory.cy=cy;memory.ox=e.x;memory.oy=e.y;memory.reach=reach;
     // A line left behind by an earlier joke (the director's recycle resets his state) must not stand in for this one.
     cancelTelegraphs(ctx,e.id);
     if(!this.hazardRoom(ctx))return;
-    addTelegraph(ctx,{shape:'line',x:e.x-cx*body,y:e.y-cy*body,dx:cx,dy:cy,radius:reach+2*body,width:2*body,damage:0,owner:e.id,kind:'investida'},TIO_JOKE.pause);
+    addTelegraph(ctx,{shape:'line',x:e.x-cx*body,y:e.y-cy*body,dx:cx,dy:cy,radius:reach+2*body,width:2*body,damage:0,owner:e.id,kind:'investida'},spec.pause);
   }
   /** The joke's line is on screen until this very tick (not annulled, not refused) and he still stands where it starts. */
   private chargeWarned(ctx:SimContext,e:EnemyState,memory:Record<string,number>){
@@ -472,7 +637,10 @@ export class EnemyAi implements SimSystem {
   private throwMolotov(ctx:SimContext,e:EnemyState,player:SimPlayer){
     const owner=HAZARD_OWNERS.molotov+e.id;
     if(!this.hazardRoom(ctx)||countOwned(ctx,owner,true)>=MOLOTOV.maxActive||countOwned(ctx,HAZARD_OWNERS.molotov)>=MOLOTOV.maxGlobal)return false;
-    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage,owner,pulses:MOLOTOV.pulses,kind:'molotov'} as HazardSpec,MOLOTOV.flight);
+    // A coached anão's fire burns coached too: the landing carries the multiplier for its pulses (`mult`, landHazards).
+    const mult=coachMult(e,ctx.tick);
+    addTelegraph(ctx,{shape:'circle',x:player.x,y:player.y,radius:MOLOTOV.radius,damage:MOLOTOV.damage*mult,owner,pulses:MOLOTOV.pulses,
+      ...(mult!==1?{mult}:{}),kind:'molotov'} as HazardSpec,MOLOTOV.flight);
     return true;
   }
 
@@ -493,7 +661,9 @@ export class EnemyAi implements SimSystem {
     for(const t of ctx.telegraphs.values())if(t.fireTick<=ctx.tick&&t.owner.startsWith('env:'))due.push(t);
     for(const t of due){
       if((t.pulses??0)>0&&t.owner.startsWith(HAZARD_OWNERS.molotov)&&ctx.telegraphs.size<=(this.options.telegraphCap??ENEMY_TELEGRAPH_CAP)){
-        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage,owner:t.owner,pulses:t.pulses!-1,kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
+        const mult=t.mult??1;
+        addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:MOLOTOV.pulseRadius,damage:MOLOTOV.pulseDamage*mult,owner:t.owner,pulses:t.pulses!-1,
+          ...(mult!==1?{mult}:{}),kind:'fogo'} as HazardSpec,MOLOTOV.pulseEvery);
       }
       if((t.enemyDamage??0)>0){
         const victims:string[]=[];

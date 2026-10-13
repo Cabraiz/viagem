@@ -1,0 +1,2067 @@
+{
+  "version": 2,
+  "group": "chao",
+  "pieces": {
+    "cidade-nevada/agua-rasa-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/agua-rasa-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/agua-rasa-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0a4c51b390b02e3fb6b82a066a651d42e2ba93f37e7894c0ccf260e33bbd9216"
+            }
+          ],
+          "sha256": "0a4c51b390b02e3fb6b82a066a651d42e2ba93f37e7894c0ccf260e33bbd9216"
+        }
+      },
+      "sha256": "7a4b601d1bb999c6d5dd4e181ca47fe2b9343b17c80879a31959d45adae0e70e",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "cidade-nevada/agua-rasa-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/agua-rasa-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/agua-rasa-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f7875b0fa5ad76b59a1d80c49efb19a79bd8501db93d388463094703e770c76a"
+            }
+          ],
+          "sha256": "f7875b0fa5ad76b59a1d80c49efb19a79bd8501db93d388463094703e770c76a"
+        }
+      },
+      "sha256": "76f0e253d89d932ffbb43916d7d6fdf4076f0c49f5a8fa884eaffba71c7830cf",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "cidade-nevada/agua-rasa-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/agua-rasa-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/agua-rasa-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "222e7f57b63eabda49847bb6984e57cc6ffb47041aab2164707e732780c34fb8"
+            }
+          ],
+          "sha256": "222e7f57b63eabda49847bb6984e57cc6ffb47041aab2164707e732780c34fb8"
+        }
+      },
+      "sha256": "8a6fb01d12be6a91eba706f8073da22836f627862f7b9899a75b7d67a7b87682",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "cidade-nevada/asfalto-rachado-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/asfalto-rachado-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/asfalto-rachado-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a92a422c08651a73e0be24ec4b8a866cba06f4bb7209b14038ca3448f00a3d96"
+            }
+          ],
+          "sha256": "a92a422c08651a73e0be24ec4b8a866cba06f4bb7209b14038ca3448f00a3d96"
+        }
+      },
+      "sha256": "fea75944563016d97f5bf29e8e51ba2f9746448f8643ae448cd503c222e02452",
+      "meta": {
+        "ground": "asphalt"
+      }
+    },
+    "cidade-nevada/asfalto-rachado-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/asfalto-rachado-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/asfalto-rachado-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "69c27052fad84ed648e26eaaa5808bd9a295e5d0060a97574a64fe42438a9cdb"
+            }
+          ],
+          "sha256": "69c27052fad84ed648e26eaaa5808bd9a295e5d0060a97574a64fe42438a9cdb"
+        }
+      },
+      "sha256": "68823ec47f8a3ad916d745a208924121bd643b605b4bc538a82dc81fcb6751cb",
+      "meta": {
+        "ground": "asphalt"
+      }
+    },
+    "cidade-nevada/asfalto-rachado-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/asfalto-rachado-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/asfalto-rachado-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "eb9716d493e6db6457f4238b4c8cdb3c2b074366bff81aa719830b684acc6341"
+            }
+          ],
+          "sha256": "eb9716d493e6db6457f4238b4c8cdb3c2b074366bff81aa719830b684acc6341"
+        }
+      },
+      "sha256": "ef421b6df9ea5e58cae5f684547999b2cde8f13f1b3530eb60b446d13417c8af",
+      "meta": {
+        "ground": "asphalt"
+      }
+    },
+    "cidade-nevada/calcada-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/calcada-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/calcada-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "01bde32bf44bafe060eaadb00446af472069d25e7d959d77952eaeade3047201"
+            }
+          ],
+          "sha256": "01bde32bf44bafe060eaadb00446af472069d25e7d959d77952eaeade3047201"
+        }
+      },
+      "sha256": "473cbff809be7c9756d833a4166d82dba53498f1fcbcb3a9b8ce08adf310dfe6",
+      "meta": {
+        "ground": "sidewalk"
+      }
+    },
+    "cidade-nevada/calcada-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/calcada-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/calcada-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "60c86f4ef85c7767bffaa652b7835353b57674ce373f64ee5ccab20c948c962d"
+            }
+          ],
+          "sha256": "60c86f4ef85c7767bffaa652b7835353b57674ce373f64ee5ccab20c948c962d"
+        }
+      },
+      "sha256": "9bb6a4c83ee0db92aaef5dc51b93c4478892d32a78fe026b8ae015c9124ec55d",
+      "meta": {
+        "ground": "sidewalk"
+      }
+    },
+    "cidade-nevada/calcada-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/calcada-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/calcada-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "47bf92f46430604d3ea94f07a6316300a3d270497afbc356bbc571f9a7359c25"
+            }
+          ],
+          "sha256": "47bf92f46430604d3ea94f07a6316300a3d270497afbc356bbc571f9a7359c25"
+        }
+      },
+      "sha256": "744161084dc05b841ed344ceca0be52b8e0780d7c02b3c0050fa10779ace24b4",
+      "meta": {
+        "ground": "sidewalk"
+      }
+    },
+    "cidade-nevada/entulho-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/entulho-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/entulho-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6066e2cce7f1fefe77377f4e241e6174244e27ab06e320728b36709f6494f399"
+            }
+          ],
+          "sha256": "6066e2cce7f1fefe77377f4e241e6174244e27ab06e320728b36709f6494f399"
+        }
+      },
+      "sha256": "bbdc93c66a32fb77ccc2eeb18e9dc60d49f0f8a30385053585b89294917cc8ae",
+      "meta": {
+        "ground": "rubble"
+      }
+    },
+    "cidade-nevada/entulho-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/entulho-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/entulho-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "eeb45fc23cb8d3db8b4b4b5f7b652ebb8984c04794b35db0eda371ff7866ab49"
+            }
+          ],
+          "sha256": "eeb45fc23cb8d3db8b4b4b5f7b652ebb8984c04794b35db0eda371ff7866ab49"
+        }
+      },
+      "sha256": "ec266dc7a3b5ea2905a04cae5ad9ec54efc839095e29401eeb377ec5352b9b14",
+      "meta": {
+        "ground": "rubble"
+      }
+    },
+    "cidade-nevada/entulho-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/entulho-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/entulho-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d98eac7bc99a382c74b8cb93a1cd67f246c213a7c5d5670dde9f2269229a9f91"
+            }
+          ],
+          "sha256": "d98eac7bc99a382c74b8cb93a1cd67f246c213a7c5d5670dde9f2269229a9f91"
+        }
+      },
+      "sha256": "5ad5cadc5a10de7c1b649c7a14bde6556dced87840427888560479e01eabe50e",
+      "meta": {
+        "ground": "rubble"
+      }
+    },
+    "cidade-nevada/gelo-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/gelo-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/gelo-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bf31ff00d33ff2fdcb079f4624ef33d18c2454a6a0ea1891cc783121ad143bb5"
+            }
+          ],
+          "sha256": "bf31ff00d33ff2fdcb079f4624ef33d18c2454a6a0ea1891cc783121ad143bb5"
+        }
+      },
+      "sha256": "c0bd40c3e17ac2b68963c5a4fad457d9c6733fe995c4388c7b668e18738316bb",
+      "meta": {
+        "ground": "ice"
+      }
+    },
+    "cidade-nevada/gelo-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/gelo-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/gelo-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0a4a5765b268c847362087ac7aac2ab78de7925e9b4e1450721ba9691a1afd2d"
+            }
+          ],
+          "sha256": "0a4a5765b268c847362087ac7aac2ab78de7925e9b4e1450721ba9691a1afd2d"
+        }
+      },
+      "sha256": "b03bfbe16f46258f2e86903d8e93304b64484ac68da89ad2eb499e20b9ac68eb",
+      "meta": {
+        "ground": "ice"
+      }
+    },
+    "cidade-nevada/gelo-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/gelo-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/gelo-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "deb77edb798fee18e6f5c8616512732a2683f620cdf1b1705da39fa532caeb0b"
+            }
+          ],
+          "sha256": "deb77edb798fee18e6f5c8616512732a2683f620cdf1b1705da39fa532caeb0b"
+        }
+      },
+      "sha256": "bf9fc28b06637794ab615cd65a2aad54e1d02a7f3dd08c09a7f66ec035788a76",
+      "meta": {
+        "ground": "ice"
+      }
+    },
+    "cidade-nevada/lama-gelo-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/lama-gelo-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/lama-gelo-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "611d292d39483196c2a6a44c1f00575a26506f010ddd38e0991a7c48522362ff"
+            }
+          ],
+          "sha256": "611d292d39483196c2a6a44c1f00575a26506f010ddd38e0991a7c48522362ff"
+        }
+      },
+      "sha256": "686ec3881aadf4218c1ceb2f0557e703fcd87231c30d367e9fb5f10edfd15244",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "cidade-nevada/lama-gelo-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/lama-gelo-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/lama-gelo-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "773a8b1fe5dd04c93c679a8a80a11e43dc1aba5ae529a201914037824a1588c8"
+            }
+          ],
+          "sha256": "773a8b1fe5dd04c93c679a8a80a11e43dc1aba5ae529a201914037824a1588c8"
+        }
+      },
+      "sha256": "92a5d26deef6539cf7dd0e9f6b9e3de0ed81f04bb64f658008008e39502d6969",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "cidade-nevada/lama-gelo-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/lama-gelo-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/lama-gelo-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "05dcfa0faa0859535352b6a52e77a34451781827fcf84693766e10f481f6bd78"
+            }
+          ],
+          "sha256": "05dcfa0faa0859535352b6a52e77a34451781827fcf84693766e10f481f6bd78"
+        }
+      },
+      "sha256": "e2c8e39ef86ade1f5d6b2979ffe98799a683c9cf6fa537e307dbc9d9e9b423c1",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "cidade-nevada/neve-fofa-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-fofa-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-fofa-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "cc50cfd990fd9cac59f33edc89fb9c273a009f984db8cd593703755d5b55d3f0"
+            }
+          ],
+          "sha256": "cc50cfd990fd9cac59f33edc89fb9c273a009f984db8cd593703755d5b55d3f0"
+        }
+      },
+      "sha256": "d979085db70774843f615beafc212acd3e53b7276652793a8aa9cae19a3959d1",
+      "meta": {
+        "ground": "snow"
+      }
+    },
+    "cidade-nevada/neve-fofa-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-fofa-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-fofa-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1b8564a1d91fac86ba14e23535a00f7ab0366ac2789b4141fb4ac620b1e9943b"
+            }
+          ],
+          "sha256": "1b8564a1d91fac86ba14e23535a00f7ab0366ac2789b4141fb4ac620b1e9943b"
+        }
+      },
+      "sha256": "7c65ae1bdb5ee6e7494201da901df82be3d8548d8e505ab0a01440081d650ac2",
+      "meta": {
+        "ground": "snow"
+      }
+    },
+    "cidade-nevada/neve-fofa-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-fofa-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-fofa-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "96b7ae0979c9194cfacf33d0376bd91940ba87dbef68947f5487a6b4d1f7e8ba"
+            }
+          ],
+          "sha256": "96b7ae0979c9194cfacf33d0376bd91940ba87dbef68947f5487a6b4d1f7e8ba"
+        }
+      },
+      "sha256": "5b60d45cd327952d2ff809742f2a73138fd2e6f05326fb8a3f20658ef9f46b09",
+      "meta": {
+        "ground": "snow"
+      }
+    },
+    "cidade-nevada/neve-pisada-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-pisada-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-pisada-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "aaefd9661c1b11bc0f041fe474096f3f0f2a4dede2f6172b46856dd91d599679"
+            }
+          ],
+          "sha256": "aaefd9661c1b11bc0f041fe474096f3f0f2a4dede2f6172b46856dd91d599679"
+        }
+      },
+      "sha256": "91da4bd43d4c629ffab92b09ec42577e02dfdbe23ac46b4049469a5e8592ac5a",
+      "meta": {
+        "ground": "packed"
+      }
+    },
+    "cidade-nevada/neve-pisada-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-pisada-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-pisada-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ed87b4688b5b283f51f30714c4df6d1e1cc9f1023104321fb759ba7a1f9d6bab"
+            }
+          ],
+          "sha256": "ed87b4688b5b283f51f30714c4df6d1e1cc9f1023104321fb759ba7a1f9d6bab"
+        }
+      },
+      "sha256": "712930280280bea134bd6c1c16fc29bb44eeb529b94a6c477afc8cdf53ffc89f",
+      "meta": {
+        "ground": "packed"
+      }
+    },
+    "cidade-nevada/neve-pisada-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/neve-pisada-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/neve-pisada-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d0637dcde6e7375a1adb76ea33eef5d119431fae756e7da376a6821439b75cd7"
+            }
+          ],
+          "sha256": "d0637dcde6e7375a1adb76ea33eef5d119431fae756e7da376a6821439b75cd7"
+        }
+      },
+      "sha256": "f62131b9f38ddbba077c3e76d4bbe318e94aa25de392c9989c39653f6f2ab0a1",
+      "meta": {
+        "ground": "packed"
+      }
+    },
+    "cidade-nevada/paralelepipedo-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/paralelepipedo-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/paralelepipedo-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9d4c965aa4946863bbfd17c8e132cef96513c1c1e9dcf0f16ed31498c0616163"
+            }
+          ],
+          "sha256": "9d4c965aa4946863bbfd17c8e132cef96513c1c1e9dcf0f16ed31498c0616163"
+        }
+      },
+      "sha256": "99cd611caef7a80edebb3d5eb47e8c726a7f37569865d4d039886da6e3741a45",
+      "meta": {
+        "ground": "cobble"
+      }
+    },
+    "cidade-nevada/paralelepipedo-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/paralelepipedo-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/paralelepipedo-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "10f5c0a9c750928f45d6bc1086e3da50ea15169a44f22c0db6a5a8ddd590e68a"
+            }
+          ],
+          "sha256": "10f5c0a9c750928f45d6bc1086e3da50ea15169a44f22c0db6a5a8ddd590e68a"
+        }
+      },
+      "sha256": "83b082c43a987360e7df1a6d299ef76d738cbc7697f184d2f3f00108c7af8dcd",
+      "meta": {
+        "ground": "cobble"
+      }
+    },
+    "cidade-nevada/paralelepipedo-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/paralelepipedo-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/paralelepipedo-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bd44a2f213e1c869a2d945d88bbee2d844c6317ed5e5f52bfbce16524b87bd04"
+            }
+          ],
+          "sha256": "bd44a2f213e1c869a2d945d88bbee2d844c6317ed5e5f52bfbce16524b87bd04"
+        }
+      },
+      "sha256": "2c55f2ab2166c75f710a883ff28481bf20512a04b822f98799fc49d92fe7612d",
+      "meta": {
+        "ground": "cobble"
+      }
+    },
+    "cidade-nevada/trans-gelo-agua": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/trans-gelo-agua.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "cidade-nevada/trans-gelo-agua.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b9febca932ed5155310eb19c1e28156bc45f2ac34bb6bec023e455e49ef2f4c3"
+            }
+          ],
+          "sha256": "b9febca932ed5155310eb19c1e28156bc45f2ac34bb6bec023e455e49ef2f4c3"
+        }
+      },
+      "sha256": "5f81492287d23c3d53d2bc39025ddbdc245c7385a9dd3df5dd554e52dc72b6c2",
+      "meta": {
+        "mask": true,
+        "between": [
+          "ice",
+          "water"
+        ]
+      }
+    },
+    "cidade-nevada/trans-neve-asfalto": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/trans-neve-asfalto.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "cidade-nevada/trans-neve-asfalto.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a289e6da843472b4ad7cdc711505e5a703af75bf3644d9b210b67610b369f627"
+            }
+          ],
+          "sha256": "a289e6da843472b4ad7cdc711505e5a703af75bf3644d9b210b67610b369f627"
+        }
+      },
+      "sha256": "6af9455685b58d00b2485ab17f4e6b664711dcb704879e583c3c1ff5a9bba223",
+      "meta": {
+        "mask": true,
+        "between": [
+          "snow",
+          "asphalt"
+        ]
+      }
+    },
+    "cidade-nevada/trans-neve-lama": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/trans-neve-lama.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "cidade-nevada/trans-neve-lama.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c854706e69d772b8f180cffb6df68431ac706a8f8823850e1ead953725911f67"
+            }
+          ],
+          "sha256": "c854706e69d772b8f180cffb6df68431ac706a8f8823850e1ead953725911f67"
+        }
+      },
+      "sha256": "27366aeba9af21eb950a9d782de52fb0999071007f6742cbc489808831a33d0e",
+      "meta": {
+        "mask": true,
+        "between": [
+          "snow",
+          "mud"
+        ]
+      }
+    },
+    "cidade-nevada/trans-neve-paralelepipedo": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/trans-neve-paralelepipedo.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "cidade-nevada/trans-neve-paralelepipedo.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "27717b634bcd729806d8ac3fcc470282050cc69a1f93ac631290efdbb874049d"
+            }
+          ],
+          "sha256": "27717b634bcd729806d8ac3fcc470282050cc69a1f93ac631290efdbb874049d"
+        }
+      },
+      "sha256": "b17c835a8c305a64c461ca284f2b84ddeed87faf47846509b16ad55f2fc7bae5",
+      "meta": {
+        "mask": true,
+        "between": [
+          "snow",
+          "cobble"
+        ]
+      }
+    },
+    "cidade-nevada/vala-sarjeta-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/vala-sarjeta-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/vala-sarjeta-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6bfbe25f1cb49ed32415806d73c08e99bc18fa3f9bad1900d1cb227abbe3b2d0"
+            }
+          ],
+          "sha256": "6bfbe25f1cb49ed32415806d73c08e99bc18fa3f9bad1900d1cb227abbe3b2d0"
+        }
+      },
+      "sha256": "ea4135eea0d422166a0e2fb9f4734d8e01abf3f1ca4fa192eb2052adcb42183c",
+      "meta": {
+        "ground": "gutter"
+      }
+    },
+    "cidade-nevada/vala-sarjeta-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/vala-sarjeta-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/vala-sarjeta-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3bbc5758fe539fcd8ee73aa4b9a8705486a9bcec0c142a06634a15cf605ab099"
+            }
+          ],
+          "sha256": "3bbc5758fe539fcd8ee73aa4b9a8705486a9bcec0c142a06634a15cf605ab099"
+        }
+      },
+      "sha256": "b0077325ebc52170f72d98003dab6ae558cbb40e1567d434401d479f14b684ce",
+      "meta": {
+        "ground": "gutter"
+      }
+    },
+    "cidade-nevada/vala-sarjeta-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "cidade-nevada/vala-sarjeta-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidade-nevada/vala-sarjeta-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b2845cced757bdf5da855f0161a366f20019c38508181382f4ebb9e149d86690"
+            }
+          ],
+          "sha256": "b2845cced757bdf5da855f0161a366f20019c38508181382f4ebb9e149d86690"
+        }
+      },
+      "sha256": "a9cd50aff90123a47bd95c83038a1de1fdb10b42436cac7b2a4727c13578ebd7",
+      "meta": {
+        "ground": "gutter"
+      }
+    },
+    "infinito/agua-rasa-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/agua-rasa-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/agua-rasa-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4bfd2888b24699bd4eeda66ceb0c03bacaed9dd38fcdb53d68b7406e4b6eb253"
+            }
+          ],
+          "sha256": "4bfd2888b24699bd4eeda66ceb0c03bacaed9dd38fcdb53d68b7406e4b6eb253"
+        }
+      },
+      "sha256": "a1bae8284f90fa08ac927bfd13affe8978b93221c1d77cd84ed069ea9a68e0ab",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "infinito/agua-rasa-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/agua-rasa-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/agua-rasa-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "e5af2f499fc92d768804f644c4521c0519d9ad3dd2524ceb25e7e6f134d9708c"
+            }
+          ],
+          "sha256": "e5af2f499fc92d768804f644c4521c0519d9ad3dd2524ceb25e7e6f134d9708c"
+        }
+      },
+      "sha256": "729f17c71ab269ba705f3490dbb432853ee01d3741c8cfffd385ad599bc2c5ea",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "infinito/agua-rasa-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/agua-rasa-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/agua-rasa-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "10c541d903c11a08f3b5c2d80bde37a43b944008cb263b755c6f48ff1f09d761"
+            }
+          ],
+          "sha256": "10c541d903c11a08f3b5c2d80bde37a43b944008cb263b755c6f48ff1f09d761"
+        }
+      },
+      "sha256": "87bbfaf4036c8a7305f5776d0e0c7871c4080e7491b3ea6acb124cba611ab10c",
+      "meta": {
+        "ground": "water"
+      }
+    },
+    "infinito/areia-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/areia-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/areia-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "dbbb53cc52af120abc3e391a0cd05be47105b0c957c2594f3727396a6e1f1026"
+            }
+          ],
+          "sha256": "dbbb53cc52af120abc3e391a0cd05be47105b0c957c2594f3727396a6e1f1026"
+        }
+      },
+      "sha256": "0f9a875939316d6e00d56cf07090c9aa5ea18455eea42593dd0464641bba1556",
+      "meta": {
+        "ground": "sand"
+      }
+    },
+    "infinito/areia-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/areia-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/areia-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b6744103333230922c45fc1ff29d1650eb9fe41fd4b9b392bc5d6bc1ea33692f"
+            }
+          ],
+          "sha256": "b6744103333230922c45fc1ff29d1650eb9fe41fd4b9b392bc5d6bc1ea33692f"
+        }
+      },
+      "sha256": "1261cb54f2a96174691de2cfc171e0658d13d25a4e8a035d835778eb4992b6b8",
+      "meta": {
+        "ground": "sand"
+      }
+    },
+    "infinito/areia-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/areia-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/areia-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6b1a85f10b85024f6776a69cc50fb71ddcbaf5d180d6704be5cfe0ef016acfb0"
+            }
+          ],
+          "sha256": "6b1a85f10b85024f6776a69cc50fb71ddcbaf5d180d6704be5cfe0ef016acfb0"
+        }
+      },
+      "sha256": "5258043ebdf119c8b9a718bd821a05b65528793bec1b2febb877600e74b0c4d5",
+      "meta": {
+        "ground": "sand"
+      }
+    },
+    "infinito/capim-alto-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/capim-alto-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/capim-alto-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "e21b2bfdfb2da6ac51f7efd10f089da849cc91f5534b87d64113581bb8ef186a"
+            }
+          ],
+          "sha256": "e21b2bfdfb2da6ac51f7efd10f089da849cc91f5534b87d64113581bb8ef186a"
+        }
+      },
+      "sha256": "88c798644fa78a8f0a97d34c9074735d9617f361ef24e1b413cf140f6f04200b",
+      "meta": {
+        "ground": "tall-grass"
+      }
+    },
+    "infinito/capim-alto-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/capim-alto-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/capim-alto-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "79c590617a70f97830406065f04b0aaaf1edbe1488cc26038904acf1862dbd95"
+            }
+          ],
+          "sha256": "79c590617a70f97830406065f04b0aaaf1edbe1488cc26038904acf1862dbd95"
+        }
+      },
+      "sha256": "f11f5a6649eff49e14718b33b6ac4d9e30ca0a0e2dce9772056d110c2083da59",
+      "meta": {
+        "ground": "tall-grass"
+      }
+    },
+    "infinito/capim-alto-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/capim-alto-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/capim-alto-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a2b7ae580e19caa15ac21ca01cda25a3a978f69802fb87f757535b913c644a66"
+            }
+          ],
+          "sha256": "a2b7ae580e19caa15ac21ca01cda25a3a978f69802fb87f757535b913c644a66"
+        }
+      },
+      "sha256": "059ad05fca701335c2b4afeae3a36365f8cec0de5056d95b234614084661fd71",
+      "meta": {
+        "ground": "tall-grass"
+      }
+    },
+    "infinito/espuma-borda": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "infinito/espuma-borda.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "infinito/espuma-borda.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "59e202504beedb9b7c92026c0c2d252fea47ae039e2b936409b243d7d04d4187"
+            }
+          ],
+          "sha256": "59e202504beedb9b7c92026c0c2d252fea47ae039e2b936409b243d7d04d4187"
+        }
+      },
+      "sha256": "c2cbc49ca9915fae127d9af17bb7972a6fea2ec56bf978ad075eecfc2c487974",
+      "meta": {
+        "ground": "foam"
+      }
+    },
+    "infinito/grama-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2200d50ecf9bbe3544d10e9725b53368b64462cbc4718e52db10e6a66340932c"
+            }
+          ],
+          "sha256": "2200d50ecf9bbe3544d10e9725b53368b64462cbc4718e52db10e6a66340932c"
+        }
+      },
+      "sha256": "2c4c0210bcf9406a8e3534a5cb2bae51f157e375de1c8f4166da3679f282cc0e",
+      "meta": {
+        "ground": "grass"
+      }
+    },
+    "infinito/grama-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0a0a91e1e0e8fdb7b4d57a2e0b3824ad94dcacb3d558fbb5f5b8c1aa966143bc"
+            }
+          ],
+          "sha256": "0a0a91e1e0e8fdb7b4d57a2e0b3824ad94dcacb3d558fbb5f5b8c1aa966143bc"
+        }
+      },
+      "sha256": "708cd7386f632256b46be71f57233dfb64fb4c25f740fcff5afcf0b94214bd3a",
+      "meta": {
+        "ground": "grass"
+      }
+    },
+    "infinito/grama-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c95c962b8879a7bffdcf8e9a8df33168069596d125998b4102fdf7433d80795b"
+            }
+          ],
+          "sha256": "c95c962b8879a7bffdcf8e9a8df33168069596d125998b4102fdf7433d80795b"
+        }
+      },
+      "sha256": "a1d71719a37eb6dbb83942ca0973fd15546fa7678beeb96f1f7943ceee183a8d",
+      "meta": {
+        "ground": "grass"
+      }
+    },
+    "infinito/grama-seca-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-seca-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-seca-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "221c8107c9fb75a911db6c7d4c05c77f68178626d9ce8b3236c7b33c251ac6bb"
+            }
+          ],
+          "sha256": "221c8107c9fb75a911db6c7d4c05c77f68178626d9ce8b3236c7b33c251ac6bb"
+        }
+      },
+      "sha256": "061515aae55cfaf8baae31bb241ed017c9f85545a65d7946958bc8d4a0e14f71",
+      "meta": {
+        "ground": "dry-grass"
+      }
+    },
+    "infinito/grama-seca-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-seca-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-seca-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "e8713d529edca387480b856971eb12b9e1d74401760ad7e1aad6a730e31e5bdb"
+            }
+          ],
+          "sha256": "e8713d529edca387480b856971eb12b9e1d74401760ad7e1aad6a730e31e5bdb"
+        }
+      },
+      "sha256": "2c196989f919a4f80b5fd799bfa7fe6860156a7722977f7af330e242e04fd65f",
+      "meta": {
+        "ground": "dry-grass"
+      }
+    },
+    "infinito/grama-seca-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/grama-seca-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/grama-seca-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "796272800d626cab1d43eb1cc9917e317424927f81ff103903d043f12f106074"
+            }
+          ],
+          "sha256": "796272800d626cab1d43eb1cc9917e317424927f81ff103903d043f12f106074"
+        }
+      },
+      "sha256": "f151b2fe6340fdc55b87d11546896288281a3c85d8caac821862340fa0955713",
+      "meta": {
+        "ground": "dry-grass"
+      }
+    },
+    "infinito/lama-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/lama-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/lama-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "66a5e43801d6df4d5c9bd168150d37ff137546e0f5b91867eedaf68a80277a6a"
+            }
+          ],
+          "sha256": "66a5e43801d6df4d5c9bd168150d37ff137546e0f5b91867eedaf68a80277a6a"
+        }
+      },
+      "sha256": "b17fbb65649b671d1008ec1c46ed5c8d46e75c97eec2f6a0ff4696060cacee04",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "infinito/lama-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/lama-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/lama-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3d772fa8d87e227ddff84127ea0a5b45ea2957a1715429d839552f434c5a640a"
+            }
+          ],
+          "sha256": "3d772fa8d87e227ddff84127ea0a5b45ea2957a1715429d839552f434c5a640a"
+        }
+      },
+      "sha256": "4e800a467b217e8d9909813a0985f2895ed45cc9ede7d0740b59626f9f9d26ea",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "infinito/lama-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/lama-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/lama-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "401d7c74f4af7791e101148b23d5de9cf39c9b18e975a427bedcf37e63fae471"
+            }
+          ],
+          "sha256": "401d7c74f4af7791e101148b23d5de9cf39c9b18e975a427bedcf37e63fae471"
+        }
+      },
+      "sha256": "b6a244081f4e309d1fcef54a2c621740a1d8e027a24b78f16163e34e9fa548bd",
+      "meta": {
+        "ground": "mud"
+      }
+    },
+    "infinito/mar-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/mar-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/mar-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4f940b0009b716d0f53e0d96e9c0654240bb8c745d8d4d028b9296331ec8c037"
+            }
+          ],
+          "sha256": "4f940b0009b716d0f53e0d96e9c0654240bb8c745d8d4d028b9296331ec8c037"
+        }
+      },
+      "sha256": "f6e9f48602748892bfed980fd80b487e881c6c064c923a597d37a3e2ec2ccdc8",
+      "meta": {
+        "ground": "sea"
+      }
+    },
+    "infinito/mar-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/mar-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/mar-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2c5c0d0c53cf229277b5a31e86ba73133aebbcb1e078875f7bd3c2d808d8c96e"
+            }
+          ],
+          "sha256": "2c5c0d0c53cf229277b5a31e86ba73133aebbcb1e078875f7bd3c2d808d8c96e"
+        }
+      },
+      "sha256": "5f5ac4a939c5689a224ae60c009403e2f1aed77291c02b430a06944e8ed72491",
+      "meta": {
+        "ground": "sea"
+      }
+    },
+    "infinito/mar-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/mar-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/mar-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2a0eff8dbf88f2a9bef8b6a89e11320c822c60c28bfeef33f9ceaa8ead2e7d05"
+            }
+          ],
+          "sha256": "2a0eff8dbf88f2a9bef8b6a89e11320c822c60c28bfeef33f9ceaa8ead2e7d05"
+        }
+      },
+      "sha256": "22d54b8f92c7af7f2065f3724946732a94ec09aeafa0fa393e63fd95d07c5cc2",
+      "meta": {
+        "ground": "sea"
+      }
+    },
+    "infinito/pedra-encosta-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/pedra-encosta-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/pedra-encosta-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "beadf4bb93f1807106ee1b3bbf56b15ec49d13d792f0ba986213064e56374db3"
+            }
+          ],
+          "sha256": "beadf4bb93f1807106ee1b3bbf56b15ec49d13d792f0ba986213064e56374db3"
+        }
+      },
+      "sha256": "c1030f5ef1ff9bb3998eea716556f6ffd32f8c1d3790a76fff553750a2be8e8f",
+      "meta": {
+        "ground": "slope-rock"
+      }
+    },
+    "infinito/pedra-encosta-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/pedra-encosta-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/pedra-encosta-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b4bb278930b875037d332a216976663c35cb1c6b2efc956e4fed0ece06e124c5"
+            }
+          ],
+          "sha256": "b4bb278930b875037d332a216976663c35cb1c6b2efc956e4fed0ece06e124c5"
+        }
+      },
+      "sha256": "d462aa203f454c4cb219ae89b91a7c094e009087856ea48c6ccf4363aa9b588a",
+      "meta": {
+        "ground": "slope-rock"
+      }
+    },
+    "infinito/pedra-encosta-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/pedra-encosta-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/pedra-encosta-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "8bea4567b540b7d648d30aeafe5acf3ecaca33508641637d286198cbbff4d228"
+            }
+          ],
+          "sha256": "8bea4567b540b7d648d30aeafe5acf3ecaca33508641637d286198cbbff4d228"
+        }
+      },
+      "sha256": "2b61323a7c1c4d1c1ba643f8d31493fb5da109cb79b5513c6c5118a92c960033",
+      "meta": {
+        "ground": "slope-rock"
+      }
+    },
+    "infinito/rocha-nua-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/rocha-nua-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/rocha-nua-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7483ee9608274c00590dda5189c9ea1eb21dd80f994a0953551875803faf2070"
+            }
+          ],
+          "sha256": "7483ee9608274c00590dda5189c9ea1eb21dd80f994a0953551875803faf2070"
+        }
+      },
+      "sha256": "39485181a32b8167af61b08319e71d2f799b7b1a6f63994f235b0a7de6556e11",
+      "meta": {
+        "ground": "bare-rock"
+      }
+    },
+    "infinito/rocha-nua-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/rocha-nua-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/rocha-nua-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2df905e6ec7eb580527bbabc4c2a6a7ed8d0263fc08309b3c5d73f0f8b954d38"
+            }
+          ],
+          "sha256": "2df905e6ec7eb580527bbabc4c2a6a7ed8d0263fc08309b3c5d73f0f8b954d38"
+        }
+      },
+      "sha256": "86062c1f65d801da5d8d2da221095297ff057d0c07d843643467c616616e7073",
+      "meta": {
+        "ground": "bare-rock"
+      }
+    },
+    "infinito/rocha-nua-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/rocha-nua-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/rocha-nua-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f62c8910a22b0bc61c1b7a8a08b75902f29dbdcbe443db8ee5d0a2be35c059e8"
+            }
+          ],
+          "sha256": "f62c8910a22b0bc61c1b7a8a08b75902f29dbdcbe443db8ee5d0a2be35c059e8"
+        }
+      },
+      "sha256": "aadce15f604e049f6d5127067df5ca29dfba667d9903a77535218a74275c0658",
+      "meta": {
+        "ground": "bare-rock"
+      }
+    },
+    "infinito/terra-batida-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/terra-batida-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/terra-batida-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2af3f765f228a8fcc970f458931c4163c83993c451a40d14f2bd618f1b6cd661"
+            }
+          ],
+          "sha256": "2af3f765f228a8fcc970f458931c4163c83993c451a40d14f2bd618f1b6cd661"
+        }
+      },
+      "sha256": "10adc017e59e1b8ffb2103ca054309b9d2e60b3f10a9ff025c34bca0107b4099",
+      "meta": {
+        "ground": "dirt"
+      }
+    },
+    "infinito/terra-batida-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/terra-batida-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/terra-batida-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6a7ecc666ded50377f9207782b29dd45633fc0aca24cb05fec39dad469bdb1d9"
+            }
+          ],
+          "sha256": "6a7ecc666ded50377f9207782b29dd45633fc0aca24cb05fec39dad469bdb1d9"
+        }
+      },
+      "sha256": "9ec25d53fbf9a5d3664490c96aa11ffd574975c989b9684beee7e43499df28e6",
+      "meta": {
+        "ground": "dirt"
+      }
+    },
+    "infinito/terra-batida-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/terra-batida-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/terra-batida-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "cb15991e967be470f0d52d60d89f1a7fd4c6be8b076a5c1468b2c76f6f49cfd2"
+            }
+          ],
+          "sha256": "cb15991e967be470f0d52d60d89f1a7fd4c6be8b076a5c1468b2c76f6f49cfd2"
+        }
+      },
+      "sha256": "e72aa5380091ac0d474f2ecc66e50b0f26da7dc1e5599dbeb0d4d5c24cba38cc",
+      "meta": {
+        "ground": "dirt"
+      }
+    },
+    "infinito/trans-areia-agua": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trans-areia-agua.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "infinito/trans-areia-agua.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d29e2de562acc9527f2cc47a3f7be80a9b696521ca265b4aededa005db615aae"
+            }
+          ],
+          "sha256": "d29e2de562acc9527f2cc47a3f7be80a9b696521ca265b4aededa005db615aae"
+        }
+      },
+      "sha256": "9db144ed5bf084a7de779d42ef82f7eb2b3cd19b9a7c71a138c614bd23c078e3",
+      "meta": {
+        "mask": true,
+        "between": [
+          "sand",
+          "water"
+        ]
+      }
+    },
+    "infinito/trans-grama-areia": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trans-grama-areia.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "infinito/trans-grama-areia.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3fca8da80dbb76b21648d414d4f55e422a449af45c8e53072342e1979067b041"
+            }
+          ],
+          "sha256": "3fca8da80dbb76b21648d414d4f55e422a449af45c8e53072342e1979067b041"
+        }
+      },
+      "sha256": "841aa6765055bd028aef59d892550c3857091e13f4d828a0c391118ed2120103",
+      "meta": {
+        "mask": true,
+        "between": [
+          "grass",
+          "sand"
+        ]
+      }
+    },
+    "infinito/trans-grama-pedra": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trans-grama-pedra.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "infinito/trans-grama-pedra.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "86700bd840d5da1f1010f94051a6a06b3cd10c3a29caff8f935a2c9ea0ad0094"
+            }
+          ],
+          "sha256": "86700bd840d5da1f1010f94051a6a06b3cd10c3a29caff8f935a2c9ea0ad0094"
+        }
+      },
+      "sha256": "ac2f6ade010ae607e5d199efe9add92e58a0f0ceab50bbc38bf037ce8aa7a34a",
+      "meta": {
+        "mask": true,
+        "between": [
+          "grass",
+          "slope-rock"
+        ]
+      }
+    },
+    "infinito/trans-grama-terra": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trans-grama-terra.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "mask": true,
+          "pages": [
+            {
+              "file": "infinito/trans-grama-terra.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1ca5a61eb8262dc347c2095a1dfc8f7154b77a4649c761fab869c4418b86dee1"
+            }
+          ],
+          "sha256": "1ca5a61eb8262dc347c2095a1dfc8f7154b77a4649c761fab869c4418b86dee1"
+        }
+      },
+      "sha256": "935085e7dec7a6c021991dd089fb1f3b2ea17c9fa652e2b2d06761c2669f0730",
+      "meta": {
+        "mask": true,
+        "between": [
+          "grass",
+          "dirt"
+        ]
+      }
+    },
+    "infinito/trilha-1": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trilha-1.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/trilha-1.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2ab051ad4bc65b2926ae4b4724c49e2cfa5ea92571f7b2b3a65d1c612fb84741"
+            }
+          ],
+          "sha256": "2ab051ad4bc65b2926ae4b4724c49e2cfa5ea92571f7b2b3a65d1c612fb84741"
+        }
+      },
+      "sha256": "25c60a40a330fa250036f128f02cee5104ddfa456737f34c15bf13a2188cddb2",
+      "meta": {
+        "ground": "trail"
+      }
+    },
+    "infinito/trilha-2": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trilha-2.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/trilha-2.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c5f0dd2cfc037be753cf0039ddf3ade35f620babf24cfcd768943183e9b7c04f"
+            }
+          ],
+          "sha256": "c5f0dd2cfc037be753cf0039ddf3ade35f620babf24cfcd768943183e9b7c04f"
+        }
+      },
+      "sha256": "b9677573f87d21b000d71c70aae066d65ba948e19ec50f6dd816b9c818da49c8",
+      "meta": {
+        "ground": "trail"
+      }
+    },
+    "infinito/trilha-3": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "infinito/trilha-3.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "infinito/trilha-3.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "34723baa037520b8efb0569eefd1402f3eb0e956a679c14f91697ad0894f7a2b"
+            }
+          ],
+          "sha256": "34723baa037520b8efb0569eefd1402f3eb0e956a679c14f91697ad0894f7a2b"
+        }
+      },
+      "sha256": "9fbac25db4659fd16a147148b87c7abcca829576713881624ea821d0b99f1c0a",
+      "meta": {
+        "ground": "trail"
+      }
+    }
+  }
+}

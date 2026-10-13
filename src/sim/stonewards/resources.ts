@@ -3,6 +3,8 @@
  * - Island: its 16 obstacles (ids `no-<kind>-<i>`, as in 046A).
  * - Endless world: the obstacles of each chunk, a pure function of (seed, cx, cy) (chunks.ts), with ids
  *   `no-<cx>_<cy>-<i>`: deterministic per seed and chunk, and free until somebody stands next to one.
+ * - City (cidade-07): only the loot crates (loot.ts, ids `caixa-<i>`, capacity 1, value by walk time from the plaza);
+ *   never an island obstacle (the city terrain has no chunks, so it used to fall into the island branch).
  * A node's value (units per unit of work) grows with its distance from the base (rules.ts nodeValue). Only nodes
  * somebody worked this round live in the state; refilling at each intermission is clearing that list.
  */
@@ -14,6 +16,7 @@ import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {nodeValue} from '../../rules/index.ts';
 import {bump,type ResourceKind,type ResourceNode,type StonewardsState} from './state.ts';
+import {cityLoot} from './loot.ts';
 
 export {DEPLETED_LINES,NODE_NAMES,nodeValue} from '../../rules/index.ts';
 
@@ -40,11 +43,16 @@ function info(id:string,o:Obstacle|{x:number;y:number;radius:number;kind:Obstacl
 
 /**
  * Nodes whose centre is within `reach` of `p`, in a fixed order (island order; endless: chunk rows, then chunk
- * columns, then generation order). `source` replaces the island's obstacles (tests).
+ * columns, then generation order; city: asset order of the crates). `source` replaces the island's obstacles (tests).
  */
 export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,source?:readonly Obstacle[]):NodeInfo[]{
   const out:NodeInfo[]=[];
   if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!(reach>=0))return out;
+  const city=source?undefined:cityLoot(terrain);
+  if(city){
+    for(const n of city.nodes){const dx=n.x-p.x,dy=n.y-p.y;if(dx*dx+dy*dy<=reach*reach)out.push(n);}
+    return out;
+  }
   const base=worldBase(terrain),r2=reach*reach,chunks=terrain?.chunks;
   if(!chunks||source){
     const list=source??ISLAND_OBSTACLES;

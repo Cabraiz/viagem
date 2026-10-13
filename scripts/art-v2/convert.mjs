@@ -16,7 +16,7 @@ import {mkdir,readFile,writeFile,rm,rename} from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import {DIRECTIONS,MANIFEST_VERSION,INDEX_FILE} from './spec.mjs';
-import {raw,CELL,ROWS} from '../sprite-atlas.mjs';
+import {raw,CELL,ROWS,cellStats,figureBox} from '../sprite-atlas.mjs';
 
 export const WEBP=Object.freeze({lossless:true,effort:6});
 /** Largest texture side the game loads (px). */
@@ -130,12 +130,22 @@ export async function plannedOutputs(spec,sheets){
   }
   return out;
 }
+/**
+ * What the game needs to draw a hero atlas at its 96 world px (D-030), measured like scripts/import-sprites.mjs does
+ * for the catalog: `height` of the first idle cell of front-right (the atlas's first cell; alpha > 20) and `figure`,
+ * the box of the drawn figure over every cell. undefined when that cell is empty.
+ */
+export function heroMeasures({data,width,height}){
+  const first=cellStats(data,width,0);
+  if(!first.occupied)return undefined;
+  return {height:first.height,figure:figureBox(data,width,height)};
+}
 const fileList=entry=>[...new Set([...(entry?.file?[entry.file]:[]),...(Array.isArray(entry?.pages)?entry.pages.map(p=>p?.file).filter(Boolean):[])])];
 
 /**
  * Converts the sheets of one approved piece under `<outRoot>/<spec.output>/`. Returns its manifest entry
  * {kind, files:{[key]:{file? (single page), cell,…, pages:[{file,columns,rows,firstFrame,frameCount,sha256}], sha256}},
- * sha256} and the absolute paths written. Every page is staged in a temp file first; targets are replaced only after
+ * sha256} and the absolute paths written (a hero `dir4` atlas also gets `height` and `figure`, heroMeasures()). Every page is staged in a temp file first; targets are replaced only after
  * all of them converted, so on failure nothing previously approved changes. `previous`: this piece's entry in the
  * current manifest; files of the replaced keys that the new layout no longer uses (e.g. a sheet now paged) are removed
  * after the commit. `meta`: the piece's render metadata (validatePiece), recorded as the entry's `meta`. When the group
@@ -163,6 +173,8 @@ export async function convertPiece(spec,id,kind,sheets,{outRoot,previous,meta}={
       }
       const entry=pages.length===1?{file:pages[0].file}:{};
       for(const k of MANIFEST_FIELDS)if(sheet[k]!==undefined)entry[k]=sheet[k];
+      // The hero atlas carries its measures so the client scales it without reading pixels (sprite-sheets.ts).
+      if(kind==='dir8'&&sheet.key==='dir4'&&pixels)Object.assign(entry,heroMeasures(pixels));
       if(rim)entry.rim={...rim};
       entry.pages=entries;
       entry.sha256=entries.length===1?entries[0].sha256:sha256(entries.map(p=>`${p.file} ${p.sha256}`).join('\n'));
@@ -237,14 +249,23 @@ export async function readIndex(file){
  * (its pieces exactly as in that manifest), over the previous index (groups without a manifest keep their entry).
  * Groups and ids sorted, so a re-run gives the same bytes. Returns the file path.
  */
+/** A group entry without its `sha256` fields (at every depth). */
+export function leanIndex(value){
+  if(Array.isArray(value))return value.map(leanIndex);
+  if(!value||typeof value!=='object')return value;
+  const out={};for(const [k,v] of Object.entries(value))if(k!=='sha256')out[k]=leanIndex(v);
+  return out;
+}
 export async function writeIndex(specs,{outRoot}){
   const file=indexPath({outRoot}),groups={...(await readIndex(file))?.groups};
   for(const [group,spec] of Object.entries(specs)){
     const manifest=await readManifest(manifestPath(spec,{outRoot}));
     if(manifest)groups[group]={output:spec.output,pieces:manifest.pieces};
   }
-  const sorted=Object.fromEntries(Object.keys(groups).sort().map(g=>[g,groups[g]]));
-  await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,groups:sorted},null,2)}
+  const sorted=Object.fromEntries(Object.keys(groups).sort().map(g=>[g,leanIndex(groups[g])]));
+  // Lean and minified (manifesto-enxuto-3g): the client never checks hashes, and every phone downloads this file
+  // before the game starts (246 KB → ~84 KB, ~7 KB gzip). The group manifests keep every sha256.
+  await writeAtomic(file,`${JSON.stringify({version:MANIFEST_VERSION,groups:sorted})}
 `);
   return file;
 }

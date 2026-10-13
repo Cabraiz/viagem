@@ -1,0 +1,70 @@
+/**
+ * Beyond the map edge (card cidade-borda-e-quadras, choice (b)): rings of snow that sink into Breu fog all around the
+ * city, so the screen never shows the bare background next to the playable map and nothing out there reads as ground
+ * to walk on. Pure geometry (no Phaser): the layer draws the quads once per view, just under the ground.
+ * Ring k spans k..k+1 ring widths outside the map rectangle (mitered at the corners, so the rings close); its colour
+ * goes from a snow already pulled toward Breu (ring 0) to exactly OUTSIDE_CITY (the last ring), which is also the camera
+ * background beyond it: no seam. Each point is projected at the ground height of the nearest map edge point, so the
+ * inner ring meets the drawn ground without a gap whatever the relief.
+ */
+import {groundZ,type CityAsset} from './asset.ts';
+import {CITY_PALETTE,OUTSIDE_CITY,mixColor} from './palette.ts';
+import {VIEW_PIVOT,project,type Pt} from './projection.ts';
+
+/** Number of rings and their width in cells: about 9 cells of fog, past the farthest the camera shows beyond the edge wall. */
+export const FOG_RINGS=7;
+export const FOG_RING_CELLS=1.25;
+/** Ring 0 is the near snow pulled this far toward Breu: darker than every walkable ground, so it never reads as street. */
+export const FOG_START=0.5;
+export const FOG_NEAR=CITY_PALETTE['neve-detalhe'];
+/** Cells per drawn part along a side (each part is culled on its own). */
+export const FOG_SEGMENT_CELLS=16;
+
+export interface FogQuad {color:number;points:Pt[]}
+
+/** Colour of ring k (0 = touching the map): snow toward Breu, the last ring exactly OUTSIDE_CITY. */
+export function fogColor(k:number):number{
+  if(k>=FOG_RINGS-1)return OUTSIDE_CITY;
+  const t=FOG_START+(1-FOG_START)*Math.max(0,k)/(FOG_RINGS-1);
+  return mixColor(FOG_NEAR,OUTSIDE_CITY,t);
+}
+
+/**
+ * The fog as drawable parts (one per side segment of FOG_SEGMENT_CELLS cells), each a list of ring polygons in
+ * projected px for `view`. Every polygon lies outside the map rectangle.
+ */
+export function borderFog(asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):FogQuad[][]{
+  const {cell,width,height,origin}=asset,X0=origin.x,Y0=origin.y,X1=X0+width*cell,Y1=Y0+height*cell,ring=FOG_RING_CELLS*cell;
+  const clamp=(v:number,a:number,b:number)=>Math.min(b,Math.max(a,v));
+  const at=(x:number,y:number)=>project(x,y,groundZ(asset,clamp(x,X0,X1-1e-6),clamp(y,Y0,Y1-1e-6)),view,pivot);
+  // Each side as (t along it, d outward) -> world point, walking clockwise; `cells` is its length in cells.
+  const sides:{cells:number;point:(t:number,d:number)=>Pt}[]=[
+    {cells:width,point:(t,d)=>({x:X0+t,y:Y0-d})},
+    {cells:height,point:(t,d)=>({x:X1+d,y:Y0+t})},
+    {cells:width,point:(t,d)=>({x:X1-t,y:Y1+d})},
+    {cells:height,point:(t,d)=>({x:X0-d,y:Y1-t})},
+  ];
+  const parts:FogQuad[][]=[];
+  for(const side of sides){
+    const L=side.cells*cell;
+    for(let a=0;a<side.cells;a+=FOG_SEGMENT_CELLS){
+      const b=Math.min(side.cells,a+FOG_SEGMENT_CELLS),part:FogQuad[]=[];
+      for(let k=0;k<FOG_RINGS;k++){
+        const d0=k*ring,d1=(k+1)*ring;
+        // Inner edge at d0 and outer edge at d1, through every cell corner of the segment; the side's two ends are
+        // mitered (they reach d past the corner) so neighbouring sides' rings meet on the diagonal.
+        const ts=(d:number)=>{
+          const out:number[]=[a?a*cell:-d];
+          for(let i=a+1;i<b;i++)out.push(i*cell);
+          out.push(b<side.cells?b*cell:L+d);
+          return out;
+        };
+        const inner=ts(d0).map(t=>{const p=side.point(t,d0);return at(p.x,p.y);});
+        const outer=ts(d1).reverse().map(t=>{const p=side.point(t,d1);return at(p.x,p.y);});
+        part.push({color:fogColor(k),points:[...inner,...outer]});
+      }
+      parts.push(part);
+    }
+  }
+  return parts;
+}

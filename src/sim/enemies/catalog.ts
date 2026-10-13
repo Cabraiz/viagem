@@ -7,15 +7,17 @@ import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 
-/** Cast of D-033 (design/arte-v2.md §4). Coach, motoboy and influencer come in a later card. */
-export type EnemyKind='bebado'|'anao-molotov'|'pombos'|'tio-pave'|'agiota'|'chefe';
+/** Cast of D-033 (design/arte-v2.md §4), with the P1 trio (coach, motoboy, influencer: NEW-20261012-ORQ-elenco-p1). */
+export type EnemyKind='bebado'|'anao-molotov'|'pombos'|'tio-pave'|'agiota'|'coach'|'motoboy'|'influencer'|'chefe';
 /**
  * stagger: drunk zig-zag chase plus a telegraphed burp cone (bebado); swarm: fast zig-zag plus poop (pombos);
  * joker: stops for a joke then charges (tio-pave); ranged: keeps distance and shoots (agiota);
- * thrower: keeps distance and lobs telegraphed molotovs (anao-molotov); chase: walks straight (siege, generic);
+ * thrower: keeps distance and lobs telegraphed molotovs (anao-molotov); coach: keeps distance, no melee, lectures and
+ * buffs the allies around him (PALESTRA); kamikaze: warned locked charge that ends in a marmita blast (MOTOBOY);
+ * poser: slow tank whose pose reflects friendly shots (POSE, REFLECT); chase: walks straight (siege, generic);
  * boss: driven by VGM-038.
  */
-export type EnemyBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'boss';
+export type EnemyBehavior='chase'|'stagger'|'swarm'|'joker'|'ranged'|'thrower'|'coach'|'kamikaze'|'poser'|'boss';
 
 export interface EnemyLines {
   /** Ambient speech balloons, picked rarely by enemy-ai. */
@@ -44,7 +46,7 @@ export interface EnemyDef extends EnemyLines {
 /** Multipliers applied on top of any kind. */
 export interface EliteDef extends EnemyLines {name:string;hp:number;speed:number;damage:number;radius:number;xp:number;accent:number}
 
-export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe'] as const satisfies readonly EnemyKind[];
+export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','coach','motoboy','influencer','chefe'] as const satisfies readonly EnemyKind[];
 
 /*
  * Lines are the D-033 joke pass (heavy tone, humor-reviewed). Every line is ≤ 30 characters and unique across the
@@ -93,6 +95,31 @@ export const ENEMIES:Readonly<Record<EnemyKind,EnemyDef>>=Object.freeze({
     barks:['Juros de 40% ao dia, campeão','Aceito dinheiro, rim ou carro','Eu sei onde tua tia mora','Boleto ou joelho? Escolhe.','Sorria, você tá sendo cobrado','Fiado? Fiado é o caralho','Juros sobre juros é poesia','Quitou? Nunca quita, amigo.','Teu nome tá sujo, meu anjo','Taxa de cobrança: um dente'],
     deathLines:['O boleto... venceu... eu...','Prescreveu! PRESCREVEU!','Perdoo a dívida... MENTIRA','Minha pochete! Meu tudo!','Volto com correção monetária','Cobra no inferno, já tô indo','Me paga no enterro, à vista'],
     reactionLines:['Toma o boleto!','Vence hoje, hein!','Recibo? Te dou um roxo.','Boleto com multa e mora!','Parcelo teus dentes, quer?'],
+  },
+  // P1 support (priority target, weapons/system.ts targets()): fragile, keeps PALESTRA.minRange..maxRange from players and
+  // never hits in melee (enemy-ai skips his contact; `damage` is only the nominal catalog stat).
+  coach:{
+    id:'coach',name:'Coach Quântico',behavior:'coach',
+    hp:40,speed:1.25,damage:4,radius:.3,xp:3,contactCooldown:ticks(1),color:0xdfe6f2,accent:0x2a3f8f,
+    barks:['Acordo 4h, banho gelado e ódio','Aula grátis. A surra é paga','Fracasso é só sucesso de ré','Quântico porque eu quis, porra','Teu maior inimigo é você. E eu','Morte é só crença limitante','Desenhei tua morte no quadro','Respira. Visualiza. Apanha.','Tua dor é falta de mentoria','Morre, mas morre escalável'],
+    deathLines:['Reembolso? Só no outro plano','Não é morte, é pivotar...','Link do curso na lápide','Morri antes do upsell...','Visualizei isso. Não assim.','Gratidão... pela... porrada...','Imersão... a sete palmos...'],
+    reactionLines:['Isso foi um feedback!','Toma meu PDF na cara!','Slide 47: tua derrota!','Pancada de alta performance!','Não fui eu, foi a vibração','Escala esse hematoma 10x!'],
+  },
+  // P1 kamikaze: walks fast-ish, then one warned straight charge at the peak cap (MOTOBOY) that ends in his own blast.
+  motoboy:{
+    id:'motoboy',name:'Motoboy Kamikaze',behavior:'kamikaze',
+    hp:18,speed:1.6,damage:5,radius:.32,xp:2,contactCooldown:ticks(1),color:0xe2c290,accent:0xc23b2a,
+    barks:['Freio é coisa de iniciante','Retrovisor? Arranquei. Pesava','Buzino, logo existo','Sinal vermelho é sugestão','Em 7 minutos ou te atropelo','Tô a 2 min. Desde terça.','Calçada também é avenida','Moto sem escapamento é ASMR','A marmita chega. Eu, talvez','Desce! Tô na porta... de quem?'],
+    deathLines:['Avalia cinco estrelas... ai...','Pedido entregue: eu, no poste','Freio fez falta. Quem diria.','Marca como entregue, caralho!','O feijão chegou antes de mim','Me deixa na portaria...','Chegou seu pedido... voando'],
+    reactionLines:['Sem contato! Só com a moto!','Assina aqui! No asfalto!','Passei por cima. Foi mal!','Corredor fechado? Abri!','Buzinei, então tá avisado!','Comprovante: tua marca de pneu'],
+  },
+  // P1 tank: slow and tough; every few seconds he poses (POSE) and reflects the friendly shots that hit him (REFLECT).
+  influencer:{
+    id:'influencer',name:'Influencer de Academia',behavior:'poser',
+    hp:80,speed:.85,damage:8,radius:.44,xp:5,contactCooldown:ticks(1),color:0xf0c8a8,accent:0xe0407a,
+    barks:['Bom dia, família! Tá pago!','Usa meu cupom: SHAPE10','Isso aqui é publi, tá?','Grava meu lado bom. O esquerdo','Perna? Faço semana que vem','Shape não se faz, se posta','Arrasta pra cima que eu bato','Treino em jejum de humildade','Não postei? Então não treinei','Segue lá: @eu_mesmo_monstro'],
+    deathLines:['A panturrilha! Para de filmar!','Posta não! POSTA NÃO!','Distendi no meu melhor ângulo','Morri ao vivo. Engajou bem','Chama o fisio! E a ring light!','Chorei sem filtro, caralho...','Edita isso pra parecer pose...'],
+    reactionLines:['Corta! Faz de novo pro vídeo!','Essa foi pro story!','Essa doeu? Isso é hipertrofia!','Marca eu nessa porrada!','Sente o pré-treino!','Bati e postei. Rendeu!'],
   },
   chefe:{
     id:'chefe',name:'Síndico Supremo',behavior:'boss',
@@ -187,9 +214,68 @@ export function markDevendo(player:object,tick:number){
   p.devendoUntil=tick+DEVENDO.ticks;
 }
 
+/**
+ * Coach Quântico's "palestra" (P1): when a player is within `trigger` and his cooldown is over he stops and lectures for
+ * `lecture` ticks (EnemyView.phase 1, one PALESTRA_LINES line through the limiter), then every live ally within `radius`
+ * (not a coach, not the boss, not retreating) is coached until tick + `duration` (EnemyState extra `coachedUntil`, D-002;
+ * EnemyView.phase 2 while coached and not acting). A coached enemy deals `damageMult` × damage at the points where enemy
+ * damage is set: contact hits, the agiota's boleto at spawn, enemy hazard telegraphs at spawn (burp, molotov landing,
+ * poop, death explosions, the marmita blast) and a reflected shot. A window, not a stack: two coaches only refresh it.
+ * Between lectures he keeps minRange..maxRange from the nearest player, like the agiota; he has no melee.
+ */
+export const PALESTRA=Object.freeze({trigger:7,minRange:4,maxRange:6,lecture:ticks(1.5),cooldown:ticks(6),radius:3.5,duration:ticks(6),damageMult:1.3});
+/** Said by the coach when a lecture starts (limiter, key 'coach:palestra'). */
+export const PALESTRA_LINES:readonly string[]=Object.freeze(['Repete comigo: EU SOU FODA!','Cada pombo aqui é um CEO!','Herói é só um lead frio!','Bêbado, tu nasceu pra liderar!','Imersão relâmpago: 3 minutos!','Mão no peito e grita: LUCRO!','Tio do Pavê, tu é uma marca!']);
+/** Said by one ally the lecture coached, once per lecture, when the limiter allows while the buff lasts (key 'coach:buffed'). */
+export const BUFFED_LINES:readonly string[]=Object.freeze(['Eu sou o protagonista, porra!','Acreditei em mim. Que nojo.','Tô vibrando em 5G!','Comprei o método. Tô imortal!','Sai da frente, sou mentorado!','Faturo sete dígitos de ódio']);
+/** EnemyState extra (D-002) of the palestra buff. */
+export interface CoachedEnemy {coachedUntil?:number}
+export const isCoached=(enemy:object,tick:number)=>tick<((enemy as CoachedEnemy).coachedUntil??-Infinity);
+/** Damage multiplier of an enemy right now (PALESTRA.damageMult while coached, else 1). */
+export const coachMult=(enemy:object,tick:number)=>isCoached(enemy,tick)?PALESTRA.damageMult:1;
+/** Kinds the auto-aim of the weapons prefers right after the tapped target (weapons/system.ts targets()). */
+export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coach';
+
+/**
+ * Motoboy Kamikaze (P1): with a player within `trigger` and a free telegraph slot he honks (MOTOBOY_HONK_LINES, limiter;
+ * the line is not required), locks the direction to that player and draws the whole run as an 'investida' line (0 damage)
+ * for `aim` ticks while he stands still (EnemyView.phase 1, aiming and charging). Then he runs that line without homing for
+ * `charge` ticks at `chargeSpeed` × his speed capped by ACTION_PEAK_MAX × the hero (always the cap: a straight dash at the
+ * peak); touching a player then hits for `hitDamage`. The charge ends at its full length, on a player, on an obstacle
+ * (blocked) or knocked off the line: he crashes, the bag explodes ('explosao' circle owned by `env:marmita:<id>`,
+ * `blastRadius`, `blastDamage`, warned `blastDelay`, players only) and he dies through ctx.damageEnemy with no player
+ * credit (XP and loot once). No line (budget full) → no charge (retry after `retry`); no blast outside the wave.
+ */
+export const MOTOBOY=Object.freeze({trigger:7,aim:ticks(1),charge:ticks(1.6),chargeSpeed:3,hitDamage:12,retry:ticks(1),
+  blastRadius:1.4,blastDamage:12,blastDelay:ticks(.8)});
+export const MOTOBOY_HONK_LINES:readonly string[]=Object.freeze(['BIIIIII! SAI DA FRENTE!','Pedido saindo! ABRE ALAS!','Três... dois... BIIIIII!','GPS mandou passar por você!','Tô vendo a tua porta!','FOM-FOM! Desvia, se puder!']);
+/** Said by the motoboy as he crashes (limiter, key 'motoboy:boom'). */
+export const MARMITA_BOOM_LINES:readonly string[]=Object.freeze(['Arroz, feijão e estilhaço!','Ovo frito em órbita!','Entregue! Pra rua inteira!','Bife a milhão por hora!','Feijoada de fragmentação']);
+
+/**
+ * Influencer de Academia (P1): walks slowly; with a player within `trigger` and his cooldown over he poses for `duration`
+ * ticks standing still (EnemyView.phase 1, one POSE_LINES line through the limiter). While posing, a FRIENDLY linear or
+ * homing projectile that hits him is reflected (projectiles.ts collideFriendly, isReflecting): it turns hostile (owner =
+ * him), its velocity reverses, damage × REFLECT.mult (× his coach buff), pierce 0, hit list reset, and it lives at least
+ * REFLECT.minLife more. Orbiters, follow/area zones and the instant cone still hurt him: the counterplay.
+ */
+export const POSE=Object.freeze({trigger:6,duration:ticks(2),cooldown:ticks(5)});
+export const REFLECT=Object.freeze({mult:.6,minLife:ticks(1)});
+/** memory.state of the pose (enemies/ai.ts STATE.pose). */
+export const POSE_STATE=6;
+export const POSE_LINES:readonly string[]=Object.freeze(['Ninguém atira! Tô gravando!','Pera, achei a luz boa!','Pose de bíceps: modo escudo!','Contrai o abdômen! Sorri!','Mais uma! Agora de perfil!','Para tudo: hora do pump!']);
+/** Said by the influencer after a reflection (the projectile system flags memory.reflectSay; enemy-ai says it). */
+export const REFLECT_LINES:readonly string[]=Object.freeze(['Bateu no shape e voltou!','Devolvido com filtro!','Teu tiro saiu no meu story!','Rebatido! Me marca, hein!','Volta pro remetente, monstro!']);
+/**
+ * True while `enemy` is a live influencer in his pose (reflects friendly shots). A retreating one (D-010, memory.retreat)
+ * never reflects: retreaters deal no damage, and enemy-ai also drops his pose when the retreat starts.
+ */
+export const isReflecting=(enemy:EnemyState,tick:number)=>enemy.kind==='influencer'&&enemy.hp>0&&enemy.memory?.retreat!==1
+  &&enemy.memory?.state===POSE_STATE&&tick<(enemy.memory.until??-Infinity);
+
 /** Owner prefixes of the hazards that outlive their thrower (telegraphs.ts `env:` rule). */
-export const HAZARD_OWNERS=Object.freeze({molotov:'env:molotov:',explosion:'env:explosion:',poop:'env:poop:'});
-const HAZARD_KIND:Readonly<Record<string,EnemyKind>>=Object.freeze({molotov:'anao-molotov',explosion:'anao-molotov',poop:'pombos'});
+export const HAZARD_OWNERS=Object.freeze({molotov:'env:molotov:',explosion:'env:explosion:',poop:'env:poop:',marmita:'env:marmita:'});
+const HAZARD_KIND:Readonly<Record<string,EnemyKind>>=Object.freeze({molotov:'anao-molotov',explosion:'anao-molotov',poop:'pombos',marmita:'motoboy'});
 /** Enemy kind behind a hazard owner (`env:molotov:e7` → 'anao-molotov'), for "what got you" once the thrower is gone. */
 export const hazardKind=(owner:string):EnemyKind|undefined=>{const what=owner.startsWith('env:')?owner.split(':')[1]:undefined;return what!==undefined&&Object.hasOwn(HAZARD_KIND,what)?HAZARD_KIND[what]:undefined;};
 

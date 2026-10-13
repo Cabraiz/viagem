@@ -13,6 +13,10 @@ export const DEATH_LINES:Record<EnemyKind,readonly string[]>={
   'tio-pave':['MORREU RINDO!','ENGASGOU NA PIADA!','PAVÊ OU PA COMÊ?','TIO NO GELO!','SOBREMESA!'],
   agiota:['NOME LIMPO!','JUROS ZERADOS!','CALOTE!','QUITADO, PORRA!','VIROU PAPEL!'],
   chefe:['CONDOMÍNIO PAGO!','ATA ENCERRADA!','DESPEJADO!','ASSEMBLEIA CANCELADA!','SÍNDICO DEPOSTO!'],
+  // Elenco P1 (humor-reviewed).
+  coach:['CHUVA DE POST-IT!','PALESTRA ENCERRADA!','SAIU DA ZONA DE VIDA!','CASE DE FRACASSO!','FEEDBACK RECEBIDO!','TROPEÇOU NO SLOGAN!'],
+  motoboy:['PEDIDO ESPALHADO!','CHOVEU FEIJÃO!','MARMITADA!','SAIU PRA ENTREGA!','FREIOU NO POSTE!','BIIII... PLAFT!'],
+  influencer:['PANTURRILHA FOI!','SHAPE DESMONTOU!','CÃIBRA AO VIVO!','STORY ENCERRADO!','UNFOLLOW ETERNO!','TÁ PAGO... AI!'],
 };
 
 export interface KindStyle {
@@ -29,6 +33,10 @@ export const KIND_STYLES:Record<EnemyKind,KindStyle>={
   'tio-pave':{fill:'#fff6d8',stroke:'#a8673a',tint:0xffe2b8},
   agiota:{fill:'#fff8dc',stroke:'#2e2a33',tint:0xf0dc8a},
   chefe:{fill:'#fff0fb',stroke:'#8a3f9e',tint:0xf0c8ff},
+  // Elenco P1: the coach's suit blue, the motoboy's bag green, the influencer's tank-top pink.
+  coach:{fill:'#f2f6ff',stroke:'#1f4aa8',tint:0xc8d8ff},
+  motoboy:{fill:'#f6ffe6',stroke:'#3f6a18',tint:0xd4f0a8},
+  influencer:{fill:'#fff0f7',stroke:'#b0246a',tint:0xffc4e0},
 };
 
 export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:GENERIC_LINES;
@@ -51,3 +59,11 @@ export const skillBubbleLine=(e:{line:string;outcome?:keyof typeof DICE_LINE})=>
 /** `say` keys that show a short red status tag over the player instead of the line (D-033: the agiota's boleto). */
 export const SAY_TAGS:Readonly<Record<string,string>>={devendo:'DEVENDO'};
 export const sayTag=(key:string|undefined):string|undefined=>key!==undefined&&Object.hasOwn(SAY_TAGS,key)?SAY_TAGS[key]:undefined;
+/**
+ * `say` keys whose line must not be swallowed by the 2 s per-player gap (D-013), shown as a normal balloon (not a
+ * status tag): the city's "ficou pra trás no rolê" at the wave start (cidade-07) often lands right after a crate's line.
+ */
+export const SAY_PRIORITY:ReadonlySet<string>=new Set(['ficou-pra-tras']);
+export const sayPriority=(key:string|undefined)=>key!==undefined&&SAY_PRIORITY.has(key);
+/** The per-player balloon gate (D-013): a status tag or a priority line always shows; anything else waits SKILL_BUBBLE_GAP_MS. */
+export const bubbleAllowed=(nowMs:number,lastMs:number,o:{tag?:boolean;priority?:boolean}={})=>!!o.tag||!!o.priority||nowMs-lastMs>=SKILL_BUBBLE_GAP_MS;

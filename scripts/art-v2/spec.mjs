@@ -330,6 +330,9 @@ export const GROUPS=Object.freeze({
     title:'8. Efeitos e telegraphs',input:'efeitos',output:'public/art/fx',kind:'frames',kinds:['frames','seamless','nineslice'],pieces:'any',expected:EFEITOS,
     // Telegraph textures via sidecar: fill {"kind":"seamless","cell":[128,128],"transparent":true};
     // dashed border {"kind":"seamless","cell":[128,16],"wrap":"x","transparent":true}.
+    // `fullBleed`: screen-wide overlays drawn up to the cell border on purpose (the blackout veil is a vignette whose
+    // dark rim IS the edge): no PADDING rule for them.
+    fullBleed:{'veu-apagao':true},
   },
   ui:{
     title:'9. Interface, ícones e adesivos',input:'ui',output:'public/art/ui',kind:'icon',kinds:['icon'],size:128,

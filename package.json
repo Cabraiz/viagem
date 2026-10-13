@@ -23,9 +23,11 @@
     "prepare:art": "node scripts/prepare-portraits.mjs",
     "test:multiplayer:local": "node scripts/check-multiplayer-local.mjs",
     "test:multiplayer:production": "node --experimental-strip-types scripts/check-multiplayer.mjs https://viagem-salas.viagem.workers.dev",
-    "deploy:rooms": "wrangler deploy --config multiplayer/wrangler.jsonc",
+    "deploy:rooms": "node scripts/deploy-rooms.mjs",
+    "deploy:rooms:force": "node scripts/deploy-rooms.mjs --force",
     "bots": "node --experimental-strip-types scripts/bots/run.ts",
-    "bench:maps": "node --experimental-strip-types scripts/bench-city.ts"
+    "bench:maps": "node --experimental-strip-types scripts/bench-city.ts",
+    "bench:city-run": "node --experimental-strip-types scripts/bench-city-run.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261005.1",

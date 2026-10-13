@@ -38,6 +38,7 @@ import {AGIOTA_SHOT,ENEMIES,MOLOTOV,enemyDef,isEnemyKind} from '../../src/sim/en
 import {BOSS_TUNING,PHASE_ASSEMBLY,PHASE_ENRAGED,createBoss} from '../../src/sim/boss.ts';
 import {createTelegraphSystem} from '../../src/sim/telegraphs.ts';
 import type {SimContext} from '../../src/sim/context.ts';
+import {NEUTRAL_CITY_BALANCE} from '../../src/sim/city/balance.ts';
 import {MOUTHS,OPPOSITE,type AvenuePlanner,type AvenueMode,type AvenueState,type Mouth,type PlayerLike} from '../../src/sim/city/avenues.ts';
 import {CITY_ENEMY_SPEED,WIDE_RADII,cityFlowGrid,cityPlanner,citySteer,type CityFlowGrid} from '../../src/sim/city/grid.ts';
 import {SCALE_PROFILES,enemySpeed,type ScaleProfile} from '../../src/rules/scale.ts';
@@ -75,11 +76,16 @@ function specCitySpeed(speed:number,from:ScaleProfile=INF,to:ScaleProfile=CITY){
 // ---------- Assembled runs ----------
 type RunPlayerLike=SimPlayer&{ack:number;score:number};
 interface Rig {world:SimWorld;sys:RunSystems;players:Map<string,SimPlayer>}
-/** A run as the room assembles it (SimWorld + createRunSystems), with no input: players stand still. */
+/**
+ * A run as the room assembles it (SimWorld + createRunSystems), with no input: players stand still. The city's round-1
+ * tutorial walk (cidade-08, tests/sim/city-tutorial.test.ts) is off: these tests read the round table's round 1.
+ */
 function assembled(terrain:SimWorld['terrain'],seed:number):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
+  // Travel and reach are measured with the plaza open: the barricades (cidade-06) are a defense, tested in city-barricades.
+  // Neutral city knobs (cidade-11): speed and reach are measured on the round table itself, not the tuned difficulty.
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},barricades:false,cityTutorial:false,cityBalance:NEUTRAL_CITY_BALANCE});
   return {world,sys,players};
 }
 /** A player without weapons (nothing dies) and too much hp to go down: only positions matter here. */

@@ -12,8 +12,10 @@ import {sticker as drawSticker} from '../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
 import {icon} from '../ui/icon.ts';
+import {faceExpression,faceImg} from '../ui/face-crop.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
+import type {MapId} from '../../protocol/index.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -45,6 +47,13 @@ export function resultHeadline(result:Pick<RunResult,'victory'|'seed'|'wall'>){
   return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:lines[seedIndex(result.seed,lines.length)]};
 }
 
+/** RunResult plus the room's map (cidade-10, explore.ts runResult): absent on the island and in older callers. */
+export type MapRunResult=RunResult&{map?:MapId};
+/** The stats line's last item: the city by name (its seed is always 0 and says nothing), else "seed N" as before. */
+export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
+  return result.map==='cidade-nevada'?'Cidade Nevada':`seed ${result.seed}`;
+}
+
 /** 980 → "980", 9120 → "9,1k", 18420 → "18,4k", 123456 → "123k". */
 export function compactNumber(value:number){
   const n=Math.max(0,Math.round(Number.isFinite(value)?value:0));
@@ -56,6 +65,8 @@ export function compactNumber(value:number){
 /** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip.
  *  Slots are 28 px stickers 6 px apart (design review of DSG-adesivos-itens): 118 px beside the portrait fits 3, 207 px fits 6. */
 export const BUILD_SLOTS={portrait:3,landscape:6} as const;
+/** The card face's largest CSS size (hud.css .rh-rcard-img): 64 px with one or two cards, 40 px otherwise. */
+export const RESULT_FACE_PX={big:64,card:40} as const;
 const LANDSCAPE='(max-height:500px)';
 
 /** Build icons in display order (evolutions, weapons, passives; higher level first). With more items than slots,
@@ -182,7 +193,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   let shameChip:{playerId:string;line:string;aria:string;key:string;source?:string}|undefined;
   /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
   let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
-  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
+  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number;victory:boolean;facePx:number},index:number)=>{
     const node=el('article','rh-rcard');
     node.setAttribute('aria-label',player.name);
     node.style.setProperty('--i',String(index));
@@ -191,7 +202,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     if(player.spectator)node.dataset.state='spectator';
 
     const top=el('div','rh-rcard-top',node);
-    const img=el('img','rh-rcard-img',top);img.alt='';img.decoding='async';img.draggable=false;img.src=ctx.portrait(player.classId);
+    // The face (rostos-hud): the outcome wins over caido here (a defeat ends with everyone down), so rindo on a win and
+    // bravo on a loss (ui/face-crop.ts). At 64/52 px the thumb's crop would blur at DPR 3: `px` picks the 768 portrait.
+    const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated,outcome:ctx.victory?'victory':'defeat'});
+    top.append(faceImg(document,player.classId,{className:'rh-rcard-img',expression,portrait:ctx.portrait,px:ctx.facePx}));
     const id=el('div','rh-rcard-id',top);
     const name=el('strong','rh-rcard-name',id);name.textContent=player.name;name.dataset.full=player.name;
     if(me){const tag=el('span','rh-rcard-tag',id);tag.textContent='Você';}
@@ -293,7 +307,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const count=players.length+(tile?1:0);
     const slots=count>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
     grid.dataset.count=String(count);chipEl=undefined;
-    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)),...(tile?[addTile()]:[]));
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots,victory:result.victory,facePx:count<=2?RESULT_FACE_PX.big:RESULT_FACE_PX.card},index)),...(tile?[addTile()]:[]));
     fitCards();
   };
   /**
@@ -331,14 +345,14 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
 
   return {
     el:root,
-    show(result:RunResult,ctx:HudContext){
+    show(result:MapRunResult,ctx:HudContext){
       const headline=resultHeadline(result);
       root.dataset.outcome=result.victory?'victory':'defeat';
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
       round.textContent=`Round ${result.round}/${result.totalRounds}`;
-      seed.textContent=`seed ${result.seed}`;
+      seed.textContent=resultSeedText(result);
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;
       if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}

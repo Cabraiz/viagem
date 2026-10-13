@@ -84,7 +84,7 @@ test('drops of 5 s and 20 s in the middle of combat: same character, offers kept
   }
 });
 
-test('the seat survives the mobile grace and not beyond; the last one standing who dropped keeps the run alive meanwhile',()=>{
+test('the seat survives the mobile grace (held through the run while someone plays, 3g); the last one standing who dropped keeps the run alive meanwhile',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
   let t=combat(room,[a,b]);
   const ana=welcome(a),bia=room.sim.players.get(welcome(b).id)!;
@@ -95,12 +95,16 @@ test('the seat survives the mobile grace and not beyond; the last one standing w
   for(;t<away;t+=50){say(room,b,{t:'ack',seq:0},t);room.advance(t);}
   assert.equal(room.run.snapshot().phase,'combat','not lost while Ana may come back');
   const back=peer();join(room,back,'Ana',t,ana.token);assert.equal(welcome(back).id,ana.id);
-  // Gone for longer than the grace: the seat is free and the run ends (042a R1 with the grace).
+  // Gone for longer than the grace while Bia is still in the room: the run waits the grace for Ana and ends (042a R1),
+  // but her seat is held through the run and for GRACE_MS after it (3g-rede-sem-teleporte); then it is free.
   room.disconnect(back,t);
+  for(const end=t+GRACE_MS+1000;t<end;t+=50){say(room,b,{t:'ack',seq:0},t);room.advance(t);}
+  assert.equal(room.run.snapshot().phase,'result');
+  const held=peer();join(room,held,'Ana',t,ana.token);assert.equal(welcome(held).id,ana.id,'the seat outlived the grace during the run');
+  room.disconnect(held,t);
   for(const end=t+GRACE_MS+1000;t<end;t+=50){say(room,b,{t:'ack',seq:0},t);room.advance(t);}
   const late=peer();join(room,late,'Ana',t,ana.token);
   assert.equal(late.closes[0].code,4003);assert.equal(late.messages[0].message,'Sua sessão expirou. Entre novamente.');
-  assert.equal(room.run.snapshot().phase,'result');
 });
 
 test('restart of the room: the roster comes back from storage, the run is lost honestly, each player hears it once',()=>{

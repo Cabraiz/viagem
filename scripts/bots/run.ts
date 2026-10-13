@@ -3,9 +3,11 @@
  * meets, and leave the numbers in artifacts/bots/.
  *
  *   node --experimental-strip-types scripts/bots/run.ts [scenario ...] [--endpoint http://127.0.0.1:8817] [--spawn]
- *     scenarios: base | lag300 | reconnect20 | rematch | smoke | all (base lag300 reconnect20 rematch)
+ *     scenarios: base | lag300 | reconnect20 | rematch | smoke | 3g | all (base lag300 reconnect20 rematch)
+ *     --repeat N [--from M]: play the scenario N times (3g: matches M.. M+N-1) (3g: each match its own faults and loss, from the match number)
  *     --spawn: start `wrangler dev` here (MULTIPLAYER_PORT, see scripts/local-worker.mjs) and stop it at the end
  *     --out <dir>: artifacts folder (default artifacts/bots)
+ *     --map <infinito|cidade-nevada>: the owner bot picks that map in the lobby (default: the Worker's ROOM_DEFAULT_MAP)
  *
  * The endpoint must run with ALLOW_LOCAL (the room's /lab gives the tick samples; the rematch scenario puts the team
  * down with the lab command). Exit code 1 when any scenario failed its checks.
@@ -20,11 +22,31 @@ import {rates,TickStitcher,freePlan,percentile,mean,type MatchCost} from './metr
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 import {UPDATE_NEEDED,ROOM_CLOSING_NOTICE} from '../../src/protocol/room.ts';
 import {RECIPES} from '../../src/rules/stonewards.ts';
+import {clientCatalog} from '../../src/protocol/map-catalog.ts';
+import {isMapId,readMapRef,type MapId,type MapRef} from '../../src/protocol/map-select.ts';
+import {cityTerrainFrom} from '../../src/maps/index.ts';
 
 const ORIGIN='http://127.0.0.1:4187';
 const CLASSES=['cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum','cidadao-comum'];
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 const now=()=>performance.now();
+/**
+ * The city this checkout ships (public/maps/cidade-nevada.manifest.json), as the page reads it before joining: the bots
+ * send it in join.maps (D-026), so a room on the city seats them, and decode it from disk instead of downloading it.
+ */
+const MAPS_DIR=new URL('../../public/maps/',import.meta.url);
+const manifest=JSON.parse(readFileSync(new URL('cidade-nevada.manifest.json',MAPS_DIR),'utf8'));
+export const CITY_REF:MapRef|undefined=readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash});
+const JOIN_MAPS=clientCatalog(CITY_REF);
+let cityText:string|undefined;
+/** A bot's CoopClient ships the city like the page: its ref for join.maps, the asset read from this checkout. */
+function shipCity(client:Bot['client']){
+  client.cityRef=CITY_REF;
+  client.loadCity=async ref=>{
+    try{cityText??=readFileSync(new URL('cidade-nevada.json',MAPS_DIR),'utf8');}catch(e){return String(e);}
+    const decoded=await cityTerrainFrom(cityText,ref.hash??'');return decoded.ok?undefined:decoded.error;
+  };
+}
 
 export interface Fault {kind:'drop'|'outage';bot:number;ms?:number;
   /** Seconds after the combat start; with `phase`, the first moment in that round phase from then on. */
@@ -32,6 +54,8 @@ export interface Fault {kind:'drop'|'outage';bot:number;ms?:number;
   /** outage: the app comes back to the foreground at the end (CoopClient's wake-up), instead of waiting for its heartbeat. */
   wake?:boolean}
 export interface Scenario {name:string;title:string;rttMs:number;jitterMs:number;faults:Fault[];gate:boolean;
+  /** 3g-rede-sem-teleporte: bandwidth each way (kbit/s) and messages losing a segment (%), see lab-socket.ts. */
+  kbps?:number;lossPct?:number;
   /** 'try': ask for the rematch after the result (accepted or refused with the closing notice, both checked). */
   rematch:'try'|'play'|'none';
   /** Stop after this many seconds of combat (smoke); otherwise play to the result. */
@@ -48,9 +72,26 @@ export const SCENARIOS:Record<string,Scenario>={
   reconnect20:{name:'reconnect20',title:'6 bots, 150 ms, sem rede por 20 s no meio de uma onda e no meio de um intervalo',rttMs:150,jitterMs:20,gate:false,rematch:'try',maxCombatMinutes:24,
     faults:[{kind:'outage',bot:2,ms:20000,at:240,phase:'wave'},{kind:'outage',bot:5,ms:20000,at:300,phase:'prepare'}]},
   rematch:{name:'rematch',title:'revanche: derrota rápida (time todo no chão pelo laboratório), revanche e a run nova começando zerada',rttMs:150,jitterMs:20,gate:false,rematch:'play',downAt:40,maxCombatMinutes:4,faults:[]},
+  '3g':threeG(0),
   smoke:{name:'smoke',title:'fumaça: 6 bots, 150 ms, 40 s de combate e uma queda e retorno',rttMs:150,jitterMs:20,gate:true,rematch:'none',combatSeconds:40,maxCombatMinutes:2,
     faults:[{kind:'drop',bot:1,at:15}]},
 };
+
+/** Deterministic small PRNG (same faults for the same match number). */
+function mulberry(seed:number){return ()=>{seed=(seed+0x6d2b79f5)|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+/**
+ * 3g-rede-sem-teleporte, "3G ruim": 250 kbps, 800 ms round trip (±150), 2-5 % of messages losing a segment, and forced
+ * drops: three phones lose the network for 3-10 s and one more has its connection reset, at times drawn from the match
+ * number. 90 s of combat per match (the faults all land and heal inside it).
+ */
+export function threeG(match:number):Scenario{
+  const rng=mulberry(match+1),faults:Fault[]=[];
+  for(let bot=0;bot<6;bot++)if(bot%2===match%2)faults.push({kind:'outage',bot,ms:3000+Math.round(rng()*7000),at:8+Math.round(rng()*50)});
+  faults.push({kind:'drop',bot:(match%2===0?1:0)+2*(match%3),at:15+Math.round(rng()*45)});
+  const lossPct=Math.round((2+rng()*3)*10)/10;
+  return {name:'3g',title:`3G ruim, partida ${match+1}: 250 kbps, 800 ms ±150, ${lossPct}% de perda, 3 sem rede por 3-10 s e 1 queda`,
+    rttMs:800,jitterMs:150,kbps:250,lossPct,gate:false,rematch:'none',combatSeconds:90,maxCombatMinutes:3,faults};
+}
 
 interface Check {name:string;ok:boolean;detail?:string}
 async function knock(endpoint:string,code:string,protocol:number,name:string):Promise<{message?:string;close?:number}>{
@@ -59,7 +100,7 @@ async function knock(endpoint:string,code:string,protocol:number,name:string):Pr
   return new Promise(resolve=>{
     let message:string|undefined;
     const timer=setTimeout(()=>{ws.terminate();resolve({message});},8000);
-    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:'cidadao-comum'})));
+    ws.on('open',()=>ws.send(JSON.stringify({t:'join',protocol,name,classId:'cidadao-comum',maps:JOIN_MAPS})));
     ws.on('message',(d,binary)=>{if(!binary){const m=JSON.parse(String(d));if(m.t==='error')message=m.message;}});
     ws.on('close',code=>{clearTimeout(timer);resolve({message,close:code});});
     ws.on('error',()=>{});
@@ -70,7 +111,8 @@ async function until(predicate:()=>boolean,label:string,timeoutMs:number,every=1
   while(!predicate()){if(now()-start>timeoutMs)throw new Error(`Timeout: ${label}`);await sleep(every);}
 }
 
-export async function runScenario(endpoint:string,scenario:Scenario,log:(line:string)=>void){
+/** `map`: the owner bot switches the room to it in the lobby (the room otherwise plays the Worker's default map). */
+export async function runScenario(endpoint:string,scenario:Scenario,log:(line:string)=>void,map?:MapId){
   const checks:Check[]=[];
   const check=(name:string,ok:boolean,detail?:string)=>{checks.push({name,ok,...(detail?{detail}:{})});log(`${ok?'ok ':'FALHOU'} ${name}${detail?` (${detail})`:''}`);};
   const health=await (await fetch(`${endpoint}/health`)).json() as {protocol:number};
@@ -90,16 +132,24 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   };
   const lab=async()=>{try{const r=await fetch(`${endpoint}/lab/${code}`,{headers:{Origin:ORIGIN}});if(!r.ok)return undefined;return await r.json() as any;}catch{return undefined;}};
   const faults:{fault:Fault;startedAt?:number;backAt?:number;sameId?:boolean;offlineMs?:number;done?:boolean}[]=scenario.faults.map(fault=>({fault}));
-  let combatStart=0,combatEnd=0,leftAt=0;
+  let combatStart=0,combatEnd=0,leftAt=0,connectedAtEnd:boolean[]=[];
   const result:any={};
   try{
     for(let i=0;i<6;i++){
-      const link=new Link(ORIGIN,{rttMs:scenario.rttMs,jitterMs:scenario.jitterMs});
-      const bot=new Bot({endpoint,code,name:`Bot ${i+1}`,classId:CLASSES[i],index:i,link,log});
+      const link=new Link(ORIGIN,{rttMs:scenario.rttMs,jitterMs:scenario.jitterMs,kbps:scenario.kbps,lossPct:scenario.lossPct});
+      const bot=new Bot({endpoint,code,name:`Bot ${i+1}`,classId:CLASSES[i],index:i,link,log});shipCity(bot.client);
       bots.push(bot);await bot.join();
     }
-    await until(()=>bots.every(b=>b.client.players.size===6),'six players in every frame',15000);
+    await until(()=>bots.every(b=>b.client.players.size===6),'six players in every frame',scenario.kbps?45000:15000);
     check('seis bots na mesma sala, seis jogadores em cada quadro',true);
+    log(`mapa da sala: ${bots[0].client.map.id}`);
+    if(map&&bots[0].client.map.id!==map){
+      const owner=bots.find(b=>b.client.isOwner),notices=owner?.notices.length??0;
+      owner?.client.setMap(map);
+      await until(()=>bots.every(b=>b.client.map.id===map&&!b.client.mapLoad)||(owner?.notices.length??0)>notices,`troca para ${map}`,30000);
+      check(`o dono trocou a sala para ${map} e os seis receberam`,bots.every(b=>b.client.map.id===map),owner?.notices.at(-1));
+      await until(()=>bots.every(b=>b.client.players.size===6),'six players on the new map',15000);
+    }
     const world=bots[0].client.terrain.signature;
     check('mesmo mundo (assinatura do terreno) nos seis',bots.every(b=>b.client.terrain.signature===world),world);
     if(scenario.gate){
@@ -110,7 +160,7 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
       check('a sala segue com seis depois das recusas',bots.every(b=>b.client.players.size===6));
     }
     for(const b of bots)b.wantReady=true;
-    await until(()=>bots.every(b=>b.run?.phase==='combat'),'combat start',30000,50);
+    await until(()=>bots.every(b=>b.run?.phase==='combat'),'combat start',scenario.kbps?60000:30000,50);
     combatStart=now();for(const b of bots)b.wantReady=false;
     const startTick=bots[0].client.feed.peek().tick;
     check('seis prontos, contagem e combate juntos',true);
@@ -153,6 +203,7 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
       await sleep(100);
     }
     combatEnd=now();
+    connectedAtEnd=bots.map(b=>b.client.connected);
     await closeLab();
     result.simTicks=bots[0].client.feed.peek().tick-startTick;
     const smoke=scenario.combatSeconds!==undefined;
@@ -216,7 +267,12 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   const strayCloses=bots.flatMap(b=>b.link.stats.closes.filter(c=>c.code!==1000&&!faulted.has(b.index)).map(c=>`${b.name}:${c.code}`));
   check('nenhum erro nos bots (fatal, exceção)',errors.length===0,errors.slice(0,3).join(' | '));
   check('nenhum quadro que não decodificou (resync)',resyncs===0,`${resyncs}`);
-  check('nenhuma conexão fechada sem falha provocada',strayCloses.length===0&&replaced.length===0,strayCloses.concat(replaced).join(','));
+  // On a lossy link (3g) a close nobody forced is what is being measured (quedas por partida), not a failure.
+  if(scenario.kbps)check('nenhum bot trocado por outra aba (4009)',replaced.length===0,replaced.join(','));
+  else check('nenhuma conexão fechada sem falha provocada',strayCloses.length===0&&replaced.length===0,strayCloses.concat(replaced).join(','));
+  // 3g: every drop (forced or not), the way back, and the hero's corrections.
+  const drops=bots.map(b=>({name:b.name,closes:b.link.stats.closes.filter(c=>c.code!==1000).length,fatal:b.errors.length>0,connected:connectedAtEnd[b.index]??b.client.connected,returned:b.events.filter(e=>e.kind==='back').length}));
+  const corrections=bots.map(b=>({name:b.name,...b.corrections}));
   // Metrics over the combat window (seconds since each link's epoch).
   const perClient=bots.map(b=>{
     const from=Math.floor((combatStart-b.link.epoch)/1000),to=Math.floor(((combatEnd||leftAt)-b.link.epoch)/1000);
@@ -232,12 +288,13 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   const cost:MatchCost={incomingMessages:incoming,connections,otherRequests:2,activeSeconds,rowsWritten:(lastLab?.rosterWrites??0)+3};
   const combatSeconds=Math.round(((combatEnd||leftAt)-combatStart)/1000);
   const simTicks=result.simTicks??0;
-  return {scenario:scenario.name,title:scenario.title,code,rttMs:scenario.rttMs,jitterMs:scenario.jitterMs,
+  return {scenario:scenario.name,title:scenario.title,code,map:bots[0]?.client.map,rttMs:scenario.rttMs,jitterMs:scenario.jitterMs,
     ok:checks.every(c=>c.ok),checks,result,combatSeconds,activeSeconds,
     tick:{...ticks.summary(),simTicksPerSecond:combatSeconds?Math.round(simTicks/combatSeconds*100)/100:0,encodeP50:lastLab?.encodeP50,encodeP95:lastLab?.encodeP95,note:'workerd local: relógio em ms inteiros (p50 0 = menos de 1 ms); medida de laboratório, 2 núcleos'},
     perClientMean:{upMsgsPerSec:round2(mean(perClient.map(c=>c.combat.upMsgs.mean))),downMsgsPerSec:round2(mean(perClient.map(c=>c.combat.downMsgs.mean))),
       downBytesPerSec:Math.round(mean(perClient.map(c=>c.combat.downBytes.mean))),downBytesPerSecP95:Math.round(mean(perClient.map(c=>c.combat.downBytes.p95))),
       upBytesPerSec:Math.round(mean(perClient.map(c=>c.combat.upBytes.mean)))},
+    kbps:scenario.kbps,lossPct:scenario.lossPct,drops,corrections,unforcedCloses:strayCloses,
     faults:faults.map(f=>({...f.fault,offlineMs:f.offlineMs,sameId:f.sameId})),
     sentByType:bots.reduce((all,b)=>{for(const [k,v] of Object.entries(b.link.stats.sentByType))all[k]=(all[k]??0)+v;return all;},{} as Record<string,number>),
     cost,freePlan:freePlan(cost),perClient,lab:labPolls};
@@ -281,11 +338,33 @@ export function summaryMarkdown(reports:any[]){
   return lines.join('\n')+'\n';
 }
 
+/**
+ * 3g-rede-sem-teleporte: one row for all the 3g matches: drops (forced and not), the way back, who never came back,
+ * and the hero's corrections (the raw reconcile jump, and per frame as drawn before and after the card).
+ */
+export function threeGMarkdown(reports:any[]){
+  if(!reports.length)return '';
+  // Time to come back: since the network was back (an outage's own length is not the client's doing), drops from the cut.
+  const faults=reports.flatMap(r=>r.faults??[]),back=faults.filter((f:any)=>f.sameId),times=back.map((f:any)=>Math.max(0,f.offlineMs-(f.kind==='outage'?f.ms:0)) as number);
+  const unforced=reports.reduce((a,r)=>a+(r.unforcedCloses?.length??0),0),forced=faults.length;
+  const never=reports.reduce((a,r)=>a+(r.drops??[]).filter((d:any)=>d.fatal||!d.connected).length,0)+faults.filter((f:any)=>!f.sameId).length;
+  const c=reports.flatMap(r=>r.corrections??[]);
+  const sum=(f:(x:any)=>number)=>c.reduce((a,x)=>a+f(x),0),max=(f:(x:any)=>number)=>c.reduce((a,x)=>Math.max(a,f(x)),0);
+  const px=(n:number)=>n.toFixed(1);
+  const lines=['',`### 3G ruim: ${reports.length} partidas`,'',
+    '| quedas por partida (forçadas + espontâneas) | voltaram | tempo para voltar depois que a rede volta (média / p95 / máx) | não voltaram | salto de reconciliação (pico / média) | correção visível antes: pico / média por quadro | depois: pico / média por quadro | escondidas no puf |',
+    '|---|---|---|---|---|---|---|---|',
+    `| ${((forced+unforced)/reports.length).toFixed(1)} (${forced} + ${unforced}) | ${back.length}/${forced} | ${(mean(times)/1000).toFixed(1)} / ${(percentile(times,.95)/1000).toFixed(1)} / ${(Math.max(0,...times)/1000).toFixed(1)} s | ${never} | ${px(max(x=>x.jumpPeak))} / ${px(sum(x=>x.jumpSum)/Math.max(1,sum(x=>x.reconciles)))} px | ${px(max(x=>x.before.peak))} / ${px(sum(x=>x.before.sum)/Math.max(1,sum(x=>x.before.frames)))} px (${sum(x=>x.before.snaps)} saltos) | ${px(max(x=>x.after.peak))} / ${px(sum(x=>x.after.sum)/Math.max(1,sum(x=>x.after.frames)))} px | ${sum(x=>x.hides)} |`,
+    '',`px: tela no zoom 1 do mapa infinito (1 unidade = ${(42*Math.SQRT2).toFixed(1)} px). Reconciliações: ${sum(x=>x.reconciles)}.`];
+  return lines.join('\n')+'\n';
+}
 async function main(){
   const args=process.argv.slice(2);
   const opt=(name:string)=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};
-  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out'].includes(args[i-1])));
-  const list=(names.length?names:['smoke']).flatMap(n=>n==='all'?['base','lag300','reconnect20','rematch']:[n]);
+  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out','--map','--repeat','--from'].includes(args[i-1])));
+  const map=opt('--map');if(args.includes('--map')&&!isMapId(map))throw new Error(`--map: infinito ou cidade-nevada, não ${map}`);
+  const repeat=Math.max(1,Number(opt('--repeat'))||1);
+  const list=(names.length?names:['smoke']).flatMap(n=>n==='all'?['base','lag300','reconnect20','rematch']:Array.from({length:repeat},()=>n));
   for(const n of list)if(!SCENARIOS[n])throw new Error(`Cenário desconhecido: ${n}`);
   const out=opt('--out')??join('artifacts','bots');mkdirSync(out,{recursive:true});
   let endpoint=opt('--endpoint')??process.env.MULTIPLAYER_ENDPOINT,stop:(()=>Promise<void>)|undefined,logPath:string|undefined;
@@ -297,24 +376,28 @@ async function main(){
   const reports:any[]=[];
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
   try{
-    for(const name of list){
+    // --from N: the 3g matches start at match N (a long series in chunks, each with its own worker).
+    let threeGs=Math.max(0,Number(opt('--from'))||0);
+    for(const [index,name] of list.entries()){
+      const scenario=name==='3g'?threeG(threeGs++):SCENARIOS[name];
       const started=Date.now();
       const log=(line:string)=>console.log(`[${name} ${Math.round((Date.now()-started)/1000)}s] ${line}`);
       let report:any;
-      try{report=await runScenario(endpoint!,SCENARIOS[name],log);}
-      catch(e){report={scenario:name,title:SCENARIOS[name].title,ok:false,error:String((e as Error)?.stack??e),checks:[{name:'cenário rodou até o fim',ok:false,detail:String(e)}],result:{},tick:{},perClientMean:{},cost:{},freePlan:{}};log(`ERRO ${e}`);}
+      try{report=await runScenario(endpoint!,scenario,log,map as MapId|undefined);}
+      catch(e){report={scenario:name,title:scenario.title,ok:false,error:String((e as Error)?.stack??e),checks:[{name:'cenário rodou até o fim',ok:false,detail:String(e)}],result:{},tick:{},perClientMean:{},cost:{},freePlan:{}};log(`ERRO ${e}`);}
       reports.push(report);
-      writeFileSync(join(out,`${name}-${stamp}.json`),JSON.stringify(report,null,1));
+      writeFileSync(join(out,`${name}-${index}-${stamp}.json`),JSON.stringify(report,null,1));
       console.log(`[${name}] ${report.ok?'OK':'FALHOU'} ${report.result?.outcome??''} round ${report.result?.round??'-'} · combate ${report.combatSeconds??'-'} s`);
     }
   }finally{await stop?.();}
   if(logPath&&existsSync(logPath)){
     const bad=readFileSync(logPath,'utf8').split('\n').filter(l=>/\b(Uncaught|Error|exception)\b/i.test(l)&&!/Proxy environment/.test(l));
     if(bad.length)console.log(`wrangler.log tem ${bad.length} linha(s) de erro, ex.: ${bad[0]}`);
-    for(const r of reports){r.serverErrors=bad.slice(0,20);writeFileSync(join(out,`${r.scenario}-${stamp}.json`),JSON.stringify(r,null,1));}
+    for(const [index,r] of reports.entries()){r.serverErrors=bad.slice(0,20);writeFileSync(join(out,`${r.scenario}-${index}-${stamp}.json`),JSON.stringify(r,null,1));}
   }
-  writeFileSync(join(out,`summary-${stamp}.md`),summaryMarkdown(reports));
-  console.log(summaryMarkdown(reports));
+  const summary=summaryMarkdown(reports)+threeGMarkdown(reports.filter(r=>r.scenario==='3g'));
+  writeFileSync(join(out,`summary-${stamp}.md`),summary);
+  console.log(summary);
   if(reports.some(r=>!r.ok))process.exitCode=1;
 }
 if(import.meta.url===`file://${process.argv[1]}`||process.argv[1]?.endsWith('run.ts'))await main();

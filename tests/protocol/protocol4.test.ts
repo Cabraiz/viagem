@@ -26,10 +26,29 @@ afterEach(()=>collect());
 const near=(a:number,b:number,eps:number,msg:string)=>assert.ok(Math.abs(a-b)<=eps,`${msg}: ${a} vs ${b}`);
 const POS_EPS=1/POS_SCALE;
 /**
- * The D-033 horde (catalog.ts ENEMY_KINDS without the boss). 'tio-pave' was in the DICT already; the other kinds and the
- * agiota's 'boleto-juros' went inline (0xFF + utf8) in protocol 8 and are dictionary bytes since protocol 9 (D-036).
+ * The horde (catalog.ts ENEMY_KINDS without the boss), one rng.pick per enemy, weighted like rounds 7-9 (rules/waves.ts),
+ * where the P1 trio (coach, motoboy, influencer) is ~12% of the crowd. 'tio-pave' was in the DICT already; the other
+ * D-033 kinds and the agiota's 'boleto-juros' went inline (0xFF + utf8) in protocol 8 and are dictionary bytes since
+ * protocol 9 (D-036); the trio went inline in protocol 9 and is dictionary bytes since protocol 10.
  */
-const CAST=['bebado','pombos','tio-pave','agiota','anao-molotov'];
+const CAST_SHARE:Readonly<Record<string,number>>={bebado:17,pombos:22,'tio-pave':22,agiota:20,'anao-molotov':7,coach:4,motoboy:4,influencer:4};
+const CAST=Object.entries(CAST_SHARE).flatMap(([kind,n])=>Array.from({length:n},()=>kind));
+const P1_CAST=new Set(['coach','motoboy','influencer']);
+/**
+ * EnemyView.phase of a regular enemy (sim/enemies/ai.ts ENEMY_PHASE), from the catalog numbers: the trio acts (1) about
+ * a third of the time (a 2 s pose every 7 s, a 1.5 s lecture every 7.5 s, the motoboy's 2.6 s aim and run) in ~2 s
+ * spells (off 1/40 per tick); the others are coached (2) ~12% of the time (4% coaches, ~3.5 allies in a lecture's radius
+ * each) in 6 s windows (off 1/120 per tick). `castEnemy` draws a kind and its phase, `churnPhase` flips it per tick.
+ */
+function castEnemy(rng:Rng):{kind:string;phase?:number}{
+  const kind=rng.pick(CAST),p1=P1_CAST.has(kind);
+  return rng.chance(p1?1/3:.12)?{kind,phase:p1?1:2}:{kind};
+}
+function churnPhase(e:EnemyView,rng:Rng){
+  const p1=P1_CAST.has(e.kind);
+  if(e.phase===undefined){if(rng.chance(p1?.0125:.0011))e.phase=p1?1:2;}
+  else if(rng.chance(p1?.025:.0083))delete e.phase;
+}
 
 function player(id:string,i:number,extra:Partial<PlayerWireView>={}):PlayerWireView{
   return {id,name:`Jogador ${i}`,classId:'cidadao-comum',hp:73.4,maxHp:120,online:true,spectator:false,
@@ -42,7 +61,7 @@ function busyWorld(rng:Rng,enemies=300):ServerWorld{
     tick:1000,team:{xp:340,level:12,nextXp:455},
     round:{index:4,total:10,phase:'wave',phaseEndsTick:1900,remaining:enemies},
     players:Array.from({length:6},(_,i)=>player(`uuid-${i}`,i)),
-    enemies:Array.from({length:enemies},(_,i):EnemyView=>({id:`e-${i+1}`,kind:rng.pick(CAST),
+    enemies:Array.from({length:enemies},(_,i):EnemyView=>({id:`e-${i+1}`,...castEnemy(rng),
       x:rng.range(1,23),y:rng.range(1,23),hp:rng.range(5,80),maxHp:80,...(i%50===0?{elite:true}:{})})),
     pickups:Array.from({length:150},(_,i):PickupView=>({id:`xp-${i+1}`,kind:'xp',x:rng.range(2,22),y:rng.range(2,22),value:rng.int(1,5)})),
     projectiles:Array.from({length:100},(_,i):ProjectileView=>({id:`p-${i+1}`,source:i%10===0?'boleto-juros':'boleto',x:rng.range(4,20),y:rng.range(4,20),
@@ -58,7 +77,7 @@ let spawned=10000;
 function stepWorld(w:ServerWorld,rng:Rng):SimEvent[]{
   const v=w.view,events:SimEvent[]=[];
   w.tick++;v.tick=w.tick;
-  for(const e of v.enemies){const d=w.velocity.get(e.id)!;e.x+=d.x/20;e.y+=d.y/20;}
+  for(const e of v.enemies){const d=w.velocity.get(e.id)!;e.x+=d.x/20;e.y+=d.y/20;churnPhase(e,rng);}
   for(const p of v.projectiles){p.x+=p.vx/20;p.y+=p.vy/20;}
   for(let i=0;i<30&&v.enemies.length;i++){
     const e=rng.pick(v.enemies),amount=rng.range(1,9);
@@ -67,7 +86,7 @@ function stepWorld(w:ServerWorld,rng:Rng):SimEvent[]{
   for(const e of v.enemies.filter(e=>e.hp<=0)){events.push({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y,by:'uuid-1'});}
   v.enemies=v.enemies.filter(e=>e.hp>0);
   while(v.enemies.length<300){
-    const id=`e-${++spawned}`;v.enemies.push({id,kind:'bebado',x:rng.range(1,23),y:rng.range(1,23),hp:40,maxHp:40});w.velocity.set(id,{x:rng.range(-1,1),y:rng.range(-1,1)});
+    const id=`e-${++spawned}`;v.enemies.push({id,...castEnemy(rng),x:rng.range(1,23),y:rng.range(1,23),hp:40,maxHp:40});w.velocity.set(id,{x:rng.range(-1,1),y:rng.range(-1,1)});
   }
   for(const p of v.pickups.slice(0,10)){p.x+=w.tick%40<20?.3:-.3;}
   if(w.tick%7===0){const p=v.projectiles.shift()!;v.projectiles.push({...p,id:`p-${++spawned}`,x:12,y:12});}
@@ -310,6 +329,8 @@ test('bandwidth for 6 clients x 300 enemies at 10 and 20 Hz fits mobile 4G',t=>{
   t.diagnostic(`protocol 4 bytes/s per client (300 moving enemies, 150 pickups, 100 projectiles, 30 damage + kills per tick): ${JSON.stringify(results)}`);
   // 4G budget: well under 50 KB/s per client at 20 Hz, and 10 Hz cheaper. With the D-033 cast inline (protocol 8) this
   // measured 29 674 B/s at 10 Hz and 43 809 at 20 Hz; with the cast in the DICT (protocol 9, D-036) 27 377 and 40 853.
+  // With the P1 trio (~12%) and EnemyView.phase churn (castEnemy/churnPhase): 28 010 / 41 648 with the trio inline
+  // (protocol 9), 27 686 / 41 236 with the trio in the DICT (protocol 10).
   assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
   assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });
@@ -555,7 +576,7 @@ function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
     enemies:[],pickups:[],projectiles:[],telegraphs:[],structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:800,maxHp:1000}],world:ENDLESS};
   let n=0;
   const enemy=(c:{x:number;y:number}):EnemyView=>{const a=rng.range(0,Math.PI*2),d=rng.range(2,32);
-    return {id:`e-${++n}`,kind:rng.pick(CAST),x:c.x+Math.cos(a)*d,y:c.y+Math.sin(a)*d,hp:rng.range(5,80),maxHp:80};};
+    return {id:`e-${++n}`,...castEnemy(rng),x:c.x+Math.cos(a)*d,y:c.y+Math.sin(a)*d,hp:rng.range(5,80),maxHp:80};};
   for(const c of centers){
     for(let i=0;i<300;i++)view.enemies.push(enemy(c));
     for(let i=0;i<150;i++)view.pickups.push({id:`xp-${++n}`,kind:'xp',x:c.x+rng.range(-12,12),y:c.y+rng.range(-12,12),value:rng.int(1,5)});
@@ -566,7 +587,7 @@ function clusters(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
   /** One server tick of every cluster: chase, 30 hits + kills + respawn on the ring, homing pickups, shots. */
   const step=():SimEvent[]=>{
     const events:SimEvent[]=[];view.tick++;
-    for(const e of view.enemies){const c=home.get(e.id)!,dx=c.x-e.x,dy=c.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*1.4/20+rng.range(-.02,.02);e.y+=dy/d*1.4/20+rng.range(-.02,.02);}
+    for(const e of view.enemies){const c=home.get(e.id)!,dx=c.x-e.x,dy=c.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*1.4/20+rng.range(-.02,.02);e.y+=dy/d*1.4/20+rng.range(-.02,.02);churnPhase(e,rng);}
     for(const p of view.projectiles){p.x+=p.vx/20;p.y+=p.vy/20;}
     centers.forEach((c,ci)=>{
       const mine=view.enemies.slice(ci*300,ci*300+300);
@@ -636,8 +657,15 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   // 31.9 KB/s spread; with the new kinds and the agiota's 'boleto-juros' shots inline (0xFF + utf8, protocol 8) it was
   // 33 849 together / 33 828 at the origin / 34 208 spread / 34 218 staggered B/s (limit raised to 36 000 for that).
   // Protocol 9 (D-036) appends them to the DICT: 31 524 / 31 503 / 31 884 / 31 895 B/s, so the limit is back at 32 000.
-  assert.ok(together.bytesPerSecond<32_000,`together ${together.bytesPerSecond}`);
-  assert.ok(apart.bytesPerSecond<32_000,`spread ${apart.bytesPerSecond}`);
+  // P1 cast (NEW-20261012-ORQ-elenco-p1), the trio at ~12% (CAST_SHARE) plus the EnemyView.phase churn (castEnemy,
+  // churnPhase): trio inline (protocol 9) 32 056 / 32 035 / 32 576 / 32 580 B/s; trio in the DICT (protocol 10)
+  // 31 760 / 31 740 / 32 256 / 32 260. The kinds alone, without phases: 31 804 / 31 783 / 32 227 / 32 238 inline,
+  // 31 524 / 31 503 / 31 884 / 31 895 in the DICT (the protocol 9 numbers: a DICT kind costs one byte, like any other).
+  // The ~370 B/s left over is the phase field itself (new information the client draws: lecture, pose, aim, coached),
+  // not the kinds, so the regression guard moves to 32 500. Still far under the D-009 4G budget (< 50 KB/s at 20 Hz);
+  // the real 6-bot run with this cast averaged 4.3 KB/s per client (p95 9.8).
+  assert.ok(together.bytesPerSecond<32_500,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<32_500,`spread ${apart.bytesPerSecond}`);
   assert.ok(apart.enemiesPerFrame<=300,'each client only gets its own horde');
   assert.ok(apartAll.bytesPerSecond>apart.bytesPerSecond*3,'the area of interest is what keeps spread players cheap');
   assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
@@ -823,8 +851,8 @@ test('protocol 7+: zueira events and the kill-cam reach every client, wherever t
 /** The strings protocol 9 appended to the DICT (append only: every protocol 8 index is unchanged). */
 const D036_STRINGS=['bebado','anao-molotov','pombos','agiota','boleto-juros',...TELEGRAPH_KINDS.filter(k=>k!=='coco')];
 
-test('protocol 9: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
-  assert.equal(PROTOCOL_VERSION,9);
+test('protocol 9+: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
+  assert.equal(PROTOCOL_VERSION,10);
   const plain=busyWorld(new Rng(4),3).view,burped=busyWorld(new Rng(4),3).view;
   const slip={x:Math.SQRT1_2,y:-Math.SQRT1_2};
   burped.players[0]={...burped.players[0],slowUntil:1030,slipUntil:1010,slip};
@@ -911,10 +939,36 @@ test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are
   for(const kind of ['bebado','anao-molotov','pombos','agiota'])assert.equal(frame(kind,'boleto-juros'),base,`${kind} + boleto-juros cost a byte each`);
 });
 
-test('protocol 9: a frame from an 8 room is refused at the version byte (the handshake already sent the update message)',()=>{
+// ---------- Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast in the DICT ----------
+test('protocol 10: the P1 cast is dictionary bytes appended after protocol 9 (every older index unchanged)',()=>{
+  assert.equal(PROTOCOL_VERSION,10);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  // Append only: protocol 8 and 9 indexes did not move; the trio comes right after the last protocol 9 string.
+  assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
+  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.length-4);
+  assert.deepEqual(DICT.slice(-3),['coach','motoboy','influencer']);
+  for(const s of ['coach','motoboy','influencer'])assert.equal(DICT.lastIndexOf(s),DICT.indexOf(s),`${s} once`);
+  // One byte each where it travels (enemy kind, kill and downed events), and the acting/coached phase round-trips.
+  const frame=(kind:string,phase?:number)=>{
+    const v=busyWorld(new Rng(2),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;if(phase!==undefined)v.enemies[0].phase=phase;
+    const enc=new FrameEncoder();enc.pushEvents([{type:'kill',enemy:'e-1',kind,x:1,y:2},{type:'downed',player:'uuid-0',by:'e-1',source:kind}]);
+    const bytes=enc.encode(v),r=new FrameDecoder().decode(bytes);assert.ok(r.ok);
+    assert.equal(r.view.enemies[0].kind,kind);assert.equal(r.view.enemies[0].phase,phase);
+    const kill=r.view.events.find(e=>e.type==='kill'),down=r.view.events.find(e=>e.type==='downed');
+    assert.ok(kill?.type==='kill'&&kill.kind===kind&&down?.type==='downed'&&down.source===kind);
+    return bytes.length;
+  };
+  const base=frame('tio-pave');
+  for(const kind of ['coach','motoboy','influencer']){
+    assert.equal(frame(kind),base,`${kind} costs a byte`);
+    for(const phase of [1,2])assert.ok(frame(kind,phase)>base,`${kind} phase ${phase} round-trips`);
+  }
+});
+
+test('protocol 10: a frame from a 9 or 11 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],9);
-  for(const version of [8,10]){
+  assert.equal(bytes[1],10);
+  for(const version of [8,9,11]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }

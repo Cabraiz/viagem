@@ -21,6 +21,14 @@ test('six slots, seventh refused, and rooms isolated',()=>{
   assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
   const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,6);
 });
+test('a class this build no longer has (old client with tia-festa) plays as the default class, a non-string is refused',()=>{
+  const r=new Room(1000),old=peer();r.connect(old,1000);
+  r.receive(old,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Tia Cleide',classId:'tia-festa'}),1000);
+  const w=old.messages.find(m=>m.t==='welcome');
+  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,'cidadao-comum');
+  const bad=peer();r.connect(bad,1000);r.receive(bad,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Zé',classId:42}),1000);
+  assert.equal(bad.closes[0]?.code,4003);
+});
 test('reconnect preserves identity, health, score, enemies and refuses stolen display name',()=>{
   const r=new Room(1000),a=peer();join(r,a);const w=a.messages.find(m=>m.t==='welcome');
   const original=r.sim.players.get(w.id)!;original.hp=64;original.score=10;
@@ -84,16 +92,17 @@ test('older clients are rejected before joining a procedural room',()=>{
   const room=new Room(1000,42);
   // Protocol 3 is the JSON room before VGM-042b, 4 the frames without event sizes (before E7) and 5 the frames without
   // Stonewards (before VGM-046B), 6 the frames without the zueira events (before VGM-053B), 7 the frames without the
-  // city world (before D-034), 8 the frames without the slow/slip state and telegraph kinds (before D-036) and 10 a newer
-  // page: a tab left open across the release gets a readable refusal, no frames.
-  for(const version of [1,3,4,5,6,7,8,10]){
+  // city world (before D-034), 8 the frames without the slow/slip state and telegraph kinds (before D-036), 9 the frames
+  // without the P1 cast in the DICT (before NEW-20261012-ORQ-elenco-p1) and 11 a newer page: a tab left open across the
+  // release gets a readable refusal, no frames.
+  for(const version of [1,3,4,5,6,7,8,9,11]){
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
     assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
-  assert.equal(ROOM_PROTOCOL,9);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
+  assert.equal(ROOM_PROTOCOL,10);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);

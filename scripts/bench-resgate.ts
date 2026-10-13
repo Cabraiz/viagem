@@ -12,7 +12,13 @@ import {Room,type Peer} from '../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../src/protocol/room.ts';
 import {Rng} from '../src/contract/rng.ts';
 import {walkable,worldBase} from '../src/maps/world.ts';
+import {readFileSync} from 'node:fs';
+import {clientCatalog} from '../src/protocol/map-catalog.ts';
+import {readMapRef} from '../src/protocol/map-select.ts';
 
+/** join.maps of a current build (D-026): the endless map and the city of this checkout's manifest. */
+const manifest=JSON.parse(readFileSync(new URL('../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
+const maps=clientCatalog(readMapRef({id:manifest.id,version:manifest.version,hash:manifest.hash}));
 const RUNS=Number(process.argv[2])||4,MINUTES=Number(process.argv[3])||4,WORLD=process.argv[4]==='infinito'?'infinito' as const:undefined,SIGHT=7,STEP_MS=50;
 /** Wander radius around the base: the island is ~21 u across; the endless world spreads the team wider. */
 const SPREAD=WORLD?28:9;
@@ -20,12 +26,12 @@ type Policy='before'|'after';
 interface Bot {peer:Peer&{messages:any[]};id:string;seq:number;goal?:{x:number;y:number};until:number;heard?:{id:string;x:number;y:number}}
 
 function run(seed:number,policy:Policy){
-  const room=new Room(0,1000+seed,WORLD?{world:WORLD}:{}),base=worldBase(room.sim.terrain),rng=new Rng(seed*7919+13),bots:Bot[]=[];
+  const room=new Room(0,1000+seed,{...(WORLD?{world:WORLD}:{}),map:'infinito'}),base=worldBase(room.sim.terrain),rng=new Rng(seed*7919+13),bots:Bot[]=[];
   let now=0;
   for(let i=0;i<6;i++){
     const messages:any[]=[];
     const peer={messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};
-    room.connect(peer,now);room.receive(peer,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:`Bot ${i}`,classId:'cidadao-comum'}),now);
+    room.connect(peer,now);room.receive(peer,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:`Bot ${i}`,classId:'cidadao-comum',maps}),now);
     bots.push({peer,id:messages.find(m=>m.t==='welcome').id,seq:0,until:0});
   }
   const send=(b:Bot,m:object)=>room.receive(b.peer,JSON.stringify(m),now);

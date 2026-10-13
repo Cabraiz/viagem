@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import {
   AVENUES,BARK_MAX,CIDADE_BARKS,CIDADE_BOSS_ROUND_NAMES,CIDADE_DEATH_LINES,CIDADE_ELITE_ROUND_NAMES,CIDADE_FORGE_LINES,
   CIDADE_HORN_LINES,CIDADE_MODIFIERS,CIDADE_REACTION_LINES,CIDADE_RECIPE_IDS,CIDADE_REGULAR_KINDS,CIDADE_RETREAT_LINES,CIDADE_ROUND_NAMES,
-  CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,cidadeModifierLabel,type CidadeModifier,
+  CIDADE_CRATE_LINES,CIDADE_LEFT_BEHIND_LINES,CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,LEFT_BEHIND_MAX,cidadeModifierLabel,type CidadeModifier,
 } from '../../src/rules/zueira-cidade.ts';
 import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/rules/waves.ts';
-import {BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,PUDDLE_SLIP_LINES} from '../../src/sim/enemies/catalog.ts';
+import {BUFFED_LINES,BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,MARMITA_BOOM_LINES,MOTOBOY_HONK_LINES,PALESTRA_LINES,POSE_LINES,
+  PUDDLE_SLIP_LINES,REFLECT_LINES} from '../../src/sim/enemies/catalog.ts';
 import {BOSS_LINES,BOSS_NAME} from '../../src/sim/boss.ts';
-import {DEATH_LINES,GENERIC_LINES} from '../../src/client/render/jokes.ts';
+import {DEATH_LINES,GENERIC_LINES,SAY_TAGS} from '../../src/client/render/jokes.ts';
 import {CAUSE_COPY} from '../../src/client/hud/cause.ts';
 import {KILLCAM_ALONE,KILLCAM_KIND_LINES,KILLCAM_LINES} from '../../src/client/fun/zueira.ts';
 import {HORN_LINES,RECIPES,RECIPE_IDS} from '../../src/rules/stonewards.ts';
@@ -20,12 +21,14 @@ const ENEMY_LINE_KINDS=[...ENEMY_KINDS];
 const barks=Object.values(CIDADE_BARKS).flat(),deaths=Object.values(CIDADE_DEATH_LINES).flat();
 const reactions=Object.values(CIDADE_REACTION_LINES).flatMap(l=>l??[]);
 const forge=Object.values(CIDADE_FORGE_LINES).flat();
-const allRoundNames=[...CIDADE_ROUND_NAMES,...CIDADE_ELITE_ROUND_NAMES,...CIDADE_BOSS_ROUND_NAMES];
+const allRoundNames=[...CIDADE_ROUND_NAMES,...CIDADE_ELITE_ROUND_NAMES,...CIDADE_BOSS_ROUND_NAMES,CIDADE_TUTORIAL.roundName];
 const labels=CIDADE_MODIFIERS.map(cidadeModifierLabel);
 /** Every string a player can see (ids are English code, not shown). */
 const allStrings=[
   ...allRoundNames,...CIDADE_MODIFIERS.flatMap(m=>[m.name,m.description]),...labels,...barks,...reactions,...deaths,
   ...CIDADE_RETREAT_LINES,...forge,...CIDADE_HORN_LINES,CIDADE_VEHICLE.name,...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect,
+  CIDADE_TUTORIAL.modifier,...CIDADE_TUTORIAL.intro,...CIDADE_TUTORIAL.arrival,
+  ...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES,
 ];
 /** Fields that are identity or scheduling, not an effect. */
 const NON_EFFECT=new Set(['id','name','description','banRounds']);
@@ -55,7 +58,16 @@ test('cidade zueira has enough of everything',()=>{
   assert.ok(CIDADE_VEHICLE.intro.length>=3&&CIDADE_VEHICLE.inspect.length>=3);
   // D-026: the start is a crashed helicopter (the map art has one); no line may describe another vehicle.
   assert.equal(CIDADE_VEHICLE.id,'heli-firma');assert.equal(CIDADE_VEHICLE.name,'Helicóptero da Firma');
-  for(const s of [...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect])assert.ok(!/bal[ãa]o|cesto/i.test(s),s);
+  for(const s of [...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect,CIDADE_TUTORIAL.modifier,...CIDADE_TUTORIAL.intro,...CIDADE_TUTORIAL.arrival])assert.ok(!/bal[ãa]o|cesto/i.test(s),s);
+  // cidade-08: round 1 is the walk from the wreck to the plaza (director: round name/line and the heroes' say lines).
+  assert.ok(CIDADE_TUTORIAL.roundName&&CIDADE_TUTORIAL.modifier);
+  assert.ok(CIDADE_TUTORIAL.intro.length>=3,'intro balloon lines');
+  assert.ok(CIDADE_TUTORIAL.arrival.length>=3,'arrival lines');
+  assert.ok(/praça/i.test(CIDADE_TUTORIAL.modifier),'the banner line says where to go');
+  // say keys: distinct, the vehicle's id as prefix, and not a client status tag (SAY_TAGS shows a tag instead of the line).
+  const keys=Object.values(CIDADE_TUTORIAL_SAY);
+  assert.equal(new Set(keys).size,keys.length);
+  for(const k of keys){assert.match(k,/^heli-firma:[a-z]+$/);assert.ok(k.startsWith(`${CIDADE_VEHICLE.id}:`));assert.ok(!Object.hasOwn(SAY_TAGS,k),k);}
   // Mirrored types match the game.
   assert.deepEqual([...CIDADE_REGULAR_KINDS],[...REGULAR_KINDS]);
 });
@@ -68,7 +80,8 @@ test('no repetition inside the city lists nor against the game lists',()=>{
   assert.deepEqual(dupes([...barks,...reactions,...deaths,...CIDADE_RETREAT_LINES]),[],'enemy lines (every kind and list together)');
   assert.deepEqual(dupes(forge),[],'forge');
   assert.deepEqual(dupes(CIDADE_HORN_LINES),[],'horn');
-  assert.deepEqual(dupes([...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect]),[],'vehicle');
+  assert.deepEqual(dupes([...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES]),[],'left-behind and crate lines (cidade-07)');
+  assert.deepEqual(dupes([...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect,CIDADE_TUTORIAL.modifier,...CIDADE_TUTORIAL.intro,...CIDADE_TUTORIAL.arrival]),[],'vehicle and tutorial');
 
   const against=(mine:readonly string[],theirs:readonly string[],what:string)=>{
     const game=new Set(theirs.map(key));
@@ -101,7 +114,12 @@ test('lengths fit the banners and balloons, no empty or padded strings',()=>{
   fit(CIDADE_VEHICLE.intro,LABEL_MAX,'vehicle intro');
   fit(CIDADE_VEHICLE.inspect,BARK_MAX,'vehicle inspect');
   fit([CIDADE_VEHICLE.id,CIDADE_VEHICLE.name],LABEL_MAX,'vehicle name');
+  fit([CIDADE_TUTORIAL.roundName,CIDADE_TUTORIAL.modifier],LABEL_MAX,'tutorial banner');
+  // cidade-08 review: the heroes' `say` lines are balloons (BARK_MAX), not banners; the vehicle's banner intro stays LABEL_MAX.
+  fit(CIDADE_TUTORIAL.intro,BARK_MAX,'tutorial intro balloon');
+  fit(CIDADE_TUTORIAL.arrival,BARK_MAX,'tutorial arrival');
   fit([...forge,...CIDADE_HORN_LINES],40,'forge/horn');
+  fit([...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES],LEFT_BEHIND_MAX,'left-behind/crate line (cidade-07)');
   // Ids are kebab-case like waves.ts.
   for(const m of CIDADE_MODIFIERS)assert.match(m.id,/^[a-z]+(-[a-z]+)*$/);
   assert.match(CIDADE_VEHICLE.id,/^[a-z]+(-[a-z]+)*$/);
@@ -202,6 +220,7 @@ test('the modifiers the card asks for are present by intent',()=>{
 const gameText=[
   ...Object.values(ENEMIES).flatMap(e=>[e.name,...e.barks,...e.deathLines,...e.reactionLines]),
   ELITE.name,...ELITE.barks,...ELITE.deathLines,...DEVENDO_LINES,...FIRE_GROUND_LINES,...PUDDLE_SLIP_LINES,...BURP_SLOW_LINES,
+  ...PALESTRA_LINES,...BUFFED_LINES,...MOTOBOY_HONK_LINES,...MARMITA_BOOM_LINES,...POSE_LINES,...REFLECT_LINES,
   BOSS_NAME,...Object.values(BOSS_LINES).flat(),...ROUND_NAMES,...ELITE_ROUND_NAMES,...BOSS_ROUND_NAMES,...RETREAT_LINES,
   ...MODIFIERS.map(modifierLabel),
   ...GENERIC_LINES,...Object.values(DEATH_LINES).flat(),...Object.values(CAUSE_COPY).flatMap(c=>[c.name,c.line]),
@@ -257,6 +276,10 @@ test('everything is deep-frozen and the aggregate shares the same references',()
   assert.throws(()=>{(CIDADE_REACTION_LINES['tio-pave'] as string[]).push('x');});
   assert.throws(()=>{(CIDADE_FORGE_LINES as Record<string,unknown>).reparo=[];});
   assert.throws(()=>{(CIDADE_VEHICLE.intro as string[]).pop();});
+  assert.throws(()=>{(CIDADE_TUTORIAL.arrival as string[]).push('x');});
+  assert.throws(()=>{(CIDADE_TUTORIAL.intro as string[]).push('x');});
+  assert.throws(()=>{(CIDADE_TUTORIAL as {roundName:string}).roundName='x';});
+  assert.throws(()=>{(CIDADE_TUTORIAL_SAY as {intro:string}).intro='x';});
   assert.throws(()=>{(AVENUES as string[]).push('centro');});
   assert.throws(()=>{(CIDADE_ZUEIRA as {modifiers:unknown}).modifiers=[];});
   for(const m of CIDADE_MODIFIERS)for(const v of Object.values(m))if(v&&typeof v==='object')assert.ok(Object.isFrozen(v),m.id);
@@ -271,4 +294,5 @@ test('everything is deep-frozen and the aggregate shares the same references',()
   assert.equal(CIDADE_ZUEIRA.forgeLines,CIDADE_FORGE_LINES);
   assert.equal(CIDADE_ZUEIRA.hornLines,CIDADE_HORN_LINES);
   assert.equal(CIDADE_ZUEIRA.vehicle,CIDADE_VEHICLE);
+  assert.equal(CIDADE_ZUEIRA.tutorial,CIDADE_TUTORIAL);
 });

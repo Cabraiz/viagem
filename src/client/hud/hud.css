@@ -48,7 +48,7 @@
 
 /* ---------- Round marquee: a street banner (Papel, Breu edge, hard shadow) ----------
    UX-zonas-tela: it is the first row of the announcement slot (.rh-stack) in the top band, two lines at most,
-   1.8 s on screen, then it shrinks up into the round chip. Never over the hero (RunHud.avoidHero). */
+   1.8 s on screen, then it fades out in place (never over the XP bar). Never over the hero (RunHud.avoidHero). */
 .rh-marquee{position:relative;width:min(100%,560px);padding:6px 18px 7px;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
 .rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:6px;bottom:6px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
 .rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
@@ -88,7 +88,7 @@
 .rh-member{position:relative;min-width:54px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:2px;text-shadow:var(--s-texto)}
 /* Portrait ring: Papel with a Breu edge, so it reads on sand and on sea. */
 .rh-member-ring{--rh-rescue:0deg;width:44px;height:44px;padding:3px;border-radius:var(--r-circulo);background:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
-.rh-member-img{display:block;width:100%;height:100%;border-radius:var(--r-circulo);object-fit:cover;object-position:50% 12%;background:var(--c-papel-claro)}
+.rh-member-img{width:100%;height:100%} /* .face (ui/face.css): the class's face crop, not the whole body (rostos-hud) */
 .rh-member.rh-me .rh-member-ring{background:var(--c-lilas);box-shadow:0 0 0 2px var(--c-papel),0 0 0 4px var(--c-breu),var(--s-2)} /* D-022: Breu por fora no mar turquesa claro (Lilás 2,5:1 e Papel 2,7:1 lá) */
 .rh-member-hp{width:44px;height:6px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-member-hp-fill{display:block;height:100%;transform-origin:left;background:var(--c-cartolina);transition:transform .2s}
@@ -120,8 +120,10 @@
 .rh-alert[data-kind=self] .rh-alert-fill{background:var(--c-breu)}
 .rh-alert.rh-alert-urgent{animation:rh-shake .35s linear infinite}
 
-/* In, hold, then shrink up into the round chip (UX-zonas-tela: 1.8 s in all). */
-@keyframes rh-faixa{0%{opacity:0;transform:scale(.92)}10%{opacity:1;transform:none}84%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-40px) scale(.4)}}
+/* In, hold, then fade out in place (UX-zonas-tela: 1.8 s in all). Scale only, never above 1, from the top edge
+   (.rh-marquee transform-origin 50% 0): every frame stays inside the banner's own slot, so the exit never crosses the
+   XP bar, the Nv seal or the camp readout above it (BUG-20261012-E1-marquee-saida-paisagem; tests/client/marquee-saida). */
+@keyframes rh-faixa{0%{opacity:0;transform:scale(.92)}10%{opacity:1;transform:none}84%{opacity:1;transform:none}100%{opacity:0;transform:scale(.92)}}
 @keyframes rh-bulbs{to{opacity:.45}}
 @keyframes rh-pop{0%{transform:scale(1)}40%{transform:scale(1.35) rotate(-6deg)}100%{transform:scale(1)}}
 @keyframes rh-pulse{to{transform:scale(1.04)}}
@@ -513,7 +515,7 @@
 .rh-rcard[data-state=spectator]{opacity:.75}
 /* Portrait and landscape: build icons sit beside the portrait, under the name, so 6 cards fit without scrolling. */
 .rh-rcard-top{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"img id" "img build";column-gap:6px;row-gap:3px;align-items:center;min-width:0}
-.rh-rcard-img{grid-area:img;width:40px;height:40px;border-radius:var(--r-circulo);object-fit:cover;background:var(--c-papel-claro);border:2px solid var(--c-breu)}
+.rh-rcard-img{grid-area:img;width:40px;height:40px;border:2px solid var(--c-breu)} /* .face (ui/face.css): circle and crop */
 .rh-me .rh-rcard-img{border-color:var(--c-lilas)}
 .rh-rcard-id{grid-area:id;display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0}
 /* Names wrap (up to 20 characters from the lobby) instead of being cut with an ellipsis. */
@@ -711,7 +713,7 @@
   .rh .rh-top:has(.rh-camp:not([hidden])) .rh-boss{align-self:stretch;width:auto;margin-left:var(--rh-l)}
   /* The announcement slot starts under the band (RunHud sets --rh-anuncio from the zones; the fallbacks cover pages
      that never measure, like the sandbox). */
-  .rh .rh-top:has(.rh-camp:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 152px))}
+  .rh .rh-top:has(.rh-camp:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 158px))}
   .rh .rh-top:has(.rh-camp:not([hidden])):has(.rh-boss:not([hidden]))~.rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 200px))}
 }
 @media (max-height:500px){
@@ -742,7 +744,7 @@
 .rh-edge{position:absolute;left:0;top:0;width:calc(44px + 32px * var(--t-escala));height:36px;display:flex;align-items:center;gap:4px;padding:0 6px 0 4px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);font:700 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:var(--s-texto);white-space:nowrap}
 .rh-edge-face{flex:none;width:26px;height:26px;display:grid;place-items:center}
 .rh-edge-face .ic{width:26px;height:26px}
-.rh-edge-face img{width:26px;height:26px;border-radius:var(--r-circulo);border:2px solid var(--c-papel);background:var(--c-papel);object-fit:cover;box-shadow:0 0 0 1px var(--c-breu)}
+.rh-edge-face .face{width:26px;height:26px;border:2px solid var(--c-papel);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)} /* the ally's face crop (ui/face.css) */
 .rh-edge-num{flex:1;text-align:center;font-size:var(--t-13)}
 .rh-edge-tip{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0}
 .rh-edge-tip::before,.rh-edge-tip::after{content:'';position:absolute;width:0;height:0;border-style:solid;border-color:transparent}
@@ -833,4 +835,29 @@
 .rh-coach.rh-coach-yield{visibility:hidden}
 @media (max-height:500px){
   .rh-coach{width:min(100%,300px);padding:3px 10px 4px 6px}
+}
+
+/* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
+   A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
+   praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
+   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it. */
+.rh-objetivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:min(100%,320px);padding:5px 8px 6px;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
+  pointer-events:auto;touch-action:none}
+.rh-objetivo-mark,.rh-objetivo-arrow{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px}
+.rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:28px;height:28px}
+.rh-objetivo-body{display:flex;flex:1;flex-direction:column;min-width:0}
+.rh-objetivo-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
+/* Where the second line must wrap (portrait at 125%) it splits in two even lines: never one word alone below. */
+.rh-objetivo-sub{font:400 var(--t-13)/1.2 var(--f-sistema);text-wrap:balance}
+.rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-objetivo-m:empty{display:none}
+.rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}
+.rh-objetivo-arrow[hidden]{display:none}
+.rh-ended .rh-objetivo{display:none}
+/* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */
+.rh-objetivo.rh-objetivo-yield{visibility:hidden}
+/* Landscape: the slot is 72 px tall, so the row widens instead of wrapping its second line (125% included). */
+@media (max-height:500px){
+  .rh-objetivo{width:min(100%,400px);padding:3px 8px 4px}
 }

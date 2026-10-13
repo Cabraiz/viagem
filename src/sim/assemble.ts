@@ -9,7 +9,7 @@ import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../ru
 import {createDirector,type Director} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
 import {createEnemyAi,type EnemyAi} from './enemies/ai.ts';
-import {createBoss,type BossController} from './boss.ts';
+import {BOSS_TUNING,createBoss,type BossController} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
@@ -18,13 +18,14 @@ import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
-import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
-import {WALL_RADIUS} from './stonewards/wall.ts';
+import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
+import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
-import {heroSpeed} from '../maps/index.ts';
+import {CityTerrain,heroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
+import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -43,12 +44,26 @@ export const SIEGE_SHARE=.25,SIEGE_FROM_ROUND=2;
 
 export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
+  /** An offline player the room plays meanwhile (multiplayer autopilot, 3g-rede-sem-teleporte): still walks. */
+  autopilot?:(playerId:string)=>boolean;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
   reconnectGraceTicks?:number;
   /** Lab only (LAB_ZUEIRA): replaces the seed's plan of zueira events (VGM-053B). */
   zueiraLab?:ZueiraLab;
+  /** City: the plaza barricades (cidade-06, default on). Off only for travel/reach measurements in tests. */
+  barricades?:boolean;
+  /**
+   * City only (cidade-08): round 1 is the tutorial walk from the wreck to the plaza (DirectorOptions.cityTutorial).
+   * Default true; false plays the round table's round 1 (the tests of the regular city round 1 opt out).
+   */
+  cityTutorial?:boolean;
+  /**
+   * City only (cidade-11, city/balance.ts): the run's balance knobs (a headless runner's override). Default
+   * CITY_BALANCE; ignored on the island and in the endless world.
+   */
+  cityBalance?:CityBalance;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -77,8 +92,18 @@ export function applyEliteExtras(ctx:SimContext){
   }
 }
 
-/** Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. */
-export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2;
+/**
+ * Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. A standing city
+ * barricade keeps prizes off its disc plus PRIZE_BARRICADE_MARGIN (cidade-06).
+ */
+export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2,PRIZE_BARRICADE_MARGIN=.3;
+/** Discs no prize falls in: the standing wall, every tower and (city) every standing barricade. */
+export function prizeBlocks(state:StonewardsState):{x:number;y:number;radius:number}[]{
+  const {wall,wallDown,towers,barricades}=state;
+  const blocks=[...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];
+  for(const b of barricades??[])if(!b.down)blocks.push({x:b.x,y:b.y,radius:b.r+PRIZE_BARRICADE_MARGIN});
+  return blocks;
+}
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
   const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}});
@@ -91,10 +116,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // on its next step, so the boss's killing blow also ends the run right away.
   let bossDown=false;
   const runEnded=()=>bossDown||director!.state.stage==='done';
+  // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
+  const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
   // D-017 (E8-wall-siege-single-path): the enemy-ai is the only path that hurts the wall. It walks siege enemies to it
   // and its contact hit goes to damageWall; the Stonewards contact siege (siegeStep) stays off.
   const stonewards=createStonewardsSystem({
-    terrain:world.terrain,siegeContact:false,
+    terrain:world.terrain,siegeContact:false,barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
+    // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
+    barricadesLater:options.cityTutorial??true,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
     // The horn stretched the intermission: the offers due at its old end (the round offer, level offers armed for it)
     // move with it, so nobody's default is picked while the intermission still runs.
@@ -104,11 +133,18 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       const after=ctx.round.phaseEndsTick;
       if(after>before)for(const queue of ctx.offers.values())for(const offer of queue)if(offer.deadlineTick===before)offer.deadlineTick=after;
     },
+    // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
+    onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
   });
-  structures=()=>{const {wall,wallDown,towers}=stonewards.state;return [...(wallDown?[]:[{x:wall.x,y:wall.y,radius:PRIZE_WALL_CLEAR}]),...towers.map(t=>({x:t.x,y:t.y,radius:PRIZE_TOWER_CLEAR}))];};
+  structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  // The boss walks over the plaza barricades (cidade-06; it spawns inside the base and never bashes structures, D-010):
+  // its steer runs on a barricade-free copy of the city, or with the four mouths closed it finds no way out of the plaza.
+  const open=cityTerrain?new CityTerrain(cityTerrain.asset,cityTerrain.signature):undefined;
+  const openPlanner=open?cityPlanner(open):undefined;
+  const bossSteer=open&&openPlanner?citySteer(openPlanner,{terrain:open,heroOnly:true,blockers:false}):undefined;
   // City speeds (cidade-05c v2, city/speed.ts): converted once, on the EFFECTIVE speed. The director's bodies are
   // created at the catalog speed and the director converts catalog × plan.speed (DirectorOptions.speedMap); the boss
   // converts its walk after the phase and enrage multipliers (BossOptions.speedMap); its minions, which no multiplier
@@ -121,14 +157,19 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     heroSpeed:heroSpeed(world.terrain),
     // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
     capPush:!!steer,
-    structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
-    hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
+    // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
+    structures:()=>structureTargets(stonewards.state),
+    hitStructure:(ctx,id,amount)=>{stonewards.hit(ctx,id,amount);},
   });
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
     // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
-    ...(steer?{steer:steer.hero,speedMap:citySpeed}:{}),
+    ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),
+    // City boss hp knob (cidade-11): the city controller's baseHp; neutral leaves BOSS_TUNING as it is.
+    ...(cityBalance&&cityBalance.bossHp!==1?{tuning:{baseHp:BOSS_TUNING.baseHp*cityBalance.bossHp}}:{}),
+    // × players[n].bossHp, n the director's plan count when the boss spawns (round 10's plan; scalePlayers without one).
+    ...(cityBalance&&hasTeamBossHp(cityBalance)?{hpScale:(ctx:SimContext)=>teamBossHp(cityBalance,director?.state.plan?.players??director?.scalePlayers(ctx))}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
@@ -147,13 +188,20 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
     // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
     // groups aimed at a team away from the base.
-    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{})}:{}),
+    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
+      // Round 1 is the walk from the wreck to the plaza (cidade-08).
+      cityTutorial:options.cityTutorial??true,...(cityBalance?{cityBalance}:{}),...(openPlanner?{cityOpenPlanner:openPlanner}:{})}:{}),
   });
+  // City team damage (cidade-11, CityBalance.players[n].damage): × every hit a player takes, through the core's single
+  // damage path; n is the director's plan count (the current round, kept through its intermission), neutral before
+  // round 2. Set (or cleared) on every run; absent unless some team size has a damage knob, so damagePlayer is unchanged.
+  const damageScale=cityBalance&&hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
+  world.playerDamageScale=damageScale;
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 
   world.clearSystems();
   for(const system of [
-    playersSystem(options.takeInput),
+    playersSystem(options.takeInput,options.autopilot),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
@@ -176,6 +224,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state}),
-    dispose(){offKill();offZero();},
+    dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

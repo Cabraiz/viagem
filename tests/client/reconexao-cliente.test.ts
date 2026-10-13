@@ -198,13 +198,13 @@ test('N27 client: a late heartbeat does not judge the silence, the next one on t
   }finally{stop();cleanup();}
 });
 
-test('reconecta-round2: the banner helper and the retry schedule (150 ms first once joined, then 1, 2, 4 s)',async()=>{
+test('reconecta-round2: the banner helper and the retry schedule (150 ms first once joined, then 1, 2, 2 s)',async()=>{
   const {reconnectBanner,retryDelay,RECONNECT_BANNER_MS,FIRST_RETRY_MS}=await import('../../src/client/net/client.ts');
   assert.equal(RECONNECT_BANNER_MS,1500);assert.equal(FIRST_RETRY_MS,150);
   const at=(offline:number,extra:{connected?:boolean;fatal?:string}={})=>reconnectBanner({connected:false,...extra,offlineMs:()=>offline});
   assert.equal(at(0),false);assert.equal(at(1499),false);assert.equal(at(1500),true);assert.equal(at(30_000),true);
   assert.equal(at(5000,{connected:true}),false);assert.equal(at(5000,{fatal:'Conexão indisponível.'}),false,'terminal: the fatal window, not the banner');
-  assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,4000,4000,4000]);
+  assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,2000,2000,2000]);
   assert.deepEqual([0,1].map(n=>retryDelay(n,false)),[500,1000],'before joining the lobby keeps its pace');
 });
 
@@ -263,4 +263,29 @@ test('reconecta-round2: terminal ends (replaced by another tab, gave up) show th
     for(let i=0;i<40&&!ana.fatal;i++)await sleep(10);
     assert.match(ana.fatal??'',/Conexão indisponível/);assert.equal(ana.showReconnecting(Date.now()+60_000),false);
   }finally{stop();net.down=false;cleanup();}
+});
+
+test('3g-rede-sem-teleporte: a 3-minute drop mid-match (past the grace) with a friend still in: the client keeps knocking and takes the same seat back; the hero played on its own meanwhile',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    // Two phones: each its own sessionStorage (the shared fake one is cleared so Bia does not take Ana's token).
+    const ana=client('Ana'),bia=client('Bia');await ana.join();store.clear();await bia.join();
+    ana.ready(true);bia.ready(true);
+    for(let i=0;i<160&&ana.run?.phase!=='combat';i++)await sleep(50);
+    assert.equal(ana.run?.phase,'combat');
+    const id=ana.id,room=net.room,hero=room.sim.players.get(id)!;
+    // Ana's phone loses the network for 3 minutes (the room sees the socket close); Bia stays.
+    net.down=true;sockets(ana).close(1006);
+    await sleep(2000);
+    assert.equal(hero.online,false);assert.ok(room.sim.autopilot.has(id),'the room plays Ana meanwhile');
+    const away={x:hero.x,y:hero.y};
+    await sleep(178_000);
+    assert.ok(Math.hypot(hero.x-away.x,hero.y-away.y)>.5||hero.hp<=0,'the hero was not a statue');
+    assert.equal(ana.fatal,undefined,'still knocking past the grace');
+    net.down=false;
+    for(let i=0;i<200&&!ana.connected;i++)await sleep(50);
+    assert.equal(ana.connected,true);assert.equal(ana.id,id,'the same seat');
+    assert.equal(room.sim.autopilot.has(id),false,'back: her own thumb again');
+    assert.ok(JSON.parse(store.get('viagem:room:ABCDEF1234')!).until>Date.now()+20*60_000,'the saved token lasts the run (a reload keeps the seat)');
+  }finally{stop();cleanup();}
 });

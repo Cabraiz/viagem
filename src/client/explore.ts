@@ -7,8 +7,9 @@ import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
-import {besideSelector} from './lobby.ts';
-import {TOTAL_ROUNDS,type RunResult} from './hud/model.ts';
+import {besideSelector,mapInfoText} from './lobby.ts';
+import {TOTAL_ROUNDS} from './hud/model.ts';
+import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
@@ -27,6 +28,7 @@ const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
+import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -37,8 +39,6 @@ let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
   if(active)return;
   active=true;
-  // Imported art v2: the index must be known before Phaser preloads (bounded wait; procedural art if it is late).
-  await artReady();
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
@@ -52,7 +52,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       <div class="explore-notice" role="status">Toque na trilha para caminhar.</div>
       <div class="explore-loading" role="status">Preparando um lugar para sua história…</div>
     </section>
-    <footer class="explore-controls"><div class="explore-movement"><div class="explore-stick" role="group" tabindex="0" aria-label="Joystick de movimento. Arraste para andar ou use WASD e as setas."><span aria-hidden="true"></span></div><small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
+    <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p>Toque no chão ou use o direcional.<br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
@@ -82,12 +82,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('#coop-code').textContent=`Sala ${net.code}`;
     // Weapons fire on their own: this slot is the class skill. One tap sends one {t:'cast'} (net.cast, input-10hz),
     // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
-    $('.explore-actions').innerHTML='<button id="coop-attack" data-slot="skill">Habilidade</button><button class="explore-pause" aria-pressed="false">Pausar controles</button>';
+    $('.explore-actions').innerHTML=`${SKILL_HTML}<button class="explore-pause" aria-pressed="false">Pausar controles</button>`;
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
-      onForge:recipe=>net.forge(recipe),
+      onForge:(recipe,target)=>net.forge(recipe,target),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
@@ -137,6 +137,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   $('#explorer-name').textContent=name;
   shell.querySelector('img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
   document.body.append(shell);shell.showModal();
+  // In a room the thumbs start off (waiting room): the per-frame update below only runs once the scene is up, and on
+  // a slow network the waiting room shows long before that (manifesto-enxuto-3g; lobby-dead-controls).
+  if(net)applyControls(shell,controlsFor({phase:net.run?.phase??'lobby'}));
   const abort=new AbortController(),signal=abort.signal;
   const direction=new JoystickInput();
   const stick=$('.explore-stick'),knob=stick.querySelector('span')!;
@@ -146,13 +149,23 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   /** The economy toast's own clock (VGM-048), cleared on close. */
   let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
+  /** The map line of the settings panel (one line, rewritten when the room switches maps): mapInfoText. */
+  let mapInfo:HTMLElement|undefined,mapInfoSeed=0,mapInfoMap:CoopClient['map']|undefined,mapInfoTerrain:CoopClient['terrain']|undefined;
+  const showMapInfo=()=>{
+    if(!mapInfo)return;
+    mapInfoMap=net?.map;mapInfoTerrain=net?.terrain;
+    const text=mapInfoText(net?net.terrain.seed:mapInfoSeed,!!net?.terrain.chunks,net?.map);
+    if(mapInfo.textContent!==text)mapInfo.textContent=text;
+  };
   /** Result screen data from the last view: the room sends outcome and duration, the HUD view has round, players and build. */
-  const runResult=(victory:boolean,durationTicks:number):RunResult=>{
+  const runResult=(victory:boolean,durationTicks:number):MapRunResult=>{
     const view:RunView|undefined=hud?.view;
     return {victory,durationTicks,round:Math.max(1,view?.round?.index??1),totalRounds:view?.round?.total||TOTAL_ROUNDS,seed:String(net?.terrain.seed??''),
       // Server counters when the room sends them (award-stats-server); the local damage sum is the old fallback.
       players:(view?.players??[]).map(p=>({...p,stats:p.stats?.downs!==undefined?{...p.stats}:{damage:damage.of(p.id),kills:0,revives:0,pickups:0}})),
       ...(!victory&&view?.camp?.wallDown?{wall:true}:{}),
+      // In the city the stats line says "Cidade Nevada", not "seed 0" (cidade-10).
+      ...(net?.map.id==='cidade-nevada'?{map:net.map.id}:{}),
       // The run's most embarrassing moment comes with the result state (VGM-053B).
       ...(net?.run?.shame?{shame:{...net.run.shame}}:{})};
   };
@@ -263,7 +276,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(direction.x||direction.y)ux?.stick();
   };
   stick.addEventListener('pointerdown',event=>{
-    if(event.button!==0||shell.dataset.out==='true'||!direction.start(event.pointerId))return;
+    if(event.button!==0||shell.dataset.out==='true'||shell.dataset.controls==='off'||!direction.start(event.pointerId))return;
     event.preventDefault();pause(false);stick.setPointerCapture(event.pointerId);
     stick.classList.add('is-dragging');updateStick(event);
   },{signal});
@@ -272,14 +285,21 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(direction.end((event as PointerEvent).pointerId))reset();
   },{signal});
   try{
+    // Imported art v2: the index must be known before Phaser preloads (bounded wait; procedural art if it is late).
+    // Awaited here, not at the top: everything above runs synchronously so the caller finds the shell right after the
+    // call (lobby.ts mounts the waiting room on .explore-layout; awaiting first left the room without it).
+    await artReady();
+    if(closed)return;
     const {createIsland}=await import('./scene.ts');
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
-      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;const info=document.createElement("p");info.textContent=net?.terrain.chunks?`Mapa ${seed}`:`Ilha ${seed}, relevo procedural`;settingsContent.append(info);},
+      terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
+          // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
+          if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
           const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
           $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
@@ -333,9 +353,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.
-            const state=net.feed.players.get(net.id),out=run.phase==='combat'&&(!!state?.eliminated||!!member?.spectator);
+            // Waiting room, countdown and result (BUG-20261006-ORQ-lobby-dead-controls): no thumb controls at all, the room
+            // drops their input; an etiqueta in the stick's corner says what they will do (controls-phase.ts).
+            const state=net.feed.players.get(net.id);
+            const controls=controlsFor({phase:run.phase,spectator:!!member?.spectator,eliminated:!!state?.eliminated,downed:!!state?.downed,offline:!net.connected});
+            const out=controls.stick==='dimmed';
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
-            $<HTMLButtonElement>('#coop-attack').disabled=run.phase!=='combat'||!!member?.spectator||!!state?.eliminated||!!state?.downed||!net.connected;
+            if(applyControls(shell,controls))reset();
+            $<HTMLButtonElement>('#coop-attack').disabled=controls.skill!=='live';
           }
           $('#coop-objective').textContent=net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`;return tag;}));

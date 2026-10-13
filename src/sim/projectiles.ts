@@ -8,7 +8,7 @@ import type {SimContext,SimSystem} from './context.ts';
 import {SIM_HZ} from '../contract/index.ts';
 import {RADIUS as PLAYER_RADIUS} from '../maps/index.ts';
 import {getWeapon} from './weapons/catalog.ts';
-import {markDevendo} from './enemies/catalog.ts';
+import {REFLECT,coachMult,isReflecting,markDevendo} from './enemies/catalog.ts';
 
 /** Local projectile ceiling until the shared budget (VGM-032) is wired in by integration. */
 export const PROJECTILE_CAP=400;
@@ -107,6 +107,20 @@ function segmentDistance(ax:number,ay:number,bx:number,by:number,px:number,py:nu
   return {d2:cx*cx+cy*cy,t};
 }
 
+/**
+ * Influencer pose (enemies/catalog.ts POSE, REFLECT): a friendly linear or homing shot that hits a posing influencer comes
+ * back. It turns hostile (owner = him, so collideHostile hurts players and names him), its velocity reverses, damage ×
+ * REFLECT.mult (× his coach buff), pierce 0, an empty hit list, plain linear motion, and at least REFLECT.minLife more
+ * ticks to fly. Area shots (rehit), orbiters and anchored ones are never reflected. Flags one line for enemy-ai.
+ */
+export function reflectShot(p:WeaponProjectile,enemy:EnemyState,tick:number){
+  p.hostile=true;p.owner=enemy.id;p.vx=-p.vx;p.vy=-p.vy;
+  p.damage*=REFLECT.mult*coachMult(enemy,tick);p.pierce=0;p.hit=[];p.motion='linear';
+  p.untilTick=Math.max(p.untilTick,tick+REFLECT.minLife);
+  delete p.homing;delete p.seek;delete p.turn;delete p.returnTick;delete p.knockback;delete p.slowTicks;delete p.blocksHostile;delete p.anchor;
+  (enemy.memory??={}).reflectSay=1;
+}
+
 const wrapAngle=(a:number)=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;};
 
 export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
@@ -148,9 +162,11 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
 
   function steer(ctx:SimContext,p:WeaponProjectile){
     let target=p.homing?ctx.enemies.get(p.homing):undefined;
-    // Retarget when the current target died or was already hit (piercing pigeons move on).
+    // Retarget when the current target died or was already hit (piercing pigeons move on). A posing influencer
+    // (isReflecting) is skipped, so the shot does not seek its own reflection, unless the owner tapped him.
     if(!target||target.hp<=0||p.hit.includes(target.id)){
-      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&!p.hit.includes(e.id));
+      const tapped=ctx.players.get(p.owner)?.target;
+      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&!p.hit.includes(e.id)&&(e.id===tapped||!isReflecting(e,ctx.tick)));
       p.homing=target?.id;
     }
     if(!target)return;
@@ -200,6 +216,8 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
         if(!takeAreaHit(e,p.group??p.id,ctx.tick,p.rehit??1))continue;
       }else{
         if(p.hit.includes(e.id))continue;
+        // A posing influencer sends a moving linear/homing shot back (no damage to him); it is hostile from now on.
+        if(p.motion!=='orbit'&&p.motion!=='follow'&&Math.hypot(p.vx,p.vy)>1e-6&&isReflecting(e,ctx.tick)){reflectShot(p,e,ctx.tick);return true;}
         p.hit.push(e.id);
       }
       const moving=Math.hypot(p.vx,p.vy)>1e-6&&p.motion!=='orbit';

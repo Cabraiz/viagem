@@ -10,17 +10,24 @@
  *
  * The wall (D-017): in the run only the enemy-ai hits it (hitStructure -> damageWall); `siegeContact:false` turns
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
+ *
+ * City (cidade-06): the base is the fountain plaza; the wall stands at points.praca (the fountain, so the forge's camp
+ * is there too) and a barricade closes each mouth (barricades.ts). The enemy-ai hits both through `hit` (D-017); only
+ * the wall falling is the defeat.
  */
-import type {Obstacle} from '../../maps/index.ts';
+import type {CellRect,Obstacle} from '../../maps/index.ts';
 import {heroSpeed} from '../../maps/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
-import {gatherStep,refillNodes} from './resources.ts';
-import {DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
+import {gatherStep,refillNodes,WORK_PER_UNIT,type Gathered} from './resources.ts';
+import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
+import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
-import {createWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
+import {createBarricades,damageBarricade,raiseDue,syncBarricades} from './barricades.ts';
+import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -30,6 +37,13 @@ export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
  * Not in the opening countdown before round 1 (prepare with index 1): nobody is out gathering yet.
  */
 export const HORN_LEAD=ticks(5);
+/**
+ * City (cidade-07): the horn sounds at least 10 s before the intermission ends (the island keeps HORN_LEAD), and the
+ * "can the farthest hero get back" estimate is the real walk to the plaza (loot.ts cityFarthestReturn).
+ */
+export const HORN_LEAD_CITY=ticks(10);
+/** `say` key of the left-behind line (a hero outside the base when the round starts, city only). */
+export const LEFT_BEHIND_KEY='ficou-pra-tras';
 /** Longest an intermission may get when the horn stretches it (150 units out needs ~55 s, rules.ts returnTicks). */
 export const MAX_PREPARE_TICKS=ticks(75);
 /**
@@ -43,6 +57,10 @@ export const SAY_GAP=ticks(2);
 export interface StonewardsOptions {
   /** The room's terrain; the wall is placed on it and the nodes are its obstacles. */
   terrain:SimContext['terrain'];
+  /** City only: raise the four plaza barricades (default true). Travel/reach measurements (cidade-05c tests) turn them off. */
+  barricades?:boolean;
+  /** City tutorial (cidade-08): the barricades start down and go up at the first intermission. */
+  barricadesLater?:boolean;
   /** Replaces the island's obstacles as nodes (tests). */
   obstacles?:readonly Obstacle[];
   wallMaxHp?:number;
@@ -54,24 +72,54 @@ export interface StonewardsOptions {
   onHorn?(ctx:SimContext,line:string,endsTick:number):void;
   /** Moves the end of the current intermission (the director owns ctx.round). Without it the horn never stretches it. */
   extendPrepare?(ctx:SimContext,endsTick:number):void;
+  /**
+   * City only (cidade-11, city/balance.ts): lootValue × the units each crate pays (× players[n].lootValue, n the heroes
+   * standing on the intermission's first tick, StonewardsState.cityLootTeam) and intermissionExtraSeconds added after
+   * the trip sizing. Read only where the crates are the nodes (cityLoot); absent or neutral: no change.
+   */
+  cityBalance?:Pick<CityBalance,'lootValue'|'intermissionExtraSeconds'|'players'>;
+  /**
+   * City: a barricade fell or was rebuilt (or a rematch reset moved them), changing the terrain's walkability in these
+   * flow-grid cells (asset.unitsPerCell, inclusive). The run refreshes the grid and invalidates the planner there.
+   * Not called when the system is created: the blockers are raised before the run builds its grid.
+   */
+  onTerrainChanged?(rect:CellRect):void;
 }
 
 export interface StonewardsSystem extends SimSystem {
   readonly id:'structures';
   readonly state:StonewardsState;
-  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string):BuyResult;
+  /** `targetId`: what 'reparo' repairs (forge.ts buy): the wall by default, or a city barricade id. */
+  buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string,targetId?:string):BuyResult;
+  /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall or a barricade. */
+  hit(ctx:SimContext,structureId:string,amount:number):void;
   /** Fresh layer for a rematch: balance, nodes, wall, towers, ids and stream all start over. */
   reset():void;
 }
 
-export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'>):StonewardsState{
+export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'|'onTerrainChanged'>):StonewardsState{
+  // City only: the island and the endless world keep exactly their old state (and state hashes).
+  const city=options.barricades===false?undefined:createBarricades(options.terrain,undefined,options.barricadesLater===true);
   return {
     balance:{coco:0,pedra:0},
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
-    towers:[],gathered:{},handled:[],
+    towers:[],
+    ...(city?{barricades:city.barricades}:{}),...(city?.unsealed.length?{unsealed:city.unsealed}:{}),
+    ...(city&&options.barricadesLater===true?{raiseBarricades:true}:{}),
+    gathered:{},handled:[],
     refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,stretched:0,sayReady:{},wallDown:false,defeatReported:false,rng:null,
   };
+}
+
+/**
+ * What the enemy-ai may hit (EnemyAiOptions.structures): the wall while it stands, then the standing city barricades,
+ * flagged `blocking` (any body pressed against one bashes it, siege or not). Off the city: exactly the wall, as before.
+ */
+export function structureTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
+  const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
+  for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
+  return out;
 }
 
 /** Ticks the farthest standing hero needs to be back in the camp (0 when everyone is home). */
@@ -90,33 +138,59 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
   return true;
 }
 
+/** A given `state` (a checkpoint) rebuilds the terrain's barricade blockers from it. */
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
-  function horn(ctx:SimContext){
+  const extraTicks=ticks(Math.max(0,options.cityBalance?.intermissionExtraSeconds??0));
+  const balance=options.cityBalance,teamLoot=!!balance&&hasTeamLoot(balance);
+  /** This intermission's crate multiplier: the global lootValue × the standing team's (cidade-11 players knob). */
+  const lootValueNow=()=>balance?teamLootValue(balance,teamLoot?state.cityLootTeam:undefined):1;
+  /**
+   * City loot knob: gatherStep already paid each crate its value; pay the difference to cityCrateValue (whole units per
+   * crate) and scale this tick's credits in `gathered` by the same ratio (the per-gatherer split is gone by then).
+   */
+  function scaleLoot(got:readonly Gathered[],before:Readonly<Record<string,number>>,lootValue:number){
+    let raw=0,paid=0;
+    for(const g of got){const v=cityCrateValue(g.node.value,lootValue);raw+=g.node.value;paid+=v;state.balance[g.node.kind]+=v-g.node.value;}
+    if(!(raw>0)||paid===raw)return;
+    for(const id of Object.keys(state.gathered)){
+      const was=Object.hasOwn(before,id)?before[id]:0,now=state.gathered[id];
+      if(now!==was)Object.defineProperty(state.gathered,id,{value:was+(now-was)*paid/raw,enumerable:true,writable:true,configurable:true});
+    }
+  }
+  syncBarricades(options.terrain,state);
+  function horn(ctx:SimContext,loot:CityLoot|undefined){
     const round=ctx.round;
     if(round.index<=1||state.hornRound===round.index)return;
-    const lead=Math.max(HORN_LEAD,farthestReturn(ctx,state)),left=round.phaseEndsTick-ctx.tick;
+    const back=loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y))):farthestReturn(ctx,state);
+    const lead=Math.max(loot?HORN_LEAD_CITY:HORN_LEAD,back),left=round.phaseEndsTick-ctx.tick;
     if(left>lead)return;
     state.hornRound=round.index;
-    if(left<lead&&options.extendPrepare){
-      const budget=Math.max(0,MAX_STRETCH_PER_RUN-state.stretched);
-      const endsTick=Math.min(ctx.tick+lead,state.prepareStart+MAX_PREPARE_TICKS,round.phaseEndsTick+budget);
-      if(endsTick>round.phaseEndsTick){
-        const before=round.phaseEndsTick;
-        options.extendPrepare(ctx,endsTick);
-        state.stretched+=Math.max(0,round.phaseEndsTick-before);
-      }
-    }
-    const line=draw(ctx,state,HORN_LINES);
+    if(left<lead)stretch(ctx,ctx.tick+lead);
+    const line=draw(ctx,state,loot?CIDADE_HORN_LINES:HORN_LINES); // one draw either way: island rng unchanged
     state.hornEndsTick=round.phaseEndsTick;
     ctx.emit({type:'horn',endsTick:round.phaseEndsTick,line});
     options.onHorn?.(ctx,line,round.phaseEndsTick);
   }
+  /**
+   * Moves the end of the intermission to `endsTick`, within MAX_PREPARE_TICKS; a horn stretch (`budgeted`) also within
+   * the run's MAX_STRETCH_PER_RUN, and counts against it.
+   */
+  function stretch(ctx:SimContext,endsTick:number,budgeted=true){
+    const round=ctx.round;
+    if(!options.extendPrepare)return;
+    const budget=budgeted?Math.max(0,MAX_STRETCH_PER_RUN-state.stretched):Infinity;
+    const capped=Math.min(endsTick,state.prepareStart+MAX_PREPARE_TICKS,round.phaseEndsTick+budget);
+    if(capped<=round.phaseEndsTick)return;
+    const before=round.phaseEndsTick;
+    options.extendPrepare(ctx,capped);
+    if(budgeted)state.stretched+=Math.max(0,round.phaseEndsTick-before);
+  }
   return {
     id:'structures',
     state,
-    buy(ctx,playerId,recipeId,requestId){
-      const result=forgeBuy(ctx,state,playerId,recipeId,requestId);
+    buy(ctx,playerId,recipeId,requestId,targetId){
+      const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);
       return result;
     },
@@ -124,15 +198,63 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       const fresh=createStonewardsState(options) as unknown as Record<string,unknown>,target=state as unknown as Record<string,unknown>;
       for(const key of Object.keys(target))delete target[key];
       Object.assign(target,fresh);
+      for(const rect of syncBarricades(options.terrain,state))options.onTerrainChanged?.(rect);
+    },
+    hit(ctx,structureId,amount){
+      if(structureId===state.wall.id)damageWall(ctx,state,amount);
+      else damageBarricade(ctx,state,structureId,amount,options.onTerrainChanged);
     },
     step(ctx){
       if(state.defeatReported)return;
       const round=ctx.round;
+      // City tutorial: the team raises the barricades at the first intermission, the prepare phase of round 2 (round 1's
+      // prepare is the tutorial's opening, the director's startPrepare(index)); raiseDue retries while a body is on one.
+      if(state.raiseBarricades&&round.phase==='prepare'&&round.index>=2&&raiseDue(ctx,state,options.onTerrainChanged))delete state.raiseBarricades;
+      // City (cidade-07): the crates are the nodes (loot.ts); `options.obstacles` (tests) keeps the island path.
+      const loot=options.obstacles?undefined:cityLoot(ctx.terrain);
       if(!state.wallDown&&round.phase==='prepare'){
-        if(state.refilledRound!==round.index){state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);}
-        for(const g of gatherStep(ctx,state,options.obstacles))if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,DEPLETED_LINES[g.node.kind]));
-        horn(ctx);
-      }else if(round.phase!=='prepare')state.hornEndsTick=-1;
+        if(state.refilledRound!==round.index){
+          state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);
+          // City team-size loot knob (cidade-11): the heroes standing as the intermission starts, kept for all of it.
+          if(loot&&teamLoot){
+            let n=0;for(const p of ctx.players.values())if(isStanding(p))n++;
+            state.cityLootTeam=Math.max(1,Math.min(6,n));
+          }
+          // City: an intermission (not the opening countdown) long enough for the farthest good crate and back, its
+          // collect time and the horn's lead (loot.ts lootTripTicks), up to MAX_PREPARE_TICKS. It is the city's
+          // intermission length, not a horn stretch: it does not spend MAX_STRETCH_PER_RUN (9 intermissions × ~9 s
+          // would leave the horn almost nothing for a straggler, and nothing once the city hero walks at ~2 u/s).
+          if(loot&&round.index>1){
+            stretch(ctx,ctx.tick+lootTripTicks(loot,kind=>WORK_PER_UNIT[kind],HORN_LEAD_CITY),false);
+            // City knob (cidade-11): extra seconds on top of the sized intermission, within MAX_PREPARE_TICKS.
+            if(extraTicks>0)stretch(ctx,ctx.round.phaseEndsTick+extraTicks,false);
+          }
+        }
+        const lootValue=loot?lootValueNow():1,before=lootValue!==1?{...state.gathered}:undefined;
+        const got=gatherStep(ctx,state,options.obstacles);
+        if(before)scaleLoot(got,before,lootValue);
+        for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
+        horn(ctx,loot);
+      }else if(round.phase!=='prepare'){
+        state.hornEndsTick=-1;
+        // City: the round started; each standing hero outside the base gets the left-behind line, once per round.
+        // Not in round 1: everyone starts at the crashed vehicle, outside the base, by design.
+        if(loot&&round.index>1&&!state.wallDown&&state.refilledRound===round.index&&state.leftBehindRound!==round.index){
+          state.leftBehindRound=round.index;
+          const used=new Set<string>();
+          for(const id of [...ctx.players.keys()].sort()){
+            const p=ctx.players.get(id)!;
+            if(!isStanding(p)||loot.insideBase(p))continue;
+            // Straight to the event (not `say`): its SAY_GAP must not drop it after a crate's line a moment ago.
+            Object.defineProperty(state.sayReady,id,{value:ctx.tick+SAY_GAP,enumerable:true,writable:true,configurable:true});
+            // Different lines for heroes left behind in the same tick (a few extra draws at most, still deterministic).
+            let line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            for(let t=0;t<4&&used.has(line);t++)line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            used.add(line);
+            ctx.emit({type:'say',source:id,key:LEFT_BEHIND_KEY,line});
+          }
+        }
+      }
       if(!state.wallDown){towerStep(ctx,state);if(contact)siegeStep(ctx,state);}
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}

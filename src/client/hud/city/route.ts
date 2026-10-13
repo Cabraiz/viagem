@@ -220,8 +220,8 @@ export interface ObjectiveSlotInput {
 /**
  * Whether the walk's row shows now, and whether the street banner folds into the round chip for it (pure). It waits for
  * the notices, the kill-cam, a shell row and the coach's rescue hint, and for the banner (1.8 s) too, but the walk is the
- * joystick lesson of a phone that never walked (the coach's "andar" folds into it): in round 1 it takes the slot from the
- * banner the way that hint does (UX-1: the 1st step in ≤ 3 s), so the row and the lit joystick never blink away for it.
+ * first thing a phone that never walked needs: in round 1 it takes the slot from the banner (UX-1: the 1st step in
+ * ≤ 3 s), so the row never blinks away for it.
  */
 export function objectiveSlot(input:ObjectiveSlotInput):{show:boolean;foldBanner:boolean}{
   if(!input.wanted||input.held)return {show:false,foldBanner:false};
@@ -231,10 +231,8 @@ export function objectiveSlot(input:ObjectiveSlotInput):{show:boolean;foldBanner
 
 /** Copy of the row (house voice: dry imperative; one joke at most, D-033, no real brand or person). */
 export const OBJECTIVE_TEXT='Vai pra praça!';
-/** The second line when the joystick is still to learn: the walk lesson folds into the objective (coach.ts). */
-export const OBJECTIVE_WALK='Arrasta pra andar';
 /**
- * The second line otherwise: the Helicóptero da Firma came down at the start (≤ 28 characters). Each sentence is bound
+ * The second line: the Helicóptero da Firma came down at the start (≤ 28 characters). Each sentence is bound
  * (no-break spaces): where the line has to wrap (portrait at 125%) it breaks between the two, "O heli caiu." over
  * "Você, não.", never "não." or "caiu." alone on a line.
  */

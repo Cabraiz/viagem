@@ -21,13 +21,14 @@
  * straight walk to the plaza parks against a block, ≈(103,154); patio: the dead-end yard inside that block ≈(104.5,149.5);
  * meio: halfway up the route; praca: in the plaza, where the row hides), three teammates at the wreck and round 1's first
  * bêbados on the road. The announcement slot shows "Vai pra praça!" with the walking distance and the arrow along the
- * route in that view; `dica=walk` is a phone that never walked (the second line says how, the joystick is lit).
+ * route in that view; `dica=walk` is a phone that never walked (the joystick is lit for 6 s; no written walk line).
  * The city's first view brings round 1's banner ("Pouso Forçado", as the director sends it): a phone that already walked
  * sees the banner for its 1.8 s and then the row; with `dica=walk` the row takes the banner's slot at once (UX-1) and the
  * mock joystick (`.hs-stick`) wears the coach's Amarelo like the game's `.explore-stick`.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
- * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
+ * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
+ * round 1 and has no row: only the joystick lights, for 6 s or until a step). walk/xp/rescue go with
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
  * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe|coach|motoboy|influencer` (arte v2): with state=downed the local fall names that critter
  * (the banner's cause line), with state=result every fall does ("Te derrubou"); its icon is the imported `ui/inimigo-<id>`
@@ -149,6 +150,8 @@ function load(next:HudScenario){
   // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
   if(dica){
     if(!tutorial)view.events=[];
+    // "Andar" lives in round 1 only (it never lights in a later round): its scene is round 1, lit for 6 s.
+    if(dica==='walk'&&view.round)view.round={...view.round,index:1};
     if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
     if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
   }

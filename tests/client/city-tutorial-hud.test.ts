@@ -10,7 +10,7 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {clearSegment,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {DIRS} from '../../src/maps/flowfield.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
-import {CityObjectiveTracker,cityRouteOf,cityRouteReady,prewarmCityRoute,objectiveSlot,screenBearing,objectiveMeters,OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE,
+import {CityObjectiveTracker,cityRouteOf,cityRouteReady,prewarmCityRoute,objectiveSlot,screenBearing,objectiveMeters,OBJECTIVE_TEXT,OBJECTIVE_JOKE,
   cityHudLayout,referenceInput,type ObjectiveSlotInput} from '../../src/client/hud/city/index.ts';
 import {projectView} from '../../src/client/projection.ts';
 import {Coach,resetSessionMemory,WALK_DISTANCE,type CoachInput} from '../../src/client/hud/coach.ts';
@@ -216,7 +216,7 @@ test(`a novice's first city run: from the countdown through the round banner the
 
 test('copy: dry imperative, one short joke, no caps, no real brand',()=>{
   assert.equal(OBJECTIVE_TEXT,'Vai pra praça!');
-  for(const line of [OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE]){
+  for(const line of [OBJECTIVE_TEXT,OBJECTIVE_JOKE]){
     assert.ok(line.length<=28,`"${line}" is short`);
     assert.doesNotMatch(line,/[A-ZÁÉÍÓÚÂÊÔÃÕ]{2}|·|→|—|\p{Extended_Pictographic}/u,line);
     assert.doesNotMatch(line,/uber|99|ifood|google/i,'no real brand (D-033)');
@@ -238,7 +238,9 @@ test('coach: while the walk to the plaza is wanted, the generic "andar" never sh
   resetSessionMemory();
   const coach=new Coach(memory());let now=0;
   const view=round1();
-  assert.deepEqual(new Coach(memory()).step(coachInput(view),0),{lesson:'walk',done:false},'control: without the objective, round 1 starts with "andar"');
+  const control=new Coach(memory());
+  assert.equal(control.step(coachInput(view),0),undefined,'control: "andar" never has a row (one written walk hint: the lobby label)');
+  assert.equal(control.stick,true,'only the joystick lights');
   for(;now<=6000;now+=100)assert.equal(coach.step(coachInput(view,{objective:true}),now),undefined,'one or the other: the objective holds the slot');
   // The chip and XP wait too (one row at a time).
   assert.equal(coach.step(coachInput(round1({pickups:[{id:'x',kind:'xp',x:.5,y:0,value:1}]}),{objective:true,chip:true}),now+=100),undefined);

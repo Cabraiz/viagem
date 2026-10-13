@@ -12,7 +12,7 @@ import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtRow,hasDeathArt,playEn
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
-import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
+import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,phaseLook,reflectGlint,sparkleFrame,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
@@ -495,7 +495,7 @@ export class HordeRenderer{
       case 'damage':{
         const enemy=this.enemies.get(event.target);
         if(enemy){
-          enemy.flashAt=this.now;enemy.hitAt=this.now;if(!enemy.elite&&!enemy.boss)this.recentHits.hit(event.target);
+          enemy.flashAt=flashStartOnHit(this.now,enemy.flashAt);enemy.hitAt=this.now;if(!enemy.elite&&!enemy.boss)this.recentHits.hit(event.target);
           const crit=!!event.crit;
           this.spawnNumber(event.target,enemy.x,enemy.y,this.barLift(enemy)*.72,event.amount,crit,false,false,numberPriority(crit,false,enemy.elite,enemy.boss),eventId);
         }else{

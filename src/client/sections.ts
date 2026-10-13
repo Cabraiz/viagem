@@ -1,57 +1,41 @@
 import './sections.css';
 
+export type CreationTab = 'personagem' | 'classes';
+
+/**
+ * Creation screen as two real tabs that each fill the viewport (criacao-tela-cheia): nothing scrolls, the tab
+ * shows its panel and hides the other. `#personagem` and `#classes` in the URL pick the tab (invite links end in
+ * `#personagem`; the old `#ficha` lands on Personagem). `onLayoutChange` runs when the catalog's box changes size,
+ * so the page size follows the space instead of a breakpoint.
+ */
 export function setupSections(onLayoutChange: () => void) {
-  const world = document.querySelector<HTMLElement>('.world')!;
-  const masthead = world.querySelector<HTMLElement>('.masthead')!;
-  const creation = world.querySelector<HTMLElement>('.creation-window')!;
-  const content = creation.querySelector<HTMLElement>('.window-content')!;
-  const sheet = creation.querySelector<HTMLElement>('.character-sheet')!;
-  const roster = world.querySelector<HTMLElement>('.roster')!;
-  const footer = world.querySelector<HTMLElement>('.page-footer')!;
-  const stage = (id: string, label: string) => {
-    const element = document.createElement('section');
-    element.className = 'journey-screen'; element.id = id;
-    element.setAttribute('aria-label', label); return element;
-  };
-  const characterStage = stage('personagem', 'Escolha seu personagem');
-  const sheetStage = stage('ficha', 'Personalize sua ficha');
-  const rosterStage = stage('classes', 'Catálogo de classes');
-  characterStage.append(masthead, creation);
-  characterStage.insertAdjacentHTML('beforeend', '<a class="section-next" id="character-next" href="#ficha">Personalizar minha ficha <span aria-hidden="true">↓</span></a>');
-  sheetStage.insertAdjacentHTML('beforeend', '<div class="section-heading"><span class="eyebrow">DO SEU JEITO</span><h2>Sua ficha de aventura</h2></div>');
-  sheetStage.append(sheet);
-  sheetStage.insertAdjacentHTML('beforeend', '<a class="section-next" href="#classes">Explorar todas as classes <span aria-hidden="true">↓</span></a>');
-  rosterStage.append(roster, footer);
-  rosterStage.insertAdjacentHTML('beforeend', '<a class="section-next" href="#personagem">Voltar ao meu personagem <span aria-hidden="true">↑</span></a>');
-  world.append(characterStage, sheetStage, rosterStage);
-  world.insertAdjacentHTML('beforebegin', '<nav class="section-nav" aria-label="Seções da criação"><a href="#personagem" aria-current="location">Personagem</a><a class="sheet-link" href="#ficha">Minha ficha</a><a href="#classes">Classes</a></nav>');
-  const nav = document.querySelector<HTMLElement>('.section-nav')!;
-  const narrow = matchMedia('(max-width: 620px)');
-  const next = document.querySelector<HTMLAnchorElement>('#character-next')!;
-  function layout() {
-    if (narrow.matches) sheetStage.insertBefore(sheet, sheetStage.querySelector('.section-next'));
-    else content.append(sheet);
-    sheetStage.hidden = !narrow.matches;
-    next.href = narrow.matches ? '#ficha' : '#classes';
-    next.firstChild!.textContent = narrow.matches ? 'Personalizar minha ficha ' : 'Explorar todas as classes ';
-    onLayoutChange();
-  }
-  layout(); narrow.addEventListener('change', layout);
-  new ResizeObserver(() => document.documentElement.style.setProperty('--section-nav-height', `${nav.getBoundingClientRect().height}px`)).observe(nav);
-  let queued = false;
-  const updateLocation = () => {
-    queued = false;
-    const visible = [characterStage, sheetStage, rosterStage].filter(element => !element.hidden);
-    const offset = nav.getBoundingClientRect().height;
-    const current = visible.reduce((closest, element) => Math.abs(element.getBoundingClientRect().top - offset) < Math.abs(closest.getBoundingClientRect().top - offset) ? element : closest);
-    nav.querySelectorAll('a').forEach(link => {
-      if (link.hash === `#${current.id}`) link.setAttribute('aria-current', 'location');
-      else link.removeAttribute('aria-current');
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('.section-tabs [role=tab]')];
+  const panels = tabs.map(tab => document.getElementById(tab.getAttribute('aria-controls')!)!);
+  const fromHash = (): CreationTab => (location.hash === '#classes' ? 'classes' : 'personagem');
+  function show(id: CreationTab, focus = false) {
+    tabs.forEach((tab, index) => {
+      const on = panels[index].id === id;
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+      panels[index].hidden = !on;
+      if (on && focus) tab.focus();
     });
-  };
-  addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(updateLocation); } }, { passive: true });
-  requestAnimationFrame(() => {
-    const target = location.hash === '#ficha' && !narrow.matches ? characterStage : [characterStage, sheetStage, rosterStage].find(element => `#${element.id}` === location.hash);
-    target?.scrollIntoView(); updateLocation();
+    if (location.hash !== `#${id}`) history.replaceState(history.state, '', `${location.pathname}${location.search}#${id}`);
+  }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => show(panels[index].id as CreationTab));
+    tab.addEventListener('keydown', event => {
+      const to = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+      if (to < 0) return;
+      event.preventDefault();
+      show(panels[to].id as CreationTab, true);
+    });
   });
+  document.querySelector<HTMLAnchorElement>('.section-nav .wordmark')?.addEventListener('click', event => { event.preventDefault(); show('personagem'); });
+  addEventListener('hashchange', () => show(fromHash()));
+  show(fromHash());
+  const list = document.getElementById('class-list');
+  if (list) new ResizeObserver(() => { if (list.clientWidth && list.clientHeight) onLayoutChange(); }).observe(list);
+  return { show };
 }

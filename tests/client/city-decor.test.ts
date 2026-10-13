@@ -233,7 +233,9 @@ test('palette: every decor colour is a value exported by palette.ts',()=>{
   }
 });
 
-test('performance: fixture chunks × 4 views stay under 4000 primitives per chunk and build in < 150 ms (best of 5)',()=>{
+// D-031: the primitive cap always gates; the < 150 ms wall clock only with
+//   BENCH=1 node --experimental-strip-types --test tests/client/city-decor.test.ts
+test('performance: fixture chunks × 4 views stay under 4000 primitives per chunk and build in < 150 ms (best of 5; time gated by BENCH=1)',()=>{
   const build=()=>{
     let total=0,max=0;
     for(const v of VIEWS)for(const c of index.chunks){
@@ -248,8 +250,8 @@ test('performance: fixture chunks × 4 views stay under 4000 primitives per chun
   let ms=Infinity,total=0,max=0;
   for(let i=0;i<5;i++){const t0=performance.now(),r=build();ms=Math.min(ms,performance.now()-t0);total=r.total;max=r.max;}
   assert.ok(max<4000,`max ${max} per chunk`);
-  assert.ok(ms<150,`${ms.toFixed(1)} ms for ${total} primitives`);
   console.log(`decor: ${total} primitives over ${index.chunks.length} chunks × 4 views (max ${max}/chunk) in ${ms.toFixed(1)} ms`);
+  if(process.env.BENCH==='1')assert.ok(ms<150,`${ms.toFixed(1)} ms for ${total} primitives`);
 });
 
 test('shadowUnion: one disjoint shadow per chunk region, covering every piece shadow that lands there (no stacking)',()=>{

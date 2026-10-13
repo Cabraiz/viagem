@@ -190,6 +190,9 @@ export class CityLayer {
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
 
+  /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps from the next chunk built. */
+  setEconomy(on:boolean){this.relief?.setEconomy(on);}
+
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 

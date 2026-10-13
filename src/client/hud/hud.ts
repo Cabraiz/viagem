@@ -20,7 +20,7 @@ import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
-import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
+import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -43,8 +43,11 @@ export interface RunHudOptions {
   onStamp?():void;
   /** The owner's commands from the result screen (D-025). */
   onKick?(id:string):void;onAddBot?():void;onRemoveBot?(id:string):void;
-  /** Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). */
-  onForge?(recipe:RecipeId):number|undefined;
+  /**
+   * Forge tap (VGM-046B): sends the purchase, returns its request id (undefined: cannot reach the room now). `target`
+   * only for a city barricade's repair ('barricada-N', camp.ts).
+   */
+  onForge?(recipe:RecipeId,target?:string):number|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
@@ -141,7 +144,7 @@ export class RunHud {
     this.objectiveRow=createObjectiveRow(parent.ownerDocument);
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
-    const camp=this.camp=createCamp({onForge:recipe=>options.onForge?.(recipe)});this.forgeEl=camp.forge;
+    const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
@@ -255,6 +258,8 @@ export class RunHud {
    */
   setCityRoute(input:CityRouteInput|undefined){
     this.routeInput=input;
+    // The camp's barricade tags find each barricade's mouth on the decoded city (camp.ts, city/barricade.ts).
+    this.camp.setBocas(input?cityAssetOf(input.terrain as {world?:string})?.points.bocas:undefined);
     const was=!!this.objectiveWant;
     this.stepObjective();
     // The walk just became wanted (the first city frame of the run) while the coach shows its own "andar": the coach

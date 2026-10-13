@@ -22,10 +22,27 @@ export const STICKER_CSS={papel:2,breu:3} as const;
 /** 8 directions for the sticker contour copies (unit offsets). */
 export const OUTLINE_DIRS:readonly {x:number;y:number}[]=Array.from({length:8},(_,i)=>({x:Math.round(Math.cos(i*Math.PI/4)*1e6)/1e6,y:Math.round(Math.sin(i*Math.PI/4)*1e6)/1e6}));
 
-/** Ring strokes, outer to inner: [width, radius offset from the ellipse] in CSS px, so each layer is a hard band. */
-export function ringBands(){
+/** Outer Breu band of the ring in the Cidade Nevada, CSS px (card cidade-contorno-breu: Lilás and Papel vanish on snow). */
+export const RING_CITY_BREU_CSS=2;
+export interface RingBand {width:number;offset:number}
+/**
+ * Ring strokes, outer to inner: [width, radius offset from the ellipse] in CSS px, so each layer is a hard band.
+ * City: plus `outer`, a Breu band of RING_CITY_BREU_CSS right outside the Papel (drawn first); elsewhere none.
+ */
+export function ringBands(city=false):{papel:RingBand;voce:RingBand;breu:RingBand;outer?:RingBand}{
   const {breu,voce,papel}=RING_CSS,total=breu+voce+papel;
-  return {papel:{width:total,offset:0},voce:{width:voce,offset:(total-voce)/2-papel},breu:{width:breu,offset:-(total-breu)/2}};
+  const bands={papel:{width:total,offset:0},voce:{width:voce,offset:(total-voce)/2-papel},breu:{width:breu,offset:-(total-breu)/2}};
+  return city?{...bands,outer:{width:RING_CITY_BREU_CSS,offset:(total+RING_CITY_BREU_CSS)/2}}:bands;
+}
+
+/**
+ * A beak (base half-width `half` on the ellipse, tip `length` out) grown by `edge` on its two slanted sides: the tip
+ * moves out by edge/sin(α) and the base widens by edge/cos(α), α the tip's half-angle. The city's Breu beak, drawn
+ * under the Papel one, so the beak keeps a Breu edge of `edge` like the ring.
+ */
+export function grownBeak(length:number,half:number,edge:number){
+  const a=Math.atan2(half,length);
+  return {length:length+edge/Math.sin(a),half:half+edge/Math.cos(a)};
 }
 
 /** Beak of the ring: a triangle on the ellipse (center x,y, radii a,b) pointing outward at screen angle `angle`. */

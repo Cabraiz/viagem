@@ -38,8 +38,6 @@ let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
   if(active)return;
   active=true;
-  // Imported art v2: the index must be known before Phaser preloads (bounded wait; procedural art if it is late).
-  await artReady();
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">
@@ -273,6 +271,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(direction.end((event as PointerEvent).pointerId))reset();
   },{signal});
   try{
+    // Imported art v2: the index must be known before Phaser preloads (bounded wait; procedural art if it is late).
+    // Awaited here, not at the top: everything above runs synchronously so the caller finds the shell right after the
+    // call (lobby.ts mounts the waiting room on .explore-layout; awaiting first left the room without it).
+    await artReady();
+    if(closed)return;
     const {createIsland}=await import('./scene.ts');
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{

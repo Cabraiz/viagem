@@ -175,3 +175,47 @@
   .coop-wait.is-owner .coop-wait-members li:not(:has(>button)){grid-column:auto;justify-self:stretch;min-height:48px;font-size:var(--t-13)}
   .coop-wait.is-owner .coop-wait-members li:not(:has(>button))>span:not(.sr-only){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .coop-wait .coop-wait-ready{min-height:48px}
+/* Espera na paisagem sem rolagem (BUG-20261013-E4-espera-convidado-paisagem-rola): with a low window the member list is
+   a grid for both roles, narrow columns with "…" on long names, instead of the guest's one chip per row (6 chips =
+   258 px) or the owner's two 148 px columns (3 rows, still too tall at 667×375). Measured at 844×390, 740×360 and
+   667×375, 100% and 125%, with 6 players, lobby and countdown. */
+.coop-wait-share-icon{display:none;line-height:0}
+@media(max-height:500px){
+  /* The window lives in the free band between the camera buttons (left, up to 154 px) and the map selector (right,
+     from 120 px off the edge), 24 px clear of both, so it may climb to 8 px from the top without running along them. */
+  .coop-wait,.coop-wait.is-owner,.coop-wait[data-phase=countdown]:not(.is-owner){left:calc(50% + 17px + (env(safe-area-inset-left) - env(safe-area-inset-right)) / 2);max-height:calc(100% - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:8px}
+  .coop-wait{width:min(400px,calc(100% - 322px - env(safe-area-inset-left) - env(safe-area-inset-right)))}
+  .coop-wait.is-owner,.coop-wait[data-phase=countdown]:not(.is-owner){width:min(560px,calc(100% - 322px - env(safe-area-inset-left) - env(safe-area-inset-right)))}
+  /* At most three columns, each wide enough for a name at the current text scale (so never one letter at 125%). */
+  .coop-wait .coop-wait-members,.coop-wait.is-owner .coop-wait-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(max(calc(124px * var(--t-escala)),calc((100% - 12px) / 3)),1fr));gap:6px}
+  /* The owner's chips carry a status sticker, a face and the X: a column under 150 px leaves the name two letters
+     (but never fewer than two columns: one would be six rows). */
+  .coop-wait.is-owner .coop-wait-members{grid-template-columns:repeat(auto-fill,minmax(max(min(calc(150px * var(--t-escala)),calc((100% - 6px) / 2)),calc((100% - 12px) / 3)),1fr))}
+  /* Kick buttons and the own chip at 44 px (the touch minimum) instead of 48: a row of chips less 4 px, three rows 12. */
+  .coop-wait .coop-wait-members button,.coop-wait .coop-wait-members li:has(>button),.coop-wait.is-owner .coop-wait-members li:not(:has(>button)){min-height:44px}
+  .coop-wait .coop-wait-members:has(.is-bot),.coop-wait.is-owner .coop-wait-members:has(.is-bot){row-gap:10px}
+  .coop-wait .coop-wait-members li{min-width:0}
+  .coop-wait .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* The name keeps its first letters; "(você)" is what gives way. */
+  .coop-wait.is-owner .coop-wait-members li:not(:has(>button))>span:not(.sr-only),.coop-wait .coop-wait-members li>span:not(.sr-only){min-width:min(5ch,100%)}
+  .coop-wait .coop-wait-members small{flex:0 1000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Countdown: the big number shares the button row without making it taller, and the owner's note gets thinner. */
+  .coop-wait-count{line-height:48px;overflow:clip} /* a 60 px font on a 48 px line: the digit and its shadow fit, the font's empty descent no longer counts as overflow */
+  /* The beat grows the number upwards only: grown downwards it pushed past the window's bottom and made it scroll. */
+  .coop-wait[data-phase=countdown] .coop-wait-count{transform-origin:50% 100%}
+  .coop-wait-owner{margin:2px 0;padding:2px 8px}
+  /* Tighter spacing: at 667×375 and 125% the owner's window is the tightest case. The sticky "Tô pronto!" row's
+     Lilás shadow shrinks with its gap, so it never hides the line above. */
+  .coop-wait-headline{margin:4px 0 2px}
+  .coop-wait-line{margin:2px 0}
+  .coop-wait-actions{margin-top:4px;box-shadow:0 -4px 0 var(--c-lilas)}
+  /* "Chamar a turma" becomes the paper-plane sticker beside the room code (one row less); the label stays for screen
+     readers and shows as a note centred under the code row while it says "Copiado!". */
+  .coop-wait-code{position:relative;flex-wrap:nowrap}
+  .coop-wait .coop-wait-share{position:static;flex:none;width:44px;min-height:44px;height:44px;padding:0;display:grid;place-items:center}
+  .coop-wait-share-icon{display:block}
+  /* A filter or transform (hover glow, press) would make the button the note's containing block: off while it talks. */
+  .coop-wait .coop-wait-share.is-saying{filter:none;transform:none}
+  .coop-wait-share-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .coop-wait-share.is-saying .coop-wait-share-text{z-index:2;pointer-events:none;top:calc(100% + 6px);left:0;right:0;width:fit-content;max-width:100%;height:auto;margin:0 auto;clip:auto;overflow:visible;white-space:normal;text-align:center;box-sizing:border-box;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel-claro);color:var(--c-breu);font-size:var(--t-13)}
+}

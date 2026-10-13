@@ -310,7 +310,8 @@ test('review F1: a welcome held for the city keeps the socket alive and the seat
     ws.push(new ArrayBuffer(4));
     assert.deepEqual(ws.sent.slice(before).map(m=>m.t),['ping']);
     // The socket dies mid-download: the retry joins with the token (same seat, no ghost).
-    ws.close(1006);await sleep(700);
+    // The retry goes after 500 ms ±25% (3g-rede-sem-teleporte jitter): waited for, not timed.
+    ws.close(1006);for(let i=0;i<100&&FakeSocket.all.at(-1)===ws;i++)await sleep(20);
     const ws2=FakeSocket.all.at(-1)!;
     assert.notEqual(ws2,ws);
     assert.equal(ws2.sent[0].t,'join');assert.equal(ws2.sent[0].token,'tok2');
@@ -364,7 +365,8 @@ test('{t:"map"} to the city: frames wait for the download, the terrain is swappe
   assert.deepEqual(client.mapLoad,{ref:CITY_REF,progress:.4});
   assert.equal(roomMapId(client),'cidade-nevada');
   assert.equal(client.run?.members[0].ready,true,'the run after the switch waits too');
-  release();await sleep(200);
+  // The decode is real work (the city asset): waited for, not timed (a busy machine running the suite in parallel).
+  release();for(let i=0;i<150&&frames.length<3;i++)await sleep(20);
   assert.deepEqual(frames,[INFINITO_WORLD.signature,CITY_REF.hash,CITY_REF.hash]);
   assert.equal(client.terrain.signature,CITY_REF.hash);assert.deepEqual(client.map,CITY_REF);
   assert.equal(client.mapLoad,undefined);assert.equal(client.mapSwitches,1);assert.deepEqual(seen,['cidade-nevada']);

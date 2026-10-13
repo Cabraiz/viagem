@@ -18,7 +18,7 @@ import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
-import {DEFENSES,phaseOf,type DefenseState,type TowerResult} from '../src/sim/index.ts';
+import {DEFENSES,RAIL,phaseOf,type DefenseState,type TowerResult} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
@@ -310,7 +310,15 @@ export class Simulation {
     }
     // torres-fio: the tower defenses (a ruin stays, hp 0, until a new root is built on its site).
     for(const d of this.defenses())out.push(defenseView(d,this.world.tick));
+    // trilho-no-snapshot: the Gustavão's rail once laid (kind 'linha-ferrea', on the plan's rail spot; its building phase).
+    const rail=this.railView();if(rail)out.push(rail);
     return out;
+  }
+  /** The laid rail as a structure (the plan's rail id), or undefined while there is none. */
+  railView():StructureView|undefined{
+    const st=this.systems.stonewards,laid=st.state.defenses?.rail,site=st.plan.rail;
+    if(!laid||!site)return undefined;
+    return {id:site.id,kind:RAIL.id,x:site.x,y:site.y,hp:1,maxHp:1,phase:phaseOf({hp:1,maxHp:1,startTick:laid.startTick,readyTick:laid.readyTick},this.world.tick)};
   }
   /** The run's tower defenses (none until the first build). */
   defenses():readonly DefenseState[]{return this.systems.stonewards.state.defenses?.list??[];}

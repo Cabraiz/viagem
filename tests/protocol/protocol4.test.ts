@@ -1067,11 +1067,11 @@ function defenses(tick:number):StructureView[]{
     tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1)}));
 }
 
-test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; the old structures (wall, chinelo) cost the same as before',()=>{
+test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; a field that goes away is gone on the phone too',()=>{
   assert.equal(PROTOCOL_VERSION,11);
   for(const s of ['vigia-do-predio','gustavao','obra-1','pronta','ruina','A','C'])assert.ok(DICT.includes(s),s);
   assert.ok(DICT.length<255,'255 is the inline escape');
-  const v=busyWorld(new Rng(2),1).view,plain=new FrameEncoder().encode(v).length;
+  const v=busyWorld(new Rng(2),1).view;
   const withDefs={...v,structures:[...v.structures,...defenses(0)]};
   const r=new FrameDecoder().decode(new FrameEncoder().encode(withDefs));assert.ok(r.ok);
   const back=r.view.structures.filter(s=>s.kind!=='muralha');
@@ -1082,7 +1082,13 @@ test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; the old 
     assert.ok(Math.abs(s.aim!-want.aim!)<=1/255,`aim ${s.aim} vs ${want.aim}`);
   }
   assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.tier,undefined,'the wall has none of the new fields');
-  assert.equal(new FrameEncoder().encode(v).length,plain);
+  // Present, then absent (here a ruin loses its aim and branch): the delta clears them on the phone.
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const first=dec.decode(enc.encode(withDefs));assert.ok(first.ok);enc.ack(first.seq,first.ack.event);
+  const gone={...withDefs,tick:withDefs.tick+2,structures:withDefs.structures.map(x=>x.kind==='holofote'?{...x,hp:0,phase:'ruina',aim:undefined,branch:undefined}:x)};
+  const second=dec.decode(enc.encode(gone));assert.ok(second.ok);
+  const ruin=second.view.structures.find(x=>x.kind==='holofote')!;
+  assert.equal(ruin.phase,'ruina');assert.equal(ruin.hp,0);assert.equal(ruin.aim,undefined);assert.equal(ruin.branch,undefined);
 });
 
 test('D-009 with 12 defenses firing: 6 clients x 300 enemies stay inside the 4G budget at 10 and 20 Hz',t=>{

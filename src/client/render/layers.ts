@@ -7,12 +7,14 @@ import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '..
 import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
+import {applyEnemyArt,resetEnemyArt} from '../art/horde-art.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {deathLine,kindStyle,damageLabel,sayTag,skillBubbleLine,SKILL_BUBBLE_GAP_MS} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesOpen} from './blackout-rules.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
@@ -27,6 +29,12 @@ export interface HordeRendererOptions{
   projector:Projector;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
+  /**
+   * World px multiplier for what is authored at the endless map's size (enemy art and its shadow, bar, ring and lifts,
+   * pickups, death puffs, warnings): framing.ts CITY_VIEW_SCALE in the city, so they keep their CSS size under the
+   * city zoom (D-030). Sizes that come from world units (projectiles, telegraphs) need nothing. Default 1.
+   */
+  actorScale?:()=>number;
   reduced?:boolean;
   /** 'reduced' trims numbers, pops, stars and bubbles (settings, VGM-057). Default 'full'. */
   effects?:EffectsProfile;
@@ -58,7 +66,9 @@ interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:bool
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
-interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number}
+interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
+  /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
+  kind:TelegraphView['kind'];phase:number}
 interface NumberFx{text:Text;born:number;x:number;y:number;lift:number;jitter:number;live:boolean;target:string;total:number;crit:boolean;hostile:boolean;priority:boolean;self:boolean}
 interface PopFx{text:Text;born:number;x:number;y:number;lift:number;rotation:number}
 interface PoofFx{image:Image;born:number;x:number;y:number;lift:number;scale:number}
@@ -159,6 +169,8 @@ export const TELEGRAPH_BANDS_CSS={breu:2,papel:2,cone:3} as const;
 const TELEGRAPH_EDGE_CSS=2*TELEGRAPH_BANDS_CSS.breu+2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone;
 /** Hatch of the zone: Breu diagonals, 1,5 px CSS wide every 9 px CSS, at 18%. */
 const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
+/** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
+const DECOR_ELLIPSE_SEGMENTS=20;
 
 export class HordeRenderer{
   private scene:Phaser.Scene;
@@ -195,6 +207,8 @@ export class HordeRenderer{
   private warnings:Ring<WarningFx>;
   private now=0;
   private ui=1;
+  /** options.actorScale, read once per frame (1 on the island and the endless map). */
+  private body=1;
   private numbersThisPush=0;
   private q:Pt={x:0,y:0};
   private pushAt=0;
@@ -239,7 +253,7 @@ export class HordeRenderer{
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0}),showActor);
-    this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0}),()=>{});
+    this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0,kind:undefined,phase:0}),()=>{});
     this.numbers=new Ring<NumberFx>(()=>({text:text(DAMAGE_STYLE,95500)(),born:0,x:0,y:0,lift:0,jitter:0,live:false,target:'',total:0,crit:false,hostile:false,priority:false,self:false}),showText,CAPS.damage);
     this.pops=new Ring(()=>({text:text(popStyle('bebado'),95800)(),born:0,x:0,y:0,lift:0,rotation:0}),showText,CAPS.pops);
     this.poofs=new Ring(()=>({image:image(FX.puff)(),born:0,x:0,y:0,lift:0,scale:1}),showImage,CAPS.poofs);
@@ -279,6 +293,7 @@ export class HordeRenderer{
     this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
+    this.body=this.options.actorScale?.()??1;
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();
     this.telegraphs.forEach(this.drawTelegraph);
     this.enemies.forEach(this.drawEnemy);
@@ -302,6 +317,8 @@ export class HordeRenderer{
   }
 
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
+  get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
   setReduced(reduced:boolean){this.reduced=reduced;}
   /**
@@ -347,7 +364,7 @@ export class HordeRenderer{
       a.kind=kind;a.elite=elite;
     }
     if(used.fresh){
-      a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;
+      a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
@@ -379,7 +396,8 @@ export class HordeRenderer{
   };
   private syncTelegraph(view:TelegraphView){
     const used=this.telegraphs.use(view.id),t=used.item;
-    if(used.fresh)t.start=Math.min(this.viewTick,view.fireTick-1);
+    if(used.fresh){t.start=Math.min(this.viewTick,view.fireTick-1);t.phase=hashPhase(view.id);}
+    t.kind=view.kind;
     t.shape=view.shape;t.x=view.x;t.y=view.y;t.radius=view.radius;t.fireTick=view.fireTick;
     const length=Math.hypot(view.dx??0,view.dy??0);
     t.dx=length>1e-6?(view.dx as number)/length:1;t.dy=length>1e-6?(view.dy as number)/length:0;
@@ -399,7 +417,7 @@ export class HordeRenderer{
           const p=this.options.locate?.(event.target);
           if(p){
             const self=!this.options.selfId||this.options.selfId()===event.target;
-            this.spawnNumber(event.target,p.x,p.y,92,event.amount,false,true,self,numberPriority(false,self,false,false),eventId);
+            this.spawnNumber(event.target,p.x,p.y,92*this.body,event.amount,false,true,self,numberPriority(false,self,false,false),eventId);
           }
         }
         break;
@@ -450,21 +468,21 @@ export class HordeRenderer{
     paint(fx.text,fx.hostile?HURT_STYLE:fx.crit?CRIT_STYLE:DAMAGE_STYLE,fx.hostile?`-${damageLabel(fx.total)}`:damageLabel(fx.total,fx.crit));
   }
   private spawnDeath(kind:string,id:string,x:number,y:number){
-    const k=enemyKind(kind),phase=hashPhase(id),lift=ENEMY_ART[k].height*.35;
+    const k=enemyKind(kind),phase=hashPhase(id),body=this.body,lift=ENEMY_ART[k].height*.35*body;
     const puff=this.poofs.spawn();
-    puff.born=this.now;puff.x=x;puff.y=y;puff.lift=lift;puff.scale=k==='chefe'?2.4:1;
+    puff.born=this.now;puff.x=x;puff.y=y;puff.lift=lift;puff.scale=(k==='chefe'?2.4:1)*body;
     puff.image.setTint(kindStyle(kind).tint);
     const starCount=this.fx.starsPerKill;
     for(let i=0;i<starCount;i++){
       const star=this.stars.spawn(),angle=(i/starCount+phase)*TAU,speed=170+60*((i*7+phase*10)%3)/3;
       star.born=this.now;star.x=x;star.y=y;star.lift=lift;
-      star.vx=Math.cos(angle)*speed;star.vy=Math.sin(angle)*speed*.8-90;star.spin=(i%2?1:-1)*(4+phase*4);
+      star.vx=Math.cos(angle)*speed*body;star.vy=(Math.sin(angle)*speed*.8-90)*body;star.spin=(i%2?1:-1)*(4+phase*4);
       star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
     }
     // The death joke of a boss or an elite always shows (recycling the oldest pop); plain kills respect the budget.
     if(!admitPop(this.pops.active,this.fx.pops,k==='chefe'||!!this.enemies.get(id)?.elite))return;
     const pop=this.pops.spawn();
-    pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45;pop.rotation=(phase-.5)*.36;
+    pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45*body;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
   }
   private spawnBubble(enemy:string,line:string){
@@ -474,7 +492,7 @@ export class HordeRenderer{
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
     b.text.setDepth(96000);
-    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16:110;
+    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16*this.body:110*this.body;
     paint(b.text,BUBBLE_STYLE,line);
   }
   /**
@@ -506,31 +524,33 @@ export class HordeRenderer{
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
   private drawEnemy=(a:EnemyActor)=>{
-    const f=this.frac,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1;
+    const f=this.frac,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.body;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
-    let lift=art.hover*size,dx=0;
+    let lift=art.hover*size*body,dx=0;
     let sway=0;
     if(a.kind==='pombos'&&!this.reduced){
-      lift+=Math.sin(now*.011+a.phase*TAU)*6;
-      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10; // zig-zag flap
+      lift+=Math.sin(now*.011+a.phase*TAU)*6*body;
+      dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10*body; // zig-zag flap
     }else if(a.kind==='bebado'&&!this.reduced)sway=Math.sin(now*.004+a.phase*TAU)*.09; // staggering (cambaleando)
     if(!Number.isNaN(a.screenX)&&Math.abs(q.x-a.screenX)>.2)a.flip=q.x<a.screenX;
     a.screenX=q.x;
     const s=squash(now,a.phase,a.moving,this.reduced,this.scale2);
     let sx=s.sx,sy=s.sy,rotation=sway;
     if(a.boss&&!this.reduced){const w=Math.sin(now*.0032+a.phase*TAU);sx*=1+.035*w;sy*=1-.03*w;rotation=w*.035;}
-    a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx,sy).setRotation(rotation).setFlipX(a.flip);
+    a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx*body,sy*body).setRotation(rotation).setFlipX(a.flip);
     const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
     if(flashing!==a.flashing){a.flashing=flashing;if(flashing)a.image.setTintFill(0xffffff);else a.image.clearTint();}
-    const shadow=art.width*size*(a.kind==='pombos'?.45:.66);
+    // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
+    applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body);
+    const shadow=art.width*size*(a.kind==='pombos'?.45:.66)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
-    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8);
+    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8*body);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size);
   };
@@ -543,7 +563,7 @@ export class HordeRenderer{
     const v=this.scene.cameras.main.worldView;
     if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
     // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
-    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size;
+    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size*this.body;
     const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;
     const open=eyesOpen(this.now,a.phase,this.reduced);
     const me=this.options.selfId?.(),hero=me?this.options.locate?.(me):undefined;
@@ -557,10 +577,11 @@ export class HordeRenderer{
       g.fillStyle(PALETTE.breu,alpha).fillCircle(ex+lx,head+ly,EYES_CSS.pupil*c);
     }
   }
-  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1);}
+  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*this.body;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
-    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=a.elite&&!a.boss?Math.sqrt(this.ui):1; // bars stay proportional to the body, or they hide the horde
+    // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).
+    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=(a.elite&&!a.boss?Math.sqrt(this.ui/this.body):1)*this.body;
     const w=(a.boss?170:a.elite?54:40)*u,h=(a.boss?13:7)*u,border=3*u;
     const fill=a.boss?0xb48cff:ratio>.5?0x8fe39a:ratio>.25?0xffd36e:0xff8080;
     const key=a.elite&&!a.boss?FX.barElite:FX.bar;
@@ -572,8 +593,9 @@ export class HordeRenderer{
   }
   private drawRing(x:number,y:number,width:number){
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.008);
-    this.ground.lineStyle(5,0x2b2233,.45).strokeEllipse(x,y,width*pulse+4,width*.46*pulse+2);
-    this.ground.lineStyle(3,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
+    const b=this.body;
+    this.ground.lineStyle(5*b,0x2b2233,.45).strokeEllipse(x,y,width*pulse+4*b,width*.46*pulse+2*b);
+    this.ground.lineStyle(3*b,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
   }
   private drawPickup=(a:PickupActor)=>{
     const f=this.frac,now=this.now,reduced=this.reduced;
@@ -601,8 +623,9 @@ export class HordeRenderer{
       if(a.coverX===undefined||a.coverVersion!==version||Math.abs(q.x-a.coverX)>4||Math.abs(q.y-(a.coverY??q.y))>4){a.coverX=q.x;a.coverY=q.y;a.coverVersion=version;a.covered=this.options.canopyCovers(q,depth);}
       lifted=!!a.covered;
     }
-    a.image.setPosition(q.x,q.y+y).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale).setRotation(rotation);
-    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60);
+    const body=this.body;
+    a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body).setRotation(rotation);
+    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor)=>{
@@ -610,33 +633,66 @@ export class HordeRenderer{
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
     const q=this.project(this.at),depth=this.depth(this.at);
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
-    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
+    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT*this.body).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
     a.shadow.setPosition(q.x,q.y).setScale(a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
   };
   private drawTelegraph=(t:TelegraphState)=>{
     const g=this.ground,u=telegraphPulse(this.nowTick,t.fireTick,this.reduced,t.start),blink=telegraphBlink(this.now,u,this.reduced);
     let n=this.outline(t,1);
-    const c=PALETTE;
-    g.fillStyle(c.cone,.14+.14*u).fillPoints(this.pts,true,true,n);
+    const b=this.decorFrame.bounds;b.minX=b.minY=Infinity;b.maxX=b.maxY=-Infinity;
+    for(let i=0;i<n;i++){const p=this.pts[i];if(p.x<b.minX)b.minX=p.x;if(p.x>b.maxX)b.maxX=p.x;if(p.y<b.minY)b.minY=p.y;if(p.y>b.maxY)b.maxY=p.y;}
+    const c=PALETTE,look=telegraphLook(t.kind),fill=look.fill??c.cone,fa=look.fillAlpha;
+    g.fillStyle(fill,Math.min(1,(.14+.14*u)*fa)).fillPoints(this.pts,true,true,n);
     n=this.outline(t,Math.max(.06,u));
-    g.fillStyle(c.cone,.24+.3*u).fillPoints(this.pts,true,true,n);
+    g.fillStyle(fill,Math.min(1,(.24+.3*u)*fa)).fillPoints(this.pts,true,true,n);
+    // D-036: plan the hazard's own drawing (gas, bottle, flames, splat, burst, stamp, charge arrow); it goes on the top
+    // layer (never under a critter), the zone part under the danger edge and what is in the air over it.
+    const css=this.css(),f=this.decorFrame;
+    f.u=u;f.ticksLeft=t.fireTick-this.nowTick;f.now=this.now;f.reduced=this.reduced;f.phase=t.phase;f.css=css;
+    const ops=planDecor(t,f,this.projectTo,this.decor);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
     // Line widths follow the UI scale (≥ 1): under ~0.55 zoom (the old whole-island view) a fixed 8px world line got ~2px.
     // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
     const top=this.top,w=this.ui;
-    top.fillStyle(c.cone,.08+.1*u).fillPoints(this.pts,true,true,n);
+    top.fillStyle(fill,.08+.1*u).fillPoints(this.pts,true,true,n);
     // Three hard bands on the zone's edge (Laranja Cone = danger only): Breu outside, Papel, Cone core. Breu holds on
     // sand, grass and water; Papel holds on the dark trees and the horde; the blink stays on the Papel band only.
     // Hatch over the fill, so the zone reads by shape too (Cone on the grass is close in luminance; deuteranopia).
-    const css=this.css(),hatch=hatchSegments(this.pts,n,HATCH_CSS.spacing*css,this.hatch,this.hatchXs);
+    const hatch=hatchSegments(this.pts,n,HATCH_CSS.spacing*css,this.hatch,this.hatchXs);
     if(hatch){top.lineStyle(HATCH_CSS.width*css,c.breu,HATCH_CSS.alpha);for(let i=0;i<hatch;i++){const o=i*4;top.lineBetween(this.hatch[o],this.hatch[o+1],this.hatch[o+2],this.hatch[o+3]);}}
+    if(ops)this.replayDecor(top,LAYER_ZONE);
     // Bands in CSS px (never thinner on screen when the camera zooms in); never below the old UI-scaled width either.
     const want=Math.max(TELEGRAPH_EDGE_CSS*css,TELEGRAPH_STROKE*w)/2,half=insetPolygon(this.pts,n,want,this.ptsIn),k=2*half/TELEGRAPH_EDGE_CSS;
     top.lineStyle(2*half,c.breu,.95).strokePoints(this.ptsIn,true,true,n);
     top.lineStyle(k*(2*TELEGRAPH_BANDS_CSS.papel+TELEGRAPH_BANDS_CSS.cone),c.papel,.55+.45*blink).strokePoints(this.ptsIn,true,true,n);
     top.lineStyle(k*TELEGRAPH_BANDS_CSS.cone,c.cone,1).strokePoints(this.ptsIn,true,true,n);
+    // What is in the air or sticks out of a small zone (bottle, flames, poop, stamp, charge arrow) goes over the edge.
+    if(ops)this.replayDecor(top,LAYER_AIR);
   };
+  /** Replays one layer of the planned decoration on its Graphics (allocation-free: scratch points only). */
+  private replayDecor(g:Phaser.GameObjects.Graphics,layer:number){
+    const d=this.decor.data,pts=this.decorPts;
+    for(let i=0;i<this.decor.count;i++){
+      const o=i*DECOR_STRIDE;if(d[o+1]!==layer)continue;
+      const color=d[o+2],alpha=d[o+3],a=o+4;
+      switch(d[o]){
+        case OP_CIRCLE:g.fillStyle(color,alpha).fillCircle(d[a],d[a+1],d[a+2]);break;
+        case OP_LINE:g.lineStyle(d[a+4],color,alpha).lineBetween(d[a],d[a+1],d[a+2],d[a+3]);break;
+        case OP_ELLIPSE:case OP_RING:{
+          for(let k=0;k<DECOR_ELLIPSE_SEGMENTS;k++){const an=k/DECOR_ELLIPSE_SEGMENTS*TAU,p=pts[k];p.x=d[a]+Math.cos(an)*d[a+2];p.y=d[a+1]+Math.sin(an)*d[a+3];}
+          if(d[o]===OP_ELLIPSE)g.fillStyle(color,alpha).fillPoints(pts,true,true,DECOR_ELLIPSE_SEGMENTS);
+          else g.lineStyle(d[a+4],color,alpha).strokePoints(pts,true,true,DECOR_ELLIPSE_SEGMENTS);
+          break;
+        }
+        case OP_POLY:{
+          const n=d[a];if(n<3)break;
+          for(let k=0;k<n;k++){const p=pts[k];p.x=d[a+1+k*2];p.y=d[a+2+k*2];}
+          g.fillStyle(color,alpha).fillPoints(pts,true,true,n);break;
+        }
+      }
+    }
+  }
   /** Projects the telegraph outline (grown by k) into the scratch points; returns the point count. Same zone the server damages. */
   private outline(t:TelegraphState,k:number){return telegraphOutline(t,k,this.putWorld);}
   private putWorld=(i:number,x:number,y:number)=>{const q=this.options.projector.project(x,y,this.q),p=this.pts[i];p.x=q.x;p.y=q.y;};
@@ -648,13 +704,13 @@ export class HordeRenderer{
     if(this.nowTick>=w.atTick||this.now-w.born>8000)return false;
     this.at.x=w.x;this.at.y=w.y;
     const q=this.project(this.at),pulse=this.reduced?1:1+.16*Math.sin((this.now-w.born)*.012);
-    const dark=this.dark>0;
-    w.image.setPosition(q.x,q.y-26).setDepth(dark?LIFTED_DEPTH+1:this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
+    const dark=this.dark>0,body=this.body;
+    w.image.setPosition(q.x,q.y-26*body).setDepth(dark?LIFTED_DEPTH+1:this.depth(this.at)+2).setScale(w.size*pulse*this.ui)
       .setAlpha(this.reduced?.9:.65+.35*Math.abs(Math.sin((this.now-w.born)*.006)));
     // Breu 2 | Cone 3 | Breu 2 px CSS at any zoom.
     const css=this.css();
-    (dark?this.lifted:this.ground).lineStyle(Math.max(7,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse)
-      .lineStyle(Math.max(3,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse,28*w.size*pulse);
+    (dark?this.lifted:this.ground).lineStyle(Math.max(7*body,7*css),PALETTE.breu,.9).strokeEllipse(q.x,q.y,64*w.size*pulse*body,28*w.size*pulse*body)
+      .lineStyle(Math.max(3*body,3*css),PALETTE.cone,1).strokeEllipse(q.x,q.y,64*w.size*pulse*body,28*w.size*pulse*body);
     return true;
   };
   private drawPoof=(p:PoofFx)=>{
@@ -671,30 +727,30 @@ export class HordeRenderer{
     const t=age/1000,k=age/STAR_MS;
     let ox:number,oy:number;
     if(this.reduced){ox=s.vx*.12;oy=s.vy*.12;}
-    else{ox=s.vx*t;oy=s.vy*t+420*t*t;}
+    else{ox=s.vx*t;oy=s.vy*t+420*this.body*t*t;}
     this.place(s.image,s.x,s.y,s.lift-oy,ox);
     this.at.x=s.x;this.at.y=s.y;
-    s.image.setDepth(this.depth(this.at)+4).setScale(.95-.5*k).setAlpha(1-k*k).setRotation(this.reduced?0:s.spin*t);
+    s.image.setDepth(this.depth(this.at)+4).setScale((.95-.5*k)*this.body).setAlpha(1-k*k).setRotation(this.reduced?0:s.spin*t);
     return true;
   };
   private drawNumber=(n:NumberFx)=>{
     const frame=damageFloat(this.now-n.born,this.textFrame);
     if(frame.done){this.retireNumber(n,false);return false;}
-    this.place(n.text,n.x,n.y,n.lift-frame.y,n.jitter);
+    this.place(n.text,n.x,n.y,n.lift-frame.y*this.body,n.jitter*this.body);
     n.text.setScale((this.reduced?1:frame.scale)*this.ui).setAlpha(frame.alpha);
     return true;
   };
   private drawPop=(p:PopFx)=>{
     const age=this.now-p.born;if(age>=POP_TEXT_MS)return false;
     const frame=popText(age,this.reduced,this.textFrame);
-    this.place(p.text,p.x,p.y,p.lift-frame.y);
+    this.place(p.text,p.x,p.y,p.lift-frame.y*this.body);
     p.text.setScale(frame.scale*(1+(this.ui-1)*.6)).setAlpha(frame.alpha).setRotation(p.rotation);
     return true;
   };
   private drawBubble=(b:BubbleFx)=>{
     const age=this.now-b.born;if(age>=BUBBLE_MS)return false;
     if(b.player){const p=this.options.locate?.(b.player);if(p){b.x=p.x;b.y=p.y;}b.lift=PLAYER_BUBBLE_LIFT*this.ui;}
-    else{const enemy=this.enemies.get(b.enemy);if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18;}}
+    else{const enemy=this.enemies.get(b.enemy);if(enemy){b.x=enemy.x;b.y=enemy.y;b.lift=this.barLift(enemy)+18*this.body;}}
     if(Number.isNaN(b.x)){b.text.setVisible(false);return true;}
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;
@@ -711,6 +767,11 @@ export class HordeRenderer{
   /** World px per CSS px at the current camera zoom: hard edges keep a minimum width on screen (onda 4: ≥ 1,5 px CSS). */
   private css(){return 1/Math.max(.05,this.scene.cameras.main.zoom);}
   private hatch=new Float64Array(HATCH_MAX_LINES*4);
+  /** D-036 decoration: one op buffer, one frame object and one scratch polygon, reused by every telegraph. */
+  private decor=new DecorBuffer();
+  private decorFrame:DecorFrame={u:0,ticksLeft:0,now:0,reduced:false,phase:0,css:1,bounds:{minX:0,minY:0,maxX:-1,maxY:-1}};
+  private decorPts:Pt[]=Array.from({length:Math.max(DECOR_ELLIPSE_SEGMENTS,POLY_MAX)},()=>({x:0,y:0}));
+  private projectTo=(x:number,y:number,out:Pt)=>this.options.projector.project(x,y,out);
   private hatchXs=new Float64Array(OUTLINE_MAX_POINTS);
   private project(p:Pt){return this.options.projector.project(p.x,p.y,this.q);}
   private depth(p:Pt){return this.options.projector.depth(p.x,p.y);}

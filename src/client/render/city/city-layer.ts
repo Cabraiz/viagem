@@ -141,7 +141,18 @@ export class CityLayer {
     const index=cy*width+cx;
     let near=this.cellColumns.get(index);
     if(!near){near=this.gatherColumns(cx,cy,view);this.cellColumns.set(index,near);}
-    return this.depthOf(actorDepth(x,y,z,view,near,this.pivot));
+    return this.depthOf(actorDepth(x,y,z,view,near,this.pivot,this.actorBox));
+  }
+
+  /**
+   * Screen box of a standing figure (the scene's hero sprite): HERO_SCREEN at the endless map's size, times the figure
+   * scale the scene draws with in the city (framing.ts CITY_VIEW_SCALE, cidade-04). Used by actorDepth and the fade.
+   */
+  private actorBox:{w:number;h:number}={...HERO_SCREEN};
+  setActorScale(k:number){
+    if(!(k>0))return;
+    this.actorBox={w:HERO_SCREEN.w*k,h:HERO_SCREEN.h*k};
+    this.cellColumns.clear();
   }
 
   /**
@@ -155,7 +166,7 @@ export class CityLayer {
       const wx=origin.x+(cx+i)*cell,wy=origin.y+(cy+j)*cell,p=project(wx,wy,groundZ(this.asset,wx,wy),view,this.pivot);
       x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);
     }
-    const m=4;x0-=HERO_SCREEN.w/2+m;x1+=HERO_SCREEN.w/2+m;y0-=HERO_SCREEN.h+m;y1+=m;
+    const m=4,box=this.actorBox;x0-=box.w/2+m;x1+=box.w/2+m;y0-=box.h+m;y1+=m;
     const i0=Math.max(0,cx-ACTOR_REACH_CELLS),i1=Math.min(width-1,cx+ACTOR_REACH_CELLS);
     const j0=Math.max(0,cy-ACTOR_REACH_CELLS),j1=Math.min(height-1,cy+ACTOR_REACH_CELLS);
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
@@ -450,9 +461,9 @@ export class CityLayer {
       if(!block||block.kind!=='building')continue;
       const group=this.groupOf(id),occ=this.occluder(block,bases.get(id)??0,view),held=byGroup.get(group);
       if(!held)byGroup.set(group,{...occ,id:group});
-      else if(hero&&!covers(held,hero,view,this.pivot)&&covers(occ,hero,view,this.pivot))byGroup.set(group,{...occ,id:group});
+      else if(hero&&!covers(held,hero,view,this.pivot,this.actorBox)&&covers(occ,hero,view,this.pivot,this.actorBox))byGroup.set(group,{...occ,id:group});
     }
-    const alphas=this.fader.update([...byGroup.values()],hero,view,frame.dtMs,this.pivot);
+    const alphas=this.fader.update([...byGroup.values()],hero,view,frame.dtMs,this.pivot,this.actorBox);
     for(const [id,{bands,sprites}] of members){
       const alpha=alphas.get(this.groupOf(id))??1;
       for(const b of bands){b.body.setAlpha(alpha);b.outline.setAlpha(outlineAlpha(alpha));}

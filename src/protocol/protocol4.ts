@@ -4,7 +4,7 @@
  * The Room speaks it since VGM-042b (ROOM_PROTOCOL 4): binary frames out, JSON control messages both ways.
  *
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
- *   u8 magic 0x56 'V' | u8 version 5 | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
+ *   u8 magic 0x56 'V' | u8 version (PROTOCOL_VERSION) | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
@@ -29,7 +29,8 @@
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
-import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/index.ts';
+import type {TelegraphKind} from '../contract/index.ts';
+import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
@@ -38,10 +39,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,visibleOffset} from '../contract/ind
  * VGM-053B: the zueira events (`happening`: boleto rain, flash sale, blackout) and the round's last critter
  * (`last-bicho`, the kill-cam); a 6 decoder would skip them silently (no blackout, no kill-cam), so the version moves.
  * 8 since D-034: the world kind 'cidade' (Cidade Nevada, seed 0 + asset sha256); a 7 decoder would refuse the frame's
- * world byte, so it must ask to update instead.
+ * world byte, so it must ask to update instead. 9 since D-036: the player's slow/slip state (prediction), the telegraph
+ * kind and the D-033 cast in the DICT; an 8 decoder would refuse the player field mask and read the new dictionary
+ * indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=8;
+export const PROTOCOL_VERSION=9;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -75,6 +78,10 @@ export const DICT:readonly string[]=[
   'torre-chinelo','reparo','gambiarra','no-coco','no-pedra',
   // Zueira events (protocol 7, VGM-053B); the boleto marker on rain pickups is 'boleto' (already above)
   'boletos','promo','apagao',
+  // D-036 (protocol 9): the D-033 cast ('pombos' is also the ShameKey), the agiota's hostile boleto and the telegraph
+  // kinds (TELEGRAPH_KINDS; 'coco' is above). Each was 1 + 1 + its UTF-8 bytes inline in protocol 8.
+  'bebado','anao-molotov','pombos','agiota','boleto-juros',
+  'arroto','molotov','fogo','explosao','pancada','investida','varredura','carimbo',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -205,6 +212,25 @@ function optional<V>(c:Codec<V>):Codec<V|undefined>{
     eq:(a,b)=>a===undefined||b===undefined?a===b:c.eq(a,b),
   };
 }
+/** D-036 slide direction (a unit vector): both axes at the velocity scale, like a telegraph's dx/dy. */
+const slipDir=optional<{x:number;y:number}>({
+  write:(w,v,f)=>{vel.write(w,v.x,f);vel.write(w,v.y,f);},
+  read:(r,f)=>({x:vel.read(r,f),y:vel.read(r,f)}),
+  norm:v=>({x:vel.norm(v.x),y:vel.norm(v.y)}),
+  eq:(a,b)=>a.x===b.x&&a.y===b.y,
+});
+const TELEGRAPH_KIND_SET=new Set<string>(TELEGRAPH_KINDS);
+/**
+ * D-036 telegraph kind: one dictionary byte, '' (index 0) for none. Strict like the happening kinds: a kind this client
+ * does not know rejects the frame (only a newer room sends one, and that is a version bump). The server side maps a
+ * kind outside TELEGRAPH_KINDS to none, so it never sends one.
+ */
+const telegraphKind:Codec<TelegraphKind|undefined>={
+  write:(w,v)=>w.str(v??''),
+  read:r=>{const s=r.str();if(s==='')return undefined;if(!TELEGRAPH_KIND_SET.has(s))throw new FrameError('bad telegraph kind');return s as TelegraphKind;},
+  norm:v=>v!==undefined&&TELEGRAPH_KIND_SET.has(v)?v:undefined,
+  eq:same,
+};
 type Item={id:string;level:number};
 const items:Codec<Item[]>={
   write:(w,v)=>{w.uvar(v.length);for(const it of v){w.str(it.id);w.uvar(it.level);}},
@@ -252,6 +278,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
     online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
     name:c(str),classId:c(str),
+    // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
+    slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -260,6 +288,7 @@ const SCHEMAS:Record<SectionKey,Schema>={
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
+    kind:c(telegraphKind),
   }},
   structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.

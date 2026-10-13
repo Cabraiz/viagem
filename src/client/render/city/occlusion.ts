@@ -129,13 +129,13 @@ export function outlineAlpha(blockAlpha:number):number{
  */
 export class OcclusionFader {
   private state:Map<string,number>=new Map();
-  update(occluders:readonly Occluder[],hero:{x:number;y:number;z:number}|undefined,view:number,dtMs:number,pivot:Pt=VIEW_PIVOT):ReadonlyMap<string,number>{
+  update(occluders:readonly Occluder[],hero:{x:number;y:number;z:number}|undefined,view:number,dtMs:number,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):ReadonlyMap<string,number>{
     const byId=new Map<string,Occluder>();
     for(const o of occluders)if(!byId.has(o.id))byId.set(o.id,o);
     const next=new Map<string,number>();
     for(const id of [...byId.keys()].sort((a,b)=>a<b?-1:a>b?1:0)){
       const o=byId.get(id)!,cur=this.state.get(id)??1;
-      const target=o.kind==='building'&&hero&&covers(o,hero,view,pivot)?FADE_ALPHA:1;
+      const target=o.kind==='building'&&hero&&covers(o,hero,view,pivot,size)?FADE_ALPHA:1;
       if(cur>=1&&target>=1)continue;
       const a=stepAlpha(cur,target,dtMs);
       if(a<1)next.set(id,a);

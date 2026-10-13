@@ -1,0 +1,170 @@
+/**
+ * Build sites ("pontos de obra", D-041): where the team may raise a defence between rounds, around the base — the
+ * Cidade Nevada plaza and the endless world's camp — plus the one stretch of rail the Gustavão needs (12×4 cells on
+ * the city's west avenue). Data plus a pure validator; the sim (torres-sim) builds on them, nothing here draws.
+ *
+ * A site is the centre of its largest footprint: a build of size s (1..maxSize) covers the s·cell square centred on
+ * it. `cell` is the city's asset cell (0.88 u) and, in the endless world, the same drawn size (0.88 / CITY_VIEW_SCALE).
+ */
+import {RADIUS,walkable,maskSurface,worldBase,worldSpawn} from './world.ts';
+import {FlowField,type FlowGrid} from './flowfield.ts';
+import {BASE_CLEAR} from './terrain/chunks.ts';
+import type {TerrainField} from './terrain/field.ts';
+import type {CityTerrain} from './city/terrain.ts';
+import type {Point} from '../contract/index.ts';
+
+export type BuildSize=1|2|3;
+export interface BuildSite {readonly id:string;readonly x:number;readonly y:number;readonly maxSize:BuildSize}
+/** The Gustavão's rail: `length` cells along `axis`, `width` cells across, centred on (x,y). */
+export interface RailSite {readonly id:'trilho';readonly x:number;readonly y:number;readonly axis:'x'|'y';readonly length:number;readonly width:number}
+export interface BuildPlan {readonly cell:number;readonly sites:readonly BuildSite[];readonly rail:RailSite|null}
+export interface Rect {x:number;y:number;w:number;h:number} // top-left corner and size, world units
+export interface BuildProblem {readonly id:string;readonly reason:string}
+
+export const CITY_BUILD_CELL=.88;
+/** 0.88 u drawn at the endless world's scale (rules/scale.ts CITY_VIEW_SCALE ≈ 0.5445): same on-screen size. */
+export const ENDLESS_BUILD_CELL=1.616;
+export const MIN_SITES=12,MAX_SITES=16;
+/** No footprint within this of the wall: the forge is worked from beside it and the bots come home to it. */
+export const BASE_KEEP_OUT=3;
+/** No footprint within this of a city mouth: the barricade seal grows up to 4 u (sim/stonewards/barricades.ts). */
+export const MOUTH_KEEP_OUT=4;
+/** No footprint within this of the players' spawn point. */
+export const SPAWN_KEEP_OUT=1.5;
+
+// City sites as asset cells [cx, cy, maxSize], centred on the cell centre: six north and six south of the plaza
+// block, two west and two east of it; the four avenue corridors into the mouths stay open (see the debug print).
+const CITY_CELLS:readonly (readonly [number,number,BuildSize])[]=[
+  [75,84,2],[81,84,3],[87,84,3],[103,84,3],[109,84,3],[115,84,2],
+  [78,93,2],[115,93,2],
+  [78,104,2],[115,104,2],
+  [75,111,2],[81,111,3],[87,111,3],[107,111,3],[113,111,3],[118,112,2],
+];
+/** The rail: cells x 63..74, y 94..97 on the west avenue; its route (row 98) and rows 98..102 stay free. */
+const CITY_RAIL={x0:63,y0:94,length:12,width:4};
+
+// Endless camp, relative to the base: per quadrant a 2×2 on the diagonal and two 1×1 flanking it. Every corner is
+// within 8.02 u of the base, inside the ground no seed can block (obstacle centres beyond BASE_CLEAR = 9, radius ≤ 0.62,
+// hero 0.22 → 8.16 u); the four cardinal lanes, the spawn's included, stay ≥ 3.3 u wide.
+const ENDLESS_SITES:readonly (readonly [number,number,BuildSize])[]=(()=>{
+  const out:[number,number,BuildSize][]=[];
+  for(const q of [45,135,225,315]){
+    const d=q*Math.PI/180;out.push([5.6*Math.cos(d),5.6*Math.sin(d),2]);
+    for(const f of [-24,24]){const a=(q+f)*Math.PI/180;out.push([6.95*Math.cos(a),6.95*Math.sin(a),1]);}
+  }
+  return out;
+})();
+
+const round3=(v:number)=>Math.round(v*1000)/1000;
+const freezeSites=(rows:readonly (readonly [number,number,BuildSize])[],at:(a:number,b:number)=>Point)=>Object.freeze(rows.map(([a,b,s],i)=>{
+  const p=at(a,b);return Object.freeze({id:`obra-${String(i+1).padStart(2,'0')}`,x:round3(p.x),y:round3(p.y),maxSize:s});
+}));
+const CITY_PLAN:BuildPlan=Object.freeze({
+  cell:CITY_BUILD_CELL,
+  sites:freezeSites(CITY_CELLS,(cx,cy)=>({x:(cx+.5)*CITY_BUILD_CELL,y:(cy+.5)*CITY_BUILD_CELL})),
+  rail:Object.freeze({id:'trilho',axis:'x',length:CITY_RAIL.length,width:CITY_RAIL.width,
+    x:round3((CITY_RAIL.x0+CITY_RAIL.length/2)*CITY_BUILD_CELL),y:round3((CITY_RAIL.y0+CITY_RAIL.width/2)*CITY_BUILD_CELL)}) as RailSite,
+});
+const ISLAND_PLAN:BuildPlan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:Object.freeze([]),rail:null});
+const endlessPlans=new Map<string,BuildPlan>();
+
+/** The build sites of a world: the city's, the endless camp's (around its base), none on the island. */
+export function buildPlanFor(terrain?:TerrainField):BuildPlan{
+  if(maskSurface(terrain))return CITY_PLAN;
+  if(!terrain?.chunks)return ISLAND_PLAN;
+  const base=worldBase(terrain),key=`${base.x},${base.y}`;
+  let plan=endlessPlans.get(key);
+  if(!plan){
+    plan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:freezeSites(ENDLESS_SITES,(dx,dy)=>({x:base.x+dx,y:base.y+dy})),rail:null});
+    endlessPlans.set(key,plan);
+  }
+  return plan;
+}
+
+/** The square a build of `size` covers on a site. */
+export function footprint(site:{x:number;y:number},size:BuildSize,cell:number):Rect{
+  const side=size*cell;return {x:site.x-side/2,y:site.y-side/2,w:side,h:side};
+}
+export function railRect(rail:RailSite,cell:number):Rect{
+  const w=(rail.axis==='x'?rail.length:rail.width)*cell,h=(rail.axis==='x'?rail.width:rail.length)*cell;
+  return {x:rail.x-w/2,y:rail.y-h/2,w,h};
+}
+/** Distance from a point to a rectangle (0 inside). */
+export function rectDistance(r:Rect,p:Point):number{
+  const dx=Math.max(r.x-p.x,0,p.x-(r.x+r.w)),dy=Math.max(r.y-p.y,0,p.y-(r.y+r.h));
+  return Math.hypot(dx,dy);
+}
+const overlaps=(a:Rect,b:Rect)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+const inside=(r:Rect,x:number,y:number)=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h;
+
+/** True when every point of the rectangle (sampled at `step`, edges included) is ground a hero may stand on. */
+export function rectFits(r:Rect,terrain?:TerrainField,step=.2):boolean{
+  const nx=Math.max(1,Math.ceil(r.w/step)),ny=Math.max(1,Math.ceil(r.h/step)),p={x:0,y:0};
+  for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){
+    p.x=r.x+r.w*i/nx;p.y=r.y+r.h*j/ny;
+    if(!walkable(p,terrain))return false;
+  }
+  return true;
+}
+
+/**
+ * Everything wrong with a plan on its terrain (empty = valid). Each site at its largest footprint and the rail:
+ * stand on open ground, overlap nothing else, keep clear of the wall, the mouths and the spawn; with all of them
+ * built, the base is still reachable from every mouth/spawn and every site from the base (flow field, hero rule).
+ */
+export function validateBuildPlan(plan:BuildPlan,terrain?:TerrainField):BuildProblem[]{
+  const problems:BuildProblem[]=[],bad=(id:string,reason:string)=>problems.push({id,reason});
+  const city=maskSurface(terrain) as unknown as CityTerrain|undefined;
+  const base=worldBase(terrain),spawn=worldSpawn(terrain);
+  const mouths:Point[]=city?Object.values(city.asset.points.bocas):[];
+  const shapes:{id:string;rect:Rect}[]=plan.sites.map(s=>({id:s.id,rect:footprint(s,s.maxSize,plan.cell)}));
+  if(plan.rail)shapes.push({id:plan.rail.id,rect:railRect(plan.rail,plan.cell)});
+  if(plan.sites.length&&(plan.sites.length<MIN_SITES||plan.sites.length>MAX_SITES))bad('plano',`${plan.sites.length} pontos (quero ${MIN_SITES}..${MAX_SITES})`);
+  const ids=new Set<string>();
+  for(const s of plan.sites){
+    if(ids.has(s.id))bad(s.id,'id repetido');ids.add(s.id);
+    if(!(s.maxSize===1||s.maxSize===2||s.maxSize===3))bad(s.id,`tamanho ${s.maxSize}`);
+  }
+  shapes.forEach(({id,rect},i)=>{
+    if(!rectFits(rect,terrain))bad(id,'não cabe no chão livre');
+    if(rectDistance(rect,base)<BASE_KEEP_OUT)bad(id,'cobre a muralha/forja');
+    if(rectDistance(rect,spawn)<SPAWN_KEEP_OUT)bad(id,'cobre o ponto de nascer');
+    for(const m of mouths)if(rectDistance(rect,m)<MOUTH_KEEP_OUT)bad(id,'cobre uma boca/barricada');
+    for(let j=i+1;j<shapes.length;j++)if(overlaps(rect,shapes[j].rect))bad(id,`sobrepõe ${shapes[j].id}`);
+  });
+  if(!shapes.length)return problems;
+  // Reachability with everything built, on a grid around the base (city: the asset grid; endless: 0.5 u cells).
+  const blocked=(x:number,y:number)=>shapes.some(s=>inside(s.rect,x,y));
+  let grid:FlowGrid;
+  if(city){
+    const cs=city.asset.unitsPerCell;
+    grid={width:city.asset.cells.w,height:city.asset.cells.h,cellSize:cs,
+      walkable:(cx,cy)=>{const x=(cx+.5)*cs,y=(cy+.5)*cs;return !blocked(x,y)&&city.clearDisc(x,y,RADIUS);}};
+  }else{
+    const half=24,cs=.5,ox=base.x-half,oy=base.y-half;
+    grid={width:2*half/cs,height:2*half/cs,cellSize:cs,originX:ox,originY:oy,
+      walkable:(cx,cy)=>{const p={x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs};return !blocked(p.x,p.y)&&walkable(p,terrain);}};
+  }
+  const flow=new FlowField(grid,[base],{wallPenalty:0});
+  const from:{id:string;p:Point}[]=[{id:'nascer',p:spawn}];
+  if(city){
+    const pts=city.asset.points;
+    for(const [k,p] of Object.entries(pts.bocas))from.push({id:`boca-${k}`,p});
+    for(const k of ['N','S','L','O'] as const)from.push({id:`spawn${k}`,p:pts[`spawn${k}`]});
+  }
+  else for(const [k,a] of [['N',-90],['S',90],['L',0],['O',180]] as const){
+    const r=BASE_CLEAR+6,d=a*Math.PI/180;from.push({id:`borda-${k}`,p:{x:base.x+r*Math.cos(d),y:base.y+r*Math.sin(d)}});
+  }
+  for(const f of from)if(!flow.reachable(f.p.x,f.p.y))bad(f.id,'não chega na base com tudo construído');
+  // A site is reachable when some cell just outside its footprint is.
+  const g=grid.cellSize;
+  for(const {id,rect} of shapes){
+    let ok=false;
+    for(let t=0;t<=1&&!ok;t+=1/16){
+      for(const [x,y] of [[rect.x+rect.w*t,rect.y-g],[rect.x+rect.w*t,rect.y+rect.h+g],[rect.x-g,rect.y+rect.h*t],[rect.x+rect.w+g,rect.y+rect.h*t]])
+        if(flow.reachable(x,y)){ok=true;break;}
+    }
+    if(!ok)bad(id,'ninguém chega para construir');
+  }
+  return problems;
+}

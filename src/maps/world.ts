@@ -5,7 +5,14 @@ export type {Point};
 /** `art` (tree-catalog id) only comes on obstacles of the endless world; the island picks art in scene.ts. */
 export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock'; art?: string };
 export const SPAWN: Point = { x: 12, y: 17 };
+/** Hero walking speed (u/s) on the island and in the endless world (rules/scale.ts 'infinito' hero.speed). */
 export const SPEED = 3.1;
+/**
+ * Hero walking speed (u/s) in Cidade Nevada: the .w3x hero's 290 WC3 u/s × 0.006875 u per WC3 unit ≈ 1.99375 (D-026).
+ * maps may not import rules, so this repeats rules/scale.ts SCALE_PROFILES['cidade-nevada'].hero.speed
+ * (CIDADE_NEVADA_WC3.heroSpeed × WC3_UNIT, same expression, same double); tests/rules/scale.test.ts guards the drift.
+ */
+export const CITY_HERO_SPEED = 290 * 0.006875;
 export const RADIUS = .22;
 export const landmarks = [
   { x: 8, y: 11, name: 'Praça do Improviso', detail: 'Todo mundo começa com o que tem.', icon: '○' },
@@ -147,8 +154,17 @@ export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[]
   }
   return [];
 }
+/**
+ * The hero's walking speed (u/s) on `terrain`: CITY_HERO_SPEED in the city, SPEED on the island and in the endless world.
+ * moveDirection/moveAlong use it, so the room (sim/systems/players.ts) and the phone's prediction (prediction.ts, the
+ * scene's local walk) move a city hero the same faithful distance per tick; everything built on them (the dash in
+ * sim/skills.ts) scales with the world too.
+ */
+export function heroSpeed(terrain?:TerrainField):number{
+  return terrain?.world==='cidade'?CITY_HERO_SPEED:SPEED;
+}
 export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:TerrainField):Point {
-  let result={...position},remaining=SPEED*Math.min(.1,Math.max(0,seconds));
+  let result={...position},remaining=heroSpeed(terrain)*Math.min(.1,Math.max(0,seconds));
   while(path.length&&remaining>0){
     const to=path[0],distance=Math.hypot(to.x-result.x,to.y-result.y);
     const amount=Math.min(distance,remaining);
@@ -159,8 +175,8 @@ export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:Te
   }
   return result;
 }
-/** One walking step along `direction` (any length; normalized), sliding along walls. `speed`: world units/s (D-036 slow and slip). */
-export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField,speed=SPEED):Point {
+/** One walking step along `direction` (any length; normalized), sliding along walls. `speed`: world units/s (D-036 slow and slip); defaults to the world's hero speed (city 1.99, else 3.1). */
+export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField,speed=heroSpeed(terrain)):Point {
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return position;
   const distance=(Number.isFinite(speed)&&speed>0?speed:0)*Math.min(.1,Math.max(0,seconds));

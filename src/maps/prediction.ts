@@ -4,9 +4,9 @@
  *
  * D-036 movement effects (the bêbado's burp, the pombos' poop) are a pure function of the player's effect state and
  * the server tick, so the room and the phone step them the same way:
- * - tick < slipUntil: each step slides along `slip` at PLAYER_SLIP_SPEED (walls and sea stop it like walking), the
+ * - tick < slipUntil: each step slides along `slip` at PLAYER_SLIP_SPEED (scaled to the world's hero speed; walls and sea stop it like walking), the
  *   stick's direction is ignored; like walking, a slide needs a step (a player standing still does not slide);
- * - else tick < slowUntil: walking at SPEED × PLAYER_SLOW_MULT;
+ * - else tick < slowUntil: walking at heroSpeed(terrain) × PLAYER_SLOW_MULT;
  * - else plain walking.
  * Tick mapping of the replay: a frame of tick T carries the position after the player's step `ack` (applied on tick
  * T while walking: the room applies one step per tick), so the k-th unacknowledged input (k = 0, 1, …) is applied on
@@ -14,7 +14,7 @@
  * multiplayer/simulation.ts confirmed). The effects reach the phone with that frame (PlayerRunView.slowUntil/slipUntil/slip).
  */
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
-import {moveDirection,SPEED} from './world.ts';
+import {heroSpeed,moveDirection,SPEED} from './world.ts';
 import {PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT} from '../contract/index.ts';
 import type {PlayerInput,Point} from '../contract/index.ts';
 type Input=PlayerInput;
@@ -36,8 +36,10 @@ export const slowed=(effects:MoveEffects|undefined,tick:number)=>tick<(effects?.
  */
 export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):Point{
   const slide=slipping(effects,tick);
-  if(slide)return moveDirection(p,slide,STEP,terrain,PLAYER_SLIP_SPEED);
-  return moveDirection(p,direction,STEP,terrain,slowed(effects,tick)?SPEED*PLAYER_SLOW_MULT:SPEED);
+  // The world's hero speed (city 1.99 u/s, D-026); slip keeps its ratio to walking so the city stays in proportion.
+  const walk=heroSpeed(terrain);
+  if(slide)return moveDirection(p,slide,STEP,terrain,PLAYER_SLIP_SPEED*walk/SPEED);
+  return moveDirection(p,direction,STEP,terrain,slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk);
 }
 /** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick. */
 export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects):Point {

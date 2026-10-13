@@ -1,7 +1,10 @@
 /**
  * Client glue of the off-screen and rescue cards (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping), mounted
  * by explore.ts in a real run:
- * - every frame: radar → edge arrows on the useful area's rim and the minimap (radar.ts, edges.ts, minimap.ts);
+ * - every frame: radar → edge arrows on the useful area's rim and the minimap (radar.ts, edges.ts, minimap.ts); in the
+ *   city (terrain.world 'cidade', design/cidade-hud.md §7) the city's arrows (groups, active mouths, base with the horn
+ *   seconds) and the city minimap with its big one instead (hud/city), switched per frame since the map can change in
+ *   the lobby;
  * - "Me salva": while caído the skill button's place becomes a big ping button (3 s anti-spam, EmoteGate); the room
  *   relays the ping with the position to every phone, which lights the caído's arrow and dot, plays the fall whistle
  *   (and its buzz, VGM-050 settings) and shows the caído's own help line over the body;
@@ -14,8 +17,8 @@ import type {RunHud} from './hud.ts';
 import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
-import {layoutEdges,pointedTargets,COVERING,WINDOWS} from './edges.ts';
-import type {Rect} from './zones.ts';
+import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
+import type {Rect,ScreenZones} from './zones.ts';
 import {MINIMAP_RANGE,islandOutline} from './minimap.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
 import {defaultPortrait} from './hud.ts';
@@ -25,6 +28,13 @@ import {causeCopy} from './cause.ts';
 import {worldBase} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
+import {wallOf} from './camp.ts';
+import {secondsLeft} from './model.ts';
+import {cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+  type CityAssetLike,type CityMapInfo,type CityView,type MouthId,type NoticeKind,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
+
+/** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
+export const CITY_TARGETS_MS=100;
 
 /** The HUD pieces that hide the map (edges.ts COVERING, shared with the arrows sandbox and pinned by a test). */
 export {COVERING};
@@ -59,6 +69,21 @@ export class RescueBoard {
   /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
   private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
   private readonly outline=islandOutline();
+  // ---------- City (design/cidade-hud.md §7) ----------
+  /** The city's map info, built once per decoded asset. */
+  private cityInfo?:{asset:CityAssetLike;map:CityMapInfo};
+  /** Avenue mouths lit by spawn warnings (trackMouths), and the group keys that had an arrow last frame (hysteresis). */
+  private mouths=new Map<MouthId,number>();private groupKeys=new Set<string>();
+  /** When the wall last lost life and the local hero last took damage (performance.now ms), from the views. */
+  private wallHitAt=-Infinity;private hurtAt=-Infinity;private wallHp?:number;private selfHp?:number;
+  private notice?:NoticeKind;
+  /**
+   * The city's world picture, rebuilt every CITY_TARGETS_MS (cityRefresh): the people and the live critters (buffers
+   * reused), the nearest critter, the phase, the lit mouths and the arrows' targets. Each frame only re-locates the few
+   * targets on screen (relocateCityTargets) and lays the arrows out, so 300 critters are not clustered 60 times a second.
+   */
+  private cityAt=-Infinity;private cityPeople:CityPerson[]=[];private cityEnemies:EnemyPoint[]=[];private cityTargets:CityEdgeTarget[]=[];
+  private cityNearest=Infinity;private cityPhase:'wave'|'prepare'='wave';private cityMouths:MouthId[]=[];
   constructor(options:RescueOptions){
     this.net=options.net;this.hud=options.hud;this.scene=options.scene;
     const b=this.button=document.createElement('button');b.type='button';b.id='coop-sos';b.hidden=true;
@@ -99,6 +124,14 @@ export class RescueBoard {
   view(view:RunView){
     this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
     keepWarnings(this.warnings,view.events,view.tick);
+    const asset=cityAssetOf(this.net.terrain);
+    if(asset){
+      trackMouths(this.mouths,view.events,view.tick,this.cityMap(asset));
+      const now=performance.now(),wall=wallOf(view.structures),self=this.states.get(this.net.id);
+      if(wall&&this.wallHp!==undefined&&wall.hp<this.wallHp)this.wallHitAt=now;
+      if(self&&this.selfHp!==undefined&&self.hp<this.selfHp)this.hurtAt=now;
+      this.wallHp=wall?.hp;this.selfHp=self?.hp;
+    }
     for(const e of view.events){
       if(e.type==='downed'){
         // What got you (UX-voce-e-dano f) left the banner: it is the caído's first line over the body.
@@ -121,6 +154,9 @@ export class RescueBoard {
   }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
+    // The room may switch maps in the lobby and the HUD is built once (explore.ts): the slot follows the world now.
+    const asset=cityAssetOf(net.terrain);
+    hud.useCityMinimap(!!asset);
     const combat=run?.phase==='combat'&&!hud.el.hidden&&!hud.el.classList.contains('rh-ended');
     const now=performance.now(),me=net.feed.players.get(net.id);
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
@@ -130,18 +166,18 @@ export class RescueBoard {
       this.button.style.setProperty('--sos-left',String(Math.round(sos.left*100)));
     }
     // Out of the wave the run's leftovers go (an old view, spawn warnings, lit pings, "Segura aí" already said).
-    if(run?.phase!=='combat'&&this.last){this.last=undefined;this.states.clear();this.warnings.length=0;this.pings.clear();this.said.clear();}
-    if(!scene||!combat||!this.last){hud.edges?.clear();return;}
+    if(run?.phase!=='combat'&&this.last){this.last=undefined;this.states.clear();this.warnings.length=0;this.pings.clear();this.said.clear();
+      this.mouths.clear();this.groupKeys.clear();this.wallHp=this.selfHp=undefined;this.wallHitAt=this.hurtAt=-Infinity;this.cityAt=-Infinity;}
+    if(!scene||!combat||!this.last){hud.edges?.clear();if(hud.cityMap.open)hud.closeCityMap();return;}
     const view=net.view(now),focus=scene.focusPoint(),zones=hud.zones();
     const self=view.players.find(p=>p.id===net.id);
     const hold=holdLine(self,this.states.get(net.id),view.players,this.states,this.said);
     if(hold)scene.say(net.id,hold.line);
+    if(asset){this.cityFrame(asset,scene,view.players,focus,zones,now);return;}
     const {targets,items}=radar({selfId:net.id,focus,self:self??focus,tick:this.last.tick,players:view.players,states:this.states,
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,pickups:this.last.pickups,
       warnings:this.warnings,nodes:this.last.nodes,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
-    const area=scene.usefulArea??zones.useful;
-    if(now-this.coveredAt>500||zones!==this.coveredZones){this.coveredAt=now;this.coveredZones=zones;this.covered=boxes(hud.el.ownerDocument,COVERING);this.windows=boxes(hud.el.ownerDocument,WINDOWS);}
-    const seen={viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
+    const area=scene.usefulArea??zones.useful,seen=this.seen(now,zones);
     hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen,windows:this.windows}));
     // What must keep an arrow (a caído or the boss off the field): the zones audit checks it against the arrows drawn.
     hud.edges?.need(pointedTargets(targets,area,seen));
@@ -151,6 +187,86 @@ export class RescueBoard {
       const endless=!!net.terrain.chunks,range=MINIMAP_RANGE[endless?'infinito':'ilha'][hud.minimap.far?1:0];
       hud.minimap.render(focus,scene.cameraView,range,items,endless?undefined:this.outline);
     }
+  }
+  /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
+  private seen(now:number,zones:ScreenZones){
+    const hud=this.hud;
+    if(now-this.coveredAt>500||zones!==this.coveredZones){this.coveredAt=now;this.coveredZones=zones;this.covered=boxes(hud.el.ownerDocument,COVERING);this.windows=boxes(hud.el.ownerDocument,WINDOWS);}
+    return {viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
+  }
+  private cityMap(asset:CityAssetLike){
+    if(this.cityInfo?.asset!==asset)this.cityInfo={asset,map:cityMapInfo(asset)};
+    return this.cityInfo.map;
+  }
+  /**
+   * One city frame (design/cidade-hud.md §1–§3): the city's arrows every frame (their targets rebuilt at ≤ 10 Hz,
+   * cityRefresh); the big minimap's blocking and closing; the minimap at 5 Hz (at once when the big one opens or closes).
+   */
+  private cityFrame(asset:CityAssetLike,scene:IslandScene,players:readonly {id:string;name:string;classId:string;x:number;y:number;online:boolean;spectator?:boolean}[],
+    focus:{x:number;y:number},zones:ScreenZones,now:number){
+    const net=this.net,hud=this.hud,last=this.last!,map=this.cityMap(asset);
+    const area=scene.usefulArea??zones.useful,seen=this.seen(now,zones);
+    const locate=(p:{x:number;y:number})=>scene.locate(p).screen;
+    if(now-this.cityAt>=CITY_TARGETS_MS||now<this.cityAt)this.cityRefresh(map,players,focus,locate,seen,now);
+    else relocateCityTargets(this.cityTargets,focus,locate);
+    const phase=this.cityPhase,activeMouths=this.cityMouths,people=this.cityPeople,enemies=this.cityEnemies,nearest=this.cityNearest;
+    if(hud.edges){
+      hud.edges.render(layoutCityEdges(this.cityTargets,area,scene.heroScreenRect(),{seen,windows:this.windows,textScale:hud.edges.scale()}));
+      // The base after the horn is a must-point arrow in the city: the zones audit checks it too (cityMustPoint).
+      hud.edges.need(pointedTargets(this.cityTargets,area,seen),cityMustPoint);
+    }
+    // The big minimap (doc §2): blocked by a critter at 2.5 u or a notice; closes by itself (time, notice, damage, telegraph).
+    const big=hud.cityBig(),notice=hud.cityNotice(),announced=!!notice&&notice!==this.notice;this.notice=notice;
+    const nearestEnemy=Number.isFinite(nearest)?nearest:undefined;
+    hud.blockCityMap(blockReason(nearestEnemy,notice,big.coversAnnounce));
+    // A telegraph about to go off within its reach (+ 1 u) of the hero touches the hero's zone.
+    const telegraphOnHero=last.telegraphs.some(t=>t.fireTick>=last.tick&&Math.hypot(t.x-focus.x,t.y-focus.y)<=t.radius+1);
+    hud.cityMap.update({nowMs:now,phase,announced,notice,coversAnnounce:big.coversAnnounce,hurt:this.hurtAt>(hud.cityMap.openedAt??Infinity),telegraphOnHero,nearestEnemy});
+    const city=hud.cityMinimap;
+    if(!city||!(hud.cityMap.take()||now-this.minimapAt>=200))return;
+    this.minimapAt=now;
+    const open=hud.cityMap.open,wall=wallOf(last.structures);
+    // Big only, in the intermission: the 8 nearest closed chests (doc §2).
+    const chests=open&&phase==='prepare'?last.pickups.filter(p=>p.kind==='chest').sort((a,b)=>Math.hypot(a.x-focus.x,a.y-focus.y)-Math.hypot(b.x-focus.x,b.y-focus.y)).slice(0,8):undefined;
+    city.render({map,view:scene.cameraView as CityView,...(open?{side:big.side,screen:screenCorners(locate,focus,{width:innerWidth,height:innerHeight})}:{}),
+      selfId:net.id,players:people,enemies,activeMouths,...(wall?{baseHp:{hp:wall.hp,maxHp:wall.maxHp}}:{}),...(chests?{chests}:{}),offline:hud.offline},open);
+  }
+  /**
+   * Rebuilds the city's world picture (cityFrame): who shows (as radar.ts: nobody spectating or out; someone away only
+   * while caído, the body still bleeds out), the live critters and the nearest one, the phase, the lit mouths and the
+   * arrows' targets (clusters, mouths, base). The people and critter buffers are reused (objects included).
+   */
+  private cityRefresh(map:CityMapInfo,players:readonly {id:string;name:string;classId:string;x:number;y:number;online:boolean;spectator?:boolean}[],
+    focus:{x:number;y:number},locate:(p:{x:number;y:number})=>{x:number;y:number},seen:NonNullable<EdgeOptions['seen']>,now:number){
+    const net=this.net,last=this.last!,people=this.cityPeople,enemies=this.cityEnemies;
+    this.cityAt=now;
+    let n=0;
+    for(const p of players){
+      const st=this.states.get(p.id);
+      if(p.spectator||st?.eliminated)continue;
+      const downed=st?.downed;
+      if(!downed&&!p.online&&p.id!==net.id)continue;
+      const q=people[n]??={id:'',x:0,y:0,name:'',portrait:''};n++;
+      q.id=p.id;q.x=p.x;q.y=p.y;q.name=p.name;q.portrait=defaultPortrait(p.classId);
+      q.downed=downed?true:undefined;q.seconds=downed?secondsLeft(downed.bleedOutTick,last.tick):undefined;
+      q.ping=downed&&this.pings.get(p.id,now)?true:undefined;
+    }
+    people.length=n;
+    let m=0,nearest=Infinity;
+    for(const e of net.feed.enemies.values()){
+      if(e.hp<=0)continue;
+      const q=enemies[m]??={id:'',x:0,y:0};m++;
+      q.id=e.id;q.x=e.x;q.y=e.y;
+      q.boss=e.boss?true:undefined;
+      nearest=Math.min(nearest,Math.hypot(e.x-focus.x,e.y-focus.y));
+    }
+    enemies.length=m;
+    this.cityNearest=nearest;
+    const phase=this.cityPhase=last.round?.phase==='prepare'?'prepare':'wave';
+    const activeMouths=this.cityMouths=trackMouths(this.mouths,[],last.tick,map);
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,
+      wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
+    this.cityTargets=targets;this.groupKeys=groupKeys;
   }
   destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

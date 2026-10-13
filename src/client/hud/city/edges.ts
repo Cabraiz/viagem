@@ -1,11 +1,11 @@
 /**
  * Edge arrows in the city (doc §3, B12): the island's layoutEdges on the useful area's inner rim, with the city's
  * targets and caps. Priority caído > chefe > grupo > boca > base; at most MAX_ARROWS, 2 grupo, 2 boca. A standing ally
- * and a chest never get an arrow here (team column and minimap). Until edges.ts learns a `grupo` kind (linking card,
- * doc §7), a group rides as kind 'spawn' with key 'grupo:<cell>', its critters in `groupCount` and their text in
- * `label`; an active mouth is 'spawn' with key 'boca:<id>'. Pure.
+ * and a chest never get an arrow here (team column and minimap). A group is kind 'grupo' (edges.ts, doc §7) with key
+ * 'grupo:<cell>', its critters in `groupCount` and their text in `label` (the ficha's body; the distance rides the tag);
+ * an active mouth is 'spawn' with key 'boca:<id>'. Pure.
  */
-import {layoutEdges,pointedTargets,railName,arrowHalf,crosses,bottom,right,MAX_ARROWS,MERGE_PX,MIN_PLAY_SIDE,type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions,type Rect} from './deps.ts';
+import {layoutEdges,pointedTargets,railName,arrowHalf,crosses,bottom,right,MUST_POINT,MAX_ARROWS,MERGE_PX,MIN_PLAY_SIDE,type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions,type Rect} from './deps.ts';
 import {clusterEnemies,pickGroupArrows,groupCountText,type EnemyPoint} from './clusters.ts';
 import type {CityMapInfo,MouthId} from './minimap.ts';
 
@@ -13,7 +13,7 @@ export interface CityEdgeInput {
   /** The followed hero (world units). */
   hero:{x:number;y:number};
   selfId:string;
-  players:{id:string;x:number;y:number;downed?:boolean;name?:string;portrait?:string;seconds?:number;ping?:boolean}[];
+  players:readonly CityPerson[];
   enemies:readonly EnemyPoint[];
   activeMouths?:readonly MouthId[];
   map:CityMapInfo;
@@ -29,6 +29,8 @@ export interface CityEdgeInput {
   /** The group keys that had an arrow last time (hysteresis). */
   previousGroups?:ReadonlySet<string>;
 }
+/** Someone of the team as the city's arrows and minimap read them (world units; a caído with its clock and ping). */
+export interface CityPerson {id:string;x:number;y:number;downed?:boolean;name?:string;portrait?:string;seconds?:number;ping?:boolean}
 /** Doc §3: the base's arrow shows in a wave only this long after the wall was hit. */
 export const WALL_HIT_MS=3000;
 /** A group this close to the hero, or this close to the wall, turns its ficha Cone (world units). */
@@ -38,7 +40,7 @@ export const MOUTH_GROUP_MERGE=10;
 /** At most this many active-mouth arrows. */
 export const MOUTH_ARROWS=2;
 
-const isGroup=(t:EdgeTarget)=>t.key.startsWith('grupo:'),isMouth=(t:EdgeTarget)=>t.key.startsWith('boca:');
+const isGroup=(t:EdgeTarget)=>t.kind==='grupo'||t.key.startsWith('grupo:'),isMouth=(t:EdgeTarget)=>t.key.startsWith('boca:');
 /** Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > base 4; anything else never gets an arrow in the city (9). */
 export function cityEdgeRank(t:EdgeTarget):number{
   return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='base'?4:9;
@@ -49,33 +51,46 @@ export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];g
   const {hero,locate,isOnScreen,map}=input,dist=(p:{x:number;y:number})=>Math.hypot(p.x-hero.x,p.y-hero.y);
   const targets:CityEdgeTarget[]=[];
   // Caídos: always (layoutEdges keeps only those out of view, and MUST_POINT never lets one go without its arrow).
-  for(const p of input.players)if(p.id!==input.selfId&&p.downed)targets.push({key:p.id,kind:'caido',screen:locate(p),distance:dist(p),
+  for(const p of input.players)if(p.id!==input.selfId&&p.downed)targets.push({key:p.id,kind:'caido',screen:locate(p),world:{x:p.x,y:p.y},distance:dist(p),
     ...(p.seconds!==undefined?{seconds:p.seconds}:{}),...(p.ping?{ping:true}:{}),...(p.portrait?{portrait:p.portrait}:{}),
     ...(p.name?{name:p.name,label:railName(p.name)}:{})});
-  for(const e of input.enemies)if(e.boss&&!isOnScreen(e))targets.push({key:`chefe:${e.id}`,kind:'chefe',screen:locate(e),distance:dist(e),name:'Chefe'});
+  for(const e of input.enemies)if(e.boss&&!isOnScreen(e))targets.push({key:`chefe:${e.id}`,kind:'chefe',screen:locate(e),world:{x:e.x,y:e.y},distance:dist(e),name:'Chefe'});
   // Groups: only the critters out of view count (alive, without the boss).
   const groups=pickGroupArrows(clusterEnemies(input.enemies.filter(e=>!e.boss&&!isOnScreen(e))),hero,isOnScreen,{previous:input.previousGroups});
   const wall=(g:{x:number;y:number})=>Math.hypot(g.x-map.plaza.x,g.y-map.plaza.y)-map.plaza.radius;
   for(const g of groups){
     const danger=dist(g)<=GROUP_DANGER_HERO||wall(g)<=GROUP_DANGER_WALL;
-    targets.push({key:`grupo:${g.key}`,kind:'spawn',screen:locate(g),distance:dist(g),groupCount:g.count,label:groupCountText(g.count),name:`${groupCountText(g.count)} bichos`,...(danger?{danger}:{})});
+    targets.push({key:`grupo:${g.key}`,kind:'grupo',screen:locate(g),world:{x:g.x,y:g.y},distance:dist(g),groupCount:g.count,label:groupCountText(g.count),name:`${groupCountText(g.count)} bichos`,...(danger?{danger}:{})});
   }
   // Active mouths out of view: the 2 nearest, unless a group already stands at the mouth.
   const active=new Set(input.activeMouths??[]);
   const mouths=map.mouths.filter(m=>active.has(m.id)&&!isOnScreen(m)&&!groups.some(g=>Math.hypot(g.x-m.x,g.y-m.y)<=MOUTH_GROUP_MERGE))
     .sort((a,b)=>dist(a)-dist(b)||(a.id<b.id?-1:1)).slice(0,MOUTH_ARROWS);
-  for(const m of mouths)targets.push({key:`boca:${m.id}`,kind:'spawn',screen:locate(m),distance:dist(m),name:'Boca ativa'});
+  for(const m of mouths)targets.push({key:`boca:${m.id}`,kind:'spawn',screen:locate(m),world:{x:m.x,y:m.y},distance:dist(m),name:'Boca ativa'});
   // Base: in the intermission when the plaza is out of view (Cone with the seconds after the horn); in a wave only after a hit on the wall.
   const plaza={x:map.plaza.x,y:map.plaza.y};
   if((input.phase==='prepare'||input.wallHitRecently)&&!isOnScreen(plaza)){
     const horn=input.phase==='prepare'&&input.hornSeconds!==undefined;
-    targets.push({key:'base',kind:'base',screen:locate(plaza),distance:dist(plaza),name:'Base',...(horn?{danger:true,seconds:input.hornSeconds}:{})});
+    targets.push({key:'base',kind:'base',screen:locate(plaza),world:plaza,distance:dist(plaza),name:'Base',...(horn?{danger:true,seconds:input.hornSeconds}:{})});
   }
   return {targets,groupKeys:new Set(groups.map(g=>g.key))};
 }
 
-/** A city target: a group carries how many critters it holds (summed when two groups merge). */
-export interface CityEdgeTarget extends EdgeTarget {groupCount?:number}
+/**
+ * A city target: a group carries how many critters it holds (summed when two groups merge); `world` is where it stands
+ * (world units), so a frame between two rebuilds only re-locates it (relocateCityTargets).
+ */
+export interface CityEdgeTarget extends EdgeTarget {groupCount?:number;world?:{x:number;y:number}}
+/**
+ * The targets of the last rebuild (cityEdgeTargets) moved to this frame: each one's screen point from its world point
+ * and its distance from the hero now. In place, allocation-free but for `locate`'s point; one without `world` stays.
+ */
+export function relocateCityTargets(targets:readonly CityEdgeTarget[],hero:{x:number;y:number},locate:(p:{x:number;y:number})=>{x:number;y:number}){
+  for(const t of targets){
+    if(!t.world)continue;
+    t.screen=locate(t.world);t.distance=Math.hypot(t.world.x-hero.x,t.world.y-hero.y);
+  }
+}
 /** A city arrow: `groupCount` (critters) and `label` (its text, "99+" at the ceiling) on a group's arrow; its `count` stays 1. */
 export interface CityEdgeArrow extends EdgeArrow {groupCount?:number}
 export interface CityEdgeOptions extends EdgeOptions {
@@ -99,9 +114,10 @@ export function mergeGroupTargets<T extends CityEdgeTarget>(targets:readonly T[]
   return [...targets.filter(t=>!isGroup(t)),...out];
 }
 
-// layoutEdges folds a crowded arrow into one of the same kind ("+N"). Groups and mouths are both 'spawn' for the DOM,
-// so during layout each city class rides a kind of its own with the same priority order (caído, chefe, grupo, boca, base).
-const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'spawn',3:'base',4:'aliado'};
+// layoutEdges folds a crowded arrow into one of the same kind ("+N"): during layout each city class rides the kind of
+// its rank (caído, chefe, grupo, boca as 'spawn', base), in edges.ts's priority order, so a group and a mouth never fold
+// into each other.
+const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',4:'base'};
 
 /**
  * The part of `area` left beside the open windows (the big minimap is one, doc §2): for each window over it, the largest
@@ -125,21 +141,35 @@ export function besideWindows(area:Rect,windows:readonly (Rect|undefined)[]):Rec
 }
 
 /**
+ * The city's arrows that are never dropped while they need one (layoutEdges' last resort on the rim): the caído and
+ * the boss, as on the island, and the base after the horn (Cone, the seconds to get back on its tag, doc §3): a short
+ * landscape field used to crowd it out while "Volta pra base" ran (visual review cidade-04).
+ */
+export const cityMustPoint=(t:EdgeTarget)=>MUST_POINT.includes(t.kind)||t.kind==='base'&&(t.seconds!==undefined||!!t.danger);
+/**
+ * The order the city's arrows are placed in: cityEdgeRank, except the base after the horn (its seconds on the tag), which
+ * goes before the mouths: with "Volta pra base" running, a mouth used to take the base's side of a short landscape field
+ * and push its arrow to the far corner, beak across the screen (visual review cidade-04). Only the placing order: the
+ * caps and the kind stay the doc's.
+ */
+export const cityPlaceRank=(t:EdgeTarget)=>t.kind==='base'&&t.seconds!==undefined?2.5:cityEdgeRank(t);
+
+/**
  * layoutEdges with the city's rules, on the useful area minus the open windows (besideWindows): the targets that need an
  * arrow (pointedTargets) are ranked by cityEdgeRank, groups
  * within MERGE_PX on screen merged (counts summed), capped at 2 grupo and 2 boca, cut at MAX_ARROWS, then laid out with a
  * layout kind per class, so a group and a mouth never fold into each other. A group that still folds into another group
- * hands it its critters. Returned arrows carry their real kind back.
+ * hands it its critters. Returned arrows carry their class's kind (a group is always 'grupo').
  */
 export function layoutCityEdges(targets:readonly CityEdgeTarget[],useful:Rect,hero?:Rect,options:CityEdgeOptions={}):CityEdgeArrow[]{
   const {textScale,...rest}=options,max=Math.min(MAX_ARROWS,options.max??MAX_ARROWS),area=besideWindows(useful,options.windows??[]);
   const ranked=mergeGroupTargets((pointedTargets(targets,area,options.seen) as CityEdgeTarget[]).filter(t=>cityEdgeRank(t)<9),options.merge??MERGE_PX)
-    .sort((a,b)=>cityEdgeRank(a)-cityEdgeRank(b)||(a.seconds??Infinity)-(b.seconds??Infinity)||a.distance-b.distance||(a.key<b.key?-1:a.key>b.key?1:0));
+    .sort((a,b)=>cityPlaceRank(a)-cityPlaceRank(b)||(a.seconds??Infinity)-(b.seconds??Infinity)||a.distance-b.distance||(a.key<b.key?-1:a.key>b.key?1:0));
   let groups=0,mouths=0;
   const kept=ranked.filter(t=>isGroup(t)?++groups<=GROUP_EDGE_ARROWS:isMouth(t)?++mouths<=MOUTH_ARROWS:true).slice(0,max);
   const real=new Map(kept.map(t=>[t.key,t]));
-  const laid=layoutEdges(kept.map(t=>({...t,kind:LAYOUT_KIND[cityEdgeRank(t)]})),area,hero,{...rest,max,half:options.half??arrowHalf(textScale??1)}) as CityEdgeArrow[];
-  const arrows:CityEdgeArrow[]=laid.map(a=>({...a,kind:real.get(a.key)!.kind}));
+  const laid=layoutEdges(kept.map(t=>({...t,kind:LAYOUT_KIND[cityEdgeRank(t)]})),area,hero,{city:true,mustPoint:cityMustPoint,rank:cityPlaceRank,...rest,max,half:options.half??arrowHalf(textScale??1)}) as CityEdgeArrow[];
+  const arrows:CityEdgeArrow[]=laid.map(a=>({...a,kind:LAYOUT_KIND[cityEdgeRank(real.get(a.key)!)]}));
   // A group folded into another group's arrow: its critters join that arrow's count (there are at most two groups).
   const placed=new Set(arrows.map(a=>a.key));
   for(const lost of kept.filter(t=>isGroup(t)&&!placed.has(t.key))){

@@ -221,7 +221,7 @@ export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.ro
  * set it (restoring its texture if the art had been on). Call it after layers.ts set the hit flash: the elite layer
  * copies the base image's tint. The contact shadow keeps today's size (ENEMY_ART width), art or not.
  */
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;phase:number},moving:boolean,dx:number,dy:number,now:number,view=0):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;phase:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1):boolean{
   const id=ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
   if(!piece){const s=states.get(image);return s?off(image,actor,s):false;}
@@ -231,7 +231,8 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const frame=anim?enemyFrame(id,piece,anim,s.row,t,base):undefined;
   const textures=image.scene.textures;
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
-  const file=piece.files[anim],scale=enemyDrawScale(actor.kind,file,actor.elite);
+  // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
+  const file=piece.files[anim],scale=enemyDrawScale(actor.kind,file,actor.elite)*body;
   if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
   image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0);
   s.on=true;

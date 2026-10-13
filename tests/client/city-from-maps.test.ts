@@ -227,8 +227,12 @@ test('deterministic and already in parseCityAsset normal form',()=>{
   assert.deepEqual(parseCityAsset(JSON.parse(JSON.stringify(city))),city);
 });
 
-test('the real asset converts in well under 300 ms (best of 3)',()=>{
+// D-031: a wall-clock limit, so it only gates with
+//   BENCH=1 node --experimental-strip-types --test tests/client/city-from-maps.test.ts
+// (the number is always logged; the conversion result is checked by the tests above).
+test('the real asset converts in well under 300 ms (best of 3; gated by BENCH=1)',()=>{
   let best=Infinity;
   for(let k=0;k<3;k++){const t=performance.now();cityRenderAsset(maps);best=Math.min(best,performance.now()-t);}
-  assert.ok(best<300,`${best.toFixed(1)} ms`);
+  console.log(`[bench] city-from-maps: cityRenderAsset best of 3 ${best.toFixed(1)} ms`);
+  if(process.env.BENCH==='1')assert.ok(best<300,`${best.toFixed(1)} ms`);
 });

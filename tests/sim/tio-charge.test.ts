@@ -1,10 +1,14 @@
 /**
  * BUG-20261012-E6-cidade-velocidades-relativas: the Tio do Pavê's charge is escapable in every world.
- *   peak cap: no enemy-ai step (walk, zig-zag, charge) takes an enemy past ACTION_PEAK_MAX × the world's hero speed;
- *   the endless world is unchanged for every kind, city pombos (3.45 u/s after 05c) are held to 1.15 × the hero
+ *   peak cap: no enemy-ai move (walk, zig-zag, charge, plus the crowd's separation push) takes an enemy past
+ *   ACTION_PEAK_MAX × the world's hero speed. The cap never triggers for a lone endless body (speeds as before); a
+ *   dense crowd's push is clamped in the city (capPush, wired by assemble.ts), left as tuned in endless/island. The Tio's charge itself changed everywhere, endless included: it is
+ *   now warned and locked (that is the fix, it makes the charge fair in every world).
  *   warning: the joke draws the whole charge as an 'investida' line (0 damage, ≥ 0.8 s) before he moves
  *   acceptance: a hero in the path who walks out sideways after seeing the line is never touched; standing still is
- *   locked line: the charge does not home on a player who moves; budget full / annulled / knocked → no unwarned charge
+ *   locked line: the charge does not home on a player who moves, nor is pushed off by the crowd; leaving the line
+ *   (knocked mid-charge) ends it; he shrugs off knockback during the joke; budget full / annulled / displaced mid-joke →
+ *   no unwarned charge
  *   wiring: the city run gives the AI the city hero speed, the endless run 3.1
  * Real SimWorld with the telegraph system, on open ground of the endless world (like elenco.test.ts).
  */
@@ -14,6 +18,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {BASE_STATS,SIM_HZ,type SimEvent,type SimPlayer,type Telegraph} from '../../src/contract/types.ts';
 import {SimWorld} from '../../src/sim/core.ts';
+import {Rng} from '../../src/contract/rng.ts';
 import {ACTION_PEAK_MAX,ENEMIES,TIO_JOKE,applyElite,createEnemy,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {ENEMY_TELEGRAPH_CAP,EnemyAi,STATE,type EnemyAiOptions} from '../../src/sim/enemies/ai.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
@@ -91,7 +96,7 @@ function joke(options:EnemyAiOptions,tioSpeed:number|undefined,along:number){
 }
 
 // ---------- Peak cap ----------
-test('peak cap: the charge never passes ACTION_PEAK_MAX × the hero; the endless charge is unchanged',()=>{
+test('peak cap: the charge never passes ACTION_PEAK_MAX × the hero; the endless charge speed is under it (not capped)',()=>{
   const measure=(options:EnemyAiOptions,tioSpeed:number|undefined)=>{
     const J=joke(options,tioSpeed,2.2);
     // The player steps far aside once warned, so the charge runs its full length.
@@ -134,7 +139,7 @@ test('peak cap: the charge never passes ACTION_PEAK_MAX × the hero; the endless
   for(const bad of [NaN,0,-1,Infinity])assert.equal(new EnemyAi({heroSpeed:bad}).heroSpeed,SPEED,String(bad));
 });
 
-test('endless world: every kind (elite too) steps exactly as before the cap',()=>{
+test('endless world: the speed cap never triggers for a lone body of any kind (elite too): steps as before',()=>{
   const TAU=Math.PI*2;
   for(const kind of KINDS)for(const elite of [false,true]){
     const A=arena();
@@ -185,6 +190,30 @@ test('city: with the real 05c conversion every kind stays under 1.994 × 1.15; a
   A.step(n,()=>{const next=moveDirection(p,{x:1,y:0},STEP,TERRAIN,CITY_HERO);p.x=next.x;p.y=next.y;p.hp=100;});
   const closed=gap0-Math.hypot(p.x-e.x,p.y-e.y);
   assert.ok(closed<=(cap-CITY_HERO)*n/SIM_HZ+1e-9,`closed ${closed.toFixed(3)} u in ${n/SIM_HZ} s`);
+});
+
+test('dense city crowd: no enemy moves more than 1.994 × 1.15 per second in any tick (walk plus separation push)',()=>{
+  const cap=CITY_HERO*ACTION_PEAK_MAX/SIM_HZ;
+  const A=arena({heroSpeed:CITY_HERO,capPush:true},9);
+  const p=addPlayer(A.world,'p',O);
+  const r=new Rng(99);
+  // 60 bodies inside 3 u, at the 05c city speed with a 1.25 round modifier (pombos ≈ 2.17 u/s: 0.11 u/tick + push).
+  for(let i=0;i<60;i++){
+    const kind=KINDS[i%KINDS.length],a=r.range(0,Math.PI*2),d=r.range(.6,3);
+    const e=createEnemy(A.world,kind,at(Math.cos(a)*d,Math.sin(a)*d));e.speed=citySpeed05c(ENEMIES[kind].speed*1.25);
+  }
+  const enemies=[...A.world.enemies.values()];
+  let worst=0,pushedPast=0;
+  for(let t=0;t<200;t++){
+    const before=enemies.map(e=>({x:e.x,y:e.y}));
+    A.step(1,()=>{p.hp=100;p.x=O.x;p.y=O.y;});
+    enemies.forEach((e,i)=>{
+      const d=Math.hypot(e.x-before[i].x,e.y-before[i].y);worst=Math.max(worst,d);
+      if(d>e.speed/SIM_HZ+1e-9)pushedPast++;
+    });
+  }
+  assert.ok(pushedPast>0,'the crowd does push bodies past their own walk (the case this guards)');
+  assert.ok(worst<=cap+1e-12,`worst step ${worst} ≤ cap ${cap}`);
 });
 
 // ---------- Warning ----------
@@ -270,10 +299,51 @@ test('the charge runs the locked line: a player moving sideways does not bend it
   assert.equal(charged,TIO_JOKE.charge);
   assert.ok(Math.abs(e.x-O.x-CITY_HERO*ACTION_PEAK_MAX*TIO_JOKE.charge/SIM_HZ)<1e-9,'full reach along the line');
   assert.deepEqual(hitsBy(J.events,e.id,line.tick,J.world.tick),[],'never touched beside the line');
+  // The charge is over: the locked line is forgotten (JSON-clean memory, nothing left to steer a later charge).
+  assert.equal(e.memory!.state,STATE.walk);
+  for(const k of ['cx','cy','ox','oy','reach'])assert.equal(e.memory![k],undefined,`memory.${k} cleared`);
+});
+
+test('a neighbour overlapping the Tio neither moves him in the joke nor pushes him off the charge line',()=>{
+  const J=joke({heroSpeed:CITY_HERO},CITY_TIO,2.2);
+  const {e,p,line}=J;
+  p.y+=4;
+  // A bêbado glued 0.3 u beside him (overlapping: radii 0.52 + 0.32) for the whole joke and charge.
+  const b=createEnemy(J.world,'bebado',{x:e.x,y:e.y+.3});
+  const glue=()=>{b.x=e.x;b.y=e.y+.3;p.hp=100;};
+  let off=0,charged=0;
+  J.step(line.t.fireTick-J.world.tick,()=>{glue();off=Math.max(off,Math.hypot(e.x-O.x,e.y-O.y));});
+  assert.ok(off<1e-9,`planted for the joke (moved ${off})`);
+  assert.equal(e.memory!.state,STATE.charge,'still charges with a neighbour on him');
+  for(let i=0;i<TIO_JOKE.charge;i++){J.step(1,glue);off=Math.max(off,Math.abs(e.y-O.y));if(e.memory!.state===STATE.charge||i===TIO_JOKE.charge-1)charged++;}
+  assert.ok(off<1e-9,`stayed on the line (off by ${off})`);
+  assert.equal(charged,TIO_JOKE.charge,'the whole charge');
+  assert.ok(Math.abs(e.x-O.x-CITY_HERO*ACTION_PEAK_MAX*TIO_JOKE.charge/SIM_HZ)<1e-9,'full reach along the line');
+});
+
+test('knocked mid-charge he leaves the line and the charge ends (no unwarned charge beside it)',()=>{
+  const J=joke({heroSpeed:CITY_HERO},CITY_TIO,2.2);
+  const {e,p,line}=J;
+  p.y+=4;
+  J.step(line.t.fireTick-J.world.tick+5,()=>{p.hp=100;});
+  assert.equal(e.memory!.state,STATE.charge);
+  e.knock={x:0,y:.3};
+  // The knock is sideways (y): any advance along the line (x) after it is his own walking, never the charge.
+  let charging=0,fastest=0;
+  for(let i=0;i<TIO_JOKE.charge;i++){
+    const x=e.x;
+    J.step(1,()=>{p.hp=100;});
+    if(e.memory!.state===STATE.charge)charging++;
+    fastest=Math.max(fastest,Math.abs(e.x-x));
+  }
+  assert.equal(e.memory!.state,STATE.walk,'the charge is over');
+  assert.ok(charging<=3,`only the stun ticks keep the state (${charging})`);
+  assert.ok(fastest<=e.speed/SIM_HZ+1e-9,`no charge beside the line: ${fastest} ≤ walk ${e.speed/SIM_HZ}`);
+  for(const k of ['cx','cy','ox','oy','reach'])assert.equal(e.memory![k],undefined,`memory.${k} cleared`);
 });
 
 // ---------- Never unwarned ----------
-test('no line, no charge: budget full, annulled, knocked off the spot or the player gone',()=>{
+test('no line, no charge: budget full, annulled, displaced off the spot or the player gone',()=>{
   const neverCharges=(label:string,A:ReturnType<typeof joke>,ticks=TIO_JOKE.pause+TIO_JOKE.charge+40)=>{
     let charged=false;
     A.step(ticks,()=>{A.p.hp=100;if(A.e.memory!.state===STATE.charge)charged=true;});
@@ -299,10 +369,20 @@ test('no line, no charge: budget full, annulled, knocked off the spot or the pla
     assert.equal(J.e.memory!.actReady,J.world.tick+TIO_JOKE.cooldown);
     neverCharges('annulled',J,TIO_JOKE.charge);
   }
-  {// Knocked off the spot mid-joke: the line no longer starts at him.
+  {// Knockback mid-joke is shrugged off (he plants his feet): he still charges, along the original line.
     const J=joke({},undefined,2.2);
-    J.step(10);J.e.knock={x:0,y:.2};
-    neverCharges('knocked',J,TIO_JOKE.pause);
+    J.p.y+=4;
+    J.step(10);J.e.knock={x:0,y:.4};
+    let charged=false,off=0;
+    J.step(TIO_JOKE.pause+TIO_JOKE.charge,()=>{J.p.hp=100;if(J.e.memory!.state===STATE.charge){charged=true;off=Math.max(off,Math.abs(J.e.y-O.y));}});
+    assert.equal(J.e.knock,undefined,'knock dropped');
+    assert.ok(charged,'knocked mid-joke: still charges');
+    assert.ok(off<1e-9,`along the warned line (off by ${off})`);
+  }
+  {// Any other displacement mid-joke (moved off the spot): the line no longer starts at him, no charge.
+    const J=joke({},undefined,2.2);
+    J.step(10);J.e.y+=.2;
+    neverCharges('displaced',J,TIO_JOKE.pause);
   }
   {// The player falls mid-joke: the line goes with the joke.
     const J=joke({},undefined,2.2);
@@ -315,7 +395,7 @@ test('no line, no charge: budget full, annulled, knocked off the spot or the pla
 });
 
 // ---------- Wiring ----------
-test('the run gives the enemy AI its world hero speed: city 1.994, endless 3.1',()=>{
+test('the run gives the enemy AI its world hero speed (city 1.994, endless 3.1) and the crowd clamp in the city only',()=>{
   const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
   const text=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
   const hash=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;
@@ -323,7 +403,10 @@ test('the run gives the enemy AI its world hero speed: city 1.994, endless 3.1',
   if(!decoded.ok)throw new Error(decoded.error);
   const city=new Simulation(7,{world:'cidade',terrain:cityAsField(new CityTerrain(decoded.asset,hash))});
   assert.equal(city.run.enemyAi.heroSpeed,CITY_HERO);
+  assert.equal(city.run.enemyAi.capPush,true,'the city clamps the crowd push too');
   assert.ok(Math.abs(CITY_HERO-1.994)<.001);
-  assert.equal(new Simulation(7,{world:'infinito'}).run.enemyAi.heroSpeed,SCALE_PROFILES.infinito.hero.speed);
+  const endless=new Simulation(7,{world:'infinito'}).run.enemyAi;
+  assert.equal(endless.heroSpeed,SCALE_PROFILES.infinito.hero.speed);
+  assert.equal(endless.capPush,false,'endless crowd pacing left as tuned');
   assert.equal(SCALE_PROFILES.infinito.hero.speed,SPEED);
 });

@@ -114,9 +114,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // touches, here. Island and endless keep the catalog speeds untouched.
   const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
-    // Caps action paces (the Tio's charge) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
+    // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
+    // TODO(cidade-04): use heroSpeed(terrain) from cidade-04 when it lands (today the city hero still walks SPEED, moveStep).
     heroSpeed:steer?SCALE_PROFILES['cidade-nevada'].hero.speed:SCALE_PROFILES.infinito.hero.speed,
+    // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
+    capPush:!!steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},
     hitStructure:(ctx,id,amount)=>{if(id===stonewards.state.wall.id)damageWall(ctx,stonewards.state,amount);},
   });

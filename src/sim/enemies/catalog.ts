@@ -112,10 +112,13 @@ export const ELITE:EliteDef=Object.freeze({
 
 /**
  * Orquestrador rule (BUG-20261012-E6-cidade-velocidades-relativas): no enemy-ai step (walk, zig-zag, approach, back-off,
- * strafe or the Tio's charge) takes an enemy above ACTION_PEAK_MAX × the walking speed of the heroes of its world, and an
- * action's warning gives the hero time to step out (≥ 0.8 s, MIN_TELEGRAPH_TICKS). Enemy speeds are converted per world
- * (the city's 1.99 u/s hero vs the endless 3.1; city pombos walk 3.45 u/s), so enemy-ai moves at
- * min(speed × pace, heroSpeed × ACTION_PEAK_MAX), slows on top. The endless world never reaches it (fastest: pombos 2.7 < 3.565).
+ * strafe, the Tio's charge; in the city also the crowd's separation push) takes an enemy above ACTION_PEAK_MAX × the walking speed
+ * of the heroes of its world, and an action's warning gives the hero time to step out (≥ 0.8 s, MIN_TELEGRAPH_TICKS).
+ * Enemy speeds are converted per world (city/speed.ts citySpeed: the city's 1.99 u/s hero vs the endless 3.1; city
+ * pombos walk ~1.95 u/s, ~2.17 with a 1.25 round modifier, and the Tio's ×2.6 charge would be ~3.15), so enemy-ai
+ * moves at min(speed × pace, heroSpeed × ACTION_PEAK_MAX), slows on top, and in the city (EnemyAiOptions.capPush)
+ * clamps the walk plus the push to the same peak. No endless walk or charge reaches it (fastest: pombos 2.7 < 3.565);
+ * an endless crowd's push on top still can (left as tuned).
  * The boss (boss.ts) and retreating enemies (director.ts) move outside enemy-ai.
  */
 export const ACTION_PEAK_MAX=1.15;

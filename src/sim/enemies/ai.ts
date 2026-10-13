@@ -3,8 +3,8 @@
  * joke + charge, agiota ranged boletos (the "devendo" mark), anão molotov throws with pulsing ground fire and a death
  * explosion, neighbor separation, terrain collision, contact damage and rare barks.
  * Every hazard is a telegraph (telegraphs.ts, ≥ MIN_TELEGRAPH_TICKS of warning) inside the enemies' telegraph budget.
- * Every step (walk, zig-zag, back-off, the Tio's charge) is capped at ACTION_PEAK_MAX × the world's hero speed, and the
- * charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
+ * Every step (walk, zig-zag, back-off, the Tio's charge; in the city the crowd's separation push too) is capped at
+ * ACTION_PEAK_MAX × the world's hero speed, and the charge is warned by an 'investida' line and runs it without homing, so a hero can always step out of it.
  * Deterministic: own rng stream forked once from ctx.rng, no Date/Math.random, iteration in ctx.enemies order.
  */
 import {RADIUS as PLAYER_RADIUS,SPEED as HERO_SPEED,maskSurface,obstaclesNear,walkable,type Point} from '../../maps/index.ts';
@@ -44,6 +44,13 @@ export interface EnemyAiOptions {
    * Walking speed (u/s) of the heroes in this world; no enemy step goes past ACTION_PEAK_MAX × it. Defaults to SPEED (maps/world.ts, 3.1: the endless world); the city passes its own hero's.
    */
   heroSpeed?:number;
+  /**
+   * Also clamp the whole move (the capped walk plus the neighbours' separation push, up to SEPARATION_MAX a tick) to the
+   * same peak, so a dense crowd never shoves a body past it (the city, where the peak is 2.29 u/s). Off by default: in
+   * the endless/island worlds a crowd's push past 1.15 × 3.1 is part of the tuned pacing (the round-end and novice
+   * balance and the boss digest change with it).
+   */
+  capPush?:boolean;
 }
 /** JSON-safe limiter and rng state, for checkpoints (VGM-047). */
 export interface EnemyAiState {rng:number|null;lastBarkTick:number|null;lastLine:Record<string,string>}
@@ -165,8 +172,10 @@ export class EnemyAi implements SimSystem {
   private readonly steerOut={x:0,y:0};
   /** Hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
   readonly heroSpeed:number;
+  /** options.capPush: the walk plus the crowd's push is clamped to the peak too (the city). */
+  readonly capPush:boolean;
   constructor(options:EnemyAiOptions={}){
-    this.options=options;this.rng=options.rng;
+    this.options=options;this.rng=options.rng;this.capPush=options.capPush===true;
     const hero=options.heroSpeed;
     this.heroSpeed=hero!==undefined&&Number.isFinite(hero)&&hero>0?hero:HERO_SPEED;
   }
@@ -193,13 +202,20 @@ export class EnemyAi implements SimSystem {
       const memory=e.memory??={};
       memory.seed??=hashUnit(e.id);memory.state??=STATE.walk;memory.until??=0;memory.hitReady??=0;memory.actReady??=0;
       if(e.knock){
-        moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
-        e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
-        if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
+        // The Tio plants his feet for the joke: a knockback then is shrugged off, so his warned line still starts at
+        // him (any other displacement still calls the charge off, see chargeWarned).
+        if(memory.state===STATE.joke)delete e.knock;
+        else{
+          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
+          if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
+        }
       }
       if(ctx.tick<(e.frozenUntil??-1)||ctx.tick<e.readyTick)continue;
       active.push(e);
       const stunned=!!e.knock&&Math.hypot(e.knock.x,e.knock.y)>KNOCK_STUN;
+      // Joking or charging as this tick starts (the charge's last step still runs after endCharge below).
+      const planted=memory.state===STATE.joke||memory.state===STATE.charge;
       // Nearest live player, or a structure if its edge is closer; a valid taunt overrides both.
       let player:SimPlayer|undefined,structure:StructureTarget|undefined,best=Infinity;
       const taunter=tauntTarget(ctx,e);
@@ -344,10 +360,17 @@ export class EnemyAi implements SimSystem {
       if(push>SEPARATION_MAX){pushX*=SEPARATION_MAX/push;pushY*=SEPARATION_MAX/push;}
       // The Tio plants his feet for the joke and bulldozes through the crowd in the charge, so he stays on the line he
       // warned; the neighbors still step off him on their own turn.
-      if(memory.state===STATE.joke||memory.state===STATE.charge){pushX=0;pushY=0;}
+      if(planted){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
       const stepLength=dirLength>1e-6?this.paceSpeed(e,pace)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
-      moveSafely(e,dirX*stepLength+pushX,dirY*stepLength+pushY,ctx.terrain,e.radius);
+      // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
+      // shove a body past the hero; knockback, above, is the players' doing and is not capped).
+      let moveX=dirX*stepLength+pushX,moveY=dirY*stepLength+pushY;
+      if(this.capPush){
+        const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
+        if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
+      }
+      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
     }
     if(active.length&&this.canBark(ctx,AMBIENT_GAP_FACTOR)&&rng.chance(this.options.barkChance??BARK_CHANCE)){
       const e=active[rng.int(0,active.length-1)],elite=e.elite&&rng.chance(.5);

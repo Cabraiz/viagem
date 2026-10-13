@@ -42,7 +42,7 @@ app.innerHTML = `
     <div class="section-tabs" role="tablist" aria-label="Seções da criação"><button type="button" role="tab" id="tab-personagem" aria-controls="personagem" aria-selected="true">Personagem</button><button type="button" role="tab" id="tab-classes" aria-controls="classes" aria-selected="false" tabindex="-1">Classes</button></div>
   </nav>
   <section id="personagem" class="journey-screen creation-window" role="tabpanel" aria-labelledby="tab-personagem">
-    <h1 id="screen-title" class="window-title">Crie seu personagem</h1>
+    <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
     <div class="window-content">
       <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
         <div id="portrait" class="portrait" role="img"></div>
@@ -190,6 +190,8 @@ function renderRoster() {
   container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
   text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
   text('page-count',`${page+1} / ${pages}`);
+  // One page only: the pager says nothing, so it goes (and gives its row back to the grid).
+  (document.querySelector('.roster-pagination') as HTMLElement).hidden=pages<=1;
   (document.getElementById('page-prev') as HTMLButtonElement).disabled=page===0;
   (document.getElementById('page-next') as HTMLButtonElement).disabled=page>=pages-1;
 }

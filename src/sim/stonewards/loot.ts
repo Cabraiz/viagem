@@ -21,7 +21,7 @@
  * beyond. Value LOOT_VALUE by tier (units of the crate's kind); kinds alternate coco/pedra inside each tier (asset
  * order), so every tier pays both. A good crate (2 units) is part of a repair (rules RECIPES.reparo: 2 coco + 3 pedra).
  */
-import {FlowField,SPEED,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type CityTerrain,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
+import {CityTerrain,FlowField,SPEED,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
@@ -34,8 +34,12 @@ import type {ResourceKind} from './state.ts';
 export type LootTier='near'|'good'|'far';
 /** Walk-time bounds (s) of the tiers: near below the first, good up to the second, far beyond. */
 export const LOOT_NEAR_SECONDS=10,LOOT_FAR_SECONDS=15;
-/** Units a crate gives, by tier (farther pays more). */
-export const LOOT_VALUE:Readonly<Record<LootTier,number>>=Object.freeze({near:1,good:2,far:3});
+/**
+ * Units a crate gives, by tier (farther pays more). Sized against the forge (recipes cost 5–7 units) and the island
+ * economy (~70 units per intermission for a team): with the city's walking distances a solo hero brings back ~18
+ * units per intermission (2–3 crates) and six heroes ~80, so the forge stays useful in the city.
+ */
+export const LOOT_VALUE:Readonly<Record<LootTier,number>>=Object.freeze({near:3,good:6,far:9});
 export const CRATE_RADIUS=.35;
 /** Crate ids are `caixa-<index of the candidate in asset.loot>`. */
 export const CRATE_PREFIX='caixa-';
@@ -90,7 +94,10 @@ export function cityLoot(terrain:TerrainField|undefined):CityLoot|undefined{
   return loot;
 }
 
-function buildLoot(city:CityTerrain,speed:number):CityLoot{
+function buildLoot(shared:CityTerrain,speed:number):CityLoot{
+  // A fresh terrain over the asset: never a room's fork or enemy-only view (cidade-06 blockers), whichever caller
+  // reaches this first, so the per-asset cache is the same for every room.
+  const city=new CityTerrain(shared.asset,shared.signature);
   const grid=heroGrid(city),planner=new AvenuePlanner(cityLayoutFrom(city,grid));
   const w=grid.width,h=grid.height,cs=grid.cellSize,goals:Point[]=[];
   for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++)if(planner.plazaField.cellCost(cx,cy)===0)goals.push({x:(cx+.5)*cs,y:(cy+.5)*cs});
@@ -114,7 +121,10 @@ function buildLoot(city:CityTerrain,speed:number):CityLoot{
     const distance=r.cost/STRAIGHT_COST*cs,seconds=distance/speed;
     const tier:LootTier=seconds<LOOT_NEAR_SECONDS?'near':seconds<=LOOT_FAR_SECONDS?'good':'far';
     const kind:ResourceKind=count[tier]++%2?'pedra':'coco';
-    const x=r.moved?Math.round((r.cx+.5)*cs*100)/100:p.x,y=r.moved?Math.round((r.cy+.5)*cs*100)/100:p.y;
+    // The candidate itself when the hero can stand there, else its cell centre; never inside the base.
+    const centre=r.moved||!walkable(p,city);
+    const x=centre?Math.round((r.cx+.5)*cs*100)/100:p.x,y=centre?Math.round((r.cy+.5)*cs*100)/100:p.y;
+    if(planner.insideBase({x,y})){count[tier]--;return;}
     crates.push({node:Object.freeze({id:`${CRATE_PREFIX}${i}`,kind,x,y,radius:CRATE_RADIUS,value:LOOT_VALUE[tier],capacity:1}),tier,distance,seconds});
   });
   let farthestGood:Crate|undefined;

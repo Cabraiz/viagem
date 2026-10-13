@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   AVENUES,BARK_MAX,CIDADE_BARKS,CIDADE_BOSS_ROUND_NAMES,CIDADE_DEATH_LINES,CIDADE_ELITE_ROUND_NAMES,CIDADE_FORGE_LINES,
   CIDADE_HORN_LINES,CIDADE_MODIFIERS,CIDADE_REACTION_LINES,CIDADE_RECIPE_IDS,CIDADE_REGULAR_KINDS,CIDADE_RETREAT_LINES,CIDADE_ROUND_NAMES,
-  CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,cidadeModifierLabel,type CidadeModifier,
+  CIDADE_CRATE_LINES,CIDADE_LEFT_BEHIND_LINES,CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,LEFT_BEHIND_MAX,cidadeModifierLabel,type CidadeModifier,
 } from '../../src/rules/zueira-cidade.ts';
 import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/rules/waves.ts';
 import {BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,PUDDLE_SLIP_LINES} from '../../src/sim/enemies/catalog.ts';
@@ -26,6 +26,7 @@ const labels=CIDADE_MODIFIERS.map(cidadeModifierLabel);
 const allStrings=[
   ...allRoundNames,...CIDADE_MODIFIERS.flatMap(m=>[m.name,m.description]),...labels,...barks,...reactions,...deaths,
   ...CIDADE_RETREAT_LINES,...forge,...CIDADE_HORN_LINES,CIDADE_VEHICLE.name,...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect,
+  ...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES,
 ];
 /** Fields that are identity or scheduling, not an effect. */
 const NON_EFFECT=new Set(['id','name','description','banRounds']);
@@ -68,6 +69,7 @@ test('no repetition inside the city lists nor against the game lists',()=>{
   assert.deepEqual(dupes([...barks,...reactions,...deaths,...CIDADE_RETREAT_LINES]),[],'enemy lines (every kind and list together)');
   assert.deepEqual(dupes(forge),[],'forge');
   assert.deepEqual(dupes(CIDADE_HORN_LINES),[],'horn');
+  assert.deepEqual(dupes([...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES]),[],'left-behind and crate lines (cidade-07)');
   assert.deepEqual(dupes([...CIDADE_VEHICLE.intro,...CIDADE_VEHICLE.inspect]),[],'vehicle');
 
   const against=(mine:readonly string[],theirs:readonly string[],what:string)=>{
@@ -102,6 +104,7 @@ test('lengths fit the banners and balloons, no empty or padded strings',()=>{
   fit(CIDADE_VEHICLE.inspect,BARK_MAX,'vehicle inspect');
   fit([CIDADE_VEHICLE.id,CIDADE_VEHICLE.name],LABEL_MAX,'vehicle name');
   fit([...forge,...CIDADE_HORN_LINES],40,'forge/horn');
+  fit([...CIDADE_LEFT_BEHIND_LINES,...CIDADE_CRATE_LINES],LEFT_BEHIND_MAX,'left-behind/crate line (cidade-07)');
   // Ids are kebab-case like waves.ts.
   for(const m of CIDADE_MODIFIERS)assert.match(m.id,/^[a-z]+(-[a-z]+)*$/);
   assert.match(CIDADE_VEHICLE.id,/^[a-z]+(-[a-z]+)*$/);

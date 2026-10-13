@@ -471,6 +471,8 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   const step=()=>{s.step();for(const e of s.events as SimEvent[])log.push({tick:w.tick,e});};
   for(let i=0;i<ticks(10)&&w.round.phase!=='wave';i++)step();
   assert.equal(w.round.phase,'wave');assert.equal(w.round.index,1);
+  for(let i=0;i<ticks(1);i++)step();
+  assert.deepEqual(log.filter(x=>x.e.type==='say'&&x.e.key==='ficou-pra-tras'),[],'round 1: everyone starts at the crashed vehicle, nobody is told');
   // End round 1 now: nothing queued, nobody alive (the director's own round end, not a forced phase).
   const d=s.run.director.state;
   d.nextGroup=d.plan!.groups.length;d.pending=[];
@@ -520,6 +522,7 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   const said=log.slice(from).filter(x=>x.e.type==='say'&&x.e.key==='ficou-pra-tras');
   assert.deepEqual(said.map(x=>x.e.type==='say'?x.e.source:'').sort(),['p3','p4'],`told: ${JSON.stringify(said)}`);
   assert.ok(said.every(x=>x.tick===waveAt),'on the wave start');
+  assert.equal(new Set(said.map(x=>x.e.type==='say'?x.e.line:'')).size,said.length,'heroes left behind in the same tick hear different lines');
   assert.equal(log.slice(from).filter(x=>x.e.type==='horn').length,1,'one horn');
   assert.deepEqual(JSON.parse(JSON.stringify(st)),st,'stonewards state JSON-safe');
   t.diagnostic(`intermission ${((end0-start)/SIM_HZ).toFixed(2)} s at start; plaza edge hero ${edge.length?`${dist(edge[0],wall).toFixed(1)} u from the wall`:'n/a'}`);

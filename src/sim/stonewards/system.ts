@@ -158,14 +158,20 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       }else if(round.phase!=='prepare'){
         state.hornEndsTick=-1;
         // City: the round started; each standing hero outside the base gets the left-behind line, once per round.
-        if(loot&&!state.wallDown&&state.refilledRound===round.index&&state.leftBehindRound!==round.index){
+        // Not in round 1: everyone starts at the crashed vehicle, outside the base, by design.
+        if(loot&&round.index>1&&!state.wallDown&&state.refilledRound===round.index&&state.leftBehindRound!==round.index){
           state.leftBehindRound=round.index;
+          const used=new Set<string>();
           for(const id of [...ctx.players.keys()].sort()){
             const p=ctx.players.get(id)!;
             if(!isStanding(p)||loot.insideBase(p))continue;
             // Straight to the event (not `say`): its SAY_GAP must not drop it after a crate's line a moment ago.
             Object.defineProperty(state.sayReady,id,{value:ctx.tick+SAY_GAP,enumerable:true,writable:true,configurable:true});
-            ctx.emit({type:'say',source:id,key:LEFT_BEHIND_KEY,line:draw(ctx,state,CIDADE_LEFT_BEHIND_LINES)});
+            // Different lines for heroes left behind in the same tick (a few extra draws at most, still deterministic).
+            let line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            for(let t=0;t<4&&used.has(line);t++)line=draw(ctx,state,CIDADE_LEFT_BEHIND_LINES);
+            used.add(line);
+            ctx.emit({type:'say',source:id,key:LEFT_BEHIND_KEY,line});
           }
         }
       }

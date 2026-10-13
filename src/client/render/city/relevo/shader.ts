@@ -13,6 +13,7 @@
  * the bake is drawn with flipY (framebuffer rows run bottom-up), as in terrain/renderer.ts.
  */
 import {CITY_PALETTE,MATERIALS} from '../palette.ts';
+import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y} from '../projection.ts';
 
 const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toFixed(4)).join(',')})`;
@@ -21,6 +22,8 @@ const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toF
 export const RELIEF_RAY_STEPS=48;
 /** Render units per coarse step at most (~4 px): small chunks with low relief use fewer steps. */
 export const RELIEF_STEP_UNITS=0.1;
+/** Height (render units) of a cliff ledge over its ground: the cliff box's own, which it replaces. */
+export const CLIFF_LIP=CLIFF_LIP_HEIGHT;
 
 export const reliefShader=`
 precision highp float;
@@ -48,6 +51,11 @@ const float TILE_X=${TILE_X.toFixed(1)},TILE_Y=${TILE_Y.toFixed(1)},HEIGHT_PX=${
 // grid axis is |(TILE_X, TILE_Y)| long, so slopes and shadows read the way they look.
 // Shading slopes read steeper than they are, so gentle hills show at the fixed city zoom.
 const float RELIEF_GAIN=1.8;
+// Cliff ledges (cidade-caixas-de-cliff): the WC3 cliff lines are no longer boxes; their footprint is a rock ledge
+// CLIFF_LIP render units proud of the ground (the box's own height, so the same space on screen), marched by the ray
+// like the hills. Like the box it replaces: a snow top and rock faces round its edge. Nobody walks there (the
+// footprint is blocked in the sim but for a few cells), and actors are drawn over the ground, so none is hidden.
+const float CLIFF_LIP=${CLIFF_LIP.toFixed(2)};
 const float RISE=${(HEIGHT_PX/Math.hypot(TILE_X,TILE_Y)).toFixed(4)};
 
 const vec3 SNOW_CORE=${vec3(MATERIALS.pedra.clara)};
@@ -72,6 +80,10 @@ vec4 field(vec2 f){return texture2D(iChannel0,(clamp(f,vec2(0.0),gridSize)+0.5)/
 float H(vec2 f){return field(f).r*maxHeight;}
 vec3 kinds(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel1,clamp(f/gridSize,e,1.0-e)).rgb;}
 vec3 cover(vec2 f){vec2 e=0.5/gridSize;return texture2D(iChannel2,clamp(f/gridSize,e,1.0-e)).rgb;}
+// Ledge footprint, sharpened from the half-cell blend of the bilinear mask so its edge is a step, not a ramp.
+float lip(vec2 f){return smoothstep(0.38,0.62,cover(f).b);}
+// Height the light sees: the ground plus the cliff ledges.
+float Hs(vec2 f){return H(f)+CLIFF_LIP*lip(f);}
 
 // Sine-free hash (Hoskins) and value noise, as in terrain/shaders.ts.
 float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
@@ -93,9 +105,9 @@ void main(){
  for(int i=0;i<=${RELIEF_RAY_STEPS};i++){
   if(float(i)>raySteps)break;
   float z=max(0.0,rayTop-float(i)*stepZ);
-  if(z<=H(cellAt(s,z))){lo=z;hi=z+stepZ;break;}
+  if(z<=Hs(cellAt(s,z))){lo=z;hi=z+stepZ;break;}
  }
- for(int i=0;i<7;i++){float z=(lo+hi)*0.5;if(z>H(cellAt(s,z)))hi=z;else lo=z;}
+ for(int i=0;i<7;i++){float z=(lo+hi)*0.5;if(z>Hs(cellAt(s,z)))hi=z;else lo=z;}
  vec2 f=cellAt(s,(lo+hi)*0.5);
  // Only the cells this chunk owns (plus its overlap ring): the neighbours draw theirs, decor and shadows included.
  if(f.x<cellRect.x||f.y<cellRect.y||f.x>=cellRect.z||f.y>=cellRect.w){gl_FragColor=vec4(0.0);return;}
@@ -104,7 +116,12 @@ void main(){
 
  // Normal in view space (screen-fixed sun whatever the camera turn).
  float e=0.2;
- vec2 g=vec2(H(f+vec2(e,0.0))-H(f-vec2(e,0.0)),H(f+vec2(0.0,e))-H(f-vec2(0.0,e)))/(2.0*e*cellSize)*RISE*RELIEF_GAIN;
+ vec3 kd=kinds(f),cv=cover(f);
+ // Ledge: its top (inside the footprint, flat) and its faces (where the footprint steps, both sides of the edge).
+ float ledge=lip(f);
+ float stepAt=length(vec2(lip(f+vec2(e,0.0))-lip(f-vec2(e,0.0)),lip(f+vec2(0.0,e))-lip(f-vec2(0.0,e))));
+ float face=smoothstep(0.08,0.35,stepAt);
+ vec2 g=vec2(Hs(f+vec2(e,0.0))-Hs(f-vec2(e,0.0)),Hs(f+vec2(0.0,e))-Hs(f-vec2(0.0,e)))/(2.0*e*cellSize)*RISE*RELIEF_GAIN;
  vec3 sun=normalize(vec3(-0.65,-0.32,0.62));
  vec3 normal=normalize(vec3(-rotv(g),1.0));
  float diffuse=max(0.0,dot(normal,sun));
@@ -114,16 +131,15 @@ void main(){
   if(float(i)>shadowSamples)break;
   float t=float(i)*0.45;
   vec2 o=unrot(normalize(sun.xy)*t)/cellSize;
-  float obstruction=(H(f+o)-ground)*RISE-t*rise;
+  float obstruction=(Hs(f+o)-Hs(f))*RISE-t*rise;
   shadow=min(shadow,1.0-smoothstep(-0.05,0.35,obstruction)*0.75);
  }
  // Hollows hold a little shade (ambient occlusion from the four neighbours one cell away).
- float hollow=clamp(((H(f+vec2(1,0))+H(f-vec2(1,0))+H(f+vec2(0,1))+H(f-vec2(0,1)))*0.25-ground)*RISE*0.6,0.0,0.25);
+ float hollow=clamp(((Hs(f+vec2(1,0))+Hs(f-vec2(1,0))+Hs(f+vec2(0,1))+Hs(f-vec2(0,1)))*0.25-Hs(f))*RISE*0.6,0.0,0.25);
  float flatLit=sun.z;
  float d=diffuse*mix(1.0,shadow,0.85)-flatLit-hollow;
 
  float macro=fbm(w*0.32),grain=n(w*9.0),fine=n(w*31.0+vec2(17.0,3.0));
- vec3 kd=kinds(f),cv=cover(f);
  float slope=length(g);
 
  // Fresh snow: soft drifts (bluer hollows of the macro noise), fine grain and a few sparkles in the sun.
@@ -162,7 +178,10 @@ void main(){
  float rock=smoothstep(0.55,1.05,slope+(macro-0.5)*0.35)*(1.0-smoothstep(0.2,0.6,kd.g))*(1.0-cv.g);
  vec3 stone=ramp(mix(ROCK,ROCK_SHADE,smoothstep(0.5,0.8,grain)*0.5),ROCK_SUN,ROCK_SHADE,ROCK_SHADE,d);
  stone=mix(stone,snow,smoothstep(0.62,0.8,fine)*0.45);
+ // Cliff ledges: rock on the faces (lit by the step's own normal), the top keeps a lighter cap of snow.
+ rock=max(rock*(1.0-ledge*(1.0-face)),face);
  color=mix(color,stone,rock);
+ color=mix(color,mix(SNOW_SUN,SNOW,smoothstep(0.6,0.9,macro)*0.5),ledge*(1.0-face)*0.7);
 
  // Water (fountain, lake): deep blue, shallow at its edge. The layer's decor still draws its rim and glints.
  vec3 water=mix(WATER,WATER_SHALLOW,1.0-smoothstep(0.55,0.95,cv.g));

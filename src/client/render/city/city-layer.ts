@@ -159,13 +159,17 @@ export class CityLayer {
     this.depthOf=options.depthOf??(k=>k);
     const res=options.groundResolution;
     this.groundResolution=res!==undefined&&Number.isFinite(res)&&res>0?Math.min(res,4):GROUND_RESOLUTION;
-    this.index=buildChunks(asset);
-    this.tracker=new ChunkTracker(this.index,asset,{pivot:this.pivot});
-    for(const b of asset.blocks)this.blocks.set(b.id,b);
+    // With the relief shader the WC3 cliff lines are rock ledges painted on the ground (relevo/shader.ts), not boxes:
+    // they get no pieces, columns or fades (cidade-caixas-de-cliff). The flat ground (?relevo=0, Canvas) keeps them.
+    const relief=reliefEnabled(scene);
+    const drawn=relief?{...asset,blocks:asset.blocks.filter(b=>b.kind!=='cliff')}:asset;
+    this.index=buildChunks(drawn);
+    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
+    for(const b of drawn.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
-      for(const b of asset.blocks)for(const lot of planLots(b,art)){
+      for(const b of drawn.blocks)for(const lot of planLots(b,art)){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
       this.fountain=fountainLot(asset,art);
@@ -185,7 +189,7 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
-    if(reliefEnabled(scene))this.relief=new CityRelief(scene,asset,this.pivot);
+    if(relief)this.relief=new CityRelief(scene,asset,this.pivot);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}

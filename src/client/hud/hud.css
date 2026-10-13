@@ -831,9 +831,9 @@
 .rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:30px;height:30px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
   background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
 .rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
-/* One call at a time (design review): while "andar" shows only the joystick is Amarelo, so a "+N" chip that came early
+/* One call at a time (design review): while the joystick is lit for "andar" it is the only Amarelo, so a "+N" chip that came early
    (a teammate's level) waits as plain Papel; with the chip's own hint up, the chip gets a 3 px Breu edge. Static. */
-.rh[data-coach=walk] .rh-offer-chip{background:var(--c-papel)}
+.rh[data-coach-stick] .rh-offer-chip{background:var(--c-papel)}
 .rh[data-coach=chip] .rh-offer-chip{border-width:3px}
 .rh-ended .rh-coach{display:none}
 /* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */

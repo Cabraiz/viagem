@@ -20,7 +20,7 @@ import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {MoodBoard} from './moods.ts';
 import type {EmoteId} from '../fun/emotes.ts';
-import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
+import {Coach,createCoachRow,type CoachPart,type CoachShow,type Lesson} from './coach.ts';
 import {Minimap} from './minimap.ts';
 import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
@@ -268,8 +268,8 @@ export class RunHud {
     this.camp.setBocas(input?cityAssetOf(input.terrain as {world?:string})?.points.bocas:undefined);
     const was=!!this.objectiveWant;
     this.stepObjective();
-    // The walk just became wanted (the first city frame of the run) while the coach shows its own "andar": the coach
-    // folds it into the walk now, not at the next view, so the two rows never take turns.
+    // The walk just became wanted (the first city frame of the run) while the coach shows a row: the coach holds it
+    // now, not at the next view, so the two rows never take turns.
     if(!was&&this.objectiveWant&&this.coachShow&&this.last)this.updateCoach(this.last);
     this.renderObjective();
   }
@@ -287,15 +287,16 @@ export class RunHud {
   /**
    * One row at a time: the objective waits for a notice, the kill-cam, a shell row, an open window and the coach's rescue
    * hint (the coach holds every other hint while the objective is wanted, coach.ts), and for the round banner (1.8 s),
-   * except in round 1 while "andar" is still to learn: then it is the joystick lesson and takes the banner's slot, as
-   * the coach's "andar" does (UX-1; city/route.ts objectiveSlot): the round name folds into the round chip.
+   * except in round 1 while "andar" is still to learn: then it takes the banner's slot (UX-1; city/route.ts
+   * objectiveSlot): the round name folds into the round chip. Its second line never says how to walk (one written walk
+   * hint only: the waiting room's label, BUG-dica-tutorial-duplicada).
    */
   private renderObjective(){
     const want=this.objectiveWant,marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const held=!!this.el.hidden||this.offerOpen()||!!this.coachShow||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])');
     const slot=objectiveSlot({wanted:!!want,round:this.last?.round?.index,walkLearned:this.coach.done.has('walk'),banner:!!marquee&&!marquee.hidden,held});
     if(slot.foldBanner)marquee!.hidden=true;
-    if(this.objectiveRow.render(slot.show?want:undefined,!this.coach.done.has('walk'))){
+    if(this.objectiveRow.render(slot.show?want:undefined)){
       const r=this.objectiveRow.el.hidden?undefined:this.objectiveRow.el.getBoundingClientRect();
       this.objectiveRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};
       this.turnRows();
@@ -307,19 +308,17 @@ export class RunHud {
   /** The city's walk to the plaza is on screen (the sandbox and the playtest metrics). */
   get objectiveShown(){return !this.objectiveRow.el.hidden;}
   /**
-   * The joystick keeps calling (Amarelo) while "andar" is still to learn and its hint is on screen, or only pushed aside
-   * by the rescue hint (a caído outranks it), or folded into the city's walk to the plaza while that walk is wanted (its
-   * row on screen or only waiting for a notice or a shell row: the light never blinks); explore.css reads data-coach-stick.
+   * The joystick wears Amarelo while the coach's "andar" is lit (Coach.stick: round 1, until the first steps or 6 s);
+   * it is the only combat cue for walking, with no row of its own. explore.css reads data-coach-stick (static).
    */
   private lightStick(){
-    const lesson=this.coachShow&&!this.coachShow.done?this.coachShow.lesson:'';
-    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue'||!!this.objectiveWant);
+    const stick=this.coach.stick;
     if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
 
   /**
    * The first-run coach (VGM-056): it waits while any other row holds the announcement slot, the HUD is hidden (out of
-   * the round) or the result is up; the joystick wears the hint's Amarelo while "andar" shows (data-coach on the root).
+   * the round) or the result is up; "andar" only lights the joystick (lightStick), it never takes the slot.
    */
   private updateCoach(view:RunView,now=performance.now()){
     if(this.coach.finished&&!this.coachShow)return;
@@ -331,9 +330,6 @@ export class RunHud {
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     const banner=!!marquee&&!marquee.hidden;
     const show=this.coach.step({view,localId:this.ctx.localId,hero:this.hero,chip:this.chipWaits(),blocked,banner,objective:!!this.objectiveWant},now);
-    // "Anda!" outranks the street banner (UX-1: the 1st step in ≤ 3 s): the round name folds into the round chip, as it
-    // does for a notice or the offer window.
-    if(show&&banner&&LESSONS[show.lesson].overBanner&&view.round?.index===1)marquee!.hidden=true;
     this.coachShow=show;
     // A hint that just appeared or changed is measured now and steps aside at once if it is over the hero; between
     // changes the box comes from the slot's cache (avoidHero), and the hero's box is read fresh on every view.
@@ -344,8 +340,8 @@ export class RunHud {
     if((this.el.dataset.coach??'')!==lesson){if(lesson)this.el.dataset.coach=lesson;else delete this.el.dataset.coach;}
     this.lightStick();
   }
-  /** The hint on screen now (playtest metrics, dev/ux-metrics.ts). */
-  get coachHint():CoachShow|undefined{return this.coachShow;}
+  /** The hint on screen now, the lit joystick counting as "walk" (playtest metrics, dev/ux-metrics.ts). */
+  get coachHint():{lesson:Lesson;done:boolean}|undefined{return this.coachShow??(this.coach.stick?{lesson:'walk',done:false}:undefined);}
   /** The "+N" chip waits for a tap: in combat, or the intermission window folded into it with "Depois" (janela-caido). */
   private chipWaits(){return !this.chip.hidden&&(this.chip.dataset.mode==='combat'||this.offerEl.hidden===true);}
   /** The intermission window, or the LEVEI stamp of the combat strip (the strip itself sits far from the slot). */
@@ -362,7 +358,7 @@ export class RunHud {
     this.el.classList.add('rh-ended');this.hurt.reset();
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
     this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
-    this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined,false);
+    this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);
     this.result.show(result,this.ctx);
   }
 

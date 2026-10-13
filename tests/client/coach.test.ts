@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson} from '../../src/client/hud/coach.ts';
+import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,WALK_LIGHT_MS,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson,type RowLesson} from '../../src/client/hud/coach.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import type {RunView} from '../../src/contract/view.ts';
 
@@ -22,30 +22,87 @@ const input=(view:RunView,extra:Partial<CoachInput>={}):CoachInput=>({view,local
 const xpDrop={id:'x1',kind:'xp' as const,x:3,y:0,value:1};
 
 test('copy: house voice, short, sentence case, no "A · B", no emoji, one sticker each',()=>{
-  for(const lesson of LESSON_ORDER){
+  for(const lesson of Object.keys(LESSONS) as RowLesson[]){
     const copy=LESSONS[lesson];
     for(const line of [copy.text,copy.sub].filter(Boolean) as string[]){
       assert.ok(line.length<=46,`${lesson}: "${line}" fits one line of the slot`);
+      // One written walk hint only: the waiting room's label (controls-phase.ts) says it, no row repeats it.
+      assert.doesNotMatch(line,/andar|atira sozinha/i,`${lesson}: "${line}" does not repeat the lobby's walk label`);
       assert.doesNotMatch(line.replace(/\bXP\b/,''),/[A-ZÁÉÍÓÚÂÊÔÃÕ]{2}|·|→|—|\p{Extended_Pictographic}/u,`${lesson}: "${line}"`);
       assert.match(line,/^[A-ZÁÉÍÓÚ3]/,`${lesson}: sentence case`);
     }
   }
-  assert.match(LESSONS.walk.sub!,/atira sozinha/,'the walk hint says the weapons fire by themselves');
+  assert.ok(!('walk' in LESSONS),'"andar" has no row in combat');
   assert.match(LESSONS.rescue.text,/caiu/);assert.match(LESSONS.rescue.sub!,/resgatar/);
   assert.match(LESSONS.chip.text,/\+\{n\}/,'the chip hint names the chip as it looks (+1, +2)');assert.match(LESSONS.xp.sub!,/turma/,'XP is the team\'s');
 });
 
-test('round 1: walk first; it stays while the novice stands 15 s and goes (with a check) once the hero walks',()=>{
+test('walk emits no toast: round 1 only lights the joystick, and the light goes at the first steps',()=>{
   resetSessionMemory();
   const coach=new Coach(memory());let now=0;
   const view=round1();
-  assert.deepEqual(coach.step(input(view),now),{lesson:'walk',done:false});
-  for(now=100;now<=15000;now+=100)assert.equal(coach.step(input(view,{hero:{x:.2,y:.1}}),now)?.lesson,'walk','no time cap on walking');
-  const walked=coach.step(input(view,{hero:{x:WALK_DISTANCE+.1,y:0}}),now+=100);
-  assert.deepEqual(walked,{lesson:'walk',done:true},'the check shows at once (≤ 100 ms feedback)');
-  assert.ok(coach.done.has('walk'));
-  assert.deepEqual(coach.step(input(view),now+DONE_MS-50),{lesson:'walk',done:true});
-  assert.equal(coach.step(input(view),now+DONE_MS+10),undefined,'then it goes');
+  assert.equal(coach.step(input(view),now),undefined,'no row for "andar"');
+  assert.equal(coach.stick,true,'the joystick is lit from the first second');
+  for(now=100;now<=3000;now+=100){
+    assert.equal(coach.step(input(view,{hero:{x:.2,y:.1}}),now),undefined,`${now} ms: still no row`);
+    assert.equal(coach.stick,true);
+  }
+  coach.step(input(view,{hero:{x:WALK_DISTANCE+.1,y:0}}),now+=100);
+  assert.equal(coach.stick,false,'walked: the light goes at once');
+  assert.ok(coach.done.has('walk'),'and it is learned');
+  for(now+=100;now<=9000;now+=100){assert.equal(coach.step(input(view),now),undefined);assert.equal(coach.stick,false,'it never comes back');}
+});
+
+test('walk light ends at WALK_LIGHT_MS (6 s) even if the novice never walks; walking later still teaches it',()=>{
+  resetSessionMemory();
+  assert.equal(WALK_LIGHT_MS,6000);
+  const coach=new Coach(memory());
+  for(let now=0;now<WALK_LIGHT_MS;now+=100){coach.step(input(round1()),now);assert.equal(coach.stick,true,`${now} ms: lit`);}
+  for(let now=WALK_LIGHT_MS;now<=20000;now+=100){
+    assert.equal(coach.step(input(round1()),now),undefined);
+    assert.equal(coach.stick,false,`${now} ms: gone after 6 s`);
+  }
+  assert.equal(coach.done.has('walk'),false,'not walked');
+  coach.step(input(round1(),{hero:{x:WALK_DISTANCE+.1,y:0}}),20100);
+  assert.ok(coach.done.has('walk'),'the first steps after the light still count');
+  assert.equal(coach.stick,false);
+});
+
+test('walk never lights in round 2 or later, nor after a reconnection into a later round; it still learns there',()=>{
+  for(const index of [2,3,6]){
+    resetSessionMemory();
+    const coach=new Coach(memory());
+    const late:RunView={...round1(),round:{...round1().round!,index}};
+    for(let now=0;now<=10000;now+=100){
+      assert.equal(coach.step(input(late),now),undefined,`round ${index}: no row`);
+      assert.equal(coach.stick,false,`round ${index}: no light`);
+    }
+    coach.step(input(late,{hero:{x:WALK_DISTANCE+.1,y:0}}),10100);
+    assert.ok(coach.done.has('walk'),`round ${index}: walking still teaches it (the XP hint can follow)`);
+  }
+  // Round 1 lit for 2 s, then round 2 comes: the light goes with round 1.
+  resetSessionMemory();
+  const coach=new Coach(memory());
+  coach.step(input(round1()),0);coach.step(input(round1()),2000);
+  assert.equal(coach.stick,true);
+  coach.step(input({...round1(),round:{...round1().round!,index:2}}),2100);
+  assert.equal(coach.stick,false,'round 2: off');
+});
+
+test('the walk light holds no row and no row holds it: rescue and the chip show while it is lit',()=>{
+  resetSessionMemory();
+  const coach=new Coach(memory());
+  const down=round1();down.players=[...down.players,{...down.players[0]!,id:'p2',hp:0,online:true,downed:{progress:0,bleedOutTick:2000}}];
+  assert.deepEqual(coach.step(input(down,{banner:true}),0),undefined,'the banner holds the rescue row');
+  assert.equal(coach.stick,true,'but not the light');
+  assert.deepEqual(coach.step(input(down),100),{lesson:'rescue',done:false});
+  assert.equal(coach.stick,true,'lit beside the rescue row');
+  resetSessionMemory();
+  const chip=new Coach(memory({[COACH_KEY]:JSON.stringify(['rescue'])}));
+  assert.deepEqual(chip.step(input(round1(),{chip:true,blocked:false}),0),{lesson:'chip',done:false});
+  assert.equal(chip.stick,true);
+  chip.step(input(round1(),{blocked:true}),100);
+  assert.equal(chip.stick,true,'a notice in the slot does not put the light out');
 });
 
 test('then XP while drops lie on the map, gone at the first pickup; then the chip, gone at the tap',()=>{
@@ -71,12 +128,13 @@ test('then XP while drops lie on the map, gone at the first pickup; then the chi
 
 test('one row at a time: any other row of the slot (round banner, notice) holds the hint back, and danger wins',()=>{
   resetSessionMemory();
-  const coach=new Coach(memory());
-  assert.equal(coach.step(input(round1(),{blocked:true}),0),undefined,'round banner up: wait');
-  assert.equal(coach.step(input(round1()),100)?.lesson,'walk');
-  assert.equal(coach.step(input(round1(),{blocked:true}),200),undefined,'a notice comes: the hint gives way at once');
-  assert.equal(coach.step(input(round1()),300),undefined,'and waits a beat before coming back');
-  assert.equal(coach.step(input(round1()),300+GAP_MS+10)?.lesson,'walk');
+  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
+  const drops=round1({pickups:[xpDrop]});
+  assert.equal(coach.step(input(drops,{blocked:true}),0),undefined,'round banner up: wait');
+  assert.equal(coach.step(input(drops),100)?.lesson,'xp');
+  assert.equal(coach.step(input(drops,{blocked:true}),200),undefined,'a notice comes: the hint gives way at once');
+  assert.equal(coach.step(input(drops),300),undefined,'and waits a beat before coming back');
+  assert.equal(coach.step(input(drops),300+GAP_MS+10)?.lesson,'xp');
 });
 
 test('rescue: a caído ally outranks the rest, ends when this phone rescues; downed or out, no lessons',()=>{
@@ -128,7 +186,8 @@ test('storage: once per phone, legacy hints count, and a storage that throws onl
   assert.ok(loadDone(broken).has('walk'),'private tab: remembered for this page');
   resetSessionMemory();
   const coach=new Coach(broken);
-  assert.equal(coach.step(input(round1()),0)?.lesson,'walk','private tab: the hints still show');
+  coach.step(input(round1()),0);
+  assert.equal(coach.stick,true,'private tab: the joystick still lights');
 });
 
 test('the coach sends nothing to the room and pauses nobody: no net, sim or timer imports',()=>{
@@ -136,14 +195,13 @@ test('the coach sends nothing to the room and pauses nobody: no net, sim or time
   assert.doesNotMatch(src,/from '\.\.\/net\/|from '\.\.\/\.\.\/(sim|protocol|maps)\/|^import (?!type )[^;]*from '\.\.\/\.\.\/contract\/|setTimeout|setInterval|send\(/m);
 });
 
-test('"andar" from the first second (round 1 prepare too) and over the street banner; the others wait for the banner',()=>{
+test('"andar" lights from the first second (round 1 prepare too), banner or not; the rows wait for the banner',()=>{
   resetSessionMemory();
   const coach=new Coach(memory());
   const prep=fakeView('prepare',1);
   const start:RunView={...prep,round:{...prep.round!,index:1},offers:[],pickups:[],events:[]};
-  assert.deepEqual(coach.step(input(start,{banner:true}),0),{lesson:'walk',done:false},'the "Intervalo!" banner does not hold "andar"');
-  assert.equal(LESSONS.walk.overBanner,true);
-  for(const lesson of LESSON_ORDER.filter(l=>l!=='walk'))assert.ok(!LESSONS[lesson].overBanner,`${lesson} waits for the banner`);
+  assert.equal(coach.step(input(start,{banner:true}),0),undefined,'no row over the banner');
+  assert.equal(coach.stick,true,'the joystick is lit under the "Intervalo!" banner');
   // XP waits for the banner to go, and asks only for drops near the hero.
   resetSessionMemory();
   const walked=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
@@ -151,12 +209,6 @@ test('"andar" from the first second (round 1 prepare too) and over the street ba
   assert.equal(walked.step(input(drops,{banner:true}),0),undefined,'the round name first');
   assert.equal(walked.step(input(drops),100)?.lesson,'xp');
   assert.equal(wants('xp',input(round1({pickups:[{...xpDrop,x:XP_NEAR+5}]})),true),false,'a drop off screen does not call the hint');
-  // From round 2 on the banner may be a zueira event or the boss: even "andar" waits for it.
-  resetSessionMemory();
-  const late=new Coach(memory());
-  const wave2:RunView={...round1(),round:{...round1().round!,index:2}};
-  assert.equal(late.step(input(wave2,{banner:true}),0),undefined,'round 2: the zueira banner keeps its turn');
-  assert.equal(late.step(input(wave2),100)?.lesson,'walk');
 });
 
 test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk is measured from where it landed',()=>{
@@ -171,22 +223,28 @@ test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk
   assert.ok(coach.done.has('walk'),'then a real step counts');
 });
 
-test('in and out in 3 s: a glimpse is not learning (andar stays for the next run); a long look is',()=>{
+test('in and out in 3 s: a glimpse is not learning (the light comes back next run); its whole 6 s is',()=>{
   resetSessionMemory();
   const store=memory();
   const coach=new Coach(store);
-  for(let now=0;now<=3000;now+=100)assert.equal(coach.step(input(round1()),now)?.lesson,'walk');
+  for(let now=0;now<=3000;now+=100){coach.step(input(round1()),now);assert.equal(coach.stick,true);}
   coach.endRun();
-  assert.equal(coach.done.has('walk'),false,'3 s on screen, never walked: still to learn');
+  assert.equal(coach.stick,false,'the run is over: off');
+  assert.equal(coach.done.has('walk'),false,'3 s lit, never walked: still to learn');
   assert.equal(store.store.get(COACH_KEY),undefined,'nothing stored');
   resetSessionMemory();
-  assert.equal(new Coach(store).step(input(round1()),0)?.lesson,'walk','the next run teaches it again');
-  // The novice who stood the whole 15 s and then left: seen long enough, it counts.
+  const again=new Coach(store);again.step(input(round1()),0);
+  assert.equal(again.stick,true,'the next run lights it again');
+  // The novice who stood through the whole light and then left: it counts (stored, the next run is quiet).
   resetSessionMemory();
   const stood=new Coach(store);
-  for(let now=0;now<=LEARNED_BY_SIGHT_MS+500;now+=100)stood.step(input(round1()),now);
+  for(let now=0;now<=WALK_LIGHT_MS+500;now+=100)stood.step(input(round1()),now);
   stood.endRun();
   assert.ok(stood.done.has('walk'));
+  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['walk']);
+  resetSessionMemory();
+  const quiet=new Coach(store);quiet.step(input(round1()),0);
+  assert.equal(quiet.stick,false,'learned on this phone: no light');
 });
 
 test('two tabs of the same phone: saving joins what the other tab stored meanwhile',()=>{

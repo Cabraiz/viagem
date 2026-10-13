@@ -273,6 +273,14 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
   // 3g: every drop (forced or not), the way back, and the hero's corrections.
   const drops=bots.map(b=>({name:b.name,closes:b.link.stats.closes.filter(c=>c.code!==1000).length,fatal:b.errors.length>0,connected:connectedAtEnd[b.index]??b.client.connected,returned:b.events.filter(e=>e.kind==='back').length}));
   const corrections=bots.map(b=>({name:b.name,...b.corrections}));
+  // 3g-socket-morto: the silences each client lived through in combat, apart from the ones a forced fault caused (from
+  // the fault to 2 s after the bot was back, or to the end when it never was).
+  const silences=bots.map(b=>{
+    const own=faults.filter(f=>f.fault.bot===b.index&&f.startedAt!==undefined).map(f=>({from:f.startedAt!-1000,to:(f.backAt??Infinity)+2000}));
+    const end=combatEnd||leftAt,list=b.link.silences.filter(s=>s.at>=combatStart&&s.at<end);
+    const unforced=list.filter(s=>!own.some(w=>s.at+s.ms>w.from&&s.at<w.to)).map(s=>s.ms);
+    return {name:b.name,unforced};
+  });
   // Metrics over the combat window (seconds since each link's epoch).
   const perClient=bots.map(b=>{
     const from=Math.floor((combatStart-b.link.epoch)/1000),to=Math.floor(((combatEnd||leftAt)-b.link.epoch)/1000);
@@ -294,7 +302,7 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
     perClientMean:{upMsgsPerSec:round2(mean(perClient.map(c=>c.combat.upMsgs.mean))),downMsgsPerSec:round2(mean(perClient.map(c=>c.combat.downMsgs.mean))),
       downBytesPerSec:Math.round(mean(perClient.map(c=>c.combat.downBytes.mean))),downBytesPerSecP95:Math.round(mean(perClient.map(c=>c.combat.downBytes.p95))),
       upBytesPerSec:Math.round(mean(perClient.map(c=>c.combat.upBytes.mean)))},
-    kbps:scenario.kbps,lossPct:scenario.lossPct,drops,corrections,unforcedCloses:strayCloses,
+    kbps:scenario.kbps,lossPct:scenario.lossPct,drops,corrections,silences,unforcedCloses:strayCloses,
     faults:faults.map(f=>({...f.fault,offlineMs:f.offlineMs,sameId:f.sameId})),
     sentByType:bots.reduce((all,b)=>{for(const [k,v] of Object.entries(b.link.stats.sentByType))all[k]=(all[k]??0)+v;return all;},{} as Record<string,number>),
     cost,freePlan:freePlan(cost),perClient,lab:labPolls};
@@ -356,6 +364,10 @@ export function threeGMarkdown(reports:any[]){
     '|---|---|---|---|---|---|---|---|',
     `| ${((forced+unforced)/reports.length).toFixed(1)} (${forced} + ${unforced}) | ${back.length}/${forced} | ${(mean(times)/1000).toFixed(1)} / ${(percentile(times,.95)/1000).toFixed(1)} / ${(Math.max(0,...times)/1000).toFixed(1)} s | ${never} | ${px(max(x=>x.jumpPeak))} / ${px(sum(x=>x.jumpSum)/Math.max(1,sum(x=>x.reconciles)))} px | ${px(max(x=>x.before.peak))} / ${px(sum(x=>x.before.sum)/Math.max(1,sum(x=>x.before.frames)))} px (${sum(x=>x.before.snaps)} saltos) | ${px(max(x=>x.after.peak))} / ${px(sum(x=>x.after.sum)/Math.max(1,sum(x=>x.after.frames)))} px | ${sum(x=>x.hides)} |`,
     '',`px: tela no zoom 1 do mapa infinito (1 unidade = ${(42*Math.SQRT2).toFixed(1)} px). Reconciliações: ${sum(x=>x.reconciles)}.`];
+  // 3g-socket-morto: the longest silences without a forced fault (what a dead-socket rule must outlast).
+  const quiet=reports.flatMap(r=>(r.silences??[]).flatMap((s:any)=>s.unforced as number[])).sort((a,b)=>a-b);
+  const above=(ms:number)=>quiet.filter(x=>x>ms).length;
+  if(quiet.length)lines.push('',`Silêncios sem falha provocada (≥ 0,4 s): ${quiet.length}; maior ${quiet.at(-1)} ms; p99 ${percentile(quiet,.99)} ms; acima de 1 s: ${above(1000)}, de 2 s: ${above(2000)}, de 3 s: ${above(3000)}.`);
   return lines.join('\n')+'\n';
 }
 async function main(){

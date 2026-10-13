@@ -11,11 +11,13 @@ const net={room:undefined as Room|undefined,down:false,opened:0,sent:[] as {at:n
 class FakeSocket{
   static CONNECTING=0;static OPEN=1;static CLOSING=2;static CLOSED=3;
   readyState=0;binaryType='blob';
+  /** The link went quiet with the socket still open (3G outage): nothing reaches the client, nothing closes. */
+  deaf=false;
   onopen?:()=>void;onmessage?:(e:{data:unknown})=>void;onclose?:(e:{code:number})=>void;onerror?:()=>void;
   readonly peer:Peer;
   constructor(_url:unknown){
     net.opened++;
-    this.peer={send:d=>{const data=typeof d==='string'?d:d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength);setTimeout(()=>{if(this.readyState===1)this.onmessage?.({data});},0);},
+    this.peer={send:d=>{const data=typeof d==='string'?d:d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength);setTimeout(()=>{if(this.readyState===1&&!this.deaf)this.onmessage?.({data});},0);},
       close:code=>{if(this.readyState===3)return;this.readyState=3;setTimeout(()=>this.onclose?.({code}),0);}};
     setTimeout(()=>{
       if(net.down||!net.room){this.readyState=3;this.onclose?.({code:1006});return;}
@@ -205,6 +207,7 @@ test('reconecta-round2: the banner helper and the retry schedule (150 ms first o
   assert.equal(at(0),false);assert.equal(at(1499),false);assert.equal(at(1500),true);assert.equal(at(30_000),true);
   assert.equal(at(5000,{connected:true}),false);assert.equal(at(5000,{fatal:'Conexão indisponível.'}),false,'terminal: the fatal window, not the banner');
   assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,2000,2000,2000]);
+  assert.deepEqual([0,1,2,3].map(n=>retryDelay(n,true,true)),[150,1000,1000,1000],'in a match the cap is 1 s (3g-socket-morto)');
   assert.deepEqual([0,1].map(n=>retryDelay(n,false)),[500,1000],'before joining the lobby keeps its pace');
 });
 
@@ -287,5 +290,23 @@ test('3g-rede-sem-teleporte: a 3-minute drop mid-match (past the grace) with a f
     assert.equal(ana.connected,true);assert.equal(ana.id,id,'the same seat');
     assert.equal(room.sim.autopilot.has(id),false,'back: her own thumb again');
     assert.ok(JSON.parse(store.get('viagem:room:ABCDEF1234')!).until>Date.now()+20*60_000,'the saved token lasts the run (a reload keeps the seat)');
+  }finally{stop();cleanup();}
+});
+
+test('3g-socket-morto: a socket gone quiet (no close) on a steady link is called dead in 3-5 s, not 8-10',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();ana.ready(true);
+    for(let i=0;i<120&&ana.run?.phase!=='combat';i++)await sleep(50);
+    await sleep(3000);
+    assert.equal(ana.silenceLimit(),3000,'a steady link: the floor');
+    const quiet=sockets(ana),opened=net.opened,t0=Date.now();
+    quiet.deaf=true;
+    for(let i=0;i<200&&net.opened===opened;i++)await sleep(50);
+    const called=Date.now()-t0;
+    assert.ok(net.opened>opened,'a new connection was opened');
+    assert.ok(called>=3000&&called<=5500,`dead after ${called} ms`);
+    for(let i=0;i<80&&!ana.connected;i++)await sleep(50);
+    assert.equal(ana.connected,true);assert.equal(ana.fatal,undefined);
   }finally{stop();cleanup();}
 });

@@ -1,6 +1,6 @@
 import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
-import { Room, type Peer, type RoomOptions, type RoomRoster } from './room.ts';
+import { Room, ROOM_LIFETIME_MS, type Peer, type RoomOptions, type RoomRoster } from './room.ts';
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,readMapRef,type MapRef} from '../src/protocol/index.ts';
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -80,7 +80,7 @@ export class GameRoom extends DurableObject<Env>{
     await this.ctx.storage.put({created:now,terrainSeed:seed});
     const room=this.create(now,seed);
     await (this.loading=room.ready().then(()=>this.room=room));
-    await this.ctx.storage.setAlarm(now+31*60_000);
+    await this.ctx.storage.setAlarm(now+ROOM_LIFETIME_MS+60_000);
   }
   private create(created:number,seed:number){
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
@@ -108,7 +108,7 @@ export class GameRoom extends DurableObject<Env>{
   lab(){if(!local(this.env)||!this.room)return null;return {...this.room.lab(),clock:this.loop.clock.stats};}
   async fetch(_request:Request){
     const created=await this.ctx.storage.get<number>('created');
-    if(!created||Date.now()-created>30*60_000)return new Response('Sala inexistente ou encerrada.',{status:404});
+    if(!created||Date.now()-created>ROOM_LIFETIME_MS)return new Response('Sala inexistente ou encerrada.',{status:404});
     const room=this.room??await this.load(created);
     const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();
     this.attach(server,room);

@@ -4,7 +4,7 @@ import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoin
 import {GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
-import {RunLifecycle,RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
+import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
@@ -123,7 +123,8 @@ export const ROSTER_BOTS_MS=1000;
  */
 export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
-export const ROOM_LIFETIME_MS=30*60_000;
+/** 50 min (D-043): a lobby plus the city's 25 min combat cap fit, with room for a rematch's countdown. */
+export const ROOM_LIFETIME_MS=50*60_000;
 /**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
@@ -257,12 +258,16 @@ export class Room {
   private target?:MapRef;
   /** Bumped by every switch: a waiting switch that finds a newer one when its decode lands gives way to it. */
   private mapGen=0;
+  /** A test/tool's explicit combat cap; otherwise the map decides (D-043). */
+  private fixedDuration:number|undefined;
+  private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.bots.state();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
+    this.fixedDuration=options.durationTicks;
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.log=options.log;
     // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
@@ -599,7 +604,7 @@ export class Room {
       next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
     }
     for(const id of old.shameOptOut)if(sim.players.has(id))sim.shameOptOut.add(id);
-    this.sim=sim;this.map=ref;
+    this.sim=sim;this.map=ref;this.run.setDurationTicks(this.durationFor(ref));
     this.ids.reset();this.sosAt.clear();this.bots.reset();
     for(const c of this.connections.values())c.encoder?.resync();
     this.run.resetReady();this.syncSpectators();this.rosterDirty=true;

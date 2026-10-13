@@ -31,6 +31,7 @@ import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,ty
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
+import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
 export type CreateEnemy=(ctx:SimContext,kind:string,point:Point,scale:number)=>EnemyState|undefined;
@@ -76,6 +77,11 @@ export interface DirectorOptions {
    */
   avenues?:AvenuePlanner;
   /**
+   * City: a planner on a barricade-free copy of the city (assemble shares the boss's). A retreating body the exit field
+   * cannot route (inside the plaza with the mouths' barricades up, BUG-…-recuo-parado-na-praca) walks out over them on it.
+   */
+  cityOpenPlanner?:AvenuePlanner;
+  /**
    * City: base (catalog) speed (u/s) of an enemy kind, for the planner's arrival estimate: speedMap(it × plan.speed),
    * the speed the body will walk at. Planner default when absent.
    */
@@ -99,6 +105,13 @@ export interface DirectorOptions {
    * city; ignored on the island and in the endless world.
    */
   cityTutorial?:boolean;
+  /**
+   * City (cidade-11, city/balance.ts): the round knobs applied after planRound (count, hp, cadence) and the per-round
+   * siegeShare, rounds 2..10 only (round 1, the tutorial, is never touched), including the team-size ones
+   * (CityBalance.players) for the plan's player count (RoundPlan.players, i.e. scalePlayers at the wave start). assemble.ts passes CITY_BALANCE (or the
+   * run's override) in the city; ignored on the island and in the endless world. Absent: the round table as it is.
+   */
+  cityBalance?:CityBalance;
 }
 
 /**
@@ -695,11 +708,21 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const e=ctx.enemies.get(r.id);if(!e)return false;
       const step=Math.max(e.speed,1.5)*1.5/SIM_HZ;
       planner!.retreatDirection(e,retreatDir);
+      let via=planner!;
+      const x0=e.x,y0=e.y;
       if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),e.radius);
-      const end=avenueEnd(ctx,planner!.retreatMouth(e));
+      // Trapped (BUG-…-recuo-parado-na-praca): no exit on the enemy grid, or the way out is a standing barricade the body
+      // cannot pass. It walks out over the barricades (harmless, damage 0) on the barricade-free planner and the base
+      // terrain, instead of standing in the plaza until the cap.
+      const open=options.cityOpenPlanner;
+      if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+        e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
+        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
+      }
+      const end=avenueEnd(ctx,via.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.
-      const out=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||planner!.exitField.atGoal(e.x,e.y)
+      const out=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||via.exitField.atGoal(e.x,e.y)
         ||Math.hypot(e.x-plaza.x,e.y-plaza.y)>=CITY_GONE_DISTANCE;
       const gone=out&&planner!.hiddenFrom(players,e)||ctx.tick>=r.untilTick;
       if(gone){ctx.enemies.delete(r.id);state.retreated++;return false;}
@@ -811,7 +834,15 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   /** Regular groups flagged by the plan or picked by siegeShare (every 1/share-th group, no rng). */
   const siegeFrom=options.siegeFromRound??1;
-  const isSiege=(group:SpawnGroup,index:number)=>!!group.siege||(siegeShare>0&&(state.plan?.index??0)>=siegeFrom&&Math.floor((index+1)*siegeShare)>Math.floor(index*siegeShare));
+  // City (cidade-11): a round's siegeShare knob replaces the option's. state.avenues marks a city run (set from round 1
+  // on, JSON-safe, never on the island or in the endless world even with a planner passed in); round 1 is neutral.
+  // The team-size knobs read the count the round was planned with (state.plan.players), never a later sample.
+  const shareOf=(round:number)=>options.cityBalance&&state.avenues?roundKnobs(options.cityBalance,round,state.plan?.players).siegeShare??siegeShare:siegeShare;
+  const isSiege=(group:SpawnGroup,index:number)=>{
+    if(group.siege)return true;
+    const round=state.plan?.index??0,share=shareOf(round);
+    return share>0&&round>=siegeFrom&&Math.floor((index+1)*share)>Math.floor(index*share);
+  };
 
   function dispatch(ctx:SimContext,group:SpawnGroup,index:number){
     const side=sideFor(index),special=!group.boss&&!group.elite,siege=special&&isSiege(group,index);
@@ -903,7 +934,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function startWave(ctx:SimContext){
     const index=ctx.round.index,theme=state.theme!;
-    const plan=tutorialRound(ctx)?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
+    const tutorial=tutorialRound(ctx);
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
+    // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
+    // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
+    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});

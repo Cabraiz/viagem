@@ -18,13 +18,11 @@
 .rh-camp-hp{min-width:2.1em;text-align:right}
 .rh-camp-low .rh-camp-fill{background:var(--c-cone)}
 .rh-camp-low .rh-camp-track::after{content:'';position:absolute;left:30%;top:0;width:8px;height:6px;margin-left:-4px;background:var(--c-papel);clip-path:polygon(0 0,100% 0,50% 100%)}
-/* Portrait: the XP bar ends before the ficha. */
+/* Portrait: the announcement slot under the band. */
 @media (min-height:501px){
   /* The announcement slot starts under the ficha (the team column is on the other side). */
   .rh-top:has(.rh-camp:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 146px)}
   .rh-top:has(.rh-camp:not([hidden])):has(.rh-boss:not([hidden]))~.rh-stack{top:calc(var(--rh-t) + 150px)}
-}
-@media (max-height:500px){
 }
 
 /* ---------- Horn / wall notice (a row of the announcement slot) ---------- */
@@ -109,7 +107,6 @@
   .rh-forge-tags{gap:4px;padding:4px 8px;margin:-4px -6px 0}
   .rh .rh-forge-tag{min-height:44px;padding:2px 8px 2px 26px;grid-template-columns:28px minmax(0,1fr) auto}
   .rh-forge-icon .ic{width:28px;height:28px}
-  /* The window takes the right column: the XP bar and the notices step left, as with the round offer. */
-  .rh:has(.rh-forge:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(58vw - var(--rh-l) - var(--rh-r) - 166px)}
+  /* The window takes the right column: the notices step left, as with the round offer (the one-row band ends above it). */
   .rh:has(.rh-forge:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(42vw,380px) + 8px)}
 }

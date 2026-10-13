@@ -36,9 +36,10 @@ export function createTopBar():HudPart{
       // clock for the intermission); the full words stay for screen readers and the tooltip.
       const n=round.phase==='prepare'?round.countdown:round.phase==='wave'?round.remaining:undefined;
       put('detail',n===undefined?round.detail:`${round.phase}:${n}`,()=>{
-        detail.setAttribute('aria-label',round.detail);detail.title=round.detail;
+        detail.title=round.detail;
         if(n===undefined){detail.textContent=round.detail;return;}
-        detail.innerHTML=`${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b>`;
+        // The words for screen readers (a span's aria-label is not read): a hidden copy, the sticker and number hidden.
+        detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
       chip.classList.toggle('rh-urgent',round.phase==='prepare'&&(round.countdown??99)<=5);

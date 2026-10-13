@@ -41,8 +41,11 @@
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   The client may not import the sim (tests/arquitetura.test.ts), so a stand-in stepper fires like the sim's
  *   defensesStep (ready, cooldown, nearest reachable enemy) with the test-checked table of render/towers/tower-rules.ts,
- *   at the wandering stand-in enemies (`n`, default 60 here; every 10th one flies). Until torres-fio puts the defenses on
- *   the wire. `window.__cidade.torres()` counts the live effects; `shake()` the current shake.
+ *   at the wandering stand-in enemies (`n`, default 60 here; every 10th one flies). The game feeds the same
+ *   renderer from the wire instead (scene.ts, TowerFeed). Debug hooks for the checks and prints (sandbox only, nothing in the game reads them): `window.__cidade`
+ *   `.torres()` the live effects (shots in flight with their kind and age, flashes, blasts, craters), `.shake()` the
+ *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.at`/`.cell` the hero's spot and
+ *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';

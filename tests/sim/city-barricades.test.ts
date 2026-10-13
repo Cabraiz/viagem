@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom,type CityTerrain} from '../../src/maps/city/terrain.ts';
+import {enemyTerrain} from '../../src/maps/index.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 import {RADIUS,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {DIRS,FlowField,type FlowGrid} from '../../src/maps/flowfield.ts';
@@ -395,9 +396,10 @@ test('all 4 barricades up: a hero walks from the helicopter through a mouth to t
   const out=follow(terrain,heroField(terrain,start,1),toForge.at,hero,ticks(120));
   assert.ok(out.arrived,`the hero left the plaza (at ${out.at.x.toFixed(2)},${out.at.y.toFixed(2)})`);
   assert.ok(out.deepest>.5,`back out through a barricade disc (deepest ${out.deepest.toFixed(2)} u)`);
-  // An enemy body (moveSafely: the enemy view) following the very same field never gets into a disc nor the plaza.
+  // An enemy body (moveSafely on the enemy view, as ai.ts and the director move them) following the very same field
+  // never gets into a disc nor the plaza.
   for(const radius of [RADIUS,.32]){
-    const enemy=(at:Point,dir:Point)=>{const b={x:at.x,y:at.y};moveSafely(b,dir.x*.1,dir.y*.1,terrain,radius);return b;};
+    const enemy=(at:Point,dir:Point)=>{const b={x:at.x,y:at.y};moveSafely(b,dir.x*.1,dir.y*.1,enemyTerrain(terrain),radius);return b;};
     const e=follow(terrain,heroField(terrain,middle,3.5),start,enemy,ticks(120));
     assert.equal(e.arrived,false,`radius ${radius}: the enemy did not reach the forge`);
     assert.ok(e.deepest<=-radius+1e-6,`radius ${radius}: the enemy never overlapped a barricade (deepest ${e.deepest.toFixed(3)} u)`);
@@ -425,11 +427,12 @@ test('boss spawn and summon spots use the enemy view (never inside a barricade d
   assert.ok(moves.length>=2&&moves.every(l=>!/enemyTerrain/.test(l)),'walk and charge ignore the barricades');
 });
 
-test('with the four barricades up, the boss (spawned in the plaza) walks out over them and reaches a team standing at inicio',async()=>{
+test('with the four barricades up, the boss (spawned in the plaza, 20 seeds) walks out over them and reaches a team at inicio, never stuck > 10 s in one cell',async(t)=>{
   const {SpatialHash}=await import('../../src/sim/spatial.ts');
   const {createTelegraphSystem}=await import('../../src/sim/telegraphs.ts');
   const P=shared.asset.points,BOSS_REACH=3;
-  for(const seed of [1,2,3,4]){
+  const stuck:string[]=[],times:number[]=[];
+  for(let seed=1;seed<=20;seed++){
     const terrain=shared.fork(),players=new Map<string,SimPlayer>();
     const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
@@ -438,16 +441,28 @@ test('with the four barricades up, the boss (spawned in the plaza) walks out ove
     const team=[P.inicio,{x:P.inicio.x+1,y:P.inicio.y}];
     team.forEach((p,i)=>players.set(`p${i}`,{id:`p${i}`,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},
       build:{weapons:[],passives:[]},stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x:p.x,y:p.y,ack:0,score:0} as SimPlayer));
-    const boss=sys.boss.spawnBoss(world,P.praca)!;
+    // A plaza goal cell per seed where an enemy body fits: the cells the director's cityBossSpot picks from.
+    const r=new Rng(seed*1009),et=enemyTerrain(terrain),field=sys.avenues!.plazaField,cells:Point[]=[];
+    for(let cy=0;cy<field.height;cy++)for(let cx=0;cx<field.width;cx++){
+      const q={x:field.originX+(cx+.5)*field.cellSize,y:field.originY+(cy+.5)*field.cellSize};
+      if(field.cellCost(cx,cy)===0&&field.atGoal(q.x,q.y)&&walkable(q,et))cells.push(q);
+    }
+    assert.ok(cells.length>0,'plaza goal cells exist');
+    const spot=r.pick(cells);
+    const boss=sys.boss.spawnBoss(world,spot)!;
     assert.ok(boss,'the boss spawned');
     const telegraphs=createTelegraphSystem();
-    let reached=-1;
+    let reached=-1;const CS=shared.asset.unitsPerCell,anchor={x:boss.x,y:boss.y,since:0};
     for(let i=0;i<ticks(240)&&reached<0;i++){
       world.tick++;sys.boss.step(world);telegraphs.step(world);
       const b=world.enemies.get(boss.id)!;
-      if(Math.min(...team.map(p=>Math.hypot(p.x-b.x,p.y-b.y)))<=BOSS_REACH)reached=i;
+      if(Math.min(...team.map(p=>Math.hypot(p.x-b.x,p.y-b.y)))<=BOSS_REACH){reached=i;times.push(i);}
+      else if(Math.max(Math.abs(b.x-anchor.x),Math.abs(b.y-anchor.y))>CS){anchor.x=b.x;anchor.y=b.y;anchor.since=i;}
+      else if(i-anchor.since>ticks(10)){stuck.push(`seed ${seed}: at (${b.x.toFixed(1)},${b.y.toFixed(1)}) since +${(anchor.since/20).toFixed(1)} s`);anchor.since=Infinity;}
     }
     assert.ok(reached>=0,`seed ${seed}: the boss never got within ${BOSS_REACH} u of the team (stuck at ${JSON.stringify(world.enemies.get(boss.id))})`);
     assert.equal(terrain.blockers().length,4,'it did not break any barricade on the way (it never hits structures, D-010)');
   }
+  t.diagnostic(`boss over the barricades: 20/20 reached, median ${(times.sort((a,b)=>a-b)[10]/20).toFixed(1)} s, slowest ${(Math.max(...times)/20).toFixed(1)} s`);
+  assert.deepEqual(stuck,[],'the boss stayed > 10 s in one cell');
 });

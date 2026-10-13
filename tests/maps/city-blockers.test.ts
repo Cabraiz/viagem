@@ -2,7 +2,7 @@
  * cidade-06 (base-praca, part 1): per-room blocking discs on the city terrain. The decoded city is shared by every
  * room of the process, so barricades live on a `fork()` of it: same asset and signature, its own blockers. Blockers
  * stop ENEMIES only: the terrain's own clearDisc (land/walkable/moveDirection: heroes, bots, client prediction) ignores
- * them; its `forEnemies()` view (`enemyTerrain`: moveSafely, the flow grid) treats them as solid. Result asserts only
+ * them; its `forEnemies()` view (`enemyTerrain`: enemy moves, the flow grid) treats them as solid. Result asserts only
  * (D-031).
  */
 import test from 'node:test';
@@ -153,8 +153,8 @@ test('enemy bodies pushed into a blocker stop at its rim, heroes walk through; t
   for(const radius of [RADIUS,.32,.48,.9])for(let k=0;k<16;k++){
     const a=k*Math.PI/8,body={x:m.x+Math.cos(a)*(R+radius+1.2),y:m.y+Math.sin(a)*(R+radius+1.2)};
     if(!enemy.clearDisc(body.x,body.y,radius))continue;
-    // moveSafely (enemies) reads the enemy view itself, even when handed the terrain.
-    for(let t=0;t<80;t++)moveSafely(body,-Math.cos(a)*.15,-Math.sin(a)*.15,field,radius);
+    // Enemies move with moveSafely on the enemy view (ai.ts and the director pass enemyTerrain(ctx.terrain)).
+    for(let t=0;t<80;t++)moveSafely(body,-Math.cos(a)*.15,-Math.sin(a)*.15,enemyTerrain(field),radius);
     assert.ok(Math.hypot(body.x-m.x,body.y-m.y)>=R+radius-1e-6,`radius ${radius} angle ${k} entered the blocker`);
     assert.ok(enemy.clearDisc(body.x,body.y,radius));
     pushes++;

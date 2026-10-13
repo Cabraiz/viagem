@@ -125,7 +125,6 @@ function tauntTarget(ctx:SimContext,e:EnemyState):SimPlayer|undefined{
  * so once on land it never leaves it. In the city the barricades are solid (enemyTerrain: blockers stop enemies only).
  */
 export function moveSafely(body:Point,dx:number,dy:number,terrain:TerrainField,radius=PLAYER_RADIUS){
-  terrain=enemyTerrain(terrain);
   const distance=Math.hypot(dx,dy);
   if(!(distance>1e-6))return;
   const parts=Math.ceil(distance/MAX_STEP),sx=dx/parts,sy=dy/parts;
@@ -215,7 +214,7 @@ export class EnemyAi implements SimSystem {
         // him (any other displacement still calls the charge off, see chargeWarned).
         if(memory.state===STATE.joke)delete e.knock;
         else{
-          moveSafely(e,e.knock.x,e.knock.y,ctx.terrain,e.radius);
+          moveSafely(e,e.knock.x,e.knock.y,enemyTerrain(ctx.terrain),e.radius);
           e.knock.x*=KNOCK_DECAY;e.knock.y*=KNOCK_DECAY;
           if(Math.hypot(e.knock.x,e.knock.y)<.01)delete e.knock;
         }
@@ -386,7 +385,8 @@ export class EnemyAi implements SimSystem {
         const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
         if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
       }
-      moveSafely(e,moveX,moveY,ctx.terrain,e.radius);
+      // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
+      moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),e.radius);
     }
     if(active.length&&this.canBark(ctx,AMBIENT_GAP_FACTOR)&&rng.chance(this.options.barkChance??BARK_CHANCE)){
       const e=active[rng.int(0,active.length-1)],elite=e.elite&&rng.chance(.5);

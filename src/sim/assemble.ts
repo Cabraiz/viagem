@@ -23,7 +23,7 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
-import {heroSpeed} from '../maps/index.ts';
+import {CityTerrain,heroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -123,6 +123,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  // The boss walks over the plaza barricades (cidade-06; it spawns inside the base and never bashes structures, D-010):
+  // its steer runs on a barricade-free copy of the city, or with the four mouths closed it finds no way out of the plaza.
+  const open=cityTerrain?new CityTerrain(cityTerrain.asset,cityTerrain.signature):undefined;
+  const bossSteer=open?citySteer(cityPlanner(open),{terrain:open,heroOnly:true,blockers:false}):undefined;
   // City speeds (cidade-05c v2, city/speed.ts): converted once, on the EFFECTIVE speed. The director's bodies are
   // created at the catalog speed and the director converts catalog × plan.speed (DirectorOptions.speedMap); the boss
   // converts its walk after the phase and enrage multipliers (BossOptions.speedMap); its minions, which no multiplier
@@ -143,7 +147,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
     // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
-    ...(steer?{steer:steer.hero,speedMap:citySpeed}:{}),
+    ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),

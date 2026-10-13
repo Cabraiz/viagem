@@ -433,7 +433,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const {player,d2}=nearestOf(anchors,e);
       if(!player||d2<1)continue;
       const d=Math.sqrt(d2),x=e.x,y=e.y;
-      moveSafely(e,(player.x-e.x)/d*step,(player.y-e.y)/d*step,ctx.terrain,e.radius);
+      moveSafely(e,(player.x-e.x)/d*step,(player.y-e.y)/d*step,enemyTerrain(ctx.terrain),e.radius);
       // The extra step never carries it onto a screen: the last stretch in is at its own pace.
       if(!hidden(ctx,e)){e.x=x;e.y=y;}
     }
@@ -447,12 +447,12 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     // Squeezing: straight through trees and rocks, on land only (moveSafely lets a body inside an obstacle walk out).
     // City: never through a barricade (enemyTerrain).
     if(squeeze&&isLand({x:x+dx,y:y+dy},RADIUS+.2,enemyTerrain(ctx.terrain))){e.x=x+dx;e.y=y+dy;return true;}
-    moveSafely(e,dx,dy,ctx.terrain,e.radius);
+    moveSafely(e,dx,dy,enemyTerrain(ctx.terrain),e.radius);
     if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     const side=(e.memory?.seed??0)<.5?1:-1;
     for(const turn of DETOUR_TURNS)for(const sign of [side,-side]){
       const a=turn*sign,c=Math.cos(a),s=Math.sin(a);
-      e.x=x;e.y=y;moveSafely(e,dx*c-dy*s,dx*s+dy*c,ctx.terrain,e.radius);
+      e.x=x;e.y=y;moveSafely(e,dx*c-dy*s,dx*s+dy*c,enemyTerrain(ctx.terrain),e.radius);
       if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     }
     e.x=x;e.y=y;return false;
@@ -677,7 +677,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const e=ctx.enemies.get(r.id);if(!e)return false;
       const step=Math.max(e.speed,1.5)*1.5/SIM_HZ;
       planner!.retreatDirection(e,retreatDir);
-      if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
+      if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),e.radius);
       const end=avenueEnd(ctx,planner!.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.

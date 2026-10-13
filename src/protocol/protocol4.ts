@@ -48,9 +48,11 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * the structure field mask. 12 since the roster of D-040
  * (NEW-20261013-ORQ-papeis-de-inimigo): the atiradores' generic shot 'tiro' and the 64 P0 pack enemies in the DICT
  * (the P1/P2 ids stay inline: 0xFF + length + UTF-8); an 11 decoder would read their indexes as unknown strings.
+ * 13 since torre-contador-de-tiros: a defense's volley counter (`shots`, one byte mod 256) in the structures; a 12
+ * decoder would refuse the structure field mask.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=12;
+export const PROTOCOL_VERSION=13;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

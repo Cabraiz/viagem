@@ -715,7 +715,7 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
 });
 
 test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 (every older index unchanged), within the escape',()=>{
-  assert.equal(PROTOCOL_VERSION,12);
+  assert.ok(PROTOCOL_VERSION>=12);
   // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape, so 94 slots are left.
   assert.equal(DICT.length,161);
   assert.ok(DICT.length<=255,'255 is the inline escape');
@@ -1043,10 +1043,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 12: a frame from an 11 (torres-fio) or 13 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 13: a frame from a 12 (papeis-de-inimigo) or 14 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],12);
-  for(const version of [8,9,10,11,13]){
+  assert.equal(bytes[1],13);
+  for(const version of [8,9,10,11,12,14]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }
@@ -1192,7 +1192,7 @@ test('D-009 with 12 defenses firing: 6 clients x 300 enemies stay inside the 4G 
     }
     results[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
   }
-  t.diagnostic(`protocol 11 bytes/s per client with 12 defenses turning every tick: ${JSON.stringify(results)}`);
+  t.diagnostic(`protocol 13 bytes/s per client with 12 defenses turning and firing every tick: ${JSON.stringify(results)}`);
   assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
   assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });

@@ -1,0 +1,1470 @@
+{
+  "version": 2,
+  "group": "predios",
+  "pieces": {
+    "arena-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "arena-1.webp",
+          "cell": [
+            776,
+            488
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.967213
+          ],
+          "pages": [
+            {
+              "file": "arena-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "787c0dfc7cad95449e076882a2bd71bc8e7363be0462de1102030437e31db7f5"
+            }
+          ],
+          "sha256": "787c0dfc7cad95449e076882a2bd71bc8e7363be0462de1102030437e31db7f5"
+        }
+      },
+      "sha256": "c7d7b3cf6294213285e090c3d2de62f5e7f9d397148386ccdbfbe88fccc5d08f",
+      "meta": {
+        "framesPerView": 1,
+        "footprint": [
+          4,
+          4
+        ],
+        "storeys": 1
+      }
+    },
+    "boteco-esquina-2x1-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "boteco-esquina-2x1-1.webp",
+          "cell": [
+            328,
+            296
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.945946
+          ],
+          "pages": [
+            {
+              "file": "boteco-esquina-2x1-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615"
+            }
+          ],
+          "sha256": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615"
+        }
+      },
+      "sha256": "68240a32238e5bf1168f193ab3a4602b49bdcb642b4d3a7ca57a6be10e7dfd38",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "framesPerView": 1,
+        "ruin": true,
+        "storeys": 1
+      }
+    },
+    "casa-terrea-1x1-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "casa-terrea-1x1-1.webp",
+          "cell": [
+            184,
+            184
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.913043
+          ],
+          "pages": [
+            {
+              "file": "casa-terrea-1x1-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "7d3bec46eded8a330728807ee796b8f6b180c84abe331476858e0cc11d4dc296"
+            }
+          ],
+          "sha256": "7d3bec46eded8a330728807ee796b8f6b180c84abe331476858e0cc11d4dc296"
+        }
+      },
+      "sha256": "31d42f7e0fa3e2bf5a13bd4efaef7482f3dface7b2a1a018bd6aae364ce262a0",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1,
+        "ruin": true,
+        "storeys": 1
+      }
+    },
+    "casa-terrea-1x1-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "casa-terrea-1x1-2.webp",
+          "cell": [
+            184,
+            200
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.92
+          ],
+          "pages": [
+            {
+              "file": "casa-terrea-1x1-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "f05cd38ef78843c5ddd563b71163b76839269c4825be73b95f06a2e3e53eee70"
+            }
+          ],
+          "sha256": "f05cd38ef78843c5ddd563b71163b76839269c4825be73b95f06a2e3e53eee70"
+        }
+      },
+      "sha256": "a73b0e2e6c182f572229c0cd5fc02f9b00dd8b8dfd35f1daad7a88ec6460cac1",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1,
+        "ruin": true,
+        "storeys": 1
+      }
+    },
+    "casa-terrea-1x1-3": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "casa-terrea-1x1-3.webp",
+          "cell": [
+            192,
+            208
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.923077
+          ],
+          "pages": [
+            {
+              "file": "casa-terrea-1x1-3.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "b12f9813efa784c4680587beb75eb1eb01c1911f815460397a86e7dc33dd0a1a"
+            }
+          ],
+          "sha256": "b12f9813efa784c4680587beb75eb1eb01c1911f815460397a86e7dc33dd0a1a"
+        }
+      },
+      "sha256": "7bdaeacb1adb9a588489a4c8905548596f1689a3df45c59b3d0f7ea840fec6df",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1,
+        "ruin": true,
+        "storeys": 1
+      }
+    },
+    "casa-terrea-2x1-3": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "casa-terrea-2x1-3.webp",
+          "cell": [
+            328,
+            248
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.935484
+          ],
+          "pages": [
+            {
+              "file": "casa-terrea-2x1-3.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "5545e24b8febb82321285ebc5f38f2f61f896ef44ade26201f215a428bebd4db"
+            }
+          ],
+          "sha256": "5545e24b8febb82321285ebc5f38f2f61f896ef44ade26201f215a428bebd4db"
+        }
+      },
+      "sha256": "dd742f16b3542265e12615c260f9087e4e3e1af87bcdfc87e8f24a03eb04fbb5",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "framesPerView": 1,
+        "ruin": true,
+        "storeys": 1
+      }
+    },
+    "entulho-1x1-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "entulho-1x1-1.webp",
+          "cell": [
+            216,
+            152
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.894737
+          ],
+          "pages": [
+            {
+              "file": "entulho-1x1-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "0a05dd1353f8b5255d61e8575041d790c34dd53008723b8a3969f8fa2b8a0a18"
+            }
+          ],
+          "sha256": "0a05dd1353f8b5255d61e8575041d790c34dd53008723b8a3969f8fa2b8a0a18"
+        }
+      },
+      "sha256": "e3a668e6c139ed17bd520a34da10ce9f446d6649d7cd597bf4f2350826fedbf3",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "entulho-1x1-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "entulho-1x1-2.webp",
+          "cell": [
+            216,
+            152
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.894737
+          ],
+          "pages": [
+            {
+              "file": "entulho-1x1-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3fe5b66b2bcd4b906f8da917e97165b61202ddb76798303046adf2802e36aa01"
+            }
+          ],
+          "sha256": "3fe5b66b2bcd4b906f8da917e97165b61202ddb76798303046adf2802e36aa01"
+        }
+      },
+      "sha256": "44e1b0dedf306ff88fbff2a928642c7801dd268c9d5212d9540f010e1053bf78",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "entulho-1x1-3": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "entulho-1x1-3.webp",
+          "cell": [
+            200,
+            168
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.904762
+          ],
+          "pages": [
+            {
+              "file": "entulho-1x1-3.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3390a8d7f5b7dd1cb1f9ba73451bb675947530355d36f79f7ab57d90c1c24be7"
+            }
+          ],
+          "sha256": "3390a8d7f5b7dd1cb1f9ba73451bb675947530355d36f79f7ab57d90c1c24be7"
+        }
+      },
+      "sha256": "7a27d84965362851499136fa038f5d343dad41ca657444dabbe9c258fc7702b2",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "entulho-2x1-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "entulho-2x1-1.webp",
+          "cell": [
+            328,
+            200
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.92
+          ],
+          "pages": [
+            {
+              "file": "entulho-2x1-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2542a2bae9a5401bca86bc927dd05a822336a1529ca630931a4c8d21ca420105"
+            }
+          ],
+          "sha256": "2542a2bae9a5401bca86bc927dd05a822336a1529ca630931a4c8d21ca420105"
+        }
+      },
+      "sha256": "682e598f6bbb11c923c26596976c1a9d1149e4c23d6605581478150e07b82e27",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "galpao-3x2-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "galpao-3x2-1.webp",
+          "cell": [
+            456,
+            376
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.957447
+          ],
+          "pages": [
+            {
+              "file": "galpao-3x2-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "1c7ebe4df990bf9e0e92bf3b7f7519f8e1f20cf0c7b2bfbdf9dbf5820a1cba66"
+            }
+          ],
+          "sha256": "1c7ebe4df990bf9e0e92bf3b7f7519f8e1f20cf0c7b2bfbdf9dbf5820a1cba66"
+        }
+      },
+      "sha256": "724cc7371944f9753d3ec33b27ff77dd412d5a62578c9b0a06aca40df0c12b39",
+      "meta": {
+        "footprint": [
+          3,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 1
+      }
+    },
+    "garagem-oficina-2x1-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "garagem-oficina-2x1-1.webp",
+          "cell": [
+            328,
+            224
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.928571
+          ],
+          "pages": [
+            {
+              "file": "garagem-oficina-2x1-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "1303ef282f51f029b97535da0fab8668567dfa9ff8cc84ca0d4a6c598266dc35"
+            }
+          ],
+          "sha256": "1303ef282f51f029b97535da0fab8668567dfa9ff8cc84ca0d4a6c598266dc35"
+        }
+      },
+      "sha256": "00b5c39808f541aef1f54e3a28d80c7e19643952f19311967bd9c68deb5b793d",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "framesPerView": 1,
+        "storeys": 1
+      }
+    },
+    "mercadinho-2x2-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "mercadinho-2x2-1.webp",
+          "cell": [
+            344,
+            320
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.95
+          ],
+          "pages": [
+            {
+              "file": "mercadinho-2x2-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "cb08b37a0b9a920f90ca767ca2f32e5c1010425397181b576696eabd74e1bef4"
+            }
+          ],
+          "sha256": "cb08b37a0b9a920f90ca767ca2f32e5c1010425397181b576696eabd74e1bef4"
+        }
+      },
+      "sha256": "5c5390d63e6cc5b1e2ac760a60da3ee02edda35a545eaceecefe189edb9c0518",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 1
+      }
+    },
+    "muro-pedra-ponta-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-ponta-1.webp",
+          "cell": [
+            312,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.75
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-ponta-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "a73f13679194e803ef9e5c34197a4ceb7011810925bd785a09a904d33dc0aa95"
+            }
+          ],
+          "sha256": "a73f13679194e803ef9e5c34197a4ceb7011810925bd785a09a904d33dc0aa95"
+        }
+      },
+      "sha256": "a1ef552d62c5e54399a1fc2d2ac04a4f02c0a278918ef7f250881506ab02c25f",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-ponta-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-ponta-2.webp",
+          "cell": [
+            240,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.75
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-ponta-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "878011afbc9a5341eb8ea3e26d81694b689fa17d50659e54f9b1ca38bc647b57"
+            }
+          ],
+          "sha256": "878011afbc9a5341eb8ea3e26d81694b689fa17d50659e54f9b1ca38bc647b57"
+        }
+      },
+      "sha256": "e0f15dbe86d2948e57743f4b611be144a7323507ab53a3b273f03cd0e3e4d7b3",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-quina-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-quina-1.webp",
+          "cell": [
+            320,
+            112
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.696429
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-quina-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "5ac59aba21574915011e45ac7c3ff5e5a4ed703a3284fce0c99b0956ffc495f3"
+            }
+          ],
+          "sha256": "5ac59aba21574915011e45ac7c3ff5e5a4ed703a3284fce0c99b0956ffc495f3"
+        }
+      },
+      "sha256": "505bcf9379f20b34f1ccdcd2e4dc8499a3d352f56ed3afe26c7163a24894bb40",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-quina-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-quina-2.webp",
+          "cell": [
+            192,
+            128
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.734375
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-quina-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "f42a7e260a1639d3b832bc6b265aabcd1689562f69f19591a8427a4c4fb9bc01"
+            }
+          ],
+          "sha256": "f42a7e260a1639d3b832bc6b265aabcd1689562f69f19591a8427a4c4fb9bc01"
+        }
+      },
+      "sha256": "25f2a53186c5ae9a83dc85c799aebafedcf1e0f90cc4ecdd158a49e9226fd95c",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-reto-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-reto-1.webp",
+          "cell": [
+            304,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.75
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-reto-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "60c25c2ec14b201235e8bba24169591a90dcfe5c866ae333bfdd9e44a1625d62"
+            }
+          ],
+          "sha256": "60c25c2ec14b201235e8bba24169591a90dcfe5c866ae333bfdd9e44a1625d62"
+        }
+      },
+      "sha256": "85af2b40288a4c19aa2f272ce0f048a6b13c4befe243f8afd1feb49336a7238f",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-reto-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-reto-2.webp",
+          "cell": [
+            288,
+            128
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.734375
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-reto-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2bf5feb4660f18df81f0f7deb0571331a3412008b193a2fe861904a338da432e"
+            }
+          ],
+          "sha256": "2bf5feb4660f18df81f0f7deb0571331a3412008b193a2fe861904a338da432e"
+        }
+      },
+      "sha256": "9a07105eb9c1ea323c32c0777bf650151d7412c1f16f862b773c40ee27e93083",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-t-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-t-1.webp",
+          "cell": [
+            288,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.75
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-t-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "0f1791b0a4b54f6bd37d562aaa2850b76ee378febee01e6d54b9a7a1e9b97905"
+            }
+          ],
+          "sha256": "0f1791b0a4b54f6bd37d562aaa2850b76ee378febee01e6d54b9a7a1e9b97905"
+        }
+      },
+      "sha256": "b9871d2fba5479c6664614c2c8d3849e2db905212be150cd35d7786ffdb4cb62",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "muro-pedra-t-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-pedra-t-2.webp",
+          "cell": [
+            328,
+            128
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.734375
+          ],
+          "pages": [
+            {
+              "file": "muro-pedra-t-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2ac9cf19627605cffe4b6475da8ee47f5504fcb57a23028b567463a3163806eb"
+            }
+          ],
+          "sha256": "2ac9cf19627605cffe4b6475da8ee47f5504fcb57a23028b567463a3163806eb"
+        }
+      },
+      "sha256": "d5658b8ede42ed679ea72d81416d4a39a2d9a4cc4edf9dc0d1208f912401fdc3",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-quina-externa-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-quina-externa-1.webp",
+          "cell": [
+            192,
+            160
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "pages": [
+            {
+              "file": "penhasco-quina-externa-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "db9020d3630c0fa3429670d094ff9a2be8e1a56de377c1b4618335e781474a6c"
+            }
+          ],
+          "sha256": "db9020d3630c0fa3429670d094ff9a2be8e1a56de377c1b4618335e781474a6c"
+        }
+      },
+      "sha256": "aef525fd4df0ae5a6996707248029c0f89150314b57fac320c3aaec0473c9393",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-quina-externa-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-quina-externa-2.webp",
+          "cell": [
+            168,
+            144
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.888889
+          ],
+          "pages": [
+            {
+              "file": "penhasco-quina-externa-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "cf8bce956f6619e8ea49cf044d10a9e5428bfe570ff84dcdb173862448c2b735"
+            }
+          ],
+          "sha256": "cf8bce956f6619e8ea49cf044d10a9e5428bfe570ff84dcdb173862448c2b735"
+        }
+      },
+      "sha256": "73b1a9cae9023ea92f427bce280f566542a5da541157b1c7f7e9c43f0f6cf680",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-quina-interna-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-quina-interna-1.webp",
+          "cell": [
+            232,
+            168
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.904762
+          ],
+          "pages": [
+            {
+              "file": "penhasco-quina-interna-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3b14b1dd486773e44fc3ad1a14b4ea217754610778f8d7f3f0629abd8ff928e8"
+            }
+          ],
+          "sha256": "3b14b1dd486773e44fc3ad1a14b4ea217754610778f8d7f3f0629abd8ff928e8"
+        }
+      },
+      "sha256": "28cd0ef3164d30a702fc605d172321defc4b95c74de3cb1fcd1e374873d0a655",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-quina-interna-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-quina-interna-2.webp",
+          "cell": [
+            240,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.882353
+          ],
+          "pages": [
+            {
+              "file": "penhasco-quina-interna-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2dd1c952b13a97d6be4d1cc71b048984b6e1b2c84cf6f675b9487a586798fc3c"
+            }
+          ],
+          "sha256": "2dd1c952b13a97d6be4d1cc71b048984b6e1b2c84cf6f675b9487a586798fc3c"
+        }
+      },
+      "sha256": "9349fe5b50144a405fb3ef2ee9932edc4e0b094eaff191804339a803e5d0d2fd",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-reto-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-reto-1.webp",
+          "cell": [
+            320,
+            128
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.734375
+          ],
+          "pages": [
+            {
+              "file": "penhasco-reto-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "09fd3b25bcb5871f1ae1448754772c7d4c1afb5c2755dd36d6a871ffebc250be"
+            }
+          ],
+          "sha256": "09fd3b25bcb5871f1ae1448754772c7d4c1afb5c2755dd36d6a871ffebc250be"
+        }
+      },
+      "sha256": "7ed7fcd28ce9538ecf3a09e84e3b9328f44aad574286041a1eb7455b21b4fa06",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "penhasco-reto-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "penhasco-reto-2.webp",
+          "cell": [
+            368,
+            136
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.75
+          ],
+          "pages": [
+            {
+              "file": "penhasco-reto-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "a8fa0f3cefe923c95512ba0c7d08dd1fe56f71cb19445cde2501397fe2c82dad"
+            }
+          ],
+          "sha256": "a8fa0f3cefe923c95512ba0c7d08dd1fe56f71cb19445cde2501397fe2c82dad"
+        }
+      },
+      "sha256": "bc1ec45731f8f22d0b4fea880ad31884464a2753a3f3039e6d9e637205c25e24",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "framesPerView": 1
+      }
+    },
+    "portao-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "portao-1.webp",
+          "cell": [
+            280,
+            152
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.776316
+          ],
+          "pages": [
+            {
+              "file": "portao-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "9946b6057fa6df4346939b4898bcc09f111abe7fdeeb3481e11c043cc9567722"
+            }
+          ],
+          "sha256": "9946b6057fa6df4346939b4898bcc09f111abe7fdeeb3481e11c043cc9567722"
+        }
+      },
+      "sha256": "d4f313265a7108c5b3e49b295d9b5e9cb328a7fae9e4770d63189ec2927f6c6b",
+      "meta": {
+        "framesPerView": 1,
+        "footprint": [
+          1,
+          1
+        ]
+      }
+    },
+    "portao-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "portao-2.webp",
+          "cell": [
+            488,
+            224
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.848214
+          ],
+          "pages": [
+            {
+              "file": "portao-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "7d9f8f12df967eaf7e7830ba82228846bc62be28c8606d04d20b7e87e894135f"
+            }
+          ],
+          "sha256": "7d9f8f12df967eaf7e7830ba82228846bc62be28c8606d04d20b7e87e894135f"
+        }
+      },
+      "sha256": "5e1b50c4de113b329edd7745ebf8cd19e34ffe897d494b7759f164d38b131e56",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ]
+      }
+    },
+    "predio-2x2-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "predio-2x2-1.webp",
+          "cell": [
+            336,
+            432
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.962963
+          ],
+          "pages": [
+            {
+              "file": "predio-2x2-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "e71aa1522f04c4c69bd38660b115bcc828e80207ee3e7e5aa9ba9ad74a464a4e"
+            }
+          ],
+          "sha256": "e71aa1522f04c4c69bd38660b115bcc828e80207ee3e7e5aa9ba9ad74a464a4e"
+        }
+      },
+      "sha256": "e62dfbf864cb67320dd947c36a70f57b104cae0252175763f8f5e1715ad12b03",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 4
+      }
+    },
+    "predio-2x2-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "predio-2x2-2.webp",
+          "cell": [
+            328,
+            400
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.96
+          ],
+          "pages": [
+            {
+              "file": "predio-2x2-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "dc05f42db3bd13328f7d218db3d811ed881c8d89bbf120d32df721e6d7884afc"
+            }
+          ],
+          "sha256": "dc05f42db3bd13328f7d218db3d811ed881c8d89bbf120d32df721e6d7884afc"
+        }
+      },
+      "sha256": "12e64cebfa45472c9f3d3d32c137667a3bc9735c1e89ccc5b15719e5dc516788",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 4
+      }
+    },
+    "predio-3x2-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "predio-3x2-2.webp",
+          "cell": [
+            448,
+            560
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.971429
+          ],
+          "pages": [
+            {
+              "file": "predio-3x2-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "7e81f6e7a826aaa7e7a50648d335c687fc2001e53ccd8b36d6db73518093037b"
+            }
+          ],
+          "sha256": "7e81f6e7a826aaa7e7a50648d335c687fc2001e53ccd8b36d6db73518093037b"
+        }
+      },
+      "sha256": "a3d606ef50420372478bf69ce28051fa54382011465ae312afe881affd2872c2",
+      "meta": {
+        "footprint": [
+          3,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 4
+      }
+    },
+    "sobrado-2x1-3": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "sobrado-2x1-3.webp",
+          "cell": [
+            328,
+            288
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.944444
+          ],
+          "pages": [
+            {
+              "file": "sobrado-2x1-3.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "8a086561d3e847b750128703bcae11fe9fc0b6051cb876e41f0f3f2df95f8f23"
+            }
+          ],
+          "sha256": "8a086561d3e847b750128703bcae11fe9fc0b6051cb876e41f0f3f2df95f8f23"
+        }
+      },
+      "sha256": "1fa0a3926a7d443cf0c1837264c916c64e8cbe869f423aa12e652447f2de7ed0",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "framesPerView": 1,
+        "storeys": 2
+      }
+    },
+    "sobrado-2x2-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "sobrado-2x2-1.webp",
+          "cell": [
+            328,
+            400
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.96
+          ],
+          "pages": [
+            {
+              "file": "sobrado-2x2-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "9981e27c4126ace55b79d6fef292414359e87daa0082a4f0ba53efc7e6032af7"
+            }
+          ],
+          "sha256": "9981e27c4126ace55b79d6fef292414359e87daa0082a4f0ba53efc7e6032af7"
+        }
+      },
+      "sha256": "53037d91945791089318332c3a9887defa52b636f17df0019d96bd1da163f99f",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 2
+      }
+    },
+    "sobrado-2x2-2": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "sobrado-2x2-2.webp",
+          "cell": [
+            328,
+            400
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.96
+          ],
+          "pages": [
+            {
+              "file": "sobrado-2x2-2.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2924c68a79aa9b9ff5bdd44b8d0b4b8cf30a53b8b3ccce5bccfcce2c73c701e5"
+            }
+          ],
+          "sha256": "2924c68a79aa9b9ff5bdd44b8d0b4b8cf30a53b8b3ccce5bccfcce2c73c701e5"
+        }
+      },
+      "sha256": "2e11b9bae6007794f7376b8ecd82c2d4828375bbc284a705d8d8e5f56b726bce",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 2
+      }
+    },
+    "sobrado-2x2-3": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "sobrado-2x2-3.webp",
+          "cell": [
+            320,
+            408
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.960784
+          ],
+          "pages": [
+            {
+              "file": "sobrado-2x2-3.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3189660cc842a8f955a6f412ad1a1fbb52568c99f2b9c951f21b6e13149b7076"
+            }
+          ],
+          "sha256": "3189660cc842a8f955a6f412ad1a1fbb52568c99f2b9c951f21b6e13149b7076"
+        }
+      },
+      "sha256": "e3addd99e3ba0d9742dad950f69893c740069f555a463b306c76322d8c370f1d",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "framesPerView": 1,
+        "storeys": 2
+      }
+    },
+    "templo-murado-1": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "templo-murado-1.webp",
+          "cell": [
+            672,
+            560
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.971429
+          ],
+          "pages": [
+            {
+              "file": "templo-murado-1.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "4b1273f756af38836ce9d15df154a9a5e0ae22b753a30004f25a708b50f44c59"
+            }
+          ],
+          "sha256": "4b1273f756af38836ce9d15df154a9a5e0ae22b753a30004f25a708b50f44c59"
+        }
+      },
+      "sha256": "42befde8a0b441574b49fcbee35d0452dd44d796a0a5dc83c648559e44725794",
+      "meta": {
+        "framesPerView": 1,
+        "footprint": [
+          4,
+          4
+        ],
+        "storeys": 1
+      }
+    }
+  }
+}

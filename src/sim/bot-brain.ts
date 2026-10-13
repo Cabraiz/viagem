@@ -120,7 +120,8 @@ export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>
   const balance={coco:camp.coco,pedra:camp.pedra},wall=wallOf(view),round=view.round?.index??0;
   const ok=(id:RecipeId)=>refused[id]!==round&&canPay(balance,RECIPES[id].cost);
   if(wall&&wall.hp<wall.maxHp*REPAIR_BELOW&&ok('reparo'))return 'reparo';
-  const towers=view.structures.filter(s=>s.kind!=='muralha'&&(s.untilTick===undefined||s.untilTick>view.tick)).length;
+  // Only forge towers ('torre-*') count: the city barricades are structures too (cidade-06), never towers.
+  const towers=view.structures.filter(s=>s.kind.startsWith('torre-')&&(s.untilTick===undefined||s.untilTick>view.tick)).length;
   if(towers<MAX_TOWERS&&ok('torre-chinelo'))return 'torre-chinelo';
   if(ok('gambiarra'))return 'gambiarra';
   if(wall&&wall.hp<wall.maxHp&&ok('reparo'))return 'reparo';

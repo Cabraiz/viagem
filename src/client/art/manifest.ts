@@ -27,7 +27,7 @@ export interface ArtGroup {output:string;pieces:Record<string,ArtPiece>}
 export interface ArtIndex {version:number;groups:Record<string,ArtGroup>}
 
 /** Group keys as the importer names them (scripts/art-v2/spec.mjs GROUPS). */
-export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui';
+export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos';
 
 const EMPTY:ArtIndex={version:2,groups:{}};
 let index:ArtIndex=EMPTY;

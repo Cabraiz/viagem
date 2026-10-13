@@ -229,11 +229,12 @@ export class CoopClient {
   private forgeId=Math.floor(Math.random()*2**30);
   /**
    * Forge tap (VGM-046B): {t:'forge',round,recipe,req} at once; the room answers {t:'forged'} (onForged). Returns the
-   * request id, or undefined when the tap cannot reach the room (offline, not in a run).
+   * request id, or undefined when the tap cannot reach the room (offline, not in a run). `target` (cidade-06): what a
+   * 'reparo' repairs ('barricada-N'); sent only when given, so the wall's taps stay exactly as before.
    */
-  forge(recipe:string){
+  forge(recipe:string,target?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
-    const req=++this.forgeId;this.out(this.socket,{t:'forge',round:this.run.round,recipe,req});return req;
+    const req=++this.forgeId;this.out(this.socket,{t:'forge',round:this.run.round,recipe,req,...(target===undefined?{}:{target})});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};

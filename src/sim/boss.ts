@@ -12,7 +12,7 @@
  * anything else that removes it (cleanup, rematch) must call abort() or reset() instead.
  * State that must survive a checkpoint lives in `enemy.memory` (numbers only) and `controller.state`.
  */
-import {clearSegment,walkable,type Point} from '../maps/index.ts';
+import {clearSegment,enemyTerrain,walkable,type Point} from '../maps/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {addTelegraph,cancelTelegraphs,canBeTargeted} from './telegraphs.ts';
 import {MAX_ENEMIES,hasRoom} from '../rules/index.ts';
@@ -218,7 +218,8 @@ export function createBoss(options:BossOptions={}):BossController {
     const maxHp=bossMaxHp(Math.max(players.length,options.scalePlayers?.(ctx)??0),tuning);
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.
-    const spot=at&&walkable(at,ctx.terrain)?{x:at.x,y:at.y}:spawnPoint(ctx,bodies);
+    // Spots for enemy bodies use the enemy view (cidade-06): never inside a barricade disc.
+    const spot=at&&walkable(at,enemyTerrain(ctx.terrain))?{x:at.x,y:at.y}:spawnPoint(ctx,bodies);
     const boss:EnemyState={
       id:ctx.nextId('boss'),kind:BOSS_KIND,x:spot.x,y:spot.y,hp:maxHp,maxHp,
       speed:tuning.speed,damage:0,radius:tuning.radius,xp:tuning.xp,boss:true,
@@ -247,7 +248,7 @@ export function createBoss(options:BossOptions={}):BossController {
     let best:Point=center,bestDistance=-1;
     for(const r of [0,2,4,6,8])for(let i=0;i<(r?16:1);i++){
       const a=i/16*Math.PI*2,p={x:center.x+Math.cos(a)*r,y:center.y+Math.sin(a)*r};
-      if(!walkable(p,ctx.terrain))continue;
+      if(!walkable(p,enemyTerrain(ctx.terrain)))continue;
       const d=minDistance(p,players);
       if(d>=SAFE_SPAWN_DISTANCE)return p;
       if(d>bestDistance){best=p;bestDistance=d;}
@@ -297,7 +298,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const start=r.next()*Math.PI*2,atTick=ctx.tick+SUMMON_WARNING_TICKS;
     for(let i=0;i<12&&made<tuning.summonCount&&state.minions.length+state.pending.length<tuning.minionCap;i++){
       const a=start+i/12*Math.PI*2,p={x:boss.x+Math.cos(a)*2.5,y:boss.y+Math.sin(a)*2.5};
-      if(!walkable(p,ctx.terrain)||minDistance(p,present)<SUMMON_PLACE_DISTANCE)continue;
+      if(!walkable(p,enemyTerrain(ctx.terrain))||minDistance(p,present)<SUMMON_PLACE_DISTANCE)continue;
       state.pending.push({kind:r.pick(MINION_KINDS),x:p.x,y:p.y,atTick});
       ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:1});
       made++;
@@ -312,7 +313,8 @@ export function createBoss(options:BossOptions={}):BossController {
     const due=state.pending.filter(s=>s.atTick<=ctx.tick);
     state.pending=state.pending.filter(s=>s.atTick>ctx.tick);
     for(const s of due){
-      if(!walkable(s,ctx.terrain)||minDistance(s,present)<SAFE_SUMMON_DISTANCE)continue;
+      // Re-checked when due: a barricade rebuilt during the warning makes the spot invalid for an enemy body.
+      if(!walkable(s,enemyTerrain(ctx.terrain))||minDistance(s,present)<SAFE_SUMMON_DISTANCE)continue;
       const minion=summonMinion(ctx,s.kind,{x:s.x,y:s.y});
       if(minion)state.minions.push(minion.id);
     }
@@ -359,6 +361,7 @@ export function createBoss(options:BossOptions={}):BossController {
     }
     const next={x:boss.x+dx/l*step,y:boss.y+dy/l*step};
     for(const c of [next,{x:next.x,y:boss.y},{x:boss.x,y:next.y}])
+      // The boss walks over the plaza barricades (cidade-06): it spawns inside the base and never bashes structures (D-010).
       if(clearSegment(boss,c,ctx.terrain)){boss.x=c.x;boss.y=c.y;return;}
   }
 

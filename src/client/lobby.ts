@@ -2,6 +2,7 @@ import type { HeroClass } from '../rules/index.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
+import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
@@ -56,7 +57,8 @@ export function countdownJoke(seconds:number){
 export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}${extra}#personagem`;
 
 /** `bot`: a room bot; `owner`: the dono da sala (D-025). */
-export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean;bot:boolean;owner:boolean}
+/** `classId`: the class picked (for the chip's face), undefined until the player's state arrives. */
+export interface WaitingMember {id:string;name:string;ready:boolean;online:boolean;self:boolean;bot:boolean;owner:boolean;classId?:string}
 export interface WaitingView {
   visible:boolean;
   phase:'lobby'|'countdown'|'hidden';
@@ -168,11 +170,13 @@ export function besideSelector(band:Box,selector:Box|undefined,gapPx=8):Box{
 }
 
 /** View model of the waiting room from the polled run state. Spectators are not counted. */
-export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,{name:string}>,selfId:string,hz=20):WaitingView{
+export function waitingRoomView(run:RunState|undefined,names:ReadonlyMap<string,{name:string;classId?:string}>,selfId:string,hz=20):WaitingView{
   const phase=run?.phase==='lobby'||run?.phase==='countdown'?run.phase:'hidden';
-  const members:WaitingMember[]=(run?.members??[]).filter(m=>!m.spectator).map(m=>({
-    id:m.id,name:names.get(m.id)?.name||'Alguém',ready:m.ready,online:m.online,self:m.id===selfId,bot:!!m.bot,owner:!!run?.owner&&m.id===run.owner,
-  })).sort((a,b)=>Number(b.self)-Number(a.self)||Number(a.bot)-Number(b.bot)||a.name.localeCompare(b.name,'pt-BR')||(a.id<b.id?-1:1));
+  const members:WaitingMember[]=(run?.members??[]).filter(m=>!m.spectator).map(m=>{
+    const known=names.get(m.id);
+    return {id:m.id,name:known?.name||'Alguém',ready:m.ready,online:m.online,self:m.id===selfId,bot:!!m.bot,owner:!!run?.owner&&m.id===run.owner,
+      ...(known?.classId?{classId:known.classId}:{})};
+  }).sort((a,b)=>Number(b.self)-Number(a.self)||Number(a.bot)-Number(b.bot)||a.name.localeCompare(b.name,'pt-BR')||(a.id<b.id?-1:1));
   const canManage=phase!=='hidden'&&!!selfId&&run?.owner===selfId,seatsLeft=Math.max(0,6-(run?.members.length??0));
   const readyCount=members.filter(m=>m.ready&&m.online).length,total=members.length;
   const selfReady=!!members.find(m=>m.self)?.ready;
@@ -377,6 +381,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         const status=icon(m.ready?'pronto':'relogio'),robot=m.bot?`<span class="coop-wait-botmark">${icon('robo',{label:'bot'})}</span>`:'';
         const said=`${m.bot?' bot':''}${m.owner?', dono da sala':''}${m.ready?', pronto':', ainda não'}`;
         const crown=m.owner?icon('coroa',{className:'coop-wait-crown'}):'';
+        // The person's face left of the name (rostos-hud, 24 px circle: the chip keeps its height); an empty circle until
+        // the class is known. An <i>, so the chip's `>span` name rules (flex, ellipsis) skip it. Robot sticker and crown stay.
+        const face=faceHtml(m.classId,{className:'coop-wait-face',tag:'i'});
         // The ready pop plays once, when a chip turns ready, not on every rebuild of the list (the owner's taps rebuild it).
         // The owner's grid shows the rail's short name (unique for bots, like the HUD); the whole name is read aloud.
         const shown=view.canManage?railName(m.name):m.name;
@@ -385,9 +392,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
           const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
-          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
+          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
         }
-        return `<li class="${cls}">${robot}${status}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
+        return `<li class="${cls}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
       wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }

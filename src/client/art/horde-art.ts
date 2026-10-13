@@ -13,6 +13,7 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
@@ -354,8 +355,11 @@ export function enemyArtRow(image:object){const s=states.get(image);return s&&s.
  * procedural squash/flip/sway, and returns true. Otherwise returns false and the procedural sprite stays as layers.ts
  * set it (restoring its texture if the art had been on). Call it after layers.ts set the hit flash: the elite layer
  * copies the base image's tint. The contact shadow keeps today's size (ENEMY_ART width), art or not.
+ * `city` (city mode only, card contorno-breu): where the ground is darker than the rim switch, the Breu-ring copy of the
+ * frame's sheet is shown instead (CityOutlines.show maps origin and scale); elsewhere, and always outside the city, the
+ * imported sheet with its baked umber rim.
  */
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;phase:number;bossPhase?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
   const id=ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
   if(!piece){const s=states.get(image);return s?off(image,actor,s):false;}
@@ -370,21 +374,35 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   if(!action&&anim)frame=enemyFrame(id,piece,anim,s.row,t,base);
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
-  const file=piece.files[anim],scale=enemyDrawScale(actor.kind,file,actor.elite)*body;
-  if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
-  image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0);
-  s.on=true;
+  const file=piece.files[anim],scale=enemyDrawScale(actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
   // The elite layer of the action when it has one (and it loaded); otherwise the loop's elite layer (the elite marker
   // never blinks off during an attack or a hit), on the action's column when the loop has it, else its first frame.
   let eliteFrame=actor.elite?enemyFrame(id,piece,eliteFile(anim),s.row,t,top,!!action):undefined;
   if(actor.elite&&action&&loop&&(!eliteFrame||!textures.exists(eliteFrame.key)))
     eliteFrame=enemyFrameAt(id,piece,eliteFile(loop),s.row,enemyColumn(id,piece,action,t,true),top);
   s.eliteOn=!!eliteFrame&&textures.exists(eliteFrame.key);
+  // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
+  // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
+  let copy:CityVariant|undefined,copyTop:CityVariant|undefined;
+  if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
+    copy=city.variant(frame.key,scale);
+    if(copy&&eliteFrame&&s.eliteOn){
+      copyTop=city.variant(eliteFrame.key,scale);
+      if(!copyTop||copyTop.geom.slotW!==copy.geom.slotW||copyTop.geom.slotH!==copy.geom.slotH)copy=copyTop=undefined;
+    }
+  }
+  if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,scale,scale);
+  else{
+    if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
+    image.setOrigin(ox,oy).setScale(scale);
+  }
+  image.setFlipX(false).setRotation(0);
+  s.on=true;
   if(eliteFrame&&s.eliteOn){
-    const o=overlayOf(image,s);
-    if(o.texture.key!==eliteFrame.key)o.setTexture(eliteFrame.key,eliteFrame.frame);else o.setFrame(eliteFrame.frame);
+    const o=overlayOf(image,s),topKey=copyTop?copyTop.key:eliteFrame.key;
+    if(o.texture.key!==topKey)o.setTexture(topKey,eliteFrame.frame);else o.setFrame(eliteFrame.frame);
     // Just above its own base (never over a nearer enemy), with the base's hit flash/tint.
-    o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(scale).setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(image.alpha);
+    o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(image.scaleX,image.scaleY).setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(image.alpha);
     o.tintFill=image.tintFill;o.tintTopLeft=image.tintTopLeft;o.tintTopRight=image.tintTopRight;
     o.tintBottomLeft=image.tintBottomLeft;o.tintBottomRight=image.tintBottomRight;
   }

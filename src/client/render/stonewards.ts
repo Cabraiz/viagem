@@ -2,6 +2,10 @@
  * Stonewards in the world (VGM-046B): the wall/shelter at the base with its life bar, the camp ring (only in the
  * intermission, where the forge works), the chinelo towers, and the gather nodes with their value, units left and the
  * progress of the unit being gathered. Nodes and the ring only show in the intermission: the wave stays readable.
+ * City (cidade-06, barricadas-cliente): the 4 barricades across the plaza mouths ('barricada'), a pile drawn by damage
+ * stage with a small bar while damaged, a short flash when hit. Structures are routed by kind (stonewards-rules
+ * structureRole): only 'torre-chinelo' is a tower. The wall, the barricades and the loot crates use the imported `base`
+ * art when the manifest has it (art/base-art.ts), today's Graphics otherwise.
  *
  * Everything that sits on the map follows the double-edge rule (D-022): light body (Papel) + Breu contour. Sizes are
  * CSS px (divided by the camera zoom), so the markers read the same at every zoom. Colors only from the tokens:
@@ -13,7 +17,8 @@ import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
-import {WALL_LOW,gatheredSince,structureBarY,wallBar} from './stonewards-rules.ts';
+import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
+import {BASE_ART,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
@@ -23,6 +28,14 @@ const POP_MS=900;
 /** Nodes are marked only this close to the hero (review onda 6, D9). */
 export const NODE_SIGHT=12;
 const RING_SEGMENTS=56;
+/** Loot crates of the city are gather nodes with these ids (sim/stonewards/loot.ts CRATE_PREFIX). */
+const CRATE_PREFIX='caixa-';
+/** Imported art sits this much under its spot's Graphics, so the life bar drawn there stays on top of the sheet. */
+const BAR_OVER_ART=.001;
+/** Sandbag rows of the procedural barricade, bottom first, by damage stage (3: down, scattered on the ground). */
+const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,4,2],2:[5,2],3:[]};
+/** Share of Papel in the sandbags' colour by damage stage (the rest Pedra): darker as the life drops. */
+const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
 
 interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
@@ -46,6 +59,13 @@ export class StonewardsRenderer {
   private wall:Phaser.GameObjects.Graphics;
   /** Towers, sorted by their own depth. */
   private towers=new Map<string,Phaser.GameObjects.Graphics>();
+  /** City barricades (procedural pile and bar), each at its own depth. */
+  private barricades=new Map<string,Phaser.GameObjects.Graphics>();
+  /** Imported base art: by structure id (wall, barricades) or `node:<id>` (crates); created only when the art exists. */
+  private images=new Map<string,Phaser.GameObjects.Image>();
+  /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
+  private lastHp=new Map<string,number>();
+  private flashUntil=new Map<string,number>();
   private marks=new Map<string,NodeMark>();
   private pops:Pop[]=[];
   private structures:StructureView[]=[];
@@ -88,8 +108,13 @@ export class StonewardsRenderer {
       if(m.label.text!==text)m.label.setText(text);
     }
     for(const [id,m] of this.marks)if(!seen.has(id)){m.label.destroy();this.marks.delete(id);}
-    const towerIds=new Set(this.structures.filter(s=>s.kind!=='muralha').map(s=>s.id));
-    for(const [id,g] of this.towers)if(!towerIds.has(id)){g.destroy();this.towers.delete(id);}
+    // A structure that lost life flashes briefly (never with reduced effects).
+    if(!this.options.reduced)for(const id of hpDropped(this.lastHp,this.structures))this.flashUntil.set(id,this.now+HIT_FLASH_MS);
+    this.lastHp=new Map(this.structures.map(s=>[s.id,s.hp]));
+    for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
+    const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
+    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));
+    prune(this.images,new Set([...this.lastHp.keys(),...[...this.marks.keys()].map(id=>`node:${id}`)]));
   }
 
   /** After a view turn or a depth re-base: positions and depths are recomputed on the next update anyway. */
@@ -99,22 +124,39 @@ export class StonewardsRenderer {
     this.now=time;
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),u=this.options.actorScale?.()??1;
     this.ground.clear();
-    const wall=this.structures.find(s=>s.kind==='muralha');
+    const wall=this.structures.find(s=>structureRole(s.kind)==='wall');
     if(wall&&this.prepare)this.drawRing(wall,k);
-    for(const m of this.marks.values())this.drawNode(m,k);
+    for(const m of this.marks.values())this.drawNode(m,k,u);
     this.drawWall(wall,k,u);
-    for(const s of this.structures)if(s.kind!=='muralha')this.drawTower(s,k,u);
+    for(const s of this.structures){
+      const role=structureRole(s.kind);
+      if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
+    }
     this.drawPops(k);
   }
 
   destroy(){
     this.ground.destroy();this.wall.destroy();
     for(const g of this.towers.values())g.destroy();this.towers.clear();
+    for(const g of this.barricades.values())g.destroy();this.barricades.clear();
+    for(const i of this.images.values())i.destroy();this.images.clear();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
   }
 
   private project(x:number,y:number){return this.options.projector.project(x,y,this.q);}
+  private flashing(id:string){const t=this.flashUntil.get(id);return t!==undefined&&this.now<t;}
+  /**
+   * The imported art of `key` (piece `id` in `state`, camera column `view`), shown and returned; undefined (and its
+   * image hidden) when the piece, the state or the texture is missing. The image is created only once the art exists.
+   */
+  private art(key:string,id:string,state:string|undefined,view:number,u:number,frame=0){
+    let img=this.images.get(key);
+    if(!state||!baseFile(id)){img?.setVisible(false);return undefined;}
+    if(!img){img=this.scene.add.image(0,0,'__DEFAULT').setVisible(false);this.images.set(key,img);}
+    if(!applyBaseArt(img,id,state,view,u,frame)){img.setVisible(false);return undefined;}
+    return img.setVisible(true);
+  }
 
   /** The forge's camp: Breu line under a Papel line, on the ground around the wall. */
   private drawRing(wall:StructureView,k:number){
@@ -132,10 +174,11 @@ export class StonewardsRenderer {
    * when a unit is worth more than 1; the units left (pips) and the Cartolina progress bar only while someone gathers
    * there. Only nodes within NODE_SIGHT units of the hero are marked; an empty one fades.
    */
-  private drawNode(m:NodeMark,k:number){
+  private drawNode(m:NodeMark,k:number,u:number){
     const n=m.view,g=this.ground,c=this.c,hero=this.options.hero?.();
     const near=!hero||Math.hypot(n.x-hero.x,n.y-hero.y)<=NODE_SIGHT;
     m.label.setVisible(near&&n.value>1&&n.remaining>0);
+    if(n.id.startsWith(CRATE_PREFIX))this.drawCrate(n,near,u);
     if(!near)return;
     const p=this.project(n.x,n.y),x=p.x,y=p.y+14*k,empty=n.remaining<=0,alpha=empty?.35:1;
     if(n.kind==='pedra'){
@@ -172,8 +215,23 @@ export class StonewardsRenderer {
     const g=this.wall;g.clear();
     if(!wall){g.setVisible(false);return;}
     g.setVisible(true);
-    const p=this.project(wall.x,wall.y),c=this.c,x=p.x,y=p.y,down=wall.hp<=0;
-    g.setDepth(this.options.projector.depth(wall.x,wall.y));
+    const p=this.project(wall.x,wall.y),x=p.x,y=p.y,down=wall.hp<=0,depth=this.options.projector.depth(wall.x,wall.y);
+    g.setDepth(depth);
+    // Imported art: the sheet's damage state from the camera's view (a round piece: no turn of its own); the bar stays.
+    const img=this.art(wall.id,BASE_ART.wall,baseState(BASE_ART.wall,wall.maxHp>0?wall.hp/wall.maxHp:0,down),this.options.projector.view,u);
+    if(img){
+      img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
+      if(this.flashing(wall.id))img.setTintFill(this.c.claro);else img.clearTint();
+    }else this.drawWallBody(g,x,y,down,u);
+    if(down)return;
+    // Life bar (CSS px): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch.
+    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=72*k,bh=8*k,bx=x-bw/2,by=structureBarY('muralha',y,k,u);
+    this.drawBar(g,bx,by,bw,bh,fraction,low,k);
+  }
+
+  /** Today's procedural wall (no imported art): shadow, stone ring, tent and flag. */
+  private drawWallBody(g:Phaser.GameObjects.Graphics,x:number,y:number,down:boolean,u:number){
+    const c=this.c;
     // Shadow, stone ring (a low wall), tent, flag. Drawn in world px: the wall is part of the map, it zooms with it
     // (× u: the endless map's size next to the heroes, also in the city).
     g.fillStyle(c.breu,.25).fillEllipse(x,y+6*u,150*u,56*u);
@@ -194,13 +252,110 @@ export class StonewardsRenderer {
       const a=Math.PI*(i/(stones-1)),sx=x+Math.cos(a)*62*u,sy=y+Math.sin(a)*24*u-2*u;
       g.fillStyle(c.pedra,1).fillRoundedRect(sx-12*u,sy-11*u,24*u,18*u,5*u).lineStyle(2*u,c.breu,1).strokeRoundedRect(sx-12*u,sy-11*u,24*u,18*u,5*u);
     }
-    if(down)return;
-    // Life bar (CSS px): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch.
-    const {fraction,low}=wallBar(wall.hp,wall.maxHp),bw=72*k,bh=8*k,bx=x-bw/2,by=structureBarY('muralha',y,k,u);
+  }
+
+  /** A life bar (CSS px, `k`): Breu track, Papel edge, Cartolina fill; under WALL_LOW it turns Cone and gets a notch. */
+  private drawBar(g:Phaser.GameObjects.Graphics,bx:number,by:number,bw:number,bh:number,fraction:number,low:boolean,k:number){
+    const c=this.c;
     g.fillStyle(c.breu,1).fillRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*fraction,bh);
     g.lineStyle(2*k,c.papel,1).strokeRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     if(low)g.fillStyle(c.breu,1).fillTriangle(bx+bw*WALL_LOW-4*k,by-2*k,bx+bw*WALL_LOW+4*k,by-2*k,bx+bw*WALL_LOW,by+4*k);
+  }
+
+  /**
+   * City barricade across a plaza mouth, at its own depth (the city's actor depth through the projector, like the
+   * wall). Imported art: the damage state's row, column = (camera view + the mouth's turn) mod 4. Otherwise a sandbag
+   * pile 2 u long across the mouth (barricadeSpan) whose rows thin out and darken by damage stage, and scattered bags
+   * once down. A small bar while damaged (never when whole or down); a short flash when hit.
+   */
+  private drawBarricade(s:StructureView,wall:StructureView|undefined,k:number,u:number){
+    let g=this.barricades.get(s.id);
+    if(!g){g=this.scene.add.graphics();this.barricades.set(s.id,g);}
+    g.clear();
+    const down=s.hp<=0,ratio=s.maxHp>0?s.hp/s.maxHp:0,stage=damageStage(ratio,down),flash=this.flashing(s.id);
+    const span=barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
+    const p=this.project(s.x,s.y),x=p.x,y=p.y;
+    g.setDepth(depth);
+    const img=this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);
+    if(img){
+      img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
+      if(flash)img.setTintFill(this.c.claro);else img.clearTint();
+    }else{
+      const a=this.project(span.ax,span.ay),ax=a.x,ay=a.y,b=this.project(span.bx,span.by);
+      this.drawPile(g,ax,ay,b.x,b.y,stage,flash,u,k);
+    }
+    const bar=barricadeBar(s.hp,s.maxHp);
+    if(!bar.show)return;
+    const bw=48*k,bh=6*k;
+    this.drawBar(g,x-bw/2,structureBarY('barricada',y,k,u),bw,bh,bar.fraction,bar.low,k);
+  }
+
+  /**
+   * The procedural pile from screen point A to B (the mouth's ends): Breu shadow, Casca posts at the ends with a plank
+   * across their tops, Papel sandbags with a Breu contour (D-022) in rows that thin out by stage (PILE_ROWS). Damaged:
+   * one post broken short, the plank hanging from the other, a torn bag. About to fall: two rows, one leaning post, no
+   * plank. Down: four flat bags and the fallen plank on the ground, no posts. Stage reads by shape, not only colour.
+   * `u`: actor scale (sizes at the endless map's size); `k`: world px per CSS px (the contour never under 1.5 CSS px).
+   */
+  private drawPile(g:Phaser.GameObjects.Graphics,ax:number,ay:number,bx:number,by:number,stage:DamageStage,flash:boolean,u:number,k:number){
+    const c=this.c,len=Math.max(1,Math.hypot(bx-ax,by-ay)),line=Math.max(2*u,1.5*k);
+    const fill=flash?c.claro:mix(c.papel,c.pedra,PILE_LIGHT[stage]),at=(t:number)=>({x:ax+(bx-ax)*t,y:ay+(by-ay)*t});
+    const bagW=len/5*1.12,bagH=14*u,radius=Math.min(bagH/2,5*u);
+    // A Casca board with a Breu edge (posts and planks).
+    const board=(x0:number,y0:number,x1:number,y1:number,w:number,alpha=1)=>{
+      g.lineStyle(w*u+2*line,c.breu,alpha).lineBetween(x0,y0,x1,y1);
+      g.lineStyle(w*u,c.casca,alpha).lineBetween(x0,y0,x1,y1);
+    };
+    const bag=(cx:number,cy:number,alpha=1)=>{
+      g.fillStyle(fill,alpha).fillRoundedRect(cx-bagW/2,cy-bagH/2,bagW,bagH,radius);
+      g.lineStyle(line,c.breu,alpha).strokeRoundedRect(cx-bagW/2,cy-bagH/2,bagW,bagH,radius);
+    };
+    g.lineStyle(bagH*1.5,c.breu,.22).lineBetween(ax,ay+4*u,bx,by+4*u);
+    if(stage===3){
+      // Down: the bags lie flat and apart, a plank across them.
+      for(const [t,dy] of [[.08,3],[.36,-2],[.64,4],[.93,-1]] as const){const q=at(t);bag(q.x,q.y+dy*u,.8);}
+      const s0=at(.2),s1=at(.75);
+      board(s0.x,s0.y-2*u,s1.x,s1.y+6*u,6,.85);
+      return;
+    }
+    // Posts at both ends, behind the bags: whole stands both with the plank on top; damaged has one broken short and
+    // the plank hanging; about to fall keeps one leaning post.
+    const POST=48,e0=at(.04),e1=at(.96);
+    if(stage===0){
+      board(e0.x,e0.y,e0.x,e0.y-POST*u,6);board(e1.x,e1.y,e1.x,e1.y-POST*u,6);
+      board(e0.x,e0.y-(POST-8)*u,e1.x,e1.y-(POST-8)*u,7);
+    }else if(stage===1){
+      board(e0.x,e0.y,e0.x,e0.y-POST*u,6);board(e1.x,e1.y,e1.x,e1.y-26*u,6);
+      board(e0.x,e0.y-(POST-8)*u,e1.x,e1.y-10*u,7);
+    }else board(e0.x,e0.y,e0.x+16*u,e0.y-38*u,6);
+    const rows=PILE_ROWS[stage],base=rows[0];
+    rows.forEach((n,r)=>{
+      // Upper rows are shorter and centred; back bags (smaller screen y) first so the near ones overlap them.
+      const order=Array.from({length:n},(_,i)=>at(.5+((i+.5)/n-.5)*(n/base)));
+      order.sort((p,q)=>p.y-q.y);
+      for(const q of order)bag(q.x,q.y-r*bagH*.82);
+    });
+    if(stage>=1){
+      // A torn bag: a Breu slit on the top row's first bag.
+      const top=rows.length-1,q=at(.5+(.5/rows[top]-.5)*(rows[top]/base)),cy=q.y-top*bagH*.82;
+      g.lineStyle(line,c.breu,1).lineBetween(q.x-bagW*.25,cy-bagH*.15,q.x+bagW*.15,cy+bagH*.2);
+    }
+  }
+
+  /**
+   * A loot crate's imported art (cidade-07 crates are gather nodes `caixa-*`): closed, opening while gathered (the
+   * frame follows the progress) and open and faded once empty. Without the art nothing changes (the node sticker).
+   */
+  private drawCrate(n:NodeView,near:boolean,u:number){
+    const key=`node:${n.id}`,id=BASE_ART.crate;
+    if(!near){this.images.get(key)?.setVisible(false);return;}
+    const opening=n.remaining<=0||n.progress>0,frames=baseStateFrames(id,'abrindo');
+    const frame=n.remaining<=0?frames-1:Math.min(frames-1,Math.floor(n.progress*frames));
+    const img=this.art(key,id,opening?'abrindo':'fechada',0,u,opening?frame:0);
+    if(!img)return;
+    const p=this.project(n.x,n.y);
+    img.setPosition(p.x,p.y).setDepth(this.options.projector.depth(n.x,n.y)).setAlpha(n.remaining<=0?.35:1);
   }
 
   /** Chinelo tower: a small stand with a sandal on top and a Papel bar of the time it has left (`u`, `k`: as drawWall). */
@@ -236,6 +391,11 @@ export class StonewardsRenderer {
       return true;
     });
   }
+}
+
+/** Destroys the objects of `map` whose key is not in `keep`. */
+function prune(map:Map<string,{destroy():void}>,keep:ReadonlySet<string>){
+  for(const [id,o] of map)if(!keep.has(id)){o.destroy();map.delete(id);}
 }
 
 /** a·w + b·(1−w), per channel. */

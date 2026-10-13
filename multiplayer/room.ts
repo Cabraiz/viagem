@@ -16,7 +16,7 @@ import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
-import {isRecipeId} from '../src/rules/index.ts';
+import {isForgeTarget,isRecipeId} from '../src/rules/index.ts';
 import type {ZueiraLab} from '../src/sim/index.ts';
 
 /** Text frames are JSON control messages; binary frames are protocol 4 run frames (server -> client only). */
@@ -584,7 +584,8 @@ export class Room {
    */
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city)}):new Simulation(old.seed,{world:this.baseWorld});
+    // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true}):new Simulation(old.seed,{world:this.baseWorld});
     sim.botState=()=>this.bots.state();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
@@ -678,15 +679,18 @@ export class Room {
     this.send({t:'sos',id,x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,tick:this.sim.tick});
   }
   /**
-   * Forge tap (VGM-046B): {t:'forge',round,recipe,req}. The simulation validates everything (phase, standing, in the
-   * camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once, everyone
-   * sees the balance in the next frame and the recipe's line as a `say` event.
+   * Forge tap (VGM-046B): {t:'forge',round,recipe,req,target?}. The simulation validates everything (phase, standing,
+   * in the camp, team balance; `req` makes a resend apply once); the buyer hears {t:'forged',req,ok,reason?} at once,
+   * everyone sees the balance in the next frame and the recipe's line as a `say` event. `target` (cidade-06, optional,
+   * so older phones are unchanged) names what 'reparo' repairs: 'muralha' or 'barricada-N|S|L|O' (isForgeTarget);
+   * absent means the wall, any other value drops the tap here.
    */
   private forge(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!isRecipeId(m.recipe)||!Number.isSafeInteger(m.req)||m.req<1)return;
-    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req));
+    if(m.target!==undefined&&!isForgeTarget(m.target))return;
+    const result=this.sim.forge(c.playerId!,m.recipe,String(m.req),m.target);
     this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
@@ -854,12 +858,15 @@ export class Room {
     const p=this.perf;p.ticks++;p.tickMs+=ms;p.maxTickMs=Math.max(p.maxTickMs,ms);
     if(this.sampling){p.samples.push(ms);if(p.samples.length>PERF_SAMPLES)p.samples.shift();}
   }
-  /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
+  /**
+   * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

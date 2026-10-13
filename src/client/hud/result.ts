@@ -12,6 +12,7 @@ import {sticker as drawSticker} from '../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
 import {resultCause} from './cause.ts';
 import {icon} from '../ui/icon.ts';
+import {faceExpression,faceImg} from '../ui/face-crop.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
 import type {MapId} from '../../protocol/index.ts';
@@ -64,6 +65,8 @@ export function compactNumber(value:number){
 /** With 3+ players a card has this many build slots in one row (portrait / landscape); overflow becomes a "+N" chip.
  *  Slots are 28 px stickers 6 px apart (design review of DSG-adesivos-itens): 118 px beside the portrait fits 3, 207 px fits 6. */
 export const BUILD_SLOTS={portrait:3,landscape:6} as const;
+/** The card face's largest CSS size (hud.css .rh-rcard-img): 64 px with one or two cards, 40 px otherwise. */
+export const RESULT_FACE_PX={big:64,card:40} as const;
 const LANDSCAPE='(max-height:500px)';
 
 /** Build icons in display order (evolutions, weapons, passives; higher level first). With more items than slots,
@@ -190,7 +193,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   let shameChip:{playerId:string;line:string;aria:string;key:string;source?:string}|undefined;
   /** The chip element and its card's list, while built (inserted only when used: the compact rules count children). */
   let chipEl:{chip:HTMLElement;list:HTMLElement}|undefined;
-  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number},index:number)=>{
+  const card=(player:PlayerRunView,awards:readonly Award[],ctx:HudContext&{slots:number;victory:boolean;facePx:number},index:number)=>{
     const node=el('article','rh-rcard');
     node.setAttribute('aria-label',player.name);
     node.style.setProperty('--i',String(index));
@@ -199,7 +202,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     if(player.spectator)node.dataset.state='spectator';
 
     const top=el('div','rh-rcard-top',node);
-    const img=el('img','rh-rcard-img',top);img.alt='';img.decoding='async';img.draggable=false;img.src=ctx.portrait(player.classId);
+    // The face (rostos-hud): the outcome wins over caido here (a defeat ends with everyone down), so rindo on a win and
+    // bravo on a loss (ui/face-crop.ts). At 64/52 px the thumb's crop would blur at DPR 3: `px` picks the 768 portrait.
+    const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated,outcome:ctx.victory?'victory':'defeat'});
+    top.append(faceImg(document,player.classId,{className:'rh-rcard-img',expression,portrait:ctx.portrait,px:ctx.facePx}));
     const id=el('div','rh-rcard-id',top);
     const name=el('strong','rh-rcard-name',id);name.textContent=player.name;name.dataset.full=player.name;
     if(me){const tag=el('span','rh-rcard-tag',id);tag.textContent='Você';}
@@ -301,7 +307,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     const count=players.length+(tile?1:0);
     const slots=count>=3?BUILD_SLOTS[landscape?.matches?'landscape':'portrait']:Infinity;
     grid.dataset.count=String(count);chipEl=undefined;
-    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots},index)),...(tile?[addTile()]:[]));
+    grid.replaceChildren(...players.map((player,index)=>card(player,awardsOf(awards,player.id),{...ctx,slots,victory:result.victory,facePx:count<=2?RESULT_FACE_PX.big:RESULT_FACE_PX.card},index)),...(tile?[addTile()]:[]));
     fitCards();
   };
   /**

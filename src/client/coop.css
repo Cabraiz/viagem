@@ -58,6 +58,43 @@
 #coop-attack:disabled .skillbtn-fill,#coop-attack:disabled .skillbtn-track{stroke:transparent} /* fora do combate ou caído: nada de anel "pronto" num botão que não responde */
 /* Out of the run or watching (VGM-043): the stick looks and acts disabled, like the skill button. */
 .coop-shell[data-out=true] .explore-stick{opacity:.5;pointer-events:none}
+/* Out of the round (BUG-20261006-ORQ-lobby-dead-controls): waiting room, countdown and result drop every move and cast,
+   so the stick and the skill are not shown (visibility: their boxes stay, the round starts with nothing jumping, and a
+   hidden control takes no finger nor focus). In the stick's corner a Papel etiqueta says what the thumbs will do; static,
+   never a button. Portrait: in the stick's corner, two rows at most (it grows with the text scale), under the waiting
+   window. Landscape: the window sits at the bottom between the thumbs (width up to min(560px, 100% − 300px), centred),
+   so the etiqueta keeps to the free strip on its left, 8 px clear of the widest (owner's) window, and wraps to fit.
+   Portrait, the window's height: its usual cap (100% − 300px) kept the thumbs' room; with them off it may reach down to
+   8 px over the etiqueta (top max(122px, safe + 114px), the controls' 24 px bottom padding or the safe area, the
+   etiqueta's rows of 1.3 × 13 px plus 16 px of padding and border: two in the waiting room, one in the countdown). */
+.coop-shell[data-controls=off] :is(.explore-stick,#coop-attack){visibility:hidden;pointer-events:none}
+.explore-movement{position:relative}
+.explore-stick-hint{position:absolute;left:0;bottom:0;box-sizing:border-box;width:max-content;max-width:min(calc(280px * var(--t-escala)),calc(100vw - 48px));margin:0;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:400 var(--t-13)/1.3 var(--f-sistema);text-align:left;pointer-events:none}
+.explore-stick-hint[hidden]{display:none}
+.explore-stick-hint span{display:block}
+@media(max-height:500px){.explore-stick-hint{max-width:calc((100vw - min(560px,100vw - 300px)) / 2 - max(18px,env(safe-area-inset-left)) - 8px)}}
+.coop-shell[data-controls=off]{--controls-hint-room:calc(2 * 1.3 * var(--t-13) + 16px)}
+.coop-shell[data-controls=off][data-run-phase=countdown]{--controls-hint-room:calc(1.3 * var(--t-13) + 16px)}
+@media(min-height:501px){.coop-shell[data-controls=off] .coop-wait{max-height:calc(100% - max(122px,calc(env(safe-area-inset-top) + 114px)) - max(24px,env(safe-area-inset-bottom)) - var(--controls-hint-room) - 8px)}}
+/* Landscape: the etiqueta's column is ~124 px at 844 wide, so it keeps only its first line (≤ 3 rows at 125%) on a
+   tighter padding. The countdown window has 100% − 64px of height and six names: the big number leaves its own row and
+   stands left of the button row (a wrapping flex column of full-width rows; flex, not grid, so the sticky row below can
+   still move inside the whole window, a grid item only moves inside its cell), and a guest's names go two by two. */
+@media(max-height:500px){
+  .explore-stick-hint{padding:4px 6px}
+  .explore-stick-hint span+span{display:none}
+  .coop-wait[data-phase=countdown]{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px}
+  .coop-wait[data-phase=countdown]>*{flex:0 0 100%;min-width:0}
+  .coop-wait[data-phase=countdown]>.coop-wait-count{order:1;flex:none}
+  .coop-wait[data-phase=countdown]>.coop-wait-actions{order:2;flex:1 1 0}
+  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li{min-width:0}
+  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+/* Countdown: the number sticks to the window's bottom with the button row, so both stay in view if the names make the
+   window scroll. Portrait stacks them (the row sits on the 64 px number); landscape keeps them side by side. */
+.coop-wait[data-phase=countdown]>.coop-wait-count{position:sticky;bottom:0;z-index:1;background:var(--c-lilas)}
+@media(min-height:501px){.coop-wait[data-phase=countdown]>.coop-wait-actions{bottom:64px}}
 /* DSG-icones-sistema: adesivos no lugar de emoji (sortear, pronto/esperando da sala). */
 .coop-lobby button.coop-nick-roll{display:inline-flex;align-items:center;gap:6px}
 .coop-wait-members li .ic{margin:-4px 0 -4px -5px}
@@ -84,6 +121,9 @@
    sempre pronto: leva o visto como todo mundo e o adesivo de robô no canto, então "pronto" nunca é só a cor. A coroa
    de papel marca o dono para todo mundo. */
 .coop-wait-actions{display:flex;gap:8px;margin-top:8px}
+/* If the names still outgrow the window (125% text, six people), the window scrolls but "Tô pronto!" never goes under
+   its edge: the row sticks to the bottom over the window's own Lilás, which also covers the 8 px gap above it. */
+.coop-wait-actions{position:sticky;bottom:0;z-index:1;background:var(--c-lilas);box-shadow:0 -8px 0 var(--c-lilas)}
 .coop-wait-actions .coop-wait-ready{flex:2 1 0}
 .coop-wait.is-owner .coop-wait-ready,.coop-wait .coop-wait-bot{min-height:48px}
 .coop-wait-bot{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 10px;border:2px solid var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel);box-shadow:var(--s-1);white-space:nowrap}
@@ -110,6 +150,8 @@
 .coop-wait-members li.is-asking button{font-weight:800}
 .coop-wait-members li .coop-wait-crown{margin:-4px -2px -4px 2px}
 .coop-wait-members li .coop-wait-out{margin:-4px -2px -4px 4px}
+/* Rosto da pessoa à esquerda do nome (rostos-hud): círculo de 24 px com filete Breu, dentro da altura do chip (32/48 px). */
+.coop-wait-members .coop-wait-face{width:24px;height:24px;margin:-2px 2px -2px 0;box-shadow:0 0 0 1px var(--c-breu)}
 /* Troca de dono: faixa Breu de 4 s acima dos nomes ("Bia saiu. Agora quem manda é Caio."). */
 .coop-wait-owner{margin:6px 0;padding:8px 12px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:700 var(--t-13)/1.3 var(--f-sistema)}
 .coop-wait-owner[hidden]{display:none}

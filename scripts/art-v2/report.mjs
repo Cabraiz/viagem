@@ -7,12 +7,13 @@ import {GROUPS} from './spec.mjs';
 
 /** @typedef {import('./spec.mjs').PieceResult} PieceResult */
 
-const STATUS_ORDER={reprovado:0,aprovado:1,pendente:2,opcional:3};
+const STATUS_ORDER={reprovado:0,extra:1,aprovado:2,pendente:3,opcional:4};
 const BADGES={
   aprovado:{cls:'ok',text:'✔ aprovada'},
   reprovado:{cls:'bad',text:'✖ reprovada'},
   pendente:{cls:'wait',text:'… pendente'},
   opcional:{cls:'wait',text:'○ opcional'},
+  extra:{cls:'bad',text:'＋ extra (fora da tabela)'},
 };
 const FIX_HINT='Corrija as peças reprovadas e rode o importador de novo; o que já foi aprovado não precisa ser reenviado.';
 const PENDING_TEXT='Ainda não entregues — o jogo continua com a arte atual:';
@@ -58,7 +59,7 @@ function renderPiece(piece,{dryRun}){
   const parts=[`<li class="piece ${badge.cls}">`,
     `<div class="piece-head"><span class="badge ${badge.cls}">${badge.text}</span><span class="piece-id">${escapeHtml(piece.id)}</span></div>`];
   const notes=renderNotes(notesOf(piece));
-  if(piece.status==='reprovado'){
+  if(piece.status==='reprovado'||piece.status==='extra'){
     const thumb=safeThumb(piece.thumb);
     parts.push('<div class="piece-body">');
     if(thumb)parts.push(`<img class="thumb" src="${escapeHtml(thumb)}" alt="Miniatura de ${escapeHtml(piece.id)}">`);
@@ -83,7 +84,8 @@ function renderGroup(title,pieces,options){
   const t=summarize(pieces);
   const counts=[t.reprovadas&&`${t.reprovadas} reprovada${t.reprovadas===1?'':'s'}`,t.aprovadas&&`${t.aprovadas} aprovada${t.aprovadas===1?'':'s'}`,
     t.pendentes&&`${t.pendentes} pendente${t.pendentes===1?'':'s'}`,
-    (()=>{const n=pieces.filter(p=>p.status==='opcional').length;return n&&`${n} opciona${n===1?'l':'is'} (P1/P2)`;})()].filter(Boolean).join(' · ');
+    (()=>{const n=pieces.filter(p=>p.status==='opcional').length;return n&&`${n} opciona${n===1?'l':'is'} (P1/P2)`;})(),
+    (()=>{const n=pieces.filter(p=>p.status==='extra').length;return n&&`${n} extra${n===1?'':'s'} (fora da tabela)`;})()].filter(Boolean).join(' · ');
   // Pending (P0) and optional (P1/P2) absent pieces go in one line each; those carrying notes also get their own entry.
   const absent=status=>sorted.filter(p=>p.status===status);
   const pending=absent('pendente'),optional=absent('opcional');

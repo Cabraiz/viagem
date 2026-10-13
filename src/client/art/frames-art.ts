@@ -43,6 +43,14 @@ export const MARK_PIECES:Readonly<Record<MarkElement,string>>={
 export const MARK_ANCHOR:Readonly<Record<MarkElement,readonly [number,number]>>={
   target:[.5,.5],skill:[.5,.5],destination:[.5,.5],you:[.5,.5],rescue:[.5,.75],spawn:[.5,.5],
 };
+/**
+ * Effect strips drawn like marks but not on the ground (NEW-20261012-ORQ-importar-arte-d-restos item 5): the blackout's
+ * eyes in the dark (`olhos-escuro`, 64×32, a pair of eyes, 4 blink frames). Loaded with the marks, never in MARK_PIECES.
+ */
+export type FxMarkElement='eyes';
+export const FX_MARK_PIECES:Readonly<Record<FxMarkElement,string>>={eyes:'olhos-escuro'};
+const ALL_MARKS:Readonly<Record<MarkElement|FxMarkElement,string>>={...MARK_PIECES,...FX_MARK_PIECES};
+const ALL_ANCHORS:Readonly<Record<MarkElement|FxMarkElement,readonly [number,number]>>={...MARK_ANCHOR,eyes:[.5,.5]};
 /** Frames per second when the file says none. */
 export const MARK_FPS=8;
 
@@ -100,10 +108,10 @@ export function barFillWidth(inner:number,ratio:number,min=0):number{
 }
 
 export interface MarkArt {key:string;id:string;cell:readonly [number,number];frames:number;fps:number;anchor:readonly [number,number]}
-const markCache=new WeakMap<ArtPiece,Map<MarkElement,MarkArt|null>>();
-/** The ground mark of `element` from the current manifest (texture key, cell, frames, fps, anchor), or undefined. */
-export function markArt(element:MarkElement):MarkArt|undefined{
-  const id=MARK_PIECES[element],piece=artPiece('efeitos',id);
+const markCache=new WeakMap<ArtPiece,Map<MarkElement|FxMarkElement,MarkArt|null>>();
+/** The ground mark (or FX mark) of `element` from the current manifest (texture key, cell, frames, fps, anchor), or undefined. */
+export function markArt(element:MarkElement|FxMarkElement):MarkArt|undefined{
+  const id=ALL_MARKS[element],piece=artPiece('efeitos',id);
   if(!piece)return undefined;
   let byElement=markCache.get(piece);
   if(!byElement){byElement=new Map();markCache.set(piece,byElement);}
@@ -112,7 +120,7 @@ export function markArt(element:MarkElement):MarkArt|undefined{
     const file=fileOf(piece),page=file&&onePage(file);
     const fps=typeof file?.fps==='number'?file.fps:undefined;
     art=file&&page?{key:markKey(id),id,cell:[file.cell[0],file.cell[1]],frames:Math.max(1,page.frameCount),
-      fps:fps&&fps>0?fps:MARK_FPS,anchor:file.anchor??MARK_ANCHOR[element]}:null;
+      fps:fps&&fps>0?fps:MARK_FPS,anchor:file.anchor??ALL_ANCHORS[element]}:null;
     byElement.set(element,art);
   }
   return art??undefined;
@@ -132,7 +140,7 @@ export function framesLoads():FramesLoad[]{
     const file=fileOf(artPiece(art.group,art.id) as ArtPiece) as ArtFile,url=artUrl(art.group,artPages(file)[0].file);
     if(url&&!out.some(l=>l.key===art.key))out.push({key:art.key,url,cell:art.cell,sheet:false});
   }
-  for(const element of Object.keys(MARK_PIECES) as MarkElement[]){
+  for(const element of Object.keys(ALL_MARKS) as (MarkElement|FxMarkElement)[]){
     const art=markArt(element);if(!art)continue;
     const file=fileOf(artPiece('efeitos',art.id) as ArtPiece) as ArtFile,url=artUrl('efeitos',artPages(file)[0].file);
     if(url&&!out.some(l=>l.key===art.key))out.push({key:art.key,url,cell:art.cell,sheet:true});

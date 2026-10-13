@@ -7,10 +7,11 @@
  */
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 import {
   GROUPS,DIRECTIONS,DIRECTION_NAMES,VIEW_NAMES,DIR4_FROM_DIR8,CARDINALS,LEFT,ANCHOR,ALPHA_THRESHOLD,PADDING,
   FOOT_Y_TOLERANCE,FOOT_X_TOLERANCE,AIRBORNE_ANIMS,LUNGE_ANIMS,SEAM_FACTOR,SEAM_SEGMENTS,SEAM_PERCENTILE,MAX_TEXTURE,
-  KIND_NAMES,
+  KIND_NAMES,TOWER_ROWS,TOWER_WALL_ROWS,TOWER_ANIMS,TOWER_IDLE_FRAMES,
 } from './spec.mjs';
 import {
   cellStats,raw,approvedPivotX,CELL,COLUMNS,ROWS,ROW_NAMES,PIVOT_Y,ROW_BASELINE_TOLERANCE,CELL_BASELINE_TOLERANCE,
@@ -191,6 +192,55 @@ function checkFps(value,label,problems,names){
   return value;
 }
 
+// ---------------------------------------------------------------- one PNG per direction (enemies, towers)
+/**
+ * `<anim>-<DIR>.png` → {anim, dir}: `dir` is the DIRECTIONS name (any case in the file name) or undefined when the
+ * suffix is no direction. undefined when the name is not `<one of anims>-<suffix>.png`.
+ */
+export function directionFile(name,anims){
+  const m=/^(.+)-([a-z]+).png$/i.exec(name);
+  if(!m||!anims.includes(m[1]))return;
+  const dir=m[2].toUpperCase();
+  return {anim:m[1],dir:DIRECTIONS.includes(dir)?dir:undefined};
+}
+/** Adds a per-direction file to `perDir` ({[anim]:{dirs:{[DIR]:file},unknown:[],twice:[]}}). */
+function addDirection(perDir,{anim,dir},file){
+  const p=perDir[anim]??={dirs:{},unknown:[],twice:[]};
+  if(!dir)p.unknown.push(file);
+  else if(p.dirs[dir])p.twice.push(file);
+  else p.dirs[dir]=file;
+}
+/**
+ * Assembles one animation delivered as one PNG per direction into its sheet: one row per direction, DIRECTIONS order
+ * (S, SW, W, NW, N, NE, E, SE). Every direction must come exactly once, no other suffix, all images the same size.
+ * `folder`: the piece folder as the messages show it. Returns the sheet as a PNG Buffer, or undefined (problems pushed).
+ */
+export async function assembleDirections(ctx,folder,anim,{dirs,unknown=[],twice=[]},problems){
+  const before=problems.length,name=d=>`${anim}-${d}.png`;
+  for(const f of unknown)problems.push(`${relName(ctx,f)}: direção desconhecida no nome. Use ${anim}-<direção>.png com uma das 8 direções ${DIRECTIONS.join(', ')}.`);
+  for(const f of twice)problems.push(`${relName(ctx,f)}: direção repetida (já veio outro arquivo para ela). Envie uma imagem por direção.`);
+  const missing=DIRECTIONS.filter(d=>!dirs[d]);
+  if(missing.length)problems.push(`${folder}/${anim}-*.png: ${missing.length>1?'faltam as direções':'falta a direção'} ${list(missing.map(d=>`${d} (${DIRECTION_NAMES[d]})`))}. Entregue as 8 imagens ${name('S')} … ${name('SE')} (${DIRECTIONS.join(', ')}), ou a folha inteira ${anim}.png.`);
+  if(problems.length>before)return;
+  const images=[];
+  for(const d of DIRECTIONS)images.push(await load(dirs[d],relName(ctx,dirs[d]),problems));
+  if(problems.length>before)return;
+  const [w,h]=[images[0].width,images[0].height];
+  images.forEach((img,i)=>{
+    if(img.width!==w||img.height!==h)problems.push(`${relName(ctx,dirs[DIRECTIONS[i]])}: tamanho ${img.width}×${img.height}, diferente de ${name('S')} (${w}×${h}). As 8 direções precisam ter o mesmo tamanho (uma linha de quadros cada).`);
+  });
+  if(problems.length>before)return;
+  // Same width: the RGBA rows of the 8 images, one after the other, are the sheet's rows in DIRECTIONS order.
+  return sharp(Buffer.concat(images.map(i=>i.data)),{raw:{width:w,height:h*DIRECTIONS.length,channels:4}}).png({compressionLevel:1}).toBuffer();
+}
+/** The sheet of `anim`: its file, or its per-direction images assembled; {source,label} or undefined (problems pushed). */
+async function sheetSource(ctx,folder,anim,file,perDir,problems){
+  if(file&&perDir){problems.push(`${folder}/${anim}: veio a folha ${anim}.png e também imagens por direção (${anim}-<direção>.png). Envie só uma das duas formas.`);return;}
+  if(file)return {source:file,label:relName(ctx,file)};
+  const source=await assembleDirections(ctx,folder,anim,perDir,problems);
+  return source&&{source,label:`${folder}/${anim}-*.png (8 direções montadas)`};
+}
+
 // ---------------------------------------------------------------- animations (enemies, 8 directions)
 /**
  * Partial delivery inside the piece: the animations that came are checked and approved; the absent ones are notes
@@ -201,17 +251,19 @@ async function validateAnimations(spec,id,files,ctx,r){
   const {problems,notes,sheets}=r;
   const piece=spec.pieces[id],anims=Object.keys(piece.anims),groupDir=path.join(ctx.input,spec.input);
   const pieceLabel=`${spec.input}/${id}`,eliteLabel=`${spec.input}/elite/${id}`;
-  const base={},elite={};let meta;
+  const base={},elite={},perDir={};let meta;
   for(const f of files){
     const parts=path.relative(groupDir,f).split(path.sep),name=parts.at(-1),label=relName(ctx,f);
     if(parts.length===2&&parts[0]===id){
       if(name==='meta.json')meta=f;
       else if(isPng(name)&&anims.includes(name.slice(0,-4)))base[name.slice(0,-4)]=f;
-      else problems.push(`${label}: arquivo não esperado. Nesta pasta vão só meta.json e ${list(anims.map(a=>`${a}.png`))}.`);
+      else if(directionFile(name,anims))addDirection(perDir,directionFile(name,anims),f);
+      else problems.push(`${label}: arquivo não esperado. Nesta pasta vão só meta.json e ${list(anims.map(a=>`${a}.png`))} (ou uma imagem por direção, <animação>-S.png … -SE.png).`);
     }else if(parts.length===2&&parts[0]==='elite'&&isPng(name)&&name.startsWith(`${id}-`)&&anims.includes(name.slice(id.length+1,-4)))elite[name.slice(id.length+1,-4)]=f;
     else problems.push(`${label}: arquivo não esperado para ${id}. Use ${pieceLabel}/<animação>.png e ${spec.input}/elite/${id}-<animação>.png.`);
   }
-  const present=anims.filter(a=>base[a]),missing=anims.filter(a=>!base[a]),eliteSent=anims.filter(a=>elite[a]);
+  const sent=a=>base[a]||perDir[a];
+  const present=anims.filter(sent),missing=anims.filter(a=>!sent(a)),eliteSent=anims.filter(a=>elite[a]);
   const approvedBefore=ctx.manifest?.pieces?.[id];
   const eliteOnly=!meta&&!present.length&&eliteSent.length>0;
   if(eliteOnly&&!approvedBefore){
@@ -233,8 +285,8 @@ async function validateAnimations(spec,id,files,ctx,r){
     }
     if(!present.length)problems.push(`${pieceLabel}/: nenhuma animação entregue. Envie pelo menos uma de ${list(anims.map(a=>`${a}.png`))} (${piece.cell} px por célula, 8 direções).`);
   }
-  const check=async(file,anim,isElite)=>{
-    const label=relName(ctx,file),frames=piece.anims[anim],c=piece.cell;
+  const check=async(file,anim,isElite,label=relName(ctx,file))=>{
+    const frames=piece.anims[anim],c=piece.cell;
     const img=await load(file,label,problems);if(!img)return;
     if(img.width!==frames*c||img.height!==dirs*c){
       const got=img.height===dirs*c&&img.width%c===0?` A folha tem ${img.width/c} quadros.`:'';
@@ -245,15 +297,18 @@ async function validateAnimations(spec,id,files,ctx,r){
     checkGrid(problems,label,img,{cw:c,ch:c,cols:frames,rows:dirs,rowName:r=>`${DIRECTION_NAMES[DIRECTIONS[r]]} (linha ${r+1})`,
       anchor:isElite?undefined:anchor,footY:()=>!AIRBORNE_ANIMS.has(anim),footX:()=>!AIRBORNE_ANIMS.has(anim)&&!LUNGE_ANIMS.has(anim),
       allowEmpty:isElite,character:true});
-    sheets.push({key:isElite?`elite/${anim}`:anim,source:file,output:isElite?`elite/${id}-${anim}.webp`:`${id}/${anim}.webp`,
+    sheets.push({key:isElite?`elite/${anim}`:anim,source:file,...(Buffer.isBuffer(file)?{label}:{}),output:isElite?`elite/${id}-${anim}.webp`:`${id}/${anim}.webp`,
       cell:[c,c],frames:img.width/c,directions:dirs,anchor:[...anchor],...(fps?.[anim]?{fps:fps[anim]}:{})});
   };
-  for(const anim of present)await check(base[anim],anim,false);
+  for(const anim of present){
+    const s=await sheetSource(ctx,pieceLabel,anim,base[anim],perDir[anim],problems);
+    if(s)await check(s.source,anim,false,s.label);
+  }
   if(present.length&&missing.length)
     notes.push(`${pieceLabel}: ${missing.length>1?'faltam as animações':'falta a animação'} ${list(missing)} — ${keeps(missing.length)}.`);
   // The elite layer goes over the base of the same animation: over an animation that did not come now it is only
   // accepted when that base was approved in an earlier run (already v2 in the manifest); otherwise it waits for it.
-  const eliteBase=a=>base[a]||approvedBefore?.files?.[a];
+  const eliteBase=a=>sent(a)||approvedBefore?.files?.[a];
   for(const anim of eliteSent){
     if(eliteBase(anim))await check(elite[anim],anim,true);
     else notes.push(`${eliteLabel}-${anim}.png: ignorada por enquanto, porque ${pieceLabel}/${anim}.png não veio nem foi aprovada antes; envie as duas juntas.`);
@@ -376,6 +431,102 @@ async function validateDir8(spec,id,files,ctx,r){
   }
 }
 
+// ---------------------------------------------------------------- towers (base in 4 views + weapon in 8 directions)
+/** Keys of a tower's base.json and of its `meta` (08-TORRES.md: no other key). */
+export const TOWER_BASE_KEYS=Object.freeze(['kind','cell','views','rows','anchor','meta']);
+export const TOWER_META_KEYS=Object.freeze(['footprint','mount']);
+const sameList=(a,b)=>Array.isArray(a)&&a.length===b.length&&a.every((v,i)=>v===b[i]);
+/**
+ * `torres/<id>/` (spec.mjs TOWER_*): `base.png` + `base.json` (4 views × TOWER_ROWS, or TOWER_WALL_ROWS for a wall,
+ * which has no weapon) and the weapon `idle/fire/reload.png` (8 directions, or one PNG per direction) + `meta.json`.
+ * Absent weapon animations are notes; the base is required unless approved in an earlier run.
+ */
+async function validateTower(spec,id,files,ctx,r){
+  const {problems,notes,sheets}=r,folder=`${spec.input}/${id}`,dir=path.join(ctx.input,spec.input,id);
+  if(!ID_PATTERN.test(id)){problems.push(`${folder}/: nome "${id}" inválido. Use só letras minúsculas sem acento, números e hífen (ex.: ${spec.input}/vigia-do-predio).`);return;}
+  let basePng,baseJson,metaJson;const anims={},perDir={};
+  for(const f of files){
+    const rel=path.relative(dir,f).split(path.sep),name=rel.at(-1),label=relName(ctx,f);
+    if(rel.length!==1)problems.push(`${label}: fora do lugar. Coloque os arquivos direto em ${folder}/.`);
+    else if(name==='base.png')basePng=f;
+    else if(name==='base.json')baseJson=f;
+    else if(name==='meta.json')metaJson=f;
+    else if(isPng(name)&&TOWER_ANIMS.includes(name.slice(0,-4)))anims[name.slice(0,-4)]=f;
+    else if(directionFile(name,TOWER_ANIMS))addDirection(perDir,directionFile(name,TOWER_ANIMS),f);
+    else problems.push(`${label}: arquivo não esperado. Na pasta da torre vão base.png, base.json, meta.json e ${list(TOWER_ANIMS.map(a=>`${a}.png`))} (ou uma imagem por direção, <animação>-S.png … -SE.png).`);
+  }
+  const sentAnims=TOWER_ANIMS.filter(a=>anims[a]||perDir[a]),approvedBefore=ctx.manifest?.pieces?.[id];
+  // Base.
+  let wall=false;
+  if(!basePng&&!approvedBefore)problems.push(`${folder}/base.png: faltando. Toda torre precisa da base: 4 vistas (${VIEW_NAMES.join(', ')}) × ${TOWER_ROWS.length} linhas (${TOWER_ROWS.join(', ')}), com base.json.`);
+  if(basePng&&!baseJson)problems.push(`${folder}/base.json: faltando. Crie com {"kind":"views","cell":[W,H],"views":4,"rows":${json(TOWER_ROWS)},"anchor":[0.5,Y],"meta":{"footprint":[a,b],"mount":[x,y]}}.`);
+  if(baseJson&&!basePng)problems.push(`${folder}/base.png: faltando (só veio o base.json). Envie a imagem da base.`);
+  if(basePng&&baseJson){
+    const label=relName(ctx,baseJson),b=await readSidecar(baseJson,label,problems,TOWER_BASE_KEYS);
+    if(!b.invalid){
+      const before=problems.length;
+      if(b.kind!==undefined&&b.kind!=='views')problems.push(`${label}: kind ${json(b.kind)}, esperado "views".`);
+      if(b.views!==undefined&&b.views!==VIEW_NAMES.length)problems.push(`${label}: views ${json(b.views)}, esperado ${VIEW_NAMES.length} (câmera ${VIEW_NAMES.join(', ')}).`);
+      if(!isPair(b.cell))problems.push(`${label}: cell ${json(b.cell)} inválido; use [largura,altura] de uma vista em px, como [448,832].`);
+      let rows=b.rows??[...TOWER_ROWS];
+      wall=sameList(rows,TOWER_WALL_ROWS);
+      if(!sameList(rows,TOWER_ROWS)&&!wall){problems.push(`${label}: rows ${json(b.rows)} inválido; use ${json(TOWER_ROWS)} (ou, num muro, ${json(TOWER_WALL_ROWS)}).`);rows=undefined;}
+      const anchor=checkAnchor(b.anchor,label,problems,{required:true});
+      const meta=isObject(b.meta)?b.meta:undefined;
+      if(!meta)problems.push(`${label}: falta "meta" {"footprint":[a,b],"mount":[x,y]} (tamanho em células do mapa e ponto onde a arma encaixa na base).`);
+      else{
+        const extra=Object.keys(meta).filter(k=>!TOWER_META_KEYS.includes(k));
+        if(extra.length)problems.push(`${label}: meta com chave desconhecida ${list(extra.map(k=>`"${k}"`))}. Chaves aceitas: ${TOWER_META_KEYS.join(', ')}.`);
+        if(!isPair(meta.footprint))problems.push(`${label}: meta.footprint ${json(meta.footprint)} inválido; use [a,b] em células do mapa, como [2,2].`);
+        if(meta.mount===undefined){if(!wall)problems.push(`${label}: falta meta.mount [x,y]: o ponto da base (em px da célula, vista 0°) onde fica a âncora da arma.`);}
+        else if(!(isPair(meta.mount,false)&&isPair(b.cell)&&meta.mount[0]<=b.cell[0]&&meta.mount[1]<=b.cell[1]))
+          problems.push(`${label}: meta.mount ${json(meta.mount)} inválido; use [x,y] inteiros em px dentro da célula ${isPair(b.cell)?`${b.cell[0]}×${b.cell[1]}`:'da base'}.`);
+      }
+      if(problems.length===before){
+        r.meta={footprint:meta.footprint,...(meta.mount?{mount:meta.mount}:{})};
+        const png=relName(ctx,basePng),img=await load(basePng,png,problems),[cw,ch]=b.cell,views=VIEW_NAMES.length;
+        if(img&&(img.width!==views*cw||img.height!==rows.length*ch))
+          problems.push(sizeProblem(png,img,views*cw,rows.length*ch,`${views} vistas × ${rows.length} linhas de ${cw}×${ch} px`,`Uma coluna por vista (${VIEW_NAMES.join(', ')}) e uma linha por estado (${list(rows)}).`));
+        else if(img&&checkTransparent(img,png,problems)){
+          checkGrid(problems,png,img,{cw,ch,cols:views,rows:rows.length,rowName:i=>`"${rows[i]}" (linha ${i+1})`,
+            colName:c=>`vista ${VIEW_NAMES[c]} (coluna ${c+1})`,anchor,anchorFile:label});
+          sheets.push({key:'base',source:basePng,output:`${id}/base.webp`,cell:[cw,ch],views,rows:[...rows],anchor});
+        }
+      }
+    }
+  }
+  // Weapon + crew.
+  if(wall&&(sentAnims.length||metaJson)){problems.push(`${folder}: um muro (rows ${json(TOWER_WALL_ROWS)}) não tem arma; tire ${list([...sentAnims.map(a=>`${a}.png`),...(metaJson?['meta.json']:[])])} da pasta.`);return;}
+  if(!sentAnims.length){
+    if(metaJson)problems.push(`${folder}/meta.json: veio sem nenhuma animação da arma (${list(TOWER_ANIMS.map(a=>`${a}.png`))}).`);
+    else if(!wall&&basePng)notes.push(`${folder}: sem a arma (${list(TOWER_ANIMS.map(a=>`${a}.png`))}) — ${keeps(1)}.`);
+    return;
+  }
+  if(!metaJson){problems.push(`${folder}/meta.json: faltando. Crie com {"cell":[W,H],"anchor":${json(ANCHOR)},"fps":{"idle":4,"fire":12,"reload":8}}.`);return;}
+  const label=relName(ctx,metaJson),m=await readSidecar(metaJson,label,problems,['cell','anchor','fps']);
+  if(m.invalid)return;
+  const before=problems.length;
+  if(!isPair(m.cell))problems.push(`${label}: cell ${json(m.cell)} inválido; use [largura,altura] de um quadro da arma em px, como [128,128].`);
+  const anchor=checkAnchor(m.anchor,label,problems,{required:true}),fps=checkFps(m.fps,label,problems,[...TOWER_ANIMS]);
+  if(problems.length>before)return;
+  const [cw,ch]=m.cell,dirs=DIRECTIONS.length;
+  for(const anim of sentAnims){
+    const s=await sheetSource(ctx,folder,anim,anims[anim],perDir[anim],problems);if(!s)continue;
+    const img=await load(s.source,s.label,problems);if(!img)continue;
+    const frames=img.width/cw;
+    if(img.height!==dirs*ch||!Number.isInteger(frames)||!frames||(anim==='idle'&&frames!==TOWER_IDLE_FRAMES)){
+      const want=anim==='idle'?TOWER_IDLE_FRAMES:Number.isInteger(frames)&&frames>0?frames:'N';
+      problems.push(sizeProblem(s.label,img,typeof want==='number'?want*cw:`${cw}×N`,dirs*ch,`${want} quadros × ${dirs} direções de ${cw}×${ch} px`,`Uma linha por direção (${DIRECTIONS.join(', ')}), quadros lado a lado.`));continue;
+    }
+    if(!checkTransparent(img,s.label,problems))continue;
+    // The weapon stands on its mount (foot line at the anchor); recoil and the crew moving leave the centre free.
+    checkGrid(problems,s.label,img,{cw,ch,cols:frames,rows:dirs,rowName:i=>`${DIRECTION_NAMES[DIRECTIONS[i]]} (linha ${i+1})`,anchor,footX:()=>false,anchorFile:label});
+    sheets.push({key:anim,source:s.source,...(Buffer.isBuffer(s.source)?{label:s.label}:{}),output:`${id}/${anim}.webp`,cell:[cw,ch],frames,directions:dirs,anchor,...(fps?.[anim]?{fps:fps[anim]}:{})});
+  }
+  const missing=TOWER_ANIMS.filter(a=>!sentAnims.includes(a));
+  if(missing.length)notes.push(`${folder}: ${missing.length>1?'faltam as animações':'falta a animação'} ${list(missing)} da arma — ${keeps(missing.length)}.`);
+}
+
 // ---------------------------------------------------------------- one-file kinds (views, frames, seamless, nineslice, icon)
 /**
  * Seam rule (spec.mjs SEAM_*): for each wrapped pair of edges, the edge is split in SEAM_SEGMENTS stretches and the mean
@@ -410,6 +561,26 @@ function seamProblems(img,label,problems,{wrap='xy',alpha=false}={}){
   if(wrap.includes('x'))axis(true);
   if(wrap.includes('y'))axis(false);
 }
+/** pt-BR side of the image for a direction from its centre (8 sectors, screen y down). */
+const SIDES=['à direita','no canto inferior direito','embaixo','no canto inferior esquerdo','à esquerda','no canto superior esquerdo','em cima','no canto superior direito'];
+/**
+ * Circle-cropped pieces (rostos): every drawn pixel (alpha > ALPHA_THRESHOLD) must have its centre inside the central
+ * circle of diameter `diameter`; one message with the count, the farthest distance and where they sit.
+ */
+export function circleProblems(img,label,problems,diameter){
+  const cx=img.width/2,cy=img.height/2,r=diameter/2,where=new Set();
+  let outside=0,far=0;
+  for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++){
+    if(img.data[(y*img.width+x)*4+3]<=ALPHA_THRESHOLD)continue;
+    const dx=x+.5-cx,dy=y+.5-cy,d=Math.hypot(dx,dy);
+    if(d<=r)continue;
+    outside++;far=Math.max(far,d);
+    where.add(SIDES[(Math.round(Math.atan2(dy,dx)/(Math.PI/4))+8)%8]);
+  }
+  if(!outside)return;
+  const sides=SIDES.filter(s=>where.has(s));
+  problems.push(`${label}: ${outside} ${outside===1?'pixel desenhado':'pixels desenhados'} fora do círculo central de ${diameter} px (${list(sides)}; o mais longe a ${Math.round(far-r)} px além da borda do círculo). O jogo recorta o rosto em círculo e isso sumiria. Traga o desenho (cabelo, chapéu, ombros) para dentro do círculo de ${diameter} px centrado na imagem ${img.width}×${img.height} e deixe o resto transparente.`);
+}
 function expectedCell(sc,spec,label,problems){
   if(sc.cell===undefined)return;
   if(!isPair(sc.cell)){problems.push(`${label}: cell ${json(sc.cell)} inválido; use [largura,altura] em px inteiros, como [128,128].`);return null;}
@@ -429,6 +600,9 @@ async function validateOneFile(spec,id,files,ctx,r){
   const base=files[0]?relName(ctx,path.join(path.dirname(files[0]),stem)):id;
   const bad=id.split('/').filter(part=>!ID_PATTERN.test(part));
   if(bad.length)problems.push(`${base}.png: nome ${list(bad.map(b=>`"${b}"`))} inválido. Use só letras minúsculas sem acento, números e hífen (ex.: cidade-nevada/neve-fofa-1).`);
+  // Groups with a closed id list (rostos: class × expression) refuse any other name before reading the image.
+  const idProblem=!bad.length&&spec.checkId?.(id);
+  if(idProblem){problems.push(`${base}.png: ${idProblem}`);return {kind:spec.kind};}
   const sideLabel=`${base}.json`;
   const sc=withExpected(spec,id,await readSidecar(side,sideLabel,problems),sideLabel,problems);
   if(sc.meta)r.meta=sc.meta;
@@ -469,9 +643,11 @@ async function validateOneFile(spec,id,files,ctx,r){
     if(img.width!==s||img.height!==s){problems.push(sizeProblem(label,img,s,s,'ícone quadrado',`Exporte o ícone em ${s}×${s}.`));return {kind};}
     const opaque=checkBool(sc.opaque,'opaque',sideLabel,problems)??spec.opaque?.[stem]??false;
     if(opaque===null)return {kind};
-    // A full-bleed opaque icon (the app icon): only the size counts, no transparency nor margin rule.
-    if(opaque){sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});return {kind};}
+    // A full-bleed opaque icon (the app icon): only the size counts, no transparency nor margin rule. Never for a
+    // circle-cropped group (rostos): its corners must stay empty.
+    if(opaque&&!spec.circle){sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});return {kind};}
     if(!checkTransparent(img,label,problems))return {kind};
+    if(spec.circle)circleProblems(img,label,problems,spec.circle);
     checkGrid(problems,label,img,{cw:s,ch:s,cols:1,rows:1,colName:()=>'ícone'});
     sheets.push({key:'sheet',source:png,output,cell:[s,s],frames:1});
     return {kind};
@@ -565,13 +741,14 @@ export async function validatePiece(group,id,files,ctx){
   let kind=spec.kind;
   if(spec.kind==='animations')await validateAnimations(spec,id,files,ctx,r);
   else if(spec.kind==='dir8')await validateDir8(spec,id,files,ctx,r);
+  else if(spec.kind==='tower')await validateTower(spec,id,files,ctx,r);
   else kind=(await validateOneFile(spec,id,files,ctx,r)).kind??kind;
   const {problems,notes,sheets}=r;
   if(!problems.length&&!sheets.length)problems.push(`${spec.input}/${id}: nenhum arquivo de imagem da peça.`);
   if(!problems.length)for(const s of sheets){
     const size=packedSize(s);
     if(size&&(size[0]>MAX_TEXTURE||size[1]>MAX_TEXTURE))
-      notes.push(`${relName(ctx,s.source)}: a folha é grande (${size[0]}×${size[1]}); o importador divide em páginas de até ${MAX_TEXTURE} px.`);
+      notes.push(`${s.label??relName(ctx,s.source)}: a folha é grande (${size[0]}×${size[1]}); o importador divide em páginas de até ${MAX_TEXTURE} px.`);
   }
   return {problems,notes,sheets:problems.length?[]:sheets,kind,...(r.meta?{meta:r.meta}:{})};
 }

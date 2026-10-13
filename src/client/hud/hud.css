@@ -764,6 +764,11 @@
 /* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
 .rh-member-bot{position:absolute;top:-6px;left:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato, como o adesivo de estado */
 .rh-member-bot[hidden]{display:none}
+/* KKKK (rostos-kkkk): the laugh sticker at the portrait's lower corner while the ring says data-mood=rindo (2.2 s, set by
+   the team strip). Out of the flow, so the ring and the column keep their size; one pop in, no loop. */
+.rh-member-mood{position:absolute;top:18px;right:calc(50% - 31px);display:none;line-height:0}
+.rh-member-ring[data-mood=rindo]~.rh-member-mood{display:flex;animation:rh-pop .35s ease-out}
+@media (prefers-reduced-motion:reduce){.rh-member-ring[data-mood=rindo]~.rh-member-mood{animation:none}}
 /* Resultado: robô e coroa de papel ao lado do nome; o dono arruma a sala (Expulsar / Tirar bot / Adicionar bot).
    "Tirar bot" é o botão neutro, cheio; "Expulsar" é só contorno Laranja (borda dupla: Cone por dentro, Breu por fora) e
    sem sombra, mais leve. Armado: Laranja cheio, borda Breu 2 px e contorno Papel 1 px, sem transição, com
@@ -826,9 +831,9 @@
 .rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:30px;height:30px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
   background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
 .rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
-/* One call at a time (design review): while "andar" shows only the joystick is Amarelo, so a "+N" chip that came early
+/* One call at a time (design review): while the joystick is lit for "andar" it is the only Amarelo, so a "+N" chip that came early
    (a teammate's level) waits as plain Papel; with the chip's own hint up, the chip gets a 3 px Breu edge. Static. */
-.rh[data-coach=walk] .rh-offer-chip{background:var(--c-papel)}
+.rh[data-coach-stick] .rh-offer-chip{background:var(--c-papel)}
 .rh[data-coach=chip] .rh-offer-chip{border-width:3px}
 .rh-ended .rh-coach{display:none}
 /* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */

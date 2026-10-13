@@ -320,6 +320,9 @@ class HordeSandboxScene extends Phaser.Scene {
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
       // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
       locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
+    // `apagao=1` (art-d item 5): the critters show their blackout eyes (imported `olhos-escuro` when it is in); the dark
+    // rectangle itself belongs to the zueira layer of the game, not drawn here.
+    if(new URLSearchParams(location.search).get('apagao')==='1')this.layers.setBlackout(.8);
     const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);this.you?.setReduced(this.reduced);};
     motion.addEventListener('change',onMotion);
     this.events.once('shutdown',()=>{motion.removeEventListener('change',onMotion);this.scale.off('resize',this.fit,this);this.layers.destroy();this.you?.destroy();});

@@ -32,11 +32,15 @@ export async function approvedClasses(repoRoot){
   return (await entries(path.join(repoRoot,'public/art/sprites'))).filter(e=>e.isFile()&&/^[a-z0-9-]+\.webp$/.test(e.name)).map(e=>e.name.slice(0,-5));
 }
 
-/** Groups the files of one group folder into pieces ({id → absolute files}) and unknown entries (with their message). */
+/**
+ * Groups the files of one group folder into pieces ({id → absolute files}), unknown entries (with their message) and,
+ * for the enemies, `extra` folders: ids not in the table (reported as "extra", nothing imported).
+ */
 async function collect(group,spec,ctx){
   const dir=path.join(ctx.input,spec.input),pieces=new Map(),unknown=[];
   const add=(id,file)=>{if(!pieces.has(id))pieces.set(id,[]);pieces.get(id).push(file);};
   const reject=(file,message,isDir=false)=>unknown.push({file,message,isDir});
+  const extra=[];
   const top=await entries(dir);
   if(spec.kind==='animations'){
     const ids=Object.keys(spec.pieces),byLength=[...ids].sort((a,b)=>b.length-a.length);
@@ -46,11 +50,20 @@ async function collect(group,spec,ctx){
       else if(e.isDirectory()&&e.name==='elite')for(const f of await entries(full)){
         const id=byLength.find(i=>f.name.startsWith(`${i}-`));
         if(id&&f.isFile())add(id,path.join(full,f.name));
-        else reject(path.join(full,f.name),`nome não reconhecido na camada elite. Use elite/<inimigo>-<animação>.png, com o inimigo entre ${ids.join(', ')}.`,f.isDirectory());
+        else reject(path.join(full,f.name),`nome não reconhecido na camada elite. Use elite/<inimigo>-<animação>.png, com o id de um inimigo da tabela (ex.: elite/bebado-walk.png).`,f.isDirectory());
       }
-      else reject(full,`não é um inimigo esperado. Em ${spec.input}/ vão as pastas ${ids.join(', ')} e elite/.`,e.isDirectory());
+      else if(e.isDirectory())extra.push({id:e.name,file:full});
+      else reject(full,`não é uma pasta de inimigo. Em ${spec.input}/ vão só as pastas <inimigo>/ (ids da tabela) e elite/.`);
     }
-    return {pieces,unknown,order:ids};
+    return {pieces,unknown,extra,order:ids};
+  }
+  if(spec.kind==='tower'){
+    for(const e of top){
+      const full=path.join(dir,e.name);
+      if(e.isDirectory())for(const f of await entries(full))add(e.name,path.join(full,f.name));
+      else reject(full,`fora de uma pasta de torre. Coloque em ${spec.input}/<torre>/ (ex.: ${spec.input}/vigia-do-predio/${e.name}).`);
+    }
+    return {pieces,unknown,order:[...pieces.keys()].sort()};
   }
   if(spec.kind==='dir8'){
     const classes=ctx.classes;
@@ -114,7 +127,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
   input=path.resolve(input??process.env.ARTE_ENTRADA??DEFAULT_INPUT);
   const info=await stat(input).catch(()=>undefined);
   if(!info?.isDirectory()){
-    const error=new Error(`Pasta de entrada não encontrada: ${input}. Crie a pasta com as subpastas da entrega (inimigos/, personagens/, cenario/, itens/, projeteis/, efeitos/, ui/) ou indique outra com --input <pasta> ou a variável ARTE_ENTRADA.`);
+    const error=new Error(`Pasta de entrada não encontrada: ${input}. Crie a pasta com as subpastas da entrega (inimigos/, personagens/, cenario/, itens/, projeteis/, efeitos/, ui/, rostos/, torres/) ou indique outra com --input <pasta> ou a variável ARTE_ENTRADA.`);
     error.code='ARTE_ENTRADA_AUSENTE';throw error;
   }
   const selected=Array.isArray(groups)?Object.fromEntries(groups.map(g=>{if(!GROUPS[g])throw new Error(`grupo desconhecido: ${g}`);return [g,GROUPS[g]];})):groups;
@@ -123,7 +136,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
   const pieces=[],written=[],thumbFiles=new Map();
   let wroteManifest=false;
   for(const [group,spec] of Object.entries(selected)){
-    const {pieces:found,unknown,order}=await collect(group,spec,ctx);
+    const {pieces:found,unknown,extra=[],order}=await collect(group,spec,ctx);
     // The group's current manifest: lets the validator see pieces approved in earlier runs (e.g. an elite layer alone).
     const manifest=await readManifest(manifestPath(spec,{outRoot}));
     const entries={};
@@ -134,7 +147,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
       if(!files){pieces.push({group,id,status:priority==='P0'?'pendente':'opcional',priority,problems:[],notes:[],files:[],outputs:[]});continue;}
       files.sort();
       const result={group,id,status:'aprovado',priority,problems:[],notes:[],files:files.map(f=>relName(ctx,f)),outputs:[]};
-      result.source=spec.kind==='animations'?`${spec.input}/${id}`:relName(ctx,files.find(f=>/\.png$/i.test(f))??files[0]);
+      result.source=spec.kind==='animations'||spec.kind==='tower'?`${spec.input}/${id}`:relName(ctx,files.find(f=>/\.png$/i.test(f))??files[0]);
       const {problems,notes,sheets,kind,meta}=await validatePiece(group,id,files,{...ctx,spec,manifest});
       result.problems=problems;result.notes=Array.isArray(notes)?notes:[];
       if(!problems.length){
@@ -151,6 +164,12 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
       }
       if(result.problems.length){result.status='reprovado';thumbFiles.set(result,files);}
       pieces.push(result);
+    }
+    // An enemy folder whose id is not in the table: listed as "extra", never imported (no role, so no animations).
+    for(const x of extra){
+      const name=`${spec.input}/${x.id}/`;
+      pieces.push({group,id:x.id,status:'extra',problems:[`${name}: "${x.id}" não está na tabela de inimigos (extra): nada foi importado. Confira o id na coluna "id" dos pacotes 04–07 (design/proximos) ou peça ao dev para incluir o inimigo na tabela.`],
+        notes:[],files:[name],outputs:[],source:name});
     }
     for(const u of unknown){
       const name=relName(ctx,u.file)+(u.isDir?'/':'');
@@ -185,8 +204,8 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
 
 const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
 function count(pieces){
-  const c={aprovado:0,reprovado:0,pendente:0,opcional:0};for(const p of pieces)c[p.status]++;
-  return `${plural(c.aprovado,'aprovada','aprovadas')}, ${plural(c.reprovado,'reprovada','reprovadas')}, ${plural(c.pendente,'pendente','pendentes')}${c.opcional?` (+ ${plural(c.opcional,'opcional P1/P2 ainda não entregue','opcionais P1/P2 ainda não entregues')})`:''}`;
+  const c={aprovado:0,reprovado:0,pendente:0,opcional:0,extra:0};for(const p of pieces)c[p.status]++;
+  return `${plural(c.aprovado,'aprovada','aprovadas')}, ${plural(c.reprovado,'reprovada','reprovadas')}, ${plural(c.pendente,'pendente','pendentes')}${c.extra?`, ${plural(c.extra,'extra (fora da tabela)','extras (fora da tabela)')}`:''}${c.opcional?` (+ ${plural(c.opcional,'opcional P1/P2 ainda não entregue','opcionais P1/P2 ainda não entregues')})`:''}`;
 }
 /** pt-BR summary printed by the CLI. */
 export function summaryText(result,{input,dryRun=false}={}){
@@ -196,9 +215,9 @@ export function summaryText(result,{input,dryRun=false}={}){
     if(of.length)lines.push(`  ${spec.title}: ${count(of)}`);
   }
   lines.push(`Total: ${count(result.pieces)}.`);
-  const rejected=result.pieces.filter(p=>p.status==='reprovado');
+  const rejected=result.pieces.filter(p=>p.status==='reprovado'||p.status==='extra');
   if(rejected.length){
-    lines.push('','Reprovadas (nada foi gravado para elas):');
+    lines.push('','Reprovadas ou fora da tabela (nada foi gravado para elas):');
     for(const p of rejected){lines.push(`  ${p.group}/${p.id}`);for(const m of p.problems)lines.push(`    - ${m}`);}
   }
   const noted=result.pieces.filter(p=>p.notes?.length);

@@ -82,14 +82,17 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
  * The city's tuning (cidade-11), measured with `npm run bench:city-run` (16 seeds × 1/3/6 bots, 10 rounds; table in
  * done/NEW-20261012-ORQ-cidade-11-balanco-run.md). The shared player scaling is too heavy for small teams in the city
  * (a solo hero has no one to revive it, the boss has no solo scaling), so 1 and 3 players get fewer, softer bodies that
- * hit less, a weaker boss and more loot; 6 players a little more pressure. Wins: 1p 3/16, 3p 8/16, 6p 9/16.
+ * hit less, a weaker boss and more loot; 6 players more pressure. Wins: 1p 3/16, 3p 8/16, 6p 9/16 (cidade-11).
+ * Re-measured after the siege fix (BUG-…-cerco-parado-boca-n: bodies no longer stall, so 6 bots won 7/8): with 6
+ * players more bodies do nothing (the round's enemy cap), so they take more damage and face a tougher boss.
+ * 8 seeds, 25 min cap (D-043): 1p 2/8, 6p 4/8.
  */
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
     1:Object.freeze({count:.5,hp:.7,damage:.45,bossHp:.45,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
-    6:Object.freeze({count:1.07,hp:1.05}),
+    6:Object.freeze({count:1.07,hp:1.2,damage:1.6,bossHp:1.4}),
   }),
 });
 

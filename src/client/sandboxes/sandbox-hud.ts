@@ -21,14 +21,18 @@
  * straight walk to the plaza parks against a block, ≈(103,154); patio: the dead-end yard inside that block ≈(104.5,149.5);
  * meio: halfway up the route; praca: in the plaza, where the row hides), three teammates at the wreck and round 1's first
  * bêbados on the road. The announcement slot shows "Vai pra praça!" with the walking distance and the arrow along the
- * route in that view; `dica=walk` is a phone that never walked (the second line says how, the joystick is lit).
+ * route in that view; `dica=walk` is a phone that never walked (the joystick is lit for 6 s; no written walk line).
  * The city's first view brings round 1's banner ("Pouso Forçado", as the director sends it): a phone that already walked
  * sees the banner for its 1.8 s and then the row; with `dica=walk` the row takes the banner's slot at once (UX-1) and the
  * mock joystick (`.hs-stick`) wears the coach's Amarelo like the game's `.explore-stick`.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
- * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
+ * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
+ * round 1 and has no row: only the joystick lights, for 6 s or until a step). walk/xp/rescue go with
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
+ * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe|coach|motoboy|influencer` (arte v2): with state=downed the local fall names that critter
+ * (the banner's cause line), with state=result every fall does ("Te derrubou"); its icon is the imported `ui/inimigo-<id>`
+ * (art/hud-art.ts). Without that piece the line is text only here (the game then shows the enemy's sprite).
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {RunHud} from '../hud/hud.ts';
@@ -37,6 +41,8 @@ import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
 import {icon} from '../ui/icon.ts';
+import {critterIconSource} from '../art/hud-art.ts';
+import {artReady} from '../ui/art-boot.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
 const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a,'');
@@ -52,6 +58,7 @@ let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:
 const frozen=params.has('frozen');
 const bordas=params.get('cenario')==='bordas';
 const dica=(LESSON_ORDER as readonly string[]).includes(params.get('dica')??'')?params.get('dica') as Lesson:undefined;
+const bicho=params.get('bicho')||undefined;
 /** The coach's memory for this page: everything learned but the requested hint. */
 const coachStore=new Map([[COACH_KEY,JSON.stringify(LESSON_ORDER.filter(l=>l!==dica))]]);
 
@@ -121,6 +128,7 @@ const hud=new RunHud(document.body,{
   // The game passes onExit, so the result has its three buttons here too (Revanche, Arrumar a sala, Sair).
   onExit(){document.body.dataset.exit='1';},
   coachStorage:{getItem:k=>coachStore.get(k)??null,setItem:(k,v)=>{coachStore.set(k,v);}},
+  ...(bicho?{critterIcon:(kind:string)=>{const s=critterIconSource(kind);return s&&'url' in s?s.url:undefined;}}:{}),
 });
 (window as unknown as {__hud:RunHud}).__hud=hud;
 
@@ -136,9 +144,14 @@ function load(next:HudScenario){
   if(tutorial)view.events=[];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=ties?[]:fakeResultEvents(players,()=>++eventId);
+  // `bicho`: who got them (the downed banner's cause line and the result's "Te derrubou").
+  if(bicho&&scenario==='result')view.events=view.events.map(e=>e.type==='downed'?{...e,source:bicho}:e);
+  if(bicho&&scenario==='downed')view.events=[...view.events,{type:'downed',player:'p1',source:bicho,eventId:++eventId}];
   // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
   if(dica){
     if(!tutorial)view.events=[];
+    // "Andar" lives in round 1 only (it never lights in a later round): its scene is round 1, lit for 6 s.
+    if(dica==='walk'&&view.round)view.round={...view.round,index:1};
     if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
     if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
   }
@@ -162,6 +175,8 @@ function load(next:HudScenario){
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }
 load(scenario);
+// The art index may land after the first draw: draw the critter's scene again once it is in.
+if(bicho)void artReady().then(ok=>{if(ok)load(scenario);});
 /**
  * Zueira events (VGM-053B): `&zueira=boletos|promo|apagao` shows that event's banner, `&zueira=killcam` the kill-cam
  * window (as after a round's last kill). Re-sent every 1.5 s so a frozen page keeps it on screen for the audit.

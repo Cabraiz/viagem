@@ -47,8 +47,10 @@ test('etiqueta lines: pt-BR zueira, at most 2 short lines, the D-020 voice rules
   }
   // The waiting room explains the round's two thumbs (walk; the weapons fire by themselves); the countdown is a nudge.
   assert.match(CONTROLS_HINTS.lobby.join(' '),/arrasta/i);assert.ok(CONTROLS_HINTS.lobby.includes('A arma atira sozinha.'),'the glossary line');
-  // Same words as the coach and the room notice (coach.ts, explore.ts).
-  assert.match(read('src/client/hud/coach.ts'),/A arma atira sozinha/);assert.match(read('src/client/explore.ts'),/A arma atira sozinha/);
+  // Same words as the room notice (explore.ts); the coach writes no walk row in combat (one written walk hint: this
+  // label, BUG-dica-tutorial-duplicada), it only lights the joystick.
+  assert.match(read('src/client/explore.ts'),/A arma atira sozinha/);
+  assert.doesNotMatch(read('src/client/hud/coach.ts').replace(/\/\*\*[\s\S]*?\*\/|\/\/.*$/gm,''),/atira sozinha|pra andar/,'no coach copy repeats the label');
   assert.equal(CONTROLS_HINTS.countdown.length,1);
 });
 

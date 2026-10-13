@@ -31,6 +31,8 @@
  * optional parts (some enemy animations, the elite layer, the player's downed sheet or atlas) are NOTES, not
  * problems: the piece is approved for what came and the game keeps its current art for the rest.
  */
+import {ENEMY_ROLES,ENEMY_TABLE} from './enemies-table.mjs';
+
 export const DIRECTIONS=Object.freeze(['S','SW','W','NW','N','NE','E','SE']);
 /** pt-BR names for messages. */
 export const DIRECTION_NAMES=Object.freeze({S:'sul (de frente)',SW:'sudoeste',W:'oeste',NW:'noroeste',N:'norte (de costas)',NE:'nordeste',E:'leste',SE:'sudeste'});
@@ -73,7 +75,7 @@ export const MAX_TEXTURE=4096;
 /** pt-BR name of each format, for messages (the id stays the value written in the sidecar "kind"). */
 export const KIND_NAMES=Object.freeze({
   animations:'animação em 8 direções',dir8:'atlas de 8 direções',views:'vistas de câmera',frames:'quadros (1 vista)',
-  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',
+  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',tower:'torre (base + arma)',
 });
 
 // ---------------------------------------------------------------- P0/P1 tables (inventário de sprites, 12/10/2026)
@@ -188,11 +190,16 @@ const ITENS=Object.freeze({
 const PROJETEIS=Object.freeze({
   'tiro-aliado':strip(32,4),'garrafa-molotov':strip(64,8),'coco-pombo':strip(48,6),'coco-pombo-poca':strip(96,6),
   'boleto-juros':strip(48,8),
+  // Any other critter shot (today's hostile star, keys.ts FX.projHostile); P1: the inventory has no row for it yet.
+  'tiro-inimigo':strip(32,[1,4],P1),
   ...Object.fromEntries(['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo']
     .map(id=>[id,strip(64,[6,8])])),
 });
 const EFEITOS=Object.freeze({
   'fogo-chao':strip(128,8),arroto:strip([192,128],6),'carimbo-chefe':strip(256,8),
+  // Telegraph decorations with no inventory row yet (P1): the boss charge's chevron (drawn pointing right, +x) and the
+  // explosion's pulsing target (src/client/render/telegraph-look.ts 'dash' and 'burst').
+  'seta-investida':strip(64,[1,4],P1),'aviso-explosao':strip(128,[1,8],P1),
   'telegraph-enchimento':{priority:P0,kind:'seamless',cell:[128,128],transparent:true},
   'telegraph-borda':{priority:P0,kind:'seamless',cell:[128,16],wrap:'x',transparent:true},
   'aviso-spawn':strip(128,6),
@@ -214,6 +221,8 @@ const UI_STICKERS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chi
   'antena','ima-ferradura','camera','coxinhas','bau-aberto','galo','borboleta','halter','foto'];
 const UI_MARKS=['voce','aliado','caido','spawn','coco','pedra','barricada'];
 const UI_EMOTES=new Set(['risada','boia','chamar','suor']);
+/** The cast with a HUD icon `ui/inimigo-<id>` (D-033 plus the elenco P1; client src/client/render/keys.ts ENEMY_KINDS). */
+export const UI_ENEMIES=Object.freeze(['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer']);
 const UI=(()=>{
   const out={},add=(id,symbol,priority=P0)=>{
     const e=out[id]??={priority,meta:{replaces:[]}};
@@ -224,9 +233,43 @@ const UI=(()=>{
   for(const id of UI_STICKERS)add(id,`a-${id}`);
   for(const id of UI_MARKS)add(`marca-${id}`);
   for(const id of ['balanca','podio-2','podio-3','trave'])add(id,`a-${id}`,P1);
+  // Critter HUD icons (the "what got you" line: revive banner and result), `inimigo-<inimigos id>`; P1 because the
+  // inventory has no row for them yet (absent: the game shows the enemy sprite, src/client/art/hud-art.ts).
+  for(const id of UI_ENEMIES){add(`inimigo-${id}`,undefined,P1);out[`inimigo-${id}`].meta.enemy=id;}
   out['app-icon']={priority:P1,meta:{replaces:[]}};
   return out;
 })();
+
+// ---------------------------------------------------------------- face avatars (board design/PACOTE-ROSTOS.md, §4b)
+/**
+ * The 35 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
+ * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
+ */
+export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','pedreiro',
+  'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
+  'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
+  'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
+  'conspiracionista','gamer-mobile','rainha-bateria']);
+/** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
+export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
+/** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */
+export const FACE_SIZE=256,FACE_CIRCLE=240;
+const ROSTOS=Object.freeze(Object.fromEntries(FACE_CLASSES.flatMap(c=>FACE_EXPRESSIONS.map(e=>
+  [`${c}-${e}`,{priority:e==='normal'?P0:P1,meta:{face:c,expression:e}}]))));
+/**
+ * Why a `rostos/` id is not a face, as a pt-BR sentence (the importer prefixes the file name), or undefined when it is
+ * `<classe>-<expressão>` of FACE_CLASSES × FACE_EXPRESSIONS.
+ */
+export function faceIdProblem(id){
+  if(Object.hasOwn(ROSTOS,id))return undefined;
+  const expression=FACE_EXPRESSIONS.find(e=>id.endsWith(`-${e}`));
+  if(!expression){
+    const last=id.includes('-')?id.slice(id.lastIndexOf('-')+1):id;
+    return `expressão "${last}" desconhecida. O nome precisa terminar com uma das expressões ${FACE_EXPRESSIONS.join(', ')} (ex.: rostos/mendigo-rindo.png).`;
+  }
+  const face=id.slice(0,-expression.length-1);
+  return `classe "${face}" desconhecida. Use o id de uma das ${FACE_CLASSES.length} classes antes da expressão (ex.: rostos/cidadao-comum-${expression}.png); a lista está em design/PACOTE-ROSTOS.md.`;
+}
 
 /**
  * D-037 rim of the style-A enemies, baked by convert.mjs into every base animation sheet (never the elite layer): an
@@ -236,6 +279,38 @@ const UI=(()=>{
 export const RIM=Object.freeze({color:'#2A2018',alpha:.85,width:1.5});
 
 const enemy=(cell,anims,priority=P0)=>({cell,anims,priority});
+/** The 9 enemies briefed first (D-033 + elenco P1), declared by hand. */
+const LEGACY_ENEMIES=Object.freeze({
+  bebado:enemy(128,{idle:6,walk:8,attack:6,hit:3,death:10}),
+  'anao-molotov':enemy(112,{idle:6,walk:8,throw:8,hit:3,death:10}),
+  pombos:enemy(96,{fly:6,poop:6,hit:2,death:6}),
+  'tio-pave':enemy(160,{idle:6,walk:8,joke:8,shove:7,hit:3,death:10}),
+  agiota:enemy(128,{idle:6,walk:8,throw:6,hit:3,death:8}),
+  chefe:enemy(384,{idle:6,walk:8,slam:10,charge:8,summon:10,hit:3,'phase2-idle':6,death:16}),
+  coach:enemy(128,{idle:6,walk:8,lecture:10,hit:3,death:8},P1),
+  motoboy:enemy(160,{idle:4,aim:6,charge:6,crash:10},P1),
+  influencer:enemy(160,{idle:6,walk:8,pose:8,hit:3,death:10},P1),
+});
+/**
+ * The 164 enemies of the packs 04–07 (board design/proximos), from enemies-table.mjs (GENERATED by gen-enemies.mjs,
+ * never typed by hand): each id gets its role's animations (03 §5) and its table row's cell and priority.
+ */
+export const PACK_ENEMIES=Object.freeze(Object.fromEntries(Object.entries(ENEMY_TABLE).map(([id,e])=>
+  [id,{...enemy(e.cell,{...ENEMY_ROLES[e.role].anims},e.priority),role:e.role}])));
+export {ENEMY_ROLES,ENEMY_TABLE};
+
+/**
+ * Towers (board design/proximos/08-TORRES.md), folder `torres/<id>/`, kind 'tower':
+ *  - `base.png` + `base.json` {"kind":"views","cell":[W,H],"views":4,"rows":[…],"anchor":[0.5,Y],"meta":{"footprint":[a,b],"mount":[x,y]}}:
+ *    4 views (VIEW_NAMES) × the rows TOWER_ROWS (a wall: TOWER_WALL_ROWS, and no weapon);
+ *  - weapon + crew `idle.png` (TOWER_IDLE_FRAMES frames), `fire.png`, `reload.png` (any frame count): 8 rows
+ *    (DIRECTIONS) of `meta.json` {"cell":[W,H],"anchor":[0.5,0.88],"fps":{…}} cells. Absent animations are notes.
+ * Like the enemies, each animation may come as one PNG per direction `<anim>-<DIR>.png` (assembled by the importer).
+ */
+export const TOWER_ROWS=Object.freeze(['obra-1','obra-2','obra-3','pronta','danificada','ruina']);
+export const TOWER_WALL_ROWS=Object.freeze(['pronta','danificada','ruina']);
+export const TOWER_ANIMS=Object.freeze(['idle','fire','reload']);
+export const TOWER_IDLE_FRAMES=4;
 /**
  * Accepted formats per group; `kind` is the default when the piece has no sidecar saying otherwise. `character`: the
  * messages talk about feet and the figure ("boneco"); other groups talk about the drawing and its base.
@@ -245,17 +320,8 @@ export const GROUPS=Object.freeze({
     title:'1. Inimigos',input:'inimigos',output:'public/art/enemies',kind:'animations',kinds:['animations'],anchor:ANCHOR,character:true,
     // D-037: style-A enemies get a dark outer rim baked at import (not on the elite layer). See RIM.
     rim:RIM,
-    pieces:{
-      bebado:enemy(128,{idle:6,walk:8,attack:6,hit:3,death:10}),
-      'anao-molotov':enemy(112,{idle:6,walk:8,throw:8,hit:3,death:10}),
-      pombos:enemy(96,{fly:6,poop:6,hit:2,death:6}),
-      'tio-pave':enemy(160,{idle:6,walk:8,joke:8,shove:7,hit:3,death:10}),
-      agiota:enemy(128,{idle:6,walk:8,throw:6,hit:3,death:8}),
-      chefe:enemy(384,{idle:6,walk:8,slam:10,charge:8,summon:10,hit:3,'phase2-idle':6,death:16}),
-      coach:enemy(128,{idle:6,walk:8,lecture:10,hit:3,death:8},P1),
-      motoboy:enemy(160,{idle:4,aim:6,charge:6,crash:10},P1),
-      influencer:enemy(160,{idle:6,walk:8,pose:8,hit:3,death:10},P1),
-    },
+    // The 9 first enemies stay exactly as declared; the pack enemies follow (generated table).
+    pieces:{...LEGACY_ENEMIES,...PACK_ENEMIES},
   },
   personagens:{
     title:'2. Personagens (8 direções)',input:'personagens',output:'public/art/sprites',kind:'dir8',kinds:['dir8'],cell:192,footY:168,character:true,
@@ -298,6 +364,17 @@ export const GROUPS=Object.freeze({
     // `app-icon.png` is 512×512 and full-bleed opaque (its sidecar or these overrides).
     sizes:{'app-icon':512},opaque:{'app-icon':true},pieces:'any',expected:UI,
   },
+  rostos:{
+    title:'10. Rostos (avatares)',input:'rostos',output:'public/art/rostos',kind:'icon',kinds:['icon'],size:FACE_SIZE,
+    // Face avatars `<classe>-<expressão>.png` (PACOTE-ROSTOS.md): 256 square, transparent, nothing drawn outside the
+    // central circle of diameter `circle`; only the FACE_CLASSES × FACE_EXPRESSIONS ids (`checkId` refuses the rest).
+    circle:FACE_CIRCLE,pieces:'any',expected:ROSTOS,checkId:faceIdProblem,
+  },
+  torres:{
+    title:'11. Torres (defesas)',input:'torres',output:'public/art/towers',kind:'tower',kinds:['tower'],views:4,
+    // One folder per tower (08-TORRES.md): base (4 views × construction/damage rows) + weapon (8 directions). Any id.
+    pieces:'any',
+  },
 });
 
 /** Priority of a piece: its `expected` entry, the enemy table, the group's `priorities` map; otherwise P0. */
@@ -312,9 +389,10 @@ export const INDEX_FILE='public/art/manifest.json';
  * Result of one piece. `problems` are pt-BR sentences the user can act on, each naming the file and, when it applies,
  * the direction/view/row/column. `notes` are pt-BR informational sentences that do not block (missing optional parts,
  * assumed cell size, paginated sheet). `status`: 'aprovado' (written), 'reprovado' (nothing written for it), 'pendente' (a
- * P0 piece absent), 'opcional' (a P1/P2 piece absent: not pending). `priority`: 'P0' | 'P1' | 'P2' (priorityOf).
+ * P0 piece absent), 'opcional' (a P1/P2 piece absent: not pending), 'extra' (an enemy folder whose id is not in the
+ * table: nothing written). `priority`: 'P0' | 'P1' | 'P2' (priorityOf).
  * `files`: the input files (relative to the delivery root); `outputs`: what was (or, validating only, would be) written.
- * @typedef {{group:string,id:string,status:'aprovado'|'reprovado'|'pendente'|'opcional',priority?:string,problems:string[],notes:string[],
+ * @typedef {{group:string,id:string,status:'aprovado'|'reprovado'|'pendente'|'opcional'|'extra',priority?:string,problems:string[],notes:string[],
  *   files:string[],outputs:string[],source?:string,thumb?:string}} PieceResult
  * Manifest written per group at `<output>/manifest.json`, merged with the previous one file by file (pieces and
  * sheets not delivered keep their entry): {version:2,group,pieces:{[id]:{kind,files:{[name]:{file? (single page),
@@ -330,7 +408,11 @@ export const INDEX_FILE='public/art/manifest.json';
  *  - base: `states` (state names, in row order) and, for animated states, `stateFrames:{[state]:n}` (rows
  *    `<state>-1..n`); `footprint` when the inventory gives it.
  *  - props: `prop` (prop kind: the id without its variation number, e.g. 'carro-velho').
- *  - ui: `replaces` (the icons.svg `i-*` / stickers.svg `a-*` symbols this file replaces), `emote:true` for emotes.
+ *  - ui: `replaces` (the icons.svg `i-*` / stickers.svg `a-*` symbols this file replaces), `emote:true` for emotes,
+ *    `enemy` (inimigos id) for the critter HUD icons `inimigo-<id>`.
+ *  - torres: `footprint:[a,b]` and `mount:[x,y]` (base.json meta; a wall has no mount). Files: `base` (views × rows)
+ *    and the weapon's `idle`/`fire`/`reload` (8 directions).
+ *  - rostos: `face` (class id) and `expression` (FACE_EXPRESSIONS); the client reads them via src/client/art/faces.ts.
  * Index (INDEX_FILE), rewritten after every run that wrote a group manifest: {version:2, groups:{[group]:{output,
  * pieces}}}, each group's `pieces` exactly as in its manifest.
  */

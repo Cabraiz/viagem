@@ -42,6 +42,15 @@ export function gemBounce(ageMs:number,reduced:boolean){
 
 export const HIT_FLASH_MS=90;
 export const hitFlash=(ageMs:number)=>ageMs>=0&&ageMs<HIT_FLASH_MS;
+/**
+ * Rest after a flash before a hit may flash the same critter again (BUG silhueta-branca). Under the horde's fire a
+ * critter takes several hits per second (the boss over 12/s): restarting the flash on every hit kept big critters a
+ * solid white silhouette for their whole fight. A flash now always runs its HIT_FLASH_MS and the next one starts at
+ * least HIT_FLASH_MS+HIT_FLASH_REST_MS (340 ms) later: under 3 flashes per second (WCAG 2.3.1), mostly in colour.
+ */
+export const HIT_FLASH_REST_MS=250;
+/** When the flash of a critter hit at `now` starts: now, or `flashAt` (the running flash) when it is still too recent. */
+export const flashStartOnHit=(now:number,flashAt:number)=>now-flashAt>=HIT_FLASH_MS+HIT_FLASH_REST_MS?now:flashAt;
 
 export const POOF_MS=520;
 /** Cartoon poof: overshoots to ~1.8 quickly, settles, fades out by POOF_MS. */

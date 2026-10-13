@@ -22,6 +22,21 @@ export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from '../../
 export const BALLOON_MS=2200;
 export const isEmoteId=(value:unknown):value is EmoteId=>typeof value==='string'&&EMOTES.some(e=>e.id===value);
 export const emoteDef=(id:EmoteId)=>EMOTES.find(e=>e.id===id)!;
+/** An emote relayed by the room (rostos-kkkk): who sent it and which one. */
+export interface EmoteNote {player:string;id:EmoteId}
+/** Longest player id accepted from the wire (the same bound as parseSos). */
+export const EMOTE_PLAYER_MAX=64;
+/**
+ * Reads a {t:'emote',player,id,round?} message strictly: a non-empty player id up to 64 chars, a known emote id and,
+ * when present, a whole round >= 0. Anything else (forged, oversized, unknown emote) is null and is ignored.
+ */
+export function parseEmote(m:unknown):EmoteNote|null{
+  if(m===null||typeof m!=='object')return null;
+  const {t,player,id,round}=m as Record<string,unknown>;
+  if(t!=='emote'||typeof player!=='string'||player.length===0||player.length>EMOTE_PLAYER_MAX||!isEmoteId(id))return null;
+  if(round!==undefined&&!(Number.isSafeInteger(round)&&(round as number)>=0))return null;
+  return {player,id};
+}
 
 
 /** Per-player anti-spam (2 s). The client greys the button; the room (VGM-043) can drop floods with the same rule. */
@@ -122,7 +137,11 @@ export interface EmoteBarOptions {
   gate?:EmoteGate;
   onEmote(id:EmoteId):void;
   now?:()=>number;
+  /** Sandboxes and screenshots: the fan stays open instead of closing after FAN_IDLE_MS. */
+  keepOpen?:boolean;
 }
+/** An open fan nobody touches closes by itself, so it never stays over the fight. */
+export const FAN_IDLE_MS=2500;
 /**
  * Emote button above the attack button: a tap opens a fan of 4 emotes, a tap on one sends it and closes.
  * Pointer events stop at the bar so the joystick and world taps never see them.
@@ -135,6 +154,7 @@ export class EmoteBar {
   private readonly gate:EmoteGate;
   private readonly now:()=>number;
   private timer=0;
+  private idle:ReturnType<typeof setTimeout>|undefined;
   private readonly fan:HTMLElement;
   private readonly outside=(e:PointerEvent)=>{if(!this.root.contains(e.target as Node))this.setOpen(false);};
   constructor(parent:HTMLElement,options:EmoteBarOptions){
@@ -148,9 +168,6 @@ export class EmoteBar {
     EMOTES.forEach((emote,index)=>{
       const button=document.createElement('button');
       button.type='button';button.className=`fun-emote fun-tone-${emote.tone}`;button.style.setProperty('--i',String(index));
-      // Quarter arc from straight up to straight left of the toggle (CSS trig is not on older phones).
-      const angle=(90+index*30)*Math.PI/180;
-      button.style.setProperty('--ux',Math.cos(angle).toFixed(3));button.style.setProperty('--uy',(-Math.sin(angle)).toFixed(3));
       button.dataset.emote=emote.id;button.setAttribute('role','menuitem');
       button.innerHTML=`${icon(emote.icon)}<b>${emote.label}</b>`;
       button.addEventListener('click',()=>this.send(emote.id));
@@ -162,10 +179,13 @@ export class EmoteBar {
     parent.append(this.root);
   }
   get open(){return this.root.classList.contains('is-open');}
-  /** Open fan closes on a tap anywhere else; closed buttons are inert (no focus, not read). */
+  /** Open fan closes on a tap anywhere else, or by itself after FAN_IDLE_MS untouched, so it never sits over the
+   *  fight; closed buttons are inert (no focus, not read). */
   setOpen(open:boolean){
     this.root.classList.toggle('is-open',open);this.toggleButton.setAttribute('aria-expanded',String(open));this.fan.inert=!open;
     if(open)document.addEventListener('pointerdown',this.outside,true);else document.removeEventListener('pointerdown',this.outside,true);
+    clearTimeout(this.idle);
+    if(open&&!this.options.keepOpen)this.idle=setTimeout(()=>this.setOpen(false),FAN_IDLE_MS);
   }
   send(id:EmoteId){
     if(!this.gate.tryUse(this.options.playerId,this.now()))return false;
@@ -182,5 +202,5 @@ export class EmoteBar {
     };
     cancelAnimationFrame(this.timer);tick();
   }
-  destroy(){cancelAnimationFrame(this.timer);document.removeEventListener('pointerdown',this.outside,true);this.root.remove();}
+  destroy(){cancelAnimationFrame(this.timer);clearTimeout(this.idle);document.removeEventListener('pointerdown',this.outside,true);this.root.remove();}
 }

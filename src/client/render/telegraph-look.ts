@@ -64,6 +64,20 @@ export function explosionBeat(ticksLeft:number,reduced:boolean){
 // ---------- op buffer ----------
 export const OP_CIRCLE=1,OP_ELLIPSE=2,OP_POLY=3,OP_LINE=4,OP_RING=5;
 /**
+ * An imported decoration frame (art-d item 4): [code, layer, -1, alpha, slot, x, y, rotation, w, h, frame], the cell
+ * centred on (x, y), stretched to w × h screen px and turned by `rotation` (rad, the art points to +x).
+ */
+export const OP_SPRITE=6;
+/**
+ * Imported decoration strips (`efeitos`), by slot: the charge's chevron (drawn pointing right, +x), the explosion's
+ * target and the burp cloud (flowing right, +x, from the mouth on its left edge). Each replaces today's vector
+ * decoration of its kind when the renderer says its texture is in (DecorFrame.art); the zone and its edge never change.
+ */
+export const DECOR_ART_IDS=['seta-investida','aviso-explosao','arroto'] as const;
+export const DECOR_ART_ARROW=0,DECOR_ART_BURST=1,DECOR_ART_GAS=2;
+/** Frames per second of a looping decoration strip. */
+export const DECOR_ART_FPS=8;
+/**
  * Both layers are drawn on the renderer's top Graphics (above the horde, so a hazard never hides behind a critter):
  * ZONE before the danger edge (the edge stays on top of it), AIR after it (what is in the air or sticks out of a
  * small zone: the bottle, the flames, the poop, the stamp, the charge arrow).
@@ -95,6 +109,10 @@ export class DecorBuffer {
   line(layer:number,color:number,alpha:number,x0:number,y0:number,x1:number,y1:number,width:number){
     const o=this.op(OP_LINE,layer,color,alpha);if(o<0)return;const d=this.data;d[o]=x0;d[o+1]=y0;d[o+2]=x1;d[o+3]=y1;d[o+4]=width;
   }
+  sprite(layer:number,alpha:number,slot:number,x:number,y:number,rotation:number,w:number,h:number,frame:number){
+    const o=this.op(OP_SPRITE,layer,-1,alpha);if(o<0)return;const d=this.data;
+    d[o]=slot;d[o+1]=x;d[o+2]=y;d[o+3]=rotation;d[o+4]=w;d[o+5]=h;d[o+6]=frame;
+  }
   /** Starts a polygon; add up to POLY_MAX points with point(). */
   poly(layer:number,color:number,alpha:number){
     const o=this.op(OP_POLY,layer,color,alpha);this.polyAt=o;if(o>=0)this.data[o]=0;
@@ -123,6 +141,11 @@ export interface DecorFrame {
    * maxX < minX = unknown (the planner projects the center and two radii instead).
    */
   bounds:{minX:number;minY:number;maxX:number;maxY:number};
+  /**
+   * Imported decorations whose texture is in, by DECOR_ART_IDS slot: `frames` (0 = absent: today's vector drawing) and
+   * `aspect` (cell height / width). Omitted = none (the empty manifest).
+   */
+  art?:{frames:number[];aspect:number[]};
 }
 export type ProjectFn=(x:number,y:number,out:Pt)=>Pt;
 
@@ -167,6 +190,11 @@ export function planDecor(t:TelegraphShape&{kind?:string},f:DecorFrame,project:P
 /** Projects the world point at distance d and angle a from the zone's origin into the scratch point. */
 function polar(t:TelegraphShape,a:number,d:number,project:ProjectFn){return project(t.x+Math.cos(a)*d,t.y+Math.sin(a)*d,P);}
 const fade=(f:number)=>Math.min(1,f/.15,(1-f)/.2);
+/** Frames of decoration `slot` that are in (0 = draw today's vectors). */
+const artFrames=(f:DecorFrame,slot:number)=>f.art?f.art.frames[slot]|0:0;
+/** Looping frame of a strip of `frames` (offset by `shift` frames); reduced motion: still on frame 0. */
+export const decorLoopFrame=(f:{now:number;reduced:boolean},frames:number,shift=0)=>
+  f.reduced||frames<=1?0:(Math.floor(Math.max(0,f.now)/1000*DECOR_ART_FPS)+shift)%frames;
 
 /** Arroto: a burp of gas puffs rolling from the drunk's mouth to the rim, bubbles and a burp swirl at the mouth. */
 function gas(t:TelegraphShape,f:DecorFrame,project:ProjectFn){
@@ -175,6 +203,13 @@ function gas(t:TelegraphShape,f:DecorFrame,project:ProjectFn){
   project(t.x,t.y,P);const ax=P.x,ay=P.y;
   project(t.x+t.dx*r,t.y+t.dy*r,P);const len=Math.hypot(P.x-ax,P.y-ay);
   const spread=Math.min(.9,Math.sin(Math.min(half,Math.PI/2))),flow=f.reduced?0:f.now*.00032;
+  const gasArt=artFrames(f,DECOR_ART_GAS);
+  if(gasArt>0){
+    // Imported burp cloud: from the mouth to the rim along the facing, as wide as the zone allows (cell aspect kept).
+    const ex=P.x,ey=P.y,aspect=f.art?.aspect[DECOR_ART_GAS]||1;
+    b.sprite(LAYER_ZONE,.95,DECOR_ART_GAS,(ax+ex)/2,(ay+ey)/2,Math.atan2(ey-ay,ex-ax),len,len*aspect,decorLoopFrame(f,gasArt));
+    return;
+  }
     // Puffs: olive edge, light body, a highlight; bigger toward the rim.
   for(let i=0;i<6;i++){
     const k=((i+.5)/6+flow)%1,side=half*.6*Math.sin(i*2.1+phase),q=polar(t,facing+side,k*.86*r+.08*r,project);
@@ -312,6 +347,9 @@ function drop(x:number,y:number,w:number,h:number,color:number){
 /** Explosão: a red starburst ring on a yellow disk with a white-hot core, pulsing faster as fireTick nears. */
 function burst(f:DecorFrame){
   const b=buf,beat=explosionBeat(f.ticksLeft,f.reduced),s=.84+.16*beat,rot=f.phase*TAU,n=12;
+  const art=artFrames(f,DECOR_ART_BURST);
+  // Imported target: on the zone's ellipse (inside the edge, today's .92), pulsing with the beat; its frames follow it.
+  if(art>0){b.sprite(LAYER_ZONE,1,DECOR_ART_BURST,ox,oy,0,2*rx*.92*s,2*ry*.92*s,Math.min(art-1,Math.floor(beat*art)));return;}
   b.ellipse(LAYER_ZONE,HAZARD.boomRed,.35+.25*beat,ox,oy,rx*.92,ry*.92);
   for(let k=0;k<n;k++){
     const a=rot+k*TAU/n,w=TAU/n*.42,ro=(k%2?.8:.95)*s;
@@ -346,12 +384,18 @@ function stamp(f:DecorFrame){
 function dash(t:TelegraphShape,f:DecorFrame,project:ProjectFn){
   if(t.shape==='circle')return;
   const b=buf,c=f.css,r=t.radius,w=t.shape==='line'?lineWidthOf(t):Math.min(r*.5,2*r*Math.tan(coneApertureOf(t)/4));
-  const nx=-t.dy,ny=t.dx,back=Math.min(w*.45,r*.12),side=w*.34,flow=f.reduced?0:f.now*.0007;
+  const nx=-t.dy,ny=t.dx,back=Math.min(w*.45,r*.12),side=w*.34,flow=f.reduced?0:f.now*.0007,art=artFrames(f,DECOR_ART_ARROW);
   for(let i=0;i<3;i++){
     const k=((i+.5)/3+flow)%1,d=back+k*(r-back*1.4),a=fade(k);
     project(t.x+t.dx*d,t.y+t.dy*d,P);const tx=P.x,ty=P.y;
     project(t.x+t.dx*(d-back)+nx*side,t.y+t.dy*(d-back)+ny*side,P);const lx=P.x,ly=P.y;
     project(t.x+t.dx*(d-back)-nx*side,t.y+t.dy*(d-back)-ny*side,P);const qx=P.x,qy=P.y;
+    if(art>0){
+      // Imported chevron over today's: from the arms' midpoint to the tip, as wide as the arms (+ today's 6 px stroke).
+      const mx=(lx+qx)/2,my=(ly+qy)/2;
+      b.sprite(LAYER_AIR,a,DECOR_ART_ARROW,(mx+tx)/2,(my+ty)/2,Math.atan2(ty-my,tx-mx),Math.hypot(tx-mx,ty-my)+6*c,Math.hypot(lx-qx,ly-qy)+6*c,decorLoopFrame(f,art,i));
+      continue;
+    }
     b.line(LAYER_AIR,HAZARD.breu,.9*a,lx,ly,tx,ty,6*c);b.line(LAYER_AIR,HAZARD.breu,.9*a,qx,qy,tx,ty,6*c);
     b.circle(LAYER_AIR,HAZARD.breu,.9*a,tx,ty,3*c);
     b.line(LAYER_AIR,HAZARD.papel,a,lx,ly,tx,ty,2.6*c);b.line(LAYER_AIR,HAZARD.papel,a,qx,qy,tx,ty,2.6*c);

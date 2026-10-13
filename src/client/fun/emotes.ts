@@ -137,7 +137,11 @@ export interface EmoteBarOptions {
   gate?:EmoteGate;
   onEmote(id:EmoteId):void;
   now?:()=>number;
+  /** Sandboxes and screenshots: the fan stays open instead of closing after FAN_IDLE_MS. */
+  keepOpen?:boolean;
 }
+/** An open fan nobody touches closes by itself, so it never stays over the fight. */
+export const FAN_IDLE_MS=2500;
 /**
  * Emote button above the attack button: a tap opens a fan of 4 emotes, a tap on one sends it and closes.
  * Pointer events stop at the bar so the joystick and world taps never see them.
@@ -150,6 +154,7 @@ export class EmoteBar {
   private readonly gate:EmoteGate;
   private readonly now:()=>number;
   private timer=0;
+  private idle:ReturnType<typeof setTimeout>|undefined;
   private readonly fan:HTMLElement;
   private readonly outside=(e:PointerEvent)=>{if(!this.root.contains(e.target as Node))this.setOpen(false);};
   constructor(parent:HTMLElement,options:EmoteBarOptions){
@@ -163,9 +168,6 @@ export class EmoteBar {
     EMOTES.forEach((emote,index)=>{
       const button=document.createElement('button');
       button.type='button';button.className=`fun-emote fun-tone-${emote.tone}`;button.style.setProperty('--i',String(index));
-      // Quarter arc from straight up to straight left of the toggle (CSS trig is not on older phones).
-      const angle=(90+index*30)*Math.PI/180;
-      button.style.setProperty('--ux',Math.cos(angle).toFixed(3));button.style.setProperty('--uy',(-Math.sin(angle)).toFixed(3));
       button.dataset.emote=emote.id;button.setAttribute('role','menuitem');
       button.innerHTML=`${icon(emote.icon)}<b>${emote.label}</b>`;
       button.addEventListener('click',()=>this.send(emote.id));
@@ -177,10 +179,13 @@ export class EmoteBar {
     parent.append(this.root);
   }
   get open(){return this.root.classList.contains('is-open');}
-  /** Open fan closes on a tap anywhere else; closed buttons are inert (no focus, not read). */
+  /** Open fan closes on a tap anywhere else, or by itself after FAN_IDLE_MS untouched, so it never sits over the
+   *  fight; closed buttons are inert (no focus, not read). */
   setOpen(open:boolean){
     this.root.classList.toggle('is-open',open);this.toggleButton.setAttribute('aria-expanded',String(open));this.fan.inert=!open;
     if(open)document.addEventListener('pointerdown',this.outside,true);else document.removeEventListener('pointerdown',this.outside,true);
+    clearTimeout(this.idle);
+    if(open&&!this.options.keepOpen)this.idle=setTimeout(()=>this.setOpen(false),FAN_IDLE_MS);
   }
   send(id:EmoteId){
     if(!this.gate.tryUse(this.options.playerId,this.now()))return false;
@@ -197,5 +202,5 @@ export class EmoteBar {
     };
     cancelAnimationFrame(this.timer);tick();
   }
-  destroy(){cancelAnimationFrame(this.timer);document.removeEventListener('pointerdown',this.outside,true);this.root.remove();}
+  destroy(){cancelAnimationFrame(this.timer);clearTimeout(this.idle);document.removeEventListener('pointerdown',this.outside,true);this.root.remove();}
 }

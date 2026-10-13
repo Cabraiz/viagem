@@ -2,7 +2,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
-import {mountGrade} from './render/grade-pipeline.ts';
+import {Vignette} from './render/vignette.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
@@ -296,8 +296,8 @@ export class IslandScene extends Phaser.Scene {
     // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
     this.buildWorld();
-    // Lighting card: the one-pass colour grade and vignette on the camera (`?luz=0` and canvas skip it).
-    this.grade=mountGrade(this);this.applyGrade();
+    // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
+    this.vignette=new Vignette(this);this.applyGrade();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     this.shadowLook();
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
@@ -604,9 +604,9 @@ export class IslandScene extends Phaser.Scene {
     const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
-  private grade:ReturnType<typeof mountGrade>;
-  /** The grade of the world shown (city, endless, island); economy mode drops the vignette. */
-  private applyGrade(){this.grade?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
+  private vignette?:Vignette;
+  /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
+  private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
   private readonly catchUp=new CatchUp();
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
@@ -627,6 +627,7 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
     this.artMarks?.begin();

@@ -60,14 +60,11 @@ export class Baker {
       // way, so the scissor test is off for this one draw.
       const renderer=this.renderer,gl=renderer.gl;
       prepare?.();shader.load();
-      // The framebuffer bound before (the camera's post pass target with the lighting grade on) comes back afterwards:
-      // a bake in the middle of a frame must not send the rest of the frame into the bake's target.
-      const scissor=gl.isEnabled(gl.SCISSOR_TEST),previous=renderer.currentFramebuffer;
+      const scissor=gl.isEnabled(gl.SCISSOR_TEST);
       renderer.setFramebuffer(shader.framebuffer);gl.viewport(0,0,shader.width,shader.height);
       // flush() clears before it draws, and the clear obeys the scissor too: the other rows keep what they had.
       if(rows){gl.enable(gl.SCISSOR_TEST);gl.scissor(0,rows.from,shader.width,rows.to-rows.from);}else gl.disable(gl.SCISSOR_TEST);
       shader.flush();
-      renderer.setFramebuffer(previous);
       gl.viewport(0,0,renderer.width,renderer.height);
       if(scissor)renderer.resetScissor();else gl.disable(gl.SCISSOR_TEST);
     });

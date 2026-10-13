@@ -8,6 +8,10 @@ import {ACTOR_TINT,lightEnabled} from './light.ts';
 const LIGHT=lightEnabled();
 type Tintable=Phaser.GameObjects.Components.Tint&Phaser.GameObjects.GameObject;
 export function sunlit<T extends Tintable>(o:T):T{
-  if(LIGHT)o.setTint(ACTOR_TINT.topLeft,ACTOR_TINT.topRight,ACTOR_TINT.bottomLeft,ACTOR_TINT.bottomRight);else o.clearTint();
+  // Phaser flips with a negative scale, so a flipped sprite's top-left corner is drawn on the right: swap the sides.
+  const t=ACTOR_TINT,flipped=(o as Partial<Phaser.GameObjects.Components.Flip>).flipX===true;
+  if(!LIGHT)o.clearTint();
+  else if(flipped)o.setTint(t.topRight,t.topLeft,t.bottomRight,t.bottomLeft);
+  else o.setTint(t.topLeft,t.topRight,t.bottomLeft,t.bottomRight);
   return o;
 }

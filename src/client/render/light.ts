@@ -38,10 +38,10 @@ export interface Grade {readonly cool:readonly [number,number,number];readonly w
 export type LightWorld='cidade'|'infinito'|'ilha';
 export const GRADES:Readonly<Record<LightWorld,Grade>>=Object.freeze({
   // Snow: bluish in the shade, golden in the sun (card), the strongest grade.
-  cidade:Object.freeze({cool:Object.freeze([0.93,0.97,1.07]),warm:Object.freeze([1.03,1.01,0.97]),contrast:0.12,pivot:0.6,vignette:0.03}) as Grade,
+  cidade:Object.freeze({cool:Object.freeze([0.93,0.97,1.07]),warm:Object.freeze([1.03,1.01,0.97]),contrast:0.05,pivot:0.6,vignette:0.03}) as Grade,
   // Tropical green (D-022): lighter touch, the palette is already warm.
-  infinito:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.10,pivot:0.6,vignette:0.03}) as Grade,
-  ilha:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.10,pivot:0.6,vignette:0.03}) as Grade,
+  infinito:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03}) as Grade,
+  ilha:Object.freeze({cool:Object.freeze([0.96,0.99,1.04]),warm:Object.freeze([1.04,1.01,0.95]),contrast:0.06,pivot:0.6,vignette:0.03}) as Grade,
 });
 /** Luminance band of the split toning: below it the cold tint, above it the warm one (snow in the sun is the top). */
 export const TONE_SPLIT=Object.freeze([0.3,0.95] as const);
@@ -51,7 +51,7 @@ export const VIGNETTE_RANGE=Object.freeze([0.55,1.0] as const);
 const smooth=(a:number,b:number,x:number)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 /**
  * The grade of one colour (r, g, b in 0..1) at `radius` (0 centre .. 1 corner, share of the half diagonal), `vignette`
- * on or off (economy mode turns it off). The GLSL in GRADE_FRAG is the same arithmetic.
+ * on or off (economy mode turns it off). gradeGlsl is the same arithmetic without the vignette (an overlay: vignette.ts).
  */
 export function gradeColor(rgb:readonly [number,number,number],g:Grade,radius=0,vignette=true):[number,number,number]{
   const L=rgb[0]*.299+rgb[1]*.587+rgb[2]*.114,t=smooth(TONE_SPLIT[0],TONE_SPLIT[1],L);
@@ -66,32 +66,27 @@ export function gradeColor(rgb:readonly [number,number,number],g:Grade,radius=0,
 }
 export const rgbOf=(hex:number):[number,number,number]=>[(hex>>16&255)/255,(hex>>8&255)/255,(hex&255)/255];
 
-/** Fragment shader of the grade post pass (Phaser PostFXPipeline: uMainSampler, outTexCoord). */
-export const GRADE_FRAG=`
-precision mediump float;
-uniform sampler2D uMainSampler;
-uniform vec3 uCool;
-uniform vec3 uWarm;
-uniform float uContrast;
-uniform float uPivot;
-uniform float uVignette;
-varying vec2 outTexCoord;
-void main(){
-  vec4 src=texture2D(uMainSampler,outTexCoord);
-  vec3 c=src.rgb;
-  float L=dot(c,vec3(.299,.587,.114));
-  c*=mix(uCool,uWarm,smoothstep(${TONE_SPLIT[0].toFixed(2)},${TONE_SPLIT[1].toFixed(2)},L));
-  c*=L/max(dot(c,vec3(.299,.587,.114)),1e-4);
-  c+=max(c-uPivot,0.0)*uContrast;
-  float r=length(outTexCoord-0.5)*1.41421356;
-  c*=1.0-uVignette*smoothstep(${VIGNETTE_RANGE[0].toFixed(2)},${VIGNETTE_RANGE[1].toFixed(2)},r);
-  gl_FragColor=vec4(clamp(c,0.0,1.0),src.a);
+/**
+ * The grade as a GLSL function for the ground shaders (endless/island terrain, the city relief): they bake into cached
+ * textures, so the grade costs nothing per frame and never touches the canvas antialias of the outlines (a post pass
+ * would: its render target has no multisampling). Same arithmetic as gradeColor without the vignette (that one is an
+ * overlay, render/vignette.ts). `?luz=0`: the identity.
+ */
+export function gradeGlsl(world:LightWorld,on=lightEnabled()):string{
+  if(!on)return 'vec3 lightGrade(vec3 c){return c;}';
+  const g=GRADES[world],v3=(v:readonly number[])=>`vec3(${v.map(x=>x.toFixed(3)).join(",")})`; // 3 decimals: multipliers, not palette tones (city-relevo test)
+  return `vec3 lightGrade(vec3 c){
+  vec3 w=vec3(.299,.587,.114);float L=dot(c,w);
+  c*=mix(${v3(g.cool)},${v3(g.warm)},smoothstep(${TONE_SPLIT[0].toFixed(2)},${TONE_SPLIT[1].toFixed(2)},L));
+  c*=L/max(dot(c,w),1e-4);
+  return c+max(c-${g.pivot.toFixed(3)},0.0)*${g.contrast.toFixed(3)};
 }`;
+}
 
 /**
  * Four-corner tints (Phaser setTint(topLeft, topRight, bottomLeft, bottomRight)) for art lit by the upper-left sun:
  * buildings get the warm sun side and a colder, darker shade side and foot; actors a light warm edge on the sun side
  * (multiplies: the Breu outline stays Breu).
  */
-export const BUILDING_TINT=Object.freeze({topLeft:0xfff6e8,topRight:0xf0f0f6,bottomLeft:0xf2ece4,bottomRight:0xd8dcea});
+export const BUILDING_TINT=Object.freeze({topLeft:0xfffaf2,topRight:0xfafafd,bottomLeft:0xfaf7f2,bottomRight:0xf4f5fb});
 export const ACTOR_TINT=Object.freeze({topLeft:0xfffaf0,topRight:0xf6f6fa,bottomLeft:0xf6f2ec,bottomRight:0xe6e9f2});

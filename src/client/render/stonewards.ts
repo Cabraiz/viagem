@@ -22,7 +22,7 @@ import {BASE_ART,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/b
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
-import {lightEnabled} from './light.ts';
+import {LIT_SHADOW,lightEnabled} from './light.ts';
 
 const LIGHT=lightEnabled();
 
@@ -371,7 +371,8 @@ export class StonewardsRenderer {
     const p=this.project(s.x,s.y),c=this.c,x=p.x,y=p.y;
     g.setDepth(this.options.projector.depth(s.x,s.y));
     // Lighting card: a soft cast shadow away from the sun (screen right-down), off in economy mode and with `?luz=0`.
-    if(LIGHT&&!this.options.reduced&&!this.economy)for(let i=3;i>=1;i--)g.fillStyle(c.breu,.06+.03*(3-i)).fillEllipse(x+(10+6*i)*u,y+(5+3*i)*u,(40+18*i)*u,(14+5*i)*u);
+    // Three soft layers of the lit shadow colour, ~0.26 where they all overlap (the contrast rule's cast shadow, not Breu).
+    if(LIGHT&&!this.options.reduced&&!this.economy)for(let i=3;i>=1;i--)g.fillStyle(LIT_SHADOW.color,.08+.01*(3-i)).fillEllipse(x+(10+6*i)*u,y+(5+3*i)*u,(40+18*i)*u,(14+5*i)*u);
     g.fillStyle(c.breu,.25).fillEllipse(x,y+3*u,46*u,18*u);
     g.lineStyle(2*u,c.breu,1).fillStyle(c.papel,1);
     g.fillRect(x-14*u,y-34*u,5*u,34*u).strokeRect(x-14*u,y-34*u,5*u,34*u).fillRect(x+9*u,y-34*u,5*u,34*u).strokeRect(x+9*u,y-34*u,5*u,34*u);

@@ -592,6 +592,7 @@ export class IslandScene extends Phaser.Scene {
     this.city?.setEconomy(on);
     this.applyGrade();
     if(this.stone)this.stone.economy=on;
+    const towers=this.towers;if(towers)towers.economy=on; // their cast shadows (a renderer built later reads this.economy)
     // Phaser's frame gate (the game starts with fps.limit 60): changed live, the next frame already follows it.
     this.frameGate();
     this.fpsWatch.reset();
@@ -670,7 +671,7 @@ export class IslandScene extends Phaser.Scene {
    * change (columnsVersion).
    */
   private makeTowers(){
-    return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,
+    return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,economy:this.economy,
       depthVersion:()=>this.city?.columnsVersion??0,
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
         project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});

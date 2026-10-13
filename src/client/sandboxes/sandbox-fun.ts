@@ -57,7 +57,7 @@ function speak(id:string,situation:Situation,seed:number){
   layer.show(id,pickLine(p.classId,situation,seed),h.x,h.y,{kind:situation==='down'?'help':'line',ms:forever});
 }
 const gate=new EmoteGate();
-const bar=new EmoteBar(world,{playerId:'me',gate,onEmote:id=>emote('me',id)});
+const bar=new EmoteBar(world,{playerId:'me',gate,onEmote:id=>emote('me',id),keepOpen:state==='open'});
 
 if(state==='open')bar.setOpen(true);
 if(state==='cooldown'){bar.send('kkkk');bar.setOpen(true);}

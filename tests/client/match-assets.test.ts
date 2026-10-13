@@ -49,8 +49,10 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
   for(const s of plan.sheets)assert.equal(at(s.url),s.key.startsWith('city:ground:')?'P0':s.key.startsWith('city:prop:')?'P2':'P1',s.key);
   assert.equal(at(heroSheetUrl(A)!),'P0');assert.equal(at(heroSheetUrl(B)!),'P1');
-  // The nine kinds' sheets only: roster pieces load per match (arte-do-roster-no-render), never in the waiting room.
-  if(artLoads().some(l=>l.key.startsWith('art:enemy:')))assert.ok(list.some(a=>a.kind==='enemy'&&a.priority==='P1'),'enemies are P1');
+  // Enemies the render draws (horde-art artLoads) come in as P1; the index may hold roster enemies the render does not
+  // know yet (pack 04 before the roster art is wired), and those are not preloaded.
+  for(const a of list)if(a.kind==='enemy')assert.equal(a.priority,'P1',a.url);
+  // Roster pieces load per match (arte-do-roster-no-render: the room's elenco, or the first sighting), never here.
   assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
 });

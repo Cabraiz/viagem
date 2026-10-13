@@ -715,7 +715,7 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
 });
 
 test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 (every older index unchanged), within the escape',()=>{
-  assert.equal(PROTOCOL_VERSION,12);
+  assert.ok(PROTOCOL_VERSION>=12);
   // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape, so 94 slots are left.
   assert.equal(DICT.length,161);
   assert.ok(DICT.length<=255,'255 is the inline escape');
@@ -1043,10 +1043,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 12: a frame from an 11 (torres-fio) or 13 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 13: a frame from a 12 (papeis-de-inimigo) or 14 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],12);
-  for(const version of [8,9,10,11,13]){
+  assert.equal(bytes[1],13);
+  for(const version of [8,9,10,11,12,14]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }
@@ -1142,7 +1142,7 @@ function defenses(tick:number):StructureView[]{
     'antiaerea-quadrupla','posto-de-radar','atiradores-do-telhado','gustavao'];
   const phases=['pronta','pronta','danificada','obra-2','pronta','pronta','pronta','obra-3','pronta','pronta','pronta','pronta'];
   return kinds.map((kind,i)=>({id:`defesa-${i+1}`,kind,x:6+i,y:18-(i%3),hp:Math.max(1,300-((tick*7+i*13)%120)),maxHp:300,
-    tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1)}));
+    tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1),shots:(tick+i*40)%256}));
 }
 
 test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; a field that goes away is gone on the phone too',()=>{
@@ -1158,6 +1158,7 @@ test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; a field 
     const want=defenses(0)[i];
     assert.equal(s.kind,want.kind);assert.equal(s.tier,want.tier);assert.equal(s.branch,want.branch);assert.equal(s.phase,want.phase);
     assert.ok(Math.abs(s.aim!-want.aim!)<=1/255,`aim ${s.aim} vs ${want.aim}`);
+    assert.equal(s.shots,want.shots,'the volley counter (torre-contador-de-tiros)');
   }
   assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.tier,undefined,'the wall has none of the new fields');
   // Present, then absent (here a ruin loses its aim and branch): the delta clears them on the phone.
@@ -1191,7 +1192,18 @@ test('D-009 with 12 defenses firing: 6 clients x 300 enemies stay inside the 4G 
     }
     results[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
   }
-  t.diagnostic(`protocol 11 bytes/s per client with 12 defenses turning every tick: ${JSON.stringify(results)}`);
+  t.diagnostic(`protocol 13 bytes/s per client with 12 defenses turning and firing every tick: ${JSON.stringify(results)}`);
   assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
   assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
+});
+
+test('torre-contador-de-tiros: the volley counter wraps at 256 in one byte, and a shot at a target that does not move is a change',()=>{
+  const v=busyWorld(new Rng(2),1).view,base=defenses(0)[0];
+  const at=(shots:number,aim=.25)=>({...v,structures:[...v.structures,{...base,aim,shots}]});
+  const enc=new FrameEncoder(),dec=new FrameDecoder(),seen:number[]=[];
+  for(const n of [254,255,256,257,300]){
+    const r=dec.decode(enc.encode(at(n)));assert.ok(r.ok);enc.ack(r.seq,r.ack.event);
+    seen.push(r.view.structures.find(x=>x.kind===base.kind)!.shots!);
+  }
+  assert.deepEqual(seen,[254,255,0,1,44],'mod 256, the aim never moved');
 });

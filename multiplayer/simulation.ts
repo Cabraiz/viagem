@@ -694,5 +694,5 @@ export type {SimEvent};
 export function defenseView(d:DefenseState,tick:number):StructureView{
   const def=DEFENSES[d.kind],turn=d.aim===undefined?undefined:((d.aim/(2*Math.PI))%1+1)%1;
   return {id:d.id,kind:d.kind,x:d.x,y:d.y,hp:d.ruined?0:d.hp,maxHp:d.maxHp,tier:def.tier,...(def.branch?{branch:def.branch}:{}),
-    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn})};
+    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn}),...(d.shots===undefined?{}:{shots:d.shots})};
 }

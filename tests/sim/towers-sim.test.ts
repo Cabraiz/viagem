@@ -475,3 +475,15 @@ test('the island is untouched: no sites, every build refused, no defenses key, s
   assert.deepEqual(JSON.stringify(sys.state),JSON.stringify(plain.state));
   assert.deepEqual(structureTargets(sys.state),[{id:'muralha',x:sys.state.wall.x,y:sys.state.wall.y,radius:sys.state.wall.radius}]);
 });
+
+test('torre-contador-de-tiros: every volley counts (mod 256), also at a target that never moves; no volley, no count',()=>{
+  const {ctx,sys,d}=armed('vigia-do-predio',[]);
+  ctx.enemies.set('e1',enemy('e1',d.x+3,d.y,{hp:1e6,maxHp:1e6}));
+  at(ctx,d.readyTick,'prepare');defensesStep(ctx,sys.state);
+  assert.equal(d.shots,undefined,'nothing fired: no counter yet');
+  at(ctx,d.readyTick,'wave');
+  const cd=DEFENSES['vigia-do-predio'].cooldown,aims=new Set<number>();
+  for(let i=0;i<300;i++){ctx.tick=d.readyTick+i*cd;defensesStep(ctx,sys.state);aims.add(d.aim!);}
+  assert.equal(aims.size,1,'the target never moved: the aim alone would show one shot');
+  assert.equal(d.shots,300%256,'300 volleys, mod 256');
+});

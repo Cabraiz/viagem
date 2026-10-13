@@ -1,0 +1,2462 @@
+{
+  "version": 2,
+  "group": "inimigos",
+  "pieces": {
+    "ambulante-guarda-chuva": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "ambulante-guarda-chuva/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ambulante-guarda-chuva/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "9215f724598f67311a1fe5b219cb48fe4e44f68c9d2eb25f80d672ca539f5487"
+            }
+          ],
+          "sha256": "9215f724598f67311a1fe5b219cb48fe4e44f68c9d2eb25f80d672ca539f5487"
+        },
+        "hit": {
+          "file": "ambulante-guarda-chuva/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ambulante-guarda-chuva/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "02cc433d7f25b6938000764c126996596f03d5a831131da112d5b2aea21ba688"
+            }
+          ],
+          "sha256": "02cc433d7f25b6938000764c126996596f03d5a831131da112d5b2aea21ba688"
+        },
+        "idle": {
+          "file": "ambulante-guarda-chuva/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ambulante-guarda-chuva/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5eebadaceb9018fe1704e9047c312743ddbe068d8afb30430c21377103c64d1d"
+            }
+          ],
+          "sha256": "5eebadaceb9018fe1704e9047c312743ddbe068d8afb30430c21377103c64d1d"
+        },
+        "throw": {
+          "file": "ambulante-guarda-chuva/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ambulante-guarda-chuva/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "5e89771943ba4bfeac8921243f187d01613698f2f1b70dcfa45ff2e4f784c288"
+            }
+          ],
+          "sha256": "5e89771943ba4bfeac8921243f187d01613698f2f1b70dcfa45ff2e4f784c288"
+        },
+        "walk": {
+          "file": "ambulante-guarda-chuva/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ambulante-guarda-chuva/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "c8cb160de94fa7923c97d321529cd83a16a5f0c63164ac565102953d22bab482"
+            }
+          ],
+          "sha256": "c8cb160de94fa7923c97d321529cd83a16a5f0c63164ac565102953d22bab482"
+        }
+      },
+      "sha256": "3e9689a8b20d6d1303699cb3cb11844f2512734099a3bf0654daf9e0842d5b4f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "barata-voadora": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "barata-voadora/attack.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "barata-voadora/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d2af9e66329c12264acf16aa35df77aa234f2f6d5bd3084e1cbe6f8a0e42d6b5"
+            }
+          ],
+          "sha256": "d2af9e66329c12264acf16aa35df77aa234f2f6d5bd3084e1cbe6f8a0e42d6b5"
+        },
+        "death": {
+          "file": "barata-voadora/death.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "barata-voadora/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "967bcb71c1decdc2be41b93312d61625cc499a6407dcccab231aee6bdb2401b8"
+            }
+          ],
+          "sha256": "967bcb71c1decdc2be41b93312d61625cc499a6407dcccab231aee6bdb2401b8"
+        },
+        "fly": {
+          "file": "barata-voadora/fly.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "barata-voadora/fly.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "44da0cd69b208285d6d7811e4a81603244e357f7230d1f895204d4f66de1dbd4"
+            }
+          ],
+          "sha256": "44da0cd69b208285d6d7811e4a81603244e357f7230d1f895204d4f66de1dbd4"
+        },
+        "hit": {
+          "file": "barata-voadora/hit.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 2,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "barata-voadora/hit.webp",
+              "columns": 2,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "91a3020225f88a9971473edbb6b2eadb8cba9fd28dda4136defb66991477751a"
+            }
+          ],
+          "sha256": "91a3020225f88a9971473edbb6b2eadb8cba9fd28dda4136defb66991477751a"
+        }
+      },
+      "sha256": "fba35c72eceddc77ec5825ec2e93348dd0289ce8c1d928aac0d585c8528db402",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "bebum-de-carrinho": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "bebum-de-carrinho/aim.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebum-de-carrinho/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "276e73a6b9f6b4f19be176e513ccae633c8e5a3cb978a2ed746ea2dac5a7847e"
+            }
+          ],
+          "sha256": "276e73a6b9f6b4f19be176e513ccae633c8e5a3cb978a2ed746ea2dac5a7847e"
+        },
+        "charge": {
+          "file": "bebum-de-carrinho/charge.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebum-de-carrinho/charge.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "4914f61ca69e5dd247e3f270da93ffc94e13b8d584b9fde88431e27639c0dd1a"
+            }
+          ],
+          "sha256": "4914f61ca69e5dd247e3f270da93ffc94e13b8d584b9fde88431e27639c0dd1a"
+        },
+        "crash": {
+          "file": "bebum-de-carrinho/crash.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebum-de-carrinho/crash.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "e7199b780ac4dc5db6d15e2ede537c2c45f06ef1eab1afb85ef9322aaa1879b0"
+            }
+          ],
+          "sha256": "e7199b780ac4dc5db6d15e2ede537c2c45f06ef1eab1afb85ef9322aaa1879b0"
+        },
+        "idle": {
+          "file": "bebum-de-carrinho/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebum-de-carrinho/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "bfbaf713e9b31a903871989c3bbad8b0c79ebfc69667a233fec1c7fa4700f2b9"
+            }
+          ],
+          "sha256": "bfbaf713e9b31a903871989c3bbad8b0c79ebfc69667a233fec1c7fa4700f2b9"
+        }
+      },
+      "sha256": "4f212817df6c28a13b5bf309b131d2db0b9d78b67f3f7a30833d3540f37f538f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "dono-do-boteco": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "dono-do-boteco/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dono-do-boteco/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "2be6ce3804847ebac2c362f967413a09f7d18bebd35aa12e2efa102d281a0642"
+            }
+          ],
+          "sha256": "2be6ce3804847ebac2c362f967413a09f7d18bebd35aa12e2efa102d281a0642"
+        },
+        "hit": {
+          "file": "dono-do-boteco/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dono-do-boteco/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "1f02a6152075c40f399c25188d0059c9b96b3dbb5435d0c9c216ab0717c0b484"
+            }
+          ],
+          "sha256": "1f02a6152075c40f399c25188d0059c9b96b3dbb5435d0c9c216ab0717c0b484"
+        },
+        "idle": {
+          "file": "dono-do-boteco/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dono-do-boteco/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "b90ad1365eb0a854c0fd431b7cdf04ae1a6787aaf0b831835745cb3116f1795a"
+            }
+          ],
+          "sha256": "b90ad1365eb0a854c0fd431b7cdf04ae1a6787aaf0b831835745cb3116f1795a"
+        },
+        "shove": {
+          "file": "dono-do-boteco/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dono-do-boteco/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "238b5f7ffd49d5378f2b0d3fae76c99cd7008fd25b2dda206705ad2712096a79"
+            }
+          ],
+          "sha256": "238b5f7ffd49d5378f2b0d3fae76c99cd7008fd25b2dda206705ad2712096a79"
+        },
+        "walk": {
+          "file": "dono-do-boteco/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dono-do-boteco/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "52d227e4cef693ae10d9af2b7a981a30a6507169931baef3fbbf239da2abc9a7"
+            }
+          ],
+          "sha256": "52d227e4cef693ae10d9af2b7a981a30a6507169931baef3fbbf239da2abc9a7"
+        }
+      },
+      "sha256": "22b0d7d82c107a9747c0b661adc3a1586a1c32d8c0431bbac63f1996ff3f87ac",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "espetinho-suspeito": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "espetinho-suspeito/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "espetinho-suspeito/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "71d58fb401d78519d07818728728ca5dd798712f510da94e2ac83c18f95d6b2f"
+            }
+          ],
+          "sha256": "71d58fb401d78519d07818728728ca5dd798712f510da94e2ac83c18f95d6b2f"
+        },
+        "hit": {
+          "file": "espetinho-suspeito/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 3,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "espetinho-suspeito/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "fd01bdbce1e8ada655ffb171bced92c8a1ab8a91d463aae896967bb9f21c6dcd"
+            }
+          ],
+          "sha256": "fd01bdbce1e8ada655ffb171bced92c8a1ab8a91d463aae896967bb9f21c6dcd"
+        },
+        "idle": {
+          "file": "espetinho-suspeito/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "espetinho-suspeito/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "f8d91ea31dbccd5ee86a3154996bf5b4e57d5f0c5053c9005846159e5f18da6a"
+            }
+          ],
+          "sha256": "f8d91ea31dbccd5ee86a3154996bf5b4e57d5f0c5053c9005846159e5f18da6a"
+        },
+        "throw": {
+          "file": "espetinho-suspeito/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "espetinho-suspeito/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "703760d57ab1ea5810df6a9db77dfcac18c4492f452b964c94dd92ed2d481858"
+            }
+          ],
+          "sha256": "703760d57ab1ea5810df6a9db77dfcac18c4492f452b964c94dd92ed2d481858"
+        },
+        "walk": {
+          "file": "espetinho-suspeito/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "espetinho-suspeito/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f5418d72ed9ad4beb67b1dd1b56fd18802daabd883f0a94972c1e90245adcb18"
+            }
+          ],
+          "sha256": "f5418d72ed9ad4beb67b1dd1b56fd18802daabd883f0a94972c1e90245adcb18"
+        }
+      },
+      "sha256": "45807d09caf89a89749c454bd01f30612888a0d1bc1aa46e5966412df8b70c31",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "flanelinha-interdimensional": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "flanelinha-interdimensional/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "flanelinha-interdimensional/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "f09b2e69fc5465ee7d7648be3459e7bc98bdf09c3d6dd300860cd14fd42c2a87"
+            }
+          ],
+          "sha256": "f09b2e69fc5465ee7d7648be3459e7bc98bdf09c3d6dd300860cd14fd42c2a87"
+        },
+        "hit": {
+          "file": "flanelinha-interdimensional/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "flanelinha-interdimensional/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "233d35ec413932cc23b8c9e374b52c980f8e9c281154657dec67d9d5828e644b"
+            }
+          ],
+          "sha256": "233d35ec413932cc23b8c9e374b52c980f8e9c281154657dec67d9d5828e644b"
+        },
+        "idle": {
+          "file": "flanelinha-interdimensional/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "flanelinha-interdimensional/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a0e2ac7fcc6a2f36dedafe278813625a1a8f8e7d47ba1dd1a9ad170149a442f3"
+            }
+          ],
+          "sha256": "a0e2ac7fcc6a2f36dedafe278813625a1a8f8e7d47ba1dd1a9ad170149a442f3"
+        },
+        "summon": {
+          "file": "flanelinha-interdimensional/summon.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "flanelinha-interdimensional/summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "9d66f155630d6c66988e9784e954101094ef1254d96827b532c75c9bd1f61dcc"
+            }
+          ],
+          "sha256": "9d66f155630d6c66988e9784e954101094ef1254d96827b532c75c9bd1f61dcc"
+        },
+        "walk": {
+          "file": "flanelinha-interdimensional/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "flanelinha-interdimensional/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "843d665805e17d134f8bbb3286e7d4490e72ce129e402449d0d0f11700383cb5"
+            }
+          ],
+          "sha256": "843d665805e17d134f8bbb3286e7d4490e72ce129e402449d0d0f11700383cb5"
+        }
+      },
+      "sha256": "e687e00d7e09b14ec07e74df34fd7b31af026caad289b01cd9aab48c74ed12ac",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "grauzeiro": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "grauzeiro/aim.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "grauzeiro/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "298d2ca673a7b1f9a490a15ad6b4f75cf398137ff97e7e2451f0e3aaabdb9129"
+            }
+          ],
+          "sha256": "298d2ca673a7b1f9a490a15ad6b4f75cf398137ff97e7e2451f0e3aaabdb9129"
+        },
+        "charge": {
+          "file": "grauzeiro/charge.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "grauzeiro/charge.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9b3482c9ed08f68eec36855fa529f68a5ed575e94236c02f22d961cd635cab24"
+            }
+          ],
+          "sha256": "9b3482c9ed08f68eec36855fa529f68a5ed575e94236c02f22d961cd635cab24"
+        },
+        "crash": {
+          "file": "grauzeiro/crash.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "grauzeiro/crash.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "37b38aa216a6dacda73c41ae1b836ba70329b8bc82199110f5d41faed9e117e1"
+            }
+          ],
+          "sha256": "37b38aa216a6dacda73c41ae1b836ba70329b8bc82199110f5d41faed9e117e1"
+        },
+        "idle": {
+          "file": "grauzeiro/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "grauzeiro/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "49ad472b6120c4bfb2c9b36f1c3cdf94ea5f43f96898694ca69a8768b14a4196"
+            }
+          ],
+          "sha256": "49ad472b6120c4bfb2c9b36f1c3cdf94ea5f43f96898694ca69a8768b14a4196"
+        }
+      },
+      "sha256": "32e84b06d960ba3b75c8e5bc09a75ec4edbbfc80e01591996ab3990a76ea459f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "malabarista-do-sinal": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "malabarista-do-sinal/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "malabarista-do-sinal/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "b0d194f904ed9e8b96955af2e3e4af30645f3487f626959db9cdc61dfb071e69"
+            }
+          ],
+          "sha256": "b0d194f904ed9e8b96955af2e3e4af30645f3487f626959db9cdc61dfb071e69"
+        },
+        "hit": {
+          "file": "malabarista-do-sinal/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "malabarista-do-sinal/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "f8f2464cfdc1a051bfdde5570f6d2c121e6bb3280797d5610267e48dcb771012"
+            }
+          ],
+          "sha256": "f8f2464cfdc1a051bfdde5570f6d2c121e6bb3280797d5610267e48dcb771012"
+        },
+        "idle": {
+          "file": "malabarista-do-sinal/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "malabarista-do-sinal/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "565ed96dad3ff2ae0137628e063da2db0f6a01e861bafdf774d429785beed09e"
+            }
+          ],
+          "sha256": "565ed96dad3ff2ae0137628e063da2db0f6a01e861bafdf774d429785beed09e"
+        },
+        "throw": {
+          "file": "malabarista-do-sinal/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "malabarista-do-sinal/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "e1e03627fc295ccf0531f5cd4e3c2370198b99473d5499c7c09d7f14bfe62ae6"
+            }
+          ],
+          "sha256": "e1e03627fc295ccf0531f5cd4e3c2370198b99473d5499c7c09d7f14bfe62ae6"
+        },
+        "walk": {
+          "file": "malabarista-do-sinal/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "malabarista-do-sinal/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "ebac8bd1316f70226f722bb3eeb7b2f64053b27b82091a321d1e411b2c089fde"
+            }
+          ],
+          "sha256": "ebac8bd1316f70226f722bb3eeb7b2f64053b27b82091a321d1e411b2c089fde"
+        }
+      },
+      "sha256": "5efbafd8a83b828eb6e7a14ad290f39581deb544eb7c3c714f5a962803dcb42c",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "marronzinho": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "marronzinho/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "890ef3a88c3f133f183e8c31667698e0e9cd3c4b9a169fde9ce7347c0acb75c1"
+            }
+          ],
+          "sha256": "890ef3a88c3f133f183e8c31667698e0e9cd3c4b9a169fde9ce7347c0acb75c1"
+        },
+        "attack": {
+          "file": "marronzinho/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8b11437dec286687131b6bc6b0ef8a05a7ca8eb3e327061671d0e5b7d58fd7b7"
+            }
+          ],
+          "sha256": "8b11437dec286687131b6bc6b0ef8a05a7ca8eb3e327061671d0e5b7d58fd7b7"
+        },
+        "death": {
+          "file": "marronzinho/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "d6fb9602f9bd1199a039d8d131b4d55c23ccf5a7a77711b0bb670d55e48353ca"
+            }
+          ],
+          "sha256": "d6fb9602f9bd1199a039d8d131b4d55c23ccf5a7a77711b0bb670d55e48353ca"
+        },
+        "hit": {
+          "file": "marronzinho/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "8ac0edb044319c4905a098cbd519c79ba237d1e460709ea1dba94640f745e429"
+            }
+          ],
+          "sha256": "8ac0edb044319c4905a098cbd519c79ba237d1e460709ea1dba94640f745e429"
+        },
+        "idle": {
+          "file": "marronzinho/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5cca8a8de15835101ecf61b706ab38726f1e9748c78a84c1c65cb3e40cd93bbe"
+            }
+          ],
+          "sha256": "5cca8a8de15835101ecf61b706ab38726f1e9748c78a84c1c65cb3e40cd93bbe"
+        },
+        "walk": {
+          "file": "marronzinho/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "marronzinho/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "20fda6575691ccec648e4a57debf3cd5855e82d36eac13146ee1012db6f87733"
+            }
+          ],
+          "sha256": "20fda6575691ccec648e4a57debf3cd5855e82d36eac13146ee1012db6f87733"
+        }
+      },
+      "sha256": "b42c189386c37b0f3c972b7841f71bf18dee9541796a380fb1d5b20c9b3c186a",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "moco-do-gas": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "moco-do-gas/aim.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "moco-do-gas/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "909d3e7bfd2f3f3c52df562b73431522e272c6ac2d709d2ec2081e51f92ef410"
+            }
+          ],
+          "sha256": "909d3e7bfd2f3f3c52df562b73431522e272c6ac2d709d2ec2081e51f92ef410"
+        },
+        "charge": {
+          "file": "moco-do-gas/charge.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "moco-do-gas/charge.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d47ccc0d701fbbd0cd5f903d0c286770b31b5f5baa8a418148504b469a90226f"
+            }
+          ],
+          "sha256": "d47ccc0d701fbbd0cd5f903d0c286770b31b5f5baa8a418148504b469a90226f"
+        },
+        "crash": {
+          "file": "moco-do-gas/crash.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "moco-do-gas/crash.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "f530a3c8b1e8e96dd0ecf0a811ae9cc924f99e92ae36479d101cbd6a0df159bf"
+            }
+          ],
+          "sha256": "f530a3c8b1e8e96dd0ecf0a811ae9cc924f99e92ae36479d101cbd6a0df159bf"
+        },
+        "idle": {
+          "file": "moco-do-gas/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "moco-do-gas/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "e32be1a8151571bd9b91074c4786a91f3fab0f9c3ccf6ec6e9fa11a0ec4b836b"
+            }
+          ],
+          "sha256": "e32be1a8151571bd9b91074c4786a91f3fab0f9c3ccf6ec6e9fa11a0ec4b836b"
+        }
+      },
+      "sha256": "20f2490eefa0bf17f4083e598175bacb550db417c0fe91528033ea46de2c7d6b",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "pamonheiro": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "pamonheiro/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pamonheiro/death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "848ccb725220f8af526266f18e329fce9f9cb317ead53212ef6a852a0c19aec8"
+            }
+          ],
+          "sha256": "848ccb725220f8af526266f18e329fce9f9cb317ead53212ef6a852a0c19aec8"
+        },
+        "hit": {
+          "file": "pamonheiro/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pamonheiro/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "2f52088b0b581f41263bc2ed5b690fe49bbfadfb590d703195e0cc15f701a56e"
+            }
+          ],
+          "sha256": "2f52088b0b581f41263bc2ed5b690fe49bbfadfb590d703195e0cc15f701a56e"
+        },
+        "idle": {
+          "file": "pamonheiro/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pamonheiro/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "68cd8654e7d863ef244129712cb871997b54ee21a737ef3d65bc6dd14b2a0884"
+            }
+          ],
+          "sha256": "68cd8654e7d863ef244129712cb871997b54ee21a737ef3d65bc6dd14b2a0884"
+        },
+        "lecture": {
+          "file": "pamonheiro/lecture.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pamonheiro/lecture.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "25518401975efcdc80ae19dee2bb2e648566867c4a914db096f7d3b3a5aa5d74"
+            }
+          ],
+          "sha256": "25518401975efcdc80ae19dee2bb2e648566867c4a914db096f7d3b3a5aa5d74"
+        },
+        "walk": {
+          "file": "pamonheiro/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pamonheiro/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "53cc8d972992b147c31b6c18c51061f6a9359f8b3011a8ffa82c0d8491aad7ea"
+            }
+          ],
+          "sha256": "53cc8d972992b147c31b6c18c51061f6a9359f8b3011a8ffa82c0d8491aad7ea"
+        }
+      },
+      "sha256": "1e191eebfd8907ef70766818c2480dfda70741da913a92690afbe4d8aa62a2b8",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "paredao-ambulante": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "paredao-ambulante/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "paredao-ambulante/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "f112b7d3ab0314dbf536f9a854d483cc0d5a03beec66b7635e9640f73bef8679"
+            }
+          ],
+          "sha256": "f112b7d3ab0314dbf536f9a854d483cc0d5a03beec66b7635e9640f73bef8679"
+        },
+        "hit": {
+          "file": "paredao-ambulante/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "paredao-ambulante/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "94789aa1ddd4d272e63e186f7f3f105e48d7f7e06b36c55cb2cf2363265602b2"
+            }
+          ],
+          "sha256": "94789aa1ddd4d272e63e186f7f3f105e48d7f7e06b36c55cb2cf2363265602b2"
+        },
+        "idle": {
+          "file": "paredao-ambulante/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "paredao-ambulante/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "b9b75b89950709fa3a89fab04ab0ddef34a00136e41e75502dff972a3357d14c"
+            }
+          ],
+          "sha256": "b9b75b89950709fa3a89fab04ab0ddef34a00136e41e75502dff972a3357d14c"
+        },
+        "summon": {
+          "file": "paredao-ambulante/summon.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "paredao-ambulante/summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "3b6f68d5ab3252ac560b4e852001177b6d2206141fd167753b501526d4ca42d9"
+            }
+          ],
+          "sha256": "3b6f68d5ab3252ac560b4e852001177b6d2206141fd167753b501526d4ca42d9"
+        },
+        "walk": {
+          "file": "paredao-ambulante/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "paredao-ambulante/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "361553e578cd6b0e96ccc121c0a086ae04b97ac7712e35e194638b6395092103"
+            }
+          ],
+          "sha256": "361553e578cd6b0e96ccc121c0a086ae04b97ac7712e35e194638b6395092103"
+        }
+      },
+      "sha256": "54d54aa3cffb1fd52b2759162892b003622594aa510a551bd61ed1b4484d96df",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "rato-de-boteco": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "rato-de-boteco/attack.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "rato-de-boteco/attack.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "5c5577a0b15203237d9d04e8b8a2374405092cd990d86ddae7b60cf1d4edd050"
+            }
+          ],
+          "sha256": "5c5577a0b15203237d9d04e8b8a2374405092cd990d86ddae7b60cf1d4edd050"
+        },
+        "death": {
+          "file": "rato-de-boteco/death.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "rato-de-boteco/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9548617892e964fcca2f2bd3027f0019d139a7a9bf00b968eacaada28b3be477"
+            }
+          ],
+          "sha256": "9548617892e964fcca2f2bd3027f0019d139a7a9bf00b968eacaada28b3be477"
+        },
+        "walk": {
+          "file": "rato-de-boteco/walk.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "rato-de-boteco/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d19a56df9220bad9c4a4d37f5fe31990e0bf88aab554042a32db3ba6a21225d0"
+            }
+          ],
+          "sha256": "d19a56df9220bad9c4a4d37f5fe31990e0bf88aab554042a32db3ba6a21225d0"
+        }
+      },
+      "sha256": "38c27afea673f00c97fbd6c948f852009c13707a796f1fbcdeb2ae0fa23d166c",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "subsindico": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "subsindico/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "subsindico/death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "619f8445dc23df2589aa16667aec65776d6299471edf4e541688e314e53d60b7"
+            }
+          ],
+          "sha256": "619f8445dc23df2589aa16667aec65776d6299471edf4e541688e314e53d60b7"
+        },
+        "hit": {
+          "file": "subsindico/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "subsindico/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "7e35b4c781e208c209d936925fd011ffa1cb828bfaf1d821f7feda31f0ebacd4"
+            }
+          ],
+          "sha256": "7e35b4c781e208c209d936925fd011ffa1cb828bfaf1d821f7feda31f0ebacd4"
+        },
+        "idle": {
+          "file": "subsindico/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "subsindico/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "4949b8f32d1e3391929206d775ff13408aeeca9aca60c3ca465a829337c49c77"
+            }
+          ],
+          "sha256": "4949b8f32d1e3391929206d775ff13408aeeca9aca60c3ca465a829337c49c77"
+        },
+        "lecture": {
+          "file": "subsindico/lecture.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "subsindico/lecture.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "158bf411f3663e205e3e2a78ecf2a4d81fb0c7f46a8a3c8a18c2b8417de87452"
+            }
+          ],
+          "sha256": "158bf411f3663e205e3e2a78ecf2a4d81fb0c7f46a8a3c8a18c2b8417de87452"
+        },
+        "walk": {
+          "file": "subsindico/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "subsindico/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f41ef2f0467d71e52955fc9a8455298e0293a7791e2fd932f580159806a14a1d"
+            }
+          ],
+          "sha256": "f41ef2f0467d71e52955fc9a8455298e0293a7791e2fd932f580159806a14a1d"
+        }
+      },
+      "sha256": "8aff89573285bfb09f0afce2f9bb047cfaf0dee18d8c944224298eb025cdf499",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "tio-do-isopor": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "tio-do-isopor/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-do-isopor/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "5f0ae4beb56b83cc1106e90c113a9a1c2075e706cee2658d4ff1b7254a75ff8f"
+            }
+          ],
+          "sha256": "5f0ae4beb56b83cc1106e90c113a9a1c2075e706cee2658d4ff1b7254a75ff8f"
+        },
+        "hit": {
+          "file": "tio-do-isopor/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-do-isopor/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "b383ce90ca63616b3e2f83ff3c32f4402e705c3a7b6daa344fdcec35a1bdffa3"
+            }
+          ],
+          "sha256": "b383ce90ca63616b3e2f83ff3c32f4402e705c3a7b6daa344fdcec35a1bdffa3"
+        },
+        "idle": {
+          "file": "tio-do-isopor/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-do-isopor/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "13743aa29ea8dddfb7b4c153ca989ec692e79b6ff39b390b699ff2ff437bc0d9"
+            }
+          ],
+          "sha256": "13743aa29ea8dddfb7b4c153ca989ec692e79b6ff39b390b699ff2ff437bc0d9"
+        },
+        "shove": {
+          "file": "tio-do-isopor/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-do-isopor/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "f4424ebc7b8ea062775bee2cd10da8fd8a08a9f74e9d34783c3f88a86de6312b"
+            }
+          ],
+          "sha256": "f4424ebc7b8ea062775bee2cd10da8fd8a08a9f74e9d34783c3f88a86de6312b"
+        },
+        "walk": {
+          "file": "tio-do-isopor/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-do-isopor/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "87bbd6bd411198d7454562ba756e07c991e06edf1e03f8aba76f5d421bf0c748"
+            }
+          ],
+          "sha256": "87bbd6bd411198d7454562ba756e07c991e06edf1e03f8aba76f5d421bf0c748"
+        }
+      },
+      "sha256": "71ec5dc3dfc22124b06aedf1b04570088fce9862b6a4f1701ac1fa28dea9a896",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "tiozinho-da-sinuca": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "tiozinho-da-sinuca/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "4b66b1eeec509b191e7cf97c3a1e3b8272dfc425cc4a6983fac286c6df49127f"
+            }
+          ],
+          "sha256": "4b66b1eeec509b191e7cf97c3a1e3b8272dfc425cc4a6983fac286c6df49127f"
+        },
+        "attack": {
+          "file": "tiozinho-da-sinuca/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "e9dd87db26579d33a9f8d2b5463dc25794f2338b08c86640aabee1f5410bde5f"
+            }
+          ],
+          "sha256": "e9dd87db26579d33a9f8d2b5463dc25794f2338b08c86640aabee1f5410bde5f"
+        },
+        "death": {
+          "file": "tiozinho-da-sinuca/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "3956abc86365590f755fbbf7c946051d3cbca6776008331cfe1528e35684d404"
+            }
+          ],
+          "sha256": "3956abc86365590f755fbbf7c946051d3cbca6776008331cfe1528e35684d404"
+        },
+        "hit": {
+          "file": "tiozinho-da-sinuca/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "7da41c41c3b3136773242fc2fc91d0666ff24d69a1859fdb0117011d83e6935f"
+            }
+          ],
+          "sha256": "7da41c41c3b3136773242fc2fc91d0666ff24d69a1859fdb0117011d83e6935f"
+        },
+        "idle": {
+          "file": "tiozinho-da-sinuca/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "48a88e0d6f8f79103d9ad9e4f311487fa41d6d9be1f679a957249460cc225391"
+            }
+          ],
+          "sha256": "48a88e0d6f8f79103d9ad9e4f311487fa41d6d9be1f679a957249460cc225391"
+        },
+        "walk": {
+          "file": "tiozinho-da-sinuca/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tiozinho-da-sinuca/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "d29fb4835268814b0db643eb140b265b7aa37c68c66c9853a1d1fd13a197203a"
+            }
+          ],
+          "sha256": "d29fb4835268814b0db643eb140b265b7aa37c68c66c9853a1d1fd13a197203a"
+        }
+      },
+      "sha256": "d21fa53b658e4a0864e4b2f373d72770c25ee408beb42be050b1c63fabb1de4f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    }
+  }
+}

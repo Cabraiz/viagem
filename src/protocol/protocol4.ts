@@ -48,9 +48,11 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * the structure field mask. 12 since the roster of D-040
  * (NEW-20261013-ORQ-papeis-de-inimigo): the atiradores' generic shot 'tiro' and the 64 P0 pack enemies in the DICT
  * (the P1/P2 ids stay inline: 0xFF + length + UTF-8); an 11 decoder would read their indexes as unknown strings.
+ * 13 since torre-contador-de-tiros: a defense's volley counter (`shots`, one byte mod 256) in the structures; a 12
+ * decoder would refuse the structure field mask.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=12;
+export const PROTOCOL_VERSION=13;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -235,6 +237,9 @@ const tickRel:Codec<number>={write:(w,v,f)=>w.svar(v-f.tick),read:(r,f)=>f.tick+
 /** 0..1 as a byte. */
 const unitByte=(v:number)=>Math.round(Math.max(0,Math.min(1,finite(v)))*255);
 const unit:Codec<number>={write:(w,v)=>w.u8(unitByte(v)),read:r=>r.u8()/255,norm:v=>unitByte(v)/255,eq:same};
+/** A counter mod 256 in one byte (a defense's volleys, torre-contador-de-tiros). */
+const byteCount=(v:number)=>((Math.round(finite(v))%256)+256)%256;
+const u8:Codec<number>={write:(w,v)=>w.u8(byteCount(v)),read:r=>r.u8(),norm:byteCount,eq:same};
 const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),eq:same};
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
@@ -325,7 +330,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
   }},
   // Protocol 11 (torres-fio): a defense's tier, branch, building phase and aim (turns of a circle, 1 byte); each only when it changes.
   structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel)),
-    tier:c(optional(count)),branch:c(optional(str)),phase:c(optional(str)),aim:c(optional(unit))}},
+    tier:c(optional(count)),branch:c(optional(str)),phase:c(optional(str)),aim:c(optional(unit)),
+    // torre-contador-de-tiros: the volleys mod 256, so a turret firing at a target that does not move shows every shot.
+    shots:c(optional(u8))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };

@@ -113,7 +113,8 @@ test('review: no "pronto" while the room\'s map downloads here or did not arrive
   assert.equal(readyBlock({progress:0,failed:CITY_FAILED}),READY_BLOCKED.failed);
   // The lobby wires it: blocked (not ready yet) disables the button and puts the reason on it; backing out stays free.
   const source=readFileSync(new URL('../../src/client/lobby.ts',import.meta.url),'utf8');
-  assert.match(source,/const blocked=view\.selfReady\?undefined:readyBlock\(load\);\s*readyButton\.disabled=!client\.connected\|\|!!blocked;/);
+  // The map download blocks first; the match preload (3g-precarga) can only add its own block after it.
+  assert.match(source,/const blocked=view\.selfReady\?undefined:readyBlock\(load\)(?:\?\?\(preloader\?preloadBlock\([^;]*\):undefined\))?;[\s\S]{0,400}?readyButton\.disabled=!client\.connected\|\|!!blocked;/);
   assert.match(source,/setText\(readyButton,blocked\?\?/);
 });
 

@@ -175,8 +175,8 @@ function load(next:HudScenario){
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
 }
 load(scenario);
-// The art index may land after the first draw: draw the critter's scene again once it is in.
-if(bicho)void artReady().then(ok=>{if(ok)load(scenario);});
+// The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
+void artReady().then(ok=>{if(ok)load(scenario);});
 /**
  * Zueira events (VGM-053B): `&zueira=boletos|promo|apagao` shows that event's banner, `&zueira=killcam` the kill-cam
  * window (as after a round's last kill). Re-sent every 1.5 s so a frozen page keeps it on screen for the audit.

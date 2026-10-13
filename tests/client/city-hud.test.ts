@@ -10,6 +10,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as city from '../../src/client/hud/city/index.ts';
 import * as deps from '../../src/client/hud/city/deps.ts';
+import {edgeTag} from '../../src/client/hud/edges.ts';
+import * as edgesMod from '../../src/client/hud/edges.ts';
+import {ICON_NAMES} from '../../src/client/ui/icon.ts';
+import {cityTerrainFrom} from '../../src/maps/index.ts';
+import {readFileSync} from 'node:fs';
+import * as nodeModule from 'node:module';
+import {cityPlanner} from '../../src/sim/city/grid.ts';
+import {Rng} from '../../src/contract/rng.ts';
 import type {Rect,ScreenZones,AuditBox,EdgeTarget,EdgeArrow} from '../../src/client/hud/city/deps.ts';
 import type {CityLayout,CityLayoutInput,EnemyPoint,EnemyGroup,MapId,SelectorState,SelectorEvent,CityView,CityMark} from '../../src/client/hud/city/index.ts';
 
@@ -118,15 +126,19 @@ const target=(key:string,kind:EdgeTarget['kind'],x:number,y:number,distance:numb
 function cityTargets(hero:Rect,behind:Rect):EdgeTarget[]{
   const hx=hero.x+hero.width/2,hy=hero.y+hero.height/2,at=(deg:number,dist:number)=>({x:hx+Math.cos(deg*Math.PI/180)*dist,y:hy+Math.sin(deg*Math.PI/180)*dist});
   const list=[target('b','caido',behind.x+behind.width/2,behind.y+behind.height/2,18,{seconds:12,label:'Zé',name:'Zé'}),target('boss','chefe',hx-900,hy,40)];
-  [[30,20,'12'],[100,25,'6'],[200,30,'7'],[300,35,'9']].forEach(([deg,d,n],i)=>{const p=at(deg as number,800);list.push(target(`grupo:g${i}`,'spawn',p.x,p.y,d as number,{label:n as string}));});
+  [[30,20,'12'],[100,25,'6'],[200,30,'7'],[300,35,'9']].forEach(([deg,d,n],i)=>{const p=at(deg as number,800);list.push(target(`grupo:g${i}`,'grupo',p.x,p.y,d as number,{label:n as string}));});
   (['N','S','L','O'] as const).forEach((id,i)=>{const p=at(60+90*i,900);list.push(target(`boca:${id}`,'spawn',p.x,p.y,40+5*i));});
   const up=at(270,900);list.push(target('base','base',up.x,up.y,60));
   return list;
 }
-/** The boxes an arrow takes: the ficha, and for a caído its tag row above and its name row below (subsets of what layoutEdges reserves). */
+/**
+ * The boxes an arrow takes: the ficha, its tag row above (a caído's clock, a group's distance, the base's horn seconds)
+ * and a caído's name row below (subsets of what layoutEdges reserves).
+ */
 function arrowBoxes(a:EdgeArrow,scale=1):{name:string;rect:Rect}[]{
   const hw=halfW(scale),out=[{name:`seta-${a.key}`,rect:r(a.x-hw,a.y-HALF_H,2*hw,2*HALF_H)}];
-  if(a.kind==='caido'){out.push({name:`seta-${a.key}-etiqueta`,rect:r(a.x-hw+4,a.y-HALF_H-TAG_ROOM,2*hw-8,TAG_ROOM)});
+  if(edgeTag(a))out.push({name:`seta-${a.key}-etiqueta`,rect:r(a.x-hw+4,a.y-HALF_H-TAG_ROOM,2*hw-8,TAG_ROOM)});
+  if(a.kind==='caido'){
     if(a.label)out.push({name:`seta-${a.key}-nome`,rect:r(a.x-hw+4,a.y+HALF_H,2*hw-8,NAME_ROOM)});}
   return out;
 }
@@ -451,7 +463,7 @@ test('7. arrows in play (big closed), 100% and 125%: inside the useful area and 
 
 test('7. layoutCityEdges caps grupo and boca at 2 each (the nearest), 6 in all, even in a roomy field',()=>{
   const area=r(0,0,2000,2000),hero=r(972,972,56,56),out:EdgeTarget[]=[];
-  for(let i=0;i<6;i++){const a=i/6*Math.PI*2;out.push(target(`grupo:k${i}`,'spawn',1000+Math.cos(a)*3000,1000+Math.sin(a)*3000,10+i*5,{label:String(5+i)}));}
+  for(let i=0;i<6;i++){const a=i/6*Math.PI*2;out.push(target(`grupo:k${i}`,'grupo',1000+Math.cos(a)*3000,1000+Math.sin(a)*3000,10+i*5,{label:String(5+i)}));}
   const groups=city.layoutCityEdges(out,area,hero);
   assert.ok(groups.length<=2,`groups: ${groups.map(a=>a.key)}`);
   assert.deepEqual(groups.map(a=>a.key).sort(),['grupo:k0','grupo:k1'],'the two nearest groups');
@@ -467,7 +479,7 @@ test('7. layoutCityEdges caps grupo and boca at 2 each (the nearest), 6 in all, 
 test('§3 crowded groups: two groups and a mouth side by side → one group arrow with the critters summed (count 1, never "+1"), the mouth keeps its own arrow',()=>{
   const area=USEFUL.portrait.n100,hero=heroAt(area,0,0);
   for(const scale of [1,1.25]){
-    const targets=[target('grupo:a','spawn',900,450,20,{groupCount:7,label:'7'} as any),target('grupo:b','spawn',905,470,25,{groupCount:6,label:'6',danger:true} as any),
+    const targets=[target('grupo:a','grupo',900,450,20,{groupCount:7,label:'7'} as any),target('grupo:b','grupo',905,470,25,{groupCount:6,label:'6',danger:true} as any),
       target('boca:N','spawn',910,460,30)];
     for(const order of [targets,[...targets].reverse()]){
       const arrows=city.layoutCityEdges(order,area,hero,{textScale:scale}) as (EdgeArrow&{groupCount?:number})[];
@@ -477,11 +489,11 @@ test('§3 crowded groups: two groups and a mouth side by side → one group arro
       assert.equal(groups[0].key,'grupo:a','keyed as the nearest group');assert.equal(groups[0].danger,true,'danger survives the merge');
       assert.equal(city.groupCountText(groups[0].groupCount!),'13');
       assert.equal(mouths.length,1,'the mouth keeps its arrow');assert.equal(mouths[0].count,1,'nothing folded into the mouth');
-      assert.ok(arrows.every(a=>a.kind==='spawn'),'both ride the spawn kind for the DOM');
+      assert.equal(groups[0].kind,'grupo','the group rides its own kind (edges.ts, doc §7)');assert.equal(mouths[0].kind,'spawn','the mouth is a spawn');
     }
   }
   // Counts past 99 read "99+".
-  const big=city.layoutCityEdges([target('grupo:x','spawn',900,450,20,{groupCount:80} as any),target('grupo:y','spawn',902,452,21,{groupCount:40} as any)],area,hero) as (EdgeArrow&{groupCount?:number})[];
+  const big=city.layoutCityEdges([target('grupo:x','grupo',900,450,20,{groupCount:80} as any),target('grupo:y','spawn',902,452,21,{groupCount:40} as any)],area,hero) as (EdgeArrow&{groupCount?:number})[];
   assert.equal(big.length,1);assert.equal(big[0].groupCount,120);assert.equal(city.groupCountText(big[0].groupCount!),'99+');
   // mergeGroupTargets is order-independent and leaves other targets alone.
   const t=[target('grupo:a','spawn',100,100,20,{groupCount:5} as any),target('boca:S','spawn',101,101,9),target('grupo:b','spawn',110,100,30,{groupCount:8} as any)];
@@ -650,7 +662,7 @@ test('9. cityMinimapMarks: draw order bottom → top, você on top, doc minimum 
   assert.equal(new Set(marks.map(m=>m.key)).size,marks.length,'keys are unique');
 });
 
-test('9. cityEdgeTargets: caído always, groups ≥ 5 off screen as "grupo:" spawns with groupCount, ≤ 2 active mouths, base only in prepare or after a wall hit',()=>{
+test('9. cityEdgeTargets: caído always, groups ≥ 5 off screen as kind grupo with groupCount, ≤ 2 active mouths, base only in prepare or after a wall hit',()=>{
   const hero={x:84.5,y:150},rnd=lcg(5);
   const locate=(p:{x:number;y:number})=>({x:195+(p.x-hero.x)*41,y:422+(p.y-hero.y)*41});
   const isOnScreen=(p:{x:number;y:number})=>{const s=locate(p);return s.x>=0&&s.x<=390&&s.y>=0&&s.y<=844;};
@@ -663,7 +675,7 @@ test('9. cityEdgeTargets: caído always, groups ≥ 5 off screen as "grupo:" spa
   assert.ok(!targets.some(t=>t.kind==='aliado'),'a standing ally never gets an arrow in the city');
   assert.ok(!targets.some(t=>t.kind==='base'),'no base in a wave without a wall hit');
   const grupos=targets.filter(t=>t.key.startsWith('grupo:'));
-  assert.equal(grupos.length,1,`grupos: ${grupos.map(t=>t.key)}`);assert.equal(grupos[0].kind,'spawn');assert.equal((grupos[0] as any).groupCount,12,'the group carries its critters');
+  assert.equal(grupos.length,1,`grupos: ${grupos.map(t=>t.key)}`);assert.equal(grupos[0].kind,'grupo');assert.equal((grupos[0] as any).groupCount,12,'the group carries its critters');
   assert.deepEqual([...groupKeys].map(k=>`grupo:${k}`),grupos.map(t=>t.key));
   const bocas=targets.filter(t=>t.key.startsWith('boca:'));
   assert.ok(bocas.length<=2&&bocas.length>=1,`bocas: ${bocas.map(t=>t.key)}`);
@@ -893,4 +905,436 @@ test('9. selectorView: one selected, pending marked, guests read-only with the o
     for(const view of [v,pending,locked,guest])if(view.hint)assert.doesNotMatch(view.hint,/chefe/i,'"dono", never "chefe"');
   }
   assert.equal(city.selectorView(city.initialSelector(false,'cidade-nevada'),'portrait').hint,'Quem escolhe o mapa é o dono da sala.');
+});
+
+// =====================================================================================================================
+// Linking card cidade-04 (doc §7): the city HUD wired into the run HUD
+// =====================================================================================================================
+const realCity=async()=>{
+  const text=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
+  const {hash}=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8')) as {hash:string};
+  const decoded=await cityTerrainFrom(text,hash);
+  assert.ok(decoded.ok,'the shipped city decodes against its manifest hash');
+  return decoded.terrain;
+};
+
+test('§7 CityMapInfo from the real asset: plaza at praca with its farthest entrance as radius, the 4 avenue ends as mouths, the start',async()=>{
+  const terrain=await realCity(),asset=city.cityAssetOf(terrain);
+  assert.ok(asset,'the city terrain carries its asset');
+  const map=city.cityMapInfo(asset!),p=terrain.asset.points;
+  assert.equal(map.size,terrain.asset.size.w);assert.ok(Math.abs(map.size-city.CITY_SIZE)<.1,'the minimap scale (CITY_SIZE) fits the asset');
+  assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:p.praca.x,y:p.praca.y});
+  const radius=Math.max(...(['N','S','L','O'] as const).map(id=>Math.hypot(p.bocas[id].x-p.praca.x,p.bocas[id].y-p.praca.y)));
+  assert.ok(near(map.plaza.radius,radius),`radius ${map.plaza.radius}`);assert.ok(map.plaza.radius>8&&map.plaza.radius<20,'a plaza, not the city');
+  assert.deepEqual(map.mouths,(['N','S','L','O'] as const).map(id=>({id,...p[`spawn${id}`],gate:{...p.bocas[id]}})),'each avenue end with its entrance on the plaza wall as its gate');
+  assert.deepEqual(map.start,{x:p.inicio.x,y:p.inicio.y});
+  // On the minimap (view 0) the mouths keep their compass: N up, S down, L right, O left, each on its side of the plaza.
+  const c=city.cityMinimapPoint(map.plaza,0),at=(id:'N'|'S'|'L'|'O')=>city.cityMinimapPoint(map.mouths.find(m=>m.id===id)!,0);
+  assert.ok(at('N').y<c.y&&at('S').y>c.y&&at('L').x>c.x&&at('O').x<c.x,JSON.stringify({c,N:at('N'),S:at('S'),L:at('L'),O:at('O')}));
+  // Every mark of a frame on the real map stays inside the collapsed drawing.
+  const marks=city.cityMinimapMarks({map,view:0,selfId:'me',players:[{id:'me',x:p.inicio.x,y:p.inicio.y}],enemies:[],activeMouths:['N','L']});
+  for(const m of marks)assert.ok(Math.abs(m.x)<=city.innerRadius()&&Math.abs(m.y)<=city.innerRadius(),`${m.key} at ${m.x},${m.y}`);
+  assert.equal(city.cityAssetOf({world:'ilha'}),undefined);assert.equal(city.cityAssetOf({world:'infinito'}),undefined);
+  assert.equal(city.cityAssetOf({world:'cidade'}),undefined,'a city without its asset is not guessed');
+});
+
+// The run HUD and its driver import CSS (Vite): node loads them with the CSS stubbed, so their real methods run here
+// against small fakes (no DOM).
+const registerHooks=(nodeModule as {registerHooks?:(hooks:object)=>unknown}).registerHooks;
+const noCss=registerHooks?(registerHooks({load(url:string,context:unknown,next:(url:string,context:unknown)=>unknown){
+  return url.endsWith('.css')?{format:'module',source:'',shortCircuit:true}:next(url,context);}}),undefined):'needs node:module registerHooks (node ≥ 22.15)';
+
+test('§7 world swap: the city gets the city minimap, the endless map and the island their own',()=>{
+  assert.equal(city.minimapMode({world:'cidade'}),'cidade');
+  assert.equal(city.minimapMode({world:'cidade',chunks:undefined}),'cidade');
+  assert.equal(city.minimapMode({world:'infinito',chunks:{}}),'infinito');
+  assert.equal(city.minimapMode({world:'ilha'}),'ilha');assert.equal(city.minimapMode({}),'ilha');
+});
+
+test('§7 world swap: RunHud.useCityMinimap puts one minimap in the slot, moves the layout\'s watch to it and undoes it',{skip:noCss},async()=>{
+  const {RunHud}=await import('../../src/client/hud/hud.ts');
+  const log:string[]=[];
+  const node=(name:string)=>({name,replaceWith(to:{name:string}){log.push(`${name}→${to.name}`);},remove(){log.push(`remove ${name}`);}});
+  const island=node('ilha'),cityEl=node('cidade'),big=node('grande');
+  const cityMini={element:cityEl,big,collapse(){log.push('collapse');}};
+  const hud=Object.create(RunHud.prototype) as InstanceType<typeof RunHud>;
+  Object.assign(hud,{minimap:{el:island},cityOn:false,cityMap:new city.BigMapState(),relayout:()=>log.push('relayout'),
+    observer:{observe:(e:{name:string})=>log.push(`observe ${e.name}`),unobserve:(e:{name:string})=>log.push(`unobserve ${e.name}`)},
+    createCityMinimap:()=>{log.push('create');return cityMini;}});
+  hud.useCityMinimap(true);
+  assert.deepEqual(log,['create','ilha→cidade','unobserve ilha','observe cidade','relayout'],'the city minimap takes the slot and the layout watches it');
+  assert.equal(hud.cityMinimap,cityMini);
+  log.length=0;hud.useCityMinimap(true);assert.deepEqual(log,[],'every frame calls it: a no-op when nothing changes');
+  hud.cityMap.tap(0,400);assert.equal(hud.cityMap.open,true);
+  hud.useCityMinimap(false);
+  assert.deepEqual(log,['collapse','remove grande','cidade→ilha','unobserve cidade','observe ilha','relayout'],'back to the island: the big one closes and goes, the island minimap returns');
+  assert.equal(hud.cityMap.open,false);assert.equal(hud.cityMinimap,undefined);
+  log.length=0;hud.useCityMinimap(true);
+  assert.deepEqual(log,['ilha→cidade','unobserve ilha','observe cidade','relayout'],'built once, reused');
+});
+
+/** A RescueBoard with only what its frames read, faked (no DOM, no socket); `calls` records what it drove. */
+async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
+  const {RescueBoard}=await import('../../src/client/hud/rescue.ts');
+  const calls:string[]=[],area=USEFUL.portrait.n100,hero={x:84.5,y:150};
+  const board=Object.create(RescueBoard.prototype) as Record<string,unknown>;
+  const hud={el:{hidden:false,classList:{contains:()=>false}},cityMap:new city.BigMapState(),
+    useCityMinimap:(on:boolean)=>calls.push(`useCityMinimap ${on}`),closeCityMap:()=>calls.push('closeCityMap'),zones:()=>({useful:area}),
+    edges:{clear:()=>calls.push('edges.clear'),render:(a:readonly EdgeArrow[])=>calls.push(`edges.render ${a.length}`),need:()=>calls.push('edges.need'),scale:()=>1}};
+  const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,
+    locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-hero.x)*60,y:area.y+area.height/2+(p.y-hero.y)*60}})};
+  const net={id:'me',terrain,run:{phase},feed:{players:new Map(),enemies:new Map()},view:()=>({players:[]})};
+  Object.assign(board,{net,hud,scene:()=>scene,gate:{remaining:()=>0},button:{hidden:true,setAttribute(){},style:{setProperty(){}}},
+    states:new Map(),warnings:[],pings:{get:()=>undefined,clear(){}},said:new Set(),mouths:new Map(),groupKeys:new Set(),windows:[],
+    last:{tick:1000,players:[],telegraphs:[],pickups:[],nodes:[],structures:[],round:{phase:'wave'}},
+    seen:()=>({viewport:{x:0,y:0,width:390,height:844},covered:[]}),cityFrame:()=>calls.push('cityFrame'),minimapAt:0});
+  return {board:board as unknown as {tick():void},calls};
+}
+
+test('§7 world swap: the driver swaps the minimap every frame, before the out-of-combat return; the city frame replaces the island radar',{skip:noCss},async()=>{
+  const cityTerrain=await realCity();
+  // In the lobby (a map switched there): the slot follows the world, nothing is drawn.
+  for(const [terrain,on] of [[cityTerrain,true],[{world:'ilha'},false]] as const){
+    const {board,calls}=await fakeBoard(terrain,'lobby');board.tick();
+    assert.deepEqual(calls,[`useCityMinimap ${on}`,'edges.clear'],`lobby on ${on?'the city':'the island'}`);
+  }
+  // In a wave in the city: the city frame draws, never the island's radar and arrows.
+  const inCity=await fakeBoard(cityTerrain,'combat');inCity.board.tick();
+  assert.deepEqual(inCity.calls,['useCityMinimap true','cityFrame']);
+  // On the island: the radar's arrows, never the city frame.
+  const onIsland=await fakeBoard({world:'ilha'},'combat');onIsland.board.tick();
+  assert.deepEqual(onIsland.calls,['useCityMinimap false','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
+});
+
+test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and only re-located in between; the horn base is audited',{skip:noCss},async()=>{
+  const {RescueBoard,CITY_TARGETS_MS}=await import('../../src/client/hud/rescue.ts');
+  assert.ok(CITY_TARGETS_MS>=100,'≤ 10 Hz');
+  const terrain=await realCity(),asset=city.cityAssetOf(terrain)!,area=USEFUL.portrait.n100,me={x:84.5,y:150};
+  let cam={...me},sweeps=0;const rendered:EdgeArrow[][]=[],needs:string[][]=[];
+  const enemies=new Map(blob('g',41.75,145.75,13,lcg(3)).map(e=>[e.id,{...e,hp:10}]));
+  const feed={players:new Map(),enemies:{values:()=>{sweeps++;return enemies.values();}}};
+  const scene={usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),cameraView:0,
+    locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-cam.x)*60,y:area.y+area.height/2+(p.y-cam.y)*60}})};
+  const hud={cityMap:new city.BigMapState(),cityBig:()=>({side:300,coversAnnounce:false}),cityNotice:()=>undefined,blockCityMap(){},cityMinimap:undefined,offline:false,
+    edges:{render:(a:EdgeArrow[])=>rendered.push(a),need:(t:EdgeTarget[],must?:(t:EdgeTarget)=>boolean)=>needs.push(edgesMod.needKinds(t,must)),scale:()=>1}};
+  const board=Object.create(RescueBoard.prototype) as Record<string,unknown>&{cityFrame(...a:unknown[]):void;cityEnemies:object[];cityPeople:object[]};
+  Object.assign(board,{net:{id:'me',feed},hud,states:new Map([['p3',{id:'p3',downed:{progress:0,bleedOutTick:1280}}]]),pings:{get:()=>undefined},
+    mouths:new Map(),groupKeys:new Set(),windows:[],wallHitAt:-Infinity,hurtAt:-Infinity,minimapAt:0,cityAt:-Infinity,
+    cityPeople:[],cityEnemies:[],cityTargets:[],cityNearest:Infinity,cityPhase:'wave',cityMouths:[],
+    last:{tick:1000,round:{phase:'prepare'},camp:{hornEndsTick:1100},telegraphs:[],structures:[],pickups:[]},
+    seen:()=>({viewport:{x:0,y:0,width:390,height:844},covered:[]})});
+  const players=[{id:'me',name:'Você',classId:'mestre-de-obras',x:me.x,y:me.y,online:true},{id:'p3',name:'Zé do Pix',classId:'mestre-de-obras',x:118,y:142,online:true}];
+  const frame=(now:number)=>board.cityFrame(asset,scene,players,cam,{useful:area},now);
+  frame(1000);
+  assert.equal(sweeps,1,'the first frame builds the targets');
+  const enemy0=board.cityEnemies[0],person0=board.cityPeople[0];
+  const first=rendered.at(-1)!,group0=first.find(a=>a.kind==='grupo')!;
+  assert.ok(group0&&first.some(a=>a.kind==='base')&&first.some(a=>a.key==='p3'),first.map(a=>a.key).join());
+  // 5 more frames inside the window, the camera walking east: no sweep of the critters, the arrows follow the camera.
+  for(let k=1;k<=5;k++){cam={x:me.x+k*.1,y:me.y};frame(1000+k*16);}
+  assert.equal(sweeps,1,'no rebuild between two refreshes');
+  const moved=rendered.at(-1)!.find(a=>a.key===group0.key)!;
+  assert.ok(moved.distance>group0.distance,'re-located: the hero walked away from the group');
+  frame(1000+CITY_TARGETS_MS);
+  assert.equal(sweeps,2,'rebuilt at the next refresh');
+  assert.equal(board.cityEnemies[0],enemy0,'the critter buffer is reused');assert.equal(board.cityPeople[0],person0,'the people buffer too');
+  // The horn is running (5 s): the base is a must-point arrow, so the audit's data-need lists it.
+  assert.deepEqual(needs.at(-1),['caido','base']);
+});
+
+test('§7 grupo edge kind: priority 2 (after chefe, before spawn and base), an existing sticker, its tag room kept in the area',()=>{
+  const {EDGE_PRIORITY:P,EDGE_ICON,layoutEdges,TAG_ROOM:ROOM}=edgesMod;
+  assert.ok(P.caido<P.chefe&&P.chefe<P.grupo&&P.grupo<P.spawn&&P.spawn<P.base&&P.base<P.aliado&&P.aliado<P.bau);
+  assert.ok((ICON_NAMES as readonly string[]).includes(EDGE_ICON.grupo!),'reuses a sticker of the sprite (the bichos art is for E8)');
+  const area=r(70,240,320,402),hero=heroAt(area,0,0);
+  for(const [x,y] of [[230,-400],[230,1400],[-400,440],[900,440]] as const){
+    const [a]=layoutEdges([target('grupo:1','grupo',x,y,34,{label:'12'})],area,hero);
+    assert.ok(a&&a.kind==='grupo');
+    const box=r(a.x-halfW(1),a.y-HALF_H-ROOM,2*halfW(1),2*HALF_H+ROOM);
+    assert.ok(within(box,area,1),`tag room of ${x},${y}: ${fmt(box)} in ${fmt(area)}`);
+  }
+  // Two groups side by side fold into one arrow of their kind, never into a mouth's (layoutCityEdges sums the critters).
+  const both=layoutEdges([target('grupo:1','grupo',900,440,30),target('grupo:2','grupo',900,442,31),target('boca:L','spawn',900,446,32)],area,hero,{merge:200});
+  assert.equal(both.filter(a=>a.kind==='grupo').reduce((n,a)=>n+a.count,0),2,'both groups counted in group arrows');
+  assert.ok(both.filter(a=>a.kind==='spawn').every(a=>a.count===1),'nothing folded into the mouth');
+});
+
+test('§7 tags: the base shows the horn seconds, a group its count in the body and its distance on the tag; the island kinds are unchanged',()=>{
+  assert.equal(edgeTag({kind:'base',distance:40,seconds:5}),'5 s');assert.equal(edgeTag({kind:'base',distance:40}),'','no horn, no tag');
+  assert.equal(edgeTag({kind:'grupo',distance:33.6}),'34 m');assert.equal(edgeTag({kind:'grupo',distance:4000}),'999 m');
+  assert.equal(edgeTag({kind:'caido',distance:9,seconds:12,ping:true}),edgesMod.caidoTag({seconds:12,ping:true}));
+  for(const kind of ['chefe','spawn','aliado','bau'] as const)assert.equal(edgeTag({kind,distance:20,seconds:3}),'',kind);
+  assert.equal(city.hornSeconds({hornEndsTick:1100},1000,'prepare'),5);assert.equal(city.hornSeconds({hornEndsTick:1001},1000,'prepare'),1);
+  assert.equal(city.hornSeconds({hornEndsTick:900},1000,'prepare'),0);assert.equal(city.hornSeconds({hornEndsTick:1100},1000,'wave'),undefined);
+  assert.equal(city.hornSeconds({},1000,'prepare'),undefined);assert.equal(city.hornSeconds(undefined,1000,'prepare'),undefined);
+  // The city's base arrow carries the seconds into the layout, which keeps its tag's room; a group arrow carries its count.
+  const hero={x:84.5,y:150},{locate}=edgeWorld(hero,false);
+  const {targets}=city.cityEdgeTargets({hero,selfId:'me',players:[{id:'me',...hero}],enemies:blob('g',41.75,145.75,13,lcg(3)),map:city.DEFAULT_CITY,phase:'prepare',
+    hornSeconds:5,locate,isOnScreen:()=>false});
+  const arrows=city.layoutCityEdges(targets,USEFUL.portrait.n100,heroAt(USEFUL.portrait.n100,0,0));
+  const baseArrow=arrows.find(a=>a.kind==='base')!,group=arrows.find(a=>a.kind==='grupo')!;
+  assert.equal(edgeTag(baseArrow),'5 s');assert.equal(baseArrow.danger,true);
+  assert.equal(group.label,'13');assert.equal(group.groupCount,13);assert.equal(edgeTag(group),edgesMod.distanceText(group.distance));
+  for(const a of arrows)assert.ok(a.y-HALF_H-TAG_ROOM>=USEFUL.portrait.n100.y-1,`${a.key}: tag out of the area`);
+});
+
+test('§7 COVERING and WINDOWS: the open big minimap hides the map and is a window (targets behind it get an arrow at its edge)',()=>{
+  const big='.rh-minimap-grande:not([hidden])';
+  assert.ok(edgesMod.COVERING.split(',').includes(big));assert.ok(edgesMod.WINDOWS.split(',').includes(big));
+  for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap'])assert.ok(edgesMod.COVERING.split(',').includes(sel),sel);
+  // The big minimap's class is not `.rh-minimap`: the zones still read the collapsed slot only.
+  assert.ok(!edgesMod.WINDOWS.split(',').includes('.rh-minimap'));
+});
+
+test('§7 active mouths: a spawn warning lights the mouth of its avenue (real map) until 3 s after its critters come out',async()=>{
+  const map=city.cityMapInfo(city.cityAssetOf(await realCity())!),plaza=map.plaza;
+  assert.equal(city.MOUTH_TAIL_TICKS,3*deps.SIM_HZ);
+  // Points along each avenue (from its end to the plaza's rim, a few u off its axis) belong to that mouth.
+  for(const m of map.mouths)for(const t of [.05,.3,.6,.85])for(const off of [-4,0,4]){
+    const x=m.x+(plaza.x-m.x)*t,y=m.y+(plaza.y-m.y)*t,len=Math.hypot(plaza.x-m.x,plaza.y-m.y),nx=-(plaza.y-m.y)/len,ny=(plaza.x-m.x)/len;
+    const p={x:x+nx*off,y:y+ny*off};
+    if(Math.hypot(p.x-plaza.x,p.y-plaza.y)<=plaza.radius)continue;
+    assert.equal(city.mouthOfWarning(p,map),m.id,`${m.id} at t=${t} off=${off}: ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  }
+  assert.equal(city.mouthOfWarning(plaza,map),undefined,'the boss lands in the plaza: no mouth');
+  for(const corner of [{x:20,y:20},{x:150,y:20},{x:150,y:150},{x:20,y:150}])assert.equal(city.mouthOfWarning(corner,map),undefined,'a block between avenues');
+  assert.equal(city.mouthOfWarning({x:NaN,y:3},map),undefined);
+  const state=new Map<'N'|'S'|'L'|'O',number>(),end=(id:string)=>map.mouths.find(m=>m.id===id)!;
+  const warn=(id:string,atTick:number)=>({type:'spawn-warning',x:end(id).x,y:end(id).y,atTick,count:6});
+  assert.deepEqual(city.trackMouths(state,[warn('L',1030),warn('N',1030),{type:'kill',x:end('S').x,y:end('S').y}],1000,map),['N','L'],'N, S, L, O order; other events ignored');
+  assert.deepEqual(city.trackMouths(state,[],1030+city.MOUTH_TAIL_TICKS,map),['N','L'],'still lit 3 s after the critters came out');
+  assert.deepEqual(city.trackMouths(state,[warn('O',1200)],1030+city.MOUTH_TAIL_TICKS+1,map),['O'],'then off');
+  assert.deepEqual(city.trackMouths(state,[warn('O',1100)],1150,map),['O'],'an older warning never shortens a mouth');
+  assert.deepEqual(city.trackMouths(state,[{type:'spawn-warning',x:plaza.x,y:plaza.y,atTick:1300}],1250,map),['O'],'the boss warning lights nothing');
+});
+
+test('cidade-04: every point the real planner spawns a group at lights that group\'s mouth (the south avenue starts 2.4 u from praca)',async()=>{
+  const terrain=await realCity(),map=city.cityMapInfo(city.cityAssetOf(terrain)!),planner=cityPlanner(terrain),P=terrain.asset.points;
+  // The plaza is no circle: its south gate is 2.4 u from praca, the east and west ones 12 u. A radius for all (12.66 u)
+  // dropped the south groups planned right outside their gate (5.9 u from praca, cidade-04 review).
+  const gateS=map.mouths.find(m=>m.id==='S')!.gate!;
+  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<3&&map.plaza.radius>12);
+  // Players at the plaza, east of it, at the start, on each avenue and at its end; with the team chase (cidade-05c) and without.
+  const spots=[P.praca,{x:P.praca.x+20,y:P.praca.y},P.inicio,{x:84,y:40},{x:40,y:88},{x:130,y:88},{x:84,y:130},P.spawnN,P.spawnL,P.spawnO];
+  let total=0,south=0,nearPlaza=0;const wrong:string[]=[];
+  for(const mode of ['cerco','normal','alternado','excursao'] as const)for(let seed=1;seed<=3;seed++)for(const s of spots)for(const chase of [false,true]){
+    const state=planner.openRound(2+seed,mode,new Rng(seed));
+    const groups=planner.planGroups([{at:0,size:12},{at:40,size:12},{at:80,size:20}],[{id:'a',x:s.x,y:s.y}],state,new Rng(seed+9),
+      chase?{chaseCost:p=>Math.hypot(p.x-s.x,p.y-s.y)}:{});
+    for(const g of groups)for(const p of g.points){
+      total++;if(g.mouth==='S')south++;
+      if(Math.hypot(p.x-map.plaza.x,p.y-map.plaza.y)<=map.plaza.radius)nearPlaza++;
+      const got=city.mouthOfWarning(p,map);
+      if(got!==g.mouth&&wrong.length<5)wrong.push(`${mode} seed ${seed} at ${s.x},${s.y}${chase?' chase':''}: ${g.mouth} group at ${p.x.toFixed(2)},${p.y.toFixed(2)} → ${got}`);
+    }
+  }
+  assert.deepEqual(wrong,[],`${total} points`);
+  assert.ok(total>5000&&south>500&&nearPlaza>0,`the scenes reach the case: ${total} points, ${south} south, ${nearPlaza} within the old radius`);
+  // Inside the plaza (the boss lands there, its minions 2.5 u around it, D-026) nothing lights, even beside a gate.
+  for(const c of [map.plaza,{x:84.1,y:86.5}])for(let a=0;a<12;a++){
+    const p={x:c.x+Math.cos(a*Math.PI/6)*2.5,y:c.y+Math.sin(a*Math.PI/6)*2.5};
+    assert.equal(city.mouthOfWarning(p,map),undefined,`a minion at ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  }
+  for(const m of map.mouths)assert.equal(city.mouthOfWarning(m.gate!,map),undefined,`at gate ${m.id}`);
+});
+
+test('cidade-04: the audit\'s must-point kinds follow the layout\'s rule: the city\'s base after the horn is checked too',()=>{
+  const base=target('base','base',900,440,30,{seconds:4,danger:true}),plain=target('base','base',900,440,30);
+  const caido=target('p3','caido',-200,440,12,{seconds:9}),chefe=target('chefe:b','chefe',200,-300,40),group=target('grupo:1','grupo',200,1200,20);
+  assert.deepEqual(edgesMod.needKinds([group,base,chefe,caido]),['caido','chefe'],'the island\'s rule: caído and boss only');
+  assert.deepEqual(edgesMod.needKinds([group,base,chefe,caido],city.cityMustPoint),['caido','chefe','base'],'the city\'s: and the base after the horn');
+  assert.deepEqual(edgesMod.needKinds([plain,group],city.cityMustPoint),[],'a plain base may give way');
+  // What the audit then does with it: a needed kind without an arrow fails (zones.ts auditBoxes, unpointed).
+  const zones=computeZones({viewport:{width:390,height:844},...city.REFERENCE_CONTROLS.portrait});
+  const audit=auditBoxes([{name:'sem-seta-base',rect:r(0,0,0,0),unpointed:true}],zones,heroAt(zones.useful,0,0));
+  assert.equal(audit.ok,false);assert.deepEqual(audit.unpointed,['sem-seta-base']);
+});
+
+test('§7 the big minimap: screen corners from the camera, open on tap (side ≥ 120, not blocked), closes on tap or by itself',()=>{
+  // An iso-like affine camera: the corners come back to the viewport exactly.
+  const viewport={width:390,height:844},focus={x:80,y:120};
+  const locate=(p:{x:number;y:number})=>({x:195+(p.x-focus.x-(p.y-focus.y))*45,y:441+(p.x-focus.x+p.y-focus.y)*22.5-3});
+  const corners=city.screenCorners(locate,focus,viewport);
+  assert.equal(corners.length,4);
+  for(const [i,c] of [[0,0],[390,0],[390,844],[0,844]].entries()){const s=locate(corners[i]);assert.ok(near(s.x,c[0],1e-6)&&near(s.y,c[1],1e-6),`corner ${i}: ${s.x},${s.y}`);}
+  assert.deepEqual(city.screenCorners(()=>({x:1,y:1}),focus,viewport),[],'a degenerate camera gives no rectangle');
+  const big=new city.BigMapState();
+  assert.equal(big.tap(1000,119),false,'S < 120: it does not open');assert.equal(big.take(),false);
+  assert.equal(big.tap(1000,232,'bicho'),false,'a critter near blocks the tap');
+  assert.equal(big.tap(1000,232),true);assert.equal(big.take(),true,'changed once');assert.equal(big.take(),false);
+  assert.equal(big.update({nowMs:1000+3000,phase:'wave'}),false);
+  assert.equal(big.update({nowMs:1000+4000,phase:'wave'}),true,'4 s in a wave');assert.equal(big.open,false);
+  big.tap(2000,176);assert.equal(big.update({nowMs:2100,phase:'prepare',nearestEnemy:2}),true,'a critter at 2.5 u closes it');
+  big.tap(3000,176);assert.equal(big.tap(3100,176),false,'a tap on the big one closes it');
+  big.tap(4000,176);assert.equal(big.update({nowMs:4100,phase:'prepare',notice:'outro',coversAnnounce:true}),true,'any notice when it covers the slot');
+  big.tap(5000,176);assert.equal(big.update({nowMs:5100,phase:'prepare',notice:'outro'}),false,'a joke notice beside it does not');
+  assert.equal(big.update({nowMs:5100,phase:'prepare',notice:'corneta'}),true,'the horn does');
+});
+
+// =====================================================================================================================
+// Visual review of card cidade-04 (sandbox ?sandbox=hud&mapa=cidade, 390×844 and 844×390)
+// =====================================================================================================================
+/** The sandbox's useful area and hero box (measured in the browser). */
+const SANDBOX={
+  portrait:{viewport:VIEWPORT.portrait,area:r(85.90625,244.59375,304.09375,449.40625),hero:r(209.953125,441.296875,56,56)},
+  landscape:{viewport:VIEWPORT.landscape,area:r(134,154,586,155.0625),hero:r(399,203.53125,56,56)},
+} as const;
+/** Caído (Zé, pinging), the 7-critter group 56 u away, the east mouth, the base after the horn (4 s): screen points per view. */
+const SANDBOX_SCREEN:Record<Orientation,[number,number][][]>={
+  portrait:[[[1093,1678],[1,-1285],[5331,1384],[1876,-255]],[[-1,1678],[2700,500],[1500,3800],[700,1300]],[[-617,-707],[475,2280],[-4855,-389],[-1400,1210]],[[700,-900],[-2300,500],[-200,-4200],[-400,-200]]],
+  landscape:[[[1282,1440],[190,-1523],[5520,1146],[2065,-492]],[[-200,450],[2900,260],[1700,3500],[900,1060]],[[-428,-945],[664,2042],[-4666,-627],[-1211,972]],[[900,-1200],[-2100,250],[-10,-4500],[-200,-400]]],
+};
+function sandboxTargets(o:Orientation,view:number):EdgeTarget[]{
+  const [c,g,m,b]=SANDBOX_SCREEN[o][view];
+  return [target('p3','caido',c[0],c[1],40,{seconds:14,ping:true,label:'Zé',name:'Zé'}),target('grupo:4,10','grupo',g[0],g[1],56,{label:'7',groupCount:7} as Partial<EdgeTarget>),
+    target('boca:L','spawn',m[0],m[1],85),target('base','base',b[0],b[1],35,{danger:true,seconds:4})];
+}
+const sandboxSeen=(o:Orientation)=>({viewport:r(0,0,VIEWPORT[o].width,VIEWPORT[o].height),covered:[] as Rect[]});
+/** Where an arrow's beak sits (its base on the ficha, its tip BEAK_REACH further), as EdgeArrows draws it. */
+function beakOf(a:EdgeArrow,half={w:38,h:18}){
+  const tag=edgeTag(a),spot=edgesMod.beakSpot(a.angle,half,tag?{end:a.tagEnd,width:edgesMod.tagWidth(tag),flush:a.kind!=='caido'}:undefined);
+  const c=Math.cos(a.angle),s=Math.sin(a.angle);
+  const base={x:a.x+spot.ox+spot.r*c,y:a.y+spot.oy+spot.r*s};
+  return {base,tip:{x:base.x+edgesMod.BEAK_REACH*c,y:base.y+edgesMod.BEAK_REACH*s},tag};
+}
+const countOf=(a:EdgeTarget)=>(a as {groupCount?:number}).groupCount;
+
+test('cidade-04: every beak tip stays BEAK_GAP inside the viewport (the portrait right rim cut it by ~5 px), its base whole on the ficha',()=>{
+  const half={w:38,h:18},cases:{o:Orientation;area:Rect;hero:Rect;targets:EdgeTarget[]}[]=[];
+  for(const o of ['portrait','landscape'] as const){
+    const s=SANDBOX[o];
+    for(let v=0;v<4;v++)cases.push({o,area:s.area,hero:s.hero,targets:sandboxTargets(o,v)});
+    // A ring of targets all around, one at a time (each side and corner of the rim).
+    for(let i=0;i<16;i++){const a=i/16*Math.PI*2,cx=s.area.x+s.area.width/2,cy=s.area.y+s.area.height/2;
+      cases.push({o,area:s.area,hero:s.hero,targets:[target(`k${i}`,i%2?'spawn':'base',cx+Math.cos(a)*3000,cy+Math.sin(a)*3000,30,i%4===0?{seconds:5,danger:true}:{})]});}
+  }
+  let checked=0;
+  for(const c of cases){
+    const v=VIEWPORT[c.o];
+    for(const a of city.layoutCityEdges(c.targets,c.area,c.hero,{seen:sandboxSeen(c.o)})){
+      const {base,tip}=beakOf(a,half),where=`${c.o} ${a.key} at ${Math.round(a.x)},${Math.round(a.y)}`;
+      assert.ok(tip.x>=edgesMod.BEAK_GAP-.5&&tip.x<=v.width-edgesMod.BEAK_GAP+.5&&tip.y>=edgesMod.BEAK_GAP-.5&&tip.y<=v.height-edgesMod.BEAK_GAP+.5,`${where}: tip ${tip.x.toFixed(1)},${tip.y.toFixed(1)} off screen`);
+      const dx=Math.abs(base.x-a.x),dy=Math.abs(base.y-a.y);
+      assert.ok(near(dx,half.w,.5)&&dy<=half.h-edgesMod.BEAK_HALF+.5||near(dy,half.h,.5)&&dx<=half.w-edgesMod.BEAK_HALF+.5,`${where}: beak base ${dx.toFixed(1)},${dy.toFixed(1)} not whole on an edge`);
+      assert.ok(within(r(a.x-half.w,a.y-half.h,2*half.w,2*half.h),c.area,1),`${where}: ficha leaves the useful area`);
+      checked++;
+    }
+  }
+  assert.ok(checked>40,`checked ${checked} arrows`);
+});
+
+test('cidade-04: a beak never hides under the tag (a group pointing up read as a box mid-screen); a group and the base hang their tag on the right, clear of the sticker',()=>{
+  const half={w:38,h:18};
+  // Straight up, with the group's distance on top: the beak moves to the free part of the top edge.
+  for(const angle of [-Math.PI/2,-Math.PI/2-.15,-Math.PI/2+.15]){
+    const width=edgesMod.tagWidth('56 m'),spot=edgesMod.beakSpot(angle,half,{end:'right',width,flush:true});
+    const [t0]=edgesMod.tagSpan({end:'right',width,flush:true},half),bx=spot.ox+spot.r*Math.cos(angle),by=spot.oy+spot.r*Math.sin(angle);
+    assert.ok(near(by,-half.h,.5),'leaves by the top edge');
+    assert.ok(bx+edgesMod.BEAK_HALF<=t0+.5,`base ${bx.toFixed(1)} under the tag starting at ${t0}`);
+    assert.ok(bx-edgesMod.BEAK_HALF>=-half.w-.5,'its base stays on the ficha');
+  }
+  // A shallow beak under the tag (the base's "4 s", up-right) leaves by the top of its side instead.
+  const side=edgesMod.beakSpot(-.45,half,{end:'right',width:edgesMod.tagWidth('4 s'),flush:true});
+  assert.ok(near(side.ox+side.r*Math.cos(-.45),half.w,.5),'by the right edge');
+  // The sticker sits on the left of the body (hud.css: 2 px border + 4 px padding, 26 px wide, the tent's flag on its
+  // top-left): the horn's seconds (one digit, doc §3 "5 s") stay right of it, a group's distance right of its middle.
+  const sticker=[-half.w+6,-half.w+32];
+  for(const kind of ['grupo','base'] as const)for(const x of [100,300,700])assert.equal(edgesMod.tagEndOf(kind,x,SANDBOX.landscape.area),'right',`${kind} at ${x}`);
+  for(const text of ['4 s','5 s','9 s'])assert.ok(edgesMod.tagSpan({end:'right',width:edgesMod.tagWidth(text),flush:true},half)[0]>=sticker[1],`"${text}" over the tent`);
+  for(const text of ['56 m','999 m'])assert.ok(edgesMod.tagSpan({end:'right',width:edgesMod.tagWidth(text),flush:true},half)[0]>=(sticker[0]+sticker[1])/2,`"${text}" over the sticker`);
+  assert.equal(edgesMod.tagEndOf('caido',150,SANDBOX.landscape.area),'left','a caído keeps its wide tag growing away from the near edge');
+  // In the sandbox's 8 scenes, no group or base beak sits under its tag.
+  for(const o of ['portrait','landscape'] as const)for(let v=0;v<4;v++){
+    const s=SANDBOX[o];
+    for(const a of city.layoutCityEdges(sandboxTargets(o,v),s.area,s.hero,{seen:sandboxSeen(o)})){
+      if(a.kind!=='grupo'&&a.kind!=='base')continue;
+      const {base,tag}=beakOf(a,half);if(!tag)continue;
+      const [t0,t1]=edgesMod.tagSpan({end:a.tagEnd,width:edgesMod.tagWidth(tag),flush:true},half);
+      const onTop=near(base.y-a.y,-half.h,.5);
+      assert.ok(!onTop||base.x-a.x+edgesMod.BEAK_HALF<=t0+.5||base.x-a.x-edgesMod.BEAK_HALF>=t1-.5,`${o} vista ${v} ${a.key}: beak under its tag`);
+    }
+  }
+});
+
+test('cidade-04: the base after the horn is never dropped, in every view; in landscape every target keeps an arrow, the base on its own side of the hero',()=>{
+  for(const o of ['portrait','landscape'] as const)for(let v=0;v<4;v++){
+    const s=SANDBOX[o],targets=sandboxTargets(o,v),where=`${o} vista ${v}`;
+    const arrows=city.layoutCityEdges(targets,s.area,s.hero,{seen:sandboxSeen(o)});
+    assert.ok(arrows.some(a=>a.key==='base'),`${where}: the base lost its arrow (${arrows.map(a=>a.key)})`);
+    assert.ok(arrows.some(a=>a.key==='p3'),`${where}: the caído lost its arrow`);
+    if(o==='landscape'&&(v===0||v===2)){
+      assert.deepEqual(arrows.map(a=>a.key).sort(),['base','boca:L','grupo:4,10','p3'],`${where}: all four`);
+      const base=arrows.find(a=>a.key==='base')!,hx=s.hero.x+s.hero.width/2,t=targets.find(x=>x.key==='base')!;
+      assert.equal(Math.sign(base.x-hx),Math.sign(t.screen.x-hx),`${where}: the base arrow sits across the hero from its target`);
+    }
+    for(const a of arrows)for(const b of arrows)if(a!==b)assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>=36,`${where}: ${a.key} on ${b.key}`);
+  }
+  assert.equal(city.cityMustPoint(target('b','base',0,0,1,{seconds:3,danger:true})),true);
+  assert.equal(city.cityMustPoint(target('b','base',0,0,1)),false,'a plain base (intermission, before the horn) may give way');
+  assert.ok(city.cityPlaceRank(target('b','base',0,0,1,{seconds:3}))<city.cityPlaceRank(target('boca:L','spawn',0,0,1)),'the horn base is placed before the mouths');
+  assert.equal(city.cityPlaceRank(target('b','base',0,0,1)),city.cityEdgeRank(target('b','base',0,0,1)),'otherwise the doc order');
+});
+
+test('cidade-04: groups fold with their counts summed; one past GROUP_RANGE (the sandbox 12 at 85 u) gets no arrow, so the 7 stays 7',()=>{
+  const hero={x:82,y:125},rnd=lcg(7),blob=(p:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${p}${i}`,x:cx+(rnd()*2-1)*2,y:cy+(rnd()*2-1)*2}));
+  const enemies=[...blob('n',84,40,12),...blob('o',40,88,7)],map={size:169,plaza:{x:84,y:84,radius:12},mouths:[],start:{x:84,y:84}};
+  const {targets}=city.cityEdgeTargets({hero,selfId:'p1',players:[],enemies,map,phase:'wave',locate:p=>({x:(p.x-hero.x)*60,y:(p.y-hero.y)*60}),isOnScreen:()=>false});
+  assert.deepEqual(targets.filter(t=>t.kind==='grupo').map(countOf),[7],'only the 7 within 60 u');
+  // Two groups that cannot both fit on a short rim fold into one arrow, the critters summed (never "+1").
+  const folded=city.layoutCityEdges([target('grupo:a','grupo',900,-20,20,{label:'6',groupCount:6} as Partial<EdgeTarget>),target('grupo:b','grupo',900,140,25,{label:'9',groupCount:9} as Partial<EdgeTarget>)],r(0,0,300,110));
+  const g=folded.filter(a=>a.kind==='grupo');
+  assert.equal(g.length,1,'one arrow for both');
+  assert.equal(countOf(g[0]),15,'no critter lost');assert.equal(g[0].key,'grupo:a','placed as the nearest');
+  for(const a of g){assert.equal(a.count,1,'never "+1"');assert.equal(a.label,String(countOf(a)));}
+});
+
+/**
+ * The rules of a style sheet (no nesting but @media, whose rules count as if they applied) that match an element, by a
+ * small selector matcher: compound selectors of a tag, classes, `[attr]` and `:not(…)` of those, joined by `>` or ` `;
+ * a pseudo-class other than :not and a pseudo-element never match the stand-in.
+ */
+function matchingRules(css:string,chain:readonly {tag:string;classes:readonly string[]}[]){
+  const rules:{selector:string;body:string}[]=[];
+  const flat=css.replace(/@media[^{]*\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}/g,'$1');
+  for(const m of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g))rules.push({selector:m[1].trim(),body:m[2]});
+  const simple=(sel:string,el:{tag:string;classes:readonly string[]}):boolean=>{
+    let rest=sel;
+    for(const not of [...sel.matchAll(/:not\(([^()]*)\)/g)]){if(simple(not[1],el))return false;rest=rest.replace(not[0],'');}
+    if(/\[[^\]]*\]|:/.test(rest))return false;// attributes, other pseudo-classes and pseudo-elements: not the stand-in
+    const tag=rest.match(/^[a-z][a-z0-9-]*/)?.[0];
+    if(tag&&tag!==el.tag)return false;
+    return [...rest.matchAll(/\.([\w-]+)/g)].every(c=>el.classes.includes(c[1]));
+  };
+  // chain[0] is the element, then its ancestors up to <html>.
+  const complex=(sel:string)=>{
+    const parts=sel.replace(/\s*>\s*/g,' > ').trim().split(/\s+/);
+    if(!simple(parts.at(-1)!,chain[0]))return false;
+    let i=0;
+    for(let k=parts.length-2;k>=0;k--){
+      if(parts[k]==='>'){k--;i++;if(i>=chain.length||!simple(parts[k],chain[i]))return false;continue;}
+      do i++;while(i<chain.length&&!simple(parts[k],chain[i]));
+      if(i>=chain.length)return false;
+    }
+    return true;
+  };
+  return rules.filter(r=>r.selector.split(',').some(s=>complex(s.trim())));
+}
+/** The last value a list of rules gives a property (source order), or undefined. */
+const declOf=(rules:readonly {body:string}[],prop:string)=>rules.map(r=>r.body.split(';').map(d=>d.split(':')).find(([k])=>k.trim()===prop)?.slice(1).join(':').trim()).filter(Boolean).at(-1);
+
+test('cidade-04: the HUD sandbox shows its 56 px hero stand-in (the body>:not(…) rule hid it), so overlaps with the hero can be judged',{skip:noCss},async()=>{
+  // The style sheet the sandbox injects when it runs (city mode), caught as it is appended; the run stops there.
+  const STOP=Symbol('stop'),g=globalThis as Record<string,unknown>,saved={location:g.location,document:g.document};
+  let css='';
+  g.location={search:'?mapa=cidade'};
+  g.document={createElement:(tag:string)=>({tagName:tag,textContent:''}),head:{append:(el:{textContent:string})=>{css=el.textContent;throw STOP;}}};
+  try{await import('../../src/client/sandboxes/sandbox-hud.ts');}catch(e){if(e!==STOP)throw e;}
+  finally{g.location=saved.location;g.document=saved.document;}
+  assert.ok(css.length>0,'the sandbox injects its style sheet');
+  const body={tag:'body',classes:['hs-cidade']},html={tag:'html',classes:[]};
+  const hero=matchingRules(css,[{tag:'div',classes:['hs-hero']},body,html]);
+  assert.equal(declOf(hero,'display'),undefined,`nothing hides the stand-in: ${hero.map(r=>r.selector).join(' | ')}`);
+  assert.equal(declOf(hero,'width'),'56px');assert.equal(declOf(hero,'height'),'56px','56 px, one city cell (D-030)');
+  // The matcher is not blind: any other child of the body the sandbox does not list is hidden by that rule.
+  assert.match(declOf(matchingRules(css,[{tag:'div',classes:['stray']},body,html]),'display')??'',/^none/);
 });

@@ -3,7 +3,9 @@
  * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0,
  * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
  * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
- * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot).
+ * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
+ * shows one telegraph of every kind (arroto, molotov, fogo, cocô, explosão and the boss's pancada, investida, varredura,
+ * carimbo, plus one without a kind) and the first player wears the slow and slip status chips.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -18,10 +20,13 @@ import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {classes} from '../../rules/index.ts';
 import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,type SimEvent,type PickupKind} from '../../contract/index.ts';
-import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
+import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView,TelegraphKind} from '../../contract/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
+import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
+import {queueHordeArt} from '../art/horde-art.ts';
+import {artReady} from '../ui/art-boot.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
@@ -47,9 +52,29 @@ const PLAYER_COUNT=6;
 const LINEUP:[string,boolean,number,number][]=[
   ['bebado',false,-170,-120],['pombos',false,0,-135],['anao-molotov',false,170,-120],
   ['tio-pave',false,-170,40],['agiota',false,170,40],
-  ['bebado',true,-180,180],['chefe',false,0,200],['agiota',true,180,180],
+  ['bebado',true,-255,235],['chefe',false,0,200],['agiota',true,300,228],
 ];
 const fromScreen=(origin:Point,sx:number,sy:number):Point=>({x:origin.x+(sx/42+sy/21)/2,y:origin.y+(sy/21-sx/42)/2});
+/** World direction of a screen direction (view 0), as a unit vector. */
+const screenDir=(sx:number,sy:number)=>{const x=(sx/42+sy/21)/2,y=(sy/21-sx/42)/2,l=Math.hypot(x,y)||1;return {dx:x/l,dy:y/l};};
+/**
+ * D-036 line-up danger, one of each kind: [kind, shape, screen x, y from the first player (world px, view 0), radius,
+ * width, screen aim x, y (lines and cones), fire delay in ticks]. Undefined kind = an old server's generic telegraph.
+ */
+const DANGER:[TelegraphKind|undefined,TelegraphView['shape'],number,number,number,number|undefined,number,number,number][]=[
+  // The cast's hazards at their server sizes (sim/enemies/catalog.ts: BURP, MOLOTOV, POOP).
+  ['arroto','cone',-170,-120,2.5,Math.PI/2,1,.7,70],
+  ['coco','circle',-60,-250,.5,undefined,0,0,90],
+  ['molotov','circle',115,-250,.9,undefined,0,0,60],
+  ['fogo','circle',265,-45,.75,undefined,0,0,80],
+  ['explosao','circle',-225,110,1.6,undefined,0,0,50],
+  // The Síndico's moves (charge and sweep from his feet), smaller than in the fight so the set fits a phone both ways.
+  ['investida','line',25,200,3,1.4,1,-.05,65],
+  ['varredura','cone',-25,200,2,1.2,-1,-.05,85],
+  ['carimbo','circle',-265,-255,.85,undefined,0,0,70],
+  ['pancada','circle',270,-245,.85,undefined,0,0,75],
+  [undefined,'circle',265,110,.6,undefined,0,0,95],
+];
 
 /** Deterministic stand-in for the server: enough churn to stress every layer. */
 class FakeHorde {
@@ -75,17 +100,18 @@ class FakeHorde {
     }
   }
   private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
-  /** Line-up danger, refreshed so every shape is always on screen: burp cone, molotov fire, explosion, pigeon poop. */
+  /**
+   * Line-up danger (D-036): one telegraph of every kind, each one coming back as soon as it fires (staggered delays,
+   * so a screenshot catches them at different fill-ups): the burp cone, the molotov's target, fire, poop, explosion,
+   * the boss's slam, charge, sweep and stamp, and one with no kind.
+   */
   private lineUpDanger(){
-    const me=this.players[0],at=(e:FakeEnemy|undefined)=>e??{x:me.x,y:me.y};
-    if(this.telegraphs.length===0){
-      const bebado=at(this.lined('bebado')),anao=at(this.lined('anao-molotov')),pombo=at(this.lined('pombos')),d=Math.hypot(me.x-bebado.x,me.y-bebado.y)||1;
-      const add=(t:Omit<TelegraphView,'id'|'fireTick'>,ticks:number)=>{const v={...t,id:`t${this.next++}`,fireTick:this.tick+ticks};this.telegraphs.push(v);this.emit({type:'telegraph',telegraph:v.id});};
-      add({shape:'cone',x:bebado.x,y:bebado.y,radius:3,dx:(me.x-bebado.x)/d,dy:(me.y-bebado.y)/d,width:1},60);
-      const fire=fromScreen(anao,-70,50);
-      add({shape:'circle',x:fire.x,y:fire.y,radius:.9},60);add({shape:'circle',x:fire.x+.9,y:fire.y-.6,radius:.7},60);
-      const boom=this.enemies.find(e=>e.elite&&e.kind==='bebado');if(boom){const c=fromScreen(boom,40,-95);add({shape:'circle',x:c.x,y:c.y,radius:1.3},60);}
-      const poop=fromScreen(pombo,45,55);add({shape:'circle',x:poop.x,y:poop.y,radius:.45},60);
+    const me=this.players[0];
+    for(let i=0;i<DANGER.length;i++){
+      const id=`d${i}`;if(this.telegraphs.some(t=>t.id.startsWith(`${id}:`)))continue;
+      const [kind,shape,sx,sy,radius,width,ax,ay,ticks]=DANGER[i],p=fromScreen(me,sx,sy),dir=screenDir(ax||1,ay);
+      const v:TelegraphView={id:`${id}:${this.next++}`,shape,x:p.x,y:p.y,radius,dx:dir.dx,dy:dir.dy,width,fireTick:this.tick+ticks,...(kind?{kind}:{})};
+      this.telegraphs.push(v);this.emit({type:'telegraph',telegraph:v.id});
     }
     const agiota=this.lined('agiota');
     if(agiota&&this.tick%20===0){
@@ -197,6 +223,9 @@ class HordeSandboxScene extends Phaser.Scene {
   paused=false;
   reduced:boolean;
   private projector!:Projector;
+  /** ?elenco=1: the first player's "você" marks with both D-036 status chips (slowed by a burp, slipping on poop). */
+  private you?:YouMarkers;
+  private youMark?:HeroMark;private youMarks:HeroMark[]=[];
   /** Follow camera on the first fake player (the game camera); `overview` keeps the old whole-island framing. */
   follow=new FollowCamera();
   overview=new URLSearchParams(location.search).get('camera')==='ilha';
@@ -205,6 +234,8 @@ class HordeSandboxScene extends Phaser.Scene {
   private forceReduced:boolean;
   preload(){
     this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    // Imported art v2 (scripts/import-art-v2.mjs) previews here too; without a manifest the procedural art stays.
+    queueHordeArt(this);
     for(const tree of treeCatalog.slice(0,6))this.load.spritesheet(`tree:${tree.id}`,treeUrl(tree.id),{frameWidth:256,frameHeight:384});
     for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(classes[(i*5)%classes.length].id);
   }
@@ -225,10 +256,14 @@ class HordeSandboxScene extends Phaser.Scene {
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
       // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
       locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
-    const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);};
+    const motion=matchMedia('(prefers-reduced-motion: reduce)'),onMotion=()=>{this.reduced=this.forceReduced||motion.matches;this.layers.setReduced(this.reduced);this.you?.setReduced(this.reduced);};
     motion.addEventListener('change',onMotion);
-    this.events.once('shutdown',()=>{motion.removeEventListener('change',onMotion);this.scale.off('resize',this.fit,this);this.layers.destroy();});
+    this.events.once('shutdown',()=>{motion.removeEventListener('change',onMotion);this.scale.off('resize',this.fit,this);this.layers.destroy();this.you?.destroy();});
     for(let k=0;k<PLAYER_COUNT;k++)this.actors.push(this.add.sprite(0,0,'__DEFAULT').setOrigin(.5,.88));
+    if(lineup){
+      this.you=new YouMarkers(this,this.reduced);
+      this.youMark={id:'p0',sprite:this.actors[0],self:true,feet:{x:0,y:0},covered:false,hp:70,maxHp:100,downed:false,slow:true,slip:true};
+    }
     this.layers.push(this.horde.view());
     this.scale.on('resize',this.fit,this);this.fit();
   }
@@ -262,6 +297,10 @@ class HordeSandboxScene extends Phaser.Scene {
       this.sprites.animate(actor,p.classId,p.x,p.y,p.attackTick,true,this.view);
       actor.setPosition(q.x,q.y).setDepth(this.depth(p)+1);
     });
+    if(this.you&&this.youMark){
+      const feet=this.project(this.horde.players[0]);this.youMark.feet.x=feet.x;this.youMark.feet.y=feet.y;
+      this.actors[0].setDepth(96500);this.youMarks[0]=this.youMark;this.you.update(time,this.cameras.main.zoom,this.youMarks);
+    }
     if(!this.overview){
       const viewport={width:this.scale.width,height:this.scale.height};
       const c=this.follow.step(this.project(this.horde.players[0]),delta/1000,viewport,this.cameras.main.zoom);
@@ -273,7 +312,8 @@ class HordeSandboxScene extends Phaser.Scene {
 
 declare global {interface Window {__horde?:Record<string,unknown>}}
 
-export function openHordeSandbox(){
+export async function openHordeSandbox(){
+  await artReady();
   const params=new URLSearchParams(location.search);
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;

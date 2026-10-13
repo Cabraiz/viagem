@@ -3,6 +3,7 @@ import { setupSections } from './client/sections.ts';
 import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
+import { artReady } from './client/ui/art-boot.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -12,6 +13,9 @@ mountIcons();
 const session=()=>{try{return sessionStorage;}catch{return undefined;}};
 linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
   reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
+// Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
+// the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
+void artReady();
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./client/sandboxes/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];

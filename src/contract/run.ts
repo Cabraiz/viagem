@@ -4,7 +4,7 @@
  * moment of the result is picked by src/sim/shame.ts (ShameTracker).
  */
 /** Shame moment kinds of the result (VGM-053B). */
-export type ShameKey='recaida'|'apagao'|'coxinha'|'pernilongo'|'cedo'|'sem-boleto'|'coxinha-cheia'|'caiu';
+export type ShameKey='recaida'|'apagao'|'coxinha'|'pombos'|'cedo'|'sem-boleto'|'coxinha-cheia'|'caiu';
 /** The run's most embarrassing moment, shown in the result. */
 export interface ShameMoment {
   player:string;key:ShameKey;round:number;tick:number;

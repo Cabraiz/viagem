@@ -24,6 +24,11 @@ export function progressPoints(points:readonly Pt[],progress:number):Pt[]{
   const n=Math.max(2,Math.round(p*(points.length-1))+1);
   return points.slice(0,n);
 }
-/** Light column over a caído, world px on screen (height above the feet and width). */
+/** Light column over a caído, world px on screen (height above the feet and width), at the endless map's size. */
 export const COLUMN={height:150,width:22};
+/**
+ * The column drawn in a world whose figures are scaled by `scale` (framing.ts CITY_VIEW_SCALE in the city, 1 on the
+ * island and the endless map): it keeps its size next to the body, so its CSS size under the city zoom is the same.
+ */
+export function columnSize(scale=1){return {height:COLUMN.height*scale,width:COLUMN.width*scale};}
 

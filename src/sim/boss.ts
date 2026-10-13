@@ -94,6 +94,21 @@ export interface BossOptions {
   /** Player count used for hp (1..6); pass the director's scalePlayers so leaving before round 10 does not shrink the boss. */
   scalePlayers?:(ctx:SimContext)=>number;
   tuning?:Partial<BossTuning>;
+  /**
+   * Walking direction around the map (same signature as EnemyAiOptions.steer; the city passes citySteer, cidade-05c):
+   * writes a unit vector into `out` and returns true to replace the straight line to `target`. The boss keeps its own
+   * collision (clearSegment with the axis slides). Absent (island, endless): the straight walk.
+   */
+  steer?:(ctx:SimContext,e:EnemyState,target:Point,out:Point)=>boolean;
+  /**
+   * Map from the authored speeds (u/s) to the world's (the city passes city/speed.ts citySpeed, cidade-05c v2),
+   * applied to the EFFECTIVE speed, after the phase and enrage multipliers: walk = speedMap(speed × multiplier) × slow,
+   * so a faster phase never ends past the hero when it was not before. The charge maps its dash speed likewise
+   * (chargeLength over dashTicks; no length is converted, like every other distance of the fight): the dash keeps
+   * chargeLength and lasts chargeLength / speedMap(that speed), rounded to ticks (`dashTicks` below).
+   * Absent (island, endless): the authored speeds.
+   */
+  speedMap?:(speed:number)=>number;
 }
 /** JSON-safe controller state, enough to resume after a checkpoint. */
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
@@ -135,12 +150,21 @@ const SAFE_SPAWN_DISTANCE=4;
 /** Minions are placed this far from players and still need SAFE_SUMMON_DISTANCE when they appear. */
 const SUMMON_PLACE_DISTANCE=2.5,SAFE_SUMMON_DISTANCE=1.5;
 export const SUMMON_WARNING_TICKS=ticks(1.5);
+/** City (steer): cosine of the widest angle between the walking direction and a charge's line (45°). */
+const CHARGE_ALIGN=Math.SQRT1_2;
 const freshState=():BossState=>({defeated:false,lastX:0,lastY:0,minions:[],pending:[]});
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math.min(m,dist(p,q)),Infinity);
 
 export function createBoss(options:BossOptions={}):BossController {
   const tuning:Readonly<BossTuning>=Object.freeze({...BOSS_TUNING,...options.tuning});
+  /** Ticks of a dash: tuning.dashTicks, or with speedMap the time the full charge takes at its mapped speed. */
+  const dashTicks=(()=>{
+    const authored=Math.max(1,tuning.dashTicks);
+    if(!options.speedMap)return tuning.dashTicks;
+    const speed=tuning.chargeLength*SIM_HZ/authored, mapped=options.speedMap(speed);
+    return mapped>0&&Number.isFinite(mapped)?Math.max(1,Math.round(tuning.chargeLength/mapped*SIM_HZ)):tuning.dashTicks;
+  })();
   const state:BossState=freshState();
   let rng:Rng|undefined;
   const stream=(ctx:SimContext)=>{
@@ -302,7 +326,7 @@ export function createBoss(options:BossOptions={}):BossController {
     if(m.act===ACT_WINDUP){if(ctx.tick>=m.actUntil)m.act=ACT_IDLE;return;}
     if(m.act===ACT_DASH){
       if(ctx.tick<m.dashAt)return;
-      const t=Math.min(1,(ctx.tick-m.dashAt+1)/Math.max(1,tuning.dashTicks));
+      const t=Math.min(1,(ctx.tick-m.dashAt+1)/Math.max(1,dashTicks));
       boss.x=m.fromX+(m.toX-m.fromX)*t;boss.y=m.fromY+(m.toY-m.fromY)*t;
       if(t>=1){m.act=ACT_WINDUP;m.actUntil=ctx.tick+recovery(boss);}
       return;
@@ -321,12 +345,18 @@ export function createBoss(options:BossOptions={}):BossController {
     slam(ctx,boss,targets);
   }
 
+  const steerOut:Point={x:0,y:0};
   function walk(ctx:SimContext,boss:EnemyState,target:Point){
     if(dist(boss,target)<=2.5)return;
     const slow=boss.slowUntil!==undefined&&ctx.tick<boss.slowUntil?.6:1;
     const mult=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.phase2Speed*(enraged(boss)?tuning.enragedSpeed:1):1;
-    const step=boss.speed*mult*slow/SIM_HZ;
-    const dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
+    const speed=boss.speed*mult,step=(options.speedMap?options.speedMap(speed):speed)*slow/SIM_HZ;
+    let dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
+    // The city's flow field bends the walk around buildings (it may point away from the target there).
+    if(options.steer?.(ctx,boss,target,steerOut)){
+      const s=Math.hypot(steerOut.x,steerOut.y);
+      if(s>1e-6){dx=steerOut.x;dy=steerOut.y;l=s;}
+    }
     const next={x:boss.x+dx/l*step,y:boss.y+dy/l*step};
     for(const c of [next,{x:next.x,y:boss.y},{x:boss.x,y:next.y}])
       if(clearSegment(boss,c,ctx.terrain)){boss.x=c.x;boss.y=c.y;return;}
@@ -337,35 +367,47 @@ export function createBoss(options:BossOptions={}):BossController {
     m.act=ACT_WINDUP;m.actUntil=fireTick+ticks(.3);m.next=fireTick+recovery(boss);
   }
 
-  /** Phase 1: one stamp on a random player. Phase 2+: "multa em área", a fine on several players plus the boss's own feet. */
+  /**
+   * Phase 1: one stamp on a random player. Phase 2+: "multa em área", a fine on several players plus the boss's own feet.
+   * Telegraph kinds (D-036): the phase-1 stamp and the stomp at his feet are 'pancada'; the fines on players, 'carimbo'.
+   */
   function slam(ctx:SimContext,boss:EnemyState,targets:readonly SimPlayer[]){
     const r=stream(ctx);
     if((boss.phase??1)<PHASE_ASSEMBLY){
       const t=r.pick(targets);
-      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id},tuning.slamDelay);
+      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada'},tuning.slamDelay);
       say(ctx,boss,'slam');windup(ctx,boss,tg.fireTick);return;
     }
     const pool=[...targets];let fireTick=ctx.tick;
     for(let i=0;i<tuning.fineTargets&&pool.length;i++){
       const t=pool.splice(r.int(0,pool.length-1),1)[0];
-      fireTick=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.fineRadius,damage:scale(boss,tuning.fineDamage),owner:boss.id},tuning.fineDelay).fireTick;
+      fireTick=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.fineRadius,damage:scale(boss,tuning.fineDamage),owner:boss.id,kind:'carimbo'},tuning.fineDelay).fireTick;
     }
-    addTelegraph(ctx,{shape:'circle',x:boss.x,y:boss.y,radius:tuning.fineRadius+.6,damage:scale(boss,tuning.fineDamage),owner:boss.id},tuning.fineDelay);
+    addTelegraph(ctx,{shape:'circle',x:boss.x,y:boss.y,radius:tuning.fineRadius+.6,damage:scale(boss,tuning.fineDamage),owner:boss.id,kind:'pancada'},tuning.fineDelay);
     say(ctx,boss,'fine');windup(ctx,boss,fireTick);
   }
 
-  /** Line telegraph toward the nearest player, clipped where the island or an obstacle stops the dash. */
+  /**
+   * Line telegraph toward the nearest player, clipped where the island or an obstacle stops the dash. With `steer`
+   * (the city) only when the steer's walking direction is within CHARGE_ALIGN of that line (or it goes straight
+   * anyway): a dash at a player behind a building would throw the boss back against the wall its walk is going around
+   * (the attack falls back to the slam).
+   */
   function charge(ctx:SimContext,boss:EnemyState,target:Point):boolean {
     const dx=target.x-boss.x,dy=target.y-boss.y,l=Math.hypot(dx,dy);
     if(l<1e-6)return false;
+    if(options.steer?.(ctx,boss,target,steerOut)){
+      const s=Math.hypot(steerOut.x,steerOut.y);
+      if(s>1e-6&&(steerOut.x*dx+steerOut.y*dy)/(s*l)<CHARGE_ALIGN)return false;
+    }
     const ux=dx/l,uy=dy/l;
     let reach=0;
     while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;
     if(reach<2)return false;
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
-    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id},delay);
+    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida'},delay);
     const m=boss.memory!;
-    Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+tuning.dashTicks+recovery(boss)});
+    Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+dashTicks+recovery(boss)});
     say(ctx,boss,'charge');
     return true;
   }
@@ -382,7 +424,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const m=boss.memory!;
     if(m.sweepLeft>0&&ctx.tick>=m.sweepAt){
       const tg=addTelegraph(ctx,{shape:'cone',x:boss.x,y:boss.y,dx:Math.cos(m.sweepAngle),dy:Math.sin(m.sweepAngle),
-        radius:tuning.coneRange,width:tuning.coneAngle,damage:scale(boss,tuning.coneDamage),owner:boss.id},tuning.coneDelay);
+        radius:tuning.coneRange,width:tuning.coneAngle,damage:scale(boss,tuning.coneDamage),owner:boss.id,kind:'varredura'},tuning.coneDelay);
       m.sweepAngle+=m.sweepTurn;m.sweepLeft--;m.sweepAt=ctx.tick+tuning.coneEvery;m.sweepEnd=tg.fireTick;
     }
     if(m.sweepLeft<=0)windup(ctx,boss,m.sweepEnd);

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {setFlagsFromString} from 'node:v8';
 import {runInNewContext} from 'node:vm';
 import {Rng} from '../../src/contract/rng.ts';
-import type {SimEvent} from '../../src/contract/types.ts';
+import {TELEGRAPH_KINDS,type SimEvent} from '../../src/contract/types.ts';
 import type {EnemyView,PickupView,ProjectileView,RunView,StructureView,TelegraphView} from '../../src/contract/view.ts';
 import {
-  FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
+  DICT,FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
 
@@ -26,8 +26,8 @@ afterEach(()=>collect());
 const near=(a:number,b:number,eps:number,msg:string)=>assert.ok(Math.abs(a-b)<=eps,`${msg}: ${a} vs ${b}`);
 const POS_EPS=1/POS_SCALE;
 /**
- * The D-033 horde (catalog.ts ENEMY_KINDS without the boss). Only 'tio-pave' is in the protocol 7 DICT; the other kinds
- * travel inline (0xFF + utf8) until the protocol owner appends them (protocol bump), so these fixtures pay that cost.
+ * The D-033 horde (catalog.ts ENEMY_KINDS without the boss). 'tio-pave' was in the DICT already; the other kinds and the
+ * agiota's 'boleto-juros' went inline (0xFF + utf8) in protocol 8 and are dictionary bytes since protocol 9 (D-036).
  */
 const CAST=['bebado','pombos','tio-pave','agiota','anao-molotov'];
 
@@ -47,7 +47,8 @@ function busyWorld(rng:Rng,enemies=300):ServerWorld{
     pickups:Array.from({length:150},(_,i):PickupView=>({id:`xp-${i+1}`,kind:'xp',x:rng.range(2,22),y:rng.range(2,22),value:rng.int(1,5)})),
     projectiles:Array.from({length:100},(_,i):ProjectileView=>({id:`p-${i+1}`,source:i%10===0?'boleto-juros':'boleto',x:rng.range(4,20),y:rng.range(4,20),
       vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2,hostile:i%10===0})),
-    telegraphs:Array.from({length:6},(_,i):TelegraphView=>({id:`t-${i+1}`,shape:'line',x:12,y:12,radius:3,dx:.6,dy:.8,width:1.2,fireTick:1020+i})),
+    telegraphs:Array.from({length:6},(_,i):TelegraphView=>({id:`t-${i+1}`,shape:'line',x:12,y:12,radius:3,dx:.6,dy:.8,width:1.2,fireTick:1020+i,
+      ...(i%3?{kind:TELEGRAPH_KINDS[i%TELEGRAPH_KINDS.length]}:{})})),
     structures:[{id:'muralha',kind:'muralha',x:12,y:12,hp:800,maxHp:1000}],
   };
   return {tick:1000,view,velocity:new Map(view.enemies.map(e=>[e.id,{x:rng.range(-1,1),y:rng.range(-1,1)}]))};
@@ -307,7 +308,8 @@ test('bandwidth for 6 clients x 300 enemies at 10 and 20 Hz fits mobile 4G',t=>{
     results[`${hz}Hz frame`]=Math.round(clients[0].enc.stats.bytes/clients[0].enc.stats.frames);
   }
   t.diagnostic(`protocol 4 bytes/s per client (300 moving enemies, 150 pickups, 100 projectiles, 30 damage + kills per tick): ${JSON.stringify(results)}`);
-  // 4G budget: well under 50 KB/s per client at 20 Hz, and 10 Hz cheaper.
+  // 4G budget: well under 50 KB/s per client at 20 Hz, and 10 Hz cheaper. With the D-033 cast inline (protocol 8) this
+  // measured 29 674 B/s at 10 Hz and 43 809 at 20 Hz; with the cast in the DICT (protocol 9, D-036) 27 377 and 40 853.
   assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
   assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });
@@ -631,11 +633,11 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   assert.ok(Math.abs(staggered.bytesPerSecond-apart.bytesPerSecond)<apart.bytesPerSecond*.05,'staggering costs no bandwidth');
   // D-018 budget: the island worst case was 26.7 KB/s per client; the wide map must stay in the same range.
   // D-033 cast (NEW-20261012-ORQ-elenco-adult-swim): with the old DICT kinds this measured 31.5 KB/s together and
-  // 31.9 KB/s spread (limit 32 000); the new kinds and the agiota's 'boleto-juros' shots go inline (0xFF + utf8, protocol 7 DICT is append-only) and
-  // measure 33.8 / 34.2 KB/s. Raised to 36 000, still far under the 4G budget (D-009: < 50 KB/s per client at 20 Hz). Appending
-  // the new kinds to the DICT (protocol bump) brings it back to ~31.9.
-  assert.ok(together.bytesPerSecond<36_000,`together ${together.bytesPerSecond}`);
-  assert.ok(apart.bytesPerSecond<36_000,`spread ${apart.bytesPerSecond}`);
+  // 31.9 KB/s spread; with the new kinds and the agiota's 'boleto-juros' shots inline (0xFF + utf8, protocol 8) it was
+  // 33 849 together / 33 828 at the origin / 34 208 spread / 34 218 staggered B/s (limit raised to 36 000 for that).
+  // Protocol 9 (D-036) appends them to the DICT: 31 524 / 31 503 / 31 884 / 31 895 B/s, so the limit is back at 32 000.
+  assert.ok(together.bytesPerSecond<32_000,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<32_000,`spread ${apart.bytesPerSecond}`);
   assert.ok(apart.enemiesPerFrame<=300,'each client only gets its own horde');
   assert.ok(apartAll.bytesPerSecond>apart.bytesPerSecond*3,'the area of interest is what keeps spread players cheap');
   assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
@@ -654,8 +656,9 @@ test('the server world descriptor rebuilds the same terrain on the client, islan
   }
 });
 
-test('protocol 8 (D-034): a city room says kind cidade, seed 0 and the asset sha256, and the client gets its decoded city',async()=>{
-  assert.equal(PROTOCOL_VERSION,8);
+test('protocol 8+ (D-034): a city room says kind cidade, seed 0 and the asset sha256, and the client gets its decoded city',async()=>{
+  // 8 added the city world kind; 9 (D-036) kept it as it is.
+  assert.ok(PROTOCOL_VERSION>=8);
   const {worldDescriptor}=await import('../../multiplayer/simulation.ts');
   const {cityTerrainFrom,cityTerrainFor}=await import('../../src/maps/city/terrain.ts');
   const {terrainFor}=await import('../../src/client/net/terrain.ts');
@@ -814,6 +817,108 @@ test('protocol 7+: zueira events and the kill-cam reach every client, wherever t
   // A 6 room's frame is refused at the version byte (the handshake already sent the update message).
   const old=me.encode(w).slice();old[1]=6;
   assert.deepEqual(new FrameDecoder().decode(old),{ok:false,error:'protocol version mismatch'});
+});
+
+// ---------- Protocol 9 (D-036): slow/slip on the player, telegraph kind, the cast in the DICT ----------
+/** The strings protocol 9 appended to the DICT (append only: every protocol 8 index is unchanged). */
+const D036_STRINGS=['bebado','anao-molotov','pombos','agiota','boleto-juros',...TELEGRAPH_KINDS.filter(k=>k!=='coco')];
+
+test('protocol 9: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
+  assert.equal(PROTOCOL_VERSION,9);
+  const plain=busyWorld(new Rng(4),3).view,burped=busyWorld(new Rng(4),3).view;
+  const slip={x:Math.SQRT1_2,y:-Math.SQRT1_2};
+  burped.players[0]={...burped.players[0],slowUntil:1030,slipUntil:1010,slip};
+  burped.players[3]={...burped.players[3],slowUntil:1004};
+  const ep=new FrameEncoder(),eb=new FrameEncoder(),dp=new FrameDecoder(),db=new FrameDecoder();
+  const fp=ep.encode(plain),fb=eb.encode(burped);
+  const rp=dp.decode(fp),rb=db.decode(fb);assert.ok(rp.ok&&rb.ok);
+  const me=rb.view.players.find(p=>p.id==='uuid-0')!,slowOnly=rb.view.players.find(p=>p.id==='uuid-3')!,other=rb.view.players.find(p=>p.id==='uuid-1')!;
+  assert.equal(me.slowUntil,1030);assert.equal(me.slipUntil,1010);
+  near(me.slip!.x,slip.x,1/256,'slip x');near(me.slip!.y,slip.y,1/256,'slip y');
+  assert.equal(slowOnly.slowUntil,1004);
+  assert.ok(!('slipUntil' in slowOnly)&&!('slip' in slowOnly),'a slow without a slip sends no slip');
+  for(const p of [other,...rp.view.players])assert.ok(!('slowUntil' in p)&&!('slipUntil' in p)&&!('slip' in p),`${p.id}: absent stays absent`);
+  // Cost: a few bytes in the frame that starts them (two ticks, a direction, a wider field mask), none after.
+  assert.ok(fb.length-fp.length<=20,`effects cost ${fb.length-fp.length} B`);
+  ep.ack(rp.seq);eb.ack(rb.seq);
+  for(const v of [plain,burped]){v.tick++;v.players[0].x!+=.1;v.players[0].ack!++;}
+  const dp2=ep.encode(plain),db2=eb.encode(burped);
+  assert.equal(db2.length,dp2.length,'an unchanged slow/slip costs nothing in the delta');
+  const rb2=db.decode(db2);assert.ok(rb2.ok);
+  assert.equal(rb2.view.players.find(p=>p.id==='uuid-0')!.slipUntil,1010,'the client keeps the state from the baseline');
+  // The effects end (the server drops them): the client drops them too.
+  eb.ack(rb2.seq);burped.tick++;
+  const {slowUntil:_s,slipUntil:_u,slip:_d,...rest}=burped.players[0];burped.players[0]=rest;
+  const rb3=db.decode(eb.encode(burped));assert.ok(rb3.ok);
+  const after=rb3.view.players.find(p=>p.id==='uuid-0')!;
+  assert.ok(!('slowUntil' in after)&&!('slipUntil' in after)&&!('slip' in after),'cleared on the client');
+  assert.equal(rb3.view.players.find(p=>p.id==='uuid-3')!.slowUntil,1004);
+});
+
+test('protocol 9: every telegraph kind round-trips as one dictionary byte, absent stays absent, unknown is refused',()=>{
+  const w=busyWorld(new Rng(6),1).view;
+  w.telegraphs=[...TELEGRAPH_KINDS.map((kind,i):TelegraphView=>({id:`t-${kind}`,shape:'circle',x:2+i,y:3,radius:1.5,fireTick:1010+i,kind})),
+    {id:'t-plain',shape:'cone',x:9,y:9,radius:2,dx:1,dy:0,width:.8,fireTick:1012}];
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(w));assert.ok(r.ok);
+  const byId=new Map(r.view.telegraphs.map(t=>[enc.ids.resolve(t.id),t]));
+  for(const kind of TELEGRAPH_KINDS)assert.equal(byId.get(`t-${kind}`)!.kind,kind,kind);
+  assert.ok(!('kind' in byId.get('t-plain')!),'a generic telegraph has no kind');
+  assertSameWorld(r.view,w,enc.ids,'kinds');
+  // The look changes (or goes back to generic) in a delta; a kind this build cannot draw is never sent.
+  enc.ack(r.seq);w.tick++;
+  const {kind:_k,...generic}=w.telegraphs[0];
+  w.telegraphs[0]=generic;w.telegraphs[1]={...w.telegraphs[1],kind:'carimbo'};
+  w.telegraphs[2]={...w.telegraphs[2],kind:'laser' as never};
+  const r2=dec.decode(enc.encode(w));assert.ok(r2.ok,!r2.ok?r2.error:'');
+  const byId2=new Map(r2.view.telegraphs.map(t=>[enc.ids.resolve(t.id),t]));
+  assert.ok(!('kind' in byId2.get(w.telegraphs[0].id)!));assert.equal(byId2.get(w.telegraphs[1].id)!.kind,'carimbo');
+  assert.ok(!('kind' in byId2.get(w.telegraphs[2].id)!),'an unknown server kind goes as generic');
+  // One byte, and strict: two frames that differ only in the kind differ in exactly one byte, the dictionary index.
+  const one=(kind:TelegraphView['kind'])=>{
+    const v=busyWorld(new Rng(6),1).view;
+    v.telegraphs=[{id:'t-1',shape:'circle',x:2,y:3,radius:1.5,fireTick:1010,...(kind?{kind}:{})}];
+    return new FrameEncoder().encode(v);
+  };
+  const a=one('arroto'),b=one('coco'),none=one(undefined);
+  assert.equal(a.length,b.length);assert.equal(a.length-none.length,1,'a kind costs one byte');
+  const at=a.findIndex((x,i)=>x!==b[i]);
+  assert.equal(a[at],DICT.indexOf('arroto'));assert.equal(b[at],DICT.indexOf('coco'));
+  assert.equal(a.findIndex((x,i)=>i>at&&x!==b[i]),-1,'only the kind byte differs');
+  const patched=(index:number)=>{const f=a.slice();f[at]=index;return new FrameDecoder().decode(f);};
+  assert.deepEqual(patched(DICT.indexOf('bebado')),{ok:false,error:'bad telegraph kind'},'a dictionary string that is no kind');
+  assert.deepEqual(patched(DICT.length),{ok:false,error:'unknown dictionary string'},'an index past the dictionary');
+  const ok=patched(DICT.indexOf('molotov'));assert.ok(ok.ok);assert.equal(ok.view.telegraphs[0].kind,'molotov');
+});
+
+test('protocol 9: the D-033 cast, the hostile boleto and the telegraph kinds are dictionary bytes appended after protocol 8',()=>{
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  // Append only: the protocol 8 indexes did not move (the old swarm keeps its slot).
+  assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
+  for(const s of D036_STRINGS)assert.ok(DICT.indexOf(s)>DICT.indexOf('apagao')&&DICT.lastIndexOf(s)===DICT.indexOf(s),`${s} appended once`);
+  assert.ok(DICT.includes('coco'),'coco (the poop telegraph) was already there');
+  // Each costs one byte where it travels: enemy kind, projectile source, kill and downed events.
+  const frame=(kind:string,source:string)=>{
+    const v=busyWorld(new Rng(2),1).view;v.enemies[0].kind=kind;v.projectiles=[{...v.projectiles[0],source}];
+    const enc=new FrameEncoder();enc.pushEvents([{type:'kill',enemy:'e-1',kind,x:1,y:2},{type:'downed',player:'uuid-0',by:'e-1',source:kind}]);
+    const bytes=enc.encode(v),r=new FrameDecoder().decode(bytes);assert.ok(r.ok);
+    assert.equal(r.view.enemies[0].kind,kind);assert.equal(r.view.projectiles[0].source,source);
+    const kill=r.view.events.find(e=>e.type==='kill'),down=r.view.events.find(e=>e.type==='downed');
+    assert.ok(kill?.type==='kill'&&kill.kind===kind&&down?.type==='downed'&&down.source===kind);
+    return bytes.length;
+  };
+  const base=frame('tio-pave','boleto');
+  for(const kind of ['bebado','anao-molotov','pombos','agiota'])assert.equal(frame(kind,'boleto-juros'),base,`${kind} + boleto-juros cost a byte each`);
+});
+
+test('protocol 9: a frame from an 8 room is refused at the version byte (the handshake already sent the update message)',()=>{
+  const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
+  assert.equal(bytes[1],9);
+  for(const version of [8,10]){
+    const other=bytes.slice();other[1]=version;
+    assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
+  }
+  assert.ok(new FrameDecoder().decode(bytes).ok);
 });
 
 test('N27 chained frames: deltas on the previous frame track a busy world exactly; acks a minute late or never do not grow them',()=>{

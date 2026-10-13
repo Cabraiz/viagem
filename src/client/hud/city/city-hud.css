@@ -41,6 +41,14 @@
 .ch-mm-bau{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:.8}
 .ch-mm-num{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:2;paint-order:stroke;font:800 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums}
 
+/* ---------- Edge arrows of the city (hud.css .rh-edge, doc §3) ---------- */
+/* A group: Cone ring always, its count in the body (M PLUS 800, tnum), the distance on a Papel tag above (radius 4). */
+.rh-edge[data-kind=grupo]{box-shadow:0 0 0 2px var(--c-cone),var(--s-2)}
+.rh-edge[data-kind=grupo] .rh-edge-num{font-weight:800}
+.rh-edge[data-kind=grupo] .rh-edge-tag{background:var(--c-papel);color:var(--c-breu);border-color:var(--c-breu)}
+/* A group's distance and the base's horn seconds: flush with the ficha's right end, away from the sticker (edges.ts tagSpan). */
+.rh-edge:is([data-kind=grupo],[data-kind=base])[data-tag=right] .rh-edge-tag{left:auto;right:-2px}
+
 /* ---------- Map selector (lobby, .coop-wait) ---------- */
 .ch-selector{position:relative;box-sizing:border-box;text-align:left}
 .ch-selector[hidden]{display:none}

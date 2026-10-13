@@ -13,13 +13,14 @@ import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,crosses,measureZones,veiled,type Rect,type ScreenZones} from './zones.ts';
+import {chooseSlot,crosses,measureZones,union,veiled,type Rect,type ScreenZones} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
 import type {RecipeId} from '../../rules/index.ts';
 import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
+import {CityMinimap,BigMapState,cityHudLayout,type NoticeKind,type BlockReason} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -106,6 +107,16 @@ export class RunHud {
   /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
+  /**
+   * The city's minimap (design/cidade-hud.md §1–§2, card cidade-04): built the first time the world is the city and put
+   * in the `.rh-minimap` slot instead of `minimap` while it is (useCityMinimap). Only one of the two is in the DOM.
+   */
+  private city?:CityMinimap;
+  private cityOn=false;
+  /** The big city minimap: open or closed, and whether it changed since the last draw (doc §2). */
+  readonly cityMap=new BigMapState();
+  private cityBlock?:BlockReason;
+  private cityBigCache?:{side:number;coversAnnounce:boolean};private cityBigVersion=-1;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue};
@@ -140,6 +151,64 @@ export class RunHud {
       this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
       this.columnObserver.observe(team.el);}
   }
+
+  /**
+   * Swaps the minimap in the `.rh-minimap` slot: the city's (whole city as a diamond, tap opens the big one) while the
+   * run's world is the city, else the island/endless one. Called every frame by the driver (rescue.ts): the room may
+   * switch maps in the lobby, and the HUD is built once (explore.ts). A no-op when nothing changes.
+   */
+  useCityMinimap(on:boolean){
+    if(!this.minimap||on===this.cityOn)return;
+    this.cityOn=on;
+    const city=on?(this.city??=this.createCityMinimap()):this.city!;
+    const [from,to]=on?[this.minimap.el,city.element]:[city.element,this.minimap.el];
+    if(!on){this.closeCityMap();city.big.remove();}
+    from.replaceWith(to);
+    // The layout watches the minimap in the slot (its box moves the announcement slot and the useful area).
+    this.observer?.unobserve(from);this.observer?.observe(to);
+    this.relayout();
+  }
+  private createCityMinimap(){
+    const city=new CityMinimap(this.el.ownerDocument);
+    city.onTap=()=>this.cityMap.tap(performance.now(),this.cityBig().side,this.cityBlock);
+    return city;
+  }
+  /** Closes the big city minimap now (out of the wave, where no city frame redraws it). */
+  closeCityMap(){this.cityMap.close();this.city?.collapse();}
+  /** The city minimap while it holds the slot (useCityMinimap), else undefined. */
+  get cityMinimap(){return this.cityOn?this.city:undefined;}
+  /** Why a tap must not open the big city minimap now (a critter near, a notice up): the collapsed border turns Cone. */
+  blockCityMap(reason:BlockReason|undefined){this.cityBlock=reason;this.city?.setBlocked(reason);}
+  /**
+   * The big city minimap's side and whether it covers the announcement slot, for the live layout (city/layout.ts
+   * cityHudLayout over the measured controls, doc §2); cached per layout. A side under BIG_MIN_SIDE: it does not open.
+   */
+  cityBig(){
+    if(this.cityBigCache&&this.cityBigVersion===this.layoutVersion)return this.cityBigCache;
+    this.cityBigVersion=this.layoutVersion;
+    const doc=this.el.ownerDocument,rect=(el:Element|null):Rect|undefined=>{
+      if(!el||(el as HTMLElement).closest('[hidden]'))return undefined;
+      const r=el.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;
+    };
+    const one=(s:string)=>rect(doc.querySelector(s)),all=(s:string)=>[...doc.querySelectorAll(s)].map(rect);
+    const style=getComputedStyle(this.el),px=(name:string)=>parseFloat(style.getPropertyValue(name))||0;
+    const viewport={width:innerWidth,height:innerHeight},open=one('.rh-offer')??one('.rh-forge');
+    const layout=cityHudLayout({viewport,safe:{top:px('--rh-t'),right:px('--rh-r'),bottom:px('--rh-b'),left:px('--rh-l')},
+      textScale:(this.edges?.scale()??1)>1.1?1.25:1,windowOpen:!!open,
+      controls:{status:[...all('.explore-camera button'),one('.explore-config'),...all('.rh-top>*')],team:union(all('.rh-member')),
+        joystick:one('.explore-stick'),skill:one('#coop-attack')??one('#coop-sos'),emote:one('.fun-emote-toggle'),chip:one('.rh-offer-chip'),offer:open}});
+    return this.cityBigCache={side:layout.minimapBig?.width??0,coversAnnounce:layout.bigCoversAnnounce};
+  }
+  /** What the announcement slot shows now, for the big city minimap (doc §2: a danger notice blocks and closes it). */
+  cityNotice():NoticeKind|undefined{
+    if(this.stack.querySelector('.rh-horn:not([hidden])'))return 'corneta';
+    if(this.stack.querySelector('.rh-alert:not([hidden])'))return 'caido';
+    const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee:not([hidden])');
+    if(marquee)return marquee.dataset.tone==='boss'?'chefe':'outro';
+    return this.stack.querySelector('.rh-killcam:not([hidden]),.rh-row:not([hidden])')?'outro':undefined;
+  }
+  /** The connection notice is up (reconnecting): the city minimap's marks stay still at 50% with sem-linha (B13). */
+  get offline(){return !!this.ctx.network;}
 
   update(view:RunView){
     this.last=view;
@@ -344,7 +413,7 @@ export class RunHud {
   destroy(){
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
-    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();
+    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();this.city?.destroy();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
     this.el.remove();

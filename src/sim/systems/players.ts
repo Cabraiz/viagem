@@ -2,7 +2,7 @@
  * Player step of the horde run (VGM-042): movement and facing from the input queue, tap target, class skill and regen.
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive.
  */
-import {moveDirection,type Point} from '../../maps/index.ts';
+import {moveStep,slipping,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -24,9 +24,16 @@ export type RunPlayer=SimPlayer&{ack:number;score:number;attackTick?:number;skil
 export const DEFAULT_FACING:Readonly<Point>=Object.freeze({x:0,y:1});
 const STEP=1/SIM_HZ;
 
-/** Same movement as shared.simulate (client prediction), plus facing. */
-export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField){
-  Object.assign(p,moveDirection(p,{x:input.x,y:input.y},STEP,terrain));
+/**
+ * Same movement as shared.simulate (client prediction), plus facing. `tick` (the step's server tick) applies the D-036
+ * effects: slowed walking, or the slide while slipping (the stick and facing are ignored then); omitted, plain walking.
+ * A slide needs a step, like walking: a player standing still (no step this tick) does not slide (D-036 decision: the
+ * phone replays exactly the steps the room takes, and the stand-still balance of the rounds is unchanged).
+ */
+export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number){
+  const effects=tick===undefined?undefined:p,slide=slipping(effects,tick??0);
+  Object.assign(p,moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain));
+  if(slide)return;
   const length=Math.hypot(input.x,input.y);
   if(Number.isFinite(length)&&length>=.01)p.facing={x:input.x/length,y:input.y/length};
 }
@@ -36,12 +43,15 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
   return {id:'players',step(ctx){
     for(const player of ctx.players.values()){
       const p=player as RunPlayer;
+      // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
+      if(p.slowUntil!==undefined&&ctx.tick>=p.slowUntil)delete p.slowUntil;
+      if(p.slipUntil!==undefined&&ctx.tick>=p.slipUntil){delete p.slipUntil;delete p.slip;}
       if(!p.online||p.spectator)continue;
       const input=takeInput(p.id);
       if(input)p.ack=input.seq;
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
-        movePlayer(p,input,ctx.terrain);
+        movePlayer(p,input,ctx.terrain,ctx.tick);
         if(input.target)p.target=input.target;else delete p.target;
       }
       if(p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);

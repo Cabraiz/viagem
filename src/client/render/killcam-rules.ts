@@ -15,6 +15,12 @@ export interface KillcamInput {
   /** The TV's picture, CSS px. */
   tv:{width:number;height:number};
   mainZoom:number;art:Art;feet:{x:number;y:number};
+  /**
+   * World px multiplier of the critters in the main view (framing.ts CITY_VIEW_SCALE in the city, default 1). The
+   * kill-cam's copy is drawn at its art size, so it measures the main zoom as mainZoom × actorScale: the same TV
+   * framing and the same CSS size of the critter in the city as on the endless map.
+   */
+  actorScale?:number;
   /** 0..1 of the kill-cam. */
   t:number;reduced:boolean;
   /** Natural size of the death line (world px at scale 1). */
@@ -38,7 +44,7 @@ export function killcamFrame(i:KillcamInput):KillcamFrame{
   const box=boxOf(art);
   // At least KILLCAM_MIN_CRITTER_CSS of critter, but never more than the picture holds (a tall TV in portrait gets a hop).
   const fit=(tv.height-2*KILLCAM_SAFE_CSS)/box;
-  const zoom=Math.min(fit,Math.max(i.mainZoom,KILLCAM_MIN_CRITTER_CSS/art.height));
+  const zoom=Math.min(fit,Math.max(i.mainZoom*(i.actorScale??1),KILLCAM_MIN_CRITTER_CSS/art.height));
   const safe=KILLCAM_SAFE_CSS/zoom,visibleH=tv.height/zoom,visibleW=tv.width/zoom;
   const arc=reduced?0:Math.max(0,visibleH-2*safe-box);
   // The ghost is drawn from its middle (origin .5,.5): its rest centre, and the camera on the middle of the hop.

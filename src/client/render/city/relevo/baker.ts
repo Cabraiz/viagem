@@ -51,6 +51,10 @@ export class CityRelief {
       const at=(i:number,j:number)=>t.field[(j*W+i)*4];
       this.cellTop[cy*asset.width+cx]=Math.max(at(cx,cy),at(cx+1,cy),at(cx,cy+1),at(cx+1,cy+1))/255*t.maxHeight;
     }
+    // Uploaded now, before any bake: made inside the first chunk's bake, the new textures read back wrong in that
+    // chunk (a lake of water, holes). release() frees them; a bake after it uploads them again, but the scene never
+    // reuses a destroyed layer (scene.ts drops it), so that path is only a safety net.
+    this.ensure();
     scene.events.once('shutdown',()=>this.release());
   }
   private get renderer(){return this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;}

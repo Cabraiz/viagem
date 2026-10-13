@@ -545,8 +545,8 @@ export class CityLayer {
    * (frame = view); the rest are small procedural shapes with a contact shadow and a 2 px Breu outline.
    */
   private drawProp(prop:CityProp,view:number):Phaser.GameObjects.Graphics|Phaser.GameObjects.Image{
-    const {cx,cy}={cx:Math.floor((prop.x-this.asset.origin.x)/this.asset.cell),cy:Math.floor((prop.y-this.asset.origin.y)/this.asset.cell)};
-    const z=heightAt(this.asset,cx,cy);
+    // Feet on the ground under the prop's own point (groundZ, like actors): on a slope a cell's mean floats or sinks.
+    const z=groundZ(this.asset,prop.x,prop.y);
     const at=project(prop.x,prop.y,z,view,this.pivot);
     const order=this.depthOf(depth(prop.x,prop.y,view,this.pivot));
     const art=this.art&&propSheet(prop,this.art);
@@ -605,7 +605,7 @@ export class CityLayer {
       const b=obj.getBounds();
       return {x:b.x+b.width*0.15,y:b.y,w:b.width*0.7,h:b.height};
     }
-    const {cx,cy}=cellOf(this.asset,prop.x,prop.y),at=project(prop.x,prop.y,heightAt(this.asset,cx,cy),view,this.pivot),e=propExtentPx(prop);
+    const at=project(prop.x,prop.y,groundZ(this.asset,prop.x,prop.y),view,this.pivot),e=propExtentPx(prop);
     return {x:at.x-e.side,y:at.y-e.up,w:e.side*2,h:e.up};
   }
 

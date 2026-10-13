@@ -158,12 +158,12 @@ export const CIDADE_BARKS:Readonly<Record<CidadeEnemyKind,readonly string[]>>=de
     'Quentão do tio tem segredo'],
   agiota:['O iglu tá no meu nome, viu?','Paga ou vira boneco de neve','Boleto chegou de trenó, hein',
     'Dívida não hiberna, meu anjo','Nevasca tem taxa de 30%','Pochete térmica, juros quentes'],
-  // P1 trio (NEW-20261012-ORQ-elenco-p1): snow lines written with the sim card, outside the P1 humor review.
-  coach:['Neve é mindset, campeão','Palestra na nevasca: 997 reais','Congela teu medo. E teu pé.',
+  // P1 trio (NEW-20261012-ORQ-elenco-p1): snow lines reviewed by an independent humor pass (D-033).
+  coach:['Caiu o dedo? É desapego!','Palestra na nevasca: 997 reais','Congela teu medo. E teu pé.',
     'Meu quadro branco é a rua toda','Hipotermia é zona de conforto'],
-  motoboy:['Corrente na roda? Pra quê?','Pneu careca na neve é arte','Entrego até no iglu, porra',
-    'Marmita congelada sai de graça','Derrapo, logo chego'],
-  influencer:['Shape de inverno: casaco zero','Bíceps não sente frio, sente?','Story na neve dá mais like',
+  motoboy:['Avalanche? Buzina que ela sai','Atalho pelo lago congelado!','Escada com neve? Subo de moto',
+    'Pediu sopa? Chega em cubo','Buzina congelou. Faço BIBI!'],
+  influencer:['Shape de inverno: casaco zero','Bíceps não sente frio, sente?','Tremendo? Não, é o pump!',
     'Frio queima caloria, família!','Gelo no abdômen: definição!'],
   'anao-molotov':['Frio? Taca fogo que passa!','Aquecimento central: EU','Barba congelou. Vou acender','Iglu? Iglu é forno, caralho!',
     'Vou fazer um quentão. Na rua.','Cachaça não congela. Eu testei','Boneco de neve? Agora é poça.'],
@@ -190,9 +190,9 @@ export const CIDADE_DEATH_LINES:Readonly<Record<CidadeRegularKind,readonly strin
   agiota:['Fiador! Chama o fiador!','Meu filho herda a cobrança!','Boleto molhado não vale! NÃÃO!',
     'Congelei os juros. Que dor.'],
   'anao-molotov':['Pelo menos derreti a neve!','Pavio molhou... ah, pegou.','Virei fogueira da praça!','Explodi e esquentei a galera'],
-  coach:['Congelei no meio do funil','Virei estátua motivacional','Mentoria encerrada... brrr...'],
-  motoboy:['Derrapei até o além','Picolé de feijoada, ai...','Esqueci que neve escorrega'],
-  influencer:['Panturrilha virou picolé!','Câimbra de frio ao vivo...','Filtro de neve me apagou'],
+  coach:['Me congela. Volto versão 2.0','Virei estátua motivacional','Roxo é a cor da prosperidade'],
+  motoboy:['O lago... não era atalho...','Avalanche buzinou de volta','Escorreguei pro CEP errado...'],
+  influencer:['Perna congelou. Nem uso mesmo','Câimbra de frio ao vivo...','Filtro de neve me apagou'],
 });
 /** Said by one enemy when a timed-out horde gives up and walks back up the avenues. */
 export const CIDADE_RETREAT_LINES:readonly string[]=deepFreeze([

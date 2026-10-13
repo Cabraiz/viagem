@@ -72,7 +72,10 @@ export interface CityMinimapInput {
 
 /** Bottom to top (doc §1 table); você always on top. */
 export const CITY_DRAW_ORDER:Readonly<Record<CityMarkKind,number>>={inicio:0,boca:1,grupo:2,aliado:3,base:4,'boca-ativa':5,chefe:6,caido:7,voce:8};
-/** Smallest outer size per mark in the collapsed box (px, stroke included); the big box draws them 1.5× (not to map scale). */
+/**
+ * Smallest outer size per mark in the collapsed box (px, stroke included); the big box draws them 1.5× (not to map scale).
+ * At this size an ally stays a dot, never a face avatar (rostos-hud: a face does not read under ~24 px).
+ */
 export const CITY_MARK_SIZE:Readonly<Record<Exclude<CityMarkKind,'grupo'>,number>>={inicio:5,boca:5,aliado:6,base:16,'boca-ativa':12,chefe:11,caido:11,voce:9};
 /** Clover size by count: 8 (3–9), 10 (10–24), 12 (25+); below 8 px the three dots read as one dot in the 76 px box. */
 export const groupMarkSize=(count:number)=>count>=25?12:count>=10?10:8;

@@ -1,0 +1,5 @@
+/* Face avatars (NEW-20261012-ORQ-rostos-hud, ui/face-crop.ts): a person is a circle (--r-circulo). The circle clips a
+   square <img> of side --face-z × 100% at (--face-x, --face-y): the class's face crop of the portrait thumb, or the whole
+   imported face (z 1, 0 0). Size, ring and state filters come from each part (team strip, result card, edge arrow, chip). */
+.face{position:relative;display:block;flex:none;box-sizing:border-box;overflow:hidden;border-radius:var(--r-circulo);background:var(--c-papel-claro)}
+.face-img{position:absolute;left:var(--face-x,0%);top:var(--face-y,0%);display:block;width:calc(var(--face-z,1) * 100%);height:calc(var(--face-z,1) * 100%);max-width:none;max-height:none;margin:0;pointer-events:none}

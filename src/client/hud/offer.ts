@@ -13,7 +13,7 @@ import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
-import {watchOverflow} from './overflow.ts';
+import {FOOT_GAP,cueLayout,moreCue,nextCardScroll,prefersReducedMotion,scrollBehavior,watchOverflow,type CueLayout} from './overflow.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -126,6 +126,8 @@ export const TAKE_ALL_MIN=2;
 export const TAKE_ALL_LABEL='Levar os indicados';
 /** Folds the intermission window into the chip, which opens it again (UX review janela-caido). */
 export const LATER_LABEL='Depois';
+/** hud.css's landscape breakpoint: there the clock and the foot ride in the header row (no foot row). */
+export const LANDSCAPE_QUERY='(max-height:500px)';
 
 export interface OfferPanelOptions {
   onChoose(offerId:string,index:number):void;
@@ -149,13 +151,53 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const track=el('div','rh-offer-deadline',root),fill=el('i','rh-offer-deadline-fill',track);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Tempo para escolher');
   const cards=el('div','rh-offer-cards',root);
-  const overflow=watchOverflow(cards);
-  const foot=el('footer','rh-offer-foot',root);
+  // Tags cut below the list (125%, a caído ficha, long effects): "Mais N", which brings the next tag up, inside the cut
+  // strip when its 48 px target fits there, else in its own row under the list, and a soft fade over the cut part only
+  // (BUG-20261012-ORQ-oferta-cortada-retrato: the old Breu edge read as a cut, not as "more below"; the cue never lies
+  // on a tag that is fully in view; overflow.ts cueLayout).
+  const foot=el('footer','rh-offer-foot');// (appended under the cue below; the cue reads where it is)
+  const more=el('div','rh-offer-more',root);more.hidden=true;
+  const moreButton=el('button','rh-offer-more-btn',more);moreButton.type='button';
+  const moreLabel=el('span','rh-offer-more-pill',moreButton);
+  let cue:CueLayout={mode:'none',hidden:0,fade:0,row:0},lastBelow=NaN,lastScrolled=false;
+  const overflow=watchOverflow(cards,({items,view})=>{
+    // Scrolled, the list's top padding (it sits under the header's or the clock's last 6 px, for the stars) is clipped,
+    // so a tag scrolled up never paints over (or takes the taps of) the clock, "Depois" or "Levar os indicados".
+    const scrolled=cards.scrollTop>0;
+    if(scrolled!==lastScrolled){lastScrolled=scrolled;cards.dataset.scrolled=String(scrolled);}
+    // The list as tall as without the row, and the room under it: the window's padding and edge (landscape), or 8 px
+    // kept from the foot's buttons (portrait).
+    const view0={top:view.top,bottom:view.bottom+(cue.mode==='row'?cue.row:0)};
+    const footBox=foot.parentElement===root?foot.getBoundingClientRect():undefined;
+    const below=footBox&&footBox.height>0?-FOOT_GAP:Math.max(0,root.getBoundingClientRect().bottom-view0.bottom);
+    const next=cueLayout(items,view0,below);
+    if(next.fade!==cue.fade)more.style.setProperty('--of-fade',`${next.fade}px`);
+    if(below!==lastBelow){lastBelow=below;more.style.setProperty('--of-below',`${below}px`);}
+    if(next.row!==cue.row)more.style.setProperty('--of-row',`${next.row}px`);
+    if(next.mode!==cue.mode){more.hidden=next.mode==='none';more.dataset.place=next.mode;}
+    if(next.hidden!==cue.hidden){const text=moreCue(next.hidden);moreLabel.textContent=text.label;moreButton.setAttribute('aria-label',text.aria);}
+    cue=next;
+  });
+  moreButton.addEventListener('click',()=>{
+    const view=cards.getBoundingClientRect();
+    const items=[...cards.children].map(card=>card.getBoundingClientRect());
+    cards.scrollBy({top:nextCardScroll(items,view),behavior:scrollBehavior(prefersReducedMotion())});
+  });
+  // Foot, in reading order: the "automático" note, "Depois" (secondary, left) and "Levar os indicados" (the Amarelo
+  // choice, right). In portrait it is the window's last row, so the header is only title and clock.
+  root.append(foot);
   const note=el('p','rh-offer-auto',foot);note.textContent=AUTO_NOTE;
-  const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
-  const fallFoot=el('p','rh-window-fall rh-offer-fall-foot',foot);fallFoot.hidden=true;fallFoot.setAttribute('aria-hidden','true');
   const later=el('button','rh-offer-later',foot);later.type='button';later.textContent=LATER_LABEL;later.hidden=true;
   later.setAttribute('aria-label','Depois: guarda a oferta no chip, que abre de novo');
+  const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
+  // Landscape is short (same breakpoint as hud.css): the clock and the foot ride in the header row, beside the title, so
+  // the window has no foot row and the tags get the height (hud.css).
+  const landscape=typeof matchMedia==='function'?matchMedia(LANDSCAPE_QUERY):undefined;
+  const place=()=>{
+    if(landscape?.matches){if(track.parentElement!==head)head.append(track,foot);}
+    else if(track.parentElement!==root){cards.before(track);root.append(foot);}
+  };
+  place();landscape?.addEventListener?.('change',place);
 
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
@@ -179,6 +221,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
+    cards.scrollTop=0;
     cards.replaceChildren(...offer.choices.map((choice,index)=>{
       const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
@@ -304,10 +347,9 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     later.hidden=state.mode!=='intermission';
     const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
     if(fall.textContent!==line){
-      // "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans: in the landscape foot the hint goes, so the
-      // ficha is one short line beside "Depois" (design review pacote-bugs-ux).
-      for(const node of [fall,fallFoot])writeFallLine(node,line);
-      fall.hidden=fallFoot.hidden=!line;
+      // "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans (the forge drops the hint in landscape).
+      writeFallLine(fall,line);
+      fall.hidden=!line;
     }
     root.classList.toggle('rh-offer-clock',state.clock);
     if(state.clock){
@@ -325,12 +367,12 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);overflow.destroy();}};
+  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);landscape?.removeEventListener?.('change',place);overflow.destroy();}};
 }
 
 /**
  * The caído ficha of a window: "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans, so a short window (the
- * landscape offer's foot, the landscape forge) shows one line without the hint (design review pacote-bugs-ux).
+ * landscape forge) shows one line without the hint (design review pacote-bugs-ux).
  */
 export function writeFallLine(node:HTMLElement,line:string){
   const cut=line.indexOf('. ')+1,who=cut>0?line.slice(0,cut):line,hint=cut>0?line.slice(cut):'';

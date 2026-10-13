@@ -20,7 +20,30 @@ import {
 export const DIR8={width:CELL*COLUMNS,height:CELL*ROWS*DIRECTIONS.length};
 export const DOWNED={width:CELL*COLUMNS,height:CELL*DIRECTIONS.length};
 /** Keys a sidecar `<id>.json` may set. */
-export const SIDECAR_KEYS=Object.freeze(['kind','cell','frames','views','rows','anchor','slice','fps','mask','size','wrap','transparent','opaque']);
+export const SIDECAR_KEYS=Object.freeze(['kind','cell','frames','views','rows','anchor','slice','fps','mask','size','wrap','transparent','opaque','meta']);
+/** Keys an `expected` table entry (spec.mjs) lends to a piece delivered without them in a sidecar. */
+const TABLE_KEYS=SIDECAR_KEYS.filter(k=>k!=='meta');
+const isObject=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+/**
+ * The piece's settings: the `expected` table entry of spec.mjs under the sidecar (sidecar wins key by key; `meta` is
+ * merged, sidecar over table). The table's sizes only apply while the sidecar keeps the table's kind. A table
+ * `frames:[min,max]` becomes `framesRange` (the frame count is derived from the image and must fall in it).
+ */
+function withExpected(spec,id,sc,label,problems){
+  const exp=spec.expected?.[id];
+  if(sc.invalid)return sc;
+  if(sc.meta!==undefined&&!isObject(sc.meta)){problems.push(`${label}: meta ${json(sc.meta)} inválido; use um objeto, como {"ruin":true}.`);return {...sc,invalid:true};}
+  if(!exp)return sc;
+  const out={};
+  // A sidecar without "kind" keeps the table's kind (e.g. a 9-slice frame whose sidecar only gives "slice").
+  const kind=sc.kind??exp.kind??spec.kind;
+  if(kind===(exp.kind??spec.kind)){for(const k of TABLE_KEYS)if(exp[k]!==undefined)out[k]=exp[k];if(sc.kind===undefined&&exp.kind!==undefined)out.kind=exp.kind;}
+  for(const [k,v] of Object.entries(sc))if(k!=='meta')out[k]=v;
+  if(Array.isArray(out.frames)&&sc.frames===undefined){out.framesRange=out.frames;delete out.frames;}
+  const meta={...exp.meta,...sc.meta};
+  if(Object.keys(meta).length)out.meta=meta;
+  return out;
+}
 /** Accepted `wrap` values of a seamless piece: which pairs of opposite edges must continue each other. */
 export const WRAPS=Object.freeze({xy:'nos dois sentidos',x:'só na horizontal',y:'só na vertical'});
 /** Channel spread (max − min of R, G, B) still counted as gray in a transition mask. */
@@ -393,7 +416,8 @@ function expectedCell(sc,spec,label,problems){
   return sc.cell;
 }
 
-async function validateOneFile(spec,id,files,ctx,{problems,notes,sheets}){
+async function validateOneFile(spec,id,files,ctx,r){
+  const {problems,notes,sheets}=r;
   let png,side;
   const stem=path.basename(id);
   for(const f of files){
@@ -406,7 +430,8 @@ async function validateOneFile(spec,id,files,ctx,{problems,notes,sheets}){
   const bad=id.split('/').filter(part=>!ID_PATTERN.test(part));
   if(bad.length)problems.push(`${base}.png: nome ${list(bad.map(b=>`"${b}"`))} inválido. Use só letras minúsculas sem acento, números e hífen (ex.: cidade-nevada/neve-fofa-1).`);
   const sideLabel=`${base}.json`;
-  const sc=await readSidecar(side,sideLabel,problems);
+  const sc=withExpected(spec,id,await readSidecar(side,sideLabel,problems),sideLabel,problems);
+  if(sc.meta)r.meta=sc.meta;
   const kind=sc.kind??spec.kind;
   if(!spec.kinds.includes(kind)){problems.push(`${sideLabel}: o formato ${kindName(kind)} não é aceito em ${spec.input}/. Aceitos aqui: ${list(spec.kinds.map(kindName))}.`);return {kind:spec.kind};}
   const character=spec.character??false;
@@ -478,6 +503,8 @@ async function validateOneFile(spec,id,files,ctx,{problems,notes,sheets}){
     if(img.height!==cell[1]||img.width!==frames*cell[0]||!Number.isInteger(frames)){
       problems.push(sizeProblem(label,img,Number.isInteger(frames)?frames*cell[0]:`${cell[0]}×N`,cell[1],`${Number.isInteger(frames)?frames:'N'} quadros de ${cell[0]}×${cell[1]} px numa linha`,`Exporte os quadros lado a lado, todos do mesmo tamanho.${hint}`));return {kind};
     }
+    if(sc.framesRange&&!(frames>=sc.framesRange[0]&&frames<=sc.framesRange[1]))
+      problems.push(`${label}: ${frames} ${frames===1?'quadro':'quadros'} de ${cell[0]}×${cell[1]} px, esperado de ${sc.framesRange[0]} a ${sc.framesRange[1]} (inventário de sprites). Exporte entre ${sc.framesRange[0]} e ${sc.framesRange[1]} quadros${side?'':`, ou diga quantos são em ${stem}.json, como {"frames":${frames}}`}.`);
     if(!checkTransparent(img,label,problems))return {kind};
     const anchor=checkAnchor(sc.anchor,sideLabel,problems);
     checkGrid(problems,label,img,{cw:cell[0],ch:cell[1],cols:frames,rows:1,hint,character});
@@ -487,11 +514,14 @@ async function validateOneFile(spec,id,files,ctx,{problems,notes,sheets}){
   if(kind==='views'){
     const views=sc.views??spec.views??1;
     if(!(views===1||views===VIEW_NAMES.length)){problems.push(`${sideLabel}: views ${json(views)} inválido; use 4 (câmera 0°, 90°, 180°, 270°) ou 1 (objeto simétrico visto de cima).`);return {kind};}
-    if(!side)problems.push(`${base}.json: faltando. Peças com vistas precisam dizer a célula e a âncora, como {"cell":[256,256],"anchor":[0.5,0.88],"views":${views},"rows":["inteira"]}.`);
+    // The cell (and anchor) come from the sidecar, or from the expected table when it gives them.
+    const declared=!!side||sc.cell!==undefined;
+    const rowsHint=Array.isArray(sc.rows)?json(sc.rows):'["inteira"]';
+    if(!declared)problems.push(`${base}.json: faltando. Peças com vistas precisam dizer a célula e a âncora, como {"cell":[256,256],"anchor":[0.5,0.88],"views":${views},"rows":${rowsHint}}.`);
     let cell=expectedCell(sc,spec,sideLabel,problems);
     if(cell===null)return {kind};
-    if(side&&!cell)problems.push(`${sideLabel}: falta "cell" [largura,altura] de uma vista, em px.`);
-    const anchor=side?checkAnchor(sc.anchor,sideLabel,problems,{required:true}):undefined;
+    if(declared&&!cell)problems.push(`${sideLabel}: falta "cell" [largura,altura] de uma vista, em px.`);
+    const anchor=declared?checkAnchor(sc.anchor,sideLabel,problems,{required:!!side||views>1}):undefined;
     let rows=sc.rows;
     if(rows!==undefined&&!(Array.isArray(rows)&&rows.length&&rows.every(r=>typeof r==='string'&&r))){problems.push(`${sideLabel}: rows ${json(rows)} inválido; use a lista de nomes das linhas (estados ou quadros), como ["inteira","avariada","quebrada"].`);rows=undefined;}
     if(!cell)return {kind};
@@ -524,8 +554,9 @@ const packedSize=s=>s.blocks?undefined:[s.cell[0]*(s.frames??s.views??1),s.cell[
  * Returns {problems, notes, sheets, kind}: `problems` (pt-BR) block the piece; `notes` (pt-BR) are informational
  * (absent optional parts, assumed cell size, sheets the converter paginates); `sheets` to convert when there are no
  * problems: {key, source, output (relative to the group output dir), cell, frames?, views?, rows?, directions?,
- * anchor?, fps?, slice?, mask?, wrap?, transparent?, blocks? (dir8: DIRECTIONS blocks to stack)}.
- * @returns {Promise<{problems:string[],notes:string[],sheets:object[],kind:string}>}
+ * anchor?, fps?, slice?, mask?, wrap?, transparent?, blocks? (dir8: DIRECTIONS blocks to stack)}; `meta`: the piece's
+ * render metadata (spec.mjs `expected` table merged with the sidecar's `meta`), when there is any.
+ * @returns {Promise<{problems:string[],notes:string[],sheets:object[],kind:string,meta?:object}>}
  */
 export async function validatePiece(group,id,files,ctx){
   const spec=ctx.spec??GROUPS[group];
@@ -542,5 +573,5 @@ export async function validatePiece(group,id,files,ctx){
     if(size&&(size[0]>MAX_TEXTURE||size[1]>MAX_TEXTURE))
       notes.push(`${relName(ctx,s.source)}: a folha é grande (${size[0]}×${size[1]}); o importador divide em páginas de até ${MAX_TEXTURE} px.`);
   }
-  return {problems,notes,sheets:problems.length?[]:sheets,kind};
+  return {problems,notes,sheets:problems.length?[]:sheets,kind,...(r.meta?{meta:r.meta}:{})};
 }

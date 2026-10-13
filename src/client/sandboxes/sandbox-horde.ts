@@ -25,6 +25,8 @@ import {HordeRenderer} from '../render/layers.ts';
 import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
+import {queueHordeArt} from '../art/horde-art.ts';
+import {artReady} from '../ui/art-boot.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
@@ -232,6 +234,8 @@ class HordeSandboxScene extends Phaser.Scene {
   private forceReduced:boolean;
   preload(){
     this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    // Imported art v2 (scripts/import-art-v2.mjs) previews here too; without a manifest the procedural art stays.
+    queueHordeArt(this);
     for(const tree of treeCatalog.slice(0,6))this.load.spritesheet(`tree:${tree.id}`,treeUrl(tree.id),{frameWidth:256,frameHeight:384});
     for(let i=0;i<PLAYER_COUNT;i++)this.sprites.queue(classes[(i*5)%classes.length].id);
   }
@@ -308,7 +312,8 @@ class HordeSandboxScene extends Phaser.Scene {
 
 declare global {interface Window {__horde?:Record<string,unknown>}}
 
-export function openHordeSandbox(){
+export async function openHordeSandbox(){
+  await artReady();
   const params=new URLSearchParams(location.search);
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;

@@ -11,6 +11,7 @@ import Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
 import {HAZARD} from './telegraph-look.ts';
+import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
 
 type Sprite=Phaser.GameObjects.Sprite;
 type Pt={x:number;y:number};
@@ -50,9 +51,13 @@ export class YouMarkers {
   readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,slow:false,slip:false};
   /** Scratch for the slip swirl (no allocation per frame). */
   private swirl=Array.from({length:14},()=>({x:0,y:0}));
+  /** Imported "Você" ring (art/frames-art.ts heroi-voce); nothing is made without the art. */
+  private art:FramesPool;
+  /** Owners of the imported life bar's two 9-slices (frame + fill), made only when that art is in. */
+  private readonly barOwner={frame:{},fill:{}};
 
   constructor(scene:Phaser.Scene,reduced=false){
-    this.scene=scene;this.reduced=reduced;
+    this.scene=scene;this.reduced=reduced;this.art=new FramesPool(scene);
     this.g=scene.add.graphics().setDepth(MARK_DEPTH);
     this.label=scene.add.text(0,0,'Você',{fontFamily:token('--f-sistema'),fontSize:'32px',fontStyle:'800',color:token('--c-papel')}).setOrigin(.5,.5).setDepth(MARK_DEPTH+2).setVisible(false);
     whenFontsReady(()=>this.label.updateText());
@@ -64,7 +69,7 @@ export class YouMarkers {
 
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
-    g.clear();
+    g.clear();this.art.begin();
     this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.slow=false;this.last.slip=false;
     const live=new Set<string>();
     let selfShown=false;
@@ -84,9 +89,11 @@ export class YouMarkers {
       this.drawContour(top,s);
       // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), never smaller than RING_CSS on screen.
       const w=Math.max(RING_CSS.width*s,sprite.displayWidth*.8),h=Math.max(RING_CSS.height*s,w*.5),{x,y}=mark.feet;
-      const bands=ringBands();
-      for(const [band,color] of [[bands.papel,c.papel],[bands.voce,c.voce],[bands.breu,c.breu]] as const)
-        g.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
+      const bands=ringBands(),art=markArt('you');
+      // Imported ring at today's outer width (Papel band included), just under the code beak and bar.
+      if(!(art&&this.art.mark('you',art,MARK_DEPTH-.01,markFrame(art,now,this.reduced),x,y,w+bands.papel.width*s)))
+        for(const [band,color] of [[bands.papel,c.papel],[bands.voce,c.voce],[bands.breu,c.breu]] as const)
+          g.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
       // Beak toward where the hero faces: Papel edge, Lilás body.
       const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
       const outer=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,(RING_CSS.beak+2)*s,(RING_CSS.beak*.6+2)*s);
@@ -99,9 +106,18 @@ export class YouMarkers {
       this.fullSince=bar.fullSince;
       if(bar.visible){
         const bw=HP_BAR_CSS.width*s,bh=HP_BAR_CSS.height*s,left=x-bw/2,top2=y+h/2+(RING_CSS.papel+4)*s,low=fraction<LOW_HP;
-        g.fillStyle(c.papel,1).fillRect(left-s,top2-s,bw+2*s,bh+2*s);
-        g.fillStyle(c.breu,1).fillRect(left,top2,bw,bh);
-        if(fraction>0)g.fillStyle(low?c.cone:c.cartolina,1).fillRect(left+s,top2+s,(bw-2*s)*fraction,bh-2*s);
+        // Imported frame + fill (the critters' normal pair, same rules as theirs): the frame over today's Papel edge box,
+        // the fill over the track, stretched to the hp share and tinted as today. Missing either piece: today's bar.
+        const art=barArt(false);
+        if(art&&this.art.ready(art.frame)&&this.art.ready(art.fill)){
+          this.art.slice(this.barOwner.frame,art.frame,MARK_DEPTH+.01,left-s,top2-s,bw+2*s,bh+2*s,s);
+          const fw=barFillWidth(bw,fraction,(art.fill.left+art.fill.right)*s);
+          if(fw>0)this.art.slice(this.barOwner.fill,art.fill,MARK_DEPTH+.02,left,top2,fw,bh,s)?.setTint(low?c.cone:c.cartolina);
+        }else{
+          g.fillStyle(c.papel,1).fillRect(left-s,top2-s,bw+2*s,bh+2*s);
+          g.fillStyle(c.breu,1).fillRect(left,top2,bw,bh);
+          if(fraction>0)g.fillStyle(low?c.cone:c.cartolina,1).fillRect(left+s,top2+s,(bw-2*s)*fraction,bh-2*s);
+        }
         this.last.bar=true;this.last.low=low;
       }
       if(mark.slow||mark.slip)this.drawStatus(mark,now,s);
@@ -177,5 +193,5 @@ export class YouMarkers {
     return ghost;
   }
   forget(id:string){this.ghosts.get(id)?.destroy();this.ghosts.delete(id);}
-  destroy(){this.g.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;}
+  destroy(){this.art.destroy();this.g.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;}
 }

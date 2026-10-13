@@ -1,5 +1,5 @@
 import type {TerrainField} from '../maps/index.ts';
-import {elevation,type Point} from '../maps/index.ts';
+import {CityTerrain,elevation,type Point} from '../maps/index.ts';
 
 export const normalizeView=(view:number)=>((view%4)+4)%4;
 export function rotateVector(p:Point,view:number):Point{
@@ -20,7 +20,9 @@ export function unprojectView(p:Point,view=0,terrain?:TerrainField):Point{
   if(terrain){
     // Same orthographic ray and bisection as the cached terrain shader.
     const at=(height:number)=>viewPoint({x:(p.y+height)/42+p.x/84,y:(p.y+height)/42-p.x/84},-view);
-    let lo=0,hi=128;
+    // The city's relief reaches ~185 px (CityTerrain, 21 px per unit over ~8.8 u): search higher there, or a tap on a
+    // hill lands on the wrong spot. 18 steps over 256 px still resolve ~0.001 px.
+    let lo=0,hi=terrain instanceof CityTerrain?256:128;
     for(let i=0;i<18;i++){const z=(lo+hi)/2,q=at(z);if(z>terrain.height(q.x,q.y))hi=z;else lo=z;}
     return at((lo+hi)/2);
   }

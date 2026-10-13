@@ -219,6 +219,7 @@ export class TowerFeed {
       let fire=prev?.fire??0,at=prev?.at??tick;
       if(prev){
         const changed=s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim));
+        // TODO(wire): shot counter — swap this inference for `counter changed` once the snapshot carries one.
         if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies)){fire=tick+1;at=tick;}
       }
       seen.set(s.id,{aim:s.aim,fire,at});

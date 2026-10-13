@@ -21,7 +21,7 @@
  * beyond. Value LOOT_VALUE by tier (units of the crate's kind); kinds alternate coco/pedra inside each tier (asset
  * order), so every tier pays both. A good crate (2 units) is part of a repair (rules RECIPES.reparo: 2 coco + 3 pedra).
  */
-import {CityTerrain,FlowField,SPEED,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
+import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,heroSpeed,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
@@ -46,11 +46,10 @@ export const CRATE_PREFIX='caixa-';
 
 /**
  * The hero's walking speed (u/s) in this terrain: the one place the loot tiers, the city intermission and the city
- * horn read it. Today every world moves heroes at the maps `SPEED` (3.1 u/s, world.ts moveDirection). cidade-04 gives
- * the city its own hero speed (~2.0 u/s, rules/scale 'cidade-nevada'): it must make THIS helper world-aware (return
- * what the movement code uses in `terrain`) so the tiers and the horn follow on their own.
+ * horn read it. It is the movement code's own speed (maps `heroSpeed`, cidade-04: ~1.99 u/s in the city), so the
+ * tiers follow it.
  */
-export function lootHeroSpeed(_terrain:TerrainField|undefined):number{return SPEED;}
+export function lootHeroSpeed(terrain:TerrainField|undefined):number{return heroSpeed(terrain);}
 
 export interface Crate {
   node:NodeInfo;tier:LootTier;

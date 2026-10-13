@@ -16,7 +16,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
-import {SPEED,obstacles,walkable,worldBase,type Point} from '../../src/maps/world.ts';
+import {SPEED,heroSpeed,obstacles,walkable,worldBase,type Point} from '../../src/maps/world.ts';
 import {FlowField,STRAIGHT_COST,UNREACHABLE} from '../../src/maps/flowfield.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundPhase,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
@@ -38,13 +38,15 @@ const HASH=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest
 const loaded=await cityTerrainFrom(TEXT,HASH);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain,CS=city.asset.unitsPerCell,GW=city.asset.cells.w,GH=city.asset.cells.h;
+/** The hero speed the sim moves heroes at in the city (maps heroSpeed, cidade-04), the one loot.ts sizes the tiers with. */
+const HERO=heroSpeed(city);
 const P=cityPlanner(city);
 const plazaGoals:Point[]=[];
 for(let cy=0;cy<GH;cy++)for(let cx=0;cx<GW;cx++)if(P.plazaField.cellCost(cx,cy)===0)plazaGoals.push({x:(cx+.5)*CS,y:(cy+.5)*CS});
 /** Walking distance field to the plaza (no wall penalty: a walk, not a steering cost). */
 const walkField=new FlowField(P.grid,plazaGoals,{wallPenalty:0});
 /** Seconds a hero walks from p to the plaza; Infinity when p is not reachable with the doors closed. */
-const walkSeconds=(p:Point)=>{const c=walkField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*CS/SPEED;};
+const walkSeconds=(p:Point)=>{const c=walkField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*CS/HERO;};
 /** Goal: the plaza center only (used to trace the way out, played backwards). */
 const centerField=new FlowField(P.grid,[P.plazaCenter]);
 const TIER_SLACK=.25;
@@ -111,7 +113,7 @@ function stepAlong(field:FlowField,body:Point){
   field.directionAt(body.x,body.y,dir);
   const l=Math.hypot(dir.x,dir.y);
   if(!(l>1e-6))return false;
-  moveSafely(body,dir.x/l*SPEED/SIM_HZ,dir.y/l*SPEED/SIM_HZ,city);
+  moveSafely(body,dir.x/l*HERO/SIM_HZ,dir.y/l*HERO/SIM_HZ,city);
   return true;
 }
 /** Positions of a hero walking from `from` along `field` until `done` (from included), one per tick. */
@@ -219,9 +221,11 @@ test('tiers by walk time from the plaza at the hero speed: value grows near → 
     else if(s>15+TIER_SLACK)tiers.far.push(n);
   }
   assert.ok(tiers.good.length>=1,'good crates at 10–15 s of walking');
-  assert.ok(tiers.near.length>=1&&tiers.far.length>=1,'the asset has near and far candidates too');
+  // At the city hero speed (cidade-04, ~1.99 u/s) the nearest candidate is already ~10 s out, so the near tier may be
+  // empty; far crates must exist.
+  assert.ok(tiers.far.length>=1,'the asset has far candidates too');
   const values=(l:NodeInfo[])=>l.map(n=>n.value);
-  assert.ok(Math.max(...values(tiers.near))<Math.min(...values(tiers.good)),`near ${values(tiers.near)} < good ${values(tiers.good)}`);
+  if(tiers.near.length)assert.ok(Math.max(...values(tiers.near))<Math.min(...values(tiers.good)),`near ${values(tiers.near)} < good ${values(tiers.good)}`);
   assert.ok(Math.max(...values(tiers.good))<Math.min(...values(tiers.far)),`good ${values(tiers.good)} < far ${values(tiers.far)}`);
   for(const [tier,l] of Object.entries(tiers))if(l.length>=2)for(const k of KINDS)assert.ok(l.some(n=>n.kind===k),`${tier} tier pays ${k} too`);
   t.diagnostic(`near ${tiers.near.length}, good ${tiers.good.length} (${tiers.good.map(n=>walkSeconds(n).toFixed(1)).join(', ')} s), far ${tiers.far.length}`);
@@ -523,7 +527,8 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   assert.deepEqual(said.map(x=>x.e.type==='say'?x.e.source:'').sort(),['p3','p4'],`told: ${JSON.stringify(said)}`);
   assert.ok(said.every(x=>x.tick===waveAt),'on the wave start');
   assert.equal(new Set(said.map(x=>x.e.type==='say'?x.e.line:'')).size,said.length,'heroes left behind in the same tick hear different lines');
-  assert.equal(log.slice(from).filter(x=>x.e.type==='horn').length,1,'one horn');
+  // Exactly one horn in this intermission (it may sound early, while heroes are still out at far crates).
+  assert.equal(log.filter(x=>x.tick>=start&&x.e.type==='horn').length,1,'one horn in the intermission');
   assert.deepEqual(JSON.parse(JSON.stringify(st)),st,'stonewards state JSON-safe');
   t.diagnostic(`intermission ${((end0-start)/SIM_HZ).toFixed(2)} s at start; plaza edge hero ${edge.length?`${dist(edge[0],wall).toFixed(1)} u from the wall`:'n/a'}`);
 });

@@ -2,8 +2,10 @@
 // keep the role's reserve without it; the role's event and acting animations play by id.
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ACTION_ALIASES,HERO_FIGURE_PX,MASS_ALPHA,applyEnemyArt,artLoads,artTargetHeight,drawnScale,topRow,deathDuration,enemyArtActive,enemyArtId,enemyArtOn,enemyPieceLoads,hasDeathArt,
+import {artPiece,setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
+import {projectileAction} from '../../src/client/art/horde-actions.ts';
+const artPieceOf=(id:string)=>artPiece('inimigos',id);
+import {ACTION_ALIASES,HERO_FIGURE_PX,deathAnim,MASS_ALPHA,applyEnemyArt,artLoads,artTargetHeight,drawnScale,topRow,deathDuration,enemyArtActive,enemyArtId,enemyArtOn,enemyPieceLoads,hasDeathArt,
   loopAnim,pieceAction,playEnemyAction,queueEnemyArt} from '../../src/client/art/horde-art.ts';
 import {actAnim,PHASE_ACTING,PHASE_BUFFED} from '../../src/client/render/phase-look.ts';
 import {enemyKind} from '../../src/client/render/keys.ts';
@@ -153,4 +155,28 @@ test('size by drawn height (D-037, Orquestrador): the role\'s target over the fi
   cell[(1*w+2)*4+3]=100;cell[(3*w+1)*4+3]=200;
   assert.equal(topRow(cell,w,h),3);assert.equal(topRow(cell,w,h,90),1);assert.equal(topRow(new Uint8ClampedArray(w*h*4),w,h),-1);
   assert.equal(MASS_ALPHA,128);
+});
+
+test('review fixes: the kamikaze charges while it dashes and dies with its crash; roster shots play the attack; a missing loop sheet tries another; off() keeps the acting texture',()=>{
+  // Aiming still, charging on the move (the sim keeps it acting through the dash); without a charge sheet, still the aim.
+  assert.equal(loopAnim(grauzeiro,false,false,1,'aim'),'aim');assert.equal(loopAnim(grauzeiro,true,false,1,'aim'),'charge');
+  assert.equal(loopAnim({kind:'animations',files:{idle:grauzeiro.files.idle,aim:grauzeiro.files.aim}},true,false,1,'aim'),'aim');
+  useArt({grauzeiro,'rato-de-boteco':rato});
+  assert.equal(deathAnim(artPieceOf('grauzeiro')),'crash');assert.equal(deathAnim(artPieceOf('rato-de-boteco')),'death');
+  const crash=new Set(keysOf(grauzeiro,'grauzeiro'));
+  assert.ok(hasDeathArt({exists:k=>crash.has(k)},'grauzeiro'),'the crash is its death');
+  assert.ok(deathDuration('grauzeiro')>0);
+  // The generic shot of a roster atirador cues the nearest agiota-drawn actor's throw (its piece plays the attack).
+  const cue=projectileAction('tiro',true,1,0,{enemy:()=>undefined,nearest:(kind,_x,_y,max)=>kind==='agiota'&&max>=1?{id:'m1',kind:'agiota',nx:0,ny:0}:undefined,telegraph:()=>undefined},{enemy:'',action:'hit'});
+  assert.deepEqual(cue&&{...cue},{enemy:'m1',action:'throw'});
+  assert.equal(pieceAction({kind:'animations',files:{idle:sheet('m/idle.webp',6),aim:sheet('m/aim.webp',6),attack:sheet('m/attack.webp',6)}},'throw'),'attack');
+  // Only the walk loaded (idle still loading): the still enemy shows the walk instead of dropping to the reserve.
+  const walkOnly=mockImage(mockScene(new Set(['art:enemy:rato-de-boteco:walk'])));
+  useArt({'rato-de-boteco':{kind:'animations',files:{idle:sheet('r/idle.webp',6,64),walk:rato.files.walk}}});
+  assert.ok(applyEnemyArt(walkOnly as never,{kind:'pombos',art:'rato-de-boteco',elite:false,phase:0},false,0,0,0));
+  assert.equal(walkOnly.texture.key,'art:enemy:rato-de-boteco:walk');
+  // The art goes (a manifest without it): the reserve comes back with the renderer's own (acting) texture.
+  setArtIndex(parseArtIndex(EMPTY));
+  applyEnemyArt(walkOnly as never,{kind:'motoboy',art:'rato-de-boteco',tex:'horde:enemy:motoboy:act',elite:false,phase:0},false,0,0,10);
+  assert.equal(walkOnly.texture.key,'horde:enemy:motoboy:act');
 });

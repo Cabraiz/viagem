@@ -37,6 +37,9 @@ export const TELEGRAPH_ACTIONS:Readonly<Partial<Record<TelegraphKind,readonly Ac
 /** Hostile projectile source → who shoots it (the agiota's boleto starts one body radius ahead of him). */
 export const PROJECTILE_ACTIONS:Readonly<Record<string,readonly ActionOwner[]>>={
   'boleto-juros':[{kind:'agiota',action:'throw',max:2}],
+  // The roster's atiradores (drawn on the agiota) fire the generic shot (sim catalog GENERIC_SHOT_SOURCE): their piece
+  // has no throw, so horde-art.ts ACTION_ALIASES plays its attack.
+  tiro:[{kind:'agiota',action:'throw',max:2}],
 };
 /**
  * Damage on a player whose `source` is an enemy id. Contact hits and the burp/stamps (telegraph damage carries its

@@ -220,7 +220,7 @@ export function queueHordeArt(scene:Phaser.Scene){
 }
 /**
  * Per match (arte-do-roster-no-render): the roster's sheets are not in the preload (173 ids, 12-18 drawn per run);
- * the renderer asks for art `id` when an enemy of it shows up (or the room names the run's rotation) and its pages load
+ * the renderer asks for art `id` when the room names the run's rotation ({t:'elenco'}, scene.ts) or when an enemy of it shows up and its pages load
  * in the background. Until they do, the enemy keeps its reserve; applyEnemyArt switches by itself once they exist.
  * Each id is asked once per scene; true when something was queued. A failed page keeps the reserve.
  */
@@ -430,7 +430,9 @@ export function drawnHeight(textures:Phaser.Textures.TextureManager,id:string,pi
  * (BOSS_PHASE2) standing still, who idles with 'phase2-idle' when the piece has it.
  */
 export function loopAnim(piece:ArtPiece,moving:boolean,elite:boolean,bossPhase=1,act?:string):string|undefined{
-  // The acting pose of the server phase (render/phase-look.ts actAnim: lecture, aim, pose, summon) loops while it lasts.
+  // The acting pose of the server phase (render/phase-look.ts actAnim: lecture, aim, pose, summon) loops while it lasts;
+  // a kamikaze acting is aiming while still and charging while it dashes (sim ai.ts keeps it acting through the dash).
+  if(act==='aim'&&moving&&piece.files.charge&&(!elite||piece.files[eliteFile('charge')]))return 'charge';
   if(act&&piece.files[act]&&(!elite||piece.files[eliteFile(act)]))return act;
   if(!moving&&!elite&&bossPhase>=BOSS_PHASE2&&piece.files['phase2-idle'])return 'phase2-idle';
   return cachedAnim(piece,moving,elite);
@@ -456,9 +458,10 @@ export const hitGap=(hitMs:number)=>Math.max(HIT_GAP_MIN_MS,HIT_GAP_HITS*hitMs);
 export const ACTION_ALIASES:Readonly<Record<string,readonly string[]>>={
   poop:['attack'],throw:['attack'],joke:['shove','attack'],shove:['attack'],slam:['shove','attack'],charge:['crash','attack'],
 };
+const NO_ALIAS:readonly string[]=Object.freeze([]);
 export function pieceAction(piece:ArtPiece,action:string):string|undefined{
   if(piece.files[action])return action;
-  for(const a of ACTION_ALIASES[action]??[])if(piece.files[a])return a;
+  for(const a of ACTION_ALIASES[action]??NO_ALIAS)if(piece.files[a])return a;
   return undefined;
 }
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
@@ -525,7 +528,7 @@ export function enemyArtRow(image:object){const s=states.get(image);return s&&s.
  * frame's sheet is shown instead (CityOutlines.show maps origin and scale); elsewhere, and always outside the city, the
  * imported sheet with its baked umber rim.
  */
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -537,8 +540,14 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined,frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
-  const anim=action??loop,t=action?now-s.at:now+actor.phase*1000;
+  let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
   if(!action&&anim)frame=enemyFrame(id,piece,anim,s.row,t,base);
+  // That loop's sheet is not there (still loading, or it failed): another loop of the piece that is, before the reserve.
+  if(!action&&anim&&(!frame||!textures.exists(frame.key)))for(const alt of moving?MOVING:STILL){
+    if(alt===anim||!piece.files[alt]||(actor.elite&&!piece.files[eliteFile(alt)]))continue;
+    const f=enemyFrame(id,piece,alt,s.row,t,base);
+    if(f&&textures.exists(f.key)){anim=alt;frame=f;break;}
+  }
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
   const file=piece.files[anim],scale=pieceScale(textures,id,piece,actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
@@ -579,8 +588,9 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
 }
 /** Depth of the elite layer over its base image: far below the gap between two enemies' depths. */
 export const ELITE_LAYER_DEPTH=.001;
-function off(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean},s:ArtState):false{
-  if(s.on){s.on=false;image.setTexture(enemyTexture(actor.kind,actor.elite)).setOrigin(.5,ENEMY_ART[actor.kind].originY);}
+function off(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;tex?:string},s:ArtState):false{
+  // The renderer's current procedural texture (its acting one while acting), else the kind's.
+  if(s.on){s.on=false;image.setTexture(actor.tex??enemyTexture(actor.kind,actor.elite)).setOrigin(.5,ENEMY_ART[actor.kind].originY);}
   s.eliteOn=false;
   return false;
 }
@@ -604,18 +614,20 @@ function overlayOf(image:Phaser.GameObjects.Image,s:ArtState){
  * Whether a kill of `kind` plays the imported death: the piece has 'death', its pages loaded, and the dying actor (its
  * pooled image, when the renderer still had it) was showing the art (an elite drawn procedurally keeps today's puff).
  */
+/** The death animation of a piece: 'death', else a kamikaze's 'crash' (it has no death sheet: it dies exploding). */
+export const deathAnim=(piece:ArtPiece|undefined)=>piece?.files.death?'death':piece?.files.crash?'crash':undefined;
 export function hasDeathArt(textures:{exists(key:string):boolean},art:string,image?:object):boolean{
-  const id=artOf(art),file=artPiece('inimigos',id)?.files.death;if(!file)return false;
+  const id=artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece);if(!piece||!anim)return false;
   if(image){const s=states.get(image);if(!s||!s.on)return false;}
-  const keys=fileInfo(id,'death',file).keys;
+  const keys=fileInfo(id,anim,piece.files[anim]).keys;
   for(let i=0;i<keys.length;i++)if(!textures.exists(keys[i]))return false;
   return true;
 }
 /** Duration (ms) of the imported death of art `art` (a legacy kind or a roster id; 0 without one). */
 export function deathDuration(art:string){
-  const id=artOf(art),file=artPiece('inimigos',id)?.files.death;
-  if(!file)return 0;
-  const info=fileInfo(id,'death',file);return actionDuration(info.frames,info.fps);
+  const id=artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece);
+  if(!piece||!anim)return 0;
+  const info=fileInfo(id,anim,piece.files[anim]);return actionDuration(info.frames,info.fps);
 }
 /**
  * Per frame, after the renderer placed `image` (position and depth): the death frame `elapsedMs` after the kill on
@@ -625,16 +637,16 @@ export function deathDuration(art:string){
  */
 export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string):boolean{
   // `kind` sizes it (enemyDrawScale); `art` (the roster id) picks the sheet, the kind's own art without it.
-  const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),file=piece?.files.death;
-  if(!piece||!file){overlay.setVisible(false);return false;}
-  const info=fileInfo(id,'death',file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
-  const frame=alpha>0?enemyFrame(id,piece,'death',row,elapsedMs,base,true):undefined;
+  const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
+  if(!piece||!anim||!file){overlay.setVisible(false);return false;}
+  const info=fileInfo(id,anim,file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
+  const frame=alpha>0?enemyFrame(id,piece,anim,row,elapsedMs,base,true):undefined;
   const textures=image.scene.textures;
   if(!frame||!textures.exists(frame.key)){overlay.setVisible(false);return false;}
   if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
   const scale=pieceScale(textures,id,piece,kind,file,elite)*body;
   image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0).setAlpha(alpha).setVisible(true);
-  const layer=elite?enemyFrame(id,piece,eliteFile('death'),row,elapsedMs,top,true):undefined;
+  const layer=elite?enemyFrame(id,piece,eliteFile(anim),row,elapsedMs,top,true):undefined;
   if(layer&&textures.exists(layer.key)){
     if(overlay.texture.key!==layer.key)overlay.setTexture(layer.key,layer.frame);else overlay.setFrame(layer.frame);
     overlay.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(scale).setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(alpha).setVisible(true);

@@ -8,7 +8,7 @@ import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackTint,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtOn,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -78,6 +78,8 @@ interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
+  /** The roster accent of the reserve (keys.ts fallbackTint); `tint` is it while the reserve shows, undefined over art. */
+  accent:number|undefined;
   /** Imported figure size over the reserve's (horde-art.ts enemyArtRatio; 1 without art): shadow, bar, ring and cues follow it. */
   fit:number;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
@@ -311,7 +313,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -457,10 +459,10 @@ export class HordeRenderer{
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
     // A pooled actor may come back as another kind: its accent tint follows (the hit flash owns the tint while it lasts).
-    // Imported art has its own colours: the accent only tints the reserve.
-    const tint=enemyArtOn(a.image)?undefined:fallbackTint(view.kind);
-    // A new accent re-lights the actor on its next frame (sunlit multiplies the light by the roster accent).
-    if(used.fresh||a.tint!==tint){a.tint=tint;a.lit=false;}
+    // A new accent re-lights the actor on its next frame (sunlit multiplies the light by the roster accent); imported
+    // art has its own colours, so drawEnemy drops the accent the frame the art shows (and back when it goes).
+    const accent=fallbackTint(view.kind);
+    if(used.fresh||a.accent!==accent){a.accent=accent;a.tint=accent;a.lit=false;}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
@@ -683,7 +685,10 @@ export class HordeRenderer{
     if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image,a.tint);}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
-    if(!applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines)&&outlines){
+    const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines);
+    const tint=shown?undefined:a.accent;
+    if(tint!==a.tint){a.tint=tint;if(!flashing){a.litFlip=a.flip;sunlit(a.image,tint);}}
+    if(!shown&&outlines){
       // City mode (contorno-breu): the procedural texture's Breu-ring copy at screen scale; the base outside the city.
       const base=ENEMY_TEXTURES[a.kind][a.elite?1:0];
       outlines.show(a.image,outlines.variant(base,body),base,undefined,.5,art.originY,sx*body,sy*body);

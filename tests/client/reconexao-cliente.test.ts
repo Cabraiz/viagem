@@ -207,7 +207,7 @@ test('reconecta-round2: the banner helper and the retry schedule (150 ms first o
   assert.equal(at(0),false);assert.equal(at(1499),false);assert.equal(at(1500),true);assert.equal(at(30_000),true);
   assert.equal(at(5000,{connected:true}),false);assert.equal(at(5000,{fatal:'Conexão indisponível.'}),false,'terminal: the fatal window, not the banner');
   assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,2000,2000,2000]);
-  assert.deepEqual([0,1,2,3].map(n=>retryDelay(n,true,true)),[150,1000,1000,1000],'in a match the cap is 1 s (3g-socket-morto)');
+  assert.deepEqual([0,1,2,3].map(n=>retryDelay(n,true,true)),[150,1000,1000,1000],'in a match, the first 10 s offline: 1 s cap (3g-socket-morto)');
   assert.deepEqual([0,1].map(n=>retryDelay(n,false)),[500,1000],'before joining the lobby keeps its pace');
 });
 
@@ -308,5 +308,32 @@ test('3g-socket-morto: a socket gone quiet (no close) on a steady link is called
     assert.ok(called>=3000&&called<=5500,`dead after ${called} ms`);
     for(let i=0;i<80&&!ana.connected;i++)await sleep(50);
     assert.equal(ana.connected,true);assert.equal(ana.fatal,undefined);
+  }finally{stop();cleanup();}
+});
+
+test('3g-socket-morto review: a 3.5 s long task (a beat 1.5 s late, not "stalled") is not called dead; real silence on top still is',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;
+  const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();
+    const socket=sockets(ana);const beat=(now:number)=>(ana as any).beat(socket,now);
+    stop();(socket.peer as {send:Peer['send']}).send=()=>{};await sleep(100);clearInterval((ana as any).heartbeat);
+    const t=performance.now();
+    // The last message came right before a 3.5 s task; the beat due at +2 s runs at +3.5 s, before the queued messages.
+    (ana as any).lastMessage=t-3500;(ana as any).beatAt=t-3500;
+    beat(t);assert.equal(socket.readyState,1,'3.5 s of silence, 1.5 s of it the page itself: not dead');
+    beat(t+2000);assert.equal(socket.readyState,3,'the next beat on time: 5.5 s of silence on a 3 s link, dead');
+  }finally{stop();cleanup();}
+});
+
+test('3g-socket-morto review: the network coming back (online) never closes a socket still waiting for its welcome',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client();await ana.join();
+    // The previous socket's last message is old; a new socket is open and has sent its join, no welcome yet.
+    (ana as any).connected=false;(ana as any).lastMessage=performance.now()-10_000;
+    (ana as any).resume();
+    assert.notEqual(sockets(ana).readyState,3,'a socket that has not joined yet is not judged by the old silence');
+    (ana as any).connected=true;
   }finally{stop();cleanup();}
 });

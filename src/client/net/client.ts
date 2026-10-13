@@ -81,15 +81,18 @@ export function retryWindow(phase:string|undefined){return phase==='combat'||pha
 export const FIRST_RETRY_MS=150;
 /** Only a connection that lived this long gets the fast first retry, so a join that keeps dying cannot loop every 150 ms. */
 export const FAST_RETRY_AFTER_MS=5000;
-/** In a match (3g-socket-morto) the retries cap at this instead: a phone whose network is back is back sooner. */
-export const RUN_RETRY_MAX_MS=1000;
+/**
+ * In a match (3g-socket-morto), for the first FAST_RETRY_WINDOW_MS offline, the retries cap at this instead: a phone
+ * whose network is back is back sooner. Past that (the room itself refusing, a long outage) the 2 s pace again.
+ */
+export const RUN_RETRY_MAX_MS=1000,FAST_RETRY_WINDOW_MS=10_000;
 /**
  * Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000 (cap); 500 first before joining.
- * `inRun`: a match is on, the cap is RUN_RETRY_MAX_MS (a failed attempt with no network never reaches the room).
+ * `fast`: a match is on and the drop is younger than FAST_RETRY_WINDOW_MS: the cap is RUN_RETRY_MAX_MS.
  */
-export function retryDelay(attempts:number,joined:boolean,inRun=false){
+export function retryDelay(attempts:number,joined:boolean,fast=false){
   // joined: the dropped connection had been up for FAST_RETRY_AFTER_MS (a socket dying right after welcome keeps the 500 ms pace).
-  return attempts===0&&joined?FIRST_RETRY_MS:Math.min(inRun?RUN_RETRY_MAX_MS:RETRY_MAX_MS,500*2**attempts);
+  return attempts===0&&joined?FIRST_RETRY_MS:Math.min(fast?RUN_RETRY_MAX_MS:RETRY_MAX_MS,500*2**attempts);
 }
 /** The big "Reconectando à turma…" banner waits this long: a drop that heals sooner shows nothing in the middle. */
 export const RECONNECT_BANNER_MS=1500;
@@ -306,6 +309,8 @@ export class CoopClient {
     const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
     const timeout=this.joinTimer=setTimeout(()=>ws.close(),8000);
     ws.onopen=()=>{
+      // The silence of this socket counts from now, not from the previous one's last message.
+      if(ws===this.socket)this.lastMessage=performance.now();
       const kicked=this.token?undefined:this.kickedToken();
       const maps=clientCatalog(this.cityRef).map(r=>({id:r.id,version:r.version,hash:r.hash}));
       this.out(ws,{t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,maps,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})});
@@ -349,8 +354,8 @@ export class CoopClient {
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      const inRun=this.run?.phase==='combat'||this.run?.phase==='countdown';
-      this.retry=setTimeout(()=>this.connect(),jittered(retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS,inRun)));
+      const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;
+      this.retry=setTimeout(()=>this.connect(),jittered(retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS,fast)));
     };
     ws.onerror=()=>{};
   }
@@ -490,7 +495,7 @@ export class CoopClient {
       if(typeof seat.token==='string'&&seat.token){this.token=seat.token;this.saveToken();}
     }
     clearTimeout(this.joinTimer);clearInterval(this.heartbeat);clearTimeout(this.retry);this.retry=undefined;
-    this.socket=undefined;
+    this.socket=undefined;this.silence.cut();
     try{ws.close();}catch{}
     this.onStatus(CITY_RETRY_STATUS);
     const manifest=this.cityManifest;
@@ -519,10 +524,14 @@ export class CoopClient {
    * silence it judges anyway, so a page stalled beat after beat still finds a dead socket.
    */
   private beat(ws:WebSocket,now=performance.now()){
-    const late=now-this.beatAt>STALLED_BEAT_MS;this.beatAt=now;
+    // 3g-socket-morto: the limit can be 3 s now, so a beat a little late (a 3.5 s long task) is not "on time" for it:
+    // how late this beat came is taken off the silence (messages may be queued behind it), on top of the N27 rule.
+    const lateBy=Math.max(0,now-this.beatAt-HEARTBEAT_MS),late=now-this.beatAt>STALLED_BEAT_MS;this.beatAt=now;
     if(this.goneAway(ws,now))return;
     const silent=now-this.lastMessage;
-    if(silent>this.silence.limit(now)&&(!late||silent>STALLED_DEAD_MS)){ws.close();return;}
+    // A city download shares the phone's link with the frames: the old 8 s while it runs (no history covers it).
+    const limit=this.mapLoad&&!this.mapLoad.failed?DEAD_SILENCE_MS:this.silence.limit(now);
+    if(silent-lateBy>limit&&(!late||silent>STALLED_DEAD_MS)){ws.close();return;}
     if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;this.out(ws,{t:'ping',at:now});}
     this.saveToken();
   }
@@ -547,7 +556,7 @@ export class CoopClient {
   private resume(){
     if(this.stopped)return;
     const ws=this.socket;
-    if(ws?.readyState===WebSocket.OPEN&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
+    if(ws?.readyState===WebSocket.OPEN&&(this.connected||this.mapWait?.ws===ws)&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
     if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */

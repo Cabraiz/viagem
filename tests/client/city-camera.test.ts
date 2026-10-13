@@ -246,6 +246,10 @@ test('scene.ts keeps one terrain: fit, project and the walk read this.field; the
   const build=src.slice(src.indexOf('private buildWorld(){'),src.indexOf('private clearWorld(){'));
   assert.ok(build.indexOf('if(city||this.field.chunks)return;')>0&&build.indexOf('if(city||this.field.chunks)return;')<build.indexOf('landmarks.forEach'),
     'island trees, rocks and landmarks only on the island');
-  assert.match(src,/private drawGround\(\)\{\s*if\(isCityWorld\(this\.field\)\)return;/,'no island ground under the city (cidade-03 wires CityLayer)');
+  // cidade-03: in the city drawGround builds the CityLayer and returns before the island/endless ground.
+  const ground=src.slice(src.indexOf('private drawGround(){'));
+  assert.match(ground,/^private drawGround\(\)\{\s*if\(isCityWorld\(this\.field\)\)\{/,'the city branch comes first');
+  assert.ok(ground.indexOf('new CityLayer(')>0&&ground.indexOf('new CityLayer(')<ground.indexOf('createTerrain('),'city render, never the island ground');
+  assert.ok(ground.indexOf('return;')<ground.indexOf('createTerrain('),'the city branch returns before createTerrain');
   assert.match(src,/private chooseTrees\(\)\{if\(this\.field\.chunks\|\|isCityWorld\(this\.field\)\)return \[\];/,'no island tree sheets loaded for the city');
 });

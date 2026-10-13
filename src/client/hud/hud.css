@@ -805,7 +805,8 @@
 .rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:28px;height:28px}
 .rh-objetivo-body{display:flex;flex:1;flex-direction:column;min-width:0}
 .rh-objetivo-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
-.rh-objetivo-sub{font:400 var(--t-13)/1.2 var(--f-sistema)}
+/* Where the second line must wrap (portrait at 125%) it splits in two even lines: never one word alone below. */
+.rh-objetivo-sub{font:400 var(--t-13)/1.2 var(--f-sistema);text-wrap:balance}
 .rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh-objetivo-m:empty{display:none}
 .rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}

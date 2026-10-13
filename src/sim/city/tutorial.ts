@@ -9,14 +9,17 @@
  *       and start walking, at hidden cells near the wreck that are FARTHER from the plaza (path) than every live hero,
  *       the closest to the team first (`behindSpots`): they come out of the crash site behind the team and chase it
  *       (plan speed 0.9: ≈ 1.61 u/s, 0.81 × the city hero), a little tension on the walk (a novice who stops a lot gets
- *       caught and swats them) that a hero who keeps moving outpaces; the rest reach the plaza after the team;
+ *       caught and swats them) that a hero who keeps moving outpaces; the rest reach the plaza after the team. Members
+ *       with no hidden spot after BEHIND_TRIES searches are dropped;
  *    2. "comitê de boas-vindas" (group 1): through the avenue planner from one mouth other than S (the team walks in
  *       through S), aimed at the plaza (not at the team), arriving there ≈ welcomeArrival s into the wave, after the
- *       walk: the first fight at the plaza, which is where the team holds from round 2 on;
+ *       walk; its bodies hold the plaza (memory PLAZA_HOLD_FLAG, city/grid.ts citySteer: they wait in it, facing the
+ *       team) until a hero is inside the base or within PLAZA_HOLD_RADIUS of one of them: the first fight is at the
+ *       plaza, where the team holds from round 2 on, never down the avenue the team walks up;
  *  - the wave ends once every critter is down AND a live hero reached the plaza (planner.insideBase), or at the cap
  *    (capSeconds; the rest retreats as in any timed-out city round);
- *  - one hero `say`s a CIDADE_VEHICLE intro line when the run starts and the first hero in the plaza a
- *    CIDADE_TUTORIAL arrival line (each once per run).
+ *  - one hero `say`s a CIDADE_TUTORIAL intro line when the run starts (within INTRO_WINDOW_SECONDS, else never) and
+ *    the first hero in the plaza a CIDADE_TUTORIAL arrival line (each once per run; balloons, ≤ BARK_MAX).
  * Why this shape: the plain round 1 chased a team away from the base, so with the team at the wreck its first group
  * landed on the novice's road at ~1.5 s; here nothing appears between the team and the plaza, the walk has room
  * (cap 90 s), and the round's last fight happens where the next rounds are defended.
@@ -49,6 +52,13 @@ export const TUTORIAL_MOUTHS:readonly Mouth[]=Object.freeze(['N','L','O'] as Mou
 export const BEHIND_MARGIN=2;
 /** Spots behind the team are searched within this radius (u) of the wreck; members stand this far apart (u). */
 export const BEHIND_RADIUS=40,BEHIND_GAP=.8;
+/**
+ * Searches (one a second, from behindAt) for hidden spots behind the team before the members still without one are
+ * dropped, so a team that keeps every candidate cell in sight does not hold the round to its cap.
+ */
+export const BEHIND_TRIES=20;
+/** The intro line is said in the run's first INTRO_WINDOW_SECONDS (a hero standing); later it is skipped. */
+export const INTRO_WINDOW_SECONDS=5;
 
 /**
  * JSON-safe tutorial memory in DirectorState (present only on a city run with the tutorial).

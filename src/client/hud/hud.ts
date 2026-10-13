@@ -20,7 +20,7 @@ import './zones.css';
 import {EdgeArrows} from './edges.ts';
 import {Coach,LESSONS,createCoachRow,type CoachPart,type CoachShow} from './coach.ts';
 import {Minimap} from './minimap.ts';
-import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
+import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -255,8 +255,18 @@ export class RunHud {
    */
   setCityRoute(input:CityRouteInput|undefined){
     this.routeInput=input;
-    this.stepObjective();this.renderObjective();
+    const was=!!this.objectiveWant;
+    this.stepObjective();
+    // The walk just became wanted (the first city frame of the run) while the coach shows its own "andar": the coach
+    // folds it into the walk now, not at the next view, so the two rows never take turns.
+    if(!was&&this.objectiveWant&&this.coachShow&&this.last)this.updateCoach(this.last);
+    this.renderObjective();
   }
+  /**
+   * The run's world as soon as it is known (rescue.ts, every frame from the lobby on): a city gets its walking route
+   * built on an idle moment now, so round 1's first frame never pays for it (city/route.ts prewarmCityRoute). Once per terrain.
+   */
+  prewarmCity(terrain:unknown){prewarmCityRoute(terrain);}
   private stepObjective(){
     const view=this.last,me=view?.players.find(p=>p.id===this.ctx.localId);
     const standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed&&me.hp>0;
@@ -264,17 +274,22 @@ export class RunHud {
     this.objectiveWant=this.objective.step({terrain:ended?undefined:input?.terrain,round:view?.round,standing,hero:input?.hero,view:input?.view??0});
   }
   /**
-   * One row at a time: the objective waits for the round banner (1.8 s), a notice, the kill-cam, a shell row, an open
-   * window and the coach's rescue hint (the coach holds every other hint while the objective is wanted, coach.ts).
+   * One row at a time: the objective waits for a notice, the kill-cam, a shell row, an open window and the coach's rescue
+   * hint (the coach holds every other hint while the objective is wanted, coach.ts), and for the round banner (1.8 s),
+   * except in round 1 while "andar" is still to learn: then it is the joystick lesson and takes the banner's slot, as
+   * the coach's "andar" does (UX-1; city/route.ts objectiveSlot): the round name folds into the round chip.
    */
   private renderObjective(){
-    const want=this.objectiveWant;
-    const busy=!want||!!this.el.hidden||this.offerOpen()||!!this.coachShow||!!this.stack.querySelector('.rh-marquee:not([hidden]),.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])');
-    if(this.objectiveRow.render(busy?undefined:want,!this.coach.done.has('walk'))){
+    const want=this.objectiveWant,marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
+    const held=!!this.el.hidden||this.offerOpen()||!!this.coachShow||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])');
+    const slot=objectiveSlot({wanted:!!want,round:this.last?.round?.index,walkLearned:this.coach.done.has('walk'),banner:!!marquee&&!marquee.hidden,held});
+    if(slot.foldBanner)marquee!.hidden=true;
+    if(this.objectiveRow.render(slot.show?want:undefined,!this.coach.done.has('walk'))){
       const r=this.objectiveRow.el.hidden?undefined:this.objectiveRow.el.getBoundingClientRect();
       this.objectiveRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};
-      this.turnRows();this.lightStick();
+      this.turnRows();
     }
+    this.lightStick();
     const hero=this.heroRectOf?.();
     if(hero)this.objectiveYield(hero,HERO_MARGIN_PX);
   }
@@ -282,11 +297,12 @@ export class RunHud {
   get objectiveShown(){return !this.objectiveRow.el.hidden;}
   /**
    * The joystick keeps calling (Amarelo) while "andar" is still to learn and its hint is on screen, or only pushed aside
-   * by the rescue hint (a caído outranks it), or folded into the city's walk to the plaza; explore.css reads data-coach-stick.
+   * by the rescue hint (a caído outranks it), or folded into the city's walk to the plaza while that walk is wanted (its
+   * row on screen or only waiting for a notice or a shell row: the light never blinks); explore.css reads data-coach-stick.
    */
   private lightStick(){
     const lesson=this.coachShow&&!this.coachShow.done?this.coachShow.lesson:'';
-    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue'||!this.objectiveRow.el.hidden);
+    const stick=!this.coach.done.has('walk')&&(lesson==='walk'||lesson==='rescue'||!!this.objectiveWant);
     if(('coachStick' in this.el.dataset)!==stick){if(stick)this.el.dataset.coachStick='';else delete this.el.dataset.coachStick;}
   }
 
@@ -375,14 +391,21 @@ export class RunHud {
   }
   /** The row leaves the line and the slot (its own button answered it). */
   dropRow(el:HTMLElement){this.rows.drop(el);if(!el.hidden){el.hidden=true;this.relayout();}}
-  /** Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on. */
+  /**
+   * Who holds the announcement slot for the shell's rows: a notice, the kill-cam, the coach's hint, or nothing to show on.
+   * The city's walk to the plaza may last the whole round 1: a row waits for it ROW_WAITS_OBJECTIVE_MS at most, then the
+   * walk steps out for the row's time and comes back after it (interleaved, never a row lost behind a 40 s walk).
+   */
   private turnRows(now=performance.now()){
     const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
-    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-objetivo:not([hidden]),.rh-coach:not([hidden])');
-    const {show,hide}=this.rows.turn(now,busy);
+    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
+    const walk=!answer&&!this.objectiveRow.el.hidden;
+    const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
     for(const el of hide)el.hidden=true;
     if(show)show.hidden=false;
     if(show||hide.length)this.relayout();
+    // The row took the slot from the walk: the walk's row leaves in the same task (never two rows on screen).
+    if(show&&!this.objectiveRow.el.hidden)this.renderObjective();
   }
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){

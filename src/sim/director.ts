@@ -28,9 +28,9 @@ import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
-import {CITY_ENEMY_SPEED,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
-import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,CIDADE_VEHICLE,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
-import {TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
+import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
+import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
+import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
 export type CreateEnemy=(ctx:SimContext,kind:string,point:Point,scale:number)=>EnemyState|undefined;
@@ -110,7 +110,9 @@ export interface DirectorOptions {
  * warning goes out when it is later than the planning (a cerco part released after the group's first part).
  */
 interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number;
-  group?:number;points?:Point[];warnTick?:number}
+  group?:number;points?:Point[];warnTick?:number;
+  /** City tutorial (cidade-08): searches the group behind the team already made without a hidden spot (BEHIND_TRIES). */
+  tries?:number}
 type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'|'points'|'warnTick'>;
 /** capTick (endless): hard end of a flight that keeps being extended while someone sees the enemy. */
 interface Retreat {id:string;x:number;y:number;untilTick:number;capTick?:number}
@@ -661,7 +663,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     return (entry.points??[entry]).every(p=>planner!.hiddenFrom(players,p));
   }
   const requestOf=(entry:PendingSpawn):SpawnRequest=>({members:entry.members,elite:entry.elite,boss:entry.boss,side:entry.side,
-    ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{}),...(entry.group!==undefined?{group:entry.group}:{})});
+    ...(entry.siege?{siege:true}:{}),...(entry.anchor!==undefined?{anchor:entry.anchor}:{}),...(entry.group!==undefined?{group:entry.group}:{}),
+    ...(entry.tries!==undefined?{tries:entry.tries}:{})});
   const warnDue=(ctx:SimContext,p:PendingSpawn)=>p.warnTick!==undefined&&p.warnTick<=ctx.tick;
   /** Deferred warnings that are due: still hidden, the warning goes out; seen meanwhile, the part is planned again. */
   function cityWarnings(ctx:SimContext){
@@ -729,7 +732,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   let behind:BehindCandidate[]|undefined;
   /**
    * The group behind the team: hidden cells near the wreck farther from the plaza than every standing hero
-   * (behindSpots), warned now and landing after the warning; members without a spot try again a second later.
+   * (behindSpots), warned now and landing after the warning; members without a spot try again a second later, up to
+   * BEHIND_TRIES searches in all, then they are dropped (the round no longer waits for them until the cap).
    */
   function behindWarn(ctx:SimContext,spawn:SpawnRequest,delay:number){
     const field=planner!.plazaField,wreck=cityTerrainOf(ctx.terrain)?.asset.points.inicio??worldSpawn(ctx.terrain);
@@ -748,17 +752,22 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       state.pending.push({...spawn,members,x:p.x,y:p.y,atTick,points});
       ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:members.length});
     }
-    if(points.length<spawn.members.length)retryLater(ctx,{...spawn,members:spawn.members.slice(points.length)},delay);
+    const tries=(spawn.tries??0)+1;
+    if(points.length<spawn.members.length&&tries<BEHIND_TRIES)retryLater(ctx,{...spawn,members:spawn.members.slice(points.length),tries},delay);
   }
   /** Lines of the tutorial from their own streams (derived from the director's), so no spawn of the run moves. */
   const lineRng=(salt:number)=>new Rng((state.rng^salt)>>>0);
-  /** Right after the crash (the run's first steps): one hero says a CIDADE_VEHICLE intro line. Once per run. */
+  /**
+   * Right after the crash (the run's first steps): one standing hero says a CIDADE_TUTORIAL intro line (a balloon,
+   * ≤ BARK_MAX). Once per run; when nobody stands during the first INTRO_WINDOW_SECONDS of the run, skipped.
+   */
   function tutorialIntro(ctx:SimContext){
+    if(ctx.tick-ctx.runStartTick>ticks(INTRO_WINDOW_SECONDS))return;
     const speakers=[...ctx.players.values()].filter(standing);
     if(!speakers.length)return;
     const r=lineRng(0x0c1d0801),who=r.pick(speakers);
     state.tutorial!.intro=who.id;
-    ctx.emit({type:'say',source:who.id,key:CIDADE_TUTORIAL_SAY.intro,line:r.pick(CIDADE_VEHICLE.intro)});
+    ctx.emit({type:'say',source:who.id,key:CIDADE_TUTORIAL_SAY.intro,line:r.pick(CIDADE_TUTORIAL.intro)});
   }
   /** The first standing hero inside the base (planner.insideBase) says an arrival line; the wave may end from now on. */
   function tutorialArrival(ctx:SimContext){
@@ -870,7 +879,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       // City (cidade-05c v2): the one conversion to the city's speeds, on the effective speed (after plan.speed).
       if(isCity)enemy.speed=citySpeedOf(enemy.speed);
       if(entry.elite)enemy.elite=true;
-      enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{})};
+      // Tutorial (cidade-08): the plaza group holds the plaza until a hero comes (citySteer PLAZA_HOLD_FLAG).
+      const holds=entry.group===TUTORIAL_WELCOME&&tutorialRound(ctx);
+      enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{}),...(holds?{[PLAZA_HOLD_FLAG]:1}:{})};
       state.tracked.push(enemy.id);state.spawned++;
     }
     // Enemy cap reached: the rest comes a second later, with a fresh warning.

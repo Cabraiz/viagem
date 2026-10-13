@@ -157,6 +157,8 @@ export class RescueBoard {
     // The room may switch maps in the lobby and the HUD is built once (explore.ts): the slot follows the world now.
     const asset=cityAssetOf(net.terrain);
     hud.useCityMinimap(!!asset);
+    // The city is known (the lobby on): its walking route is built on an idle moment now, not on round 1's first frame.
+    if(asset)hud.prewarmCity(net.terrain);
     // Round 1 of the city is a walk to the plaza (card cidade-08): the HUD's row reads the route from the predicted hero,
     // in the camera's view (the arrow turns with it).
     hud.setCityRoute(asset&&run?.phase==='combat'?{terrain:net.terrain,hero:net.predicted,view:scene?.cameraView??0}:undefined);

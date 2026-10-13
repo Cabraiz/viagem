@@ -217,8 +217,9 @@ export class EnemyAi implements SimSystem {
             // The wobble is on top of the walk: he still closes at his own speed (like the VGM-031 chaser, so rounds end
             // on time), the sideways sway adds up to √(1+amp²) to the step (1.04 × at amp 0.3, far under a hero; 0.5 made round 1-2 balance tests flaky).
             const length=Math.hypot(dirX,dirY);pace=length;
-            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact).
-            memory.fx=dirX/length;memory.fy=dirY/length;
+            // Facing for the next burp check: where he is trying to walk (kept while he stands at contact or on a
+            // zero direction, e.g. holding the plaza: dividing by a zero length would store NaN).
+            if(length>1e-9){memory.fx=dirX/length;memory.fy=dirY/length;}
             break;
           }
           case 'swarm':{

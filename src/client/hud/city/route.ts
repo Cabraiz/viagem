@@ -10,8 +10,9 @@
  * plus the mouth lines themselves (a disc of MOUTH_HALF_WIDTH at each boca). tests/client/city-tutorial-hud.test.ts
  * checks it cell by cell against the planner.
  *
- * Built once per terrain (a few ms, lazily on the first round-1 frame) and cached; per frame it is O(1): the field's
- * directionAt, and the route length memoised per cell. No DOM: the HUD row is in hud/objective.ts.
+ * Built once per terrain (a few ms) ahead of time, on an idle moment once the city is known (prewarmCityRoute, from the
+ * lobby on), never inside a frame; per frame it is O(1): the field's directionAt, and the route length memoised per cell.
+ * No DOM: the HUD row is in hud/objective.ts.
  */
 import {FlowField,DIRS,UNREACHABLE,walkable,rotateVector,type FlowGrid,type FlowPoint,type CityTerrain} from './deps.ts';
 
@@ -124,6 +125,31 @@ export function cityRouteOf(terrain:RouteTerrain):CityRoute{
   if(!r){r=new CityRoute(terrain);routes.set(terrain,r);}
   return r;
 }
+/** The route of this terrain is built (prewarmCityRoute ran, or someone asked cityRouteOf). */
+export function cityRouteReady(terrain:unknown):boolean{const t=routeTerrainOf(terrain);return !!t&&routes.has(t);}
+
+/** Runs a job later, off the frame (prewarmCityRoute). */
+export type IdleSchedule=(job:()=>void)=>void;
+/** The longest a prewarm waits for an idle moment (ms): a busy phone still gets the route before the walk needs it. */
+export const ROUTE_IDLE_TIMEOUT_MS=500;
+/** requestIdleCallback when the browser has it (Safari does not), else a 0 ms timer: never inside the current frame. */
+export const idleSchedule:IdleSchedule=job=>{
+  const ric=(globalThis as {requestIdleCallback?:(cb:()=>void,o?:{timeout:number})=>number}).requestIdleCallback;
+  if(typeof ric==='function')ric(()=>job(),{timeout:ROUTE_IDLE_TIMEOUT_MS});else setTimeout(job,0);
+};
+const scheduled=new WeakSet<object>();
+/**
+ * Builds the walking route of a city terrain ahead of time, on an idle moment (a few ms of flow field and plaza flood
+ * that used to land on the first frame of round 1, as a hitch right when the run starts). Call it as soon as the city
+ * is known (the lobby, the countdown); once per terrain (later calls are no-ops). True when it scheduled the build now.
+ */
+export function prewarmCityRoute(terrain:unknown,schedule:IdleSchedule=idleSchedule):boolean{
+  const t=routeTerrainOf(terrain);
+  if(!t||routes.has(t)||scheduled.has(t))return false;
+  scheduled.add(t);
+  schedule(()=>{cityRouteOf(t);});
+  return true;
+}
 
 /**
  * Screen bearing (degrees, 0 = right, clockwise: y grows down) of a world direction under the camera view (0..3), with
@@ -156,11 +182,17 @@ export interface CityObjectiveInput {
 export class CityObjectiveTracker {
   private reached=false;
   private readonly dir={x:0,y:0};
+  /** `schedule`: how a route not built yet gets built (prewarmCityRoute); tests pass their own. */
+  private readonly schedule:IdleSchedule;
+  constructor(schedule:IdleSchedule=idleSchedule){this.schedule=schedule;}
   reset(){this.reached=false;}
   step(input:CityObjectiveInput):CityObjective|undefined{
     const terrain=routeTerrainOf(input.terrain);
     if(!terrain||input.round?.index!==1||input.round.phase==='end'){this.reached=false;return undefined;}
     if(this.reached||!input.standing||!input.hero)return undefined;
+    // Never built inside a frame: a route not ready yet (no prewarm reached it) is asked for now, and the row says
+    // "Vai pra praça!" without the distance and the arrow until it lands (a moment later).
+    if(!routes.has(terrain)){prewarmCityRoute(terrain,this.schedule);return {};}
     const route=cityRouteOf(terrain),hero=input.hero;
     if(route.inside(hero)){this.reached=true;return undefined;}
     const d=route.direction(hero,this.dir),m=route.distance(hero);
@@ -168,11 +200,45 @@ export class CityObjectiveTracker {
   }
 }
 
+/**
+ * A shell row (VGM-048's quiet rows, not an answer to a tap) waits for the walk to the plaza at most this long (ms), then
+ * takes its turn: the walk may last the whole round 1 (≈ 40 s), and the row comes back after it (RunHud.turnRows).
+ */
+export const ROW_WAITS_OBJECTIVE_MS=4000;
+export interface ObjectiveSlotInput {
+  /** The walk wants the slot (CityObjectiveTracker.step gave an objective). */
+  wanted:boolean;
+  /** The run's round index now. */
+  round?:number;
+  /** This phone already learned the joystick (the coach's "walk"). */
+  walkLearned:boolean;
+  /** The street banner (round name, "Intervalo!", a zueira event) is up. */
+  banner:boolean;
+  /** Something else holds the slot: a notice, the kill-cam, a shell row, the coach's rescue hint, an open window, the HUD away. */
+  held:boolean;
+}
+/**
+ * Whether the walk's row shows now, and whether the street banner folds into the round chip for it (pure). It waits for
+ * the notices, the kill-cam, a shell row and the coach's rescue hint, and for the banner (1.8 s) too, but the walk is the
+ * joystick lesson of a phone that never walked (the coach's "andar" folds into it): in round 1 it takes the slot from the
+ * banner the way that hint does (UX-1: the 1st step in ≤ 3 s), so the row and the lit joystick never blink away for it.
+ */
+export function objectiveSlot(input:ObjectiveSlotInput):{show:boolean;foldBanner:boolean}{
+  if(!input.wanted||input.held)return {show:false,foldBanner:false};
+  const fold=input.banner&&input.round===1&&!input.walkLearned;
+  return {show:!input.banner||fold,foldBanner:fold};
+}
+
 /** Copy of the row (house voice: dry imperative; one joke at most, D-033, no real brand or person). */
 export const OBJECTIVE_TEXT='Vai pra praça!';
 /** The second line when the joystick is still to learn: the walk lesson folds into the objective (coach.ts). */
 export const OBJECTIVE_WALK='Arrasta pra andar';
-/** The second line otherwise: the Helicóptero da Firma came down at the start (≤ 28 characters). */
-export const OBJECTIVE_JOKE='O heli caiu. Você, não.';
+/**
+ * The second line otherwise: the Helicóptero da Firma came down at the start (≤ 28 characters). Each sentence is bound
+ * (no-break spaces): where the line has to wrap (portrait at 125%) it breaks between the two, "O heli caiu." over
+ * "Você, não.", never "não." or "caiu." alone on a line.
+ */
+const NBSP=String.fromCharCode(160);
+export const OBJECTIVE_JOKE=`O${NBSP}heli${NBSP}caiu. Você,${NBSP}não.`;
 /** "72 m" (the edge arrows' distanceText rule, capped at 999). */
 export const objectiveMeters=(m:number)=>`${Math.min(999,Math.max(0,Math.round(m)))} m`;

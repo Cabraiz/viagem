@@ -10,8 +10,8 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {clearSegment,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {DIRS} from '../../src/maps/flowfield.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
-import {CityObjectiveTracker,cityRouteOf,screenBearing,objectiveMeters,OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE,
-  cityHudLayout,referenceInput} from '../../src/client/hud/city/index.ts';
+import {CityObjectiveTracker,cityRouteOf,cityRouteReady,prewarmCityRoute,objectiveSlot,screenBearing,objectiveMeters,OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE,
+  cityHudLayout,referenceInput,type ObjectiveSlotInput} from '../../src/client/hud/city/index.ts';
 import {projectView} from '../../src/client/projection.ts';
 import {Coach,resetSessionMemory,WALK_DISTANCE,type CoachInput} from '../../src/client/hud/coach.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
@@ -151,6 +151,69 @@ test('shown in round 1 out of the plaza; hidden in it, in round 2, on the island
   assert.ok(tracker.step(base),'a rematch (RunHud.reset) too');
 });
 
+test("the route is built ahead of time: a prewarmed city's first objective frame builds nothing and has its numbers",()=>{
+  // A city terrain no one asked for yet (same city, its own route cache entry).
+  const fresh=()=>Object.create(terrain) as typeof terrain;
+  const base={round:{index:1,phase:'prepare'},standing:true,hero:P.inicio,view:0} as const;
+  // Prewarmed on an idle moment (the lobby): ready before round 1, and the first frame has the distance and the arrow.
+  const lobby=fresh(),jobs:(()=>void)[]=[];
+  assert.equal(prewarmCityRoute(lobby,job=>jobs.push(job)),true,'scheduled');
+  assert.equal(prewarmCityRoute(lobby,job=>jobs.push(job)),false,'once per terrain');
+  assert.equal(cityRouteReady(lobby),false,'not built inside the call');
+  jobs.splice(0).forEach(job=>job());
+  assert.equal(cityRouteReady(lobby),true,'built on the idle moment');
+  const later:(()=>void)[]=[];
+  const first=new CityObjectiveTracker(job=>later.push(job)).step({...base,terrain:lobby});
+  assert.equal(first?.meters,Math.round(route.distance(P.inicio)),'the first frame has the distance');
+  assert.ok(first?.bearing!==undefined,'and the arrow');
+  assert.equal(later.length,0,'and asked for no build');
+  // Not prewarmed (a phone that joined at the countdown): the frame still builds nothing; it asks for the idle build and
+  // shows the row without numbers until it lands.
+  const late=fresh(),queued:(()=>void)[]=[],tracker=new CityObjectiveTracker(job=>queued.push(job));
+  assert.deepEqual(tracker.step({...base,terrain:late}),{},'the row, no numbers yet');
+  assert.equal(cityRouteReady(late),false,'no build inside the frame');
+  assert.equal(queued.length,1,'one idle build asked');
+  assert.deepEqual(tracker.step({...base,terrain:late}),{},'still waiting');
+  assert.equal(queued.length,1,'asked once');
+  queued.splice(0).forEach(job=>job());
+  assert.equal(tracker.step({...base,terrain:late})?.meters,Math.round(route.distance(P.inicio)),'then the numbers');
+  assert.equal(prewarmCityRoute({world:'ilha'},()=>assert.fail('no route for the island')),false);
+});
+
+test(`the walk takes the round banner's slot in round 1 while "andar" is to learn; otherwise it waits for it`,()=>{
+  const slot=(over:Partial<ObjectiveSlotInput>)=>objectiveSlot({wanted:true,round:1,walkLearned:false,banner:false,held:false,...over});
+  assert.deepEqual(slot({}),{show:true,foldBanner:false},'a free slot');
+  assert.deepEqual(slot({banner:true}),{show:true,foldBanner:true},'a novice: the banner folds into the round chip, the row stays');
+  assert.deepEqual(slot({banner:true,walkLearned:true}),{show:false,foldBanner:false},'a phone that walked before: the banner keeps its 1.8 s');
+  assert.deepEqual(slot({banner:true,round:2}),{show:false,foldBanner:false},'never past round 1');
+  assert.deepEqual(slot({banner:true,held:true}),{show:false,foldBanner:false},'a notice, the kill-cam, a shell row or the rescue hint go first');
+  assert.deepEqual(slot({wanted:false,banner:true}),{show:false,foldBanner:false},'no walk, no fold');
+});
+
+test(`a novice's first city run: from the countdown through the round banner the walk row never leaves, "andar" never doubles it`,()=>{
+  // The HUD's turn, frame by frame (RunHud.update: the coach, then the walk's slot): the opening countdown (round 1
+  // prepare, 3 s), then the wave's banner ("Pouso Forçado") for 1.8 s unless the walk folds it; the novice starts walking at 4 s.
+  resetSessionMemory();
+  const coach=new Coach(memory()),tracker=new CityObjectiveTracker(()=>assert.fail('built ahead of time'));
+  let banner=false,bannerUntil=-1,hero={...P.inicio};
+  const missing:number[]=[];
+  for(let now=0;now<=8000;now+=50){
+    const phase=now<3000?'prepare':'wave';
+    if(now===3000){banner=true;bannerUntil=now+1800;}
+    if(banner&&now>=bannerUntil)banner=false;
+    if(now>=4000)hero=moveDirection(hero,route.direction(hero),.05,terrain);
+    const view=round1({round:{...round1().round!,phase}});
+    const want=tracker.step({terrain,round:{index:1,phase},standing:true,hero,view:0});
+    const show=coach.step(coachInput(view,{hero,banner,objective:!!want}),now);
+    assert.notEqual(show?.lesson,'walk',`${now} ms: the generic "andar" stays folded into the walk`);
+    const turn=objectiveSlot({wanted:!!want,round:1,walkLearned:coach.done.has('walk'),banner,held:!!show});
+    if(turn.foldBanner)banner=false;
+    if(want&&!turn.show)missing.push(now);
+  }
+  assert.deepEqual(missing,[],'the walk row is on screen on every frame it is wanted');
+  assert.ok(coach.done.has('walk'),'walking along it taught "andar"');
+});
+
 test('copy: dry imperative, one short joke, no caps, no real brand',()=>{
   assert.equal(OBJECTIVE_TEXT,'Vai pra praça!');
   for(const line of [OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE]){
@@ -158,6 +221,9 @@ test('copy: dry imperative, one short joke, no caps, no real brand',()=>{
     assert.doesNotMatch(line,/[A-ZÁÉÍÓÚÂÊÔÃÕ]{2}|·|→|—|\p{Extended_Pictographic}/u,line);
     assert.doesNotMatch(line,/uber|99|ifood|google/i,'no real brand (D-033)');
   }
+  // The joke is the line that wraps (portrait at 125%): its only break point is between its two sentences, so a wrap
+  // reads "O heli caiu." over "Você, não.", never a word alone on a line.
+  assert.deepEqual(OBJECTIVE_JOKE.split(' ').map(part=>part.replaceAll(String.fromCharCode(160),' ')),['O heli caiu.','Você, não.']);
 });
 
 // ---------- Coach ----------

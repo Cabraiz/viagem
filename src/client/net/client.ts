@@ -53,7 +53,8 @@ export const REPLACED_CLOSE=4009;
  * Reconnection keeps trying while the seat can still be there (VGM-047): the room's grace since the last message heard,
  * plus a margin (a restarted room seats everyone again with a fresh grace). Backoff up to RETRY_MAX_MS.
  */
-const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=4000;
+/** 3g-rede-sem-teleporte: the backoff tops at 2 s (was 4 s), so a phone whose network is back retries within ~2 s (±25%). */
+const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=2000;
 /**
  * 3g-rede-sem-teleporte: in a match the room holds the seat for the whole run while anyone is still playing (the hero
  * plays on its own meanwhile), so the client keeps knocking that long (the room's lifetime) instead of RETRY_WINDOW_MS;
@@ -75,7 +76,7 @@ export function retryWindow(phase:string|undefined){return phase==='combat'||pha
 export const FIRST_RETRY_MS=150;
 /** Only a connection that lived this long gets the fast first retry, so a join that keeps dying cannot loop every 150 ms. */
 export const FAST_RETRY_AFTER_MS=5000;
-/** Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000, 4000 (cap); 500 first before joining. */
+/** Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000 (cap); 500 first before joining. */
 export function retryDelay(attempts:number,joined:boolean){
   // joined: the dropped connection had been up for FAST_RETRY_AFTER_MS (a socket dying right after welcome keeps the 500 ms pace).
   return attempts===0&&joined?FIRST_RETRY_MS:Math.min(RETRY_MAX_MS,500*2**attempts);

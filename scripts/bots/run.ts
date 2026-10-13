@@ -4,7 +4,7 @@
  *
  *   node --experimental-strip-types scripts/bots/run.ts [scenario ...] [--endpoint http://127.0.0.1:8817] [--spawn]
  *     scenarios: base | lag300 | reconnect20 | rematch | smoke | 3g | all (base lag300 reconnect20 rematch)
- *     --repeat N: play the scenario N times (3g: each match its own faults and loss, from the match number)
+ *     --repeat N [--from M]: play the scenario N times (3g: matches M.. M+N-1) (3g: each match its own faults and loss, from the match number)
  *     --spawn: start `wrangler dev` here (MULTIPLAYER_PORT, see scripts/local-worker.mjs) and stop it at the end
  *     --out <dir>: artifacts folder (default artifacts/bots)
  *
@@ -331,7 +331,7 @@ export function threeGMarkdown(reports:any[]){
 async function main(){
   const args=process.argv.slice(2);
   const opt=(name:string)=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};
-  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out','--repeat'].includes(args[i-1])));
+  const names=args.filter((a,i)=>!a.startsWith('--')&&!(i>0&&['--endpoint','--out','--repeat','--from'].includes(args[i-1])));
   const repeat=Math.max(1,Number(opt('--repeat'))||1);
   const list=(names.length?names:['smoke']).flatMap(n=>n==='all'?['base','lag300','reconnect20','rematch']:Array.from({length:repeat},()=>n));
   for(const n of list)if(!SCENARIOS[n])throw new Error(`Cenário desconhecido: ${n}`);
@@ -345,7 +345,8 @@ async function main(){
   const reports:any[]=[];
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
   try{
-    let threeGs=0;
+    // --from N: the 3g matches start at match N (a long series in chunks, each with its own worker).
+    let threeGs=Math.max(0,Number(opt('--from'))||0);
     for(const [index,name] of list.entries()){
       const scenario=name==='3g'?threeG(threeGs++):SCENARIOS[name];
       const started=Date.now();

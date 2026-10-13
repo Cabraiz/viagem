@@ -198,13 +198,13 @@ test('N27 client: a late heartbeat does not judge the silence, the next one on t
   }finally{stop();cleanup();}
 });
 
-test('reconecta-round2: the banner helper and the retry schedule (150 ms first once joined, then 1, 2, 4 s)',async()=>{
+test('reconecta-round2: the banner helper and the retry schedule (150 ms first once joined, then 1, 2, 2 s)',async()=>{
   const {reconnectBanner,retryDelay,RECONNECT_BANNER_MS,FIRST_RETRY_MS}=await import('../../src/client/net/client.ts');
   assert.equal(RECONNECT_BANNER_MS,1500);assert.equal(FIRST_RETRY_MS,150);
   const at=(offline:number,extra:{connected?:boolean;fatal?:string}={})=>reconnectBanner({connected:false,...extra,offlineMs:()=>offline});
   assert.equal(at(0),false);assert.equal(at(1499),false);assert.equal(at(1500),true);assert.equal(at(30_000),true);
   assert.equal(at(5000,{connected:true}),false);assert.equal(at(5000,{fatal:'Conexão indisponível.'}),false,'terminal: the fatal window, not the banner');
-  assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,4000,4000,4000]);
+  assert.deepEqual([0,1,2,3,4,5].map(n=>retryDelay(n,true)),[150,1000,2000,2000,2000,2000]);
   assert.deepEqual([0,1].map(n=>retryDelay(n,false)),[500,1000],'before joining the lobby keeps its pace');
 });
 

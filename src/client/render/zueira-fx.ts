@@ -12,7 +12,8 @@ import type {RunView} from '../../contract/index.ts';
 import type {HappeningKind} from '../../contract/index.ts';
 import {BLACKOUT_DEPTH,blackoutAlpha} from './blackout-rules.ts';
 import {KILLCAM_MS} from '../fun/zueira.ts';
-import {ENEMY_ART,FX,enemyKind,enemyTexture} from './keys.ts';
+import {ENEMY_ART,FX,enemyKind,enemyTexture,type EnemyKind} from './keys.ts';
+import {applyEnemyArt} from '../art/horde-art.ts';
 import {deathLine,kindStyle} from './jokes.ts';
 import {killcamFrame} from './killcam-rules.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
@@ -40,7 +41,9 @@ export interface ZueiraFxOptions {
 /** Depth of the knocked-out copy, its poof and its line (seen only by the kill-cam camera). */
 export const KILLCAM_DEPTH=97000;
 
-interface Killcam {kind:string;id:string;at:Pt;start:number;end:number;cam?:Phaser.Cameras.Scene2D.Camera;ghost:Phaser.GameObjects.Image;puff:Phaser.GameObjects.Image;pop:Phaser.GameObjects.Text}
+interface Killcam {kind:string;id:string;at:Pt;start:number;end:number;cam?:Phaser.Cameras.Scene2D.Camera;ghost:Phaser.GameObjects.Image;puff:Phaser.GameObjects.Image;pop:Phaser.GameObjects.Text;
+  /** The copy as the horde draws it (horde-art.ts applyEnemyArt): imported idle frames when the kind has art. */
+  actor:{kind:EnemyKind;elite:boolean;phase:number}}
 
 export class ZueiraFx {
   private scene:Phaser.Scene;
@@ -102,7 +105,7 @@ export class ZueiraFx {
       .setOrigin(.5,.5).setDepth(depth+2).setVisible(false);
     // Only the kill-cam sees the copy: on the main screen the critter already went poof.
     this.scene.cameras.main.ignore([ghost,puff,pop]);
-    this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop};
+    this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop,actor:{kind:k,elite:false,phase:0}};
   }
   private stopKillcam(){
     const k=this.killcam;if(!k)return;
@@ -134,7 +137,12 @@ export class ZueiraFx {
     const f=killcamFrame({tv:{width:rect.width,height:rect.height},mainZoom:this.scene.cameras.main.zoom,actorScale:this.options.actorScale?.()??1,art,feet:this.options.project(k.at),t,
       reduced:this.options.reduced,pop:{width:k.pop.width,height:k.pop.height}});
     cam.setVisible(true).setZoom(f.zoom).centerOn(f.center.x,f.center.y);
-    k.ghost.setVisible(f.ghost.visible).setPosition(f.ghost.x,f.ghost.y).setRotation(f.ghost.rotation).setScale(f.ghost.scale);
+    // Imported art (the same helper as the horde's critters): its idle frame at today's size, turned around its middle
+    // like today's copy; without art (always, with an empty manifest) today's procedural texture is left as it was.
+    const imported=applyEnemyArt(k.ghost,k.actor,false,0,0,now);
+    const scale=f.ghost.scale*(imported?k.ghost.scaleX:1);
+    if(imported||k.ghost.originY!==.5)k.ghost.setOrigin(.5,.5);
+    k.ghost.setVisible(f.ghost.visible).setPosition(f.ghost.x,f.ghost.y).setRotation(f.ghost.rotation).setScale(scale);
     k.puff.setVisible(f.puff.visible).setPosition(f.center.x,f.center.y).setScale(f.puff.scale).setAlpha(f.puff.alpha);
     k.pop.setVisible(f.pop.visible).setPosition(f.pop.x,f.pop.y).setScale(f.pop.scale).setRotation(-.06);
   }

@@ -195,6 +195,17 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   else{
     const repoRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
     const pieces=await makeDemoDelivery(path.resolve(dir),{repoRoot});
+    // Part C (importar-arte-c-completa): action anims + per-weapon projectiles, telegraph textures, 9-slice and rings,
+    // plus the city pieces (ground tiles, a ruined building, a prop) for the cidade-03 hookup.
+    // `--base` keeps only the part B delivery.
+    if(!process.argv.includes('--base')){
+      const [{writeDemoActions},{writeDemoTelegraph},{writeDemoFrames},{writeDemoCity}]=await Promise.all([
+        import('./demo-actions.mjs'),import('./demo-telegraph.mjs'),import('./demo-frames.mjs'),import('./demo-city.mjs')]);
+      await writeDemoActions(path.resolve(dir));await writeDemoTelegraph(path.resolve(dir));await writeDemoFrames(path.resolve(dir));
+      await writeDemoCity(path.resolve(dir));
+      console.log('  + ações (bebado, chefe), projéteis por arma, telegraph (hachura e borda), molduras 9-slice e anéis');
+      console.log('  + cidade: chão neve-fofa-1 e neve-pisada-1, casa-terrea-2x1-1 (ruína, 4 vistas), banco-praca (4 vistas)');
+    }
     console.log(`Entrega de demonstração (sintética) em ${path.resolve(dir)}:`);
     for(const [group,ids] of Object.entries(pieces))console.log(`  ${group}: ${ids.join(', ')}`);
     console.log(`Importe com: node scripts/import-art-v2.mjs --input ${path.resolve(dir)}`);

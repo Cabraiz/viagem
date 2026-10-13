@@ -35,7 +35,9 @@ function withExpected(spec,id,sc,label,problems){
   if(sc.meta!==undefined&&!isObject(sc.meta)){problems.push(`${label}: meta ${json(sc.meta)} inválido; use um objeto, como {"ruin":true}.`);return {...sc,invalid:true};}
   if(!exp)return sc;
   const out={};
-  if((sc.kind??spec.kind)===(exp.kind??spec.kind))for(const k of TABLE_KEYS)if(exp[k]!==undefined)out[k]=exp[k];
+  // A sidecar without "kind" keeps the table's kind (e.g. a 9-slice frame whose sidecar only gives "slice").
+  const kind=sc.kind??exp.kind??spec.kind;
+  if(kind===(exp.kind??spec.kind)){for(const k of TABLE_KEYS)if(exp[k]!==undefined)out[k]=exp[k];if(sc.kind===undefined&&exp.kind!==undefined)out.kind=exp.kind;}
   for(const [k,v] of Object.entries(sc))if(k!=='meta')out[k]=v;
   if(Array.isArray(out.frames)&&sc.frames===undefined){out.framesRange=out.frames;delete out.frames;}
   const meta={...exp.meta,...sc.meta};

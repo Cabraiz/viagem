@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {heightAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
-import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,ruinBite,ruinStepFactor,RUIN_FLOOR,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
+import {CHUNK_CELLS,ChunkTracker,PIECE_MAX_CELLS,buildChunks,chunkScreenBounds,propExtentPx,PROP_DRAW_MAX,ruinBite,ruinStepFactor,RUIN_FLOOR,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
 import {groundQuads,pieceGeometry,viewSide,type Face} from '../../src/client/render/city/faces.ts';
 import {makeSampleCity} from '../../src/client/render/city/sample.ts';
 import {VIEW_PIVOT,depth,project,rectsOverlap,type Pt,type Rect} from '../../src/client/render/city/projection.ts';
@@ -94,7 +94,8 @@ test('chunks: 4 for a 32×32 city, every piece and prop in exactly one, determin
 
 test('chunk bounds cover what the layer draws for tall props (lamp pole, pine sheet)',()=>{
   const lamp={id:'L',kind:'lamp' as const,x:W(8),y:W(8),r:0.3},pine={id:'P',kind:'pine' as const,x:W(9),y:W(8),r:0.1};
-  assert.ok(propExtentPx(lamp).up>=0.3*42*17,'lamp: pole 14 r + head 3 r');
+  assert.ok(propExtentPx(lamp).up>=PROP_DRAW_MAX.lamp*42*17,'lamp: pole 14 r + head 3 r (fixed size)');
+  assert.ok(propExtentPx(lamp).up<120,'a lamp never towers over the hero (maps radii are collision sizes)');
   assert.ok(propExtentPx(pine).up>=353*165/340,'pine: approved sheet ~171 px above the feet');
   const c=buildChunks({...asset,props:[lamp,pine]}).chunks[0];
   for(const v of VIEWS){

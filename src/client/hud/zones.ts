@@ -264,6 +264,8 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   add('.rh-stack .rh-marquee','letreiro',{fallback:low});add('.rh-stack .rh-alert','aviso',{fallback:low});
   // The first-run coach's hint (VGM-056): a row of the same slot, so it may not touch the useful area, the hero or a thumb.
   add('.rh-stack .rh-coach','dica',{fallback:low});
+  // The city's round-1 walk to the plaza (card cidade-08): a row of the same slot, under the same rules.
+  add('.rh-stack .rh-objetivo','objetivo',{fallback:low});
   add('.rh-member','time');
   // The open window may sit in the field but never on the hero: the camera moves the hero beside it (UX onda 4).
   add('.rh-offer','oferta',{allowedInPlay:true,overHeroFails:true});add('.rh-offer .rh-card','carta',{allowedInPlay:true,target:true,overHeroFails:true});

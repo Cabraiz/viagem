@@ -49,6 +49,11 @@ export interface RunSystemsOptions {
   reconnectGraceTicks?:number;
   /** Lab only (LAB_ZUEIRA): replaces the seed's plan of zueira events (VGM-053B). */
   zueiraLab?:ZueiraLab;
+  /**
+   * City only (cidade-08): round 1 is the tutorial walk from the wreck to the plaza (DirectorOptions.cityTutorial).
+   * Default true; false plays the round table's round 1 (the tests of the regular city round 1 opt out).
+   */
+  cityTutorial?:boolean;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -147,7 +152,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
     // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
     // groups aimed at a team away from the base.
-    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{})}:{}),
+    ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
+      // Round 1 is the walk from the wreck to the plaza (cidade-08).
+      cityTutorial:options.cityTutorial??true}:{}),
   });
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
 

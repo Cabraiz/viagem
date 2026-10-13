@@ -10,6 +10,7 @@
  */
 import Phaser from 'phaser';
 import {tokenColor} from '../ui/tokens.ts';
+import {FramesPool,markArt,markFrame,ringHalfWidth} from '../art/frames-art.ts';
 
 import {ringPoints,progressPoints,columnSize,COLUMN,type Pt,type DownedMark} from './downed-rules.ts';
 export {ringPoints,progressPoints,columnSize,COLUMN,type Pt,type DownedMark};
@@ -21,8 +22,11 @@ export class DownedLayer {
   private readonly project:(p:Pt)=>Pt;private readonly depth:(p:Pt)=>number;
   /** The figures' world px multiplier (framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere): the column follows the body. */
   private readonly scale:()=>number;
+  /** Imported ring + light column (art/frames-art.ts caido-resgate), one image per caído slot; none without the art. */
+  private readonly art:FramesPool;
+  private readonly scene:Phaser.Scene;
   constructor(scene:Phaser.Scene,project:(p:Pt)=>Pt,depth:(p:Pt)=>number,scale:()=>number=()=>1){
-    this.project=project;this.depth=depth;this.scale=scale;
+    this.project=project;this.depth=depth;this.scale=scale;this.scene=scene;this.art=new FramesPool(scene);
     this.ground=scene.add.graphics();this.light=scene.add.graphics();
   }
   /**
@@ -31,16 +35,26 @@ export class DownedLayer {
    */
   update(marks:readonly DownedMark[],view:number,css:number,lift?:number){
     const g=this.ground.clear(),l=this.light.clear();
+    this.art.begin();
     if(!marks.length)return;
     let low=Infinity,high=-Infinity;
     const {width:w,height:h}=columnSize(this.scale());
-    for(const m of marks){
-      const ring=ringPoints(m.at,view).map(p=>this.project(p));
+    const art=markArt('rescue'),now=this.scene.time.now;
+    for(let i=0;i<marks.length;i++){
+      const m=marks[i],ring=ringPoints(m.at,view).map(p=>this.project(p));
+      // Imported ring + column: today's ring width (edge included), under the code progress arc; the body lies on it.
+      const feet=this.project(m.at),d=this.depth(m.at);
+      if(art&&this.art.mark(i,art,(lift??d-3)-.1,markFrame(art,now,false),feet.x,feet.y,2*ringHalfWidth(ring,feet.x)+5*css)){
+        const done=progressPoints(ring,m.progress);
+        if(done.length>1)g.lineStyle(5*css,this.colors.breu,1).strokePoints(done,false).lineStyle(3.5*css,this.colors.cartolina,1).strokePoints(done,false);
+        low=Math.min(low,d);high=Math.max(high,d);
+        continue;
+      }
       g.lineStyle(5*css,this.colors.breu,.85).strokePoints(ring,false);
       g.lineStyle(2.5*css,this.colors.papel,1).strokePoints(ring,false);
       const done=progressPoints(ring,m.progress);
       if(done.length>1)g.lineStyle(5*css,this.colors.breu,1).strokePoints(done,false).lineStyle(3.5*css,this.colors.cartolina,1).strokePoints(done,false);
-      const feet=this.project(m.at),d=this.depth(m.at);low=Math.min(low,d);high=Math.max(high,d);
+      low=Math.min(low,d);high=Math.max(high,d);
       // Static column: Papel fading upwards, edged in Breu at the foot so it reads on the light sand too.
       l.fillGradientStyle(this.colors.papel,this.colors.papel,this.colors.papel,this.colors.papel,0,0,.5,.5).fillRect(feet.x-w/2,feet.y-h,w,h);
       l.fillStyle(this.colors.breu,.35).fillEllipse(feet.x,feet.y,w*1.6,w*.6);
@@ -50,5 +64,5 @@ export class DownedLayer {
   }
   /** Depths now (blackout audit). */
   depths(){return {ring:this.ground.depth,column:this.light.depth};}
-  destroy(){this.ground.destroy();this.light.destroy();}
+  destroy(){this.art.destroy();this.ground.destroy();this.light.destroy();}
 }

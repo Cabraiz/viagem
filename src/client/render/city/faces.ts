@@ -127,8 +127,9 @@ export function pieceGeometry(piece:BlockPiece,asset:CityAsset,view:number,pivot
 
 export interface GroundQuad {cx:number;cy:number;kind:GroundKind;points:Pt[];shade:number}
 
-/** Height of the grid vertex (i,j): mean of the up-to-4 in-grid cells sharing it. */
-function cornerHeight(asset:CityAsset,i:number,j:number){
+/** Height of the grid vertex (i,j): the asset's exact corner height when given, else the mean of the up-to-4 cells. */
+export function cornerHeight(asset:CityAsset,i:number,j:number){
+  if(asset.corners&&i>=0&&j>=0&&i<=asset.width&&j<=asset.height)return asset.corners[j*(asset.width+1)+i];
   let sum=0,n=0;
   for(let y=j-1;y<=j;y++)for(let x=i-1;x<=i;x++)if(x>=0&&y>=0&&x<asset.width&&y<asset.height){sum+=heightAt(asset,x,y);n++;}
   return n?sum/n:0;

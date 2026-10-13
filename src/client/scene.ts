@@ -1,11 +1,11 @@
 import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
-import {TerrainField,randomSeed} from '../maps/index.ts';
+import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
-import {CITY_PALETTE} from './render/city/palette.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ} from './render/city/index.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
@@ -14,6 +14,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {queueHordeArt} from './art/horde-art.ts';
+import {SceneMarks} from './art/frames-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
@@ -97,7 +98,14 @@ export class IslandScene extends Phaser.Scene {
   private project=(p:Point)=>projectView(p,this.view,this.field);
   /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
   private depthOrigin?:Point;
-  private depth=(p:Point)=>viewDepth(p,this.view,this.depthOrigin);
+  private depth=(p:Point)=>this.city?this.city.actorDepth(p.x,p.y):viewDepth(p,this.view,this.depthOrigin);
+  /**
+   * Cidade Nevada (card cidade-03): the city render replaces the island ground and props. Actors draw at the layer's
+   * actor depth (exact against the buildings' unit columns), not at the island's fixed SELF_DEPTH/ALLY_DEPTH.
+   */
+  private city?:CityLayer;
+  /** City layer depth keys are plain viewDepth keys; this shifts them by the current depth origin (same as viewDepth). */
+  private cityDepthOf=(key:number)=>key+viewDepth({x:0,y:0},this.view,this.depthOrigin)-viewDepth({x:0,y:0},this.view);
   /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
   private follow=new FollowCamera();
   private zoom=1;
@@ -121,6 +129,9 @@ export class IslandScene extends Phaser.Scene {
   private shadow!:Phaser.GameObjects.Ellipse;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
+  /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
+  private artMarks?:SceneMarks;
+  private goal?:Point;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
@@ -197,7 +208,9 @@ export class IslandScene extends Phaser.Scene {
   preload(){
     // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
-    this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    // City: no island ground textures; its pines use the approved snowy tree sheet (city layer PINE_TEXTURE).
+    if(this.field instanceof CityTerrain)this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
+    else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
     this.load.image('hero',thumbUrl(this.hooks.classId));
     if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
@@ -246,6 +259,10 @@ export class IslandScene extends Phaser.Scene {
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
     this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
+    this.artMarks=new SceneMarks(this,p=>this.project(p));
+    // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
+    const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
+    this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
@@ -260,6 +277,7 @@ export class IslandScene extends Phaser.Scene {
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
       this.projector=new Projector(this.view,this.field);
+      this.cityDepths();
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
@@ -299,9 +317,10 @@ export class IslandScene extends Phaser.Scene {
   private buildWorld(){
     const city=isCityWorld(this.field);
     // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
-    if(city)this.cameras.main.setBackgroundColor(CITY_PALETTE.neve);
+    if(city)this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
     else this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     this.drawGround();
+    this.cityDepths();
     if(city||this.field.chunks)return;
     let treeIndex=0;
     for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
@@ -338,8 +357,12 @@ export class IslandScene extends Phaser.Scene {
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
   }
+  /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
+  private cityDepths(){if(this.projector)this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;}
   /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
   private setActorScale(k:number){
+    // The city's depth and fade tests use the figure's real screen box.
+    this.city?.setActorScale(k);
     const old=this.actorScale;if(k===old)return;
     this.actorScale=k;this.sprites.viewScale=k;
     this.shadow?.setScale(k);this.ring?.setScale(k);
@@ -359,7 +382,16 @@ export class IslandScene extends Phaser.Scene {
     const b=this.actor?this.heroWorldBox():undefined;
     const c=this.follow.snap(this.project(at),viewport,this.zoom,this.useful(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(this.zoom).centerOn(c.x,c.y);
-    this.landscape?.fit(WATER_MARGIN);this.syncProps();
+    this.landscape?.fit(WATER_MARGIN);this.syncProps();this.updateCity(0);
+  }
+  /** City mode: chunks around the camera, fades over the hero; after every camera move (worldView in world px). */
+  private updateCity(delta:number){
+    if(!this.city)return;
+    const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
+    const camera={x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
+    // The fade test needs the hero's real ground height (city relief reaches ~185 px).
+    const hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(this.city.asset,this.position.x,this.position.y)};
+    this.city.update({camera,view:this.view,dtMs:delta,hero});
   }
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
@@ -372,18 +404,22 @@ export class IslandScene extends Phaser.Scene {
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
-    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();
+    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
+    this.city?.setDepthOf(this.cityDepthOf);
     if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();}
   }
-  /** Endless world only: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen unchanged). */
+  /**
+   * Endless world and city: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen
+   * unchanged). The city spans ±34 000 in raw keys: without it, views 1–3 would sort under the ground layers.
+   */
   private rebaseDepth(force=false){
-    if(!this.field.chunks)return;
+    if(!this.field.chunks&&!this.city)return;
     const o=this.depthOrigin;
     if(!force&&o&&Math.max(Math.abs(o.x-this.position.x),Math.abs(o.y-this.position.y))<DEPTH_REBASE_UNITS)return;
     this.depthOrigin={x:Math.round(this.position.x),y:Math.round(this.position.y)};
@@ -425,6 +461,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
     const p=this.project(target);
+    this.goal=target;if(this.artMarks?.destinationArt)return; // drawn every frame by drawYou
     // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
     const k=this.actorScale;
@@ -439,7 +476,8 @@ export class IslandScene extends Phaser.Scene {
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
     // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
     this.selfCovered=covered;
-    this.actor.setPosition(p.x,p.y).setDepth(covered?depth+1:SELF_DEPTH);
+    // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
+    this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
   }
@@ -455,6 +493,7 @@ export class IslandScene extends Phaser.Scene {
   /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
+    this.artMarks?.destination(this.route.length?this.goal:undefined,this.actorScale,time,this.reduced,100000);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -506,6 +545,7 @@ export class IslandScene extends Phaser.Scene {
     this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
+    this.artMarks?.begin();
     // The net's terrain became another world (island/endless ↔ city): one field swap, new zoom, figure scale and camera.
     // A reconnect to the same map (a new but identical TerrainField) changes nothing.
     if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
@@ -513,7 +553,12 @@ export class IslandScene extends Phaser.Scene {
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(_time,delta);this.rebaseDepth();this.updateCamera(delta);this.drawYou(_time);return;}
+    // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
+    // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
+    if(this.hooks.net){
+      if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
+      this.updateCamera(delta);this.drawYou(_time);return;
+    }
     if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
@@ -640,6 +685,7 @@ export class IslandScene extends Phaser.Scene {
       const age=net.tick-(player.skillTick??0);
       if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
       const radius=SKILL_RANGE*(this.reduced?1:.3+.7*age/10);
+      if(this.artMarks?.skillRing(player.id,player.x,player.y,radius,3*this.actorScale,1-age/10,time,this.reduced,90000))continue;
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
       effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
@@ -667,7 +713,7 @@ export class IslandScene extends Phaser.Scene {
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
+      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
@@ -748,7 +794,16 @@ export class IslandScene extends Phaser.Scene {
    * the scene's shutdown: those handlers are kept so a world swap can run them early (and not again at shutdown).
    */
   private drawGround(){
-    if(isCityWorld(this.field))return;
+    if(isCityWorld(this.field)){
+      // The city render (cidade-03): torn down by clearWorld (a map switch) or with the scene.
+      if(!(this.field instanceof CityTerrain))return;
+      const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf});
+      city.setActorScale(this.actorScale);
+      const drop=()=>{city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+      this.events.once('shutdown',drop);this.events.once('destroy',drop);
+      this.dropGround=drop;
+      return;
+    }
     const events=this.events,before=new Set(events.listeners('shutdown'));
     this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);
     const teardown=events.listeners('shutdown').filter(fn=>!before.has(fn)) as (()=>void)[];
@@ -926,7 +981,7 @@ export class IslandScene extends Phaser.Scene {
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
     // Above trees and critters (a canopy used to cut the name), under the heroes and the danger layers.
-    const label=new MapLabel(this,name).anchor(p.x,p.y+28,LABEL_DEPTH);
+    const label=new MapLabel(this,name,true).anchor(p.x,p.y+28,LABEL_DEPTH);
     return {point:l,graphic:g,label};
   }
 }

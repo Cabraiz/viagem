@@ -313,7 +313,7 @@ function cityRun(){
   const terrain=shared.fork(),world=new SimWorld({terrain,seed:9,order:RUN_ORDER});
   world.players.set('p0',player('p0',P.praca));
   const outcomes:RunOutcomeKind[]=[];
-  const run=createRunSystems(world,{takeInput:()=>undefined,onOutcome:o=>{outcomes.push(o);}});
+  const run=createRunSystems(world,{takeInput:()=>undefined,onOutcome:o=>{outcomes.push(o);},cityTutorial:false});
   return {terrain,world,run,outcomes};
 }
 
@@ -435,7 +435,7 @@ test('with the four barricades up, the boss (spawned in the plaza, 20 seeds) wal
   for(let seed=1;seed<=20;seed++){
     const terrain=shared.fork(),players=new Map<string,SimPlayer>();
     const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
+    const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false});
     assert.equal(terrain.blockers().length,4,'the four barricades are up');
     Object.assign(world.round,{index:10,total:10,phase:'wave',phaseEndsTick:1e9,remaining:1});
     const team=[P.inicio,{x:P.inicio.x+1,y:P.inicio.y}];
@@ -465,4 +465,35 @@ test('with the four barricades up, the boss (spawned in the plaza, 20 seeds) wal
   }
   t.diagnostic(`boss over the barricades: 20/20 reached, median ${(times.sort((a,b)=>a-b)[10]/20).toFixed(1)} s, slowest ${(Math.max(...times)/20).toFixed(1)} s`);
   assert.deepEqual(stuck,[],'the boss stayed > 10 s in one cell');
+});
+
+test('city tutorial (cidade-08): the barricades start down so the plaza group walks in, and rise at the first intermission once no enemy stands on one',()=>{
+  const terrain=shared.fork(),players=new Map<string,SimPlayer>();
+  const world=new SimWorld({terrain,seed:3,players,order:RUN_ORDER});
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
+  const bs=sys.stonewards.state.barricades!;
+  assert.equal(bs.length,4);
+  assert.ok(bs.every(b=>b.down&&b.hp===0),'down in the tutorial round');
+  assert.equal(terrain.blockers().length,0,'the plaza is open to enemies in round 1');
+  assert.equal(sys.stonewards.state.raiseBarricades,true);
+  // Round 1 (the walk): still down.
+  Object.assign(world.round,{index:1,total:10,phase:'wave',phaseEndsTick:1e9,remaining:1});
+  world.tick++;sys.stonewards.step(world);
+  assert.equal(terrain.blockers().length,0);
+  // Round 1's own prepare (the tutorial opening) does not raise them.
+  Object.assign(world.round,{index:1,phase:'prepare'});
+  world.tick++;sys.stonewards.step(world);
+  assert.equal(terrain.blockers().length,0,'not in the opening of round 1');
+  // First intermission (prepare of round 2), an enemy standing on barricade S: three rise now, S waits until it is clear.
+  const S=bs.find(b=>b.mouth==='S')!;
+  world.enemies.set('e1',{id:'e1',kind:'bebado',x:S.x,y:S.y,hp:10,maxHp:10,speed:1,damage:1,radius:.32,xp:1,spawnTick:0,readyTick:0});
+  Object.assign(world.round,{index:2,phase:'prepare'});
+  world.tick++;sys.stonewards.step(world);
+  assert.deepEqual(terrain.blockers().map(b=>b.id),['barricada-L','barricada-N','barricada-O']);
+  assert.equal(S.down,true);assert.equal(sys.stonewards.state.raiseBarricades,true,'still pending');
+  world.enemies.clear();
+  world.tick++;sys.stonewards.step(world);
+  assert.equal(terrain.blockers().length,4,'all four up');
+  assert.ok(bs.every(b=>!b.down&&b.hp===b.maxHp));
+  assert.equal(sys.stonewards.state.raiseBarricades,undefined,'done once');
 });

@@ -26,7 +26,7 @@ import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
-import {createBarricades,damageBarricade,syncBarricades} from './barricades.ts';
+import {createBarricades,damageBarricade,raiseDue,syncBarricades} from './barricades.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -58,6 +58,8 @@ export interface StonewardsOptions {
   terrain:SimContext['terrain'];
   /** City only: raise the four plaza barricades (default true). Travel/reach measurements (cidade-05c tests) turn them off. */
   barricades?:boolean;
+  /** City tutorial (cidade-08): the barricades start down and go up at the first intermission. */
+  barricadesLater?:boolean;
   /** Replaces the island's obstacles as nodes (tests). */
   obstacles?:readonly Obstacle[];
   wallMaxHp?:number;
@@ -90,13 +92,14 @@ export interface StonewardsSystem extends SimSystem {
 
 export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDestroyed'|'onHorn'|'extendPrepare'|'siegeContact'|'onTerrainChanged'>):StonewardsState{
   // City only: the island and the endless world keep exactly their old state (and state hashes).
-  const city=options.barricades===false?undefined:createBarricades(options.terrain);
+  const city=options.barricades===false?undefined:createBarricades(options.terrain,undefined,options.barricadesLater===true);
   return {
     balance:{coco:0,pedra:0},
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
     towers:[],
     ...(city?{barricades:city.barricades}:{}),...(city?.unsealed.length?{unsealed:city.unsealed}:{}),
+    ...(city&&options.barricadesLater===true?{raiseBarricades:true}:{}),
     gathered:{},handled:[],
     refilledRound:-1,hornRound:-1,prepareStart:0,hornEndsTick:-1,stretched:0,sayReady:{},wallDown:false,defeatReported:false,rng:null,
   };
@@ -180,6 +183,9 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     step(ctx){
       if(state.defeatReported)return;
       const round=ctx.round;
+      // City tutorial: the team raises the barricades at the first intermission, the prepare phase of round 2 (round 1's
+      // prepare is the tutorial's opening, the director's startPrepare(index)); raiseDue retries while a body is on one.
+      if(state.raiseBarricades&&round.phase==='prepare'&&round.index>=2&&raiseDue(ctx,state,options.onTerrainChanged))delete state.raiseBarricades;
       // City (cidade-07): the crates are the nodes (loot.ts); `options.obstacles` (tests) keeps the island path.
       const loot=options.obstacles?undefined:cityLoot(ctx.terrain);
       if(!state.wallDown&&round.phase==='prepare'){

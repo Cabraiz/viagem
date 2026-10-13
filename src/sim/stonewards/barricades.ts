@@ -159,14 +159,15 @@ function fineLeak(city:CityTerrain,m:BarricadeMouth):boolean{
 }
 
 /** The city's barricades at full hp (one per sealed mouth) and the mouths left open; undefined off the city. */
-export function createBarricades(terrain:TerrainField|undefined,maxHp=BARRICADE_MAX_HP):{barricades:BarricadeState[];unsealed:BarricadeMouth[]}|undefined{
+export function createBarricades(terrain:TerrainField|undefined,maxHp=BARRICADE_MAX_HP,later=false):{barricades:BarricadeState[];unsealed:BarricadeMouth[]}|undefined{
   const city=blockingCity(terrain);
   if(!city)return undefined;
   const radii=sealRadii(city),barricades:BarricadeState[]=[],unsealed:BarricadeMouth[]=[];
   for(const mouth of BARRICADE_MOUTHS){
     const r=radii[mouth],at=city.asset.points.bocas[mouth];
     if(r===null)unsealed.push(mouth);
-    else barricades.push({id:barricadeId(mouth),mouth,x:at.x,y:at.y,hp:maxHp,maxHp,r,down:false});
+    // later (city tutorial): down until the first intermission raises them (raiseDue).
+    else barricades.push({id:barricadeId(mouth),mouth,x:at.x,y:at.y,hp:later?0:maxHp,maxHp,r,down:later});
   }
   return {barricades,unsealed};
 }
@@ -232,4 +233,20 @@ export function setBlocking(terrain:TerrainField|undefined,b:BarricadeState,onTe
   const before=city.blockerVersion;
   city.setBlocker(b.id,b.down?undefined:{x:b.x,y:b.y,r:b.r});
   if(city.blockerVersion!==before)onTerrainChanged?.(barricadeCells(city,b));
+}
+
+/**
+ * City tutorial (cidade-08): at the first intermission the team raises the barricades that start down (state
+ * raiseBarricades), each at full hp once no enemy body overlaps its disc; returns true when all four stand.
+ */
+export function raiseDue(ctx:SimContext,state:StonewardsState,onTerrainChanged?:(rect:CellRect)=>void):boolean{
+  let pending=0;
+  for(const b of state.barricades??[]){
+    if(!b.down)continue;
+    if(barricadeOccupied(ctx,b)){pending++;continue;}
+    b.down=false;b.hp=b.maxHp;
+    setBlocking(ctx.terrain,b,onTerrainChanged);
+    ctx.emit({type:'structure',id:b.id,hp:b.hp,maxHp:b.maxHp});
+  }
+  return pending===0;
 }

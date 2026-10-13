@@ -52,6 +52,11 @@ export interface StonewardsState {
   barricades?:BarricadeState[];
   /** City only, when some mouth could not be sealed with a disc up to BARRICADE_MAX_R: those mouths stay open. */
   unsealed?:('N'|'S'|'L'|'O')[];
+  /**
+   * City tutorial (cidade-08): the barricades start down and the team raises them at the first intermission (the plaza
+   * group must walk into the open plaza in round 1). Cleared once all four stand.
+   */
+  raiseBarricades?:boolean;
   /** Resources gathered per player (fractional: each unit is split by work done), for the result awards. */
   gathered:Record<string,number>;
   /** `playerId:requestId` of purchases already applied, so a resent command applies once. */

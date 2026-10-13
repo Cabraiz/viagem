@@ -112,6 +112,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // and its contact hit goes to damageWall; the Stonewards contact siege (siegeStep) stays off.
   const stonewards=createStonewardsSystem({
     terrain:world.terrain,siegeContact:false,barricades:options.barricades,
+    // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
+    barricadesLater:options.cityTutorial??true,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
     // The horn stretched the intermission: the offers due at its old end (the round offer, level offers armed for it)
     // move with it, so nobody's default is picked while the intermission still runs.

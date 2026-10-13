@@ -14,7 +14,9 @@ import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {reconcile,simulate,type MoveEffects} from '../../src/maps/prediction.ts';
 import {InputBatcher,ROOM_PROTOCOL,type PlayerWireView} from '../../src/protocol/index.ts';
 import {addTelegraph} from '../../src/sim/index.ts';
-import {SPEED} from '../../src/maps/world.ts';
+import {heroSpeed} from '../../src/maps/world.ts';
+/** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
+const WALK=heroSpeed();
 import {STEP} from '../../src/maps/prediction.ts';
 import type {PlayerInput,Point,TelegraphKind} from '../../src/contract/index.ts';
 
@@ -154,7 +156,7 @@ test('review B1: late input batches around the hits: the owner ack never goes ba
   assert.equal(hit.fired,HITS4.length);assert.equal(hit.heard,HITS4.length);
   const quiet=(x:ReturnType<typeof play>)=>x.snaps.filter(y=>!y.news&&y.snap>EPS);
   assert.ok(quiet(hit).length<=quiet(base).length,`snaps ${quiet(hit).length} vs ${quiet(base).length} without hits`);
-  for(const x of quiet(hit))assert.ok(x.snap<=SPEED*STEP+EPS,`at most one walking step (${x.snap})`);
+  for(const x of quiet(hit))assert.ok(x.snap<=WALK*STEP+EPS,`at most one walking step (${x.snap})`);
 });
 
 test('review R1: a room whose ticks drift ±10–20 ms: no correction without hits, at most ~one step per hit with them',()=>{

@@ -442,6 +442,9 @@ test('boss.ts steer hook: a true answer replaces the straight walk with its dire
  * Island/endless assembled run (director, enemy AI, boss, telegraphs...) with the boss spawned at the start next to a
  * standing and a wandering player: the boss's per-tick trail, the controller state and the bodies at the end as a
  * short sha256. BOSS_BASELINE was recorded with this function on the base commit a595d33 (before cidade-05c).
+ * velocidade-heroi-e-projetil re-recorded the endless one (its director's spawn ring and warning lead follow the 2× walk;
+ * the island's is unchanged); the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and the ring 5..8 + 3
+ * gives the previous hash exactly.
  */
 function bossDigest(world:'ilha'|'infinito'){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -458,7 +461,7 @@ function bossDigest(world:'ilha'|'infinito'){
   const json=JSON.stringify({trail,boss:rig.sys.boss.state,bodies,telegraphs:[...rig.world.telegraphs.values()],round:rig.world.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'0df5554c3395e49b'};
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'8dd3a089e7484ed6'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

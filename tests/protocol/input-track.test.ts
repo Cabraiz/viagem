@@ -4,7 +4,9 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {simulate,reconcile,STEP} from '../../src/maps/prediction.ts';
 import {type Input,ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {InputBatcher,InputTrack,DIRECTIONS,DIRECTION_BUCKETS,quantizeDirection,SEND_MIN_MS,KEEPALIVE_MS,HORIZON_STEPS,MAX_SEGMENTS,LEAD_STEPS} from '../../src/protocol/input-track.ts';
-import {SPEED,type Point} from '../../src/maps/world.ts';
+import {heroSpeed,type Point} from '../../src/maps/world.ts';
+/** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
+const WALK=heroSpeed();
 import {Room} from '../../multiplayer/room.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
@@ -82,7 +84,7 @@ test('prediction stays exact through batching and latency: the room applies the 
   }
   // 4G-like jitter (up to 50 ms on top of 150 ms RTT): rare corrections, never more than one step.
   const jittery=pipeline({lat:2,jit:1});
-  assert.ok(Math.max(...jittery.corrections)<=SPEED*STEP+1e-9);
+  assert.ok(Math.max(...jittery.corrections)<=WALK*STEP+1e-9);
   assert.ok(jittery.corrections.filter(c=>c>.01).length<=jittery.corrections.length*.01);
 });
 
@@ -92,8 +94,8 @@ test('no speed from forged batches: one step per tick, each at most one step lon
   const steps=Array.from({length:MAX_SEGMENTS},(_,i)=>[i+1,1,0,0]);
   assert.equal(s.input('p',{seq:2**31-1,steps}),true);
   for(let i=0;i<40;i++)s.input('p',{seq:2**31-1,steps:[]});
-  for(let t=0;t<60;t++){const before={x:p.x,y:p.y};s.step();assert.ok(dist(p,before)<=SPEED*STEP+1e-9,'one step per tick');}
-  assert.ok(dist(p,start)<=60*SPEED*STEP+1e-9);
+  for(let t=0;t<60;t++){const before={x:p.x,y:p.y};s.step();assert.ok(dist(p,before)<=WALK*STEP+1e-9,'one step per tick');}
+  assert.ok(dist(p,start)<=60*WALK*STEP+1e-9);
 });
 
 test('fuzz: no forged sequence moves a player more than one step in a tick (review onda 5: no rewind, no rewriting reported steps)',()=>{
@@ -111,7 +113,7 @@ test('fuzz: no forged sequence moves a player more than one step in a tick (revi
         else s.input('p',{seq,steps},now);
       }
       const before={x:p.x,y:p.y};now+=50;s.step(now);
-      assert.ok(dist(p,before)<=SPEED*STEP+1e-9,`seed ${seed}, tick ${t}: ${dist(p,before).toFixed(3)} u`);
+      assert.ok(dist(p,before)<=WALK*STEP+1e-9,`seed ${seed}, tick ${t}: ${dist(p,before).toFixed(3)} u`);
     }
   }
 });
@@ -227,6 +229,6 @@ test('room frames: the owner gets its confirmed step and position, the others th
   const own=last(fa,a),seen=last(fb,b);
   assert.ok(p.ack>5,'the room walked past the report');
   assert.equal(own.ack,5,'Ana sees the step she reported');
-  assert.ok(Math.abs(seen.x-p.x)<=2*SPEED*STEP+.01,'Bia sees the live walk (her last frame is at most a tick old)');
+  assert.ok(Math.abs(seen.x-p.x)<=2*WALK*STEP+.01,'Bia sees the live walk (her last frame is at most a tick old)');
   assert.ok(own.x<seen.x-.1,'Ana\'s confirmed position is behind the guess');
 });

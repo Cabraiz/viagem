@@ -1,7 +1,8 @@
 /**
- * cidade-04 (after D-036 landed on main): the room's movement (sim/systems/players.ts movePlayer) walks a city hero at
- * CITY_HERO_SPEED (≈1.99375 u/s), slowed at × PLAYER_SLOW_MULT and slipping at PLAYER_SLIP_SPEED × CITY_HERO_SPEED / SPEED,
- * on the REAL Cidade Nevada; the island and the endless map keep SPEED and PLAYER_SLIP_SPEED. The phone's prediction
+ * cidade-04 (after D-036 landed on main) + velocidade-heroi-e-projetil: the room's movement (sim/systems/players.ts
+ * movePlayer) walks a city hero at heroSpeed = HERO_SPEED_MULT × CITY_HERO_SPEED (≈3.9875 u/s), slowed at
+ * × PLAYER_SLOW_MULT and slipping at PLAYER_SLIP_SPEED × heroSpeed / SPEED, on the REAL Cidade Nevada; the island and
+ * the endless map walk 2 × SPEED (6.2) and slip at 2 × PLAYER_SLIP_SPEED. The phone's prediction
  * (maps/prediction.ts reconcile with the frame's tick and effects) lands on the room's position after every step.
  * Results only, no wall clock (D-031).
  */
@@ -12,7 +13,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {DEFAULT_SEED,TerrainField,defaultTerrain} from '../../src/maps/terrain/field.ts';
-import {CITY_HERO_SPEED,SPAWN,SPEED,clearSegment,walkable,type Point} from '../../src/maps/world.ts';
+import {CITY_HERO_SPEED,HERO_SPEED_MULT,SPAWN,SPEED,clearSegment,heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 import {STEP,reconcile} from '../../src/maps/prediction.ts';
 import {BASE_STATS,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
 import {movePlayer} from '../../src/sim/systems/players.ts';
@@ -44,14 +45,17 @@ function endlessSpot(length:number):Point{
   }
   throw new Error('no open endless spot');
 }
+/** The city hero's walk: 2 × the faithful CITY_HERO_SPEED. */
+const CITY_WALK=CITY_HERO_SPEED*HERO_SPEED_MULT;
 const WORLDS=[
-  {name:'city',terrain:CITY,at:{x:city.asset.points.praca.x,y:city.asset.points.praca.y},walk:CITY_HERO_SPEED,slip:PLAYER_SLIP_SPEED*CITY_HERO_SPEED/SPEED},
-  {name:'island',terrain:defaultTerrain,at:{...SPAWN},walk:SPEED,slip:PLAYER_SLIP_SPEED},
-  {name:'endless',terrain:ENDLESS,at:endlessSpot(1),walk:SPEED,slip:PLAYER_SLIP_SPEED},
+  {name:'city',terrain:CITY,at:{x:city.asset.points.praca.x,y:city.asset.points.praca.y},walk:CITY_WALK,slip:PLAYER_SLIP_SPEED*CITY_WALK/SPEED},
+  {name:'island',terrain:defaultTerrain,at:{...SPAWN},walk:SPEED*HERO_SPEED_MULT,slip:PLAYER_SLIP_SPEED*HERO_SPEED_MULT},
+  {name:'endless',terrain:ENDLESS,at:endlessSpot(1),walk:SPEED*HERO_SPEED_MULT,slip:PLAYER_SLIP_SPEED*HERO_SPEED_MULT},
 ];
 
-test('room movePlayer: free, slowed and slipping steps per world (city 1.99375 u/s; island and endless 3.1, slip 4.2)',()=>{
+test('room movePlayer: free, slowed and slipping steps per world (city 3.9875 u/s; island and endless 6.2, slip 8.4)',()=>{
   for(const w of WORLDS){
+    assert.equal(heroSpeed(w.terrain),w.walk,`${w.name}: 2 × the base walk`);
     const d=openDirection(w.at,1,w.terrain),back={x:-d.x,y:-d.y},tick=200;
     const free=player(w.at);movePlayer(free,input(1,d),w.terrain,tick);
     near(dist(w.at,free),w.walk*STEP,1e-12,`${w.name}: free step`);
@@ -83,12 +87,12 @@ test('real city: the phone\'s prediction equals the room\'s movement step by ste
     const before={x:room.x,y:room.y},tick=frameTick+1+k;
     movePlayer(room,inputs[k],CITY,tick);
     const step=dist(before,room),kind=tick<304?'slip':inputs[k].x===0&&inputs[k].y===0?'stand':tick<315?'slow':'free';
-    stepsSeen.add(kind);if(kind==='free'&&step<CITY_HERO_SPEED*STEP-1e-9)blocked++;
+    stepsSeen.add(kind);if(kind==='free'&&step<CITY_WALK*STEP-1e-9)blocked++;
     const predicted=reconcile(from,inputs.slice(0,k+1),CITY,{tick:frameTick,effects});
     assert.deepEqual(predicted,{x:room.x,y:room.y},`input ${k+1} (tick ${tick})`);
     assert.ok(walkable(predicted,CITY),'never inside a building');
     // A step is never longer than the world's speed for that tick.
-    const cap=(tick<304?PLAYER_SLIP_SPEED*CITY_HERO_SPEED/SPEED:tick<315?CITY_HERO_SPEED*PLAYER_SLOW_MULT:CITY_HERO_SPEED)*STEP;
+    const cap=(tick<304?PLAYER_SLIP_SPEED*CITY_WALK/SPEED:tick<315?CITY_WALK*PLAYER_SLOW_MULT:CITY_WALK)*STEP;
     assert.ok(step<=cap+1e-12,`tick ${tick}: step ${step} over ${cap}`);
   }
   assert.deepEqual([...stepsSeen].sort(),['free','slip','slow','stand']);

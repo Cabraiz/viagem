@@ -4,9 +4,10 @@
  *
  * Reference walk: the plaza goal cells of the avenue planner (cityPlanner, the same flood the run uses), flooded over
  * the hero grid (cityFlowGrid: the hero rule at each cell centre, doors closed as in the asset, D-032) with no wall
- * penalty, so cost / STRAIGHT_COST × cell is the 8-neighbour walking distance; seconds at the maps hero SPEED
- * (3.1 u/s, what moveStep walks heroes at in every world today). Tier checks skip crates within TIER_SLACK of a bound.
- * Heroes walk with moveSafely at SPEED, one step per 20 Hz tick, along flow-field directions (no teleports while
+ * penalty, so cost / STRAIGHT_COST × cell is the 8-neighbour walking distance; tier seconds at the BASE city walk
+ * (loot.ts lootHeroSpeed = maps baseHeroSpeed, ~1.99 u/s: tiers and the intermission stay as tuned), real seconds at
+ * the hero's 2× walk (maps heroSpeed, what moveStep walks heroes at). Tier checks skip crates within TIER_SLACK of a bound.
+ * Heroes walk with moveSafely at heroSpeed, one step per 20 Hz tick, along flow-field directions (no teleports while
  * timing a trip). The left-behind line is the existing `say` event, key 'ficou-pra-tras', source = the player id.
  * D-031: no wall-clock asserts.
  */
@@ -16,7 +17,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
-import {SPEED,heroSpeed,obstacles,walkable,worldBase,type Point} from '../../src/maps/world.ts';
+import {HERO_SPEED_MULT,SPEED,baseHeroSpeed,heroSpeed,obstacles,walkable,worldBase,type Point} from '../../src/maps/world.ts';
 import {FlowField,STRAIGHT_COST,UNREACHABLE} from '../../src/maps/flowfield.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundPhase,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
@@ -26,6 +27,7 @@ import {moveSafely} from '../../src/sim/enemies/ai.ts';
 import {createStonewardsSystem,HORN_LEAD,MAX_PREPARE_TICKS,type StonewardsOptions,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {GATHER_REACH,MAX_GATHER_DISTANCE,NODE_CAPACITY,WORK_PER_UNIT,nodesNear,nodeValue,type NodeInfo} from '../../src/sim/stonewards/resources.ts';
 import type {ResourceKind} from '../../src/sim/stonewards/state.ts';
+import {lootHeroSpeed} from '../../src/sim/stonewards/loot.ts';
 import {CAMP_RADIUS,RETURN_SLACK_SECONDS,returnTicks} from '../../src/rules/stonewards.ts';
 import {STONEWARDS_INTERMISSION_SECONDS} from '../../src/sim/assemble.ts';
 import * as zueiraCidade from '../../src/rules/zueira-cidade.ts';
@@ -38,15 +40,19 @@ const HASH=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest
 const loaded=await cityTerrainFrom(TEXT,HASH);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain,CS=city.asset.unitsPerCell,GW=city.asset.cells.w,GH=city.asset.cells.h;
-/** The hero speed the sim moves heroes at in the city (maps heroSpeed, cidade-04), the one loot.ts sizes the tiers with. */
+/** The hero speed the sim moves heroes at in the city (maps heroSpeed: 2 × the base, velocidade-heroi-e-projetil). */
 const HERO=heroSpeed(city);
+/** The base city walk (cidade-04) loot.ts sizes the tiers and the intermission with (lootHeroSpeed). */
+const BASE=baseHeroSpeed(city);
 const P=cityPlanner(city);
 const plazaGoals:Point[]=[];
 for(let cy=0;cy<GH;cy++)for(let cx=0;cx<GW;cx++)if(P.plazaField.cellCost(cx,cy)===0)plazaGoals.push({x:(cx+.5)*CS,y:(cy+.5)*CS});
 /** Walking distance field to the plaza (no wall penalty: a walk, not a steering cost). */
 const walkField=new FlowField(P.grid,plazaGoals,{wallPenalty:0});
-/** Seconds a hero walks from p to the plaza; Infinity when p is not reachable with the doors closed. */
-const walkSeconds=(p:Point)=>{const c=walkField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*CS/HERO;};
+/** Tier seconds from p to the plaza at the BASE walk (what loot.ts tiers by); Infinity when p is not reachable with the doors closed. */
+const walkSeconds=(p:Point)=>{const c=walkField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*CS/BASE;};
+/** Seconds a hero really walks from p to the plaza (2× walk): what the horn times. */
+const realSeconds=(p:Point)=>walkSeconds(p)*BASE/HERO;
 /** Goal: the plaza center only (used to trace the way out, played backwards). */
 const centerField=new FlowField(P.grid,[P.plazaCenter]);
 const TIER_SLACK=.25;
@@ -108,7 +114,7 @@ const leftBehind=(ctx:{events:SimEvent[];sentAt:number[]})=>ctx.events.flatMap((
 
 // ---------- Walking ----------
 const dir={x:0,y:0};
-/** One hero step at SPEED along `field`; false when the field has no direction there. */
+/** One hero step at heroSpeed along `field`; false when the field has no direction there. */
 function stepAlong(field:FlowField,body:Point){
   field.directionAt(body.x,body.y,dir);
   const l=Math.hypot(dir.x,dir.y);
@@ -123,7 +129,7 @@ function trace(field:FlowField,from:Point,done:(p:Point)=>boolean,maxTicks=ticks
   assert.ok(done(body),`walk from ${fmt(from)} stuck at ${fmt(body)}`);
   return out;
 }
-/** The walk plaza center → p: the walk p → plaza center played backwards (every step one tick at SPEED). */
+/** The walk plaza center → p: the walk p → plaza center played backwards (every step one tick at heroSpeed). */
 const pathFromPlaza=(p:Point)=>trace(centerField,p,q=>dist(q,P.plazaCenter)<.5).reverse();
 /** Ticks a hero at p needs to walk into the base. */
 const ticksHome=(p:Point)=>trace(P.plazaField,p,q=>P.insideBase(q)).length-1;
@@ -211,7 +217,8 @@ test('crates: the NodeInfo shape nodeViews reads, capacity 1, on walkable cells 
 });
 
 // ---------- 3. tiers ----------
-test('tiers by walk time from the plaza at the hero speed: value grows near → good → far, good crates exist at 10–15 s',t=>{
+test('tiers by walk time from the plaza at the base hero speed: value grows near → good → far, good crates exist at 10–15 s',t=>{
+  assert.equal(lootHeroSpeed(city),BASE,'the tiers stay on the base walk');assert.equal(HERO,BASE*HERO_SPEED_MULT,'the heroes walk 2×');
   const tiers:Record<'near'|'good'|'far',NodeInfo[]>={near:[],good:[],far:[]};
   for(const n of allCrates()){
     const s=walkSeconds(n);
@@ -293,7 +300,7 @@ test('city horn: sized by the real walk back (not the straight line); who leaves
   // The crate whose walk back beats its straight-line estimate the most (blocks in between).
   let pick:NodeInfo|undefined,gap=-Infinity;
   for(const n of allCrates()){
-    const s=walkSeconds(n);
+    const s=realSeconds(n);
     if(s>45)continue;
     const g=s*SIM_HZ-returnTicks(dist(n,wall));
     if(g>gap){gap=g;pick=n;}
@@ -313,7 +320,7 @@ test('city horn: sized by the real walk back (not the straight line); who leaves
     if(hornTick<0&&ctx.events.some(e=>e.type==='horn')){hornTick=ctx.tick;left=ctx.round.phaseEndsTick-ctx.tick;}
     end=ctx.round.phaseEndsTick;
   }
-  const s=walkSeconds(pick!);
+  const s=realSeconds(pick!);
   assert.equal(ctx.events.filter(e=>e.type==='horn').length,1);
   assert.ok(hornTick>0);
   assert.ok(left>=Math.floor(s*SIM_HZ),`horn ${left/SIM_HZ} s before the end, the walk is ${s.toFixed(2)} s`);

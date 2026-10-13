@@ -6,7 +6,9 @@ import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.t
 import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
-import {walkable,worldBase,SPEED} from '../../src/maps/world.ts';
+import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
+/** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
+const WALK=heroSpeed();
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../../src/rules/sos.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
@@ -55,7 +57,7 @@ test('movement ignores position/hp/damage fields and is capped per server tick',
   assert.equal(s.input('p',{seq:1,x:1000,y:1000,attack:false}),false);
   assert.equal(s.input('p',{seq:1,x:0,y:0,attack:false,target:{id:'forged'}}),false);
   for(let seq=1;seq<=30;seq++)s.input('p',{seq,x:1,y:1,attack:false,hp:99999,position:{x:50,y:50},damage:100000});
-  s.step();assert.ok(Math.hypot(p.x-start.x,p.y-start.y)<=SPEED*STEP+.000001);assert.ok(Math.hypot(p.x-start.x,p.y-start.y)>0);
+  s.step();assert.ok(Math.hypot(p.x-start.x,p.y-start.y)<=WALK*STEP+.000001);assert.ok(Math.hypot(p.x-start.x,p.y-start.y)>0);
   // A burst far ahead of the room is not queued for later (input-10hz): the room skips to the latest steps, still one per tick.
   assert.equal(p.hp,maxHp);assert.ok(p.ack>=1&&p.ack<=30);
   assert.equal(s.input('p',{seq:1,x:1,y:0,attack:false}),false);

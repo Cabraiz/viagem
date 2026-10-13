@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
-import {SPAWN,findPath,walkable,type Point} from '../../src/maps/world.ts';
+import {SPAWN,findPath,heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundState,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
@@ -419,7 +419,7 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
 });
 
 // ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
-import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
+import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_INNER,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
 import {RECYCLE_EVERY,SPAWN_MARGIN} from '../../src/sim/director.ts';
 import {worldSpawn} from '../../src/maps/world.ts';
 
@@ -450,6 +450,10 @@ test('endless: the off-screen ring follows the camera floor (56 px hero), its of
   assert.ok(MAX_OFFSCREEN_DISTANCE>=hi);
   assert.ok(INTEREST_RADIUS>=MAX_OFFSCREEN_DISTANCE+RING_OUTER,'the client has every enemy before it can walk on screen');
   assert.ok(RECYCLE_DISTANCE>INTEREST_RADIUS,'recycling only takes what no client is drawing');
+  // velocidade-heroi-e-projetil: the ring starts past what the 2× walk covers in the 1.5 s warning (director hiddenAhead),
+  // and moved out without moving the area of interest (protocol 4) nor the recycle distance.
+  assert.ok(RING_INNER>=heroSpeed()*1.5,`RING_INNER ${RING_INNER} ≥ ${heroSpeed()*1.5} u`);
+  assert.equal(INTEREST_RADIUS,54,'area of interest unchanged');assert.equal(RECYCLE_DISTANCE,62,'recycle distance unchanged');
   // The 4 views are 90° turns around the player: the region is symmetric under them.
   for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
   // A camera hint (portrait, view 0) shows much less to the side.
@@ -686,9 +690,11 @@ test('endless: a camera hint brings the ring in to that one screen',()=>{
     for(const e of c.enemies.values())if(e.spawnTick===c.tick){assert.ok(!visibleFrom(p,e,hint));dist.push(Math.hypot(e.x-p.x,e.y-p.y));}
     killAfter(ticks(2))(c);
   },()=>director.state.stage==='done');
-  // camera-segue widened the screens by the hero offset budget (10.2 u sideways in portrait, ring +5..8 on top).
-  assert.ok(Math.min(...dist)<18,`closest ${Math.min(...dist).toFixed(1)}`);
-  assert.ok(dist.some(d=>d<25.5),'closer than the no-hint minimum');
+  // camera-segue widened the screens by the hero offset budget (10.2 u sideways in portrait, ring +RING_INNER..RING_OUTER
+  // on top: 9.4..10.4 since the 2× walk, was 5..8 and under 18 u).
+  const noHint=Math.min(...Array.from({length:360},(_,k)=>offscreenDistance(Math.cos(k*Math.PI/180),Math.sin(k*Math.PI/180))))+RING_INNER;
+  assert.ok(Math.min(...dist)<21,`closest ${Math.min(...dist).toFixed(1)}`);
+  assert.ok(dist.some(d=>d<noHint),`closer than the no-hint minimum (${noHint.toFixed(1)} u)`);
 });
 
 test('endless: a downed player still sees: nothing is recycled off their screen',()=>{

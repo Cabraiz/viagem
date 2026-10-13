@@ -66,7 +66,7 @@ import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
-import {CITY_HERO_SPEED,CityTerrain,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
+import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {TOWER_SECONDS} from '../../rules/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
@@ -190,7 +190,7 @@ class CitySandbox extends Phaser.Scene {
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;
-    this.camera.world={scale:CITY_VIEW_SCALE,speed:CITY_HERO_SPEED};
+    this.camera.world={scale:CITY_VIEW_SCALE,speed:CITY_HERO_SPEED*HERO_SPEED_MULT}; // the game's city walk (maps heroSpeed)
     this.shadow=this.add.ellipse(0,0,42,17,CITY_PALETTE.breu,.38).setScale(CITY_VIEW_SCALE);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);

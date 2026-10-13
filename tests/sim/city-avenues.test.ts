@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FlowField,type FlowGrid,type FlowPoint} from '../../src/maps/index.ts';
+import {FlowField,HERO_SPEED_MULT,type FlowGrid,type FlowPoint} from '../../src/maps/index.ts';
 import {visibleOffset} from '../../src/contract/index.ts';
 import {SCALE_PROFILES} from '../../src/rules/index.ts';
-import {AvenuePlanner,CITY_VIEW_SCALE,MOUTHS,OPPOSITE,cityVisible,modeForModifier,mouthCount,type AvenueMode,type AvenuePlannerOptions,type AvenueState,type CityLayout,type GroupRequest,type Mouth,type PlannedGroup,type PlayerLike,type RngLike} from '../../src/sim/city/avenues.ts';
+import {AvenuePlanner,CITY_VIEW_LEAD,CITY_VIEW_SCALE,MOUTHS,OPPOSITE,cityVisible,modeForModifier,mouthCount,type AvenueMode,type AvenuePlannerOptions,type AvenueState,type CityLayout,type GroupRequest,type Mouth,type PlannedGroup,type PlayerLike,type RngLike} from '../../src/sim/city/avenues.ts';
 
 // Black-box tests of the avenue planner contract (avenues-spec + addendum v2). Expectations come from the contract and
 // from references rebuilt here (plaza flood, mouth lines, camera visibility), never from the planner's internals.
@@ -17,9 +17,12 @@ const MOUTH_HALF=2.6, OUTSIDE=2;                   // addendum §1: mouth line h
 const EXIT_TOL=.65;
 const STACK_TICKS=2*TPS, STACK_GAP=.8;             // addendum §6
 const MS:Mouth[]=['N','S','L','O'];
-/** Addendum §4: city camera scale k and the default lead (hero speed × warning seconds ≈ 3 u). */
+/**
+ * Addendum §4: city camera scale k and the default lead (hero walk × warning seconds): the walk is the profile's base
+ * hero × HERO_SPEED_MULT (velocidade-heroi-e-projetil: 2 × 1.99375 × 1.5 ≈ 6 u, was ≈ 3 u).
+ */
 const VIEW_K=SCALE_PROFILES['cidade-nevada'].hero.drawnSize/SCALE_PROFILES.infinito.hero.drawnSize;
-const LEAD=SCALE_PROFILES['cidade-nevada'].hero.speed*1.5;
+const LEAD=SCALE_PROFILES['cidade-nevada'].hero.speed*HERO_SPEED_MULT*1.5;
 const cellC=(cx:number,cy:number):FlowPoint=>({x:(cx+.5)*CS,y:(cy+.5)*CS});
 const cellOf=(p:FlowPoint)=>{const x=Math.floor(p.x/CS),y=Math.floor(p.y/CS);return x>=0&&y>=0&&x<W&&y<W?y*W+x:-1;};
 const dist=(a:FlowPoint,b:FlowPoint)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -498,7 +501,8 @@ test('ACCEPTANCE: 20 seeds × 2 fixtures — every point walkable, ≥ 4 u from 
 
 test('cityVisible: the camera union scaled to the city (with lead); viewRadius → circle; isVisible still wins', ()=>{
   assert.ok(Math.abs(CITY_VIEW_SCALE-VIEW_K)<1e-12,`CITY_VIEW_SCALE ${CITY_VIEW_SCALE} vs ${VIEW_K}`);
-  assert.ok(Math.abs(LEAD-3)<.05,`fixture: default lead ≈ 3 u (${LEAD})`);
+  assert.ok(Math.abs(LEAD-6)<.05,`fixture: default lead ≈ 6 u (${LEAD})`);
+  assert.ok(Math.abs(CITY_VIEW_LEAD-LEAD)<1e-12,`CITY_VIEW_LEAD ${CITY_VIEW_LEAD} follows the 2× walk`);
   const rnd=lcg(4242), o={x:80,y:80};
   let checked=0;
   for(let i=0;i<1500;i++){
@@ -508,15 +512,15 @@ test('cityVisible: the camera union scaled to the city (with lead); viewRadius �
     checked++;
   }
   assert.ok(checked===1500);
-  // Shape, not a circle: ~16.9 u along the avenues (axes), farther along the diagonals.
-  const axis={x:o.x+19,y:o.y}, diag={x:o.x+23/Math.SQRT2,y:o.y-23/Math.SQRT2};
+  // Shape, not a circle: ~19.9 u along the avenues (axes; ~16.9 with the old 3 u lead), farther along the diagonals (~27.8).
+  const axis={x:o.x+22,y:o.y}, diag={x:o.x+26/Math.SQRT2,y:o.y-26/Math.SQRT2};
   assert.equal(cityVisible(o,{x:o.x,y:o.y-16}),true); assert.equal(cityVisible(o,axis),false); assert.equal(cityVisible(o,diag),true);
   const city=buildCity(), cam=new AvenuePlanner(city.layout), circle=new AvenuePlanner(city.layout,{viewRadius:18});
   const viewer=[pl0('v',o)];
-  assert.equal(cam.hiddenFrom(viewer,axis),true,'default: 19 u along an axis is off camera');
-  assert.equal(cam.hiddenFrom(viewer,diag),false,'default: 23 u along a diagonal is on camera');
-  assert.equal(circle.hiddenFrom(viewer,axis),false,'viewRadius 18: circle of 18 + lead covers 19 u');
-  assert.equal(circle.hiddenFrom(viewer,diag),true,'viewRadius 18: 23 u is outside 18 + lead');
+  assert.equal(cam.hiddenFrom(viewer,axis),true,'default: 22 u along an axis is off camera');
+  assert.equal(cam.hiddenFrom(viewer,diag),false,'default: 26 u along a diagonal is on camera');
+  assert.equal(circle.hiddenFrom(viewer,axis),false,'viewRadius 18: circle of 18 + lead covers 22 u');
+  assert.equal(circle.hiddenFrom(viewer,diag),true,'viewRadius 18: 26 u is outside 18 + lead');
   assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+18+LEAD-.2}),false);
   assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+18+LEAD+.2}),true);
   const override=new AvenuePlanner(city.layout,{viewRadius:100,isVisible:()=>false});
@@ -876,8 +880,8 @@ test('options/layout validation: NaN, ±Infinity and negative values never disab
   assert.equal(blindNaN.hiddenFrom([pl0('a',{x:q.x+3,y:q.y})],q),false,'minPlayerDistance NaN → 4');
   assert.equal(blindNaN.hiddenFrom([pl0('a',{x:q.x+5,y:q.y})],q),true);
   const camNaN=new AvenuePlanner(city.layout,{viewRadius:NaN}), o=avenuePoint('L',40);
-  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+19,y:o.y}),true,'viewRadius NaN → camera (19 u along an axis is hidden)');
-  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+23/Math.SQRT2,y:o.y+23/Math.SQRT2}),false,'viewRadius NaN → camera (23 u diagonal is seen)');
+  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+22,y:o.y}),true,'viewRadius NaN → camera (22 u along an axis is hidden)');
+  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+26/Math.SQRT2,y:o.y+26/Math.SQRT2}),false,'viewRadius NaN → camera (26 u diagonal is seen)');
   assert.deepEqual(plan(new AvenuePlanner(city.layout,{enemySpeed:-1})),want,'negative enemySpeed → default');
   assert.deepEqual(plan(new AvenuePlanner(city.layout,{enemySpeed:0})),want,'zero enemySpeed → default');
   for(const g of plan(new AvenuePlanner(city.layout,{warningSeconds:-2})))assert.equal(g.warnTick,g.releaseTick,'negative warning → 0');

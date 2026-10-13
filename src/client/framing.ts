@@ -1,5 +1,5 @@
 import type {TerrainField} from '../maps/index.ts';
-import {SPEED,heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
+import {heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
 import {SCALE_PROFILES,zoomFor} from '../rules/index.ts';
 import {projectView,normalizeView} from './projection.ts';
 import {HERO_MARGIN} from './hud/zones.ts';
@@ -93,10 +93,11 @@ export const CITY_VIEW_SCALE=CITY_PROFILE.hero.drawnSize/SCALE_PROFILES.infinito
 
 /**
  * How the follow camera reads one world: `scale` multiplies its world-px constants (offset budget, lag, body height,
- * default hero box), `speed` is the hero's walking speed (u/s) that gives a full look-ahead. Island and endless map: 1 and SPEED.
+ * default hero box), `speed` is the hero's walking speed (u/s) that gives a full look-ahead. Island and endless map: 1 and
+ * maps heroSpeed() (the 2× walk, 6.2).
  */
 export interface FollowWorld {readonly scale:number;readonly speed:number}
-export const ENDLESS_FOLLOW:FollowWorld=Object.freeze({scale:1,speed:SPEED});
+export const ENDLESS_FOLLOW:FollowWorld=Object.freeze({scale:1,speed:heroSpeed()});
 /** A terrain as the scene or the net has it (TerrainField; CityTerrain says world 'cidade'). */
 type WorldOf=Parameters<typeof heroSpeed>[0];
 export const isCityWorld=(terrain:WorldOf)=>terrain?.world==='cidade';

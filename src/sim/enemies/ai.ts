@@ -62,7 +62,7 @@ export interface EnemyAiOptions {
   /** Enemy hazards (burp, molotov, fire, poop, explosion, the Tio's charge line) are not created at or above this many telegraphs. */
   telegraphCap?:number;
   /**
-   * Walking speed (u/s) of the heroes in this world; no enemy step goes past ACTION_PEAK_MAX × it. Defaults to SPEED (maps/world.ts, 3.1: the endless world); the city passes its own hero's.
+   * BASE walking speed (u/s) of the heroes in this world (maps baseHeroSpeed, not the 2× walk); no enemy step goes past ACTION_PEAK_MAX × it. Defaults to SPEED (maps/world.ts, 3.1: the endless world); the city passes its own hero's.
    */
   heroSpeed?:number;
   /**
@@ -224,7 +224,7 @@ export class EnemyAi implements SimSystem {
   private readonly active:EnemyState[]=[];
   private readonly steerOut={x:0,y:0,fit:0};
   private readonly detonate:EnemyState[]=[];
-  /** Hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
+  /** BASE hero walking speed of this world (options.heroSpeed, SPEED when absent or not a positive number). */
   readonly heroSpeed:number;
   /** options.capPush: the walk plus the crowd's push is clamped to the peak too (the city). */
   readonly capPush:boolean;

@@ -717,7 +717,10 @@ test('DirectorState with avenues survives a JSON round-trip mid-round; the copy 
  * (NEW-20261012-ORQ-elenco-p1-coach-motoboy-influencer: coach, motoboy and influencer in the round weights); the same
  * tree with 58762ac's round table gives the previous hashes exactly. Re-recorded for D-040
  * (NEW-20261013-ORQ-papeis-de-inimigo): giant-everyone is no longer drawn in round 8 (rules/waves.ts banRounds), which
- * changes island seed 1 only; the same tree with that ban reverted gives the previous hashes exactly.
+ * changes island seed 1 only; the same tree with that ban reverted gives the previous hashes exactly. Re-recorded for velocidade-heroi-e-projetil (the 2× walk widens
+ * the director's warning lead to heroSpeed × 1.5 s and moves the endless spawn ring to 9.4..10.4 + 1): the endless
+ * hashes change, the island ones do not; the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and the
+ * ring 5..8 + 3 gives the previous hashes exactly.
  */
 function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:AvenuePlanner){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -739,8 +742,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'f9c337c51e590c1b','infinito kill=40 seed 1':'648bbcf72c5dacd6',
-  'infinito kill=Infinity seed 0':'9a35543634679798',
+  'infinito kill=40 seed 0':'f49127f250ff1fa3','infinito kill=40 seed 1':'08f91f647de5ae0f',
+  'infinito kill=Infinity seed 0':'c172222574ca7559',
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

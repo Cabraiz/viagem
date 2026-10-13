@@ -4,7 +4,8 @@
  * (touch targets >= 44 px, no keyboard or hover requirement, D-009).
  */
 import {icon,type IconName} from '../ui/icon.ts';
-export type EmoteId='kkkk'|'salva'|'vem'|'foimal';
+import {EMOTE_COOLDOWN_MS,isEmoteId,type EmoteId} from '../../rules/index.ts';
+export {EMOTE_COOLDOWN_MS,isEmoteId,type EmoteId};
 export interface EmoteDef {id:EmoteId;label:string;
   /** Sticker from src/client/ui/icons.svg (DSG-icones-sistema): the catalog is plain data, the DOM builds it with icon(). */
   icon:IconName;
@@ -16,11 +17,9 @@ export const EMOTES:readonly EmoteDef[]=Object.freeze([
   {id:'vem',label:'Vem',icon:'chamar',tone:'come'},
   {id:'foimal',label:'Foi mal',icon:'suor',tone:'sorry'},
 ]);
-export const EMOTE_COOLDOWN_MS=2000;
 export {SOS_COOLDOWN_MS,SOS_SHOW_MS,parseSos,SosBoard,type SosPing} from '../../rules/index.ts';
 /** Balloon lifetime on screen. */
 export const BALLOON_MS=2200;
-export const isEmoteId=(value:unknown):value is EmoteId=>typeof value==='string'&&EMOTES.some(e=>e.id===value);
 export const emoteDef=(id:EmoteId)=>EMOTES.find(e=>e.id===id)!;
 /** An emote relayed by the room (rostos-kkkk): who sent it and which one. */
 export interface EmoteNote {player:string;id:EmoteId}

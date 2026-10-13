@@ -232,7 +232,8 @@ export class TowerFeed {
       let fire=prev?.fire??0,at=prev?.at??tick,volleys=0;
       if(prev&&s.shots!==undefined){
         // The room counts them: every change is a volley, even at a target that never moves (the aim alone stays put).
-        if(prev.shots!==undefined)volleys=Math.min(VOLLEYS_MAX,shotsBetween(prev.shots,s.shots));
+        // A defense seen before its first volley had no counter yet: count from 0, or that first volley is never drawn.
+        volleys=Math.min(VOLLEYS_MAX,shotsBetween(prev.shots??0,s.shots));
       }else if(prev){
         const changed=s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim));
         if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies))volleys=1;

@@ -74,8 +74,6 @@ export class TowerAtlas {
   }
 }
 
-/** Scratch canvas a baked cell is copied into before its upload (grown as needed, shared by every page). */
-let scratch:HTMLCanvasElement|undefined;
 /**
  * Uploads only the page's dirty cells into its WebGL texture (texSubImage2D), with the same unpack state and binding
  * hygiene as Phaser's own upload (WebGLTextureWrapper._processTexture). False when it cannot (no WebGL texture, a lost
@@ -85,18 +83,15 @@ function uploadRects(page:Page):boolean{
   const wrapper=page.texture.source[0]?.glTexture as Phaser.Renderer.WebGL.Wrappers.WebGLTextureWrapper|undefined;
   const gl=wrapper?.gl;
   if(!wrapper||!gl||!wrapper.webGLTexture||gl.isContextLost()||!page.dirty.length)return false;
-  const canvas=page.texture.getSourceImage() as HTMLCanvasElement;
-  scratch??=document.createElement('canvas');
+  // The page's own context is made willReadFrequently by Phaser (CanvasTexture): read each cell straight from it.
+  const ctx=page.texture.getContext();
   gl.activeTexture(gl.TEXTURE0);
   const current=gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture|null;
   gl.bindTexture(gl.TEXTURE_2D,wrapper.webGLTexture);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,wrapper.pma);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,wrapper.flipY);
   for(const r of page.dirty){
-    if(scratch.width<r.w||scratch.height<r.h){scratch.width=Math.max(scratch.width,r.w);scratch.height=Math.max(scratch.height,r.h);}
-    const ctx=scratch.getContext('2d')!;
-    ctx.clearRect(0,0,r.w,r.h);ctx.drawImage(canvas,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
-    const cell=ctx.getImageData(0,0,r.w,r.h);
+    const cell=ctx.getImageData(r.x,r.y,r.w,r.h);
     gl.texSubImage2D(gl.TEXTURE_2D,0,r.x,r.y,gl.RGBA,gl.UNSIGNED_BYTE,cell);
   }
   if(wrapper.minFilter!==gl.LINEAR&&wrapper.minFilter!==gl.NEAREST)gl.generateMipmap(gl.TEXTURE_2D);

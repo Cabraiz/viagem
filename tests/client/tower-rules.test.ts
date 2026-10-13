@@ -293,3 +293,15 @@ test('6e. arame (BUG-20261013-E8-arame-nunca-dispara): the aura has no aim on th
   assert.equal(volleyNow(kind,'pronta',undefined,false,cd,10,20,near),true);
   assert.equal(volleyNow(kind,'obra-2',undefined,false,cd,10,20,near),false,'an obra never fires');
 });
+
+test('6f. torre-contador-de-tiros: a defense seen before its first volley (no counter yet) draws that first volley',()=>{
+  const kind='vigias-armados',feed=new TowerFeed(),east={n:1,xs:[13],ys:[20],air:[0]};let prev:number|undefined;
+  const at=(tick:number,shots:number|undefined)=>{
+    const s=defenseView(defense('d',kind,{readyTick:0,aim:0,...(shots===undefined?{}:{shots})}),tick);
+    const v=feed.views([{...s,aim:byte(s.aim!)}],tick,CELL,{enemies:east})[0]!;
+    const fired=firedNow(prev,v,tick);prev=v.fireTick;return fired;
+  };
+  assert.equal(at(100,undefined),false,'built, never fired: no counter');
+  assert.equal(at(102,1),true,'its first volley');
+  assert.equal(at(104,1),false);
+});

@@ -27,18 +27,31 @@
  * Tap the city to move the hero (buildings in front of it turn translucent); the round button turns the view.
  * `window.__cidade` holds the numbers to check against a screenshot (zoom, hero px, visible cells, view) and the FPS
  * meter (`fps()`, `worst()`, `samples()`) to compare with `?sandbox=horda`.
+ * `tele=1` (with `mapa=real`; card cidade-contorno-breu): the game's own city-mode drawing around the hero, through the
+ * same code as the scene: HordeRenderer (city on) with a circle, a line and a cone telegraph, two critters and an XP
+ * gem on their Breu 38% shadows; the "você" ring (YouMarkers), a plain and a caído map ficha (MapLabel) and the
+ * destination mark (city-edge-rules.ts). One static view is pushed: nothing animates but the dash drift (none with
+ * prefers-reduced-motion) and the hero's idle sheet.
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,unproject,type CityAsset} from '../render/city/index.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
-import {CITY_VIEW_SCALE,FollowCamera,cityZoom} from '../framing.ts';
-import {CITY_HERO_SPEED,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
+import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
+import {CITY_HERO_SPEED,CityTerrain,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {TOWER_SECONDS} from '../../rules/index.ts';
+import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
+import {YouMarkers} from '../render/you.ts';
+import {MapLabel} from '../render/map-labels.ts';
+import {destinationMark} from '../render/city-edge-rules.ts';
+import {CityOutlines} from '../render/city-outline.ts';
+import {cityGroundLuminance} from '../render/city-outline-rules.ts';
+import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
+import {tokenColor} from '../ui/tokens.ts';
 import {loadArtManifest} from '../art/manifest.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 
@@ -55,6 +68,15 @@ const basePhase:'prepare'|'wave'=params.get('fase')==='wave'?'wave':'prepare';
 const BASE_R=2.2;
 /** Where the hero stands without `hero`, from the wall (u): just south of it, in front of the camera. */
 const BASE_HERO={x:.6,y:1.2};
+const tele=real&&params.get('tele')==='1';
+/**
+ * Card contorno-breu: the city's screen-scale Breu outlines (render/city-outline.ts) on the hero and, with tele=1, on
+ * the horde; `contorno=0` draws without them (before/after). `elenco=1` (with tele=1) adds one critter of every kind,
+ * an elite and every pickup in a ring around the hero, to see them on the ground under the hero (`hero=cx,cy`).
+ */
+const outlinesOn=params.get('contorno')!=='0';
+const cast=tele&&params.get('elenco')==='1';
+const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');
 style.textContent=`html,body{margin:0;height:100%;overflow:hidden;background:#2B2542}body>:not(#cidade){display:none!important}
@@ -82,7 +104,9 @@ class CitySandbox extends Phaser.Scene {
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
   private shadow!:Phaser.GameObjects.Ellipse;
-  private sprites=new CharacterSprites(this);
+  private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
+    groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
+  private sprites=new CharacterSprites(this,this.outlines);
   private camera=new FollowCamera();
   private view=Math.max(0,Math.min(3,Number(params.get('view'))|0));
   private at={x:0,y:0};
@@ -91,6 +115,9 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
+  /** tele=1: the game's city-mode renderers. */
+  private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
+  private decoded?:CityTerrain;
   constructor(){super('city-sandbox');}
   preload(){
     this.load.spritesheet(PINE_TEXTURE,'/art/lite/trees/arvore-nevada.webp',{frameWidth:256,frameHeight:384});
@@ -103,6 +130,7 @@ class CitySandbox extends Phaser.Scene {
       const decoded=decodeCityAsset(this.cache.text.get('cidade-real'));
       if(!decoded.ok)throw new Error(`city asset: ${decoded.error}`);
       this.asset=cityRenderAsset(decoded.asset);
+      if(tele)this.decoded=new CityTerrain(decoded.asset,'sandbox');
     }else this.asset=parseCityAsset(makeSampleCity());
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
@@ -119,6 +147,7 @@ class CitySandbox extends Phaser.Scene {
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     this.spawnHorde();
     if(centre)this.mountBase(centre);
+    if(tele)this.buildLab();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -142,6 +171,7 @@ class CitySandbox extends Phaser.Scene {
     this.moveHorde(dt);
     this.tick(dt);
     this.stone?.update(_t);
+    this.drawLab(_t,dt);
   }
   /**
    * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the
@@ -175,6 +205,48 @@ class CitySandbox extends Phaser.Scene {
       enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{coco:4,pedra:4},
       players:[],offers:[],events:[]};
     this.stone.push(view);
+  }
+  /** tele=1: renderers of the game in city mode, fed one static view around the hero (world units). */
+  private buildLab(){
+    if(!this.decoded)return;
+    const projector=new Projector(this.view,this.decoded);
+    projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
+    const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
+      reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
+    const {x,y}=this.at,tick=100;
+    const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
+      telegraphs:[
+        {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
+        {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
+        {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
+      ],
+      enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5}],
+      pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
+    horde.push(cast?withCast(view,x,y):view);
+    const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
+    const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
+    const destination=this.add.graphics().setDepth(100000);
+    this.lab={horde,projector,you,labels,destination};
+    this.markDestination();
+  }
+  /** The destination mark of scene.ts goTo, a little ahead of the hero. */
+  private markDestination(){
+    const lab=this.lab;if(!lab)return;
+    const p=lab.projector.project(this.at.x-2.6,this.at.y-.4,{x:0,y:0});
+    const m=destinationMark(CITY_VIEW_SCALE,1/Math.max(.05,this.cameras.main.zoom),true),breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
+    lab.destination.clear().lineStyle(m.breu,breu,m.breuAlpha).strokeEllipse(p.x,p.y,m.width,m.height).lineStyle(m.papel,papel,1).strokeEllipse(p.x,p.y,m.width,m.height)
+      .fillStyle(breu,m.breuAlpha).fillCircle(p.x,p.y,m.dotBreu).fillStyle(papel,1).fillCircle(p.x,p.y,m.dotPapel);
+  }
+  private drawLab(time:number,dt:number){
+    const lab=this.lab;if(!lab)return;
+    lab.projector.view=this.view;
+    lab.horde.update(time,dt);
+    const feet={x:this.hero.x,y:this.hero.y},zoom=this.cameras.main.zoom;
+    lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2}]);
+    // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
+    const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
+    lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[1].anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -213,7 +285,8 @@ class CitySandbox extends Phaser.Scene {
     const viewport={width:this.scale.width,height:this.scale.height};
     const c=this.camera.snap(feet,viewport,zoom);
     cam.centerOn(c.x,c.y);
-    (window as unknown as {__cidade:unknown}).__cidade={...meter,zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
+    if(this.lab){this.lab.horde.refresh();this.markDestination();}
+    (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
@@ -234,3 +307,12 @@ const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
 // base=1: the art manifest first (as the game does at boot), so the base art is queued when present.
 if(base)void loadArtManifest().then(start);else start();
+
+/** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
+function withCast(view:RunView,x:number,y:number):RunView{
+  const kinds=[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
+  const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
+  return {...view,
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:i===kinds.length-1,...at(i,2.6),hp:5,maxHp:5}))],
+    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:kind==='xp'?5:1}))]};
+}

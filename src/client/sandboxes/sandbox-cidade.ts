@@ -60,6 +60,7 @@ import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
+import {mountGrade} from '../render/grade-pipeline.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -135,6 +136,8 @@ class CitySandbox extends Phaser.Scene {
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
   }
   create(){
+    // Lighting card: the game's colour grade on this camera too (`&luz=0` compares with today's look).
+    mountGrade(this)?.set('cidade',false);
     if(real){
       const decoded=decodeCityAsset(this.cache.text.get('cidade-real'));
       if(!decoded.ok)throw new Error(`city asset: ${decoded.error}`);

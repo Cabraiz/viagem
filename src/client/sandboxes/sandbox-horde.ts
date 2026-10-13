@@ -30,6 +30,7 @@ import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
 import {queueHordeArt} from '../art/horde-art.ts';
 import {artReady} from '../ui/art-boot.ts';
+import {mountGrade} from '../render/grade-pipeline.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
@@ -305,6 +306,8 @@ class HordeSandboxScene extends Phaser.Scene {
   }
   create(){
     this.cameras.main.setBackgroundColor(token('--cena-mar'));
+    // Lighting card: the game's colour grade (`&luz=0` compares), vignette off with fx=reduced (economy).
+    mountGrade(this)?.set('infinito',this.forceReduced);
     this.landscape=new TerrainRenderer(this,this.field);this.landscape.view(this.view);
     const trees=treeCatalog.slice(0,6);let i=0;
     for(const o of obstacles){

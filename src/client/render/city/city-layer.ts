@@ -12,7 +12,16 @@
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {CHUNK_CELLS,ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
-import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim} from './decor.ts';
+import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim,type ShadowLook} from './decor.ts';
+import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.ts';
+
+/**
+ * Lighting card (render/light.ts): with the light on, cast shadows as long as the sun says (×0.75: the city's blocks are
+ * tall; the sun is ~40° up) at its opacity, and building art tinted warm on the sun side, cold on the shade side.
+ */
+const LIGHT=lightEnabled();
+const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HEIGHT*.75,color:LIT_SHADOW.color,alpha:LIT_SHADOW.alpha}):undefined;
+const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
 import {ART_CELL,fountainLot,planHasArt,planLots,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
@@ -390,7 +399,7 @@ export class CityLayer {
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=this.scene.textures.getFrame(m.key,m.frame);
     const a=buildingAnchor(m.a,m.b,m.frame,frame.width,frame.height,cell);
-    const obj=this.scene.add.image(at.x,at.y,m.key,m.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(this.depthOf(key));
+    const obj=sunTint(this.scene.add.image(at.x,at.y,m.key,m.frame).setOrigin(a.originX,a.originY).setScale(a.scale).setDepth(this.depthOf(key)));
     const fade=`s:${block.id}`,column:ColumnRef={key,occ:occluderFor(block,this.asset,base,view,this.pivot),fade};
     for(let j=block.y;j<block.y+block.h;j++)for(let i=block.x;i<block.x+block.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
     return {blockId:block.id,key,fade,obj};
@@ -407,7 +416,7 @@ export class CityLayer {
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=buildingFrame(view,lot.turns,this.materials.frames(s.key));
     const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth,s.frameHeight,ART_CELL);
-    const obj=this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key));
+    const obj=sunTint(this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key)));
     const box:CityBlock={id:lot.id,kind:'building',x:lot.x,y:lot.y,w:lot.w,h:lot.h,height:lot.height};
     const fade=`l:${lot.id}`,column:ColumnRef={key,occ:occluderFor(box,this.asset,base,view,this.pivot),fade};
     // The see-through tests the sheet's own height (a ruin draws lower than its block).
@@ -438,7 +447,7 @@ export class CityLayer {
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
-    const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot);
+    const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
 
     const box=boundsOf(quads.flatMap(q=>q.points));
     let s=this.groundResolution;

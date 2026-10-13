@@ -29,6 +29,9 @@ export const GLINT=Object.freeze({chance:0.4,perChunk:4});
 export const ICING_PX=Object.freeze({min:3,max:5,wavesPerCell:2});
 /** Cast shadow length on the ground per world unit of height, toward screen right-down (+qx: same screen direction in every view). */
 export const SHADOW_LENGTH=0.5;
+/** Length and opacity of the cast shadows (the lighting card passes the sun's: render/light.ts). */
+export interface ShadowLook {readonly length:number;readonly color:number;readonly alpha:number}
+export const FLAT_SHADOW:ShadowLook=Object.freeze({length:SHADOW_LENGTH,color:SHADOW.color,alpha:SHADOW.alpha});
 /** Ruin rubble on the bite floor (bible §4.4: ≤ 0.3 u). */
 export const BITE_RUBBLE_MAX_HEIGHT=0.28;
 
@@ -198,7 +201,7 @@ export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt
  * height are merged by coordinate compression and split into disjoint strips. Pass the pieces of the chunk and
  * of its neighbours so shadows crossing a chunk border are drawn once, by the chunk they land on.
  */
-export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:{x0:number;y0:number;x1:number;y1:number},view:number,pivot:Pt=VIEW_PIVOT):DecorPrim[]{
+export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:{x0:number;y0:number;x1:number;y1:number},view:number,pivot:Pt=VIEW_PIVOT,look:ShadowLook=FLAT_SHADOW):DecorPrim[]{
   const v=normalizeView(view),{cell,origin}=asset,out:DecorPrim[]=[];
   const q=(cx:number,cy:number)=>viewPoint(origin.x+cx*cell,origin.y+cy*cell,v,pivot);
   const ra=q(region.x0,region.y0),rb=q(region.x1,region.y1);
@@ -207,7 +210,7 @@ export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:
   for(const p of pieces){
     const a=q(p.x,p.y),b=q(p.x+p.w,p.y+p.h);
     const seam=(['n','s','e','w'] as const).some(s=>p.seams[s]&&viewSide(s,v)==='+x');
-    const L=seam?0:SHADOW_LENGTH*p.height;
+    const L=seam?0:look.length*p.height;
     const r={x0:Math.max(clip.x0,Math.min(a.x,b.x)),x1:Math.min(clip.x1,Math.max(a.x,b.x)+L),y0:Math.max(clip.y0,Math.min(a.y,b.y)),y1:Math.min(clip.y1,Math.max(a.y,b.y))};
     if(!(r.x1>r.x0&&r.y1>r.y0))continue;
     const list=byBase.get(p.base);if(list)list.push(r);else byBase.set(p.base,[r]);
@@ -225,7 +228,7 @@ export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:
         if(covered&&run<0)run=i;
         if((!covered||i+2===xs.length)&&run>=0){
           const end=covered?xs[i+1]:xs[i];
-          out.push(poly(SHADOW.color,[toScreen(xs[run],ys[j],base),toScreen(end,ys[j],base),toScreen(end,ys[j+1],base),toScreen(xs[run],ys[j+1],base)],SHADOW.alpha));
+          out.push(poly(look.color,[toScreen(xs[run],ys[j],base),toScreen(end,ys[j],base),toScreen(end,ys[j+1],base),toScreen(xs[run],ys[j+1],base)],look.alpha));
           run=-1;
         }
       }
@@ -234,12 +237,12 @@ export function shadowUnion(pieces:readonly BlockPiece[],asset:CityAsset,region:
   return out;
 }
 
-export function pieceShadow(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):DecorPrim{
+export function pieceShadow(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT,look:ShadowLook=FLAT_SHADOW):DecorPrim{
   const v=normalizeView(view),{cell,origin}=asset,x0=origin.x+piece.x*cell,y0=origin.y+piece.y*cell,x1=x0+piece.w*cell,y1=y0+piece.h*cell;
   const foot=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>project(x,y,piece.base,v,pivot));
   const seam=(['n','s','e','w'] as const).some(s=>piece.seams[s]&&viewSide(s,v)==='+x');
-  const L=seam?0:SHADOW_LENGTH*piece.height;
-  return poly(SHADOW.color,hull([...foot,...foot.map(p=>({x:p.x+L*TILE_X,y:p.y+L*TILE_Y}))]),SHADOW.alpha);
+  const L=seam?0:look.length*piece.height;
+  return poly(look.color,hull([...foot,...foot.map(p=>({x:p.x+L*TILE_X,y:p.y+L*TILE_Y}))]),look.alpha);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

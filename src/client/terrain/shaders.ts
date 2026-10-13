@@ -3,6 +3,13 @@
 // D-022 (tropical claro): the scene palette below recolors the approved materials by their luminance.
 // Island: one bake of the whole map, field texture 129² every 0.25 u from -4. Endless world (terreno-em-blocos): one bake
 // per screen tile, field texture 32² every 0.5 u on the global chunk lattice (tiles.ts), trail in the blue channel.
+import {SUN_VIEW,lightEnabled} from '../render/light.ts';
+
+/**
+ * Lighting card: with the light on, the scene's one sun (render/light.ts), fixed on the screen like the city's: `rot`
+ * turns it with the view into field space. `?luz=0`: the old field-space sun (it turned with the view).
+ */
+const SUN=lightEnabled()?`normalize(vec3(rot(vec2(${SUN_VIEW[0].toFixed(5)},${SUN_VIEW[1].toFixed(5)})),${SUN_VIEW[2].toFixed(5)}))`:'normalize(vec3(-0.65,-0.32,0.80))';
 const common=`
 precision highp float;
 uniform vec2 resolution;
@@ -55,7 +62,7 @@ void main(){
  if(ground<0.25){gl_FragColor=vec4(0);return;}
  vec4 data=field(g);float e=0.125;
  vec2 grad=vec2(bed(g+vec2(e,0))-bed(g-vec2(e,0)),bed(g+vec2(0,e))-bed(g-vec2(0,e)))/(e*84.0);
- vec3 sun=normalize(vec3(-0.65,-0.32,0.80)),normal=normalize(vec3(-grad,1.0));
+ vec3 sun=${SUN},normal=normalize(vec3(-grad,1.0));
  float diffuse=max(0.0,dot(normal,sun)),shadow=1.0;
  for(int i=1;i<=6;i++){float t=float(i)*0.35;float obstruction=h(g+sun.xy*t)-ground-sun.z*t*42.0;shadow=min(shadow,1.0-smoothstep(-4.0,8.0,obstruction)*0.65);}
  float macro=fbm(g*2.3),clumps=fbm(g*14.7+vec2(macro*6.0));

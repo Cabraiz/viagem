@@ -198,6 +198,8 @@ export interface Director extends SimSystem {
   summon(ctx:SimContext,kind:string,at:Point):EnemyState|undefined;
   /** Kinds an invocador calls this round: the rotation's corredores and enxames of the round; undefined without a rotation. */
   minionKinds():readonly string[]|undefined;
+  /** The chefe's summons when the rotation is art only (short): its shooters, rats and brutamontes; undefined otherwise. */
+  bossMinionKinds():readonly string[]|undefined;
 }
 
 const BAND_MAX=2.2;
@@ -962,7 +964,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const index=ctx.round.index,theme=state.theme!;
     const tutorial=tutorialRound(ctx);
     const roster=state.rotation?roundRoster(state.rotation,index):undefined;
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
+    const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
     // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
     if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
@@ -1119,6 +1123,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       enemy.memory={...enemy.memory,round:plan.index};
       state.tracked.push(enemy.id);state.spawned++;
       return enemy;
+    },
+    bossMinionKinds(){
+      const r=state.rotation;if(!r||!roundRoster(r,ROUND_COUNT).short)return undefined;
+      const kinds=[...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]];
+      return kinds.length?kinds:undefined;
     },
     minionKinds(){
       if(!state.rotation)return undefined;

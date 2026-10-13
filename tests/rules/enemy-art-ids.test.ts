@@ -133,3 +133,18 @@ test('flag on, late band (rounds 7-9): kamikazes, invocadores and brutamontes wi
     assert.ok(planRound(10,4,{name:'x'},new Rng(seed),roundRoster(r,10)).groups.some(g=>g.boss&&g.members[0]==='chefe'));
   }
 });
+
+test('flag on, the city tutorial and the chefe\'s summons: the rotation\'s art fodder, never the bêbado (full roster: as before)',async()=>{
+  const {tutorialPlan}=await import('../../src/sim/city/tutorial.ts');
+  const members=(p:ReturnType<typeof tutorialPlan>)=>p.groups.flatMap(g=>g.members);
+  assert.ok(members(tutorialPlan(3,100,['rato-de-boteco'])).every(id=>id==='rato-de-boteco'));
+  assert.ok(members(tutorialPlan(3,100)).every(id=>id==='bebado'),'no kinds: the table\'s tutorial');
+  for(const seed of SEEDS.slice(0,20)){
+    const r=artRotation(seed),r1=roundRoster(r,1),r10=roundRoster(r,10);
+    // director: tutorial fodder = the round's corredores, else its enxames; boss minions = shooters, rats, brutamontes.
+    const fodder=r1.roles.corredor??r1.roles.enxame;
+    assert.ok(r1.short&&fodder?.length&&fodder.every(id=>art.has(id)),'the tutorial gets art fodder');
+    assert.ok(r10.short,'round 10 is short too: the boss summons art');
+    for(const id of [...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]])assert.ok(art.has(id),id);
+  }
+});

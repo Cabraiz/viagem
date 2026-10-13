@@ -56,7 +56,6 @@ import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
-import {loadArtManifest} from '../art/manifest.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 
 const params=new URLSearchParams(location.search);

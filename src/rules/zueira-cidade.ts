@@ -6,7 +6,9 @@
  * ends of the 4 avenues (Norte, Sul, Leste, Oeste) are the telegraphed spawns; the crashed vehicle in the south is the
  * start; the round 10 boss fights in the plaza.
  *
- * Nothing is wired yet: the director, the enemy AI, the forge and the HUD read these tables in later cards. Every
+ * Wired so far (cidade-08): round 1 is the tutorial walk, so the director sends CIDADE_TUTORIAL's name and banner line
+ * in its `round` events and heroes `say` a CIDADE_VEHICLE intro line and a CIDADE_TUTORIAL arrival line (keys in
+ * CIDADE_TUTORIAL_SAY). The enemy AI, the forge and the HUD read the other tables in later cards. Every
  * modifier states its whole effect as data (fields below), balanced like waves.ts MODIFIERS: ~0.9-1.15 of the round's
  * threat, normalizeThreat for composition changes and multiplier products near 1.
  *
@@ -226,10 +228,26 @@ export const CIDADE_VEHICLE:CidadeVehicle=deepFreeze({
     'Caixa-preta: só karaokê.','Financiado pelo agiota. Eita.'],
 });
 
+// ---------- Round 1 tutorial (cidade-08): the walk from the wreck to the plaza ----------
+export interface CidadeTutorial {
+  /** Round 1's name and banner line: the `round` event's name and modifier (≤ LABEL_MAX each). */
+  roundName:string;modifier:string;
+  /** Balloon (`say`) of the first hero who reaches the plaza (≤ BARK_MAX each). */
+  arrival:readonly string[];
+}
+/** `say` keys of the tutorial: a hero's intro line at the run start (CIDADE_VEHICLE.intro) and the arrival line. */
+export const CIDADE_TUTORIAL_SAY=deepFreeze({intro:'heli-firma:intro',arrival:'heli-firma:praca'} as const);
+export const CIDADE_TUTORIAL:CidadeTutorial=deepFreeze({
+  roundName:'Pouso Forçado',
+  modifier:'O estagiário pousou de cara. Corre pra praça!',
+  arrival:['Praça! Chão firme, enfim.','Cheguei! Alguém avisa o RH?','Ufa! Praça com chafariz e tudo','Pousei de cara, mas cheguei.',
+    'Cadê o reembolso do voo, RH?'],
+});
+
 /** Everything above in one object (same array references), for the director, the AI, the forge and the HUD. */
 export const CIDADE_ZUEIRA=deepFreeze({
   roundNames:CIDADE_ROUND_NAMES,eliteRoundNames:CIDADE_ELITE_ROUND_NAMES,bossRoundNames:CIDADE_BOSS_ROUND_NAMES,
   modifiers:CIDADE_MODIFIERS,barks:CIDADE_BARKS,reactionLines:CIDADE_REACTION_LINES,deathLines:CIDADE_DEATH_LINES,
   retreatLines:CIDADE_RETREAT_LINES,
-  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,vehicle:CIDADE_VEHICLE,
+  forgeLines:CIDADE_FORGE_LINES,hornLines:CIDADE_HORN_LINES,vehicle:CIDADE_VEHICLE,tutorial:CIDADE_TUTORIAL,
 });

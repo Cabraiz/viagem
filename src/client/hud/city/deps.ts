@@ -12,3 +12,4 @@ export {railName} from '../../render/map-label-rules.ts';
 export {icon,type IconName} from '../../ui/icon.ts';
 export {DEFAULT_MAP as PROTOCOL_DEFAULT_MAP,type MapId} from '../../../protocol/index.ts';
 export {SIM_HZ} from '../../../contract/index.ts';
+export {FlowField,DIRS,UNREACHABLE,walkable,type FlowGrid,type FlowPoint,type CityTerrain} from '../../../maps/index.ts';

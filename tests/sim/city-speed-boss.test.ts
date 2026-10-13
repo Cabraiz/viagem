@@ -75,11 +75,14 @@ function specCitySpeed(speed:number,from:ScaleProfile=INF,to:ScaleProfile=CITY){
 // ---------- Assembled runs ----------
 type RunPlayerLike=SimPlayer&{ack:number;score:number};
 interface Rig {world:SimWorld;sys:RunSystems;players:Map<string,SimPlayer>}
-/** A run as the room assembles it (SimWorld + createRunSystems), with no input: players stand still. */
+/**
+ * A run as the room assembles it (SimWorld + createRunSystems), with no input: players stand still. The city's round-1
+ * tutorial walk (cidade-08, tests/sim/city-tutorial.test.ts) is off: these tests read the round table's round 1.
+ */
 function assembled(terrain:SimWorld['terrain'],seed:number):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false});
   return {world,sys,players};
 }
 /** A player without weapons (nothing dies) and too much hp to go down: only positions matter here. */

@@ -793,3 +793,27 @@
 @media (max-height:500px){
   .rh-coach{width:min(100%,300px);padding:3px 10px 4px 6px}
 }
+
+/* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
+   A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
+   praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
+   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it. */
+.rh-objetivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:min(100%,320px);padding:5px 8px 6px;border-radius:var(--r-ficha);
+  background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
+  pointer-events:auto;touch-action:none}
+.rh-objetivo-mark,.rh-objetivo-arrow{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px}
+.rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:28px;height:28px}
+.rh-objetivo-body{display:flex;flex:1;flex-direction:column;min-width:0}
+.rh-objetivo-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
+.rh-objetivo-sub{font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-objetivo-m:empty{display:none}
+.rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}
+.rh-objetivo-arrow[hidden]{display:none}
+.rh-ended .rh-objetivo{display:none}
+/* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */
+.rh-objetivo.rh-objetivo-yield{visibility:hidden}
+/* Landscape: the slot is 72 px tall, so the row widens instead of wrapping its second line (125% included). */
+@media (max-height:500px){
+  .rh-objetivo{width:min(100%,400px);padding:3px 8px 4px}
+}

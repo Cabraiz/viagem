@@ -102,6 +102,12 @@ export interface CoachInput {
   blocked:boolean;
   /** The street banner (round name, "Intervalo!", zueira event) is up: only an overBanner hint takes the slot from it. */
   banner?:boolean;
+  /**
+   * The city's round-1 walk to the plaza wants the slot (hud/city/objective.ts, card cidade-08): one or the other. Only
+   * the rescue hint (a teammate down) goes ahead of it; every other hint waits, and "andar" folds into it (the row says
+   * "Arrasta pra andar" and the joystick stays lit), so walking there still teaches it (learned, never shown twice).
+   */
+  objective?:boolean;
 }
 export interface CoachShow {lesson:Lesson;done:boolean}
 
@@ -179,7 +185,7 @@ export class Coach {
       if(!this.walkOrigin&&wants('walk',input,false))this.walkOrigin={...hero};
     }
     const overBanner=(lesson:Lesson)=>!!LESSONS[lesson].overBanner&&input.view.round?.index===1;
-    const held=(lesson:Lesson)=>input.blocked||(!!input.banner&&!overBanner(lesson));
+    const held=(lesson:Lesson)=>input.blocked||(!!input.banner&&!overBanner(lesson))||(!!input.objective&&lesson!=='rescue');
     for(const lesson of LESSON_ORDER)if(!this.done.has(lesson)&&didAction(lesson,input,this.walkOrigin))this.learn(lesson,now);
     const cur=this.current;
     if(cur){

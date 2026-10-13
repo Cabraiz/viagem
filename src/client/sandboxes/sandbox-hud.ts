@@ -16,6 +16,13 @@
  * of the east avenue, the base with the horn's seconds (state=camp-horn, the default here) and a caído pinging "Me salva"
  * (the ally on its feet shows on the minimap only). `body[data-cidade]` is '1' once drawn ('erro' if the city did not load).
  * Use state=prepare for the big minimap: in the game the horn's notice blocks it (doc §2).
+ * `mapa=cidade&state=tutorial[&ponto=inicio|travado|patio|meio|praca|X,Y][&vista=0..3][&dica=walk]` (card cidade-08):
+ * round 1 of the city, the walk to the plaza. The hero stands at `ponto` (default inicio, the wreck; travado: where a
+ * straight walk to the plaza parks against a block, ≈(103,154); patio: the dead-end yard inside that block ≈(104.5,149.5);
+ * meio: halfway up the route; praca: in the plaza, where the row hides), three teammates at the wreck and round 1's first
+ * bêbados on the road. The announcement slot shows "Vai pra praça!" with the walking distance and the arrow along the
+ * route in that view; `dica=walk` is a phone that never walked (the second line says how, the joystick is lit).
+ * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
@@ -36,7 +43,9 @@ const params=new URLSearchParams(location.search);
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const requested=params.get('state') as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';
-let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:cidade?'camp-horn':'wave';
+/** Round 1 of the city (card cidade-08): a wave scene with no banner, trimmed to round 1 in the city block below. */
+const tutorial=cidade&&(requested as string|null)==='tutorial';
+let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:tutorial?'wave':cidade?'camp-horn':'wave';
 const frozen=params.has('frozen');
 const bordas=params.get('cenario')==='bordas';
 const dica=(LESSON_ORDER as readonly string[]).includes(params.get('dica')??'')?params.get('dica') as Lesson:undefined;
@@ -117,6 +126,8 @@ function load(next:HudScenario){
   // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)
   if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
+  // The tutorial is round 1 after its 1.8 s banner: the slot is the objective's.
+  if(tutorial)view.events=[];
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=ties?[]:fakeResultEvents(players,()=>++eventId);
   // A coach scene: no round banner (it would hold the slot for 1.8 s), and the world the hint talks about.
@@ -275,18 +286,26 @@ if(cidade)void (async()=>{
   const rect=(el:Element|null|undefined)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
   const all=(sel:string)=>[...document.querySelectorAll(sel)].map(rect);
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
-  const hero={x:82,y:125};
-  const people=[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:58,y:100},
-    {id:'p3',name:'Zé do Pix',x:118,y:142,downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',x:86,y:128}];
+  // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
+  const P=terrain.asset.points;
+  const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:{x:103.1,y:154.2},patio:{x:104.5,y:149.5},meio:{x:89.3,y:113},praca:P.praca};
+  const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
+  const hero=tutorial?spot(params.get('ponto')):{x:82,y:125};
+  const people:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
+    ?[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:P.inicio.x-1.4,y:P.inicio.y+.6},{id:'p3',name:'Zé do Pix',x:P.inicio.x+1.2,y:P.inicio.y+1}]
+    :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:58,y:100},
+      {id:'p3',name:'Zé do Pix',x:118,y:142,downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',x:86,y:128}];
   const rnd=(()=>{let s=7;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};})();
   const blob=(prefix:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${prefix}${i}`,x:cx+(rnd()*2-1)*2,y:cy+(rnd()*2-1)*2}));
   // 12 coming down the north avenue, 7 on the west one, 3 (a clover on the minimap only) south-east, 1 alone (nowhere).
-  const enemies=[...blob('n',84,40,12),...blob('o',40,88,7),...blob('se',120,120,3),...blob('s',60,150,1)];
+  // The tutorial: round 1's first group of bêbados on the novice's road (≈(89,124)).
+  const enemies=tutorial?blob('b',89,124,3):[...blob('n',84,40,12),...blob('o',40,88,7),...blob('se',120,120,3),...blob('s',60,150,1)];
   const tick=1000,mouths=new Map<'N'|'S'|'L'|'O',number>();
-  const active=city.trackMouths(mouths,[{type:'spawn-warning',x:150,y:88,atTick:tick+30}],tick,map);
+  const active=tutorial?[]:city.trackMouths(mouths,[{type:'spawn-warning',x:150,y:88,atTick:tick+30}],tick,map);
   // The fixture's run under it, trimmed to these 4 players, with the wall at the plaza at 63%.
   const base=fakeView(scenario,people.length,tick);
   const run:RunView={...base,structures:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+    ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
   view=run;hud.update(run);
@@ -323,6 +342,14 @@ if(cidade)void (async()=>{
       ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),
       offline:params.has('offline')},big);
     hud.cityMap.take();
+    // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
+    if(tutorial){
+      hud.setCityRoute({terrain,hero,view:vista});
+      const route=city.cityRouteOf(terrain),d=route.direction(hero);
+      (window as unknown as {__cityObjective:unknown}).__cityObjective={hero,inside:route.inside(hero),meters:route.distance(hero),
+        direction:d,bearing:city.screenBearing(d,vista),shown:hud.objectiveShown};
+      document.body.dataset.objetivo=hud.objectiveShown?'1':'0';
+    }
     hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
     document.body.dataset.big=JSON.stringify(layout.minimapBig??null);

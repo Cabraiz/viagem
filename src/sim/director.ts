@@ -15,7 +15,8 @@
  *   covers the slowest member's walk (CITY_ARRIVAL_SLACK). With the team away from the base (options.cityChase,
  *   cidade-05c) the mouths and spots are aimed at the team instead of the plaza. The boss lands in the plaza itself (D-026). Timed-out
  *   hordes walk back up the avenues (exit flow field) and vanish out of everyone's sight, at the avenue end or far
- *   from the plaza.
+ *   from the plaza. With options.cityTutorial (cidade-08, city/tutorial.ts) round 1 is the walk from the crashed
+ *   helicopter to the plaza: a few slow bêbados behind the team and at the plaza, held until a hero reached it.
  */
 import type {TerrainField} from '../maps/index.ts';
 import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
@@ -28,7 +29,8 @@ import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../co
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
 import {CITY_ENEMY_SPEED,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
-import {ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
+import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,CIDADE_VEHICLE,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawTheme,planRound,type RoundPlan,type RoundTheme,type SpawnGroup} from '../rules/index.ts';
+import {TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
 export type CreateEnemy=(ctx:SimContext,kind:string,point:Point,scale:number)=>EnemyState|undefined;
@@ -90,6 +92,13 @@ export interface DirectorOptions {
    * instead of the plaza (planner openRound/planGroups chaseCost). Without it, or with someone in the base: the plaza.
    */
   cityChase?:{refresh(ctx:SimContext):void;costTo(p:Point):number};
+  /**
+   * City (cidade-08, city/tutorial.ts): round 1 is the guided walk from the crashed helicopter to the plaza: its name
+   * and banner line from CIDADE_TUTORIAL, a few slow weak bêbados behind the team and at the plaza, the wave held until
+   * a hero reached the plaza (or the cap), and the heroes' intro and arrival `say` lines. assemble.ts turns it on in the
+   * city; ignored on the island and in the endless world.
+   */
+  cityTutorial?:boolean;
 }
 
 /**
@@ -136,6 +145,8 @@ export interface DirectorState {
   /** City: per plan group, the tick after the round start when its warning goes out; groups go out in cityOrder. */
   cityWarn?:number[];
   cityOrder?:number[];
+  /** City round-1 tutorial (cidade-08): who said the intro, who reached the plaza first and when. */
+  tutorial?:TutorialState;
 }
 
 export interface Director extends SimSystem {
@@ -525,6 +536,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    * groups are aimed at it (cityChaseCost).
    */
   function planCity(ctx:SimContext){
+    if(tutorialRound(ctx)){planTutorial(ctx);return;}
     const plan=state.plan!,regular=plan.groups.filter(g=>!g.boss&&!g.elite);
     const siege=regular.length>0&&plan.groups.every((g,i)=>g.boss||g.elite||isSiege(g,i));
     const chaseCost=cityChaseCost(ctx),aim=chaseCost?{chaseCost}:{};
@@ -607,8 +619,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       return;
     }
     const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
+    // Tutorial: the group behind the team comes out of the wreck (behindWarn); the other one is aimed at the plaza.
+    const tutorial=tutorialRound(ctx);
+    if(tutorial&&index===TUTORIAL_BEHIND){behindWarn(ctx,spawn,delay);return;}
     const chaseCost=cityChaseCost(ctx);
-    const parts=planner!.planGroups([cityRequest(spawn.members,at,!!spawn.siege)],viewers(ctx),state.avenues!,random(),
+    const parts=planner!.planGroups([cityRequest(spawn.members,at,!!spawn.siege||tutorial)],viewers(ctx),state.avenues!,random(),
       {at0:cityAt0(),indexBase:index,nowTick:now+delay+warning,...(chaseCost?{chaseCost}:{})});
     let used=0;
     for(const part of parts){
@@ -686,6 +701,75 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(gone){ctx.enemies.delete(r.id);state.retreated++;return false;}
       return true;
     });
+  }
+
+  // ---------- City round 1: the tutorial walk (cidade-08, city/tutorial.ts) ----------
+  /** Round `index` (default: the current one) is the city tutorial: round 1 of a city run that started it. */
+  function tutorialRound(ctx:SimContext,index=ctx.round.index){return index===1&&!!state.tutorial&&city(ctx);}
+  const standing=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
+  /**
+   * Round start of the tutorial: the plaza group's mouth (one of TUTORIAL_MOUTHS with a route, by rng; it counts as
+   * used, so round 2 prefers another) and the warning ticks: the group behind at its `at`, the plaza group at the
+   * planner's warning for an arrival welcomeArrival s into the wave. The wave lasts its cap (plan.durationTicks).
+   */
+  function planTutorial(ctx:SimContext){
+    const plan=state.plan!,routes=TUTORIAL_MOUTHS.filter(m=>planner!.route(m));
+    const mouth=routes.length?random().pick(routes):TUTORIAL_MOUTHS[0];
+    const uses:Record<Mouth,number>={N:0,S:0,L:0,O:0};uses[mouth]=1;
+    const avenues=state.avenues={round:plan.index,mode:'normal',open:[mouth],alternate:0,uses};
+    const warnAt=plan.groups.map(g=>g.at),welcome=plan.groups[TUTORIAL_WELCOME];
+    if(welcome){
+      const parts=planner!.planGroups([cityRequest(welcome.members,welcome.at,true)],viewers(ctx),avenues,random(),{at0:cityAt0(),indexBase:TUTORIAL_WELCOME,nowTick:0});
+      if(parts.length)warnAt[TUTORIAL_WELCOME]=Math.min(...parts.map(p=>p.warnTick));
+    }
+    const cityWarn=state.cityWarn=warnAt.map(w=>Math.max(0,w));
+    state.cityOrder=plan.groups.map((_,i)=>i).sort((a,b)=>cityWarn[a]-cityWarn[b]||a-b);
+  }
+  /** Cells near the wreck for the group behind the team (city/tutorial.ts behindCandidates), read once. */
+  let behind:BehindCandidate[]|undefined;
+  /**
+   * The group behind the team: hidden cells near the wreck farther from the plaza than every standing hero
+   * (behindSpots), warned now and landing after the warning; members without a spot try again a second later.
+   */
+  function behindWarn(ctx:SimContext,spawn:SpawnRequest,delay:number){
+    const field=planner!.plazaField,wreck=cityTerrainOf(ctx.terrain)?.asset.points.inicio??worldSpawn(ctx.terrain);
+    behind??=behindCandidates(field,wreck,p=>planner!.insideBase(p));
+    let team=0;
+    for(const p of ctx.players.values()){
+      if(!standing(p))continue;
+      const c=field.costAt(p.x,p.y);
+      if(c!==UNREACHABLE)team=Math.max(team,plazaUnits(field,c));
+    }
+    // Closest to the team by path (the round timer's team field), so the group trails the heroes it chases.
+    const near=cityTeamField(ctx),toTeam=near?(p:Point)=>{const c=near.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*near.cellSize;}:undefined;
+    const players=viewers(ctx),points=behindSpots(behind,spawn.members.length,team,p=>planner!.hiddenFrom(players,p),toTeam);
+    if(points.length){
+      const members=spawn.members.slice(0,points.length),p=points[0],atTick=ctx.tick+delay+warning;
+      state.pending.push({...spawn,members,x:p.x,y:p.y,atTick,points});
+      ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:members.length});
+    }
+    if(points.length<spawn.members.length)retryLater(ctx,{...spawn,members:spawn.members.slice(points.length)},delay);
+  }
+  /** Lines of the tutorial from their own streams (derived from the director's), so no spawn of the run moves. */
+  const lineRng=(salt:number)=>new Rng((state.rng^salt)>>>0);
+  /** Right after the crash (the run's first steps): one hero says a CIDADE_VEHICLE intro line. Once per run. */
+  function tutorialIntro(ctx:SimContext){
+    const speakers=[...ctx.players.values()].filter(standing);
+    if(!speakers.length)return;
+    const r=lineRng(0x0c1d0801),who=r.pick(speakers);
+    state.tutorial!.intro=who.id;
+    ctx.emit({type:'say',source:who.id,key:CIDADE_TUTORIAL_SAY.intro,line:r.pick(CIDADE_VEHICLE.intro)});
+  }
+  /** The first standing hero inside the base (planner.insideBase) says an arrival line; the wave may end from now on. */
+  function tutorialArrival(ctx:SimContext){
+    const t=state.tutorial!;
+    if(t.arrived!==undefined)return;
+    for(const p of ctx.players.values()){
+      if(!standing(p)||!planner!.insideBase(p))continue;
+      t.arrived=p.id;t.arrivedTick=ctx.tick;
+      ctx.emit({type:'say',source:p.id,key:CIDADE_TUTORIAL_SAY.arrival,line:lineRng(0x0c1d0802).pick(CIDADE_TUTORIAL.arrival)});
+      return;
+    }
   }
 
   /** Side of the n-th group: the plan's side, flipped every other group when the modifier alternates. */
@@ -795,7 +879,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function startPrepare(ctx:SimContext,index:number,duration:number){
     state.stage='prepare';
-    const theme=state.theme=drawTheme(index,random(),state.usedNames);
+    // cidade-08: the city's round 1 is the tutorial walk, with its own name and banner line (no draw).
+    if(index===1&&options.cityTutorial&&city(ctx))state.tutorial??={};
+    const theme=state.theme=tutorialRound(ctx,index)?{name:CIDADE_TUTORIAL.roundName,modifierLabel:CIDADE_TUTORIAL.modifier}:drawTheme(index,random(),state.usedNames);
     state.usedNames.push(theme.name);if(theme.modifierId)state.usedNames.push(theme.modifierId);
     save();
     Object.assign(ctx.round,{index,total,phase:'prepare',phaseEndsTick:ctx.tick+duration,remaining:0});
@@ -804,7 +890,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
 
   function startWave(ctx:SimContext){
     const index=ctx.round.index,theme=state.theme!;
-    const plan=planRound(index,scalePlayers(ctx),theme,random());
+    const plan=tutorialRound(ctx)?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});
@@ -937,7 +1023,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(let i=state.nextGroup;i<plan.groups.length;i++)queued+=plan.groups[slot(i)].members.length;
     for(const p of state.pending)queued+=p.members.length;
     ctx.round.remaining=queued+state.tracked.length;
-    if(!ctx.round.remaining)endRound(ctx);
+    // Tutorial: the walk is the round; it ends with the horde down once a hero reached the plaza (or at the cap).
+    const tutorial=tutorialRound(ctx);
+    if(tutorial)tutorialArrival(ctx);
+    if(!ctx.round.remaining&&(!tutorial||state.tutorial!.arrived!==undefined||state.timedOut))endRound(ctx);
   }
 
   return {
@@ -957,6 +1046,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         if(state.stage==='prepare')startWave(ctx);
         stepWave(ctx);
       }
+      if(state.tutorial&&state.tutorial.intro===undefined&&tutorialRound(ctx))tutorialIntro(ctx);
       state.round={...ctx.round};
     },
   };

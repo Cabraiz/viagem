@@ -14,5 +14,8 @@ export {cityEdgeTargets,relocateCityTargets,layoutCityEdges,mergeGroupTargets,ci
   type CityEdgeInput,type CityPerson,type CityEdgeTarget,type CityEdgeArrow,type CityEdgeOptions} from './edges.ts';
 export {initialSelector,selectorReducer,selectorView,mountMapSelector,mapChangedNews,downloadText,MAP_OPTIONS,DEFAULT_MAP,PENDING_MS,NEWS_MS,GUEST_HINT_MS,SELECTOR_TEXT,
   type MapId,type SelectorState,type SelectorEvent,type SelectorView,type SelectorSticker,type MapSelectorOptions} from './map-selector.ts';
+export {CityRoute,CityObjectiveTracker,cityRouteOf,routeTerrainOf,plazaCells,screenBearing,objectiveMeters,MOUTH_HALF_WIDTH,OBJECTIVE_TEXT,OBJECTIVE_WALK,OBJECTIVE_JOKE,
+  type CityObjective,type CityObjectiveInput,type RouteTerrain} from './route.ts';
+export {createObjectiveRow,type ObjectivePart} from './objective.ts';
 export {minimapMode,cityAssetOf,cityMapInfo,mouthOfWarning,trackMouths,screenCorners,hornSeconds,BigMapState,MOUTH_IDS,AVENUE_MATCH,GATE_RADIUS,MOUTH_TAIL_TICKS,
   type MinimapMode,type CityAssetLike} from './wiring.ts';

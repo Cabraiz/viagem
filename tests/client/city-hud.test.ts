@@ -979,7 +979,7 @@ async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
   const calls:string[]=[],area=USEFUL.portrait.n100,hero={x:84.5,y:150};
   const board=Object.create(RescueBoard.prototype) as Record<string,unknown>;
   const hud={el:{hidden:false,classList:{contains:()=>false}},cityMap:new city.BigMapState(),
-    useCityMinimap:(on:boolean)=>calls.push(`useCityMinimap ${on}`),closeCityMap:()=>calls.push('closeCityMap'),zones:()=>({useful:area}),
+    useCityMinimap:(on:boolean)=>calls.push(`useCityMinimap ${on}`),setCityRoute:(input:unknown)=>calls.push(`cityRoute ${input?'on':'off'}`),closeCityMap:()=>calls.push('closeCityMap'),zones:()=>({useful:area}),
     edges:{clear:()=>calls.push('edges.clear'),render:(a:readonly EdgeArrow[])=>calls.push(`edges.render ${a.length}`),need:()=>calls.push('edges.need'),scale:()=>1}};
   const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,
     locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-hero.x)*60,y:area.y+area.height/2+(p.y-hero.y)*60}})};
@@ -996,14 +996,15 @@ test('§7 world swap: the driver swaps the minimap every frame, before the out-o
   // In the lobby (a map switched there): the slot follows the world, nothing is drawn.
   for(const [terrain,on] of [[cityTerrain,true],[{world:'ilha'},false]] as const){
     const {board,calls}=await fakeBoard(terrain,'lobby');board.tick();
-    assert.deepEqual(calls,[`useCityMinimap ${on}`,'edges.clear'],`lobby on ${on?'the city':'the island'}`);
+    assert.deepEqual(calls,[`useCityMinimap ${on}`,'cityRoute off','edges.clear'],`lobby on ${on?'the city':'the island'}`);
   }
   // In a wave in the city: the city frame draws, never the island's radar and arrows.
   const inCity=await fakeBoard(cityTerrain,'combat');inCity.board.tick();
-  assert.deepEqual(inCity.calls,['useCityMinimap true','cityFrame']);
+  // Round 1's walk to the plaza (cidade-08) reads the route in the city's runs only.
+  assert.deepEqual(inCity.calls,['useCityMinimap true','cityRoute on','cityFrame']);
   // On the island: the radar's arrows, never the city frame.
   const onIsland=await fakeBoard({world:'ilha'},'combat');onIsland.board.tick();
-  assert.deepEqual(onIsland.calls,['useCityMinimap false','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
+  assert.deepEqual(onIsland.calls,['useCityMinimap false','cityRoute off','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
 });
 
 test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and only re-located in between; the horn base is audited',{skip:noCss},async()=>{

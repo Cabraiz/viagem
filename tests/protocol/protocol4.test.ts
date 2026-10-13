@@ -1145,7 +1145,7 @@ function defenses(tick:number):StructureView[]{
     tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1)}));
 }
 
-test('protocol 11: a defense's tier, branch, phase and aim round-trip; a field that goes away is gone on the phone too',()=>{
+test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; a field that goes away is gone on the phone too',()=>{
   assert.ok(PROTOCOL_VERSION>=11);
   for(const s of ['vigia-do-predio','gustavao','obra-1','pronta','ruina','A','C'])assert.ok(DICT.includes(s),s);
   assert.ok(DICT.length<255,'255 is the inline escape');

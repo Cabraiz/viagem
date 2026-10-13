@@ -44,8 +44,25 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   display: grid; grid-template-columns: minmax(0,.8fr) minmax(0,1.25fr);
 }
 .criacao .portrait-panel { min-height: 0; display: grid; grid-template-rows: minmax(0,1fr) auto auto; container-type: size; }
-.criacao .portrait { min-height: 0; height: 100%; width: 100%; aspect-ratio: auto; margin: 0; padding: 8px 8px 0; }
-.criacao .portrait img { width: 100%; height: 100%; object-fit: contain; }
+.criacao .portrait { min-height: 0; height: 100%; width: 100%; aspect-ratio: auto; margin: 0; padding: 0; position: relative; container-type: size; }
+/* Stone podium (NEW-20261013-ORQ-podio-personagens): the hero stands on its top. The art is drawn in the top 80% of
+   the frame with its feet on the bottom edge (they are at ~97% of every portrait); the podium sits behind the legs and
+   in front of the background, its top centered on the feet, with a soft contact shadow. If the WebP is missing the
+   hero simply stands as before. --s is the drawn side of the square portrait. */
+.criacao .portrait > *, .criacao .portrait::before, .criacao .portrait::after {
+  --s: min(100cqw, 80cqh); --pw: calc(var(--s) * .8); --ph: calc(var(--pw) * .62); --feet: calc(80cqh - var(--s) * .03);
+}
+.criacao .portrait img { position: absolute; left: 0; top: 0; z-index: 2; width: 100%; height: 80%; object-fit: contain; object-position: 50% 100%; }
+.criacao .portrait::before {
+  content: ''; position: absolute; z-index: 0; left: 50%; top: calc(var(--feet) - var(--ph) * .42);
+  width: var(--pw); height: var(--ph); transform: translateX(-50%);
+  background: url('/art/ui-extra/podio-600.webp') center / contain no-repeat;
+}
+.criacao .portrait::after {
+  content: ''; position: absolute; z-index: 1; left: 50%; top: calc(var(--feet) - var(--s) * .045);
+  width: calc(var(--s) * .42); height: calc(var(--s) * .09); transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c-breu) 40%, transparent), transparent);
+}
 .criacao .portrait-caption { padding: 2px 12px 8px; }
 .criacao .portrait-caption > span { font-size: 11px; }
 .criacao .portrait-caption blockquote { margin: 6px 0 0; font-size: clamp(var(--t-13),2.4vh,var(--t-21)); line-height: 1.2; }
@@ -156,7 +173,7 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   .criacao .window-title { padding: 6px 14px; font-size: var(--t-16); }
   .criacao .window-content { grid-template-columns: 1fr; grid-template-rows: minmax(0,.8fr) minmax(0,1.7fr); padding: 8px; gap: 8px; }
   .criacao .portrait-panel { grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); grid-template-rows: minmax(0,1fr) auto; }
-  .criacao .portrait { grid-row: 1 / span 2; padding: 6px; }
+  .criacao .portrait { grid-row: 1 / span 2; padding: 0; }
   .criacao .portrait-caption { align-self: center; padding: 8px 10px 0 0; text-align: left; }
   .criacao .portrait-caption blockquote { display: block; font-size: clamp(14px,2.2vh,18px); }
   .criacao .portrait-navigation { grid-column: 2; border-radius: 0 0 var(--r-ficha) 0; }

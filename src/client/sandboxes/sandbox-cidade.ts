@@ -49,6 +49,9 @@
  *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.hidden` the building the hidden A3
  *   stands behind, `.at`/`.cell` the hero's spot and
  *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
+ *   FPS lab (torres-polimento): `.towersHidden('all'|'bases'|'efeitos'|'crateras'|'')` hides what the renderer draws while it
+ *   still runs (drawn vs hidden on one page, the same load), `.towersStats()` the images shown and their area per kind.
+ *   The stand-in stepper records each volley's aim like the sim on the wire, so the renderer never scans the horde.
  * `relevo=0` draws the flat ground (no relief shader); `relevo=morros` (with `mapa=real`) adds stand-in snow hills to the
  * real map (render/city/relevo/preview.ts) to judge the relief shader before the real height field lands.
  * Fake data only; nothing talks to the server.
@@ -320,7 +323,11 @@ class CitySandbox extends Phaser.Scene {
     for(const d of this.defenses){
       const l=TOWER_LOOK[d.kind];
       if(d.ruined||tick<d.readyTick||tick<d.fireTick||l.calibre==='radar')continue;
-      if(aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air)<0)continue;
+      const i=aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air);
+      if(i<0)continue;
+      // Like the sim on the wire: the aim (turns from +x) of the volley, so the renderer turns to it and never scans
+      // the horde itself ("mira só no tiro"), as in the game.
+      d.aim=(Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(Math.PI*2)+1)%1;
       d.fireTick=tick+Math.max(1,Math.round(l.cooldown*SIM_HZ));
     }
     const t=this.towers;if(!t)return;
@@ -385,7 +392,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   private tick(dt:number){

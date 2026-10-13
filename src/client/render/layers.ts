@@ -24,6 +24,7 @@ import {DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LI
 import {FILL_TEXEL_CSS,TELEGRAPH_BORDER_KEY,TELEGRAPH_FILL_KEY,TELEGRAPH_STRIP_POINTS,borderStrip,fillStrip,queueTelegraphArt,repeatable} from './telegraph-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {EYES_DEPTH,LIFTED_DEPTH,eyesOpen} from './blackout-rules.ts';
+import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 
 type Pt={x:number;y:number};
@@ -247,6 +248,13 @@ export class HordeRenderer{
   private pushAt=0;
   private viewTick=0;
   private frac=1;
+  /**
+   * 3g-rede-sem-teleporte: the enemies' glide lasts as long as the link's frames need (ArrivalJitter, never under
+   * pushMs) and a late frame lets them go on along their motion (`lead` > 1, capped by glideCeiling) instead of freezing.
+   */
+  private arrivals:ArrivalJitter;
+  private glide:number;
+  private lead=1;
   private nowTick=0;
   private lastEventId=-1;
   private lastBubbleAt=-Infinity;
@@ -265,6 +273,7 @@ export class HordeRenderer{
 
   constructor(scene:Phaser.Scene,options:HordeRendererOptions){
     this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;this.pushMs=Math.max(1,options.pushMs??this.tickMs);
+    this.arrivals=new ArrivalJitter(this.pushMs);this.glide=this.pushMs;
     applyPalette();
     this.fx=FX_BUDGET[options.effects??'full'];this.recentHits=new RecentHits(this.fx.bars);
     ensureHordeTextures(scene);
@@ -314,6 +323,7 @@ export class HordeRenderer{
   push(view:RunView){
     if(view.tick<this.viewTick)this.lastEventId=-1; // new run or server restart
     this.viewTick=view.tick;this.pushAt=this.now;this.numbersThisPush=0;
+    this.arrivals.push(this.now);this.glide=Math.max(this.pushMs,this.arrivals.delay());
     // Sync first and retire after the events, so damage on a just-spawned or just-killed enemy still finds its actor.
     this.enemies.begin();
     for(let i=0;i<view.enemies.length;i++)if(view.enemies[i].hp>0)this.syncEnemy(view.enemies[i]);
@@ -339,7 +349,9 @@ export class HordeRenderer{
   update(timeMs:number,_deltaMs:number){
     this.now=timeMs;
     const since=Math.max(0,timeMs-this.pushAt)/this.tickMs;
-    this.frac=this.snapNext?1:Math.min(1,Math.max(0,timeMs-this.pushAt)/this.pushMs);
+    const glided=Math.max(0,timeMs-this.pushAt)/this.glide;
+    this.frac=this.snapNext?1:Math.min(1,glided);
+    this.lead=this.snapNext?1:Math.min(glideCeiling(this.glide),glided);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.body=this.options.actorScale?.()??1;
@@ -556,6 +568,12 @@ export class HordeRenderer{
   private paintNumber(fx:NumberFx){
     paint(fx.text,fx.hostile?HURT_STYLE:fx.crit?CRIT_STYLE:DAMAGE_STYLE,fx.hostile?`-${damageLabel(fx.total)}`:damageLabel(fx.total,fx.crit));
   }
+  /** A puff of smoke at a world point (the local hero's big correction hides behind it, 3g-rede-sem-teleporte). */
+  poofAt(x:number,y:number){
+    const puff=this.poofs.spawn();
+    puff.born=this.now;puff.x=x;puff.y=y;puff.lift=ENEMY_ART.bebado.height*.35*this.body;puff.scale=1.3*this.body;
+    puff.image.clearTint();
+  }
   private spawnDeath(kind:string,id:string,x:number,y:number){
     const k=enemyKind(kind),phase=hashPhase(id),body=this.body,lift=ENEMY_ART[k].height*.35*body;
     // Art v2: the imported death plays on a pooled death actor where (and facing where) the enemy was last drawn,
@@ -623,7 +641,7 @@ export class HordeRenderer{
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
   private drawEnemy=(a:EnemyActor)=>{
-    const f=this.frac,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.body;
+    const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.body;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);

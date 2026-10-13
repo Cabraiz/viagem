@@ -38,23 +38,28 @@ export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,ti
   if(Number.isFinite(length)&&length>=.01)p.facing={x:input.x/length,y:input.y/length};
 }
 
-/** One input per player per tick, like the prototype, so client prediction and the server stay in step. */
-export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined):SimSystem{
+/**
+ * One input per player per tick, like the prototype, so client prediction and the server stay in step. `autopilot`:
+ * an offline player the room plays meanwhile (3g-rede-sem-teleporte): it walks on the room's inputs, whose seq is not
+ * the person's (their ack stays where their own inputs left it).
+ */
+export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean):SimSystem{
   return {id:'players',step(ctx){
     for(const player of ctx.players.values()){
       const p=player as RunPlayer;
       // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
       if(p.slowUntil!==undefined&&ctx.tick>=p.slowUntil)delete p.slowUntil;
       if(p.slipUntil!==undefined&&ctx.tick>=p.slipUntil){delete p.slipUntil;delete p.slip;}
-      if(!p.online||p.spectator)continue;
+      const auto=!p.online&&!!autopilot?.(p.id);
+      if((!p.online&&!auto)||p.spectator)continue;
       const input=takeInput(p.id);
-      if(input)p.ack=input.seq;
+      if(input&&!auto)p.ack=input.seq;
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
         movePlayer(p,input,ctx.terrain,ctx.tick);
         if(input.target)p.target=input.target;else delete p.target;
       }
-      if(p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
+      if(!auto&&p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
       if(input?.skill){
         const cast=castSkill(ctx,p);
         if(cast){

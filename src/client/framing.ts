@@ -255,6 +255,11 @@ export class StepLerp {
     if(Math.hypot(p.x-this.cur.x,p.y-this.cur.y)>snap)this.prev={...p};
     this.cur={...p};
   }
+  /** The prediction was reconciled by (dx, dy): both points move with it, so the step in progress stays smooth. */
+  shift(dx:number,dy:number){
+    if(this.prev){this.prev.x+=dx;this.prev.y+=dy;}
+    if(this.cur){this.cur.x+=dx;this.cur.y+=dy;}
+  }
   at(fraction:number):Point{
     if(!this.cur||!this.prev)return {x:0,y:0};
     const t=clamp(fraction,0,1);

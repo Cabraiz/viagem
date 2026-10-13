@@ -132,6 +132,11 @@ export class Simulation {
   get run():RunSystems{return this.systems;}
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
+  /**
+   * 3g-rede-sem-teleporte: people whose connection is gone; the room's light bot plays their hero (setBotInput) until
+   * they are back, so a drop does not leave a statue in the horde.
+   */
+  readonly autopilot=new Set<string>();
   private botInputs=new Map<string,PlayerInput>();
   private botSeq=0;
   private assemble(){
@@ -143,10 +148,11 @@ export class Simulation {
         if(step)this.recordStep(id,step.seq);
         return step;
       },
+      autopilot:id=>this.autopilot.has(id),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
-      // The run waits for its last player standing who dropped exactly as long as the room keeps the seat (VGM-047);
-      // after that the session expires and the Room ends an empty run (042a R1).
+      // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
+      // seat itself may be held longer (the whole run while someone is connected, 3g-rede-sem-teleporte).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
     });
@@ -191,7 +197,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -201,13 +207,18 @@ export class Simulation {
   }
   /** The bot's stick for the next steps (held until changed) and a one-shot skill tap. */
   setBotInput(id:string,direction:Point,skill=false){
-    if(!this.bots.has(id))return;
+    if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
     this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack:false,skill:skill||!!held?.skill});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
-  setOnline(id:string,online:boolean){const p=this.players.get(id);if(p){p.online=online;this.track(id).reset(p.ack);this.trackReset(id);delete p.target;}}
+  setOnline(id:string,online:boolean){
+    const p=this.players.get(id);if(!p)return;
+    p.online=online;this.track(id).reset(p.ack);this.trackReset(id);delete p.target;
+    // Away: the room's light bot plays the hero (autopilot); back: the person's own inputs again, nothing of the bot held.
+    if(online){this.autopilot.delete(id);this.botInputs.delete(id);}else if(!this.bots.has(id))this.autopilot.add(id);
+  }
   /**
    * A batch of change segments `{seq,steps}` (input-10hz) or one legacy step `{seq,x,y,attack,skill?,target?}`.
    * Refused (false) for offline or spectating players and for anything malformed or out of order; see InputTrack.

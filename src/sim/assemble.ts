@@ -43,6 +43,8 @@ export const SIEGE_SHARE=.25,SIEGE_FROM_ROUND=2;
 
 export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
+  /** An offline player the room plays meanwhile (multiplayer autopilot, 3g-rede-sem-teleporte): still walks. */
+  autopilot?:(playerId:string)=>boolean;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
@@ -181,7 +183,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    playersSystem(options.takeInput),
+    playersSystem(options.takeInput,options.autopilot),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),

@@ -11,6 +11,7 @@ import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher} from '../../protocol/index.ts';
 import {parseSos,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
+import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
 /**
@@ -53,6 +54,20 @@ export const REPLACED_CLOSE=4009;
  * plus a margin (a restarted room seats everyone again with a fresh grace). Backoff up to RETRY_MAX_MS.
  */
 const RETRY_WINDOW_MS=GRACE_MS+10_000,RETRY_MAX_MS=4000;
+/**
+ * 3g-rede-sem-teleporte: in a match the room holds the seat for the whole run while anyone is still playing (the hero
+ * plays on its own meanwhile), so the client keeps knocking that long (the room's lifetime) instead of RETRY_WINDOW_MS;
+ * the room says when the seat is really gone ('Sua sessão expirou').
+ */
+export const RUN_RETRY_WINDOW_MS=30*60_000;
+/** A page reloaded with a saved token (mid-match, or Wi-Fi → 4G) tries this many times before giving up the first join. */
+export const TOKEN_JOIN_ATTEMPTS=8;
+/** Retry delays are spread by ±RETRY_JITTER (share) so six phones dropped by the same hiccup do not knock together. */
+export const RETRY_JITTER=.25;
+/** retryDelay spread by ±RETRY_JITTER with `random` in [0,1). */
+export function jittered(delay:number,random=Math.random()){return Math.round(delay*(1+RETRY_JITTER*(2*random-1)));}
+/** How long a dropped client keeps retrying since the last message heard: the whole run when one is on. */
+export function retryWindow(phase:string|undefined){return phase==='combat'||phase==='countdown'?RUN_RETRY_WINDOW_MS:RETRY_WINDOW_MS;}
 /**
  * First retry after a joined connection drops (BUG-20261012 reconecta-round2): an edge drop (close 1006, room still up)
  * usually comes back on the first try, so it goes at once-ish and the whole drop stays under a second.
@@ -114,6 +129,17 @@ export class CoopClient {
   id='';token='';tick=0;rtt=0;connected=false;victory=false;
   players=new Map<string,Player>();
   predicted:Point={x:12,y:17};
+  /**
+   * The prediction moved outside a step (a frame reconciled it with the room): from → to. The scene keeps the drawing
+   * where it was and fades the difference (smoothing.ts SelfCorrection); the bot lab measures it.
+   */
+  onReconcile?:(from:Point,to:Point,skill:boolean)=>void;
+  /** Frame arrival jitter: the render delay of the other players (smoothing.ts). */
+  readonly arrivals=new ArrivalJitter();
+  /** A frame has placed the hero once (predicted is no longer the constructor placeholder). */
+  private placed=false;
+  /** The own skill's last tick: a frame that moves it brings a real move (a dash), not a prediction error. */
+  private lastSkillTick=0;
   pending:Input[]=[];
   /**
    * D-036 slow and slip of this player, as the latest frame (tick `this.tick`) carried them: the prediction steps the
@@ -271,14 +297,14 @@ export class CoopClient {
       if(this.away)return;
       // A newer connection took the character: stop here, keep the token (the reload button takes it back on purpose).
       if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
-      if(this.initialized&&Date.now()-this.lastSeenAt>RETRY_WINDOW_MS||(!this.initialized&&this.attempts>=2)){
+      if(this.initialized&&Date.now()-this.lastSeenAt>retryWindow(this.run?.phase)||(!this.initialized&&this.attempts>=(this.token?TOKEN_JOIN_ATTEMPTS:2))){
         this.stopped=true;this.forgetToken();
         // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
         if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      this.retry=setTimeout(()=>this.connect(),retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS));
+      this.retry=setTimeout(()=>this.connect(),jittered(retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS)));
     };
     ws.onerror=()=>{};
   }
@@ -447,13 +473,17 @@ export class CoopClient {
     this.stopped=true;this.connected=false;this.fatal=message;clearTimeout(this.retry);
     this.onStatus(message);this.rejectReady?.(new Error(message));ws.close();
   }
-  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+GRACE_MS}));}catch{}}
+  /** The seat token survives a reload (sessionStorage): for the grace, or for the whole run while one is on. */
+  private saveToken(){try{sessionStorage.setItem(`viagem:room:${this.code}`,JSON.stringify({token:this.token,until:Date.now()+retryWindow(this.run?.phase)}));}catch{}}
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
     if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
+    const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};
+    // A run starting (or over): the saved token now lasts as long as the room will hold the seat.
+    if(this.token&&retryWindow(was)!==retryWindow(run.phase))this.saveToken();
     this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));
     this.victory=run.outcome==='victory';
     if(run.phase==='combat')this.roomNotice=undefined;
@@ -488,8 +518,15 @@ export class CoopClient {
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
     this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip}:{};
-    if(self){this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};}
-    this.samples.push({at:performance.now(),players:new Map(this.players)});
+    if(self){
+      const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};
+      // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
+      if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
+      this.placed=true;
+    }
+    const at=performance.now();this.arrivals.push(at);
+    this.samples.push({at,players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
   /** Sends one JSON message; the current socket's send time feeds the keepalive. */
@@ -590,13 +627,22 @@ export class CoopClient {
     if(sent)this.out(this.socket!,{...command,round:this.run!.round});
     this.onCommand?.(command,sent);
   }
-  /** A short render buffer smooths remote entities without delaying local controls. */
+  /**
+   * A render buffer smooths remote players without delaying local controls: as long as the link's jitter needs
+   * (smoothing.ts ArrivalJitter, 100-250 ms); a late frame does not freeze them, they go on along their last motion for
+   * at most EXTRAPOLATE_MAX_MS (3g-rede-sem-teleporte).
+   */
   view(now=performance.now()):{players:Player[]}{
-    const target=now-120;
-    let a=this.samples[0],b=a;
-    for(const sample of this.samples){b=sample;if(sample.at>=target)break;a=sample;}
-    const t=a&&b&&a!==b?(target-a.at)/(b.at-a.at):1;
-    return {players:[...this.players.values()].map(p=>p.id===this.id?{...p,...this.predicted}:{...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)})};
+    const target=now-this.arrivals.delay(),s=this.samples,n=s.length;
+    let i=0;while(i<n&&s[i].at<=target)i++;
+    // Between two samples; before the oldest: the oldest; past the newest: along the last two (blendFactor caps it).
+    const a=s[Math.max(0,Math.min(i,n)-1)]??s[0],b=i<n?s[i]:s[n-1],prev=i>=n&&n>1?s[n-2]:undefined;
+    const t=a&&b?(i>=n&&prev?blendFactor(b.at,b.at,target,prev.at):i===0?1:blendFactor(a.at,b.at,target)):1;
+    return {players:[...this.players.values()].map(p=>{
+      if(p.id===this.id)return {...p,...this.predicted};
+      if(i>=n&&prev){const q=prev.players.get(p.id),r=b.players.get(p.id);return {...p,...(q&&r?along(q,r,t):r??p)};}
+      return {...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)};
+    })};
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}

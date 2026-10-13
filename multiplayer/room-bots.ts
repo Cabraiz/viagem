@@ -55,6 +55,9 @@ interface BotMind {id:string;slot:number;memory:BrainMemory;req:number}
 
 export class RoomBots {
   private minds=new Map<string,BotMind>();
+  /** Picks level-up offers (room bots); the autopilot of a person away leaves them for the person (3g-rede-sem-teleporte). */
+  private readonly chooses:boolean;
+  constructor(options:{chooses?:boolean}={}){this.chooses=options.chooses??true;}
   /** Ticks spent thinking (ms), for the lab: the cost of the bots inside the room tick. */
   thinkMs=0;thinks=0;
   /** Forge buys that went through (lab and bench). */
@@ -66,8 +69,8 @@ export class RoomBots {
   add(id:string,slot:number){this.minds.set(id,{id,slot,memory:newMemory(slot),req:0});}
   remove(id:string){this.minds.delete(id);}
   slotOf(id:string){return this.minds.get(id)?.slot??0;}
-  /** The lowest slot no bot holds (0..5). */
-  freeSlot(){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=0;while(used.has(slot))slot++;return slot;}
+  /** The lowest slot no bot holds (0..5), or the first free one of from, from+step… */
+  freeSlot(from=0,step=1){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=from;while(used.has(slot))slot+=step;return slot;}
   /** What decides the bots' next choices (Simulation.stateHash): each mind by slot, plain JSON. */
   state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory}));}
   /** New run: fresh memories (forge refusals, offers seen, unstick), same slots. */
@@ -96,7 +99,7 @@ export class RoomBots {
       }
       const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort});
       sim.setBotInput(mind.id,d.direction,d.cast);
-      if(d.choose)sim.choose(mind.id,d.choose.offer,d.choose.index);
+      if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);
         if(result.ok)this.forged++;

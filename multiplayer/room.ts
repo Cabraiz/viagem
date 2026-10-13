@@ -119,6 +119,12 @@ export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
 export const ROOM_LIFETIME_MS=30*60_000;
 /**
+ * Autopilot slots (3g-rede-sem-teleporte): 7, 9, 11… — apart from the room bots' 0..5 (own gather node and think tick)
+ * and odd, so the bot brain makes them roamers that follow the team, not wall guards.
+ */
+const AUTOPILOT_SLOT=7;
+const NO_SEATS:ReadonlySet<string>=new Set();
+/**
  * A new run only starts when the room still has this long to live: a full horde run took ~13.7 min (plan §1); the
  * Stonewards intermissions of 30 s (VGM-046B) add ~1.5 min and the horn may stretch them by 90 s in all
  * (MAX_STRETCH_PER_RUN). The worst case on paper (every round to its timeout, every stretch, boss at its nominal 90 s)
@@ -234,6 +240,13 @@ export class Room {
   private nameBans=new Map<string,number>();
   /** The room's bots (D-025): played inside the tick, no socket. */
   readonly bots=new RoomBots();
+  /**
+   * 3g-rede-sem-teleporte: the same light brain plays the hero of a person whose connection dropped (Simulation
+   * autopilot), apart from the room bots (not in the roster, not counted as bots, never removed for a newcomer).
+   */
+  readonly autopilots=new RoomBots({chooses:false});
+  /** The bots' minds for Simulation.stateHash: the room bots', and the autopilots' when any (same hash as before otherwise). */
+  private minds(){return this.autopilots.size?{bots:this.bots.state(),autopilots:this.autopilots.state()}:this.bots.state();}
   /** Bots ever added in this room (their names and classes follow the seed and this count). */
   private botsAdded=0;
   /** The map the room plays (D-026): announced in welcome and {t:'map'}, kept in the roster. */
@@ -253,7 +266,7 @@ export class Room {
   private mapGen=0;
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
-    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.bots.state();
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
@@ -299,7 +312,7 @@ export class Room {
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
       this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
-      this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);
+      this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);this.autopilots.add(r.id,this.autopilots.freeSlot(AUTOPILOT_SLOT,2));
       if(lost)this.lostRun.set(r.id,lost);
     }
     // D-025: kicked seats still out, the owner if still seated (else the oldest person), and the bots (only with people).
@@ -380,7 +393,7 @@ export class Room {
           try{other.peer.send(JSON.stringify({t:'replaced',message:REPLACED_MESSAGE}));}catch{}
           try{other.peer.close(4009,'Personagem entrou por outra conexão.');}catch{}
         }
-        this.sim.setOnline(session.id,true);session.token=m.token;
+        this.sim.setOnline(session.id,true);this.autopilots.remove(session.id);session.token=m.token;
       }else{
         if(typeof m.name!=='string'||m.name.trim().length<1||m.name.trim().length>20||/[\u0000-\u001f\u007f]/.test(m.name)||typeof m.classId!=='string'){this.reject(peer,'Nome ou classe inválidos.',now);return;}
         const named=this.nameBans.get(nameKey(m.name));
@@ -581,14 +594,14 @@ export class Room {
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
     const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true}):new Simulation(old.seed,{world:this.baseWorld});
-    sim.botState=()=>this.bots.state();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
+    sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
       next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
     }
     for(const id of old.shameOptOut)if(sim.players.has(id))sim.shameOptOut.add(id);
     this.sim=sim;this.map=ref;
-    this.ids.reset();this.sosAt.clear();this.bots.reset();
+    this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
     for(const c of this.connections.values())c.encoder?.resync();
     this.run.resetReady();this.syncSpectators();this.rosterDirty=true;
     this.send({t:'map',map:welcomeMap(ref),world:worldDescriptor(sim.terrain)});
@@ -605,6 +618,7 @@ export class Room {
    * oldest person left; with nobody left, the bots go too (a room of bots alone plays for no one).
    */
   private dropPerson(id:string){
+    this.autopilots.remove(id);
     this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.lostRun.delete(id);
     if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
     if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
@@ -742,18 +756,37 @@ export class Room {
   }
   disconnect(peer:Peer,now=Date.now()){
     const c=this.connections.get(peer);this.connections.delete(peer);
-    if(c?.playerId){this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;}
+    if(c?.playerId){
+      this.rosterDirty=true;this.sim.setOnline(c.playerId,false);this.run.setOnline(c.playerId,false);this.syncSpectators();const session=this.sessions.get(c.playerId);if(session)session.until=now+GRACE_MS;
+      if(!this.autopilots.has(c.playerId))this.autopilots.add(c.playerId,this.autopilots.freeSlot(AUTOPILOT_SLOT,2));
+    }
   }
   private syncSpectators(){for(const m of this.run.snapshot().members){const p=this.sim.players.get(m.id);if(p)p.spectator=m.spectator;}}
+  /**
+   * 3g-rede-sem-teleporte: during a match the seats of the people away are held for the whole run (their hero plays on
+   * its own), as long as someone is still connected: an empty room keeps the GRACE_MS rule, so it does not tick (and
+   * bill) for nobody. The held seats keep GRACE_MS after the hold ends (result, rematch).
+   */
+  holdsSeats():ReadonlySet<string>{
+    const run=this.run.snapshot();
+    if((run.phase!=='combat'&&run.phase!=='countdown')||![...this.connections.values()].some(c=>!!c.playerId))return NO_SEATS;
+    // Only the run's own players (a person who never came back is a spectator of the next run: not held again).
+    return new Set(run.members.filter(m=>!m.spectator&&!m.bot).map(m=>m.id));
+  }
   expire(now:number){
-    for(const s of [...this.sessions.values()])if(s.until<now)this.dropPerson(s.id);
+    const held=this.holdsSeats();
+    for(const s of [...this.sessions.values()]){
+      // Extended in memory only (a write per tick would bill): a restart loses the run anyway (VGM-047).
+      if(held.has(s.id)&&Number.isFinite(s.until))s.until=Math.max(s.until,now+GRACE_MS);
+      else if(s.until<now)this.dropPerson(s.id);
+    }
     for(const [hash,until] of this.bans)if(until<=now){this.bans.delete(hash);this.rosterDirty=true;}
     for(const [name,until] of this.nameBans)if(until<=now){this.nameBans.delete(name);this.rosterDirty=true;}
     this.syncSpectators();
   }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
-    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.bots.reset();
+    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
     for(const p of this.sim.players.values()){
@@ -782,6 +815,8 @@ export class Room {
       if(this.labHorde)this.fillHorde();
       // Room bots decide before the step (their stick is this tick's input); a fallen one calls for help like a phone.
       for(const id of this.bots.think(this.sim))this.botSos(id,now);
+      // People away: their hero follows the team on its own until they are back (no help calls: nobody is holding the phone).
+      this.autopilots.think(this.sim);
       const events=this.sim.step(now);
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
       for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});

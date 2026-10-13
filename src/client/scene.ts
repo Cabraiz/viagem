@@ -14,6 +14,7 @@ import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
 import { CoopClient, STEP } from './net/client.ts';
+import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {queueHordeArt} from './art/horde-art.ts';
@@ -122,6 +123,8 @@ export class IslandScene extends Phaser.Scene {
   private canvasOffset={x:0,y:0};
   /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
   private steps=new StepLerp();
+  /** The local hero's reconcile error, faded on screen (3g-rede-sem-teleporte, smoothing.ts). */
+  private correction=new SelfCorrection();
   private smooth?:Point;
   /** Out or watching (UX onda 4): the teammate the camera follows, and where it last was. */
   private watchId?:string;
@@ -295,6 +298,15 @@ export class IslandScene extends Phaser.Scene {
     if(this.hooks.net){
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
+      // A frame moved the prediction: the drawing stays put and the error fades; a big one snaps behind a puff.
+      net.onReconcile=(from,to,skill)=>{
+        // The own skill moved the hero (a dash): a real move, drawn like one (the step glides it, a long one jumps).
+        if(skill){this.steps.sync(to);return;}
+        const drawn={x:from.x+this.correction.x,y:from.y+this.correction.y};
+        if(this.correction.absorb(from,to)==='hide'){this.steps.sync(to,0);this.horde?.poofAt(drawn.x,drawn.y);this.horde?.poofAt(to.x,to.y);}
+        else this.steps.shift(to.x-from.x,to.y-from.y);
+      };
+      this.events.once('shutdown',()=>{if(net.onReconcile)net.onReconcile=undefined;});
       this.projector=new Projector(this.view,this.field);
       this.cityDepths();
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
@@ -373,7 +385,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.projector)this.projector.terrain=this.field;
     this.route=[];this.destination.clear();
     // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
-    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;}
+    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;this.correction.clear();}
     this.buildWorld();this.shadowLook();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
@@ -670,6 +682,11 @@ export class IslandScene extends Phaser.Scene {
     const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;
     return {x:a.x+(left-ox)*sx,y:a.y+(f.top-oy)*sy,width:(right-left)*sx,height:(f.bottom-f.top)*sy};
   }
+  /** Screen px of one world unit around `at` (the larger of the two axes), for the correction's per-frame cap. */
+  private unitPx(at:Point){
+    const o=this.project(at),ex=this.project({x:at.x+1,y:at.y}),ey=this.project({x:at.x,y:at.y+1}),zoom=this.cameras.main.zoom;
+    return Math.max(Math.hypot(ex.x-o.x,ex.y-o.y),Math.hypot(ey.x-o.x,ey.y-o.y))*zoom;
+  }
   private updateCoop(time:number,delta:number){
     const net=this.hooks.net!;
     const phase=net.run?.phase;
@@ -721,8 +738,9 @@ export class IslandScene extends Phaser.Scene {
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
       effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
-    const target=smooth,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
-    this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
+    // The reconcile error fades at most CORRECTION_MAX_PX per frame on screen (one world unit's px at this zoom).
+    const unitPx=this.unitPx(smooth);this.correction.step(delta,unitPx);
+    this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.

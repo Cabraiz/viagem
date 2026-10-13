@@ -7,6 +7,31 @@ import {Link,LabSocket} from './lab-socket.ts';
 import {decide,newMemory,type BrainMemory,type Decision} from './brain.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import type {Point} from '../../src/maps/world.ts';
+import {SelfCorrection} from '../../src/client/net/smoothing.ts';
+
+/** Screen px of one world unit at the endless map's zoom 1 (42·√2 world px): the px of the lab's correction numbers. */
+export const LAB_UNIT_PX=42*Math.SQRT2;
+/**
+ * The drawing before 3g-rede-sem-teleporte (scene.ts until 13/10): the hero lerped 35/s toward the reconciled
+ * prediction and snapped (one visible jump) past 3 units. Fed the same reconciles, it gives the "before" column.
+ */
+export class LegacyCorrection {
+  x=0;y=0;
+  /** Returns the px of a visible snap (0 when it glides). */
+  absorb(from:Point,to:Point){
+    this.x+=from.x-to.x;this.y+=from.y-to.y;
+    const size=Math.hypot(this.x,this.y);
+    if(size>3){this.x=0;this.y=0;return size*LAB_UNIT_PX;}
+    return 0;
+  }
+  step(dtMs:number){
+    const size=Math.hypot(this.x,this.y),k=Math.exp(-Math.min(dtMs/1000,.1)*35);
+    this.x*=k;this.y*=k;return size*(1-k)*LAB_UNIT_PX;
+  }
+}
+/** Per-frame visible correction of the local hero (px), peak and mean over the frames that had any. */
+export interface CorrectionStats {reconciles:number;jumpPeak:number;jumpSum:number;hides:number;
+  before:{peak:number;sum:number;frames:number;snaps:number};after:{peak:number;sum:number;frames:number}}
 
 // The page keeps the seat token in sessionStorage; each bot keeps it in its CoopClient (no shared storage, or six
 // bots in one process would take each other's seats). Always replaced: Node ≥ 25 has a real, process-wide
@@ -52,12 +77,37 @@ export class Bot {
   private lastRtt=0;
   private readonly started=performance.now();
   private readonly log:(line:string)=>void;
+  /** 3g-rede-sem-teleporte: the hero's reconciles drawn both ways at 60 frames per second (see LegacyCorrection). */
+  readonly corrections:CorrectionStats={reconciles:0,jumpPeak:0,jumpSum:0,hides:0,before:{peak:0,sum:0,frames:0,snaps:0},after:{peak:0,sum:0,frames:0}};
+  private legacy=new LegacyCorrection();
+  private smooth=new SelfCorrection();
+  private display?:ReturnType<typeof setInterval>;
+  private reconciled(from:Point,to:Point){
+    const c=this.corrections,jump=Math.hypot(from.x-to.x,from.y-to.y)*LAB_UNIT_PX;
+    c.reconciles++;c.jumpSum+=jump;c.jumpPeak=Math.max(c.jumpPeak,jump);
+    const snap=this.legacy.absorb(from,to);
+    if(snap>0){c.before.snaps++;c.before.peak=Math.max(c.before.peak,snap);c.before.sum+=snap;c.before.frames++;}
+    if(this.smooth.absorb(from,to)==='hide')c.hides++;
+  }
+  private drawFrame(dt:number){
+    const c=this.corrections,old=this.legacy.step(dt),now=this.smooth.step(dt,LAB_UNIT_PX);
+    if(old>.05){c.before.peak=Math.max(c.before.peak,old);c.before.sum+=old;c.before.frames++;}
+    if(now>.05){c.after.peak=Math.max(c.after.peak,now);c.after.sum+=now;c.after.frames++;}
+  }
   constructor(o:BotOptions){
     this.index=o.index;this.name=o.name;this.link=o.link;this.memory=newMemory(o.index);this.log=o.log??(()=>{});
     const client=this.client=new CoopClient(o.endpoint,o.code,o.name,o.classId);
     // Each connection attempt (first join and every retry) goes through this bot's Link.
     const connect=Object.getPrototypeOf(client).connect as ()=>void,socketClass=o.link.socketClass();
     (client as any).connect=function(){const before=g.WebSocket;g.WebSocket=socketClass;try{connect.call(this);}finally{g.WebSocket=before;}};
+    // Every frame's reconcile of the hero (the same hook on the old client and the new one): from → to, in combat only,
+    // not the first frame (the placeholder start).
+    const frame=Object.getPrototypeOf(client).frame as (ws:unknown,data:ArrayBuffer)=>void,bot=this;let placed=false;
+    (client as any).frame=function(ws:unknown,data:ArrayBuffer){
+      const from={...this.predicted},was=this.run?.phase;frame.call(this,ws,data);const to=this.predicted;
+      if(placed&&was==='combat'&&this.run?.phase==='combat'&&(from.x!==to.x||from.y!==to.y))bot.reconciled(from,to);
+      placed=true;
+    };
     client.onForged=r=>{
       this.forged.push(r);this.event('forged',r);
       // Refusals about the recipe itself wait for the next intermission; 'away', 'phase' or 'player' do not.
@@ -68,7 +118,11 @@ export class Bot {
     client.onStatus=m=>{if(client.fatal&&!this.errors.includes(client.fatal)){this.errors.push(client.fatal);this.event('fatal',client.fatal);}else this.event('status',m);};
   }
   event(kind:string,detail?:unknown){this.events.push({at:Math.round(performance.now()-this.started),kind,detail});if(kind!=='status')this.log(`${this.name} ${kind} ${detail===undefined?'':JSON.stringify(detail)}`);}
-  async join(){await this.client.join();this.timer=setInterval(()=>{try{this.step();}catch(e){this.errors.push(String((e as Error)?.stack??e));}},STEP_MS);}
+  async join(){
+    await this.client.join();this.timer=setInterval(()=>{try{this.step();}catch(e){this.errors.push(String((e as Error)?.stack??e));}},STEP_MS);
+    let last=performance.now();
+    this.display=setInterval(()=>{const t=performance.now();this.drawFrame(t-last);last=t;},1000/60);
+  }
   get id(){return this.client.id;}
   get run(){return this.client.run;}
   /** The view the brain sees (also after the run: stats, wall, level). */
@@ -97,5 +151,5 @@ export class Bot {
     }
     c.input(this.decision?.direction??{x:0,y:0},false);
   }
-  stop(leave=true){clearInterval(this.timer);this.timer=undefined;if(leave)this.client.leave();else{for(const s of [...this.link.sockets])s.terminate();}}
+  stop(leave=true){clearInterval(this.timer);this.timer=undefined;clearInterval(this.display);this.display=undefined;if(leave)this.client.leave();else{for(const s of [...this.link.sockets])s.terminate();}}
 }

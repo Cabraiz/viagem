@@ -141,7 +141,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // The boss walks over the plaza barricades (cidade-06; it spawns inside the base and never bashes structures, D-010):
   // its steer runs on a barricade-free copy of the city, or with the four mouths closed it finds no way out of the plaza.
   const open=cityTerrain?new CityTerrain(cityTerrain.asset,cityTerrain.signature):undefined;
-  const bossSteer=open?citySteer(cityPlanner(open),{terrain:open,heroOnly:true,blockers:false}):undefined;
+  const openPlanner=open?cityPlanner(open):undefined;
+  const bossSteer=open&&openPlanner?citySteer(openPlanner,{terrain:open,heroOnly:true,blockers:false}):undefined;
   // City speeds (cidade-05c v2, city/speed.ts): converted once, on the EFFECTIVE speed. The director's bodies are
   // created at the catalog speed and the director converts catalog × plan.speed (DirectorOptions.speedMap); the boss
   // converts its walk after the phase and enrage multipliers (BossOptions.speedMap); its minions, which no multiplier
@@ -187,7 +188,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // groups aimed at a team away from the base.
     ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
       // Round 1 is the walk from the wreck to the plaza (cidade-08).
-      cityTutorial:options.cityTutorial??true,...(cityBalance?{cityBalance}:{})}:{}),
+      cityTutorial:options.cityTutorial??true,...(cityBalance?{cityBalance}:{}),...(openPlanner?{cityOpenPlanner:openPlanner}:{})}:{}),
   });
   // City team damage (cidade-11, CityBalance.players[n].damage): × every hit a player takes, through the core's single
   // damage path; n is the director's plan count (the current round, kept through its intermission), neutral before

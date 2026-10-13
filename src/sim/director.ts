@@ -77,6 +77,11 @@ export interface DirectorOptions {
    */
   avenues?:AvenuePlanner;
   /**
+   * City: a planner on a barricade-free copy of the city (assemble shares the boss's). A retreating body the exit field
+   * cannot route (inside the plaza with the mouths' barricades up, BUG-…-recuo-parado-na-praca) walks out over them on it.
+   */
+  cityOpenPlanner?:AvenuePlanner;
+  /**
    * City: base (catalog) speed (u/s) of an enemy kind, for the planner's arrival estimate: speedMap(it × plan.speed),
    * the speed the body will walk at. Planner default when absent.
    */
@@ -703,11 +708,21 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const e=ctx.enemies.get(r.id);if(!e)return false;
       const step=Math.max(e.speed,1.5)*1.5/SIM_HZ;
       planner!.retreatDirection(e,retreatDir);
+      let via=planner!;
+      const x0=e.x,y0=e.y;
       if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),e.radius);
-      const end=avenueEnd(ctx,planner!.retreatMouth(e));
+      // Trapped (BUG-…-recuo-parado-na-praca): no exit on the enemy grid, or the way out is a standing barricade the body
+      // cannot pass. It walks out over the barricades (harmless, damage 0) on the barricade-free planner and the base
+      // terrain, instead of standing in the plaza until the cap.
+      const open=options.cityOpenPlanner;
+      if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+        e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
+        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
+      }
+      const end=avenueEnd(ctx,via.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.
-      const out=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||planner!.exitField.atGoal(e.x,e.y)
+      const out=!!end&&Math.hypot(end.x-e.x,end.y-e.y)<=CITY_EXIT_REACH||via.exitField.atGoal(e.x,e.y)
         ||Math.hypot(e.x-plaza.x,e.y-plaza.y)>=CITY_GONE_DISTANCE;
       const gone=out&&planner!.hiddenFrom(players,e)||ctx.tick>=r.untilTick;
       if(gone){ctx.enemies.delete(r.id);state.retreated++;return false;}

@@ -374,6 +374,8 @@ test('combat: C2 slows and dazzles (deterministic), C3 scratches and slows the g
   defensesStep(ctx,sys.state);
   assert.deepEqual(dmg(ctx).map(e=>[e.target,e.amount]),[['g',5]]);
   assert.ok(ctx.enemies.get('g')!.slowUntil!>ctx.tick);assert.equal(ctx.enemies.get('bird')!.slowUntil,undefined);assert.equal(ctx.enemies.get('out')!.slowUntil,undefined);
+  // The aura counts its volleys on the wire (torre-contador-de-tiros) but has no aim (BUG-20261013-E8-arame-nunca-dispara).
+  assert.equal(d.shots,1);assert.equal(d.aim,undefined);
 });
 
 test('combat: the roster flyers (a voador, the two aerial swarms) are hit by anti-air and the Vigia, never by ground fire',()=>{

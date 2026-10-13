@@ -250,7 +250,7 @@ export class TowerRenderer {
   /** Live effects (for checks): shots, flashes, blasts, craters. */
   live(){
     const n=(a:{on:boolean}[])=>{let c=0;for(const x of a)if(x.on)c++;return c;};
-    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),craters:n(this.craters),inFlight:this.shots.filter(s=>s.on).map(s=>({k:s.cal.shot,age:this.now-s.born,ms:s.ms,x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1,z:s.z0}))};
+    return {shots:n(this.shots),flashes:n(this.flashes),blasts:n(this.blasts),rings:this.blasts.filter(b=>b.on&&b.ring).length,craters:n(this.craters),inFlight:this.shots.filter(s=>s.on).map(s=>({k:s.cal.shot,age:this.now-s.born,ms:s.ms,x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1,z:s.z0}))};
   }
   /** Every frame: aim and turn, fade covering defenses, move the effects, shake. `figures`: the hero and the allies. */
   update(nowMs:number,dtMs:number,figures:readonly Figure[]){

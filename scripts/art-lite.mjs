@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * N27 · art the game downloads: lossy WebP copies of the approved sheets (trees and class sprites), next to them under
- * public/art/lite/. The approved files (lossless WebP) are never touched; the game loads the copies.
+ * N27 · art the game downloads: lossy WebP copies of the approved sheets (trees, class sprites and the enemies of
+ * public/art/enemies/<id>/, subfolders kept), next to them under public/art/lite/. Cells are never cropped: the client
+ * indexes frames by cell. The approved files (lossless WebP) are never touched; the game loads the copies.
  *
  *   node scripts/art-lite.mjs            make or refresh the copies whose source changed (the manifest keeps hashes)
  *   node scripts/art-lite.mjs --check    exit 1 when a source has no copy or changed since its copy was made
@@ -10,13 +11,13 @@
  * Quality, measured per file and kept in scripts/art-lite.json:
  *   - `psnr`: the whole sheet, premultiplied colour and alpha (what the GPU blends), at full size;
  *   - `shownPsnr`: at the size a phone draws it (SHOWN_SCALE of the sheet: a 210-world-px tree from a 340 px drawing
- *     at the follow camera's zoom, D-019; heroes the same), both scaled the same way. Above 40 dB nobody tells them apart.
+ *     at the follow camera's zoom, D-019; heroes and enemies the same), both scaled the same way. Above 40 dB nobody tells them apart.
  * The tests (tests/client/art-lite.test.ts) fail when a tree or a class has no copy, or its copy is older than its source.
  */
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync,existsSync,readdirSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const require=createRequire(import.meta.url);
@@ -27,7 +28,7 @@ const MANIFEST=join(ROOT,'scripts/art-lite.json');
 export const WEBP={quality:90,alphaQuality:100,effort:4,smartSubsample:true};
 /** What a phone draws of a sheet (see the header): 0.35 of its pixels on each side. */
 const SHOWN_SCALE=.35;
-const KINDS=['trees','sprites'];
+const KINDS=['trees','sprites','enemies'];
 /** Imported v2 files the game has no slot for yet (character-sprites.ts): cardinals, downed, silhouette. No copy. */
 const UNUSED=/\.(dir4c|downed)\.webp$|^_silhueta\.webp$/;
 
@@ -53,7 +54,9 @@ const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{w
 const stale=[];
 for(const kind of KINDS){
   const dir=join(ROOT,'public/art',kind);
-  for(const name of readdirSync(dir).filter(n=>n.endsWith('.webp')&&!UNUSED.test(n)).sort()){
+  // Recursive (enemies keep one folder per id); names use '/' on every OS.
+  const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
+  for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name);
     if(!args.has('--all')&&entry?.source===sha(source)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
@@ -61,7 +64,7 @@ for(const kind of KINDS){
     if(args.has('--check'))continue;
     const lite=await sharp(source).webp(WEBP).toBuffer();
     const meta=await sharp(source).metadata(),w=Math.round(meta.width*SHOWN_SCALE),h=Math.round(meta.height*SHOWN_SCALE);
-    mkdirSync(join(ROOT,'public/art/lite',kind),{recursive:true});writeFileSync(out,lite);
+    mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
     manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,
       psnr:psnr(await rgba(source),await rgba(lite)),shownPsnr:psnr(await rgba(source,w,h),await rgba(lite,w,h))};
     const e=manifest.files[key];

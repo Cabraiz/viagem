@@ -77,12 +77,15 @@
 /* ---------- Round marquee: a street banner (Papel, Breu edge, hard shadow) ----------
    UX-zonas-tela: it is the first row of the announcement slot (.rh-stack) in the top band, two lines at most,
    1.8 s on screen, then it fades out in place (never over the XP bar). Never over the hero (RunHud.avoidHero). */
-.rh-marquee{position:relative;width:min(100%,560px);padding:6px 18px 7px;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
-.rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:6px;bottom:6px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
+/* BUG-20261013-ORQ-oferta-e-dicas-menores: one line, half the old height (title and its line side by side, cut with an
+   ellipsis; the whole text stays in the live region). */
+.rh-marquee{position:relative;display:flex;align-items:baseline;justify-content:center;gap:8px;width:max-content;max-width:min(100%,560px);padding:3px 20px 4px;white-space:nowrap;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
+.rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:4px;bottom:4px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
 .rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
 .rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) infinite}
-.rh-marquee-title{display:block;font:400 var(--t-21)/1.08 var(--f-cartaz);color:var(--c-lilas);text-wrap:balance}
-.rh-marquee-sub{display:block;margin-top:2px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+.rh-marquee-title{flex:0 0 auto;max-width:60%;min-width:0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
+.rh-marquee-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+.rh-marquee-sub:empty{display:none}
 .rh-marquee[data-tone=interval]{border-color:var(--c-lilas)}
 .rh-marquee[data-tone=boss]{background:var(--c-breu);border-color:var(--c-cone);box-shadow:var(--s-2),inset 0 0 0 3px var(--c-breu)}
 .rh-marquee[data-tone=boss] .rh-marquee-title{color:var(--c-papel)}.rh-marquee[data-tone=boss] .rh-marquee-sub{color:var(--c-papel)}
@@ -163,7 +166,7 @@
      is for pages that never measure, like the sandbox). */
   .rh .rh-stack:not(.rh-stack-low){top:var(--rh-anuncio,calc(var(--rh-t) + 56px))}
   .rh .rh-stack.rh-stack-low{top:auto;bottom:calc(var(--rh-b) + 84px)}
-  .rh-marquee{padding:4px 16px 5px}
+  .rh-marquee{padding:2px 18px 3px}
   .rh-killcam{height:70px}
   .rh-killcam-tv{width:88px}
   .rh-team{top:auto;bottom:var(--rh-b);left:50%;transform:translateX(-50%);flex-direction:row;gap:4px}
@@ -174,157 +177,146 @@
   .rh-member-timer{top:24px}
   .rh-alert{width:min(100%,300px);padding:4px 10px 5px}
 }
-/* ---------- Offer (D-021 + DSG-oferta-etiqueta, wave-3 reviews) ----------
-   System window (Lilás body, Breu edge, Papel inner line) holding price tags from the corner shop: each choice is an
-   etiqueta (Papel, Breu edge 2 px, 4 px corners, the punched hole always in the top-left corner, alternating tilt).
-   The picked tag turns Amarelo and gets the "LEVEI" ink stamp, the HUD's only show animation. Modes (offer.ts):
-   - intermission: a list window anchored at the bottom, right of the team column, at most 32% of the screen
-     (portrait) or 40% of the width (landscape); the chip folds it away; "Levar os indicados" takes every default
-     (portrait: in the foot beside "Depois"; landscape: in the header's corner);
-   - combat: the "+N" chip left of the skill button; a tap opens the compact strip above the joystick (cards only).
-   Text rule: the effect (blurb) is never cut. Space runs out in this order: card joke, header joke, the "automático"
-   note, then (landscape at 125% only) the effect line, which stays in the tag's aria-label. */
+/* ---------- Offer (D-021 + DSG-oferta-etiqueta; compact window: BUG-20261013-ORQ-oferta-e-dicas-menores) ----------
+   System window (Lilás body, Breu edge, Papel inner line) holding price tags from the corner shop: each choice is a
+   small etiqueta (Papel, Breu edge 2 px, the punched hole in the top-left corner, alternating tilt): sticker, short name
+   (two lines at most) and price; the effect line is a tooltip over the tag while it is hovered, focused or held down
+   (it stays in the tag's aria-label). The picked tag turns Amarelo and gets the "LEVEI" ink stamp, the HUD's only show
+   animation. One layout in every mode and orientation (offer.ts):
+   - the clock: a thin bar on the window's top edge (no row of its own) and the seconds in the header, beside a clock
+     icon that says "vai no automático se acabar o tempo" (its aria-label; the default tag keeps its notch);
+   - one header row: title, "+N na fila", the clock and a small "Depois" (24 px drawn, 48 px of target);
+   - one row of whole tags, --of-card wide each and shrinking together when the screen is narrower: never cut, never
+     scrolled, no "Mais N"; "Levar os indicados" is the row's last tile (Amarelo: a choice).
+   Intermission: right-aligned above the thumbs (portrait, desktop) or in the right column under the top band
+   (landscape); combat: the chip opens the same row (tags only) above the joystick. */
 .rh-offer{
-  --of-tilt-a:-1deg;--of-tilt-b:.8deg;
+  --of-tilt-a:-1deg;--of-tilt-b:.8deg;--of-card:76px;
   /* Right of the team column (54 px, or its widest name: --rh-coluna, NEW-UX-nome-do-time-na-coluna) plus 8 px. */
-  position:absolute;z-index:1;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
-  max-width:460px;margin-left:auto;padding:6px 8px 7px;border-radius:var(--r-janela);
-  display:flex;flex-direction:column;
+  --of-left:max(62px,var(--rh-coluna,54px) + 8px);
+  position:absolute;z-index:1;left:calc(var(--rh-l) + var(--of-left));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  width:max-content;max-width:calc(100vw - var(--rh-l) - var(--of-left) - var(--rh-r));margin-left:auto;padding:9px 6px 6px;border-radius:var(--r-janela);
+  display:grid;grid-template-columns:minmax(0,auto) auto;grid-template-areas:'head head' 'fall fall' 'cards foot';align-items:stretch;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
   box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);text-align:left;
   pointer-events:auto;touch-action:manipulation;
 }
-.rh-offer-head{display:flex;align-items:center;gap:8px;min-height:24px;padding:0 4px}
-.rh-offer-title{flex:1;min-width:0;font:400 var(--t-21)/1.05 var(--f-cartaz);color:var(--c-papel)}
+.rh-offer-head{grid-area:head;display:flex;align-items:center;gap:6px;min-width:0;min-height:24px;margin-bottom:4px;padding:0 0 0 4px}
+.rh-offer-title{flex:1 1 auto;min-width:0;font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-offer-queue{flex:none;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);white-space:nowrap}
-.rh-offer-time{flex:none;min-width:3.2em;padding:1px 4px;border-radius:var(--r-etiqueta);text-align:right;font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);font-variant-numeric:tabular-nums}
-.rh-offer-joke{margin:1px 4px 0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
-/* Flat clock: Papel on a Breu track; the last 3 s turn it (and the number) Laranja Cone, statically. */
-.rh-offer-deadline{flex:none;height:6px;margin:4px 4px 6px;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden}
+.rh-offer-time{flex:none;min-width:2.4em;padding:1px 3px;border-radius:var(--r-etiqueta);text-align:right;font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* The joke line goes: the window is one header row and one row of tags. */
+.rh-offer-joke{display:none}
+/* Thin clock along the top edge, inside the Papel inner line: Papel on a Breu track; the last 3 s turn it (and the
+   number) Laranja Cone, statically. */
+.rh-offer-deadline{position:absolute;top:3px;left:6px;right:6px;height:4px;margin:0;border-radius:var(--r-etiqueta);background:var(--c-breu);overflow:hidden;pointer-events:none}
 .rh-offer-deadline-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--c-papel);transition:transform .2s linear}
 .rh-offer-urgent .rh-offer-deadline-fill{background:var(--c-cone)}
 .rh-offer-urgent .rh-offer-time{background:var(--c-cone);color:var(--c-breu)}
 .rh-offer:not(.rh-offer-clock) .rh-offer-time,.rh-offer:not(.rh-offer-clock) .rh-offer-deadline,.rh-offer:not(.rh-offer-clock) .rh-offer-auto{display:none}
-/* Footer: the "automático" note and "Levar os indicados" (Amarelo: a choice). */
-.rh-offer-foot{display:flex;align-items:center;gap:8px;margin-top:6px;padding:0 2px 0 4px}
-.rh-offer-foot:not(:has(.rh-offer-auto:not([hidden]))):has(.rh-offer-all[hidden]),.rh-offer:not(.rh-offer-clock) .rh-offer-foot:has(.rh-offer-all[hidden]){display:none}
-.rh-offer-auto{flex:1;min-width:0;display:flex;align-items:center;gap:6px;margin:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
-/* The note points up at the default tag, which carries the same Lilás notch on its lower edge. */
-.rh-offer-auto::before{content:'';flex:none;width:12px;height:8px;background:var(--c-papel);clip-path:polygon(50% 0,100% 100%,0 100%)}
-/* "Levar os indicados" shows whenever two or more offers wait: the queue count and the note go (the button says it).
-   Portrait (BUG-20261012-ORQ-oferta-cortada-retrato): it shares the foot row with "Depois" (secondary on the left, the
-   Amarelo choice on the right, both 48 px, 8 px apart), so the header is only title and clock and three tags fit in 32%
-   of the screen. Landscape keeps it in the header's corner (below). Squeezed (125%, a wide team column) it wraps to two
-   lines inside its 48 px rather than push "Depois" out. */
-.rh .rh-offer-all{flex:0 1 auto;min-width:0;min-height:48px;margin:0 0 0 auto;padding:0 12px;border:2px solid var(--c-breu);border-radius:var(--r-janela);
-  background:var(--c-amarelo);color:var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);box-shadow:var(--s-1);cursor:pointer;touch-action:manipulation;text-align:center;text-wrap:balance}
+.rh-offer:not(.rh-offer-clock){padding-top:6px}
+/* "Vai no automático se acabar o tempo" as a clock icon (a Papel ring with two hands, CSS only; the words are its
+   aria-label and title). The default tag carries the matching Lilás notch on its lower edge. */
+.rh-offer-auto{position:relative;flex:none;width:14px;height:14px;border:2px solid var(--c-papel);border-radius:var(--r-circulo)}
+.rh-offer-auto::before,.rh-offer-auto::after{content:'';position:absolute;left:4px;background:var(--c-papel)}
+.rh-offer-auto::before{top:1px;width:2px;height:5px}
+.rh-offer-auto::after{top:4px;width:4px;height:2px}
+/* "Depois": folds the intermission window into the chip (which opens it again). A small calm button (24 px drawn) whose
+   target is 48 px tall (the ::before reaches 12 px above and below it). */
+.rh .rh-offer-later{position:relative;flex:none;min-height:24px;margin:0;padding:0 10px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
+  background:transparent;color:var(--c-papel);font:700 var(--t-13)/1 var(--f-sistema);cursor:pointer;touch-action:manipulation}
+.rh .rh-offer-later::before{content:'';position:absolute;inset:-12px -4px}
+.rh .rh-offer-later:active{transform:translateY(2px)}
+/* "Levar os indicados" shows whenever two or more offers wait (the queue count goes: the button says it): the last
+   tile of the row, Amarelo (a choice), as tall as the tags. */
+.rh-offer-foot{grid-area:foot;display:flex;width:calc(var(--of-card) + 6px);min-width:0;margin-left:5px}
+.rh-offer:not(:has(.rh-offer-all:not([hidden]))) .rh-offer-foot{display:none}
+.rh .rh-offer-all{flex:1;min-width:0;min-height:48px;margin:0;padding:2px 3px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);
+  background:var(--c-amarelo);color:var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);box-shadow:var(--s-1);cursor:pointer;touch-action:manipulation;text-align:center;text-wrap:balance;overflow-wrap:anywhere}
 .rh .rh-offer-all:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-later{margin:0}
-:root[data-texto="125"] .rh .rh-offer-all{font-size:13px;padding:0 10px}
-.rh-offer:has(.rh-offer-all:not([hidden])) :is(.rh-offer-queue,.rh-offer-joke,.rh-offer-auto){display:none}
-.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-foot{margin:0}
+.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-queue{display:none}
 
-/* Tags: list lines (icon column, name and effect, price on the right); a 2x2 for four. */
-.rh-offer-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:0 2px}
+/* Tags: one row, each --of-card wide at most, all shrinking together (never cut, never scrolled). */
+.rh-offer-cards{grid-area:cards;display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,var(--of-card));gap:5px;min-width:0;padding:0}
 /* A caído while a window is open (offer here, forge in camp.css): a Cone ficha, first name and live seconds, under the
-   title (UX review janela-caido). Not in the compact combat strip: there the arrows are the whole story. */
+   title (UX review janela-caido); one line in the offer. Not in the combat strip: there the arrows are the whole story. */
 .rh-window-fall{flex:none;margin:2px 4px 4px;padding:2px 8px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);
   font:800 var(--t-13)/1.2 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:none}
+.rh-offer>.rh-window-fall{grid-area:fall;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-window-fall[hidden],.rh-offer[data-mode=combat] .rh-window-fall{display:none}
-/* "Depois": folds the intermission window into the chip (which opens it again); 48 px, a calm system button. */
-.rh .rh-offer-later{flex:none;margin:0 0 0 auto;min-height:48px;padding:0 16px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
-  background:transparent;color:var(--c-papel);font:700 var(--t-16)/1 var(--f-sistema);cursor:pointer;touch-action:manipulation}
-.rh .rh-offer-later:active{transform:translateY(2px)}
-.rh-offer[data-mode=intermission] .rh-offer-foot:has(.rh-offer-later:not([hidden])){display:flex}
 /* Something cut below in the forge's scrolling list: a Breu cut edge pinned to its bottom. */
 .rh-forge-tags[data-more=true]::after{content:'';position:sticky;bottom:-2px;z-index:3;height:14px;margin-top:-20px;pointer-events:none;
   background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-breu) 70%,transparent));border-bottom:3px solid var(--c-breu)}
-/* Tags cut below the offer list (offer.ts, overflow.ts cueLayout): "Mais N" (N tags not fully visible) never lies on a
-   tag that is fully in view. Its 48 px target sits inside the cut strip (the part under the last whole tag, plus the
-   window's padding under the list in landscape, 8 px clear of the portrait foot: data-place=over, no height spent) or,
-   when that strip is too short, in its own row right under the list (data-place=row: the target, and in portrait the
-   8 px kept from "Depois" and "Levar os indicados": --of-row). The list's bottom fades softly into the window (Lilás: the
-   cut tag reads as "goes on", not as broken) only over the cut part (--of-fade). A tap brings the next tag up; the cue
-   goes when the list reaches its end. */
-.rh-offer-more{position:relative;flex:none;display:flex;align-items:flex-start;justify-content:center;height:var(--of-row,48px);margin:0 -6px;pointer-events:none}
-.rh-offer-more[data-place=over]{height:0}
-.rh .rh-offer-more[data-place=over] .rh-offer-more-btn{position:absolute;left:0;right:0;bottom:calc(0px - var(--of-below,0px))}
-.rh-offer-more::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--of-fade,0px);
-  background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-lilas) 80%,transparent) 62%,var(--c-lilas))}
-.rh .rh-offer-more-btn{flex:1;display:grid;place-items:center;min-width:48px;min-height:48px;margin:0;padding:0;
-  border:0;background:transparent;pointer-events:auto;cursor:pointer;touch-action:manipulation}
-.rh-offer-more-pill{display:flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
-  background:var(--c-lilas-escuro);color:var(--c-papel);font:800 var(--t-13)/1 var(--f-sistema);box-shadow:var(--s-1);white-space:nowrap}
-/* A chevron pointing down (borders, not a glyph). */
-.rh-offer-more-pill::after{content:'';flex:none;width:7px;height:7px;margin:-4px 1px 0;border-right:2px solid var(--c-papel);border-bottom:2px solid var(--c-papel);transform:rotate(45deg)}
-.rh .rh-offer-more-btn:active .rh-offer-more-pill{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-.rh-offer[data-mode=combat] .rh-offer-more{display:none}
-/* Scrolled (offer.ts data-scrolled), the list's 6 px top padding, which lies under the clock (portrait) or the header
-   row (landscape) for the stars of the first row, is clipped: a tag scrolled up never covers them or takes their taps. */
-.rh-offer[data-mode=intermission] .rh-offer-cards[data-scrolled=true]{clip-path:inset(6px 0 0)}
-.rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
-.rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon . price' 'name name name' 'blurb blurb blurb';align-content:start;padding:4px 6px 5px 26px}
-.rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:-18px}
-/* Icon on its own row here: the whole 24 px sticker, so its paper edge never touches the name's accents. */
-.rh-offer-cards[data-count='4'] .rh-card-icon{height:24px}
-.rh-offer[data-count='4'] .rh-offer-joke{display:none}
 .rh-card{
   --tilt:var(--of-tilt-a);
-  position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price' 'icon joke joke';
-  align-items:center;column-gap:6px;row-gap:0;min-width:0;min-height:44px;padding:5px 8px 5px 26px;
+  position:relative;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-areas:'icon price' 'name name' 'tag tag';
+  align-items:center;align-content:start;column-gap:2px;row-gap:0;min-width:0;min-height:44px;padding:4px 4px 5px 14px;
   border-radius:var(--r-etiqueta);border:2px solid var(--c-breu);background:var(--c-papel);color:var(--c-breu);
   box-shadow:var(--s-1);text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   transform:rotate(var(--tilt));transition:transform .08s ease-out,box-shadow .08s ease-out;
 }
 .rh-card:nth-child(even){--tilt:var(--of-tilt-b)}
-/* Punched hole, always in the top-left corner (8 px from both edges): the window shows through it inside a Breu ring.
-   Nothing sits beside it, so it never reads as a radio button. */
-.rh-card::before{content:'';position:absolute;left:6px;top:6px;width:10px;height:10px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
+/* Punched hole, always in the top-left corner: the window shows through it inside a Breu ring. Nothing sits beside
+   it, so it never reads as a radio button. */
+.rh-card::before{content:'';position:absolute;left:3px;top:5px;width:8px;height:8px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
 .rh-card:active{transform:rotate(var(--tilt)) translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-/* The item's sticker (src/client/ui/stickers.svg): 24 px, in a 20 px row so the tag is no taller than with the old emoji. */
-.rh-card-icon{grid-area:icon;display:grid;place-items:center;width:24px;height:20px}
+/* The item's sticker (src/client/ui/stickers.svg), drawn at 20 px. */
+.rh-card-icon{grid-area:icon;display:grid;place-items:center;width:20px;height:20px}
+.rh-card-icon>.ic{width:20px;height:20px}
 .rh-card-body{display:contents}
-.rh-card-name{grid-area:name;min-width:0;font:400 var(--t-16)/1.05 var(--f-cartaz);color:var(--c-breu);text-wrap:balance;overflow-wrap:anywhere;hyphens:auto}
-.rh-card-blurb{grid-area:blurb;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
+/* The short name: under the hole and the sticker, two lines at most (the whole name is in the aria-label). */
+.rh-card-name{grid-area:name;min-width:0;margin:1px 0 0 -10px;font:400 calc(14px * var(--t-escala))/1.05 var(--f-cartaz);color:var(--c-breu);
+  overflow-wrap:anywhere;hyphens:auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+/* The effect: a tooltip over the tag (Papel etiqueta, Breu edge), only on hover (a mouse), focus (keyboard) or while a
+   finger holds the tag down (sliding off before lifting picks nothing). The row's edge tags anchor it to their side. */
+.rh-card-blurb{position:absolute;bottom:calc(100% + 8px);left:50%;z-index:3;box-sizing:border-box;width:max-content;max-width:min(200px,calc(100vw - 32px));
+  padding:4px 8px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);
+  font:700 var(--t-13)/1.2 var(--f-sistema);text-align:left;white-space:normal;pointer-events:none;visibility:hidden;transform:translateX(-50%) rotate(calc(0deg - var(--tilt)))}
+.rh-card:first-child .rh-card-blurb{left:-2px;transform:rotate(calc(0deg - var(--tilt)))}
+.rh-card:last-child:not(:first-child) .rh-card-blurb{left:auto;right:-2px;transform:rotate(calc(0deg - var(--tilt)))}
+.rh-card:is(:focus-visible,:active) .rh-card-blurb{visibility:visible}
+@media (hover:hover){.rh-card:hover .rh-card-blurb{visibility:visible}}
+.rh-offer-stamping .rh-card .rh-card-blurb{visibility:hidden}
 .rh-card-joke{display:none}
-/* Level as a price: small "Nv", big number (Londrina, tabular so it never dances). */
-.rh-card-price{grid-area:price;align-self:start;margin-bottom:3px;display:flex;align-items:baseline;gap:2px;color:var(--c-lilas)}
+/* Level as a price: small "Nv", the number (Londrina, tabular so it never dances), in the sticker's row. */
+.rh-card-price{grid-area:price;justify-self:end;display:flex;align-items:baseline;gap:1px;color:var(--c-lilas)}
 .rh-card-price-unit{font:800 var(--t-13)/1 var(--f-sistema)}
-.rh-card-price-value{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
-/* "Novo!" sits in the price slot, the size of the price (a launch's price): Amarelo star with a Breu edge, 8°.
-   When every tag is new the title says "Tudo novo!" and the stars shrink to a mark (the word stays in aria-label). */
-/* The seal (star, price, word) owns its grid cells: it may ride the tag's top edge, never down over a letter of the name
-   or effect (audit: selo × título). */
-.rh-card-star{grid-area:price;align-self:start;position:relative;display:grid;place-items:center;width:38px;height:38px;margin:-6px 0 6px;transform:rotate(8deg)}
+.rh-card-price-value{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+/* "Novo!": an Amarelo star with a Breu edge, 8°, riding the tag's top-right corner (34 px is the smallest star whose
+   body holds "Novo!" at 13 px); it never comes down over the name. When every tag is new the title says "Tudo novo!"
+   and the stars go (the word stays in aria-label). */
+.rh-card-star{position:absolute;top:-10px;right:-8px;z-index:1;display:grid;place-items:center;width:34px;height:34px;margin:0;transform:rotate(8deg);pointer-events:none}
 .rh-card-star::before,.rh-card-star::after{content:'';position:absolute;clip-path:polygon(50% 0%,60.1% 12.3%,75% 6.7%,77.6% 22.4%,93.3% 25%,87.7% 39.9%,100% 50%,87.7% 60.1%,93.3% 75%,77.6% 77.6%,75% 93.3%,60.1% 87.7%,50% 100%,39.9% 87.7%,25% 93.3%,22.4% 77.6%,6.7% 75%,12.3% 60.1%,0% 50%,12.3% 39.9%,6.7% 25%,22.4% 22.4%,25% 6.7%,39.9% 12.3%)}
 .rh-card-star::before{inset:0;background:var(--c-breu)}
 .rh-card-star::after{inset:3px;background:var(--c-amarelo)}
 .rh-card-star>span{position:relative;z-index:1;font:400 13px/1 var(--f-cartaz);color:var(--c-breu)}
 /* "Tudo novo!" in the title says it once: the stars go (an empty star read as a bug, design review). */
 .rh-offer-all-new .rh-card-star{display:none}
-.rh-card-tag{grid-area:price;align-self:start;margin-bottom:3px;padding:1px 5px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap}
+/* "Evolução" and "Lanche": a word under the name (the sticker's row has no room for it). */
+.rh-card-tag{grid-area:tag;justify-self:start;max-width:calc(100% + 10px);margin:2px 0 0 -10px;padding:0 4px;border:2px solid var(--c-lilas);border-radius:var(--r-etiqueta);
+  font:800 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-card[data-kind=snack] .rh-card-tag{border-color:var(--c-breu);background:var(--c-cartolina);color:var(--c-breu)}
-/* The default tag: thicker Lilás edge plus the notch the "automático" note points at (shape, not only color). */
+/* The default tag: thicker Lilás edge plus the notch the clock icon stands for (shape, not only color). */
 .rh-offer-clock .rh-card-default{border-color:var(--c-lilas);box-shadow:0 0 0 1px var(--c-breu),var(--s-1)}
 .rh-offer-clock .rh-card-default::after{content:'';position:absolute;left:4px;bottom:-9px;width:14px;height:8px;background:var(--c-lilas);clip-path:polygon(0 0,100% 0,50% 100%)}
 
 /* The stamp is ink, not text: a government-office stamp (3 px edge, a 1 px line 2 px inside) in Lilás at 90%, multiplied
-   onto the paper, about 80% of the tag and bigger than the name it covers. The paper under it drops to 40%. */
-.rh-card-stamp{position:absolute;left:50%;top:50%;z-index:2;box-sizing:border-box;width:80%;padding:3px 6px 4px;text-align:center;
+   onto the paper, over most of the tag. The paper under it drops to 40%. */
+.rh-card-stamp{position:absolute;left:50%;top:50%;z-index:2;box-sizing:border-box;width:84%;padding:1px 4px 2px;text-align:center;
   border:3px solid var(--of-ink);border-radius:var(--r-etiqueta);color:var(--of-ink);mix-blend-mode:multiply;
-  font:900 var(--t-36)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;
+  font:900 var(--t-21)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;
   transform:translate(-50%,-50%) rotate(-8deg)}
 .rh-offer{--of-ink:color-mix(in srgb,var(--c-lilas) 90%,transparent)}
 .rh-card-stamp::after{content:'';position:absolute;inset:2px;border:1px solid var(--of-ink);border-radius:var(--r-etiqueta)}
 .rh-card-chosen{background:var(--c-amarelo)}
-.rh-card-chosen :is(.rh-card-icon,.rh-card-name,.rh-card-blurb,.rh-card-price,.rh-card-star,.rh-card-tag){opacity:.4}
+.rh-card-chosen :is(.rh-card-icon,.rh-card-name,.rh-card-price,.rh-card-star,.rh-card-tag){opacity:.4}
 .rh-card-chosen .rh-card-stamp{opacity:1;animation:rh-stamp 140ms cubic-bezier(.2,.9,.3,1.25) both,rh-stamp-ink 160ms steps(2,end) 140ms both}
 @keyframes rh-stamp{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(-12deg)}70%{opacity:1;transform:translate(-50%,-50%) scale(.95) rotate(-8deg)}100%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-8deg)}}
 /* Two frames of ink spreading on the paper. */
 @keyframes rh-stamp-ink{0%{box-shadow:0 0 0 1px var(--of-ink)}50%{box-shadow:0 0 0 2px color-mix(in srgb,var(--c-lilas) 45%,transparent)}100%{box-shadow:none}}
 /* A disabled tag keeps full ink (the page-wide disabled look would dim it); the others step aside in 160 ms, same ink. */
 .rh-offer .rh-card:disabled{opacity:1;cursor:default}
-.rh-offer-stamping .rh-card:not(.rh-card-chosen){transform:rotate(var(--tilt)) translateX(8px);transition:transform .16s ease-out}
+.rh-offer-stamping .rh-card:not(.rh-card-chosen){transform:rotate(var(--tilt)) translateY(4px) scale(.96);transition:transform .16s ease-out}
 
 /* ---------- Combat: the chip and the compact strip (D-021) ----------
    Chip: a thumb control, so a circle; Amarelo (escolha) with a Breu edge and a Papel ring, 24 px left of the skill
@@ -352,124 +344,37 @@
 @keyframes rh-chip-beat{0%{transform:scale(1.35)}70%{transform:scale(.95)}100%{transform:scale(1)}}
 .rh-ended .rh-offer-chip{display:none}
 
-/* Compact strip: a row of tags right-aligned just above the controls band (24 px over the joystick), right of the team
-   column and clear of the hero. Combat reading is icon + price + name (UX B5); effect and joke wait for the intermission. */
+/* Combat: the chip opens the same row of tags (no header, no clock, no foot) right-aligned just above the controls band
+   (24 px over the joystick), right of the team column and clear of the hero. */
 .rh-offer[data-mode=combat]{
-  left:auto;right:var(--rh-r);width:min(300px,calc(100vw - var(--rh-l) - 70px - var(--rh-r)));max-width:none;margin:0;padding:5px;
+  left:auto;right:var(--rh-r);max-width:calc(100vw - var(--rh-l) - 70px - var(--rh-r));margin:0;padding:5px;
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
 }
-.rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(100vw - var(--rh-l) - 70px - var(--rh-r)))}
-.rh-offer[data-mode=combat] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-deadline,.rh-offer-foot,.rh-card-blurb,.rh-card-joke){display:none}
-.rh-offer[data-mode=combat] .rh-offer-cards{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;padding:0}
-/* Four tags (luck): two rows of two, so no name has to be squeezed. */
-.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4']{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}
-.rh-offer[data-mode=combat] .rh-card,.rh-offer[data-mode=combat] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:12px 24px minmax(0,1fr) auto;grid-template-areas:'. icon . price' 'name name name name';
-  align-items:center;align-content:start;column-gap:4px;row-gap:1px;padding:4px 5px 5px 5px}
-.rh-offer[data-mode=combat] .rh-card::before{left:6px;top:8px}
-.rh-offer[data-mode=combat] .rh-card-name{font-size:min(var(--t-16),16px)}
-/* 34 px is the smallest star whose body holds "Novo!" at 13 px (the audit checks 80% of its width). */
-.rh-offer[data-mode=combat] .rh-card-star{width:34px;height:34px;margin:-6px 0 6px}
-.rh-offer[data-mode=combat] .rh-card-stamp{width:84%;font-size:var(--t-21);padding:1px 4px 2px}
-/* The strip never scales past 16 px (B2): at 125% the tags are no wider, and the icon and the price must not touch. */
-.rh-offer[data-mode=combat] .rh-card-price-value{font-size:min(var(--t-21),21px)}
-.rh-offer[data-mode=combat] .rh-card-price-unit{font-size:13px}
-:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card-price-value{font-size:16px}
-:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card-name{font-size:15px}
-:root[data-texto="125"] .rh-offer[data-mode=combat] .rh-card{grid-template-columns:10px 20px minmax(0,1fr) auto;column-gap:3px;padding:4px 4px 5px}
-.rh-offer-stamping[data-mode=combat] .rh-card:not(.rh-card-chosen){transform:rotate(var(--tilt)) translateY(4px) scale(.96)}
+.rh-offer[data-mode=combat] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-deadline,.rh-offer-foot){display:none}
 
 /* The round sign gives way to an open offer in RunHud.update (N7, one rule for both cards). The "caiu!" banners
    never go under the window. */
 .rh-stack{z-index:2}
 
-/* Bigger text (125%): the window's header joke and the "automático" note go, and the strip and the window step right
-   of the wider team column (names and SOS badges are larger). */
-:root[data-texto="125"] .rh-offer-joke{display:none}
+/* Bigger text (125%): the window and the strip step right of the wider team column (names and SOS badges are larger);
+   the tags grow with the text (taller, never cut). */
 @media (min-height:501px){
-  /* Never more than 32% of the height (UX review): when the tags do not fit (125%, short phones, 4 cards) the list
-     scrolls inside the window, header and foot stay put, and the cut tag fades under "Mais N" to show there is more.
-     The vertical padding keeps the stars and the stamp (they ride the tag's edge) inside the scroll box. */
-  .rh-offer[data-mode=intermission]{max-height:32vh;max-height:32svh}
-  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;gap:4px;padding:6px 10px 4px;margin:-6px -8px 0}
-  .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
-  .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot){flex:none}
-  /* BUG-20261012-ORQ-oferta-cortada-retrato, the 32% budget at 100% (390x844: 270 px): edge and padding 17, header 22,
-     clock 11, foot 48 leave 172 for the list, and three one-line tags take 3 x 46 + 2 x 4 + 4 = 150 (a two-line effect
-     each on two of them, offer-prepare: ~168). So the header joke goes for a list of tags (the effect lines come
-     first), the clock's margins tighten, and the list's own 4 px bottom padding (it holds the tags' tilt) is the only
-     gap above the foot. What still does not fit scrolls under the "Mais N" cue. */
-  .rh-offer[data-mode=intermission]:not([data-count='1']) .rh-offer-joke{display:none}
-  .rh-offer[data-mode=intermission] .rh-offer-head{min-height:22px}
-  .rh-offer[data-mode=intermission] .rh-offer-deadline{margin:2px 4px 3px}
-  .rh-offer[data-mode=intermission] .rh-offer-foot{margin-top:0}
-  /* 125%: four tags in two columns break names into three lines; one column of list tags reads better (it scrolls). */
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price' 'icon joke joke';padding:5px 8px 5px 26px}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
-  .rh-offer-cards[data-count='4'] .rh-offer-joke,.rh-offer[data-count='4'] .rh-offer-joke{display:none}
-  :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}
-  :root[data-texto="125"] .rh-offer[data-mode=combat]{width:min(300px,calc(100vw - var(--rh-l) - max(94px,var(--rh-coluna,54px) + 16px) - var(--rh-r)))}
-  :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
-  :root[data-texto="125"] .rh-offer-auto{display:none}
+  :root[data-texto="125"] .rh-offer{--of-left:max(86px,var(--rh-coluna,54px) + 8px)}
+  :root[data-texto="125"] .rh-offer[data-mode=combat]{max-width:calc(100vw - var(--rh-l) - max(94px,var(--rh-coluna,54px) + 16px) - var(--rh-r))}
   /* The top bar grows with the text, so the team column and the alerts start lower. */
   :root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}
 }
 
-/* Landscape: the window takes the right column, above the skill button (its top - 24 px), so the middle (hero, island,
-   the fallen) stays clear (BUG-20261012-ORQ-oferta-cortada-retrato). Its header row holds title, seconds and clock with
-   "Depois" and "Levar os indicados" (offer.ts moves the foot and the clock into it: no foot row). It is --of-w wide:
-   never narrower than before (40vw, 360 px) and wider only while the field left of it keeps 320 px or more, which the
-   caído and boss arrows need beside the hero (the layout audit lost both under ~305 px with a 60vw window). At 844x390
-   that is 378 px: two whole tags, and the third under "Mais 1" in the cut strip, at no cost in height (three 44 px tags
-   need ~9 px more than the 196 px window has under its 48 px header row). */
+/* Landscape: the window takes the right column under the top band, so the middle (hero, island, the fallen) stays clear,
+   at most --of-w wide (four tags at 72 px fit in it, whole); the XP bar and the announcement slot keep left of it. */
 @media (max-height:500px){
-  .rh{--of-w:max(min(40vw,360px),min(420px,calc(100vw - var(--rh-l) - var(--rh-r) - 450px)))}
-  .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;width:min(40vw,360px);max-width:none;margin:0;padding:3px 6px 4px}
-  .rh-offer[data-mode=intermission]{width:var(--of-w)}
-  .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0 6px}
-  /* Never closer than 24 px to the skill button: past that the list scrolls inside, as in portrait (zones audit). */
-  .rh-offer[data-mode=intermission]{max-height:calc(100vh - var(--rh-t) - 52px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}
-  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 8px 4px;margin:-6px -6px 0}
-  .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
-  .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot,.rh-offer-deadline){flex:none}
+  .rh{--of-w:min(340px,40vw)}
+  .rh-offer{--of-card:72px;left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;max-width:var(--of-w);margin:0;padding:8px 5px 5px}
+  .rh-offer:not(.rh-offer-clock){padding-top:5px}
+  .rh-offer-deadline{top:2px;left:5px;right:5px}
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
-  .rh-offer-head{flex:none;min-height:22px}
-  /* The header row: title and seconds over the clock on the left, "Depois" and "Levar os indicados" (the foot, 48 px,
-     8 px apart) on the right. No absolute corner and no foot row; the caído ficha goes under it, full width. */
-  .rh-offer[data-mode=intermission] .rh-offer-head{position:relative;z-index:1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'title title foot' 'time bar foot';
-    gap:0 8px;align-items:center;min-height:48px;padding:0 0 0 4px}
-  /* The tags here are ~370 px wide: half the tilt keeps the same corner lift as the portrait tags, and leaves the cut
-     strip under two whole tags the 48 px the "Mais N" target needs (with 2 px of top padding). */
-  .rh-offer[data-mode=intermission]{--of-tilt-a:-.5deg;--of-tilt-b:.4deg;padding-top:2px}
-  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-title{grid-area:title;align-self:end;white-space:nowrap}
-  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-time{grid-area:time;min-width:0;padding:0;text-align:left}
-  .rh .rh-offer[data-mode=intermission] .rh-offer-head .rh-offer-later{padding:0 12px}
-  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-queue{display:none}
-  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-deadline{grid-area:bar;margin:0}
-  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-foot{grid-area:foot;margin:0;padding:0}
-  .rh-offer[data-mode=intermission] .rh-offer-auto{display:none}
-  .rh .rh-offer[data-mode=intermission] .rh-offer-later{margin:0}
-  .rh-offer-joke{display:none}
-  .rh-offer-deadline{margin:2px 4px 3px}
-  .rh-offer-cards{gap:4px}
-  .rh-offer-more{margin:0 -4px} /* the padding is 6 px here: the fade stops at the Papel inner line */
-  .rh-offer-foot{margin-top:5px}
-  .rh-card{padding:2px 8px 2px 26px}
-  /* One column of list tags (four too: the list scrolls under "Mais N"): sticker, name, price, effect. The hole keeps its
-     corner; the sticker starts 2 px right of it (18 px in), so the name and the effect get the room. */
-  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
-  .rh-offer[data-mode=intermission] .rh-card,.rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price';align-content:center;padding:2px 6px 2px 18px}
-  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
-  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card-icon{height:20px}
-  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
-  .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
+  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);max-width:calc(50vw - 44px - var(--rh-r))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
-  /* 125%: the window is ~176 px tall; the same list scrolls inside, under "Mais N". */
-  :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
-  :root[data-texto="125"] .rh-offer .rh-offer-auto,:root[data-texto="125"] .rh-offer .rh-card-default::after{display:none}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-name{font-size:min(var(--t-16),16px)}
-  :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-deadline{display:none}
-  :root[data-texto="125"] .rh .rh-offer-all{font-size:13px}
 }
 
 /* ---------- Result screen (VGM-040) ----------
@@ -816,17 +721,19 @@
    One hint at a time, as the last row of the announcement slot (top band, UX-zonas-tela): a calm ficha like the
    notices (Breu body, Papel edge), a sticker of the control it talks about (the joystick with its Amarelo knob, the
    XP drop, the chip's own "+N", the boia) and one short line, with an optional second one. Never over the hero or the
-   thumbs; any other row of the slot outranks it. Done: the check sticker and a Cartolina edge, then it goes. No motion. */
-.rh-coach{display:flex;align-items:center;gap:8px;box-sizing:border-box;width:min(100%,320px);padding:5px 12px 6px 8px;border-radius:var(--r-ficha);
+   thumbs; any other row of the slot outranks it. Done: the check sticker and a Cartolina edge, then it goes. No motion.
+   BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (an 18 px sticker, the line at 13 px cut with
+   an ellipsis; the second line goes), as wide as its words. */
+.rh-coach{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:2px 10px 2px 6px;white-space:nowrap;border-radius:var(--r-ficha);
   background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
   pointer-events:auto;touch-action:none}
-.rh-coach-mark{display:inline-flex;flex:none;align-items:center;justify-content:center;width:32px;height:32px}
+.rh-coach-mark{display:inline-flex;flex:none;align-items:center;justify-content:center;width:18px;height:18px}
+.rh-coach-mark .ic{width:18px;height:18px}
 .rh-coach-body{display:flex;flex-direction:column;min-width:0}
-.rh-coach-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
-.rh-coach-sub{font:400 var(--t-13)/1.2 var(--f-sistema)}
-.rh-coach-sub:empty{display:none}
-.rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:30px;height:30px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
-  background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
+.rh-coach-text{overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-coach-sub{display:none;font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-coach-chip{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:18px;height:18px;border:2px solid var(--c-breu);border-radius:var(--r-circulo);
+  background:var(--c-amarelo);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-papel);font:400 var(--t-13)/1 var(--f-cartaz);text-shadow:none;font-variant-numeric:tabular-nums}
 .rh-coach.rh-coach-done{border-color:var(--c-cartolina)}
 /* One call at a time (design review): while the joystick is lit for "andar" it is the only Amarelo, so a "+N" chip that came early
    (a teammate's level) waits as plain Papel; with the chip's own hint up, the chip gets a 3 px Breu edge. Static. */
@@ -836,30 +743,35 @@
 /* Over the hero for a moment (camera catching up): the hint steps aside, never on top of the hero (UX B2). */
 .rh-coach.rh-coach-yield{visibility:hidden}
 @media (max-height:500px){
-  .rh-coach{width:min(100%,300px);padding:3px 10px 4px 6px}
+  .rh-coach{max-width:min(100%,300px);padding:1px 10px 1px 6px}
 }
 
 /* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
    A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
    praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
-   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it. */
-.rh-objetivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:min(100%,320px);padding:5px 8px 6px;border-radius:var(--r-ficha);
+   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
+   BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (18 px stickers, "Vai pra praça!" at 13 px,
+   the joke line goes) for OBJECTIVE_FULL_MS; then it folds to the distance and the arrow only (data-compact, a small
+   ficha), and goes when there is no arrow to show (objective.ts). */
+.rh-objetivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:2px 8px;white-space:nowrap;border-radius:var(--r-ficha);
   background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);text-align:left;
   pointer-events:auto;touch-action:none}
-.rh-objetivo-mark,.rh-objetivo-arrow{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px}
-.rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:28px;height:28px}
+.rh-objetivo-mark,.rh-objetivo-arrow{display:inline-flex;flex:none;align-items:center;justify-content:center;width:18px;height:18px}
+.rh-objetivo-mark .ic,.rh-objetivo-arrow .ic{width:18px;height:18px}
 .rh-objetivo-body{display:flex;flex:1;flex-direction:column;min-width:0}
-.rh-objetivo-text{font:700 var(--t-16)/1.2 var(--f-sistema)}
-/* Where the second line must wrap (portrait at 125%) it splits in two even lines: never one word alone below. */
-.rh-objetivo-sub{font:400 var(--t-13)/1.2 var(--f-sistema);text-wrap:balance}
-.rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-objetivo-text{overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh-objetivo-sub{display:none;font:400 var(--t-13)/1.2 var(--f-sistema)}
+.rh-objetivo-m{flex:none;min-width:2.4em;text-align:right;font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-objetivo[data-compact=true]{gap:4px;padding:2px 6px}
+.rh-objetivo[data-compact=true] :is(.rh-objetivo-mark,.rh-objetivo-body){display:none}
+.rh-objetivo[data-compact=true] .rh-objetivo-m{min-width:0}
 .rh-objetivo-m:empty{display:none}
 .rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}
 .rh-objetivo-arrow[hidden]{display:none}
 .rh-ended .rh-objetivo{display:none}
 /* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */
 .rh-objetivo.rh-objetivo-yield{visibility:hidden}
-/* Landscape: the slot is 72 px tall, so the row widens instead of wrapping its second line (125% included). */
+/* Landscape: the row may be wider (the slot is short, never two lines). */
 @media (max-height:500px){
-  .rh-objetivo{width:min(100%,400px);padding:3px 8px 4px}
+  .rh-objetivo{max-width:min(100%,400px)}
 }

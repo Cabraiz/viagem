@@ -115,3 +115,12 @@ export function telegraphDashPhase(timeMs:number,reduced:boolean){
 /** Frame-rate independent exponential smoothing; `rate` is 1/s. */
 export const smoothToward=(current:number,target:number,deltaMs:number,rate:number)=>
   target+(current-target)*Math.exp(-rate*Math.max(0,deltaMs)/1000);
+
+/**
+ * Seconds a linearly moving shot is drawn ahead of its last snapshot (BUG-20261013-E5-projetil-desenhado-a-frente):
+ * the time since the snapshot arrived, capped at two sim ticks so a late frame never throws it far ahead. Its vx/vy are
+ * in units per SECOND (sim projectiles.ts, the wire's extrapolation), so the offset is v × these seconds — not × ticks.
+ */
+export const PROJECTILE_LEAD_TICKS=2;
+export const projectileLeadSeconds=(nowMs:number,pushAtMs:number,tickMs:number)=>
+  Math.min(PROJECTILE_LEAD_TICKS*tickMs,Math.max(0,nowMs-pushAtMs))/1000;

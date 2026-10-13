@@ -199,15 +199,19 @@ export interface EnemyArrays {n:number;xs:ArrayLike<number>;ys:ArrayLike<number>
 /**
  * Whether a volley is drawn at this snapshot (pure): `since` ticks after the last drawn one. The server's aim changed:
  * a volley, unless one was drawn under AIM_DEDUPE of a cooldown ago (that is the one it reports). Else, while it may
- * fire and has an aim, the cadence: a full cooldown since the last one and an enemy in reach along the aim (the arame's
- * aura: any enemy in reach). Only for a room that sends no `shots` (protocol 12 and older): with the counter, TowerFeed
+ * fire and has an aim, the cadence: a full cooldown since the last one and an enemy in reach along the aim. The arame's
+ * aura never has an aim: a full cooldown and any enemy in reach. Only for a room that sends no `shots` (protocol 12 and older): with the counter, TowerFeed
  * reads the volleys from it (torre-contador-de-tiros).
  */
 export function volleyNow(kind:TowerKind,phase:TowerPhase|undefined,aim:number|undefined,aimChanged:boolean,since:number,x:number,y:number,enemies?:EnemyArrays):boolean{
   const cd=cooldownTicks(kind),look=TOWER_LOOK[kind];
+  const ready=!!phase&&canFire(phase)&&since>=cd&&!!enemies&&enemies.n>0;
+  // An aura (the arame's spark ring) has no aim: the sim records none for it (src/sim/towers/system.ts), so it must
+  // not wait for one — any enemy in reach at the cadence is a volley (BUG-20261013-E8-arame-nunca-dispara).
+  if(look.calibre==='arame')return ready&&aimIndex(look,x,y,enemies!.n,enemies!.xs,enemies!.ys,enemies!.air)>=0;
   if(aimChanged)return since>=cd*AIM_DEDUPE;
-  if(aim===undefined||!phase||!canFire(phase)||since<cd||!enemies||!enemies.n)return false;
-  return (look.calibre==='arame'?aimIndex(look,x,y,enemies.n,enemies.xs,enemies.ys,enemies.air):aimedIndex(look,x,y,aim,enemies.n,enemies.xs,enemies.ys,enemies.air))>=0;
+  if(aim===undefined||!ready)return false;
+  return aimedIndex(look,x,y,aim,enemies!.n,enemies!.xs,enemies!.ys,enemies!.air)>=0;
 }
 /**
  * Snapshot structures → TowerViews (torres-fio). Not towers are skipped. A drawn volley sets fireTick to tick + 1, which
@@ -228,7 +232,8 @@ export class TowerFeed {
       let fire=prev?.fire??0,at=prev?.at??tick,volleys=0;
       if(prev&&s.shots!==undefined){
         // The room counts them: every change is a volley, even at a target that never moves (the aim alone stays put).
-        if(prev.shots!==undefined)volleys=Math.min(VOLLEYS_MAX,shotsBetween(prev.shots,s.shots));
+        // A defense seen before its first volley had no counter yet: count from 0, or that first volley is never drawn.
+        volleys=Math.min(VOLLEYS_MAX,shotsBetween(prev.shots??0,s.shots));
       }else if(prev){
         const changed=s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim));
         if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies))volleys=1;

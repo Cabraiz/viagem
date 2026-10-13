@@ -3,7 +3,9 @@
  * screen-side light, props, and translucent buildings over the local hero. Only chunks near the camera exist.
  * The scene calls `update` once per frame after the camera moved.
  * Static ground (cells, ground decor, cast shadows) is baked once per chunk into one RenderTexture: Phaser re-tessellates
- * every Graphics every frame, so only what changes stays a Graphics (fountain glints, fading blocks).
+ * every Graphics every frame. What must stay a separate object (blocks, sorted per band against actors and faded
+ * per group; breathing glints; procedural props) is a TriBand (tri-band.ts): drawn once with the Graphics API, frozen
+ * into Phaser's own triangles, and per frame only transformed and skipped when off camera — the same pixels.
  * Materials (materials.ts) swap in painted art when its textures are loaded, and fall back to the procedural look.
  * All geometry and decisions live in the pure modules (chunks, faces, occlusion, materials); this file only draws.
  */
@@ -16,6 +18,7 @@ import {CityMaterials,buildingAnchor,cellUvPatches,frameUv,frontCorner,groundSha
 import {HERO_SCREEN,OcclusionFader,actorDepth,covers,occluderFor,outlineAlpha,type ColumnRef,type Occluder} from './occlusion.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
+import {TriBand} from './tri-band.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -219,18 +222,20 @@ export class CityLayer {
       const g=groups.get(id);
       if(g)g.items.push({piece,geo});else groups.set(id,{blockId:piece.blockId,key:geo.depthKey,items:[{piece,geo}]});
     }
+    // Each band is two TriBands (tri-band.ts): drawn as Graphics and frozen into triangles once instead of replayed
+    // every frame, one part per unit column so the columns off camera are skipped.
     const bands:Band[]=[];
     for(const g of groups.values()){
-      const body=this.scene.add.graphics(),outline=this.scene.add.graphics();
-      outline.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);
-      for(const {piece,geo} of g.items){
+      const body=TriBand.make(this.scene,g.items.map(({piece,geo})=>(gr:Phaser.GameObjects.Graphics)=>{
         const colors=BLOCK_COLORS[piece.kind];
-        for(const face of geo.faces)body.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
+        for(const face of geo.faces)gr.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
         // Icing, windows, plaster and icicles fade with the block (same object).
-        for(const prim of pieceDecor(piece,this.asset,view,this.pivot))drawPrim(body,prim);
-        outline.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);
-        for(const line of geo.outline)outline.strokePoints(line,false);
-      }
+        for(const prim of pieceDecor(piece,this.asset,view,this.pivot))drawPrim(gr,prim);
+      }));
+      const outline=TriBand.make(this.scene,g.items.map(({geo})=>(gr:Phaser.GameObjects.Graphics)=>{
+        gr.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);
+        for(const line of geo.outline)gr.strokePoints(line,false);
+      }));
       const d=this.depthOf(g.key);
       body.setDepth(d);outline.setDepth(d+0.01);
       bands.push({blockId:g.blockId,key:g.key,body,outline});
@@ -304,13 +309,14 @@ export class CityLayer {
     const meshes:Phaser.GameObjects.Mesh[]=[];
     for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
     // Pass 3: slope shading over painted cells, decor, shadows.
-    const over=place(this.scene.make.graphics({},false)),glints=this.scene.add.graphics().setDepth(GLINT_DEPTH);
+    const over=place(this.scene.make.graphics({},false));
     for(const q of quads){
       if(!painted.has(q.kind))continue;
       const o=groundShadeOverlay(q.kind,q.shade);
       if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
     }
-    for(const prim of decor)drawPrim(prim.shimmer?glints:over,prim);
+    for(const prim of decor)if(!prim.shimmer)drawPrim(over,prim);
+    const glints=TriBand.make(this.scene,gr=>{for(const prim of decor)if(prim.shimmer)drawPrim(gr,prim);}).setDepth(GLINT_DEPTH);
     for(const prim of shadows)drawPrim(over,prim);
     rt.draw(flat);
     for(const m of meshes)rt.draw(m);
@@ -395,28 +401,30 @@ export class CityLayer {
     if(prop.kind==='pine'&&this.scene.textures.exists(PINE_TEXTURE))
       return this.scene.add.image(at.x,at.y,PINE_TEXTURE,view).setOrigin(.5,PINE_SHEET.pivotY)
         .setScale(PINE_SHEET.height/PINE_SHEET.pixelHeight).setDepth(order);
-    const c=PROP_COLORS[prop.kind],r=propDrawRadius(prop)*42,g=this.scene.add.graphics({x:at.x,y:at.y});
-    g.fillStyle(SHADOW.color,SHADOW.alpha).fillEllipse(0,0,r*2.2,r*1.1);
-    g.lineStyle(OUTLINE_PX.prop,CITY_PALETTE.breu,1);
-    switch(prop.kind){
-      case 'pine':
-        g.fillStyle(c.dark,1).fillTriangle(-r,-r*0.6,r,-r*0.6,0,-r*3.2).strokeTriangle(-r,-r*0.6,r,-r*0.6,0,-r*3.2);
-        g.fillStyle(c.accent,1).fillTriangle(-r*0.45,-r*2.2,r*0.45,-r*2.2,0,-r*3.2);break;
-      case 'lamp':
-        g.fillStyle(c.dark,1).fillRect(-2,-r*14,4,r*14).strokeRect(-2,-r*14,4,r*14);
-        g.fillStyle(c.accent,1).fillCircle(0,-r*14,r*3).strokeCircle(0,-r*14,r*3);break;
-      case 'car':
-        g.fillStyle(c.dark,1).fillRoundedRect(-r*1.4,-r*1.2,r*2.8,r*1.2,6).strokeRoundedRect(-r*1.4,-r*1.2,r*2.8,r*1.2,6);
-        g.fillStyle(c.light,1).fillRoundedRect(-r*0.8,-r*1.9,r*1.6,r*0.8,5).strokeRoundedRect(-r*0.8,-r*1.9,r*1.6,r*0.8,5);
-        g.fillStyle(c.accent,1).fillRoundedRect(-r*0.7,-r*2.05,r*1.4,r*0.25,3);break;
-      case 'barrel':
-        g.fillStyle(c.light,1).fillRect(-r,-r*2.2,r*2,r*2.2).strokeRect(-r,-r*2.2,r*2,r*2.2);
-        g.fillStyle(c.accent,1).fillEllipse(0,-r*2.2,r*2,r*0.8);break;
-      default:
-        g.fillStyle(c.light,1).fillRect(-r,-r*1.6,r*2,r*1.6).strokeRect(-r,-r*1.6,r*2,r*1.6);
-        g.fillStyle(c.accent,1).fillRect(-r,-r*1.8,r*2,r*0.35);
-    }
-    return g.setDepth(order);
+    const c=PROP_COLORS[prop.kind],r=propDrawRadius(prop)*42;
+    // Frozen into triangles like the bands (tri-band.ts): a lamp's two circles alone are ~200 earcut points a frame.
+    return TriBand.make(this.scene,g=>{
+      g.fillStyle(SHADOW.color,SHADOW.alpha).fillEllipse(0,0,r*2.2,r*1.1);
+      g.lineStyle(OUTLINE_PX.prop,CITY_PALETTE.breu,1);
+      switch(prop.kind){
+        case 'pine':
+          g.fillStyle(c.dark,1).fillTriangle(-r,-r*0.6,r,-r*0.6,0,-r*3.2).strokeTriangle(-r,-r*0.6,r,-r*0.6,0,-r*3.2);
+          g.fillStyle(c.accent,1).fillTriangle(-r*0.45,-r*2.2,r*0.45,-r*2.2,0,-r*3.2);break;
+        case 'lamp':
+          g.fillStyle(c.dark,1).fillRect(-2,-r*14,4,r*14).strokeRect(-2,-r*14,4,r*14);
+          g.fillStyle(c.accent,1).fillCircle(0,-r*14,r*3).strokeCircle(0,-r*14,r*3);break;
+        case 'car':
+          g.fillStyle(c.dark,1).fillRoundedRect(-r*1.4,-r*1.2,r*2.8,r*1.2,6).strokeRoundedRect(-r*1.4,-r*1.2,r*2.8,r*1.2,6);
+          g.fillStyle(c.light,1).fillRoundedRect(-r*0.8,-r*1.9,r*1.6,r*0.8,5).strokeRoundedRect(-r*0.8,-r*1.9,r*1.6,r*0.8,5);
+          g.fillStyle(c.accent,1).fillRoundedRect(-r*0.7,-r*2.05,r*1.4,r*0.25,3);break;
+        case 'barrel':
+          g.fillStyle(c.light,1).fillRect(-r,-r*2.2,r*2,r*2.2).strokeRect(-r,-r*2.2,r*2,r*2.2);
+          g.fillStyle(c.accent,1).fillEllipse(0,-r*2.2,r*2,r*0.8);break;
+        default:
+          g.fillStyle(c.light,1).fillRect(-r,-r*1.6,r*2,r*1.6).strokeRect(-r,-r*1.6,r*2,r*1.6);
+          g.fillStyle(c.accent,1).fillRect(-r,-r*1.8,r*2,r*0.35);
+      }
+    },at.x,at.y).setDepth(order);
   }
 
   // ---------- Occlusion ----------

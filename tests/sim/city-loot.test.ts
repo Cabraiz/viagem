@@ -23,7 +23,7 @@ import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundPhase,type SimEvent,ty
 import type {SimContext} from '../../src/sim/context.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {moveSafely} from '../../src/sim/enemies/ai.ts';
-import {createStonewardsSystem,HORN_LEAD,MAX_PREPARE_TICKS,type StonewardsOptions,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
+import {createStonewardsSystem,HORN_LEAD,HORN_LEAD_CITY,MAX_PREPARE_TICKS,type StonewardsOptions,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {GATHER_REACH,MAX_GATHER_DISTANCE,NODE_CAPACITY,WORK_PER_UNIT,nodesNear,nodeValue,type NodeInfo} from '../../src/sim/stonewards/resources.ts';
 import type {ResourceKind} from '../../src/sim/stonewards/state.ts';
 import {CAMP_RADIUS,RETURN_SLACK_SECONDS,returnTicks} from '../../src/rules/stonewards.ts';
@@ -322,6 +322,76 @@ test('city horn: sized by the real walk back (not the straight line); who leaves
   t.diagnostic(`crate ${pick!.id}: walk ${s.toFixed(1)} s (straight-line estimate ${straight/SIM_HZ} s), horn ${left/SIM_HZ} s before the wave, home in ${((home-hornTick)/SIM_HZ).toFixed(1)} s`);
 });
 
+test('city horn: heroes idle since the intermission started (no stick, no crate) do not hold it; a shove does not wake them, a step does (BUG-20261013-E4)',t=>{
+  // The helicopter spawn: far from the plaza (about the whole intermission of walk) and out of every crate's reach,
+  // so a person left there stays idle.
+  const spawn=city.asset.points.inicio,S=walkSeconds(spawn);
+  assert.ok(S>30&&S<60,`the spawn is ${S.toFixed(1)} s of walk from the plaza`);
+  const nearest=Math.min(...allCrates().map(n=>dist(n,spawn)-n.radius));
+  assert.ok(nearest>GATHER_REACH+3,`no crate within reach of the spawn (nearest edge ${nearest.toFixed(1)} u)`);
+  /** One intermission with `afk` at the spawn and a hero in the plaza; `act(hero, ticks since start)` may shove or steer afk. */
+  const intermission=(act:(hero:SimPlayer,since:number,steer:Set<string>)=>void)=>{
+    const afk=player('afk',spawn),home=player('home',P.plazaCenter),ctx=fakeCtx([afk,home]),steer=new Set<string>();
+    const sys=createStonewardsSystem({terrain:city,...stretcher(),steered:id=>steer.has(id)});
+    ctx.tick=100;openPrepare(ctx,3,60);
+    const first=ctx.tick+1;
+    let left=-1,idleAtHorn:string[]|undefined,afterWave:unknown='unset';
+    while(ctx.tick<ticks(300)){
+      ctx.tick++;steer.clear();
+      if(flip(ctx)){sys.step(ctx);afterWave=sys.state.cityHornIdle;break;}
+      act(afk,ctx.tick-first,steer);
+      sys.step(ctx);
+      if(left<0&&ctx.events.some(e=>e.type==='horn')){left=ctx.round.phaseEndsTick-ctx.tick;idleAtHorn=[...sys.state.cityHornIdle??[]];}
+    }
+    assert.equal(ctx.events.filter(e=>e.type==='horn').length,1,'one horn');
+    assert.equal(afterWave,undefined,'no cityHornIdle outside the intermission');
+    return {left,idleAtHorn};
+  };
+  const idle=intermission(()=>{});
+  assert.equal(idle.left,HORN_LEAD_CITY,`idle hero ${S.toFixed(1)} s out: the horn ${idle.left/SIM_HZ} s before the end`);
+  assert.deepEqual(idle.idleAtHorn,['afk','home'],'nobody walked nor worked');
+  // Shoved 3 u away by a critter (enemies/ai.ts) without touching the stick: still idle.
+  const shoved=intermission((h,since)=>{if(since===ticks(5))h.x=spawn.x+3;});
+  assert.equal(shoved.left,HORN_LEAD_CITY,'a shove is not activity');
+  // One tick of stick at +5 s: counted again, the horn sized by the walk back.
+  const steered=intermission((h,since,steer)=>{if(since===ticks(5))steer.add(h.id);});
+  assert.ok(steered.left>=Math.floor(S*SIM_HZ),`steered hero: horn ${steered.left/SIM_HZ} s before the end, the walk is ${S.toFixed(2)} s`);
+  assert.ok(steered.left<=Math.ceil((S+RETURN_SLACK_SECONDS+1)*SIM_HZ),'and not more than the walk + slack');
+  assert.deepEqual(steered.idleAtHorn,['home'],'afk dropped from cityHornIdle once it walked');
+  t.diagnostic(`spawn ${S.toFixed(1)} s out (nearest crate edge ${nearest.toFixed(1)} u): idle/shoved → horn ${idle.left/SIM_HZ} s before the end; steered → ${(steered.left/SIM_HZ).toFixed(1)} s`);
+});
+
+test('city horn: an idle hero who starts walking after it sounded re-sizes it once, within the stretch budget (BUG-20261013-E4)',()=>{
+  const spawn=city.asset.points.inicio,S=walkSeconds(spawn);
+  const a=player('a',spawn),b=player('b',{x:spawn.x+1,y:spawn.y}),ctx=fakeCtx([a,b]),steer=new Set<string>();
+  const sys=createStonewardsSystem({terrain:city,...stretcher(),steered:id=>steer.has(id)});
+  ctx.tick=100;openPrepare(ctx,3,30);
+  const horn=()=>ctx.events.filter(e=>e.type==='horn').length;
+  while(!horn()&&ctx.tick<ticks(200)){ctx.tick++;flip(ctx);sys.step(ctx);}
+  assert.equal(horn(),1,'the horn sounded');
+  const end=ctx.round.phaseEndsTick;
+  assert.equal(end-ctx.tick,HORN_LEAD_CITY,'both idle: the horn at 10 s');
+  assert.equal(sys.state.stretched,0,'no stretch yet');
+  // a wakes: one re-size to its walk back (up to MAX_PREPARE_TICKS), counted against MAX_STRETCH_PER_RUN.
+  ctx.tick++;steer.add('a');sys.step(ctx);steer.clear();
+  const wake=ctx.tick,resized=ctx.round.phaseEndsTick;
+  assert.ok(resized>end,'stretched');
+  assert.ok(resized===sys.state.prepareStart+MAX_PREPARE_TICKS||resized-wake>=Math.floor(S*SIM_HZ),`re-sized to the walk back (${((resized-wake)/SIM_HZ).toFixed(1)} s, walk ${S.toFixed(1)} s)`);
+  assert.equal(sys.state.hornEndsTick,resized,'the HUD countdown follows');
+  assert.equal(sys.state.stretched,resized-end,'within the run budget');
+  assert.equal(sys.state.cityHornResized,true);
+  assert.equal(horn(),1,'no second horn event');
+  // b wakes later: no second re-size.
+  for(let i=0;i<ticks(5);i++){ctx.tick++;sys.step(ctx);}
+  Object.assign(b,{x:spawn.x+4});ctx.tick++;steer.add('b');sys.step(ctx);steer.clear();
+  assert.equal(ctx.round.phaseEndsTick,resized,'once per intermission');
+  assert.deepEqual(sys.state.cityHornIdle,[],'both awake');
+  // Island: none of it.
+  const ictx=fakeCtx([player('h',{x:12,y:17})],defaultTerrain),isys=createStonewardsSystem({terrain:defaultTerrain,steered:()=>false});
+  openPrepare(ictx,2,30);drive(ictx,isys,ticks(2));
+  assert.ok(!('cityHornIdle' in isys.state)&&!('cityHornResized' in isys.state),'island state keeps its keys');
+});
+
 // ---------- 7. intermission sized by the trip ----------
 test('the city intermission fits the trip to the farthest good crate: out at hero speed, collect, back before the wave',t=>{
   const good=goodCrates();
@@ -406,8 +476,9 @@ test('left behind: one line per standing hero outside the base at the prepare→
 test('left behind: a hero who empties a crate in the last 2 s before the wave is still told (once per player outside)',()=>{
   const c=allCrates().find(n=>isolated(n)&&dist(n,worldBase(city))>CAMP_RADIUS+4)!;
   // Waits outside near the crate (the horn sounds for that walk, well before the end), steps on it at the last moment.
+  // It walked there (a stick: not an idle hero, BUG-20261013-E4), so the horn counts it from the start.
   const wait=awaySpots(40,11).reduce((a,b)=>dist(b,c)<dist(a,c)?b:a);
-  const hero=player('late',wait),ctx=fakeCtx([hero]),sys=createStonewardsSystem({terrain:city,...stretcher()});
+  const hero=player('late',wait),ctx=fakeCtx([hero]),sys=createStonewardsSystem({terrain:city,...stretcher(),steered:id=>id==='late'});
   openPrepare(ctx,2,30);
   let waveAt=-1,moved=false;
   while(ctx.tick<ticks(300)&&waveAt<0){

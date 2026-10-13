@@ -6,6 +6,614 @@
   "smartSubsample": true
  },
  "files": {
+  "enemies/ambulante-guarda-chuva/death.webp": {
+   "source": "9215f724598f67311a1fe5b219cb48fe4e44f68c9d2eb25f80d672ca539f5487",
+   "lite": "2f2080e8fa14bd428cc5704a8e9d988cd97ffafd19941334e39a39ccb8d6332c",
+   "bytes": 771952,
+   "liteBytes": 353552,
+   "psnr": 41.3,
+   "shownPsnr": 44.8
+  },
+  "enemies/ambulante-guarda-chuva/hit.webp": {
+   "source": "02cc433d7f25b6938000764c126996596f03d5a831131da112d5b2aea21ba688",
+   "lite": "cfb572ace622fd9fcc8917c11704693d8f22ebd07280ac80990f2a8687ef6378",
+   "bytes": 177386,
+   "liteBytes": 88248,
+   "psnr": 40.8,
+   "shownPsnr": 45.5
+  },
+  "enemies/ambulante-guarda-chuva/idle.webp": {
+   "source": "5eebadaceb9018fe1704e9047c312743ddbe068d8afb30430c21377103c64d1d",
+   "lite": "e544bb325be2f7fcc94e8118dd4908089ba1f7166c61d525abcb9a95518c2f24",
+   "bytes": 434882,
+   "liteBytes": 207850,
+   "psnr": 42.4,
+   "shownPsnr": 47.2
+  },
+  "enemies/ambulante-guarda-chuva/throw.webp": {
+   "source": "5e89771943ba4bfeac8921243f187d01613698f2f1b70dcfa45ff2e4f784c288",
+   "lite": "94c3baa3415263050a5d28f17c84f54bbd3668dcbfb331930dc82ff924c2ebff",
+   "bytes": 603494,
+   "liteBytes": 291174,
+   "psnr": 40.1,
+   "shownPsnr": 44
+  },
+  "enemies/ambulante-guarda-chuva/walk.webp": {
+   "source": "c8cb160de94fa7923c97d321529cd83a16a5f0c63164ac565102953d22bab482",
+   "lite": "e5a55cfcf73052cfb9615387bf8bea1d838da82d60dea36e816ee92547d58336",
+   "bytes": 563726,
+   "liteBytes": 267092,
+   "psnr": 41.7,
+   "shownPsnr": 45.2
+  },
+  "enemies/barata-voadora/attack.webp": {
+   "source": "d2af9e66329c12264acf16aa35df77aa234f2f6d5bd3084e1cbe6f8a0e42d6b5",
+   "lite": "b0859beae4ad3e35b2cea6cd4e989da5280c20d2682a8cd8ea0bec323d46a322",
+   "bytes": 178620,
+   "liteBytes": 107872,
+   "psnr": 42.8,
+   "shownPsnr": 45.2
+  },
+  "enemies/barata-voadora/death.webp": {
+   "source": "967bcb71c1decdc2be41b93312d61625cc499a6407dcccab231aee6bdb2401b8",
+   "lite": "3e335e8a17a11ddc92c279a1b657e0e6614a155ae882d87e85eeee4d88a93063",
+   "bytes": 235030,
+   "liteBytes": 140836,
+   "psnr": 43.7,
+   "shownPsnr": 45
+  },
+  "enemies/barata-voadora/fly.webp": {
+   "source": "44da0cd69b208285d6d7811e4a81603244e357f7230d1f895204d4f66de1dbd4",
+   "lite": "aec7b26e82f5bd7bbbee97f2fc019201a4ad9925ae3b78a77d64f043ec893dd9",
+   "bytes": 255172,
+   "liteBytes": 149240,
+   "psnr": 42.9,
+   "shownPsnr": 43.7
+  },
+  "enemies/barata-voadora/hit.webp": {
+   "source": "91a3020225f88a9971473edbb6b2eadb8cba9fd28dda4136defb66991477751a",
+   "lite": "b641e37b772a1bb63e49d62981efcfbde9ab86f687925b3bc267c6e30d598f77",
+   "bytes": 53586,
+   "liteBytes": 35062,
+   "psnr": 43.1,
+   "shownPsnr": 43.2
+  },
+  "enemies/bebum-de-carrinho/aim.webp": {
+   "source": "276e73a6b9f6b4f19be176e513ccae633c8e5a3cb978a2ed746ea2dac5a7847e",
+   "lite": "cb26fdcd1aa002dc28b37ccce82fe0e7b64fb309b78ef48355df2a9df4ac2476",
+   "bytes": 731174,
+   "liteBytes": 359874,
+   "psnr": 43.8,
+   "shownPsnr": 45.8
+  },
+  "enemies/bebum-de-carrinho/charge.webp": {
+   "source": "4914f61ca69e5dd247e3f270da93ffc94e13b8d584b9fde88431e27639c0dd1a",
+   "lite": "d59dc4e4521955d93ab1c13a250f836df2882d2692b6a0653de4436ee98f688e",
+   "bytes": 847092,
+   "liteBytes": 422978,
+   "psnr": 43.5,
+   "shownPsnr": 46.2
+  },
+  "enemies/bebum-de-carrinho/crash.webp": {
+   "source": "e7199b780ac4dc5db6d15e2ede537c2c45f06ef1eab1afb85ef9322aaa1879b0",
+   "lite": "6c5fbc0d67b4ccf54a8dc5bbe40da228dbea80bac76ae1522dce893c532c4a2e",
+   "bytes": 1501092,
+   "liteBytes": 782384,
+   "psnr": 43.9,
+   "shownPsnr": 45.8
+  },
+  "enemies/bebum-de-carrinho/idle.webp": {
+   "source": "bfbaf713e9b31a903871989c3bbad8b0c79ebfc69667a233fec1c7fa4700f2b9",
+   "lite": "7879bdf49fca57b2d6e8cdffdc9a188d395f7cd964c84c03a5a536e72093a84e",
+   "bytes": 425326,
+   "liteBytes": 214612,
+   "psnr": 44.7,
+   "shownPsnr": 46.9
+  },
+  "enemies/dono-do-boteco/death.webp": {
+   "source": "2be6ce3804847ebac2c362f967413a09f7d18bebd35aa12e2efa102d281a0642",
+   "lite": "1c937d11327472ad8f9c59b7e49c07750820e19143f09672d717e3d4604acaaa",
+   "bytes": 1649892,
+   "liteBytes": 821188,
+   "psnr": 42.8,
+   "shownPsnr": 44.6
+  },
+  "enemies/dono-do-boteco/hit.webp": {
+   "source": "1f02a6152075c40f399c25188d0059c9b96b3dbb5435d0c9c216ab0717c0b484",
+   "lite": "900e3cd94b8735d5c3dfc77e58aa353788f9dd6cf3c16b484ed1fe12d521b7e1",
+   "bytes": 410464,
+   "liteBytes": 177336,
+   "psnr": 40.3,
+   "shownPsnr": 43.3
+  },
+  "enemies/dono-do-boteco/idle.webp": {
+   "source": "b90ad1365eb0a854c0fd431b7cdf04ae1a6787aaf0b831835745cb3116f1795a",
+   "lite": "539963cca8c9f04bb51c9118000bf75a09f50f3ef87a1b1dd219e865cf2a3c50",
+   "bytes": 861164,
+   "liteBytes": 367062,
+   "psnr": 41.1,
+   "shownPsnr": 44.1
+  },
+  "enemies/dono-do-boteco/shove.webp": {
+   "source": "238b5f7ffd49d5378f2b0d3fae76c99cd7008fd25b2dda206705ad2712096a79",
+   "lite": "68fea4e64e93f6150caccf6a0f29be8f6aa50c73d6be8ba30c9cb2454c0874c5",
+   "bytes": 995920,
+   "liteBytes": 402836,
+   "psnr": 41,
+   "shownPsnr": 43.9
+  },
+  "enemies/dono-do-boteco/walk.webp": {
+   "source": "52d227e4cef693ae10d9af2b7a981a30a6507169931baef3fbbf239da2abc9a7",
+   "lite": "d3f0d50d722624e64d088e1a248dd4909105cf45d5aff9348db0434403d28bff",
+   "bytes": 1133126,
+   "liteBytes": 480096,
+   "psnr": 41.1,
+   "shownPsnr": 43.7
+  },
+  "enemies/espetinho-suspeito/death.webp": {
+   "source": "71d58fb401d78519d07818728728ca5dd798712f510da94e2ac83c18f95d6b2f",
+   "lite": "29c13c93e8155609897e1762780eb8fd2c7d5f8275cac202aab010486dc6616e",
+   "bytes": 781864,
+   "liteBytes": 388866,
+   "psnr": 42.5,
+   "shownPsnr": 45.4
+  },
+  "enemies/espetinho-suspeito/hit.webp": {
+   "source": "fd01bdbce1e8ada655ffb171bced92c8a1ab8a91d463aae896967bb9f21c6dcd",
+   "lite": "926862af60e6156ad5086102949f9b1470353ed88898e4b3767dc39eb8012491",
+   "bytes": 234128,
+   "liteBytes": 110348,
+   "psnr": 41.5,
+   "shownPsnr": 45.7
+  },
+  "enemies/espetinho-suspeito/idle.webp": {
+   "source": "f8d91ea31dbccd5ee86a3154996bf5b4e57d5f0c5053c9005846159e5f18da6a",
+   "lite": "532ad4afbb80bb1f026f5917d3b92b48859679243f4f664458fb8f2abc1619a8",
+   "bytes": 413194,
+   "liteBytes": 200102,
+   "psnr": 42.7,
+   "shownPsnr": 47.6
+  },
+  "enemies/espetinho-suspeito/throw.webp": {
+   "source": "703760d57ab1ea5810df6a9db77dfcac18c4492f452b964c94dd92ed2d481858",
+   "lite": "35d53ff19b9565f7a1faa3bd254e8a6e903d9b846dfe62a5da9655cbbcbba851",
+   "bytes": 575438,
+   "liteBytes": 283616,
+   "psnr": 41.5,
+   "shownPsnr": 45.3
+  },
+  "enemies/espetinho-suspeito/walk.webp": {
+   "source": "f5418d72ed9ad4beb67b1dd1b56fd18802daabd883f0a94972c1e90245adcb18",
+   "lite": "2a7c5172eb4cd86630413ded7863e4aa2b9eabf66e1c0c808ab84fa3a87ec60b",
+   "bytes": 514606,
+   "liteBytes": 251002,
+   "psnr": 42.6,
+   "shownPsnr": 46.4
+  },
+  "enemies/flanelinha-interdimensional/death.webp": {
+   "source": "f09b2e69fc5465ee7d7648be3459e7bc98bdf09c3d6dd300860cd14fd42c2a87",
+   "lite": "e10143b61c10344dbbbb309e252d348dbcc55986e303227fd32fd55102c68603",
+   "bytes": 446356,
+   "liteBytes": 144038,
+   "psnr": 45.1,
+   "shownPsnr": 49.6
+  },
+  "enemies/flanelinha-interdimensional/hit.webp": {
+   "source": "233d35ec413932cc23b8c9e374b52c980f8e9c281154657dec67d9d5828e644b",
+   "lite": "401619eeb83d79119bdd9ee6e2bda726b67fb5ff07d091ec3f0117763bd90d2d",
+   "bytes": 190644,
+   "liteBytes": 64596,
+   "psnr": 42.6,
+   "shownPsnr": 47.7
+  },
+  "enemies/flanelinha-interdimensional/idle.webp": {
+   "source": "a0e2ac7fcc6a2f36dedafe278813625a1a8f8e7d47ba1dd1a9ad170149a442f3",
+   "lite": "68c184721ed74e6e08b3d2f2ce1f8816d08ffa68e06a32a5649136be3630d702",
+   "bytes": 350656,
+   "liteBytes": 115432,
+   "psnr": 43.5,
+   "shownPsnr": 48.6
+  },
+  "enemies/flanelinha-interdimensional/summon.webp": {
+   "source": "9d66f155630d6c66988e9784e954101094ef1254d96827b532c75c9bd1f61dcc",
+   "lite": "e3f8d8dd980a98a8f78500ec89cca9f12340f86b55516421c1b548fb9363440b",
+   "bytes": 685690,
+   "liteBytes": 206834,
+   "psnr": 43.5,
+   "shownPsnr": 47.9
+  },
+  "enemies/flanelinha-interdimensional/walk.webp": {
+   "source": "843d665805e17d134f8bbb3286e7d4490e72ce129e402449d0d0f11700383cb5",
+   "lite": "1660556b50296943ba69c676b60530ea7108d776e6b9a0e42a9ec637e52a7698",
+   "bytes": 481146,
+   "liteBytes": 155692,
+   "psnr": 43.2,
+   "shownPsnr": 48
+  },
+  "enemies/grauzeiro/aim.webp": {
+   "source": "298d2ca673a7b1f9a490a15ad6b4f75cf398137ff97e7e2451f0e3aaabdb9129",
+   "lite": "e0e185c76f11726eba5e4b5aea6cc366e568921f076313dc65bf6a2807e27187",
+   "bytes": 455630,
+   "liteBytes": 218202,
+   "psnr": 43.6,
+   "shownPsnr": 47.3
+  },
+  "enemies/grauzeiro/charge.webp": {
+   "source": "9b3482c9ed08f68eec36855fa529f68a5ed575e94236c02f22d961cd635cab24",
+   "lite": "110f99ecab6ae5ac729d0d11d3520bf05381a6688fdf6f68aebcbd52712263b2",
+   "bytes": 446352,
+   "liteBytes": 208164,
+   "psnr": 43.6,
+   "shownPsnr": 47.7
+  },
+  "enemies/grauzeiro/crash.webp": {
+   "source": "37b38aa216a6dacda73c41ae1b836ba70329b8bc82199110f5d41faed9e117e1",
+   "lite": "8cd726bb77a803501a4ad80f8c3ddb102c90332bdad3e65a96f5c5fc99df2074",
+   "bytes": 647500,
+   "liteBytes": 337378,
+   "psnr": 46,
+   "shownPsnr": 48.6
+  },
+  "enemies/grauzeiro/idle.webp": {
+   "source": "49ad472b6120c4bfb2c9b36f1c3cdf94ea5f43f96898694ca69a8768b14a4196",
+   "lite": "cac090164a6e3f78070eb587625d1bff5e3c5a13e6c0ee1fce1acb06d70bcf58",
+   "bytes": 336684,
+   "liteBytes": 167906,
+   "psnr": 44.7,
+   "shownPsnr": 47.7
+  },
+  "enemies/malabarista-do-sinal/death.webp": {
+   "source": "b0d194f904ed9e8b96955af2e3e4af30645f3487f626959db9cdc61dfb071e69",
+   "lite": "01eef302559fcba3f3929c434e26ba81aa5998d48087ddea9bc924f148d797bc",
+   "bytes": 366266,
+   "liteBytes": 154520,
+   "psnr": 40.2,
+   "shownPsnr": 45.9
+  },
+  "enemies/malabarista-do-sinal/hit.webp": {
+   "source": "f8f2464cfdc1a051bfdde5570f6d2c121e6bb3280797d5610267e48dcb771012",
+   "lite": "95d13b33c88294387a7e66ad336c0674f9f28040d4ae1a6d630031633be57fab",
+   "bytes": 139490,
+   "liteBytes": 58308,
+   "psnr": 39.3,
+   "shownPsnr": 45.4
+  },
+  "enemies/malabarista-do-sinal/idle.webp": {
+   "source": "565ed96dad3ff2ae0137628e063da2db0f6a01e861bafdf774d429785beed09e",
+   "lite": "488a4f6722be630b81f0216862d1123b680a37bf5d7e127e7cbd610e661556e4",
+   "bytes": 234706,
+   "liteBytes": 102016,
+   "psnr": 39.6,
+   "shownPsnr": 47
+  },
+  "enemies/malabarista-do-sinal/throw.webp": {
+   "source": "e1e03627fc295ccf0531f5cd4e3c2370198b99473d5499c7c09d7f14bfe62ae6",
+   "lite": "d1a063442d067977fa1b0d6153a4f40cb9613b09591f7f63e078649bbbc8d737",
+   "bytes": 345580,
+   "liteBytes": 147224,
+   "psnr": 39.1,
+   "shownPsnr": 44.9
+  },
+  "enemies/malabarista-do-sinal/walk.webp": {
+   "source": "ebac8bd1316f70226f722bb3eeb7b2f64053b27b82091a321d1e411b2c089fde",
+   "lite": "4de4e5b228f88d2e8f526a15272f2ad0364755c10964101b79167fa3576adb13",
+   "bytes": 317554,
+   "liteBytes": 144472,
+   "psnr": 38.9,
+   "shownPsnr": 45.1
+  },
+  "enemies/marronzinho/aim.webp": {
+   "source": "890ef3a88c3f133f183e8c31667698e0e9cd3c4b9a169fde9ce7347c0acb75c1",
+   "lite": "dfd789c848f80488b037c1357884969c132076e2f1cab8e198608de30d09cb30",
+   "bytes": 287556,
+   "liteBytes": 143230,
+   "psnr": 43.7,
+   "shownPsnr": 48.5
+  },
+  "enemies/marronzinho/attack.webp": {
+   "source": "8b11437dec286687131b6bc6b0ef8a05a7ca8eb3e327061671d0e5b7d58fd7b7",
+   "lite": "9f10b6376f8bd5f0ab5ca939c4d91c47e32b7e8209d9b7f8f3266ddbae4adea0",
+   "bytes": 303460,
+   "liteBytes": 147340,
+   "psnr": 43.1,
+   "shownPsnr": 47.5
+  },
+  "enemies/marronzinho/death.webp": {
+   "source": "d6fb9602f9bd1199a039d8d131b4d55c23ccf5a7a77711b0bb670d55e48353ca",
+   "lite": "e7e50419acbd3cf6d06c707c797eceb1ba11eb44537d2b2e5ec4b40dd80e95a6",
+   "bytes": 705766,
+   "liteBytes": 422354,
+   "psnr": 45,
+   "shownPsnr": 47.2
+  },
+  "enemies/marronzinho/hit.webp": {
+   "source": "8ac0edb044319c4905a098cbd519c79ba237d1e460709ea1dba94640f745e429",
+   "lite": "bba66b4b1719e3d09cba0a3f3a2369ddc99dd76cc3ecc19af9bb79d1ffcfd486",
+   "bytes": 150004,
+   "liteBytes": 74412,
+   "psnr": 43.2,
+   "shownPsnr": 46.2
+  },
+  "enemies/marronzinho/idle.webp": {
+   "source": "5cca8a8de15835101ecf61b706ab38726f1e9748c78a84c1c65cb3e40cd93bbe",
+   "lite": "c2e08f9260554a68047544e2f5417e96d8325efd68610999efab1c50e7d32197",
+   "bytes": 279454,
+   "liteBytes": 139956,
+   "psnr": 44.1,
+   "shownPsnr": 48
+  },
+  "enemies/marronzinho/walk.webp": {
+   "source": "20fda6575691ccec648e4a57debf3cd5855e82d36eac13146ee1012db6f87733",
+   "lite": "e384f739461ffb3d79fecd4473b96c88edbb713ceafd2503c35c096a393f2e00",
+   "bytes": 405658,
+   "liteBytes": 198502,
+   "psnr": 43.6,
+   "shownPsnr": 46.6
+  },
+  "enemies/moco-do-gas/aim.webp": {
+   "source": "909d3e7bfd2f3f3c52df562b73431522e272c6ac2d709d2ec2081e51f92ef410",
+   "lite": "e12b69d74ef8fc1bfc315976a11986936d842d61b762e365dea167c64c59eb16",
+   "bytes": 520834,
+   "liteBytes": 148504,
+   "psnr": 42.4,
+   "shownPsnr": 46.8
+  },
+  "enemies/moco-do-gas/charge.webp": {
+   "source": "d47ccc0d701fbbd0cd5f903d0c286770b31b5f5baa8a418148504b469a90226f",
+   "lite": "6c323bfad4d6b7412e55deca5c80ed4144065cfded573443095cb8be5cf53c82",
+   "bytes": 477352,
+   "liteBytes": 139512,
+   "psnr": 42.8,
+   "shownPsnr": 47
+  },
+  "enemies/moco-do-gas/crash.webp": {
+   "source": "f530a3c8b1e8e96dd0ecf0a811ae9cc924f99e92ae36479d101cbd6a0df159bf",
+   "lite": "6bfa44cc8126f62d310c4004fd649616e140d00ad095c3924c5a5f49081326e3",
+   "bytes": 752414,
+   "liteBytes": 209984,
+   "psnr": 43.3,
+   "shownPsnr": 48
+  },
+  "enemies/moco-do-gas/idle.webp": {
+   "source": "e32be1a8151571bd9b91074c4786a91f3fab0f9c3ccf6ec6e9fa11a0ec4b836b",
+   "lite": "734b0945e8c9f42d8a485542f61763deee7ab37888d83e2ea518d6dc603660b9",
+   "bytes": 301670,
+   "liteBytes": 91154,
+   "psnr": 42.6,
+   "shownPsnr": 46.7
+  },
+  "enemies/pamonheiro/death.webp": {
+   "source": "848ccb725220f8af526266f18e329fce9f9cb317ead53212ef6a852a0c19aec8",
+   "lite": "dfd055e8b72f5f0dca2d3ead38ad1b19588ce1fb46904a176e5d83e564bccd0e",
+   "bytes": 288270,
+   "liteBytes": 103482,
+   "psnr": 44.2,
+   "shownPsnr": 47.8
+  },
+  "enemies/pamonheiro/hit.webp": {
+   "source": "2f52088b0b581f41263bc2ed5b690fe49bbfadfb590d703195e0cc15f701a56e",
+   "lite": "2b03091f0f3136e9d7df529772921f6f47c263339c1f783fc84399d106fd6242",
+   "bytes": 105276,
+   "liteBytes": 37562,
+   "psnr": 44.6,
+   "shownPsnr": 48.6
+  },
+  "enemies/pamonheiro/idle.webp": {
+   "source": "68cd8654e7d863ef244129712cb871997b54ee21a737ef3d65bc6dd14b2a0884",
+   "lite": "63045255b7d8fe52f703fe5f2273ad47ff545b21e35bd2fadb7b219b1ab8ac01",
+   "bytes": 200650,
+   "liteBytes": 68788,
+   "psnr": 44.3,
+   "shownPsnr": 49.3
+  },
+  "enemies/pamonheiro/lecture.webp": {
+   "source": "25518401975efcdc80ae19dee2bb2e648566867c4a914db096f7d3b3a5aa5d74",
+   "lite": "3fe404a2ebb6bae9612bc0a69a5b5b638dcaf915cdc1286953bef472b62c05c6",
+   "bytes": 381944,
+   "liteBytes": 132246,
+   "psnr": 44,
+   "shownPsnr": 47.8
+  },
+  "enemies/pamonheiro/walk.webp": {
+   "source": "53cc8d972992b147c31b6c18c51061f6a9359f8b3011a8ffa82c0d8491aad7ea",
+   "lite": "c4d616289d04f2972cf9be72360ea0e6199228dfc5346ce13e059e238fdc1147",
+   "bytes": 283568,
+   "liteBytes": 98422,
+   "psnr": 44.2,
+   "shownPsnr": 48
+  },
+  "enemies/paredao-ambulante/death.webp": {
+   "source": "f112b7d3ab0314dbf536f9a854d483cc0d5a03beec66b7635e9640f73bef8679",
+   "lite": "68d690c99999c18b91fb3b39a8b9d578d3676ed3bc68ffc8caf10035d667579d",
+   "bytes": 1416136,
+   "liteBytes": 644992,
+   "psnr": 44,
+   "shownPsnr": 46.5
+  },
+  "enemies/paredao-ambulante/hit.webp": {
+   "source": "94789aa1ddd4d272e63e186f7f3f105e48d7f7e06b36c55cb2cf2363265602b2",
+   "lite": "33740d99b27f91fa431b748a57d954ff98e133ba8fb0cfa664ff60f613697ac0",
+   "bytes": 303820,
+   "liteBytes": 134184,
+   "psnr": 42.9,
+   "shownPsnr": 46.5
+  },
+  "enemies/paredao-ambulante/idle.webp": {
+   "source": "b9b75b89950709fa3a89fab04ab0ddef34a00136e41e75502dff972a3357d14c",
+   "lite": "333ed3f8d2316b73299c2dcd7d9ff37b94271210ba02b1927f5431e316d28f81",
+   "bytes": 669864,
+   "liteBytes": 302938,
+   "psnr": 42.9,
+   "shownPsnr": 46.1
+  },
+  "enemies/paredao-ambulante/summon.webp": {
+   "source": "3b6f68d5ab3252ac560b4e852001177b6d2206141fd167753b501526d4ca42d9",
+   "lite": "0c36bbb6e16a7414df68bb68992dfebdf54011524886b3ad62f5768fd3d031d0",
+   "bytes": 1448032,
+   "liteBytes": 652998,
+   "psnr": 43.2,
+   "shownPsnr": 45.7
+  },
+  "enemies/paredao-ambulante/walk.webp": {
+   "source": "361553e578cd6b0e96ccc121c0a086ae04b97ac7712e35e194638b6395092103",
+   "lite": "ed2816522112ea5c533c44e484e50ace70565c93552387bbc7de21a744d7e421",
+   "bytes": 981102,
+   "liteBytes": 420240,
+   "psnr": 43.3,
+   "shownPsnr": 46.2
+  },
+  "enemies/rato-de-boteco/attack.webp": {
+   "source": "5c5577a0b15203237d9d04e8b8a2374405092cd990d86ddae7b60cf1d4edd050",
+   "lite": "d3354d09870b761dc613ac066ac8621f2b98531e9134c2cd3b19cdc0fbbf032b",
+   "bytes": 27496,
+   "liteBytes": 15960,
+   "psnr": 39.3,
+   "shownPsnr": 48.5
+  },
+  "enemies/rato-de-boteco/death.webp": {
+   "source": "9548617892e964fcca2f2bd3027f0019d139a7a9bf00b968eacaada28b3be477",
+   "lite": "c9f9229c47738a3cbe77a12032d68c476cd9f66afe3f6c633c6302a14ea1f343",
+   "bytes": 39752,
+   "liteBytes": 25490,
+   "psnr": 38.2,
+   "shownPsnr": 45.7
+  },
+  "enemies/rato-de-boteco/walk.webp": {
+   "source": "d19a56df9220bad9c4a4d37f5fe31990e0bf88aab554042a32db3ba6a21225d0",
+   "lite": "454912470268ea05d8e905d0df96e04d2148b5a59bdbfb22dbb5f4ee0c5967e6",
+   "bytes": 33748,
+   "liteBytes": 23434,
+   "psnr": 39.7,
+   "shownPsnr": 47.1
+  },
+  "enemies/subsindico/death.webp": {
+   "source": "619f8445dc23df2589aa16667aec65776d6299471edf4e541688e314e53d60b7",
+   "lite": "c6a3eaf44b8cb2c0d227ee2534d82a60453b4c8fae0ab7a9a95593155bbcf144",
+   "bytes": 468208,
+   "liteBytes": 210338,
+   "psnr": 41.4,
+   "shownPsnr": 41.9
+  },
+  "enemies/subsindico/hit.webp": {
+   "source": "7e35b4c781e208c209d936925fd011ffa1cb828bfaf1d821f7feda31f0ebacd4",
+   "lite": "cf8cc3543c21e1d3c8480eace4e0614dda6cb49a80418b42eefc8656b7c7b3db",
+   "bytes": 138204,
+   "liteBytes": 54728,
+   "psnr": 42.7,
+   "shownPsnr": 46.3
+  },
+  "enemies/subsindico/idle.webp": {
+   "source": "4949b8f32d1e3391929206d775ff13408aeeca9aca60c3ca465a829337c49c77",
+   "lite": "bcb93ee4f2218337ddb3ab901804393959f6b782e0e7cee5f71de1d143cfa30f",
+   "bytes": 239568,
+   "liteBytes": 95182,
+   "psnr": 43.8,
+   "shownPsnr": 47.8
+  },
+  "enemies/subsindico/lecture.webp": {
+   "source": "158bf411f3663e205e3e2a78ecf2a4d81fb0c7f46a8a3c8a18c2b8417de87452",
+   "lite": "e8a737a87d462f2a2574622c0bbfe72b48ef54ab1bfdc91c1ec4e07d837f5ad1",
+   "bytes": 456498,
+   "liteBytes": 173056,
+   "psnr": 43.8,
+   "shownPsnr": 46.7
+  },
+  "enemies/subsindico/walk.webp": {
+   "source": "f41ef2f0467d71e52955fc9a8455298e0293a7791e2fd932f580159806a14a1d",
+   "lite": "712cf57875b9a5f02eef0ac962c806c544aaadee84ca8316fd913d4a10a78638",
+   "bytes": 318150,
+   "liteBytes": 126214,
+   "psnr": 44.1,
+   "shownPsnr": 47.3
+  },
+  "enemies/tio-do-isopor/death.webp": {
+   "source": "5f0ae4beb56b83cc1106e90c113a9a1c2075e706cee2658d4ff1b7254a75ff8f",
+   "lite": "9880ecaf952a90f0a5740239e64d389d042ed415afc746cd8d15567057c7fd8f",
+   "bytes": 1441570,
+   "liteBytes": 594160,
+   "psnr": 44.1,
+   "shownPsnr": 46.9
+  },
+  "enemies/tio-do-isopor/hit.webp": {
+   "source": "b383ce90ca63616b3e2f83ff3c32f4402e705c3a7b6daa344fdcec35a1bdffa3",
+   "lite": "664182891bcc06fc7874956e4e98c877bab538c2919050b9216aeea29160e3d4",
+   "bytes": 379338,
+   "liteBytes": 158822,
+   "psnr": 42.8,
+   "shownPsnr": 45.9
+  },
+  "enemies/tio-do-isopor/idle.webp": {
+   "source": "13743aa29ea8dddfb7b4c153ca989ec692e79b6ff39b390b699ff2ff437bc0d9",
+   "lite": "d3d74b4f095975f4e765e56892cd6b65e84981908a0a9c071559c878cfb75293",
+   "bytes": 824488,
+   "liteBytes": 354676,
+   "psnr": 42.7,
+   "shownPsnr": 45.3
+  },
+  "enemies/tio-do-isopor/shove.webp": {
+   "source": "f4424ebc7b8ea062775bee2cd10da8fd8a08a9f74e9d34783c3f88a86de6312b",
+   "lite": "6efe67de7e22afc87587c46f4f4452daa0bd30011265a5e911da9697a64d44ef",
+   "bytes": 1069802,
+   "liteBytes": 448734,
+   "psnr": 41.9,
+   "shownPsnr": 44.7
+  },
+  "enemies/tio-do-isopor/walk.webp": {
+   "source": "87bbd6bd411198d7454562ba756e07c991e06edf1e03f8aba76f5d421bf0c748",
+   "lite": "40b050a27c92c7c63d0175c4b1bc30a1ce1c400ccb5f8c6a7aff7a2a3782ef28",
+   "bytes": 1054454,
+   "liteBytes": 423226,
+   "psnr": 42.4,
+   "shownPsnr": 45.2
+  },
+  "enemies/tiozinho-da-sinuca/aim.webp": {
+   "source": "4b66b1eeec509b191e7cf97c3a1e3b8272dfc425cc4a6983fac286c6df49127f",
+   "lite": "916339c2035e8773ba3294352849a172f7d964b2fefe8a2968abe9bb2d8facfd",
+   "bytes": 306032,
+   "liteBytes": 153052,
+   "psnr": 44.6,
+   "shownPsnr": 48.2
+  },
+  "enemies/tiozinho-da-sinuca/attack.webp": {
+   "source": "e9dd87db26579d33a9f8d2b5463dc25794f2338b08c86640aabee1f5410bde5f",
+   "lite": "f935d73ca75e14c64efdb6a7fddba237eb04f62f076f082854c1619122c78bbe",
+   "bytes": 337566,
+   "liteBytes": 160568,
+   "psnr": 43.6,
+   "shownPsnr": 47.5
+  },
+  "enemies/tiozinho-da-sinuca/death.webp": {
+   "source": "3956abc86365590f755fbbf7c946051d3cbca6776008331cfe1528e35684d404",
+   "lite": "b9e997026e3a9e9e708bdf80bf82355e10b330c96bf4805d296658c8d253b454",
+   "bytes": 536758,
+   "liteBytes": 272094,
+   "psnr": 44.5,
+   "shownPsnr": 47
+  },
+  "enemies/tiozinho-da-sinuca/hit.webp": {
+   "source": "7da41c41c3b3136773242fc2fc91d0666ff24d69a1859fdb0117011d83e6935f",
+   "lite": "b3f900fec08bfd7c2b235cced8d87d499c56a2cdabaac2bdac56c16c31d36e01",
+   "bytes": 152538,
+   "liteBytes": 75914,
+   "psnr": 44.6,
+   "shownPsnr": 47.7
+  },
+  "enemies/tiozinho-da-sinuca/idle.webp": {
+   "source": "48a88e0d6f8f79103d9ad9e4f311487fa41d6d9be1f679a957249460cc225391",
+   "lite": "dcd0b1b8f00f74456acd296992130a6b120b42b0882543a83d593dce3e7e3da0",
+   "bytes": 269138,
+   "liteBytes": 138876,
+   "psnr": 45.3,
+   "shownPsnr": 49.1
+  },
+  "enemies/tiozinho-da-sinuca/walk.webp": {
+   "source": "d29fb4835268814b0db643eb140b265b7aa37c68c66c9853a1d1fd13a197203a",
+   "lite": "cb326e83fb4967d13654ee2e8eee9e96125d9a6a04a60fb30d5a6e6304f8be8a",
+   "bytes": 412414,
+   "liteBytes": 209258,
+   "psnr": 44.6,
+   "shownPsnr": 47.2
+  },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",
    "lite": "340a88465f120851d8e719d09aee71f3eaf190897c9491cd45a566967e0eb80a",
@@ -872,9 +1480,9 @@
   }
  },
  "summary": {
-  "files": 110,
-  "bytes": 60345822,
-  "liteBytes": 27936196,
+  "files": 184,
+  "bytes": 97269938,
+  "liteBytes": 44338102,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36.6
  }

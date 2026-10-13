@@ -28,7 +28,7 @@ export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
+interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -47,9 +47,11 @@ export function createTeamStrip():HudPart{
     const badge=el('span','rh-member-badge',item),timer=el('span','rh-member-timer',item);
     // Room bot (D-025): the robot sticker on the portrait's other corner (the state sticker keeps its own).
     const bot=el('span','rh-member-bot',item);bot.hidden=true;
+    // KKKK (rostos-kkkk): the laugh sticker at the portrait's foot while ring[data-mood=rindo] (2.2 s, CSS shows it).
+    const mood=el('span','rh-member-mood',item);mood.innerHTML=icon('risada');mood.setAttribute('aria-hidden','true');
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
-    return {root:item,face,ring,fill,badge,bot,name,timer,classId:player.classId,last:new Map()};
+    return {root:item,face,ring,fill,badge,bot,mood,name,timer,classId:player.classId,last:new Map()};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -59,13 +61,16 @@ export function createTeamStrip():HudPart{
     ordered.forEach((player,index)=>{
       let nodes=members.get(player.id);
       if(!nodes){nodes=make(player,ctx);nodes.root.dataset.id=player.id;members.set(player.id,nodes);}
-      // Class and expression (normal, ferido at 30%, caido when down or out): setFace writes only what changed.
-      const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated});
+      // Class and expression (caido when down or out, rindo for 2.2 s after a KKKK, ferido at 30%, else normal):
+      // setFace writes only what changed.
+      const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated,emote:ctx.mood?.(player.id)});
       if(nodes.classId!==player.classId||nodes.face.dataset.face!==expression){nodes.classId=player.classId;setFace(nodes.face,player.classId,{expression,portrait:ctx.portrait});}
       if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
       const state=memberState(player),n=nodes;
       put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});
       put(n,'me',String(player.id===ctx.localId),v=>n.root.classList.toggle('rh-me',v==='true'));
+      // Today's crop is the same picture for every expression: the ring's data-mood is what makes the laugh read.
+      put(n,'mood',expression==='rindo'?'rindo':'',v=>{if(v)n.ring.dataset.mood=v;else delete n.ring.dataset.mood;});
       put(n,'bot',String(!!player.bot),v=>{n.bot.innerHTML=v==='true'?icon('robo'):'';n.bot.hidden=v!=='true';});
       put(n,'name',player.id===ctx.localId?'Você':firstName(player.name),v=>{n.name.textContent=v;});
       put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});

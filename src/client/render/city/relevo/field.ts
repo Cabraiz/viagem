@@ -8,7 +8,7 @@
  * Kinds and cover: one texel per CELL, width×height, sampled bilinear at the cell centre (uv = f / width), so masks
  * blend over half a cell and a single cell still shows (a per-corner share would wash a 1-cell patch out).
  *   kinds: R trodden snow (streets) · G plaza stones · B ice · A 255.
- *   cover: R rubble · G water · B cliff (cells under a `cliff` block: drawn as a rock ledge, not a box) · A 255.
+ *   cover: R rubble · G water · B cliff (cells under a `cliff` block: drawn as a rock slope, not a box) · A 255.
  * Fresh snow is what none of the masks claims. Alpha stays 255: an uploaded texture with alpha < 1 would be
  * premultiplied and lose its colour channels.
  */
@@ -45,6 +45,15 @@ export function cornerHeights(asset:CityAsset):Float32Array{
   return out;
 }
 
+/** Cells under a `cliff` block (1) — the relief draws them as rock slope instead of a box (cidade-caixas-de-cliff). */
+export function cliffCells(asset:CityAsset):Uint8Array{
+  const out=new Uint8Array(asset.width*asset.height);
+  for(const b of asset.blocks)if(b.kind==='cliff')for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)out[y*asset.width+x]=1;
+  return out;
+}
+/** The asset the city layer builds its boxes from when the relief is on: every block but the cliffs. */
+export const withoutCliffs=(asset:CityAsset):CityAsset=>({...asset,blocks:asset.blocks.filter(b=>b.kind!=='cliff')});
+
 export function reliefTextures(asset:CityAsset):ReliefTextures{
   const W=asset.width+1,H=asset.height+1,corners=cornerHeights(asset);
   let top=0;for(const h of corners)if(h>top)top=h;
@@ -56,12 +65,11 @@ export function reliefTextures(asset:CityAsset):ReliefTextures{
     field[t+3]=255;
   }
   const kinds=new Uint8Array(asset.width*asset.height*4),cover=new Uint8Array(asset.width*asset.height*4);
-  const cliff=new Uint8Array(asset.width*asset.height);
-  for(const b of asset.blocks)if(b.kind==='cliff')for(let y=b.y;y<b.y+b.h;y++)for(let x=b.x;x<b.x+b.w;x++)cliff[y*asset.width+x]=255;
+  const cliff=cliffCells(asset);
   for(let cy=0;cy<asset.height;cy++)for(let cx=0;cx<asset.width;cx++){
     const t=(cy*asset.width+cx)*4,k=groundAt(asset,cx,cy);
     kinds[t]=k==='packed'?255:0;kinds[t+1]=k==='cobble'?255:0;kinds[t+2]=k==='ice'?255:0;kinds[t+3]=255;
-    cover[t]=k==='rubble'?255:0;cover[t+1]=k==='water'?255:0;cover[t+2]=cliff[cy*asset.width+cx];cover[t+3]=255;
+    cover[t]=k==='rubble'?255:0;cover[t+1]=k==='water'?255:0;cover[t+2]=cliff[cy*asset.width+cx]*255;cover[t+3]=255;
   }
   return {field,fieldWidth:W,fieldHeight:H,kinds,cover,maxHeight};
 }

@@ -22,6 +22,7 @@ import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} fro
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
+import {cliffCells,withoutCliffs} from './relevo/field.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -152,6 +153,8 @@ export class CityLayer {
   private readonly still=reducedMotion();
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
+  /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
+  private readonly cliffs?:Uint8Array;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -159,10 +162,12 @@ export class CityLayer {
     this.depthOf=options.depthOf??(k=>k);
     const res=options.groundResolution;
     this.groundResolution=res!==undefined&&Number.isFinite(res)&&res>0?Math.min(res,4):GROUND_RESOLUTION;
-    // With the relief shader the WC3 cliff lines are rock ledges painted on the ground (relevo/shader.ts), not boxes:
-    // they get no pieces, columns or fades (cidade-caixas-de-cliff). The flat ground (?relevo=0, Canvas) keeps them.
+    // With the relief shader the WC3 cliff lines are rock slopes painted on the ground (relevo/shader.ts), not boxes:
+    // they get no pieces, columns, fades or ground decor (cidade-caixas-de-cliff). The flat ground (?relevo=0, Canvas)
+    // keeps them.
     const relief=reliefEnabled(scene);
-    const drawn=relief?{...asset,blocks:asset.blocks.filter(b=>b.kind!=='cliff')}:asset;
+    const drawn=relief?withoutCliffs(asset):asset;
+    if(relief)this.cliffs=cliffCells(asset);
     this.index=buildChunks(drawn);
     this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
     for(const b of drawn.blocks)this.blocks.set(b.id,b);
@@ -436,9 +441,10 @@ export class CityLayer {
     for(const q of quads)if(!painted.has(q.kind)){const k=this.materials.ground(q.kind);if(k)painted.set(q.kind,k);}
     // Ring cells first (their glints belong to the neighbour), then this chunk's decor exactly as groundDecor draws it.
     const decor:DecorPrim[]=[];
-    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind))
+    const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
+    for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
@@ -492,7 +498,7 @@ export class CityLayer {
     let glintCells=0;
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
-      if(!this.materials.decorOver(kind))continue;
+      if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
       let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);

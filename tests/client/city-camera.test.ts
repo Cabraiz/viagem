@@ -239,7 +239,7 @@ test('one terrain: island → city swaps the field with the re-fit; city → isl
 test('scene.ts keeps one terrain: fit, project and the walk read this.field; the city never gets the island ground, trees or landmarks',()=>{
   const src=readFileSync(fromRoot('src/client/scene.ts'),'utf8');
   assert.ok(!/cameraField|cameraTerrain/.test(src),'no second (camera) terrain');
-  assert.match(src,/worldCamera\(viewport,this\.field\)/,'fit() frames the scene\'s field');
+  assert.match(src,/worldCamera\(viewport,this\.field,this\.zoomNow\)/,'fit() frames the scene\'s field (at the player\'s zoom)');
   assert.match(src,/this\.terrainWatch\.sync\(this\.hooks\.net\?\.terrain\)\)this\.swapWorld\(\)/,'update() swaps by world, not by object');
   // The net's terrain is read in two places only: the constructor and the per-frame sync.
   assert.equal(src.match(/net\?\.terrain/g)?.length,2);

@@ -7,6 +7,7 @@ import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
+import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
@@ -82,6 +83,10 @@ export interface SceneHooks {
   economy?:boolean;
   /** The FPS watch saw the combat stay under 40 fps (coop, economy off): the shell turns economy on and says so. */
   slow?:()=>void;
+  /** The player's zoom at start (camera-zoom.ts: a factor on the follow zoom; default ZOOM_DEFAULT). */
+  zoom?:number;
+  /** The wheel or a pinch changed the wanted zoom (the shell saves it). */
+  zoomChanged?:(k:number)=>void;
 }
 type Graphics=Phaser.GameObjects.Graphics;
 const polygon=(g:Graphics,points:Point[],color:number,alpha=1)=>{
@@ -144,9 +149,15 @@ export class IslandScene extends Phaser.Scene {
   private allyFeet:Point[]=[];
   private position:Point={...SPAWN};
   private route:Point[]=[];
+  /** The player's zoom factor (camera-zoom.ts): wanted (wheel, pinch), on screen (eased toward it). */
+  private zoomWant=ZOOM_DEFAULT;
+  private zoomNow=ZOOM_DEFAULT;
+  /** The camera zoom the last time the eased zoom settled: what caches made for a zoom follow (city outline copies). */
+  private settledZoom=1;
+  private readonly pinch=new Pinch();
   private actor!:Phaser.GameObjects.Sprite;
   /** City mode (contorno-breu): screen-scale Breu outlines of every figure; built once, kept across world swaps. */
-  private outlines=new CityOutlines(this,{active:()=>isCityWorld(this.field),zoom:()=>this.cameras.main.zoom,
+  private outlines=new CityOutlines(this,{active:()=>isCityWorld(this.field),zoom:()=>this.settledZoom,
     groundLuminance:(x,y)=>this.city?cityGroundLuminance(this.city.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
   private shadow!:Phaser.GameObjects.Ellipse;
@@ -241,7 +252,7 @@ export class IslandScene extends Phaser.Scene {
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.zoomWant=this.zoomNow=clampZoom(hooks.zoom??ZOOM_DEFAULT);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -329,6 +340,23 @@ export class IslandScene extends Phaser.Scene {
       // Held from a spot with no way there (water) too: dragging out of it starts the walk.
       if(mouse)this.hold.press(target,this.time.now);
     });
+    // Zoom (camera-zoom-out-e-roda): the mouse wheel over the map, and a two-finger pinch on it (touch pointers on the
+    // canvas only: the stick captures its own finger). Phaser tracks one touch pointer, so the pinch reads the DOM.
+    this.input.on('wheel',(pointer:Phaser.Input.Pointer,_over:unknown,_dx:number,dy:number)=>{
+      const e=pointer.event as WheelEvent|undefined;
+      if(!this.paused)this.setZoom(wheelZoom(this.zoomWant,dy,e?.deltaMode??0,!!e?.ctrlKey));
+    });
+    const canvas=this.game.canvas;
+    if(canvas){
+      const touch=(e:PointerEvent)=>e.pointerType==='touch';
+      const down=(e:PointerEvent)=>{if(touch(e)&&this.pinch.down(e.pointerId,e.clientX,e.clientY))this.cancelWalk();};
+      const move=(e:PointerEvent)=>{if(!touch(e))return;const r=this.pinch.move(e.pointerId,e.clientX,e.clientY);if(r!==undefined&&r!==1&&!this.paused)this.setZoom(this.zoomWant*r);};
+      const up=(e:PointerEvent)=>{if(touch(e))this.pinch.up(e.pointerId);};
+      canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);
+      canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
+      const off=()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);};
+      this.events.once('shutdown',off);this.events.once('destroy',off);
+    }
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
@@ -454,8 +482,8 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
   private fit(){
-    const viewport=this.viewport(),camera=worldCamera(viewport,this.field);
-    this.zoom=camera.zoom;
+    const viewport=this.viewport(),camera=worldCamera(viewport,this.field,this.zoomNow);
+    this.zoom=camera.zoom;this.settledZoom=this.zoom;
     this.follow.world=camera.follow;this.setActorScale(camera.follow.scale);
     const at=this.watchPoint??this.smooth??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
@@ -477,6 +505,13 @@ export class IslandScene extends Phaser.Scene {
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
     if(!this.actor)return;
+    // The player's zoom eases toward the wanted one (wheel, pinch); the follow below centres at the new zoom.
+    if(this.zoomNow!==this.zoomWant){
+      this.zoomNow=easeZoom(this.zoomNow,this.zoomWant,delta);
+      this.zoom=worldCamera(this.viewport(),this.field,this.zoomNow).zoom;this.cameras.main.setZoom(this.zoom);
+      // Settled: the island's water re-fits once (not every frame of the ease), outline copies follow.
+      if(this.zoomNow===this.zoomWant){this.settledZoom=this.zoom;this.landscape?.fit(WATER_MARGIN);}
+    }
     // Out of the round, in the intermission and while following a teammate, nothing spawns against this screen: no budget.
     // The intermission has no spawns either, so the hero may go far from the centre (beside the round offer window).
     const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
@@ -540,6 +575,14 @@ export class IslandScene extends Phaser.Scene {
    * mouse button's follow (a walk already ordered by a click goes on to its marker, like a tap's).
    */
   releaseInput(){this.hold.release();this.input.keyboard?.resetKeys();}
+  /** The player's zoom factor (camera-zoom.ts), clamped; eased on screen and saved by the shell. */
+  setZoom(k:number){
+    const next=clampZoom(k);if(next===this.zoomWant)return;
+    this.zoomWant=next;this.hooks.zoomChanged?.(next);
+  }
+  get zoomFactor(){return this.zoomWant;}
+  /** A pinch began over a tap: the walk the first finger started is dropped (the map was only being zoomed). */
+  private cancelWalk(){this.route=[];this.destination?.clear();this.hold.release();this.markerUntil=undefined;}
   /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
   goTo(target:Point,options:{markerMs?:number}={}){
     if(this.paused||!this.actor)return;

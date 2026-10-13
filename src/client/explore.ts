@@ -26,6 +26,7 @@ import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
+import {loadZoom,saveZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 
@@ -324,6 +325,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   }
   // Economy mode (VGM-048): 30 fps and fewer effects; persisted on this phone, turned on by itself when the game chokes.
   let economy:EconomySettings=loadEconomy(economyStore());
+  let zoomSave:ReturnType<typeof setTimeout>|undefined;
   const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
   economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag"></span></span>'
     +'<span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span>';
@@ -487,6 +489,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
       economy:economy.on,slow,
+      // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
+      zoom:loadZoom(economyStore()),zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
       ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });

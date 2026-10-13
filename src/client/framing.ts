@@ -57,11 +57,13 @@ export const HERO_SHORT_RATIO=HERO_MIN_SCREEN_PX/390;
  * of the VS ratio and the floor ratio of the short side, never under 56 CSS px, and the camera never shows more world
  * than the off-screen contract allows (offscreen.ts: VISIBLE_SHORT_PX × VISIBLE_LONG_PX world px), so nothing the
  * director spawns "off screen" can pop up on this phone.
+ * `k` is the player's zoom (camera-zoom.ts, D-046): a factor on that hero size, 1 = today's, < 1 shows more world —
+ * still never more than the contract.
  */
-export function followZoom(viewport:Viewport){
+export function followZoom(viewport:Viewport,k=1){
   const short=Math.max(1,Math.min(viewport.width,viewport.height)),long=Math.max(1,viewport.width,viewport.height);
   const hero=Math.max(HERO_MIN_SCREEN_PX,short*Math.max(VS_HERO_SHORT_RATIO,HERO_SHORT_RATIO));
-  return Math.max(hero/HERO_WORLD_PX,short/VISIBLE_SHORT_PX,long/VISIBLE_LONG_PX);
+  return Math.max(hero*k/HERO_WORLD_PX,short/VISIBLE_SHORT_PX,long/VISIBLE_LONG_PX);
 }
 
 /** Smoothing time constant of the follow (UX-camera-segue 3: 120-200 ms). */
@@ -112,13 +114,13 @@ export function followWorld(terrain:WorldOf):FollowWorld{
  * never more world than the off-screen contract scaled by CITY_VIEW_SCALE (what sim/city/avenues.ts cityVisible
  * assumes). On a wider phone that keeps the hero at the endless map's share of the short side.
  */
-export function cityZoom(viewport:Viewport){
+export function cityZoom(viewport:Viewport,k=1){
   const w=Math.max(1,viewport.width),h=Math.max(1,viewport.height),short=Math.min(w,h),long=Math.max(w,h);
   const floor=zoomFor(CITY_PROFILE,w,h).pixelsPerUnit/(TILE_X*Math.SQRT2);
-  return Math.max(floor,short/(VISIBLE_SHORT_PX*CITY_VIEW_SCALE),long/(VISIBLE_LONG_PX*CITY_VIEW_SCALE));
+  return Math.max(floor*k,short/(VISIBLE_SHORT_PX*CITY_VIEW_SCALE),long/(VISIBLE_LONG_PX*CITY_VIEW_SCALE));
 }
-/** The follow zoom of a terrain: cityZoom in the city, followZoom (unchanged) on the island and the endless map. */
-export function worldZoom(viewport:Viewport,terrain:WorldOf){return isCityWorld(terrain)?cityZoom(viewport):followZoom(viewport);}
+/** The follow zoom of a terrain at the player's zoom `k`: cityZoom in the city, followZoom on the island and the endless map. */
+export function worldZoom(viewport:Viewport,terrain:WorldOf,k=1){return isCityWorld(terrain)?cityZoom(viewport,k):followZoom(viewport,k);}
 /**
  * The horde's legibility multiplier for text, balloons and markers (HordeRendererOptions.uiScale): ≥ 1 under ~0.55 of
  * the endless-map-equivalent zoom (zoom × scale), times `scale`, so a city number or balloon reads at the same CSS size.

@@ -15,8 +15,11 @@ import {groundZ,type CityAsset} from './asset.ts';
 import {CITY_PALETTE,OUTSIDE_CITY,mixColor} from './palette.ts';
 import {VIEW_PIVOT,project,type Pt} from './projection.ts';
 
-/** Number of rings and their width in cells: about 9 cells of fog, past the farthest the camera shows beyond the edge wall. */
-export const FOG_RINGS=7;
+/**
+ * Number of rings and their width in cells: about 11 cells of fog, past the farthest the camera shows beyond the edge
+ * wall at the widest player zoom (camera-zoom.ts ZOOM_MIN shows 1.27× today's width: 9 rings, was 7).
+ */
+export const FOG_RINGS=9;
 export const FOG_RING_CELLS=1.25;
 /** Edge 0 is the near snow pulled this far toward Breu: darker than every walkable ground, so it never reads as street. */
 export const FOG_START=0.5;

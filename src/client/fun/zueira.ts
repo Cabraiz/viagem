@@ -21,6 +21,8 @@ export const CRITTER_NAMES:Readonly<Record<string,{one:string;the:string}>>={
   bebado:{one:'um bêbado do boteco',the:'o bêbado'},'anao-molotov':{one:'um anão do molotov',the:'o anão do molotov'},
   pombos:{one:'um bando de pombos',the:'os pombos'},'tio-pave':{one:'um tio do pavê',the:'o tio do pavê'},
   agiota:{one:'um agiota',the:'o agiota'},chefe:{one:'o síndico',the:'o síndico'},
+  coach:{one:'um coach quântico',the:'o coach'},motoboy:{one:'um motoboy kamikaze',the:'o motoboy'},
+  influencer:{one:'um influencer de academia',the:'o influencer'},
 };
 const critter=(kind?:string)=>CRITTER_NAMES[kind??'']??{one:'um bicho',the:'o bicho'};
 
@@ -33,6 +35,9 @@ export const KILLCAM_KIND_LINES:Readonly<Record<string,readonly string[]>>={
   agiota:['{n} quitou o último agiota. Sem juros.'],'tio-pave':['O tio do pavê engasgou com a própria piada.'],
   pombos:['{n} depenou o último pombo. Cruu.'],bebado:['{n} deu PT no último bêbado.'],
   'anao-molotov':['O anão do molotov explodiu a própria cinta.'],
+  // Elenco P1 (humor-reviewed).
+  coach:['{n} saiu do último funil de vendas.'],motoboy:['{n} cancelou o último pedido.'],
+  influencer:['{n} tirou o último influencer do ar.'],
 };
 export const KILLCAM_ALONE:readonly string[]=['Caiu sozinho. Ninguém assume.','Desistiu de cansaço.'];
 /**

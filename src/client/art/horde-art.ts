@@ -18,9 +18,12 @@ import {queueTelegraphArt} from '../render/telegraph-art.ts';
  * Today's enemy kind → art id in the `inimigos` group (scripts/art-v2/spec.mjs). D-033/D-036 already renamed the
  * client kinds (gosma → bebado, pernilongo → pombos, fiscal → agiota; tio-pave, anao-molotov and chefe kept theirs),
  * so the map is the identity today; it stays a table so a later rename on either side is one line.
+ * Elenco P1 (coach, motoboy, influencer): no piece in the importer yet, so they stay procedural (render/textures.ts,
+ * with their acting pose) until the manifest lists them under these ids; nothing else changes when it does.
  */
 export const ENEMY_ART_ID:Readonly<Record<EnemyKind,string>>={
   bebado:'bebado','anao-molotov':'anao-molotov',pombos:'pombos','tio-pave':'tio-pave',agiota:'agiota',chefe:'chefe',
+  coach:'coach',motoboy:'motoboy',influencer:'influencer',
 };
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;

@@ -9,6 +9,7 @@ import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,spawnProjectile} from '../projectiles.ts';
+import {isPriorityTarget} from '../enemies/catalog.ts';
 
 /** Speed and life of sandals flung by the evolved orbit. */
 const FLING_SPEED=8,FLING_SECONDS=1,FLING_PIERCE=2;
@@ -35,7 +36,10 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   const cap=opts.cap??PROJECTILE_CAP,catalog=opts.catalog??weaponCatalog;
   const scratch:EnemyState[]=[];
 
-  /** Up to `count` live enemies within range: the player's tap target first (if valid), then nearest, ties by id. */
+  /**
+   * Up to `count` live enemies within range: the player's tap target first (if valid), then the live coaches in range
+   * (priority target, enemies/catalog.ts isPriorityTarget; nearest first), then nearest, ties by id.
+   */
   function targets(ctx:SimContext,player:SimPlayer,range:number,count:number):EnemyState[]{
     const out:EnemyState[]=[];
     const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range;
@@ -45,8 +49,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     scratch.length=0;
     ctx.enemyIndex.query(player.x,player.y,range,scratch);
     const rest=scratch.filter(e=>e!==preferred&&inRange(e))
-      .map(e=>({e,d:Math.hypot(e.x-player.x,e.y-player.y)}))
-      .sort((a,b)=>a.d-b.d||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
+      .map(e=>({e,d:Math.hypot(e.x-player.x,e.y-player.y),first:isPriorityTarget(e)?0:1}))
+      .sort((a,b)=>a.first-b.first||a.d-b.d||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
     for(const {e} of rest){if(out.length>=count)break;out.push(e);}
     return out;
   }

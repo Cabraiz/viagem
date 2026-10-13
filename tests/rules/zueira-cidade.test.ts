@@ -6,7 +6,8 @@ import {
   CIDADE_VEHICLE,CIDADE_ZUEIRA,LABEL_MAX,cidadeModifierLabel,type CidadeModifier,
 } from '../../src/rules/zueira-cidade.ts';
 import {BOSS_ROUND_NAMES,ELITE_ROUND_NAMES,MODIFIERS,REGULAR_KINDS,RETREAT_LINES,ROUNDS,ROUND_NAMES,THREAT,modifierLabel} from '../../src/rules/waves.ts';
-import {BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,PUDDLE_SLIP_LINES} from '../../src/sim/enemies/catalog.ts';
+import {BUFFED_LINES,BURP_SLOW_LINES,DEVENDO_LINES,ELITE,ENEMIES,ENEMY_KINDS,FIRE_GROUND_LINES,MARMITA_BOOM_LINES,MOTOBOY_HONK_LINES,PALESTRA_LINES,POSE_LINES,
+  PUDDLE_SLIP_LINES,REFLECT_LINES} from '../../src/sim/enemies/catalog.ts';
 import {BOSS_LINES,BOSS_NAME} from '../../src/sim/boss.ts';
 import {DEATH_LINES,GENERIC_LINES} from '../../src/client/render/jokes.ts';
 import {CAUSE_COPY} from '../../src/client/hud/cause.ts';
@@ -202,6 +203,7 @@ test('the modifiers the card asks for are present by intent',()=>{
 const gameText=[
   ...Object.values(ENEMIES).flatMap(e=>[e.name,...e.barks,...e.deathLines,...e.reactionLines]),
   ELITE.name,...ELITE.barks,...ELITE.deathLines,...DEVENDO_LINES,...FIRE_GROUND_LINES,...PUDDLE_SLIP_LINES,...BURP_SLOW_LINES,
+  ...PALESTRA_LINES,...BUFFED_LINES,...MOTOBOY_HONK_LINES,...MARMITA_BOOM_LINES,...POSE_LINES,...REFLECT_LINES,
   BOSS_NAME,...Object.values(BOSS_LINES).flat(),...ROUND_NAMES,...ELITE_ROUND_NAMES,...BOSS_ROUND_NAMES,...RETREAT_LINES,
   ...MODIFIERS.map(modifierLabel),
   ...GENERIC_LINES,...Object.values(DEATH_LINES).flat(),...Object.values(CAUSE_COPY).flatMap(c=>[c.name,c.line]),

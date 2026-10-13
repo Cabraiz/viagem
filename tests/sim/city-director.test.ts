@@ -713,7 +713,9 @@ test('DirectorState with avenues survives a JSON round-trip mid-round; the copy 
  * on main before cidade-05 (e4aa2b4, no `avenues` option); a card that changes island/endless director behavior on
  * purpose re-records it (run this scenario on the new tree and paste the hashes). Re-recorded for the D-033 cast
  * (NEW-20261012-ORQ-elenco-adult-swim): the wave tables (rules/waves.ts kinds, weights, threat, names) changed, the
- * director did not; this tree with main's waves.ts gives the old hashes exactly.
+ * director did not; this tree with main's waves.ts gives the old hashes exactly. Re-recorded again for the P1 trio
+ * (NEW-20261012-ORQ-elenco-p1-coach-motoboy-influencer: coach, motoboy and influencer in the round weights); the same
+ * tree with 58762ac's round table gives the previous hashes exactly.
  */
 function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:AvenuePlanner){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -733,10 +735,10 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
   return {hash:createHash('sha256').update(json).digest('hex').slice(0,16),created:log.created.length,stage:director.state.stage};
 }
 const BASELINE:Readonly<Record<string,string>>={
-  'ilha kill=40 seed 0':'d98b496235de6e81','ilha kill=40 seed 1':'7ae1e2388b5d42c3',
-  'ilha kill=Infinity seed 0':'6b50e7fb7d8c36ee',
-  'infinito kill=40 seed 0':'2dba07886dacfe7a','infinito kill=40 seed 1':'93c150d8da968569',
-  'infinito kill=Infinity seed 0':'b2b533356079e5ed',
+  'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'86b157f14b0e8736',
+  'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
+  'infinito kill=40 seed 0':'f9c337c51e590c1b','infinito kill=40 seed 1':'648bbcf72c5dacd6',
+  'infinito kill=Infinity seed 0':'9a35543634679798',
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

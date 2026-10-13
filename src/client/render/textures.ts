@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {tokenColor} from '../ui/tokens.ts';
-import {ENEMY_ART,ELITE_SCALE,ENEMY_KINDS,FX,PICKUP_KINDS,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ELITE_SCALE,ENEMY_KINDS,FX,PICKUP_KINDS,PICKUP_SIZE,enemyTexture,hasActingPose,pickupTexture,type EnemyKind} from './keys.ts';
 
 type G=Phaser.GameObjects.Graphics;
 type Shape=['c',number,number,number]|['e',number,number,number,number]|['r',number,number,number,number,number]|['p',number[]];
@@ -250,10 +250,147 @@ function drawChefe(g:G):Head{
   return {x:0,y:-158};
 }
 
+/*
+ * Elenco P1 (NEW-20261012-ORQ-elenco-p1, design/arte-v2.md §4): procedural until their imported art exists. Each has an
+ * idle pose and an acting pose (`act`, EnemyView.phase 1): the coach lifts his whiteboard, the motoboy lights his
+ * headlight and leans into the charge, the influencer flexes for the selfie. Silhouettes apart from the rest of the
+ * cast at phone size: tall thin blue suit with a white board (coach), wide bike with a big green cube bag (motoboy),
+ * broad V torso in hot pink with a phone up on a stick (influencer).
+ */
+function drawCoach(g:G,act=false):Head{
+  const suit=0x2f63d8,suitL=0x14306e,skin=0xf1c7a3,skinL=0xc59775,tie=0xe0407a,board=0xfbfbf6,frame=0x8a93a3;
+  sil(g,[['e',-8,-2.5,14,6],['e',8,-2.5,14,6]],0x1a1620,0x07060a);
+  g.fillStyle(0xffffff,.5).fillEllipse(-10,-3.5,4,1.5,8).fillEllipse(6,-3.5,4,1.5,8);
+  sil(g,[['r',-10,-30,8,28,2.5],['r',2,-30,8,28,2.5]],suit,suitL);
+  // Tight jacket: narrow waist, pointy shoulders, white shirt V and a loud tie.
+  sil(g,[['p',[-17,-62,17,-62,13,-40,11,-27,-11,-27,-13,-40]]],suit,suitL);
+  poly(g,[-6,-62,6,-62,0,-44],0xffffff);
+  sil(g,[['p',[-2.5,-60,2.5,-60,3.5,-47,0,-42,-3.5,-47]]],tie,0x8a1f45,1);
+  poly(g,[-6,-62,-11,-58,-2,-44],0x2553b8);poly(g,[6,-62,11,-58,2,-44],0x2553b8);
+  g.fillStyle(0xf6d05a).fillCircle(-1,-34,1.6).fillCircle(-1,-29.5,1.6);
+  // Whiteboard: under the arm at rest, raised over the head while lecturing (a chart going up).
+  const whiteboard=(x:number,y:number,w:number,h:number)=>{
+    sil(g,[['r',x,y,w,h,2]],board,frame,2.4);
+    line(g,[x+4,y+h-6,x+w*.35,y+h*.55,x+w*.55,y+h*.68,x+w-6,y+6],0xd2392f,act?3:2.2);
+    poly(g,[x+w-10,y+4,x+w-3,y+3,x+w-5,y+10],0xd2392f);
+    g.fillStyle(0x2b2733).fillRect(x+3,y+h-4,w-6,1.3);
+  };
+  if(act){
+    // Right arm straight up holding the board; left arm pointing at the crowd.
+    line(g,[12,-58,20,-80],suitL,8.5);line(g,[12,-58,20,-80],suit,6);
+    whiteboard(1,-104,36,25);
+    sil(g,[['c',20,-82,4.2]],skin,skinL,1.4);
+    line(g,[-13,-57,-29,-50],suitL,8.5);line(g,[-13,-57,-29,-50],suit,6);
+    sil(g,[['c',-31,-49.5,4]],skin,skinL,1.4);line(g,[-33,-50,-39,-52],skin,2.6);
+  }else{
+    whiteboard(-34,-56,22,30);
+    line(g,[-13,-58,-17,-38],suitL,8.5);line(g,[-13,-58,-17,-38],suit,6);
+    sil(g,[['c',-17,-37,4]],skin,skinL,1.4);
+    line(g,[13,-58,18,-42,11,-34],suitL,8.5);line(g,[13,-58,18,-42,11,-34],suit,6);
+    sil(g,[['c',11,-34,3.8]],skin,skinL,1.4);
+  }
+  // Head with a tall glossy pompadour, a gleaming smile and the headset.
+  sil(g,[['r',-3,-66,6,5,1],['c',0,-75,12.5],['c',-12.5,-74,3],['c',12.5,-74,3]],skin,skinL);
+  sil(g,[['p',[-13,-78,-12,-88,-4,-95,8,-96,15,-90,13,-80,6,-86,-4,-84]]],0x3a2418,0x1a0e08,1.4);
+  g.fillStyle(0xffffff,.5).fillEllipse(2,-92,10,3,10);
+  eye(g,-5,-76,4.5,5.5);eye(g,5,-76,4.5,5.5);
+  line(g,[-9,-81,-2,-80],0x3a2418,1.8);line(g,[2,-80,9,-81],0x3a2418,1.8);
+  if(act){sil(g,[['e',0,-67.5,9,6]],0x7a2430,0x3a1018,1);g.fillStyle(0xffffff).fillRect(-3.5,-70,7,1.8);}
+  else{sil(g,[['p',arcPts(0,-70,5.5,.1,Math.PI-.1,10)]],0xffffff,0x5a2a2a,1);}
+  g.lineStyle(2,0x1e1a22).strokePoints(pts(arcPts(0,-76,13.5,Math.PI*1.05,Math.PI*1.95,12)),false);
+  sil(g,[['r',-15,-79,4,8,1.5]],0x1e1a22,0x000000,.6);
+  line(g,[-13,-72,-9,-67,-4,-66.5],0x1e1a22,1.6);g.fillStyle(0x1e1a22).fillCircle(-3.5,-66.5,1.8);
+  return {x:0,y:-96};
+}
+
+function drawMotoboy(g:G,act=false):Head{
+  const bike=0x3d7fc4,bikeL=0x1c3f68,bag=0x8cc63f,bagL=0x3f6a18,jacket=0x3a3f4a,jacketL=0x1a1d24;
+  const lean=act?4:0;
+  // Speed lines and exhaust while he charges.
+  if(act){line(g,[-50,-30,-36,-30],0xffffff,2.2,.9);line(g,[-48,-21,-38,-21],0xffffff,2,.8);line(g,[-46,-40,-38,-40],0xffffff,1.8,.7);
+    g.fillStyle(0xd8d4dc,.9).fillCircle(-40,-12,4.5).fillCircle(-46,-15,3.2);}
+  // Wheels.
+  for(const x of [-26,26]){sil(g,[['c',x,-10,9.5]],0x2b2733,0x0c0a0e,1.2);g.fillStyle(0xa9b0bc).fillCircle(x,-10,4);g.fillStyle(0x5a6070).fillCircle(x,-10,1.6);}
+  // Scooter body: rear cowl, floor, front shield and handlebar.
+  sil(g,[['p',[-34,-16,-30,-28,-8,-30,-2,-18,14,-18,18,-44,26,-46,30,-18,22,-12,-28,-12]]],bike,bikeL,1.6);
+  g.fillStyle(0xffffff,.35).fillEllipse(-20,-26,14,3,10);
+  line(g,[22,-44,18,-54],0x2b2733,2.6);line(g,[14,-55,24,-53],0x2b2733,2.8);
+  // Headlight: a dull lens at rest, lit while aiming (layers.ts pulses a glow over it).
+  if(act){g.fillStyle(0xfff2a8,.35).fillCircle(31,-38,9);g.fillStyle(0xfff2a8,.55).fillTriangle(33,-41,50,-48,50,-30);}
+  sil(g,[['c',29,-38,4.2]],act?0xfff6c8:0xc9ccd4,bikeL,1.4);
+  if(act)g.fillStyle(0xffffff).fillCircle(29.5,-38.5,2.2);
+  g.save().translateCanvas(lean,0);
+  // Rider: leg on the floor, jacket leaning to the bars.
+  sil(g,[['p',[-12,-30,4,-28,8,-18,2,-16,-2,-24,-14,-24]]],0x3a4f7a,0x1e2a44,1.4);
+  sil(g,[['e',6,-17,9,4.5]],0x1a1620,0x07060a,1);
+  sil(g,[['p',[-16,-52,-4,-58,6,-50,4,-30,-14,-28]]],jacket,jacketL);
+  line(g,[0,-52,16,-52],jacketL,7);line(g,[0,-52,16,-52],jacket,4.6);
+  sil(g,[['c',17,-53,3.2]],0x2b2733,0x0c0a0e,1);
+  // The big thermal bag on his back: the read of the motoboy at phone size.
+  sil(g,[['r',-42,-70,26,26,3]],bag,bagL,1.8);
+  poly(g,[-16,-70,-11,-66,-11,-41,-16,-44],0x6a9e2a);poly(g,[-42,-70,-37,-74,-11,-74,-16,-70],0xb5e070);
+  line(g,[-38,-74,-14,-74],bagL,1.2);
+  // Lunch box (marmita) icon on the bag: a tin with its lid.
+  sil(g,[['r',-36,-60,14,9,2]],0xf4f1ea,bagL,1);
+  g.fillStyle(0xb9c0ca).fillRect(-37,-62,16,3);g.fillStyle(0x2b2733).fillRect(-31,-64,4,2);
+  line(g,[-18,-66,-8,-55],0x2b2733,2);
+  // Full-face helmet: white with a red stripe and a dark visor.
+  sil(g,[['c',0,-66,11.5]],0xf4f1ea,0x6b6470,1.6);
+  g.fillStyle(0xd2392f).fillRect(-3,-77.5,5,23);
+  sil(g,[['p',[1,-71,12,-70,11,-61,2,-62]]],0x1e1a2a,0x000000,.8);
+  g.fillStyle(0x7fd0e0,.8).fillRect(4,-69,5,1.5);
+  if(act)line(g,[3,-73,10,-71.5],0xd2392f,2); // angry brow painted on the visor rim
+  g.restore();
+  return {x:lean,y:-78};
+}
+
+function drawInfluencer(g:G,act=false):Head{
+  const skin=0xd9a070,skinL=0x9a6a40,top=0xff4fa0,topL=0x9a1f5a;
+  sil(g,[['e',-9,-3,15,6],['e',9,-3,15,6]],0xffffff,0x8a8296);
+  g.fillStyle(0x3fc0c8).fillRect(-14,-4,10,1.6).fillRect(4,-4,10,1.6);
+  sil(g,[['r',-12,-34,10,30,3],['r',2,-34,10,30,3]],0x8a8f9c,0x4a4f5c);
+  // Broad V torso in a hot pink tank top, with big round shoulders.
+  sil(g,[['p',[-24,-66,24,-66,14,-34,-14,-34]],['c',-21,-62,8],['c',21,-62,8]],skin,skinL);
+  sil(g,[['p',[-14,-66,-7,-66,0,-58,7,-66,14,-66,13,-34,-13,-34]]],top,topL,1.4);
+  g.fillStyle(0xffffff,.35).fillEllipse(-6,-50,6,12,10);
+  sil(g,[['r',-14,-37,28,6,2]],0x2b2733,0x000000,1);
+  // Phone on the selfie stick, recording (red dot).
+  const phone=(x:number,y:number)=>{
+    sil(g,[['r',x-5,y-8,10,16,2]],0x1e1a22,0x000000,1);
+    g.fillStyle(0x7fd0e0,.9).fillRect(x-3.5,y-6,7,11);g.fillStyle(0xd2392f).fillCircle(x+2,y-4,1.7);
+  };
+  line(g,[18,-50,32,-80],0x6b6470,2.2);
+  phone(33,-84);
+  if(act){
+    // Flex for the selfie: left arm up and bent, big biceps, sparkles.
+    line(g,[-24,-62,-34,-70,-30,-84],skinL,11);line(g,[-24,-62,-34,-70,-30,-84],skin,8.5);
+    sil(g,[['c',-33,-73,6.5]],skin,skinL,1.6);sil(g,[['c',-30,-86,4.5]],skin,skinL,1.4);
+    line(g,[24,-62,26,-56,19,-50],skinL,11);line(g,[24,-62,26,-56,19,-50],skin,8.5);
+    sil(g,[['c',27,-58,6]],skin,skinL,1.6);
+    sparkle(g,-40,-80,4.5,0xfff3c0);sparkle(g,34,-66,3.5,0xfff3c0);
+  }else{
+    // Left hand holds a protein shaker; right hand holds the stick up.
+    line(g,[-24,-62,-28,-44],skinL,11);line(g,[-24,-62,-28,-44],skin,8.5);
+    sil(g,[['r',-33,-46,10,14,3],['r',-32,-49,8,4,1]],0xf4f1ea,0x8a8296,1.2);g.fillStyle(0x3fc0c8).fillRect(-33,-41,10,3);
+    line(g,[24,-62,26,-54,19,-50],skinL,11);line(g,[24,-62,26,-54,19,-50],skin,8.5);
+  }
+  sil(g,[['c',19,-50,4]],skin,skinL,1.4);
+  // Small head, bleached quiff, cyan headband, shiny smile.
+  sil(g,[['r',-4,-71,8,6,1],['c',0,-79,11]],skin,skinL);
+  sil(g,[['p',[-11,-82,-9,-90,-1,-95,10,-93,12,-84,4,-88]]],0xf4d35e,0xb08328,1.3);
+  sil(g,[['r',-11.5,-85,23,3.6,1.5]],0x3fc0c8,0x1f7a80,1);
+  eye(g,-4.5,-79,4,5);eye(g,4.5,-79,4,5);
+  line(g,[-8,-83.5,-2,-83],0x9a6a40,1.4);line(g,[2,-83,8,-83.5],0x9a6a40,1.4);
+  if(act)sil(g,[['e',0,-72.5,6,3.4]],0xe86a8a,0x9a2a4a,1);
+  else{sil(g,[['p',arcPts(0,-74,4.5,.15,Math.PI-.15,8)]],0xffffff,0x6a3a2a,1);sparkle(g,4,-73,2.4,0xffffff);}
+  return {x:0,y:-95};
+}
+
 /** The tio do pavê is heavier in D-033: the same drawing, 1.15× (ENEMY_ART grows with it). */
 const TIO_SCALE=1.15;
 const drawTioPaveHeavy=(g:G):Head=>{g.save().scaleCanvas(TIO_SCALE,TIO_SCALE);const h=drawTioPave(g);g.restore();return {x:h.x*TIO_SCALE,y:h.y*TIO_SCALE};};
-const DRAW:Record<EnemyKind,(g:G)=>Head>={bebado:drawBebado,'anao-molotov':drawAnaoMolotov,pombos:drawPombos,'tio-pave':drawTioPaveHeavy,agiota:drawAgiota,chefe:drawChefe};
+const DRAW:Record<EnemyKind,(g:G,act?:boolean)=>Head>={bebado:drawBebado,'anao-molotov':drawAnaoMolotov,pombos:drawPombos,'tio-pave':drawTioPaveHeavy,agiota:drawAgiota,chefe:drawChefe,
+  coach:drawCoach,motoboy:drawMotoboy,influencer:drawInfluencer};
 
 function crown(g:G,x:number,y:number){
   sil(g,[['p',[x-8,y,x-9,y-10,x-4.5,y-6,x,y-12,x+4.5,y-6,x+9,y-10,x+8,y]],['r',x-8,y-3,16,4,1]],0xf6d05a,0xb08328,1.5);
@@ -266,13 +403,13 @@ function aura(g:G,x:number,y:number,w:number,h:number){
   sparkle(g,x-w*.48,y-h*.9,3.5,0xfff3c0);sparkle(g,x+w*.46,y-h*.6,3,0xfff3c0);
 }
 
-function drawEnemy(g:G,kind:EnemyKind,elite:boolean){
+function drawEnemy(g:G,kind:EnemyKind,elite:boolean,act=false){
   const a=ENEMY_ART[kind];
-  if(!elite){g.save().translateCanvas(a.width/2,a.originY*a.height);DRAW[kind](g);g.restore();return;}
+  if(!elite){g.save().translateCanvas(a.width/2,a.originY*a.height);DRAW[kind](g,act);g.restore();return;}
   const W=Math.ceil(a.width*ELITE_SCALE),H=Math.ceil(a.height*ELITE_SCALE),feet=a.originY*H;
   const s=Math.min(1.22,ELITE_SCALE-9/(a.originY*a.height)),ah=Math.min(a.width*.32,((1-a.originY)*H+3)*2-2);
   aura(g,W/2,H-1-ah/2,a.width*.95,ah);
-  g.save().translateCanvas(W/2,feet).scaleCanvas(s,s);const head=DRAW[kind](g);g.restore();
+  g.save().translateCanvas(W/2,feet).scaleCanvas(s,s);const head=DRAW[kind](g,act);g.restore();
   crown(g,W/2+head.x*s,feet+head.y*s+5);
   badge(g,W/2+head.x*s*.5+7,feet+head.y*s*.48);
 }
@@ -379,6 +516,11 @@ export function ensureHordeTextures(scene:Phaser.Scene):void {
     const a=ENEMY_ART[kind];
     make(enemyTexture(kind),a.width,a.height,g=>drawEnemy(g,kind,false));
     if(kind!=='chefe')make(enemyTexture(kind,true),Math.ceil(a.width*ELITE_SCALE),Math.ceil(a.height*ELITE_SCALE),g=>drawEnemy(g,kind,true));
+    // Elenco P1: the acting pose (EnemyView.phase 1), plain and elite, the same size as the idle one.
+    if(hasActingPose(kind)){
+      make(enemyTexture(kind,false,true),a.width,a.height,g=>drawEnemy(g,kind,false,true));
+      make(enemyTexture(kind,true,true),Math.ceil(a.width*ELITE_SCALE),Math.ceil(a.height*ELITE_SCALE),g=>drawEnemy(g,kind,true,true));
+    }
   }
   for(const kind of PICKUP_KINDS){
     const {width,height}=PICKUP_SIZE[kind];

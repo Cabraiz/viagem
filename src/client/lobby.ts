@@ -227,7 +227,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   const preloader=options.preload===false?undefined:createPreloader();
   let preloadKey='';
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
-  panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button">Chamar a turma</button></div>
+  panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button"><span class="coop-wait-share-icon" aria-hidden="true">${icon('aviao',{size:24})}</span><span class="coop-wait-share-text">Chamar a turma</span></button></div>
     <div class="coop-wait-news" role="alert" hidden><strong></strong><span></span></div>
     <p class="coop-wait-owner" role="status" hidden></p>
     <p class="coop-wait-headline" role="status" aria-live="polite"></p>
@@ -241,7 +241,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   const link=()=>shareLink(options.origin??location.origin,client.code,inviteQuery(location.search));
   const shareButton=$<HTMLButtonElement>('.coop-wait-share');
   shareButton.addEventListener('click',async()=>{
-    const say=(text:string)=>{shareButton.textContent=text;setTimeout(()=>{shareButton.textContent='Chamar a turma';},2500);};
+    // Only the label changes (the icon stays); on a short landscape window the label floats (coop.css), so it never adds a row.
+    const label=shareButton.querySelector<HTMLElement>('.coop-wait-share-text')!;
+    const say=(text:string)=>{label.textContent=text;shareButton.classList.add('is-saying');setTimeout(()=>{label.textContent='Chamar a turma';shareButton.classList.remove('is-saying');},2500);};
     try{
       if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');

@@ -175,3 +175,30 @@
   .coop-wait.is-owner .coop-wait-members li:not(:has(>button)){grid-column:auto;justify-self:stretch;min-height:48px;font-size:var(--t-13)}
   .coop-wait.is-owner .coop-wait-members li:not(:has(>button))>span:not(.sr-only){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 .coop-wait .coop-wait-ready{min-height:48px}
+/* Espera na paisagem sem rolagem (BUG-20261013-E4-espera-convidado-paisagem-rola): with a low window the member list is
+   a grid for both roles, three narrow columns with "…" on long names, instead of the guest's one chip per row (6 chips =
+   258 px) or the owner's two 148 px columns (3 rows, still too tall at 667×375). Measured at 844×390 and 667×375, 100%
+   and 125%, with 6 players. */
+@media(max-height:500px){
+  .coop-wait .coop-wait-members,.coop-wait.is-owner .coop-wait-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+  .coop-wait .coop-wait-members li{min-width:0}
+  .coop-wait .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .coop-wait-members:has(.is-bot){row-gap:10px}
+  /* Tighter spacing: at 667×375 and 125% the owner's window is the tightest case. */
+  .coop-wait{padding:8px}
+  .coop-wait-headline{margin:4px 0 2px}
+  .coop-wait-line{margin:2px 0}
+  .coop-wait-actions{margin-top:4px}
+  /* The window may climb to 8 px from the top: it is centered and never under the camera buttons or the gear. */
+  .coop-wait{max-height:calc(100% - max(16px,calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) + 16px)))}
+  /* Columns widen with the text scale, so a name never shrinks to one letter at 125%. */
+  .coop-wait .coop-wait-members,.coop-wait.is-owner .coop-wait-members{grid-template-columns:repeat(auto-fill,minmax(calc(124px * var(--t-escala)),1fr))}
+  /* "Chamar a turma" becomes the paper-plane sticker beside the room code (one row less); the label stays for screen
+     readers and floats as a note under the button while it says "Copiado!". */
+  .coop-wait-code{flex-wrap:nowrap}
+  .coop-wait .coop-wait-share{position:relative;flex:none;width:44px;min-height:44px;height:44px;padding:0;display:grid;place-items:center}
+  .coop-wait-share-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .coop-wait-share.is-saying .coop-wait-share-text{z-index:2;top:calc(100% + 6px);right:0;width:auto;height:auto;clip:auto;overflow:visible;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel-claro);color:var(--c-breu);font-size:var(--t-13)}
+}
+.coop-wait-share-icon{display:none;line-height:0}
+@media(max-height:500px){.coop-wait-share-icon{display:block}}

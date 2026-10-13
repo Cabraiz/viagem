@@ -41,7 +41,7 @@ function cameraView(scene:Phaser.Scene):Rect{
  * Renders a framebuffer shader once, outside the display list. `prepare` runs with the pipelines cleared (uniforms,
  * texture uploads). Several bakes in one frame go through one clear/rebind (`batch`).
  */
-class Baker {
+export class Baker {
   private depth=0;
   constructor(private scene:Phaser.Scene){}
   private get renderer(){return this.scene.game.renderer as Renderer;}

@@ -6,21 +6,21 @@ import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../rules/index.ts';
-import {createDirector,type Director} from './director.ts';
+import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
-import {MINION_KINDS,createEnemyAi,type EnemyAi} from './enemies/ai.ts';
-import {BOSS_TUNING,createBoss,type BossController} from './boss.ts';
+import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
+import {BOSS_TUNING,createBoss,type BossController,type BossState} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
 import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
-import {createProgression,type Progression} from './progression.ts';
+import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
-import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
+import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,heroSpeed} from '../maps/index.ts';
@@ -69,6 +69,19 @@ export interface RunSystemsOptions {
    * false plays the round table's nine kinds (tests that pin the old composition).
    */
   rotation?:boolean;
+  /**
+   * A room checkpoint (E5-checkpoint-por-round): the systems resume from this state (RunSystems.state() of the run that
+   * was cut, taken at a round's intermission) instead of starting fresh. The world must already hold the checkpoint's
+   * clock and round (SimWorld.load) before the first step. Deep-copied here; the caller's object is never kept.
+   */
+  checkpoint?:RunSystemsState;
+}
+/** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
+export interface RunSystemsState {
+  director:DirectorState;progression:ProgressionState;boss:BossState;enemyAi:EnemyAiState;
+  /** Completed revives per rescuer (ReviveSystem.revives), as entries. */
+  revives:[string,number][];
+  stonewards:StonewardsState;zueira:ZueiraState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -78,8 +91,8 @@ export interface RunSystems {
   zueira:ZueiraSystem;
   /** City world (cidade-05): the avenue planner shared by the director and the enemy steer (cidade-06: barricades → invalidate). */
   avenues?:AvenuePlanner;
-  /** JSON-safe state of the stateful systems, for stateHash and checkpoints. */
-  state():unknown;
+  /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
+  state():RunSystemsState;
   dispose():void;
 }
 
@@ -113,11 +126,15 @@ export function prizeBlocks(state:StonewardsState):{x:number;y:number;radius:num
 }
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
-  const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}});
+  // A checkpoint is copied once: every system below mutates the state it is handed.
+  const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
+  const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
   const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures()});
+  // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
+  if(cp)Object.assign(zueira.state,cp.zueira);
   let director:Director|undefined;
   // D-016: once the director is done (boss down), a same-tick wipe is not a defeat. The director only reaches 'done'
   // on its next step, so the boss's killing blow also ends the run right away.
@@ -142,7 +159,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
     // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
-  });
+  },cp?.stonewards);
   structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
@@ -171,6 +188,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     minionKinds:()=>director?.minionKinds()??MINION_KINDS,
     summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
   });
+  if(cp)enemyAi.restore(cp.enemyAi);
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
@@ -184,6 +202,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
     onDefeated:()=>onOutcome('victory'),
   });
+  if(cp)boss.restore(cp.boss);
   director=createDirector({
     maxEnemies:MAX_ENEMIES,
     // Unknown kinds are skipped instead of throwing; elites are scaled by the director itself (D-010).
@@ -202,13 +221,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
       // Round 1 is the walk from the wreck to the plaza (cidade-08).
       cityTutorial:options.cityTutorial??true,...(cityBalance?{cityBalance}:{}),...(openPlanner?{cityOpenPlanner:openPlanner}:{})}:{}),
-  });
+  },cp?.director);
   // City team damage (cidade-11, CityBalance.players[n].damage): × every hit a player takes, through the core's single
   // damage path; n is the director's plan count (the current round, kept through its intermission), neutral before
   // round 2. Set (or cleared) on every run; absent unless some team size has a damage knob, so damagePlayer is unchanged.
   const damageScale=cityBalance&&hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
   world.playerDamageScale=damageScale;
-  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks});
+  const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   world.clearSystems();
   for(const system of [

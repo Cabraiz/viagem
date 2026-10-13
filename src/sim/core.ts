@@ -39,6 +39,15 @@ const RETAIN_EVERY=20;
 const tickRng=(seed:number,tick:number)=>new Rng(seed).fork(`tick:${tick}`);
 
 export const initialTeam=():TeamProgress=>({xp:0,level:1,nextXp:5});
+/**
+ * What a room checkpoint keeps of the world (E5-checkpoint-por-round): the clock, ids, team, round and offers, plus the
+ * pickups on the ground (the round's chest). Live enemies, projectiles and telegraphs are dropped: a checkpoint is taken
+ * at a round's intermission, when the round's horde is gone. JSON-safe.
+ */
+export interface WorldCheckpoint {
+  seed:number;tick:number;runStartTick:number;eventSeq:number;counters:[string,number][];
+  team:TeamProgress;round:RoundState;offers:[string,LevelOffer[]][];pickups:PickupState[];
+}
 export const initialRound=():RoundState=>({index:0,total:10,phase:'prepare',phaseEndsTick:0,remaining:0});
 
 export interface SimWorldOptions {
@@ -115,6 +124,26 @@ export class SimWorld implements SimContext {
     this.enemyIndex.rebuild([]);
   }
 
+  /** The world part of a room checkpoint (WorldCheckpoint): a deep copy, nothing live. */
+  checkpoint():WorldCheckpoint{
+    return structuredClone({seed:this.seed,tick:this.tick,runStartTick:this.runStartTick,eventSeq:this.eventSeq,counters:[...this.counters],
+      team:this.team,round:this.round,offers:[...this.offers],pickups:[...this.pickups.values()]});
+  }
+  /**
+   * Resumes a checkpointed run (E5-checkpoint-por-round): reset(seed), then the clock (ticks stay absolute, so every
+   * stored deadline still means the same moment), ids, team, round, offers and pickups. eventId never goes back (reset).
+   * Systems and players are the owner's (createRunSystems' checkpoint option, Simulation.resume).
+   */
+  load(cp:WorldCheckpoint){
+    this.reset(cp.seed);
+    this.tick=cp.tick;this.runStartTick=cp.runStartTick;this.rng=tickRng(this.seed,this.tick);this.eventSeq=Math.max(this.eventSeq,cp.eventSeq);
+    for(const [prefix,n] of cp.counters)this.counters.set(prefix,n);
+    Object.assign(this.team,structuredClone(cp.team));Object.assign(this.round,structuredClone(cp.round));
+    for(const [id,queue] of cp.offers)this.offers.set(id,structuredClone(queue));
+    for(const pickup of cp.pickups)this.pickups.set(pickup.id,structuredClone(pickup));
+    return this;
+  }
+
   register(system:SimSystem){
     if(!this.order.includes(system.id))throw new Error(`Unknown system id: ${system.id}`);
     if(this.systems.has(system.id))throw new Error(`System already registered: ${system.id}`);
@@ -141,6 +170,13 @@ export class SimWorld implements SimContext {
   }
 
   emit(event:SimEvent){this.queue.push({...event,eventId:++this.eventSeq});}
+  /** The last event id handed out (a new Simulation carries it on, so phones never see an id again). */
+  get lastEventId(){return this.eventSeq;}
+  /**
+   * Event ids from here on start above `min` (checkpoint-por-round review): a restarted room cannot know the last id
+   * the crashed process handed out, and phones drop any id they saw (FrameDecoder keeps them across a welcome).
+   */
+  raiseEventSeq(min:number){if(Number.isFinite(min))this.eventSeq=Math.max(this.eventSeq,Math.floor(min));}
 
   /** Advances one tick: runs registered systems in order and returns this tick's events. */
   step(){

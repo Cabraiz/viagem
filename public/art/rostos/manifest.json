@@ -1,0 +1,1021 @@
+{
+  "version": 2,
+  "group": "rostos",
+  "pieces": {
+    "aposentado-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "aposentado-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "aposentado-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3d7e8e4509d474a62a63d08c3b60e1d423e634171eb7b69ab47b430c35a15ea7"
+            }
+          ],
+          "sha256": "3d7e8e4509d474a62a63d08c3b60e1d423e634171eb7b69ab47b430c35a15ea7"
+        }
+      },
+      "sha256": "c3a817169b8fd993aa9c04243da0060d738d7921248fb3ec971f5cd2514fbcda",
+      "meta": {
+        "face": "aposentado",
+        "expression": "normal"
+      }
+    },
+    "astrologa-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "astrologa-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "astrologa-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "825a646e9530d8fda1a216212b93b402b4c91efabc7cc64a419706f84722c8d3"
+            }
+          ],
+          "sha256": "825a646e9530d8fda1a216212b93b402b4c91efabc7cc64a419706f84722c8d3"
+        }
+      },
+      "sha256": "5d2c654d5683d568d624e623492fe429af7bbb422a9c59a30b448bef63271a2b",
+      "meta": {
+        "face": "astrologa",
+        "expression": "normal"
+      }
+    },
+    "caca-promocao-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "caca-promocao-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "caca-promocao-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "76bdd0c00b8956dcc8d395d6279a16ce5fc2eeb6fa4d13282b74f4163c6bae40"
+            }
+          ],
+          "sha256": "76bdd0c00b8956dcc8d395d6279a16ce5fc2eeb6fa4d13282b74f4163c6bae40"
+        }
+      },
+      "sha256": "5c12cd025a1d5805764f963297c06f0731de925ad0ba4ab0f9fbf85488c15412",
+      "meta": {
+        "face": "caca-promocao",
+        "expression": "normal"
+      }
+    },
+    "cidadao-comum-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "cidadao-comum-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cidadao-comum-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "304e89adf7bbd534aa876be385cec81956e34f54d5764fc20ab050c0a812405d"
+            }
+          ],
+          "sha256": "304e89adf7bbd534aa876be385cec81956e34f54d5764fc20ab050c0a812405d"
+        }
+      },
+      "sha256": "3cfc5bf96af2174403fb9e13bf2a62420d282928ad305e2a35f61befb85a88d2",
+      "meta": {
+        "face": "cidadao-comum",
+        "expression": "normal"
+      }
+    },
+    "clt-cansado-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "clt-cansado-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "clt-cansado-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "23e333d44326916aca78b0b68d30834d0ec319c11a3cad24d135850d9f2167d4"
+            }
+          ],
+          "sha256": "23e333d44326916aca78b0b68d30834d0ec319c11a3cad24d135850d9f2167d4"
+        }
+      },
+      "sha256": "21655882c989f9e6ecfe6bd402f18663910c78bacfea5c2213cb3e6d8c58f1e3",
+      "meta": {
+        "face": "clt-cansado",
+        "expression": "normal"
+      }
+    },
+    "coach-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "coach-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "coach-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3615a2fd1b2a258ad3eee1fcb5cef2b4855347eef0951c155a0f4923b0b1f6b9"
+            }
+          ],
+          "sha256": "3615a2fd1b2a258ad3eee1fcb5cef2b4855347eef0951c155a0f4923b0b1f6b9"
+        }
+      },
+      "sha256": "3a351b7b489f9787e9b9e39a287454b7d184a9c1706542db87d3dd6dd351add1",
+      "meta": {
+        "face": "coach",
+        "expression": "normal"
+      }
+    },
+    "concurseira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "concurseira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "concurseira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0c52a0fe6ceb09427ef4b6bc9c4a1537dd49e29c306fcba6c4358827c9aaf416"
+            }
+          ],
+          "sha256": "0c52a0fe6ceb09427ef4b6bc9c4a1537dd49e29c306fcba6c4358827c9aaf416"
+        }
+      },
+      "sha256": "e5076ba880c3b910fb620b3fd5e3cf3c6de366651bd5b32381c4fc2b7d50134a",
+      "meta": {
+        "face": "concurseira",
+        "expression": "normal"
+      }
+    },
+    "conspiracionista-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "conspiracionista-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "conspiracionista-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fa7b0be0c915a6fbfcddf6a9014633b51404dd7d372929c5a9645fc44f5d1870"
+            }
+          ],
+          "sha256": "fa7b0be0c915a6fbfcddf6a9014633b51404dd7d372929c5a9645fc44f5d1870"
+        }
+      },
+      "sha256": "251424023d392bf4e672ce9551ed87f43ad6e372e92aa89af8034b68c15a5047",
+      "meta": {
+        "face": "conspiracionista",
+        "expression": "normal"
+      }
+    },
+    "faxineira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "faxineira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "faxineira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c145d6ab634981ad2073900bf6bd3cd0513890ba8f8f716393563482339f4e94"
+            }
+          ],
+          "sha256": "c145d6ab634981ad2073900bf6bd3cd0513890ba8f8f716393563482339f4e94"
+        }
+      },
+      "sha256": "376e9be7b7b294d39403b4c5e7cd2eb0457b2948af72ca3cc1c750b9b5aeb5f3",
+      "meta": {
+        "face": "faxineira",
+        "expression": "normal"
+      }
+    },
+    "feirante-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "feirante-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "feirante-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d0b7d4131dcfc882805a30a55c3ef2a8a30e009dcc0bbe8c5edd83c44251618a"
+            }
+          ],
+          "sha256": "d0b7d4131dcfc882805a30a55c3ef2a8a30e009dcc0bbe8c5edd83c44251618a"
+        }
+      },
+      "sha256": "2476bf5c7ae58ab72fe32448d6ed0f1620dfe20b73712ca8d23ee14fb2d33955",
+      "meta": {
+        "face": "feirante",
+        "expression": "normal"
+      }
+    },
+    "gambiarreiro-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "gambiarreiro-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "gambiarreiro-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "23e340163959a98b9e93ba97b9f7837fc5979aa5a9b16cf2b7f404300e09d99b"
+            }
+          ],
+          "sha256": "23e340163959a98b9e93ba97b9f7837fc5979aa5a9b16cf2b7f404300e09d99b"
+        }
+      },
+      "sha256": "82102e85ab2dff9dc33bcf7313318c3ebfef1d8c328648ee0fd5321509eeedc1",
+      "meta": {
+        "face": "gambiarreiro",
+        "expression": "normal"
+      }
+    },
+    "gamer-mobile-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "gamer-mobile-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "gamer-mobile-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "cead75ddda3c315fbfdb8c9a17c1ae8e0e2eb675fc33571958348289dcf54cb3"
+            }
+          ],
+          "sha256": "cead75ddda3c315fbfdb8c9a17c1ae8e0e2eb675fc33571958348289dcf54cb3"
+        }
+      },
+      "sha256": "1a04707cf791b1b84ef75c464b334b9ca125c530c7330b7e8532d7d5cca8e8b0",
+      "meta": {
+        "face": "gamer-mobile",
+        "expression": "normal"
+      }
+    },
+    "goleira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "goleira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "goleira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0354bffca136ff9ed018aa975f8145def478a59edebac9cda800236fb18c7e82"
+            }
+          ],
+          "sha256": "0354bffca136ff9ed018aa975f8145def478a59edebac9cda800236fb18c7e82"
+        }
+      },
+      "sha256": "6e6be82522072076e6befb5a5a2096e001c826572ab445a54110374b49955f89",
+      "meta": {
+        "face": "goleira",
+        "expression": "normal"
+      }
+    },
+    "mae-pet-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "mae-pet-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "mae-pet-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f10fc9474d9518b11c5fe7470a37c1276745a23e1dd100400d397633e8462bed"
+            }
+          ],
+          "sha256": "f10fc9474d9518b11c5fe7470a37c1276745a23e1dd100400d397633e8462bed"
+        }
+      },
+      "sha256": "72cec9ef41a8fd29fa63aa1cd89a01fd6a5203ce2332f43a4438968fa6ff8085",
+      "meta": {
+        "face": "mae-pet",
+        "expression": "normal"
+      }
+    },
+    "maromba-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "maromba-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "maromba-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "65351af5174f8d3d7ef421b12cb6a2192a62f6b705ecb373d2e574350fcdcf35"
+            }
+          ],
+          "sha256": "65351af5174f8d3d7ef421b12cb6a2192a62f6b705ecb373d2e574350fcdcf35"
+        }
+      },
+      "sha256": "9d16302a5ce51a497b227c4d0dff028504b841172ad609266166cabc67d84521",
+      "meta": {
+        "face": "maromba",
+        "expression": "normal"
+      }
+    },
+    "mendigo-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "mendigo-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "mendigo-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6683a4901bbff98f4d3b097c4e9c19a78e80792b7dc4d87fc61b7d9bbcde42d2"
+            }
+          ],
+          "sha256": "6683a4901bbff98f4d3b097c4e9c19a78e80792b7dc4d87fc61b7d9bbcde42d2"
+        }
+      },
+      "sha256": "56dd817ff7c165d1c563bddc5e3724490058b5edf734232ba90d1bfd88633c9d",
+      "meta": {
+        "face": "mendigo",
+        "expression": "normal"
+      }
+    },
+    "merendeira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "merendeira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "merendeira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "483c4040f603023a894a69b321c3af4176118948c91dc9bc1495891ce1982602"
+            }
+          ],
+          "sha256": "483c4040f603023a894a69b321c3af4176118948c91dc9bc1495891ce1982602"
+        }
+      },
+      "sha256": "3587ba5f968c0ec2b01497b65712ccc7201593d3eea63cbcd2a2e024355dd6d4",
+      "meta": {
+        "face": "merendeira",
+        "expression": "normal"
+      }
+    },
+    "motogirl-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "motogirl-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "motogirl-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "be7d3eca5819e81b3e6809b067b9d61e9f9ce75639894e9f562107873fccff5e"
+            }
+          ],
+          "sha256": "be7d3eca5819e81b3e6809b067b9d61e9f9ce75639894e9f562107873fccff5e"
+        }
+      },
+      "sha256": "e9a69a49d72bb0dbeae571ee39d85a19af7abea106cc8f49f3f476cb16f16472",
+      "meta": {
+        "face": "motogirl",
+        "expression": "normal"
+      }
+    },
+    "pagodeiro-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pagodeiro-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pagodeiro-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "29936e684b34b64ef60abb2692e804d0177460756181e9b56c37b06e6d60dd02"
+            }
+          ],
+          "sha256": "29936e684b34b64ef60abb2692e804d0177460756181e9b56c37b06e6d60dd02"
+        }
+      },
+      "sha256": "de12d7fc5f4bd9c3e60a69bc03f52b48b401fdf52bdd29c305f98d2c835763d9",
+      "meta": {
+        "face": "pagodeiro",
+        "expression": "normal"
+      }
+    },
+    "passageira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "passageira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "passageira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f157dde81be73230bc538447aef527b6462e7d0fe980ec54a8fca2095d489d54"
+            }
+          ],
+          "sha256": "f157dde81be73230bc538447aef527b6462e7d0fe980ec54a8fca2095d489d54"
+        }
+      },
+      "sha256": "bd7983502a42d5818bb36cc631c487784310f763c7555849852c59bd4ac9a5fc",
+      "meta": {
+        "face": "passageira",
+        "expression": "normal"
+      }
+    },
+    "pedreiro-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pedreiro-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pedreiro-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b3f78e9b3139c9c34272599efe9f2f30e23ce0606491d744fef81738585eca39"
+            }
+          ],
+          "sha256": "b3f78e9b3139c9c34272599efe9f2f30e23ce0606491d744fef81738585eca39"
+        }
+      },
+      "sha256": "0522e3ece64f963c0340939478efc10b0aa08bf7f7a0b4062493d8a59ad71a67",
+      "meta": {
+        "face": "pedreiro",
+        "expression": "normal"
+      }
+    },
+    "porteiro-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "porteiro-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "porteiro-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d662001f72a484d8511d3fb3f997efa5db956e03f6cdf1fe7d233ad093c36a3e"
+            }
+          ],
+          "sha256": "d662001f72a484d8511d3fb3f997efa5db956e03f6cdf1fe7d233ad093c36a3e"
+        }
+      },
+      "sha256": "4c5ade12242eea44fdbf462a1046acbf520ad34c1ef213558b85a700d889313d",
+      "meta": {
+        "face": "porteiro",
+        "expression": "normal"
+      }
+    },
+    "rainha-bateria-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rainha-bateria-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rainha-bateria-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a56c8b6107d5c2fae3d8bcc70cee200a0c6b9fb677e3cf35921248aebd48093b"
+            }
+          ],
+          "sha256": "a56c8b6107d5c2fae3d8bcc70cee200a0c6b9fb677e3cf35921248aebd48093b"
+        }
+      },
+      "sha256": "47fa95f1b4bf8eb9c539f7577368efae625dc3f37e6c5988be7d6f193a3e5682",
+      "meta": {
+        "face": "rainha-bateria",
+        "expression": "normal"
+      }
+    },
+    "rei-arraia-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rei-arraia-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rei-arraia-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f0719c863dff456d4d833c040be1696a89710c7e5402b5946fabe243041254cb"
+            }
+          ],
+          "sha256": "f0719c863dff456d4d833c040be1696a89710c7e5402b5946fabe243041254cb"
+        }
+      },
+      "sha256": "90a01e827a974ba3e2dacfef3f8533149c62a0a9afda70828808dcae79a7a0a2",
+      "meta": {
+        "face": "rei-arraia",
+        "expression": "normal"
+      }
+    },
+    "rei-pastel-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rei-pastel-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rei-pastel-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3024c652f81a754f16476912c4cf6bbfc1aae8fe509eca91062821657cd2a5a6"
+            }
+          ],
+          "sha256": "3024c652f81a754f16476912c4cf6bbfc1aae8fe509eca91062821657cd2a5a6"
+        }
+      },
+      "sha256": "60f3aa31ac7c32f7ba69d5454b040b7c736aa5d952f12fd8bd948496c02983a8",
+      "meta": {
+        "face": "rei-pastel",
+        "expression": "normal"
+      }
+    },
+    "roqueira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "roqueira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "roqueira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5e54bf99a52e9fc507cd256caaaed0ac67f3ab942e9c5dc36b39eae796e2e72d"
+            }
+          ],
+          "sha256": "5e54bf99a52e9fc507cd256caaaed0ac67f3ab942e9c5dc36b39eae796e2e72d"
+        }
+      },
+      "sha256": "564b57ff980cca5199ebcfc71c6bf9831fc294fe24e029fa3f112d9ef80f9102",
+      "meta": {
+        "face": "roqueira",
+        "expression": "normal"
+      }
+    },
+    "salva-vidas-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "salva-vidas-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "salva-vidas-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b8df6482b9f2828e835522dc4d233cbb10d2e6bcb6e7d06f8492c4aad5f235dd"
+            }
+          ],
+          "sha256": "b8df6482b9f2828e835522dc4d233cbb10d2e6bcb6e7d06f8492c4aad5f235dd"
+        }
+      },
+      "sha256": "a13c93442ecdd5c76c465db533f1ea7ce8dfe7cd62df914f2cc02d4ae8fa3445",
+      "meta": {
+        "face": "salva-vidas",
+        "expression": "normal"
+      }
+    },
+    "sensei-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "sensei-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "sensei-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "26505fd2c45472a30b59f1258c43447cb572c1d97c2b861ee1cd4ea7db24f60e"
+            }
+          ],
+          "sha256": "26505fd2c45472a30b59f1258c43447cb572c1d97c2b861ee1cd4ea7db24f60e"
+        }
+      },
+      "sha256": "b5d6c92dd947e6ac14f906f8c3867f7efd7dc714f8b937e40f8c8ccad6edd5f1",
+      "meta": {
+        "face": "sensei",
+        "expression": "normal"
+      }
+    },
+    "streamer-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "streamer-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "streamer-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f7e2f50b4fe23baf0884b2cdbd45f115ad5ed46617e9c602131944aa97a7b4ac"
+            }
+          ],
+          "sha256": "f7e2f50b4fe23baf0884b2cdbd45f115ad5ed46617e9c602131944aa97a7b4ac"
+        }
+      },
+      "sha256": "59b67d04d1dc144845c381695a5108a1359637e3c888b34c9bccc18d4553e8ed",
+      "meta": {
+        "face": "streamer",
+        "expression": "normal"
+      }
+    },
+    "tecnico-ti-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tecnico-ti-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tecnico-ti-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "59d8f157bf7dfb53d67c7ec7298e8c25ba258136686f100a4e364da6d06dbd91"
+            }
+          ],
+          "sha256": "59d8f157bf7dfb53d67c7ec7298e8c25ba258136686f100a4e364da6d06dbd91"
+        }
+      },
+      "sha256": "49c1aadb598e90ec9be45fb27596827ccef2094e2ef21d8f16da8bb8a22f8b07",
+      "meta": {
+        "face": "tecnico-ti",
+        "expression": "normal"
+      }
+    },
+    "tio-do-churrasco-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tio-do-churrasco-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tio-do-churrasco-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3c20ffc978313b7ba9de9b691b1149632ae1e68a52efe4285b3db72319d3e2de"
+            }
+          ],
+          "sha256": "3c20ffc978313b7ba9de9b691b1149632ae1e68a52efe4285b3db72319d3e2de"
+        }
+      },
+      "sha256": "573343501173d691a982855d264c09573619c937454470689b7275e5e1f74e73",
+      "meta": {
+        "face": "tio-do-churrasco",
+        "expression": "normal"
+      }
+    },
+    "universitario-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "universitario-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "universitario-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "aa9be98df5c108b6694f75c2bae83b556eb631a725eb7cb97c96788b5d3258b5"
+            }
+          ],
+          "sha256": "aa9be98df5c108b6694f75c2bae83b556eb631a725eb7cb97c96788b5d3258b5"
+        }
+      },
+      "sha256": "ac5364a4e27ceb7782337d12ed6103315f1f9320babf2498704e1fc9c541fe0a",
+      "meta": {
+        "face": "universitario",
+        "expression": "normal"
+      }
+    },
+    "vendedor-praia-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vendedor-praia-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vendedor-praia-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "dd3450b6165214e10bb98ed1b623460e6d843257d3519193539df5bce313a532"
+            }
+          ],
+          "sha256": "dd3450b6165214e10bb98ed1b623460e6d843257d3519193539df5bce313a532"
+        }
+      },
+      "sha256": "9a50c7185784cd195744fdbd0fd3893195456f03a70d42d437f1ccd49ab68ae6",
+      "meta": {
+        "face": "vendedor-praia",
+        "expression": "normal"
+      }
+    },
+    "viciado-em-bet-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "viciado-em-bet-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "viciado-em-bet-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0b23d2b9f829be620ebbf48e298fc8bdc22c92048b00f3338d4d0833eca8445d"
+            }
+          ],
+          "sha256": "0b23d2b9f829be620ebbf48e298fc8bdc22c92048b00f3338d4d0833eca8445d"
+        }
+      },
+      "sha256": "d4e72e23efb2db604f587cb379062a2670c1711c2acd4e6848ca8f526c3a8332",
+      "meta": {
+        "face": "viciado-em-bet",
+        "expression": "normal"
+      }
+    },
+    "vizinha-fofoqueira-normal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vizinha-fofoqueira-normal.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira-normal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2c83e8cf406b2a3256857171b3b34af2f0176179697ad020d40ebf59c92eff9b"
+            }
+          ],
+          "sha256": "2c83e8cf406b2a3256857171b3b34af2f0176179697ad020d40ebf59c92eff9b"
+        }
+      },
+      "sha256": "466e1e9c595aac6930495a8f37035338df9dc67e967531a4fc32ed0802798d4d",
+      "meta": {
+        "face": "vizinha-fofoqueira",
+        "expression": "normal"
+      }
+    }
+  }
+}

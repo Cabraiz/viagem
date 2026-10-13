@@ -67,7 +67,7 @@ app.innerHTML = `
     <nav class="roster-pagination" aria-label="Páginas de classes"><button id="page-prev" class="round-button" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" class="round-button" aria-label="Próxima página">›</button></nav>
   </section>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title">Seu personagem está escolhido!</h2><div id="chosen-art" class="class-art" aria-hidden="true"></div><strong id="chosen-name"></strong><p id="chosen-class"></p><p id="save-status"></p><p class="coming-next">Sua primeira parada: a Ilha do Começo.<br/>Para se verem, entrem na mesma sala em Jogar com amigos.</p><button id="enter-island" class="primary-button">Explorar a ilha</button><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="primary-button">Voltar às classes</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><button id="enter-island" class="secondary-button">Jogar sozinho</button></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="link-button">Voltar às classes</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
@@ -278,13 +278,15 @@ document.getElementById('confirm')!.addEventListener('click',()=>{
   const saved={version:1,classId:selected.id,name:nickname.trim(),color};
   let persisted=false;
   try {localStorage.setItem('viagem:hero:v1',JSON.stringify(saved));persisted=true;} catch { /* fallback explícito abaixo */ }
-  text('chosen-name',saved.name);text('chosen-class',selected.name);setArt('chosen-art',selected);
-  text('save-status',persisted?'Ficha salva neste navegador.':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
+  text('chosen-name',saved.name);setArt('chosen-art',selected);
+  // The class with its suit, like the creation's seal (confirmacao-70h).
+  document.getElementById('chosen-class')!.innerHTML=`<span class="chosen-role">${suit(selected.role)}${selected.role}</span> ${selected.name}`;
+  // Saved: nothing to say. Only a failure to save is worth a line.
+  text('save-status',persisted?'':'Ficha escolhida nesta sessão. O navegador não permitiu salvá-la.');
   dialog.showModal();
 });
 document.getElementById('close-dialog')!.addEventListener('click',()=>dialog.close());
 const coopButton=document.createElement('button');coopButton.id='enter-coop';coopButton.className='primary-button';coopButton.textContent='Jogar com amigos';document.getElementById('enter-island')!.before(coopButton);
-const comingNext=dialog.querySelector('.coming-next');if(comingNext)comingNext.textContent='Explore a ilha ou reúna até seis amigos para enfrentar os bêbados do boteco.';
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;

@@ -79,6 +79,15 @@ export function isBehind(occ:Occluder,hx:number,hy:number,view:number,pivot:Pt=V
   return !(p.x>q.x0+EPS&&p.y>q.y0+EPS);
 }
 
+/**
+ * The point stands in front of the box (past one of its front faces). Unlike !isBehind, a point inside the footprint
+ * is not in front: an effect in the air over a building (a tower's shot crossing it) stays covered until it leaves it.
+ */
+export function inFront(occ:Occluder,hx:number,hy:number,view:number,pivot:Pt=VIEW_PIVOT):boolean{
+  const p=viewPoint(hx,hy,view,pivot),q=occ.q;
+  return p.x>=q.x1-EPS||p.y>=q.y1-EPS;
+}
+
 /** Projects a polygon on an axis. */
 function span(poly:readonly Pt[],ax:number,ay:number):[number,number]{
   let lo=Infinity,hi=-Infinity;
@@ -199,9 +208,10 @@ export interface ColumnRef {key:number;occ:Occluder;
  * "behind" region of a box is an L, not a half-plane), so the actor is placed instead: above every column it
  * overlaps on screen and stands in front of, below every column it overlaps and stands behind. Its plain
  * depth is kept when it already fits; otherwise it goes just inside the allowed gap. If the constraints ever
- * conflict (not seen on unit columns) the plain depth is returned.
+ * conflict (not seen on unit columns) the plain depth is returned. `insideBehind`: a point inside a column's footprint
+ * sorts below it (effects in the air, render/towers), where an actor there is above it.
  */
-export function actorDepth(x:number,y:number,z:number,view:number,columns:Iterable<ColumnRef>,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN):number{
+export function actorDepth(x:number,y:number,z:number,view:number,columns:Iterable<ColumnRef>,pivot:Pt=VIEW_PIVOT,size:{w:number;h:number}=HERO_SCREEN,insideBehind=false):number{
   const own=depth(x,y,view,pivot),r=heroRect(x,y,z,view,pivot,size);
   let lo=-Infinity,hi=Infinity;
   const rx1=r.x+r.w,ry1=r.y+r.h;
@@ -209,7 +219,7 @@ export function actorDepth(x:number,y:number,z:number,view:number,columns:Iterab
     const b=c.occ.box;
     if(b&&(rx1<=b.x0||b.x1<=r.x||ry1<=b.y0||b.y1<=r.y))continue;
     if(!rectHitsConvex(r,c.occ.silhouette))continue;
-    if(isBehind(c.occ,x,y,view,pivot))hi=Math.min(hi,c.key);else lo=Math.max(lo,c.key);
+    if(insideBehind?!inFront(c.occ,x,y,view,pivot):isBehind(c.occ,x,y,view,pivot))hi=Math.min(hi,c.key);else lo=Math.max(lo,c.key);
   }
   if(own>lo&&own<hi)return own;
   if(!(lo<hi))return own;

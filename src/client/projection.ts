@@ -16,6 +16,8 @@ export function viewPoint(p:Point,view:number):Point{
 export function projectView(p:Point,view=0,terrain?:TerrainField):Point{
   const q=viewPoint(p,view);return {x:(q.x-q.y)*42,y:(q.x+q.y)*21-elevation(p.x,p.y,terrain)};
 }
+/** Coarse step (px of height) of the city tap ray before its bisection. */
+const CITY_PICK_STEP_PX=4;
 export function unprojectView(p:Point,view=0,terrain?:TerrainField):Point{
   if(terrain){
     // Same orthographic ray and bisection as the cached terrain shader.
@@ -23,6 +25,11 @@ export function unprojectView(p:Point,view=0,terrain?:TerrainField):Point{
     // The city's relief reaches ~185 px (CityTerrain, 21 px per unit over ~8.8 u): search higher there, or a tap on a
     // hill lands on the wrong spot. 18 steps over 256 px still resolve ~0.001 px.
     let lo=0,hi=terrain instanceof CityTerrain?256:128;
+    // City (relief shader, render/city/relevo): march down from the top in 4 px steps first, as the shader does, so a
+    // tap lands on the frontmost slope it sees, not on ground a bisection found behind a hill.
+    if(terrain instanceof CityTerrain)for(let z=hi;z>=0;z-=CITY_PICK_STEP_PX){
+      const q=at(z);if(z<=terrain.height(q.x,q.y)){lo=z;hi=Math.min(hi,z+CITY_PICK_STEP_PX);break;}
+    }
     for(let i=0;i<18;i++){const z=(lo+hi)/2,q=at(z);if(z>terrain.height(q.x,q.y))hi=z;else lo=z;}
     return at((lo+hi)/2);
   }

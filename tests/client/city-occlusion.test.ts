@@ -278,3 +278,16 @@ test('actorDepth: actors ≥ 0.22 u from blocks are never drawn on the wrong sid
   // Far from every column the actor keeps its own world depth.
   assert.equal(actorDepth(2,2,0,0,[]),depth(2,2,0));
 });
+
+test('actorDepth insideBehind (effects in the air, render/towers): inside the footprint sorts below the building, in front/behind unchanged (all views)',()=>{
+  each((v,p)=>{
+    const tag=`view ${v} pivot ${p.x}`,b=block('e','building',3.5),occ=occluderFor(b,asset,0,v,p),{x0,x1,y0,y1}=occ.q;
+    const key=depth((b.x+b.w/2)*CELL,(b.y+b.h/2)*CELL,v,p),cols:ColumnRef[]=[{key,occ}];
+    const at=(qx:number,qy:number)=>{const w=worldOf(qx,qy,v,p);return [actorDepth(w.x,w.y,0,v,cols,p),actorDepth(w.x,w.y,0,v,cols,p,HERO_SCREEN,true)] as const;};
+    const [inActor,inEffect]=at((x0+x1)/2,(y0+y1)/2);
+    assert.ok(inActor>key,`${tag}: an actor inside stays above (unchanged)`);
+    assert.ok(inEffect<key,`${tag}: an effect over the footprint is covered by the building`);
+    const [frontA,frontE]=at(x1+.3,(y0+y1)/2);assert.ok(frontA>key&&frontE>key,`${tag}: in front, both above`);
+    const [backA,backE]=at(x0-.3,(y0+y1)/2);assert.ok(backA<key&&backE<key,`${tag}: behind, both below`);
+  });
+});

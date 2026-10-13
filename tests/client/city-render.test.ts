@@ -355,3 +355,26 @@ test('sample city: no prop stands inside a block',()=>{
     assert.equal(inside,undefined,`${p.id} inside ${inside?.id}`);
   }
 });
+
+test('relief: chunk bounds cover corner heights and props at their groundZ (no early cull on a hill)',()=>{
+  const base=makeSampleCity(),W=base.width+1,H=base.height+1;
+  // A hill: corner heights rise toward the middle and dip at one corner, beyond the cells' average heights.
+  const corners=Array.from({length:W*H},(_,i)=>{const x=i%W,y=Math.floor(i/W);return x===0&&y===0?-3:Math.max(0,4-Math.hypot(x-W/2,y-H/2)*.5);});
+  const city=parseCityAsset(JSON.parse(JSON.stringify({...base,corners})));
+  for(const c of buildChunks(city).chunks){
+    for(let y=c.y0;y<=c.y1;y++)for(let x=c.x0;x<=c.x1;x++){
+      const h=corners[y*W+x];
+      assert.ok(h>=c.minBase&&h<=c.maxTop,`chunk ${c.key} corner (${x},${y}) h=${h} in [${c.minBase},${c.maxTop}]`);
+    }
+  }
+  // Without corners the bounds are exactly the old rule: cell heights of the chunk and its ring, and the pieces' tops.
+  const flat=parseCityAsset(JSON.parse(JSON.stringify(base)));
+  for(const c of buildChunks(flat).chunks){
+    let lo=Infinity,hi=-Infinity;
+    for(let y=Math.max(0,c.y0-1);y<Math.min(flat.height,c.y1+1);y++)for(let x=Math.max(0,c.x0-1);x<Math.min(flat.width,c.x1+1);x++){
+      const h=heightAt(flat,x,y);lo=Math.min(lo,h);hi=Math.max(hi,h);
+    }
+    for(const p of c.pieces)hi=Math.max(hi,p.base+p.height);
+    assert.deepEqual([c.minBase,c.maxTop],[lo,hi],`chunk ${c.key}`);
+  }
+});

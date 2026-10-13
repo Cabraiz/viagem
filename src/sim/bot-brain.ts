@@ -374,17 +374,21 @@ export interface TowerBrainView {
   sites:readonly {id:string;maxSize:number}[];
   /** The plan's rail id, or null (no Gustavão on this map). */
   rail:string|null;railLaid:boolean;railReady:boolean;gustavoes:number;
-  defenses:readonly {id:string;kind:DefenseId;site:string;ready:boolean;ruined:boolean}[];
+  /** `person`: built (last paid) by a person who is here (bot-gasta-material): the bot never evolves it. */
+  defenses:readonly {id:string;kind:DefenseId;site:string;ready:boolean;ruined:boolean;person?:boolean}[];
 }
 /** A build (a site id, or the rail id to lay it) or an upgrade (a defense id and the branch/child to take). */
 export type TowerOrder={build:string}|{upgrade:string;branch?:string};
 
-/** The bot's view of the towers from the structures state and its build plan. */
-export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,round:number):TowerBrainView{
+/**
+ * The bot's view of the towers from the structures state and its build plan. `isPerson(owner)` (rooms): whether a
+ * defense's owner is a person who is here, so the bot leaves it to them (bot-gasta-material).
+ */
+export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,round:number,isPerson?:(owner:string)=>boolean):TowerBrainView{
   const t=state.defenses;
   return {tick,round,units:unitsOf(state.balance),sites:plan.sites.map(s=>({id:s.id,maxSize:s.maxSize})),rail:plan.rail?.id??null,
     railLaid:!!t?.rail,railReady:!!t?.rail&&tick>=t.rail.readyTick,gustavoes:t?.gustavoes??0,
-    defenses:(t?.list??[]).map(d=>({id:d.id,kind:d.kind,site:d.site,ready:tick>=d.readyTick,ruined:!!d.ruined}))};
+    defenses:(t?.list??[]).map(d=>({id:d.id,kind:d.kind,site:d.site,ready:tick>=d.readyTick,ruined:!!d.ruined,...(isPerson?.(d.owner)?{person:true}:{})}))};
 }
 
 /** Branch a bot picks for the root on the n-th site of the plan (cycled): twice A, then B and C. */
@@ -414,7 +418,8 @@ export function pickTowerOrder(v:TowerBrainView):TowerOrder|'save'|undefined{
   const index=new Map(v.sites.map((s,i)=>[s.id,i]));
   let best:{tier:number;at:number;cost:number;order:TowerOrder}|undefined;
   for(const d of live){
-    if(!d.ready)continue;
+    // A person's defense is theirs to evolve (bot-gasta-material): the bot builds and evolves its own.
+    if(!d.ready||d.person)continue;
     const at=index.get(d.site)??v.sites.length,size=v.sites[at]?.maxSize??3,step=nextStep(v,d,at,size);
     if(!step)continue;
     const tier=DEFENSES[d.kind].tier;

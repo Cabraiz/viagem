@@ -81,6 +81,9 @@ export class TriBand extends Phaser.GameObjects.Graphics {
   private mesh:TriMesh|null=null;
   private tints:number[]=[];
   private tintAlpha=NaN;
+  /** Segment of each drawn part (-1: the part drew nothing), and each segment's own alpha (null while all are 1). */
+  private partSeg:Int32Array|null=null;
+  private segAlpha:Float32Array|null=null;
 
   /**
    * A TriBand on the scene, drawn with the Graphics API (fillStyle/fillPoints, lineStyle/strokePoints, fillCircle, ...)
@@ -91,12 +94,16 @@ export class TriBand extends Phaser.GameObjects.Graphics {
     const band=new TriBand(scene),parts=Array.isArray(draw)?draw:[draw];
     scene.add.existing(band);
     if(canFreeze(scene.sys.renderer)){
-      const out=new MeshBuilder();
-      for(const part of parts){
+      const out=new MeshBuilder(),seg=new Int32Array(parts.length);
+      let segments=0;
+      parts.forEach((part,i)=>{
+        const before=out.count;
         part(band);
         if(band.commandBuffer.length)capture(band,out);
         band.clear();out.mark();
-      }
+        seg[i]=out.count>before?segments++:-1;
+      });
+      band.partSeg=seg;
       const m=band.mesh=out.freeze();
       TRI_STATS.meshes++;TRI_STATS.meshTriangles+=m.count;TRI_STATS.meshBytes+=meshBytes(m);
     }else for(const part of parts)part(band);
@@ -105,6 +112,21 @@ export class TriBand extends Phaser.GameObjects.Graphics {
 
   /** The frozen triangles (null under Canvas). */
   get triangles():TriMesh|null{return this.mesh;}
+
+  /**
+   * Alpha of one part given to make() (times the object's alpha), e.g. one unit column of a band seen through
+   * (cidade-borda-e-quadras). Returns false when the band is not frozen (Canvas): the caller falls back to setAlpha.
+   */
+  setPartAlpha(part:number,alpha:number):boolean{
+    const m=this.mesh,seg=this.partSeg;
+    if(!m||!seg)return false;
+    const s=seg[part];
+    if(s===undefined||s<0)return true;
+    const a=Math.max(0,Math.min(1,alpha));
+    if(!this.segAlpha){if(a===1)return true;this.segAlpha=new Float32Array(m.ends.length).fill(1);}
+    this.segAlpha[s]=a;
+    return true;
+  }
 
   /** Replaces Graphics' command replay (GraphicsWebGLRenderer) with the stored triangles. */
   renderWebGL(renderer:Phaser.Renderer.WebGL.WebGLRenderer,src:TriBand,camera:Phaser.Cameras.Scene2D.Camera,parentMatrix?:Matrix){
@@ -137,11 +159,13 @@ export class TriBand extends Phaser.GameObjects.Graphics {
       const tints=this.tints;tints.length=m.colors.length;
       for(let i=0;i<m.colors.length;i++)tints[i]=tintOf(m.colors[i],m.alphas[i]*alpha);
     }
-    const tints=this.tints,xy=m.xy,style=m.style,ends=m.ends;
+    const tints=this.tints,xy=m.xy,style=m.style,ends=m.ends,segAlpha=this.segAlpha;
     for(let s=0;s<ends.length;s++){
       const n=ends[s];
       let t=s?ends[s-1]:0;
       if(cull&&ends.length>1&&!segmentOnScreen(m,s,this.x,this.y,view,CULL_MARGIN))continue;
+      // A part seen through packs its own tints (only the few faded parts pay for it).
+      const own=segAlpha?segAlpha[s]:1;
       TRI_STATS.triangles+=n-t;
       while(t<n){
         // As batchTri: flush when the next triangle does not fit, and start a batch (white texture) when there is none.
@@ -153,7 +177,7 @@ export class TriBand extends Phaser.GameObjects.Graphics {
         let o=pipeline.vertexCount*stride;
         const start=t;
         for(;t<end;t++){
-          const k=t*6,tint=tints[style[t]];
+          const k=t*6,st=style[t],tint=own===1?tints[st]:tintOf(m.colors[st],m.alphas[st]*alpha*own);
           let x=xy[k],y=xy[k+1];
           F[o]=x*a+y*c+e;F[o+1]=x*b+y*d+f;F[o+2]=0;F[o+3]=0;F[o+4]=unit;F[o+5]=2;U[o+6]=tint;o+=stride;
           x=xy[k+2];y=xy[k+3];
@@ -172,6 +196,6 @@ export class TriBand extends Phaser.GameObjects.Graphics {
   destroy(fromScene?:boolean){
     const m=this.mesh;
     if(m){TRI_STATS.meshes--;TRI_STATS.meshTriangles-=m.count;TRI_STATS.meshBytes-=meshBytes(m);}
-    this.mesh=null;this.tints=[];super.destroy(fromScene);
+    this.mesh=null;this.tints=[];this.partSeg=null;this.segAlpha=null;super.destroy(fromScene);
   }
 }

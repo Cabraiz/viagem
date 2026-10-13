@@ -3,8 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {BlockKind,CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {type Pt,VIEW_PIVOT,depth,project,unrotate} from '../../src/client/render/city/projection.ts';
-import {FADE_ALPHA,FADE_MS,HERO_SCREEN,OUTLINE_FADE_ALPHA,OcclusionFader,type Occluder,covers,heroRect,heroRelativeDepth,
-  actorDepth,isBehind,occluderFor,outlineAlpha,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
+import {FADE_ALPHA,FADE_MS,HERO_SCREEN,HOLD_MS,OUTLINE_FADE_ALPHA,CoverFader,type ColumnRef,type Occluder,covers,coveringColumns,heroRect,
+  heroRelativeDepth,actorDepth,isBehind,occluderFor,outlineAlpha,propCovers,rectHitsConvex,stepAlpha} from '../../src/client/render/city/occlusion.ts';
 
 const VIEWS=[0,1,2,3] as const;
 const PIVOTS:Pt[]=[VIEW_PIVOT,{x:5.3,y:-2}];
@@ -117,65 +117,101 @@ test('outlineAlpha maps 1 -> 1 and FADE_ALPHA -> OUTLINE_FADE_ALPHA linearly',()
   assert.ok(outlineAlpha(FADE_ALPHA)>FADE_ALPHA);
 });
 
-test('OcclusionFader: fade in, fade out and drop, only buildings, removal, no hero, ordering (all views)',()=>{
+test('CoverFader: ~150 ms fade in, holds while covered, HOLD_MS grace, ~150 ms back, then dropped; bad dt keeps state',()=>{
+  assert.ok(FADE_MS>=120&&FADE_MS<=180,'about 150 ms');
+  const f=new CoverFader(),on=new Set(['k']),off=new Set<string>();
+  let prev=1,frames=0;
+  while(f.alpha('k')>FADE_ALPHA){
+    const m=f.update(on,16);frames++;
+    const a=m.get('k')!;assert.ok(a<prev&&a>=FADE_ALPHA);prev=a;
+  }
+  assert.equal(frames,Math.ceil(FADE_MS/16));
+  assert.equal(f.update(on,16).get('k'),FADE_ALPHA,'holds while covering');
+  // Uncovered: stays faded for HOLD_MS (no flicker on a wall's edge), then eases back and is dropped.
+  let held=0;
+  while(f.update(off,16).get('k')===FADE_ALPHA)held+=16;
+  assert.ok(held>=HOLD_MS-16&&held<=HOLD_MS,`held ${held} ms`);
+  prev=f.alpha('k');frames=1;
+  for(;;){
+    const m=f.update(off,16);frames++;
+    if(!m.has('k'))break;
+    const a=m.get('k')!;assert.ok(a>prev&&a<1);prev=a;
+  }
+  assert.ok(frames<=Math.ceil(FADE_MS/16)+1);assert.equal(f.alpha('k'),1);
+  // Flicker guard: covered every other frame never eases back.
+  const g=new CoverFader();
+  for(let i=0;i<60;i++){const m=g.update(i%2?off:on,16);if(i>12)assert.equal(m.get('k'),FADE_ALPHA,`frame ${i}`);}
+  // Bad dt changes nothing; reset clears.
+  const a=g.alpha('k');
+  for(const dt of [NaN,-3,Infinity])g.update(off,dt);
+  assert.equal(g.alpha('k'),a);
+  g.reset();assert.equal(g.alpha('k'),1);
+  // Several ids are independent.
+  const h=new CoverFader();h.update(new Set(['a','b']),16);const m=h.update(new Set(['a']),16);
+  assert.ok(m.has('a')&&m.has('b'));
+});
+
+/** Unit columns of a block as the layer registers them: one occluder per cell, fade id per band (block, depth key). */
+const unitColumns=(b:CityBlock,v:number,p:Pt):ColumnRef[]=>{
+  const out:ColumnRef[]=[];
+  for(let j=b.y;j<b.y+b.h;j++)for(let i=b.x;i<b.x+b.w;i++){
+    const occ=occluderFor({id:`${b.id}:${i},${j}`,kind:b.kind,x:i,y:j,w:1,h:1,height:b.height},asset,0,v,p);
+    const c=depth((i+.5)*CELL,(j+.5)*CELL,v,p);
+    out.push({key:c,occ,fade:`b:${b.id}|${c.toFixed(3)}`});
+  }
+  return out;
+};
+
+test('coveringColumns: every kind (wall, cliff lip, rubble, building) fades only the bands in front of the figure, for hero and allies (all views)',()=>{
   each((v,p)=>{
     const tag=`view ${v} pivot ${p.x}`;
-    const kinds:BlockKind[]=['building','wall','cliff','rubble'];
-    // All four kinds tall enough to cover, same place; each tested on its own fader.
-    for(const kind of kinds){
-      const o=occluderFor(block('k',kind,3.5),asset,0,v,p),{x0,x1,y0,y1}=o.q;
-      const behind=heroAt((x0+x1)/2,y0-0.3,v,p),away=heroAt((x0+x1)/2,y1+3,v,p);
-      assert.equal(covers(o,behind,v,p),true,`${kind} geometrically covers ${tag}`);
-      const f=new OcclusionFader();
-      if(kind!=='building'){
-        for(let i=0;i<20;i++)assert.equal(f.update([o],behind,v,16,p).size,0,`${kind} never fades ${tag}`);
-        assert.equal(f.alpha('k'),1);
-        continue;
+    for(const kind of ['wall','building','cliff','rubble'] as BlockKind[]){
+      // A long wall-like block (12 × 2 cells); a figure just behind its middle.
+      const b=block('w',kind,kind==='wall'?1.6:kind==='building'?3.5:kind==='cliff'?1.2:1,6,12,12,2);
+      const whole=occluderFor(b,asset,0,v,p),{x0,x1,y0,y1}=whole.q;
+      const behind=heroAt((x0+x1)/2,y0-0.25,v,p),front=heroAt((x0+x1)/2,y1+0.6,v,p);
+      const cols=unitColumns(b,v,p);
+      const hit=coveringColumns(cols,behind,v,new Set(),p);
+      assert.ok(hit.size>0,`${kind} behind: some band fades ${tag}`);
+      const bands=new Set(cols.map(c=>c.fade!));
+      assert.ok(hit.size<bands.size,`${kind}: not the whole block (${hit.size}/${bands.size}) ${tag}`);
+      // Exactly the columns drawn above the figure and over its box (the actorDepth rule).
+      const r=heroRect(behind.x,behind.y,behind.z,v,p);
+      for(const c of cols){
+        const over=rectHitsConvex(r,c.occ.silhouette)&&isBehind(c.occ,behind.x,behind.y,v,p);
+        if(over)assert.ok(hit.has(c.fade!),`${kind} covering column ${c.occ.id} fades ${tag}`);
       }
-      let prev=1,frames=0;
-      while(f.alpha('k')>FADE_ALPHA){
-        const m=f.update([o],behind,v,16,p);frames++;
-        const a=m.get('k')!;assert.ok(a<prev&&a>=FADE_ALPHA,tag);prev=a;
-        assert.ok(frames<=Math.ceil(FADE_MS/16),'fade completes within FADE_MS');
-      }
-      assert.equal(frames,Math.ceil(FADE_MS/16));
-      assert.equal(f.update([o],behind,v,16,p).get('k'),FADE_ALPHA,'holds while covering');
-      // Walk away: eases back, then dropped.
-      prev=FADE_ALPHA;frames=0;
-      for(;;){
-        const m=f.update([o],away,v,16,p);frames++;
-        if(!m.has('k'))break;
-        const a=m.get('k')!;assert.ok(a>prev&&a<1,tag);prev=a;
-      }
-      assert.equal(frames,Math.ceil(FADE_MS/16));assert.equal(f.alpha('k'),1);
-      // Removed occluder (chunk hidden) is dropped at once.
-      f.update([o],behind,v,16,p);assert.ok(f.alpha('k')<1);
-      assert.equal(f.update([],behind,v,16,p).size,0);assert.equal(f.alpha('k'),1);
-      // Hero undefined eases back instead of snapping.
-      for(let i=0;i<10;i++)f.update([o],behind,v,16,p);
-      const m=f.update([o],undefined,v,16,p);
-      assert.ok(m.get('k')!>FADE_ALPHA&&m.get('k')!<1,'eases back');
-      for(let i=0;i<10;i++)f.update([o],undefined,v,16,p);
-      assert.equal(f.alpha('k'),1);
-      // reset clears.
-      f.update([o],behind,v,16,p);f.reset();assert.equal(f.alpha('k'),1);
+      for(const id of hit)assert.ok(cols.some(c=>c.fade===id&&rectHitsConvex(r,c.occ.silhouette)&&isBehind(c.occ,behind.x,behind.y,v,p)));
+      // In front of the block: nothing fades.
+      assert.equal(coveringColumns(cols,front,v,new Set(),p).size,0,`${kind} in front ${tag}`);
+      // An ally behind it fades the same bands as a hero there would; two figures add up.
+      const both=coveringColumns(cols,front,v,coveringColumns(cols,behind,v,new Set(),p),p);
+      assert.deepEqual([...both].sort(),[...hit].sort());
     }
+    // `cover` (an art lot's real sheet height) replaces occ for the test: a short ruin sheet does not fade.
+    const lot=block('lot','building',3.5,10,10,2,2),tall=occluderFor(lot,asset,0,v,p),short=occluderFor({...lot,height:0.3},asset,0,v,p);
+    const {x0,x1,y0}=tall.q,fig=heroAt((x0+x1)/2,y0-0.8,v,p);
+    assert.equal(coveringColumns([{key:0,occ:tall,fade:'l'}],fig,v,new Set(),p).size,1,tag);
+    assert.equal(coveringColumns([{key:0,occ:tall,fade:'l',cover:short}],fig,v,new Set(),p).size,0,tag);
+    assert.equal(coveringColumns([{key:0,occ:tall}],fig,v,new Set(),p).size,0,'no fade id, skipped');
   });
 });
 
-test('OcclusionFader: deterministic order by id, independent of input order; bad dt keeps state',()=>{
-  const ids=['b10','a','b2','Z','m'];
-  const mk=(order:string[])=>order.map(id=>occluderFor(block(id,'building',3.5),asset,0,0));
-  const o0=occluderFor(block('x','building',3.5),asset,0,0),{x0,x1,y0}=o0.q;
-  const hero=heroAt((x0+x1)/2,y0-0.3,0,VIEW_PIVOT);
-  const run=(order:string[])=>{const f=new OcclusionFader();let m:ReadonlyMap<string,number>=new Map();for(let i=0;i<3;i++)m=f.update(mk(order),hero,0,16);return [...m.keys()];};
-  const sorted=[...ids].sort((a,b)=>a<b?-1:a>b?1:0);
-  assert.deepEqual(run(ids),sorted);
-  assert.deepEqual(run([...ids].reverse()),sorted);
-  const f=new OcclusionFader(),os=mk(ids);
-  f.update(os,hero,0,16);const a=f.alpha('a');
-  f.update(os,hero,0,NaN);assert.equal(f.alpha('a'),a);
-  f.update(os,hero,0,-3);assert.equal(f.alpha('a'),a);
+test('propCovers: a tall prop fades only when drawn in front of the figure and over its box (all views)',()=>{
+  each((v,p)=>{
+    const pine={x:12,y:12};
+    const at=project(pine.x,pine.y,0,v,p),rect={x:at.x-40,y:at.y-170,w:80,h:170};
+    // A figure 0.5 u straight behind the pine (smaller depth, same screen column) is covered; one in front is not.
+    let behind:{x:number;y:number;z:number}|undefined,front:{x:number;y:number;z:number}|undefined;
+    for(const [dx,dy] of [[-.5,-.5],[.5,-.5],[-.5,.5],[.5,.5]]){
+      const f={x:pine.x+dx,y:pine.y+dy,z:0},d=depth(f.x,f.y,v,p)-depth(pine.x,pine.y,v,p);
+      if(d<-1e-9)behind=f;else if(d>1e-9)front=f;
+    }
+    assert.ok(behind&&front);
+    assert.equal(propCovers({...pine,rect},behind!,v,p),true,`view ${v}`);
+    assert.equal(propCovers({...pine,rect},front!,v,p),false,`view ${v}`);
+    assert.equal(propCovers({...pine,rect:{x:rect.x+500,y:rect.y,w:80,h:170}},behind!,v,p),false,'far on screen');
+  });
 });
 
 test('heroRelativeDepth: only where the hero overlaps the block; then behind -> above hero, in front -> below (all views)',()=>{

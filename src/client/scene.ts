@@ -130,6 +130,8 @@ export class IslandScene extends Phaser.Scene {
   private watchId?:string;
   private watchPinned=false;
   private watchPoint?:Point;
+  /** City see-through (cidade-borda-e-quadras): the allies' feet drawn this frame, so walls in front of them fade too. */
+  private allyFeet:Point[]=[];
   private position:Point={...SPAWN};
   private route:Point[]=[];
   private actor!:Phaser.GameObjects.Sprite;
@@ -427,8 +429,9 @@ export class IslandScene extends Phaser.Scene {
     const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
     const camera={x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
-    const hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(this.city.asset,this.position.x,this.position.y)};
-    this.city.update({camera,view:this.view,dtMs:delta,hero});
+    const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
+    const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
+    this.city.update({camera,view:this.view,dtMs:delta,hero,allies});
   }
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
@@ -752,8 +755,10 @@ export class IslandScene extends Phaser.Scene {
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
+    this.allyFeet=[];
     for(const player of view.players){
       if(player.id===net.id)continue;
+      if(city&&player.online&&!player.spectator)this.allyFeet.push({x:player.x,y:player.y});
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
       const k=this.actorScale;

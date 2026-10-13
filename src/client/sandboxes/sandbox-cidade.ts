@@ -24,7 +24,7 @@
  * hero floor: ≈15.07 cells on 844×390, ≈6.96 on 390×844) and the sheet scaled by CITY_VIEW_SCALE, so the hero draws
  * ≈56 CSS px (≈1 cell). `cells` overrides the visible width (cells along screen x) for comparisons. Rotating re-fits.
  * `n` adds that many stand-in enemies wandering around the hero, drawn at the layer's actor depth every frame.
- * Tap the city to move the hero (buildings in front of it turn translucent); the round button turns the view.
+ * Tap the city to move the hero (any piece in front of it turns see-through); the round button turns the view.
  * `window.__cidade` holds the numbers to check against a screenshot (zoom, hero px, visible cells, view) and the FPS
  * meter (`fps()`, `worst()`, `samples()`) to compare with `?sandbox=horda`.
  * `tele=1` (with `mapa=real`; card cidade-contorno-breu): the game's own city-mode drawing around the hero, through the

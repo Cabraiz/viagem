@@ -111,10 +111,10 @@ test('a manifest with enemies and items queues every page under the art keys and
     projeteis:{output:'public/art/projectiles',pieces:{'tiro-aliado':{kind:'frames',files:{sheet:{file:'tiro-aliado.webp',cell:[32,32],frames:4}}}}},
   }}));
   const loads=artLoads(),by=new Map(loads.map(l=>[l.key,l]));
-  assert.equal(by.get('art:enemy:bebado:walk')?.url,'/art/enemies/x.webp'.replace('x.webp','bebado/walk.webp'));
+  assert.equal(by.get('art:enemy:bebado:walk')?.url,'/art/lite/enemies/bebado/walk.webp','enemies load their lite copy');
   assert.deepEqual(by.get('art:enemy:bebado:walk')?.cell,[128,128]);
   assert.ok(by.has('art:enemy:bebado:idle')&&by.has('art:enemy:bebado:elite/walk'));
-  assert.equal(by.get('art:enemy:chefe:idle:p2')?.url,'/art/enemies/chefe/idle-p2.webp');assert.ok(by.has('art:enemy:chefe:idle:p1'));
+  assert.equal(by.get('art:enemy:chefe:idle:p2')?.url,'/art/lite/enemies/chefe/idle-p2.webp');assert.ok(by.has('art:enemy:chefe:idle:p1'));
   const gem=by.get('art:itens:gema-pequena');
   assert.equal(gem?.url,'/art/items/gema-pequena.webp');assert.equal(gem?.bake?.key,pickupTexture('xp'));
   assert.equal(by.get(FX.projFriendly)?.url,'/art/projectiles/tiro-aliado.webp','projectiles load under today\'s key');

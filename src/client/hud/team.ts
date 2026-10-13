@@ -8,6 +8,7 @@ import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,tea
 import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
+import {artIndexVersion} from '../art/manifest.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -28,7 +29,7 @@ export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>}
+interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>;art:number}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -51,7 +52,7 @@ export function createTeamStrip():HudPart{
     const mood=el('span','rh-member-mood',item);mood.innerHTML=icon('risada');mood.setAttribute('aria-hidden','true');
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
-    return {root:item,face,ring,fill,badge,bot,mood,name,timer,classId:player.classId,last:new Map()};
+    return {root:item,face,ring,fill,badge,bot,mood,name,timer,classId:player.classId,last:new Map(),art:artIndexVersion};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -64,7 +65,8 @@ export function createTeamStrip():HudPart{
       // Class and expression (caido when down or out, rindo for 2.2 s after a KKKK, ferido at 30%, else normal):
       // setFace writes only what changed.
       const expression=faceExpression({hp:player.hp,maxHp:player.maxHp,downed:!!player.downed,eliminated:player.eliminated,emote:ctx.mood?.(player.id)});
-      if(nodes.classId!==player.classId||nodes.face.dataset.face!==expression){nodes.classId=player.classId;setFace(nodes.face,player.classId,{expression,portrait:ctx.portrait});}
+      // Also when the art index arrives after the strip was drawn (slow network): the imported face replaces the crop.
+      if(nodes.classId!==player.classId||nodes.face.dataset.face!==expression||nodes.art!==artIndexVersion){nodes.classId=player.classId;nodes.art=artIndexVersion;setFace(nodes.face,player.classId,{expression,portrait:ctx.portrait});}
       if(root.children[index]!==nodes.root)root.insertBefore(nodes.root,root.children[index]??null);
       const state=memberState(player),n=nodes;
       put(n,'state',state,v=>{n.root.dataset.state=v;const badge=BADGES[v as MemberState];n.badge.innerHTML=badge?icon(badge):'';n.badge.hidden=!badge;n.timer.hidden=v!=='downed';});

@@ -82,7 +82,9 @@ export function parseArtIndex(value:unknown):ArtIndex{
 }
 
 /** Replaces the current index (tests, or the loader). */
-export function setArtIndex(next:ArtIndex){index=next;}
+/** Bumped at every index change: parts drawn before the index arrived (HUD faces) redraw when it moves. */
+export let artIndexVersion=0;
+export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
 /** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. */
 export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'})){

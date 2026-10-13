@@ -31,9 +31,9 @@ import {artReady} from '../ui/art-boot.ts';
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
 type FakePickup=PickupView&{until:number};
 type FakeProjectile=ProjectileView&{until:number};
-/** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 /** `?say=ficou`: demo of the left-behind balloon right after a crate's line (cidade-07 / BUG-…-balao-ficou-pra-tras). */
 const SAY_DEMO=new URLSearchParams(location.search).get('say');
+/** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
   {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
   {kind:'tio-pave',weight:12,hp:100,speed:.55},{kind:'agiota',weight:14,hp:40,speed:.8},{kind:'anao-molotov',weight:12,hp:36,speed:.7},

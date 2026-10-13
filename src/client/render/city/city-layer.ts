@@ -21,6 +21,7 @@ import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
+import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -149,6 +150,8 @@ export class CityLayer {
   private readonly lotAt=new Map<number,CityLot>();
   private readonly fountain?:CityLot;
   private readonly still=reducedMotion();
+  /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
+  private readonly relief?:CityRelief;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -182,9 +185,13 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
+    if(reliefEnabled(scene))this.relief=new CityRelief(scene,asset,this.pivot);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
+
+  /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
+  reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */
   liveChunks(){return [...this.live.keys()].sort();}
@@ -436,16 +443,23 @@ export class CityLayer {
     const rt=this.scene.add.renderTexture(bx,by,Math.ceil(bw*s),Math.ceil(bh*s)).setOrigin(0,0).setScale(1/s).setDepth(CITY_GROUND_DEPTH);
     const place=<T extends Phaser.GameObjects.Components.Transform>(o:T)=>{o.setScale(s);o.setPosition(-bx*s,-by*s);return o;};
 
+    // Relief (relevo/baker.ts): the shader bakes lit, textured ground for every cell of the ring, replacing passes 1-2.
+    const relief=this.relief;
+    if(relief){
+      const key=relief.bake({x:bx,y:by},s,Math.ceil(bw*s),Math.ceil(bh*s),view,ring);
+      const img=this.scene.make.image({key},false).setOrigin(0,0).setFlipY(true);
+      rt.draw(img);img.destroy();
+    }
     // Pass 1: flat cells.
     const flat=place(this.scene.make.graphics({},false));
-    for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
+    if(!relief)for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
     // Pass 2: painted cells, one Mesh per texture.
     const meshes:Phaser.GameObjects.Mesh[]=[];
-    for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
+    if(!relief)for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
     // Pass 3: slope shading over painted cells, decor, shadows.
     const over=place(this.scene.make.graphics({},false));
     for(const q of quads){
-      if(!painted.has(q.kind))continue;
+      if(relief||!painted.has(q.kind))continue;
       const o=groundShadeOverlay(q.kind,q.shade);
       if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
     }

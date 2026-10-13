@@ -4,7 +4,9 @@
  * actors in the depth order, dozens of separate textures broke Phaser's sprite batch into many draw calls (measured:
  * 17 → 21 fps at 12 defenses + 300 critters, CPU 4×, with the tower images on one texture).
  * A frame is drawn by a scratch Graphics clipped to its cell (shelf packing, a gutter against bleeding at the edges);
- * a page is uploaded once per frame at most (`flush`), after the bakes of that frame.
+ * a page is uploaded once per frame at most (`flush`), after the bakes of that frame: whole the first time, afterwards
+ * only the frames baked since (a phase or view change bakes one base; re-sending the whole 1024² page was 4 MB plus
+ * its mipmaps, a hitch on a phone — BUG-20261013-E8-arame-nunca-dispara, P2 item).
  */
 import Phaser from 'phaser';
 
@@ -13,8 +15,11 @@ export const ATLAS_PAGE=1024;
 const GUTTER=2;
 
 export interface AtlasFrame {key:string;frame:string;w:number;h:number}
-interface Page {texture:Phaser.Textures.CanvasTexture;w:number;h:number;x:number;y:number;row:number}
-interface State {pages:Page[];frames:Map<string,AtlasFrame>;dirty:Set<Phaser.Textures.CanvasTexture>}
+interface Rect {x:number;y:number;w:number;h:number}
+interface Page {texture:Phaser.Textures.CanvasTexture;w:number;h:number;x:number;y:number;row:number;
+  /** Uploaded whole once; then only `dirty` (the cells baked since the last flush). */
+  uploaded:boolean;dirty:Rect[]}
+interface State {pages:Page[];frames:Map<string,AtlasFrame>;dirty:Set<Page>}
 
 /** The atlas lives with the texture manager (one per game), so a renderer rebuilt after a scene restart reuses it. */
 const states=new WeakMap<Phaser.Textures.TextureManager,State>();
@@ -39,12 +44,19 @@ export class TowerAtlas {
     g.clear();g.translateCanvas(x,y);draw(g);g.generateTexture(canvas,page.w,page.h);g.clear();
     ctx.restore();
     page.texture.add(name,0,x,y,w,h);
-    this.s.dirty.add(page.texture);
+    page.dirty.push({x,y,w,h});this.s.dirty.add(page);
     const f={key:page.texture.key,frame:name,w,h};this.s.frames.set(name,f);
     return f;
   }
   /** Uploads the pages baked into since the last call (once per frame, after the bakes). */
-  flush(){if(!this.s.dirty.size)return;for(const t of this.s.dirty)t.refresh();this.s.dirty.clear();}
+  flush(){
+    if(!this.s.dirty.size)return;
+    for(const page of this.s.dirty){
+      if(!page.uploaded||!uploadRects(page))page.texture.refresh();
+      page.uploaded=true;page.dirty.length=0;
+    }
+    this.s.dirty.clear();
+  }
 
   private place(w:number,h:number):{page:Page;x:number;y:number}{
     const W=w+GUTTER,H=h+GUTTER;
@@ -56,8 +68,38 @@ export class TowerAtlas {
     let key=`${this.prefix}:${this.s.pages.length}`;
     while(this.textures.exists(key))key+='+';
     const texture=this.textures.createCanvas(key,size,size)!;
-    const page:Page={texture,w:size,h:size,x:W,y:0,row:H};
+    const page:Page={texture,w:size,h:size,x:W,y:0,row:H,uploaded:false,dirty:[]};
     this.s.pages.push(page);
     return {page,x:0,y:0};
   }
+}
+
+/** Scratch canvas a baked cell is copied into before its upload (grown as needed, shared by every page). */
+let scratch:HTMLCanvasElement|undefined;
+/**
+ * Uploads only the page's dirty cells into its WebGL texture (texSubImage2D), with the same unpack state and binding
+ * hygiene as Phaser's own upload (WebGLTextureWrapper._processTexture). False when it cannot (no WebGL texture, a lost
+ * context): the caller refreshes the whole page instead. Mipmaps are made again only if the texture samples them.
+ */
+function uploadRects(page:Page):boolean{
+  const wrapper=page.texture.source[0]?.glTexture as Phaser.Renderer.WebGL.Wrappers.WebGLTextureWrapper|undefined;
+  const gl=wrapper?.gl;
+  if(!wrapper||!gl||!wrapper.webGLTexture||gl.isContextLost()||!page.dirty.length)return false;
+  const canvas=page.texture.getSourceImage() as HTMLCanvasElement;
+  scratch??=document.createElement('canvas');
+  gl.activeTexture(gl.TEXTURE0);
+  const current=gl.getParameter(gl.TEXTURE_BINDING_2D) as WebGLTexture|null;
+  gl.bindTexture(gl.TEXTURE_2D,wrapper.webGLTexture);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,wrapper.pma);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,wrapper.flipY);
+  for(const r of page.dirty){
+    if(scratch.width<r.w||scratch.height<r.h){scratch.width=Math.max(scratch.width,r.w);scratch.height=Math.max(scratch.height,r.h);}
+    const ctx=scratch.getContext('2d')!;
+    ctx.clearRect(0,0,r.w,r.h);ctx.drawImage(canvas,r.x,r.y,r.w,r.h,0,0,r.w,r.h);
+    const cell=ctx.getImageData(0,0,r.w,r.h);
+    gl.texSubImage2D(gl.TEXTURE_2D,0,r.x,r.y,gl.RGBA,gl.UNSIGNED_BYTE,cell);
+  }
+  if(wrapper.minFilter!==gl.LINEAR&&wrapper.minFilter!==gl.NEAREST)gl.generateMipmap(gl.TEXTURE_2D);
+  gl.bindTexture(gl.TEXTURE_2D,current);
+  return true;
 }

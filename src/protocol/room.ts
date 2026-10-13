@@ -63,6 +63,23 @@ export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
 export const MAX_PLAYERS = 6;
 /**
+ * The run's rotation (D-040) for the client's per-match art (arte-do-roster-no-render): {t:'elenco',ids} on welcome and
+ * when a run draws a new one, so a phone fetches the drawn enemies' sheets before they show up. JSON control, no
+ * protocol bump: an older client ignores an unknown `t`, and an older room never sends it (the client then loads each
+ * enemy's art the first time one shows up).
+ */
+export interface ElencoMessage {t:'elenco';ids:string[]}
+/** At most this many ids are read (a rotation has 12-18); longer than ELENCO_ID_MAX chars is not a roster id. */
+export const ELENCO_MAX=32,ELENCO_ID_MAX=64;
+/** The ids of an {t:'elenco'} message (strings only, capped), or undefined when it is not one. */
+export function parseElenco(m:unknown):string[]|undefined{
+  if(!m||typeof m!=='object'||(m as {t?:unknown}).t!=='elenco')return undefined;
+  const ids=(m as {ids?:unknown}).ids;if(!Array.isArray(ids))return undefined;
+  const out:string[]=[];
+  for(const id of ids){if(out.length>=ELENCO_MAX)break;if(typeof id==='string'&&id.length>0&&id.length<=ELENCO_ID_MAX&&!out.includes(id))out.push(id);}
+  return out;
+}
+/**
  * A dropped player keeps the seat this long (VGM-047, definitive for phones, D-009/D-016): switching apps, answering a
  * message or changing networks is normal. Costs nothing on the free plan (an offline player sends nothing); the
  * standing character can still be hit, so a long absence ends in a fall like any other.

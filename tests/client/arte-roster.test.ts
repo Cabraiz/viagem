@@ -3,7 +3,7 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ACTION_ALIASES,applyEnemyArt,artLoads,deathDuration,enemyArtActive,enemyArtId,enemyArtOn,enemyPieceLoads,hasDeathArt,
+import {ACTION_ALIASES,HERO_FIGURE_PX,MASS_ALPHA,applyEnemyArt,artLoads,artTargetHeight,drawnScale,topRow,deathDuration,enemyArtActive,enemyArtId,enemyArtOn,enemyPieceLoads,hasDeathArt,
   loopAnim,pieceAction,playEnemyAction,queueEnemyArt} from '../../src/client/art/horde-art.ts';
 import {actAnim,PHASE_ACTING,PHASE_BUFFED} from '../../src/client/render/phase-look.ts';
 import {enemyKind} from '../../src/client/render/keys.ts';
@@ -133,4 +133,24 @@ test('death by roster id; enemyArtActive with only roster pieces',()=>{
   assert.equal(hasDeathArt({exists:k=>loaded.has(k)},'pombos'),false,'the base kind has no death sheet');
   assert.equal(hasDeathArt({exists:()=>true},'grauzeiro'),false,'no piece');
   assert.equal(deathDuration('rato-de-boteco')>0,true);assert.equal(deathDuration('grauzeiro'),0);
+});
+
+test('size by drawn height (D-037, Orquestrador): the role\'s target over the figure\'s alpha mass, not the cell',()=>{
+  assert.equal(HERO_FIGURE_PX,96);
+  assert.equal(artTargetHeight('grauzeiro'),96*.9,'kamikaze: the default 0.9× the hero');
+  assert.equal(artTargetHeight('rato-de-boteco'),96*.5,'enxame 0.5');
+  assert.equal(artTargetHeight('tio-do-isopor'),96*1.3,'brutamontes 1.3');
+  const mini=ENEMY_ROSTER.find(r=>r.role==='mini-chefe')!,chefe=ENEMY_ROSTER.find(r=>r.role==='chefe'&&r.id!=='chefe')!;
+  assert.equal(artTargetHeight(mini.id),96*2);assert.equal(artTargetHeight(chefe.id),96*3);assert.equal(artTargetHeight('chefe'),96*3);
+  // The barata's 39 px figure in its 96 px cell reaches 86.4 world px; the cell does not matter.
+  assert.ok(Math.abs(39*drawnScale('barata-voadora',39)!-86.4)<1e-9);
+  assert.ok(Math.abs(22*drawnScale('rato-de-boteco',22)!-48)<1e-9,'the rat: 22 px drawn, 0.5× the hero');
+  assert.ok(Math.abs(drawnScale('grauzeiro',80,true)!/drawnScale('grauzeiro',80)!-1.35)<1e-9,'the elite is bigger like today\'s');
+  assert.equal(drawnScale('grauzeiro',undefined),undefined,'not measured: today\'s cell rule');
+  assert.equal(drawnScale('grauzeiro',2),undefined,'an empty frame is no measure');
+  // topRow: the first row with alpha ≥ 0.5; the rim's faint edge (alpha < 128) does not count.
+  const w=4,h=6,cell=new Uint8ClampedArray(w*h*4);
+  cell[(1*w+2)*4+3]=100;cell[(3*w+1)*4+3]=200;
+  assert.equal(topRow(cell,w,h),3);assert.equal(topRow(cell,w,h,90),1);assert.equal(topRow(new Uint8ClampedArray(w*h*4),w,h),-1);
+  assert.equal(MASS_ALPHA,128);
 });

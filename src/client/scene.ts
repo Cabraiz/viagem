@@ -19,7 +19,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
-import {queueHordeArt} from './art/horde-art.ts';
+import {queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -100,6 +100,8 @@ const TREE_FADE_MS=220;
 
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
+  /** The last {t:'elenco'} list whose art was queued (horde-art.ts queueEnemyArt). */
+  private elenco?:readonly string[];
   private view=0;
   private landscape?:TerrainLayer;
   /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
@@ -679,6 +681,9 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up.
+    const elenco=this.hooks.net?.elenco;
+    if(elenco&&elenco!==this.elenco){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;

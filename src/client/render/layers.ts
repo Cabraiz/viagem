@@ -8,7 +8,7 @@ import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackTint,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtOn,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtOn,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -78,6 +78,8 @@ interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
+  /** Imported figure size over the reserve's (horde-art.ts enemyArtRatio; 1 without art): shadow, bar, ring and cues follow it. */
+  fit:number;
   px:number;py:number;nx:number;ny:number;x:number;y:number;
   phase:number;flashAt:number;flashing:boolean;
   /** The sun tint (render/light.ts ACTOR_TINT) is on: set once per spawn and after each hit flash. */
@@ -309,7 +311,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -686,15 +688,17 @@ export class HordeRenderer{
       const base=ENEMY_TEXTURES[a.kind][a.elite?1:0];
       outlines.show(a.image,outlines.variant(base,body),base,undefined,.5,art.originY,sx*body,sy*body);
     }
-    const shadow=art.width*size*(a.kind==='pombos'?.45:.66)*body;
+    // The imported figure is sized by its drawn height (horde-art.ts): what hangs on the body follows it.
+    const fit=a.fit=enemyArtRatio(a.image);
+    const shadow=art.width*size*fit*(a.kind==='pombos'?.45:.66)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
-    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*.8*body);
-    if(a.look!==LOOK_NONE)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size);
+    if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
+    if(a.look!==LOOK_NONE)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
     // Last: drawEyes projects the hero through the shared scratch point (q).
-    if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size);
+    if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size*fit);
   };
   /**
    * Eyes in the dark (VGM-053B): two Papel eyes with a Breu edge and pupils that look at the local hero, at the
@@ -778,7 +782,7 @@ export class HordeRenderer{
   private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
-  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*this.body;}
+  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.body;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
     // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).

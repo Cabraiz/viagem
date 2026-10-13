@@ -13,6 +13,7 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
+import {roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
@@ -360,6 +361,70 @@ export function enemyDrawScale(kind:EnemyKind,file:ArtFile,elite=false):number{
   return art.height*art.originY/(file.cell[1]*ay)*(elite?ELITE_ART_SCALE:1);
 }
 
+// ---------- drawn height (arte-do-roster-no-render, D-037): the figure, not the cell, sets the size ----------
+/** The hero's standing figure in world px (D-030: sprites/character-sprites.ts scales every hero to 96). */
+export const HERO_FIGURE_PX=96;
+/**
+ * Target feet-to-top height of an imported enemy, × the hero's (Orquestrador, 13/10/2026, on D-037's 0.9×): the
+ * default 0.9; an enxame 0.5 (0.4-0.6); a brutamontes 1.3 (1.2-1.4); a mini-chefe 2; the chefe 3.
+ */
+export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,brutamontes:1.3,'mini-chefe':2,chefe:3};
+export const DEFAULT_HEIGHT=.9;
+/** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT);
+/** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
+export const MASS_ALPHA=128;
+/**
+ * Topmost row (0-based) of an RGBA cell with a pixel at alpha ≥ `threshold`, or -1 when the cell is empty. Pure: the
+ * Phaser side feeds it the first idle frame of each direction.
+ */
+export function topRow(data:ArrayLike<number>,width:number,height:number,threshold=MASS_ALPHA):number{
+  for(let y=0;y<height;y++){const row=y*width*4;for(let x=0;x<width;x++)if(data[row+x*4+3]>=threshold)return y;}
+  return -1;
+}
+/**
+ * Scale of an imported sheet whose figure stands `drawn` cell px above the anchor (feet): the role's target height,
+ * bigger for an elite like today's. Undefined (the caller keeps enemyDrawScale) when nothing was measured.
+ */
+export function drawnScale(id:string,drawn:number|undefined,elite=false):number|undefined{
+  if(drawn===undefined||!(drawn>=4))return undefined;
+  return artTargetHeight(id)/drawn*(elite?ELITE_ART_SCALE:1);
+}
+/** Measured feet-to-top height (cell px) per art id; null: not measurable (no canvas, empty frames). */
+const drawnHeights=new Map<string,number|null>();
+/** Forget the measures (tests; a new manifest brings new sheets under the same ids). */
+export function resetDrawnHeights(){drawnHeights.clear();}
+let probe:{canvas:HTMLCanvasElement;ctx:CanvasRenderingContext2D}|undefined;
+/**
+ * Figure height of art `id` in cell px: the tallest of the 8 directions' first frame of its still loop (idle, else
+ * fly or walk), from the feet (the file's anchor) to the topmost pixel of alpha ≥ 0.5. Measured once, the first time
+ * all those pages are loaded (undefined until then, so the caller keeps today's scale meanwhile).
+ */
+export function drawnHeight(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece):number|undefined{
+  const known=drawnHeights.get(id);if(known!==undefined)return known??undefined;
+  const anim=cachedAnim(piece,false,false),file=anim?piece.files[anim]:undefined;
+  if(!anim||!file){drawnHeights.set(id,null);return undefined;}
+  const info=fileInfo(id,anim,file),ref:FrameRef={key:'',frame:0};
+  for(let r=0;r<info.dirs;r++)if(!frameAt(info,r,0,ref)||!textures.exists(ref.key))return undefined; // not loaded yet
+  let best:number|null=null;
+  try{
+    if(typeof document==='undefined')throw new Error('no canvas');
+    const [w,h]=file.cell,feet=h*(file.anchor?.[1]??.88);
+    if(!probe){const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('no 2d');probe={canvas,ctx};}
+    const {canvas,ctx}=probe;canvas.width=w;canvas.height=h;
+    for(let r=0;r<info.dirs;r++){
+      frameAt(info,r,0,ref);
+      const tex=textures.get(ref.key),fr=tex.get(ref.frame);
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(tex.getSourceImage() as CanvasImageSource,fr.cutX,fr.cutY,fr.cutWidth,fr.cutHeight,0,0,fr.cutWidth,fr.cutHeight);
+      const top=topRow(ctx.getImageData(0,0,w,h).data,w,h);
+      if(top>=0&&top<feet)best=Math.max(best??0,feet-top);
+    }
+  }catch{best=null;}
+  drawnHeights.set(id,best);
+  return best??undefined;
+}
+
 /**
  * The looping animation of an enemy that is not acting: chooseAnim (cached), except the chefe from boss phase 2
  * (BOSS_PHASE2) standing still, who idles with 'phase2-idle' when the piece has it.
@@ -412,9 +477,23 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 }
 
 // ---------- Phaser side: per-enemy state, kept off the actor so layers.ts changes stay tiny ----------
-interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean}
+interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
+  /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
+  ratio:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,at:0,end:0};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,at:0,end:0,ratio:1};states.set(image,s);}return s;};
+/** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
+export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
+/**
+ * Scale of art `id`'s file `file` for an enemy of `kind`: the drawn height (drawnHeight) to the role's target once
+ * measured; until then (or unmeasurable) today's cell rule (enemyDrawScale).
+ */
+function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
+  const drawn=drawnHeight(textures,id,piece);
+  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
+}
+/** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
+const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
 const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0};
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
@@ -462,7 +541,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   if(!action&&anim)frame=enemyFrame(id,piece,anim,s.row,t,base);
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
-  const file=piece.files[anim],scale=enemyDrawScale(actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
+  const file=piece.files[anim],scale=pieceScale(textures,id,piece,actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
   // The elite layer of the action when it has one (and it loaded); otherwise the loop's elite layer (the elite marker
   // never blinks off during an attack or a hit), on the action's column when the loop has it, else its first frame.
   let eliteFrame=actor.elite?enemyFrame(id,piece,eliteFile(anim),s.row,t,top,!!action):undefined;
@@ -486,6 +565,8 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   }
   image.setFlipX(false).setRotation(0);
   s.on=true;
+  const art=ENEMY_ART[actor.kind];
+  s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
   if(eliteFrame&&s.eliteOn){
     const o=overlayOf(image,s),topKey=copyTop?copyTop.key:eliteFrame.key;
     if(o.texture.key!==topKey)o.setTexture(topKey,eliteFrame.frame);else o.setFrame(eliteFrame.frame);
@@ -551,7 +632,7 @@ export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameO
   const textures=image.scene.textures;
   if(!frame||!textures.exists(frame.key)){overlay.setVisible(false);return false;}
   if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
-  const scale=enemyDrawScale(kind,file,elite)*body;
+  const scale=pieceScale(textures,id,piece,kind,file,elite)*body;
   image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0).setAlpha(alpha).setVisible(true);
   const layer=elite?enemyFrame(id,piece,eliteFile('death'),row,elapsedMs,top,true):undefined;
   if(layer&&textures.exists(layer.key)){

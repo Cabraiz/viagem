@@ -5,6 +5,9 @@ import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import './fun/fun.css';
 import {EmoteBar} from './fun/emotes.ts';
+import {ZONE_WINDOWS} from './hud/zones.ts';
+/** The match windows a thumb control must not cover (the emote bar hides while one is open). */
+const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
@@ -425,7 +428,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         damage.add(view,id=>net!.players.has(id));
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
-        if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator;if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);}}
+        // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
+        if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
+          if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
         if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.

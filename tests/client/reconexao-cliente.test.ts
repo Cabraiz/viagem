@@ -371,3 +371,17 @@ test('3g-socket-morto review: the network coming back (online) never closes a so
     (ana as any).connected=true;
   }finally{stop();cleanup();}
 });
+
+test('emote-relay-sala: an emote from one phone reaches the other (and comes back to the sender) through the room',async()=>{
+  store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
+  try{
+    const ana=client('Ana');await ana.join();store.clear();const bia=client('Bia');await bia.join();
+    ana.ready(true);bia.ready(true);
+    for(let i=0;i<160&&ana.run?.phase!=='combat';i++)await sleep(50);
+    const seenByBia:{player:string;id:string}[]=[],seenByAna:{player:string;id:string}[]=[];
+    bia.onEmote=note=>seenByBia.push(note);ana.onEmote=note=>seenByAna.push(note);
+    assert.equal(ana.emote('kkkk'),true);
+    for(let i=0;i<40&&!seenByBia.length;i++)await sleep(20);
+    assert.deepEqual(seenByBia,[{player:ana.id,id:'kkkk'}]);assert.deepEqual(seenByAna,[{player:ana.id,id:'kkkk'}]);
+  }finally{stop();cleanup();}
+});

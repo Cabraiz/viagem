@@ -724,6 +724,11 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
     this.out(this.socket,{t:'sos',round:this.run.round});return true;
   }
+  /** Quick emote (emote-relay-sala): {t:'emote',round,id}; the room relays it to everyone, this phone included (onEmote). */
+  emote(id:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.out(this.socket,{t:'emote',round:this.run.round,id});return true;
+  }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   /** Owner commands (D-025): the room checks owner, phase and round; a refusal comes back as a notice. */
   kick(id:string){this.runCommand({t:'kick',id});}

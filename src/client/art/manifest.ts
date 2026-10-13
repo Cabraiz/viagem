@@ -87,11 +87,15 @@ export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;
 }
 
 export const artPiece=(group:ArtGroupId,id:string):ArtPiece|undefined=>index.groups[group]?.pieces[id];
+/** The current index (read-only use: pure planners enumerate a group's pieces from it). */
+export const artIndex=():ArtIndex=>index;
+/** Public URL of a file inside a group's output folder (`public/art/x` is served at `/art/x`). */
+export const groupFileUrl=(group:ArtGroup,file:string)=>`/${group.output.replace(/^public\//,'')}/${file}`;
 export const hasArt=(group:ArtGroupId,id:string)=>!!artPiece(group,id);
 /** Public URL of a file of a group (`public/art/x` is served at `/art/x`). */
 export const artUrl=(group:ArtGroupId,file:string)=>{
-  const out=index.groups[group]?.output;
-  return out?`/${out.replace(/^public\//,'')}/${file}`:undefined;
+  const g=index.groups[group];
+  return g?groupFileUrl(g,file):undefined;
 };
 /** Every page of a file (a single-page sheet as one page), for loaders. */
 export function artPages(file:ArtFile):ArtPage[]{

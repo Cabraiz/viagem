@@ -5,7 +5,8 @@ import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
+import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
@@ -217,7 +218,10 @@ export class IslandScene extends Phaser.Scene {
     // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
     // City: no island ground textures; its pines use the approved snowy tree sheet (city layer PINE_TEXTURE).
-    if(this.field instanceof CityTerrain)this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
+    if(this.field instanceof CityTerrain){
+      this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
+      queueCityArt(this,this.cityArt()); // imported city art v2 (render/city/art-plan.ts) when the manifest has it
+    }
     else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
     this.load.image('hero',thumbUrl(this.hooks.classId));
@@ -829,8 +833,14 @@ export class IslandScene extends Phaser.Scene {
     if(isCityWorld(this.field)){
       // The city render (cidade-03): torn down by clearWorld (a map switch) or with the scene.
       if(!(this.field instanceof CityTerrain))return;
-      const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf});
+      const art=this.cityArt();
+      const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
       city.setActorScale(this.actorScale);
+      // A map switch into the city: its sheets arrive after the first chunks, which are rebuilt with them.
+      if(queueCityArt(this,art)){
+        this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});
+        if(!this.load.isLoading())this.load.start();
+      }
       const drop=()=>{city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
       this.events.once('shutdown',drop);this.events.once('destroy',drop);
       this.dropGround=drop;
@@ -858,6 +868,11 @@ export class IslandScene extends Phaser.Scene {
     if(tree&&this.field.chunks)g.fillStyle(tokenColor('--c-breu'),.22).fillEllipse(4,2,Math.min(120,tree.height*.55),Math.min(44,tree.height*.2));
     else this.drawProp(g,o);
     return {point:o,object:g,art:tree?.id};
+  }
+  private cityArtPlan?:CityArtPlan;
+  /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
+  private cityArt():CityArtPlan{
+    return this.cityArtPlan??=buildCityArtPlan(artIndex(),cityArtOptions(typeof location==='undefined'?'':location.search));
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;

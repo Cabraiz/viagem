@@ -15,10 +15,14 @@
  * gem on their Breu 38% shadows; the "você" ring (YouMarkers), a plain and a caído map ficha (MapLabel) and the
  * destination mark (city-edge-rules.ts). One static view is pushed: nothing animates but the dash drift (none with
  * prefers-reduced-motion) and the hero's idle sheet.
+ * Imported art (card ligar-arte-v2): the city's buildings, rubble, props and fountain from `/art/manifest.json`
+ * (render/city/art-plan.ts); `arte=0` draws without it, `altura=a|b` picks the building scale (a: 1 storey ≈ 2.4 u on
+ * 2×2-cell lots, b: as delivered).
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
-import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,unproject,type CityAsset} from '../render/city/index.ts';
+import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
+import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
@@ -90,8 +94,11 @@ class CitySandbox extends Phaser.Scene {
   private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
   private decoded?:CityTerrain;
   constructor(){super('city-sandbox');}
+  private art?:CityArtPlan;
   preload(){
     this.load.spritesheet(PINE_TEXTURE,'/art/lite/trees/arvore-nevada.webp',{frameWidth:256,frameHeight:384});
+    this.art=buildCityArtPlan(artIndex(),cityArtOptions(location.search));
+    queueCityArt(this,this.art);
     this.sprites.queue(classId);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
   }
@@ -105,7 +112,7 @@ class CitySandbox extends Phaser.Scene {
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
-    this.layer=new CityLayer(this,this.asset);
+    this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;
@@ -236,8 +243,8 @@ class CitySandbox extends Phaser.Scene {
   }
 }
 
-new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
-  scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
+void (params.get('arte')!=='0'?loadArtManifest():Promise.resolve()).then(()=>new Phaser.Game({type:Phaser.AUTO,parent:host,
+  backgroundColor:'#2B2542',scene:[CitySandbox],scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}}));
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{

@@ -1,7 +1,6 @@
-// NEW-20261012-ORQ-cidade-10 PREP (D-026, D-035): the room's default map. Today ROOM_DEFAULT_MAP is the endless map
-// and the city is locked (CITY_PLAYABLE=false), so nothing changes for players. The flip (city default, city playable)
-// is a change of those two constants; these tests build the flipped room by option (map + cityPlayable) and the
-// flipped Worker by its `defaults` (mapa-padrao-worker.test.ts), without touching the constants, and prove it: the room opens on the city at
+// NEW-20261012-ORQ-cidade-10 (D-026, D-035): the room's default map. Since cidade-10 ROOM_DEFAULT_MAP is the city and
+// CITY_PLAYABLE is true (the flip). These tests still build the flipped room by option (map + cityPlayable) and the
+// flipped Worker by its `defaults` (mapa-padrao-worker.test.ts), so they do not depend on the constants, and prove it: the room opens on the city at
 // construction, the first welcome already names it (no {t:'map'} right after), a restart restores the owner's last
 // pick (city or endless) and a row from before cidade-10 (no `map`) comes back on the endless map.
 import test from 'node:test';
@@ -19,8 +18,10 @@ const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.has
 const BOTH=clientCatalog(CITY);
 /** The flip, by option: the city as the default map, playable, its asset handed over (as worker.ts does). */
 const FLIPPED:RoomOptions={cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada'};
-/** Today's Worker room: the constants as they are, the asset handed over. */
+/** Today's Worker room: the constants as they are, the asset handed over (since cidade-10: on the city). */
 const TODAY:RoomOptions={cityText,cityRef:CITY};
+/** A room still on the endless map (a row written before the owner picked the city, or before cidade-10). */
+const ENDLESS:RoomOptions={cityText,cityRef:CITY,map:'infinito'};
 
 function peer(){
   const messages:any[]=[],closes:{code:number;reason:string}[]=[];
@@ -39,7 +40,7 @@ const stored=(r:RoomRoster)=>JSON.parse(JSON.stringify(r)) as RoomRoster;
 // still waiting on its decode when restore() names the endless map (the restart race).
 test('flipped restart from an endless-map row while the city still decodes: the row wins, no {t:map}',async()=>{
   assert.equal(cityTerrainFor(CITY.hash!),undefined,'the city must not be decoded yet');
-  const today=new Room(1000,7,TODAY),a=peer();join(today,a,'Ana',1000);
+  const today=new Room(1000,7,ENDLESS),a=peer();join(today,a,'Ana',1000);
   const row=stored(today.roster());assert.equal(row.map,'infinito');
   const again=new Room(1000,7,FLIPPED);again.restore(row,2000);await again.ready();
   assert.deepEqual(again.map,INFINITO_REF);assert.equal(again.sim.terrain.world,'infinito');
@@ -105,9 +106,12 @@ test('a row from before cidade-10 (no map) comes back on the endless map, flippe
   }
 });
 
-test('today\'s constants: a room opens on the endless map and its roster says so',()=>{
-  const flipped=ROOM_DEFAULT_MAP==='cidade-nevada'&&CITY_PLAYABLE;
-  const room=new Room(1000,7,TODAY),a=peer();join(room,a,'Ana',1000);
-  assert.deepEqual(welcome(a).map,flipped?CITY:INFINITO_REF);assert.deepEqual(maps(a),[]);
-  if(!flipped){assert.equal(ROOM_DEFAULT_MAP,'infinito');assert.deepEqual(room.map,INFINITO_REF);assert.equal(room.roster().map,'infinito');}
+test('today\'s constants (cidade-10): a room with the asset opens on the city and its roster says so; without the asset, the endless map silently',async()=>{
+  assert.equal(ROOM_DEFAULT_MAP,'cidade-nevada');assert.equal(CITY_PLAYABLE,true);
+  const room=new Room(1000,7,TODAY);await room.ready();const a=peer();join(room,a,'Ana',1000);
+  assert.deepEqual(welcome(a).map,CITY);assert.deepEqual(maps(a),[]);
+  assert.deepEqual(room.map,CITY);assert.equal(room.roster().map,'cidade-nevada');
+  const logs:string[]=[];
+  const bare=new Room(1000,7,{log:l=>logs.push(l)});await bare.ready();
+  assert.deepEqual(bare.map,INFINITO_REF);assert.deepEqual(logs,[]);
 });

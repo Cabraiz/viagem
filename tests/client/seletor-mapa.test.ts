@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 import * as city from '../../src/client/hud/city/index.ts';
 import {soonMaps,mapNews,mapLoadText,roomMapId,syncSelector,besideSelector,lobbyOrientation,readyBlock,within,CITY_NOT_ARRIVED,READY_BLOCKED,MANIFEST_BUDGET_MS} from '../../src/client/lobby.ts';
 import {readCityManifest,loadCity,CITY_FAILED} from '../../src/client/net/city-asset-loader.ts';
-import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,clientCatalog,MAP_TEXT,ROOM_PROTOCOL,UPDATE_NEEDED,type MapId,type MapRef} from '../../src/protocol/index.ts';
+import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,ROOM_DEFAULT_MAP,clientCatalog,MAP_TEXT,ROOM_PROTOCOL,UPDATE_NEEDED,type MapId,type MapRef} from '../../src/protocol/index.ts';
 import {TerrainField,TERRAIN_VERSION,CHUNK_VERSION,cityTerrainFrom,cityTerrainFor} from '../../src/maps/index.ts';
 import type {SelectorEvent,SelectorState} from '../../src/client/hud/city/index.ts';
 
@@ -17,16 +17,21 @@ const step=(s:SelectorState,e:SelectorEvent)=>city.selectorReducer(s,e);
 const lcg=(seed:number)=>{let s=seed>>>0;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};};
 
 // ---------- Selector: the city locked "em breve" (D-035) ----------
+// Since cidade-10 the city is playable; the locked tests below drive the selector with the locked option
+// (soonMaps(false)), so "em breve" stays covered for a build or room that turns the city off again.
 
-test('D-035: the city is locked "em breve" while CITY_PLAYABLE is off; the default map is the endless one',()=>{
-  assert.equal(CITY_PLAYABLE,false);
-  assert.deepEqual(soonMaps(),{'cidade-nevada':CITY_SOON});
+test('D-035: the city is locked "em breve" when cityPlayable is off; cidade-10: today it is playable and the room default',()=>{
+  assert.deepEqual(soonMaps(false),{'cidade-nevada':CITY_SOON});
   assert.deepEqual(soonMaps(true),{});
-  assert.equal(city.DEFAULT_MAP,'infinito');
+  // Today's constants: nothing locked, and the room opens on the city, which the client takes from the welcome.
+  assert.equal(CITY_PLAYABLE,true);assert.deepEqual(soonMaps(),{});
+  assert.equal(ROOM_DEFAULT_MAP,'cidade-nevada');assert.equal(roomMapId({map:CITY_REF}),'cidade-nevada');
+  // A welcome without `map` (a room from before cidade-09) is still the endless map.
+  assert.equal(city.DEFAULT_MAP,'infinito');assert.equal(roomMapId({}),'infinito');
 });
 
 test('owner taps the locked city: nothing is sent, the map stays, the hint says "em breve" (both orientations)',()=>{
-  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps()};
+  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps(false)};
   const out=step(owner,{type:'tap',map:'cidade-nevada',nowMs:10});
   assert.equal(out.send,undefined,'never sent: the room would refuse it');
   assert.equal(out.state.confirmed,'infinito');assert.equal(out.state.pending,undefined);
@@ -44,10 +49,10 @@ test('owner taps the locked city: nothing is sent, the map stays, the hint says 
 });
 
 test('tapping infinito when it is already the map does nothing; guests and locked/offline owners never get the notice',()=>{
-  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps()};
+  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps(false)};
   const same=step(owner,{type:'tap',map:'infinito',nowMs:0});
   assert.equal(same.send,undefined);assert.equal(same.state,owner,'same state object: nothing changed');
-  const guest:SelectorState={...city.initialSelector(false,'infinito'),soon:soonMaps()};
+  const guest:SelectorState={...city.initialSelector(false,'infinito'),soon:soonMaps(false)};
   assert.equal(step(guest,{type:'tap',map:'cidade-nevada',nowMs:0}).state,guest);
   assert.equal(city.selectorView(guest,'portrait').hint,city.SELECTOR_TEXT.guest,'the guest keeps the owner hint');
   assert.equal(step(step(owner,{type:'countdown',on:true}).state,{type:'tap',map:'cidade-nevada',nowMs:0}).state.notice,undefined);
@@ -55,7 +60,7 @@ test('tapping infinito when it is already the map does nothing; guests and locke
 });
 
 test('the room\'s own map is never shown locked (a city room still shows the city selected)',()=>{
-  const s:SelectorState={...city.initialSelector(true,'cidade-nevada'),soon:soonMaps()};
+  const s:SelectorState={...city.initialSelector(true,'cidade-nevada'),soon:soonMaps(false)};
   const v=city.selectorView(s,'portrait');
   const cidade=v.options.find(o=>o.id==='cidade-nevada')!;
   assert.equal(cidade.selected,true);assert.equal(cidade.soon,undefined);assert.equal(cidade.sticker,'pronto');
@@ -66,7 +71,7 @@ test('the room\'s own map is never shown locked (a city room still shows the cit
 test('with "em breve" on, random events never send the locked city and never leave a dead or stuck control',()=>{
   const maps:MapId[]=['cidade-nevada','infinito'];
   for(const seed of [3,9,2026]){
-    const rnd=lcg(seed);let now=0,s:SelectorState={...city.initialSelector(rnd()<.5,'infinito'),soon:soonMaps()};
+    const rnd=lcg(seed);let now=0,s:SelectorState={...city.initialSelector(rnd()<.5,'infinito'),soon:soonMaps(false)};
     for(let i=0;i<1500;i++){
       now+=Math.floor(rnd()*900);
       const k=rnd(),map=maps[Math.floor(rnd()*2)];
@@ -139,7 +144,7 @@ test('review (a11y): the portrait hint that says "em breve" is a polite live reg
   assert.match(source,/if\(hint\.dataset\.key!==hintKey\)/);
   const css=readFileSync(new URL('../../src/client/hud/city/city-hud.css',import.meta.url),'utf8');
   assert.match(css,/\.ch-selector-hint\.is-empty\{min-height:0;margin:0\}/);
-  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps()};
+  const owner:SelectorState={...city.initialSelector(true,'infinito'),soon:soonMaps(false)};
   assert.equal(city.selectorView(step(owner,{type:'tap',map:'cidade-nevada',nowMs:0}).state,'portrait').hint,CITY_SOON);
 });
 

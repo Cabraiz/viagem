@@ -1,4 +1,4 @@
-// NEW-20261012-ORQ-cidade-10 PREP: the Worker side of the default map (see mapa-padrao.test.ts). GameRoom runs under
+// NEW-20261012-ORQ-cidade-10: the Worker side of the default map (see mapa-padrao.test.ts). GameRoom runs under
 // node with a stand-in for `cloudflare:workers` (as in worker-lab.test.ts); the flipped Worker is built by overriding
 // its `defaults` (map + cityPlayable), never the constants.
 import test from 'node:test';
@@ -69,12 +69,14 @@ test('Worker: create() passes ROOM_DEFAULT_MAP; lab rooms on LAB_WORLD=ilha stay
   assert.deepEqual(plain.map,CITY);
 });
 
-test('flipped Worker restart (load): the stored pick wins over the default; an old row is the endless map',async()=>{
-  const owner=new Room(1000,7,{cityText,cityRef:CITY}),a=peer();join(owner,a,'Ana',1000);
+test('Worker restart (load) with today\'s defaults: the stored pick wins; an old row is the endless map; no row is the city default',async()=>{
+  assert.equal(ROOM_DEFAULT_MAP,'cidade-nevada');assert.equal(CITY_PLAYABLE,true);
+  // The owner's room starts on the endless map on purpose, so its row stores that pick.
+  const owner=new Room(1000,7,{cityText,cityRef:CITY,map:'infinito'}),a=peer();join(owner,a,'Ana',1000);
   const endless=stored(owner.roster()),old=stored(owner.roster());delete old.map;
   const city={...endless,map:'cidade-nevada' as const};
   for(const [row,want] of [[endless,INFINITO_REF],[old,INFINITO_REF],[city,CITY],[undefined,CITY]] as [RoomRoster|undefined,MapRef][]){
-    const {g,ctx}=gameRoom('false',{},{map:'cidade-nevada',cityPlayable:true});
+    const {g,ctx}=gameRoom();
     ctx.storage.data.set('created',Date.now());ctx.storage.data.set('terrainSeed',7);if(row)ctx.storage.data.set('roster',row);
     const room=await g.load(Date.now()) as Room;
     assert.deepEqual(room.map,want,JSON.stringify(row?.map??'no row'));

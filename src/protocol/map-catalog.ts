@@ -6,11 +6,11 @@
 import {DEFAULT_MAP,type MapCatalog,type MapId,type MapRef} from './map-select.ts';
 
 /** D-035: false until cidade-10. Rooms and tests may override it (Room option `cityPlayable`). */
-export const CITY_PLAYABLE=false;
+export const CITY_PLAYABLE=true;
 /** The generated endless map has no asset bytes, so no hash (map-select GENERATED). */
 export const INFINITO_REF:MapRef=Object.freeze({id:'infinito',version:1,hash:null});
 /** The lobby default stays the endless map until the city is playable (D-035). */
-export const ROOM_DEFAULT_MAP:MapId=DEFAULT_MAP;
+export const ROOM_DEFAULT_MAP:MapId='cidade-nevada';
 /** Refusal shown to an owner who taps the locked city. */
 export const CITY_SOON='Em breve: a Cidade Nevada abre quando os bichos aprenderem as avenidas.';
 

@@ -266,7 +266,9 @@ export class Room {
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.log=options.log;
     // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
-    const map=options.map??ROOM_DEFAULT_MAP;if(map!=='infinito')this.openMap(map,'create');
+    // The default needs the city asset (the Worker always passes it); a room built without it (tests, tools) is simply
+    // the endless map, without a fallback log. An explicit options.map still asks and logs when it can't be played.
+    const map=options.map??(this.cityText!==undefined?ROOM_DEFAULT_MAP:'infinito');if(map!=='infinito')this.openMap(map,'create');
   }
   /** The maps this room accepts: the endless one, and the city once it is playable and its asset was handed over. */
   private catalog(){return roomCatalog(this.cityText!==undefined?this.cityRef:undefined,this.cityPlayable);}

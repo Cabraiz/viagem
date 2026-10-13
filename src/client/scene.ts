@@ -14,6 +14,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {queueHordeArt} from './art/horde-art.ts';
+import {SceneMarks} from './art/frames-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
@@ -121,6 +122,9 @@ export class IslandScene extends Phaser.Scene {
   private shadow!:Phaser.GameObjects.Ellipse;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
+  /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
+  private artMarks?:SceneMarks;
+  private goal?:Point;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
@@ -246,6 +250,10 @@ export class IslandScene extends Phaser.Scene {
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
     this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
+    this.artMarks=new SceneMarks(this,p=>this.project(p));
+    // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
+    const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
+    this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
@@ -425,6 +433,7 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
     const p=this.project(target);
+    this.goal=target;if(this.artMarks?.destinationArt)return; // drawn every frame by drawYou
     // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
     const k=this.actorScale;
@@ -455,6 +464,7 @@ export class IslandScene extends Phaser.Scene {
   /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
+    this.artMarks?.destination(this.route.length?this.goal:undefined,this.actorScale,time,this.reduced,100000);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -506,6 +516,7 @@ export class IslandScene extends Phaser.Scene {
     this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
+    this.artMarks?.begin();
     // The net's terrain became another world (island/endless ↔ city): one field swap, new zoom, figure scale and camera.
     // A reconnect to the same map (a new but identical TerrainField) changes nothing.
     if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
@@ -640,6 +651,7 @@ export class IslandScene extends Phaser.Scene {
       const age=net.tick-(player.skillTick??0);
       if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
       const radius=SKILL_RANGE*(this.reduced?1:.3+.7*age/10);
+      if(this.artMarks?.skillRing(player.id,player.x,player.y,radius,3*this.actorScale,1-age/10,time,this.reduced,90000))continue;
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
       effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
@@ -926,7 +938,7 @@ export class IslandScene extends Phaser.Scene {
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
     // Above trees and critters (a canopy used to cut the name), under the heroes and the danger layers.
-    const label=new MapLabel(this,name).anchor(p.x,p.y+28,LABEL_DEPTH);
+    const label=new MapLabel(this,name,true).anchor(p.x,p.y+28,LABEL_DEPTH);
     return {point:l,graphic:g,label};
   }
 }

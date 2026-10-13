@@ -22,7 +22,9 @@ test('every enemy kind maps to an importer id (identity after the D-033/D-036 re
 test('static art replaces today\'s keys: pickups, the boleto, projectiles and FX',()=>{
   const keys=STATIC_ART.map(s=>s.key);
   for(const k of ['xp','heal','magnet','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
-  for(const k of [FX.boleto,FX.projFriendly,FX.projBoleto,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
+  for(const k of [FX.boleto,FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
+  // The agiota's boleto has its own key now (art:proj:boleto-juros, horde-actions.test.ts), not today's FX.projBoleto.
+  assert.ok(!keys.includes(FX.projBoleto));
   assert.equal(new Set(keys).size,keys.length,'one entry per key');
   for(const s of STATIC_ART)if(s.mode==='bake')assert.ok(s.size&&s.size[0]>0&&s.size[1]>0,`${s.key} needs today's size`);
 });
@@ -137,9 +139,9 @@ test('resources: only the generic recurso replaces the single resource texture (
   assert.deepEqual(artLoads(),[],'per-resource pieces load nothing until today has per-resource keys');
 });
 
-test('weapon projectiles: today every friendly shot shares one key, so none is wired over tiro-aliado',()=>{
+test('weapon projectiles: each one has its own key; tiro-aliado stays the shared friendly look',()=>{
   assert.deepEqual([...WEAPON_PROJECTILE_IDS],['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov']);
-  for(const id of WEAPON_PROJECTILE_IDS)assert.equal(WEAPON_PROJECTILE_KEY[id],FX.projFriendly,id);
+  for(const id of WEAPON_PROJECTILE_IDS)assert.equal(WEAPON_PROJECTILE_KEY[id],`art:proj:${id}`,id);
   const friendly=STATIC_ART.filter(s=>s.key===FX.projFriendly);
   assert.equal(friendly.length,1);assert.deepEqual(friendly[0].ids,['tiro-aliado']);assert.equal(friendly[0].mode,'sheet');
 });

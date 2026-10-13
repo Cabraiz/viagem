@@ -9,6 +9,9 @@ import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
+import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
+import {createPreloader} from './preload/preloader.ts';
+import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -204,10 +207,16 @@ const escapeHtml=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 export const CONFIRM_MS=3000;
 /** A confirmed chip waits this long for the room before it is tappable again (lost on a bad network, refused). */
 export const REARM_MS=1500;
-export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'|'setMap'|'map'|'mapLoad'>>,
-  options:{origin?:string;now?:()=>number;cityPlayable?:boolean}={}){
+export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|'id'|'run'|'players'|'ready'|'connected'>&Partial<Pick<CoopClient,'roomNotice'|'fatal'|'kick'|'addBot'|'removeBot'|'setMap'|'map'|'mapLoad'|'classId'>>,
+  options:{origin?:string;now?:()=>number;cityPlayable?:boolean;
+    /** false: no pre-download of the match's art (and no ready gate on it). */
+    preload?:boolean}={}){
   const now=options.now??(()=>performance.now());
   const started=now();
+  // The match's art, downloaded while the room waits (NEW-20261013-ORQ-3g-precarga-partida, preload/): the list follows
+  // the members and the map (only new files are added); the ready button waits for this phone's P0 or PRELOAD_CAP_MS.
+  const preloader=options.preload===false?undefined:createPreloader();
+  let preloadKey='';
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
   panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button">Chamar a turma</button></div>
     <div class="coop-wait-news" role="alert" hidden><strong></strong><span></span></div>
@@ -306,8 +315,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);preloader?.abort();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
+    // The match is on: a slow connection now fetches the decoration too (it held it back to give P0/P1 the bandwidth).
+    if(client.run?.phase==='combat')preloader?.release();
     for(const m of view.members)names.set(m.id,m.name);
     const owner=client.run?.owner;
     if(owner&&owner!==ownerSeen){
@@ -320,6 +331,13 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(!view.visible)return;
     // The map selector follows the room: owner, countdown, connection, the room's map and its download.
     const roomMap=roomMapId(client),load=client.mapLoad;
+    const selfClass=view.members.find(m=>m.self)?.classId??client.classId;
+    if(preloader&&selfClass){
+      const room={self:selfClass,others:view.members.filter(m=>!m.self).map(m=>m.classId),map:roomMap,search:location.search};
+      const key=matchKey(room);
+      if(key!==preloadKey){preloadKey=key;preloader.add(assetsParaPartida(room));}
+    }
+    const preload=preloader?.progress();
     if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS,false);
     mapSeen=roomMap;
     if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS,false);
@@ -357,7 +375,13 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     // Ready players can still back out during the countdown (the server accepts it).
     readyButton.hidden=view.selfSpectator;
     // The room's map still downloading here (or it did not arrive): no "pronto" (backing out stays possible).
-    const blocked=view.selfReady?undefined:readyBlock(load);
+    // Then this phone's P0 of the match (own hero, the map's ground) for at most PRELOAD_CAP_MS since it entered.
+    const blocked=view.selfReady?undefined:readyBlock(load)??(preloader?preloadBlock(preload,now()-started):undefined);
+    if(preload){
+      const p0=String(Math.floor(p0Fraction(preload)*100)),bytes=String(preload.bytes);
+      if(panel.dataset.preloadP0!==p0)panel.dataset.preloadP0=p0;
+      if(panel.dataset.preloadBytes!==bytes)panel.dataset.preloadBytes=bytes;
+    }
     readyButton.disabled=!client.connected||!!blocked;
     setText(readyButton,blocked??(view.selfReady?'Ops, peraí':'Tô pronto!'));
     readyButton.setAttribute('aria-pressed',String(view.selfReady));
@@ -385,13 +409,21 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
           const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
           return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
         }
-        return `<li class="${cls}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
+        // This player's face wears the download ring (its fill: --preload, set below at every update).
+        const own=m.self&&preloader?`<b class="coop-wait-ring" aria-hidden="true">${face}</b>`:face;
+        return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${own}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
       wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }
+    const ring=list.querySelector<HTMLElement>('.coop-wait-ring');
+    if(ring){
+      const r=preloadRing(preload),fill=r.fraction.toFixed(3);
+      if(ring.style.getPropertyValue('--preload')!==fill)ring.style.setProperty('--preload',fill);
+      if(ring.hasAttribute('data-done')!==r.done)ring.toggleAttribute('data-done',r.done);
+    }
   };
   const timer=setInterval(update,200);update();
-  return {panel,update,dispose(){clearInterval(timer);mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
+  return {panel,update,dispose(){clearInterval(timer);preloader?.abort();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
 }
 
 /** `room` fills the code (in place of ?room=); with `autoJoin` the lobby enters it by itself (back from a version reload). */

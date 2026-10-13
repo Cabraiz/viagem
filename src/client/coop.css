@@ -79,7 +79,7 @@
 /* Landscape: the etiqueta's column is ~124 px at 844 wide, so it keeps only its first line (≤ 3 rows at 125%) on a
    tighter padding. The countdown window has 100% − 64px of height and six names: the big number leaves its own row and
    stands left of the button row (a wrapping flex column of full-width rows; flex, not grid, so the sticky row below can
-   still move inside the whole window, a grid item only moves inside its cell), and a guest's names go two by two. */
+   still move inside the whole window, a grid item only moves inside its cell); a guest's names go two by two (below). */
 @media(max-height:500px){
   .explore-stick-hint{padding:4px 6px}
   .explore-stick-hint span+span{display:none}
@@ -87,10 +87,18 @@
   .coop-wait[data-phase=countdown]>*{flex:0 0 100%;min-width:0}
   .coop-wait[data-phase=countdown]>.coop-wait-count{order:1;flex:none}
   .coop-wait[data-phase=countdown]>.coop-wait-actions{order:2;flex:1 1 0}
-  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li{min-width:0}
-  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .coop-wait[data-phase=countdown]:not(.is-owner){width:min(560px,calc(100% - 300px))}
+  .coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-headline{margin:0}
 }
+/* Countdown, a guest's names go two by two in both orientations (BUG-20261012-E4-contagem-convidado-125-paisagem):
+   portrait, one name a row scrolled the window at 125% (and at 100%) and cut the last one; the chips are plain lis, not
+   tap targets (only the owner's carry a button), so they keep their 32 px and the name ends in "…" if too long. Portrait,
+   the own chip takes both columns (else "(você)" left only "P…"); landscape, the window is as wide as the owner's, so
+   each column (257 px at 844) holds a whole name and the own chip keeps its cell (spanning would add a row). */
+.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li{min-width:0}
+@media(min-height:501px){.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li.is-self{grid-column:1/-1;justify-self:center}}
+.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Countdown: the number sticks to the window's bottom with the button row, so both stay in view if the names make the
    window scroll. Portrait stacks them (the row sits on the 64 px number); landscape keeps them side by side. */
 .coop-wait[data-phase=countdown]>.coop-wait-count{position:sticky;bottom:0;z-index:1;background:var(--c-lilas)}

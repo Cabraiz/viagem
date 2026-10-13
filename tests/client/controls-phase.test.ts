@@ -134,8 +134,7 @@ test('coop.css landscape: the etiqueta keeps its first line (≤ 3 rows); the co
   for(const rule of ['.explore-stick-hint{padding:4px 6px}','.explore-stick-hint span+span{display:none}',
     '.coop-wait[data-phase=countdown]{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px}',
     '.coop-wait[data-phase=countdown]>*{flex:0 0 100%;min-width:0}','.coop-wait[data-phase=countdown]>.coop-wait-count{order:1;flex:none}',
-    '.coop-wait[data-phase=countdown]>.coop-wait-actions{order:2;flex:1 1 0}',
-    '.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}'])
+    '.coop-wait[data-phase=countdown]>.coop-wait-actions{order:2;flex:1 1 0}'])
     assert.ok(block.includes(rule),`landscape block lacks ${rule}`);
   // Flex, never grid, on the window: a grid item's sticky offset is bounded by its cell, so the sticky row could not move.
   assert.doesNotMatch(block,/\.coop-wait\[data-phase=countdown\]\{display:grid/);
@@ -148,6 +147,33 @@ test('coop.css landscape: the etiqueta keeps its first line (≤ 3 rows); the co
     for(const word of text.split(' ')){const w=word.length;if(!used)used=w;else if(used+1+w<=per)used+=1+w;else{n++;used=w;}}return n;};
   for(const scale of [1,1.25])assert.ok(rows(CONTROLS_HINTS.lobby[0],13*scale)<=3,`${scale}: ${rows(CONTROLS_HINTS.lobby[0],13*scale)} rows`);
   assert.match(CONTROLS_HINTS.lobby[0],/arrasta/);assert.match(CONTROLS_HINTS.lobby[0],/andar/);
+});
+test('coop.css countdown: guest names go two by two in portrait and landscape, cut with "…", chips kept at 32 px',()=>{
+  const css=read('src/client/coop.css');
+  // Top level (outside every @media): portrait at 125% scrolled 703/649 with one name a row and cut "Pombo Sem Wi-Fi".
+  const top=css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g,'');
+  for(const rule of ['.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}',
+    '.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li{min-width:0}',
+    '.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li>span:not(.sr-only){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'])
+    assert.ok(top.includes(rule),`top level lacks ${rule}`);
+  // Only the countdown and only the guest: the guest's lobby keeps its wrapping row, the owner its own grid of buttons.
+  const guestGrids=css.match(/[^{}]*:not\(\.is-owner\) \.coop-wait-members\{display:grid/g)??[];
+  assert.deepEqual(guestGrids.map(r=>r.trim().replace(/^.*\*\/\s*/s,'')),['.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members{display:grid']);
+  // Portrait: the guest's own chip takes both columns, so "(você)" never leaves only "P…" of the name.
+  assert.ok(css.includes('@media(min-height:501px){.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-members li.is-self{grid-column:1/-1;justify-self:center}}'));
+  // Landscape: the guest's countdown window is as wide as the owner's (the etiqueta already clears that one), so six
+  // whole names fit two by two in three rows; no headline margin (125% was 327/322, now 317 with the window uncapped).
+  const block=css.match(/\/\* Landscape: the etiqueta's column[\s\S]*?\n@media\(max-height:500px\)\{\n([\s\S]*?)\n\}\n/)?.[1]??'';
+  assert.ok(block.includes('.coop-wait[data-phase=countdown]:not(.is-owner){width:min(560px,calc(100% - 300px))}'));
+  assert.ok(css.includes('.coop-wait.is-owner{width:min(560px,calc(100% - 300px))}'),'same width as the owner window');
+  assert.ok(block.includes('.coop-wait[data-phase=countdown]:not(.is-owner) .coop-wait-headline{margin:0}'));
+  assert.doesNotMatch(block,/is-self/,'landscape: the own chip stays in its column (257 px fits it whole)');
+  // A guest's chip is a plain li (no button, not a tap target): 32 px tall, 13 px text at the least.
+  assert.match(css,/\.coop-wait-members li\{display:flex;align-items:center;gap:4px;min-height:32px;[^}]*font-size:var\(--t-13\)/);
+  const lobby=read('src/client/lobby.ts');
+  assert.ok(lobby.includes('<button type="button" data-id='),'the owner chips are the buttons');
+  // Two columns, three rows for six: the window's height at 125% drops by three chip rows (32 + 6 gap) at least.
+  assert.ok(703-3*(32+6)<=649,'portrait 125% countdown fits');
 });
 test('coop.css countdown: the number and the button row stick to the window bottom together, in view at 100% and 125%',()=>{
   const css=read('src/client/coop.css');

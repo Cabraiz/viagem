@@ -42,7 +42,9 @@ export interface TowerRendererOptions {
 
 interface Tower {
   view:TowerView;look:TowerLook;cal:CalibreLook;phase:TowerPhase;prevFire?:number;
-  base:Phaser.GameObjects.Graphics;weapon:Phaser.GameObjects.Graphics;art?:Phaser.GameObjects.Image;gun?:Phaser.GameObjects.Image;
+  base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
+  /** The delivered base sheet is in use (else the baked procedural texture). */
+  art:boolean;
   dir:Dir8;want:Dir8;turnMs:number;recoilUntil:number;drawnDir:number;drawnRecoil:boolean;drawnKey:string;
   rect:Rect;prop:{x:number;y:number;rect:Rect};mount:Pt;height:number;seen:number;target:number;
 }
@@ -55,6 +57,7 @@ export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
+const CRATER_KEY='torres:cratera',CRATER_TEX=128;
 /** The weapon's pivot stands this high over the roof (CSS px × actor scale), on a drum. */
 const POST_PX=10;
 
@@ -65,7 +68,10 @@ export class TowerRenderer {
   private readonly scene:Phaser.Scene;
   private readonly o:TowerRendererOptions;
   private readonly towers=new Map<string,Tower>();
-  private readonly ground:Phaser.GameObjects.Graphics;
+  /** Scratch Graphics the procedural textures are drawn into (never on screen). */
+  private readonly bake:Phaser.GameObjects.Graphics;
+  /** Crater decals: one baked texture, a fixed pool of Images on the ground. */
+  private readonly craterImages:Phaser.GameObjects.Image[];
   private readonly fx:Phaser.GameObjects.Graphics;
   private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0}));
   private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
@@ -90,7 +96,14 @@ export class TowerRenderer {
   private readonly cone=tokenColor('--c-cone');
   constructor(scene:Phaser.Scene,options:TowerRendererOptions){
     this.scene=scene;this.o=options;
-    this.ground=scene.add.graphics().setDepth(options.groundDepth);
+    this.bake=scene.make.graphics({x:0,y:0},false);
+    if(!scene.textures.exists(CRATER_KEY)){
+      const g=this.bake,w=CRATER_TEX,h=w/2;g.clear();
+      g.fillStyle(this.breu,.42).fillEllipse(w/2,h/2,w-4,h-2).fillStyle(MATERIALS.pedra.escura,.55).fillEllipse(w/2,h/2+h*.05,(w-4)*.7,(h-2)*.65)
+        .lineStyle(3,this.breu,.7).strokeEllipse(w/2,h/2,w-4,h-2);
+      g.generateTexture(CRATER_KEY,w,h);g.clear();
+    }
+    this.craterImages=this.craters.map(()=>scene.add.image(0,0,CRATER_KEY).setDepth(options.groundDepth).setVisible(false));
     this.fx=scene.add.graphics().setDepth(options.fxDepth);
     this.measure();
   }
@@ -140,30 +153,29 @@ export class TowerRenderer {
     const alpha=this.fader.update(covered,dtMs);
     for(const t of this.towers.values()){
       const a=alpha.get(t.view.id)??1;
-      t.base.setAlpha(a);t.weapon.setAlpha(a);t.art?.setAlpha(a);t.gun?.setAlpha(a);
+      t.base.setAlpha(a);t.weapon.setAlpha(a);
     }
     this.drawEffects(nowMs);
     this.applyShake(nowMs);
   }
   destroy(){
     for(const t of this.towers.values())this.drop(t);
-    this.towers.clear();this.ground.destroy();this.fx.destroy();
+    this.towers.clear();this.bake.destroy();this.fx.destroy();for(const i of this.craterImages)i.destroy();
     const cam=this.o.camera;if(cam){cam.scrollX-=this.applied.x;cam.scrollY-=this.applied.y;}
   }
 
   private make(view:TowerView):Tower{
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
-      base:this.scene.add.graphics(),weapon:this.scene.add.graphics(),
+      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,
       dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnKey:'',
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1};
     t.prop.rect=t.rect;
     const art=towerArt(view.kind);
-    if(art?.base&&this.scene.textures.exists(towerBaseKey(view.kind)))t.art=this.scene.add.image(0,0,towerBaseKey(view.kind)).setOrigin(...(art.base.anchor??[.5,.85]));
-    if(art?.idle&&this.scene.textures.exists(towerGunKey(view.kind)))t.gun=this.scene.add.image(0,0,towerGunKey(view.kind)).setOrigin(...(art.idle.anchor??[.5,.5]));
+    t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
     return t;
   }
-  private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.art?.destroy();t.gun?.destroy();}
+  private drop(t:Tower){t.base.destroy();t.weapon.destroy();}
 
   private aim(t:Tower,dtMs:number){
     if(t.look.calibre==='radar'){ // the dish sweeps on its own
@@ -242,14 +254,13 @@ export class TowerRenderer {
 
   private drawEffects(now:number){
     const g=this.fx,w=this.o.world,u=this.unitPx,s=this.f;
-    g.clear();this.ground.clear();
-    for(const c of this.craters){
-      if(!c.on)continue;
-      const k=(now-c.born)/c.ms;if(k>=1){c.on=false;continue;}
-      const a=k<.8?1:1-(k-.8)/.2,p=w.project(c.x,c.y,0,this.p),rw=c.r*u,rh=rw*.5;
-      this.ground.fillStyle(this.breu,.42*a).fillEllipse(p.x,p.y,rw*2,rh*2)
-        .fillStyle(MATERIALS.pedra.escura,.55*a).fillEllipse(p.x,p.y+rh*.1,rw*1.4,rh*1.3)
-        .lineStyle(Math.max(1,2*s),this.breu,.7*a).strokeEllipse(p.x,p.y,rw*2,rh*2);
+    g.clear();
+    for(let i=0;i<this.craters.length;i++){
+      const c=this.craters[i],img=this.craterImages[i];
+      if(!c.on){if(img.visible)img.setVisible(false);continue;}
+      const k=(now-c.born)/c.ms;if(k>=1){c.on=false;img.setVisible(false);continue;}
+      const a=k<.8?1:1-(k-.8)/.2,p=w.project(c.x,c.y,0,this.p);
+      img.setVisible(true).setPosition(p.x,p.y).setScale(c.r*u*2/CRATER_TEX).setAlpha(a);
     }
     for(const sh of this.shots){
       if(!sh.on||now<sh.born)continue;
@@ -321,37 +332,71 @@ export class TowerRenderer {
   shakeNow(){return shakeAt(this.shake.cal,this.now-this.shake.born,this.o.reduced);}
 
   // ---- the defense itself ----
+  /**
+   * Base and weapon are Images of baked textures (one per kind × phase × view, and per kind × direction × recoil),
+   * drawn once into a scratch Graphics and kept: a Graphics would re-tessellate every frame.
+   */
   private drawTower(t:Tower,view:number){
-    const w=this.o.world,v=t.view,look=t.look,phase=t.phase;
+    const w=this.o.world,v=t.view;
     const depth=w.depth(v.x,v.y);
-    t.base.setDepth(depth);t.weapon.setDepth(depth+.001);t.art?.setDepth(depth);t.gun?.setDepth(depth+.001);
-    const key=`${phase}|${view}`;
-    const H=look.height*PHASE_HEIGHT[phase];
+    t.base.setDepth(depth);t.weapon.setDepth(depth+.001);
+    const key=`${t.phase}|${view}`;
     if(t.drawnKey!==key){
-      t.drawnKey=key;t.drawnDir=-1;t.height=look.height;
-      const top=w.project(v.x,v.y,H,this.p);t.mount.x=top.x;t.mount.y=top.y-POST_PX*this.f;
+      t.drawnKey=key;t.drawnDir=-1;t.height=t.look.height;
+      const top=w.project(v.x,v.y,t.look.height*PHASE_HEIGHT[t.phase],this.p);t.mount.x=top.x;t.mount.y=top.y-POST_PX*this.f;
       if(t.art)this.placeArt(t,view);
-      else this.drawBase(t,H);
+      else this.placeBase(t,view);
     }
     const recoil=this.now<t.recoilUntil;
-    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil){t.drawnDir=t.dir;t.drawnRecoil=recoil;this.drawWeapon(t,recoil);}
+    if(t.drawnDir!==t.dir||t.drawnRecoil!==recoil){t.drawnDir=t.dir;t.drawnRecoil=recoil;this.placeWeapon(t,recoil);}
   }
   private placeArt(t:Tower,view:number){
-    const art=towerArt(t.view.kind)!,file=art.base!,img=t.art!,w=this.o.world,p=w.project(t.view.x,t.view.y,0,this.p);
-    const scale=2.2*t.view.r*this.unitPx/file.cell[0];
-    img.setPosition(p.x,p.y).setScale(scale).setFrame(baseFrame(t.phase,view,Math.max(1,Math.min(4,file.views??4))));
-    t.base.clear();
+    const art=towerArt(t.view.kind)!,file=art.base!,img=t.base,w=this.o.world,p=w.project(t.view.x,t.view.y,0,this.p);
+    const scale=2.2*t.view.r*this.unitPx/file.cell[0],anchor=file.anchor??[.5,.85];
+    img.setTexture(towerBaseKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(scale)
+      .setFrame(baseFrame(t.phase,view,Math.max(1,Math.min(4,file.views??4))));
     const b=img.getBounds();t.rect.x=b.x;t.rect.y=b.y;t.rect.w=b.width;t.rect.h=b.height;
-    if(art.mount){
-      const anchor=file.anchor??[.5,.85];
-      t.mount.x=p.x+(art.mount[0]-anchor[0]*file.cell[0])*scale;t.mount.y=p.y+(art.mount[1]-anchor[1]*file.cell[1])*scale;
-    }
+    if(art.mount){t.mount.x=p.x+(art.mount[0]-anchor[0]*file.cell[0])*scale;t.mount.y=p.y+(art.mount[1]-anchor[1]*file.cell[1])*scale;}
   }
-  /** Procedural base: an iso box of the footprint in the branch's material, by phase. */
-  private drawBase(t:Tower,H:number){
-    const g=t.base,v=t.view,look=t.look,phase=t.phase,s=this.s,w=this.o.world,c=this.corners;
-    g.clear();
-    const big=Math.max(look.footprint[0],look.footprint[1]),hx=v.r*.85*look.footprint[0]/big,hy=v.r*.85*look.footprint[1]/big;
+  /** Half extents (u) of the base box and of what is drawn around it (rails, wire). */
+  private extents(t:Tower){
+    const v=t.view,look=t.look,big=Math.max(look.footprint[0],look.footprint[1]);
+    const hx=v.r*.85*look.footprint[0]/big,hy=v.r*.85*look.footprint[1]/big,wire=look.calibre==='arame'?v.r*1.45:0;
+    return {hx,hy,ex:Math.max(hx*1.3,wire),ey:Math.max(hy*1.05,wire)};
+  }
+  /** The procedural base, baked once per kind × phase × view × size, placed over its screen bounds. */
+  private placeBase(t:Tower,view:number){
+    const v=t.view,w=this.o.world,{ex,ey}=this.extents(t),pad=Math.ceil(10*this.f);
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const sx of [-1,1])for(const sy of [-1,1])for(const z of [0,t.look.height]){
+      const p=w.project(v.x+sx*ex,v.y+sy*ey,z,this.p);
+      minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);
+    }
+    minY-=POST_PX*this.f*3; // the weapon's drum and barrel over the roof
+    // Occlusion rect: the box itself up to its drum (not the rails, wire or barrel reach), like a building's silhouette.
+    {
+      const {hx,hy}=this.extents(t),H=t.look.height*PHASE_HEIGHT[t.phase];
+      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+      for(const sx of [-1,1])for(const sy of [-1,1])for(const z of [0,H]){
+        const p=w.project(v.x+sx*hx,v.y+sy*hy,z,this.p);
+        x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);
+      }
+      if(canFire(t.phase))y0-=POST_PX*this.f*1.5;
+      t.rect.x=x0;t.rect.y=y0;t.rect.w=x1-x0;t.rect.h=y1-y0;
+    }
+    const ox=Math.floor(minX)-pad,oy=Math.floor(minY)-pad,wpx=Math.ceil(maxX-ox)+pad,hpx=Math.ceil(maxY-oy)+pad;
+    const key=`torres:base:${v.kind}:${t.phase}:${view}:${v.r.toFixed(3)}`;
+    if(!this.scene.textures.exists(key)){
+      const g=this.bake;g.clear();g.translateCanvas(-ox,-oy);
+      this.drawBase(g,t,t.look.height*PHASE_HEIGHT[t.phase]);
+      if(t.look.calibre==='arame'&&canFire(t.phase))this.drawWire(g,t);
+      g.generateTexture(key,wpx,hpx);g.clear();
+    }
+    t.base.setTexture(key).setOrigin(0,0).setPosition(ox,oy).setScale(1);
+  }
+  /** Procedural base: an iso box of the footprint in the branch's material, by phase (absolute world px into g). */
+  private drawBase(g:Phaser.GameObjects.Graphics,t:Tower,H:number){
+    const v=t.view,look=t.look,phase=t.phase,s=this.s,w=this.o.world,c=this.corners,{hx,hy}=this.extents(t);
     const ruin=phase==='ruina',hurt=phase==='danificada'||ruin,obra=phase.startsWith('obra');
     const m=ruin?MATERIALS.pedra:obra?MATERIALS.madeira:BRANCH_MATERIAL[look.branch];
     const xs=[-hx,hx,hx,-hx],ys=[-hy,-hy,hy,hy];
@@ -393,22 +438,32 @@ export class TowerRenderer {
       const a=w.project(v.x+xs[0],v.y+ys[0],top,this.p),b=w.project(v.x+xs[2],v.y+ys[2],top,this.v);
       g.lineStyle(Math.max(1,3*s),this.breu,1).lineBetween(a.x,a.y,b.x,b.y).lineStyle(Math.max(1,1.5*s),MATERIALS.madeira.luz,1).lineBetween(a.x,a.y,b.x,b.y);
     }
-    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    for(const p of c){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-    if(obra)minY-=(look.height-H)*this.unitPx;
-    t.rect.x=minX;t.rect.y=minY;t.rect.w=maxX-minX;t.rect.h=maxY-minY;
   }
-  /** Procedural weapon at the mount (turret disc + barrel toward the direction row), or the idle sheet's frame. */
-  private drawWeapon(t:Tower,recoil:boolean){
-    const g=t.weapon,s=this.f,cal=t.cal;
-    g.clear();
-    const show=canFire(t.phase)||t.phase==='obra-3';
-    if(t.gun){
-      const art=towerArt(t.view.kind)!,frames=Math.max(1,art.idle?.frames??1);
-      t.gun.setVisible(show).setPosition(t.mount.x,t.mount.y).setScale(t.art?.scaleX??1).setFrame(weaponFrame(t.dir,0,frames));
+  /** The weapon: the delivered idle sheet's frame, or a baked procedural texture per kind × direction × recoil. */
+  private placeWeapon(t:Tower,recoil:boolean){
+    const show=(canFire(t.phase)||t.phase==='obra-3')&&t.look.calibre!=='arame';
+    t.weapon.setVisible(show);
+    if(!show)return;
+    const art=t.art?towerArt(t.view.kind):undefined;
+    if(art?.idle&&this.scene.textures.exists(towerGunKey(t.view.kind))){
+      const frames=Math.max(1,art.idle.frames??1),anchor=art.idle.anchor??[.5,.5];
+      t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(t.base.scaleX).setFrame(weaponFrame(t.dir,0,frames));
       return;
     }
-    if(!show||cal.shot==='aura')return this.drawWire(t);
+    const f=this.f,half=Math.ceil(t.cal.barrel*this.unitPx*1.2+30*f);
+    const key=`torres:arma:${t.view.kind}:${t.dir}:${recoil?1:0}:${Math.round(this.unitPx)}`;
+    if(!this.scene.textures.exists(key)){
+      const g=this.bake;g.clear();
+      const mx=t.mount.x,my=t.mount.y;t.mount.x=half;t.mount.y=half;
+      this.drawWeapon(g,t,recoil);
+      t.mount.x=mx;t.mount.y=my;
+      g.generateTexture(key,half*2,half*2);g.clear();
+    }
+    t.weapon.setTexture(key).setOrigin(.5,.5).setPosition(t.mount.x,t.mount.y).setScale(1);
+  }
+  /** Procedural weapon at t.mount: a drum, then a barrel toward the direction row (a lamp, a dish). */
+  private drawWeapon(g:Phaser.GameObjects.Graphics,t:Tower,recoil:boolean){
+    const s=this.f,cal=t.cal;
     const d=dirVector(t.dir,this.v),k=recoil?-.12:0,len=cal.barrel*this.unitPx,mx=t.mount.x,my=t.mount.y;
     const x0=mx+d.x*len*k,y0=my+d.y*len*k*.5,x1=mx+d.x*len*(1+k),y1=my+d.y*len*.5*(1+k);
     const gus=t.look.calibre==='gustavao',disc=(gus?16:9)*s,thick=(gus?12:cal.blast>1?9:6)*s,post=POST_PX*s,line=Math.max(1,2*s);
@@ -432,10 +487,9 @@ export class TowerRenderer {
       .lineStyle(Math.max(1,thick*.3),metal.luz,1).lineBetween(x0,y0-thick*.2,x1,y1-thick*.2)
       .fillStyle(this.breu,1).fillCircle(x1,y1,thick*.75);
   }
-  /** C3: coils of wire around the post (no turning weapon). */
-  private drawWire(t:Tower){
-    if(t.cal.shot!=='aura'||!canFire(t.phase))return;
-    const g=t.weapon,s=this.s,w=this.o.world,r=t.view.r*1.3;
+  /** C3: coils of wire around the post (no turning weapon), baked with the base. */
+  private drawWire(g:Phaser.GameObjects.Graphics,t:Tower){
+    const s=this.s,w=this.o.world,r=t.view.r*1.3;
     for(let i=0;i<8;i++){
       const a=i/8*Math.PI*2,p=w.project(t.view.x+Math.cos(a)*r,t.view.y+Math.sin(a)*r,.12,this.p);
       g.lineStyle(Math.max(1,2.5*s),this.breu,1).strokeCircle(p.x,p.y,4*s).lineStyle(Math.max(1,1.2*s),MATERIALS['metal-pintado'].luz,1).strokeCircle(p.x,p.y,4*s);

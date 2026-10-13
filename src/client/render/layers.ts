@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
 import type {SimEvent} from '../../contract/index.ts';
-import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackTint,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
 import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtRow,hasDeathArt,playEnemyAction,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
@@ -14,8 +14,8 @@ import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
-import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,phaseLook,reflectGlint,sparkleFrame,type PhaseLook,type SparkleFrame} from './phase-look.ts';
-import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine} from './jokes.ts';
+import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
+import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
@@ -88,6 +88,8 @@ interface EnemyActor{
   look:PhaseLook;
   /** Procedural texture key in use (the acting pose swaps it). */
   tex:string;
+  /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
+  tint:number|undefined;
 }
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
@@ -163,7 +165,7 @@ function applyPalette(){
 }
 const popStyles=new Map<string,TextStyle>();
 const popStyle=(kind:string)=>{
-  const key=enemyKind(kind)===kind?kind:'generic';
+  const key=styleKey(kind);
   let style=popStyles.get(key);
   if(!style){const k=kindStyle(kind);style={fontFamily:FONT,fontSize:'34px',fontStyle:'900',color:k.fill,stroke:k.stroke,strokeThickness:9};popStyles.set(key,style);}
   return style;
@@ -305,7 +307,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado')}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,tex:enemyTexture('bebado'),tint:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -436,7 +438,7 @@ export class HordeRenderer{
   // ---------- reconciliation ----------
   private syncEnemy(view:EnemyView){
     const used=this.enemies.use(view.id),a=used.item,kind=enemyKind(view.kind),elite=!!view.elite&&kind!=='chefe';
-    const look=phaseLook(kind,view.phase),tex=ENEMY_TEXTURES[kind][(elite?1:0)+(look.acting?2:0)];
+    const look=viewPhaseLook(view.kind,kind,view.phase),tex=ENEMY_TEXTURES[kind][(elite?1:0)+(look.acting?2:0)];
     if(used.fresh||a.kind!==kind||a.elite!==elite||a.tex!==tex){
       a.image.setTexture(tex).setOrigin(.5,ENEMY_ART[kind].originY);
       a.kind=kind;a.elite=elite;a.tex=tex;
@@ -447,6 +449,10 @@ export class HordeRenderer{
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
     }else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
+    // A pooled actor may come back as another kind: its accent tint follows (the hit flash owns the tint while it lasts).
+    const tint=fallbackTint(view.kind);
+    // A new accent re-lights the actor on its next frame (sunlit multiplies the light by the roster accent).
+    if(used.fresh||a.tint!==tint){a.tint=tint;a.lit=false;}
     a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
@@ -665,7 +671,7 @@ export class HordeRenderer{
     a.image.setPosition(q.x+dx,q.y-lift).setDepth(depth+1).setScale(sx*body,sy*body).setRotation(rotation).setFlipX(a.flip);
     const eyeX=q.x+dx,eyeY=q.y-lift;
     const flashing=hitFlash(now-a.flashAt);
-    if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image);}
+    if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image,a.tint);}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
     if(!applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines)&&outlines){

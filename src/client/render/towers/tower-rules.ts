@@ -39,6 +39,8 @@ export interface TowerView {
   /** Half extents (u) along world x and y when the footprint is not a square site (the Gustavão's rail). */
   half?:readonly [number,number];
   hp:number;maxHp:number;startTick:number;readyTick:number;fireTick:number;ruined?:boolean;
+  /** Volleys this view stands for when more than one (the room's counter moved by 2-3 between snapshots). */
+  volleys?:number;
   /** The server's phase (else derived from the ticks and hp, `towerPhase`). */
   phase?:TowerPhase;
   /** Where it last fired, in turns 0..1 of a circle from +x (the wire's `aim`): the weapon faces it, no horde scan. */
@@ -178,7 +180,13 @@ export function towerFootprint(kind:TowerKind,cell:number,railAxis:'x'|'y'='x'):
   return {r:long,half:railAxis==='x'?[long,short]:[short,long]};
 }
 /** The wire's StructureView, as much of it as the towers read (structural: the client's contract type). */
-export interface WireStructure {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;phase?:string;aim?:number}
+export interface WireStructure {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;phase?:string;aim?:number;
+  /** The defense's volleys mod 256 (torre-contador-de-tiros, protocol 13): a change is a shot. Absent from older rooms. */
+  shots?:number}
+/** Volleys drawn for one snapshot at most (a counter that jumped further is a backlog, not a barrage). */
+export const VOLLEYS_MAX=3;
+/** Volleys between two snapshots (counter mod 256), 0 when it did not move. */
+export const shotsBetween=(prev:number,now:number)=>((now-prev)%256+256)%256;
 const PHASES=new Set<string>(TOWER_PHASES);
 /** Two wire aims differ (1 byte on the wire: a change under half a step is the same aim). */
 export const aimMoved=(a:number,b:number)=>{const d=Math.abs(a-b)%1;return Math.min(d,1-d)>.5/255;};
@@ -192,8 +200,8 @@ export interface EnemyArrays {n:number;xs:ArrayLike<number>;ys:ArrayLike<number>
  * Whether a volley is drawn at this snapshot (pure): `since` ticks after the last drawn one. The server's aim changed:
  * a volley, unless one was drawn under AIM_DEDUPE of a cooldown ago (that is the one it reports). Else, while it may
  * fire and has an aim, the cadence: a full cooldown since the last one and an enemy in reach along the aim (the arame's
- * aura: any enemy in reach). TODO(wire): shot counter — with a per-defense volley counter on the wire, a changed counter
- * replaces both guesses here.
+ * aura: any enemy in reach). Only for a room that sends no `shots` (protocol 12 and older): with the counter, TowerFeed
+ * reads the volleys from it (torre-contador-de-tiros).
  */
 export function volleyNow(kind:TowerKind,phase:TowerPhase|undefined,aim:number|undefined,aimChanged:boolean,since:number,x:number,y:number,enemies?:EnemyArrays):boolean{
   const cd=cooldownTicks(kind),look=TOWER_LOOK[kind];
@@ -203,12 +211,13 @@ export function volleyNow(kind:TowerKind,phase:TowerPhase|undefined,aim:number|u
 }
 /**
  * Snapshot structures → TowerViews (torres-fio). Not towers are skipped. A drawn volley sets fireTick to tick + 1, which
- * `firedNow` reads as a volley (see volleyNow for when). The first sight of a defense is never one (no burst on
- * joining); a ready one first seen beside a standing enemy fires one cooldown later.
+ * `firedNow` reads as a volley. With the room's volley counter (`shots`, torre-contador-de-tiros) a change is that many
+ * volleys (`volleys`, at most VOLLEYS_MAX; the renderer staggers them); without it (an older room) volleyNow guesses.
+ * The first sight of a defense is never one (no burst on joining).
  */
 export class TowerFeed {
-  private last=new Map<string,{aim?:number;fire:number;at:number}>();
-  private next=new Map<string,{aim?:number;fire:number;at:number}>();
+  private last=new Map<string,{aim?:number;shots?:number;fire:number;at:number}>();
+  private next=new Map<string,{aim?:number;shots?:number;fire:number;at:number}>();
   /** How many defenses the last snapshot had. */
   count=0;
   views(structures:readonly WireStructure[],tick:number,cell:number,options:{railAxis?:'x'|'y';enemies?:EnemyArrays}={}):TowerView[]{
@@ -216,16 +225,19 @@ export class TowerFeed {
     for(const s of structures){
       if(!isTowerKind(s.kind))continue;
       const prev=this.last.get(s.id),phase=s.phase&&PHASES.has(s.phase)?s.phase as TowerPhase:undefined;
-      let fire=prev?.fire??0,at=prev?.at??tick;
-      if(prev){
+      let fire=prev?.fire??0,at=prev?.at??tick,volleys=0;
+      if(prev&&s.shots!==undefined){
+        // The room counts them: every change is a volley, even at a target that never moves (the aim alone stays put).
+        if(prev.shots!==undefined)volleys=Math.min(VOLLEYS_MAX,shotsBetween(prev.shots,s.shots));
+      }else if(prev){
         const changed=s.aim!==undefined&&(prev.aim===undefined||aimMoved(prev.aim,s.aim));
-        // TODO(wire): shot counter — swap this inference for `counter changed` once the snapshot carries one.
-        if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies)){fire=tick+1;at=tick;}
+        if(volleyNow(s.kind,phase,s.aim,changed,tick-prev.at,s.x,s.y,options.enemies))volleys=1;
       }
-      seen.set(s.id,{aim:s.aim,fire,at});
+      if(volleys){fire=tick+1;at=tick;}
+      seen.set(s.id,{aim:s.aim,shots:s.shots,fire,at});
       const foot=towerFootprint(s.kind,cell,options.railAxis);
       out.push({id:s.id,kind:s.kind,x:s.x,y:s.y,r:foot.r,...(foot.half?{half:foot.half}:{}),hp:s.hp,maxHp:s.maxHp,startTick:0,readyTick:0,fireTick:fire,
-        ...(phase?{phase}:{}),...(phase==='ruina'?{ruined:true}:{}),...(s.aim!==undefined?{aim:s.aim}:{})});
+        ...(phase?{phase}:{}),...(phase==='ruina'?{ruined:true}:{}),...(s.aim!==undefined?{aim:s.aim}:{}),...(volleys>1?{volleys}:{})});
     }
     this.next=this.last;this.last=seen;this.count=out.length;
     return out;

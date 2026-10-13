@@ -3,6 +3,7 @@
  * Lines are picked deterministically by enemy id so every client shows the same joke.
  */
 import {isEnemyKind,type EnemyKind} from './keys.ts';
+import {entryLines,fallbackAccent,isRosterId} from '../../rules/index.ts';
 import {hashPhase} from './motion.ts';
 
 export const GENERIC_LINES:readonly string[]=['PAGO!','VIROU SAUDADE!','JÁ ERA!','FOI-SE!','PARTIU!'];
@@ -39,11 +40,31 @@ export const KIND_STYLES:Record<EnemyKind,KindStyle>={
   influencer:{fill:'#fff0f7',stroke:'#b0246a',tint:0xffc4e0},
 };
 
-export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:GENERIC_LINES;
+/** Death pops of a kind: the nine's own, a roster entry's pop (P0) or its role's pops, else GENERIC_LINES. */
+export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH_LINES[kind]:entryLines(kind)?.pops??GENERIC_LINES;
 export function deathLine(kind:string,id:string){
   const lines=deathLines(kind);return lines[Math.floor(hashPhase(id)*lines.length)%lines.length];
 }
-export const kindStyle=(kind:string):KindStyle=>isEnemyKind(kind)?KIND_STYLES[kind]:GENERIC_STYLE;
+const ROSTER_STYLES=new Map<string,KindStyle>();
+const css=(n:number)=>`#${n.toString(16).padStart(6,'0')}`;
+/** Pop and poof style of a roster entry: the generic paper fill, its accent darkened as the stroke and lightened as the tint. */
+function rosterStyle(kind:string,accent:number):KindStyle{
+  let style=ROSTER_STYLES.get(kind);
+  if(!style){
+    const ch=(shift:number,f:(v:number)=>number)=>Math.max(0,Math.min(255,Math.round(f((accent>>shift)&255))))<<shift;
+    const dark=(v:number)=>v*.55,light=(v:number)=>v+(255-v)*.7;
+    style={fill:GENERIC_STYLE.fill,stroke:css(ch(16,dark)|ch(8,dark)|ch(0,dark)),tint:ch(16,light)|ch(8,light)|ch(0,light)};
+    ROSTER_STYLES.set(kind,style);
+  }
+  return style;
+}
+export const kindStyle=(kind:string):KindStyle=>{
+  if(isEnemyKind(kind))return KIND_STYLES[kind];
+  const accent=fallbackAccent(kind);
+  return accent===undefined?GENERIC_STYLE:rosterStyle(kind,accent);
+};
+/** Cache key of a kind's pop text style: the kind itself when it has its own style, else 'generic'. */
+export const styleKey=(kind:string)=>isEnemyKind(kind)||isRosterId(kind)?kind:'generic';
 
 export const CRIT_LABEL='CRÍTICO!';
 /** Damage number text; crits get the comic "!" suffix. */

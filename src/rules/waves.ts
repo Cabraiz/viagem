@@ -12,9 +12,11 @@
  * Six players get count x3.5 and hp x1.75 (~6x threat for ~6x damage); groups grow and arrive faster by sqrt(count),
  * so a round lasts about the same 40-55 s for 1 or 6 players. Spawns plus ~20 s intermissions add up to ~11 min.
  */
-import type {Rng} from '../contract/index.ts';
+import {Rng} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {ticks} from '../contract/index.ts';
+import {LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
+import type {RoundRoster} from './enemy-rotation.ts';
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
 export type Formation='cluster'|'line'|'surround';
@@ -144,7 +146,10 @@ export interface RoundModifier {
   singleSide?:boolean;
   /** Groups come from one side, then the opposite one, alternating. */
   alternateSide?:boolean;
-  /** Rounds where this modifier is never drawn (it would hide the elite or break the round's identity). */
+  /**
+   * Rounds where this modifier is never drawn (it would hide the elite or break the round's identity; giant-everyone in
+   * round 8: its sizeMult would push the lone mini-chefe past the enemy AI's neighbor reach, sim/enemies/ai.ts).
+   */
   banRounds:readonly number[];
 }
 /**
@@ -157,7 +162,7 @@ export const MODIFIERS:readonly RoundModifier[]=[
   {id:'mosquito-swarm',name:'Revoada de Pombos',description:'Quem jogou milho?!',
     share:{pombos:.7},normalizeThreat:true,groupSizeMult:1.5,cadenceMult:1.5,banRounds:[6]},
   {id:'giant-everyone',name:'Todo Mundo Gigante',description:'Exageraram no fermento.',
-    sizeMult:1.5,hpMult:1.3,countMult:.7,banRounds:[5]},
+    sizeMult:1.5,hpMult:1.3,countMult:.7,banRounds:[5,8]},
   {id:'shrunk-in-wash',name:'Encolheu na Lavagem',description:'Lavaram com água quente.',
     sizeMult:.75,hpMult:.8,countMult:1.3,speedMult:1.1,banRounds:[]},
   {id:'lovesick-slimes',name:'Bêbados Abraçados',description:'Em fila, de mãozinha dada.',
@@ -213,6 +218,8 @@ export interface SpawnGroup {
   elite?:boolean;boss?:boolean;
   /** Besieges the base (memory.siege); the director may also flag groups through its siegeShare option. */
   siege?:boolean;
+  /** Rotation (D-040): a mini-chefe alone (round 8), with RoundPlan.miniHp and no elite flag nor chest. */
+  solo?:boolean;
   formation?:Formation;
 }
 export interface RoundPlan {
@@ -223,6 +230,8 @@ export interface RoundPlan {
   durationTicks:number;
   /** hp multipliers handed to createEnemy. */
   hp:number;eliteHp:number;
+  /** hp multiplier of a `solo` mini-chefe (rotation, round 8). */
+  miniHp?:number;
   speed:number;size:number;
   /** Regular rounds retreat on timeout; the boss round does not. */
   retreat:boolean;
@@ -252,24 +261,89 @@ function composition(def:RoundDef,mod?:RoundModifier){
   return w;
 }
 /** Splits `total` by weights with the largest remainder method, so composition is exact. */
-function apportion(total:number,w:Partial<Record<RegularKind,number>>){
-  const sum=REGULAR_KINDS.reduce((n,k)=>n+(w[k]??0),0);
-  const raw=REGULAR_KINDS.map(k=>total*(w[k]??0)/sum),out=raw.map(Math.floor);
+function apportion<K extends string>(total:number,w:Partial<Record<K,number>>,keys:readonly K[]=REGULAR_KINDS as readonly string[] as readonly K[]){
+  const sum=keys.reduce((n,k)=>n+(w[k]??0),0);
+  const raw=keys.map(k=>total*(w[k]??0)/sum),out=raw.map(Math.floor);
   let left=total-out.reduce((a,b)=>a+b,0);
   const order=raw.map((r,i)=>({i,f:r-Math.floor(r)})).sort((a,b)=>b.f-a.f||a.i-b.i);
   for(let j=0;left>0;j++,left--)out[order[j%order.length].i]++;
-  return REGULAR_KINDS.map((k,i)=>({kind:k,count:out[i]}));
+  return keys.map((k,i)=>({kind:k,count:out[i]}));
 }
 
-/** Builds the spawn schedule of a round for a player count. Deterministic for the same rng state. */
-export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):RoundPlan{
+// ---------- Rotation (D-040): composition by role ----------
+/** Roles a regular round composes from (the mini-chefe and the boss come as their own groups). */
+export const ROTATION_ROLES:readonly EnemyRole[]=['corredor','enxame','palhaco','arremessador','atirador','suporte','voador',
+  'kamikaze','refletor','invocador','brutamontes'];
+/**
+ * Role shares per round with the rotation: the table above read by role (bebado -> corredor, pombos -> enxame, tio ->
+ * palhaco, agiota -> atirador, anao -> arremessador, coach -> suporte, motoboy -> kamikaze, influencer -> refletor),
+ * held to the bands (a role before its band goes to the corredores), plus the new roles: from round 4 a third of the
+ * enxame share flies (voador), from round 7 about half the palhaco share is brutamontes and 4% invocadores (from the
+ * corredores).
+ */
+export const ROTATION_WEIGHTS:readonly Partial<Record<EnemyRole,number>>[]=[
+  {corredor:1},
+  {corredor:.75,enxame:.25},
+  {corredor:.6,enxame:.25,palhaco:.15},
+  {corredor:.46,enxame:.14,voador:.06,palhaco:.15,atirador:.12,arremessador:.04,suporte:.03},
+  {corredor:.44,enxame:.14,voador:.06,palhaco:.2,atirador:.12,arremessador:.04,suporte:.03},
+  {corredor:.38,enxame:.14,voador:.06,palhaco:.2,atirador:.15,arremessador:.05,suporte:.02},
+  {corredor:.17,invocador:.04,enxame:.14,voador:.06,palhaco:.1,brutamontes:.1,atirador:.2,arremessador:.07,suporte:.04,kamikaze:.04,refletor:.04},
+  {corredor:.12,invocador:.04,enxame:.14,voador:.06,palhaco:.13,brutamontes:.12,atirador:.2,arremessador:.07,suporte:.04,kamikaze:.04,refletor:.04},
+  {corredor:.11,invocador:.04,enxame:.17,voador:.08,palhaco:.1,brutamontes:.1,atirador:.2,arremessador:.08,suporte:.04,kamikaze:.04,refletor:.04},
+  {corredor:.29,enxame:.3,palhaco:.15,atirador:.15,arremessador:.05,suporte:.02,kamikaze:.02,refletor:.02},
+];
+/** Salt of the rotation's member picks (planRound), apart from the plan's own stream. */
+const ROTATION_PICK_SALT=0x40d0f1c5;
+/** Round 8's lone mini-chefe: when in the spawn window, and its hp against the elite's (eliteHp x this). */
+export const MINI_SOLO_AT=.5,MINI_SOLO_HP=.6;
+const avgRoleThreat=(w:Partial<Record<EnemyRole,number>>)=>{
+  let t=0,s=0;for(const r of ROTATION_ROLES){const v=w[r]??0;t+=v*ROLE_PROFILES[r].threat;s+=v;}
+  return s>0?t/s:1;
+};
+/**
+ * The round's role shares with the rotation: ROTATION_WEIGHTS, then the modifier's kinds read as their roles (weights
+ * replace, share pins), and a role the rotation has no entry for gives its share to the corredores.
+ */
+function roleComposition(index:number,roster:RoundRoster,mod?:RoundModifier){
+  let w:Partial<Record<EnemyRole,number>>={...ROTATION_WEIGHTS[index-1]};
+  const asRoles=(o:Partial<Record<RegularKind,number>>)=>{
+    const out:Partial<Record<EnemyRole,number>>={};
+    for(const [k,v] of Object.entries(o) as [RegularKind,number][]){const r=LEGACY_ROLE[k];out[r]=(out[r]??0)+v;}
+    return out;
+  };
+  if(mod?.weights)w={...w,...asRoles(mod.weights)};
+  if(mod?.share){
+    const share=asRoles(mod.share),pinned=Object.values(share).reduce((a,b)=>a+(b??0),0);
+    const rest=ROTATION_ROLES.filter(r=>!(r in share)).reduce((n,r)=>n+(w[r]??0),0);
+    for(const r of ROTATION_ROLES)w[r]=r in share?share[r]:rest>0?(w[r]??0)*(1-pinned)/rest:0;
+  }
+  for(const r of ROTATION_ROLES)if((w[r]??0)>0&&!roster.roles[r]?.length&&r!=='corredor'){w.corredor=(w.corredor??0)+w[r]!;w[r]=0;}
+  if(!ROTATION_ROLES.some(r=>(w[r]??0)>0&&roster.roles[r]?.length))w={corredor:1};
+  return w;
+}
+
+/**
+ * Builds the spawn schedule of a round for a player count. Deterministic for the same rng state.
+ * With `roster` (the run's rotation, D-040) the members are roster entries drawn by role (ROTATION_WEIGHTS, the
+ * modifier's kinds read as their roles) and the count keeps the round's threat budget: the table's average threat
+ * (THREAT over def.weights) over the roles' average (ROLE_PROFILES threat), times the modifier's count.
+ */
+export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,roster?:RoundRoster):RoundPlan{
   const def=ROUNDS[index-1];
   if(!def)throw new Error(`no round ${index}`);
   const mod=theme.modifierId?MODIFIERS.find(m=>m.id===theme.modifierId):undefined;
   const scale=playerScale(players),weights=composition(def,mod);
+  const roles=roster?roleComposition(index,roster,mod):undefined;
+  // The rotation's picks (which entry of a role each member is) come from a stream of their own, derived from the plan's
+  // without advancing it: the groups' sizes, timing and sides are the table's for the same rng and member count.
+  const picks=roster?new Rng((rng.state^ROTATION_PICK_SALT)>>>0):rng;
   let modCount=mod?.countMult??1;
-  if(mod?.normalizeThreat)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgThreat(weights)));
-  const raw=Math.round(def.budget*scale.count*modCount);
+  if(roles)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgRoleThreat(roles)));
+  else if(mod?.normalizeThreat)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgThreat(weights)));
+  // Round 8's mini-chefe comes outside the budget: the regular count gives up its threat (per player, x the count scale).
+  const solo=roles?roster!.solo:undefined,soloThreat=solo?ROLE_PROFILES['mini-chefe'].threat*scale.count:0;
+  const raw=Math.max(1,Math.round(def.budget*scale.count*modCount-(roles&&solo?soloThreat/avgRoleThreat(roles):0)));
   const regular=Math.min(raw,MAX_ROUND_ENEMIES);
   // Threat lost to the cap moves partly into hp.
   const hpComp=Math.min(1.3,raw/Math.max(1,regular));
@@ -283,10 +357,11 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):
   let left=regular;
   for(const _ of def.swarm?.at??[]){
     const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*Math.min(1,regular/raw*modCount)));
-    swarmGroups.push(Array(size).fill('pombos'));left-=size;
+    swarmGroups.push(Array(size).fill(roles?picks.pick(roster!.roles.enxame??roster!.roles.corredor!):'pombos'));left-=size;
   }
   const pool:string[]=[];
-  for(const {kind,count} of apportion(left,weights))for(let i=0;i<count;i++)pool.push(kind);
+  if(roles)for(const {kind:role,count} of apportion(left,roles,ROTATION_ROLES))for(let i=0;i<count;i++)pool.push(picks.pick(roster!.roles[role]!));
+  else for(const {kind,count} of apportion(left,weights))for(let i=0;i<count;i++)pool.push(kind);
   for(let i=pool.length-1;i>0;i--){const j=rng.int(0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
   const regularGroups:string[][]=[];
   while(pool.length){
@@ -300,7 +375,8 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):
   regularGroups.forEach((members,i)=>groups.push({at:ticks(start+i*step),members,formation}));
   const span=Math.max(1,(regularGroups.length-1)*step);
   def.swarm?.at.forEach((f,i)=>{if(swarmGroups[i]?.length)groups.push({at:ticks(start+f*span),members:swarmGroups[i],formation:'cluster'});});
-  if(def.elite)groups.push({at:ticks(start+def.elite.at*span),members:[def.elite.kind],elite:true});
+  if(def.elite)groups.push({at:ticks(start+def.elite.at*span),members:[roster?.elite??def.elite.kind],elite:true});
+  if(solo)groups.push({at:ticks(start+MINI_SOLO_AT*span),members:[solo],solo:true});
   if(def.boss)groups.push({at:ticks(def.boss.atSeconds),members:['chefe'],boss:true});
   groups.sort((a,b)=>a.at-b.at);
 
@@ -310,6 +386,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng):
     durationTicks:ticks(def.maxDuration),
     hp:def.hpScale*scale.hp*(mod?.hpMult??1)*hpComp,
     eliteHp:def.hpScale*scale.solo*ELITE_HP,
+    ...(solo?{miniHp:def.hpScale*scale.solo*ELITE_HP*MINI_SOLO_HP}:{}),
     speed:mod?.speedMult??1,size:mod?.sizeMult??1,
     retreat:!def.boss,boss:!!def.boss,
     side:mod?.singleSide||mod?.alternateSide?rng.range(0,Math.PI*2):undefined,

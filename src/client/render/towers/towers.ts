@@ -65,6 +65,8 @@ export interface TowerRendererOptions {
 
 interface Tower {
   view:TowerView;look:TowerLook;cal:CalibreLook;phase:TowerPhase;prevFire?:number;
+  /** Extra volleys of one snapshot still to draw (ms when each goes), staggered by VOLLEY_STAGGER_MS. */
+  queued?:number[];
   /** Next re-scan of the horde for the nearest target (ms); the alpha last set; the cover test's last answer. */
   scanAt:number;alpha:number;covers:boolean;
   base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
@@ -95,6 +97,8 @@ export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
+/** Two or three volleys of one snapshot (the room's counter jumped) are drawn this far apart, not at once. */
+const VOLLEY_STAGGER_MS=70;
 /** Crater decals: a small frame, and a large one for the big shells and the Gustavão (no blur when scaled up). */
 const CRATER_FRAME='cratera',CRATER_TEX=128,CRATER_BIG='cratera-g',CRATER_BIG_TEX=512,CRATER_BIG_FROM=1;
 /** Effects sort just above the actors standing at their point (a pickup is +1, a projectile +2 in layers.ts). */
@@ -205,7 +209,10 @@ export class TowerRenderer {
       t.view=view;t.seen=stamp;
       t.phase=view.phase??towerPhase(view,tick);
       if(view.aim!==undefined&&view.aim!==t.aimFor)this.aimAt(t,view.aim);
-      if(firedNow(t.prevFire,view,tick))this.fire(t,nowMs);
+      if(firedNow(t.prevFire,view,tick)){
+        this.fire(t,nowMs);
+        for(let k=1;k<(view.volleys??1);k++)(t.queued??=[]).push(nowMs+k*VOLLEY_STAGGER_MS);
+      }
       t.prevFire=view.fireTick;
     }
     for(const t of this.towers.values())if(t.seen!==stamp){this.drop(t);this.towers.delete(t.view.id);this.coverDirty=true;}
@@ -252,6 +259,7 @@ export class TowerRenderer {
     if(version!==this.depthSeen){this.depthSeen=version;this.redepth();}
     const view=this.o.world.view(),covered=this.covered;
     for(const t of this.towers.values()){
+      while(t.queued?.length&&t.queued[0]<=nowMs){t.queued.shift();this.fire(t,nowMs);}
       this.aim(t,dtMs);
       this.drawTower(t,view);
     }
@@ -274,6 +282,32 @@ export class TowerRenderer {
     this.drawEffects(nowMs);
     this.atlas.flush();
     this.applyShake(nowMs);
+    if(this.labHidden)this.hideAll(this.labHidden);
+  }
+  /**
+   * Lab only (the sandbox's FPS bench): draw nothing while everything still runs, so drawn and hidden frames can be
+   * compared on one page under the same load.
+   */
+  labHidden='';
+  private hideAll(what:string){
+    const all=what==='all';
+    if(all||what.includes('crateras'))this.ground.setVisible(false);
+    if(all||what.includes('efeitos'))for(const i of this.fxImages)i.setVisible(false);
+    if(all||what.includes('bases'))for(const t of this.towers.values()){t.base.setVisible(false);t.weapon.setVisible(false);t.rail?.setVisible(false);}
+  }
+  /** Lab only: what is drawn now, per kind — images shown and their area in world px² (× zoom² for screen px). */
+  labStats(){
+    const out:Record<string,{n:number;area:number}>={};
+    const add=(k:string,i:Phaser.GameObjects.Image|undefined)=>{if(!i||!i.visible||i.alpha<=0)return;const o=out[k]??={n:0,area:0};o.n++;o.area+=Math.abs(i.displayWidth*i.displayHeight);};
+    for(const t of this.towers.values()){add('bases',t.base);add('armas',t.weapon);add('trilho',t.rail);}
+    for(const i of this.craterImages)add('crateras',i);
+    for(const i of this.fxImages)add('efeitos',i);
+    return out;
+  }
+  /** Lab only: shows again what hideAll hid (effects come back as they are drawn, a defense is redrawn whole). */
+  labShow(){
+    this.ground.setVisible(true);
+    for(const t of this.towers.values()){t.base.setVisible(true);t.drawnPhase='';t.drawnView=-1;t.drawnDir=-1;}
   }
   /** The figures moved since the last cover test (and remembers where they are). */
   private figuresMoved(figures:readonly Figure[]):boolean{
@@ -347,7 +381,10 @@ export class TowerRenderer {
    * A volley: muzzle flash, recoil, and the shots toward its aim: with the server's `aim`, the reachable enemy along it
    * (or a point along it at AIM_FALLBACK of the range); without, the nearest reachable enemy.
    */
+  /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
+  volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
+    this.volleysDrawn++;
     const cal=t.cal,e=this.enemies,v=t.view;
     t.recoilUntil=nowMs+RECOIL_MS;
     let tx=NaN,ty=NaN;

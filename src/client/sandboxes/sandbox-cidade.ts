@@ -41,6 +41,9 @@
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
  *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
+ *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
+ *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
+ *   still target: the aim never changes, only the counter does); `.volleys()` = {fired by the stand-in, drawn}.
  *   The client may not import the sim (tests/arquitetura.test.ts), so a stand-in stepper fires like the sim's
  *   defensesStep (ready, cooldown, nearest reachable enemy) with the test-checked table of render/towers/tower-rules.ts,
  *   at the wandering stand-in enemies (`n`, default 60 here; every 10th one flies). The game feeds the same
@@ -49,6 +52,9 @@
  *   current shake (CSS px), `.towerCount` and `.defenses()` the stand-in defenses, `.hidden` the building the hidden A3
  *   stands behind, `.at`/`.cell` the hero's spot and
  *   the map cell (u), `.freeze()` stops the game loop so a print catches a volley mid-flight.
+ *   FPS lab (torres-polimento): `.towersHidden('all'|'bases'|'efeitos'|'crateras'|'')` hides what the renderer draws while it
+ *   still runs (drawn vs hidden on one page, the same load), `.towersStats()` the images shown and their area per kind.
+ *   The stand-in stepper records each volley's aim like the sim on the wire, so the renderer never scans the horde.
  * `relevo=0` draws the flat ground (no relief shader); `relevo=morros` (with `mapa=real`) adds stand-in snow hills to the
  * real map (render/city/relevo/preview.ts) to judge the relief shader before the real height field lands.
  * Fake data only; nothing talks to the server.
@@ -75,7 +81,7 @@ import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
-import {TOWER_LOOK,aimIndex,towerFootprint,type TowerKind,type TowerView} from '../render/towers/tower-rules.ts';
+import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerView,type WireStructure} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
 
 const params=new URLSearchParams(location.search);
@@ -86,6 +92,7 @@ const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
 const towersDrawn=params.get('desenho')!=='0';
+const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** torres=1: the stand-in horde keeps this far (u) from the hero, outside the ring of defenses, so the shots read. */
 const HORDE_INNER=towersParam===1?4.5:0;
 const enemies=Math.max(0,Math.min(600,params.has('n')||!towersParam?Number(params.get('n'))|0:60));
@@ -147,6 +154,8 @@ class CitySandbox extends Phaser.Scene {
   private decoded?:CityTerrain;
   /** torres=…: the stand-in defenses, the renderer and the enemies' parallel arrays it aims at. */
   private defenses:TowerView[]=[];
+  /** fio=1: the game's wire path (TowerFeed) with each stand-in's volley counter and aim; volleys the stand-in fired. */
+  private feed=new TowerFeed();private shots=new Map<string,number>();private aims=new Map<string,number>();private fired=0;
   private towers?:TowerRenderer;
   private ex=new Float32Array(0);private ey=new Float32Array(0);private air=new Uint8Array(0);
   private simStart=-1;
@@ -209,7 +218,7 @@ class CitySandbox extends Phaser.Scene {
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
-    this.moveHorde(dt);
+    if(!stillHorde)this.moveHorde(dt);
     this.tick(dt);
     this.stone?.update(_t);
     this.drawLab(_t,dt);
@@ -320,11 +329,24 @@ class CitySandbox extends Phaser.Scene {
     for(const d of this.defenses){
       const l=TOWER_LOOK[d.kind];
       if(d.ruined||tick<d.readyTick||tick<d.fireTick||l.calibre==='radar')continue;
-      if(aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air)<0)continue;
+      const i=aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air);
+      if(i<0)continue;
+      // Like the sim on the wire: the aim (turns from +x) of the volley, so the renderer turns to it and never scans
+      // the horde itself ("mira só no tiro"), as in the game.
+      // The sim records no aim for an aura (the wire's spark ring: src/sim/towers/system.ts), so neither does this.
+      if(l.calibre!=='arame')d.aim=(Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(Math.PI*2)+1)%1;
       d.fireTick=tick+Math.max(1,Math.round(l.cooldown*SIM_HZ));
+      if(viaWire){
+        this.aims.set(d.id,((Math.atan2(this.ey[i]-d.y,this.ex[i]-d.x)/(2*Math.PI))%1+1)%1);
+        this.shots.set(d.id,((this.shots.get(d.id)??0)+1)&255);this.fired++;
+      }
     }
     const t=this.towers;if(!t)return;
-    t.push(tick,this.defenses,time);
+    if(viaWire){
+      const wire:WireStructure[]=this.defenses.map(d=>({id:d.id,kind:d.kind,x:d.x,y:d.y,hp:d.hp,maxHp:d.maxHp,phase:d.ruined?'ruina':tick<d.readyTick?'obra-2':'pronta',
+        ...(this.aims.has(d.id)?{aim:Math.round(this.aims.get(d.id)!*255)/255}:{}),...(this.shots.has(d.id)?{shots:this.shots.get(d.id)}:{})}));
+      t.push(tick,this.feed.views(wire,tick,this.asset.cell,{enemies:{n,xs:this.ex,ys:this.ey,air:this.air}}),time);
+    }else t.push(tick,this.defenses,time);
     t.update(time,dt,[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
@@ -385,7 +407,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   private tick(dt:number){

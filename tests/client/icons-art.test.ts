@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {setArtIndex,type ArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
+import {setArtIndex,hasArt,type ArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
 import {ICON_NAMES,compass,icon} from '../../src/client/ui/icon.ts';
 import {STICKER_NAMES,sticker} from '../../src/client/ui/sticker.ts';
 import {bootArt} from '../../src/client/ui/art-boot.ts';
@@ -111,13 +111,26 @@ test('bootArt loads the index in time, and keeps the SVG on fetch failure, bad J
 test('main.ts starts the art index without blocking the menu; the game and the horde sandbox await it before Phaser',()=>{
   const read=(f:string)=>readFileSync(new URL(`../../src/${f}`,import.meta.url),'utf8');
   const main=read('main.ts');
-  assert.match(main,/^import \{ artReady \} from '\.\/client\/ui\/art-boot\.ts';$/m);
-  assert.ok(!/await (bootArt|artReady)\(\)/.test(main),'the menu never waits for the network');
-  const boot=main.indexOf('void artReady();'),mount=main.indexOf('mountIcons();');
-  assert.ok(mount>=0&&boot>mount,'mountIcons (SVG fallback) → artReady');
+  assert.match(main,/^import \{ startArt \} from '\.\/client\/ui\/art-boot\.ts';$/m);
+  assert.ok(!/await (bootArt|artReady|startArt)\(\)|artReady\(/.test(main),'the menu never waits for the network (nor starts the game wait)');
+  const boot=main.indexOf('void startArt();'),mount=main.indexOf('mountIcons();');
+  assert.ok(mount>=0&&boot>mount,'mountIcons (SVG fallback) → startArt');
   for(const f of ['client/explore.ts','client/sandboxes/sandbox-horde.ts'])assert.match(read(f),/await artReady\(\);/,f);
 });
-test('artReady() is one boot per page (same promise)',async()=>{
-  const {artReady}=await import('../../src/client/ui/art-boot.ts');
+test('artReady() is one boot per page (same promise); startArt() one download',async()=>{
+  const {artReady,startArt}=await import('../../src/client/ui/art-boot.ts');
+  assert.equal(startArt(),startArt());
   assert.equal(artReady(),artReady());
+});
+test('bootArt: the seal (until) refuses an answer still on its way, like the deadline (manifesto-enxuto-3g)',async()=>{
+  try{
+    let seal=()=>{};const until=new Promise<void>(r=>{seal=r;});
+    let release=()=>{};const gate=new Promise<void>(r=>{release=r;});
+    const boot=bootArt({timeoutMs:10000,until,fetcher:async()=>{await gate;return answer(withUi(['boia']));}});
+    seal();release();
+    assert.equal(await boot,false);
+    assert.equal(hasArt('ui','boia'),false,'a sealed index stays empty');
+    // Without a seal, a slow answer inside the long background deadline is taken.
+    assert.equal(await bootArt({timeoutMs:10000,fetcher:async()=>{await new Promise(r=>setTimeout(r,60));return answer(withUi(['boia']));}}),true);
+  }finally{setArtIndex(EMPTY);}
 });

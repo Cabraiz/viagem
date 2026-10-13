@@ -4,8 +4,8 @@
   "main": "worker.ts",
   "compatibility_date": "2026-10-05",
   "workers_dev": true,
-  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }, { "name": "INDEX", "class_name": "RoomIndex" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }, { "tag": "v2", "new_sqlite_classes": ["RoomIndex"] }],
   // D-035: the city asset goes in the bundle as a Text module (its exact text: the manifest sha256 is over it, so a
   // parsed JSON module would not do). Only this file; the manifest next to it stays a regular JSON import.
   "rules": [{ "type": "Text", "globs": ["**/cidade-nevada.json"], "fallthrough": true }],

@@ -5,6 +5,9 @@ import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,readMapRef,type MapRef} from '../src/prot
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
 import {parseZueiraLab} from '../src/sim/index.ts';
+import {RoomIndex,type IndexRow} from './room-index.ts';
+// wrangler binds the classes the main module exports.
+export {RoomIndex};
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
  * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
@@ -13,7 +16,7 @@ import {parseZueiraLab} from '../src/sim/index.ts';
  */
 /** What the room needs of a server-side WebSocket (the tests pass a fake one). */
 export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -36,6 +39,11 @@ export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
     if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL});
+    // deploy-worker-sem-derrubar: rooms in a match now (a deploy restarts them all), for scripts/deploy-rooms.mjs.
+    if(url.pathname==='/health/rooms'&&request.method==='GET'){
+      if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});
+      return Response.json(await env.INDEX.get(env.INDEX.idFromName('index')).summary(),{headers:{'Cache-Control':'no-store'}});
+    }
     if(!allowed(request,env))return new Response('Origin not allowed',{status:403});
     const headers={'Access-Control-Allow-Origin':request.headers.get('Origin')!,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Vary':'Origin','Cache-Control':'no-store'};
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
@@ -44,7 +52,7 @@ export default {
       if(!limit.success)return Response.json({error:'Aguarde um minuto antes de criar outra sala.'},{status:429,headers});
       const code=crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
-      await stub.init();return Response.json({code},{status:201,headers});
+      await stub.init(code);return Response.json({code},{status:201,headers});
     }
     // Lab report of a room (tick/encode cost, bytes per client): local dev only, never on the deployed Worker.
     const lab=url.pathname.match(/^\/lab\/([A-F0-9]{10})$/);
@@ -69,22 +77,61 @@ export class GameRoom extends DurableObject<Env>{
    * touching the constants.
    */
   private defaults:Pick<RoomOptions,'map'|'cityPlayable'>={map:ROOM_DEFAULT_MAP};
+  /** The room code (stored at init) and creation time: this room's row in the RoomIndex. */
+  private code?:string;
+  private created=0;
+  /** Whether the last row sent said "in a match" (rows go only when that changes). */
+  private indexed?:boolean;
+  /** The roster's last word: a match is on (the run is in combat). */
+  private matchOn=false;
+  private rosterPlayers=0;
+  /**
+   * The row says "in a match" while the run is in combat AND someone is connected: a match everybody left does not
+   * tick (no socket, no clock) and a deploy costs it nothing more, so it must not hold a deploy back for 50 min.
+   */
+  private syncIndex(){
+    const running=this.matchOn&&this.peers.size>0;
+    if(running===this.indexed)return;
+    this.indexed=running;
+    this.index({running,players:this.rosterPlayers,until:this.created+ROOM_LIFETIME_MS});
+  }
+  /** One stub for the index (calls on the same stub arrive in order) and the chain of reports in flight. */
+  private indexStub?:DurableObjectStub<RoomIndex>;
+  private reports:Promise<unknown>=Promise.resolve();
+  /**
+   * Tells the RoomIndex (a match started or ended). Reports go one after the other, so a quick false-true (a phone that
+   * drops and comes back at once) lands in order; a failed one forgets what was sent, so the next change resends.
+   * Never fails the room.
+   */
+  private index(row:IndexRow){
+    const ns=this.env.INDEX,code=this.code??this.ctx.id?.toString?.();
+    if(!ns||!code)return;
+    const stub=this.indexStub??=ns.get(ns.idFromName('index'));
+    this.reports=this.reports.then(()=>stub.report(code,row)).catch(()=>{if(this.indexed===row.running)this.indexed=undefined;});
+    try{this.ctx.waitUntil?.(this.reports);}catch{/* outside a request: the promise still runs */}
+  }
   /**
    * A new room (POST /rooms). A room on the city waits for it to decode before anyone is seated (like load()): the
    * first welcome already names the city, with no {t:'map'} right after it. The code goes back only after this.
    */
-  async init(){
+  async init(code?:string){
     this.city??=await loadCity();
     if(await this.ctx.storage.get('created'))return;
     const now=Date.now(),seed=randomSeed();
-    await this.ctx.storage.put({created:now,terrainSeed:seed});
+    this.code=code;this.created=now;
+    await this.ctx.storage.put({created:now,terrainSeed:seed,...(code?{code}:{})});
     const room=this.create(now,seed);
     await (this.loading=room.ready().then(()=>this.room=room));
     await this.ctx.storage.setAlarm(now+ROOM_LIFETIME_MS+60_000);
   }
   private create(created:number,seed:number){
     // VGM-047: the roster (one row) follows joins, leaves and the combat start/end, for a restart of this object.
-    const onRoster=(roster:RoomRoster)=>{void this.ctx.storage.put('roster',roster);};
+    // deploy-worker-sem-derrubar: the RoomIndex hears when the match starts and ends (the roster says `running`).
+    const onRoster=(roster:RoomRoster)=>{
+      void this.ctx.storage.put('roster',roster);
+      this.matchOn=roster.running===true;this.rosterPlayers=roster.players?.length??0;this.created||=created;
+      this.syncIndex();
+    };
     // BUG-20261012-ORQ-reconecta-round2: one JSON line per socket end (closeLogLine), read with `wrangler tail`.
     const log=(line:string)=>console.log(line);
     const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
@@ -96,6 +143,7 @@ export class GameRoom extends DurableObject<Env>{
   private load(created:number){
     return this.loading??=(async()=>{
       this.city??=await loadCity();
+      this.code??=await this.ctx.storage.get<string>('code');this.created=created;
       const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
       const roster=await this.ctx.storage.get<RoomRoster>('roster');
       if(roster)room.restore(roster);
@@ -124,7 +172,7 @@ export class GameRoom extends DurableObject<Env>{
   attach(server:RoomSocket,room:Room){
     const ERROR_CLOSE_WAIT_MS=2000;
     const peer:Peer={send:data=>server.send(data),close:(code,reason)=>{this.drop(server);try{server.close(code,reason);}catch{/* already closed */}}};
-    this.peers.set(server,peer);room.connect(peer);
+    this.peers.set(server,peer);room.connect(peer);this.syncIndex();
     server.addEventListener('message',e=>{if(typeof e.data==='string')this.room?.receive(peer,e.data);else if(this.room)this.room.close(peer,1003,'Texto esperado.');else peer.close(1003,'Texto esperado.');});
     // An abnormal end may fire 'error' before 'close': the close event carries the code (1006) and wasClean the log
     // is for, so an error only marks the socket and waits; with no close event in ERROR_CLOSE_WAIT_MS it ends anyway.
@@ -138,6 +186,6 @@ export class GameRoom extends DurableObject<Env>{
     server.addEventListener('error',()=>{if(errored)return;errored=true;fallback=setTimeout(()=>close('error'),ERROR_CLOSE_WAIT_MS);});
     this.loop.start();
   }
-  private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();}
+  private drop(server:RoomSocket){this.peers.delete(server);if(!this.peers.size)this.loop.stop();this.syncIndex();}
   async alarm(){for(const peer of [...this.peers.values()])if(this.room)this.room.close(peer,4004,'Sala encerrada.');else peer.close(4004,'Sala encerrada.');this.loop.stop();this.room=undefined;this.loading=undefined;await this.ctx.storage.deleteAll();}
 }

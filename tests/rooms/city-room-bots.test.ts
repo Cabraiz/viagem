@@ -6,6 +6,13 @@
 // gets STUCK_REACH away from where the window began, standing (not fallen) and with no critter within FIGHT_NEAR (a bot
 // dancing in a fight is fighting, not stuck; that number is logged too). Round times and falls are logged.
 // D-031: results only (positions, events, ticks); the think cost is logged, never asserted.
+// BUG-20261013-E1 (same run): in round 3 barricade N is already down (it fell in round 2) and bodies poured through the
+// N mouth into the north strip of the plaza, cut off from the team by the fountain's ~1 u gaps: up to 27 stood there
+// (siege bodies walking straight at the wall into the fountain; tios-pavê, 0.52 u, on a field narrower than them) and
+// round 3 ran into its timeout (126 s; 75 s before the barricades). Sampled once a second, a critter is "stalled" when
+// it moved < STALL_REACH in the last STALL_SECONDS, is > FIGHT_NEAR from every standing player and is not pressed
+// against a standing structure (the wall or a barricade: that is a siege, D-017). At most STALLED_MAX at once, and
+// round 3's wave ends within ROUND3_MAX_SECONDS (83 s with the fix).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,12 +24,16 @@ import {FlowField} from '../../src/maps/flowfield.ts';
 import {heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 import {SIM_HZ,ticks} from '../../src/contract/types.ts';
 import {cityFlowGrid,cityPlanner,cityTerrainOf} from '../../src/sim/city/grid.ts';
+import {structureTargets} from '../../src/sim/stonewards/system.ts';
+import {RADIUS} from '../../src/maps/world.ts';
 import {botRouteStats} from '../../src/sim/city/bot-routes.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
 const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
+/** Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold back. */
+const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=100;
 
 function peer(){
   const messages:any[]=[];
@@ -58,6 +69,8 @@ test('ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
   const stuck=new Map(bots.map(id=>[id,{run:0,worst:0,at:''}])),confined=new Map(bots.map(id=>[id,{run:0,worst:0}]));
   const rounds:{index:number;wave?:number;end?:number}[]=[],falls:string[]=[];
   let anaArrived:number|undefined;
+  const seen=new Map<string,{x:number;y:number}[]>();
+  let stalledWorst=0,stalledAt='';
   for(let i=0;i<ticks(500)&&!rounds.find(r=>r.index===3)?.end&&room.run.snapshot().phase==='combat';i++){
     const p=sim.players.get(ana)!;
     if(!p.downed){
@@ -76,6 +89,20 @@ test('ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
       }
       if(e.type==='downed')falls.push(`${sim.bots.has(e.player)?e.player:'Ana'} r${sim.world.round.index} ${secs(sim.tick)}`);
     }
+    const r3=rounds.find(r=>r.index===3);
+    if(r3&&r3.end===undefined&&sim.tick%SIM_HZ===0){
+      const standing=[...sim.players.values()].filter(q=>!q.downed&&q.hp>0),structures=structureTargets(sim.run.stonewards.state);
+      const stalled:string[]=[];
+      for(const e of sim.enemies){
+        if(!(e.hp>0)||e.boss)continue;
+        const h=seen.get(e.id)??[];h.push({x:e.x,y:e.y});if(h.length>STALL_SECONDS+1)h.shift();seen.set(e.id,h);
+        if(h.length<=STALL_SECONDS||!h.every(q=>Math.hypot(q.x-h[0].x,q.y-h[0].y)<STALL_REACH))continue;
+        if(standing.some(q=>Math.hypot(q.x-e.x,q.y-e.y)<=FIGHT_NEAR))continue;
+        if(structures.some(st=>Math.hypot(st.x-e.x,st.y-e.y)-st.radius<=e.radius+RADIUS+.05))continue;
+        stalled.push(`${e.kind} (${e.x.toFixed(1)},${e.y.toFixed(1)})`);
+      }
+      if(stalled.length>stalledWorst){stalledWorst=stalled.length;stalledAt=`${secs(sim.tick-r3.wave!)} into round 3: ${stalled.join(', ')}`;}
+    }
     for(const id of bots){
       const b=sim.players.get(id)!,s=stick.get(id)??{x:0,y:0},h=trail.get(id)!;
       const fight=sim.enemies.some(e=>Math.hypot(e.x-b.x,e.y-b.y)<FIGHT_NEAR);
@@ -93,8 +120,12 @@ test('ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
     +`; Ana in the plaza ${anaArrived===undefined?'never':secs(anaArrived)}; falls ${falls.length?falls.join(', '):'none'}`
     +`\n  stuck (no critter within ${FIGHT_NEAR} u) beyond ${STUCK_SECONDS} s: ${bots.map(id=>{const w=stuck.get(id)!;return `${id} ${secs(w.worst)}${w.worst?` at ${w.at}`:''}`;}).join(', ')}`
     +`\n  confined within ${STUCK_REACH} u beyond ${STUCK_SECONDS} s, fights included: ${bots.map(id=>`${id} ${secs(confined.get(id)!.worst)}`).join(', ')}`
+    +`\n  round 3: at most ${stalledWorst} critters stalled ≥ ${STALL_SECONDS} s away from everyone${stalledWorst?` (${stalledAt})`:''}`
     +`\n  think ${brains.thinks} decisions, ${(brains.thinkMs/Math.max(1,brains.thinks)).toFixed(3)} ms each; route fields built ${botRouteStats.builds}, served ${botRouteStats.hits}`);
   assert.ok(rounds.find(r=>r.index===3)?.end!==undefined,`rounds 1-3 ended (${rounds.map(r=>`${r.index}:${r.end===undefined?'on':'end'}`).join(' ')}; phase ${room.run.snapshot().phase})`);
   for(const id of bots)assert.equal(stuck.get(id)!.worst,0,`${id} stuck ${secs(stuck.get(id)!.worst)} beyond ${STUCK_SECONDS} s at ${stuck.get(id)!.at}`);
   assert.ok(anaArrived!==undefined,'Ana reached the plaza');
+  const r3=rounds.find(r=>r.index===3)!;
+  assert.ok(stalledWorst<=STALLED_MAX,`round 3: ${stalledWorst} critters stalled at once, ${stalledAt}`);
+  assert.ok(r3.end!-r3.wave!<=ticks(ROUND3_MAX_SECONDS),`round 3 wave lasted ${secs(r3.end!-r3.wave!)} (max ${ROUND3_MAX_SECONDS} s)`);
 });

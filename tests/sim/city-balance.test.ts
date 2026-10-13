@@ -9,6 +9,8 @@
  *     without them (assembled digests recorded before this card); the city's assembled default too.
  *  5. Stonewards: lootValue pays whole units per crate, intermissionExtraSeconds lengthens the city intermission;
  *     the island ignores both (same state, same keys). bossHp: the city boss only (assemble and Simulation option).
+ *  6. Team-size knobs (CityBalance.players): JSON validation; a knob for 1 player changes only the 1-player city
+ *     (keyed by RoundPlan.players), round 1 untouched; loot by the team standing at the intermission start.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -157,10 +159,12 @@ interface Body {id:string;tick:number;round:number;kind:string;scale:number;sieg
  * tutorial on or off), the team in the plaza, every body killed 2 s after it spawns. Digest of the events, spawns,
  * round summaries and state; the bodies with their round and siege flag.
  */
-function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<DirectorOptions>={},terrain:SimContext['terrain']=city){
+function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<DirectorOptions>={},terrain:SimContext['terrain']=city,heroes=2){
   const ctx=fakeCtx(seed,terrain),created:unknown[]=[],ends:unknown[]=[],bodies:Body[]=[],seen=new Set<string>(),scales=new Map<string,number>();
   const inCity=terrain===city;
-  addPlayer(ctx,'a',inCity?P.plazaCenter:worldSpawn(terrain));addPlayer(ctx,'b',inCity?city.asset.points.praca:{x:worldSpawn(terrain).x+3,y:worldSpawn(terrain).y});
+  addPlayer(ctx,'a',inCity?P.plazaCenter:worldSpawn(terrain));
+  if(heroes>=2)addPlayer(ctx,'b',inCity?city.asset.points.praca:{x:worldSpawn(terrain).x+3,y:worldSpawn(terrain).y});
+  for(let i=2;i<heroes;i++)addPlayer(ctx,`p${i}`,inCity?{x:P.plazaCenter.x+i*.5,y:P.plazaCenter.y+.5}:{x:worldSpawn(terrain).x+i,y:worldSpawn(terrain).y+1});
   const director=createDirector({
     createEnemy(c,kind,point,scale){
       if(!isEnemyKind(kind))return undefined;
@@ -340,4 +344,93 @@ test('lootValue pays whole units per crate (balance and credits); intermissionEx
   assert.deepEqual(Object.keys(i1.sys.state),Object.keys(i0.sys.state));
   assert.equal(i1.firstEnd,i0.firstEnd,'island intermission untouched');
   assert.deepEqual(i1.ctx.events,i0.ctx.events);
+});
+
+// ---------- 6. team-size knobs (CityBalance.players) ----------
+test('players knobs: JSON validation (sizes 1..6, numbers > 0); roundKnobs multiplies all × round × team, rounds 2..10 only',()=>{
+  assert.equal(CITY_BALANCE.players,undefined,'CITY_BALANCE has no team knobs');
+  const b=cityBalanceFrom({all:{hp:1.2},rounds:{3:{count:.8,siegeShare:.5}},players:{1:{count:.5,hp:.5,cadence:1.5,siegeShare:.25,lootValue:2},3:{hp:.8}}});
+  assert.deepEqual(roundKnobs(b,3),{count:.8,hp:1.2,cadence:1,siegeShare:.5},'no team: as before');
+  assert.deepEqual(roundKnobs(b,3,1),{count:.8*.5,hp:1.2*.5,cadence:1.5,siegeShare:.25},'team 1: × its knobs, its siegeShare first');
+  assert.deepEqual(roundKnobs(b,3,3),{count:.8,hp:1.2*.8,cadence:1,siegeShare:.5},'team 3: hp only');
+  assert.deepEqual(roundKnobs(b,3,2),roundKnobs(b,3),'team 2 has no entry: neutral');
+  assert.deepEqual(roundKnobs(b,1,1),NEUTRAL_ROUND,'round 1 (tutorial) untouched by the team knobs');
+  assert.deepEqual(roundKnobs(b,ROUND_COUNT+1,1),NEUTRAL_ROUND);
+  // A later JSON over `b`: the sizes it names are replaced, the others kept.
+  const c=cityBalanceFrom({players:{3:{count:1.1}}},b);
+  assert.deepEqual(c.players,{1:b.players![1],3:{count:1.1}});
+  for(const bad of [{players:{0:{}}},{players:{7:{hp:1}}},{players:{'1.0':{}}},{players:{1:{count:0}}},{players:{1:{hp:-1}}},
+    {players:{1:{lootValue:Infinity}}},{players:{1:{speed:2}}},{players:{1:{siegeShare:2}}},{players:[]},{players:{1:[]}},{players:{1:{count:'2'}}}])
+    assert.throws(()=>cityBalanceFrom(bad),undefined,JSON.stringify(bad));
+});
+
+test('players knobs on the city director: a knob for 1 player changes only 1-player runs (rounds 2+, keyed by RoundPlan.players)',()=>{
+  const knobs=cityBalanceFrom({players:{1:{count:2,hp:1.5,siegeShare:1}}});
+  // Two heroes (the recorded scenario) and three: byte-identical to no knobs.
+  assert.equal(cityRun(3,4,true,{cityBalance:knobs}).hash,CITY_BASELINE['tutorial seed 3 r4'],'2 players: the pre-cidade-11 digest');
+  const three=cityRun(3,3,true,{},city,3);
+  assert.equal(three.plan?.players,3);
+  assert.equal(cityRun(3,3,true,{cityBalance:knobs},city,3).hash,three.hash,'3 players: unchanged');
+  // One hero: round 1 identical; rounds 2+ count ×2, hp ×1.5 and every regular body besieging.
+  const solo=cityRun(3,3,true,{},city,1),tuned=cityRun(3,3,true,{cityBalance:knobs},city,1);
+  assert.equal(solo.ends,3);assert.equal(tuned.ends,3);
+  assert.equal(tuned.plan?.players,1,'the 1-player plan');
+  assert.notEqual(tuned.hash,solo.hash,'1 player: changed');
+  const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
+  assert.ok(r1(solo.bodies).length>0,'the tutorial spawned');
+  assert.deepEqual(r1(tuned.bodies),r1(solo.bodies),'round 1 identical');
+  const inRound=(b:Body[],r:number)=>b.filter(x=>x.round===r&&x.kind!=='chefe');
+  const scale=(b:Body[])=>[...new Set(b.map(x=>x.scale.toFixed(9)))];
+  // Round 2 has the same theme and table plan in both runs (count and hp compare); from round 3 on the run's rng has
+  // moved apart (round 2 drew differently), so only the siege share is compared there.
+  const was=inRound(solo.bodies,2),now=inRound(tuned.bodies,2);
+  console.log(`[cidade-11] 1 player round 2: ${was.length} → ${now.length} bodies (players[1].count ×2)`);
+  assert.ok(now.length>=Math.round(was.length*1.8),`round 2: count ×2 (${was.length} → ${now.length})`);
+  assert.equal(scale(was).length,1);assert.equal(scale(now).length,1);
+  assert.ok(Math.abs(Number(scale(now)[0])-Number(scale(was)[0])*1.5)<1e-6,'round 2: hp ×1.5');
+  for(const r of [2,3]){
+    const bodies=inRound(tuned.bodies,r);
+    assert.ok(bodies.length>0&&bodies.every(x=>x.siege),`round ${r}: players[1].siegeShare 1`);
+    assert.ok(inRound(solo.bodies,r).some(x=>!x.siege),`round ${r}: without the knob, the director's 1/4`);
+  }
+});
+
+test('loot by team size: × players[n].lootValue × the global lootValue, n = heroes standing at the intermission start',()=>{
+  const crates=nodesNear(city,P.plazaCenter,1e4);
+  const spot=(i:number)=>({x:crates[i].x,y:crates[i].y});
+  const spots3=[spot(0),spot(Math.floor(crates.length/2)),spot(crates.length-1)];
+  const knobs:StonewardsOptions['cityBalance']={lootValue:1,intermissionExtraSeconds:0,players:{1:{lootValue:2},3:{lootValue:1.5}}};
+  const balanceOf=(sys:StonewardsSystem)=>({coco:sys.state.balance.coco,pedra:sys.state.balance.pedra});
+  /** What the emptied crates pay at `mult` (whole units per crate). */
+  const paidAt=(sys:StonewardsSystem,mult:number)=>{
+    const emptied=sys.state.nodes.filter(n=>n.remaining<=0);
+    assert.ok(emptied.length>0,'a crate was emptied');
+    const of=(kind:'coco'|'pedra')=>emptied.filter(n=>n.kind===kind).reduce((s,n)=>s+cityCrateValue(n.value,mult),0);
+    return {coco:of('coco'),pedra:of('pedra')};
+  };
+  // 3 standing: ×1.5; 1 standing: ×2; 2 standing (no entry): the crates' own values, as without knobs.
+  const t3=intermission(city,spots3,ticks(6),knobs).sys;
+  assert.equal(t3.state.cityLootTeam,3);assert.deepEqual(balanceOf(t3),paidAt(t3,1.5),'3 players ×1.5');
+  const t1=intermission(city,[spot(0)],ticks(6),knobs).sys;
+  assert.equal(t1.state.cityLootTeam,1);assert.deepEqual(balanceOf(t1),paidAt(t1,2),'1 player ×2');
+  const plain2=intermission(city,spots3.slice(0,2),ticks(6)).sys,t2=intermission(city,spots3.slice(0,2),ticks(6),knobs).sys;
+  assert.equal(t2.state.cityLootTeam,2);
+  assert.deepEqual(balanceOf(t2),balanceOf(plain2),'2 players: no entry, neutral');
+  assert.deepEqual(balanceOf(t2),paidAt(t2,1));
+  // × the global lootValue.
+  const g1=intermission(city,[spot(0)],ticks(6),{...knobs,lootValue:1.5}).sys;
+  assert.deepEqual(balanceOf(g1),paidAt(g1,3),'1 player: 1.5 × 2');
+  console.log(`[cidade-11] team loot: 1p ${JSON.stringify(balanceOf(t1))}, 2p ${JSON.stringify(balanceOf(t2))}, 3p ${JSON.stringify(balanceOf(t3))}`);
+  // A downed hero at the intermission start does not count: two heroes, one down → the team of 1 (×2).
+  const ctx=stoneCtx([hero('h0',spot(0)),{...hero('h1',P.plazaCenter),hp:0,downed:true}],city);
+  const sys=createStonewardsSystem({terrain:city,...stretcher,cityBalance:knobs});
+  ctx.tick=100;Object.assign(ctx.round,{index:2,phase:'prepare',phaseEndsTick:ctx.tick+1+ticks(30)});
+  for(let i=0;i<ticks(6);i++){ctx.tick++;sys.step(ctx);}
+  assert.equal(sys.state.cityLootTeam,1,'standing heroes only');
+  assert.deepEqual(balanceOf(sys),paidAt(sys,2));
+  // No team lootValue anywhere: no cityLootTeam key (other tunings' state hashes do not move); the island ignores it.
+  assert.ok(!('cityLootTeam' in intermission(city,[spot(0)],ticks(2),{lootValue:1,intermissionExtraSeconds:0,players:{1:{hp:.5}}}).sys.state));
+  const near=[{x:obstacles[12].x+obstacles[12].radius+.3,y:obstacles[12].y}];
+  const i0=intermission(defaultTerrain,near,ticks(35)),i1=intermission(defaultTerrain,near,ticks(35),{...knobs,players:{1:{lootValue:3}}});
+  assert.equal(JSON.stringify(i1.sys.state),JSON.stringify(i0.sys.state),'island state untouched');
 });

@@ -27,7 +27,7 @@ import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_L
 import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {createBarricades,damageBarricade,raiseDue,syncBarricades} from './barricades.ts';
-import {cityCrateValue,type CityBalance} from '../city/balance.ts';
+import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
 export {RECIPES,RECIPE_IDS,HORN_LINES} from '../../rules/index.ts';
@@ -73,10 +73,11 @@ export interface StonewardsOptions {
   /** Moves the end of the current intermission (the director owns ctx.round). Without it the horn never stretches it. */
   extendPrepare?(ctx:SimContext,endsTick:number):void;
   /**
-   * City only (cidade-11, city/balance.ts): lootValue × the units each crate pays and intermissionExtraSeconds added
-   * after the trip sizing. Read only where the crates are the nodes (cityLoot); absent or neutral: no change.
+   * City only (cidade-11, city/balance.ts): lootValue × the units each crate pays (× players[n].lootValue, n the heroes
+   * standing on the intermission's first tick, StonewardsState.cityLootTeam) and intermissionExtraSeconds added after
+   * the trip sizing. Read only where the crates are the nodes (cityLoot); absent or neutral: no change.
    */
-  cityBalance?:Pick<CityBalance,'lootValue'|'intermissionExtraSeconds'>;
+  cityBalance?:Pick<CityBalance,'lootValue'|'intermissionExtraSeconds'|'players'>;
   /**
    * City: a barricade fell or was rebuilt (or a rematch reset moved them), changing the terrain's walkability in these
    * flow-grid cells (asset.unitsPerCell, inclusive). The run refreshes the grid and invalidates the planner there.
@@ -140,12 +141,15 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
 /** A given `state` (a checkpoint) rebuilds the terrain's barricade blockers from it. */
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
-  const lootValue=options.cityBalance?.lootValue??1,extraTicks=ticks(Math.max(0,options.cityBalance?.intermissionExtraSeconds??0));
+  const extraTicks=ticks(Math.max(0,options.cityBalance?.intermissionExtraSeconds??0));
+  const balance=options.cityBalance,teamLoot=!!balance&&hasTeamLoot(balance);
+  /** This intermission's crate multiplier: the global lootValue × the standing team's (cidade-11 players knob). */
+  const lootValueNow=()=>balance?teamLootValue(balance,teamLoot?state.cityLootTeam:undefined):1;
   /**
    * City loot knob: gatherStep already paid each crate its value; pay the difference to cityCrateValue (whole units per
    * crate) and scale this tick's credits in `gathered` by the same ratio (the per-gatherer split is gone by then).
    */
-  function scaleLoot(got:readonly Gathered[],before:Readonly<Record<string,number>>){
+  function scaleLoot(got:readonly Gathered[],before:Readonly<Record<string,number>>,lootValue:number){
     let raw=0,paid=0;
     for(const g of got){const v=cityCrateValue(g.node.value,lootValue);raw+=g.node.value;paid+=v;state.balance[g.node.kind]+=v-g.node.value;}
     if(!(raw>0)||paid===raw)return;
@@ -211,6 +215,11 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       if(!state.wallDown&&round.phase==='prepare'){
         if(state.refilledRound!==round.index){
           state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);
+          // City team-size loot knob (cidade-11): the heroes standing as the intermission starts, kept for all of it.
+          if(loot&&teamLoot){
+            let n=0;for(const p of ctx.players.values())if(isStanding(p))n++;
+            state.cityLootTeam=Math.max(1,Math.min(6,n));
+          }
           // City: an intermission (not the opening countdown) long enough for the farthest good crate and back, its
           // collect time and the horn's lead (loot.ts lootTripTicks), up to MAX_PREPARE_TICKS. It is the city's
           // intermission length, not a horn stretch: it does not spend MAX_STRETCH_PER_RUN (9 intermissions × ~9 s
@@ -221,9 +230,9 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
             if(extraTicks>0)stretch(ctx,ctx.round.phaseEndsTick+extraTicks,false);
           }
         }
-        const scale=loot&&lootValue!==1,before=scale?{...state.gathered}:undefined;
+        const lootValue=loot?lootValueNow():1,before=lootValue!==1?{...state.gathered}:undefined;
         const got=gatherStep(ctx,state,options.obstacles);
-        if(before)scaleLoot(got,before);
+        if(before)scaleLoot(got,before,lootValue);
         for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
         horn(ctx,loot);
       }else if(round.phase!=='prepare'){

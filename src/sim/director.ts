@@ -102,7 +102,8 @@ export interface DirectorOptions {
   cityTutorial?:boolean;
   /**
    * City (cidade-11, city/balance.ts): the round knobs applied after planRound (count, hp, cadence) and the per-round
-   * siegeShare, rounds 2..10 only (round 1, the tutorial, is never touched). assemble.ts passes CITY_BALANCE (or the
+   * siegeShare, rounds 2..10 only (round 1, the tutorial, is never touched), including the team-size ones
+   * (CityBalance.players) for the plan's player count (RoundPlan.players, i.e. scalePlayers at the wave start). assemble.ts passes CITY_BALANCE (or the
    * run's override) in the city; ignored on the island and in the endless world. Absent: the round table as it is.
    */
   cityBalance?:CityBalance;
@@ -820,7 +821,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   const siegeFrom=options.siegeFromRound??1;
   // City (cidade-11): a round's siegeShare knob replaces the option's. state.avenues marks a city run (set from round 1
   // on, JSON-safe, never on the island or in the endless world even with a planner passed in); round 1 is neutral.
-  const shareOf=(round:number)=>options.cityBalance&&state.avenues?roundKnobs(options.cityBalance,round).siegeShare??siegeShare:siegeShare;
+  // The team-size knobs read the count the round was planned with (state.plan.players), never a later sample.
+  const shareOf=(round:number)=>options.cityBalance&&state.avenues?roundKnobs(options.cityBalance,round,state.plan?.players).siegeShare??siegeShare:siegeShare;
   const isSiege=(group:SpawnGroup,index:number)=>{
     if(group.siege)return true;
     const round=state.plan?.index??0,share=shareOf(round);
@@ -920,7 +922,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const tutorial=tutorialRound(ctx);
     let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random());
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
-    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index));
+    // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
+    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});

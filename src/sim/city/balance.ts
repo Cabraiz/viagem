@@ -10,7 +10,17 @@
  *  - `lootValue` × the units a crate pays (stonewards/system.ts, after gatherStep; each crate rounded to whole units);
  *  - `intermissionExtraSeconds` added to every city intermission after the trip sizing (stonewards/system.ts), within
  *    the intermission cap (MAX_PREPARE_TICKS);
- *  - `bossHp` × the city boss's hp (assemble.ts: BossTuning.baseHp for the city's boss controller).
+ *  - `bossHp` × the city boss's hp (assemble.ts: BossTuning.baseHp for the city's boss controller);
+ *  - `players[n]` (cidade-11 run): knobs by team size, on top of all of the above, so a small team can be eased without
+ *    touching the shared playerScale (rules/waves.ts). Its count/hp/cadence multiply `all` × `rounds[i]` (rounds 2..10
+ *    only), its siegeShare replaces theirs, and its lootValue multiplies the global lootValue. The team size `n` is:
+ *      · for the round knobs, the count planRound scaled the round with (RoundPlan.players: the director's
+ *        scalePlayers at the wave start, the highest activePlayers — online, not spectator, not eliminated — of the
+ *        current tick and the last 60 one-second samples, clamped 1..6);
+ *      · for the loot, the heroes standing at the intermission's start (revive.ts isStanding: online, not spectator,
+ *        not downed, not eliminated, hp > 0), clamped 1..6, counted once on the intermission's first tick and kept in
+ *        StonewardsState.cityLootTeam for the whole intermission (only when some players entry has a lootValue).
+ *    A team size with no entry, and any knob an entry leaves out, is neutral.
  *
  * Round 1 is the tutorial walk (cidade-08, TUTORIAL_PLAN): no knob ever touches it (roundKnobs(…, 1) is neutral), so a
  * tuning can not make the first round lethal. Neutral knobs leave the plan object itself untouched (same reference),
@@ -24,6 +34,10 @@ import {MAX_ROUND_ENEMIES,ROUND_COUNT,type RoundPlan,type SpawnGroup} from '../.
 
 /** Knobs of one round. count/hp/cadence are multipliers (1 = the table); siegeShare (0..1) replaces the director's. */
 export interface CityRoundKnobs {count:number;hp:number;cadence:number;siegeShare?:number}
+/** Knobs of one team size: the round knobs (count/hp/cadence ×, siegeShare replacing) and lootValue × the global one. */
+export type CityTeamKnobs=Partial<CityRoundKnobs&{lootValue:number}>;
+/** Team sizes a `players` entry may name (the director's scaling clamps to 1..6). */
+export const CITY_TEAM_SIZES=[1,2,3,4,5,6] as const;
 export interface CityBalance {
   /** Applied to every round 2..ROUND_COUNT (multiplied with the round's own entry; its siegeShare when the round has none). */
   readonly all:Readonly<Partial<CityRoundKnobs>>;
@@ -35,6 +49,12 @@ export interface CityBalance {
   readonly intermissionExtraSeconds:number;
   /** × the city boss's hp. */
   readonly bossHp:number;
+  /**
+   * By team size (1..6; see the module comment for which count each knob reads): count/hp/cadence × the round's
+   * all × rounds (rounds 2..ROUND_COUNT only), siegeShare replacing theirs, lootValue × the global lootValue. Absent
+   * sizes and knobs are neutral.
+   */
+  readonly players?:Readonly<Record<number,Readonly<CityTeamKnobs>>>;
 }
 
 export const NEUTRAL_ROUND:Readonly<CityRoundKnobs>=Object.freeze({count:1,hp:1,cadence:1});
@@ -47,14 +67,26 @@ export const CITY_BALANCE:CityBalance=Object.freeze({
   bossHp:1,
 });
 
-/** Effective knobs of round `index`: `all` × the round's entry; neutral for round 1 and outside 2..ROUND_COUNT. */
-export function roundKnobs(balance:CityBalance,index:number):CityRoundKnobs{
+/** The `players` entry for a team of `team` (an integer 1..6), or {} (neutral). */
+export function teamKnobs(balance:Pick<CityBalance,'players'>,team:number|undefined):Readonly<CityTeamKnobs>{
+  const p=balance.players;
+  return p&&team!==undefined&&Object.hasOwn(p,team)?p[team]:{};
+}
+/**
+ * Effective knobs of round `index` for a team of `team` (RoundPlan.players; absent: no team knobs): `all` × the round's
+ * entry × the team's entry (siegeShare: team, else round, else all); neutral for round 1 and outside 2..ROUND_COUNT.
+ */
+export function roundKnobs(balance:CityBalance,index:number,team?:number):CityRoundKnobs{
   if(!Number.isInteger(index)||index<2||index>ROUND_COUNT)return NEUTRAL_ROUND;
-  const a=balance.all,r=Object.hasOwn(balance.rounds,index)?balance.rounds[index]:{};
-  const share=r.siegeShare??a.siegeShare;
-  return {count:(a.count??1)*(r.count??1),hp:(a.hp??1)*(r.hp??1),cadence:(a.cadence??1)*(r.cadence??1),
+  const a=balance.all,r=Object.hasOwn(balance.rounds,index)?balance.rounds[index]:{},t=teamKnobs(balance,team);
+  const share=t.siegeShare??r.siegeShare??a.siegeShare;
+  return {count:(a.count??1)*(r.count??1)*(t.count??1),hp:(a.hp??1)*(r.hp??1)*(t.hp??1),cadence:(a.cadence??1)*(r.cadence??1)*(t.cadence??1),
     ...(share!==undefined?{siegeShare:Math.max(0,Math.min(1,share))}:{})};
 }
+/** The crate multiplier for a team of `team` standing at the intermission start: lootValue × players[team].lootValue. */
+export const teamLootValue=(balance:Pick<CityBalance,'lootValue'|'players'>,team?:number)=>balance.lootValue*(teamKnobs(balance,team).lootValue??1);
+/** Whether some team size has its own lootValue (Stonewards only then counts the team at the intermission start). */
+export const hasTeamLoot=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.lootValue!==undefined&&k.lootValue!==1);
 export const isNeutralRound=(k:CityRoundKnobs)=>k.count===1&&k.hp===1&&k.cadence===1&&k.siegeShare===undefined;
 
 /**
@@ -110,15 +142,29 @@ function knobsFrom(input:unknown,where:string):Partial<CityRoundKnobs>{
   }
   return out;
 }
+const TEAM_KEYS=[...KNOB_KEYS,'lootValue'] as const;
+/** A `players` entry: the round knobs plus lootValue, every number finite and > 0 (siegeShare also ≤ 1). */
+function teamFrom(input:unknown,where:string):CityTeamKnobs{
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error(`${where}: an object of knobs`);
+  const out:CityTeamKnobs={};
+  for(const [key,value] of Object.entries(input)){
+    if(!(TEAM_KEYS as readonly string[]).includes(key))throw new Error(`${where}: unknown knob '${key}'`);
+    if(typeof value!=='number'||!Number.isFinite(value)||value<=0)throw new Error(`${where}.${key}: a finite number > 0`);
+    if(key==='siegeShare'&&value>1)throw new Error(`${where}.siegeShare: 0..1`);
+    out[key as keyof CityTeamKnobs]=value;
+  }
+  return out;
+}
 /**
  * A CityBalance from JSON (a runner's --knobs file): every field optional, the rest from `base` (CITY_BALANCE).
- * `rounds` is an object keyed by round index ("2".."10"). Throws on unknown keys, bad numbers or round 1.
+ * `rounds` is an object keyed by round index ("2".."10"); `players` an object keyed by team size ("1".."6"), each
+ * entry replacing the base's for that size. Throws on unknown keys, bad numbers, round 1 or a team size outside 1..6.
  */
 export function cityBalanceFrom(input:unknown,base:CityBalance=CITY_BALANCE):CityBalance{
   if(input===undefined||input===null)return base;
   if(typeof input!=='object'||Array.isArray(input))throw new Error('city balance: an object');
   const o=input as Record<string,unknown>;
-  for(const key of Object.keys(o))if(!['all','rounds','lootValue','intermissionExtraSeconds','bossHp'].includes(key))throw new Error(`city balance: unknown key '${key}'`);
+  for(const key of Object.keys(o))if(!['all','rounds','lootValue','intermissionExtraSeconds','bossHp','players'].includes(key))throw new Error(`city balance: unknown key '${key}'`);
   const num=(key:string,fallback:number)=>{
     const v=o[key];
     if(v===undefined)return fallback;
@@ -134,11 +180,23 @@ export function cityBalanceFrom(input:unknown,base:CityBalance=CITY_BALANCE):Cit
       rounds[index]=Object.freeze(knobsFrom(value,`city balance.rounds.${key}`));
     }
   }
+  let players=base.players;
+  if(o.players!==undefined){
+    if(!o.players||typeof o.players!=='object'||Array.isArray(o.players))throw new Error('city balance.players: an object keyed by team size');
+    const out:Record<number,CityTeamKnobs>={...base.players};
+    for(const [key,value] of Object.entries(o.players)){
+      const team=Number(key);
+      if(!(CITY_TEAM_SIZES as readonly number[]).includes(team)||String(team)!==key)throw new Error(`city balance.players: '${key}' is not a team size 1..6`);
+      out[team]=Object.freeze(teamFrom(value,`city balance.players.${key}`));
+    }
+    players=Object.freeze(out);
+  }
   return Object.freeze({
     all:o.all===undefined?base.all:Object.freeze(knobsFrom(o.all,'city balance.all')),
     rounds:Object.freeze(rounds),
     lootValue:num('lootValue',base.lootValue),
     intermissionExtraSeconds:num('intermissionExtraSeconds',base.intermissionExtraSeconds),
     bossHp:num('bossHp',base.bossHp),
+    ...(players?{players}:{}),
   });
 }

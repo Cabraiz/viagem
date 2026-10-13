@@ -81,6 +81,12 @@ export interface StonewardsState {
    * whose start already gave the left-behind line to the heroes outside the base.
    */
   leftBehindRound?:number;
+  /**
+   * City only, and only when the run's CityBalance.players gives some team size a lootValue (cidade-11; absent
+   * otherwise, so no other state hash moves): the heroes standing (revive.ts isStanding) on the current intermission's
+   * first tick, clamped 1..6, the team size whose lootValue the crates pay for the whole intermission.
+   */
+  cityLootTeam?:number;
 }
 
 /** Adds to a counter keyed by an arbitrary id, safe for ids like '__proto__' or 'constructor'. */

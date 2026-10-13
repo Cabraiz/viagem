@@ -11,15 +11,15 @@
  * next to the coach's row it mirrors.
  */
 import {icon} from './deps.ts';
-import {OBJECTIVE_JOKE,OBJECTIVE_TEXT,OBJECTIVE_WALK,objectiveMeters,type CityObjective} from './route.ts';
+import {OBJECTIVE_JOKE,OBJECTIVE_TEXT,objectiveMeters,type CityObjective} from './route.ts';
 
 export interface ObjectivePart {
   readonly el:HTMLElement;
   /**
-   * Draws `objective` (undefined hides the row); `walk`: the joystick is still to learn, so the second line says how to
-   * walk. True when the row was shown or hidden now (the slot's layout changed).
+   * Draws `objective` (undefined hides the row). True when the row was shown or hidden now (the slot's layout changed).
+   * The second line is always the joke: the one written walk hint is the waiting room's label (BUG-dica-tutorial-duplicada).
    */
-  render(objective:CityObjective|undefined,walk:boolean):boolean;
+  render(objective:CityObjective|undefined):boolean;
 }
 
 export function createObjectiveRow(doc:Document=document):ObjectivePart{
@@ -30,17 +30,15 @@ export function createObjectiveRow(doc:Document=document):ObjectivePart{
   el('span','rh-objetivo-mark',row).insertAdjacentHTML('beforeend',icon('base',{size:32}));
   const body=el('span','rh-objetivo-body',row);
   el('span','rh-objetivo-text',body).textContent=OBJECTIVE_TEXT;
-  const sub=el('span','rh-objetivo-sub',body);
+  el('span','rh-objetivo-sub',body).textContent=OBJECTIVE_JOKE;
   // The distance changes every step: kept out of the live region (a screen reader hears the line once).
   const meters=el('b','rh-objetivo-m',row);meters.setAttribute('aria-hidden','true');
   const arrow=el('span','rh-objetivo-arrow',row);arrow.insertAdjacentHTML('beforeend',icon('voltar',{size:32,label:'Caminho até a praça'}));
-  let shown=false,lastSub='',lastM='',lastTurn='';
-  return {el:row,render(objective,walk){
+  let shown=false,lastM='',lastTurn='';
+  return {el:row,render(objective){
     const next=!!objective,changed=next!==shown;
     if(changed){shown=next;row.hidden=!next;}
     if(!objective)return changed;
-    const line=walk?OBJECTIVE_WALK:OBJECTIVE_JOKE;
-    if(line!==lastSub){lastSub=line;sub.textContent=line;}
     const m=objective.meters===undefined?'':objectiveMeters(objective.meters);
     if(m!==lastM){lastM=m;meters.textContent=m;}
     // The sticker points left (180°): turned by the route's bearing plus half a turn, whole degrees.

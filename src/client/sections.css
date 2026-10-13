@@ -105,7 +105,9 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 /* Role as a playing-card suit (♠ Linha de frente, ♦ Dano, ♥ Suporte, ♣ Controle): a 26 px circle in the top-right
    corner of the card, next to the role name on the filters and on the class badge. */
 .criacao .suit { display: block; width: 16px; height: 16px; flex: none; }
-.criacao .suit-espadas, .criacao .suit-paus { fill: var(--c-breu); }
+/* ♠ black, ♣ blue: at 24 px two black suits read alike. ♦ and ♥ red. */
+.criacao .suit-espadas { fill: var(--c-breu); }
+.criacao .suit-paus { fill: var(--arte-azul-sombra); }
 .criacao .suit-copas, .criacao .suit-ouros { fill: var(--arte-vermelho); }
 .criacao .card-suit {
   position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; display: grid; place-items: center;
@@ -114,7 +116,8 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .filter { display: inline-flex; align-items: center; gap: 5px; }
 .criacao .filter .suit { width: 14px; height: 14px; }
 .criacao .filter .suit-espadas, .criacao .filter .suit-paus { fill: currentColor; }
-.criacao .filter[aria-pressed=true] .suit-espadas, .criacao .filter[aria-pressed=true] .suit-paus { fill: var(--c-breu); }
+.criacao .filter[aria-pressed=true] .suit-espadas { fill: var(--c-breu); }
+.criacao .filter[aria-pressed=true] .suit-paus { fill: var(--arte-azul-sombra); }
 .criacao .portrait-caption > span { display: inline-flex; align-items: center; gap: 5px; }
 .criacao .portrait-caption > span .suit { width: 14px; height: 14px; }
 .criacao .roster-pagination #page-count { font-size: 13px; font-weight: 800; color: var(--c-papel); min-width: 54px; text-align: center; }

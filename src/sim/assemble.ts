@@ -15,7 +15,7 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
-import {SCALE_PROFILES,refreshStats} from '../rules/index.ts';
+import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,damageWall,type StonewardsSystem} from './stonewards/system.ts';
@@ -23,6 +23,7 @@ import {WALL_RADIUS} from './stonewards/wall.ts';
 import {createZueira,type ZueiraLab,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
+import {heroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -116,8 +117,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
-    // TODO(cidade-04): use heroSpeed(terrain) from cidade-04 when it lands (today the city hero still walks SPEED, moveStep).
-    heroSpeed:steer?SCALE_PROFILES['cidade-nevada'].hero.speed:SCALE_PROFILES.infinito.hero.speed,
+    // The hero's real walking speed on this terrain (cidade-04: the same source as moveStep), so the cap tracks it.
+    heroSpeed:heroSpeed(world.terrain),
     // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
     capPush:!!steer,
     structures:()=>{const {wall,wallDown}=stonewards.state;return wallDown?[]:[{id:wall.id,x:wall.x,y:wall.y,radius:WALL_RADIUS}];},

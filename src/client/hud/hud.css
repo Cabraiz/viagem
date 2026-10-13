@@ -152,7 +152,8 @@
    etiqueta (Papel, Breu edge 2 px, 4 px corners, the punched hole always in the top-left corner, alternating tilt).
    The picked tag turns Amarelo and gets the "LEVEI" ink stamp, the HUD's only show animation. Modes (offer.ts):
    - intermission: a list window anchored at the bottom, right of the team column, at most 32% of the screen
-     (portrait) or 40% of the width (landscape); the chip folds it away; "Levar os indicados" takes every default;
+     (portrait) or 40% of the width (landscape); the chip folds it away; "Levar os indicados" takes every default
+     (portrait: in the foot beside "Depois"; landscape: in the header's corner);
    - combat: the "+N" chip left of the skill button; a tap opens the compact strip above the joystick (cards only).
    Text rule: the effect (blurb) is never cut. Space runs out in this order: card joke, header joke, the "automático"
    note, then (landscape at 125% only) the effect line, which stays in the tag's aria-label. */
@@ -183,13 +184,15 @@
 .rh-offer-auto{flex:1;min-width:0;display:flex;align-items:center;gap:6px;margin:0;font:400 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* The note points up at the default tag, which carries the same Lilás notch on its lower edge. */
 .rh-offer-auto::before{content:'';flex:none;width:12px;height:8px;background:var(--c-papel);clip-path:polygon(50% 0,100% 100%,0 100%)}
-/* "Levar os indicados" rides in the header (top right) whenever two or more offers wait: the queue count and the
-   note go (the button says it), and the window stays within 32% of a portrait screen. */
-.rh .rh-offer-all{position:absolute;top:5px;right:6px;min-height:44px;margin:0;padding:0 12px;border:2px solid var(--c-breu);border-radius:var(--r-janela);
-  background:var(--c-amarelo);color:var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);box-shadow:var(--s-1);cursor:pointer;touch-action:manipulation;white-space:nowrap}
+/* "Levar os indicados" shows whenever two or more offers wait: the queue count and the note go (the button says it).
+   Portrait (BUG-20261012-ORQ-oferta-cortada-retrato): it shares the foot row with "Depois" (secondary on the left, the
+   Amarelo choice on the right, both 48 px, 8 px apart), so the header is only title and clock and three tags fit in 32%
+   of the screen. Landscape keeps it in the header's corner (below). Squeezed (125%, a wide team column) it wraps to two
+   lines inside its 48 px rather than push "Depois" out. */
+.rh .rh-offer-all{flex:0 1 auto;min-width:0;min-height:48px;margin:0 0 0 auto;padding:0 12px;border:2px solid var(--c-breu);border-radius:var(--r-janela);
+  background:var(--c-amarelo);color:var(--c-breu);font:800 var(--t-13)/1.1 var(--f-sistema);box-shadow:var(--s-1);cursor:pointer;touch-action:manipulation;text-align:center;text-wrap:balance}
 .rh .rh-offer-all:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
-.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{min-height:44px;padding-right:156px}
-.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{font-size:min(var(--t-21),21px);white-space:nowrap}
+.rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-later{margin:0}
 :root[data-texto="125"] .rh .rh-offer-all{font-size:13px;padding:0 10px}
 .rh-offer:has(.rh-offer-all:not([hidden])) :is(.rh-offer-queue,.rh-offer-joke,.rh-offer-auto){display:none}
 .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-foot{margin:0}
@@ -201,30 +204,37 @@
 .rh-window-fall{flex:none;margin:2px 4px 4px;padding:2px 8px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);
   font:800 var(--t-13)/1.2 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:none}
 .rh-window-fall[hidden],.rh-offer[data-mode=combat] .rh-window-fall{display:none}
-.rh-offer-fall-foot{display:none} /* the same ficha beside "Depois" (landscape with a queue, below) */
 /* "Depois": folds the intermission window into the chip (which opens it again); 48 px, a calm system button. */
 .rh .rh-offer-later{flex:none;margin:0 0 0 auto;min-height:48px;padding:0 16px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
   background:transparent;color:var(--c-papel);font:700 var(--t-16)/1 var(--f-sistema);cursor:pointer;touch-action:manipulation}
 .rh .rh-offer-later:active{transform:translateY(2px)}
 .rh-offer[data-mode=intermission] .rh-offer-foot:has(.rh-offer-later:not([hidden])){display:flex}
-/* Landscape is short: "Depois" takes the header's right corner ("Levar os indicados" holds it when offers queue up) and
-   the "automático" line goes (the default tag is already marked), so the cards keep their room. */
-@media (max-height:500px){
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-head{min-height:48px;padding-right:104px}
-  .rh .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]) .rh-offer-later{position:absolute;top:5px;right:6px}
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-auto{display:none}
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all[hidden]):has(.rh-offer-later:not([hidden])) .rh-offer-foot{margin:0}
-  /* With a queue ("Levar os indicados" in the corner), "Depois" stays in the foot: the caído ficha rides beside it. */
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-window-fall:not(.rh-offer-fall-foot){display:none}
-  .rh-offer[data-mode=intermission]:has(.rh-offer-all:not([hidden])):has(.rh-offer-later:not([hidden])) .rh-offer-fall-foot:not([hidden]){display:block;flex:0 1 auto;min-width:0;margin:0 8px 0 0;align-self:center;white-space:nowrap}
-  /* One short line beside "Depois" ("Zé caiu, 6 s."): the hint goes, and the foot keeps 6 px from the list's cut edge, so
-     the ficha never reads as lying on a card (design review pacote-bugs-ux). */
-  .rh-offer-fall-foot .rh-window-fall-hint{display:none}
-  .rh-offer[data-mode=intermission]:has(.rh-offer-fall-foot:not([hidden])) .rh-offer-foot{margin-top:6px}
-}
-/* Something cut below in a scrolling list (offer cards, forge tags): a Breu cut edge pinned to its bottom. */
-.rh-offer-cards[data-more=true]::after,.rh-forge-tags[data-more=true]::after{content:'';position:sticky;bottom:-2px;z-index:3;height:14px;margin-top:-20px;pointer-events:none;
+/* Something cut below in the forge's scrolling list: a Breu cut edge pinned to its bottom. */
+.rh-forge-tags[data-more=true]::after{content:'';position:sticky;bottom:-2px;z-index:3;height:14px;margin-top:-20px;pointer-events:none;
   background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-breu) 70%,transparent));border-bottom:3px solid var(--c-breu)}
+/* Tags cut below the offer list (offer.ts, overflow.ts cueLayout): "Mais N" (N tags not fully visible) never lies on a
+   tag that is fully in view. Its 48 px target sits inside the cut strip (the part under the last whole tag, plus the
+   window's padding under the list in landscape, 8 px clear of the portrait foot: data-place=over, no height spent) or,
+   when that strip is too short, in its own row right under the list (data-place=row: the target, and in portrait the
+   8 px kept from "Depois" and "Levar os indicados": --of-row). The list's bottom fades softly into the window (Lilás: the
+   cut tag reads as "goes on", not as broken) only over the cut part (--of-fade). A tap brings the next tag up; the cue
+   goes when the list reaches its end. */
+.rh-offer-more{position:relative;flex:none;display:flex;align-items:flex-start;justify-content:center;height:var(--of-row,48px);margin:0 -6px;pointer-events:none}
+.rh-offer-more[data-place=over]{height:0}
+.rh .rh-offer-more[data-place=over] .rh-offer-more-btn{position:absolute;left:0;right:0;bottom:calc(0px - var(--of-below,0px))}
+.rh-offer-more::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--of-fade,0px);
+  background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-lilas) 80%,transparent) 62%,var(--c-lilas))}
+.rh .rh-offer-more-btn{flex:1;display:grid;place-items:center;min-width:48px;min-height:48px;margin:0;padding:0;
+  border:0;background:transparent;pointer-events:auto;cursor:pointer;touch-action:manipulation}
+.rh-offer-more-pill{display:flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border:2px solid var(--c-papel);border-radius:var(--r-janela);
+  background:var(--c-lilas-escuro);color:var(--c-papel);font:800 var(--t-13)/1 var(--f-sistema);box-shadow:var(--s-1);white-space:nowrap}
+/* A chevron pointing down (borders, not a glyph). */
+.rh-offer-more-pill::after{content:'';flex:none;width:7px;height:7px;margin:-4px 1px 0;border-right:2px solid var(--c-papel);border-bottom:2px solid var(--c-papel);transform:rotate(45deg)}
+.rh .rh-offer-more-btn:active .rh-offer-more-pill{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+.rh-offer[data-mode=combat] .rh-offer-more{display:none}
+/* Scrolled (offer.ts data-scrolled), the list's 6 px top padding, which lies under the clock (portrait) or the header
+   row (landscape) for the stars of the first row, is clipped: a tag scrolled up never covers them or takes their taps. */
+.rh-offer[data-mode=intermission] .rh-offer-cards[data-scrolled=true]{clip-path:inset(6px 0 0)}
 .rh-offer-cards[data-count='4']{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon . price' 'name name name' 'blurb blurb blurb';align-content:start;padding:4px 6px 5px 26px}
 .rh-offer-cards[data-count='4'] .rh-card-name,.rh-offer-cards[data-count='4'] .rh-card-blurb{margin-left:-18px}
@@ -350,12 +360,21 @@
 :root[data-texto="125"] .rh-offer-joke{display:none}
 @media (min-height:501px){
   /* Never more than 32% of the height (UX review): when the tags do not fit (125%, short phones, 4 cards) the list
-     scrolls inside the window, header and "Levar os indicados" stay put, and the next tag peeks to show there is more.
+     scrolls inside the window, header and foot stay put, and the cut tag fades under "Mais N" to show there is more.
      The vertical padding keeps the stars and the stamp (they ride the tag's edge) inside the scroll box. */
   .rh-offer[data-mode=intermission]{max-height:32vh;max-height:32svh}
-  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 10px;margin:-6px -8px 0}
+  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;gap:4px;padding:6px 10px 4px;margin:-6px -8px 0}
   .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
   .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot){flex:none}
+  /* BUG-20261012-ORQ-oferta-cortada-retrato, the 32% budget at 100% (390x844: 270 px): edge and padding 17, header 22,
+     clock 11, foot 48 leave 172 for the list, and three one-line tags take 3 x 46 + 2 x 4 + 4 = 150 (a two-line effect
+     each on two of them, offer-prepare: ~168). So the header joke goes for a list of tags (the effect lines come
+     first), the clock's margins tighten, and the list's own 4 px bottom padding (it holds the tags' tilt) is the only
+     gap above the foot. What still does not fit scrolls under the "Mais N" cue. */
+  .rh-offer[data-mode=intermission]:not([data-count='1']) .rh-offer-joke{display:none}
+  .rh-offer[data-mode=intermission] .rh-offer-head{min-height:22px}
+  .rh-offer[data-mode=intermission] .rh-offer-deadline{margin:2px 4px 3px}
+  .rh-offer[data-mode=intermission] .rh-offer-foot{margin-top:0}
   /* 125%: four tags in two columns break names into three lines; one column of list tags reads better (it scrolls). */
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price' 'icon joke joke';padding:5px 8px 5px 26px}
@@ -363,49 +382,69 @@
   .rh-offer-cards[data-count='4'] .rh-offer-joke,.rh-offer[data-count='4'] .rh-offer-joke{display:none}
   :root[data-texto="125"] .rh-offer{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}
   :root[data-texto="125"] .rh-offer[data-mode=combat]{width:min(300px,calc(100vw - var(--rh-l) - max(94px,var(--rh-coluna,54px) + 16px) - var(--rh-r)))}
-  :root[data-texto="125"] .rh-offer-title,:root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{font-size:var(--t-16)}
+  :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
   :root[data-texto="125"] .rh-offer-auto{display:none}
-  /* 125%: beside "Levar os indicados" there is no room for title and clock on one line, so the clock goes under it. */
-  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{flex-direction:column;align-items:flex-start;justify-content:center;gap:0}
-  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-title{flex:none}
-  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-time{min-width:0;padding:0;text-align:left}
   /* The top bar grows with the text, so the team column and the alerts start lower. */
   :root[data-texto="125"] .rh-team,:root[data-texto="125"] .rh-stack{top:calc(var(--rh-t) + 136px)}
 }
 
-/* Landscape: the window takes the right column, above the skill button (its top - 24 px), at most 40% of the width,
-   so the middle (hero, island, the fallen) stays clear; "Levar os indicados" rides in the header. */
+/* Landscape: the window takes the right column, above the skill button (its top - 24 px), so the middle (hero, island,
+   the fallen) stays clear (BUG-20261012-ORQ-oferta-cortada-retrato). Its header row holds title, seconds and clock with
+   "Depois" and "Levar os indicados" (offer.ts moves the foot and the clock into it: no foot row). It is --of-w wide:
+   never narrower than before (40vw, 360 px) and wider only while the field left of it keeps 320 px or more, which the
+   caído and boss arrows need beside the hero (the layout audit lost both under ~305 px with a 60vw window). At 844x390
+   that is 378 px: two whole tags, and the third under "Mais 1" in the cut strip, at no cost in height (three 44 px tags
+   need ~9 px more than the 196 px window has under its 48 px header row). */
 @media (max-height:500px){
+  .rh{--of-w:max(min(40vw,360px),min(420px,calc(100vw - var(--rh-l) - var(--rh-r) - 450px)))}
   .rh-offer{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 52px);bottom:auto;width:min(40vw,360px);max-width:none;margin:0;padding:3px 6px 4px}
+  .rh-offer[data-mode=intermission]{width:var(--of-w)}
   .rh-offer[data-mode=intermission] .rh-card-star{width:34px;height:34px;margin:-8px 0 6px}
   /* Never closer than 24 px to the skill button: past that the list scrolls inside, as in portrait (zones audit). */
   .rh-offer[data-mode=intermission]{max-height:calc(100vh - var(--rh-t) - 52px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}
-  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 8px;margin:-6px -6px 0}
+  .rh-offer[data-mode=intermission] .rh-offer-cards{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y proximity;grid-auto-rows:max-content;align-content:start;padding:6px 8px 4px;margin:-6px -6px 0}
   .rh-offer[data-mode=intermission] .rh-card{scroll-snap-align:start;scroll-margin-top:6px}
   .rh-offer[data-mode=intermission] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-foot,.rh-offer-deadline){flex:none}
-  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(60vw - var(--rh-l) - var(--rh-r) - 166px)}
-  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(40vw,360px) + 8px)}
+  /* The top band keeps left of the wider window: the XP bar ends 16 px before it (8 px in the base-ficha grid, below). */
+  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-xp{align-self:flex-start;margin-left:calc(var(--rh-l) + 150px);width:calc(100vw - var(--of-w) - var(--rh-l) - var(--rh-r) - 166px)}
+  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
   .rh-offer-head{flex:none;min-height:22px}
+  /* The header row: title and seconds over the clock on the left, "Depois" and "Levar os indicados" (the foot, 48 px,
+     8 px apart) on the right. No absolute corner and no foot row; the caído ficha goes under it, full width. */
+  .rh-offer[data-mode=intermission] .rh-offer-head{position:relative;z-index:1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'title title foot' 'time bar foot';
+    gap:0 8px;align-items:center;min-height:48px;padding:0 0 0 4px}
+  /* The tags here are ~370 px wide: half the tilt keeps the same corner lift as the portrait tags, and leaves the cut
+     strip under two whole tags the 48 px the "Mais N" target needs (with 2 px of top padding). */
+  .rh-offer[data-mode=intermission]{--of-tilt-a:-.5deg;--of-tilt-b:.4deg;padding-top:2px}
+  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-title{grid-area:title;align-self:end;white-space:nowrap}
+  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-time{grid-area:time;min-width:0;padding:0;text-align:left}
+  .rh .rh-offer[data-mode=intermission] .rh-offer-head .rh-offer-later{padding:0 12px}
+  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-queue{display:none}
+  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-deadline{grid-area:bar;margin:0}
+  .rh-offer[data-mode=intermission] .rh-offer-head>.rh-offer-foot{grid-area:foot;margin:0;padding:0}
+  .rh-offer[data-mode=intermission] .rh-offer-auto{display:none}
+  .rh .rh-offer[data-mode=intermission] .rh-offer-later{margin:0}
   .rh-offer-joke{display:none}
   .rh-offer-deadline{margin:2px 4px 3px}
   .rh-offer-cards{gap:4px}
+  .rh-offer-more{margin:0 -4px} /* the padding is 6 px here: the fade stops at the Papel inner line */
   .rh-offer-foot{margin-top:5px}
   .rh-card{padding:2px 8px 2px 26px}
-  .rh .rh-offer-all{top:4px}
-  /* Four tags: one column of list tags, like three (the list scrolls inside); the sticker and the effect stay. */
+  /* One column of list tags (four too: the list scrolls under "Mais N"): sticker, name, price, effect. The hole keeps its
+     corner; the sticker starts 2 px right of it (18 px in), so the name and the effect get the room. */
   .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']{grid-template-columns:minmax(0,1fr)}
-  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price';padding:2px 8px 2px 26px}
+  .rh-offer[data-mode=intermission] .rh-card,.rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:'icon name price' 'icon blurb price';align-content:center;padding:2px 6px 2px 18px}
   .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] :is(.rh-card-name,.rh-card-blurb){margin-left:0}
+  .rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4'] .rh-card-icon{height:20px}
   .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);width:min(300px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer[data-mode=combat]:has(.rh-offer-cards[data-count='4']){width:min(350px,calc(50vw - 44px - var(--rh-r)))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
-  /* 125%: the right column is 190 px tall. Same one-column list (sticker, name, price, effect); it scrolls inside. */
+  /* 125%: the window is ~176 px tall; the same list scrolls inside, under "Mais N". */
   :root[data-texto="125"] .rh-offer-title{font-size:var(--t-16)}
   :root[data-texto="125"] .rh-offer .rh-offer-auto,:root[data-texto="125"] .rh-offer .rh-card-default::after{display:none}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-card-name{font-size:min(var(--t-16),16px)}
   :root[data-texto="125"] .rh-offer[data-mode=intermission] .rh-offer-deadline{display:none}
   :root[data-texto="125"] .rh .rh-offer-all{font-size:13px}
-  :root[data-texto="125"] .rh-offer:has(.rh-offer-all:not([hidden])) .rh-offer-head{padding-right:150px}
 }
 
 /* ---------- Result screen (VGM-040) ----------
@@ -692,6 +731,8 @@
   .rh-top:has(.rh-camp:not([hidden]))>.rh-boss{grid-column:2/6;grid-row:3;justify-self:center;width:min(440px,100%)}
   /* The intermission window or the forge takes the right column: the XP bar keeps to the left of it. */
   .rh:is(:has(.rh-offer[data-mode=intermission]:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{justify-self:start;width:min(316px,100%);margin:0}
+  /* The offer window is wider (--of-w, above): the XP bar ends 8 px before it (column 2 starts at --rh-l + 158 px). */
+  .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-top:has(.rh-camp:not([hidden]))>.rh-xp{width:min(316px,100%,calc(100vw - var(--of-w) - var(--rh-l) - var(--rh-r) - 166px))}
 }
 
 /* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------

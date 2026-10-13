@@ -17,6 +17,18 @@ export const HP_BAR_CSS={width:36,height:6} as const;
  * toward where the hero faces, so it never reads as the thin plain rings of the allies.
  */
 export const RING_CSS={width:52,height:26,breu:2,voce:4,papel:2,beak:8} as const;
+/**
+ * The ring's radius against today's (BUG-20261013-ORQ-anel-voce-atras: 30 % smaller, at the feet, behind the hero).
+ * Band widths, the beak and the Breu edge keep their CSS px, so it reads the same on every ground.
+ */
+export const RING_SCALE=.7;
+/** The ring sits this far under the sprite on top (its sticker contour is at −0.2/−0.1, its shadow at −1). */
+export const RING_UNDER=.3;
+/** Ellipse (world px) of the ring for a drawn figure `figWidth` wide at `s` world px per CSS px. */
+export function ringSize(figWidth:number,s:number):{w:number;h:number}{
+  const w=Math.max(RING_CSS.width*s,figWidth*.8);
+  return {w:w*RING_SCALE,h:Math.max(RING_CSS.height*s,w*.5)*RING_SCALE};
+}
 /** Sticker contour on the hero's sprite (§2.4): Papel 2 px, then Breu 1 px outside, hard (no blur). */
 export const STICKER_CSS={papel:2,breu:3} as const;
 /** 8 directions for the sticker contour copies (unit offsets). */

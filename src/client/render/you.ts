@@ -9,7 +9,7 @@
  */
 import type Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
-import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,spiralPoints} from './you-rules.ts';
+import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,ringSize,spiralPoints} from './you-rules.ts';
 import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
 import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
@@ -52,6 +52,8 @@ export class YouMarkers {
   /** Cidade Nevada: the ring and its beak get an outer Breu edge (ringBands(true)). */
   private city=false;
   private g:Phaser.GameObjects.Graphics;
+  /** The ground ring and its beak: under the hero (RING_UNDER below the sprite on top), not over its legs. */
+  private ring:Phaser.GameObjects.Graphics;
   private label:Phaser.GameObjects.Text;
   private ghosts=new Map<string,Sprite>();
   /** Sticker contour of the local hero: 8 Breu copies (outer) and 8 Papel copies, tint-filled, under the sprite. */
@@ -77,6 +79,7 @@ export class YouMarkers {
   constructor(scene:Phaser.Scene,reduced=false,copies?:MarkCopies){
     this.scene=scene;this.reduced=reduced;this.copies=copies;this.art=new FramesPool(scene);
     this.g=scene.add.graphics().setDepth(MARK_DEPTH);
+    this.ring=scene.add.graphics();
     this.label=scene.add.text(0,0,'Você',{fontFamily:token('--f-sistema'),fontSize:'32px',fontStyle:'800',color:token('--c-papel')}).setOrigin(.5,.5).setDepth(MARK_DEPTH+2).setVisible(false);
     whenFontsReady(()=>this.label.updateText());
   }
@@ -89,7 +92,7 @@ export class YouMarkers {
 
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
-    g.clear();this.art.begin();
+    g.clear();this.ring.clear();this.art.begin();
     this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;
     const live=new Set<string>();
     let selfShown=false;
@@ -107,27 +110,28 @@ export class YouMarkers {
       if(!mark.self)continue;
       selfShown=true;
       this.drawContour(top,s);
-      // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), never smaller than RING_CSS on screen.
+      // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), RING_SCALE of the old size, under the hero.
       const fig=this.figureOf(sprite);
-      const w=Math.max(RING_CSS.width*s,fig.width*.8),h=Math.max(RING_CSS.height*s,w*.5),{x,y}=mark.feet;
+      const {w,h}=ringSize(fig.width,s),{x,y}=mark.feet,r=this.ring,ringDepth=top.depth-RING_UNDER;
+      r.setDepth(ringDepth).setVisible(top.visible);
       const bands=ringBands(this.city),art=markArt('you');
       const angle=mark.facing??Math.PI/2,a=w/2,b=h/2;
       // City: a Breu band outside the Papel, and a Breu beak grown by the same edge, under everything else (only Breu
       // passes 3:1 on every city ground). With the imported ring, the band hugs its outer width (Papel included) too.
       if(bands.outer){
-        g.lineStyle(bands.outer.width*s,c.breu,1).strokeEllipse(x,y,w+2*bands.outer.offset*s,h+2*bands.outer.offset*s);
+        r.lineStyle(bands.outer.width*s,c.breu,1).strokeEllipse(x,y,w+2*bands.outer.offset*s,h+2*bands.outer.offset*s);
         const grown=grownBeak(RING_CSS.beak+2,RING_CSS.beak*.6+2,bands.outer.width),edge=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,grown.length*s,grown.half*s);
-        g.fillStyle(c.breu,1).fillTriangle(edge[0].x,edge[0].y,edge[1].x,edge[1].y,edge[2].x,edge[2].y);
+        r.fillStyle(c.breu,1).fillTriangle(edge[0].x,edge[0].y,edge[1].x,edge[1].y,edge[2].x,edge[2].y);
       }
       // Imported ring at today's outer width (Papel band included), just under the code beak and bar.
-      if(!(art&&this.art.mark('you',art,MARK_DEPTH-.01,markFrame(art,now,this.reduced),x,y,w+bands.papel.width*s)))
+      if(!(art&&this.art.mark('you',art,ringDepth+.01,markFrame(art,now,this.reduced),x,y,w+bands.papel.width*s)))
         for(const [band,color] of [[bands.papel,c.papel],[bands.voce,c.voce],[bands.breu,c.breu]] as const)
-          g.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
+          r.lineStyle(band.width*s,color,1).strokeEllipse(x,y,w+2*band.offset*s,h+2*band.offset*s);
       // Beak toward where the hero faces: Papel edge, Lilás body.
       const outer=beakPoints(x,y,a+RING_CSS.papel*s,b+RING_CSS.papel*s,angle,(RING_CSS.beak+2)*s,(RING_CSS.beak*.6+2)*s);
-      g.fillStyle(c.papel,1).fillTriangle(outer[0].x,outer[0].y,outer[1].x,outer[1].y,outer[2].x,outer[2].y);
+      r.fillStyle(c.papel,1).fillTriangle(outer[0].x,outer[0].y,outer[1].x,outer[1].y,outer[2].x,outer[2].y);
       const inner=beakPoints(x,y,a,b,angle,RING_CSS.beak*s,RING_CSS.beak*.6*s);
-      g.fillStyle(c.voce,1).fillTriangle(inner[0].x,inner[0].y,inner[1].x,inner[1].y,inner[2].x,inner[2].y);
+      r.fillStyle(c.voce,1).fillTriangle(inner[0].x,inner[0].y,inner[1].x,inner[1].y,inner[2].x,inner[2].y);
       this.last.ring=true;
       // Mini health bar under the ring: Papel edge, Breu track, Cartolina fill (Cone when low).
       const fraction=clampFraction(mark.hp,mark.maxHp),bar=hpBarStep(fraction,this.fullSince,now,mark.downed);
@@ -251,5 +255,5 @@ export class YouMarkers {
     return ghost;
   }
   forget(id:string){this.ghosts.get(id)?.destroy();this.ghosts.delete(id);}
-  destroy(){this.art.destroy();this.g.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
+  destroy(){this.art.destroy();this.g.destroy();this.ring.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
 }

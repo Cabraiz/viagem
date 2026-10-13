@@ -574,7 +574,8 @@ export class Room {
    */
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city)}):new Simulation(old.seed,{world:this.baseWorld});
+    // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true}):new Simulation(old.seed,{world:this.baseWorld});
     sim.botState=()=>this.bots.state();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
@@ -847,12 +848,15 @@ export class Room {
     const p=this.perf;p.ticks++;p.tickMs+=ms;p.maxTickMs=Math.max(p.maxTickMs,ms);
     if(this.sampling){p.samples.push(ms);if(p.samples.length>PERF_SAMPLES)p.samples.shift();}
   }
-  /** Ids of entities gone for good leave the shared map (encoders keep their own baselines). */
+  /**
+   * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

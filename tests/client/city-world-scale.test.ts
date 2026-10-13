@@ -27,7 +27,7 @@ test('Stonewards bars: scale 1 keeps the old place; in the city they hang the en
     assert.equal(structureBarY('muralha',feet,css),feet-100-12*css);
     assert.equal(structureBarY('torre',feet,css,1),feet-66-8*css);
   }
-  for(const v of PHONES)for(const kind of ['muralha','torre'] as const){
+  for(const v of PHONES)for(const kind of ['muralha','torre','barricada'] as const){
     const zc=cityZoom(v),ze=followZoom(v);
     const city=(0-structureBarY(kind,0,1/zc,CITY_VIEW_SCALE))*zc,endless=(0-structureBarY(kind,0,1/ze))*ze;
     close(city,endless,`${kind} bar lift CSS px ${v.width}x${v.height}`);

@@ -17,16 +17,19 @@ import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync,existsSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const require=createRequire(import.meta.url);
 const sharp=require('sharp');
-const ROOT=new URL('..',import.meta.url).pathname;
+const ROOT=fileURLToPath(new URL('..',import.meta.url));
 const MANIFEST=join(ROOT,'scripts/art-lite.json');
 /** libwebp settings: lossy colour at 90, exact alpha (cut-outs keep their edge); effort 6 saves ~2% for 3× the time. */
 export const WEBP={quality:90,alphaQuality:100,effort:4,smartSubsample:true};
 /** What a phone draws of a sheet (see the header): 0.35 of its pixels on each side. */
 const SHOWN_SCALE=.35;
 const KINDS=['trees','sprites'];
+/** Imported v2 files the game has no slot for yet (character-sprites.ts): cardinals, downed, silhouette. No copy. */
+const UNUSED=/\.(dir4c|downed)\.webp$|^_silhueta\.webp$/;
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -50,7 +53,7 @@ const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{w
 const stale=[];
 for(const kind of KINDS){
   const dir=join(ROOT,'public/art',kind);
-  for(const name of readdirSync(dir).filter(n=>n.endsWith('.webp')).sort()){
+  for(const name of readdirSync(dir).filter(n=>n.endsWith('.webp')&&!UNUSED.test(n)).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name);
     if(!args.has('--all')&&entry?.source===sha(source)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;

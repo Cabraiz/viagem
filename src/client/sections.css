@@ -1,7 +1,11 @@
-/* Creation screen: two tabs, each exactly one viewport, no scrolling anywhere (NEW-20261012-ORQ-criacao-tela-cheia).
+/* Creation screen: two tabs, no scrolling anywhere (NEW-20261012-ORQ-criacao-tela-cheia). The window of each tab is
+   70% of the width x 80% of the height, centered on the purple (BUG-20261012-ORQ-criacao-70x80); a phone held upright
+   gets 92 x 86, since 70% of 390 px is unreadable. The tabs sit above the window.
    Landscape and desktop: card on the left, sheet on the right. Portrait: compact card on top, sheet below.
    Sizes follow the available height with clamp() and container queries; ornaments go first when space runs out. */
 html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
+:root { --janela-w: 70vw; --janela-h: 80vh; --janela-h: 80dvh; }
+@media (max-width: 599px) and (orientation: portrait) { :root { --janela-w: 92vw; --janela-h: 86vh; --janela-h: 86dvh; } }
 .world.criacao {
   max-width: none; margin: 0; min-height: 0;
   height: 100vh; height: 100dvh;
@@ -25,7 +29,11 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .section-tabs [role=tab][aria-selected=true] { background: var(--c-papel); border-color: var(--c-breu); color: var(--c-lilas); }
 
 /* Panels fill the row */
-.criacao .journey-screen { min-height: 0; height: 100%; margin: 0; overflow: hidden; }
+.criacao .journey-screen {
+  min-height: 0; margin: 0; overflow: hidden; place-self: center;
+  width: min(var(--janela-w), 100%); height: min(var(--janela-h), 100%);
+}
+.criacao .roster-pagination[hidden] { display: none; }
 .criacao .journey-screen[hidden] { display: none; }
 
 /* Personagem */
@@ -102,10 +110,21 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   .criacao .window-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0; }
   .criacao .window-content { padding: 6px; gap: 8px; }
   .criacao .portrait-caption blockquote { display: none; }
-  .criacao .identity-fields { grid-template-columns: minmax(0,1fr) auto; align-items: center; }
   .criacao .palette > div { grid-template-columns: repeat(6,40px); gap: 4px; }
   .criacao .swatch { height: 44px; }
   .criacao .primary-button { min-height: 44px; }
+}
+
+/* Name and colors share a row only when the sheet itself is wide and short (it is a size container). */
+@container (min-width: 480px) and (max-height: 340px) {
+  .criacao .identity-fields { grid-template-columns: minmax(0,1fr) auto; align-items: center; }
+}
+/* A short sheet cannot fit a readable radar: the same four numbers as a 2x2 grid. */
+@container (max-height: 340px) {
+  .criacao .stats-and-story { grid-template-columns: auto minmax(0,1fr); }
+  .criacao .radar-wrap { display: grid; grid-template-columns: repeat(2,auto); gap: 4px 18px; align-content: center; justify-content: center; height: auto; min-height: 0; aspect-ratio: auto; }
+  .criacao .radar-wrap svg { display: none; }
+  .criacao .radar-wrap .stat-label { position: static; transform: none; writing-mode: horizontal-tb; font-size: 12px; }
 }
 
 /* Portrait: compact card on top (art left, quote and arrows right), sheet below. */

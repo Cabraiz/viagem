@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {DEFAULT_WORLD,Simulation} from '../../multiplayer/simulation.ts';
 import {ticks} from '../../src/contract/types.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
-import {Coach,LESSONS,XP_NEAR,resetSessionMemory,type CoachShow,type Lesson} from '../../src/client/hud/coach.ts';
+import {Coach,WALK_LIGHT_MS,XP_NEAR,resetSessionMemory,type CoachShow,type Lesson} from '../../src/client/hud/coach.ts';
 import {MARQUEE_MS} from '../../src/client/hud/zones.ts';
 import {KILLCAM_MS} from '../../src/client/fun/zueira.ts';
 import {ROUNDS,TUTORIAL_CRUMBS} from '../../src/rules/waves.ts';
@@ -45,7 +45,9 @@ interface Playtest {
   /** ms from the run's first tick to the first hint, to each lesson learned, to the first step. */
   firstHintMs?:number;firstStepMs?:number;learned:Map<Lesson,number>;
   /** Lessons shown at least once, and every frame the hint was not what it should be while the novice stood. */
-  shown:Set<Lesson>;walkGaps:number;
+  shown:Set<Lesson>;
+  /** The joystick's "andar" light: first and last lit ms, and how many times it came on (once, at most). */
+  litFrom?:number;litUntil?:number;litOns:number;
   downs:string[];minHp:number;round1EndMs?:number;
   /** Two hints at once never happen by construction; this counts hints over a held slot (must stay 0). */
   overHeld:number;
@@ -63,9 +65,9 @@ function playtest(seed:number,team:readonly string[],coach:Coach,{downAlly=false
   sim.resetRun();
   const me=ids[0];
   const seq=new Map(ids.map(id=>[id,0]));
-  const r:Playtest={learned:new Map(),shown:new Set(),walkGaps:0,downs:[],minHp:1,overHeld:0};
+  const r:Playtest={learned:new Map(),shown:new Set(),litOns:0,downs:[],minHp:1,overHeld:0};
   let bannerUntil=-1,killcamUntil=-1,panel:{openedAt:number}|undefined,chipSeenAt:number|undefined,waveAt:number|undefined;
-  let center:{x:number;y:number}|undefined,downed=false,show:CoachShow|undefined;
+  let center:{x:number;y:number}|undefined,downed=false,show:CoachShow|undefined,lit=false;
   const send=(id:string,x:number,y:number)=>{const next=seq.get(id)!+1;if(sim.input(id,{seq:next,x,y,attack:false}))seq.set(id,next);};
   const toward=(id:string,to:{x:number;y:number})=>{const p=sim.players.get(id)!,dx=to.x-p.x,dy=to.y-p.y,d=Math.hypot(dx,dy);if(d>.15)send(id,dx/d,dy/d);else send(id,0,0);};
   for(let t=0;t<ticks(3+50+25+60);t++){
@@ -107,9 +109,10 @@ function playtest(seed:number,team:readonly string[],coach:Coach,{downAlly=false
     show=coach.step({view,localId:me,hero:{x:hero.x,y:hero.y},chip,blocked,banner},now);
     if(show){
       r.firstHintMs??=now;r.shown.add(show.lesson);
-      if(blocked||banner&&!LESSONS[show.lesson].overBanner)r.overHeld++;
+      if(blocked||banner)r.overHeld++;
     }
-    if(standing&&!blocked&&waveAt!==undefined&&show?.lesson!=='walk')r.walkGaps++;
+    if(coach.stick){r.firstHintMs??=now;r.litFrom??=now;r.litUntil=now;if(!lit)r.litOns++;}
+    lit=coach.stick;
     for(const lesson of coach.done)if(!r.learned.has(lesson))r.learned.set(lesson,now);
     if(show?.lesson==='chip'&&!show.done){
       chipSeenAt??=now;
@@ -138,9 +141,12 @@ test('novato (stands 15 s, then follows the hints) survives round 1 and learns t
     rows.push(`${at}: 1ª dica ${s(r.firstHintMs)} s, passo ${s(r.firstStepMs)}, andar ${s(r.learned.get('walk'))}, xp ${s(r.learned.get('xp'))}, chip ${s(r.learned.get('chip'))}, fim R1 ${s(r.round1EndMs)}, vida mín ${(r.minHp*100).toFixed(0)}%`);
     assert.deepEqual(r.downs,[],`${at}: nobody falls in round 1`);
     assert.ok(r.minHp>=.25,`${at}: hp left (${(r.minHp*100).toFixed(0)}%)`);
-    assert.ok(r.firstHintMs!==undefined&&r.firstHintMs<=1000,`${at}: "andar" shows in the first second of the run (${r.firstHintMs} ms)`);
-    assert.equal(r.walkGaps,0,`${at}: "andar" stays on screen the whole 15 s the novice stands (no time cap)`);
-    assert.equal(r.overHeld,0,`${at}: no hint over the kill-cam, an open window or (but "andar") the banner`);
+    assert.ok(r.litFrom!==undefined&&r.litFrom<=1000,`${at}: the joystick lights in the first second of the run (${r.litFrom} ms)`);
+    assert.equal(r.litOns,1,`${at}: lit once, never again (no relight in later rounds)`);
+    const litMs=r.litUntil!-r.litFrom!;
+    assert.ok(litMs>=WALK_LIGHT_MS-2*MS_PER_TICK&&litMs<WALK_LIGHT_MS,`${at}: the novice stands 15 s, the light goes after 6 s (${litMs} ms)`);
+    assert.ok(![...r.shown].includes('walk'),`${at}: "andar" never has a row`);
+    assert.equal(r.overHeld,0,`${at}: no hint over the kill-cam, an open window or the banner`);
     const step=r.firstStepMs!;
     assert.ok(r.learned.get('walk')!-step<=1500,`${at}: "andar" goes within 1.5 s of the first step`);
     assert.ok(r.learned.has('xp')&&r.learned.get('xp')!<=r.round1EndMs!,`${at}: XP learned in round 1`);
@@ -158,7 +164,7 @@ test('six players: the novice still sees one hint at a time, learns in round 1, 
     const s=(ms?:number)=>ms===undefined?'-':(ms/1000).toFixed(1);
     t.diagnostic(`seed ${seed}: passo ${s(r.firstStepMs)}, andar ${s(r.learned.get('walk'))}, xp ${s(r.learned.get('xp'))}, chip ${s(r.learned.get('chip'))}, resgate ${s(r.learned.get('rescue'))}, fim R1 ${s(r.round1EndMs)}, quedas ${r.downs.join(' ')}`);
     assert.deepEqual(r.downs,['bot1@R1'],'only the staged fall');
-    assert.equal(r.walkGaps,0);assert.equal(r.overHeld,0);
+    assert.equal(r.litOns,1);assert.equal(r.overHeld,0);
     for(const lesson of ['walk','xp','chip','rescue'] as const)assert.ok(r.learned.has(lesson),`seed ${seed}: ${lesson} learned`);
   }
 });

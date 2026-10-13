@@ -52,6 +52,12 @@ export interface EnemyDef extends EnemyLines {
   /** Ranged: the shot's source (AGIOTA_SHOT.source for the agiota, GENERIC_SHOT_SOURCE otherwise) and the mark it leaves. */
   shotSource?:string;
   marks?:'devendo';
+  /**
+   * Flies (torres-sim): only anti-air defenses (towers/catalog.ts hits 'air' or 'all') reach it; ground shells and
+   * the barbed wire pass under it. Movement is unchanged (it still walks the enemy-ai's paths).
+   * The pombos and every roster entry of the role 'voador' (rosterDef).
+   */
+  flying?:true;
 }
 /** Multipliers applied on top of any kind. */
 export interface EliteDef extends EnemyLines {name:string;hp:number;speed:number;damage:number;radius:number;xp:number;accent:number}
@@ -86,7 +92,7 @@ export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze({
   pombos:{
     id:'pombos',name:'Pombos do Centro',behavior:'swarm',
     hp:6,speed:2.7,damage:4,radius:.2,xp:1,contactCooldown:ticks(.6),color:0xc4c4d2,accent:0x5d6b7a,
-    zigzag:{freq:.45,amp:.9},
+    zigzag:{freq:.45,amp:.9},flying:true,
     barks:['Cruu. Passa o pão. Cruu.','Estátua nova? Vamos inaugurar','Cagamos no seu carro novo','Comemos lixo e somos felizes','Pombo não paga aluguel, otário','Seu ombro é nosso banheiro','Rato com asa? Respeita, porra','Coxinha caiu? Coxinha é nossa','Sem pão, sem paz. CRUU!'],
     deathLines:['Cruu... volto na estátua...','Virei travesseiro, desgraça','Uma pena. Ou várias. Cruu.','Avisa a praça... cruu...','Morri e ainda caguei em você','Ressuscito no próximo milho'],
     reactionLines:['Bombardeio liberado!','Presente do alto!','Cocô de precisão!','Acertei! Vale 3 pontos, cruu!','Splat! Cruu!'],
@@ -346,6 +352,8 @@ function rosterDef(kind:string):EnemyDef|undefined{
     // The swarm's and the stagger's walk sway like their base's (pombos, bêbado).
     ...((role.behavior==='swarm'||role.behavior==='stagger')&&base.zigzag?{zigzag:base.zigzag}:{}),
     ...(role.behavior==='ranged'?{shotSource:GENERIC_SHOT_SOURCE}:{}),
+    // D-041: the voador flies (anti-air reaches it, ground fire and the wire pass under); it still walks like the swarm.
+    ...(entry.role==='voador'?{flying:true as const}:{}),
     barks:lines.barks,deathLines:lines.deathLines,reactionLines:lines.reactionLines,
   });
   ROSTER_DEFS.set(kind,def);
@@ -353,6 +361,11 @@ function rosterDef(kind:string):EnemyDef|undefined{
 }
 /** Def of any roster id (the nine hand-tuned, the rest built from their role); an unknown kind reads as the bêbado. */
 export const enemyDef=(kind:string):EnemyDef=>(Object.hasOwn(ENEMIES,kind)?ENEMIES[kind as LegacyKind]:undefined)??rosterDef(kind)??ENEMIES.bebado;
+/**
+ * Flying enemy (EnemyDef.flying: the pombos and the roster's voadores): what anti-air reaches and ground fire does not
+ * (torres-sim).
+ */
+export const isFlying=(enemy:Pick<EnemyState,'kind'>)=>enemyDef(enemy.kind).flying===true;
 export const enemyName=(enemy:Pick<EnemyState,'kind'|'elite'>)=>enemy.elite?`${enemyDef(enemy.kind).name} ${ELITE.name}`:enemyDef(enemy.kind).name;
 
 /** FNV-1a of a string scaled to [0,1). Stable across server and client, consumes no rng. */

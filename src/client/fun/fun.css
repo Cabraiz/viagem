@@ -17,9 +17,10 @@
 .fun-tone-sorry .fun-balloon-icon{animation:fun-droop 1.2s ease-in-out both}
 
 /* Emote button sits above the skill button with the 24 px thumb gap (UX-zonas-tela; the skill grows at 125%);
-   the fan opens as an arc toward the upper left. Portrait radius 128: "Foi mal" (straight left) ends ≥ 24 px from the
-   joystick and the 62 px buttons still do not touch (chord 66 px). */
-.fun-emotes{--size:48px;--radius:128px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+   the fan opens as a 2x2 block right above it (emote-fan-overlap): it stays in the controls corner and never reaches
+   the middle, where the camera keeps the hero. Step 70 px: the 62 px buttons keep an 8 px gap. Phones up to 370 px
+   wide get one column along the edge instead, since even the second column reached the hero there. */
+.fun-emotes{--size:48px;--radius:70px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .fun-emote-toggle{position:relative;width:var(--size);height:var(--size);padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);font-size:22px;line-height:1;box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;touch-action:manipulation}
 .fun-emotes.is-open .fun-emote-toggle{background:var(--c-lilas)}
 .fun-emotes.is-cooling .fun-emote-toggle{background:conic-gradient(var(--c-breu) calc(var(--cooldown)*360deg),var(--c-ficha) 0)}
@@ -27,10 +28,12 @@
 .fun-emote{position:absolute;left:-31px;top:-31px;width:62px;height:62px;display:grid;place-content:center;justify-items:center;gap:1px;padding:0;border:2px solid var(--c-breu);border-radius:var(--r-circulo);background:var(--c-papel);color:var(--c-breu);font:800 var(--t-13)/1 var(--f-sistema);box-shadow:var(--s-1);pointer-events:none;opacity:0;transform:scale(.3);transition:transform .18s cubic-bezier(.3,1.5,.5,1),opacity .12s;transition-delay:calc(var(--i)*25ms);cursor:pointer;touch-action:manipulation}
 .fun-emote .ic{flex:none} /* adesivo de 24 px no lugar do emoji (DSG-icones-sistema) */
 .fun-emote b{font-weight:800;max-width:46px;text-align:center;line-height:1;letter-spacing:-.02em}
+.fun-emote:nth-child(1){--ux:0;--uy:-1}.fun-emote:nth-child(2){--ux:-1;--uy:-1}.fun-emote:nth-child(3){--ux:0;--uy:-2}.fun-emote:nth-child(4){--ux:-1;--uy:-2}
+@media(max-width:370px){.fun-emote:nth-child(2){--ux:0;--uy:-2}.fun-emote:nth-child(3){--ux:0;--uy:-3}.fun-emote:nth-child(4){--ux:0;--uy:-4}}
 .fun-emotes.is-open .fun-emote{pointer-events:auto;opacity:1;transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(1)}
 .fun-emotes.is-open .fun-emote:not(:disabled):active{background:var(--c-amarelo);transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(.92)}
 .fun-emotes.is-open .fun-emote:disabled{opacity:.45;filter:grayscale(.6);cursor:default}
-@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:136px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}}
+@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:68px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}}
 
 @keyframes fun-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes fun-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}

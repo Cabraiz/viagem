@@ -102,8 +102,9 @@ export const ROLE_PROFILES:Readonly<Record<EnemyRole,RoleProfile>>=Object.freeze
     deathLines:['Fui, mas vem mais','Um a menos... ai','Avisa o bando...'],
     reactionLines:['Presente do bando!','Ataque em grupo!','Cerca! Cerca!'],
     pops:['UM A MENOS!','ESMAGADO!','SE FOI!'],cause:'O bando te cercou'}),
-  // TODO(voador): no flying layer exists yet; the flyer is the swarm behavior (it drops things, the poop telegraph),
-  // a sturdier and slower pombo that still collides with walls and barricades like any body.
+  // The flyer is the swarm behavior (it drops things, the poop telegraph), a sturdier and slower pombo. It flies for the
+  // towers (D-041, sim/enemies/catalog.ts rosterDef sets EnemyDef.flying: anti-air reaches it, ground fire and the wire
+  // pass under it); its movement is unchanged, so it still collides with walls and barricades like any body.
   voador:role({id:'voador',label:'Voador',behavior:'swarm',base:'pombos',hp:2.5,speed:.85,damage:1.25,radius:1.5,xp:2,cell:96,threat:.9,
     barks:['Muro? Eu voo, otário','Lá de cima tu é formiga','Bombardeio aéreo liberado','Asa pra que te quero'],
     deathLines:['Caí do céu, literalmente','Pane na asa...','Pouso forçado no além'],

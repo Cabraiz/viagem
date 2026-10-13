@@ -44,6 +44,13 @@
  * crates emptied, purchases), forge purchases, the boss (spawn − wave start, first time inside the base, first hit on a
  * player, first wall hit, kill) and the navigation counters. The JSON is rewritten after EVERY run (tmp + rename).
  *
+ * Tower defense (torres-sim, default on; --no-towers turns it off): the room bots do not build yet (no wire for the
+ * defenses, multiplayer/ untouched), so the harness plays the forger's tower rule of the brain (bot-brain.ts
+ * pickTowerOrder over towerBrainView) exactly as decide() would with BrainInput.towers: before each think, in the
+ * forger's window (BOT_FORGE_LEFT, first standing bot by slot), one order per second through the structures system's
+ * build/upgrade, a needed repair first; and while the rule builds or saves, the forger's other forge buys are refused
+ * ('balance'), as decide() holds them. Per run: orders, units spent, refusals, the defenses at the end.
+ *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
@@ -61,9 +68,9 @@ import {cityFlowGrid,cityPlanner} from '../src/sim/city/grid.ts';
 import {cityLoot,type Crate} from '../src/sim/stonewards/loot.ts';
 import {remainingOf} from '../src/sim/stonewards/resources.ts';
 import {createRunSystems,type RunSystemsOptions} from '../src/sim/assemble.ts';
-import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
+import {REPAIR_BELOW,homeOf,pickRecipe,pickTowerOrder,towerBrainView,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
-import {RECIPES,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
+import {RECIPES,canPay,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
@@ -108,6 +115,8 @@ export interface IntermissionRecord {
   perPlayer:Record<string,number>;
   cratesEmptied:number;
   purchases:RecipeId[];
+  /** Units the tower orders spent in this intermission (torres-sim; absent with --no-towers). */
+  towerUnits?:number;
 }
 export interface BossRecord {
   spawnTick:number;spawnAfterWaveS:number|null;maxHp:number;hpEnd:number|null;
@@ -136,6 +145,8 @@ export interface RunRecord {
   };
   perf:{wallSeconds:number;msPerTick:number;thinkMsPerTick:number;navMsPerTick:number};
   knobsApplied:boolean;
+  /** Tower defense (torres-sim): orders applied, units spent, refusals by reason, standing defenses by kind at the end. */
+  towers?:{orders:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean};
 }
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -229,6 +240,7 @@ export function runLine(r:RunRecord):string{
   const loot=r.intermissions.map(i=>i.gathered.units);
   return `seed ${r.seed} ${r.players}p: ${r.outcome}/${r.cause} round ${r.roundReached} | ${r.simMinutes} min sim | arrival ${arrivals.length?r2(Math.min(...arrivals)):'-'}s min | `+
     `loot/int ${loot.length?r2(loot.reduce((a,b)=>a+b,0)/loot.length):'-'}u | forge ${r.forge.count} | boss ${r.boss?`+${r.boss.spawnAfterWaveS}s kill ${r.boss.killAfterSpawnS??'-'}s`:'-'} | `+
+    `${r.towers?`towers ${r.towers.orders} orders ${r.towers.units}u end ${Object.values(r.towers.final).reduce((a,b)=>a+b,0)}${r.towers.gustavao?' +Gustavão':''} ruined ${r.towers.ruined} | `:''}`+
     `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s`;
 }
 
@@ -438,7 +450,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute}
+interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean}
 
 /**
  * Barricades (cidade-06) read generically from the stonewards state: id → down, or null when the state has no
@@ -482,7 +494,30 @@ function playRun(o:RunOptions):RunRecord{
   const rounds:RoundRecord[]=[],inter:IntermissionRecord[]=[];
   let cur:RoundRecord|undefined,curInter:IntermissionRecord|undefined;
   // A buy goes into the open intermission (the one before round r has round index r).
+  // Tower defense (see the module doc): the forger's tower rule, as decide() plays it with BrainInput.towers.
+  const tw={orders:0,units:0,refused:{} as Record<string,number>,lastTick:-1e9};
+  const towerRule=()=>{
+    const w=sim.world,round=w.round,s=sim.run.stonewards;
+    if(!o.towers||round.phase!=='prepare'||round.index<2||round.phaseEndsTick-w.tick>BOT_FORGE_LEFT||s.state.wallDown)return undefined;
+    if(s.state.wall.hp<s.state.wall.maxHp*REPAIR_BELOW&&canPay(s.state.balance,RECIPES.reparo.cost))return undefined;
+    return pickTowerOrder(towerBrainView(s.state,s.plan,w.tick,round.index));
+  };
+  const towerPass=()=>{
+    const order=towerRule();
+    if(!order||order==='save'||sim.tick-tw.lastTick<HZ)return;
+    const minds=[...(room.state() as {id:string;slot:number}[])].sort((a,b)=>a.slot-b.slot);
+    const forger=minds.find(m=>{const p=sim.players.get(m.id);return !!p&&isStanding(p);});
+    if(!forger)return;
+    tw.lastTick=sim.tick;
+    const s=sim.run.stonewards,before=s.state.balance.coco+s.state.balance.pedra;
+    const r='build' in order?s.build(sim.world,forger.id,order.build):s.upgrade(sim.world,forger.id,order.upgrade,order.branch);
+    if(r.ok){
+      const spent=before-(s.state.balance.coco+s.state.balance.pedra);
+      tw.orders++;tw.units+=spent;if(curInter)curInter.towerUnits=(curInter.towerUnits??0)+spent;
+    }else tw.refused[r.reason]=(tw.refused[r.reason]??0)+1;
+  };
   sim.forge=(id,recipe,req)=>{
+    if(recipe!=='reparo'&&towerRule()!==undefined)return {ok:false,reason:'balance'};
     const r=forge(id,recipe,req);
     if(r.ok){purchases.push({tick:sim.tick,round:sim.world.round.index,recipe:r.recipe as RecipeId,by:id});curInter?.purchases.push(r.recipe as RecipeId);}
     return r;
@@ -497,7 +532,8 @@ function playRun(o:RunOptions):RunRecord{
     for(const r of curInter.purchases){spent.coco+=RECIPES[r].cost.coco;spent.pedra+=RECIPES[r].cost.pedra;}
     curInter.endTick=tick;curInter.seconds=r2((tick-curInter.startTick)/HZ);curInter.balanceEnd={...s.balance};
     const coco=s.balance.coco-curInter.balanceStart.coco+spent.coco,pedra=s.balance.pedra-curInter.balanceStart.pedra+spent.pedra;
-    curInter.gathered={coco,pedra,units:coco+pedra};curInter.spent={...spent,units:spent.coco+spent.pedra};
+    const towerUnits=curInter.towerUnits??0;
+    curInter.gathered={coco,pedra,units:coco+pedra+towerUnits};curInter.spent={...spent,units:spent.coco+spent.pedra+towerUnits};
     for(const id of ids)curInter.perPlayer[id]=r2((s.gathered[id]??0)-(interGathered[id]??0));
     curInter.cratesEmptied=s.nodes.filter(n=>n.remaining<=0).length;
     curInter=undefined;
@@ -512,6 +548,7 @@ function playRun(o:RunOptions):RunRecord{
   let navMs=0,ticks=0;
   const thinkBefore=room.thinkMs;
   while(!sim.outcome&&sim.tick<o.capTicks){
+    towerPass();
     room.think(sim);
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
     const events=sim.step();ticks++;
@@ -582,7 +619,13 @@ function playRun(o:RunOptions):RunRecord{
     perf:{wallSeconds:r2(wallSeconds),msPerTick:Math.round(wallSeconds*1e3/Math.max(1,ticks)*1000)/1000,
       thinkMsPerTick:Math.round((room.thinkMs-thinkBefore)/Math.max(1,ticks)*1000)/1000,navMsPerTick:Math.round(navMs/Math.max(1,ticks)*1000)/1000},
     knobsApplied,
+    ...(o.towers?{towers:towerSummary()}:{}),
   };
+  function towerSummary(){
+    const list=st().defenses?.list??[],final:Record<string,number>={};
+    for(const d of list)if(!d.ruined)final[d.kind]=(final[d.kind]??0)+1;
+    return {orders:tw.orders,units:r2(tw.units),refused:tw.refused,final,ruined:list.filter(d=>d.ruined).length,gustavao:(st().defenses?.gustavoes??0)>0};
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -599,6 +642,7 @@ function args(argv:readonly string[]){
     seeds:parseSeeds(get('--seeds')??'1-16'),players:parsePlayers(get('--players')??'1,3,6'),
     out:path.resolve(get('--out')??path.join(ROOT,'evidence',CARD,'balanco.json')),
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
+    towers:!argv.includes('--no-towers'),
   };
 }
 function writeAtomic(file:string,data:unknown){
@@ -641,7 +685,7 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers});
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);
     writeAtomic(a.out,file);
@@ -653,6 +697,12 @@ async function main(){
     console.log(`${t.players}p: ${t.wins}/${t.runs} wins (${t.verdict.wins}${t.verdict.target?` ${r2(t.verdict.target.min)}–${r2(t.verdict.target.max)}`:''}) causes ${JSON.stringify(t.causes)} deaths by round ${JSON.stringify(t.deathRounds)}`);
     console.log(`   first arrival s ${JSON.stringify(t.firstArrivalS.all)} | loot/intermission ${JSON.stringify(t.loot.unitsPerIntermission)} ≈ ${t.loot.recipesPerIntermission} recipes (mean ${r2(RECIPE_MEAN_UNITS)} u) | forge/run ${t.loot.purchasesPerRun?.mean??'-'}`);
     console.log(`   round 1: downed ${t.round1.downed} eliminated ${t.round1.eliminated} defeats ${t.round1.defeats} (${t.verdict.round1}) tutorial arrival ${JSON.stringify(t.round1.tutorialArrivalS)} | boss reached ${t.boss.reached} killed ${t.boss.kills}`);
+  }
+  for(const n of a.players){
+    const rs=file.runs.filter(r=>r.players===n&&r.towers);
+    if(!rs.length)continue;
+    const mean=(f:(r:RunRecord)=>number)=>r2(rs.reduce((x,r)=>x+f(r),0)/rs.length);
+    console.log(`towers ${n}p: orders/run ${mean(r=>r.towers!.orders)} units/run ${mean(r=>r.towers!.units)} standing at end ${mean(r=>Object.values(r.towers!.final).reduce((a,b)=>a+b,0))} ruined ${mean(r=>r.towers!.ruined)} gustavão ${rs.filter(r=>r.towers!.gustavao).length}/${rs.length}`);
   }
   console.log(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
   console.log(`written: ${a.out}`);

@@ -29,6 +29,8 @@ export interface LinkStats {
 export const emptyStats=():LinkStats=>({sentMessages:0,sentBytes:0,recvMessages:0,recvBytes:0,recvFrames:0,recvJson:0,
   connects:0,opened:0,failedConnects:0,closes:[],sentByType:{}});
 
+/** Silences shorter than this are not kept (ms): the room sends a frame every 100 ms. */
+export const SILENCE_FLOOR_MS=400;
 /** How long a connection attempt takes to fail while the network is down (a phone without signal fails fast). */
 export const OUTAGE_CONNECT_FAIL_MS=1000;
 
@@ -76,6 +78,16 @@ export class Link {
   lossPct=0;
   /** When each direction's line is free again (performance.now ms). */
   private busy={up:0,down:0};
+  /**
+   * 3g-socket-morto: the silences the client lives through (gaps between two messages it handled, over
+   * SILENCE_FLOOR_MS), with when they started (performance.now), to tell the ones a drop caused from the link's own.
+   */
+  readonly silences:{at:number;ms:number}[]=[];
+  private lastRecv=0;
+  noteRecv(now=performance.now()){
+    if(this.lastRecv&&now-this.lastRecv>=SILENCE_FLOOR_MS)this.silences.push({at:this.lastRecv,ms:Math.round(now-this.lastRecv)});
+    this.lastRecv=now;
+  }
   readonly stats:LinkStats=emptyStats();
   /** Per-second counters since `epoch` (index = whole seconds since the link was made). */
   readonly seconds:SecondSample[]=[];
@@ -156,7 +168,7 @@ export class LabSocket {
       this.later(this.inQueue,'down',size,()=>{
         if(this.dead||this.readyState!==1)return;
         link.stats.recvMessages++;link.stats.recvBytes+=size;if(isBinary)link.stats.recvFrames++;else link.stats.recvJson++;
-        link.sample('down',size,isBinary);
+        link.sample('down',size,isBinary);link.noteRecv();
         this.onmessage?.({data:payload});
       });
     });

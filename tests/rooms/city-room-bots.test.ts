@@ -32,8 +32,13 @@ const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
 const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
-/** Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold back. */
-const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=100;
+/**
+ * Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold
+ * back, plus 15 s since torres-fio (13/10): the room bots now build tower defenses, so the forger spends material on
+ * them instead of only repairs and the towers become siege targets too (83 s before it, 103 s with it, seed 4242).
+ * A stuck critter is still caught by STALLED_MAX.
+ */
+const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=115;
 
 function peer(){
   const messages:any[]=[];

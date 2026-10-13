@@ -4,6 +4,7 @@
  */
 import type {Point} from '../../maps/index.ts';
 import type {Balance,ResourceKind} from '../../rules/index.ts';
+import type {TowersState} from '../towers/system.ts';
 
 export type {Balance,ResourceKind} from '../../rules/index.ts';
 export {RESOURCE_KINDS} from '../../rules/index.ts';
@@ -87,6 +88,11 @@ export interface StonewardsState {
    * first tick, clamped 1..6, the team size whose lootValue the crates pay for the whole intermission.
    */
   cityLootTeam?:number;
+  /**
+   * The tower defenses (torres-sim, towers/system.ts): created by the first build, absent until then, so a run where
+   * nobody builds keeps its old state hash on every world. The forge's chinelo towers stay in `towers`.
+   */
+  defenses?:TowersState;
 }
 
 /** Adds to a counter keyed by an arbitrary id, safe for ids like '__proto__' or 'constructor'. */

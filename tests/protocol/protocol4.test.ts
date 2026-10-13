@@ -9,7 +9,7 @@ import {
   DICT,FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
-import {ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,roundRoster} from '../../src/rules/index.ts';
+import {ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
 
 /**
  * Size of the bandwidth measurements. The default suite uses 2 clients (bytes per client do not depend on how many
@@ -42,7 +42,8 @@ function withCast<T>(pool:readonly string[],actors:ReadonlySet<string>,run:()=>T
   try{return run();}finally{[castPool,castActors]=before;}
 }
 /**
- * A late-round horde with the D-040 rotation (protocol 11): one run's rotation, round 9's role shares
+ * A late-round horde with the D-040 rotation (protocol 12: a rotation draws P0 entries only, all in the DICT): one run's
+ * rotation, round 9's role shares
  * (rules/waves.ts ROTATION_WEIGHTS), split evenly among the rotation's entries of each role; the roles that act like the
  * P1 trio (suporte, kamikaze, refletor, invocador) churn the acting phase like it.
  */
@@ -691,35 +692,45 @@ test('bandwidth on the wide map at 10 Hz: 6 players together and 6 spread, 300 e
   assert.ok(Math.abs(together.bytesPerSecond-atOrigin.bytesPerSecond)<atOrigin.bytesPerSecond*.05,'8 000 units out costs the same as the origin');
 });
 
-test('protocol 11: the wide-map budget holds with a D-040 rotation horde (every roster kind is one dictionary byte)',t=>{
+test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every P0 kind is one dictionary byte)',t=>{
   assert.ok(ROTATION_CAST.length>=90&&new Set(ROTATION_CAST).size>=10,'a varied rotation horde');
   assert.ok(ROTATION_CAST.every(k=>DICT.includes(k)));
+  // Representative: a rotation draws P1/P2 only when a role runs out of P0 entries, which no rotation does today, so a
+  // run's kinds always travel as dictionary bytes (the P1/P2 ids inline only appear in sandboxes).
+  for(let seed=0;seed<200;seed++)for(const id of rotationIds(drawRotation(new Rng(seed))))assert.ok(DICT.includes(id),`seed ${seed}: ${id}`);
   const spread=[0,1,2,3,4,5].map(i=>({x:8000+Math.cos(i/6*Math.PI*2)*200,y:-6000+Math.sin(i/6*Math.PI*2)*200}));
   const [together,apart,legacy]=[
     withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(51),[{x:8000,y:-6000}],[0,0,0,0,0,0]),true)),
     withCast(ROTATION_CAST,ROTATION_ACTORS,()=>measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true)),
     measure(clusters(new Rng(52),spread,[0,1,2,3,4,5]),true),
   ];
-  t.diagnostic(`protocol 11, wide map, rotation horde (${new Set(ROTATION_CAST).size} kinds): together ${together.bytesPerSecond} B/s, spread ${apart.bytesPerSecond} B/s (the nine-kind cast, spread: ${legacy.bytesPerSecond})`);
+  t.diagnostic(`protocol 12, wide map, rotation horde (${new Set(ROTATION_CAST).size} kinds): together ${together.bytesPerSecond} B/s, spread ${apart.bytesPerSecond} B/s (the nine-kind cast, spread: ${legacy.bytesPerSecond})`);
   // The D-042 guard (32 500 B/s, wide map spread) holds with the rotation: a roster kind costs what a legacy kind costs.
-  // Measured with this rotation (seed 40, round 9's shares): inline as in protocol 10 (0xFF + utf8 per kind) 35 343
-  // together / 35 928 spread; in the DICT (protocol 11) 31 789 / 32 288, vs the nine-kind cast's 32 256 spread (the
-  // difference is the phase churn of the acting roles, not the kinds).
+  // Measured with this rotation (seed 40, round 9's shares): inline as in protocol 10 and 11 (0xFF + utf8 per kind)
+  // 35 343 together / 35 928 spread; with the whole roster in the DICT (the branch's first draft) 31 789 / 32 288, and
+  // the same 31 789 / 32 288 in protocol 12 with only the P0 ids in it (a rotation is all P0), vs the nine-kind cast's
+  // 32 256 spread (the difference is the phase churn of the acting roles, not the kinds).
   assert.ok(together.bytesPerSecond<32_500,`together ${together.bytesPerSecond}`);
   assert.ok(apart.bytesPerSecond<32_500,`spread ${apart.bytesPerSecond}`);
 });
 
-test('protocol 11: the roster is dictionary bytes appended after protocol 10 (every older index unchanged), within the escape',()=>{
-  assert.equal(PROTOCOL_VERSION,11);
+test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 (every older index unchanged), within the escape',()=>{
+  assert.equal(PROTOCOL_VERSION,12);
+  // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape, so 94 slots are left.
+  assert.equal(DICT.length,161);
   assert.ok(DICT.length<=255,'255 is the inline escape');
   assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer'],'protocol 10 indexes unchanged');
-  assert.equal(DICT.indexOf('tiro'),71);
-  // Every roster id is in the DICT exactly once; the pack entries come in roster order right after 'tiro'.
-  const packs=ROSTER.filter(e=>!e.legacy).map(e=>e.id);
-  assert.equal(packs.length,164);
-  assert.deepEqual(DICT.slice(72,72+packs.length),packs);
-  for(const e of ROSTER)assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
-  for(const e of ROSTER)assert.ok(DICT.includes(e.id),e.id);
+  assert.equal(DICT.indexOf('vigia-do-predio'),71,'protocol 11 (torres-fio) indexes unchanged');assert.equal(DICT[95],'C');
+  assert.equal(DICT.indexOf('tiro'),96);
+  // The P0 pack entries come in roster order right after 'tiro'; the nine legacy kinds were in the DICT already.
+  const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0').map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
+  assert.equal(ROSTER.filter(e=>!e.legacy).length,164);assert.equal(p0.length,64);
+  assert.deepEqual(DICT.slice(97),p0);
+  // The new strings are unique, in the whole DICT too ('heal' is the one protocol-6 duplicate, never a roster id).
+  for(const s of DICT.slice(96))assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  for(const e of ROSTER)if(e.priority==='P0')assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
+  for(const e of ROSTER)assert.equal(DICT.includes(e.id),e.priority==='P0',`${e.id} (${e.priority})`);
+  assert.equal(inline.length,100,'the 71 P1 and 29 P2 ids travel inline');
   // One byte where it travels (enemy kind, kill and downed events) and the generic shot as a projectile source.
   const frame=(kind:string,source='boleto')=>{
     const v=busyWorld(new Rng(2),1).view;v.enemies[0]={...v.enemies[0],kind};delete v.enemies[0].phase;v.projectiles=[{...v.projectiles[0],source}];
@@ -729,8 +740,13 @@ test('protocol 11: the roster is dictionary bytes appended after protocol 10 (ev
     return bytes.length;
   };
   const base=frame('tio-pave');
-  for(const kind of ['flanelinha-interdimensional','rei-do-boteco','o-algoritmo','sogra-tita','peladeiro-de-vidro'])assert.equal(frame(kind),base,kind);
+  for(const kind of ['flanelinha-interdimensional','rei-do-boteco','o-algoritmo','paredao-ambulante'])assert.equal(frame(kind),base,kind);
   assert.equal(frame('bebado','tiro'),base,'the generic shot costs a byte');
+  // A P1/P2 id round-trips inline (0xFF + length + UTF-8) in each of its three places: kind, kill, downed source.
+  for(const kind of ['sogra-tita','peladeiro-de-vidro','camelo-pirata','morcego-insone']){
+    assert.ok(!DICT.includes(kind),kind);
+    assert.equal(frame(kind),base+3*(1+new TextEncoder().encode(kind).length),`${kind} inline`);
+  }
 });
 
 test('the server world descriptor rebuilds the same terrain on the client, island and endless',async()=>{
@@ -914,7 +930,7 @@ test('protocol 7+: zueira events and the kill-cam reach every client, wherever t
 const D036_STRINGS=['bebado','anao-molotov','pombos','agiota','boleto-juros',...TELEGRAPH_KINDS.filter(k=>k!=='coco')];
 
 test('protocol 9+: slow and slip round-trip on the player when present, stay absent otherwise, and cost nothing while unchanged',()=>{
-  assert.ok(PROTOCOL_VERSION>=9);
+  assert.ok(PROTOCOL_VERSION>=10);
   const plain=busyWorld(new Rng(4),3).view,burped=busyWorld(new Rng(4),3).view;
   const slip={x:Math.SQRT1_2,y:-Math.SQRT1_2};
   burped.players[0]={...burped.players[0],slowUntil:1030,slipUntil:1010,slip};
@@ -1007,8 +1023,8 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   assert.ok(DICT.length<255,'255 is the inline escape');
   // Append only: protocol 8 and 9 indexes did not move; the trio comes right after the last protocol 9 string.
   assert.equal(DICT.indexOf('pernilongo'),2);assert.equal(DICT.indexOf('apagao'),54);
-  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),67);
-  assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer']);
+  assert.equal(DICT.indexOf('bebado'),55);assert.equal(DICT.indexOf('carimbo'),DICT.indexOf('coach')-1);
+  assert.deepEqual(DICT.slice(DICT.indexOf('coach'),DICT.indexOf('coach')+3),['coach','motoboy','influencer']);
   for(const s of ['coach','motoboy','influencer'])assert.equal(DICT.lastIndexOf(s),DICT.indexOf(s),`${s} once`);
   // One byte each where it travels (enemy kind, kill and downed events), and the acting/coached phase round-trips.
   const frame=(kind:string,phase?:number)=>{
@@ -1027,10 +1043,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 11: a frame from a 10 or 12 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 12: a frame from an 11 (torres-fio) or 13 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],11);
-  for(const version of [8,9,10,12]){
+  assert.equal(bytes[1],12);
+  for(const version of [8,9,10,11,13]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }
@@ -1117,4 +1133,59 @@ test('N27 chained frames: an event goes once, never again every 5 s; a resync se
   enc.resync();w.view.tick+=2;
   const fresh=new FrameDecoder(),r=fresh.decode(enc.encode(w.view));
   assert.ok(r.ok&&r.view.events.some(e=>e.type==='levelup'),'after a resync it goes again');
+});
+
+// ---------- Protocol 11 (torres-fio): the tower defenses in the structures ----------
+/** Twelve defenses (D-009 with the team's limit), a Gustavão among them; `tick` turns their aim and wears their hp. */
+function defenses(tick:number):StructureView[]{
+  const kinds=['vigia-do-predio','vigias-armados','ninho-de-metralhadora','rojao-de-festa','morteiro','obuseiro','holofote','arame-e-sirene',
+    'antiaerea-quadrupla','posto-de-radar','atiradores-do-telhado','gustavao'];
+  const phases=['pronta','pronta','danificada','obra-2','pronta','pronta','pronta','obra-3','pronta','pronta','pronta','pronta'];
+  return kinds.map((kind,i)=>({id:`defesa-${i+1}`,kind,x:6+i,y:18-(i%3),hp:Math.max(1,300-((tick*7+i*13)%120)),maxHp:300,
+    tier:i===0?1:2+(i%4),...(i?{branch:'ABC'[i%3]}:{}),phase:phases[i],aim:((tick*.07+i*.13)%1)}));
+}
+
+test('protocol 11: a defense\'s tier, branch, phase and aim round-trip; the old structures (wall, chinelo) cost the same as before',()=>{
+  assert.ok(PROTOCOL_VERSION>=11);
+  for(const s of ['vigia-do-predio','gustavao','obra-1','pronta','ruina','A','C'])assert.ok(DICT.includes(s),s);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  const v=busyWorld(new Rng(2),1).view,plain=new FrameEncoder().encode(v).length;
+  const withDefs={...v,structures:[...v.structures,...defenses(0)]};
+  const r=new FrameDecoder().decode(new FrameEncoder().encode(withDefs));assert.ok(r.ok);
+  const back=r.view.structures.filter(s=>s.kind!=='muralha');
+  assert.equal(back.length,12);
+  for(const [i,s] of back.entries()){
+    const want=defenses(0)[i];
+    assert.equal(s.kind,want.kind);assert.equal(s.tier,want.tier);assert.equal(s.branch,want.branch);assert.equal(s.phase,want.phase);
+    assert.ok(Math.abs(s.aim!-want.aim!)<=1/255,`aim ${s.aim} vs ${want.aim}`);
+  }
+  assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.tier,undefined,'the wall has none of the new fields');
+  assert.equal(new FrameEncoder().encode(v).length,plain);
+});
+
+test('D-009 with 12 defenses firing: 6 clients x 300 enemies stay inside the 4G budget at 10 and 20 Hz',t=>{
+  const results:Record<string,number>={};
+  for(const hz of [10,20]){
+    const rng=new Rng(8),w=busyWorld(rng);
+    const clients=Array.from({length:CLIENTS},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+    const seconds=10,every=20/hz;
+    let bytes=0;
+    for(let i=0;i<seconds*20;i++){
+      const events=stepWorld(w,rng);
+      // Every defense turns and loses hp every tick (worse than real: they fire on a cooldown).
+      w.view.structures=[w.view.structures[0],...defenses(w.view.tick)];
+      for(const c of clients)c.enc.pushEvents(events);
+      if(i%every)continue;
+      for(const c of clients){
+        const frame=c.enc.encode(w.view);bytes+=frame.length;
+        const res=c.dec.decode(frame);assert.ok(res.ok);
+        c.inFlight.push({seq:res.seq,event:res.ack.event,at:i+3});
+        while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+      }
+    }
+    results[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
+  }
+  t.diagnostic(`protocol 11 bytes/s per client with 12 defenses turning every tick: ${JSON.stringify(results)}`);
+  assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
+  assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });

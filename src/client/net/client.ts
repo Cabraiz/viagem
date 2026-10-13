@@ -12,6 +12,7 @@ import {InputBatcher} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
+import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
 type Sample={at:number;players:Map<string,Player>};
 /**
@@ -25,8 +26,12 @@ export const ACK_EVERY_MS=1000;
 const PING_EVERY_MS=5000;
 /** Heartbeat timer period; a beat this much later than due means the page itself was stalled. */
 const HEARTBEAT_MS=2000,STALLED_BEAT_MS=2*HEARTBEAT_MS;
-/** Nothing heard for this long: the socket is dead, reconnect (judged on a heartbeat that came on time, see beat()). */
-const DEAD_SILENCE_MS=8000;
+/**
+ * Nothing heard for this long: the socket is dead, reconnect (judged on a heartbeat that came on time, see beat()).
+ * 3g-socket-morto: no longer a fixed 8 s but SilenceWatch's limit (3-8 s, from the link's own longest recent gaps);
+ * this is its ceiling, for the stalled-page rule.
+ */
+const DEAD_SILENCE_MS=DEAD_MAX_MS;
 /** A page whose heartbeats keep coming late still calls the socket dead past this much silence. */
 const STALLED_DEAD_MS=3*DEAD_SILENCE_MS;
 /**
@@ -76,10 +81,18 @@ export function retryWindow(phase:string|undefined){return phase==='combat'||pha
 export const FIRST_RETRY_MS=150;
 /** Only a connection that lived this long gets the fast first retry, so a join that keeps dying cannot loop every 150 ms. */
 export const FAST_RETRY_AFTER_MS=5000;
-/** Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000 (cap); 500 first before joining. */
-export function retryDelay(attempts:number,joined:boolean){
+/**
+ * In a match (3g-socket-morto), for the first FAST_RETRY_WINDOW_MS offline, the retries cap at this instead: a phone
+ * whose network is back is back sooner. Past that (the room itself refusing, a long outage) the 2 s pace again.
+ */
+export const RUN_RETRY_MAX_MS=1000,FAST_RETRY_WINDOW_MS=10_000;
+/**
+ * Retry delay after `attempts` failed tries: FIRST_RETRY_MS once joined, then 1000, 2000 (cap); 500 first before joining.
+ * `fast`: a match is on and the drop is younger than FAST_RETRY_WINDOW_MS: the cap is RUN_RETRY_MAX_MS.
+ */
+export function retryDelay(attempts:number,joined:boolean,fast=false){
   // joined: the dropped connection had been up for FAST_RETRY_AFTER_MS (a socket dying right after welcome keeps the 500 ms pace).
-  return attempts===0&&joined?FIRST_RETRY_MS:Math.min(RETRY_MAX_MS,500*2**attempts);
+  return attempts===0&&joined?FIRST_RETRY_MS:Math.min(fast?RUN_RETRY_MAX_MS:RETRY_MAX_MS,500*2**attempts);
 }
 /** The big "Reconectando à turma…" banner waits this long: a drop that heals sooner shows nothing in the middle. */
 export const RECONNECT_BANNER_MS=1500;
@@ -216,6 +229,12 @@ export class CoopClient {
   private retry?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
   private lastMessage=0;
+  /** The link's own longest recent gaps, so a dead socket is called sooner than 8 s (silence.ts, 3g-socket-morto). */
+  private readonly silence=new SilenceWatch();
+  /** The window 'online' listener (the network came back). */
+  private online?:()=>void;
+  /** The silence limit now (ms), for diagnostics and the lab. */
+  silenceLimit(now=performance.now()){return this.silence.limit(now);}
   /** performance.now() of the last message sent on the current socket, of the last heartbeat, and of the last beat that came late. */
   private sentAt=0;private beatAt=0;
   /** performance.now() when the app went to the background (undefined while visible); AWAY_MS by default (tests shorten it). */
@@ -251,6 +270,8 @@ export class CoopClient {
   onEmote:(e:EmoteNote)=>void=()=>{};
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
+  /** The room's answer to a build or upgrade (torres-fio): the new kind, or why not. */
+  onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string})=>void=()=>{};
   /**
    * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
    * point: a reloaded page keeps its seat (token) but not this counter, and a restarted count would read as a resend.
@@ -264,6 +285,19 @@ export class CoopClient {
   forge(recipe:string,target?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'forge',round:this.run.round,recipe,req,...(target===undefined?{}:{target})});return req;
+  }
+  /**
+   * Tower defense (torres-fio): builds the root on a build site ('obra-NN', maps buildPlanFor) or lays the rail
+   * ('trilho'); the room answers {t:'built'} (onBuilt). Same request ids and reach rules as forge().
+   */
+  build(site:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,site});return req;
+  }
+  /** Upgrades a ready defense (its structure's wire id) to the next tier; `branch` A/B/C at tier 2, or 'A4b'/'A5b'. */
+  upgrade(defense:string,branch?:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'upgrade',round:this.run.round,req,defense,...(branch===undefined?{}:{branch})});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -281,6 +315,8 @@ export class CoopClient {
     try{const saved=JSON.parse(sessionStorage.getItem(`viagem:room:${this.code}`)??'null');if(saved?.token&&saved.until>Date.now())this.token=saved.token;}catch{}
     // A phone back from another app: do not wait for the heartbeat to notice a dead socket (D-009, VGM-047).
     if(typeof document!=='undefined'&&!this.wake){this.wake=()=>this.visibility();document.addEventListener('visibilitychange',this.wake);}
+    // The phone's network is back (3g-socket-morto): a waiting retry goes now, a silent socket is dropped now.
+    if(typeof window!=='undefined'&&typeof window.addEventListener==='function'&&!this.online){this.online=()=>this.resume();window.addEventListener('online',this.online);}
     return new Promise<void>((resolve,reject)=>{this.resolveReady=resolve;this.rejectReady=reject;this.connect();});
   }
   private connect(){
@@ -290,6 +326,8 @@ export class CoopClient {
     const ws=this.socket=new WebSocket(url);ws.binaryType='arraybuffer';
     const timeout=this.joinTimer=setTimeout(()=>ws.close(),8000);
     ws.onopen=()=>{
+      // The silence of this socket counts from now, not from the previous one's last message.
+      if(ws===this.socket)this.lastMessage=performance.now();
       const kicked=this.token?undefined:this.kickedToken();
       const maps=clientCatalog(this.cityRef).map(r=>({id:r.id,version:r.version,hash:r.hash}));
       this.out(ws,{t:'join',protocol:ROOM_PROTOCOL,name:this.name,classId:this.classId,maps,...(this.token?{token:this.token}:{}),...(kicked?{kicked}:{})});
@@ -297,7 +335,7 @@ export class CoopClient {
     ws.onmessage=event=>{
       // A socket this client already replaced (or gave up on) says nothing any more.
       if(ws!==this.socket)return;
-      this.lastMessage=performance.now();this.lastSeenAt=Date.now();
+      this.lastMessage=performance.now();this.lastSeenAt=Date.now();this.silence.heard(this.lastMessage);
       if(this.initialized&&this.goneAway(ws,this.lastMessage))return;
       // A welcome held for the city download keeps the socket alive too (the room drops a seat silent for 12 s).
       if((this.initialized||this.mapWait?.ws===ws)&&this.lastMessage-this.sentAt>=KEEPALIVE_MS)this.keepalive(ws);
@@ -317,6 +355,7 @@ export class CoopClient {
     ws.onclose=event=>{
       if(ws!==this.socket)return;
       clearTimeout(timeout);clearInterval(this.heartbeat);clearTimeout(this.ackTimer);this.ackTimer=undefined;clearTimeout(this.flushTimer);this.flushTimer=undefined;this.connected=false;this.pending=[];
+      this.silence.cut();
       // A city download for this socket goes on (the loader keeps it), but what it held belongs to a dead connection.
       if(this.mapWait?.ws===ws){this.mapWait=undefined;this.mapLoad=undefined;}
       if(this.stopped)return;
@@ -332,7 +371,8 @@ export class CoopClient {
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
-      this.retry=setTimeout(()=>this.connect(),jittered(retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS)));
+      const fast=(this.run?.phase==='combat'||this.run?.phase==='countdown')&&Date.now()-(this.droppedAt||Date.now())<FAST_RETRY_WINDOW_MS;
+      this.retry=setTimeout(()=>this.connect(),jittered(retryDelay(this.attempts++,this.initialized&&Date.now()-this.welcomedAt>=FAST_RETRY_AFTER_MS,fast)));
     };
     ws.onerror=()=>{};
   }
@@ -443,6 +483,7 @@ export class CoopClient {
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
     else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
+    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
     // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.
@@ -473,7 +514,7 @@ export class CoopClient {
       if(typeof seat.token==='string'&&seat.token){this.token=seat.token;this.saveToken();}
     }
     clearTimeout(this.joinTimer);clearInterval(this.heartbeat);clearTimeout(this.retry);this.retry=undefined;
-    this.socket=undefined;
+    this.socket=undefined;this.silence.cut();
     try{ws.close();}catch{}
     this.onStatus(CITY_RETRY_STATUS);
     const manifest=this.cityManifest;
@@ -502,10 +543,14 @@ export class CoopClient {
    * silence it judges anyway, so a page stalled beat after beat still finds a dead socket.
    */
   private beat(ws:WebSocket,now=performance.now()){
-    const late=now-this.beatAt>STALLED_BEAT_MS;this.beatAt=now;
+    // 3g-socket-morto: the limit can be 3 s now, so a beat a little late (a 3.5 s long task) is not "on time" for it:
+    // how late this beat came is taken off the silence (messages may be queued behind it), on top of the N27 rule.
+    const lateBy=Math.max(0,now-this.beatAt-HEARTBEAT_MS),late=now-this.beatAt>STALLED_BEAT_MS;this.beatAt=now;
     if(this.goneAway(ws,now))return;
     const silent=now-this.lastMessage;
-    if(silent>DEAD_SILENCE_MS&&(!late||silent>STALLED_DEAD_MS)){ws.close();return;}
+    // A city download shares the phone's link with the frames: the old 8 s while it runs (no history covers it).
+    const limit=this.mapLoad&&!this.mapLoad.failed?DEAD_SILENCE_MS:this.silence.limit(now);
+    if(silent-lateBy>limit&&(!late||silent>STALLED_DEAD_MS)){ws.close();return;}
     if(ws.readyState===WebSocket.OPEN&&now-this.pingAt>=PING_EVERY_MS){this.pingAt=now;this.out(ws,{t:'ping',at:now});}
     this.saveToken();
   }
@@ -530,7 +575,7 @@ export class CoopClient {
   private resume(){
     if(this.stopped)return;
     const ws=this.socket;
-    if(ws?.readyState===WebSocket.OPEN&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
+    if(ws?.readyState===WebSocket.OPEN&&(this.connected||this.mapWait?.ws===ws)&&performance.now()-this.lastMessage>WAKE_SILENCE_MS){ws.close();return;}
     if(this.retry&&!this.connected&&(!ws||ws.readyState===WebSocket.CLOSED)){clearTimeout(this.retry);this.retry=undefined;this.connect();}
   }
   /** Something the client cannot play past (version, terrain, frames, an error from the room): stop for good, say why. */
@@ -711,7 +756,7 @@ export class CoopClient {
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */
   reconnect(){this.socket?.close(4000,'Teste de reconexão');}
-  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
+  leave(){this.stopped=true;this.connected=false;clearTimeout(this.retry);if(this.wake){document.removeEventListener('visibilitychange',this.wake);this.wake=undefined;}if(this.online){window.removeEventListener('online',this.online);this.online=undefined;}clearInterval(this.heartbeat);clearTimeout(this.ackTimer);clearTimeout(this.flushTimer);this.forgetToken();if(this.socket?.readyState===WebSocket.OPEN)this.out(this.socket,{t:'leave'});this.socket?.close(1000,'Saída');}
 }
 export { STEP };
 

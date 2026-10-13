@@ -17,3 +17,4 @@ export * from './enemy-roles.ts';
 export * from './enemy-roster.ts';
 export * from './enemy-cast.ts';
 export * from './enemy-rotation.ts';
+export * from './towers.ts';

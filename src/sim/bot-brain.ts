@@ -8,6 +8,10 @@
  * - intermission (Stonewards): walks to a gather node (its own, spread by bot index), comes back on the horn or when
  *   the time left is the walk back; the team's forger (first standing bot) spends the balance at the camp:
  *   repair when the wall is hurt, else a chinelo tower, else a gambiarra;
+ * - towers (torres-sim): when the caller passes `towers` (the sim-side TowerBrainView: towerBrainView), the forger
+ *   spends on the tower defense first (pickTowerOrder: grow the count, then evolve the lowest tier, branches by a fixed
+ *   rule), keeping only a needed repair ahead of it; without `towers` (the room bots today: no wire for defenses yet)
+ *   nothing changes;
  * - offers: picks the default card after a human-ish reaction (longer in combat, where the offer is a chip);
  * - fallen: asks for help ("Me salva") every few seconds.
  * In the city (cidade-10, terrain.world === 'cidade') the long walks (home, the crate, a fallen friend, the person
@@ -25,6 +29,9 @@ import {MAX_TOWERS} from './stonewards/forge.ts';
 import {heroSpeed,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
+import type {StonewardsState} from './stonewards/state.ts';
+import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,pickChild,unitsOf,type Branch,type DefenseId} from './towers/catalog.ts';
+import type {BuildPlan} from './towers/sites.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 
 export const HZ=20;
@@ -88,6 +95,11 @@ export interface BrainInput {
    */
   forger?:string|null;
   /**
+   * Tower defense (torres-sim): the sites, defenses and balance as the simulation keeps them (towerBrainView). When
+   * set, the forger spends on towers before the forge (pickTowerOrder); unset: the brain is exactly as before.
+   */
+  towers?:TowerBrainView;
+  /**
    * The person this bot walks with (room bots, D-025: the nearest standing person). In combat a roamer (odd index)
    * follows them once they leave the wall's leash; guards (even index) keep the wall. Unset: wall only (protocol bots).
    */
@@ -95,6 +107,8 @@ export interface BrainInput {
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
+  /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
+  build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
   mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'dodge'|'unstick'|'escort';
 }
@@ -211,7 +225,14 @@ export function decide(input:BrainInput):Decision{
   }
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
-    const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId,recipe=forger?pickRecipe(view,memory.refused):undefined;
+    const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId;
+    let recipe=forger?pickRecipe(view,memory.refused):undefined;
+    // Towers first (torres-sim): only a needed repair goes ahead; saving for an upgrade holds the forge's other buys.
+    const order=forger&&input.towers&&recipe!=='reparo'?pickTowerOrder(input.towers):undefined;
+    if(order){
+      recipe=undefined;
+      if(order!=='save'&&tick-memory.lastForgeTick>=FORGE_GAP){decision.build=order;memory.lastForgeTick=tick;}
+    }
     const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
     if(recipe){
       // The forge measures the camp from the base, the bot from the wall next to it: tap from close to the wall.
@@ -338,4 +359,91 @@ function finish(decision:Decision,input:BrainInput):Decision{
   }
   decision.direction=clearPath(at,decision.direction,terrain);
   return decision;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Tower defense (torres-sim)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** What the forger knows of the tower defense (sim side: towerBrainView). */
+export interface TowerBrainView {
+  tick:number;
+  /** The round the intermission comes before (round.index in 'prepare'). */
+  round:number;
+  units:number;
+  sites:readonly {id:string;maxSize:number}[];
+  /** The plan's rail id, or null (no Gustavão on this map). */
+  rail:string|null;railLaid:boolean;railReady:boolean;gustavoes:number;
+  defenses:readonly {id:string;kind:DefenseId;site:string;ready:boolean;ruined:boolean}[];
+}
+/** A build (a site id, or the rail id to lay it) or an upgrade (a defense id and the branch/child to take). */
+export type TowerOrder={build:string}|{upgrade:string;branch?:string};
+
+/** The bot's view of the towers from the structures state and its build plan. */
+export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,round:number):TowerBrainView{
+  const t=state.defenses;
+  return {tick,round,units:unitsOf(state.balance),sites:plan.sites.map(s=>({id:s.id,maxSize:s.maxSize})),rail:plan.rail?.id??null,
+    railLaid:!!t?.rail,railReady:!!t?.rail&&tick>=t.rail.readyTick,gustavoes:t?.gustavoes??0,
+    defenses:(t?.list??[]).map(d=>({id:d.id,kind:d.kind,site:d.site,ready:tick>=d.readyTick,ruined:!!d.ruined}))};
+}
+
+/** Branch a bot picks for the root on the n-th site of the plan (cycled): twice A, then B and C. */
+export const BOT_BRANCHES:readonly Branch[]=Object.freeze(['A','B','A','C'] as Branch[]);
+/** The forger keeps at least this many defenses standing before it evolves any. */
+export const BOT_MIN_DEFENSES=2;
+
+/**
+ * The forger's tower rule (deterministic, no randomness):
+ *  1. fewer than BOT_MIN_DEFENSES standing and a free site: build the root on the largest free one (then plan order; a
+ *     ruin's site counts as free);
+ *  2. the cheapest-tier evolution among the ready defenses, when the balance pays it (ties: plan order). Branch at the
+ *     root: BOT_BRANCHES by the site's index (the next one that fits the site's size); at A3 the main line when the site
+ *     fits A4, else A4b; at the Obuseiro the Gustavão (laying the rail first), while none was built;
+ *  3. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root;
+ *  4. else save for that evolution, or, with nothing to evolve, another root up to DEFENSE_LIMIT.
+ * Returns the order, 'save' when the chosen step costs more than the balance (the forger holds its buys), or undefined
+ * when there is nothing left to do with towers.
+ */
+export function pickTowerOrder(v:TowerBrainView):TowerOrder|'save'|undefined{
+  const live=v.defenses.filter(d=>!d.ruined),taken=new Set(live.map(d=>d.site));
+  const rootSize=DEFENSES[ROOT_DEFENSE].size??1,rootCost=DEFENSES[ROOT_DEFENSE].cost;
+  // The largest free site first (room for the 3×3 tiers), then plan order.
+  const free=v.sites.filter(s=>!taken.has(s.id)&&s.maxSize>=rootSize).sort((a,b)=>b.maxSize-a.maxSize)[0];
+  const afford=(cost:number,order:TowerOrder)=>v.units>=cost?order:'save' as const;
+  if(free&&live.length<BOT_MIN_DEFENSES)return afford(rootCost,{build:free.id});
+  const index=new Map(v.sites.map((s,i)=>[s.id,i]));
+  let best:{tier:number;at:number;cost:number;order:TowerOrder}|undefined;
+  for(const d of live){
+    if(!d.ready)continue;
+    const at=index.get(d.site)??v.sites.length,size=v.sites[at]?.maxSize??3,step=nextStep(v,d,at,size);
+    if(!step)continue;
+    const tier=DEFENSES[d.kind].tier;
+    if(!best||tier<best.tier||tier===best.tier&&at<best.at)best={tier,at,...step};
+  }
+  if(best&&v.units>=best.cost)return best.order;
+  if(free&&live.length<Math.min(DEFENSE_LIMIT,v.round+1))return afford(rootCost,{build:free.id});
+  if(best)return 'save';
+  if(free&&live.length<DEFENSE_LIMIT)return afford(rootCost,{build:free.id});
+  return undefined;
+}
+
+function nextStep(v:TowerBrainView,d:TowerBrainView['defenses'][number],at:number,size:number):{cost:number;order:TowerOrder}|undefined{
+  const fits=(id:DefenseId)=>{const c=DEFENSES[id];return c.rail?true:(c.size??1)<=size;};
+  const kids=childrenOf(d.kind);
+  if(!kids.length)return undefined;
+  if(d.kind===ROOT_DEFENSE){
+    for(let k=0;k<BOT_BRANCHES.length;k++){
+      const branch=BOT_BRANCHES[(at+k)%BOT_BRANCHES.length],child=pickChild(d.kind,branch);
+      if(child&&fits(child.id))return {cost:child.cost,order:{upgrade:d.id,branch}};
+    }
+    return undefined;
+  }
+  const child=kids.find(k=>fits(k.id));
+  if(!child)return undefined;
+  if(child.rail){
+    if(!v.rail||v.gustavoes>=GUSTAVAO_LIMIT)return undefined;
+    if(!v.railLaid)return {cost:RAIL.cost,order:{build:v.rail}};
+    if(!v.railReady)return undefined;
+  }
+  return {cost:child.cost,order:{upgrade:d.id,...(kids.length>1?{branch:child.id}:{})}};
 }

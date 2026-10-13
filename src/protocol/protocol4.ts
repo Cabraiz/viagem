@@ -43,12 +43,14 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * kind and the D-033 cast in the DICT; an 8 decoder would refuse the player field mask and read the new dictionary
  * indexes as unknown strings. 10 since the P1 cast (NEW-20261012-ORQ-elenco-p1): 'coach', 'motoboy' and 'influencer'
  * in the DICT (they went inline in 9: 1 + 1 + their UTF-8 bytes each, on every enemy, kill and downed event); a 9
- * decoder would read their indexes as unknown strings. 11 since the roster of D-040 (NEW-20261013-ORQ-papeis-de-inimigo):
- * the 164 pack enemies and the atiradores' generic shot 'tiro' in the DICT; a 10 decoder would read their indexes as
- * unknown strings.
+ * decoder would read their indexes as unknown strings. 11 since torres-fio: the tower defenses in the structures (four
+ * optional fields: tier, branch, phase, aim) and their ids, phases and branches in the DICT; a 10 decoder would refuse
+ * the structure field mask. 12 since the roster of D-040
+ * (NEW-20261013-ORQ-papeis-de-inimigo): the atiradores' generic shot 'tiro' and the 64 P0 pack enemies in the DICT
+ * (the P1/P2 ids stay inline: 0xFF + length + UTF-8); an 11 decoder would read their indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=11;
+export const PROTOCOL_VERSION=12;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -88,44 +90,31 @@ export const DICT:readonly string[]=[
   'arroto','molotov','fogo','explosao','pancada','investida','varredura','carimbo',
   // Protocol 10 (NEW-20261012-ORQ-elenco-p1): the P1 cast. Each was 1 + 1 + its UTF-8 bytes inline in protocol 9.
   'coach','motoboy','influencer',
-  // Protocol 11 (NEW-20261013-ORQ-papeis-de-inimigo, D-040): the generic hostile shot of the atiradores and the 164 pack
-  // entries of the roster (rules/enemy-roster.ts), in roster order. Each was 1 + 1 + its UTF-8 bytes inline in protocol 10.
-  // 236 strings: index 255 is the inline escape, so 19 slots are left.
+  // Protocol 11 (torres-fio): the tower defenses (src/sim/towers/catalog.ts DefenseId), their phases and branches.
+  'vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
+  'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','obuseiro','gustavao','holofote','arame-e-sirene',
+  'antiaerea-quadrupla','posto-de-radar','obra-1','obra-2','obra-3','pronta','danificada','ruina','A','B','C',
+  // Protocol 12 (NEW-20261013-ORQ-papeis-de-inimigo, D-040): the generic hostile shot of the atiradores and the 64 P0
+  // pack entries of the roster (rules/enemy-roster.ts), in roster order; the nine legacy kinds were already above. P1/P2
+  // roster ids go inline (0xFF + uvar length + UTF-8): 96 + 1 + 164 = 261 would not fit under the escape.
+  // 161 strings: index 255 is the inline escape, so 94 slots are left.
   'tiro',
   // pack 1 (design/proximos/04-INIMIGOS-*.md)
-  'flanelinha-interdimensional','ambulante-guarda-chuva','camelo-pirata','vendedor-de-bala','malabarista-do-sinal',
-  'rodinho-do-sinal','bebado-do-karaoke','dono-do-boteco','garcom-equilibrista','tiozinho-da-sinuca','domino-humano',
-  'rato-de-boteco','barata-voadora','perueiro','cobrador-do-busao','marronzinho','ciclista-de-lycra',
-  'executivo-de-patinete','taxista-reclamao','manobrista','pamonheiro','espetinho-suspeito','tio-do-isopor',
-  'bebum-de-carrinho','pichador-ninja','skatista-de-47','pipoqueiro-turbinado','homem-placa-do-fim',
-  'rapa-da-prefeitura','grauzeiro','homem-wifi','moco-do-gas','filosofo-de-balcao','forrozeiro-centrifugo',
-  'alambiqueiro','homem-galao','rolo-lava-rapido','ressaca-ambulante','paredao-ambulante','coco-que-vende-gente',
-  'rei-do-camarote',
+  'flanelinha-interdimensional','ambulante-guarda-chuva','malabarista-do-sinal','bebado-do-karaoke','dono-do-boteco',
+  'tiozinho-da-sinuca','rato-de-boteco','barata-voadora','perueiro','marronzinho','pamonheiro','espetinho-suspeito',
+  'tio-do-isopor','bebum-de-carrinho','grauzeiro','moco-do-gas','ressaca-ambulante','paredao-ambulante',
   // pack 2 (design/proximos/05-INIMIGOS-*.md)
-  'gerente-vampiro','boleto-vivo','carimbador','despachante','estagiario-imortal','chefe-pizza','rh-sorridente',
-  'auditor-das-sombras','telemarketing','vendedor-de-caixao','subsindico','vizinho-da-furadeira','zelador-hidraulico',
-  'entregador-matrioska','cliente-do-gerente','caixa-eletronico','cofre-mimico','contador-de-almas','leiloeiro',
-  'cobrador-fantasma','corretor-de-imoveis','tabeliao-mumia','guru-cripto','vendedor-de-piramide',
-  'engenheiro-obra-parada','betoneira-ambulante','tijolo-pai','reuniao-que-podia-ser-email','impressora-possuida',
-  'grampeador-carente','cafeteira-burnout','seguranca-de-shopping','revendedora-de-catalogo','promotor-infinito',
-  'leao-da-receita','servidor-fossilizado','robo-de-atendimento','guru-do-linkedin','cadeira-giratoria',
-  'bebedouro-da-fofoca','fiscal-da-garagem',
+  'gerente-vampiro','boleto-vivo','carimbador','estagiario-imortal','chefe-pizza','telemarketing','subsindico',
+  'vizinho-da-furadeira','cliente-do-gerente','caixa-eletronico','guru-cripto','vendedor-de-piramide',
+  'impressora-possuida','seguranca-de-shopping','leao-da-receita','robo-de-atendimento',
   // pack 3 (design/proximos/06-INIMIGOS-*.md)
-  'tia-do-zap','primo-do-violao','cunhado-sabe-tudo','sogra-do-chinelo','vo-tricoteira','noivo-em-fuga',
-  'madrinha-velociraptor','dj-de-casamento','trenzinho-da-festa','palhaco-de-aniversario','animador-necromante',
-  'bolo-vivo','balao-rancoroso','unboxer','hater-anonimo','bot-de-curtida','dancinha-viral','gamer-rage-quit',
-  'podcaster-de-garagem','torcedor-fanatico','juiz-vendido','bandeirinha-existencial','peladeiro-de-vidro',
-  'bola-depressiva','frango-de-academia','personal-gritao','crossfiteiro-do-pneu','maratonista-eterno','quadrilheiro',
-  'noiva-da-quadrilha','fogueteiro','boneco-gigante','glitter-senciente','homem-surdo','cosplayer','fa-de-novela',
-  'noel-derretendo','coelho-falsificado','ex-que-voltou','drone-ansioso','sommelier-de-ipa',
+  'tia-do-zap','primo-do-violao','cunhado-sabe-tudo','sogra-do-chinelo','dj-de-casamento','bolo-vivo',
+  'balao-rancoroso','hater-anonimo','bot-de-curtida','torcedor-fanatico','juiz-vendido','crossfiteiro-do-pneu',
+  'quadrilheiro','fogueteiro','boneco-gigante','noel-derretendo',
   // pack 4 (design/proximos/07-INIMIGOS-*.md)
-  'capivara-blindada','pombo-tres-cabecas','ratazana-mafiosa','gato-preto-azarado','urubu-fiscal','caramujo-financiado',
-  'pernilongo-vampiro','lagartixa-de-terno','sapo-cururu','cachorro-de-madame','furry-de-convencao','quati-influencer',
-  'marimbondo-sindical','cupim-mansao','jacare-do-bueiro','mico-da-dentadura','morcego-insone','bueiro-raivoso',
-  'poste-gambiarra','orelhao-zumbi','sofa-abandonado','geladeira-do-feijao','buraco-de-rua','carrinho-da-vo',
-  'rei-do-boteco','caminhao-do-lixo','pombo-rei','tia-do-pudim','bate-estaca','trio-eletrico','capivara-ancia',
-  'gerente-regional','rainha-das-baratas','o-grande-credor','dj-do-fim-do-mundo','boitata-de-sacolinha',
-  'mapinguari-do-shopping','o-algoritmo','polvo-da-enchente','o-engarrafamento','sogra-tita',
+  'capivara-blindada','pombo-tres-cabecas','pernilongo-vampiro','cachorro-de-madame','furry-de-convencao',
+  'poste-gambiarra','rei-do-boteco','caminhao-do-lixo','pombo-rei','trio-eletrico','rainha-das-baratas',
+  'o-grande-credor','dj-do-fim-do-mundo','o-algoritmo',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -334,7 +323,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
   }},
-  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel))}},
+  // Protocol 11 (torres-fio): a defense's tier, branch, building phase and aim (turns of a circle, 1 byte); each only when it changes.
+  structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel)),
+    tier:c(optional(count)),branch:c(optional(str)),phase:c(optional(str)),aim:c(optional(unit))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };

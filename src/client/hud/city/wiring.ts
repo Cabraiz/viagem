@@ -33,18 +33,25 @@ export function cityAssetOf(terrain:{world?:string}):CityAssetLike|undefined{
 export const MOUTH_IDS:readonly MouthId[]=['N','S','L','O'];
 /**
  * The minimap's map info from the asset: the plaza at `praca` with the radius of its farthest entrance (the wall's ring),
- * the 4 avenue ends (spawnN/S/L/O) as the minimap's mouths (where the critters come in, doc §1), the start at `inicio`.
+ * the 4 avenue ends (spawnN/S/L/O) as the minimap's mouths (where the critters come in, doc §1), each with its entrance
+ * on the plaza wall (`bocas`) as its gate, the start at `inicio`.
  */
 export function cityMapInfo(asset:CityAssetLike):CityMapInfo{
   const p=asset.points,plaza=p.praca;
   const radius=Math.max(...MOUTH_IDS.map(id=>Math.hypot(p.bocas[id].x-plaza.x,p.bocas[id].y-plaza.y)));
   const end:Record<MouthId,P>={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO};
   return {size:Math.max(asset.size.w,asset.size.h),plaza:{x:plaza.x,y:plaza.y,radius},
-    mouths:MOUTH_IDS.map(id=>({id,x:end[id].x,y:end[id].y})),start:{x:p.inicio.x,y:p.inicio.y}};
+    mouths:MOUTH_IDS.map(id=>({id,x:end[id].x,y:end[id].y,gate:{x:p.bocas[id].x,y:p.bocas[id].y}})),start:{x:p.inicio.x,y:p.inicio.y}};
 }
 
-/** A spawn warning this close (world units) to an avenue (its end → the plaza) comes in through that avenue's mouth. */
+/** A spawn warning this close (world units) to an avenue (its gate → its end) comes in through that avenue's mouth. */
 export const AVENUE_MATCH=10;
+/**
+ * A warning this close (world units) to a mouth's gate is at the plaza's entrance, not on the avenue: the planner's mouth
+ * line radius (src/sim/city/avenues.ts mouthHalfWidth, 2.6 u), whose groups stand past it; a boss minion summoned 2.5 u
+ * from a boss at the gate is not a mouth.
+ */
+export const GATE_RADIUS=2.6;
 /** Doc §3: a mouth stays active until 3 s after its critters come out (`atTick`). */
 export const MOUTH_TAIL_TICKS=3*SIM_HZ;
 const toSegment=(p:P,a:P,b:P)=>{
@@ -52,14 +59,30 @@ const toSegment=(p:P,a:P,b:P)=>{
   return Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy);
 };
 /**
- * The avenue a spawn warning stands on: the nearest avenue (end → plaza centre) within AVENUE_MATCH, never inside the
- * plaza (the boss lands there, D-026; minions are summoned around it). Undefined: not an avenue spawn.
+ * The avenue a spawn warning stands on: the nearest avenue within AVENUE_MATCH whose side of the plaza wall it is on.
+ * Each mouth is judged by its own entrance (gate): the point must lie past the gate, away from the plaza (on the far
+ * side of the line through the gate square to the avenue) and more than GATE_RADIUS from it; its distance is to the
+ * segment gate → avenue end. The plaza is not a circle: the south gate is 2.4 u from `praca` while the east and west
+ * ones are 12 u away, so one radius for all dropped the south avenue's nearest spawns (cidade-04 review). The boss lands
+ * inside the plaza (D-026) and its minions around it: no mouth. A mouth without a gate (DEFAULT_CITY) falls back to the
+ * segment end → plaza centre outside `plaza.radius`. Undefined: not an avenue spawn.
  */
 export function mouthOfWarning(p:P,map:CityMapInfo):MouthId|undefined{
   if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return undefined;
-  if(Math.hypot(p.x-map.plaza.x,p.y-map.plaza.y)<=map.plaza.radius)return undefined;
+  const inPlaza=Math.hypot(p.x-map.plaza.x,p.y-map.plaza.y)<=map.plaza.radius;
   let best:MouthId|undefined,bestD=AVENUE_MATCH;
-  for(const m of map.mouths){const d=toSegment(p,m,map.plaza);if(d<=bestD){bestD=d;best=m.id;}}
+  for(const m of map.mouths){
+    let d:number;
+    if(m.gate){
+      const g=m.gate,ax=m.x-g.x,ay=m.y-g.y,rx=p.x-g.x,ry=p.y-g.y;
+      if(rx*ax+ry*ay<=0||Math.hypot(rx,ry)<=GATE_RADIUS)continue;
+      d=toSegment(p,g,m);
+    }else{
+      if(inPlaza)continue;
+      d=toSegment(p,m,map.plaza);
+    }
+    if(d<=bestD){bestD=d;best=m.id;}
+  }
   return best;
 }
 /**

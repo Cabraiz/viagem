@@ -84,6 +84,8 @@ export interface EdgeArrow extends EdgeTarget {
   compact?:boolean;
   /** Which edge of the ficha the caído's tag hangs from (right: it grows leftwards, on the area's right half). */
   tagEnd:'left'|'right';
+  /** The city's beak (EdgeOptions.city): it slides along the ficha's edge, clear of the tag (beakSpot); else centred. */
+  slideBeak?:boolean;
 }
 export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:number;margin?:number;
   /**
@@ -98,8 +100,15 @@ export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:numbe
    */
   windows?:readonly (Rect|undefined)[];
   /**
-   * The (safe) viewport the beaks must stay inside, BEAK_REACH + BEAK_GAP from its edge; `seen.viewport` when not given.
-   * Without either, only the useful area bounds the fichas (RIM_PAD).
+   * The city's rim rules (card cidade-04, visual review), opt-in so the island's arrows stay as on main (golden test
+   * tests/client/edges-ilha-golden.test.ts): the rim keeps every beak BEAK_GAP inside `bounds`; the beak slides along
+   * the ficha's edge (slideBeak); a tie between two ends of a side goes to the one nearer the target; a crowded arrow of
+   * another kind may go round the corner (NEAR_RIM); a must-point arrow rather touches a neighbour than leaves its side.
+   */
+  city?:boolean;
+  /**
+   * City only: the (safe) viewport the beaks must stay inside, BEAK_REACH + BEAK_GAP from its edge (the rim shrinks so
+   * no beak can leave it); `seen.viewport` when not given. Without either, only the useful area bounds the fichas.
    */
   bounds?:Rect;
   /**
@@ -133,6 +142,15 @@ export function pointedTargets(targets:readonly EdgeTarget[],area:Rect,seen?:Edg
 }
 /** Kinds that never go without their own arrow when they need one (the zones audit fails otherwise). */
 export const MUST_POINT:readonly EdgeKind[]=['caido','chefe'];
+/**
+ * The kinds the zones audit must find an arrow of (EdgeArrows.need → data-need): those of the targets that need an
+ * arrow (pointedTargets) and must point (`must`, MUST_POINT kinds by default), once each, in EDGE_PRIORITY order.
+ */
+export function needKinds(targets:readonly EdgeTarget[],must:(t:EdgeTarget)=>boolean=t=>MUST_POINT.includes(t.kind)):EdgeKind[]{
+  const kinds=new Set<EdgeKind>();
+  for(const t of targets)if(must(t))kinds.add(t.kind);
+  return [...kinds].sort((a,b)=>EDGE_PRIORITY[a]-EDGE_PRIORITY[b]);
+}
 /** Half size of an arrow ficha at a text scale (100% or 125%): the CSS uses the same numbers. */
 export const arrowHalf=(scale=1)=>({w:(44+32*scale)/2,h:18});
 
@@ -169,10 +187,18 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
   const named=sorted.some(t=>t.kind==='caido'&&!!t.label);
   const hw=Math.min(half.w+RIM_PAD,area.width/2),hh=Math.min(half.h+RIM_PAD,area.height/2),top=Math.min(TAG_ROOM,Math.max(0,area.height-2*hh));
   const under=named?Math.min(NAME_ROOM,Math.max(0,area.height-2*hh-top)):0;
-  const inner={x:area.x+hw,y:area.y+hh+top,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh-top-under)};
-  // The beak reaches BEAK_REACH past the ficha: where the area runs to the viewport's edge, an arrow whose beak would
-  // leave the screen steps inward by what sticks out (a few px; arrowAt).
-  const bounds=options.bounds??options.seen?.viewport;
+  let inner={x:area.x+hw,y:area.y+hh+top,width:Math.max(0,area.width-2*hw),height:Math.max(0,area.height-2*hh-top-under)};
+  const city=!!options.city;
+  // City: the beak reaches BEAK_REACH past the ficha (half size + BEAK_REACH from its centre at most, beakSpot), so where
+  // the area runs to the viewport's edge (portrait's right rim) the rim shrinks until no beak can leave the screen. The
+  // spots are chosen on that rim, so the hero's keep-out is checked where the arrow really goes (no clamp afterwards).
+  const bounds=city?options.bounds??options.seen?.viewport:undefined;
+  if(bounds){
+    const rx=half.w+BEAK_REACH+BEAK_GAP,ry=half.h+BEAK_REACH+BEAK_GAP;
+    const x0=Math.max(inner.x,bounds.x+rx),y0=Math.max(inner.y,bounds.y+ry);
+    const x1=Math.min(inner.x+inner.width,bounds.x+bounds.width-rx),y1=Math.min(inner.y+inner.height,bounds.y+bounds.height-ry);
+    inner={x:x0,y:y0,width:Math.max(0,x1-x0),height:Math.max(0,y1-y0)};
+  }
   const must=options.mustPoint??((t:EdgeTarget)=>MUST_POINT.includes(t.kind));
   const out:EdgeArrow[]=[];
   // The hero keep-out counts the caído's tag too (it rides above the ficha and can be wider: "Zé: Me salva, 24 s").
@@ -189,14 +215,21 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
     // right end (tagSpan), so they never widen the box.
     const w=Math.max(2*half.w,tagWidth(tag,scale));
     if(current!.kind!=='caido')return {x:x+half.w-w,y:y-half.h-TAG_ROOM,width:w,height:2*half.h+TAG_ROOM+name};
-    const left=tagFromRight(current!.kind,x)?x+half.w-w:x-half.w-4;
+    // The island keeps main's box (its spacing between arrows, golden test): a tag hung from the right end started 4 px
+    // right of the ficha's left edge. The hero's keep-out reads the whole ficha anyway (keep, below).
+    const left=tagFromRight(current!.kind,x)?x+half.w-w+(city?0:4):x-half.w-4;
     return {x:left,y:y-half.h-TAG_ROOM,width:w+4,height:2*half.h+TAG_ROOM+name};
   };
+  // What must stay clear of the hero: the box and the whole ficha. Main's island box left the ficha's left 4 px out when
+  // the tag hangs from the right end, which let a caído sit 2-3 px into the keep-out: the one change to the island's
+  // layout (golden test).
+  const keep=(x:number,y:number):Rect=>{const b=box(x,y),l=Math.min(b.x,x-half.w),t=Math.min(b.y,y-half.h);
+    return {x:l,y:t,width:Math.max(b.x+b.width,x+half.w)-l,height:Math.max(b.y+b.height,y+half.h)-t};};
   // On the top and bottom rims the keep-out is wider sideways (HEAD_ROOM): in a short field those rims are level with the
   // hero's head. A tall field (portrait) keeps them far above or below it, so this changes nothing there.
   let along=false;
   const head=hero&&{x:hero.x-Math.max(HEAD_ROOM,margin),y:hero.y-margin,width:hero.width+2*Math.max(HEAD_ROOM,margin),height:hero.height+2*margin};
-  const clear=(x:number,y:number,wide=along)=>!hero||!crosses(box(x,y),hero,margin)&&!(wide&&crosses(box(x,y),head!));
+  const clear=(x:number,y:number,wide=along)=>!hero||!crosses(keep(x,y),hero,margin)&&!(wide&&crosses(keep(x,y),head!));
   const onRim=(x:number,y:number)=>x>=inner.x-.5&&x<=inner.x+inner.width+.5&&y>=inner.y-.5&&y<=inner.y+inner.height+.5;
   // Crowded: the boxes (ficha, the caído's tag above and name below) would touch, 4 px apart at least. Arrows closer
   // than `merge` count as crowded too (one target seen twice, or two side by side that read as one).
@@ -222,8 +255,9 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
       const b=box(x,y),slide=(k:number)=>along?[hero!.x-k-(b.x+b.width-x),hero!.x+hero!.width+k+(x-b.x)]:[hero!.y-k-(b.y+b.height-y),hero!.y+hero!.height+k+(y-b.y)];
       // Nearest first; a tie (to the px: both ends of a side, the hero in its middle) goes to the end nearer the target,
       // so a group straight up and the base up-right do not swap corners (visual review cidade-04).
-      const near=(list:Point[])=>list.sort((p,q)=>Math.round(Math.hypot(p.x-x,p.y-y))-Math.round(Math.hypot(q.x-x,q.y-y))
-        ||Math.hypot(p.x-t.screen.x,p.y-t.screen.y)-Math.hypot(q.x-t.screen.x,q.y-t.screen.y));
+      const near=(list:Point[])=>list.sort(city?(p,q)=>Math.round(Math.hypot(p.x-x,p.y-y))-Math.round(Math.hypot(q.x-x,q.y-y))
+        ||Math.hypot(p.x-t.screen.x,p.y-t.screen.y)-Math.hypot(q.x-t.screen.x,q.y-t.screen.y)
+        :(p,q)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y));
       const spots=(k:number,wide:boolean)=>near(slide(k+SLIDE_SLACK).filter(v=>along?onRim(v,y):onRim(x,v)).map(v=>along?{x:v,y}:{x,y:v})).map(p=>({...p,wide}));
       // No room on its own side (a short area, a wide tag): the nearest corner of the rim that is clear. A caído's arrow
       // must never vanish because the hero stands in the way (UX onda 6). Corners keep the plain keep-out (they are the
@@ -248,16 +282,16 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
       const by=crowded(x,y)!;
       for(const sign of [1,-1])next.push(along?{x:by.x+sign*step,y}:{x,y:by.y+sign*step});
       // Right under or over the arrow in the way, as close as the boxes allow (a short side holds a ficha under a name).
-      if(!along){const b=boxes.get(by)!;next.push({x,y:b.y+b.height+4+half.h+(current&&edgeTag(current)?TAG_ROOM:0)},{x,y:b.y-4-half.h-(current?.kind==='caido'&&current.label?NAME_ROOM:0)});}
+      if(!along){const b=boxes.get(by)!;next.push({x,y:b.y+b.height+4+half.h+(current&&(current.kind==='caido'||edgeTag(current))?TAG_ROOM:0)},{x,y:b.y-4-half.h-(current?.kind==='caido'&&current.label?NAME_ROOM:0)});}
       const byDist=(p:Point,q:Point)=>Math.hypot(p.x-x,p.y-y)-Math.hypot(q.x-x,q.y-y);
       next.sort(byDist);
       // Another kind in the way and no step left on this side: the rim nearby, round the corner (a short landscape
       // field dropped the east mouth while the next side had room, visual review cidade-04). The same kind folds instead.
-      if(by.kind!==t.kind)next.push(...rim().filter(p=>Math.hypot(p.x-x,p.y-y)<=NEAR_RIM).sort(byDist));
+      if(city&&by.kind!==t.kind)next.push(...rim().filter(p=>Math.hypot(p.x-x,p.y-y)<=NEAR_RIM).sort(byDist));
       const own=must(t)&&by.kind!==t.kind,fits=(p:Point,pad?:number)=>onRim(p.x,p.y)&&clear(p.x,p.y,wide)&&!crowded(p.x,p.y,pad);
       let spot=next.find(p=>fits(p));
       // A caído, the boss (or the city's base) rather touches a neighbour's box than goes to the far side of the field.
-      if(!spot&&own)spot=[{x,y},...next].find(p=>fits(p,0));
+      if(!spot&&own&&city)spot=[{x,y},...next].find(p=>fits(p,0));
       // The caído and the boss never hide inside another kind's arrow while the rim has a free spot.
       if(!spot&&own)spot=[...corners().sort(byDist),...rim().sort(byDist)].find(p=>fits(p));
       if(!spot){if(by.kind===t.kind)by.count++;else if(own)out.push(arrowAt(t,x,y));continue;}
@@ -272,17 +306,9 @@ function placeEdges(targets:readonly EdgeTarget[],area:Rect,hero:Rect|undefined,
     out.push(arrowAt(t,x,y));
   }
   function arrowAt(t:EdgeTarget,x:number,y:number):EdgeArrow{
-    // Keep the beak's tip BEAK_GAP inside the viewport (portrait's right rim cut it by ~5 px, visual review cidade-04).
-    if(bounds)for(let pass=0;pass<2;pass++){
-      const angle=Math.atan2(t.screen.y-y,t.screen.x-x),tag=edgeTag({...t,compact});
-      const b=beakSpot(angle,half,tag?{end:tagEndOf(t.kind,x,area),width:tagWidth(tag,scale),flush:t.kind!=='caido'}:undefined),reach=b.r+BEAK_REACH;
-      const ax=x+b.ox+Math.cos(angle)*reach,ay=y+b.oy+Math.sin(angle)*reach;
-      const dx=Math.max(0,bounds.x+BEAK_GAP-ax)-Math.max(0,ax-(bounds.x+bounds.width-BEAK_GAP));
-      const dy=Math.max(0,bounds.y+BEAK_GAP-ay)-Math.max(0,ay-(bounds.y+bounds.height-BEAK_GAP));
-      if(Math.abs(dx)<1e-6&&Math.abs(dy)<1e-6)break;
-      x+=dx;y+=dy;
-    }
-    const a:EdgeArrow={...t,...(compact?{compact}:{}),x,y,side:sideOf(x,y,inner),count:1,tagEnd:tagEndOf(t.kind,x,area),angle:Math.atan2(t.screen.y-y,t.screen.x-x)};
+    // The island's arrows without a tag keep main's tagEnd (by the area's half); a tag of the city hangs as tagEndOf says.
+    const tagEnd=t.kind==='caido'||edgeTag(t)?tagEndOf(t.kind,x,area):x>area.x+area.width/2?'right':'left';
+    const a:EdgeArrow={...t,...(compact?{compact}:{}),x,y,side:sideOf(x,y,inner),count:1,tagEnd,angle:Math.atan2(t.screen.y-y,t.screen.x-x),...(city?{slideBeak:true}:{})};
     boxes.set(a,box(x,y));return a;
   }
   return out;
@@ -364,6 +390,16 @@ export function beakSpot(angle:number,half:{w:number;h:number},tag?:{end:'left'|
   }
   return {ox:target-ex,oy:0,r:half.h/Math.abs(s)};
 }
+/**
+ * The beak's CSS transform: the city's slides along the ficha's edge (beakSpot, `tagText` the tag as drawn, "+N"
+ * included); the island's stays centred on the pointing direction, as on main (golden test).
+ */
+export function beakTransform(a:Pick<EdgeArrow,'angle'|'kind'|'tagEnd'|'slideBeak'>,half:{w:number;h:number},tagText:string){
+  const turn=`rotate(${a.angle.toFixed(2)}rad)`;
+  if(!a.slideBeak)return `${turn} translateX(${Math.round(beakRadius(a.angle,half))}px)`;
+  const beak=beakSpot(a.angle,half,tagText?{end:a.tagEnd,width:tagWidth(tagText,Math.max(1,(2*half.w-44)/32)),flush:a.kind!=='caido'}:undefined);
+  return `translate(${Math.round(beak.ox)}px,${Math.round(beak.oy)}px) ${turn} translateX(${Math.round(beak.r)}px)`;
+}
 
 // ---------- DOM (browser only) ----------
 interface Slot {el:HTMLElement;face:HTMLElement;num:HTMLElement;tag:HTMLElement;count:HTMLElement;name:HTMLElement;tip:HTMLElement;key:string;last:Map<string,string>}
@@ -408,8 +444,7 @@ export class EdgeArrows {
       put(slot,'at',`translate(${Math.round(a.x-half.w)}px,${Math.round(a.y-half.h)}px)`,v=>{slot.el.style.transform=v;});
       // A caído's "+N" rides inside its tag ("6 s +1"): a separate badge sat on the tag's corner and hid the seconds.
       const tag=edgeTag(a),more=a.count>1?`+${a.count-1}`:'',tagText=tag&&more?`${tag} ${more}`:tag;
-      const beak=beakSpot(a.angle,half,tagText?{end:a.tagEnd,width:tagWidth(tagText,Math.max(1,(2*half.w-44)/32)),flush:a.kind!=='caido'}:undefined);
-      put(slot,'tip',`translate(${Math.round(beak.ox)}px,${Math.round(beak.oy)}px) rotate(${a.angle.toFixed(2)}rad) translateX(${Math.round(beak.r)}px)`,v=>{slot.tip.style.transform=v;});
+      put(slot,'tip',beakTransform(a,half,tagText),v=>{slot.tip.style.transform=v;});
       put(slot,'kind',a.kind,v=>{slot.el.dataset.kind=v;});
       put(slot,'side',a.side,v=>{slot.el.dataset.side=v;});
       put(slot,'tagEnd',a.tagEnd,v=>{slot.el.dataset.tag=v;});
@@ -427,11 +462,13 @@ export class EdgeArrows {
     }
   }
   /**
-   * Which MUST_POINT kinds need an arrow right now (pointedTargets), on the layer as data-need: the zones audit fails
-   * when one of them has no arrow of its own (NEW-20261011-UX-janela-esconde-caido). Written only when it changes.
+   * Which must-point kinds need an arrow right now (pointedTargets), on the layer as data-need: the zones audit fails
+   * when one of them has no arrow of its own (NEW-20261011-UX-janela-esconde-caido). `must` is the layout's
+   * (EdgeOptions.mustPoint): the city passes cityMustPoint, so the base after the horn is audited too. Written only when
+   * it changes.
    */
-  need(targets:readonly EdgeTarget[]){
-    const v=MUST_POINT.filter(k=>targets.some(t=>t.kind===k)).join(' ');
+  need(targets:readonly EdgeTarget[],must?:(t:EdgeTarget)=>boolean){
+    const v=needKinds(targets,must).join(' ');
     if((this.el.dataset.need??'')!==v)this.el.dataset.need=v;
   }
   clear(){for(const s of this.slots){s.el.hidden=true;s.key='';}if(this.el.dataset.need)this.el.dataset.need='';}

@@ -15,6 +15,9 @@ import * as edgesMod from '../../src/client/hud/edges.ts';
 import {ICON_NAMES} from '../../src/client/ui/icon.ts';
 import {cityTerrainFrom} from '../../src/maps/index.ts';
 import {readFileSync} from 'node:fs';
+import * as nodeModule from 'node:module';
+import {cityPlanner} from '../../src/sim/city/grid.ts';
+import {Rng} from '../../src/contract/rng.ts';
 import type {Rect,ScreenZones,AuditBox,EdgeTarget,EdgeArrow} from '../../src/client/hud/city/deps.ts';
 import type {CityLayout,CityLayoutInput,EnemyPoint,EnemyGroup,MapId,SelectorState,SelectorEvent,CityView,CityMark} from '../../src/client/hud/city/index.ts';
 
@@ -923,7 +926,7 @@ test('§7 CityMapInfo from the real asset: plaza at praca with its farthest entr
   assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:p.praca.x,y:p.praca.y});
   const radius=Math.max(...(['N','S','L','O'] as const).map(id=>Math.hypot(p.bocas[id].x-p.praca.x,p.bocas[id].y-p.praca.y)));
   assert.ok(near(map.plaza.radius,radius),`radius ${map.plaza.radius}`);assert.ok(map.plaza.radius>8&&map.plaza.radius<20,'a plaza, not the city');
-  assert.deepEqual(map.mouths,[{id:'N',...p.spawnN},{id:'S',...p.spawnS},{id:'L',...p.spawnL},{id:'O',...p.spawnO}].map(m=>({id:m.id,x:m.x,y:m.y})));
+  assert.deepEqual(map.mouths,(['N','S','L','O'] as const).map(id=>({id,...p[`spawn${id}`],gate:{...p.bocas[id]}})),'each avenue end with its entrance on the plaza wall as its gate');
   assert.deepEqual(map.start,{x:p.inicio.x,y:p.inicio.y});
   // On the minimap (view 0) the mouths keep their compass: N up, S down, L right, O left, each on its side of the plaza.
   const c=city.cityMinimapPoint(map.plaza,0),at=(id:'N'|'S'|'L'|'O')=>city.cityMinimapPoint(map.mouths.find(m=>m.id===id)!,0);
@@ -935,18 +938,108 @@ test('§7 CityMapInfo from the real asset: plaza at praca with its farthest entr
   assert.equal(city.cityAssetOf({world:'cidade'}),undefined,'a city without its asset is not guessed');
 });
 
-test('§7 world swap: the city gets the city minimap, the endless map and the island their own; the driver swaps per frame',()=>{
+// The run HUD and its driver import CSS (Vite): node loads them with the CSS stubbed, so their real methods run here
+// against small fakes (no DOM).
+const registerHooks=(nodeModule as {registerHooks?:(hooks:object)=>unknown}).registerHooks;
+const noCss=registerHooks?(registerHooks({load(url:string,context:unknown,next:(url:string,context:unknown)=>unknown){
+  return url.endsWith('.css')?{format:'module',source:'',shortCircuit:true}:next(url,context);}}),undefined):'needs node:module registerHooks (node ≥ 22.15)';
+
+test('§7 world swap: the city gets the city minimap, the endless map and the island their own',()=>{
   assert.equal(city.minimapMode({world:'cidade'}),'cidade');
   assert.equal(city.minimapMode({world:'cidade',chunks:undefined}),'cidade');
   assert.equal(city.minimapMode({world:'infinito',chunks:{}}),'infinito');
   assert.equal(city.minimapMode({world:'ilha'}),'ilha');assert.equal(city.minimapMode({}),'ilha');
-  const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8'),rescue=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
-  // One `.rh-minimap` in the DOM at a time (measureZones reads the first), the layout watching the one in the slot.
-  assert.match(hud,/from\.replaceWith\(to\)/);assert.match(hud,/this\.observer\?\.unobserve\(from\);this\.observer\?\.observe\(to\)/);
-  // The swap runs before the out-of-combat return: a map switched in the lobby is in place when the run starts.
-  const tick=rescue.slice(rescue.indexOf('private tick(){'));
-  assert.ok(tick.indexOf('hud.useCityMinimap(!!asset)')>=0&&tick.indexOf('hud.useCityMinimap(!!asset)')<tick.indexOf('if(!scene||!combat'),'swap before the early return');
-  assert.ok(tick.indexOf('this.cityFrame(')<tick.indexOf('radar('),'the city frame replaces the island radar');
+});
+
+test('§7 world swap: RunHud.useCityMinimap puts one minimap in the slot, moves the layout\'s watch to it and undoes it',{skip:noCss},async()=>{
+  const {RunHud}=await import('../../src/client/hud/hud.ts');
+  const log:string[]=[];
+  const node=(name:string)=>({name,replaceWith(to:{name:string}){log.push(`${name}→${to.name}`);},remove(){log.push(`remove ${name}`);}});
+  const island=node('ilha'),cityEl=node('cidade'),big=node('grande');
+  const cityMini={element:cityEl,big,collapse(){log.push('collapse');}};
+  const hud=Object.create(RunHud.prototype) as InstanceType<typeof RunHud>;
+  Object.assign(hud,{minimap:{el:island},cityOn:false,cityMap:new city.BigMapState(),relayout:()=>log.push('relayout'),
+    observer:{observe:(e:{name:string})=>log.push(`observe ${e.name}`),unobserve:(e:{name:string})=>log.push(`unobserve ${e.name}`)},
+    createCityMinimap:()=>{log.push('create');return cityMini;}});
+  hud.useCityMinimap(true);
+  assert.deepEqual(log,['create','ilha→cidade','unobserve ilha','observe cidade','relayout'],'the city minimap takes the slot and the layout watches it');
+  assert.equal(hud.cityMinimap,cityMini);
+  log.length=0;hud.useCityMinimap(true);assert.deepEqual(log,[],'every frame calls it: a no-op when nothing changes');
+  hud.cityMap.tap(0,400);assert.equal(hud.cityMap.open,true);
+  hud.useCityMinimap(false);
+  assert.deepEqual(log,['collapse','remove grande','cidade→ilha','unobserve cidade','observe ilha','relayout'],'back to the island: the big one closes and goes, the island minimap returns');
+  assert.equal(hud.cityMap.open,false);assert.equal(hud.cityMinimap,undefined);
+  log.length=0;hud.useCityMinimap(true);
+  assert.deepEqual(log,['ilha→cidade','unobserve ilha','observe cidade','relayout'],'built once, reused');
+});
+
+/** A RescueBoard with only what its frames read, faked (no DOM, no socket); `calls` records what it drove. */
+async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
+  const {RescueBoard}=await import('../../src/client/hud/rescue.ts');
+  const calls:string[]=[],area=USEFUL.portrait.n100,hero={x:84.5,y:150};
+  const board=Object.create(RescueBoard.prototype) as Record<string,unknown>;
+  const hud={el:{hidden:false,classList:{contains:()=>false}},cityMap:new city.BigMapState(),
+    useCityMinimap:(on:boolean)=>calls.push(`useCityMinimap ${on}`),closeCityMap:()=>calls.push('closeCityMap'),zones:()=>({useful:area}),
+    edges:{clear:()=>calls.push('edges.clear'),render:(a:readonly EdgeArrow[])=>calls.push(`edges.render ${a.length}`),need:()=>calls.push('edges.need'),scale:()=>1}};
+  const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,
+    locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-hero.x)*60,y:area.y+area.height/2+(p.y-hero.y)*60}})};
+  const net={id:'me',terrain,run:{phase},feed:{players:new Map(),enemies:new Map()},view:()=>({players:[]})};
+  Object.assign(board,{net,hud,scene:()=>scene,gate:{remaining:()=>0},button:{hidden:true,setAttribute(){},style:{setProperty(){}}},
+    states:new Map(),warnings:[],pings:{get:()=>undefined,clear(){}},said:new Set(),mouths:new Map(),groupKeys:new Set(),windows:[],
+    last:{tick:1000,players:[],telegraphs:[],pickups:[],nodes:[],structures:[],round:{phase:'wave'}},
+    seen:()=>({viewport:{x:0,y:0,width:390,height:844},covered:[]}),cityFrame:()=>calls.push('cityFrame'),minimapAt:0});
+  return {board:board as unknown as {tick():void},calls};
+}
+
+test('§7 world swap: the driver swaps the minimap every frame, before the out-of-combat return; the city frame replaces the island radar',{skip:noCss},async()=>{
+  const cityTerrain=await realCity();
+  // In the lobby (a map switched there): the slot follows the world, nothing is drawn.
+  for(const [terrain,on] of [[cityTerrain,true],[{world:'ilha'},false]] as const){
+    const {board,calls}=await fakeBoard(terrain,'lobby');board.tick();
+    assert.deepEqual(calls,[`useCityMinimap ${on}`,'edges.clear'],`lobby on ${on?'the city':'the island'}`);
+  }
+  // In a wave in the city: the city frame draws, never the island's radar and arrows.
+  const inCity=await fakeBoard(cityTerrain,'combat');inCity.board.tick();
+  assert.deepEqual(inCity.calls,['useCityMinimap true','cityFrame']);
+  // On the island: the radar's arrows, never the city frame.
+  const onIsland=await fakeBoard({world:'ilha'},'combat');onIsland.board.tick();
+  assert.deepEqual(onIsland.calls,['useCityMinimap false','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
+});
+
+test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and only re-located in between; the horn base is audited',{skip:noCss},async()=>{
+  const {RescueBoard,CITY_TARGETS_MS}=await import('../../src/client/hud/rescue.ts');
+  assert.ok(CITY_TARGETS_MS>=100,'≤ 10 Hz');
+  const terrain=await realCity(),asset=city.cityAssetOf(terrain)!,area=USEFUL.portrait.n100,me={x:84.5,y:150};
+  let cam={...me},sweeps=0;const rendered:EdgeArrow[][]=[],needs:string[][]=[];
+  const enemies=new Map(blob('g',41.75,145.75,13,lcg(3)).map(e=>[e.id,{...e,hp:10}]));
+  const feed={players:new Map(),enemies:{values:()=>{sweeps++;return enemies.values();}}};
+  const scene={usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),cameraView:0,
+    locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-cam.x)*60,y:area.y+area.height/2+(p.y-cam.y)*60}})};
+  const hud={cityMap:new city.BigMapState(),cityBig:()=>({side:300,coversAnnounce:false}),cityNotice:()=>undefined,blockCityMap(){},cityMinimap:undefined,offline:false,
+    edges:{render:(a:EdgeArrow[])=>rendered.push(a),need:(t:EdgeTarget[],must?:(t:EdgeTarget)=>boolean)=>needs.push(edgesMod.needKinds(t,must)),scale:()=>1}};
+  const board=Object.create(RescueBoard.prototype) as Record<string,unknown>&{cityFrame(...a:unknown[]):void;cityEnemies:object[];cityPeople:object[]};
+  Object.assign(board,{net:{id:'me',feed},hud,states:new Map([['p3',{id:'p3',downed:{progress:0,bleedOutTick:1280}}]]),pings:{get:()=>undefined},
+    mouths:new Map(),groupKeys:new Set(),windows:[],wallHitAt:-Infinity,hurtAt:-Infinity,minimapAt:0,cityAt:-Infinity,
+    cityPeople:[],cityEnemies:[],cityTargets:[],cityNearest:Infinity,cityPhase:'wave',cityMouths:[],
+    last:{tick:1000,round:{phase:'prepare'},camp:{hornEndsTick:1100},telegraphs:[],structures:[],pickups:[]},
+    seen:()=>({viewport:{x:0,y:0,width:390,height:844},covered:[]})});
+  const players=[{id:'me',name:'Você',classId:'mestre-de-obras',x:me.x,y:me.y,online:true},{id:'p3',name:'Zé do Pix',classId:'mestre-de-obras',x:118,y:142,online:true}];
+  const frame=(now:number)=>board.cityFrame(asset,scene,players,cam,{useful:area},now);
+  frame(1000);
+  assert.equal(sweeps,1,'the first frame builds the targets');
+  const enemy0=board.cityEnemies[0],person0=board.cityPeople[0];
+  const first=rendered.at(-1)!,group0=first.find(a=>a.kind==='grupo')!;
+  assert.ok(group0&&first.some(a=>a.kind==='base')&&first.some(a=>a.key==='p3'),first.map(a=>a.key).join());
+  // 5 more frames inside the window, the camera walking east: no sweep of the critters, the arrows follow the camera.
+  for(let k=1;k<=5;k++){cam={x:me.x+k*.1,y:me.y};frame(1000+k*16);}
+  assert.equal(sweeps,1,'no rebuild between two refreshes');
+  const moved=rendered.at(-1)!.find(a=>a.key===group0.key)!;
+  assert.ok(moved.distance>group0.distance,'re-located: the hero walked away from the group');
+  frame(1000+CITY_TARGETS_MS);
+  assert.equal(sweeps,2,'rebuilt at the next refresh');
+  assert.equal(board.cityEnemies[0],enemy0,'the critter buffer is reused');assert.equal(board.cityPeople[0],person0,'the people buffer too');
+  // The horn is running (5 s): the base is a must-point arrow, so the audit's data-need lists it.
+  assert.deepEqual(needs.at(-1),['caido','base']);
 });
 
 test('§7 grupo edge kind: priority 2 (after chefe, before spawn and base), an existing sticker, its tag room kept in the area',()=>{
@@ -1013,6 +1106,48 @@ test('§7 active mouths: a spawn warning lights the mouth of its avenue (real ma
   assert.deepEqual(city.trackMouths(state,[warn('O',1200)],1030+city.MOUTH_TAIL_TICKS+1,map),['O'],'then off');
   assert.deepEqual(city.trackMouths(state,[warn('O',1100)],1150,map),['O'],'an older warning never shortens a mouth');
   assert.deepEqual(city.trackMouths(state,[{type:'spawn-warning',x:plaza.x,y:plaza.y,atTick:1300}],1250,map),['O'],'the boss warning lights nothing');
+});
+
+test('cidade-04: every point the real planner spawns a group at lights that group\'s mouth (the south avenue starts 2.4 u from praca)',async()=>{
+  const terrain=await realCity(),map=city.cityMapInfo(city.cityAssetOf(terrain)!),planner=cityPlanner(terrain),P=terrain.asset.points;
+  // The plaza is no circle: its south gate is 2.4 u from praca, the east and west ones 12 u. A radius for all (12.66 u)
+  // dropped the south groups planned right outside their gate (5.9 u from praca, cidade-04 review).
+  const gateS=map.mouths.find(m=>m.id==='S')!.gate!;
+  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<3&&map.plaza.radius>12);
+  // Players at the plaza, east of it, at the start, on each avenue and at its end; with the team chase (cidade-05c) and without.
+  const spots=[P.praca,{x:P.praca.x+20,y:P.praca.y},P.inicio,{x:84,y:40},{x:40,y:88},{x:130,y:88},{x:84,y:130},P.spawnN,P.spawnL,P.spawnO];
+  let total=0,south=0,nearPlaza=0;const wrong:string[]=[];
+  for(const mode of ['cerco','normal','alternado','excursao'] as const)for(let seed=1;seed<=3;seed++)for(const s of spots)for(const chase of [false,true]){
+    const state=planner.openRound(2+seed,mode,new Rng(seed));
+    const groups=planner.planGroups([{at:0,size:12},{at:40,size:12},{at:80,size:20}],[{id:'a',x:s.x,y:s.y}],state,new Rng(seed+9),
+      chase?{chaseCost:p=>Math.hypot(p.x-s.x,p.y-s.y)}:{});
+    for(const g of groups)for(const p of g.points){
+      total++;if(g.mouth==='S')south++;
+      if(Math.hypot(p.x-map.plaza.x,p.y-map.plaza.y)<=map.plaza.radius)nearPlaza++;
+      const got=city.mouthOfWarning(p,map);
+      if(got!==g.mouth&&wrong.length<5)wrong.push(`${mode} seed ${seed} at ${s.x},${s.y}${chase?' chase':''}: ${g.mouth} group at ${p.x.toFixed(2)},${p.y.toFixed(2)} → ${got}`);
+    }
+  }
+  assert.deepEqual(wrong,[],`${total} points`);
+  assert.ok(total>5000&&south>500&&nearPlaza>0,`the scenes reach the case: ${total} points, ${south} south, ${nearPlaza} within the old radius`);
+  // Inside the plaza (the boss lands there, its minions 2.5 u around it, D-026) nothing lights, even beside a gate.
+  for(const c of [map.plaza,{x:84.1,y:86.5}])for(let a=0;a<12;a++){
+    const p={x:c.x+Math.cos(a*Math.PI/6)*2.5,y:c.y+Math.sin(a*Math.PI/6)*2.5};
+    assert.equal(city.mouthOfWarning(p,map),undefined,`a minion at ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  }
+  for(const m of map.mouths)assert.equal(city.mouthOfWarning(m.gate!,map),undefined,`at gate ${m.id}`);
+});
+
+test('cidade-04: the audit\'s must-point kinds follow the layout\'s rule: the city\'s base after the horn is checked too',()=>{
+  const base=target('base','base',900,440,30,{seconds:4,danger:true}),plain=target('base','base',900,440,30);
+  const caido=target('p3','caido',-200,440,12,{seconds:9}),chefe=target('chefe:b','chefe',200,-300,40),group=target('grupo:1','grupo',200,1200,20);
+  assert.deepEqual(edgesMod.needKinds([group,base,chefe,caido]),['caido','chefe'],'the island\'s rule: caído and boss only');
+  assert.deepEqual(edgesMod.needKinds([group,base,chefe,caido],city.cityMustPoint),['caido','chefe','base'],'the city\'s: and the base after the horn');
+  assert.deepEqual(edgesMod.needKinds([plain,group],city.cityMustPoint),[],'a plain base may give way');
+  // What the audit then does with it: a needed kind without an arrow fails (zones.ts auditBoxes, unpointed).
+  const zones=computeZones({viewport:{width:390,height:844},...city.REFERENCE_CONTROLS.portrait});
+  const audit=auditBoxes([{name:'sem-seta-base',rect:r(0,0,0,0),unpointed:true}],zones,heroAt(zones.useful,0,0));
+  assert.equal(audit.ok,false);assert.deepEqual(audit.unpointed,['sem-seta-base']);
 });
 
 test('§7 the big minimap: screen corners from the camera, open on tap (side ≥ 120, not blocked), closes on tap or by itself',()=>{
@@ -1153,9 +1288,53 @@ test('cidade-04: groups fold with their counts summed; one past GROUP_RANGE (the
   for(const a of g){assert.equal(a.count,1,'never "+1"');assert.equal(a.label,String(countOf(a)));}
 });
 
-test('cidade-04: the HUD sandbox shows its 56 px hero stand-in (the body>:not(…) rule hid it), so overlaps with the hero can be judged',()=>{
-  const src=readFileSync(new URL('../../src/client/sandboxes/sandbox-hud.ts',import.meta.url),'utf8');
-  const hide=src.split('\n').find(l=>l.startsWith('body>:not('));
-  assert.ok(hide&&hide.includes(':not(.hs-hero)'),hide);
-  assert.ok(/\.hs-hero\{[^}]*width:56px;height:56px/.test(src),'56 px, one city cell (D-030)');
+/**
+ * The rules of a style sheet (no nesting but @media, whose rules count as if they applied) that match an element, by a
+ * small selector matcher: compound selectors of a tag, classes, `[attr]` and `:not(…)` of those, joined by `>` or ` `;
+ * a pseudo-class other than :not and a pseudo-element never match the stand-in.
+ */
+function matchingRules(css:string,chain:readonly {tag:string;classes:readonly string[]}[]){
+  const rules:{selector:string;body:string}[]=[];
+  const flat=css.replace(/@media[^{]*\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}/g,'$1');
+  for(const m of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g))rules.push({selector:m[1].trim(),body:m[2]});
+  const simple=(sel:string,el:{tag:string;classes:readonly string[]}):boolean=>{
+    let rest=sel;
+    for(const not of [...sel.matchAll(/:not\(([^()]*)\)/g)]){if(simple(not[1],el))return false;rest=rest.replace(not[0],'');}
+    if(/\[[^\]]*\]|:/.test(rest))return false;// attributes, other pseudo-classes and pseudo-elements: not the stand-in
+    const tag=rest.match(/^[a-z][a-z0-9-]*/)?.[0];
+    if(tag&&tag!==el.tag)return false;
+    return [...rest.matchAll(/\.([\w-]+)/g)].every(c=>el.classes.includes(c[1]));
+  };
+  // chain[0] is the element, then its ancestors up to <html>.
+  const complex=(sel:string)=>{
+    const parts=sel.replace(/\s*>\s*/g,' > ').trim().split(/\s+/);
+    if(!simple(parts.at(-1)!,chain[0]))return false;
+    let i=0;
+    for(let k=parts.length-2;k>=0;k--){
+      if(parts[k]==='>'){k--;i++;if(i>=chain.length||!simple(parts[k],chain[i]))return false;continue;}
+      do i++;while(i<chain.length&&!simple(parts[k],chain[i]));
+      if(i>=chain.length)return false;
+    }
+    return true;
+  };
+  return rules.filter(r=>r.selector.split(',').some(s=>complex(s.trim())));
+}
+/** The last value a list of rules gives a property (source order), or undefined. */
+const declOf=(rules:readonly {body:string}[],prop:string)=>rules.map(r=>r.body.split(';').map(d=>d.split(':')).find(([k])=>k.trim()===prop)?.slice(1).join(':').trim()).filter(Boolean).at(-1);
+
+test('cidade-04: the HUD sandbox shows its 56 px hero stand-in (the body>:not(…) rule hid it), so overlaps with the hero can be judged',{skip:noCss},async()=>{
+  // The style sheet the sandbox injects when it runs (city mode), caught as it is appended; the run stops there.
+  const STOP=Symbol('stop'),g=globalThis as Record<string,unknown>,saved={location:g.location,document:g.document};
+  let css='';
+  g.location={search:'?mapa=cidade'};
+  g.document={createElement:(tag:string)=>({tagName:tag,textContent:''}),head:{append:(el:{textContent:string})=>{css=el.textContent;throw STOP;}}};
+  try{await import('../../src/client/sandboxes/sandbox-hud.ts');}catch(e){if(e!==STOP)throw e;}
+  finally{g.location=saved.location;g.document=saved.document;}
+  assert.ok(css.length>0,'the sandbox injects its style sheet');
+  const body={tag:'body',classes:['hs-cidade']},html={tag:'html',classes:[]};
+  const hero=matchingRules(css,[{tag:'div',classes:['hs-hero']},body,html]);
+  assert.equal(declOf(hero,'display'),undefined,`nothing hides the stand-in: ${hero.map(r=>r.selector).join(' | ')}`);
+  assert.equal(declOf(hero,'width'),'56px');assert.equal(declOf(hero,'height'),'56px','56 px, one city cell (D-030)');
+  // The matcher is not blind: any other child of the body the sandbox does not list is hidden by that rule.
+  assert.match(declOf(matchingRules(css,[{tag:'div',classes:['stray']},body,html]),'display')??'',/^none/);
 });

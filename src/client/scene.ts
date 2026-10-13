@@ -3,7 +3,9 @@ import {propChunks} from './terrain/tiles.ts';
 import {TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,followWorld,hordeUiScale,worldZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {SceneTerrain,worldCamera} from './world-swap.ts';
+import {CITY_PALETTE} from './render/city/palette.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
@@ -82,7 +84,14 @@ export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   private view=0;
   private landscape?:TerrainLayer;
-  private field!:TerrainField;
+  /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
+  private dropGround?:()=>void;
+  /**
+   * The scene's ONE terrain (cidade-04 review #4): camera, projection, ground, props, tap paths and the local walk all
+   * read it. It follows the net's terrain when that becomes another world (kind or signature; world-swap.ts).
+   */
+  private terrainWatch!:SceneTerrain<TerrainField>;
+  private get field():TerrainField{return this.terrainWatch.field;}
   private signs:Sign[]=[];
   private project=(p:Point)=>projectView(p,this.view,this.field);
   /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
@@ -93,11 +102,9 @@ export class IslandScene extends Phaser.Scene {
   private zoom=1;
   /**
    * World px multiplier of everything drawn at the endless map's size (hero, allies, enemies, rings, shadows):
-   * framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere. Set by fit() from the camera's terrain.
+   * framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere. Set by fit() from the scene's terrain.
    */
   private actorScale=1;
-  /** The terrain the camera was last fitted for: the net's terrain swaps on a lobby map switch (client.ts switchMap). */
-  private cameraTerrain?:TerrainField;
   private canvasOffset={x:0,y:0};
   /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
   private steps=new StepLerp();
@@ -128,7 +135,8 @@ export class IslandScene extends Phaser.Scene {
   private treeIdle=new Set<string>();
   /** Endless world: sheets of the ring beyond the screen, fetched one by one in the background (pumpTrees). */
   private treeLater=new Set<string>();
-  private chooseTrees(){if(this.field.chunks)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
+  /** Island only: the art of its 12 trees (the endless world's come with its chunks; the city has none of the island's). */
+  private chooseTrees(){if(this.field.chunks||isCityWorld(this.field))return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
     const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
     return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
   });}
@@ -178,7 +186,7 @@ export class IslandScene extends Phaser.Scene {
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -225,21 +233,11 @@ export class IslandScene extends Phaser.Scene {
   private iconsAsked=new Set<string>();
   create(){
     this.standIn();
-    // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
-    this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;
-    this.drawGround();
-    if(!this.field.chunks){
-      let treeIndex=0;
-      for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
-      this.propsVersion++;
-      this.drawTreeShadows();
-      landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
-    }else{
-      // Tree sheets come in as the hero walks; a prop drawn as a sketch until then turns into its sheet.
-      this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
-    }
+    // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.
+    this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
+    this.buildWorld();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
@@ -290,10 +288,54 @@ export class IslandScene extends Phaser.Scene {
     return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
   }
   /**
-   * The terrain the camera frames: the net's (it changes on a lobby map switch, cidade-09) or the scene's own field.
-   * In the city (world 'cidade') the zoom is framing.ts cityZoom (D-030) and the figures are scaled by CITY_VIEW_SCALE.
+   * What depends on the field and is drawn once per world: background, ground, and the island's trees, rocks and
+   * landmarks (the endless world's come chunk by chunk, syncProps). Run by create() and by a world swap.
+   *
+   * City gap (until cidade-03 wires render/city CityLayer into this scene): no ground layer and none of the island's
+   * props or landmarks, only the snow background under the figures; the island renderer never draws a city field.
    */
-  private cameraField():TerrainField{return this.hooks.net?.terrain??this.field;}
+  private buildWorld(){
+    const city=isCityWorld(this.field);
+    // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
+    if(city)this.cameras.main.setBackgroundColor(CITY_PALETTE.neve);
+    else this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
+    this.drawGround();
+    if(city||this.field.chunks)return;
+    let treeIndex=0;
+    for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
+    this.propsVersion++;
+    this.drawTreeShadows();
+    landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
+  }
+  /** Drops everything buildWorld and syncProps drew for the old world (ground, props, place fichas, tree shadows). */
+  private clearWorld(){
+    this.dropGround?.();this.dropGround=undefined;this.landscape=undefined;
+    for(const entry of this.chunkProps.values())for(const prop of entry.props)if(prop.art)this.useTree(prop.art,-1);
+    this.chunkProps.clear();this.treeLater.clear();this.dropIdleTrees();
+    for(const prop of this.props)prop.object.destroy();
+    for(const sign of this.signs){sign.graphic.destroy();sign.label.destroy();}
+    this.props=[];this.signs=[];this.propsVersion++;
+    this.treeShadows?.clear();
+    this.depthOrigin=undefined;
+  }
+  /**
+   * The net's terrain became another world (lobby map switch, or a reconnect into a room that switched): the scene
+   * adopts it whole, the way create() builds it, then re-fits (zoom, figure scale, camera snapped onto the hero).
+   */
+  private swapWorld(){
+    this.clearWorld();
+    this.trees=this.chooseTrees();
+    let loads=false;
+    for(const tree of this.trees)if(tree&&!this.textures.exists(`tree:${tree.id}`)){this.loadTree(tree.id);loads=true;}
+    if(loads&&!this.load.isLoading())this.load.start();
+    if(this.projector)this.projector.terrain=this.field;
+    this.route=[];this.destination.clear();
+    // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
+    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;}
+    this.buildWorld();
+    this.rebaseDepth(true);this.reproject();this.fit();this.place();
+    // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
+  }
   /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
   private setActorScale(k:number){
     const old=this.actorScale;if(k===old)return;
@@ -307,9 +349,9 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
   private fit(){
-    const viewport=this.viewport(),terrain=this.cameraTerrain=this.cameraField();
-    this.zoom=worldZoom(viewport,terrain);
-    this.follow.world=followWorld(terrain);this.setActorScale(this.follow.world.scale);
+    const viewport=this.viewport(),camera=worldCamera(viewport,this.field);
+    this.zoom=camera.zoom;
+    this.follow.world=camera.follow;this.setActorScale(camera.follow.scale);
     const at=this.watchPoint??this.smooth??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
@@ -462,8 +504,9 @@ export class IslandScene extends Phaser.Scene {
     this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
-    // A lobby map switch swapped the net's terrain (island/endless ↔ city): new zoom, figure scale and camera at once.
-    if(this.cameraTerrain&&this.cameraField()!==this.cameraTerrain)this.fit();
+    // The net's terrain became another world (island/endless ↔ city): one field swap, new zoom, figure scale and camera.
+    // A reconnect to the same map (a new but identical TerrainField) changes nothing.
+    if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
@@ -698,7 +741,17 @@ export class IslandScene extends Phaser.Scene {
       }
     }
   }
-  private drawGround(){this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);}
+  /**
+   * The island or endless ground for this.field; none in the city yet (buildWorld). The renderers free themselves on
+   * the scene's shutdown: those handlers are kept so a world swap can run them early (and not again at shutdown).
+   */
+  private drawGround(){
+    if(isCityWorld(this.field))return;
+    const events=this.events,before=new Set(events.listeners('shutdown'));
+    this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);
+    const teardown=events.listeners('shutdown').filter(fn=>!before.has(fn)) as (()=>void)[];
+    this.dropGround=()=>{for(const fn of teardown){events.off('shutdown',fn);fn();}};
+  }
   /**
    * A tree as its sheet (one frame per view) when loaded. Island: else the vector sketch. Endless world: else only its
    * shadow on the ground until the sheet arrives (design onda 6 D1: a sketch read as "failed to load"), then the tree
@@ -800,6 +853,16 @@ export class IslandScene extends Phaser.Scene {
   /** A tree sheet arrived: the sketches of that tree around turn into it. */
   private treeLoaded(id:string){
     const tree=TREES.get(id);if(!tree)return;
+    // Island (create() preloads its sheets; after a map switch they arrive later): its sketches of this art turn into it.
+    if(!this.field.chunks){
+      let changed=false;
+      this.props.forEach((prop,i)=>{
+        if(prop.tree||prop.art!==id)return;
+        prop.object.destroy();this.props[i]=this.makeProp(prop.point as Obstacle,tree,true);changed=true;
+      });
+      if(changed){this.propsVersion++;this.drawTreeShadows();this.place();}
+      return;
+    }
     if(!this.treeUse.has(id)){this.treeIdle.add(id);this.dropIdleTrees();return;}
     let changed=false;
     for(const entry of this.chunkProps.values())entry.props.forEach((prop,i)=>{

@@ -11,7 +11,8 @@ import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,visibleOffset} from '../.
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
 import {SCALE_PROFILES,zoomFor} from '../../src/rules/index.ts';
 import {CITY_VIEW_SCALE as SIM_CITY_VIEW_SCALE,cityVisible} from '../../src/sim/city/avenues.ts';
-import {CityTerrain} from '../../src/maps/city/terrain.ts';
+import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
+import {SceneTerrain,sameWorld,worldCamera} from '../../src/client/world-swap.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
 import {CITY_HERO_SPEED,SPEED,heroSpeed} from '../../src/maps/world.ts';
@@ -156,8 +157,9 @@ test('off-screen in the city: every point of a city follow-camera screen counts 
 test('switching world re-fits: island → city → island gives the city camera, then the island camera exactly as before',()=>{
   const cam=new FollowCamera(),hero={x:12,y:17};
   const fit=(terrain:TerrainField|CityTerrain,vp:typeof PORTRAIT,useful:Rect)=>{
-    // What IslandScene.fit does with the camera's terrain (the net's, swapped by client.ts switchMap).
-    const z=worldZoom(vp,terrain);cam.world=followWorld(terrain);
+    // What IslandScene.fit does with the scene's one terrain (world-swap.ts worldCamera; swapped with the net's).
+    const w=worldCamera(vp,terrain as TerrainField),z=w.zoom;cam.world=w.follow;
+    assert.equal(z,worldZoom(vp,terrain));assert.deepEqual(w.follow,followWorld(terrain));
     return {z,center:{...cam.snap(projectView(hero,0),vp,z,useful,HERO)}};
   };
   for(const [vp,useful] of [[PORTRAIT,USEFUL_P],[LANDSCAPE,USEFUL_L]] as const){
@@ -185,4 +187,65 @@ test('enemy tap radius stays sensible in the city: the 26 CSS px floor is in wor
     const cityCss=Math.max(26/zc,ENEMY_ART[kind].width*CITY_VIEW_SCALE*.6)*zc,endlessCss=Math.max(26/ze,ENEMY_ART[kind].width*.6)*ze;
     assert.ok(Math.abs(cityCss-endlessCss)<1e-9,`${kind}: ${cityCss} vs ${endlessCss}`);
   }
+});
+
+// ---------- One terrain in the scene (review #4): the field follows the net's by world kind and signature ----------
+
+test('one terrain: a reconnect to the same map (a new but identical TerrainField) keeps the field, no re-fit',()=>{
+  for(const make of [()=>new TerrainField(424242),()=>new TerrainField(424242,{world:'infinito'})]){
+    const first=make(),scene=new SceneTerrain<TerrainField>(first);
+    assert.equal(scene.sync(first),undefined,'the same object: nothing');
+    const again=make();
+    assert.notEqual(again,first,'terrainFor builds a new TerrainField on every welcome');
+    assert.ok(sameWorld(again,first));
+    assert.equal(scene.sync(again),undefined,'same kind and signature: no swap, no re-fit');
+    assert.equal(scene.field,first,'the scene keeps the field it built its ground and props on');
+    assert.equal(scene.sync(again),undefined,'asked again (every frame): still nothing');
+    assert.equal(scene.sync(undefined),undefined,'solo (no net): nothing');
+  }
+  // The city decoded again from the same asset (same sha256): the same world.
+  const cityAgain=realCity(),scene=new SceneTerrain<TerrainField>(cityAsField(city));
+  assert.equal(scene.sync(cityAsField(cityAgain)),undefined);assert.equal(scene.field,cityAsField(city));
+});
+
+test('one terrain: island → city swaps the field with the re-fit; city → island comes back to the identical island camera',()=>{
+  const islandField=new TerrainField(424242),cityField=cityAsField(city),scene=new SceneTerrain<TerrainField>(islandField);
+  const hero={x:12,y:17};
+  for(const vp of [PORTRAIT,LANDSCAPE]){
+    const before=worldCamera(vp,scene.field);
+    assert.equal(before.zoom,followZoom(vp));assert.equal(before.follow,ENDLESS_FOLLOW);
+    // A lobby map switch: the net's terrain is the city.
+    assert.equal(scene.sync(cityField),cityField,'another kind: the scene swaps');
+    assert.equal(scene.field,cityField,'camera, projection, ground, props and the local walk now read the city');
+    const inCity=worldCamera(vp,scene.field);
+    assert.equal(inCity.zoom,cityZoom(vp));assert.equal(inCity.follow.scale,CITY_VIEW_SCALE);assert.equal(inCity.follow.speed,CITY_HERO_SPEED);
+    // project() reads the same field as the camera: the city's ground heights, not the island's hill.
+    assert.deepEqual(projectView(hero,0,scene.field),projectView(hero,0,cityField));
+    assert.notDeepEqual(projectView(hero,0,scene.field),projectView(hero,0,islandField));
+    // Back to the island (terrainFor builds a new one): swapped again, and the camera is byte-identical to before.
+    const back=new TerrainField(424242);
+    assert.equal(scene.sync(back),back);assert.equal(scene.field,back);
+    assert.deepEqual(worldCamera(vp,scene.field),before);
+    assert.deepEqual(projectView(hero,0,scene.field),projectView(hero,0,islandField));
+    assert.equal(scene.sync(islandField),undefined,'the old island object again: same world, nothing');
+    assert.equal(scene.sync(cityField),cityField);assert.equal(scene.sync(back),back);
+  }
+  // Another endless seed is another world too (signature), and the endless map keeps its own camera.
+  const a=new TerrainField(1,{world:'infinito'}),b=new TerrainField(2,{world:'infinito'}),endlessScene=new SceneTerrain<TerrainField>(a);
+  assert.equal(endlessScene.sync(b),b);
+  assert.deepEqual(worldCamera(PORTRAIT,b),worldCamera(PORTRAIT,a));
+});
+
+test('scene.ts keeps one terrain: fit, project and the walk read this.field; the city never gets the island ground, trees or landmarks',()=>{
+  const src=readFileSync(fromRoot('src/client/scene.ts'),'utf8');
+  assert.ok(!/cameraField|cameraTerrain/.test(src),'no second (camera) terrain');
+  assert.match(src,/worldCamera\(viewport,this\.field\)/,'fit() frames the scene\'s field');
+  assert.match(src,/this\.terrainWatch\.sync\(this\.hooks\.net\?\.terrain\)\)this\.swapWorld\(\)/,'update() swaps by world, not by object');
+  // The net's terrain is read in two places only: the constructor and the per-frame sync.
+  assert.equal(src.match(/net\?\.terrain/g)?.length,2);
+  const build=src.slice(src.indexOf('private buildWorld(){'),src.indexOf('private clearWorld(){'));
+  assert.ok(build.indexOf('if(city||this.field.chunks)return;')>0&&build.indexOf('if(city||this.field.chunks)return;')<build.indexOf('landmarks.forEach'),
+    'island trees, rocks and landmarks only on the island');
+  assert.match(src,/private drawGround\(\)\{\s*if\(isCityWorld\(this\.field\)\)return;/,'no island ground under the city (cidade-03 wires CityLayer)');
+  assert.match(src,/private chooseTrees\(\)\{if\(this\.field\.chunks\|\|isCityWorld\(this\.field\)\)return \[\];/,'no island tree sheets loaded for the city');
 });

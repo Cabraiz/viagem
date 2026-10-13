@@ -317,7 +317,7 @@ if(cidade)void (async()=>{
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
-    hud.edges!.need(pointedTargets(targets,area,seen));
+    hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
     const big=hud.cityMap.open,side=layout.minimapBig?.width??0;
     hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,baseHp:{hp:380,maxHp:600},
       ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),

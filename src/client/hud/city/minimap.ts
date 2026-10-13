@@ -15,7 +15,11 @@ export const CITY_SIZE=169;
 /** Camera view (90° steps), the convention of src/client/projection.ts. */
 export type CityView=0|1|2|3;
 export type MouthId='N'|'S'|'L'|'O';
-export interface CityMapInfo {size:number;plaza:{x:number;y:number;radius:number};mouths:{id:MouthId;x:number;y:number}[];start:{x:number;y:number}}
+/**
+ * A mouth is its avenue's far end (x, y: where the critters come in); `gate`, when known, is that avenue's entrance on
+ * the plaza wall (the asset's `bocas`), which tells an avenue spawn from one inside the plaza (wiring.ts mouthOfWarning).
+ */
+export interface CityMapInfo {size:number;plaza:{x:number;y:number;radius:number};mouths:{id:MouthId;x:number;y:number;gate?:{x:number;y:number}}[];start:{x:number;y:number}}
 const C=CITY_SIZE/2;
 /** Until the importer's asset exists: plaza in the centre, the 4 avenue ends, the start in the south district. */
 export const DEFAULT_CITY:CityMapInfo={size:CITY_SIZE,plaza:{x:C,y:C,radius:10},

@@ -46,8 +46,17 @@ export const ruinBite=(b:{w:number;h:number})=>Math.min(1,Math.min(b.w,b.h)/3);
  * draws: lamps are a pole of 14 r plus a 3 r head; pines use the approved sheet (353 px above the pivot at scale
  * 165/340 ≈ 171 px, 128 px half width ≈ 62 px) or a 3.2 r fallback; the rest stay under 2.5 r.
  */
+/**
+ * Largest drawn radius per prop kind (world units): the maps asset's footprint radii are collision sizes (up to 0.8),
+ * far too big for a lamp pole or a crate next to a ~1 u hero. Lamps use the cap as a fixed size.
+ */
+export const PROP_DRAW_MAX:Readonly<Record<CityProp['kind'],number>>=Object.freeze({
+  lamp:0.12,crate:0.3,barrel:0.22,bench:0.35,debris:0.45,rubble:0.45,car:0.6,pine:0.4,
+});
+/** Radius a prop is drawn with (world units). */
+export const propDrawRadius=(prop:CityProp)=>prop.kind==='lamp'?PROP_DRAW_MAX.lamp:Math.min(prop.r,PROP_DRAW_MAX[prop.kind]);
 export function propExtentPx(prop:CityProp):{up:number;side:number}{
-  const r=prop.r*HEIGHT_PX;
+  const r=propDrawRadius(prop)*HEIGHT_PX;
   if(prop.kind==='lamp')return {up:r*17+4,side:Math.max(r*3,4)};
   if(prop.kind==='pine')return {up:Math.max(353*165/340,r*3.2)+4,side:Math.max(128*165/340,r*1.2)+4};
   return {up:r*2.5+4,side:r*1.5+4};
@@ -74,8 +83,17 @@ export interface ChunkIndex {cols:number;rows:number;chunks:CityChunk[];get(cx:n
 const byId=(a:{id:string},b:{id:string})=>a.id<b.id?-1:a.id>b.id?1:0;
 const clamp=(v:number,lo:number,hi:number)=>v<lo?lo:v>hi?hi:v;
 
+/**
+ * Lowest ground under a footprint: the lowest corner when the asset has exact corner heights (the ground is drawn
+ * from them, so a block based on cell averages would float on slopes), else the lowest cell.
+ */
 function minGround(asset:CityAsset,x0:number,y0:number,x1:number,y1:number){
   let m=Infinity;
+  if(asset.corners){
+    const W=asset.width+1;
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)m=Math.min(m,asset.corners[y*W+x]);
+    return m;
+  }
   for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)m=Math.min(m,heightAt(asset,x,y));
   return m;
 }

@@ -22,7 +22,9 @@ export type BlockKind='building'|'wall'|'cliff'|'rubble';
 /** Solid box on the grid. x/y/w/h in cells; `height` in world units above the ground under it. */
 export interface CityBlock {id:string;kind:BlockKind;x:number;y:number;w:number;h:number;height:number;
   /** Ruined roofs are drawn broken (snow piles, holes). */
-  ruined?:boolean}
+  ruined?:boolean;
+  /** Blocks sharing a group fade together (one multi-rect building of the maps asset). Defaults to the id. */
+  group?:string}
 
 export type PropKind='rubble'|'car'|'lamp'|'pine'|'crate'|'barrel'|'debris'|'bench';
 /** Small decoration at a world position; `r` is its footprint radius in world units. */
@@ -40,6 +42,11 @@ export interface CityAsset {
   origin:{x:number;y:number};
   /** Ground height per cell in world units, row-major, length width*height. */
   heights:number[];
+  /**
+   * Optional exact ground heights at cell corners, row-major, length (width+1)*(height+1), in the same units.
+   * When present the ground is drawn from them (matching the terrain actors walk on) instead of averaging cells.
+   */
+  corners?:number[];
   /** Ground letter per cell (GROUND_KINDS), row-major, length width*height. */
   ground:string;
   blocks:CityBlock[];
@@ -71,7 +78,7 @@ export function parseCityAsset(raw:unknown):CityAsset{
     const x0=Math.max(0,Math.floor(b.x)),y0=Math.max(0,Math.floor(b.y));
     const x1=Math.min(a.width,Math.floor(b.x+b.w)),y1=Math.min(a.height,Math.floor(b.y+b.h));
     if(x1<=x0||y1<=y0||!(b.height>0))continue;
-    blocks.push({id:b.id,kind:b.kind,x:x0,y:y0,w:x1-x0,h:y1-y0,height:b.height,...(b.ruined?{ruined:true}:{})});
+    blocks.push({id:b.id,kind:b.kind,x:x0,y:y0,w:x1-x0,h:y1-y0,height:b.height,...(b.ruined?{ruined:true}:{}),...(typeof b.group==='string'?{group:b.group}:{})});
   }
   const maxX=a.origin.x+a.width*a.cell,maxY=a.origin.y+a.height*a.cell;
   const props:CityProp[]=[];
@@ -82,8 +89,9 @@ export function parseCityAsset(raw:unknown):CityAsset{
   }
   const ids=new Set<string>();
   for(const item of [...blocks,...props]){if(ids.has(item.id))throw new Error(`city asset: duplicate id ${item.id}`);ids.add(item.id);}
+  const corners=Array.isArray(a.corners)&&a.corners.length===(a.width+1)*(a.height+1)&&a.corners.every(h=>finite(h))?a.corners:undefined;
   return {version:1,name:String(a.name??'cidade'),cell:a.cell,width:a.width,height:a.height,origin:{x:a.origin.x,y:a.origin.y},
-    heights:a.heights,ground:a.ground,blocks,props,points:{...(a.points??{})}};
+    heights:a.heights,...(corners?{corners}:{}),ground:a.ground,blocks,props,points:{...(a.points??{})}};
 }
 
 /** Ground kind of a cell (snow outside the grid or for unknown letters). */
@@ -100,4 +108,17 @@ export function heightAt(asset:CityAsset,cx:number,cy:number){
 /** Cell that contains a world point (may be outside the grid). */
 export function cellOf(asset:CityAsset,x:number,y:number){
   return {cx:Math.floor((x-asset.origin.x)/asset.cell),cy:Math.floor((y-asset.origin.y)/asset.cell)};
+}
+
+/**
+ * Ground height (render units) under a world point: bilinear over the cell corners when the asset has them (exactly
+ * the terrain actors walk on), else the cell's height. For placing actors and props on the drawn ground.
+ */
+export function groundZ(asset:CityAsset,x:number,y:number):number{
+  const fx=(x-asset.origin.x)/asset.cell,fy=(y-asset.origin.y)/asset.cell;
+  if(!asset.corners){return heightAt(asset,Math.floor(fx),Math.floor(fy));}
+  const W=asset.width+1,i=Math.max(0,Math.min(asset.width-1,Math.floor(fx))),j=Math.max(0,Math.min(asset.height-1,Math.floor(fy)));
+  const u=Math.max(0,Math.min(1,fx-i)),v=Math.max(0,Math.min(1,fy-j)),c=asset.corners;
+  const a=c[j*W+i],b=c[j*W+i+1],d=c[(j+1)*W+i],e=c[(j+1)*W+i+1];
+  return a*(1-u)*(1-v)+b*u*(1-v)+d*(1-u)*v+e*u*v;
 }

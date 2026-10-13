@@ -26,6 +26,7 @@ const CAMERA_HINT_MS=1500;
 const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
+import {artReady} from './ui/art-boot.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -36,6 +37,8 @@ let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
   if(active)return;
   active=true;
+  // Imported art v2: the index must be known before Phaser preloads (bounded wait; procedural art if it is late).
+  await artReady();
   const returnFocus=document.getElementById('confirm');
   const shell=document.createElement('dialog');shell.className='explore-shell';shell.setAttribute('aria-label','Ilha do Começo');shell.dataset.build='viagem-island-v2';
   shell.innerHTML=`<div class="explore-layout">

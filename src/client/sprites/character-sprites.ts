@@ -19,6 +19,11 @@ interface Sheet {
 }
 
 export class CharacterSprites {
+  /**
+   * World px multiplier on every sheet's 96 px figure: framing.ts CITY_VIEW_SCALE in the city, so the hero draws ≈56 CSS
+   * px (≈1 cell) under the city zoom (D-030); 1 on the island and the endless map. The next animate() applies a change.
+   */
+  viewScale=1;
   private requested=new Set<string>();
   private sheets=new Map<string,Sheet>();
   /** Fallback boxes measured from the texture (only a sheet the catalog does not measure; see measure()). */
@@ -100,11 +105,12 @@ export class CharacterSprites {
       this.queue(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();return;
     }
     if(!sheet.single&&!sheet.facing)this.animations(sheet);
+    const scale=sheet.scale*this.viewScale;
     if(sprite.texture.key!==sheet.key){
-      sprite.setTexture(sheet.key,0).setOrigin(.5,.88).setScale(sheet.scale);
+      sprite.setTexture(sheet.key,0).setOrigin(.5,.88).setScale(scale);
       // A 4-direction atlas draws its left side itself: no mirror (single sheets keep the flip they had).
       if(sheet.directional)sprite.setFlipX(false);
-    }
+    }else if(sprite.scaleX!==scale||sprite.scaleY!==scale)sprite.setScale(scale);
     let state=this.states.get(sprite);
     if(!state){state={motion:new SpriteMotion(),facing:new FacingTracker(),x,y};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=Math.hypot(dx,dy)>.001;

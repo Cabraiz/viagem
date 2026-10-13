@@ -15,7 +15,7 @@ import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../co
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
-import {walkable,type Point} from '../maps/index.ts';
+import {heroSpeed,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 
 export const HZ=20;
@@ -163,7 +163,7 @@ export function decide(input:BrainInput):Decision{
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick;
     const forger=(input.forger===undefined?forgerId(view):input.forger)===selfId,recipe=forger?pickRecipe(view,memory.refused):undefined;
-    const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome)+4*HZ||!view.nodes?.length;
+    const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
     if(recipe){
       // The forge measures the camp from the base, the bot from the wall next to it: tap from close to the wall.
       if(toHome<FORGE_REACH){

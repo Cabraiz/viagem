@@ -1,9 +1,11 @@
 import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
-import {TerrainField,randomSeed} from '../maps/index.ts';
+import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import { classes } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,followZoom,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {SceneTerrain,worldCamera} from './world-swap.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,cityRenderAsset,groundZ} from './render/city/index.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
@@ -11,6 +13,8 @@ import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-u
 import { CoopClient, STEP } from './net/client.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
+import {queueHordeArt} from './art/horde-art.ts';
+import {SceneMarks} from './art/frames-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,enemyKind,enemyTexture,isEnemyKind} from './render/keys.ts';
@@ -31,7 +35,10 @@ export const SKILL_RANGE=2.8;
 
 /** The room broadcasts every other tick (Room.advance), so authoritative views arrive every 2 steps. */
 const PUSH_MS=2*STEP*1000;
-/** Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a bêbado is ~36 px tall at the follow zoom. */
+/**
+ * Smallest tap radius on an enemy, in CSS px (D-009: ≥ 44 px targets); a bêbado is ~36 px tall at the follow zoom (in
+ * the city too: its art is scaled by CITY_VIEW_SCALE under a zoom 1/CITY_VIEW_SCALE times larger).
+ */
 const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
@@ -79,15 +86,34 @@ export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   private view=0;
   private landscape?:TerrainLayer;
-  private field!:TerrainField;
+  /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
+  private dropGround?:()=>void;
+  /**
+   * The scene's ONE terrain (cidade-04 review #4): camera, projection, ground, props, tap paths and the local walk all
+   * read it. It follows the net's terrain when that becomes another world (kind or signature; world-swap.ts).
+   */
+  private terrainWatch!:SceneTerrain<TerrainField>;
+  private get field():TerrainField{return this.terrainWatch.field;}
   private signs:Sign[]=[];
   private project=(p:Point)=>projectView(p,this.view,this.field);
   /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
   private depthOrigin?:Point;
-  private depth=(p:Point)=>viewDepth(p,this.view,this.depthOrigin);
+  private depth=(p:Point)=>this.city?this.city.actorDepth(p.x,p.y):viewDepth(p,this.view,this.depthOrigin);
+  /**
+   * Cidade Nevada (card cidade-03): the city render replaces the island ground and props. Actors draw at the layer's
+   * actor depth (exact against the buildings' unit columns), not at the island's fixed SELF_DEPTH/ALLY_DEPTH.
+   */
+  private city?:CityLayer;
+  /** City layer depth keys are plain viewDepth keys; this shifts them by the current depth origin (same as viewDepth). */
+  private cityDepthOf=(key:number)=>key+viewDepth({x:0,y:0},this.view,this.depthOrigin)-viewDepth({x:0,y:0},this.view);
   /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
   private follow=new FollowCamera();
   private zoom=1;
+  /**
+   * World px multiplier of everything drawn at the endless map's size (hero, allies, enemies, rings, shadows):
+   * framing.ts CITY_VIEW_SCALE in the city, 1 elsewhere. Set by fit() from the scene's terrain.
+   */
+  private actorScale=1;
   private canvasOffset={x:0,y:0};
   /** The 20 Hz prediction drawn between its last two steps (camera without steps, code review onda 4). */
   private steps=new StepLerp();
@@ -103,6 +129,9 @@ export class IslandScene extends Phaser.Scene {
   private shadow!:Phaser.GameObjects.Ellipse;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
+  /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
+  private artMarks?:SceneMarks;
+  private goal?:Point;
   private discovered=new Set<number>();
   private cursors?:Phaser.Types.Input.Keyboard.CursorKeys;
   private keys?:Record<string,Phaser.Input.Keyboard.Key>;
@@ -118,7 +147,8 @@ export class IslandScene extends Phaser.Scene {
   private treeIdle=new Set<string>();
   /** Endless world: sheets of the ring beyond the screen, fetched one by one in the background (pumpTrees). */
   private treeLater=new Set<string>();
-  private chooseTrees(){if(this.field.chunks)return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
+  /** Island only: the art of its 12 trees (the endless world's come with its chunks; the city has none of the island's). */
+  private chooseTrees(){if(this.field.chunks||isCityWorld(this.field))return [];return obstacles.filter(o=>o.kind!=='rock').map((_o,i)=>{
     const seed=[...(this.hooks?.net?.code??'ilha')].reduce((n,c)=>n+c.charCodeAt(0),0);
     return treeCatalog.length?treeCatalog[(seed+i*3)%treeCatalog.length]:undefined;
   });}
@@ -168,7 +198,7 @@ export class IslandScene extends Phaser.Scene {
   private selfLabel?:MapLabel;
   /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
   usefulArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.field=hooks.net?.terrain??new TerrainField(randomSeed());this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -178,11 +208,14 @@ export class IslandScene extends Phaser.Scene {
   preload(){
     // A copy that does not load (missing from a deploy, a broken cache) comes from the approved file instead.
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,(file:Phaser.Loader.File)=>this.artFallback(file));
-    this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');
+    // City: no island ground textures; its pines use the approved snowy tree sheet (city layer PINE_TEXTURE).
+    if(this.field instanceof CityTerrain)this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
+    else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
     this.load.image('hero',thumbUrl(this.hooks.classId));
     if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
+    queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -215,27 +248,21 @@ export class IslandScene extends Phaser.Scene {
   private iconsAsked=new Set<string>();
   create(){
     this.standIn();
-    // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
-    this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;
-    this.drawGround();
-    if(!this.field.chunks){
-      let treeIndex=0;
-      for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
-      this.propsVersion++;
-      this.drawTreeShadows();
-      landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
-    }else{
-      // Tree sheets come in as the hero walks; a prop drawn as a sketch until then turns into its sheet.
-      this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
-    }
+    // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.
+    this.load.on(Phaser.Loader.Events.FILE_COMPLETE,(key:string)=>{if(key.startsWith('tree:'))this.treeLoaded(key.slice(5));});
+    this.buildWorld();
     this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
     this.actor=this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112);
     this.you=new YouMarkers(this,this.reduced);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
+    this.artMarks=new SceneMarks(this,p=>this.project(p));
+    // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
+    const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
+    this.events.once('shutdown',dropMarks);this.events.once('destroy',dropMarks);
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
       if(this.paused||!pointer.primaryDown)return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
@@ -250,16 +277,20 @@ export class IslandScene extends Phaser.Scene {
       this.position={...this.hooks.net.predicted};
       const net=this.hooks.net;
       this.projector=new Projector(this.view,this.field);
-      // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1).
-      this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,
+      this.cityDepths();
+      // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
+      // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
+      this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion});
       // game.destroy(true) emits 'destroy' (not 'shutdown'); a scene stop emits 'shutdown'. Either releases the pools once.
-      this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p));
-      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position});
-      this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,
+      // Caídos' light columns follow the figures' scale (CITY_VIEW_SCALE in the city).
+      this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p),()=>this.actorScale);
+      // The wall, the towers and the kill-cam's copy follow the figures' scale too (CITY_VIEW_SCALE in the city).
+      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale});
+      this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
       const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
@@ -276,16 +307,91 @@ export class IslandScene extends Phaser.Scene {
     const u=this.usefulArea;if(!u)return undefined;
     return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
   }
-  /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation). */
+  /**
+   * What depends on the field and is drawn once per world: background, ground, and the island's trees, rocks and
+   * landmarks (the endless world's come chunk by chunk, syncProps). Run by create() and by a world swap.
+   *
+   * City gap (until cidade-03 wires render/city CityLayer into this scene): no ground layer and none of the island's
+   * props or landmarks, only the snow background under the figures; the island renderer never draws a city field.
+   */
+  private buildWorld(){
+    const city=isCityWorld(this.field);
+    // Endless map: a tile not baked yet (a jump of the camera spreads the bakes over a few frames) shows plain grass, not sea.
+    if(city)this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
+    else this.cameras.main.setBackgroundColor(token(this.field.chunks?'--cena-grama':'--cena-mar'));
+    this.drawGround();
+    this.cityDepths();
+    if(city||this.field.chunks)return;
+    let treeIndex=0;
+    for(const o of obstacles)this.props.push(this.makeProp(o,o.kind==='rock'?undefined:this.trees[treeIndex++]));
+    this.propsVersion++;
+    this.drawTreeShadows();
+    landmarks.forEach((l,i)=>this.signs.push(this.drawLandmark(l,i,l.name)));
+  }
+  /** Drops everything buildWorld and syncProps drew for the old world (ground, props, place fichas, tree shadows). */
+  private clearWorld(){
+    this.dropGround?.();this.dropGround=undefined;this.landscape=undefined;
+    for(const entry of this.chunkProps.values())for(const prop of entry.props)if(prop.art)this.useTree(prop.art,-1);
+    this.chunkProps.clear();this.treeLater.clear();this.dropIdleTrees();
+    for(const prop of this.props)prop.object.destroy();
+    for(const sign of this.signs){sign.graphic.destroy();sign.label.destroy();}
+    this.props=[];this.signs=[];this.propsVersion++;
+    this.treeShadows?.clear();
+    this.depthOrigin=undefined;
+  }
+  /**
+   * The net's terrain became another world (lobby map switch, or a reconnect into a room that switched): the scene
+   * adopts it whole, the way create() builds it, then re-fits (zoom, figure scale, camera snapped onto the hero).
+   */
+  private swapWorld(){
+    this.clearWorld();
+    this.trees=this.chooseTrees();
+    let loads=false;
+    for(const tree of this.trees)if(tree&&!this.textures.exists(`tree:${tree.id}`)){this.loadTree(tree.id);loads=true;}
+    if(loads&&!this.load.isLoading())this.load.start();
+    if(this.projector)this.projector.terrain=this.field;
+    this.route=[];this.destination.clear();
+    // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
+    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;}
+    this.buildWorld();
+    this.rebaseDepth(true);this.reproject();this.fit();this.place();
+    // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
+  }
+  /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
+  private cityDepths(){if(this.projector)this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;}
+  /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
+  private setActorScale(k:number){
+    // The city's depth and fade tests use the figure's real screen box.
+    this.city?.setActorScale(k);
+    const old=this.actorScale;if(k===old)return;
+    this.actorScale=k;this.sprites.viewScale=k;
+    this.shadow?.setScale(k);this.ring?.setScale(k);
+    const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
+      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*k,icon*k);
+    };
+    if(this.actor)resize(this.actor,112);
+    for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(k);}
+  }
+  /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
   private fit(){
-    const viewport=this.viewport();
-    this.zoom=followZoom(viewport);
+    const viewport=this.viewport(),camera=worldCamera(viewport,this.field);
+    this.zoom=camera.zoom;
+    this.follow.world=camera.follow;this.setActorScale(camera.follow.scale);
     const at=this.watchPoint??this.smooth??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
     const c=this.follow.snap(this.project(at),viewport,this.zoom,this.useful(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(this.zoom).centerOn(c.x,c.y);
-    this.landscape?.fit(WATER_MARGIN);this.syncProps();
+    this.landscape?.fit(WATER_MARGIN);this.syncProps();this.updateCity(0);
+  }
+  /** City mode: chunks around the camera, fades over the hero; after every camera move (worldView in world px). */
+  private updateCity(delta:number){
+    if(!this.city)return;
+    const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
+    const camera={x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
+    // The fade test needs the hero's real ground height (city relief reaches ~185 px).
+    const hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(this.city.asset,this.position.x,this.position.y)};
+    this.city.update({camera,view:this.view,dtMs:delta,hero});
   }
   /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
@@ -298,18 +404,22 @@ export class IslandScene extends Phaser.Scene {
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
-    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();
+    this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
+    this.city?.setDepthOf(this.cityDepthOf);
     if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();}
   }
-  /** Endless world only: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen unchanged). */
+  /**
+   * Endless world and city: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen
+   * unchanged). The city spans ±34 000 in raw keys: without it, views 1–3 would sort under the ground layers.
+   */
   private rebaseDepth(force=false){
-    if(!this.field.chunks)return;
+    if(!this.field.chunks&&!this.city)return;
     const o=this.depthOrigin;
     if(!force&&o&&Math.max(Math.abs(o.x-this.position.x),Math.abs(o.y-this.position.y))<DEPTH_REBASE_UNITS)return;
     this.depthOrigin={x:Math.round(this.position.x),y:Math.round(this.position.y)};
@@ -351,10 +461,12 @@ export class IslandScene extends Phaser.Scene {
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
     const p=this.project(target);
+    this.goal=target;if(this.artMarks?.destinationArt)return; // drawn every frame by drawYou
     // Papel mark with a Breu edge: readable on sand and on grass alike (double-edge rule, D-022).
     const breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
-    this.destination.lineStyle(5,breu,.9).strokeEllipse(p.x,p.y,28,14).lineStyle(2,papel,1).strokeEllipse(p.x,p.y,28,14);
-    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5).fillStyle(papel,1).fillCircle(p.x,p.y,3);
+    const k=this.actorScale;
+    this.destination.lineStyle(5*k,breu,.9).strokeEllipse(p.x,p.y,28*k,14*k).lineStyle(2*k,papel,1).strokeEllipse(p.x,p.y,28*k,14*k);
+    this.destination.fillStyle(breu,.9).fillCircle(p.x,p.y,4.5*k).fillStyle(papel,1).fillCircle(p.x,p.y,3*k);
   }
   private place(){
     const p=this.project(this.position),depth=this.depth(this.position);
@@ -364,7 +476,8 @@ export class IslandScene extends Phaser.Scene {
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
     // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
     this.selfCovered=covered;
-    this.actor.setPosition(p.x,p.y).setDepth(covered?depth+1:SELF_DEPTH);
+    // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
+    this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
   }
@@ -380,6 +493,7 @@ export class IslandScene extends Phaser.Scene {
   /** Ring, bar, arrow and canopy copies, every frame (the arrow bobs). Allies' marks are pushed by updateCoop. */
   private drawYou(time:number){
     if(!this.you||!this.actor)return;
+    this.artMarks?.destination(this.route.length?this.goal:undefined,this.actorScale,time,this.reduced,100000);
     const net=this.hooks.net,self=net?.players.get(net.id),state=net?.feed.players.get(net?.id??'');
     const p=this.project(this.position);
     // The ring's beak points where the hero last moved on screen.
@@ -431,11 +545,20 @@ export class IslandScene extends Phaser.Scene {
     this.watchFrames(_time);
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
+    this.artMarks?.begin();
+    // The net's terrain became another world (island/endless ↔ city): one field swap, new zoom, figure scale and camera.
+    // A reconnect to the same map (a new but identical TerrainField) changes nothing.
+    if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
     this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
-    if(this.hooks.net){this.updateCoop(_time,delta);this.rebaseDepth();this.updateCamera(delta);this.drawYou(_time);return;}
+    // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
+    // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
+    if(this.hooks.net){
+      if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
+      this.updateCamera(delta);this.drawYou(_time);return;
+    }
     if(this.paused){this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction();
     const sx=axis.x+Number(!!(this.cursors?.right.isDown||this.keys?.D.isDown))-Number(!!(this.cursors?.left.isDown||this.keys?.A.isDown));
@@ -461,7 +584,7 @@ export class IslandScene extends Phaser.Scene {
     let best:string|undefined,bestDistance=Infinity;
     for(const enemy of feed.enemies.values()){
       if(enemy.hp<=0)continue;
-      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=enemy.elite&&kind!=='chefe'?ELITE_SCALE:1,q=this.project(enemy);
+      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=(enemy.elite&&kind!=='chefe'?ELITE_SCALE:1)*this.actorScale,q=this.project(enemy);
       const cy=q.y-(art.hover+art.height*art.originY*.5)*size,distance=Math.hypot(p.x-q.x,p.y-cy);
       if(distance<=Math.max(floor,art.width*size*.6)&&distance<bestDistance){best=enemy.id;bestDistance=distance;}
     }
@@ -562,8 +685,9 @@ export class IslandScene extends Phaser.Scene {
       const age=net.tick-(player.skillTick??0);
       if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
       const radius=SKILL_RANGE*(this.reduced?1:.3+.7*age/10);
+      if(this.artMarks?.skillRing(player.id,player.x,player.y,radius,3*this.actorScale,1-age/10,time,this.reduced,90000))continue;
       const points=Array.from({length:25},(_,i)=>this.project({x:player.x+Math.cos(i*Math.PI/12)*radius,y:player.y+Math.sin(i*Math.PI/12)*radius}));
-      effects.lineStyle(3,0xffde88,1-age/10).strokePoints(points,true);
+      effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
     const target=smooth,blend=1-Math.exp(-Math.min(delta/1000,.1)*35);
     this.displayed=!this.displayed||Math.hypot(this.displayed.x-target.x,this.displayed.y-target.y)>3?{...target}:{x:Phaser.Math.Linear(this.displayed.x,target.x,blend),y:Phaser.Math.Linear(this.displayed.y,target.y,blend)};
@@ -582,20 +706,21 @@ export class IslandScene extends Phaser.Scene {
       if(player.id===net.id)continue;
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100,100),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8)};this.remoteActors.set(player.id,objects);}
+      const k=this.actorScale;
+      if(!objects){objects={image:this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
-      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100,100);
+      else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
       const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      objects.image.setPosition(q.x,q.y).setDepth(covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
+      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       if(covered)this.marks.push({id:player.id,sprite:objects.image,self:false,feet:q,covered,hp:player.hp,maxHp:player.hp,downed:false});
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15,zoomNow):q.y+15,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*this.actorScale,zoomNow):q.y+15*this.actorScale,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -603,7 +728,7 @@ export class IslandScene extends Phaser.Scene {
     if(selfDown||this.selfLabel){
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
       label.setSos(selfDown).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,q.y+15,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
+        .anchor(q.x,q.y+15*this.actorScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
     this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();
@@ -664,7 +789,26 @@ export class IslandScene extends Phaser.Scene {
       }
     }
   }
-  private drawGround(){this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);}
+  /**
+   * The island or endless ground for this.field; none in the city yet (buildWorld). The renderers free themselves on
+   * the scene's shutdown: those handlers are kept so a world swap can run them early (and not again at shutdown).
+   */
+  private drawGround(){
+    if(isCityWorld(this.field)){
+      // The city render (cidade-03): torn down by clearWorld (a map switch) or with the scene.
+      if(!(this.field instanceof CityTerrain))return;
+      const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf});
+      city.setActorScale(this.actorScale);
+      const drop=()=>{city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+      this.events.once('shutdown',drop);this.events.once('destroy',drop);
+      this.dropGround=drop;
+      return;
+    }
+    const events=this.events,before=new Set(events.listeners('shutdown'));
+    this.landscape=createTerrain(this,this.field);this.landscape.view(this.view);
+    const teardown=events.listeners('shutdown').filter(fn=>!before.has(fn)) as (()=>void)[];
+    this.dropGround=()=>{for(const fn of teardown){events.off('shutdown',fn);fn();}};
+  }
   /**
    * A tree as its sheet (one frame per view) when loaded. Island: else the vector sketch. Endless world: else only its
    * shadow on the ground until the sheet arrives (design onda 6 D1: a sketch read as "failed to load"), then the tree
@@ -766,6 +910,16 @@ export class IslandScene extends Phaser.Scene {
   /** A tree sheet arrived: the sketches of that tree around turn into it. */
   private treeLoaded(id:string){
     const tree=TREES.get(id);if(!tree)return;
+    // Island (create() preloads its sheets; after a map switch they arrive later): its sketches of this art turn into it.
+    if(!this.field.chunks){
+      let changed=false;
+      this.props.forEach((prop,i)=>{
+        if(prop.tree||prop.art!==id)return;
+        prop.object.destroy();this.props[i]=this.makeProp(prop.point as Obstacle,tree,true);changed=true;
+      });
+      if(changed){this.propsVersion++;this.drawTreeShadows();this.place();}
+      return;
+    }
     if(!this.treeUse.has(id)){this.treeIdle.add(id);this.dropIdleTrees();return;}
     let changed=false;
     for(const entry of this.chunkProps.values())entry.props.forEach((prop,i)=>{
@@ -827,7 +981,7 @@ export class IslandScene extends Phaser.Scene {
       g.fillStyle(0xf7eac0).fillCircle(0,-91,5);
     }
     // Above trees and critters (a canopy used to cut the name), under the heroes and the danger layers.
-    const label=new MapLabel(this,name).anchor(p.x,p.y+28,LABEL_DEPTH);
+    const label=new MapLabel(this,name,true).anchor(p.x,p.y+28,LABEL_DEPTH);
     return {point:l,graphic:g,label};
   }
 }
@@ -841,18 +995,18 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
   // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
   // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
   if(import.meta.env.DEV){
-    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point;follow:FollowCamera;depthOrigin?:Point;useful():Rect|undefined};
+    const s=scene as unknown as {cameras:Phaser.Cameras.Scene2D.CameraManager;hooks:SceneHooks;attackTarget?:string;view:number;position:Point;actor:Phaser.GameObjects.Sprite;horde?:HordeRenderer;project(p:Point):Point;follow:FollowCamera;depthOrigin?:Point;useful():Rect|undefined;actorScale:number};
     const probe=()=>{
       const cam=s.cameras.main,net=s.hooks.net;
       const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
       const enemies=[...(net?.feed.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
-        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=e.elite&&kind!=='chefe'?ELITE_SCALE:1,q=s.project(e);
+        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=(e.elite&&kind!=='chefe'?ELITE_SCALE:1)*s.actorScale,q=s.project(e);
         return {id:e.id,...screen({x:q.x,y:q.y-(art.hover+art.height*art.originY*.5)*size})};
       });
       const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];
       const you=(scene as unknown as {you?:YouMarkers}).you;
       const camera={center:{...s.follow.center},look:{...s.follow.look},useful:s.useful(),depthOrigin:s.depthOrigin,locked:scene.rotationLocked(),
-        heroPx:Math.round(96*cam.zoom),scroll:{x:cam.scrollX,y:cam.scrollY}};
+        heroPx:Math.round(96*s.actorScale*cam.zoom),actorScale:s.actorScale,scroll:{x:cam.scrollX,y:cam.scrollY}};
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,

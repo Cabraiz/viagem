@@ -12,6 +12,7 @@
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
  */
 import type {Obstacle} from '../../maps/index.ts';
+import {heroSpeed} from '../../maps/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
@@ -84,7 +85,7 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
 /** Ticks the farthest standing hero needs to be back in the camp (0 when everyone is home). */
 export function farthestReturn(ctx:SimContext,state:StonewardsState){
   let lead=0;
-  for(const p of ctx.players.values())if(isStanding(p))lead=Math.max(lead,returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y)));
+  for(const p of ctx.players.values())if(isStanding(p))lead=Math.max(lead,returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y),heroSpeed(ctx.terrain)));
   return lead;
 }
 

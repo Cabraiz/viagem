@@ -9,6 +9,13 @@
  * (one pinging "Me salva"), the boss with a telegraph about to go off and a spawn warning, all off screen; the world
  * points are projected with the real camera math (projection.ts, framing.ts) in the chosen view. It proves taps on HUD panels never reach Phaser,
  * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
+ * `mapa=cidade[&vista=0..3][&grande=1][&offline=1]` (card cidade-04, design/cidade-hud.md §7): the city HUD over a snow mock,
+ * with the real Cidade Nevada (public/maps/cidade-nevada.json, checked against its manifest hash and decoded by
+ * cityTerrainFrom): the city minimap in the `.rh-minimap` slot (`grande=1` opens the big one, as a tap does; a tap toggles
+ * it) and the city's arrows: two groups of critters off screen (count in the body, distance on the tag), the active mouth
+ * of the east avenue, the base with the horn's seconds (state=camp-horn, the default here) and a caído pinging "Me salva"
+ * (the ally on its feet shows on the minimap only). `body[data-cidade]` is '1' once drawn ('erro' if the city did not load).
+ * Use state=prepare for the big minimap: in the game the horn's notice blocks it (doc §2).
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were. walk/xp/rescue go with
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
@@ -28,7 +35,8 @@ const ROUND_NAME=longest(ROUND_NAMES),BOSS_NAME=longest(BOSS_ROUND_NAMES),MODIFI
 const params=new URLSearchParams(location.search);
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const requested=params.get('state') as HudScenario|null;
-let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:'wave';
+const cidade=params.get('mapa')==='cidade';
+let scenario:HudScenario=requested&&HUD_SCENARIOS.includes(requested)?requested:cidade?'camp-horn':'wave';
 const frozen=params.has('frozen');
 const bordas=params.get('cenario')==='bordas';
 const dica=(LESSON_ORDER as readonly string[]).includes(params.get('dica')??'')?params.get('dica') as Lesson:undefined;
@@ -38,7 +46,7 @@ const coachStore=new Map([[COACH_KEY,JSON.stringify(LESSON_ORDER.filter(l=>l!==d
 const style=document.createElement('style');
 style.textContent=`
 html,body{margin:0;height:100%;overflow:hidden;background:#8dcecc}
-body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser){display:none!important}
+body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser):not(.hs-hero){display:none!important}
 .hs-phaser{position:fixed;inset:0;z-index:5}
 .hs-real .hs-world{z-index:4;pointer-events:none}.hs-real .hs-world::after{display:none}
 .hs-world{position:fixed;inset:0;z-index:5;background:radial-gradient(ellipse 46% 30% at 50% 52%,#7cbf6a 0 62%,#e9d79a 63% 70%,#a6e0dc 72%,#8dcecc 100%)}
@@ -52,6 +60,8 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser){display:none!importan
 .hs-bar{position:fixed;z-index:20;left:50%;bottom:2px;transform:translateX(-50%);display:flex;gap:4px;opacity:.85}
 .hs-bar button{font:600 10px system-ui;padding:2px 5px;border-radius:6px;border:1px solid #fff8;background:#302536cc;color:#fff}
 .hs-bar[hidden]{display:none}
+.hs-cidade .hs-world{background:repeating-linear-gradient(135deg,#eef3f6 0 22px,#e3eaef 22px 44px)}.hs-cidade .hs-world::after{display:none}
+.hs-hero{position:fixed;z-index:6;width:56px;height:56px;box-sizing:border-box;border-radius:50% 50% 40% 40%;background:#f4c9a8;border:3px solid #6e5198;pointer-events:none}
 `;
 document.head.append(style);
 
@@ -85,7 +95,7 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 let tick=1000,forgeReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
 const hud=new RunHud(document.body,{
-  localId:'p1',worldRescue:bordas,
+  localId:'p1',worldRescue:bordas||cidade,
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
   onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   onChoose(offerId,index){
@@ -242,4 +252,85 @@ if(bordas)void (async()=>{
   // or the fonts arriving late, never leave the arrows of an older layout on screen.
   setInterval(draw,250);
   document.body.dataset.bordas='1';
+})();
+
+if(cidade)void (async()=>{
+  document.body.classList.add('hs-cidade');
+  const {cityTerrainFrom,cityAsField}=await import('../../maps/index.ts');
+  const {CITY_ASSET_URL,CITY_MANIFEST_URL}=await import('../net/city-asset-loader.ts');
+  const city=await import('../hud/city/index.ts');
+  const {pointedTargets,inView,COVERING,WINDOWS}=await import('../hud/edges.ts');
+  const {computeZones,union}=await import('../hud/zones.ts');
+  const {projectView}=await import('../projection.ts');
+  const {toScreen}=await import('../framing.ts');
+  // The same text and hash the game loads (net/city-asset-loader.ts): the sha256 is checked before decoding.
+  const [text,manifest]=await Promise.all([fetch(CITY_ASSET_URL).then(r=>r.text()),fetch(CITY_MANIFEST_URL).then(r=>r.json() as Promise<{hash:string}>)]);
+  const decoded=await cityTerrainFrom(text,manifest.hash);
+  if(!decoded.ok){document.body.dataset.cidade='erro';return;}
+  const terrain=decoded.terrain,map=city.cityMapInfo(terrain.asset),field=cityAsField(terrain);
+  hud.useCityMinimap(true);
+  const vista=Math.max(0,Math.min(3,Number(params.get('vista'))||0)) as 0|1|2|3;
+  /** D-030: one 0.88 u cell is 56 CSS px on both reference phones; Phaser's zoom divides by the 42·√2 px of a projected unit. */
+  const zoom=56/0.88/(42*Math.SQRT2);
+  const rect=(el:Element|null|undefined)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
+  const all=(sel:string)=>[...document.querySelectorAll(sel)].map(rect);
+  // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
+  const hero={x:82,y:125};
+  const people=[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:58,y:100},
+    {id:'p3',name:'Zé do Pix',x:118,y:142,downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',x:86,y:128}];
+  const rnd=(()=>{let s=7;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};})();
+  const blob=(prefix:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${prefix}${i}`,x:cx+(rnd()*2-1)*2,y:cy+(rnd()*2-1)*2}));
+  // 12 coming down the north avenue, 7 on the west one, 3 (a clover on the minimap only) south-east, 1 alone (nowhere).
+  const enemies=[...blob('n',84,40,12),...blob('o',40,88,7),...blob('se',120,120,3),...blob('s',60,150,1)];
+  const tick=1000,mouths=new Map<'N'|'S'|'L'|'O',number>();
+  const active=city.trackMouths(mouths,[{type:'spawn-warning',x:150,y:88,atTick:tick+30}],tick,map);
+  // The fixture's run under it, trimmed to these 4 players, with the wall at the plaza at 63%.
+  const base=fakeView(scenario,people.length,tick);
+  const run:RunView={...base,structures:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+    players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
+  // The sandbox's ticker (unless frozen=1) keeps updating this run.
+  view=run;hud.update(run);
+  const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
+  const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
+  let previous=new Set<string>();
+  const draw=()=>{
+    const viewport={width:innerWidth,height:innerHeight};
+    const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
+    const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
+      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open};
+    const zones=computeZones({viewport,...controls,minimap:rect(hud.cityMinimap?.element)});
+    const layout=city.cityHudLayout({viewport,windowOpen:!!open,textScale:hud.edges!.scale()>1.1?1.25:1,controls});
+    const area=zones.useful;
+    // The camera puts the hero's body in the middle of the useful area (framing.ts anchorOf), feet 28 px under it.
+    const anchor={x:area.x+area.width/2,y:area.y+area.height/2+28},center=projectView(hero,vista,field);
+    const locate=(p:{x:number;y:number})=>{const q=toScreen(projectView(p,vista,field),center,viewport,zoom);return {x:q.x-viewport.width/2+anchor.x,y:q.y-viewport.height/2+anchor.y};};
+    const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
+    Object.assign(heroEl.style,{left:`${heroBox.x}px`,top:`${heroBox.y}px`});
+    const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
+    const seen={viewport:{x:0,y:0,...viewport},covered},isOnScreen=(p:{x:number;y:number})=>inView(locate(p),seen);
+    const plaza=locate(map.plaza);
+    hud.setHero({x:hero.x,y:hero.y,bearing:Math.atan2(plaza.y-anchor.y,plaza.x-anchor.x)*180/Math.PI});
+    const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
+      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous});
+    previous=groupKeys;
+    const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
+    hud.edges!.render(arrows);
+    // What the arrows were laid out from, for the visual audits (card cidade-04).
+    (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
+    hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
+    const big=hud.cityMap.open,side=layout.minimapBig?.width??0;
+    hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,baseHp:{hp:380,maxHp:600},
+      ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),
+      offline:params.has('offline')},big);
+    hud.cityMap.take();
+    hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
+    document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
+    document.body.dataset.big=JSON.stringify(layout.minimapBig??null);
+  };
+  draw();
+  // `grande=1`: open the big minimap as a tap would (the sandbox runs no closing rules, so it stays for the screenshot).
+  if(params.has('grande'))hud.cityMap.tap(performance.now(),Math.max(city.BIG_MIN_SIDE,hud.cityBig().side));
+  for(const el of [hud.cityMinimap!.element,hud.cityMinimap!.big])el.addEventListener('click',()=>requestAnimationFrame(draw));
+  addEventListener('resize',draw);setInterval(draw,250);
+  requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();

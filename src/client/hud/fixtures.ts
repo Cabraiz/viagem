@@ -8,12 +8,12 @@ import type {SimEvent} from '../../contract/index.ts';
 import type {RunResult} from './model.ts';
 
 /**
- * offer: 2 level offers held in combat (chip only); offer-open: the same with the compact panel opened from the chip
- * (the sandbox taps it); offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
+ * offer: 2 level offers held in combat outside a pause (D-050: nothing shows); offer-open: the same in the level-up
+ * pause (the sandbox sets Hud.setPause), the window open by itself; offer-prepare: the intermission queue, a level offer then the round offer; offer-round: the
  * round offer alone (4 tags); offer-heal: the full-build coxinha; offer-new: the production "Tudo novo!" window
  * (BUG-20261012-ORQ-oferta-cortada-retrato): a level offer of three first picks (every tag Nv 1, one-line effects)
  * with the round offer queued behind it, so "Levar os indicados" shows;
- * offer-downed / offer-open-downed: the same intermission window / combat strip with two allies down, the last of
+ * offer-downed / offer-open-downed: the same intermission window / pause window with two allies down, the last of
  * the team column among them (the window and the strip must never cover SOS, the timer or the "caiu!" banner).
  * Stonewards (VGM-046B): camp-forge: the intermission with the hero in the camp (forge open, one tag short of material:
  * 6 units, 0 fichas de torre); the other scenarios hold 156 units (3 fichas, the ring at 90%: the "falta pouco" look);

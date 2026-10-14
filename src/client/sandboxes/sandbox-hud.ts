@@ -32,6 +32,8 @@
  * load. `grana=N` (default 40) and `estoque=a,b,c` (default 4,4,4) feed Dona Cida; `cida=1` puts the hero by the moto (her
  * button shows), `cida=aberta` also opens her tray. Purchases answer after 150 ms like a room (ok, or the refusal the
  * numbers give). `state=result&conta=aberto|carro|time|tempo[&divida=1]`: the result with the chaveiro's bill.
+ * `mapa=cidade&ninhos=1|nevoa[&seed=N][&dormindo=1]` (D-051, mapa-vivo-ninhos): the seed's nests on the minimap (all, or
+ * the fog's 3 nearest), optionally with every sleeper as an enemy mark.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
@@ -43,6 +45,13 @@
  * here once the sheet loads. Without any art the line is text only here (the game then shows the enemy's sprite).
  * With `zueira=killcam` the kill-cam's critter is `bicho` (default tio-pave): its portrait in the frame, or, without art
  * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
+ * `pausa=escolhendo|esperando|ultimo` (D-050, card NEW-20261014-E4-levelup-pausa-hud): the team's level-up pause, 4 players
+ * unless `players=`, the room's fake pause (contract RunPause) sent like the room's, at each whole second:
+ * escolhendo: the pause's offer window open by itself (offer.ts data-mode=pause, no clock of its own), 10 s of 12, Zé
+ * already picked, you, Tia and Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha
+ * missing; ultimo: 3 s (urgent), only you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
+ * seconds count down and start over.
+ * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
@@ -62,8 +71,11 @@ const ROUND_NAME=longest(ROUND_NAMES),BOSS_NAME=longest(BOSS_ROUND_NAMES),MODIFI
 const params=new URLSearchParams(location.search);
 /** `texto=125`: the 125% text scale (UX-acessibilidade, <html data-texto>), as the settings set it (modo foto: --extra texto=125). */
 if(params.get('texto')==='125')document.documentElement.dataset.texto='125';
-const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
-const requested=params.get('state') as HudScenario|null;
+const PAUSAS=['escolhendo','esperando','ultimo'] as const;
+const pausa=(PAUSAS as readonly string[]).includes(params.get('pausa')??'')?params.get('pausa') as typeof PAUSAS[number]:undefined;
+const players=Math.max(1,Math.min(6,Number(params.get('players'))||(pausa?4:1)));
+// The pause's base scene: the combat offer open (escolhendo, ultimo), or a wave with nothing to pick (esperando).
+const requested=(params.get('state')??(pausa?(pausa==='esperando'?'wave':'offer-open'):null)) as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';
 /** Round 1 of the city (card cidade-08): a wave scene with no banner, trimmed to round 1 in the city block below. */
 const tutorial=cidade&&(requested as string|null)==='tutorial';
@@ -135,7 +147,9 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
 const hud=new RunHud(document.body,{
-  localId:'p1',worldRescue:bordas||cidade,
+  localId:'p1',worldRescue:bordas||cidade||!!pausa,
+  // The pause's frozen scenes (modo foto): its clock stands still, so the seconds and the bar print the same every time.
+  ...(pausa&&frozen?{pauseClock:()=>0}:{}),
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
   onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   // Dona Cida (D-047): the answer a room would give for the sandbox's numbers (the tray's own checks run first).
@@ -187,6 +201,21 @@ function withBill<T extends {victory:boolean}>(result:T):T{
   return {...result,objective:{kind:'chaveiro',outcome:conta==='opened'?'victory':conta==='timeout'?'timeout':'defeat',cause:conta,wave:12,extraWaves:2,eta:conta==='opened'?0:184,
     seconds:1340,hits:42,limit:120,budget,grana,paid:Math.min(grana,budget),debt,parts:3}};
 }
+/** The fake pause of `pausa=` (ids of fakePlayers: p1 you, p2 Tia Cleide, p3 Zé do Pix, p4 Bruninha). */
+const PAUSA_FAKE={escolhendo:{leftMs:9900,waiting:['p1','p2','p4']},esperando:{leftMs:6900,waiting:['p2','p4']},ultimo:{leftMs:2900,waiting:['p1']}} as const;
+const PAUSA_TOTAL=12000;let pausaFrom=performance.now();
+/**
+ * Like the room (multiplayer/levelup-pause.ts): the pause at each whole second of leftMs (rounded up), the same values in
+ * between (Hud.setPause ignores them; the HUD counts down locally). Frozen: the scene's exact leftMs, always.
+ */
+function sendPause(){
+  if(!pausa)return;
+  const fake=PAUSA_FAKE[pausa];
+  let left=fake.leftMs-(performance.now()-pausaFrom);
+  if(left<=0){pausaFrom=performance.now();left=fake.leftMs;}
+  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting]});
+}
+if(pausa)setInterval(sendPause,200);
 let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
@@ -197,6 +226,8 @@ function load(next:HudScenario){
   // The tutorial's round-1 banner comes with the city's first view (below), in the same frame as the walk's row, as in
   // the game; until the city is in, nothing.
   if(tutorial)view.events=[];
+  // The pause freezes the round: no banner over it.
+  if(pausa)view.events=[];
   // `barricada=1` with state=camp-forge (BUG-20261014-ORQ-forja-cobre-heroi-retrato): a damaged city barricade by the
   // camp, so the forge carries its fourth tag ("Reparar Norte"), as in the city camp. Stand-in mouths, the N one there.
   if(scenario==='camp-forge'&&params.get('barricada')==='1'){
@@ -232,9 +263,13 @@ function load(next:HudScenario){
     document.body.dataset.hudReady='1';
   });
   else document.body.dataset.hudReady='1';
-  // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
-  if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
+  // Combat with the compact panel open: D-050's level-up pause (the room's RunState.pause), 9 s of 12 left, the whole
+  // team still picking. Every other scenario runs unpaused.
+  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
+  // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
+  if(pausa)sendPause();
 }
+
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
 void artReady().then(ok=>{if(ok)load(scenario);});
@@ -463,6 +498,14 @@ if(cidade)void (async()=>{
   const base=fakeView(scenario,people.length,tick);
   // Round 1's banner as the director sends it with the city's tutorial round (its name and line, cidade-08).
   const banner=tutorial?[{type:'round' as const,index:1,phase:'wave' as const,name:CIDADE_TUTORIAL.roundName,modifier:CIDADE_TUTORIAL.modifier,eventId:++eventId}]:[];
+  // D-051 (mapa-vivo-ninhos): `ninhos=1` puts the seed's nests (`seed=N`, default 1) on the minimap, all seen;
+  // `ninhos=nevoa` only the 3 nearest the hero (the fog); `dormindo=1` also marks their sleepers and the loose bands.
+  // The plan is maps' cityNestPlan without the routes and the team's start (the sim passes those).
+  const nestsMode=params.get('ninhos');
+  const nestPlan=nestsMode?(await import('../../maps/index.ts')).cityNestPlan(terrain,Number(params.get('seed')??1)|0,{players:people.length}):undefined;
+  const nestNear=nestPlan?[...nestPlan.nests].sort((a,b)=>Math.hypot(a.x-hero.x,a.y-hero.y)-Math.hypot(b.x-hero.x,b.y-hero.y)).slice(0,3):[];
+  const nestMarks=(nestPlan?.nests??[]).map(n=>({kind:'ninho',x:n.x,y:n.y,size:n.size,seen:nestsMode!=='nevoa'||nestNear.includes(n)}));
+  const sleepers=params.has('dormindo')&&nestPlan?[...nestPlan.nests.flatMap(n=>n.sleepers),...nestPlan.loose.flatMap(b=>b.members)]:[];
   // D-047: the fake chaveiro objective (sandbox-chaveiro.ts) at the plaza, 12 s into its loop; the car replaces the wall.
   const chaveiro=params.get('chaveiro')==='1'?await import('./sandbox-chaveiro.ts').then(m=>{
     const from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
@@ -511,8 +554,8 @@ if(cidade)void (async()=>{
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
-      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true}],
-      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
+      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],
+      structures:[...run.structures,...nestMarks],corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});

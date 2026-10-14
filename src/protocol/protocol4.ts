@@ -67,9 +67,10 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * live in front of a Worker that still bundles version 1 (every city join would be refused for the map).
  * 17 given by the integration queue (tools/fila.mjs, lote 20261014-051017) to: NEW-20261013-ORQ-ficha-de-torre.
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
+ * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=18;
+export const PROTOCOL_VERSION=19;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

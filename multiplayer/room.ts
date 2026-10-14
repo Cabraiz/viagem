@@ -1,5 +1,6 @@
 import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,type CityTerrain} from '../src/maps/index.ts';
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
+import {LevelupPause} from './levelup-pause.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
 import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
@@ -346,6 +347,9 @@ export class Room {
    * autopilot), apart from the room bots (not in the roster, not counted as bots, never removed for a newcomer).
    */
   readonly autopilots=new RoomBots({chooses:false});
+  /** D-050: the team's level-up pause (multiplayer/levelup-pause.ts); `lastNow`: the room clock its view counts from. */
+  readonly levelup=new LevelupPause();
+  private lastNow=Date.now();
   /** The bots' minds for Simulation.stateHash: the room bots', and the autopilots' when any (same hash as before otherwise). */
   private minds(){return this.autopilots.size?{bots:this.bots.state(),autopilots:this.autopilots.state()}:this.bots.state();}
   /** Bots ever added in this room (their names and classes follow the seed and this count). */
@@ -488,7 +492,7 @@ export class Room {
     if(!this.sim.checkpointShapeOk(cp.sim))return fallback('shape');
     if(!this.sim.resume(cp.sim))return fallback('sim');
     if(!this.run.resume(run,new Set(cp.sim!.players.map(p=>p.id)))){this.sim.resetRun();return fallback('run');}
-    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();this.levelup.reset();
     this.syncSpectators();
     // This round is the one stored: no new checkpoint until the next round, and the roster says running again.
     this.rosterRound=this.sim.world.round.index;this.checkpointRef=ref;this.rosterDirty=true;
@@ -596,7 +600,7 @@ export class Room {
       c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
-        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
+        run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
       // The run's drawn enemies, so this phone fetches their art now (arte-do-roster-no-render).
@@ -626,7 +630,7 @@ export class Room {
     }
     else if(m.t==='ack'){c.encoder?.ack(m.seq);this.lateness(c,m.seq,now);}
     // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
-    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round)this.sim.tap(c.playerId,m.id);}
+    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
@@ -964,7 +968,8 @@ export class Room {
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.item!=='string'||!(CIDA_ITEM_IDS as readonly string[]).includes(m.item))return;
-    const result=this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
+    // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
+    const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
   }
   /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
@@ -983,8 +988,8 @@ export class Room {
       ...(result.ok?{to:result.to,amount:result.amount,grana:result.grana}:{reason:result.reason})});
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round){answer({ok:false,reason:'phase'});return;}
-    // D-050's level-up pause, when this room has it (it is not on every branch yet).
-    if((this as unknown as {levelup?:{paused?:boolean}}).levelup?.paused){answer({ok:false,reason:'pause'});return;}
+    // D-050: no PIX while the team picks its level-up cards.
+    if(this.levelup.paused){answer({ok:false,reason:'pause'});return;}
     const last=this.pixAt.get(from);
     if(last&&last.req!==m.req&&now-last.at<PIX_GAP_MS){answer({ok:false,reason:'rate'});return;}
     const result=this.sim.pix(from,m.to,m.amount,`p:${m.req}`);
@@ -1004,9 +1009,15 @@ export class Room {
    * once per second). In combat `elapsed`/`remaining` move one per simulation tick, so the client derives them
    * from the frame tick against `tick` here.
    */
+  /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
+  private runForClients(){
+    const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
+    return pause?{...snap,pause}:snap;
+  }
   private pushRun(force=false){
-    const run=this.run.snapshot();
-    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0});
+    const run=this.runForClients(),pause=run.pause;
+    // A pause goes out once per second of its clock (and when who is waiting changes), like the countdown.
+    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
     if(!force&&key===this.runKey)return;
     this.runKey=key;
     this.send({t:'run',run,tick:this.sim.tick});
@@ -1075,7 +1086,7 @@ export class Room {
   }
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
-    this.checkpointRef=undefined;
+    this.checkpointRef=undefined;this.levelup.reset();
     this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
@@ -1090,7 +1101,7 @@ export class Room {
    * simulation steps and every encoder gets the events, but frames wait for the burst's last tick, one per client.
    */
   advance(now=Date.now(),flush=true){
-    const started=performance.now();
+    const started=performance.now();this.lastNow=now;
     for(const c of [...this.connections.values()]){
       if(now-this.createdAt>ROOM_LIFETIME_MS||(!c.playerId&&now-c.opened>5000)||now-c.seen>silenceLimit(c)){this.logClose(c,'room',4004,'Conexão expirada.',null,now);this.disconnect(c.peer,now);c.peer.close(4004,'Conexão expirada.');}
     }
@@ -1101,7 +1112,9 @@ export class Room {
     // The room is about to close: end the run now so the result is announced before the 4004.
     else if(this.run.snapshot().phase==='combat'&&now>=this.createdAt+ROOM_LIFETIME_MS-ROOM_CLOSING_MARGIN_MS){if(this.run.finish('timeout',this.sim.shameMoment()))this.announce();}
     // The simulation steps before the lifecycle so a victory or defeat on this tick beats a same-tick timeout.
-    if(this.run.snapshot().phase==='combat'){
+    // D-050: a team level-up in a wave pauses the run for the picks (multiplayer/levelup-pause.ts): no step, no clock.
+    const paused=this.run.snapshot().phase==='combat'&&this.levelup.update(this.sim,now);
+    if(this.run.snapshot().phase==='combat'&&!paused){
       if(this.labHorde)this.fillHorde();
       // Room bots decide before the step (their stick is this tick's input); a fallen one calls for help like a phone.
       for(const id of this.bots.think(this.sim))this.botSos(id,now);
@@ -1116,7 +1129,8 @@ export class Room {
       const outcome=this.sim.outcome;
       if(outcome&&this.run.finish(outcome,this.sim.shameMoment()))this.announce();
     }
-    const transition=this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
+    // Paused: the run's combat clock (elapsed, the timeout) stands still with the sim.
+    const transition=paused?{started:false,finished:false}:this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
     if(transition.started){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();
     if(++this.ticks%PRUNE_EVERY===0)this.prune();

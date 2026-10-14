@@ -7,6 +7,8 @@
  *  4. Life: obra-1..3 → pronta → danificada → ruina through the structures system's single damage path (D-017).
  *  5. Combat: damage, shots, area, ground/air, minRange, slow and dazzle, anti-air only against flyers, the radar.
  *  6. Determinism and JSON round trip; the island byte-identical (no `defenses` key, no sites).
+ *  7. torres-ajustes: the reach rule (BUILD_REACH from the obra) and the repair (the forge's barricade repair, for towers).
+ * Sections 3–6 give their orders through `reaching`: the hero steps next to the obra first (the rule itself is in 7).
  * D-031: results only (state, events), no wall-clock asserts.
  */
 import test from 'node:test';
@@ -24,7 +26,8 @@ import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DEFENSE,TIER_BUILD_SECONDS,TIER_COST,childrenOf,payUnits,phaseOf,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
-import {defensePhase,defensesStep,radarBonus,type DefenseState} from '../../src/sim/towers/system.ts';
+import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';
+import {REPAIR_FRACTION} from '../../src/sim/stonewards/forge.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),
@@ -65,10 +68,24 @@ function fakeCtx(terrain:SimContext['terrain'],players:SimPlayer[],seed=1):FakeC
     damagePlayer(){},
   } as FakeCtx;
 }
+/**
+ * torres-ajustes: an order needs the hero within BUILD_REACH of the obra; this system steps the ordering hero onto the
+ * site (or the rail, or the defense) before each build/upgrade/repair, as a person walks there first.
+ */
+function reaching(sys:StonewardsSystem):StonewardsSystem{
+  const goTo=(ctx:SimContext,id:string,p:{x:number;y:number}|undefined)=>{const q=ctx.players.get(id);if(q&&p){q.x=p.x;q.y=p.y;}};
+  const site=(id:string)=>{const r=siteRect(sys.plan,id);return r&&{x:r.x+r.w/2,y:r.y+r.h/2};};
+  const defense=(id:string)=>sys.state.defenses?.list.find(d=>d.id===id);
+  const build=sys.build.bind(sys),upgrade=sys.upgrade.bind(sys),repair=sys.repair.bind(sys);
+  sys.build=(ctx,who,siteId,req)=>{goTo(ctx,who,site(siteId));return build(ctx,who,siteId,req);};
+  sys.upgrade=(ctx,who,id,branch,req)=>{goTo(ctx,who,defense(id));return upgrade(ctx,who,id,branch,req);};
+  sys.repair=(ctx,who,id,req)=>{goTo(ctx,who,defense(id));return repair(ctx,who,id,req);};
+  return sys;
+}
 /** A city structures system on its own terrain fork, one standing player 'a' at the fountain, a rich balance. */
-function citySetup(units=1000){
+function citySetup(units=1000,walk=true){
   const terrain=city.fork(),ctx=fakeCtx(terrain,[player('a',83.9,90.5),player('b',84,88)]);
-  const sys=createStonewardsSystem({terrain,barricadesLater:false});
+  const plain=createStonewardsSystem({terrain,barricadesLater:false}),sys=walk?reaching(plain):plain;
   sys.state.balance.coco=Math.floor(units/2);sys.state.balance.pedra=units-Math.floor(units/2);
   return {ctx,sys,terrain};
 }
@@ -243,7 +260,7 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   assert.equal(grow(ctx,sys,big[0].id,['A',undefined,'A',undefined]).kind,'guarnicao-do-predio');
   assert.equal(grow(ctx,sys,big[1].id,['C',undefined,undefined,undefined]).kind,'posto-de-radar');
   // On a 1×1 site (the endless camp's) the root may only become a Rojão or a Holofote.
-  const tiny=new TerrainField(7,{world:'infinito'}),tctx=fakeCtx(tiny,[player('a',0,0)]),tsys=createStonewardsSystem({terrain:tiny});
+  const tiny=new TerrainField(7,{world:'infinito'}),tctx=fakeCtx(tiny,[player('a',0,0)]),tsys=reaching(createStonewardsSystem({terrain:tiny}));
   tsys.state.balance.coco=100;
   const one=tsys.plan.sites.find(x=>x.maxSize===1)!,v=grow(tctx,tsys,one.id);
   assert.deepEqual(tsys.upgrade(tctx,'a',v.id,'A'),{ok:false,reason:'size'});
@@ -276,7 +293,7 @@ test('the Gustavão: needs the laid, finished rail, moves onto it, frees its sit
   sys.hit(ctx,g.id,1e6);
   assert.deepEqual(sys.upgrade(ctx,'a',second.id),{ok:false,reason:'unique'},'a ruined Gustavão still counts');
   // The endless map has no rail: no Gustavão there.
-  const t=new TerrainField(7,{world:'infinito'}),ectx=fakeCtx(t,[player('a',0,0)]),esys=createStonewardsSystem({terrain:t});
+  const t=new TerrainField(7,{world:'infinito'}),ectx=fakeCtx(t,[player('a',0,0)]),esys=reaching(createStonewardsSystem({terrain:t}));
   esys.state.balance.coco=1000;
   const site=esys.plan.sites.find(s=>s.maxSize===3)!;
   const e=grow(ectx,esys,site.id,['B',undefined,undefined,undefined]);
@@ -374,6 +391,8 @@ test('combat: C2 slows and dazzles (deterministic), C3 scratches and slows the g
   defensesStep(ctx,sys.state);
   assert.deepEqual(dmg(ctx).map(e=>[e.target,e.amount]),[['g',5]]);
   assert.ok(ctx.enemies.get('g')!.slowUntil!>ctx.tick);assert.equal(ctx.enemies.get('bird')!.slowUntil,undefined);assert.equal(ctx.enemies.get('out')!.slowUntil,undefined);
+  // The aura counts its volleys on the wire (torre-contador-de-tiros) but has no aim (BUG-20261013-E8-arame-nunca-dispara).
+  assert.equal(d.shots,1);assert.equal(d.aim,undefined);
 });
 
 test('combat: the roster flyers (a voador, the two aerial swarms) are hit by anti-air and the Vigia, never by ground fire',()=>{
@@ -474,6 +493,72 @@ test('the island is untouched: no sites, every build refused, no defenses key, s
   assert.equal('defenses' in sys.state,false);
   assert.deepEqual(JSON.stringify(sys.state),JSON.stringify(plain.state));
   assert.deepEqual(structureTargets(sys.state),[{id:'muralha',x:sys.state.wall.x,y:sys.state.wall.y,radius:sys.state.wall.radius}]);
+});
+
+// ---------- 7. torres-ajustes: reach and repair ----------
+test('reach: build, the rail, upgrade and repair only within BUILD_REACH of the obra (from its edge); refused far',()=>{
+  const {ctx,sys}=citySetup(1000,false),a=ctx.players.get('a')!,units=()=>sys.state.balance.coco+sys.state.balance.pedra;
+  const plan=sys.plan,site=plan.sites.find(x=>x.maxSize===3)!,box=siteRect(plan,site.id)!;
+  assert.equal(BUILD_REACH,3);
+  // At the fountain: too far from the site and from the rail; nothing charged, no state.
+  const u0=units();
+  assert.deepEqual(sys.build(ctx,'a',site.id),{ok:false,reason:'away'});
+  assert.deepEqual(sys.build(ctx,'a','trilho'),{ok:false,reason:'away'});
+  assert.equal(units(),u0);assert.equal('defenses' in sys.state,false);
+  // Just past the reach from the footprint's east edge: refused; on the reach: accepted.
+  a.x=box.x+box.w+BUILD_REACH+.05;a.y=site.y;
+  assert.deepEqual(sys.build(ctx,'a',site.id),{ok:false,reason:'away'});
+  a.x=box.x+box.w+BUILD_REACH-.05;
+  const b=sys.build(ctx,'a',site.id);assert.ok(b.ok,JSON.stringify(b));
+  const id=(b as {defense:string}).defense,d=()=>sys.state.defenses!.list.find(x=>x.id===id)!;
+  at(ctx,d().readyTick);
+  // Upgrade and repair: at the defense's site; another player far away is refused.
+  const bp=ctx.players.get('b')!;bp.x=83.9;bp.y=90.5;
+  assert.deepEqual(sys.upgrade(ctx,'b',id,'B'),{ok:false,reason:'away'});
+  assert.equal(sys.upgrade(ctx,'a',id,'B').ok,true);
+  sys.hit(ctx,id,100);
+  assert.deepEqual(sys.repair(ctx,'b',id),{ok:false,reason:'away'});
+  assert.equal(sys.repair(ctx,'a',id).ok,true);
+  // The rail from next to its rectangle (12×4 cells: its centre is within reach).
+  const rail=siteRect(plan,'trilho')!;a.x=rail.x+rail.w/2;a.y=rail.y-BUILD_REACH+.1;
+  assert.equal(sys.build(ctx,'a','trilho').ok,true);
+});
+
+test('repair: +25 % of maxHp per order for 5 units, capped at maxHp, only standing hurt defenses, only in the intermission',()=>{
+  const {ctx,sys}=citySetup(1000),units=()=>sys.state.balance.coco+sys.state.balance.pedra;
+  assert.equal(TOWER_REPAIR_COST,5,'what the forge\'s reparo costs');assert.equal(REPAIR_FRACTION,.25);
+  const v=grow(ctx,sys,'obra-02',['A']),d=()=>sys.state.defenses!.list.find(x=>x.id===v.id)!;
+  const max=d().maxHp,step=Math.ceil(max*REPAIR_FRACTION);
+  assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'full'},'a whole defense');
+  assert.deepEqual(sys.repair(ctx,'a','defesa-99'),{ok:false,reason:'defense'});
+  sys.hit(ctx,v.id,max*.3);
+  const hp=d().hp,u0=units();
+  assert.deepEqual(sys.repair(ctx,'a',v.id,'r1'),{ok:true,defense:v.id,kind:'vigias-armados',cost:TOWER_REPAIR_COST});
+  assert.equal(d().hp,hp+step,'25 % of maxHp, rounded up');assert.equal(u0-units(),TOWER_REPAIR_COST,'paid from the piles');
+  assert.deepEqual(sys.repair(ctx,'a',v.id,'r1'),{ok:false,reason:'duplicate'},'a resent tap applies once');
+  assert.equal(sys.repair(ctx,'a',v.id).ok,true);
+  assert.equal(d().hp,max,'capped at maxHp (0.7 + 0.25 + 0.25 > 1)');
+  assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'full'});
+  // Only in the intermission, by a standing player, with the material, never on a ruin.
+  sys.hit(ctx,v.id,50);
+  at(ctx,ctx.tick,'wave');
+  assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'phase'});
+  at(ctx,ctx.tick);
+  (ctx.players.get('b') as SimPlayer).downed=true;
+  assert.deepEqual(sys.repair(ctx,'b',v.id),{ok:false,reason:'player'});
+  sys.state.balance.coco=2;sys.state.balance.pedra=2;
+  assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'balance'});
+  assert.deepEqual(sys.state.balance,{coco:2,pedra:2},'nothing charged on a refusal');
+  sys.state.balance.coco=50;
+  sys.hit(ctx,v.id,1e6);
+  assert.equal(d().ruined,true);
+  assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'ruined'},'a ruin is rebuilt (a new Vigia), never repaired');
+  // A defense still under construction can be patched up too (it is standing).
+  const fresh=sys.build(ctx,'a','obra-03') as {defense:string};
+  sys.hit(ctx,fresh.defense,100);
+  assert.equal(sys.repair(ctx,'a',fresh.defense).ok,true);
+  sys.state.wallDown=true;
+  assert.deepEqual(sys.repair(ctx,'a',fresh.defense),{ok:false,reason:'wall-down'});
 });
 
 test('torre-contador-de-tiros: every volley counts (mod 256), also at a target that never moves; no volley, no count',()=>{

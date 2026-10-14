@@ -1,5 +1,10 @@
 /**
- * BUG-20261012-ORQ-oferta-cortada-retrato: in a 390x844 portrait the "Tudo novo!" window cut its third tag at the list's
+ * BUG-20261013-ORQ-oferta-e-dicas-menores: the offer window is compact: one header row (the clock a thin bar on its top
+ * edge, a clock icon for "vai no automático se acabar o tempo", a small "Depois" with a 48 px target) and one row of
+ * whole tags that shrink together (no "Mais N", no scrolling), at most half of the old window at 1335x620, 844x390 and
+ * 390x844 (the budget below, read from hud.css). The pure "Mais N" helpers of overflow.ts keep their tests.
+ *
+ * Before (BUG-20261012-ORQ-oferta-cortada-retrato): in a 390x844 portrait the "Tudo novo!" window cut its third tag at the list's
  * bottom edge with no sign of scrolling. Three one-line tags must fit the 32% window at 100% text; what still does not
  * fit (125%, a caído ficha, long effects) shows "Mais N" (a 48 px target) in the cut strip or in its own row under the
  * list, never over a whole tag and 8 px clear of the foot's buttons, and a soft fade over the cut part. Landscape
@@ -13,7 +18,7 @@ import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
 import {declarations} from '../../scripts/lint-design.mjs';
 import {CUE_TARGET,CUT_TOLERANCE,FOOT_GAP,FADE_MAX,cueClear,cueLayout,cutRoom,hiddenCards,moreCue,nextCardScroll,scrollBehavior,type Box,type Span} from '../../src/client/hud/overflow.ts';
-import {LANDSCAPE_QUERY,LATER_LABEL,TAKE_ALL_LABEL,isAllNew} from '../../src/client/hud/offer.ts';
+import {AUTO_NOTE,LANDSCAPE_QUERY,LATER_LABEL,TAKE_ALL_LABEL,isAllNew} from '../../src/client/hud/offer.ts';
 import {MIN_PLAY_SIDE,computeZones,crosses,type ZoneInput} from '../../src/client/hud/zones.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 
@@ -84,8 +89,9 @@ test('fixture offer-new is the production "Tudo novo!" window: three Nv 1 tags w
   assert.deepEqual(head.choices.map(c=>c.itemId),['guarda-chuva','bone','pombo']);
 });
 
-// ---------- The portrait budget, from hud.css itself ----------
+// ---------- The compact window (BUG-20261013-ORQ-oferta-e-dicas-menores), from hud.css itself ----------
 const CSS=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8');
+const OFFER_TS=readFileSync(new URL('../../src/client/hud/offer.ts',import.meta.url),'utf8');
 type Decl={selector:string;prop:string;value:string;line:number};
 const DECLS=declarations(CSS) as Decl[];
 const PORTRAIT='@media (min-height:501px)',LANDSCAPE='@media (max-height:500px)';
@@ -97,95 +103,107 @@ function value(selector:string,prop:string,media?:string){
   return found.value;
 }
 const px=(v:string)=>{const m=v.match(/^(-?[\d.]+)(?:px)?$/);assert.ok(m,`px value: ${v}`);return Number(m[1]);};
-const box=(v:string)=>{const p=v.split(/\s+/).map(px);return {top:p[0],bottom:p[2]??p[0]};};
+const box=(v:string)=>{const p=v.split(/\s+/).map(px);return {top:p[0],right:p[1]??p[0],bottom:p[2]??p[0],left:p[3]??p[1]??p[0]};};
+const cssVar=(selector:string,name:string,media?:string)=>px(value(selector,name,media));
 
-/** Text scale of the match tokens (tokens.css --t-N = N px at 100%). */
-function budget(scale:1|1.25){
-  const t=(n:number)=>n*scale;
-  const viewport=844,cap=Number(value('.rh-offer[data-mode=intermission]','max-height',PORTRAIT).replace('svh',''))/100*viewport;
-  const pad=box(value('.rh-offer','padding')),border=2;
-  const chrome=pad.top+pad.bottom+2*border;
-  // Header: title (21 px, 16 at 125%) and clock in one row, never under 22 px.
-  const headMin=px(value('.rh-offer[data-mode=intermission] .rh-offer-head','min-height',PORTRAIT));
-  const title=(scale===1?21:t(16))*1.05,clock=t(13)*1.2+2;
-  const head=Math.max(headMin,title,clock);
-  const deadline=px(value('.rh-offer-deadline','height'));
-  const dm=box(value('.rh-offer[data-mode=intermission] .rh-offer-deadline','margin',PORTRAIT));
-  const clockRow=deadline+dm.top+dm.bottom;
-  // Foot: "Depois" and "Levar os indicados", both 48 px, in one row; no margin above it.
-  const foot=Math.max(px(value('.rh .rh-offer-later','min-height')),px(value('.rh .rh-offer-all','min-height')));
-  assert.equal(px(value('.rh-offer[data-mode=intermission] .rh-offer-foot','margin-top',PORTRAIT)),0);
-  const list=cap-chrome-head-clockRow-foot;
-  // The list: its top padding sits under a -6 px margin (the stars ride the tags' edge), its bottom one holds the tilt.
-  const listPad=box(value('.rh-offer[data-mode=intermission] .rh-offer-cards','padding',PORTRAIT));
-  const gap=px(value('.rh-offer[data-mode=intermission] .rh-offer-cards','gap',PORTRAIT));
-  const cardPad=box(value('.rh-card','padding'));
-  const oneLine=cardPad.top+cardPad.bottom+2*border+t(16)*1.05+t(13)*1.2;
-  return {cap,chrome,head,clockRow,foot,list,gap,oneLine,listPad,content:list-listPad.bottom};
+/**
+ * The window's box with `cards` tags (and the "Levar os indicados" tile when `takeAll`) at 100% text, every name on
+ * two lines (the worst case of the 2-line clamp), from the sizes in hud.css; `room` is the width the screen leaves it.
+ */
+function compact(orientation:'portrait'|'landscape',cards:number,takeAll:boolean,room:number){
+  const media=orientation==='landscape'?LANDSCAPE:undefined;
+  const pad=box(value('.rh-offer','padding',media)),border=2;
+  const card=media?cssVar('.rh-offer','--of-card',LANDSCAPE):cssVar('.rh-offer','--of-card');
+  const gap=px(value('.rh-offer-cards','gap'));
+  const tile=takeAll?card+6+px(value('.rh-offer-foot','margin-left')):0;
+  const natural=cards*card+(cards-1)*gap+tile+pad.left+pad.right+2*border;
+  const width=Math.min(natural,room);
+  const head=px(value('.rh-offer-head','min-height'))+px(value('.rh-offer-head','margin-bottom'));
+  const cp=box(value('.rh-card','padding')),icon=px(value('.rh-card-icon','height'));
+  const nameMargin=box(value('.rh-card-name','margin')).top;
+  const tag=2*border+cp.top+cp.bottom+icon+nameMargin+2*14*1.05;
+  const height=pad.top+pad.bottom+2*border+head+tag;
+  return {width,height,area:width*height,natural,card:(width-natural+cards*card)/cards};
 }
 
-test('portrait 390x844 at 100%: three tags fit the 32% window without scrolling, offer-prepare\'s too',()=>{
-  const b=budget(1);
-  assert.ok(Math.abs(b.cap-270.08)<.01,'the cap stays at 32svh (scripts/audit-layout.cjs)');
-  assert.ok(b.head<22.1,'the header is title and clock only');
-  assert.equal(b.clockRow,11);assert.equal(b.foot,48);assert.equal(b.gap,4);assert.equal(b.listPad.bottom,4);
-  const three=3*b.oneLine+2*b.gap;
-  assert.ok(three<=b.content,`three tags ${three.toFixed(1)} px <= list ${b.content.toFixed(1)} px`);
-  // offer-prepare (1p), measured in Chromium on 2026-10-12 (tilted boxes, from the list's top): its third tag poked
-  // 2.8 px out of the old list; the list's box is now `list` + its 6 px top padding tall.
-  const prepare=[[3.5,60.5],[60,110.4],[109.9,176.9]].map(([top,bottom])=>({top,bottom}));
-  assert.equal(hiddenCards(prepare,{top:0,bottom:b.list+6}),0,`offer-prepare in ${(b.list+6).toFixed(1)} px`);
-  assert.equal(hiddenCards(prepare,{top:0,bottom:174.1}),1,'the old list cut it, and now the cue would say so');
-  // Before the fix: header 44 (with "Levar os indicados"), clock 16, gap 6: the third tag was cut.
-  const before=b.cap-b.chrome-44-16-b.foot-6,beforeThree=3*b.oneLine+2*6;
-  assert.ok(beforeThree>before,`before: ${beforeThree.toFixed(1)} > ${before.toFixed(1)}`);
+test('the offer is one header row and one row of whole tags: no "Mais N", no scrolling list, no foot line',()=>{
+  // No "Mais N" cue, fade or scroll box any more (offer.ts builds none; hud.css draws none).
+  assert.equal(DECLS.some(d=>d.selector.includes('rh-offer-more')),false,'no "Mais N" rules');
+  assert.doesNotMatch(OFFER_TS,/rh-offer-more|watchOverflow|cueLayout/,'offer.ts has no "Mais N" cue');
+  assert.equal(DECLS.some(d=>/rh-offer/.test(d.selector)&&/^overflow(-y)?$/.test(d.prop)&&/auto|scroll/.test(d.value)),false,'nothing in the window scrolls');
+  assert.equal(DECLS.some(d=>/rh-offer\[data-mode=intermission\]$/.test(d.selector)&&d.prop==='max-height'),false,'no height cap that would cut a tag');
+  // One row: every tag a column, at most --of-card wide, all shrinking together (minmax(0, …)).
+  assert.equal(value('.rh-offer-cards','grid-auto-flow'),'column');
+  assert.equal(value('.rh-offer-cards','grid-auto-columns'),'minmax(0,var(--of-card))');
+  assert.equal(DECLS.some(d=>d.selector.includes('.rh-offer-cards[data-count')),false,'no 2x2 for four: one row');
+  // The window is as wide as its row and never wider than the screen leaves it (the tags shrink, never cut).
+  assert.equal(value('.rh-offer','width'),'max-content');
+  assert.equal(value('.rh-offer','max-width'),'calc(100vw - var(--rh-l) - var(--of-left) - var(--rh-r))');
+  assert.equal(value('.rh-offer','max-width',LANDSCAPE),'var(--of-w)');
+  // The tag: sticker, short name (two lines at most), price; the effect is a tooltip (hover, focus, a held finger).
+  assert.equal(value('.rh-card-name','-webkit-line-clamp'),'2');
+  assert.equal(value('.rh-card-blurb','position'),'absolute');
+  assert.equal(value('.rh-card-blurb','visibility'),'hidden');
+  assert.equal(value('.rh-card:is(:focus-visible,:active) .rh-card-blurb','visibility'),'visible');
+  assert.equal(value('@media (hover:hover) .rh-card:hover .rh-card-blurb','visibility'),'visible');
+  assert.ok(px(value('.rh-card','min-height'))>=44,'a tag is still a 44 px target');
+  // The clock: a thin bar on the top edge (absolute: it costs no row) and a clock icon for the old foot line.
+  assert.equal(value('.rh-offer-deadline','position'),'absolute');
+  assert.ok(px(value('.rh-offer-deadline','height'))<=4,'a thin bar');
+  assert.match(OFFER_TS,/el\('span','rh-offer-auto',head\);note\.setAttribute\('role','img'\);note\.setAttribute\('aria-label',AUTO_NOTE\)/,'the clock icon says the old line');
+  assert.equal(AUTO_NOTE,'vai no automático se acabar o tempo');
+  assert.equal(value('.rh-offer-auto','border-radius'),'var(--r-circulo)');
 });
 
-test('portrait at 125%: the header stays one row; tags past the list scroll under "Mais N"',()=>{
-  const b=budget(1.25);
-  assert.ok(b.head<=22,'title (20 px) and clock (16 px) in one 22 px row');
-  const tags=column([b.oneLine+t125Wrap(),b.oneLine+t125Wrap(),b.oneLine+t125Wrap()],b.gap);
-  const hidden=hiddenCards(tags,{top:0,bottom:b.list});
-  assert.ok(hidden>=1,'two-line effects at 125% do not fit: the cue shows');
-  assert.equal(moreCue(hidden).show,true);
-});
-/** At 125% an effect line of ~30 characters wraps in the portrait window: one more 16.25 px line. */
-function t125Wrap(){return 13*1.25*1.2;}
-
-test('hud.css: "Levar os indicados" is never an absolute corner; portrait puts it in the foot beside "Depois"',()=>{
-  assert.deepEqual(DECLS.filter(d=>/\.rh-offer-(all|later|foot)$/.test(d.selector)&&d.prop==='position').map(d=>d.selector),[]);
-  assert.equal(px(value('.rh .rh-offer-all','min-height')),48,'a 48 px target, like "Depois"');
-  assert.equal(px(value('.rh .rh-offer-later','min-height')),48);
-  assert.equal(DECLS.some(d=>d.selector.startsWith(LANDSCAPE)&&/rh-offer-(all|later)$/.test(d.selector)&&d.prop==='min-height'),false,'48 px in landscape too');
-  assert.equal(value('.rh-offer-foot','gap'),'8px','8 px between "Depois" and the choice');
-  // The 125% portrait no longer stacks the clock under the title.
-  assert.equal(DECLS.some(d=>d.selector.startsWith(PORTRAIT)&&/rh-offer-head$/.test(d.selector)&&d.prop==='flex-direction'),false);
-  // The offer list lost the Breu cut edge (the forge keeps it, untouched); the fade uses tokens only.
+test('"Depois" is small but a 48 px target; "Levar os indicados" is the row\'s last tile; neither is an absolute corner',()=>{
+  assert.deepEqual(DECLS.filter(d=>/\.rh-offer-(all|later|foot)$/.test(d.selector)&&d.prop==='position'&&d.value==='absolute').map(d=>d.selector),[]);
+  assert.equal(px(value('.rh .rh-offer-later','min-height')),24,'drawn 24 px tall');
+  const hit=box(value('.rh .rh-offer-later::before','inset'));
+  assert.equal(value('.rh .rh-offer-later::before','position'),'absolute');
+  assert.ok(24-hit.top-hit.bottom>=44,`its target is ${24-hit.top-hit.bottom} px tall`);
+  assert.equal(value('.rh .rh-offer-later','position'),'relative');
+  assert.match(OFFER_TS,/el\('button','rh-offer-later',head\)/,'"Depois" in the header row');
+  assert.equal(px(value('.rh .rh-offer-all','min-height')),48,'the tile: a 48 px target');
+  assert.equal(value('.rh-offer','grid-template-areas'),"'head head' 'fall fall' 'cards foot'");
+  assert.equal(value('.rh-offer:not(:has(.rh-offer-all:not([hidden]))) .rh-offer-foot','display'),'none');
+  // The offer list lost the Breu cut edge (the forge keeps it, untouched).
   assert.equal(DECLS.some(d=>d.selector.includes('.rh-offer-cards[data-more=true]')),false);
   assert.equal(value('.rh-forge-tags[data-more=true]::after','border-bottom'),'3px solid var(--c-breu)');
-  assert.match(value('.rh-offer-more::before','background'),/var\(--c-lilas\)/);
-  assert.equal(value('.rh-offer-more::before','height'),'var(--of-fade,0px)','the fade only over the cut part');
-  assert.equal(value('.rh-offer-more::before','bottom'),'100%','it lies over the list, from its bottom edge up');
-  // A scrolled tag never covers the clock (portrait) or the header row (landscape), nor takes their taps: the list's
-  // top padding (under them, for the first row's stars) is clipped once it scrolls, and the landscape header is above.
-  assert.equal(value('.rh-offer[data-mode=intermission] .rh-offer-cards[data-scrolled=true]','clip-path'),'inset(6px 0 0)');
-  assert.equal(value('.rh-offer[data-mode=intermission] .rh-offer-cards','margin',PORTRAIT),'-6px -8px 0');
-  assert.equal(value('.rh-offer[data-mode=intermission] .rh-offer-cards','margin',LANDSCAPE),'-6px -6px 0');
-  assert.equal(value('.rh-offer[data-mode=intermission] .rh-offer-head','z-index',LANDSCAPE),'1');
-  assert.equal(DECLS.some(d=>d.selector.includes('rh-offer-fall-foot')),false,'no dead ficha rules');
 });
 
+/** Today's windows (main before this card), from the old hud.css: what the new one must halve. */
+const BEFORE={
+  // 1335x620 is a "portrait" layout here (height > 500): 460 px wide, capped at 32% of the height (the tags overflowed).
+  desktop:{width:460,height:.32*620},
+  // 844x390: --of-w (378 px) wide, from the top band down to 24 px over the skill button (196 px).
+  landscape:{width:378,height:196},
+  // 390x844: right of the team column (312 px), capped at 32svh (270 px; "Tudo novo!" reached it).
+  portrait:{width:390-8-62-8,height:.32*844},
+};
+test('the compact window is at most half of today\'s at 1335x620, 844x390 and 390x844 (3 tags + tile, and 4 tags)',()=>{
+  const rooms={desktop:1335-8-62-8,landscape:Math.min(340,.4*844),portrait:390-8-62-8};
+  assert.equal(value('.rh','--of-w',LANDSCAPE),'min(340px,40vw)');
+  for(const [name,orientation] of [['desktop','portrait'],['landscape','landscape'],['portrait','portrait']] as const)
+    for(const [cards,takeAll] of [[3,true],[4,false],[3,false]] as const){
+      const now=compact(orientation,cards,takeAll,rooms[name]),before=BEFORE[name];
+      const ratio=now.area/(before.width*before.height);
+      assert.ok(ratio<=.5,`${name}, ${cards} tags${takeAll?' + tile':''}: ${Math.round(now.width)}x${Math.round(now.height)} is ${(ratio*100).toFixed(0)}% of ${Math.round(before.width)}x${Math.round(before.height)}`);
+      // Whole tags: on a narrow screen they shrink together, never below a readable width.
+      assert.ok(now.card>=60,`${name}: tags ${now.card.toFixed(0)} px wide`);
+    }
+  // The 125% portrait keeps one row too: the column moves right and the tags shrink (taller names, never cut).
+  assert.equal(value(':root[data-texto="125"] .rh-offer','--of-left',PORTRAIT),'max(86px,var(--rh-coluna,54px) + 8px)');
+  const narrow=compact('portrait',4,false,390-8-86-8);
+  assert.ok(narrow.card>=60,`125%: tags ${narrow.card.toFixed(0)} px wide`);
+});
+
+// ---------- The "Mais N" helpers (overflow.ts) the offer used before; kept, pure, for any scrolling list ----------
 /** Tilted 370 px tags of 44 px (landscape, ±0.5°): their boxes reach 1.6 px past the layout box on both sides. */
 const tilted=(layoutTop:number,h=44,tilt=1.6)=>({top:layoutTop-tilt,bottom:layoutTop+h+tilt});
 const wide=(s:Span,left=105,right=371):Box=>({...s,left,right});
 
-test('"Mais N" lies in the cut strip when its 48 px target fits there, else in its own row; never on a whole tag',()=>{
+test('cueLayout (pure): "Mais N" in the cut strip when its 48 px target fits there, else in its own row; never on a whole tag',()=>{
   assert.equal(CUE_TARGET,48,'design CHECKLIST A.11');assert.equal(FOOT_GAP,8);
-  assert.equal(value('.rh-offer-more','height'),'var(--of-row,48px)','the row: the target (+ 8 px over the portrait foot)');
-  assert.equal(px(value('.rh-offer-more[data-place=over]','height')),0,'in the strip it costs no height');
-  assert.equal(value('.rh .rh-offer-more[data-place=over] .rh-offer-more-btn','bottom'),'calc(0px - var(--of-below,0px))');
-  assert.equal(px(value('.rh .rh-offer-more-btn','min-height')),48);assert.equal(px(value('.rh .rh-offer-more-btn','min-width')),48);
-  assert.ok(px(value('.rh-offer-more-pill','min-height'))<=28,'the pill draws at most 28 px');
   // Measured in Chromium (2026-10-12): the list's box, its tags' boxes, the room under it, and where the cue must go.
   const cases:{name:string;view0:Span;tags:Span[];below:number;mode:'over'|'row';hidden:number}[]=[
     // Landscape 100%, 3 tags of 44 px in one column: two whole, the third cut; the strip (44 px) and the window's
@@ -245,37 +263,25 @@ test('one "Mais N" step brings the next row whole into view, at the top',()=>{
 });
 
 // ---------- Landscape 844x390 ----------
-test('landscape 844x390: header row with both buttons; the list keeps two whole tags and the cue costs no height',()=>{
-  // The window: --of-w wide, from --rh-t + 52 down to 24 px over the skill button (94 px at 100%, 16 px floor).
-  assert.equal(value('.rh-offer[data-mode=intermission]','width',LANDSCAPE),'var(--of-w)');
-  assert.equal(value('.rh','--of-w',LANDSCAPE),'max(min(40vw,360px),min(420px,calc(100vw - var(--rh-l) - var(--rh-r) - 450px)))');
-  assert.match(value('.rh-offer[data-mode=intermission]','max-height',LANDSCAPE),/100vh - var\(--rh-t\) - 52px - \(max\(16px,env\(safe-area-inset-bottom\)\) \+ var\(--botao-habilidade\) \+ 24px\)/);
-  const rhT=8,botao=14+80,maxH=390-rhT-52-(16+botao+24);
-  const pad=box(value('.rh-offer','padding',LANDSCAPE)),padTop=px(value('.rh-offer[data-mode=intermission]','padding-top',LANDSCAPE));
-  const content=maxH-padTop-pad.bottom-4;
-  // The wide tags tilt half as much: a 370 px tag at ±0.5° pokes ~1.6 px past its box.
-  assert.equal(value('.rh-offer[data-mode=intermission]','--of-tilt-a',LANDSCAPE),'-.5deg');
-  const tilt=Math.round(185*Math.sin(.5*Math.PI/180)*10)/10;
-  // Header row: the 48 px buttons set it (title over seconds and clock on the left).
-  assert.equal(value('.rh-offer[data-mode=intermission] .rh-offer-head','grid-template-areas',LANDSCAPE),"'title title foot' 'time bar foot'");
-  assert.equal(px(value('.rh-offer[data-mode=intermission] .rh-offer-head','min-height',LANDSCAPE)),48);
-  const list=content-48+6;// the list's box, its top padding under a -6 px margin
-  assert.equal(Math.round(list),144,'as measured');
-  // One column of tags (44 px at least: they are touch targets); three need 6 + 3 x 44 + 2 x 4 + the tilt.
-  assert.equal(value(".rh-offer[data-mode=intermission] .rh-offer-cards[data-count='4']",'grid-template-columns',LANDSCAPE),'minmax(0,1fr)');
-  assert.equal(px(value('.rh-card','min-height')),44);
-  const tags=[tilted(6,44,tilt),tilted(54,44,tilt),tilted(102,44,tilt),tilted(150,44,tilt)];
-  const cue=cueLayout(tags.slice(0,3),{top:0,bottom:list},6);
-  assert.equal(cue.mode,'over');assert.equal(cue.hidden,1,'"Mais 1": two whole tags and the third under the cue');
-  assert.equal(cueLayout(tags,{top:0,bottom:list},6).hidden,2,'four of luck: "Mais 2"');
+test('landscape 844x390: the window keeps the right column under the top band, its four tags whole in --of-w',()=>{
+  assert.equal(value('.rh-offer','top',LANDSCAPE),'calc(var(--rh-t) + 52px)');
+  assert.equal(value('.rh-offer','right',LANDSCAPE),'var(--rh-r)');
+  assert.equal(value('.rh-offer','bottom',LANDSCAPE),'auto');
+  const four=compact('landscape',4,false,Math.min(340,.4*844));
+  assert.equal(four.width,four.natural,`four tags of ${cssVar('.rh-offer','--of-card',LANDSCAPE)} px fit ${Math.round(four.width)} px whole`);
+  // 24 px over the skill button (94 px at 100%, 16 px floor), with room to spare.
+  const rhT=8,botao=14+80;
+  assert.ok(rhT+52+four.height+24<=390-16-botao,`the window ends at ${Math.round(rhT+52+four.height)}`);
+  // The XP bar and the announcement slot keep left of it (their rules read --of-w, untouched by this card).
+  assert.match(value('.rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack','right',LANDSCAPE),/var\(--of-w\)/);
 });
 
 /** The arrows (caído, chefe) need the field beside the window at least this wide: Chromium, 844x390, cenario=bordas
  * (the audit's "soma" and "janela" scenes): they all went at 302 px and stayed at 312 px and more. */
 const ARROWS_FIELD=312;
 test('landscape: the window leaves the field room for the hero and the caído/chefe arrows (zones.besideOffer)',()=>{
-  const width=Math.max(Math.min(.4*844,360),Math.min(420,844-8-8-450)),offer={x:844-8-width,y:8+52,width,height:196};
-  assert.equal(width,378);
+  const c=compact('landscape',4,false,Math.min(340,.4*844)),width=Math.round(c.width),offer={x:844-8-width,y:8+52,width,height:Math.ceil(c.height)};
+  assert.ok(width<=Math.min(340,.4*844),`${width} px, within --of-w`);
   // The top band as laid out with the window open: the XP bar ends 16 px before the window.
   const xp={x:158,y:52,width:844-width-8-8-166,height:20};
   assert.ok(xp.x+xp.width<=offer.x-8,'the XP bar keeps left of the window');
@@ -291,11 +297,11 @@ test('landscape: the window leaves the field room for the hero and the caído/ch
   assert.ok(offer.y+offer.height+24<=input.chip!.y&&offer.y+offer.height+24<=input.skill!.y);
   assert.equal(crosses(offer,input.team!),false);assert.equal(crosses(offer,input.minimap!),false);
   // The two-column window of the last round (min(60vw, 520px)) left 196 px: the arrows went.
-  const old=computeZones({...input,offer:{...offer,x:844-8-506.4,width:506.4}});
+  const old=computeZones({...input,offer:{...offer,x:844-8-506.4,width:506.4,height:196}});
   assert.ok(old.useful.width<ARROWS_FIELD);
 });
 
-test('the clock and the foot move into the header at hud.css\'s landscape breakpoint',()=>{
+test('LANDSCAPE_QUERY is hud.css\'s landscape breakpoint',()=>{
   assert.ok(DECLS.some(d=>d.selector.startsWith(`@media ${LANDSCAPE_QUERY}`)),LANDSCAPE_QUERY);
   assert.equal(`@media ${LANDSCAPE_QUERY}`,LANDSCAPE);
 });

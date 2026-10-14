@@ -178,7 +178,7 @@ class FakeHorde {
     if(pose&&this.tick%25===3){
       // A shot bounced off the pose: a hostile projectile flying back at the hero.
       const d=Math.hypot(me.x-pose.x,me.y-pose.y)||1;
-      this.projectiles.push({id:`r${this.next++}`,source:'reflexo',x:pose.x,y:pose.y,vx:(me.x-pose.x)/d*.14,vy:(me.y-pose.y)/d*.14,radius:.2,hostile:true,until:this.tick+Math.floor(d/.14)});
+      this.projectiles.push({id:`r${this.next++}`,source:'reflexo',x:pose.x,y:pose.y,vx:(me.x-pose.x)/d*.14*SIM_HZ,vy:(me.y-pose.y)/d*.14*SIM_HZ,radius:.2,hostile:true,until:this.tick+Math.floor(d/.14)});
     }
   }
   private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
@@ -198,7 +198,7 @@ class FakeHorde {
     const agiota=this.lined('agiota');
     if(agiota&&this.tick%20===0){
       const d=Math.hypot(me.x-agiota.x,me.y-agiota.y)||1;
-      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:agiota.x,y:agiota.y,vx:(me.x-agiota.x)/d*.12,vy:(me.y-agiota.y)/d*.12,radius:.22,hostile:true,until:this.tick+Math.floor(d/.12)});
+      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:agiota.x,y:agiota.y,vx:(me.x-agiota.x)/d*.12*SIM_HZ,vy:(me.y-agiota.y)/d*.12*SIM_HZ,radius:.22,hostile:true,until:this.tick+Math.floor(d/.12)});
     }
     if(SAY_DEMO==='ficou'){
       // BUG-…-balao-ficou-pra-tras: a crate's line, then the left-behind line 0.5 s later (inside the 2 s gap).
@@ -232,7 +232,7 @@ class FakeHorde {
     this.tick++;
     if(this.lineup){
       this.lineUpDanger();this.lineUpCharge();
-      for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
+      for(const b of this.projectiles){b.x+=b.vx/SIM_HZ;b.y+=b.vy/SIM_HZ;} // vx/vy in units per second, like the sim and the wire
       this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
       this.telegraphs=this.telegraphs.filter(t=>t.fireTick>this.tick);
       if(this.tick%45===7&&this.enemies.length){const e=this.rng.pick(this.enemies);this.emit({type:'bark',enemy:e.id,line:this.rng.pick(BARKS[e.kind]??BARKS.bebado)});}
@@ -258,14 +258,14 @@ class FakeHorde {
     if(this.tick%10===0){const p=this.rng.pick(this.players);this.emit({type:'damage',target:p.id,amount:this.rng.int(3,9)});}
     for(const p of this.players)if(this.rng.chance(.12)){
       const a=this.rng.range(0,Math.PI*2);p.attackTick=this.tick;
-      this.projectiles.push({id:`b${this.next++}`,source:'boleto',x:p.x,y:p.y,vx:Math.cos(a)*.35,vy:Math.sin(a)*.35,radius:.18,hostile:false,until:this.tick+24});
+      this.projectiles.push({id:`b${this.next++}`,source:'boleto',x:p.x,y:p.y,vx:Math.cos(a)*.35*SIM_HZ,vy:Math.sin(a)*.35*SIM_HZ,radius:.18,hostile:false,until:this.tick+24});
     }
     for(const e of this.enemies)if(e.kind==='agiota'&&this.rng.chance(.008)){
       const p=this.rng.pick(this.players),d=Math.hypot(p.x-e.x,p.y-e.y)||1;
-      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:e.x,y:e.y,vx:(p.x-e.x)/d*.22,vy:(p.y-e.y)/d*.22,radius:.2,hostile:true,until:this.tick+40});
+      this.projectiles.push({id:`h${this.next++}`,source:'boleto-juros',x:e.x,y:e.y,vx:(p.x-e.x)/d*.22*SIM_HZ,vy:(p.y-e.y)/d*.22*SIM_HZ,radius:.2,hostile:true,until:this.tick+40});
     }
     for(const e of this.enemies)if(ACTS.has(e.kind))e.phase=Math.sin(this.tick*.03+e.wobble)>.4?1:undefined;
-    for(const b of this.projectiles){b.x+=b.vx;b.y+=b.vy;}
+    for(const b of this.projectiles){b.x+=b.vx/SIM_HZ;b.y+=b.vy/SIM_HZ;} // vx/vy in units per second, like the sim and the wire
     this.projectiles=this.projectiles.filter(b=>b.until>this.tick);
     this.pickups=this.pickups.filter(p=>p.until>this.tick);
     this.telegraphs=this.telegraphs.filter(t=>t.fireTick>this.tick);

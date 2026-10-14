@@ -9,6 +9,9 @@
 /* Site marker: a 48 px target; the ring on the ground is drawn inside it. */
 .rh-obra-site{position:absolute;pointer-events:auto;border:0;background:none;display:grid;place-items:center}
 .rh-obra-chao{display:grid;place-items:center;box-sizing:border-box;width:40px;height:40px;border-radius:var(--r-circulo);border:3px dashed var(--c-papel);background:var(--c-veu);box-shadow:0 0 0 2px var(--c-breu)}
+/* An empty site (card E4-obras-visiveis-da-base): Lilás with the Vigia's post in it, so it reads on snow and asphalt
+   alike and matches its edge arrow's sticker; the veil alone was a grey blob on the snow. */
+.rh-obra-site[data-kind=vazio] .rh-obra-chao{background:var(--c-lilas)}
 .rh-obra-site[data-kind=torre] .rh-obra-chao,.rh-obra-site[data-kind=obra] .rh-obra-chao{border-style:solid;background:var(--c-papel);border-color:var(--c-breu);box-shadow:var(--s-1)}
 .rh-obra-site[data-kind=obra] .rh-obra-chao{border-style:dashed;background:var(--c-cartolina)}
 .rh-obra-site[data-kind=trilho] .rh-obra-chao{border-radius:var(--r-etiqueta);background:var(--c-trilho)}
@@ -18,6 +21,8 @@
 .rh-obra-seta{display:block;width:22px;height:22px;fill:var(--c-amarelo);stroke:var(--c-breu);stroke-width:2;stroke-linejoin:round;paint-order:stroke}
 
 /* The window: an inner Breu edge and Papel line (inset shadows) so children sit at layout.ts's exact px. */
+/* Focused by script when it opens (Escape keeps working); no ring for that, the keyboard's :focus-visible keeps one. */
+.rh-obra-janela:focus:not(:focus-visible){outline:none}
 .rh-obra-janela{position:absolute;box-sizing:border-box;pointer-events:auto;border-radius:var(--r-janela);background:var(--c-lilas);
   box-shadow:inset 0 0 0 2px var(--c-breu),inset 0 0 0 4px var(--c-papel),var(--s-2)}
 
@@ -40,6 +45,14 @@
 .rh-obra-nome{grid-column:2;min-width:0;font:400 var(--t-16)/1.15 var(--f-cartaz);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-efeito{grid-column:2/4;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-cost,.rh-obra-why{grid-column:3;grid-row:1;display:inline-flex;align-items:center;gap:2px;font:800 var(--t-13)/1.15 var(--f-sistema);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Compact landscape window (layout.ts 'compacta': the branches side by side under the head row): a branch card is
+   narrow, so its name takes the whole first line (clear of the punched hole) and the suit and the cost (or the reason)
+   the second; the effect line goes (it stays in the card's aria-label). */
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]){grid-template-columns:18px minmax(0,1fr);column-gap:4px;padding-left:10px}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-nome{grid-column:1/3}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-naipe{grid-row:2;width:18px;height:18px}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) :is(.rh-obra-cost,.rh-obra-why){grid-column:2;grid-row:2;justify-self:start;max-width:100%;min-width:0;overflow:hidden}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-efeito{display:none}
 .rh-obra-why .ic{width:16px;height:16px}
 .rh-obra-why{padding:0 4px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel)}
 .rh-obra-tem{border-style:solid}
@@ -72,9 +85,16 @@
 .rh-obra-site[data-light=true] .rh-obra-chao .rh-obra-naipe{width:18px;height:18px}
 @media (prefers-reduced-motion:reduce){.rh-obra-site[data-pending=true]::after,.rh-obra-site[data-feito=true] .rh-obra-chao{animation:none}}
 /* The room's refusal, a row of the HUD's announcement slot (RunHud.queueRow): "Falta material", "Só no intervalo"… */
-.rh-obra-aviso{box-sizing:border-box;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:2px solid var(--c-breu);border-radius:var(--r-balao);
-  background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 var(--t-13)/1.3 var(--f-sistema);white-space:nowrap;pointer-events:none}
+/* BUG-20261013-ORQ-oferta-e-dicas-menores: one line (ellipsis), a thinner ficha. */
+.rh-obra-aviso{box-sizing:border-box;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:1px 10px;overflow:hidden;text-overflow:ellipsis;border:2px solid var(--c-breu);border-radius:var(--r-balao);
+  background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;pointer-events:none}
 .rh-obra-aviso[hidden]{display:none}
-/* Sites off screen: one small etiqueta on the field's rim towards them ("+3 obras"). Not a target: taps go through. */
-.rh-obra-fora{position:absolute;box-sizing:border-box;display:grid;place-items:center;pointer-events:none;padding:0 6px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);
-  background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:800 var(--t-13)/1 var(--f-sistema);white-space:nowrap;overflow:hidden}
+/* Sites off screen (card E4-obras-visiveis-da-base): the 1-3 nearest get edge arrows, hud.css .rh-edge fichas with the
+   distance, that are buttons (a tap opens the site's tree). A Lilas ring tells them from the HUD's arrows; layout.ts
+   obraArrows places them around those. The hit area grows to 48 px tall past the 36 px ficha. */
+.rh-obra-bordas{position:absolute;inset:0;z-index:40;pointer-events:none}
+.rh-obra .rh-obra-borda{pointer-events:auto;padding:0 6px 0 4px;font:700 var(--t-13)/1 var(--f-sistema);color:var(--c-papel);box-shadow:0 0 0 2px var(--c-lilas),var(--s-2)}
+.rh-obra .rh-obra-borda[hidden]{display:none}
+.rh-obra-borda::after{content:'';position:absolute;left:-4px;right:-4px;top:-8px;bottom:-8px}
+.rh-obra-borda .rh-obra-naipe{width:24px;height:24px}
+.rh-obra-borda[aria-disabled=true]{cursor:default}

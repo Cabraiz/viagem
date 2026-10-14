@@ -17,7 +17,7 @@ export {initialSelector,selectorReducer,selectorView,mountMapSelector,mapChanged
 export {CityRoute,CityObjectiveTracker,cityRouteOf,cityRouteReady,prewarmCityRoute,idleSchedule,objectiveSlot,routeTerrainOf,plazaCells,screenBearing,objectiveMeters,
   MOUTH_HALF_WIDTH,ROUTE_IDLE_TIMEOUT_MS,ROW_WAITS_OBJECTIVE_MS,OBJECTIVE_TEXT,OBJECTIVE_JOKE,
   type CityObjective,type CityObjectiveInput,type RouteTerrain,type IdleSchedule,type ObjectiveSlotInput} from './route.ts';
-export {createObjectiveRow,type ObjectivePart} from './objective.ts';
+export {createObjectiveRow,OBJECTIVE_FULL_MS,type ObjectivePart} from './objective.ts';
 export {minimapMode,cityAssetOf,cityMapInfo,mouthOfWarning,trackMouths,screenCorners,hornSeconds,BigMapState,MOUTH_IDS,AVENUE_MATCH,GATE_RADIUS,MOUTH_TAIL_TICKS,
   type MinimapMode,type CityAssetLike} from './wiring.ts';
 export {barricadeAt,barricadeTarget,mouthOf,BARRICADE_KIND,MOUTH_NAMES,type BarricadeSpot,type CityBocas} from './barricade.ts';

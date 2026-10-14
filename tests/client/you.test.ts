@@ -1,6 +1,7 @@
 import test from 'node:test';
+import {ALLY_RING_SIZE,ALLY_RING_WIDTH} from '../../src/client/art/hud-art.ts';
 import assert from 'node:assert/strict';
-import {ARROW_BOB_MS,ARROW_MS,HP_LINGER_MS,RING_CSS,arrowFrame,arrowTrigger,beakPoints,canopyCovers,facingFrom,hpBarStep,hurtStrength,ringBands} from '../../src/client/render/you-rules.ts';
+import {ARROW_BOB_MS,ARROW_MS,HP_LINGER_MS,RING_CSS,RING_SCALE,RING_UNDER,ringSize,arrowFrame,arrowTrigger,beakPoints,canopyCovers,facingFrom,hpBarStep,hurtStrength,ringBands} from '../../src/client/render/you-rules.ts';
 import {HURT_MIN_GAP_MS,canFlash,hitsOn} from '../../src/client/hud/hurt.ts';
 import {CAUSE_COPY,emptyCauses,recordFall,rememberKill,resolveCause,resultCause,topCause,KILL_MEMORY} from '../../src/client/hud/cause.ts';
 import {applyEvents,emptyTally,reviveBanner} from '../../src/client/hud/model.ts';
@@ -91,4 +92,17 @@ test('"você" ring: hard bands Papel outside, Lilás body, Breu inside; beak poi
   const right=beakPoints(0,0,20,9,0,8,5);assert.ok(Math.abs(right[2].x-28)<1e-9&&Math.abs(right[2].y)<1e-9);
   const down=beakPoints(0,0,20,9,Math.PI/2,8,5);assert.ok(Math.abs(down[2].y-17)<1e-9);
   assert.equal(facingFrom(0,0,1.5),1.5);assert.equal(facingFrom(3,0,1.5),0);assert.ok(Math.abs(facingFrom(0,-3,0)+Math.PI/2)<1e-9);
+});
+
+test('ring (BUG-20261013-ORQ-anel-voce-atras): 30 % smaller than before, under the sprite on top and over its shadow',()=>{
+  assert.equal(RING_SCALE,.7);
+  for(const s of [.5,1,1.6])for(const fig of [20,60,140]){
+    const old=Math.max(RING_CSS.width*s,fig*.8),{w,h}=ringSize(fig,s);
+    assert.ok(Math.abs(w-old*.7)<1e-9,'width ×0.7');
+    assert.ok(Math.abs(h-Math.max(RING_CSS.height*s,old*.5)*.7)<1e-9,'height ×0.7');
+  }
+  // Under the sticker contour (−0.2, −0.1 under the sprite) and above the contact shadow (−1).
+  assert.ok(RING_UNDER>.2&&RING_UNDER<1);
+  // The allies' ring shrinks the same (it already sits under its figure).
+  assert.deepEqual(ALLY_RING_SIZE,{width:46*.7,height:20*.7});assert.equal(ALLY_RING_WIDTH,46*.7+2);
 });

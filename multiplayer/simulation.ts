@@ -512,6 +512,12 @@ export class Simulation {
     if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
     return this.systems.stonewards.upgrade(this.world,id,defenseId,branch,requestId);
   }
+  /** torres-ajustes: repairs a standing defense below its maxHp (the sim's rule: reach, intermission, material). */
+  repair(id:string,defenseId:string,requestId?:string):TowerResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.repair(this.world,id,defenseId,requestId);
+  }
   /**
    * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area
    * of interest (each encoder keeps its own part). Untouched nodes are full.

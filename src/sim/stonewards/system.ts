@@ -12,7 +12,7 @@
  * the 046A contact siege off. Standalone (tests, tools) the contact siege still works.
  *
  * Tower defense (torres-sim, D-041): on the terrain's build sites (towers/sites.ts) the team builds and evolves the
- * defenses of towers/catalog.ts in the intermission (`build`, `upgrade`); they fire in combat (towers/system.ts
+ * defenses of towers/catalog.ts in the intermission (`build`, `upgrade`, `repair`; within BUILD_REACH); they fire in combat (towers/system.ts
  * defensesStep) and are hit through the same `hit` (D-017). The forge's 'torre-chinelo' recipe is unchanged.
  *
  * City (cidade-06): the base is the fountain plaza; the wall stands at points.praca (the fountain, so the forge's camp
@@ -32,7 +32,7 @@ import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
-import {build as buildDefense,damageDefense,defenseTargets,defensesStep,upgrade as upgradeDefense,type TowerResult} from '../towers/system.ts';
+import {build as buildDefense,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type TowerResult} from '../towers/system.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
@@ -114,10 +114,12 @@ export interface StonewardsSystem extends SimSystem {
   hit(ctx:SimContext,structureId:string,amount:number):void;
   /** The terrain's build sites and rail (towers/sites.ts; empty on the island). */
   readonly plan:BuildPlan;
-  /** Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id. No wire message yet. */
+  /** Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id (torres-fio: the rooms' {t:'build'}). */
   build(ctx:SimContext,playerId:string,siteId:string,requestId?:string):TowerResult;
   /** Tower defense: evolves a ready defense (`branch`: 'A'|'B'|'C' at the root, a child id or label like 'A4b' at a fork). */
   upgrade(ctx:SimContext,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult;
+  /** Tower defense (torres-ajustes): repairs a standing defense below its maxHp, like the forge's barricade repair. */
+  repair(ctx:SimContext,playerId:string,defenseId:string,requestId?:string):TowerResult;
   /** Fresh layer for a rematch: balance, nodes, wall, towers, ids and stream all start over. */
   reset():void;
 }
@@ -200,7 +202,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     const round=ctx.round;
     if(round.index<=1)return;
     const idle=loot?state.cityHornIdle:undefined;
-    const back=()=>loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y)),idle?.length?id=>idle.includes(id):undefined):farthestReturn(ctx,state);
+    const back=()=>loot?cityFarthestReturn(ctx,loot,p=>returnTicks(Math.hypot(p.x-state.wall.x,p.y-state.wall.y),heroSpeed(ctx.terrain)),idle?.length?id=>idle.includes(id):undefined):farthestReturn(ctx,state);
     if(state.hornRound===round.index){
       // City: a hero idle when it sounded started walking or working and cannot make it back any more: once.
       if(!loot||!woke||state.cityHornResized)return;
@@ -240,6 +242,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     get plan(){return buildPlanFor(options.terrain);},
     build(ctx,playerId,siteId,requestId){return buildDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,siteId,requestId);},
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId);},
+    repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId);},
     buy(ctx,playerId,recipeId,requestId,targetId){
       const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);

@@ -8,6 +8,8 @@
  *     falls are logged.
  *  2. ACCEPTANCE (b): in the round-2 intermission a bot leaves the base, gathers at a crate and is back in the base
  *     before the horn's deadline (the wave's start), without the left-behind line (3 seeds). The trip is logged.
+ *     Towers on: the lone bot is also the builder (torres-ajustes: it only walks to an obra on a trip back in time).
+ *  2b. torres-ajustes: every bot (a lone builder, and three) is inside the base when each wave of rounds 2–6 starts.
  *  3. The route cache stays within BOT_ROUTE_FIELDS fields whatever the goals, and a route is the same after its field
  *     was evicted and rebuilt (a pure function of city and goal cell: decisions stay deterministic).
  *  4. Same seed, same run: three bots in the city twice give the same state hash (bot memories included).
@@ -137,6 +139,31 @@ test('the route cache stays within BOT_ROUTE_FIELDS and a route is the same afte
   assert.deepEqual(again,out,'same direction from a rebuilt field');
   const cells=city.asset.cells.w*city.asset.cells.h,bytes=BOT_ROUTE_FIELDS*BOT_ROUTE_BYTES_PER_CELL*cells;
   console.log(`[cidade-10] bot route LRU: ${BOT_ROUTE_FIELDS} fields × ${BOT_ROUTE_BYTES_PER_CELL} B × ${cells} cells = ${(bytes/2**20).toFixed(2)} MiB at most, plus ${cells} B of grid per city`);
+});
+
+test('torres-ajustes: every bot is inside the base when each wave of rounds 2–6 starts (the builder comes back in time)',()=>{
+  const lines:string[]=[];
+  for(const [seed,count] of [[1,1],[2,1],[1,3]] as const){
+    const {sim,bots,ids,step}=cityRun(seed,count);
+    let built=0;
+    const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim);
+    const count1=<R extends {ok:boolean}>(r:R)=>{if(r.ok)built++;return r;};
+    sim.build=(a,b,c)=>count1(build(a,b,c));sim.upgrade=(a,b,c,d)=>count1(upgrade(a,b,c,d));sim.repair=(a,b,c)=>count1(repair(a,b,c));
+    const outside:string[]=[];
+    for(let i=0;i<ticks(15*60);i++){
+      // Nobody falls: the check is about where they stand when the wave starts, not about surviving it.
+      for(const id of ids)sim.players.get(id)!.invulnerableUntil=Number.MAX_SAFE_INTEGER;
+      let wave:number|undefined;
+      for(const e of step())if(e.type==='round'&&e.phase==='wave'&&e.index>=2&&e.index<=6)wave=e.index;
+      if(wave!==undefined)for(const id of ids){const p=sim.players.get(id)!;if(!JUDGE.insideBase(p))outside.push(`round ${wave}: ${id} at ${fmt(p)}`);}
+      if(wave===6)break;
+    }
+    lines.push(`seed ${seed}, ${count} bot(s): to round ${sim.world.round.index}, ${built} tower orders, ${bots.built} by the room bots, outside at a wave start: ${outside.length}`);
+    assert.ok(sim.world.round.index>=6,`seed ${seed}: reached round 6`);
+    assert.ok(built>0,`seed ${seed}: the builder still built`);
+    assert.deepEqual(outside,[],`seed ${seed}, ${count} bot(s): in the base at every wave start`);
+  }
+  console.log(`[torres-ajustes] in the base at the wave:\n  ${lines.join('\n  ')}`);
 });
 
 test('same seed, same city run: three bots twice give the same state (their memories included)',()=>{

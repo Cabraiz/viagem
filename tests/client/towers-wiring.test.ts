@@ -11,7 +11,7 @@ import {buildPlanFor,type BuildPlan} from '../../src/maps/index.ts';
 import {POS_SCALE} from '../../src/protocol/protocol4.ts';
 import type {TowerRefusal} from '../../src/sim/towers/system.ts';
 import {treeFor,type ObraAction} from '../../src/client/hud/towers/model.ts';
-import {HINT_WIDTH,MARKER_SLACK,OBRA_MARKER,planMarkers} from '../../src/client/hud/towers/layout.ts';
+import {MARKER_SLACK,OBRA_MARKER,planMarkers} from '../../src/client/hud/towers/layout.ts';
 import {OBRA_DONE_MS,OBRA_NO_ANSWER,OBRA_OFFLINE,OBRA_PENDING_MS,OBRA_RAIL_TAKEN,OBRA_REFUSALS,OBRA_REFUSED,OBRA_WATCHING,ObraRequests,WIRE_BRANCH,
   branchForWire,obraViewFrom,refusalText,siteOf,towersInWorld,unreachableText} from '../../src/client/hud/towers/wiring.ts';
 import {ZONE_WINDOWS,ZONE_WINDOWS_BESIDE_OBRA,computeZones,crosses,measureZoneInput,measureZones,type Rect} from '../../src/client/hud/zones.ts';
@@ -94,7 +94,7 @@ test('the branch the room accepts: A4b/A5b as they are, every other child by its
 
 test('every refusal code has its own short pt-BR reason',()=>{
   const CODES:Record<TowerRefusal,true>={'wall-down':true,phase:true,player:true,site:true,occupied:true,size:true,balance:true,limit:true,rail:true,
-    unique:true,defense:true,building:true,ruined:true,max:true,branch:true,duplicate:true};
+    unique:true,defense:true,building:true,ruined:true,max:true,branch:true,duplicate:true,away:true,full:true};
   assert.deepEqual(Object.keys(OBRA_REFUSALS).sort(),Object.keys(CODES).sort(),'one text per TowerRefusal, no more');
   for(const code of Object.keys(CODES)){
     const text=refusalText(code);
@@ -103,6 +103,7 @@ test('every refusal code has its own short pt-BR reason',()=>{
   assert.equal(new Set(Object.values(OBRA_REFUSALS)).size,Object.keys(OBRA_REFUSALS).length,'no two codes say the same');
   assert.deepEqual(['balance','limit','rail','unique','wall-down','phase'].map(refusalText),
     ['Falta material','Limite de 12 defesas','Precisa do trilho','Só 1 Gustavão','Muralha caída','Só no intervalo']);
+  assert.equal(refusalText('away'),'Chegue mais perto','torres-ajustes: too far from the obra');
   assert.equal(refusalText('whatever'),OBRA_REFUSED);assert.equal(refusalText(undefined),OBRA_REFUSED);assert.equal(refusalText('toString'),OBRA_REFUSED);
   assert.equal(unreachableText({connected:false,spectator:false}),OBRA_OFFLINE);
   assert.equal(unreachableText({connected:true,spectator:true}),OBRA_WATCHING);
@@ -195,24 +196,19 @@ test('measureZoneInput: the obra window is a window of the useful area; the obra
   assert.deepEqual([...ZONE_WINDOWS],['.rh-offer','.rh-forge','.rh-obra-janela']);
 });
 
-// ---------- markers on screen: off-screen sites hide behind one hint, crowded ones are nudged apart ----------
+// ---------- markers on screen: off-screen sites hide (their edge arrows: obra-arrows.test.ts), crowded ones are nudged apart ----------
 const AREA:Rect={x:70,y:150,width:312,height:520};
 const crossing=(a:Rect,b:Rect)=>crosses(a,b);
 
-test('off-screen sites hide instead of piling on the field\'s edge; one "+N" hint points at them',()=>{
+test('off-screen sites hide instead of piling on the field\'s edge (no "+N" etiqueta: the nearest get edge arrows)',()=>{
   // The live frame: six sites and the rail far off to the left all clamped onto (80.6, 244.6).
   const off=['obra-01','obra-02','obra-07','obra-09','obra-11','obra-12','trilho'].map((id,i)=>({id,x:-300-i*40,y:200+i*10}));
   const on=[{id:'obra-03',x:200,y:300},{id:'obra-04',x:300,y:500}];
   const plan=planMarkers([...off,...on],AREA);
   assert.deepEqual(plan.shown.map(m=>m.id).sort(),['obra-03','obra-04']);
   assert.deepEqual(plan.hidden,off.map(p=>p.id));
-  assert.equal(plan.hint?.count,7);
-  const h=plan.hint!.rect;
-  assert.ok(h.x>=AREA.x&&h.x+h.width<=AREA.x+AREA.width&&h.y>=AREA.y&&h.y+h.height<=AREA.y+AREA.height,'the hint stays in the field');
-  assert.ok(h.x<=AREA.x+8,'on the rim towards them (left)');
-  assert.equal(h.width,HINT_WIDTH);
-  assert.equal(planMarkers(on,AREA).hint,undefined,'nothing off screen: no hint');
-  assert.equal(planMarkers([...off,...on],AREA,{hint:false}).hint,undefined);
+  assert.equal('hint' in plan,false,'the old non-tappable "+17 obras" etiqueta is gone');
+  assert.deepEqual(planMarkers(on,AREA).hidden,[],'nothing off screen');
 });
 
 test('the slack: a marker sticking out by ≤ 8 px shows (clamped in), farther out it hides; the open site always shows',()=>{
@@ -220,15 +216,8 @@ test('the slack: a marker sticking out by ≤ 8 px shows (clamped in), farther o
   const edge=planMarkers([{id:'a',x:AREA.x+half-MARKER_SLACK,y:400},{id:'b',x:AREA.x+half-MARKER_SLACK-1,y:300}],AREA);
   assert.deepEqual(edge.shown.map(m=>m.id),['a']);assert.deepEqual(edge.hidden,['b']);
   assert.equal(edge.shown[0].rect.x,AREA.x,'clamped back into the field');
-  const open=planMarkers([{id:'b',x:-500,y:300}],AREA,{keep:'b',hint:false});
+  const open=planMarkers([{id:'b',x:-500,y:300}],AREA,{keep:'b'});
   assert.deepEqual(open.shown.map(m=>[m.id,m.rect.x]),[['b',AREA.x]]);
-});
-
-test('hidden sites on both sides: the hint goes to a rim, never mid-field',()=>{
-  const plan=planMarkers([{id:'l',x:-400,y:410},{id:'r',x:900,y:410}],AREA);
-  const h=plan.hint!.rect,cx=h.x+h.width/2,mid=AREA.x+AREA.width/2;
-  assert.equal(plan.hint!.count,2);
-  assert.ok(Math.abs(cx-mid)>AREA.width/2-HINT_WIDTH,'pushed to the left or right rim');
 });
 
 test('two markers closer than 48 px are nudged apart, deterministically; the nearest the centre is on top',()=>{

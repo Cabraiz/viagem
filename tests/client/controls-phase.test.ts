@@ -128,8 +128,11 @@ test('coop.css: off hides (visibility, keeps the boxes); the etiqueta is a stati
 });
 test('coop.css: with the thumbs off the portrait window may reach 8 px over the etiqueta; "Tô pronto!" sticks to its bottom',()=>{
   const css=read('src/client/coop.css');
-  assert.ok(css.includes('.coop-shell[data-controls=off]{--controls-hint-room:calc(2 * 1.3 * var(--t-13) + 16px)}'));
-  assert.ok(css.includes('.coop-shell[data-controls=off][data-run-phase=countdown]{--controls-hint-room:calc(1.3 * var(--t-13) + 16px)}'));
+  // BUG-20261013-ORQ-oferta-e-dicas-menores: the etiqueta is one row (2 px padding + 2 px edge) in both phases.
+  assert.ok(css.includes('.coop-shell[data-controls=off]{--controls-hint-room:calc(1.3 * var(--t-13) + 8px)}'));
+  assert.ok(!css.includes('[data-run-phase=countdown]{--controls-hint-room'),'one row: no second room for the countdown');
+  assert.ok(css.includes('.explore-stick-hint span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}'),'one line, cut with an ellipsis');
+  assert.ok(css.includes('.explore-stick-hint span+span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}'),'the second row only for a screen reader');
   assert.ok(css.includes('@media(min-height:501px){.coop-shell[data-controls=off] .coop-wait{max-height:calc(100% - max(122px,calc(env(safe-area-inset-top) + 114px)) - max(24px,env(safe-area-inset-bottom)) - var(--controls-hint-room) - 8px)}}'),
     'portrait cap of the waiting window with the thumbs off');
   // The usual cap stays for the round and for landscape (bottom-anchored, beside the etiqueta, not over it).
@@ -140,22 +143,22 @@ test('coop.css: with the thumbs off the portrait window may reach 8 px over the 
   // The numbers at 390×844 (no safe areas), against what the 6-player panels measured (scrollHeight + 4 px of border):
   // owner 6p lobby at 125%: 585; 6p countdown at 100%: 602 (both scrolled under the old 544 px cap).
   const cap=(height:number,scale:number,rows:number,safe={top:0,bottom:0})=>{
-    const row=13*scale*1.3,room=rows*row+16,top=Math.max(122,safe.top+114),bottom=Math.max(24,safe.bottom);
+    const row=13*scale*1.3,room=rows*row+8,top=Math.max(122,safe.top+114),bottom=Math.max(24,safe.bottom);
     const max=height-top-bottom-room-8,windowBottom=top+max,hintTop=height-bottom-room;
     return {max,gap:hintTop-windowBottom};
   };
-  for(const scale of [1,1.25])for(const rows of [1,2]){
-    const c=cap(844,scale,rows);assert.ok(c.gap>=8,`gap ${c.gap}`);assert.ok(c.max>844-300,`${scale} ${rows}: ${c.max} not above the old cap`);
+  for(const scale of [1,1.25]){
+    const c=cap(844,scale,1);assert.ok(c.gap>=8,`gap ${c.gap}`);assert.ok(c.max>844-300,`${scale}: ${c.max} not above the old cap`);
   }
-  assert.ok(cap(844,1.25,2).max>=585+4,`lobby 125%: ${cap(844,1.25,2).max}`);
+  assert.ok(cap(844,1.25,1).max>=585+4,`lobby 125%: ${cap(844,1.25,1).max}`);
   assert.ok(cap(844,1,1).max>=602+4,`countdown 100%: ${cap(844,1,1).max}`);
   // A notched phone (top 47, bottom 34) keeps the 8 px gap.
-  assert.ok(cap(844,1.25,2,{top:47,bottom:34}).gap>=8);
+  assert.ok(cap(844,1.25,1,{top:47,bottom:34}).gap>=8);
 });
 test('coop.css landscape: the etiqueta keeps its first line (≤ 3 rows); the countdown number stands left of the buttons',()=>{
   const css=read('src/client/coop.css');
   const block=css.match(/\/\* Landscape: the etiqueta's column[\s\S]*?\n@media\(max-height:500px\)\{\n([\s\S]*?)\n\}\n/)?.[1]??'';
-  for(const rule of ['.explore-stick-hint{padding:4px 6px}','.explore-stick-hint span+span{display:none}',
+  for(const rule of ['.explore-stick-hint{padding:2px 6px}','.explore-stick-hint span+span{display:none}','.explore-stick-hint span{white-space:normal}',
     '.coop-wait[data-phase=countdown]{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px}',
     '.coop-wait[data-phase=countdown]>*{flex:0 0 100%;min-width:0}','.coop-wait[data-phase=countdown]>.coop-wait-count{order:1;flex:none}',
     '.coop-wait[data-phase=countdown]>.coop-wait-actions{order:2;flex:1 1 0}'])

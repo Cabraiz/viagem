@@ -52,10 +52,15 @@ const stats=[
   {damage:21050,kills:240,revives:0,pickups:97},
 ];
 
+/**
+ * Each fixture player's wallet (carteira-e-pix, SimPlayer.grana on the wire): the PIX balloon shows a friend's; p1's
+ * equals the camp's R$ 23 (CampView.grana is the viewer's own), Zé do Pix has R$ 0, Kaique more than PIX_MAX.
+ */
+export const FIXTURE_GRANA=[23,40,0,12,7,150] as const;
 export function fakePlayers(count:number,scenario:HudScenario='wave'):PlayerRunView[]{
   return roster.slice(0,Math.max(1,Math.min(6,count))).map((entry,index)=>{
     const maxHp=100+index*10;
-    const player:PlayerRunView={...entry,hp:Math.round(maxHp*[0.92,0.55,0.18,0.74,1,0.33][index]),maxHp,online:index!==4||count<6,spectator:false,weapons:builds[index].weapons,passives:builds[index].passives,stats:stats[index]};
+    const player:PlayerRunView&{grana:number}={...entry,hp:Math.round(maxHp*[0.92,0.55,0.18,0.74,1,0.33][index]),maxHp,online:index!==4||count<6,spectator:false,weapons:builds[index].weapons,passives:builds[index].passives,stats:stats[index],grana:FIXTURE_GRANA[index]};
     if(scenario==='downed'&&(index===0||index===2)){player.hp=0;player.downed={progress:index===2?0.45:0,bleedOutTick:1000+ticks(index===0?21:12)};}
     if((scenario==='offer-downed'||scenario==='offer-open-downed')&&(index===2||index===count-1)&&index>0){player.hp=0;player.online=true;player.downed={progress:0,bleedOutTick:1000+ticks(index===2?13:17)};}
     return player;

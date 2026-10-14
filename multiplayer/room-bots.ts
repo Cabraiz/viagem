@@ -8,7 +8,8 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {decide,newMemory,towerBrainView,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {decide,granaReserve,newMemory,towerBrainView,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {railName} from '../src/rules/index.ts';
@@ -49,6 +50,14 @@ export const BOT_NAMES:readonly string[]=Object.freeze([
  */
 const RECIPE_REFUSALS=new Set(['no-weapon','full','recipe']);
 
+/**
+ * NEW-20261014-ORQ-carteira-e-pix: a bot that is not the forger sends what its wallet holds above its part of the
+ * chaveiro's bill (bot-brain granaReserve) to the forger by PIX (Simulation.pix: validated and evented like a
+ * person's), at most once every BOT_PIX_GAP ticks and only BOT_PIX_MIN R$ or more (a toast for every R$ 1 kill would
+ * be noise). Bots never send a PIX to a person (v1); people may send to bots, who spend it by their rule.
+ */
+export const BOT_PIX_GAP=5*HZ,BOT_PIX_MIN=5;
+
 /** 32-bit mix of the room seed and a counter (cosmetic picks, never the simulation's RNG). */
 export function botHash(seed:number,n:number){
   let h=(seed^Math.imul(n+1,0x9e3779b9))>>>0;
@@ -81,7 +90,9 @@ interface PersonTrack {x:number;y:number;tick:number}
  * `people` (city only, absent elsewhere so the island and endless stateHash do not move): per person id, their
  * PersonTrack as this bot saw it when it thought. Plain JSON, part of state().
  */
-interface BotMind {id:string;slot:number;memory:BrainMemory;req:number;people?:Record<string,PersonTrack>}
+interface BotMind {id:string;slot:number;memory:BrainMemory;req:number;people?:Record<string,PersonTrack>;
+  /** Tick of this bot's last PIX to the forger (BOT_PIX_GAP); absent before the first. */
+  pixTick?:number}
 
 export class RoomBots {
   private minds=new Map<string,BotMind>();
@@ -94,6 +105,8 @@ export class RoomBots {
   forged=0;
   /** Tower builds, upgrades and repairs that went through (torres-fio: lab and tests). */
   built=0;
+  /** PIX from a bot to the forger that went through (lab, bench and tests): count and R$. */
+  pixes=0;pixed=0;
   /** Bench --no-towers (scripts/bench-city-run.ts): the builder never gets the tower view, so no bot builds. */
   towersOff=false;
   /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
@@ -108,9 +121,9 @@ export class RoomBots {
   /** The lowest slot no bot holds (0..5), or the first free one of from, from+step… */
   freeSlot(from=0,step=1){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=from;while(used.has(slot))slot+=step;return slot;}
   /** What decides the bots' next choices (Simulation.stateHash): each mind by slot, plain JSON. */
-  state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory,...(m.people?{people:m.people}:{})}));}
+  state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory,...(m.people?{people:m.people}:{}),...(m.pixTick!==undefined?{pixTick:m.pixTick}:{})}));}
   /** New run: fresh memories (forge refusals, offers seen, unstick, who moved), same slots. */
-  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;delete m.people;}this.modes.clear();}
+  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;delete m.people;delete m.pixTick;}this.modes.clear();}
   /**
    * Before each combat step: the bots due this tick decide. Returns the bots that ask for help ("Me salva"), which
    * the room relays to the people like a phone's ping.
@@ -120,7 +133,7 @@ export class RoomBots {
     const started=performance.now(),tick=sim.tick,sos:string[]=[];
     const minds=[...this.minds.values()].sort((a,b)=>a.slot-b.slot);
     let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,builder:string|null|undefined,towers:TowerBrainView|undefined;
-    let people:boolean|undefined;
+    let people:boolean|undefined,bank:string|null|undefined;
     for(const mind of minds){
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
@@ -131,12 +144,12 @@ export class RoomBots {
       if(builder===undefined)builder=this.towersOff?null:this.forger(view,minds,people,BOT_BUILD_LEFT);
       // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder); torres-ajustes: it
       // walks to the obra first, so it gets the view earlier; with a person here it orders only in their last seconds.
-      // D-048: the view carries the material (roots, the Gustavão) and the Grana (evolutions, repairs); decide keeps the
-      // chaveiro's bill out of it from view.objective (granaReserve).
+      // D-048: the view carries the material (roots, the Gustavão) and the Grana (evolutions, repairs: the builder's
+      // own wallet); decide keeps its part of the chaveiro's bill out of it from view.objective (granaReserve).
       if(builder===mind.id&&!towers){
         const st=sim.run.stonewards,round=view.round,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
         towers=towerBrainView(st.state,st.plan,view.tick,round?.index??0,person,
-          people?(round?.phaseEndsTick??view.tick)-BOT_FORGE_LEFT_WITH_PEOPLE:undefined);
+          people?(round?.phaseEndsTick??view.tick)-BOT_FORGE_LEFT_WITH_PEOPLE:undefined,sim.granaOf(mind.id));
       }
       // City: who moved lately (ESCORT_IDLE_REACH), this bot's track of each person here; the ones gone are dropped.
       const tracks=sim.terrain.world==='cidade'?this.track(mind,view,sim,tick):undefined;
@@ -148,7 +161,9 @@ export class RoomBots {
         const at=q as typeof q&{x:number;y:number},d=Math.hypot(at.x-p.x,at.y-p.y);
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
-      const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+      // Each bot sees its own wallet as the camp's Grana (NEW-20261014-ORQ-carteira-e-pix), like a phone sees its own.
+      const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
+      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         ...(view.objective?{teamBots:minds.map(m=>m.id)}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
@@ -166,6 +181,15 @@ export class RoomBots {
         if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);
+      // The surplus to the forger (BOT_PIX_GAP, BOT_PIX_MIN): bot to bot only.
+      if(bank===undefined)bank=this.forger(view,minds,people,Infinity,true);
+      if(bank&&bank!==mind.id&&sim.bots.has(bank)&&(mind.pixTick===undefined||tick-mind.pixTick>=BOT_PIX_GAP)){
+        const amount=Math.min(PIX_MAX,sim.granaOf(mind.id)-granaReserve(view));
+        if(amount>=BOT_PIX_MIN){
+          const result=sim.pix(mind.id,bank,amount,`bot-${mind.id}-${++mind.req}`);
+          if(result.ok){mind.pixTick=tick;this.pixes++;this.pixed+=amount;}
+        }
+      }
     }
     if(view){this.thinkMs+=performance.now()-started;this.thinks++;}
     return sos;
@@ -183,11 +207,12 @@ export class RoomBots {
   }
   /**
    * The bot that may buy now: the first standing bot by slot, and only in the last `left` ticks of an intermission
-   * (BOT_FORGE_LEFT, or BOT_FORGE_LEFT_WITH_PEOPLE with a person here).
+   * (BOT_FORGE_LEFT, or BOT_FORGE_LEFT_WITH_PEOPLE with a person here). `anyPhase`: that bot whatever the time (the
+   * forger-to-be, who gets the other bots' PIX).
    */
-  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false,left=people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT):string|null{
+  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false,left=people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT,anyPhase=false):string|null{
     const round=view.round;
-    if(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>left)return null;
+    if(!anyPhase&&(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>left))return null;
     for(const m of minds){
       const p=view.players.find(q=>q.id===m.id);
       if(p&&p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)return m.id;

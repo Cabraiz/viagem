@@ -4,7 +4,7 @@
  *   with a tower that can grow right now wears the Amarelo evolve arrow.
  * - A tap on a site opens the tree as a Janela: the head card (the Vigia to build, or what stands there) and its
  *   branches as etiquetas (suit sticker, name, price, one line). The price (D-048): "1 🗼" for the Vigia and "3 🗼" for
- *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution "🗼⬆ R$ N" in Grana (price.ts
+ *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution "🗼⬆ R$ N" from my wallet (price.ts
  *   evolvePriceLabel). A blocked branch is dashed with a lock and its reason in words ("Falta 1 ficha", "Falta R$ 3",
  *   "Sem trilho"). The thumb confirms in the 48 px button at the bottom; an evolution in Grana reads only its price there
  *   ("🗼⬆ R$ N", spoken "Evoluir por N reais").
@@ -222,10 +222,11 @@ export class ObraHud {
     const panel=el('section','rh-obra-janela',this.el);place(panel,layout.panel);panel.style.zIndex=String(plan.shown.length+2);
     panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);panel.tabIndex=-1;
     panel.dataset.orientation=layout.orientation;panel.dataset.forma=layout.form;
-    // The team's wallet where it is spent (hud-mobile-minimo: the phone's top shows no R$ nor fichas): a small ficha
-    // riding the window's top edge, "R$ 120 · 2 [torre]" (obra.css .rh-obra-carteira). Not a target.
+    // What pays here, where it is spent (hud-mobile-minimo: the phone's top shows no R$ nor fichas): my wallet
+    // (carteira-e-pix) and the team's fichas, a small ficha riding the window's top edge, "R$ 120 · 2 [torre]"
+    // (obra.css .rh-obra-carteira). Not a target.
     {const tokens=tokensOf(unitsOf(v.balance)),grana=granaText(v.grana);
-      const wallet=el('span','rh-obra-carteira',panel);wallet.setAttribute('role','img');wallet.setAttribute('aria-label',`${grana} e ${fichasText(tokens)} da turma`);
+      const wallet=el('span','rh-obra-carteira',panel);wallet.setAttribute('role','img');wallet.setAttribute('aria-label',`Você tem ${grana}; a turma tem ${fichasText(tokens)}`);
       wallet.innerHTML=`<b>${grana}</b><span class="rh-obra-carteira-fichas">${tokenPriceLabel(tokens).html}</span>`;}
     const cards=cardsOf(tree),rects=[layout.head,...layout.branches];
     cards.forEach((c,i)=>this.card(panel,c,rects[i],i===0,layout.panel));

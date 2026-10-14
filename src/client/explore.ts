@@ -24,7 +24,7 @@ import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
-import type {RunView} from '../contract/index.ts';
+import type {PixResult,RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
@@ -120,6 +120,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       onForge:(recipe,target)=>net.forge(recipe,target),
       // Dona Cida (D-047): {t:'cida'}; the room answers {t:'bought'} (net.onBought below).
       onCida:item=>net.buyCida(item),
+      // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
+      // (Typed loosely until the net half's client.pix lands on this branch; then this reads net.pix(to,amount).)
+      onPix:(to,amount)=>(net as CoopClient&{pix?(to:string,amount:number):Promise<PixResult>|undefined}).pix?.(to,amount),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.

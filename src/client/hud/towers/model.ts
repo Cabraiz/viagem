@@ -25,7 +25,7 @@ export interface ObraView {
   sites:readonly ObraSite[];rail?:ObraRail;
   /** The team's one pile of material (CampView.units): the fichas de torre that build the Vigia and the Gustavão. */
   balance:Balance;
-  /** The team's Grana (CampView.grana, R$): what pays every other evolution. */
+  /** My wallet (CampView.grana, R$, carteira-e-pix: the viewer's own): what pays every other evolution. */
   grana:number;
   /** Standing defenses of the team (ruins do not count) and Gustavões built this run (a ruined one counts). */
   standing:number;gustavoes:number;
@@ -128,7 +128,7 @@ export const selectable=(card:ObraCard)=>card.status==='buy'&&!card.block&&!!car
 
 /** The builds paid in fichas de torre (D-048): the Vigia and the Gustavão; every other defense is an evolution in Grana. */
 export const tokensFor=(id:DefenseId):number|undefined=>id===ROOT_DEFENSE?TOWER_TOKENS.root:id==='gustavao'?TOWER_TOKENS.gustavao:undefined;
-/** What the team has: its whole fichas (the HUD never shows the units behind them) and its Grana. */
+/** What pays: the team's whole fichas (the HUD never shows the units behind them) and my wallet (carteira-e-pix). */
 const walletOf=(view:Pick<ObraView,'balance'|'grana'>)=>({tokens:tokensOf(unitsOf(view.balance)),grana:Number.isFinite(view.grana)?view.grana:0});
 /** What is missing for the card (0: it is paid): fichas for a `tokens` card, R$ for a `grana` one (the free rail: 0). */
 const shortOf=(c:Pick<ObraCard,'tokens'|'grana'>,wallet:{tokens:number;grana:number})=>

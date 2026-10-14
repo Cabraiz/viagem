@@ -183,7 +183,9 @@ export interface RunRecord {
    * evolutions, tower repairs and forge buys (what each order that went through took), `other` (Dona Cida; the bots
    * never buy from her) and `final`. Absent in older JSON files.
    */
-  grana?:{earned:number;spent:{evolutions:number;repairs:number;forge:number;other:number};final:number};
+  grana?:{earned:number;spent:{evolutions:number;repairs:number;forge:number;other:number};final:number;
+    /** NEW-20261014-ORQ-carteira-e-pix: the bots' PIX to the forger this run (count, R$). */
+    pix?:{count:number;amount:number}};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
   objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
   /** runDigest: the same seed and code give the same digest on any machine (CI determinism check). */
@@ -618,13 +620,13 @@ function playRun(o:RunOptions):RunRecord{
   // A buy goes into the open intermission (the one before round r has round index r).
   // Tower defense (see the module doc): the room bots order through the Simulation; count what goes through.
   const tw={orders:0,repairs:0,units:0,roots:0,gustavoes:0,refused:{} as Record<string,number>};
-  // D-048: the team's Grana, what each order that went through took (see RunRecord.grana).
+  // D-048: the Grana (the seated players' wallets together since the wallets), what each order that went through took (see RunRecord.grana).
   const gr={earned:0,evolutions:0,repairs:0,forge:0,other:0};
   if(!o.towers)room.towersOff=true;
   const count=(run:()=>ReturnType<Simulation['build']>,repair=false)=>{
-    const s=sim.run.stonewards,before=s.state.balance.units,grana=s.state.grana,r=run();
+    const s=sim.run.stonewards,before=s.state.balance.units,grana=sim.teamGrana(),r=run();
     if(r.ok){
-      const spent=before-s.state.balance.units,paid=grana-s.state.grana;
+      const spent=before-s.state.balance.units,paid=grana-sim.teamGrana();
       if(repair)gr.repairs+=paid;else gr.evolutions+=paid;
       tw.orders++;if(repair)tw.repairs++;tw.units+=spent;if(curInter)curInter.towerUnits=(curInter.towerUnits??0)+spent;
       if(!repair&&r.kind===ROOT_DEFENSE)tw.roots++;else if(!repair&&r.kind==='gustavao')tw.gustavoes++;
@@ -636,8 +638,8 @@ function playRun(o:RunOptions):RunRecord{
   sim.upgrade=(id,defense,branch,req)=>count(()=>upgrade(id,defense,branch,req));
   sim.repair=(id,defense,req)=>count(()=>repair(id,defense,req),true);
   sim.forge=(id,recipe,req)=>{
-    const grana=st().grana,r=forge(id,recipe,req);
-    gr.forge+=grana-st().grana;
+    const grana=sim.teamGrana(),r=forge(id,recipe,req);
+    gr.forge+=grana-sim.teamGrana();
     if(r.ok){purchases.push({tick:sim.tick,round:sim.world.round.index,recipe:r.recipe as RecipeId,by:id});curInter?.purchases.push(r.recipe as RecipeId);}
     return r;
   };
@@ -666,12 +668,13 @@ function playRun(o:RunOptions):RunRecord{
   const started=performance.now();
   let navMs=0,ticks=0;
   const thinkBefore=room.thinkMs;
+  const pix0={count:room.pixes,amount:room.pixed};
   while(!sim.outcome&&sim.tick<o.capTicks){
     room.think(sim);
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
     // The bots spend in think (the wrappers above); in the step the kills pay in, anything else (Dona Cida) takes out.
-    const grana0=st().grana,events=sim.step();ticks++;
-    {const d=st().grana-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
+    const grana0=sim.teamGrana(),events=sim.step();ticks++;
+    {const d=sim.teamGrana()-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
     const w=sim.world,tick=w.tick;
     for(const e of events as readonly SimEvent[]){
       if(e.type==='moto'){
@@ -746,7 +749,7 @@ function playRun(o:RunOptions):RunRecord{
       thinkMsPerTick:Math.round((room.thinkMs-thinkBefore)/Math.max(1,ticks)*1000)/1000,navMsPerTick:Math.round(navMs/Math.max(1,ticks)*1000)/1000},
     knobsApplied,
     ...(o.towers?{towers:towerSummary()}:{}),
-    grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(st().grana)},
+    grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(sim.teamGrana()),pix:{count:room.pixes-pix0.count,amount:room.pixed-pix0.amount}},
     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
   };
   function towerSummary(){

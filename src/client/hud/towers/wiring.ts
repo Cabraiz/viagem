@@ -96,6 +96,7 @@ const EMPTY_VIEW={structures:[]} as unknown as RunView;
 function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
   const key=view??EMPTY_VIEW,hit=snapshots.get(key);
   if(hit&&hit.plan===plan)return hit;
+  // The team's pile and MY wallet (carteira-e-pix: CampView.grana is the viewer's own; the evolutions compare against it).
   const balance={units:view?.camp?.units??0},grana=view?.camp?.grana??0;
   const defenses=defensesOf(view);
   const towers=plan.sites.map(site=>{

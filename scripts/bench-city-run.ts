@@ -200,6 +200,7 @@ export interface RunRecord {
    * and `enemyGrana`, `primes` (bank-prime) and `empties` (bank-empty). Absent in older JSON files.
    */
   banks?:BankRecord;
+  /**
    * D-050: the level-up pauses, emulated like the room does (LevelupPause on a 50 ms clock, no think nor step while
    * paused). Bots settle after BOT_PICK_MS, so `botSeconds` is what the bench paused; `humanShare` is the worst case for
    * people (every pause to PAUSE_FIRST_MS) over the wave seconds. Absent in older JSON files.

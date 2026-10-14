@@ -11,17 +11,34 @@ import {blockText,canEvolve,defaultPick,railTree,selectable,treeFor,type ObraSit
 import {DEFENSE_LIMIT,DEFENSES,GUSTAVAO_LIMIT,RAIL} from '../../src/rules/index.ts';
 import * as simCatalog from '../../src/sim/towers/catalog.ts';
 
-const LANDSCAPE:ZoneInput={viewport:{width:844,height:390},status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40},{x:212,y:52,width:420,height:20}],
+// The live layout (hud-topo-uma-linha): the camera buttons and the gear 48 px at 12 px, the one-row band (--rh-t + 40)
+// between them, the minimap where hud.css puts it (portrait: under the gear, part of the band; landscape: the right edge
+// column at --rh-t + 52). The announcement slot (zones `announce`) is right under the band, and `top` ends under it.
+const LANDSCAPE:ZoneInput={viewport:{width:844,height:390},
+  status:[{x:14,y:12,width:48,height:48},{x:68,y:12,width:48,height:48},{x:160,y:8,width:616,height:40},{x:782,y:12,width:48,height:48}],
+  team:{x:258,y:318,width:328,height:64},joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82},minimap:{x:754,y:60,width:76,height:76}};
+const PORTRAIT:ZoneInput={viewport:{width:390,height:844},
+  status:[{x:14,y:12,width:48,height:48},{x:68,y:12,width:48,height:48},{x:166,y:8,width:142,height:40},{x:8,y:56,width:292,height:26},{x:328,y:18,width:48,height:48}],
+  team:{x:8,y:120,width:54,height:380},joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82},minimap:{x:306,y:72,width:76,height:76}};
+const NOTCH:ZoneInput={...LANDSCAPE,safe:{top:0,right:44,bottom:21,left:44},
+  status:[{x:44,y:12,width:48,height:48},{x:98,y:12,width:48,height:48},{x:196,y:8,width:544,height:40},{x:752,y:12,width:48,height:48}],
+  team:{x:258,y:305,width:328,height:64},joystick:{x:62,y:257,width:96,height:96},skill:{x:702,y:271,width:82,height:82},minimap:{x:724,y:60,width:76,height:76}};
+const PORTRAIT_NOTCH:ZoneInput={...PORTRAIT,safe:{top:47,right:0,bottom:34,left:0},
+  status:[{x:14,y:47,width:48,height:48},{x:68,y:47,width:48,height:48},{x:166,y:47,width:142,height:40},{x:8,y:91,width:292,height:26},{x:324,y:47,width:48,height:48}],
+  team:{x:8,y:159,width:54,height:380},joystick:{x:24,y:698,width:112,height:112},skill:{x:284,y:728,width:82,height:82},minimap:{x:306,y:111,width:76,height:76}};
+// The sandbox's band (two rows, no minimap): a taller top still leaves the window room.
+const TWO_ROWS:ZoneInput={viewport:{width:844,height:390},status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40},{x:212,y:52,width:420,height:20}],
   team:{x:258,y:318,width:328,height:64},joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}};
-const PORTRAIT:ZoneInput={viewport:{width:390,height:844},status:[{x:14,y:12,width:44,height:44},{x:166,y:8,width:142,height:46},{x:8,y:72,width:292,height:26}],
-  team:{x:8,y:120,width:54,height:380},joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82}};
-const NOTCH:ZoneInput={...LANDSCAPE,safe:{top:0,right:44,bottom:21,left:44},joystick:{x:62,y:257,width:96,height:96},skill:{x:702,y:271,width:82,height:82}};
 const inside=(r:Rect,o:Rect)=>r.x>=o.x-.5&&r.y>=o.y-.5&&right(r)<=right(o)+.5&&bottom(r)<=bottom(o)+.5;
 
-for(const [name,input] of [['retrato',PORTRAIT],['paisagem',LANDSCAPE],['paisagem com notch',NOTCH]] as const)for(const scale of [1,1.25])for(const n of [0,1,2,3]){
+for(const [name,input] of [['retrato',PORTRAIT],['retrato com notch',PORTRAIT_NOTCH],['paisagem',LANDSCAPE],['paisagem com notch',NOTCH],['paisagem, faixa de 2 linhas',TWO_ROWS]] as const)for(const scale of [1,1.25])for(const n of [0,1,2,3]){
   test(`obra window fits with no scroll: ${name}, ${scale*100}% text, ${n} branches`,()=>{
     const L=layoutObra(input,scale,n);
-    assert.ok(L.fits,'the window fits under the status rows and leaves the hero a field');
+    assert.ok(L.fits,'the window fits under the top band and leaves the hero a field');
+    // BUG-20261013-E4-obra-janela-sob-anuncio-paisagem: "Bichos chegando" (the announcement slot) and the minimap stay
+    // off the window: it starts under zones.top (status rows + announcement slot) and keeps clear of the minimap.
+    assert.ok(!crosses(L.panel,L.zones.top)&&!crosses(L.panel,L.zones.announce)&&L.panel.y>=bottom(L.zones.announce),'under the announcement slot');
+    if(input.minimap)assert.ok(!crosses(L.panel,input.minimap,4),'clear of the minimap');
     assert.equal(L.contentHeight,L.panel.height,'content = window height: no scroll');
     const vw=input.viewport,s=input.safe??{top:0,right:0,bottom:0,left:0};
     assert.ok(inside(L.panel,{x:Math.max(8,s.left),y:0,width:vw.width-Math.max(8,s.left)-Math.max(8,s.right),height:vw.height-Math.max(8,s.bottom)}),'inside the safe area');
@@ -47,11 +64,39 @@ for(const [name,input] of [['retrato',PORTRAIT],['paisagem',LANDSCAPE],['paisage
 
 test('the window sits where the thumb reaches: bottom of the column in portrait, right side in landscape',()=>{
   const p=layoutObra(PORTRAIT,1,3);
+  assert.equal(p.form,'coluna');
   assert.equal(bottom(p.panel),PORTRAIT.joystick!.y-THUMB_GAP,'portrait: right above the joystick zone');
   assert.ok(bottom(p.confirm)>bottom(p.branches[2]),'the confirm row is the lowest');
-  const l=layoutObra(LANDSCAPE,1.25,3);
-  assert.ok(l.panel.x>LANDSCAPE.viewport.width/3&&bottom(l.panel)<=LANDSCAPE.skill!.y-THUMB_GAP);
+  // Landscape at 100 %: two columns are too tall for the room over the right thumb (the announcement slot is above it):
+  // left of the thumb, down to the team row, still on the right half.
+  const l=layoutObra(LANDSCAPE,1,3),thumb=l.zones.rightThumb!;
+  assert.equal(l.form,'duas');
+  assert.ok(l.panel.x>LANDSCAPE.viewport.width/3&&right(l.panel)<=thumb.x&&bottom(l.panel)<=LANDSCAPE.team!.y-8);
   assert.ok(l.confirm.x<l.branches[0].x,'landscape: confirm under the head, branches in the right column');
+  // At 125 % neither place holds two columns: the compact form, right-aligned above the thumb, branches side by side.
+  const c=layoutObra(LANDSCAPE,1.25,3);
+  assert.equal(c.form,'compacta');
+  assert.ok(c.panel.x>LANDSCAPE.viewport.width/3&&bottom(c.panel)<=LANDSCAPE.skill!.y-THUMB_GAP);
+  assert.ok(c.branches.every(b=>b.y===c.branches[0].y)&&c.branches[0].y>=bottom(c.head),'one row of branches under the head row');
+  assert.ok(c.head.y===c.confirm.y&&c.close.x>right(c.head),'head, close and confirm in one row');
+});
+
+test('portrait with a notch: one column leaves the hero no field under the announcement slot, so the branches go two by two',()=>{
+  for(const scale of [1,1.25]){
+    const L=layoutObra(PORTRAIT_NOTCH,scale,3),[a,b,c]=L.branches;
+    assert.equal(L.form,'compacta');
+    assert.ok(a.y===b.y&&b.x>right(a)&&c.y>bottom(a)&&c.x===a.x,'two per row');
+    assert.ok(L.zones.useful.height>=136&&L.zones.useful.y>=bottom(L.zones.announce),'the field between the slot and the window');
+    assert.ok(bottom(L.confirm)>bottom(c),'the confirm row stays the lowest');
+  }
+  assert.equal(layoutObra(PORTRAIT,1.25,3).form,'coluna','no notch: one column');
+});
+
+test('landscape: the old placement ran into the announcement slot and the minimap (BUG-20261013-E4-obra-janela-sob-anuncio-paisagem)',()=>{
+  // Where the window used to go at 100 %: right-aligned above the right thumb, three cards tall, under the status rows only.
+  const L=layoutObra(LANDSCAPE,1,3),old={x:844-8-520,y:LANDSCAPE.skill!.y-THUMB_GAP-L.contentHeight,width:520,height:L.contentHeight};
+  assert.ok(crosses(old,L.zones.announce)&&crosses(old,LANDSCAPE.minimap!),'the overlap Executor-3 saw');
+  assert.ok(!crosses(L.panel,L.zones.announce)&&!crosses(L.panel,LANDSCAPE.minimap!,4));
 });
 
 test('ground markers: 48 px targets at their screen points, clamped into the useful field',()=>{

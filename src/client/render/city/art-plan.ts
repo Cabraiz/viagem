@@ -288,14 +288,18 @@ export interface BlockArt {lots:CityLot[];
  * 2. a rubble (`entulho`) piece of at most FILL_MAX_AREA art cells, low — buildings and rubble blocks;
  * 3. else the cell is a mound (MOUND_HEIGHT).
  * Walls, cliffs and gates get nothing (they keep their procedural look), and so does every block of a plan without
- * building art (planHasBuildingArt). The planLots lots are kept as they are.
+ * building art (planHasBuildingArt). The planLots lots are kept as they are, except those touching a `reserved` cell.
+ * `reserved` (grid cells another piece of art stands on — the praça's fountain, fountainLot): no lot covers them and
+ * they are no mound either; the piece drawn there covers them (bug: a ruin was filled over the fountain's basin).
  * Pure and deterministic.
  */
-export function fillLots(block:CityBlock,plan:CityArtPlan,lots:readonly CityLot[]):BlockArt{
-  const out:BlockArt={lots:[...lots],mounds:[]};
+export function fillLots(block:CityBlock,plan:CityArtPlan,lots:readonly CityLot[],reserved?:(x:number,y:number)=>boolean):BlockArt{
+  const touches=(l:CityLot)=>{if(reserved)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(reserved(x,y))return true;return false;};
+  const out:BlockArt={lots:lots.filter(l=>!touches(l)),mounds:[]};
   if((block.kind!=='building'&&block.kind!=='rubble')||!planHasBuildingArt(plan))return out;
   const u=plan.unit,{x:bx,y:by,w:W,h:H}=block,used=new Uint8Array(W*H);
-  for(const l of lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)used[(y-by)*W+(x-bx)]=1;
+  for(const l of out.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)used[(y-by)*W+(x-bx)]=1;
+  if(reserved)for(let j=0;j<H;j++)for(let i=0;i<W;i++)if(reserved(bx+i,by+j))used[j*W+i]=1;
   const small=(pool:readonly CitySheet[])=>pool.filter(s=>s.footprint![0]*s.footprint![1]<=FILL_MAX_AREA);
   const b=plan.buildings,own=block.kind==='building'?(block.ruined?b.ruin:b.intact):[];
   const other=block.kind==='building'?(block.ruined?b.intact:b.ruin):[];
@@ -336,7 +340,10 @@ export function moundPiece(piece:BlockPiece,seams:BlockPiece['seams']):BlockPiec
 }
 
 /** A block's art with the art on: planLots, then the fill pass (fillLots). */
-export const blockArt=(block:CityBlock,plan:CityArtPlan):BlockArt=>fillLots(block,plan,planLots(block,plan));
+export const blockArt=(block:CityBlock,plan:CityArtPlan,reserved?:(x:number,y:number)=>boolean):BlockArt=>
+  fillLots(block,plan,planLots(block,plan),reserved);
+/** Grid cells under a lot (the fountain's footprint), as a `reserved` test for fillLots/blockArt. */
+export const lotCells=(lot:CityLot|undefined)=>(x:number,y:number)=>!!lot&&x>=lot.x&&x<lot.x+lot.w&&y>=lot.y&&y<lot.y+lot.h;
 
 /** Prop sheet of a prop (variant seeded by its id), or undefined (procedural / the approved pine sheet). */
 export function propSheet(prop:Pick<CityProp,'id'|'kind'>,plan:CityArtPlan):CitySheet|undefined{

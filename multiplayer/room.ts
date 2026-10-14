@@ -12,7 +12,7 @@ import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type ObjectiveKind,type TelegraphKind} fro
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
-import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId} from '../src/rules/index.ts';
+import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId,MARK_ID,MARK_COOLDOWN_MS,relayMark} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
 export const LAB_REACH=200;
@@ -305,6 +305,8 @@ export class Room {
   private readonly sosAt=new Map<string,number>();
   /** When each player's last relayed emote went out (emote-relay-sala anti-spam). */
   private readonly emoteAt=new Map<string,number>();
+  /** Last minimap ping per player (mark): its own anti-spam, apart from the emotes'. */
+  private readonly markAt=new Map<string,number>();
   /** RunState last pushed as {t:'run'}, without the per-tick counters (clients count elapsed from frame ticks). */
   private runKey='';
   private readonly onRoster?:(roster:RoomRoster)=>void;
@@ -480,7 +482,7 @@ export class Room {
     if(!this.sim.checkpointShapeOk(cp.sim))return fallback('shape');
     if(!this.sim.resume(cp.sim))return fallback('sim');
     if(!this.run.resume(run,new Set(cp.sim!.players.map(p=>p.id)))){this.sim.resetRun();return fallback('run');}
-    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     this.syncSpectators();
     // This round is the one stored: no new checkpoint until the next round, and the roster says running again.
     this.rosterRound=this.sim.world.round.index;this.checkpointRef=ref;this.rosterDirty=true;
@@ -788,7 +790,7 @@ export class Room {
     // The event ids go on from the old simulation's (phones drop an id they already saw).
     sim.world.raiseEventSeq(old.world.lastEventId);
     this.sim=sim;this.map=ref;this.run.setDurationTicks(this.durationFor(ref));
-    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     for(const c of this.connections.values())c.encoder?.resync();
     this.run.resetReady();this.syncSpectators();this.rosterDirty=true;
     this.send({t:'map',map:welcomeMap(ref),world:worldDescriptor(sim.terrain)});
@@ -872,13 +874,28 @@ export class Room {
    */
   private emote(c:Connection,m:any,now:number){
     const state=this.run.snapshot();
-    if(state.phase!=='combat'||m.round!==state.round||!isEmoteId(m.id))return;
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(m.id===MARK_ID){this.mark(c,m,state.round,now);return;}
+    if(!isEmoteId(m.id))return;
     const p=this.sim.players.get(c.playerId!);
     if(!p||p.spectator)return;
     const last=this.emoteAt.get(p.id);
     if(last!==undefined&&now>=last&&now-last<EMOTE_COOLDOWN_MS-EMOTE_SLACK_MS)return;
     this.emoteAt.set(p.id,now);
     this.send({t:'emote',player:p.id,id:m.id,round:state.round});
+  }
+  /**
+   * A minimap ping (minimapa-wc3, client/fun/marks.ts): an emote with the id 'marca' and a world point, relayed to
+   * everyone (the sender included) as {t:'emote',player,id:'marca',round,x,y}, at most once per MARK_COOLDOWN_MS per
+   * player (its own clock: a ping never eats an emote's turn). Spectators watch; a bad point drops.
+   */
+  private mark(c:Connection,m:any,round:number,now:number){
+    const p=this.sim.players.get(c.playerId!),at=relayMark(m);
+    if(!p||p.spectator||!at)return;
+    const last=this.markAt.get(p.id);
+    if(last!==undefined&&now>=last&&now-last<MARK_COOLDOWN_MS)return;
+    this.markAt.set(p.id,now);
+    this.send({t:'emote',player:p.id,id:MARK_ID,round,x:at.x,y:at.y});
   }
   /** "Me salva" of a fallen bot: the same relay and anti-spam as a person's (UX-resgate-e-ping). */
   private botSos(id:string,now:number){
@@ -1027,7 +1044,7 @@ export class Room {
   /** New run (start or rematch): fresh simulation run and fresh wire ids (server ids start over, D-018). */
   private resetRun(){
     this.checkpointRef=undefined;
-    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.bots.reset();this.autopilots.reset();
+    this.sim.resetRun();this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
     const o=this.labOffset;if(!o)return;
     // Lab: the whole team moves out together, each onto the nearest walkable spot.
     for(const p of this.sim.players.values()){

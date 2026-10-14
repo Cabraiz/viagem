@@ -24,7 +24,7 @@ const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HE
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
-import {ART_CELL,blockArt,fountainLot,moundPiece,planHasArt,planHasBuildingArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
+import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -192,10 +192,12 @@ export class CityLayer {
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
       this.mounds=planHasBuildingArt(art);
-      for(const b of drawn.blocks)for(const lot of blockArt(b,art).lots){
+      // The fountain first: its cells are reserved, so no fill lot or mound lands on its basin.
+      this.fountain=fountainLot(asset,art);
+      const underFountain=lotCells(this.fountain);
+      for(const b of drawn.blocks)for(const lot of blockArt(b,art,underFountain).lots){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
-      this.fountain=fountainLot(asset,art);
       // Art can be taller than the procedural box: chunk bounds (ChunkTracker) reach the drawn top.
       for(const c of this.index.chunks){
         for(const p of c.pieces){const lot=this.lotAt.get(p.y*asset.width+p.x);if(lot)c.maxTop=Math.max(c.maxTop,p.base+lot.height);}
@@ -320,6 +322,11 @@ export class CityLayer {
    * With building art on (planHasBuildingArt), a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
    * as the low mound; its seams stay only toward the block's other mounds. Undefined for every other piece.
    */
+  /** A building/rubble cell under the shown fountain: nothing of its own is drawn (the fountain covers it). */
+  private underFountain(x:number,y:number){
+    const f=this.fountain;
+    return !!f&&x>=f.x&&x<f.x+f.w&&y>=f.y&&y<f.y+f.h&&this.scene.textures.exists(f.sheet.key);
+  }
   private moundOf(piece:BlockPiece):BlockPiece|undefined{
     if(!this.mounds||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
     const {width}=this.asset,bare=(cx:number,cy:number)=>{
@@ -390,6 +397,7 @@ export class CityLayer {
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
     for(const raw of chunk.pieces){
       if(painted.has(raw.blockId)||paintedCells.has(raw.y*this.asset.width+raw.x))continue;
+      if(this.art&&(raw.kind==='building'||raw.kind==='rubble')&&this.underFountain(raw.x,raw.y))continue;
       // With the art on, a building or rubble cell without its art shown is a low mound (art-plan.ts moundPiece).
       const piece=this.moundOf(raw)??raw;
       const geo=pieceGeometry(piece,this.asset,view,this.pivot),id=`${piece.blockId}|${geo.depthKey}`;
@@ -494,7 +502,10 @@ export class CityLayer {
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
-    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)for(const p of this.index.get(i,j)?.pieces??[])casters.push(this.moundOf(p)??p);
+    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)for(const p of this.index.get(i,j)?.pieces??[]){
+      if(this.art&&(p.kind==='building'||p.kind==='rubble')&&this.underFountain(p.x,p.y))continue;
+      casters.push(this.moundOf(p)??p);
+    }
     const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
 
     const box=boundsOf(quads.flatMap(q=>q.points));

@@ -256,6 +256,10 @@ if(bordas)void (async()=>{
   const {radar}=await import('../hud/radar.ts');
   const {computeZones,union}=await import('../hud/zones.ts');
   const {islandOutline,MINIMAP_RANGE}=await import('../hud/minimap.ts');
+  const {WcMinimapDriver}=await import('../hud/wc-minimap/driver.ts');
+  const {screenCorners:screenCornersOf}=await import('../hud/city/wiring.ts');
+  const maps=await import('../../maps/index.ts');
+  const wcDriver=new WcMinimapDriver(),mmTerrain=params.get('mapa')==='infinito'?new maps.TerrainField(4242,{world:'infinito'}):maps.defaultTerrain;
   const {projectView}=await import('../projection.ts');
   const {toScreen,followZoom}=await import('../framing.ts');
   const view=Math.max(0,Math.min(3,Number(params.get('vista'))||0));
@@ -270,7 +274,7 @@ if(bordas)void (async()=>{
     // The open window (offer or forge) takes its part of the field, as measureZones does in the game: the hero and
     // the arrows go to what is left (NEW-20261011-UX-janela-esconde-caido).
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
-    const shown=getComputedStyle(hud.minimap!.el).visibility!=='hidden'?rect(hud.minimap!.el):undefined;
+    const shown=rect(hud.wc!.el);
     const zones=computeZones({viewport,status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
     const area=zones.useful,zoom=followZoom(viewport),hero={x:12,y:17};
@@ -292,7 +296,11 @@ if(bordas)void (async()=>{
     // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));
-    hud.minimap!.render(hero,view,MINIMAP_RANGE.ilha[hud.minimap!.far?1:0],items,islandOutline());
+    // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the island, or the endless map with `mapa=infinito`.
+    void items;void islandOutline;void MINIMAP_RANGE;
+    wcDriver.draw({minimap:hud.wc!,terrain:mmTerrain,view,nowMs:performance.now(),selfId:'p1',self:hero,players,states:new Map(view0.players.map(p=>[p.id,p])),
+      enemies:[{x:30,y:30,boss:true},{x:20,y:24},{x:21,y:25},{x:6,y:28},{x:-4,y:10}],structures:[{kind:'muralha',x:12,y:12},{kind:'torre-chinelo',x:15,y:10}],
+      corners:screenCornersOf(locate,hero,viewport),wallHitAt:performance.now()});
     hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
   };
@@ -303,7 +311,7 @@ if(bordas)void (async()=>{
   const view0={...base,camp:base.camp??camp.camp,structures:base.structures.length?base.structures:camp.structures};
   view0.players=view0.players.map((p,i)=>i===2?{...p,hp:0,downed:{progress:0,bleedOutTick:1000+20*14}}:i===4?{...p,hp:0,online:true,downed:{progress:.45,bleedOutTick:1000+20*6}}:{...p,online:true});
   hud.setHero(FIXTURE_HERO[scenario]??FIXTURE_HERO['camp-wave']);hud.update(view0);
-  draw();addEventListener('resize',draw);hud.minimap!.el.addEventListener('click',()=>requestAnimationFrame(draw));
+  draw();addEventListener('resize',draw);
   // The game lays the arrows out every frame; the sandbox does it 4 times a second, so a window opening or moving,
   // or the fonts arriving late, never leave the arrows of an older layout on screen.
   setInterval(draw,250);
@@ -315,6 +323,8 @@ if(cidade)void (async()=>{
   const {cityTerrainFrom,cityAsField}=await import('../../maps/index.ts');
   const {CITY_ASSET_URL,CITY_MANIFEST_URL}=await import('../net/city-asset-loader.ts');
   const city=await import('../hud/city/index.ts');
+  const {WcMinimapDriver}=await import('../hud/wc-minimap/driver.ts');
+  const wcDriver=new WcMinimapDriver();
   const {pointedTargets,inView,COVERING,WINDOWS}=await import('../hud/edges.ts');
   const {computeZones,union}=await import('../hud/zones.ts');
   const {projectView}=await import('../projection.ts');
@@ -371,7 +381,7 @@ if(cidade)void (async()=>{
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
     const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open};
-    const zones=computeZones({viewport,...controls,minimap:rect(hud.cityMinimap?.element)});
+    const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
     const layout=city.cityHudLayout({viewport,windowOpen:!!open,textScale:hud.edges!.scale()>1.1?1.25:1,controls});
     const area=zones.useful;
     // The camera puts the hero's body in the middle of the useful area (framing.ts anchorOf), feet 28 px under it.
@@ -391,11 +401,11 @@ if(cidade)void (async()=>{
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
-    const big=hud.cityMap.open,side=layout.minimapBig?.width??0;
-    hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,...(chaveiro?{chaveiro}:{baseHp:{hp:380,maxHp:600}}),
-      ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),
-      offline:params.has('offline')},big);
-    hud.cityMap.take();
+    // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
+    wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
+      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30,y:map.plaza.y-26,boss:true}],
+      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now()});
+    void layout;void active;void chaveiro; // the keymaker's marks join the WC3 minimap's extras (Executor-8)
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});
@@ -411,7 +421,6 @@ if(cidade)void (async()=>{
   draw();
   // `grande=1`: open the big minimap as a tap would (the sandbox runs no closing rules, so it stays for the screenshot).
   if(params.has('grande'))hud.cityMap.tap(performance.now(),Math.max(city.BIG_MIN_SIDE,hud.cityBig().side));
-  for(const el of [hud.cityMinimap!.element,hud.cityMinimap!.big])el.addEventListener('click',()=>requestAnimationFrame(draw));
   addEventListener('resize',draw);setInterval(draw,250);
   requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();

@@ -21,3 +21,4 @@ export * from './enemy-rotation.ts';
 export * from './enemy-art-ids.ts';
 export * from './zueira-infinito.ts';
 export * from './towers.ts';
+export * from './marks.ts';

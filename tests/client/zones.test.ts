@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {THUMB_GAP,BIG_MINIMAP_AUDIT,auditBoxes,chooseSlot,computeZones,crosses,gap,orientationOf,union,veiled} from '../../src/client/hud/zones.ts';
+import {THUMB_GAP,BIG_MINIMAP_AUDIT,auditBoxes,chooseSlot,computeZones,crosses,gap,orientationOf,teamIsRow,union,veiled} from '../../src/client/hud/zones.ts';
 
 const portrait=computeZones({viewport:{width:390,height:844},status:[{x:14,y:12,width:44,height:44},{x:166,y:8,width:142,height:46},{x:8,y:72,width:292,height:26}],
   team:{x:8,y:120,width:54,height:380},joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82},emote:{x:301,y:666,width:48,height:48}});
@@ -16,6 +16,19 @@ test('zones per orientation: top band with the announcement slot, thumbs with 24
   assert.equal(landscape.useful.x,18+96+THUMB_GAP,'landscape: between the thumbs');assert.equal(landscape.useful.x+landscape.useful.width,746-THUMB_GAP);
   assert.equal(landscape.useful.y+landscape.useful.height,318-8,'landscape: down to the team row');
   for(const z of [portrait,landscape])for(const zone of [z.top,z.leftThumb!,z.rightThumb!])assert.equal(crosses(z.useful,zone),false);
+});
+
+test('team strip: a lone member at the bottom of a landscape phone is a row (a floor), a column elsewhere',()=>{
+  const land={width:844,height:390},solo={x:398,y:314,width:46,height:68};
+  assert.equal(teamIsRow(solo,land),true);
+  assert.equal(teamIsRow({x:258,y:318,width:328,height:64},land),true);
+  assert.equal(teamIsRow({x:8,y:120,width:54,height:380},{width:390,height:844}),false,'portrait column');
+  assert.equal(teamIsRow({x:8,y:120,width:54,height:66},{width:390,height:844}),false,'portrait solo');
+  assert.equal(teamIsRow({x:10,y:118,width:50,height:68},{width:1343,height:618}),false,'desktop top-left list');
+  const z=computeZones({viewport:land,status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40}],
+    team:solo,joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}});
+  assert.ok(z.useful.x<solo.x,'the field is not pushed right of the ficha');
+  assert.ok(z.useful.y+z.useful.height<=solo.y-8,'the field stops above the ficha');
 });
 
 test('geometry helpers',()=>{

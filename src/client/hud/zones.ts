@@ -72,6 +72,14 @@ export interface ScreenZones {
   top:Rect;announce:Rect;team?:Rect;leftThumb?:Rect;rightThumb?:Rect;useful:Rect;
 }
 
+/**
+ * The team strip is a bottom row (landscape phone, between the thumbs) or a side column (portrait; desktop's top-left
+ * list). A lone member is taller than wide either way, so a strip centred in the lower half is a row too: a solo
+ * "Você" ficha at the bottom of 844×390 must stay a floor, not a column that pushes the field right of it.
+ */
+export const teamIsRow=(team:Rect,viewport:{width:number;height:number}):boolean=>
+  team.width>=team.height||team.y+team.height/2>viewport.height/2;
+
 /** The zones for one layout (all CSS px, viewport coordinates). */
 export function computeZones(input:ZoneInput):ScreenZones{
   const {viewport}=input,orientation=orientationOf(viewport),safe=input.safe??{top:0,right:0,bottom:0,left:0};
@@ -84,7 +92,7 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const thumbR=rightThumb&&inflate(rightThumb,THUMB_GAP);
   // Useful area: the larger of two rectangles under the top band (team column excluded in portrait):
   // (a) full width, above both thumbs (and above a team row); (b) between the thumbs, down to the team row or the bottom.
-  const team=input.team,column=!!team&&team.height>team.width;
+  const team=input.team,column=!!team&&!teamIsRow(team,viewport);
   let left=safe.left,rightEdge=viewport.width-safe.right;
   if(team&&column){if(team.x<viewport.width/2)left=Math.max(left,right(team)+8);else rightEdge=Math.min(rightEdge,team.x-8);}
   // Landscape minimap below the top band on the right: the field stops before it (it normally already sits past the right thumb).

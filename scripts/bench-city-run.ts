@@ -63,8 +63,15 @@
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
  *     [--out evidence/NEW-20261012-ORQ-cidade-11-balanco-run/balanco.json] [--resume] [--cap-min 30]
  *     [--knobs <city-balance.json>] [--priority low|normal]
+ *
+ * Merge mode (CI, NEW-20261014-ORQ-ci-github-shards-e-bench): plays nothing; reads every run JSON (an --out file) under
+ * <dir>, prints the per-run lines and the same summary as above (+ a before/after table with --before <file>) and
+ * writes the merged file to --out when given:
+ *   node --experimental-strip-types scripts/bench-city-run.ts --merge <dir> [--out merged.json] [--before base.json]
+ * Every run carries `digest` (sha256 of the record without perf), so the same seed gives the same digest anywhere.
  */
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -161,6 +168,13 @@ export interface RunRecord {
   towers?:{orders:number;repairs?:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean;rail?:boolean};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
   objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
+  /** runDigest: the same seed and code give the same digest on any machine (CI determinism check). */
+  digest?:string;
+}
+/** sha256 (12 hex) of the record without `perf` (wall clock) and `digest`: equal digests = bit-identical runs. */
+export function runDigest(r:RunRecord):string{
+  const {perf:_perf,digest:_digest,...rest}=r;
+  return createHash('sha256').update(JSON.stringify(rest)).digest('hex').slice(0,12);
 }
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -262,7 +276,48 @@ export function runLine(r:RunRecord):string{
   return `seed ${r.seed} ${r.players}p: ${r.outcome}/${r.cause} round ${r.roundReached} | ${r.simMinutes} min sim | arrival ${arrivals.length?r2(Math.min(...arrivals)):'-'}s min | `+
     `loot/int ${loot.length?r2(loot.reduce((a,b)=>a+b,0)/loot.length):'-'}u | forge ${r.forge.count} | boss ${r.boss?`+${r.boss.spawnAfterWaveS}s kill ${r.boss.killAfterSpawnS??'-'}s`:'-'} | `+
     `${r.towers?`towers ${r.towers.orders} orders ${r.towers.units}u end ${Object.values(r.towers.final).reduce((a,b)=>a+b,0)}${r.towers.gustavao?' +Gustavão':''} ruined ${r.towers.ruined} | `:''}`+
-    `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s`;
+    `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s${r.digest?` | digest ${r.digest}`:''}`;
+}
+const mean=(list:readonly number[])=>list.length?r2(list.reduce((a,b)=>a+b,0)/list.length):null;
+/** The console summary of a set of runs (the local run's tail and the CI merge). */
+export function summaryLines(runs:readonly RunRecord[]):string[]{
+  const s=summarize(runs),out:string[]=['== summary =='],sizes=Object.values(s.byPlayers).map(t=>t.players);
+  for(const t of Object.values(s.byPlayers)){
+    const list=runs.filter(r=>r.players===t.players);
+    out.push(`${t.players}p: ${t.wins}/${t.runs} wins (${t.verdict.wins}${t.verdict.target?` ${r2(t.verdict.target.min)}–${r2(t.verdict.target.max)}`:''}) causes ${JSON.stringify(t.causes)} deaths by round ${JSON.stringify(t.deathRounds)}`);
+    out.push(`   sim minutes mean ${mean(list.map(r=>r.simMinutes))} | ms/tick mean ${mean(list.map(r=>r.perf.msPerTick))}`);
+    out.push(`   first arrival s ${JSON.stringify(t.firstArrivalS.all)} | loot/intermission ${JSON.stringify(t.loot.unitsPerIntermission)} ≈ ${t.loot.recipesPerIntermission} recipes (mean ${r2(RECIPE_MEAN_UNITS)} u) | forge/run ${t.loot.purchasesPerRun?.mean??'-'}`);
+    out.push(`   round 1: downed ${t.round1.downed} eliminated ${t.round1.eliminated} defeats ${t.round1.defeats} (${t.verdict.round1}) tutorial arrival ${JSON.stringify(t.round1.tutorialArrivalS)} | boss reached ${t.boss.reached} killed ${t.boss.kills}`);
+  }
+  for(const n of sizes){
+    const rs=runs.filter(r=>r.players===n&&r.towers);
+    if(!rs.length)continue;
+    const m=(f:(r:RunRecord)=>number)=>mean(rs.map(f));
+    out.push(`towers ${n}p: orders/run ${m(r=>r.towers!.orders)} units/run ${m(r=>r.towers!.units)} standing at end ${m(r=>Object.values(r.towers!.final).reduce((a,b)=>a+b,0))} ruined ${m(r=>r.towers!.ruined)} gustavão ${rs.filter(r=>r.towers!.gustavao).length}/${rs.length}`);
+  }
+  for(const n of sizes){
+    const rs=runs.filter(r=>r.players===n&&r.objective);
+    if(!rs.length)continue;
+    out.push(`chaveiro ${n}p:`);
+    for(const r of rs)out.push(`   ${objectiveLine(r)}`);
+  }
+  out.push(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
+  return out;
+}
+/** Before (the base commit's runs) / after table per team size: wins, causes, sim minutes, ms/tick, identical runs. */
+export function compareLines(before:readonly RunRecord[],after:readonly RunRecord[]):string[]{
+  const sizes=[...new Set([...before,...after].map(r=>r.players))].sort((a,b)=>a-b);
+  const cell=(runs:readonly RunRecord[],n:number)=>{
+    const l=runs.filter(r=>r.players===n);
+    if(!l.length)return '-';
+    const causes=Object.entries(l.reduce<Record<string,number>>((c,r)=>(c[r.cause]=(c[r.cause]??0)+1,c),{})).map(([k,v])=>`${k} ${v}`).join(', ');
+    return `${l.filter(r=>r.outcome==='victory').length}/${l.length} wins (${causes}) | ${mean(l.map(r=>r.simMinutes))} min | ${mean(l.map(r=>r.perf.msPerTick))} ms/tick`;
+  };
+  const out=['== before / after =='];
+  for(const n of sizes)out.push(`${n}p before: ${cell(before,n)}`,`${n}p after:  ${cell(after,n)}`);
+  const old=new Map(before.map(r=>[r.key,r.digest]));
+  out.push(`identical runs (same digest): ${after.filter(r=>r.digest&&old.get(r.key)===r.digest).length}/${after.length}`);
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -669,7 +724,31 @@ function args(argv:readonly string[]){
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
     towers:!argv.includes('--no-towers'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
+    merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
+}
+/** --merge <dir>: no runs, only the summary of the run files under dir (see the module doc). */
+function merge(a:ReturnType<typeof args>){
+  const files=fs.readdirSync(a.merge!,{recursive:true,withFileTypes:true}).filter(f=>f.isFile()&&f.name.endsWith('.json')).map(f=>path.join(f.parentPath,f.name)).sort();
+  const read=(f:string)=>JSON.parse(fs.readFileSync(f,'utf8')) as OutFile;
+  const parts=files.map(read),byKey=new Map<string,RunRecord>();
+  for(const p of parts)for(const r of p.runs??[])byKey.set(r.key,r);
+  const runs=[...byKey.values()].sort((x,y)=>x.players-y.players||x.seed-y.seed);
+  console.log(`merge: ${runs.length} run(s) from ${files.length} file(s) in ${a.merge}`);
+  for(const r of runs)console.log(runLine(r));
+  console.log('');
+  for(const line of summaryLines(runs))console.log(line);
+  if(a.before){
+    console.log('');
+    if(fs.existsSync(a.before))for(const line of compareLines(read(a.before).runs??[],runs))console.log(line);
+    else console.log(`(no before file at ${a.before})`);
+  }
+  if(a.outGiven&&parts.length){
+    const c=parts[0].config,now=new Date().toISOString();
+    writeAtomic(a.out,{...parts[0],startedAt:parts.map(p=>p.startedAt).sort()[0]??now,updatedAt:now,
+      config:{...c,seeds:[...new Set(runs.map(r=>r.seed))].sort((x,y)=>x-y),players:[...new Set(runs.map(r=>r.players))].sort((x,y)=>x-y)},runs,summary:summarize(runs)});
+    console.log(`written: ${a.out}`);
+  }
 }
 function writeAtomic(file:string,data:unknown){
   fs.mkdirSync(path.dirname(file),{recursive:true});
@@ -680,6 +759,7 @@ function writeAtomic(file:string,data:unknown){
 
 async function main(){
   const a=args(process.argv.slice(2));
+  if(a.merge)return merge(a);
   if(a.priority!=='normal')try{os.setPriority(0,os.constants.priority.PRIORITY_LOW);}catch{console.warn('could not lower the process priority');}
   if(!(a.capMin>0))throw new Error('--cap-min must be > 0');
   let knobs:unknown;
@@ -712,32 +792,15 @@ async function main(){
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
     const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective});
+    run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);
     writeAtomic(a.out,file);
     console.log(runLine(run));
     if(run.objective)console.log(`   ${objectiveLine(run)}`);
   }
-  const s=summarize(file.runs);
-  console.log('\n== summary ==');
-  for(const t of Object.values(s.byPlayers)){
-    console.log(`${t.players}p: ${t.wins}/${t.runs} wins (${t.verdict.wins}${t.verdict.target?` ${r2(t.verdict.target.min)}–${r2(t.verdict.target.max)}`:''}) causes ${JSON.stringify(t.causes)} deaths by round ${JSON.stringify(t.deathRounds)}`);
-    console.log(`   first arrival s ${JSON.stringify(t.firstArrivalS.all)} | loot/intermission ${JSON.stringify(t.loot.unitsPerIntermission)} ≈ ${t.loot.recipesPerIntermission} recipes (mean ${r2(RECIPE_MEAN_UNITS)} u) | forge/run ${t.loot.purchasesPerRun?.mean??'-'}`);
-    console.log(`   round 1: downed ${t.round1.downed} eliminated ${t.round1.eliminated} defeats ${t.round1.defeats} (${t.verdict.round1}) tutorial arrival ${JSON.stringify(t.round1.tutorialArrivalS)} | boss reached ${t.boss.reached} killed ${t.boss.kills}`);
-  }
-  for(const n of a.players){
-    const rs=file.runs.filter(r=>r.players===n&&r.towers);
-    if(!rs.length)continue;
-    const mean=(f:(r:RunRecord)=>number)=>r2(rs.reduce((x,r)=>x+f(r),0)/rs.length);
-    console.log(`towers ${n}p: orders/run ${mean(r=>r.towers!.orders)} units/run ${mean(r=>r.towers!.units)} standing at end ${mean(r=>Object.values(r.towers!.final).reduce((a,b)=>a+b,0))} ruined ${mean(r=>r.towers!.ruined)} gustavão ${rs.filter(r=>r.towers!.gustavao).length}/${rs.length}`);
-  }
-  for(const n of a.players){
-    const rs=file.runs.filter(r=>r.players===n&&r.objective);
-    if(!rs.length)continue;
-    console.log(`chaveiro ${n}p:`);
-    for(const r of rs)console.log(`   ${objectiveLine(r)}`);
-  }
-  console.log(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
+  console.log('');
+  for(const line of summaryLines(file.runs))console.log(line);
   console.log(`written: ${a.out}`);
 }
 

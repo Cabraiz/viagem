@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {register} from 'node:module';
+import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
 
 const hooks=`export async function resolve(spec,ctx,next){
   if(spec==='cloudflare:workers')return {url:'data:text/javascript,export class DurableObject{constructor(ctx,env){this.ctx=ctx;this.env=env}}',shortCircuit:true};
@@ -36,7 +37,7 @@ test('deployed Worker: rooms ignore LAB_HORDE and LAB_WORLD, and the lab RPC ans
   const local=new GameRoom({storage:{}} as any,env('true')) as any,labRoom=local.create(Date.now(),1);
   assert.equal(labRoom.labHorde,300);assert.deepEqual(labRoom.labOffset,{x:1000,y:0});assert.equal(labRoom.sampling,true);assert.equal(labRoom.sim.terrain.chunks,undefined,'LAB_WORLD=ilha: the island test world, local only');
 });
-test('/health says protocol 16 (the 2× hero walk, the chaveiro objective, then the 1.7× city) to anyone',async()=>{
+test('/health says the current protocol (PROTOCOL_VERSION, given out by the integration queue) to anyone',async()=>{
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env('false'));
-  assert.equal((await r.json()).protocol,16);
+  assert.equal((await r.json()).protocol,PROTOCOL_VERSION);
 });

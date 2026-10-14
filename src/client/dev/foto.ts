@@ -63,8 +63,11 @@ type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=
 const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
 const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
 
-/** An entrance lasts up to this (ms, delay included): the result's cards ~0.7 s, an arrow's bump 0.44 s. */
-const ENTRANCE_MS=1200;
+/**
+ * An entrance lasts up to this (ms, delay included): the result's cards ≤ 0.95 s, the defeat's title droop 1.4 s, an
+ * arrow's bump 0.44 s; the minimap's ping (1.6 s) and the round's banner (1.8 s) are lives, not entrances.
+ */
+const ENTRANCE_MS=1500;
 /**
  * Waits for the entrances running now to finish, up to `ms`. Longer finite animations are a thing's whole life and end
  * invisible (the round's banner 1.8 s, the confetti, the minimap's ping): they are left where they are, like the loops.

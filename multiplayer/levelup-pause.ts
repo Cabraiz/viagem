@@ -32,7 +32,6 @@ export interface PauseSim {
   readonly bots:ReadonlySet<string>;
   pendingOffers():Map<string,number>;
   settleOffers(id:string):number;
-  afterPause():void;
 }
 /** Deadline of a pause whose longest queue is `levels` cards. */
 export const pauseMs=(levels:number)=>Math.min(PAUSE_MAX_MS,PAUSE_FIRST_MS+PAUSE_EXTRA_MS*Math.max(0,levels-1));
@@ -72,11 +71,13 @@ export class LevelupPause {
   }
   /** A player the pause acts on: a room bot, or a human online (an offline one keeps its offers held). */
   private acts(sim:PauseSim,id:string){const p=sim.players.get(id);return !!p&&(sim.bots.has(id)||p.online);}
-  /** Ends the pause: the humans online who did not pick and the bots get the defaults; inputs start over. */
+  /**
+   * Ends the pause: the humans online who did not pick and the bots get the defaults. Input tracks stay as they are: the
+   * tick did not move, so the steps queued before the pause are taken on the very ticks the phones predicted them for.
+   */
   private close(sim:PauseSim){
     for(const id of [...sim.pendingOffers().keys()])if(this.acts(sim,id))sim.settleOffers(id);
     this.open=undefined;this.lastEndTick=sim.tick;
-    sim.afterPause();
   }
   /** For RunState.pause (whole ms left, never negative); undefined when not paused. */
   view(sim:PauseSim,now:number):RunPause|undefined{

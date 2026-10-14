@@ -502,7 +502,6 @@ export class Simulation {
    * D-050: the run resumes after a pause (the sim did not step): the confirmed-step bookkeeping starts over, as after a
    * reconnect, so the steps a phone held during the pause are not judged against ticks that never ran.
    */
-  afterPause(){for(const id of this.players.keys())this.trackReset(id);}
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};

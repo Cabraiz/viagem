@@ -1358,7 +1358,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161),added);
+  assert.deepEqual(DICT.slice(161,161+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1451,4 +1451,145 @@ test('D-009 with the chaveiro objective and 12 defenses firing: 6 clients x 300 
   t.diagnostic(`protocol 15 bytes/s per client, 12 defenses firing: chaveiro ${JSON.stringify(withObjective)}, wall mode ${JSON.stringify(wallMode)}`);
   assert.ok(withObjective['20Hz']<50_000,`20 Hz: ${withObjective['20Hz']}`);
   assert.ok(withObjective['10Hz']<30_000,`10 Hz: ${withObjective['10Hz']}`);
+});
+
+// ---------- Bancos (card NEW-20261014-ORQ-bancos-e-veiculos): the banks block, prime, the bank events ----------
+import type {BankView} from '../../src/contract/objective.ts';
+import {BANK_IDS} from '../../src/contract/objective.ts';
+import {INTEREST_RADIUS as BANK_INTEREST} from '../../src/contract/offscreen.ts';
+/** Three banks at `tick`: one paying (saldo falls every 3 s), one robbed by `drawer`, one dry until its refill. */
+function banksAt(tick:number,drawer='e-7'):BankView[]{
+  const paid=Math.floor((tick-1000)/60)*2;
+  return [
+    {id:'banco-1',x:92.43,y:63.11,name:'pao-duro',saldo:Math.max(0,40-paid),state:'sacando'},
+    {id:'banco-2',x:214.7,y:140.21,name:'juros',saldo:12,state:'bicho',drawer},
+    {id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:0,state:'sem-cedulas',until:7800},
+  ];
+}
+function sameBanks(got:readonly BankView[]|undefined,want:readonly BankView[],ids:WireIds,label:string){
+  assert.ok(got,label);assert.equal(got.length,want.length,label);
+  got.forEach((b,i)=>{
+    const w=want[i];
+    assert.equal(b.id,w.id);assert.equal(b.name,w.name);assert.equal(b.saldo,w.saldo);assert.equal(b.state,w.state);assert.equal(b.until,w.until,`${label}: until`);
+    assert.ok(near16(b.x,w.x)&&near16(b.y,w.y),`${label}: place ${i}`);
+    assert.equal(b.drawer,w.drawer===undefined?undefined:ids.label('enemies',w.drawer),`${label}: the drawer as its wire id`);
+  });
+}
+
+test('bancos: the bank strings are dictionary bytes appended after protocol 15, every older index unchanged',()=>{
+  const added=['banco-1','banco-2','banco-3',...BANK_IDS,'aberto','sacando','bicho','sem-cedulas','hero','enemy'];
+  assert.equal(DICT[179],'cocada','the chaveiro indexes unchanged');
+  assert.deepEqual(DICT.slice(180),added);
+  for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+});
+
+test('bancos: the banks block round-trips (1/16 u, the drawer as its wire id), goes only when it changes, the places only on full frames, and clears',()=>{
+  const view=busyWorld(new Rng(4),20).view,plain=busyWorld(new Rng(4),20).view;
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  view.banks=banksAt(view.tick);
+  const full=enc.encode(view),first=dec.decode(full);assert.ok(first.ok,!first.ok?first.error:'');
+  sameBanks(first.view.banks,view.banks,enc.ids,'full frame');
+  assert.equal(first.view.banks![1].drawer,first.view.enemies.find(e=>enc.ids.resolve(e.id)==='e-7')?.id,'the drawer is the critter the phone has');
+  enc.ack(first.seq,first.ack.event);
+  // Unchanged: the block stays out (the decoder keeps the baseline's), so the frame costs what it would without banks.
+  const bare=new FrameEncoder(),bareDec=new FrameDecoder(),b1=bareDec.decode(bare.encode(plain));assert.ok(b1.ok);bare.ack(b1.seq,b1.ack.event);
+  const same=enc.encode(view),again=dec.decode(same);assert.ok(again.ok);sameBanks(again.view.banks,view.banks,enc.ids,'unchanged');
+  assert.equal(same.length,bare.encode(plain).length,'no bank bytes when nothing changed');
+  enc.ack(again.seq,again.ack.event);
+  // Changing: every frame decodes to it; the places never go again.
+  const deltas:number[]=[];
+  for(let t=2;t<=400;t+=2){
+    view.tick=1000+t;
+    view.banks=banksAt(view.tick,t>200?'e-9':'e-7');
+    // The dry one refills halfway.
+    if(t>=300)view.banks[2]={id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:40,state:'aberto'};
+    const bytes=enc.encode(view),r=dec.decode(bytes);assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    sameBanks(r.view.banks,view.banks,enc.ids,`tick ${view.tick}`);deltas.push(bytes.length);
+  }
+  assert.ok(Math.max(...deltas)<full.length,'deltas never carry the places again');
+  // Cleared (a run without banks: the island after a city run), then whole again after a resync.
+  view.tick+=2;view.banks=undefined;
+  let r=dec.decode(enc.encode(view));assert.ok(r.ok);assert.equal(r.view.banks,undefined,'cleared');enc.ack(r.seq,r.ack.event);
+  view.banks=banksAt(view.tick);enc.resync();
+  r=new FrameDecoder().decode(enc.encode(view));assert.ok(r.ok);sameBanks(r.view.banks,view.banks,enc.ids,'after a resync');
+});
+
+test('bancos: a forged banks block (a state or a name that is not a bank\'s) is refused, and the decoder is untouched',()=>{
+  const view=busyWorld(new Rng(6),0).view;
+  view.banks=banksAt(view.tick);
+  const bytes=new FrameEncoder().encode(view),dec=new FrameDecoder();
+  const swap=(from:string,to:string)=>{const copy=bytes.slice(),at=copy.indexOf(DICT.indexOf(from));assert.ok(at>0,from);copy[at]=DICT.indexOf(to);return copy;};
+  assert.equal(dec.decode(swap('sacando','chaveiro')).ok,false,'a state that is not a BankState');
+  assert.equal(dec.decode(swap('pao-duro','chaveiro')).ok,false,'a name that is not a bank');
+  assert.ok(dec.decode(bytes).ok,'the real frame still decodes after the refused ones');
+});
+
+test('bancos: prime on the enemies and the four bank events round-trip; a note is heard around its bank, the rest by the whole team',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.enemies[0]={...view.enemies[0],prime:true};
+  const e0=view.enemies[0].id;
+  view.banks=banksAt(view.tick,e0);
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const all=(enemy:string):SimEvent[]=>[{type:'bank-cash',bank:'banco-1',amount:2,by:'hero'},{type:'bank-cash',bank:'banco-2',amount:2,by:'enemy',enemy},
+    {type:'bank-prime',bank:'banco-2',enemy},{type:'bank-empty',bank:'banco-3',until:7800},{type:'bank-refill',bank:'banco-3'}];
+  enc.pushEvents(all(e0));
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.equal(r.view.enemies.filter(e=>e.prime).length,1,'only the prime one');
+  const label=enc.ids.label('enemies',e0);
+  const ev=r.view.events.map(e=>{const {eventId:_,...rest}=e as typeof e&{eventId:number};return rest as Record<string,unknown>;});
+  assert.deepEqual(ev,[{type:'bank-cash',bank:'banco-1',amount:2,by:'hero'},{type:'bank-cash',bank:'banco-2',amount:2,by:'enemy',enemy:label},
+    {type:'bank-prime',bank:'banco-2',enemy:label},{type:'bank-empty',bank:'banco-3',until:7800},{type:'bank-refill',bank:'banco-3'}]);
+  // Scope: a viewer by banco-1 hears its note; one far from every bank does not, but gets the empty, the refill and the prime.
+  const scoped=(at:{x:number;y:number})=>{
+    const v=busyWorld(new Rng(5),10).view;
+    v.players=v.players.map(p=>p.id==='uuid-0'?{...p,x:at.x,y:at.y}:p);
+    v.banks=banksAt(v.tick,'e-404');
+    const e=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),d=new FrameDecoder();
+    e.pushEvents(all('e-404'));
+    const got=d.decode(e.encode(v));assert.ok(got.ok);
+    return got.view.events.map(x=>`${x.type}:${(x as {bank?:string}).bank}`);
+  };
+  assert.deepEqual(scoped({x:92,y:64}),['bank-cash:banco-1','bank-prime:banco-2','bank-empty:banco-3','bank-refill:banco-3']);
+  assert.deepEqual(scoped({x:92+BANK_INTEREST*3,y:64}),['bank-prime:banco-2','bank-empty:banco-3','bank-refill:banco-3']);
+  // A 'by' that is neither is refused.
+  const forged=new FrameEncoder();forged.pushEvents([{type:'bank-cash',bank:'banco-1',amount:2,by:'boss' as 'hero'}]);
+  assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false);
+});
+
+test('D-009 with the banks, the chaveiro objective and 12 defenses firing: 6 clients x 300 enemies stay inside the 4G budget at 10 and 20 Hz',t=>{
+  const results:Record<string,number>={};
+  for(const hz of [10,20]){
+    const rng=new Rng(8),w=busyWorld(rng);
+    const clients=Array.from({length:CLIENTS},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+    const seconds=10,every=20/hz;
+    let bytes=0;
+    for(let i=0;i<seconds*20;i++){
+      const events=stepWorld(w,rng);
+      w.view.structures=[carAt(w.view.tick),...defenses(w.view.tick)];
+      w.view.objective={...objectiveAt(w.view.tick),etaS:100000-w.view.tick,grana:w.view.tick};
+      // Worse than real: every bank changes on every tick (a note is every 2-3 s), the drawer changes every second, a
+      // note out of every bank every 0.5 s (4x the fastest a bank pays: a critter every 2 s), and a prime, an empty and a
+      // refill every second (a run has a handful).
+      const live=w.view.enemies;
+      w.view.banks=banksAt(w.view.tick,live[Math.floor(i/20)%live.length].id).map((b,k)=>({...b,saldo:(w.view.tick+k)%41}));
+      if(i%10===0)for(const b of w.view.banks)events.push(b.drawer?{type:'bank-cash',bank:b.id,amount:2,by:'enemy',enemy:b.drawer}:{type:'bank-cash',bank:b.id,amount:2,by:'hero'});
+      if(i%20===0){
+        events.push({type:'bank-prime',bank:'banco-2',enemy:live[i%live.length].id},{type:'bank-empty',bank:'banco-3',until:w.view.tick+3000},{type:'bank-refill',bank:'banco-1'});
+        live[i%50].prime=true;
+      }
+      for(const c of clients)c.enc.pushEvents(events);
+      if(i%every)continue;
+      for(const c of clients){
+        const frame=c.enc.encode(w.view);bytes+=frame.length;
+        const res=c.dec.decode(frame);assert.ok(res.ok,!res.ok?res.error:'');
+        c.inFlight.push({seq:res.seq,event:res.ack.event,at:i+3});
+        while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+      }
+    }
+    results[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
+  }
+  t.diagnostic(`bancos bytes/s per client (banks + chaveiro + 12 defenses firing): ${JSON.stringify(results)}`);
+  assert.ok(results['20Hz']<50_000,`20 Hz: ${results['20Hz']}`);
+  assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });

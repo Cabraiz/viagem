@@ -4,7 +4,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,parsePlayers,parseSeeds,summarize,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
+import {BANK_SHARE_TARGET,RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,countBankEvent,emptyBanks,parsePlayers,parseSeeds,runLine,summarize,summaryLines,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
+import type {SimEvent} from '../../src/contract/index.ts';
 
 function run(seed:number,players:number,outcome:RunRecord['outcome'],roundReached:number,extra:Partial<RunRecord>={}):RunRecord{
   return {key:`${seed}:${players}`,seed,players,classes:[],outcome,cause:outcome==='victory'?'boss':outcome==='timeout'?'timeout':'team',
@@ -93,4 +94,36 @@ test('city run summary: barricades are read generically and only up → down cou
   const r=run(1,6,'victory',10);
   r.rounds[1].barricadesFallen=2;
   assert.deepEqual(summarize([r]).byPlayers[6].barricadesFallen.perRound,{n:1,mean:2,min:2,median:2,max:2});
+});
+
+test('city run summary: banks (bancos-e-veiculos): the events fold into a run, the summary pools the share and checks 25–35 %',()=>{
+  const b=emptyBanks();
+  const events:SimEvent[]=[
+    {type:'bank-cash',bank:'banco-1',amount:2,by:'hero'},{type:'bank-cash',bank:'banco-1',amount:2,by:'hero'},
+    {type:'bank-cash',bank:'banco-2',amount:2,by:'enemy',enemy:'e-1'},{type:'bank-prime',bank:'banco-2',enemy:'e-1'},
+    {type:'bank-empty',bank:'banco-3',until:9000},{type:'bank-refill',bank:'banco-3'},{type:'kill',enemy:'e-9'} as unknown as SimEvent,
+  ];
+  for(const e of events)countBankEvent(b,e);
+  assert.deepEqual(b,{grana:4,withdraws:2,share:null,enemyWithdraws:1,enemyGrana:2,primes:1,empties:1});
+  const grana=(earned:number)=>({earned,spent:{evolutions:0,repairs:0,forge:0,other:0},final:earned});
+  const banks=(grana:number,share:number|null,primes=0)=>({grana,withdraws:grana/2,share,enemyWithdraws:primes*5,enemyGrana:primes*10,primes,empties:0});
+  // 6p: 30 of 100 and 20 of 100 → pooled 25 % (ok); per run 30 % and 20 %.
+  const six=summarize([run(1,6,'victory',10,{grana:grana(100),banks:banks(30,.3,1)}),run(2,6,'defeat',7,{grana:grana(100),banks:banks(20,.2)})]).byPlayers[6].banks!;
+  assert.equal(six.runs,2);assert.equal(six.pooledShare,.25);assert.equal(six.verdict,'ok');
+  assert.deepEqual(six.share,{n:2,mean:.25,min:.2,median:.25,max:.3});
+  assert.deepEqual(six.primes,{n:2,mean:.5,min:0,median:.5,max:1});
+  assert.equal(six.enemyGrana?.mean,5);
+  // Pooled, not the mean of the shares: 10 of 20 and 10 of 180 → 10 % (low) though the shares' mean is 27.8 %.
+  const low=summarize([run(1,1,'defeat',4,{grana:grana(20),banks:banks(10,.5)}),run(2,1,'defeat',4,{grana:grana(180),banks:banks(10,10/180)})]);
+  assert.equal(low.byPlayers[1].banks!.pooledShare,.1);assert.equal(low.byPlayers[1].banks!.verdict,'low');
+  assert.ok(low.verdict.notes.some(n=>n.includes('banks 10 %')&&n.includes('(low)')),low.verdict.notes.join('; '));
+  assert.equal(summarize([run(1,3,'victory',10,{grana:grana(100),banks:banks(50,.5)})]).byPlayers[3].banks!.verdict,'high');
+  assert.equal(BANK_SHARE_TARGET.min,.25);assert.equal(BANK_SHARE_TARGET.max,.35);
+  // The lines: the run shows its bank R$ and share, the summary one line per team size.
+  const r=run(1,6,'victory',10,{grana:grana(100),banks:banks(30,.3,1)});
+  assert.match(runLine(r),/banks R\$ 30 \(30 %\) bicho 5× R\$ 10 prime 1 dry 0/);
+  assert.ok(summaryLines([r]).some(l=>l.startsWith('banks 6p: R$/run 30 share of Grana 30 % pooled')),summaryLines([r]).join('\n'));
+  // Older files (no banks): null, and no note.
+  const old=summarize([run(1,6,'victory',10)]);
+  assert.equal(old.byPlayers[6].banks,null);
 });

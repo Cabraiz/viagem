@@ -92,13 +92,15 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
  * players more bodies do nothing (the round's enemy cap), so they take more damage and face a tougher boss.
  * 8 seeds, 25 min cap (D-043): 1p 2/8, 6p 4/8.
  * torres-ajustes (bots walk to the obra and back, towers ruin): 6p damage 1.6 → 1.45, 16 seeds: 1p 3/16, 6p 8/16.
+ * balanco-cidade-so-arte (art-only cast, D-045, after the 2× hero speed): without changes 1p 6/16, 6p 16/16; with the rat
+ * cap (roleCap) 1p damage .45 → .4, 6p hp 1.2 → 1.5, damage 1.45 → 1.75, bossHp 1.4 → 1.9: 32 seeds 1p 7/32, 6p 17/32.
  */
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
-    1:Object.freeze({count:.5,hp:.7,damage:.3,bossHp:.4,lootValue:2,siegeShare:.15}),
+    1:Object.freeze({count:.5,hp:.7,damage:.4,bossHp:.45,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
-    6:Object.freeze({count:1.07,hp:1.2,damage:1.3,bossHp:1.4}),
+    6:Object.freeze({count:1.07,hp:1.5,damage:1.75,bossHp:1.9}),
   }),
   // Art-only rounds (balanco-cidade-so-arte): the rats at most half of a round's regular bodies.
   roleCap:Object.freeze({enxame:.5}),

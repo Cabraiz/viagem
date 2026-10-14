@@ -742,6 +742,17 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
         if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
       }
+      // BUG-20261013-E8: the exit fields are hero-size; a body wider than the hero (an elite tio-pavê, 0.78) whose own
+      // disc does not fit their way out (the strip north of mouth N) stood there until the liveness cap and held the
+      // round open. Still stuck, it squeezes by the hero rule (like the steer's `fit`, E1), the same two ways.
+      if(e.radius>RADIUS&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+        e.x=x0;e.y=y0;planner!.retreatDirection(e,retreatDir);via=planner!;
+        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),RADIUS);
+        if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+          e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
+          if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,RADIUS);
+        }
+      }
       const end=avenueEnd(ctx,via.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.

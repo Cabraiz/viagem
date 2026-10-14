@@ -269,8 +269,13 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(let i=0;i<n;i++)world.step();
   return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
 }
-/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11). */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'16a84cd56d5977cb',ilha:'0d4d774d9e279384',infinito:'e155870fac9620e5'};
+/**
+ * Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged,
+ * before cidade-11), re-recorded for BUG-20261013-E8 (16a84cd56d5977cb before): on the hero-size planner flow, a wide
+ * body whose own disc clips a wall one step ahead now squeezes by the hero rule (grid.ts citySteer); in this run that
+ * is seven bêbados (0.32 u) for 1–4 ticks each.
+ */
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a04cc342497643dc',ilha:'0d4d774d9e279384',infinito:'e155870fac9620e5'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

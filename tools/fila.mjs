@@ -153,7 +153,7 @@ const sleep=(ms)=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
  * one of the PC's two headless-browser slots (board locks/browser-1|2, ESCALA.md). `--smoke "<cmd>"` replaces it (tests),
  * `--smoke off` skips it; a checkout without the script yet skips it with a log line.
  */
-function runSmoke(opt,dir){
+function runSmoke(opt,dir,prev){
   if(opt.smoke==='off')return {ok:true,skipped:true};
   if(opt.smoke){
     const r=spawnSync(opt.smoke,{cwd:dir,shell:true,encoding:'utf8'});
@@ -162,6 +162,8 @@ function runSmoke(opt,dir){
   const script=join(dir,'scripts','smoke-prod.mjs');
   if(!existsSync(script)){log('smoke de produção: scripts/smoke-prod.mjs ainda não existe na main; pulado');return {ok:true,skipped:true};}
   let slot;
+  // The folder itself first: without it every mkdir of a slot fails and reads as "taken" forever.
+  mkdirSync(join(opt.board,'locks'),{recursive:true});
   for(let waited=0;!slot;waited+=5000){
     for(const n of [1,2]){try{mkdirSync(join(opt.board,'locks',`browser-${n}`));slot=join(opt.board,'locks',`browser-${n}`);break;}catch{/* taken */}}
     if(slot)break;
@@ -172,15 +174,26 @@ function runSmoke(opt,dir){
   try{
     writeFileSync(join(slot,'owner.txt'),`fila ${new Date().toISOString()}`);
     const out=join(opt.board,'fila','smoke');mkdirSync(out,{recursive:true});
-    const npm=process.platform==='win32'?'npm.cmd':'npm';
-    const b=spawnSync(npm,['run','build'],{cwd:dir,encoding:'utf8',shell:process.platform==='win32'});
+    // One command string (no argument array with shell:true: node's DEP0190).
+    const build=(cwd)=>spawnSync('npm run build',{cwd,encoding:'utf8',shell:true});
+    const b=build(dir);
     if(b.status!==0)return {ok:false,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
     log('smoke de produção…');
     const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8'});
-    if(s.status===0)return {ok:true,out};
-    return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${(s.stdout+s.stderr).trim().slice(0,400)}`,out};
+    if(s.status!==0)return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${(s.stdout+s.stderr).trim().slice(0,400)}`,out};
+    // The returning player (BUG-20261014-ORQ-mapa-cache-velho): the base built, then the batch on the same browser profile.
+    if(prev){
+      log('smoke de upgrade (a main de antes do lote → o lote)…');
+      const pb=build(prev);
+      if(pb.status!==0)return {ok:false,motivo:`npm run build da base saiu com ${pb.status}: ${(pb.stderr||pb.stdout||'').trim().slice(-300)}`,out};
+      const u=spawnSync(process.execPath,[script,out,'--upgrade-from',prev],{cwd:dir,encoding:'utf8'});
+      if(u.status!==0)return {ok:false,motivo:`${u.status===2?'infraestrutura do smoke de upgrade':'smoke de upgrade falhou'} (exit ${u.status}): ${(u.stdout+u.stderr).trim().slice(0,400)}`,out};
+    }
+    return {ok:true,out};
   }finally{rmdirSyncSafe(slot);}
 }
+/** Whether the batch checkout's smoke script has the upgrade mode (--upgrade-from). */
+const hasUpgradeSmoke=(dir)=>{const p=join(dir,'scripts','smoke-prod.mjs');return existsSync(p)&&readFileSync(p,'utf8').includes('upgrade-from');};
 
 // ---------- commands ----------
 function pronto(opt){
@@ -300,7 +313,10 @@ function lote(opt){
     }
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
     // The production build, opened in a browser (the 14/10 outage: the source suite never loads the bundle).
-    const smoke=runSmoke(opt,result.dir);
+    // The base (the main before this lote) checked out for the upgrade smoke, when the script has that mode.
+    const prev=!opt.smoke&&hasUpgradeSmoke(result.dir)?wt(`fila-${id}-anterior`,`fila/${id}-anterior`,base):undefined;
+    const smoke=runSmoke(opt,result.dir,prev);
+    if(prev)drop(prev,`fila/${id}-anterior`);
     if(!smoke.ok){
       log(`lote ${id} abortado: o smoke de produção falhou (${smoke.motivo}); as entradas continuam na fila`);
       return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};

@@ -34,6 +34,13 @@
  * trip that is back before the wave, PUSH_TRIP_SECONDS); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
+ * Bancos (card bancos-e-veiculos, view.banks: the city, both modes; the room bots, BrainInput.teamBots): in the
+ * intermission, while the team's Grana is under bankTarget (the chaveiro's granaReserve, CHAVEIRO_KEEP_SHARE × his bill;
+ * BANK_GRANA_TARGET in the wall mode), the bots with no objective task go to the nearest open ATM when it is within
+ * BANK_REACH (straight) and the trip (there, BANK_MIN_NOTES notes, back home; along the streets in the city) ends
+ * before the wave, unless the crate it would work (nodeFor, by its index in teamBots) is nearer than the ATM: the crate
+ * first, the ATM on the way back; at most BANK_BOTS per ATM (the nearest ones, ties by id). Mode 'bank'. Without banks
+ * nothing changes.
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
@@ -48,6 +55,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
+import {BANCO} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 
 export const HZ=20;
@@ -149,7 +157,7 @@ export interface Decision {
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'bank';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -200,6 +208,57 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
     if(free?.id===selfId)return {kind:'clear',at:{x:d.x,y:d.y}};
   }
   return undefined;
+}
+
+/** Bancos: a bot goes to an ATM at most this far (u, straight), and at most BANK_BOTS of them to one ATM. */
+export const BANK_REACH=40,BANK_BOTS=2;
+/** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
+export const BANK_GRANA_TARGET=30;
+/** A trip to an ATM is worth it for this many notes (BANCO.saqueS each); a bot already there stays while one more fits. */
+export const BANK_MIN_NOTES=2;
+/** How close (u) a bot stands to the ATM (inside BANCO.holdR), and the seconds it keeps for the walk back. */
+export const BANK_STAND=BANCO.holdR-1.5,BANK_MARGIN_SECONDS=2;
+
+/** The team's Grana goal for the ATMs: the chaveiro's reserve while he runs (granaReserve), else BANK_GRANA_TARGET. */
+export function bankTarget(view:Pick<RunView,'objective'>):number{
+  if(view.objective)return view.objective.ended?0:granaReserve(view);
+  return BANK_GRANA_TARGET;
+}
+/**
+ * Bancos: whether this bot goes to an ATM now, and which (see the module doc). Deterministic: every bot computes the
+ * same assignment from the view. The bots busy with an objective task (objectiveTask) are left out.
+ */
+export function bankTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):{kind:'bank';at:Point;bank:string}|undefined{
+  const round=view.round;
+  if(!view.banks?.length||round?.phase!=='prepare')return undefined;
+  const grana=view.camp?.grana??view.objective?.grana??0;
+  if(grana>=bankTarget(view))return undefined;
+  const open=view.banks.filter(b=>b.state!=='sem-cedulas'&&b.saldo>0);
+  if(!open.length)return undefined;
+  const city=cityTerrainOf(terrain),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+  const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
+  const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p))
+    .filter(p=>!objectiveTask(view,p.id,bots,forger,terrain));
+  const picks:{id:string;bank:string;d:number}[]=[];
+  for(const p of ready){
+    const at=positionOf(p)!,home=homeOf(view,at);
+    let bank=open[0],d=Infinity;
+    for(const b of open){const x=dist(at,b);if(x<d||x===d&&b.id<bank.id){d=x;bank=b;}}
+    if(d>BANK_REACH)continue;
+    // The crate it would work comes first when it is nearer (straight) than the ATM.
+    const crate=nodeFor(view.nodes??[],home,bots.indexOf(p.id),city&&(q=>botRouteDistance(city,q,home)));
+    if(crate&&dist(at,crate)<d)continue;
+    const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
+    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
+    if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
+    picks.push({id:p.id,bank:bank.id,d});
+  }
+  const mine=picks.find(x=>x.id===selfId);
+  if(!mine)return undefined;
+  const rivals=picks.filter(x=>x.bank===mine.bank).sort((a,b)=>a.d-b.d||(a.id<b.id?-1:a.id>b.id?1:0));
+  if(rivals.findIndex(x=>x.id===selfId)>=BANK_BOTS)return undefined;
+  const b=open.find(x=>x.id===mine.bank)!;
+  return {kind:'bank',at:{x:b.x,y:b.y},bank:b.id};
 }
 
 /** The standing bot that spends the balance: the first standing player by id (every bot computes the same one). */
@@ -334,6 +393,15 @@ export function decide(input:BrainInput):Decision{
   if(task?.kind==='clear'&&prepare){
     decision.mode='clear';
     if(dist(at,task.at)>2)want=go(task.at);
+    want=add(want,repel(view.enemies,at,.8));
+    decision.direction=norm(want);
+    return finish(decision,input);
+  }
+  // Bancos: in the intermission, a bot with no objective task may go and hold an ATM (bankTask).
+  const bank=!task&&prepare&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
+  if(bank){
+    decision.mode='bank';
+    if(dist(at,bank.at)>BANK_STAND)want=go(bank.at);
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
     return finish(decision,input);

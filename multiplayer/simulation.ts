@@ -129,7 +129,8 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string}>();
+/** preBanks/banks (city): the fingerprint of the same run before the banks, and a fresh run's bank state (migrateCheckpoint). */
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string;preBanks?:string;banks?:unknown}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -304,7 +305,11 @@ export class Simulation {
       const before=structuredClone(capture),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
       stw.balance={coco:0,pedra:0};delete stw.grana;
       if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
+      // Bancos: neither the pre-ficha build nor the one before the banks had them (city only): preBanks, migrateCheckpoint.
+      delete before.systems.banks;
+      const noBanks=structuredClone(capture);delete noBanks.systems.banks;
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before),
+        ...(capture.systems.banks?{preBanks:shapeFingerprint(noBanks),banks:structuredClone(capture.systems.banks)}:{})};SHAPES.set(key,entry);
     }
     return entry;
   }
@@ -312,12 +317,16 @@ export class Simulation {
    * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
    * with balance {coco, pedra}, no team Grana, the chaveiro's Grana in its own state) keeps the team's material as two
    * piles; it becomes {units: coco + pedra}, the Grana moves to the team's state, and this code's fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   * Bancos: a city checkpoint written before the banks (this code's fingerprint without them, or the pre-ficha one) gets
+   * a fresh run's bank state (every ATM full; the places come back from the seed) and this code's fingerprint.
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown}}}).systems;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown};banks?:unknown}}).systems;
     const b=sys?.stonewards?.balance,fresh=this.freshShape();
+    if(fresh.preBanks&&cp.shape===fresh.preBanks&&isObject(sys)&&sys.banks===undefined){sys.banks=structuredClone(fresh.banks);cp.shape=fresh.fingerprint;return;}
     if(cp.shape!==fresh.legacy||!sys?.stonewards||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
+    if(fresh.banks&&sys.banks===undefined)sys.banks=structuredClone(fresh.banks);
     const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
     // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
     const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
@@ -585,7 +594,8 @@ export class Simulation {
     const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
     for(const p of this.players.values()){
       if(p.spectator||p.eliminated)continue;
-      for(const n of nodesNear(this.terrain,p,reach)){
+      // Bancos: the crates a bank replaced are not there.
+      for(const n of nodesNear(this.terrain,p,reach,undefined,this.systems.banks?.crates)){
         if(out.has(n.id))continue;
         const touched=touchedNode(st,n.id);
         out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,

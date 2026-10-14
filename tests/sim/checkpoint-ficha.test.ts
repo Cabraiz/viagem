@@ -98,3 +98,27 @@ test('the legacy fingerprint is exactly the one the pre-ficha production build w
   const variants:[keyof typeof PRE_FICHA_FINGERPRINTS,ConstructorParameters<typeof Simulation>[1]][]=[['ilha',{world:'ilha'}],['infinito',{world:'infinito'}],['cidade',city],['cidade+chaveiro',{...city,objective:'chaveiro'}]];
   for(const [name,options] of variants)assert.equal(new Simulation(4242,options).freshShape().legacy,PRE_FICHA_FINGERPRINTS[name],name);
 });
+
+// Bancos (card bancos-e-veiculos): a city checkpoint written before the banks (this code's fingerprint without them)
+// resumes with every ATM full; the island's and the endless world's have no banks and no preBanks fingerprint.
+test('bancos: a city checkpoint from the build before the banks resumes with fresh banks; island and endless have none',async()=>{
+  const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8')) as {hash:string};
+  const loaded=await cityTerrainFrom(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'),manifest.hash);
+  if(!loaded.ok)throw new Error(loaded.error);
+  for(const objective of [undefined,'chaveiro'] as const){
+    const make=()=>seat(new Simulation(SEED,{world:'cidade',terrain:loaded.terrain,cityStructures:true,...(objective?{objective}:{})}));
+    const sim=make();sim.resetRun();
+    for(let i=0;i<40;i++)sim.step(sim.tick*50);
+    const cp=JSON.parse(JSON.stringify(sim.checkpoint())) as SimCheckpoint&{shape:string;systems:{banks?:unknown}};
+    assert.ok(cp.systems.banks,'the city checkpoint carries the banks');
+    const old=JSON.parse(JSON.stringify(cp)) as typeof cp;delete old.systems.banks;old.shape=sim.freshShape().preBanks!;
+    assert.ok(old.shape&&old.shape!==sim.freshShape().fingerprint,'the banks are in the fingerprint');
+    const fresh=make();
+    assert.equal(fresh.resume(old),true,`${objective??'muralha'}: the pre-banks checkpoint resumes`);
+    assert.deepEqual(fresh.run.banks!.state,sim.freshShape().banks,'every ATM full');
+  }
+  for(const world of ['ilha','infinito'] as const){
+    const shape=new Simulation(SEED,{world}).freshShape();
+    assert.equal(shape.preBanks,undefined,world);assert.equal(shape.banks,undefined,world);
+  }
+});

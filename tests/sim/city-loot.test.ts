@@ -625,3 +625,20 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   assert.deepEqual(JSON.parse(JSON.stringify(st)),st,'stonewards state JSON-safe');
   t.diagnostic(`intermission ${((end0-start)/SIM_HZ).toFixed(2)} s at start; plaza edge hero ${edge.length?`${dist(edge[0],wall).toFixed(1)} u from the wall`:'n/a'}`);
 });
+
+// Bancos (card bancos-e-veiculos): a bank takes its loot point's place, and no crate a hero could work while holding a
+// bank is left, in both city modes (else gathering there withdrew for free).
+import {BANCO} from '../../src/rules/bancos.ts';
+test('bancos: the crates at and around a bank are not in the run (no crate within holdR + the gather reach of a bank), both city modes',()=>{
+  for(const objective of [undefined,'chaveiro'] as const)for(let seed=1;seed<=16;seed++){
+    const s=new Simulation(seed,{world:'cidade',terrain:city,...(objective?{objective}:{})});
+    const banks=s.run.banks!,label=`${objective??'muralha'} seed ${seed}`;
+    assert.equal(banks.places.length,BANCO.count,label);
+    for(const b of banks.places){
+      assert.ok(b.crate&&banks.crates.has(b.crate),`${label}: ${b.id} took its crate's place`);
+      const left=nodesNear(city,b,BANCO.holdR+GATHER_REACH+.35+1e-6,undefined,banks.crates);
+      assert.deepEqual(left.map(n=>n.id),[],`${label}: no crate a hero holding ${b.id} could work`);
+      assert.ok(nodesNear(city,b,BANCO.holdR).length>=1,`${label}: without the run's hidden set the crate is there`);
+    }
+  }
+});

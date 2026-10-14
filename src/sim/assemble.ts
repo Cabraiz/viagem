@@ -164,6 +164,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let bossDown=false;
   // D-047: the chaveiro decides the run instead of the boss and the round count (created below, city only).
   let chaveiro:ChaveiroSystem|undefined;
+  // Bancos: the city's ATMs (created below, after the chaveiro); the crates they stand on are not gathered (hiddenNodes).
+  let banks:BanksSystem|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
@@ -179,7 +181,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
-    terrain:world.terrain,siegeContact:false,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
+    terrain:world.terrain,siegeContact:false,hiddenNodes:()=>banks?.crates,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
     // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
     barricadesLater:options.cityTutorial??true,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
@@ -287,10 +289,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
   }
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
-  let banks:BanksSystem|undefined;
   if(cityTerrain){
     const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
-    banks=createBanks({seed:world.seed,candidates:(loot?.crates??[]).map(c=>({x:c.node.x,y:c.node.y})),car:{x:wall.x,y:wall.y},
+    banks=createBanks({seed:world.seed,candidates:(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y})),car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
       wallet:{add:n=>{stonewards.state.grana+=n;}}},cp?.banks);
   }

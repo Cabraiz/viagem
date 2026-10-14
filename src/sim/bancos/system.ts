@@ -13,6 +13,9 @@
  *    names BANK_IDS in sector order.
  *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)}}.
  *    `restore`: a checkpointed BanksState (deep-copied by the caller); the places come back from the seed (never stored).
+ *  - The crate at a bank's loot point is not in the run (BankPlace.crate), nor any other candidate crate a hero could
+ *    work while holding the bank (its point within CRATE_CLEAR of the bank): BanksSystem.crates, which stonewards
+ *    hiddenNodes and the Simulation's node views skip, in both city modes. Else gathering there withdrew for free.
  *  - BanksSystem: places (static), state (BanksState, JSON-safe), step(ctx) once a tick (assemble.ts: in the
  *    'structures' slot, after the stonewards and the chaveiro), view(tick) → contract BankView[].
  *  - In a run: createRunSystems(...) on a city terrain → RunSystems.banks (the system), RunSystems.bankViews(),
@@ -44,7 +47,8 @@ import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {baitEnemy} from '../enemies/ai.ts';
 
-export interface BankPlace {id:string;x:number;y:number;name:BankName}
+/** crate: the id of the loot crate whose point the bank took (that crate is not in this run). */
+export interface BankPlace {id:string;x:number;y:number;name:BankName;crate?:string}
 export interface BankRow {saldo:number;state:BankState;until:number;drawer?:string;clock:number;held:0|1|2}
 /** JSON-safe bank state (RunSystemsState.banks). */
 export interface BanksState {list:BankRow[];paid:number;taken:number;primes:number}
@@ -56,7 +60,7 @@ export type BankAnchor={route:readonly Point[]}|{plaza:Point};
 export interface BanksOptions {
   seed:number;
   /** Where a bank may stand (the city's loot points, cityLoot(terrain).crates nodes). */
-  candidates:readonly Point[];
+  candidates:readonly (Point&{id?:string})[];
   /** The car (the wall's spot). */
   car:Point;
   /** The moto's route (chaveiro mode); without it, the plaza is the anchor. */
@@ -67,12 +71,19 @@ export interface BanksOptions {
 }
 export interface BanksSystem {
   readonly places:readonly BankPlace[];
+  /** The loot crates the banks took the place of (not gathered in this run: stonewards hiddenNodes, Simulation nodeViews). */
+  readonly crates:ReadonlySet<string>;
   readonly state:BanksState;
   step(ctx:SimContext):void;
   view(tick:number):BankView[];
 }
 
 const TAU=Math.PI*2;
+/**
+ * A crate whose point is this close (u) to a bank is not in the run: a hero working it (within its radius + the gather
+ * reach, stonewards/resources.ts GATHER_REACH 0.9, CRATE_RADIUS 0.35) would stand within holdR of the bank.
+ */
+export const CRATE_CLEAR=BANCO.holdR+1.25;
 /** Distance from p to the polyline (its first point when it has one). */
 export function distanceToPolyline(p:Point,line:readonly Point[]){
   if(!line.length)return Infinity;
@@ -86,7 +97,7 @@ export function distanceToPolyline(p:Point,line:readonly Point[]){
 }
 
 /** The run's banks: a pure function of the seed, the candidates, the car and the anchor (see the module doc). */
-export function planBanks(seed:number,candidates:readonly Point[],car:Point,anchor:BankAnchor):BankPlace[]{
+export function planBanks(seed:number,candidates:readonly (Point&{id?:string})[],car:Point,anchor:BankAnchor):BankPlace[]{
   const rng=new Rng(seed>>>0).fork('bancos'),count=Math.max(0,Math.min(BANCO.count,BANK_IDS.length));
   const offset=rng.range(0,TAU),width=TAU/Math.max(1,count);
   const sectorOf=(p:Point)=>{const a=((Math.atan2(p.y-car.y,p.x-car.x)-offset)%TAU+TAU)%TAU;return Math.min(count-1,Math.floor(a/width));};
@@ -106,7 +117,7 @@ export function planBanks(seed:number,candidates:readonly Point[],car:Point,anch
     const list=tiers.find(t=>t.length);
     if(!list)break;
     const c=rng.pick(list);taken.add(c.i);
-    out.push({id:`banco-${k+1}`,x:c.p.x,y:c.p.y,name:BANK_IDS[k]});
+    out.push({id:`banco-${k+1}`,x:c.p.x,y:c.p.y,name:BANK_IDS[k],...(c.p.id!==undefined?{crate:c.p.id}:{})});
   }
   return out;
 }
@@ -181,6 +192,8 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
 
   return {
     places,state,
+    crates:new Set([...places.flatMap(b=>b.crate!==undefined?[b.crate]:[]),
+      ...options.candidates.filter(c=>c.id!==undefined&&places.some(b=>Math.hypot(c.x-b.x,c.y-b.y)<=CRATE_CLEAR)).map(c=>c.id!)]),
     step(ctx){for(let i=0;i<places.length;i++)stepBank(ctx,i);},
     view(){
       return places.map((b,i)=>{

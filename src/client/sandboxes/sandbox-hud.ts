@@ -25,6 +25,9 @@
  * The city's first view brings round 1's banner ("Pouso Forçado", as the director sends it): a phone that already walked
  * sees the banner for its 1.8 s and then the row; with `dica=walk` the row takes the banner's slot at once (UX-1) and the
  * mock joystick (`.hs-stick`) wears the coach's Amarelo like the game's `.explore-stick`.
+ * `mapa=cidade&chaveiro=1[&moto=anda|morta|…][&rota=N|S|L|O]` (D-047, card chaveiro-render): the chaveiro objective
+ * (sandbox-chaveiro.ts, frozen 12 s into its loop): the moto's edge arrow (Cone while dead or fallen), and on the minimap
+ * the car in place of the base (its ring: hits left), the moto, the next delivery and the route still ahead.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
@@ -329,7 +332,12 @@ if(cidade)void (async()=>{
   const base=fakeView(scenario,people.length,tick);
   // Round 1's banner as the director sends it with the city's tutorial round (its name and line, cidade-08).
   const banner=tutorial?[{type:'round' as const,index:1,phase:'wave' as const,name:CIDADE_TUTORIAL.roundName,modifier:CIDADE_TUTORIAL.modifier,eventId:++eventId}]:[];
-  const run:RunView={...base,events:banner,structures:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+  // D-047: the fake chaveiro objective (sandbox-chaveiro.ts) at the plaza, 12 s into its loop; the car replaces the wall.
+  const chaveiro=params.get('chaveiro')==='1'?await import('./sandbox-chaveiro.ts').then(m=>{
+    const from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
+    return m.fakeChaveiro(params,map.plaza,P[`spawn${from}`],P.bocas[from]).view(12000).view;
+  }):undefined;
+  const run:RunView={...base,events:banner,structures:chaveiro?[]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
@@ -355,7 +363,7 @@ if(cidade)void (async()=>{
     const plaza=locate(map.plaza);
     hud.setHero({x:hero.x,y:hero.y,bearing:Math.atan2(plaza.y-anchor.y,plaza.x-anchor.x)*180/Math.PI});
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
-      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous});
+      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{})});
     previous=groupKeys;
     const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
@@ -363,7 +371,7 @@ if(cidade)void (async()=>{
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
     const big=hud.cityMap.open,side=layout.minimapBig?.width??0;
-    hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,baseHp:{hp:380,maxHp:600},
+    hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,...(chaveiro?{chaveiro}:{baseHp:{hp:380,maxHp:600}}),
       ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),
       offline:params.has('offline')},big);
     hud.cityMap.take();

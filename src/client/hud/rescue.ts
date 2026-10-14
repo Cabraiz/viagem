@@ -30,7 +30,7 @@ import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
-import {cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+import {objectiveOf,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type CityView,type MouthId,type NoticeKind,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
@@ -230,11 +230,11 @@ export class RescueBoard {
     const city=hud.cityMinimap;
     if(!city||!(hud.cityMap.take()||now-this.minimapAt>=200))return;
     this.minimapAt=now;
-    const open=hud.cityMap.open,wall=wallOf(last.structures);
+    const open=hud.cityMap.open,wall=wallOf(last.structures),chaveiro=objectiveOf(last);
     // Big only, in the intermission: the 8 nearest closed chests (doc §2).
     const chests=open&&phase==='prepare'?last.pickups.filter(p=>p.kind==='chest').sort((a,b)=>Math.hypot(a.x-focus.x,a.y-focus.y)-Math.hypot(b.x-focus.x,b.y-focus.y)).slice(0,8):undefined;
     city.render({map,view:scene.cameraView as CityView,...(open?{side:big.side,screen:screenCorners(locate,focus,{width:innerWidth,height:innerHeight})}:{}),
-      selfId:net.id,players:people,enemies,activeMouths,...(wall?{baseHp:{hp:wall.hp,maxHp:wall.maxHp}}:{}),...(chests?{chests}:{}),offline:hud.offline},open);
+      selfId:net.id,players:people,enemies,activeMouths,...(wall?{baseHp:{hp:wall.hp,maxHp:wall.maxHp}}:{}),...(chests?{chests}:{}),...(chaveiro?{chaveiro}:{}),offline:hud.offline},open);
   }
   /**
    * Rebuilds the city's world picture (cityFrame): who shows (as radar.ts: nobody spectating or out; someone away only
@@ -269,7 +269,8 @@ export class RescueBoard {
     this.cityNearest=nearest;
     const phase=this.cityPhase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=this.cityMouths=trackMouths(this.mouths,[],last.tick,map);
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,
+    const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     this.cityTargets=targets;this.groupKeys=groupKeys;
   }

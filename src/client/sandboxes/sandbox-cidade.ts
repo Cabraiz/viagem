@@ -56,6 +56,9 @@
  *   FPS lab (torres-polimento): `.towersHidden('all'|'bases'|'efeitos'|'crateras'|'')` hides what the renderer draws while it
  *   still runs (drawn vs hidden on one page, the same load), `.towersStats()` the images shown and their area per kind.
  *   The stand-in stepper records each volley's aim like the sim on the wire, so the renderer never scans the horde.
+ * `objetivo=1` (D-047, card chaveiro-render): the chaveiro objective's renderer (render/chaveiro) with a fake objective at the
+ *   plaza (sandbox-chaveiro.ts: `moto=`, `rota=`, `pecas=`, `cai=1`, `pancadas=`, `alarme=1`, `empurra=`, `fim=vitoria|derrota`);
+ *   without `hero`, the hero stands next to the moto (or the car). `acucar=1` (with `tele=1`): both lab critters are açucarados.
  * `relevo=0` draws the flat ground (no relief shader); `relevo=morros` (with `mapa=real`) adds stand-in snow hills to the
  * real map (render/city/relevo/preview.ts) to judge the relief shader before the real height field lands.
  * Fake data only; nothing talks to the server.
@@ -85,6 +88,8 @@ import {queueBaseArt} from '../art/base-art.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
 import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerView,type WireStructure} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
+import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
+import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -114,6 +119,8 @@ const tele=real&&params.get('tele')==='1';
  */
 const outlinesOn=params.get('contorno')!=='0';
 const cast=tele&&params.get('elenco')==='1';
+/** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
+const objective=params.get('objetivo')==='1';
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');
@@ -153,6 +160,7 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
+  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro};
   /** tele=1: the game's city-mode renderers. */
   private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
   private decoded?:CityTerrain;
@@ -187,6 +195,7 @@ class CitySandbox extends Phaser.Scene {
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
+    if(objective)this.chaveiro=this.mountObjective(!start);
     if(centre&&!start)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
@@ -212,7 +221,7 @@ class CitySandbox extends Phaser.Scene {
     });
     const turn=document.createElement('button');
     turn.className='cidade-turn';turn.type='button';turn.textContent='↻';turn.setAttribute('aria-label','Girar a câmera');
-    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();}this.towers?.refresh();});
+    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();this.chaveiro?.renderer.refresh();}this.towers?.refresh();});
     host.append(turn);// inside the sandbox root: everything else in body is hidden
     if(enemies){this.fpsLabel=document.createElement('div');this.fpsLabel.className='cidade-fps';host.append(this.fpsLabel);}
     // Warm the fade so a covering building is already translucent on the first screenshot.
@@ -225,21 +234,36 @@ class CitySandbox extends Phaser.Scene {
     if(!stillHorde)this.moveHorde(dt);
     this.tick(dt);
     this.stone?.update(_t);
+    if(this.chaveiro){const {view,tick}=this.chaveiro.fake.view(_t);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(_t);}
     this.drawLab(_t,dt);
     this.stepTowers(_t,dt);
+  }
+  /** The city layer's projection for the game's renderers: same pivot, the city's ground height in px, its actor depth. */
+  private cityProjector(){
+    if(this.projector)return this.projector;
+    const asset=this.asset;
+    // World px per unit of city height, from the city projection itself (no second constant).
+    const heightPx=project(0,0,0,0).y-project(0,0,1,0).y;
+    const ground={height:(x:number,y:number)=>groundZ(asset,x,y)*heightPx} as unknown as TerrainField;
+    const projector=new Projector(this.view,ground);
+    projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y,groundZ(asset,x,y)):0;
+    return this.projector=projector;
+  }
+  /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
+  private mountObjective(placeHero:boolean){
+    const p=this.asset.points,from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
+    const car=p.praca??{x:this.at.x+2,y:this.at.y};
+    const fake=fakeChaveiro(params,car,p[`spawn${from}`],p[`boca${from}`],{x:this.at.x-6,y:this.at.y+4});
+    if(placeHero)this.at={...fake.heroAt};
+    const renderer=new ChaveiroRenderer(this,{projector:this.cityProjector(),reduced:reducedMotion,hero:()=>this.at});
+    return {renderer,fake};
   }
   /**
    * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the
    * city's ground height in px, the layer's actor depth), fed one fixed RunView around `c` (see the header).
    */
   private mountBase(c:{x:number;y:number}){
-    const asset=this.asset,layer=this.layer;
-    // World px per unit of city height, from the city projection itself (no second constant).
-    const heightPx=project(0,0,0,0).y-project(0,0,1,0).y;
-    const ground={height:(x:number,y:number)=>groundZ(asset,x,y)*heightPx} as unknown as TerrainField;
-    const projector=new Projector(this.view,ground);
-    projector.depthOverride=(x,y)=>layer?layer.actorDepth(x,y,groundZ(asset,x,y)):0;
-    this.projector=projector;
+    const projector=this.cityProjector();
     this.stone=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
     const at=(dx:number,dy:number)=>({x:+(c.x+dx).toFixed(3),y:+(c.y+dy).toFixed(3)});
     const tick=1000,R=BASE_R;
@@ -268,14 +292,15 @@ class CitySandbox extends Phaser.Scene {
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
-    const {x,y}=this.at,tick=100;
+    const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
         {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
       ],
-      enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5}],
+      // acucar=1 (D-047): both critters bought a sweet from Dona Cida (EnemyView.sugar, protocol 15).
+      enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     horde.push(cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);

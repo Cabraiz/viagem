@@ -11,6 +11,9 @@ test('a scene opens its sandbox with its parameters and foto=<cena>; the caller\
   const extra=new URLSearchParams(fotoSearch('chaveiro-morta','?foto=chaveiro-morta&view=2&empurra=.2&sandbox=hud')!.slice(1));
   assert.equal(extra.get('view'),'2');assert.equal(extra.get('empurra'),'.2','an extra overrides the scene');assert.equal(extra.get('sandbox'),'cidade','not the sandbox');
   assert.equal(fotoSearch('nada',''),undefined);
+  // The HUD prints without the sandbox's state buttons (varredura do celular); the city has none to hide.
+  assert.equal(new URLSearchParams(fotoSearch('oferta','')!.slice(1)).get('clean'),'1');
+  assert.equal(new URLSearchParams(fotoSearch('chaveiro-morta','')!.slice(1)).has('clean'),false);
 });
 
 test('the fixed clock: t from the page, else 2000 ms',()=>{

@@ -404,10 +404,11 @@ test('loadCity: every caller waiting on the running download gets its progress',
   const c=loadCity(ref,p=>late.push(p),fetcher);
   push(new TextEncoder().encode('1}'));await sleep(5);push(null);
   const results=await Promise.all([a,b,c]);
-  assert.equal(fetches,1,'one download');
+  assert.equal(fetches,2,'one download shared by every caller, plus the one cache:reload retry a wrong hash gets');
   assert.deepEqual(results,[CITY_FAILED,CITY_FAILED,CITY_FAILED],'the wrong hash fails for everyone');
   assert.ok(first.length>=2,JSON.stringify(first));
   assert.deepEqual(second,first,'the second caller sees the same progress');
   assert.equal(late[0],first[0],'a late caller gets the fraction reached at once');
   assert.deepEqual(late,first,'then the rest');
 });
+

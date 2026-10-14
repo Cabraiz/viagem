@@ -27,6 +27,9 @@ import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {createBanks,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {cityLoot} from './stonewards/loot.ts';
+import type {BankView} from '../contract/index.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -92,6 +95,8 @@ export interface RunSystemsState {
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
+  /** Bancos: only in the city (both modes; absent elsewhere, so the island's and the endless world's hashes stay). */
+  banks?:BanksState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -105,6 +110,10 @@ export interface RunSystems {
   chaveiro?:ChaveiroSystem;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
+  /** Bancos (sim/bancos/system.ts): the city's ATMs, in both city modes; absent elsewhere. */
+  banks?:BanksSystem;
+  /** The banks as the HUD and the bots see them (RunView.banks); undefined outside the city. */
+  bankViews():BankView[]|undefined;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
   state():RunSystemsState;
   dispose():void;
@@ -277,6 +286,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
   }
+  // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
+  let banks:BanksSystem|undefined;
+  if(cityTerrain){
+    const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
+    banks=createBanks({seed:world.seed,candidates:(loot?.crates??[]).map(c=>({x:c.node.x,y:c.node.y})),car:{x:wall.x,y:wall.y},
+      ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
+      wallet:{add:n=>{stonewards.state.grana+=n;}}},cp?.banks);
+  }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   world.clearSystems();
@@ -289,7 +306,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
-    chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
+    // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
+    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro?.step(ctx);banks?.step(ctx);}} satisfies SimSystem:stonewards,
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx)=>{
@@ -306,10 +324,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(banks?{banks}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
+    bankViews:()=>banks?.view(world.tick),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(banks?{banks:banks.state}:{})}),
     dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

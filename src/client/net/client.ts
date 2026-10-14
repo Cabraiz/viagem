@@ -698,10 +698,11 @@ export class CoopClient {
   /**
    * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
    * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
+   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target).
    */
-  input(direction:Point,skill:boolean,target?:string){
+  input(direction:Point,skill:boolean,target?:string,attack=false){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
-    const {input,active}=this.batcher.step(direction,skill,target);
+    const {input,active}=this.batcher.step(direction,skill,target,attack);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
     if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects);}

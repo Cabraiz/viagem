@@ -48,7 +48,9 @@ export const DECISION_MS=200;
 export const STEP_MS=50;
 
 export interface BotEvent {at:number;kind:string;detail?:unknown}
-export interface BotOptions {endpoint:string;code:string;name:string;classId:string;index:number;link:Link;log?:(line:string)=>void}
+export interface BotOptions {endpoint:string;code:string;name:string;classId:string;index:number;link:Link;log?:(line:string)=>void;
+  /** D-051: the room plays the manual combat: the bot holds the attack (segment bit 1) with a critter in reach, no skill. */
+  combat?:'manual'}
 
 export class Bot {
   readonly client:InstanceType<typeof CoopClient>;
@@ -57,6 +59,8 @@ export class Bot {
   readonly name:string;
   readonly events:BotEvent[]=[];
   readonly memory:BrainMemory;
+  /** D-051 (BotOptions.combat). */
+  readonly combat?:'manual';
   /** Stand ready in the lobby / ask for the rematch on the result screen. */
   wantReady=false;wantRematch=false;
   /** Paused bots stand still (and still ack): used while a check needs a quiet room. */
@@ -95,7 +99,7 @@ export class Bot {
     if(now>.05){c.after.peak=Math.max(c.after.peak,now);c.after.sum+=now;c.after.frames++;}
   }
   constructor(o:BotOptions){
-    this.index=o.index;this.name=o.name;this.link=o.link;this.memory=newMemory(o.index);this.log=o.log??(()=>{});
+    this.index=o.index;this.name=o.name;this.link=o.link;this.memory=newMemory(o.index);this.log=o.log??(()=>{});if(o.combat)this.combat=o.combat;
     const client=this.client=new CoopClient(o.endpoint,o.code,o.name,o.classId);
     // Each connection attempt (first join and every retry) goes through this bot's Link.
     const connect=Object.getPrototypeOf(client).connect as ()=>void,socketClass=o.link.socketClass();
@@ -142,14 +146,15 @@ export class Bot {
     if(now>=this.nextDecision){
       // A little spread so six thumbs do not change their minds on the same tick.
       this.nextDecision=now+DECISION_MS+((this.index*37)%60);
-      const d=this.decision=decide({view,selfId:c.id,at:c.predicted as Point,index:this.index,terrain:c.terrain,memory:this.memory});
+      const d=this.decision=decide({view,selfId:c.id,at:c.predicted as Point,index:this.index,terrain:c.terrain,memory:this.memory,...(this.combat?{combat:this.combat}:{})});
       this.modes[d.mode]=(this.modes[d.mode]??0)+1;
       if(d.choose){c.choose(d.choose.offer,d.choose.index);this.event('choose',d.choose.offer);}
       if(d.cast)c.cast();
       if(d.sos)c.sos();
       if(d.forge){const req=c.forge(d.forge);this.event('forge',{recipe:d.forge,req});}
     }
-    c.input(this.decision?.direction??{x:0,y:0},false);
+    // D-051: the attack held rides the 10 Hz segments (bit 1) in the manual combat; the room aims.
+    c.input(this.decision?.direction??{x:0,y:0},false,undefined,!!this.decision?.attack);
   }
   stop(leave=true){clearInterval(this.timer);this.timer=undefined;clearInterval(this.display);this.display=undefined;if(leave)this.client.leave();else{for(const s of [...this.link.sockets])s.terminate();}}
 }

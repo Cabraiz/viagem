@@ -151,9 +151,11 @@ export class RoomBots {
       const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         ...(view.objective?{teamBots:minds.map(m=>m.id)}:{}),
+        // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
+        ...(sim.combat?{combat:sim.combat}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
-      sim.setBotInput(mind.id,d.direction,d.cast);
+      sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);

@@ -2,7 +2,8 @@
 // Lots 061117 and 064511 failed a good build on a PC with 9 headless browsers ("não entrou em 120 s"): entering is
 // judged by progress, not by a wall-clock deadline, and a failure is the MACHINE's (exit 2, retried once by CI; the
 // queue holds the lot) only with both a starved page AND evidence from outside the page; everything else is the GAME's
-// (exit 1), which always wins.
+// (exit 1), which always wins. A hung renderer (the page answers nothing, the room answers on time) is the machine's
+// too, and tried once more in a fresh browser (lot 162643).
 
 /** Hard cap of one entry; a stall is this long with nothing moving (the page nor the room). */
 export const ENTER_CAP_MS=240000,STALL_MS=90000;
@@ -33,6 +34,22 @@ export function pageStarved(trace,now){
   return due>0&&fires/due<FIRE_RATIO_MIN?`a página rodou ${Math.round(fires/due*100)} % do tempo`:'';
 }
 
+/** The chunk check's reason when the page did not answer it (smoke-prod.mjs). */
+export const CHUNKS_UNVERIFIED='chunks não verificados (a página não respondeu em 60 s)';
+
+/**
+ * A hung renderer: the page answered none of the polls of its last STALL_MS (at least 3) while the local room answered
+ * on time. Lot 162643 failed so (resp:false in every sample, the room fine) and E5 passed the same two builds 2/2:
+ * Chromium's d3d11 renderer stuck beside another headless browser, not the game. The machine's (exit 2) with no other
+ * evidence needed; smoke-prod.mjs tries it once more in a fresh browser. `room` is {ok, ms}; '' when not hung.
+ */
+export function rendererHung(trace,now,room){
+  const tail=trace.filter(t=>t.wallMs>=now-STALL_MS);
+  if(tail.length<3||tail.some(t=>t.answered!==false))return '';
+  if(!room?.ok||room.ms>ROOM_SLOW_MS)return '';
+  return `o renderer travou: nenhuma das ${tail.length} leituras respondeu e a sala respondeu em ${room.ms} ms`;
+}
+
 /** Evidence from outside the page that the machine was starved: '' when there is none. */
 export function machineEvidence({nodeLagP90=0,roomMs,roomOk=true,browsers=0}){
   const out=[];
@@ -43,10 +60,11 @@ export function machineEvidence({nodeLagP90=0,roomMs,roomOk=true,browsers=0}){
 }
 
 /**
- * One entry's result {why, errors, starved}: `starved` set only when the page was starved AND the machine shows it; then a
- * failure with no page error and no rejected chunk, only "não entrou", is the machine's.
+ * One entry's result {why, errors, starved}: `starved` set only when the page was starved AND the machine shows it (or
+ * the renderer hung); then a failure with no page error and no rejected chunk, only "não entrou" (and the chunks the
+ * silent page could not check), is the machine's.
  */
-export const isMachine=r=>!!r.why&&!!r.starved&&!r.errors.length&&r.why.split(' | ').every(w=>w.startsWith('não entrou'));
+export const isMachine=r=>!!r.why&&!!r.starved&&!r.errors.length&&r.why.split(' | ').every(w=>w.startsWith('não entrou')||w===`chunk: ${CHUNKS_UNVERIFIED}`);
 /** The run's exit: 0 all passed; 1 as soon as one failure is the game's; 2 when every failure is the machine's. */
 export function smokeExit(results){
   let code=0;

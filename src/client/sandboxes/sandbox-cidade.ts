@@ -101,13 +101,16 @@ import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
-import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
+import type {ChaveiroView} from '../render/chaveiro/view.ts';
+import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.ts';
+import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
+import {talkSeed} from '../render/chaveiro/lines.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -211,7 +214,9 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
-  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean};
+  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean;
+    /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
+    talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
@@ -322,6 +327,7 @@ class CitySandbox extends Phaser.Scene {
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
+      this.speak(_t,dt,view,tick);
     }
     this.stepBanks(_t);
     this.fortify?.update(fotoT??_t);
@@ -378,7 +384,27 @@ class CitySandbox extends Phaser.Scene {
     const fake=fakeChaveiro(params,car,p[`spawn${from}`],p[`boca${from}`],{x:this.at.x-6,y:this.at.y+4});
     if(placeHero)this.at={...fake.heroAt};
     const renderer=new ChaveiroRenderer(this,{projector:this.cityProjector(),reduced:reducedMotion,hero:()=>this.at});
-    return {renderer,fake};
+    if(!params.has('fala'))return {renderer,fake};
+    const seed=params.has('seed')?Number(params.get('seed'))>>>0:talkSeed('sandbox',0);
+    // Without tele=1 the balloons get a horde renderer of their own (the lab's one otherwise), on the city's projection.
+    const horde=tele?undefined:new HordeRenderer(this,{projector:this.cityProjector(),uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),
+      actorScale:()=>CITY_VIEW_SCALE,reduced:reducedMotion,city:()=>true,locate:id=>id==='self'?this.at:undefined});
+    horde?.push({tick:0,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[]});
+    return {renderer,fake,talk:{talk:new ChaveiroTalk(seed),horde,said:[],last:-1}};
+  }
+  /** `fala=`: the fake moments' events and the fake view into the game's line timing; the due line into a balloon. */
+  private speak(time:number,dt:number,view:ChaveiroView,tick:number){
+    const t=this.chaveiro?.talk;if(!t)return;
+    t.start??=time;
+    t.talk.push(view,fakeTalkEvents(params,t.last,time-t.start),tick,time);t.last=time-t.start;
+    const horde=t.horde??this.lab?.horde;
+    t.horde?.update(time,dt);
+    const said=t.talk.take(time);
+    if(!said||!horde)return;
+    t.said.push({...said,at:time});
+    const renderer=this.chaveiro!.renderer;
+    if(said.spot==='hero')horde.speak('self',said.text,undefined,said.priority);
+    else horde.speak(`chaveiro:${said.speaker}`,said.text,()=>renderer.speechAnchor(said.speaker),said.priority);
   }
   /** anda=: the hero pulls the car by the rope from ahead of its move (the rope's slack in the swing). */
   private pullCar(car:{x:number;y:number}){
@@ -636,7 +662,8 @@ class CitySandbox extends Phaser.Scene {
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
-      viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
+      viewport,orientation:viewport.width>viewport.height?'landscape':'portrait',falas:()=>this.chaveiro?.talk?.said.map(s=>({...s}))??[],
+      falaBubbles:()=>(this.chaveiro?.talk?.horde??this.lab?.horde)?.stats().byLayer.bubbles,falaClock:()=>this.time.now};
   }
   /**
    * regua=1: a Breu/Papel bar standing on the ground half a hero's width left of his feet, a tick at every hero height

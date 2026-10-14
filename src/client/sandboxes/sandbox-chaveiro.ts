@@ -9,12 +9,16 @@
  *  - `empurra=0..1` (the push with mode morta; default it fills in a 4 s loop),
  *  - `fim=vitoria|derrota` (the end: he opened it, or perda total),
  *  - `anda=<graus>` (D-052, the car moves: `voce` pulls it back and forth along that heading, CAR_SWING_U each way in
- *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept).
+ *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept),
+ *  - `fala=alarme,venda,peca,…` (card chaveiro-falas): those moments' events (fakeTalkEvents), one every FALA_EVERY_MS
+ *    from FALA_AT_MS (`falaEm=ms` instead) after the first frame, through the game's line timing (render/chaveiro/talk.ts)
+ *    into the zueiras' balloons; `seed=N` the room's seed.
  * The car stands at the plaza (asset point `praca`). Without `hero`, the hero stands next to the moto (or the car).
  * Deterministic from the clock only; nothing talks to the server.
  */
 import {M} from '../render/chaveiro/iso.ts';
 import type {ChaveiroView,MotoMode,StopKind} from '../render/chaveiro/view.ts';
+import type {LooseEvent} from '../render/chaveiro/talk.ts';
 
 type Pt={x:number;y:number};
 /** anda=: how far the car swings each way (units) and the loop (ms): ≈ 1.6 u/s at the middle, a mover's speed. */
@@ -90,4 +94,20 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
     };
     return {view,tick};
   }};
+}
+
+/** `fala=`: the first moment's event at FALA_AT_MS, then one every FALA_EVERY_MS (past the cast's line gap). */
+export const FALA_AT_MS=1200,FALA_EVERY_MS=5000;
+/** The protocol-15 event (or main's boss arrival) of each `fala=` moment. */
+const FALA_EVENTS:Readonly<Record<string,LooseEvent>>={
+  alarme:{type:'alarm',untilTick:0},venda:{type:'sale',enemy:'e1'},compra:{type:'buy',player:'self',item:'cocada'},
+  peca:{type:'part',name:'porta'},chefe:{type:'boss-phase',enemy:'boss',phase:1},sozinha:{type:'moto',mode:'tranco',alone:true},
+  ...Object.fromEntries(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou'].map(m=>[m,{type:'moto',mode:m}])),
+};
+/** The `fala=` moments' events due in (from, to] ms (eventId: the moment's order), unknown names skipped. */
+export function fakeTalkEvents(params:URLSearchParams,from:number,to:number):LooseEvent[]{
+  const names=(params.get('fala')??'').split(',').filter(n=>Object.hasOwn(FALA_EVENTS,n));
+  const out:LooseEvent[]=[],first=params.has('falaEm')?Number(params.get('falaEm'))||0:FALA_AT_MS;
+  names.forEach((n,i)=>{const at=first+i*FALA_EVERY_MS;if(at>from&&at<=to)out.push({...FALA_EVENTS[n],eventId:i});});
+  return out;
 }

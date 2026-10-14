@@ -59,15 +59,6 @@ export const PROP_FAMILIES:Readonly<Record<PropKind,readonly string[]>>={
 };
 export const FOUNTAIN_PIECE='chafariz-congelado';
 /**
- * Buildings and ruined houses drawn taller, vertically only (proporcoes-postes-predios, the Orquestrador's option A):
- * the delivery draws a storey ≈ 1.2 u, about the city hero (1.245 u), against ~1.7× the hero (a 3 m storey). × 1.6
- * puts a one-storey house at ~1.6–1.8× the hero and a two-storey sobrado at ~3.6×, while the footprint (and so the
- * street) stays as it is; scaling the whole sheet would widen the iso footprint over the street. The art's own ground
- * diamond stretches with it (a little taller at the back); a redrawn storey of ~2.1 u is in 01-PEDIR-DE-VOLTA.
- * Rubble piles and the fountain keep the delivered scale.
- */
-export const BUILDING_STRETCH=1.6;
-/**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
  * the lamp at ~2.3× (4 m), the car about the hero's height, barrels, crates, benches and street junk at its waist or
@@ -84,9 +75,7 @@ export interface CitySheet {key:string;url:string;frameWidth:number;frameHeight:
   /** Height drawn above the anchor line, world units at the sheet's display scale (occluders, chunk bounds). */
   height:number;
   /** Display scale (game px per art px). */
-  scale:number;
-  /** Vertical stretch on top of `scale` (buildings: BUILDING_STRETCH); 1 when absent. `height` already includes it. */
-  scaleY?:number}
+  scale:number}
 
 export interface CityArtPlan {
   height:CityArtHeight;
@@ -145,17 +134,17 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
   const unit=plan.unit,big=unit/ART_SCALE,small=1/ART_SCALE;
   const each=(g:ArtGroup|undefined)=>g?Object.keys(g.pieces).sort().map(id=>[id,g.pieces[id]] as const):[];
   const predios=index.groups.predios,props=index.groups.props,base=index.groups.base,chao=index.groups.chao;
-  const footprintSheet=(group:ArtGroup,key:string,p:ArtPiece,f:ArtFile,fp:[number,number],stretch=1):CitySheet=>{
+  const footprintSheet=(group:ArtGroup,key:string,p:ArtPiece,f:ArtFile,fp:[number,number]):CitySheet=>{
     const originY=originYOf(f,16);
     return {key,url:groupFileUrl(group,f.file!),frameWidth:f.cell[0],frameHeight:f.cell[1],originY,footprint:fp,
-      height:sheetHeight(f.cell[1],originY,fp,ART_CELL,big)*stretch,scale:big,...(stretch!==1?{scaleY:stretch}:{})};
+      height:sheetHeight(f.cell[1],originY,fp,ART_CELL,big),scale:big};
   };
   for(const [id,p] of each(predios)){
     const fam=pieceFamily(id),fp=footprintOf(p),f=viewSheet(p);
     if(!fp||!f||UNUSED_FAMILIES.some(u=>fam===u||fam.startsWith(`${u}-`)))continue;
     const pool=fam===RUBBLE_FAMILY?'rubble':p.meta?.ruin===true?'ruin':'intact';
     const prefix=pool==='rubble'?'city:rubble':'city:building';
-    const s=footprintSheet(predios!,`${prefix}:${fp[0]}x${fp[1]}${pool==='ruin'?'-ruin':''}/${id}`,p,f,fp,pool==='rubble'?1:BUILDING_STRETCH);
+    const s=footprintSheet(predios!,`${prefix}:${fp[0]}x${fp[1]}${pool==='ruin'?'-ruin':''}/${id}`,p,f,fp);
     plan.buildings[pool].push(s);plan.sheets.push(s);
   }
   const byFamily=new Map<string,{id:string;p:ArtPiece;f:ArtFile}[]>();

@@ -63,14 +63,18 @@ type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=
 const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
 const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
 
+/** An entrance lasts up to this (ms, delay included): the result's cards ~0.7 s, an arrow's bump 0.44 s. */
+const ENTRANCE_MS=1200;
 /**
- * Waits for the finite animations running now (delays included) to finish, up to `ms`: one pass, so a banner's own
- * exit, which starts later, does not take it off the print.
+ * Waits for the entrances running now to finish, up to `ms`. Longer finite animations are a thing's whole life and end
+ * invisible (the round's banner 1.8 s, the confetti, the minimap's ping): they are left where they are, like the loops.
  */
 async function settleAnimations(ms:number){
-  const running=document.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getComputedTiming().endTime??Infinity));
+  const running=document.getAnimations().filter(a=>a.playState==='running'&&(a.effect?.getComputedTiming().endTime as number??Infinity)<=ENTRANCE_MS);
   if(!running.length)return;
-  await Promise.race([Promise.all(running.map(a=>a.finished.catch(()=>undefined))),new Promise(r=>setTimeout(r,ms))]);
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  await Promise.race([Promise.all(running.map(a=>a.finished.catch(()=>undefined))),new Promise(r=>{timer=setTimeout(r,ms);})]);
+  clearTimeout(timer);
   await frames(2);
 }
 
@@ -102,9 +106,8 @@ export async function abrirFoto(){
     await document.fonts?.ready;
     // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.
     await frames(scene.sandbox==='cidade'?20:4);
-    // Entrances (the result's cards, a banner sliding in, an arrow gliding to its edge) end before the print: finite CSS
-    // animations and transitions run to their end (the looping ones, a pulse or a marquee, stay where they are).
-    await settleAnimations(5000);
+    // Entrances (the result's cards, an arrow's bump) end before the print.
+    await settleAnimations(3000);
     w.__cidade?.freeze?.();
     w.__fotoPronta=true;
   }catch(e){w.__fotoErro=String(e);}

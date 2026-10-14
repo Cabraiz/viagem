@@ -51,6 +51,10 @@ jobs:
           path: smoke-out
           retention-days: 7
           if-no-files-found: ignore
+      - name: dist/multiplayer.json is the production one (the smoke points it at a local Worker and must restore it)
+        run: |
+          cmp public/multiplayer.json dist/multiplayer.json || { echo "::error::dist/multiplayer.json differs from public/multiplayer.json"; exit 1; }
+          node -e "const m=require('./dist/multiplayer.json');if(!/^https:\/\//.test(m.endpoint)||/localhost|127\.0\.0\.1/.test(m.endpoint)){console.error('::error::endpoint '+m.endpoint);process.exit(1)}console.log('endpoint '+m.endpoint)"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

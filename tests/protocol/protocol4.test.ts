@@ -1047,10 +1047,12 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 16: a frame from a 15 (chaveiro) or 17 room is refused at the version byte (the handshake already sent the update message)',()=>{
+// The number itself is given out by the integration queue (tools/fila.mjs, one bump per batch; D-049): the tests follow
+// PROTOCOL_VERSION, and sim-stonewards checks public/multiplayer.json carries the same.
+test('the current protocol: a frame from any older (8 on) or the next room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],16);
-  for(const version of [8,9,10,11,12,13,14,15,17]){
+  assert.equal(bytes[1],PROTOCOL_VERSION);
+  for(const version of [...Array.from({length:PROTOCOL_VERSION-8},(_,i)=>i+8),PROTOCOL_VERSION+1]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }

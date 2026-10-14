@@ -10,7 +10,7 @@ import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -264,4 +264,12 @@ test('the upgrade smoke (BUG-20261014-ORQ-mapa-cache-velho): the base checked ou
     assert.equal(git(w.repo,'worktree','list').split(String.fromCharCode(10)).length,1,'the base checkout is gone too');
     assert.ok(!existsSync(join(w.board,'locks','browser-1')),'the browser slot is released');
   }finally{w.cleanup();}
+});
+
+test('a failed smoke\'s reason: its verdict lines, not the traces before them',()=>{
+  const trace='  rastro normal: '+JSON.stringify(Array.from({length:3},(_,s)=>({s,sala:'',tick:-1,salaMs:9,resp:false})));
+  const out=[trace,'smoke normal: INFRA · não entrou: nada mudou em 90 s',trace,'smoke chaveiro: OK (travou nas 2 tentativas)'].join('\r\n');
+  assert.equal(smokeGist(out),'smoke normal: INFRA · não entrou: nada mudou em 90 s / smoke chaveiro: OK (travou nas 2 tentativas)');
+  assert.equal(smokeGist('o navegador não abriu'),'o navegador não abriu','no verdict line: the start of the output');
+  assert.equal(smokeGist('x'.repeat(900)).length,600);
 });

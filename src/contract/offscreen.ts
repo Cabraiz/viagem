@@ -21,10 +21,12 @@
  *     hangs SPRITE_DOWN_PX below; the endless relief tops at ~31 px (measured over 10 seeds × 4000 points),
  *     so ELEVATION_PX = 40 bounds the screen-y shift between the player's ground and the enemy's;
  *   - the camera follows smoothly, so it may trail the player by up to CAMERA_LAG_UNITS;
- *   - the camera centres the hero in the HUD's useful area (UX-zonas-tela), not on the screen, and looks ahead
- *     where the hero walks (UX-camera-segue): the hero's feet may sit up to CAMERA_OFFSET_SHORT_PX off the
- *     screen centre along the screen's short axis and CAMERA_OFFSET_LONG_PX along its long axis (framing.ts
- *     followTarget clamps to these). Both sides of each rectangle grow by them, since the offset can go either way.
+ *   - in the round the camera centres the hero's body on the screen with no look-ahead (camera-centro-heroi);
+ *     only in the lobby, the countdown and while the obra window is open does it frame the hero in the HUD's
+ *     useful area (UX-zonas-tela), beside the panel or window. There the hero's feet may sit up to
+ *     CAMERA_OFFSET_SHORT_PX off the screen centre along the screen's short axis and CAMERA_OFFSET_LONG_PX along
+ *     its long axis (framing.ts followTarget clamps to these). The budget is kept for that framing, and both sides
+ *     of each rectangle grow by it, since the offset can go either way.
  * Projection (projection.ts): screen x = 42·(x − y), screen y = 21·(x + y) − height, after rotating the
  * offset by the view. One unit along the screen's x axis is 42·√2 = 59.4 px, along its y axis 29.7 px.
  *

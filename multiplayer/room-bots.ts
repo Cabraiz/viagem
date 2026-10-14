@@ -64,7 +64,20 @@ export function botIdentity(seed:number,n:number,classIds:readonly string[],take
   return {name,classId:classIds[(h>>>8)%classIds.length]};
 }
 
-interface BotMind {id:string;slot:number;memory:BrainMemory;req:number}
+/**
+ * City (BUG-20261013-E4-corneta-jogador-longe): a person who has not moved more than ESCORT_IDLE_REACH (units) in the
+ * last ESCORT_IDLE_TICKS is idle (left at the helicopter spawn, AFK) and the bots do not walk with them: a roamer
+ * escorting an idle person far from the plaza ended every wave there and was the far hero the horn waited for.
+ */
+export const ESCORT_IDLE_REACH=.5;
+export const ESCORT_IDLE_TICKS=10*HZ;
+/** Where a person was last seen to move: the spot and the tick they got there (ESCORT_IDLE_REACH). */
+interface PersonTrack {x:number;y:number;tick:number}
+/**
+ * `people` (city only, absent elsewhere so the island and endless stateHash do not move): per person id, their
+ * PersonTrack as this bot saw it when it thought. Plain JSON, part of state().
+ */
+interface BotMind {id:string;slot:number;memory:BrainMemory;req:number;people?:Record<string,PersonTrack>}
 
 export class RoomBots {
   private minds=new Map<string,BotMind>();
@@ -91,9 +104,9 @@ export class RoomBots {
   /** The lowest slot no bot holds (0..5), or the first free one of from, from+step… */
   freeSlot(from=0,step=1){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=from;while(used.has(slot))slot+=step;return slot;}
   /** What decides the bots' next choices (Simulation.stateHash): each mind by slot, plain JSON. */
-  state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory}));}
-  /** New run: fresh memories (forge refusals, offers seen, unstick), same slots. */
-  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;}this.modes.clear();}
+  state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory,...(m.people?{people:m.people}:{})}));}
+  /** New run: fresh memories (forge refusals, offers seen, unstick, who moved), same slots. */
+  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;delete m.people;}this.modes.clear();}
   /**
    * Before each combat step: the bots due this tick decide. Returns the bots that ask for help ("Me salva"), which
    * the room relays to the people like a phone's ping.
@@ -119,10 +132,13 @@ export class RoomBots {
         towers=towerBrainView(st.state,st.plan,view.tick,round?.index??0,person,
           people?(round?.phaseEndsTick??view.tick)-BOT_FORGE_LEFT_WITH_PEOPLE:undefined);
       }
-      // The person to walk with: the nearest one standing (bots follow people, never each other).
+      // City: who moved lately (ESCORT_IDLE_REACH), this bot's track of each person here; the ones gone are dropped.
+      const tracks=sim.terrain.world==='cidade'?this.track(mind,view,sim,tick):undefined;
+      // The person to walk with: the nearest one standing, not idle in the city (bots follow people, never each other).
       let escort:{x:number;y:number}|undefined,near=Infinity;
       for(const q of view.players){
         if(sim.bots.has(q.id)||!q.online||q.spectator||q.downed||q.eliminated||q.hp<=0)continue;
+        if(tracks&&Object.hasOwn(tracks,q.id)&&tick-tracks[q.id].tick>=ESCORT_IDLE_TICKS)continue;
         const at=q as typeof q&{x:number;y:number},d=Math.hypot(at.x-p.x,at.y-p.y);
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
@@ -145,6 +161,17 @@ export class RoomBots {
     }
     if(view){this.thinkMs+=performance.now()-started;this.thinks++;}
     return sos;
+  }
+  /** City: updates and returns `mind.people` from the people in `view` (a move beyond ESCORT_IDLE_REACH restarts a track). */
+  private track(mind:BotMind,view:ReturnType<Simulation['botView']>,sim:Simulation,tick:number){
+    const was=mind.people??{},people:Record<string,PersonTrack>={};
+    for(const q of view.players){
+      if(sim.bots.has(q.id))continue;
+      const at=q as typeof q&{x:number;y:number},old=Object.hasOwn(was,q.id)?was[q.id]:undefined;
+      const track=old&&Math.hypot(at.x-old.x,at.y-old.y)<=ESCORT_IDLE_REACH?old:{x:at.x,y:at.y,tick};
+      Object.defineProperty(people,q.id,{value:track,enumerable:true,writable:true,configurable:true});
+    }
+    return mind.people=people;
   }
   /**
    * The bot that may buy now: the first standing bot by slot, and only in the last `left` ticks of an intermission

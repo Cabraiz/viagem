@@ -5,8 +5,8 @@
  * - combat: weapons fire on their own (the room decides), so the bot only walks: away from what is close, after
  *   pickups, toward the critters near the wall, back home when it strays, to a fallen friend within reach, and out of
  *   any telegraph; it taps the skill when something is close and it is ready;
- * - intermission (Stonewards): walks to a gather node (its own, spread by bot index), comes back on the horn or when
- *   the time left is the walk back; the team's forger (first standing bot) spends the balance at the camp:
+ * - intermission (Stonewards): walks to a gather node (its own, spread by bot index), comes back on the horn (not in
+ *   the city) or when the time left is the walk back; the team's forger (first standing bot) spends the balance at the camp:
  *   repair when the wall is hurt, else a chinelo tower, else a gambiarra;
  * - towers (torres-sim): when the caller passes `towers` (the sim-side TowerBrainView: towerBrainView), that bot
  *   spends on the tower defense first (pickTowerOrder: repair a hurt one, grow the count, push the Gustavão's line,
@@ -268,7 +268,10 @@ export function decide(input:BrainInput):Decision{
       }else if(recipe&&unitsOf(view.camp??{coco:0,pedra:0})-RECIPES[recipe].cost.coco-RECIPES[recipe].cost.pedra<towerReserve(towers))
         recipe=undefined; // saving for the Gustavão's line holds only its reserve: the forge spends what is above it
     }
-    const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
+    // Home on the horn (island), or on its own walk back. City (BUG-20261013-E4-corneta-jogador-longe): the bot keeps
+    // gathering until its own walk home (+4 s) is all the intermission has left; a horn sized by someone else's walk
+    // (a far teammate) would call it home with the crates still out. A builder's trip ('build') goes first either way.
+    const goHome=(!city&&view.camp?.hornEndsTick!==undefined)||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
     if(building){
       decision.mode='build';
       if(site)want=go(site);

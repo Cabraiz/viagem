@@ -66,6 +66,9 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
+      # With a target, seeds go in waves of 4 so the gate can cancel the waves that would no longer change the verdict;
+      # without one, every seed at once (fastest wall time).
+      max-parallel: ${{ needs.plan.outputs.target != '' && 4 || 32 }}
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7

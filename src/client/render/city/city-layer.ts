@@ -313,6 +313,21 @@ export class CityLayer {
     }
   }
 
+  /**
+   * With the art on, a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
+   * as the low mound; its seams stay only toward the block's other mounds. Undefined for every other piece.
+   */
+  private moundOf(piece:BlockPiece):BlockPiece|undefined{
+    if(!this.art||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
+    const {width}=this.asset,bare=(cx:number,cy:number)=>{
+      const lot=this.lotAt.get(cy*width+cx);
+      return !lot||!this.scene.textures.exists(lot.sheet.key);
+    };
+    if(!bare(piece.x,piece.y))return undefined;
+    const s=piece.seams;
+    return moundPiece(piece,{n:s.n&&bare(piece.x,piece.y-1),s:s.s&&bare(piece.x,piece.y+1),w:s.w&&bare(piece.x-1,piece.y),e:s.e&&bare(piece.x+1,piece.y)});
+  }
+
   /** Rebuilds the live chunks now (e.g. art textures arrived after they were built with the procedural look). */
   refresh(){
     if(this.view<0)return;
@@ -414,21 +429,6 @@ export class CityLayer {
       cells.push(cellIndex);
     }
     this.live.set(key,{chunk,ground,glints,bands,sprites,props,cells});
-  }
-
-  /**
-   * With the art on, a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
-   * as the low mound; its seams stay only toward the block's other mounds. Undefined for every other piece.
-   */
-  private moundOf(piece:BlockPiece):BlockPiece|undefined{
-    if(!this.art||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
-    const {width}=this.asset,bare=(cx:number,cy:number)=>{
-      const lot=this.lotAt.get(cy*width+cx);
-      return !lot||!this.scene.textures.exists(lot.sheet.key);
-    };
-    if(!bare(piece.x,piece.y))return undefined;
-    const s=piece.seams;
-    return moundPiece(piece,{n:s.n&&bare(piece.x,piece.y-1),s:s.s&&bare(piece.x,piece.y+1),w:s.w&&bare(piece.x-1,piece.y),e:s.e&&bare(piece.x+1,piece.y)});
   }
 
   /**

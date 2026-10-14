@@ -206,11 +206,13 @@ test('the repo manifest (codex-706 delivery, eca61ed) gives the city art', ()=>{
 const repoPlan=(height?:'a'|'b')=>buildCityArtPlan(parseArtIndex(JSON.parse(readFileSync(path.join(ROOT,'public/art/manifest.json'),'utf8'))),height?{height}:{});
 /**
  * The real city at the 1.7× map scale (card NEW-20261013-ORQ-cidade-escala-1-7), both ways it can land: the same grid
- * with 1.7× bigger cells, or the cell kept and every block 1.7× more cells (rounded edges: the blocks stay disjoint).
+ * with unitsPerCell 0.88 × 1.7 = 1.496 u, or the cell kept and every block 1.7× more cells (rounded edges: the blocks
+ * stay disjoint).
  */
+const SCALED_CELL=1.496;
 function scaled(asset:CityAsset,k:number):{bigCell:CityAsset;bigGrid:CityAsset}{
   const R=(v:number)=>Math.round(v*k);
-  return {bigCell:{...asset,cell:asset.cell*k,origin:{x:asset.origin.x*k,y:asset.origin.y*k}},
+  return {bigCell:{...asset,cell:SCALED_CELL,origin:{x:asset.origin.x*k,y:asset.origin.y*k}},
     bigGrid:{...asset,width:R(asset.width),height:R(asset.height),
       blocks:asset.blocks.map(b=>({...b,x:R(b.x),y:R(b.y),w:Math.max(1,R(b.x+b.w)-R(b.x)),h:Math.max(1,R(b.y+b.h)-R(b.y))}))}};
 }
@@ -228,7 +230,8 @@ function exactCover(b:CityBlock,art:BlockArt):number{
 
 test('fill pass: the real city has no building cell left for the procedural column, at 0.88 u and at 1.7×', ()=>{
   const real=realCity(),{bigCell,bigGrid}=scaled(real,1.7);
-  for(const [name,asset] of [['0.88 u',real],['1.7× cell',bigCell],['1.7× grid',bigGrid]] as const){
+  assert.equal(real.cell,ART_CELL);
+  for(const [name,asset] of [['0.88 u',real],['1.496 u cell',bigCell],['1.7× grid',bigGrid]] as const){
     const plan=repoPlan();
     let cells=0,left=0,filled=0,mounds=0;
     for(const b of asset.blocks){

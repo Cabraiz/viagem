@@ -4,8 +4,11 @@
  * Until torres-fio puts the defenses on the wire, the HUD takes an ObraView injected by its host (the sandbox drives it
  * from fake data shaped like the sim's TowersState). The refusals mirror src/sim/towers/system.ts in the same order, so
  * a card the menu offers is one the sim accepts.
+ * Prices (D-048, ficha de torre): building the Vigia costs 1 ficha and the Gustavão 3 (`tokens`, the rail comes free);
+ * an evolution costs `cost` material units until it is paid in Grana (price.ts evolvePriceLabel).
  */
-import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,unitsOf,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,TOWER_TOKENS,childrenOf,tokensOf,unitsOf,type Balance,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+import {evolvePriceLabel,fichasText} from '../price.ts';
 
 /** A tower as the menu sees it (the sim's DefenseState, reduced). */
 export interface ObraTower {id:string;kind:DefenseId;building?:boolean;ruined?:boolean}
@@ -20,7 +23,8 @@ export interface ObraView {
   /** Round phase 'prepare' (the intermission): the only time the menu shows. */
   prepare:boolean;
   sites:readonly ObraSite[];rail?:ObraRail;
-  balance:{coco:number;pedra:number};
+  /** The team's one pile of material (CampView.units). */
+  balance:Balance;
   /** Standing defenses of the team (ruins do not count) and Gustavões built this run (a ruined one counts). */
   standing:number;gustavoes:number;
   /**
@@ -44,11 +48,15 @@ export interface ObraView {
 export type ObraBlock='balance'|'limit'|'unique'|'rail'|'size'|'building'|'root'|'origin';
 export type ObraAction={type:'build';site:string}|{type:'upgrade';defense:string;branch:string};
 export interface ObraCard {
-  key:string;name:string;label:string;branch:Branch|null;cost:number;effect:string;
+  key:string;name:string;label:string;branch:Branch|null;effect:string;
+  /** Material units (DefenseDef.cost). An evolution pays them; a `tokens` card pays its fichas (the same units, D-048). */
+  cost:number;
+  /** Paid in fichas de torre (the Vigia 1, the Gustavão 3): what the card shows and what affordability counts. */
+  tokens?:number;
   /** buy: an option (blocked or not); have: the defense standing there; obra: under construction. */
   status:'buy'|'have'|'obra';
   block?:ObraBlock;
-  /** Units missing when block = 'balance'. */
+  /** What is missing when block = 'balance': fichas for a `tokens` card, else material units. */
   missing?:number;
   action?:ObraAction;
   rail?:true;
@@ -80,9 +88,10 @@ export const RAIL_NAME='Linha férrea',RAIL_EFFECT='Trilho do Gustavão';
 
 /** The short reason a card is blocked (shown with the lock and a dashed edge, never by colour alone; the tag's
  * aria-label says it in full). Short enough to leave the name its line at 125 %. */
-export function blockText(card:Pick<ObraCard,'block'|'missing'>):string{
+export function blockText(card:Pick<ObraCard,'block'|'missing'|'tokens'>):string{
   switch(card.block){
-    case 'balance':return `Falta ${card.missing??0}`;
+    // "Falta 1 ficha" (the lock and the dashed edge say the rest); an evolution's units stay a bare number.
+    case 'balance':return card.tokens!==undefined?`Falta ${card.missing??0} ${card.missing===1?'ficha':'fichas'}`:`Falta ${card.missing??0}`;
     case 'limit':return `Limite ${DEFENSE_LIMIT}`;
     case 'unique':return `Já tem ${GUSTAVAO_LIMIT}`;
     case 'rail':return 'Sem trilho';
@@ -94,9 +103,9 @@ export function blockText(card:Pick<ObraCard,'block'|'missing'>):string{
   }
 }
 /** The reason in full words, for the tag's aria-label. */
-export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
+export function blockSpeech(card:Pick<ObraCard,'block'|'missing'|'tokens'>):string{
   switch(card.block){
-    case 'balance':return `Falta ${card.missing??0} de material`;
+    case 'balance':return `Falta ${card.tokens!==undefined?fichasText(card.missing??0):evolvePriceLabel({cost:card.missing??0}).speech}`;
     case 'limit':return `O time já tem ${DEFENSE_LIMIT} defesas`;
     case 'unique':return `Só ${GUSTAVAO_LIMIT} Gustavão por partida`;
     case 'rail':return 'Precisa da linha férrea pronta';
@@ -109,12 +118,18 @@ export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
 }
 export const selectable=(card:ObraCard)=>card.status==='buy'&&!card.block&&!!card.action;
 
+/** The builds paid in fichas de torre (D-048): the Vigia and the Gustavão; every other defense is an evolution in units. */
+export const tokensFor=(id:DefenseId):number|undefined=>id===ROOT_DEFENSE?TOWER_TOKENS.root:id==='gustavao'?TOWER_TOKENS.gustavao:undefined;
+/** Whether `units` pays the card: whole fichas for a `tokens` card (the HUD shows fichas, never the units behind them). */
+const affordable=(c:Pick<ObraCard,'cost'|'tokens'>,units:number)=>c.tokens!==undefined?tokensOf(units)>=c.tokens:units>=c.cost;
 function card(d:DefenseDef,status:ObraCard['status']):ObraCard{
-  return {key:d.id,name:d.name,label:d.label,branch:d.branch,cost:d.cost,effect:EFFECT[d.id],status,...(d.rail?{rail:true as const}:{})};
+  const tokens=tokensFor(d.id);
+  return {key:d.id,name:d.name,label:d.label,branch:d.branch,cost:d.cost,...(tokens!==undefined?{tokens}:{}),effect:EFFECT[d.id],status,...(d.rail?{rail:true as const}:{})};
 }
 function pay(c:ObraCard,view:ObraView):ObraCard{
   const have=unitsOf(view.balance);
-  return c.block||have>=c.cost?c:{...c,block:'balance',missing:Math.ceil(c.cost-have)};
+  if(c.block||affordable(c,have))return c;
+  return {...c,block:'balance',missing:c.tokens!==undefined?c.tokens-tokensOf(have):Math.ceil(c.cost-have)};
 }
 /** Why `next` cannot grow out of the tower on `site` (the sim's upgrade order: rail, unique, size; then balance). */
 function childBlock(next:DefenseDef,site:ObraSite,view:ObraView):ObraBlock|undefined{
@@ -164,7 +179,7 @@ export function canEvolve(site:ObraSite,view:ObraView):boolean{
   const t=liveTower(site);
   if(!t||t.building)return false;
   const have=unitsOf(view.balance);
-  return childrenOf(t.kind).some(d=>!childBlock(d,site,view)&&have>=d.cost);
+  return childrenOf(t.kind).some(d=>!childBlock(d,site,view)&&affordable({cost:d.cost,tokens:tokensFor(d.id)},have));
 }
 
 /** The card a tap on the site preselects: the head when it is buyable, else the first open branch. */

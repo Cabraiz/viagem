@@ -47,11 +47,11 @@ test('the barricade tag: pt-BR texts, refusals in the server\'s order, the same 
     // Design checklist: no "PALAVRA — fragmento", no arrows, no shouting outside a stamp.
     for(const s of Object.values(t))assert.ok(!/[—→·]/.test(s)&&!/[A-Z]{2}/.test(s),s);
   }
-  const rich={coco:9,pedra:9},s=fence('s7',bocas.N,100);
+  const rich={units:18},s=fence('s7',bocas.N,100);
   assert.equal(barricadeBlocked({structure:s,down:false},rich),undefined);
   assert.equal(barricadeBlocked({structure:{...s,hp:300},down:false},rich),'full');
   assert.equal(barricadeBlocked({structure:{...s,hp:0},down:true},rich),undefined,'a fallen one can be raised');
-  assert.equal(barricadeBlocked({structure:s,down:false},{coco:RECIPES.reparo.cost.coco,pedra:RECIPES.reparo.cost.pedra-1}),'balance');
+  assert.equal(barricadeBlocked({structure:s,down:false},{units:RECIPES.reparo.cost-1}),'balance');
   assert.equal(barricadeBlocked({structure:s,down:false},{...rich,wallDown:true}),'wall-down');
   assert.equal(barricadeBlocked({structure:s,down:false},undefined),'phase');
   for(const reason of ['blocked','target','away','full'])assert.ok(FORGE_REFUSALS[reason],reason);
@@ -63,7 +63,7 @@ test('the window\'s place: the camp (Forja) or a barricade (Barricada); away fro
   assert.deepEqual(forgePlace(false,spot),{open:true,away:true,title:'Barricada',barricadeFirst:true,key:'barricada-N'});
   assert.deepEqual(forgePlace(true,spot),{open:true,away:false,title:'Forja',barricadeFirst:false,key:'base'});
   assert.equal(forgePlace(false,undefined).open,false);
-  const v={...fakeView('camp-forge',1),camp:{coco:20,pedra:20}} as RunView;
+  const v={...fakeView('camp-forge',1),camp:{units:40}} as RunView;
   for(const id of ['reparo','gambiarra','torre-chinelo'] as const){
     assert.equal(blockedReason(id,v,'p1',true),'away',id);
     assert.equal(blockedReason(id,v,'p1'),undefined,`${id}: in the camp, as before`);
@@ -72,7 +72,7 @@ test('the window\'s place: the camp (Forja) or a barricade (Barricada); away fro
 });
 
 test('towers are counted only by their kind: four barricades never fill the tower cap',()=>{
-  const v={...fakeView('camp-forge',1),camp:{coco:20,pedra:20}} as RunView;
+  const v={...fakeView('camp-forge',1),camp:{units:40}} as RunView;
   const fences=(['N','S','L','O'] as const).map((m,i)=>fence(`s${i+5}`,bocas[m]));
   assert.ok(fences.length>=MAX_TOWERS);
   assert.equal(blockedReason('torre-chinelo',{...v,structures:[...v.structures,...fences]},'p1'),undefined);

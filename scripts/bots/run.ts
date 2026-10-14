@@ -247,7 +247,7 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
         for(const b of bots)b.wantReady=false;
         await until(()=>bots.every(b=>b.client.feed.peek().players.length===6),'rematch frame',5000);
         const v=bots[0].client.feed.peek(),wall=v.structures.find(s=>s.kind==='muralha');
-        const fresh=v.team.level===1&&v.players.every(p=>!p.downed&&!p.eliminated&&p.hp===p.maxHp)&&!!wall&&wall.hp===wall.maxHp&&(v.camp?.coco??0)===0&&(v.camp?.pedra??0)===0;
+        const fresh=v.team.level===1&&v.players.every(p=>!p.downed&&!p.eliminated&&p.hp===p.maxHp)&&!!wall&&wall.hp===wall.maxHp&&(v.camp?.units??0)===0;
         check('revanche começa zerada: nível 1, todos de pé com vida cheia, muralha inteira, saldo zero',fresh,`nível ${v.team.level}, muralha ${wall?.hp}/${wall?.maxHp}`);
         await sleep(20000);
         check('a revanche roda (20 s de combate com seis)',bots.every(b=>b.run?.phase==='combat'&&b.client.connected));

@@ -41,7 +41,9 @@ function fake(w:number,h:number):ObraView{
     ...(kind?{tower:{id:`defesa-${id.slice(5)}`,kind,...(building?{building:true}:{})}}:{})}));
   const standing=sites.filter(s=>s.tower).length;
   return {prepare:true,sites,rail:{x:Math.round(.12*w),y:Math.round(.42*h),laid:false,ready:false},
-    balance:{coco:14,pedra:12},standing:Math.min(standing,DEFENSE_LIMIT),gustavoes:0};
+    // 3 fichas de torre and a quarter (D-048): the Vigia is buyable, the evolutions too; ?unidades=N for another pile
+    // (36: no ficha, the ring at 90%).
+    balance:{units:Number(params.get('unidades')??130)||0},standing:Math.min(standing,DEFENSE_LIMIT),gustavoes:0};
 }
 function apply(a:ObraAction){
   actions.push(a);

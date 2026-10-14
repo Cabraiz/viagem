@@ -32,7 +32,7 @@ function atIntermission(bots=0){
   for(const p of room.sim.players.values())p.invulnerableUntil=Number.MAX_SAFE_INTEGER;
   for(let i=0;i<20_000&&room.sim.world.round.phase!=='prepare';i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
   assert.equal(room.sim.world.round.phase,'prepare','reached the first intermission');
-  room.sim.run.stonewards.state.balance.coco=60;room.sim.run.stonewards.state.balance.pedra=60;
+  room.sim.run.stonewards.state.balance.units=120;
   const ana=[...room.sim.players.values()].find(p=>!room.sim.bots.has(p.id))!;
   /** Ana steps next to a build site (the sim's reach rule, torres-ajustes); positions are the room's own. */
   const goTo=(siteId:string)=>{const site=buildPlanFor(room.sim.terrain).sites.find(x=>x.id===siteId)!;ana.x=site.x;ana.y=site.y;};
@@ -78,7 +78,7 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   // torres-ajustes: {t:'repair'} on the same wire label: whole → 'full'; hurt → +25 % of maxHp, paid; malformed dropped.
   say(room,a,{t:'repair',round,req:7,defense:mine.id},s.t);
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:7,ok:false,reason:'full'});
-  const d=room.sim.defenses()[0],st=room.sim.run.stonewards,units=()=>st.state.balance.coco+st.state.balance.pedra;
+  const d=room.sim.defenses()[0],st=room.sim.run.stonewards,units=()=>st.state.balance.units;
   st.hit(room.sim.world,d.id,200);
   const hp=d.hp,u0=units();
   say(room,a,{t:'repair',round,req:8,defense:mine.id},s.t);
@@ -128,7 +128,7 @@ test('bot-gasta-material + torres-ajustes: the room bots never evolve nor repair
   const upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim);
   sim.upgrade=(who,x,b,r)=>{if(x===id)touched.push(`${who} up`);return upgrade(who,x,b,r);};
   sim.repair=(who,x,r)=>{if(x===id)touched.push(`${who} repair`);return repair(who,x,r);};
-  sim.run.stonewards.state.balance.coco=sim.run.stonewards.state.balance.pedra=200;
+  sim.run.stonewards.state.balance.units=400;
   // Through the next three intermissions (Ana stays out of the way, invulnerable).
   for(let i=0,n=0;i<60_000&&n<3;i++){const was=sim.world.round.phase;s.tick();if(was==='prepare'&&sim.world.round.phase==='wave')n++;}
   assert.deepEqual(touched,[],'no bot order on the defense Ana built');
@@ -167,7 +167,7 @@ test('the Gustavão\'s rail is in the snapshot once laid (kind linha-ferrea, its
   say(room,a,{t:'ready',round:room.run.snapshot().round,ready:true},t);
   for(let i=0;i<600&&room.run.snapshot().phase!=='combat';i++)room.advance(t+=50);
   for(let i=0;i<20_000&&room.sim.world.round.phase!=='prepare';i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
-  room.sim.run.stonewards.state.balance.coco=60;room.sim.run.stonewards.state.balance.pedra=60;
+  room.sim.run.stonewards.state.balance.units=120;
   assert.equal(lastStructures(a.frames).some(x=>x.kind==='linha-ferrea'),false,'no rail before it is laid');
   // Ana steps next to the rail first (the sim's reach rule, torres-ajustes).
   const ana=[...room.sim.players.values()].find(p=>!room.sim.bots.has(p.id))!,spot=room.sim.run.stonewards.plan.rail!;ana.x=spot.x;ana.y=spot.y;

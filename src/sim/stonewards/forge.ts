@@ -70,7 +70,7 @@ function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:str
   if(!canPay(state.balance,recipe.cost))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.
   const line=()=>draw(ctx,state,recipe.lines);
-  const charge=()=>{state.balance.coco-=recipe.cost.coco;state.balance.pedra-=recipe.cost.pedra;};
+  const charge=()=>{state.balance.units-=recipe.cost;};
   if(barricade){
     // A fallen barricade is rebuilt only on a clear mouth: never inside a body (it would trap it in the blocker).
     if(barricade.down&&barricadeOccupied(ctx,barricade))return {ok:false,reason:'blocked'};

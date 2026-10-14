@@ -87,14 +87,14 @@ export interface ObraSource {
 }
 
 /** What one snapshot says about one plan (computed once per RunView, not per frame). */
-interface Snapshot {plan:BuildPlan;towers:(ObraTower|undefined)[];onRail:boolean;balance:{coco:number;pedra:number};standing:number;gustavoes:number;sig:string}
+interface Snapshot {plan:BuildPlan;towers:(ObraTower|undefined)[];onRail:boolean;balance:{units:number};standing:number;gustavoes:number;sig:string}
 const snapshots=new WeakMap<RunView,Snapshot>();
 const planIds=new WeakMap<BuildPlan,number>();let nextPlan=0;
 const EMPTY_VIEW={structures:[]} as unknown as RunView;
 function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
   const key=view??EMPTY_VIEW,hit=snapshots.get(key);
   if(hit&&hit.plan===plan)return hit;
-  const camp=view?.camp,balance={coco:camp?.coco??0,pedra:camp?.pedra??0};
+  const balance={units:view?.camp?.units??0};
   const defenses=defensesOf(view);
   const towers=plan.sites.map(site=>{
     // One defense per site (a new obra clears the ruin); a standing one wins over a ruin if both ever show.
@@ -106,7 +106,7 @@ function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
   const onRail=!!plan.rail&&defenses.some(d=>d.kind==='gustavao'&&near(d,plan.rail!));
   const standing=defenses.filter(d=>!ruinedOf(d)).length,gustavoes=defenses.filter(d=>d.kind==='gustavao').length;
   if(!planIds.has(plan))planIds.set(plan,++nextPlan);
-  const sig=`${planIds.get(plan)}|${balance.coco},${balance.pedra}|${standing},${gustavoes},${onRail?1:0}|${towers.map(t=>t?`${t.id}:${t.kind}:${t.building?'o':''}${t.ruined?'r':''}`:'').join(';')}`;
+  const sig=`${planIds.get(plan)}|${balance.units}|${standing},${gustavoes},${onRail?1:0}|${towers.map(t=>t?`${t.id}:${t.kind}:${t.building?'o':''}${t.ruined?'r':''}`:'').join(';')}`;
   const snap={plan,towers,onRail,balance,standing,gustavoes,sig};
   snapshots.set(key,snap);
   return snap;

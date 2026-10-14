@@ -128,7 +128,7 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string}>();
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -289,12 +289,26 @@ export class Simulation {
       const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city}):new Simulation(DEFAULT_SEED,{world:kind});
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture)};SHAPES.set(key,entry);
+      // legacy: the same run written before the single pile of material (D-048), balance {coco, pedra}: migrateCheckpoint.
+      const before=structuredClone(capture);(before.systems.stonewards as unknown as {balance:unknown}).balance={coco:0,pedra:0};
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
     }
     return entry;
   }
+  /**
+   * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
+   * with balance {coco, pedra}) keeps the team's material as two piles; it becomes {units: coco + pedra} and this code's
+   * fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   */
+  migrateCheckpoint(cp:unknown){
+    if(!isObject(cp))return;
+    const b=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>}}}).systems?.stonewards?.balance,fresh=this.freshShape();
+    if(cp.shape!==fresh.legacy||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
+    const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;cp.shape=fresh.fingerprint;
+  }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
+    this.migrateCheckpoint(cp);
     if(!isObject(cp))return false;
     const fresh=this.freshShape();
     const {shape,...rest}=cp;
@@ -315,6 +329,7 @@ export class Simulation {
    * run (resetRun) when a system cannot take its stored state.
    */
   resume(cp:unknown):boolean{
+    this.migrateCheckpoint(cp);
     if(!simCheckpointOk(cp,this.seed)||!this.checkpointShapeOk(cp))return false;
     const saved=new Map(cp.players.map(p=>[p.id,p]));
     for(const p of this.players.values()){const s=saved.get(p.id);if(s&&s.classId!==p.classId)return false;}
@@ -540,7 +555,7 @@ export class Simulation {
   }
   private campView():CampView{
     const st=this.systems.stonewards.state;
-    return {coco:st.balance.coco,pedra:st.balance.pedra,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+    return {units:st.balance.units,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
   }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){

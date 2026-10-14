@@ -27,7 +27,7 @@
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {telegraphHits} from './telegraphs.ts';
-import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/index.ts';
+import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,canPay,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {heroSpeed,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
@@ -137,8 +137,8 @@ export function forgerId(view:RunView):string|undefined{
  */
 export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={}):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
-  const balance={coco:camp.coco,pedra:camp.pedra},wall=wallOf(view),round=view.round?.index??0;
-  const ok=(id:RecipeId)=>refused[id]!==round&&canPay(balance,RECIPES[id].cost);
+  const wall=wallOf(view),round=view.round?.index??0;
+  const ok=(id:RecipeId)=>refused[id]!==round&&canPay(camp,RECIPES[id].cost);
   if(wall&&wall.hp<wall.maxHp*REPAIR_BELOW&&ok('reparo'))return 'reparo';
   // Only forge towers ('torre-*') count: the city barricades are structures too (cidade-06), never towers.
   const towers=view.structures.filter(s=>s.kind.startsWith('torre-')&&(s.untilTick===undefined||s.untilTick>view.tick)).length;
@@ -235,9 +235,12 @@ export function decide(input:BrainInput):Decision{
     // (the room bots: the forger, or the forger-to-be). torres-ajustes: the sim takes an order only next to the obra, so
     // the bot goes there, and only on a trip (there, the order, back into the base) that ends TOWER_MARGIN before the
     // round; an obra out of time or with no street there is left out of the pick (pickTowerOrder `reach`).
-    const towers=input.towers;
+    const towers=input.towers,wall=wallOf(view);
+    // Only a needed repair (under REPAIR_BELOW) goes ahead of the towers; pickRecipe's top-up reparo waits like the rest
+    // (D-048: it would otherwise eat into the Gustavão's 120, 5 units a tap).
+    const needed=recipe==='reparo'&&!!wall&&wall.hp<wall.maxHp*REPAIR_BELOW;
     let site:Point|undefined,building=false;
-    if(towers&&recipe!=='reparo'){
+    if(towers&&!needed){
       const speed=heroSpeed(input.terrain),end=round.phaseEndsTick,from=Math.max(tick,towers.orderFrom??tick);
       const back=(p:Point)=>returnTicks(city?botRouteDistance(city,p,home):dist(p,home),speed);
       // The estimate: the straight line × TOWER_DETOUR, or through the base (both from the cached field home), the shorter.
@@ -265,8 +268,8 @@ export function decide(input:BrainInput):Decision{
           if(w>0)site=spot;
           else if(tick>=from&&tick-memory.lastForgeTick>=FORGE_GAP){decision.build=order;memory.lastForgeTick=tick;}
         }
-      }else if(recipe&&unitsOf(view.camp??{coco:0,pedra:0})-RECIPES[recipe].cost.coco-RECIPES[recipe].cost.pedra<towerReserve(towers))
-        recipe=undefined; // saving for the Gustavão's line holds only its reserve: the forge spends what is above it
+      }else if(recipe&&(view.camp?.units??0)-RECIPES[recipe].cost<towerReserve(towers))
+        recipe=undefined; // saving holds only the reserve (a root's ficha, the Gustavão's line): the forge spends what is above it
     }
     // Home on the horn (island), or on its own walk back. City (BUG-20261013-E4-corneta-jogador-longe): the bot keeps
     // gathering until its own walk home (+4 s) is all the intermission has left; a horn sized by someone else's walk
@@ -411,6 +414,7 @@ export interface TowerBrainView {
   tick:number;
   /** The round the intermission comes before (round.index in 'prepare'). */
   round:number;
+  /** The team's material (D-048: one pile; every UNITS_PER_TOKEN units are a ficha de torre). */
   units:number;
   /** x/y: the site's centre, where the bot walks to give the order (absent: the order goes out from anywhere). */
   sites:readonly {id:string;maxSize:number;x?:number;y?:number}[];
@@ -462,8 +466,10 @@ export const BOT_MIN_DEFENSES=2;
 /** A defense of the bots at or under this share of its maxHp is repaired first, when the balance pays it. */
 export const BOT_TOWER_REPAIR_BELOW=.8;
 /**
- * The Gustavão's line (torres-ajustes): the forger keeps this share of the next step of its B line (B2 → B5, the rail,
- * the Gustavão) aside (towerReserve) and evolves, builds or forges anything else only from what is left over.
+ * The Gustavão's line (torres-ajustes): the forger keeps this share of the next step of its B line (B2 → B5, the
+ * Gustavão) aside (towerReserve) and evolves, builds or forges anything else only from what is left over. D-048: the
+ * rail is free (it is in the Gustavão's 3 fichas), so from the Obuseiro on the step kept is the Gustavão's 120 units, the
+ * rail laid or not: a 6-player team (~10 fichas a run) still affords it, a smaller one never gets that far up the line.
  */
 export const BOT_GUSTAVAO_SAVE=1;
 
@@ -484,17 +490,26 @@ function lineReserve(v:TowerBrainView):number{
   const at=siteIndex(v),line=gustavaoLine(v,v.defenses.filter(d=>!d.ruined),at);
   return line?Math.ceil(lineCost(v,line,sizeAt(v,at(line)))*BOT_GUSTAVAO_SAVE):0;
 }
+/** A root costs one whole ficha (D-048: TIER_COST[1] = TOWER_TOKENS.root × UNITS_PER_TOKEN); the sim pays its units. */
+const ROOT_COST=DEFENSES[ROOT_DEFENSE].cost;
+const wholeFicha=(units:number)=>tokensOf(units)>=TOWER_TOKENS.root&&units>=ROOT_COST;
 /**
- * Units the forge leaves to the Gustavão's line (decide): its reserve, or before the bots have a line (on a map with a
- * rail, no Gustavão yet) what starts it, the B2 on their 3×3 root or a root (the builder spends at the start of an
- * intermission, the forge at its end). 0 when no line can be.
+ * Units the forge leaves to the towers (decide), the larger of:
+ *  - a root's ficha while fewer than BOT_MIN_DEFENSES stand and a site is free (D-048: the forge's 5–7 unit buys would
+ *    otherwise never let the pile add up to the 40 of a root, on any map);
+ *  - the Gustavão's line: its reserve, or before the bots have a line (on a map with a rail, no Gustavão yet) what
+ *    starts it, the B2 on their 3×3 root or a root (the builder spends at the start of an intermission, the forge at
+ *    its end).
+ * 0 when there is neither.
  */
 export function towerReserve(v:TowerBrainView):number{
-  const at=siteIndex(v),live=v.defenses.filter(d=>!d.ruined),line=gustavaoLine(v,live,at);
-  if(line)return lineReserve(v);
-  if(!v.rail||v.gustavoes>=GUSTAVAO_LIMIT)return 0;
+  const at=siteIndex(v),live=v.defenses.filter(d=>!d.ruined),line=gustavaoLine(v,live,at),taken=new Set(live.map(d=>d.site));
+  const rootSize=DEFENSES[ROOT_DEFENSE].size??1;
+  const roots=live.length<BOT_MIN_DEFENSES&&v.sites.some(s=>!taken.has(s.id)&&s.maxSize>=rootSize)?ROOT_COST:0;
+  if(line)return Math.max(roots,lineReserve(v));
+  if(!v.rail||v.gustavoes>=GUSTAVAO_LIMIT)return roots;
   const root=live.some(d=>!d.person&&d.kind===ROOT_DEFENSE&&sizeAt(v,at(d))>=3);
-  return Math.ceil((root?pickChild(ROOT_DEFENSE,'B')!.cost:DEFENSES[ROOT_DEFENSE].cost)*BOT_GUSTAVAO_SAVE);
+  return Math.max(roots,Math.ceil((root?pickChild(ROOT_DEFENSE,'B')!.cost:ROOT_COST)*BOT_GUSTAVAO_SAVE));
 }
 
 /**
@@ -503,15 +518,17 @@ export function towerReserve(v:TowerBrainView):number{
  * or repair (bot-gasta-material):
  *  1. repair the bots' most hurt defense at or under BOT_TOWER_REPAIR_BELOW, when the balance pays it;
  *  2. fewer than BOT_MIN_DEFENSES standing and a free site: build the root on the largest free one (then plan order; a
- *     ruin's site counts as free);
+ *     ruin's site counts as free) once the balance holds a whole ficha (D-048);
  *  3. the Gustavão's line (the bots' most advanced B defense) takes its next step (the rail is laid at the Obuseiro)
  *     when the balance pays it; towerReserve keeps that step aside for the rest of the rule;
  *  4. the cheapest-tier evolution among the bots' other ready defenses, when what is left pays it (ties: plan order).
  *     Branch at the root: B on a 3×3 site while the bots have no line (on a map with a rail), else BOT_BRANCHES by the
  *     site's index (the next one that fits the site's size); at A3 the main line
  *     when the site fits A4, else A4b; at the Obuseiro the Gustavão (laying the rail first), while none was built;
- *  5. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root, from what is left;
+ *  5. else fewer standing than min(DEFENSE_LIMIT, round + 1) and a free site: another root, when what is left is a
+ *     whole ficha;
  *  6. else save for one of those steps, or, with nothing to evolve, another root up to DEFENSE_LIMIT.
+ * Roots are paid in fichas, evolutions (and the forge, decide) in the units left over (D-048, interim: until both go to Grana).
  * Returns the order, 'save' when the chosen step costs more than the balance, or undefined when there is nothing to do
  * with towers now. Saving holds only the reserve: decide lets the forge spend what is above it.
  */
@@ -519,14 +536,14 @@ export function pickTowerOrder(v:TowerBrainView,reach:TowerReach=()=>true):Tower
   const live=v.defenses.filter(d=>!d.ruined),taken=new Set(live.map(d=>d.site));
   const near=(p:{x?:number;y?:number}|undefined)=>{const q=pointOf(p);return !q||reach(q);};
   const ok=(order:TowerOrder)=>{const q=orderSpot(v,order);return !q||reach(q);};
-  const rootSize=DEFENSES[ROOT_DEFENSE].size??1,rootCost=DEFENSES[ROOT_DEFENSE].cost;
+  const rootSize=DEFENSES[ROOT_DEFENSE].size??1;
   const share=(d:BrainDefense)=>d.maxHp!==undefined&&d.hp!==undefined&&d.maxHp>0?d.hp/d.maxHp:1;
   const hurt=live.filter(d=>!d.person&&share(d)<=BOT_TOWER_REPAIR_BELOW&&near(d)).sort((a,b)=>share(a)-share(b))[0];
   if(hurt&&v.units>=TOWER_REPAIR_COST)return {repair:hurt.id};
   // The largest free site within reach first (room for the 3×3 tiers), then plan order.
   const free=v.sites.filter(s=>!taken.has(s.id)&&s.maxSize>=rootSize&&near(s)).sort((a,b)=>b.maxSize-a.maxSize)[0];
-  const afford=(cost:number,order:TowerOrder)=>v.units>=cost?order:'save' as const;
-  if(free&&live.length<BOT_MIN_DEFENSES)return afford(rootCost,{build:free.id});
+  const root=(order:TowerOrder)=>wholeFicha(v.units)?order:'save' as const;
+  if(free&&live.length<BOT_MIN_DEFENSES)return root({build:free.id});
   const at=siteIndex(v),line=gustavaoLine(v,live,at);
   // No line yet on a map with a rail: the next root evolved on a 3×3 site starts it (B), whatever its site's index.
   const startLine=!line&&!!v.rail&&v.gustavoes<GUSTAVAO_LIMIT;
@@ -544,19 +561,22 @@ export function pickTowerOrder(v:TowerBrainView,reach:TowerReach=()=>true):Tower
     if(!best||tier<best.tier||tier===best.tier&&at(d)<best.at)best={tier,at:at(d),...s};
   }
   if(best&&spare>=best.cost)return best.order;
-  if(free&&live.length<Math.min(DEFENSE_LIMIT,v.round+1)&&spare>=rootCost)return {build:free.id};
+  if(free&&live.length<Math.min(DEFENSE_LIMIT,v.round+1)&&wholeFicha(spare))return {build:free.id};
   if(best||lineStep||keep>0)return 'save';
-  if(free&&live.length<DEFENSE_LIMIT)return afford(rootCost,{build:free.id});
+  if(free&&live.length<DEFENSE_LIMIT)return root({build:free.id});
   return undefined;
 }
 
-/** What the Gustavão's line saves for: its next tier that fits, the rail, the Gustavão (ready or not); 0: nothing left. */
+/**
+ * What the Gustavão's line saves for: its next tier that fits, or the Gustavão (ready or not) with its rail while it is
+ * not laid (D-048: the rail is free, so saving only for it would keep nothing back for the 3 fichas); 0: nothing left.
+ */
 function lineCost(v:TowerBrainView,d:BrainDefense,size:number):number{
   const child=childrenOf(d.kind).find(c=>c.rail||(c.size??1)<=size);
   if(!child)return 0;
   if(child.rail){
     if(!v.rail||v.gustavoes>=GUSTAVAO_LIMIT)return 0;
-    if(!v.railLaid)return RAIL.cost;
+    if(!v.railLaid)return RAIL.cost+child.cost;
   }
   return child.cost;
 }

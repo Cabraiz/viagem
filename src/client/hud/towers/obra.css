@@ -56,10 +56,9 @@
 .rh-obra-why .ic{width:16px;height:16px}
 .rh-obra-why{padding:0 4px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel)}
 .rh-obra-tem{border-style:solid}
-/* The material: coco over pedra (any mix pays, from the larger pile). */
-.rh-obra-mat{display:inline-flex;align-items:center}
-.rh-obra-mat .ic{width:18px;height:18px}
-.rh-obra-mat .ic+.ic{margin-left:-8px}
+/* The price (price.ts, D-048): the number, then the tower sticker (fichas) or the material crate (an evolution). */
+.rh-obra-preco{display:inline-flex;align-items:center;gap:2px}
+:is(.rh-obra-cost,.rh-obra-preco) .ic{width:18px;height:18px}
 
 /* Confirm (Amarelo: a choice) and close, both 48 px. */
 .rh-obra-ok,.rh-obra-fechar{position:absolute;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;

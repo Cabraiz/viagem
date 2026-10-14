@@ -36,7 +36,7 @@ test('deployed Worker: rooms ignore LAB_HORDE and LAB_WORLD, and the lab RPC ans
   const local=new GameRoom({storage:{}} as any,env('true')) as any,labRoom=local.create(Date.now(),1);
   assert.equal(labRoom.labHorde,300);assert.deepEqual(labRoom.labOffset,{x:1000,y:0});assert.equal(labRoom.sampling,true);assert.equal(labRoom.sim.terrain.chunks,undefined,'LAB_WORLD=ilha: the island test world, local only');
 });
-test('/health says protocol 14 (the volley counter of the towers, then the 2× hero walk) to anyone',async()=>{
+test('/health says protocol 16 (the volley counter of the towers, the 2× hero walk, then the ficha de torre camp) to anyone',async()=>{
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env('false'));
-  assert.equal((await r.json()).protocol,14);
+  assert.equal((await r.json()).protocol,16);
 });

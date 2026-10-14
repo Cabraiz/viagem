@@ -78,7 +78,7 @@ export type TowerResult={ok:true;defense:string;kind:DefenseId|typeof RAIL.id;co
  */
 export const BUILD_REACH=3;
 /** A repair order costs what the forge's 'reparo' costs (5 units), paid from either pile (payUnits). */
-export const TOWER_REPAIR_COST=RECIPES.reparo.cost.coco+RECIPES.reparo.cost.pedra;
+export const TOWER_REPAIR_COST=RECIPES.reparo.cost;
 
 const ID_PREFIX='defesa';
 /** Remembered request ids share the forge's list (stonewards handled), under this prefix. */

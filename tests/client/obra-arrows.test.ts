@@ -139,7 +139,7 @@ test('two sites at the same spot get two arrows side by side, each opening its o
 });
 
 // ---------- tap → open ----------
-const VIEW:ObraView={prepare:true,balance:{coco:9,pedra:9},standing:0,gustavoes:0,
+const VIEW:ObraView={prepare:true,balance:{units:58},standing:0,gustavoes:0,
   sites:[{id:'obra-01',x:-400,y:300,maxSize:2,distance:12},{id:'obra-02',x:200,y:300,maxSize:1,distance:3}],
   rail:{x:900,y:-200,laid:false,ready:false,distance:18}};
 
@@ -174,7 +174,7 @@ test('the obra HUD wires the arrows: a pooled button per arrow that opens its si
 test('the match view carries each site\'s (and the rail\'s) distance from the hero; without a hero, none',()=>{
   const plan:BuildPlan={cell:.88,sites:[{id:'obra-01',x:10,y:10,maxSize:2},{id:'obra-02',x:13,y:14,maxSize:1}],rail:{id:'trilho',x:10,y:30,axis:'x',length:12,width:4}};
   const view={tick:500,team:{xp:0,level:1,nextXp:10},round:{index:2,total:10,phase:'prepare',phaseEndsTick:900,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
-    structures:[],camp:{coco:7,pedra:5},players:[],offers:[],events:[]} as unknown as RunView;
+    structures:[],camp:{units:12},players:[],offers:[],events:[]} as unknown as RunView;
   const v=obraViewFrom({prepare:true,view,plan,project:p=>p,hero:{x:10,y:10}});
   assert.deepEqual(v.sites.map(s=>s.distance),[0,5]);
   assert.equal(v.rail?.distance,20);

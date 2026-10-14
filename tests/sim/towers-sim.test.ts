@@ -86,7 +86,7 @@ function reaching(sys:StonewardsSystem):StonewardsSystem{
 function citySetup(units=1000,walk=true){
   const terrain=city.fork(),ctx=fakeCtx(terrain,[player('a',83.9,90.5),player('b',84,88)]);
   const plain=createStonewardsSystem({terrain,barricadesLater:false}),sys=walk?reaching(plain):plain;
-  sys.state.balance.coco=Math.floor(units/2);sys.state.balance.pedra=units-Math.floor(units/2);
+  sys.state.balance.units=units;
   return {ctx,sys,terrain};
 }
 const at=(ctx:FakeCtx,tick:number,phase:RoundPhase='prepare')=>{ctx.tick=tick;ctx.round.phase=phase;};
@@ -125,7 +125,7 @@ test('catalog: the tree of 08-TORRES §3 with its ids, parents, costs and sizes'
     assert.ok(d.hp>0&&d.cooldown>0,id);
     if(d.target!=='none')assert.ok(d.range>0&&(d.damage>0||d.slow),`${id}: it does something when it fires`);
   }
-  assert.deepEqual([TIER_COST[1],TIER_COST[2],TIER_COST[3],TIER_COST[4],TIER_COST[5],GUSTAVAO_COST,RAIL.cost],[6,10,16,24,36,60,12]);
+  assert.deepEqual([TIER_COST[1],TIER_COST[2],TIER_COST[3],TIER_COST[4],TIER_COST[5],GUSTAVAO_COST,RAIL.cost],[40,10,16,24,36,120,0],'D-048: a root is 1 ficha (40 units), the Gustavão 3, the rail free; evolutions in units');
   assert.equal(DEFENSE_LIMIT,12);assert.equal(ROOT_DEFENSE,'vigia-do-predio');
   assert.equal(DEFENSES.gustavao.rail,true);assert.equal(DEFENSES['antiaerea-quadrupla'].hits,'air');
   for(const id of ['rojao-de-festa','morteiro','lanca-foguetes','obuseiro','gustavao','arame-e-sirene'] as DefenseId[])assert.equal(DEFENSES[id].hits,'ground',id);
@@ -163,17 +163,19 @@ test('catalog: branch picks (root A/B/C, A3 → A4 or the alternative A4b, singl
   assert.deepEqual(childrenOf('posto-de-radar'),[]);assert.deepEqual(childrenOf('gustavao'),[]);
 });
 
-test('catalog: obra thirds, pronta, danificada at ≤ 50 %, ruina; payment from the larger pile',()=>{
+test('catalog: obra thirds, pronta, danificada at ≤ 50 %, ruina; payment from the one pile',()=>{
   const d={hp:100,maxHp:100,startTick:0,readyTick:120};
   assert.deepEqual([0,39,40,79,80,119,120].map(t=>phaseOf(d,t)),['obra-1','obra-1','obra-2','obra-2','obra-3','obra-3','pronta']);
   assert.equal(phaseOf({...d,hp:100*DAMAGED_AT},200),'danificada');
   assert.equal(phaseOf({...d,hp:51},200),'pronta');
   assert.equal(phaseOf({...d,hp:0,ruined:true},200),'ruina');
-  const b={coco:10,pedra:2};
-  assert.equal(payUnits(b,6),true);assert.deepEqual(b,{coco:4,pedra:2},'drains the larger pile first');
-  assert.equal(payUnits(b,5),true);assert.deepEqual(b,{coco:0,pedra:1},'gap 2, then the rest split (coco takes the odd unit)');
-  assert.equal(payUnits(b,2),false);assert.deepEqual(b,{coco:0,pedra:1},'not enough: nothing charged');
-  const c={coco:3,pedra:9};assert.equal(payUnits(c,12),true);assert.deepEqual(c,{coco:0,pedra:0});
+  const b={units:12};
+  assert.equal(payUnits(b,6),true);assert.deepEqual(b,{units:6},'subtracted from the one pile');
+  assert.equal(payUnits(b,5),true);assert.deepEqual(b,{units:1});
+  assert.equal(payUnits(b,2),false);assert.deepEqual(b,{units:1},'not enough: nothing charged');
+  assert.equal(payUnits(b,-1),false);assert.equal(payUnits(b,Number.NaN),false);assert.deepEqual(b,{units:1},'junk amounts charge nothing');
+  const c={units:12};assert.equal(payUnits(c,12),true);assert.deepEqual(c,{units:0},'the whole pile');
+  const f={units:40.5};assert.equal(payUnits(f,40),true);assert.equal(f.units,.5,'a tuned crate fraction stays');
 });
 
 // ---------- 2. Build sites ----------
@@ -195,7 +197,7 @@ test('sites: the city plan and the endless camp are valid (E1 validator), the is
 
 // ---------- 3. Commands ----------
 test('build: intermission only, standing player, free site, balance, limit 12, request ids; ruins free their site',()=>{
-  const {ctx,sys}=citySetup(6+5);
+  const {ctx,sys}=citySetup(40+5);
   at(ctx,10,'wave');
   assert.deepEqual(sys.build(ctx,'a','obra-01'),{ok:false,reason:'phase'});
   at(ctx,10);
@@ -205,14 +207,14 @@ test('build: intermission only, standing player, free site, balance, limit 12, r
   assert.deepEqual(sys.build(ctx,'a','obra-99'),{ok:false,reason:'site'});
   assert.equal('defenses' in sys.state,false,'refusals create no state');
   const first=sys.build(ctx,'a','obra-01','r1');
-  assert.deepEqual(first,{ok:true,defense:'defesa-1',kind:'vigia-do-predio',cost:6});
-  assert.deepEqual(sys.state.balance,{coco:2,pedra:3},'6 units from the larger pile first (5/6 → 2/3)');
+  assert.deepEqual(first,{ok:true,defense:'defesa-1',kind:'vigia-do-predio',cost:40});
+  assert.deepEqual(sys.state.balance,{units:5},'a root costs 1 ficha: 40 units off the one pile (45 → 5)');
   assert.deepEqual(sys.build(ctx,'a','obra-02','r1'),{ok:false,reason:'duplicate'},'a resent command applies once');
   assert.deepEqual(sys.build(ctx,'a','obra-01'),{ok:false,reason:'occupied'});
   assert.deepEqual(sys.build(ctx,'a','obra-02'),{ok:false,reason:'balance'});
-  assert.deepEqual(sys.state.balance,{coco:2,pedra:3},'nothing charged on a refusal');
+  assert.deepEqual(sys.state.balance,{units:5},'nothing charged on a refusal');
   // Limit: 12 standing, ruins do not count and their site can be built again.
-  sys.state.balance.coco=500;
+  sys.state.balance.units=1000;
   for(let i=2;i<=12;i++)assert.equal(sys.build(ctx,'a',`obra-${String(i).padStart(2,'0')}`).ok,true,`site ${i}`);
   assert.deepEqual(sys.build(ctx,'a','obra-13'),{ok:false,reason:'limit'});
   sys.hit(ctx,'defesa-3',1e6);
@@ -241,9 +243,9 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   at(ctx,d().readyTick,'wave');
   assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'phase'});
   at(ctx,d().readyTick);
-  const before=sys.state.balance.coco+sys.state.balance.pedra;
+  const before=sys.state.balance.units;
   assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:true,defense:id,kind:'vigias-armados',cost:10});
-  assert.equal(before-(sys.state.balance.coco+sys.state.balance.pedra),10);
+  assert.equal(before-sys.state.balance.units,10);
   assert.equal(d().hp,DEFENSES['vigias-armados'].hp,'the new tier at full hp');
   assert.equal(defensePhase(d(),ctx.tick),'obra-1','an upgrade is a new obra');
   at(ctx,d().readyTick);
@@ -261,7 +263,7 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   assert.equal(grow(ctx,sys,big[1].id,['C',undefined,undefined,undefined]).kind,'posto-de-radar');
   // On a 1×1 site (the endless camp's) the root may only become a Rojão or a Holofote.
   const tiny=new TerrainField(7,{world:'infinito'}),tctx=fakeCtx(tiny,[player('a',0,0)]),tsys=reaching(createStonewardsSystem({terrain:tiny}));
-  tsys.state.balance.coco=100;
+  tsys.state.balance.units=100;
   const one=tsys.plan.sites.find(x=>x.maxSize===1)!,v=grow(tctx,tsys,one.id);
   assert.deepEqual(tsys.upgrade(tctx,'a',v.id,'A'),{ok:false,reason:'size'});
   assert.equal(tsys.upgrade(tctx,'a',v.id,'C').ok,true);
@@ -276,15 +278,15 @@ test('the Gustavão: needs the laid, finished rail, moves onto it, frees its sit
   const howitzer=grow(ctx,sys,big[0].id,['B',undefined,undefined,undefined]);
   assert.equal(howitzer.kind,'obuseiro');
   assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:false,reason:'rail'},'no rail yet');
-  const units=()=>sys.state.balance.coco+sys.state.balance.pedra,u0=units();
-  assert.deepEqual(sys.build(ctx,'a','trilho'),{ok:true,defense:'trilho',kind:'linha-ferrea',cost:12});
-  assert.equal(u0-units(),12);
+  const units=()=>sys.state.balance.units,u0=units();
+  assert.deepEqual(sys.build(ctx,'a','trilho'),{ok:true,defense:'trilho',kind:'linha-ferrea',cost:0},'D-048: the rail is free (it comes with the Gustavão)');
+  assert.equal(u0-units(),0,'nothing charged for the rail');
   assert.deepEqual(sys.build(ctx,'a','trilho'),{ok:false,reason:'occupied'},'one rail');
   assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:false,reason:'rail'},'the rail is still being laid');
   at(ctx,sys.state.defenses!.rail!.readyTick);
   const u1=units();
-  assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:true,defense:howitzer.id,kind:'gustavao',cost:60});
-  assert.equal(u1-units(),60);
+  assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:true,defense:howitzer.id,kind:'gustavao',cost:120});
+  assert.equal(u1-units(),GUSTAVAO_COST,'3 fichas');
   const g=sys.state.defenses!.list.find(d=>d.id===howitzer.id)!,rail=sys.plan.rail!;
   assert.deepEqual({site:g.site,x:g.x,y:g.y},{site:'trilho',x:rail.x,y:rail.y});
   assert.equal(sys.build(ctx,'a',big[0].id).ok,true,'its site is free again');
@@ -294,7 +296,7 @@ test('the Gustavão: needs the laid, finished rail, moves onto it, frees its sit
   assert.deepEqual(sys.upgrade(ctx,'a',second.id),{ok:false,reason:'unique'},'a ruined Gustavão still counts');
   // The endless map has no rail: no Gustavão there.
   const t=new TerrainField(7,{world:'infinito'}),ectx=fakeCtx(t,[player('a',0,0)]),esys=reaching(createStonewardsSystem({terrain:t}));
-  esys.state.balance.coco=1000;
+  esys.state.balance.units=1000;
   const site=esys.plan.sites.find(s=>s.maxSize===3)!;
   const e=grow(ectx,esys,site.id,['B',undefined,undefined,undefined]);
   assert.deepEqual(esys.build(ectx,'a','trilho'),{ok:false,reason:'site'});
@@ -484,7 +486,7 @@ test('determinism: same commands, same state; a JSON checkpoint resumes identica
 
 test('the island is untouched: no sites, every build refused, no defenses key, same state as a system that never heard of towers',()=>{
   const ctx=fakeCtx(defaultTerrain,[player('a',12,14)]),sys=createStonewardsSystem({terrain:defaultTerrain}),plain=createStonewardsSystem({terrain:defaultTerrain});
-  sys.state.balance.coco=plain.state.balance.coco=50;
+  sys.state.balance.units=plain.state.balance.units=50;
   assert.deepEqual(sys.plan.sites,[]);assert.equal(sys.plan.rail,null);
   assert.deepEqual(sys.build(ctx,'a','obra-01'),{ok:false,reason:'site'});
   assert.deepEqual(sys.build(ctx,'a','trilho'),{ok:false,reason:'site'});
@@ -497,7 +499,7 @@ test('the island is untouched: no sites, every build refused, no defenses key, s
 
 // ---------- 7. torres-ajustes: reach and repair ----------
 test('reach: build, the rail, upgrade and repair only within BUILD_REACH of the obra (from its edge); refused far',()=>{
-  const {ctx,sys}=citySetup(1000,false),a=ctx.players.get('a')!,units=()=>sys.state.balance.coco+sys.state.balance.pedra;
+  const {ctx,sys}=citySetup(1000,false),a=ctx.players.get('a')!,units=()=>sys.state.balance.units;
   const plan=sys.plan,site=plan.sites.find(x=>x.maxSize===3)!,box=siteRect(plan,site.id)!;
   assert.equal(BUILD_REACH,3);
   // At the fountain: too far from the site and from the rail; nothing charged, no state.
@@ -525,7 +527,7 @@ test('reach: build, the rail, upgrade and repair only within BUILD_REACH of the 
 });
 
 test('repair: +25 % of maxHp per order for 5 units, capped at maxHp, only standing hurt defenses, only in the intermission',()=>{
-  const {ctx,sys}=citySetup(1000),units=()=>sys.state.balance.coco+sys.state.balance.pedra;
+  const {ctx,sys}=citySetup(1000),units=()=>sys.state.balance.units;
   assert.equal(TOWER_REPAIR_COST,5,'what the forge\'s reparo costs');assert.equal(REPAIR_FRACTION,.25);
   const v=grow(ctx,sys,'obra-02',['A']),d=()=>sys.state.defenses!.list.find(x=>x.id===v.id)!;
   const max=d().maxHp,step=Math.ceil(max*REPAIR_FRACTION);
@@ -534,7 +536,7 @@ test('repair: +25 % of maxHp per order for 5 units, capped at maxHp, only standi
   sys.hit(ctx,v.id,max*.3);
   const hp=d().hp,u0=units();
   assert.deepEqual(sys.repair(ctx,'a',v.id,'r1'),{ok:true,defense:v.id,kind:'vigias-armados',cost:TOWER_REPAIR_COST});
-  assert.equal(d().hp,hp+step,'25 % of maxHp, rounded up');assert.equal(u0-units(),TOWER_REPAIR_COST,'paid from the piles');
+  assert.equal(d().hp,hp+step,'25 % of maxHp, rounded up');assert.equal(u0-units(),TOWER_REPAIR_COST,'paid from the pile');
   assert.deepEqual(sys.repair(ctx,'a',v.id,'r1'),{ok:false,reason:'duplicate'},'a resent tap applies once');
   assert.equal(sys.repair(ctx,'a',v.id).ok,true);
   assert.equal(d().hp,max,'capped at maxHp (0.7 + 0.25 + 0.25 > 1)');
@@ -546,10 +548,10 @@ test('repair: +25 % of maxHp per order for 5 units, capped at maxHp, only standi
   at(ctx,ctx.tick);
   (ctx.players.get('b') as SimPlayer).downed=true;
   assert.deepEqual(sys.repair(ctx,'b',v.id),{ok:false,reason:'player'});
-  sys.state.balance.coco=2;sys.state.balance.pedra=2;
+  sys.state.balance.units=TOWER_REPAIR_COST-1;
   assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'balance'});
-  assert.deepEqual(sys.state.balance,{coco:2,pedra:2},'nothing charged on a refusal');
-  sys.state.balance.coco=50;
+  assert.deepEqual(sys.state.balance,{units:TOWER_REPAIR_COST-1},'nothing charged on a refusal');
+  sys.state.balance.units=50;
   sys.hit(ctx,v.id,1e6);
   assert.equal(d().ruined,true);
   assert.deepEqual(sys.repair(ctx,'a',v.id),{ok:false,reason:'ruined'},'a ruin is rebuilt (a new Vigia), never repaired');

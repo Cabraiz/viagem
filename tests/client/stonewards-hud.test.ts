@@ -12,11 +12,16 @@ import {fakeView} from '../../src/client/hud/fixtures.ts';
 const view=(camp:RunView['camp'],extra:Partial<RunView>={})=>({...fakeView('camp-forge',1),camp,...extra});
 
 test('the forge tags: buyable, short of money, wall full, towers full, no weapon, wall down',()=>{
-  const rich={coco:20,pedra:20};
+  const rich={units:20};
   for(const id of RECIPE_IDS)assert.equal(blockedReason(id,view(rich),'p1'),undefined,id);
-  assert.equal(blockedReason('torre-chinelo',view({coco:3,pedra:3}),'p1'),'balance');
-  assert.equal(missing({coco:3,pedra:3},'torre-chinelo'),'Falta 1 pedra.');
-  assert.equal(missing({coco:0,pedra:0},'gambiarra'),'Falta 4 coco e 2 pedra.');
+  assert.equal(blockedReason('torre-chinelo',view({units:6}),'p1'),'balance');
+  assert.equal(blockedReason('torre-chinelo',view({units:7}),'p1'),undefined,'exactly the price');
+  // One pile (D-048): what is missing is material, in words, never "coco"/"pedra" nor "unidades".
+  assert.equal(missing({units:6},'torre-chinelo'),'Falta 1 de material.');
+  assert.equal(missing({units:0},'gambiarra'),'Falta 6 de material.');
+  assert.equal(missing({units:1.5},'reparo'),'Falta 4 de material.','a fraction (a tuned crate) rounds the shortfall up');
+  assert.equal(missing({units:99},'reparo'),'');
+  for(const id of RECIPE_IDS)assert.doesNotMatch(missing({units:0},id),/coco|pedra|unidade/i);
   const v=view(rich);
   assert.equal(blockedReason('reparo',{...v,structures:v.structures.map(s=>({...s,hp:s.maxHp}))},'p1'),'full');
   const towers=Array.from({length:MAX_TOWERS},(_,i)=>({id:`t${i}`,kind:'torre-chinelo',x:0,y:0,hp:80,maxHp:80}));
@@ -26,7 +31,7 @@ test('the forge tags: buyable, short of money, wall full, towers full, no weapon
   assert.equal(blockedReason('gambiarra',maxed,'p1'),'no-weapon');
   assert.equal(blockedReason('reparo',view({...rich,wallDown:true}),'p1'),'wall-down');
   for(const reason of ['phase','player','recipe','balance','full','no-weapon','duplicate','wall-down','away'])assert.ok(FORGE_REFUSALS[reason],reason);
-  for(const r of Object.values(RECIPES))assert.ok(r.cost.coco>0&&r.cost.pedra>0&&r.name&&r.describe.length<=40);
+  for(const r of Object.values(RECIPES))assert.ok(Number.isInteger(r.cost)&&r.cost>0&&r.name&&r.describe.length<=40);
 });
 
 test('in the camp means within CAMP_RADIUS of the wall',()=>{

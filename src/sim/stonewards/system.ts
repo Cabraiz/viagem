@@ -128,7 +128,7 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
   // City only: the island and the endless world keep exactly their old state (and state hashes).
   const city=options.barricades===false?undefined:createBarricades(options.terrain,undefined,options.barricadesLater===true);
   return {
-    balance:{coco:0,pedra:0},
+    balance:{units:0},
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
     towers:[],
@@ -180,7 +180,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
    */
   function scaleLoot(got:readonly Gathered[],before:Readonly<Record<string,number>>,lootValue:number){
     let raw=0,paid=0;
-    for(const g of got){const v=cityCrateValue(g.node.value,lootValue);raw+=g.node.value;paid+=v;state.balance[g.node.kind]+=v-g.node.value;}
+    for(const g of got){const v=cityCrateValue(g.node.value,lootValue);raw+=g.node.value;paid+=v;state.balance.units+=v-g.node.value;}
     if(!(raw>0)||paid===raw)return;
     for(const id of Object.keys(state.gathered)){
       const was=Object.hasOwn(before,id)?before[id]:0,now=state.gathered[id];

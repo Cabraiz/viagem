@@ -9,6 +9,8 @@
  *     same defenses.
  *  4. torres-ajustes: the forger repairs a danificada defense first, keeps the Gustavão's line (B → rail → B6) funded
  *     before anything else, and walks to the obra before ordering (decide mode 'build', orderFrom).
+ *  5. D-048 (ficha de torre): a root only with a whole ficha (40 units), the Gustavão's 3 fichas (120) kept from the
+ *     Obuseiro on (its rail is free), and in a real 6-bot run no root order without the ficha nor a forge buy below the reserve.
  * D-031: results only.
  */
 import test from 'node:test';
@@ -21,8 +23,9 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {ticks} from '../../src/contract/types.ts';
 import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
 import type {RunView} from '../../src/contract/index.ts';
-import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,TOWER_STAND,decide,newMemory,pickTowerOrder,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
-import {DEFENSES,type DefenseId} from '../../src/sim/towers/catalog.ts';
+import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,REPAIR_BELOW,TOWER_STAND,decide,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
+import {DEFENSES,GUSTAVAO_COST,ROOT_DEFENSE,type DefenseId} from '../../src/sim/towers/catalog.ts';
+import {RECIPES,UNITS_PER_TOKEN,tokensOf,type RecipeId} from '../../src/rules/index.ts';
 import {TOWER_REPAIR_COST} from '../../src/sim/towers/system.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
@@ -41,12 +44,16 @@ const def=(id:string,kind:DefenseId,site:string,extra:Partial<Def>={}):Def=>({id
 
 test('pickTowerOrder: two roots first, then evolve when the balance pays, else grow to round + 1, else save',()=>{
   assert.deepEqual(pickTowerOrder(view()),{build:'s2'},'the largest free site first');
-  assert.equal(pickTowerOrder(view({units:5})),'save','6 needed for a root');
+  assert.equal(pickTowerOrder(view({units:UNITS_PER_TOKEN-1})),'save','D-048: a root is a whole ficha (40)');
+  assert.deepEqual(pickTowerOrder(view({units:UNITS_PER_TOKEN})),{build:'s2'});
   const one=[def('d1','vigia-do-predio','s2')];
   assert.deepEqual(pickTowerOrder(view({defenses:one})),{build:'s3'},'a second root before any evolution');
   const two=[def('d1','vigia-do-predio','s2'),def('d2','vigia-do-predio','s3')];
   assert.deepEqual(pickTowerOrder(view({defenses:two})),{upgrade:'d1',branch:BOT_BRANCHES[1]},'evolve when it pays (site index 1 → B)');
-  assert.deepEqual(pickTowerOrder(view({defenses:two,units:8})),{build:'s1'},'short of an evolution: another root, up to round + 1');
+  // An evolution (10–36) is always cheaper than a root (40): another root comes from a ficha while nothing can evolve.
+  const building=two.map(d=>({...d,ready:false}));
+  assert.deepEqual(pickTowerOrder(view({defenses:building,units:40})),{build:'s1'},'obras running: another root with a whole ficha, up to round + 1');
+  assert.equal(pickTowerOrder(view({defenses:building,units:39})),'save','short of a ficha');
   assert.equal(pickTowerOrder(view({defenses:[...two,def('d3','vigia-do-predio','s1')],units:8})),'save','round 2: 3 stand, save for the evolution');
 });
 
@@ -60,7 +67,8 @@ test('pickTowerOrder: branches by site index, A4b on a small site, rail before t
   const howitzer=[def('h','obuseiro','s2'),def('x','posto-de-radar','s3')];
   assert.deepEqual(pickTowerOrder(v(howitzer)),{build:'trilho'},'the rail first');
   assert.equal(pickTowerOrder(v(howitzer,{railLaid:true,sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),'save','the rail still being laid: saving for the Gustavão');
-  assert.deepEqual(pickTowerOrder(v(howitzer,{railLaid:true,railReady:true})),{upgrade:'h'},'then the Gustavão');
+  assert.deepEqual(pickTowerOrder(v(howitzer,{railLaid:true,railReady:true,units:GUSTAVAO_COST})),{upgrade:'h'},'then the Gustavão (3 fichas)');
+  assert.equal(pickTowerOrder(v(howitzer,{railLaid:true,railReady:true,units:GUSTAVAO_COST-1,sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),'save');
   assert.equal(pickTowerOrder(v(howitzer,{railLaid:true,railReady:true,gustavoes:1,sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),undefined,'one per run; all maxed');
   assert.equal(pickTowerOrder(v(howitzer,{rail:null,sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),undefined,'no rail on this map: no Gustavão');
   assert.equal(pickTowerOrder(v([def('a','vigia-do-predio','s2',{ready:false}),def('b','vigia-do-predio','s3',{ready:false})],{sites:[{id:'s2',maxSize:3},{id:'s3',maxSize:3}]})),undefined,'obras running');
@@ -68,17 +76,22 @@ test('pickTowerOrder: branches by site index, A4b on a small site, rail before t
 
 test('decide(): the forger orders towers before the forge; without towers nothing changes',()=>{
   const me={id:'bot',online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x:0,y:1} as unknown as RunView['players'][number];
-  const runView=(wallHp:number)=>({tick:500,round:{index:3,total:10,phase:'prepare',phaseEndsTick:600,remaining:0},players:[me],
-    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:wallHp,maxHp:600}],camp:{coco:10,pedra:10},nodes:[],offers:[],telegraphs:[],enemies:[],projectiles:[],pickups:[]}) as unknown as RunView;
-  const input=(towers?:TowerBrainView,wallHp=600)=>({view:runView(wallHp),selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),...(towers?{towers}:{})});
+  const runView=(wallHp:number,units:number)=>({tick:500,round:{index:3,total:10,phase:'prepare',phaseEndsTick:600,remaining:0},players:[me],
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:wallHp,maxHp:600}],camp:{units},nodes:[],offers:[],telegraphs:[],enemies:[],projectiles:[],pickups:[]}) as unknown as RunView;
+  const input=(towers?:TowerBrainView,wallHp=600)=>({view:runView(wallHp,towers?.units??20),selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),...(towers?{towers}:{})});
   const plain=decide(input());
   assert.equal(plain.forge,'torre-chinelo','the forge as before');assert.equal(plain.build,undefined);
-  const withTowers=decide(input(view({units:20})));
+  const withTowers=decide(input(view({units:40})));
   assert.deepEqual(withTowers.build,{build:'s2'});assert.equal(withTowers.forge,undefined,'the forge waits');
-  const saving=decide(input(view({units:3})));
-  // torres-ajustes: saving holds only the Gustavão line's reserve (none here): the forge spends as before.
-  assert.equal(saving.build,undefined);assert.equal(saving.forge,'torre-chinelo','saving for a root does not hold the forge');
+  // D-048: the forge's 5–7 unit buys would never let the pile reach a ficha, so the first roots' ficha is kept.
+  const first=decide(input(view({units:20})));
+  assert.equal(first.build,undefined);assert.equal(first.forge,undefined,'saving for the first roots holds the forge');
+  // torres-ajustes: past them, saving holds only the Gustavão line's reserve (none on a map without a rail).
+  const third=decide(input(view({units:20,rail:null,defenses:[def('d1','vigia-do-predio','s2',{ready:false}),def('d2','vigia-do-predio','s3',{ready:false})]})));
+  assert.equal(third.build,undefined);assert.equal(third.forge,'torre-chinelo','saving for a third root does not hold the forge');
   const hurt=decide(input(view({units:20}),300));
+  // pickRecipe's top-up reparo (the wall over REPAIR_BELOW) is not a needed one: it waits for the ficha like the rest.
+  assert.equal(decide(input(view({units:20}),600*REPAIR_BELOW+1)).forge,undefined,'a top-up does not eat the reserve');
   assert.equal(hurt.forge,'reparo','a needed repair still goes first');assert.equal(hurt.build,undefined);
   const done=decide(input(view({sites:[],rail:null})));
   assert.equal(done.forge,'torre-chinelo','nothing to do with towers: the forge as before');
@@ -98,7 +111,9 @@ test('pickTowerOrder: a danificada defense is repaired first; the Gustavão line
   assert.equal(pickTowerOrder(v(saving,{units:20})),'save','24 kept for the Lança-Foguetes: nothing else');
   assert.deepEqual(pickTowerOrder(v(saving,{units:24+16})),{upgrade:'b'},'the line first when it pays');
   const busy=[def('a','vigias-armados','s1'),def('b','morteiro','s2',{ready:false})];
-  assert.deepEqual(pickTowerOrder(v(busy,{units:30})),{build:'s3'},'the line is building: 24 kept, the 6 left over build a root');
+  const idle=[def('a','vigias-armados','s1',{ready:false}),def('b','morteiro','s2',{ready:false})];
+  assert.deepEqual(pickTowerOrder(v(idle,{units:24+40})),{build:'s3'},'the line is building: 24 kept, the ficha left over builds a root');
+  assert.equal(pickTowerOrder(v(idle,{units:24+39})),'save','not a whole ficha over the 24');
   assert.deepEqual(pickTowerOrder(v(busy,{units:24+16})),{upgrade:'a'},'16 left over: A2 → A3');
   // A B line stuck on a size-2 site (B4 needs 3×3) keeps nothing aside.
   const stuck=[def('a','vigias-armados','s2'),def('b','morteiro','s1')];
@@ -110,11 +125,11 @@ test('pickTowerOrder: a danificada defense is repaired first; the Gustavão line
 test('decide(): the builder walks to the obra (mode build), orders on arrival, and only takes a trip there and back that fits',()=>{
   const me={id:'bot',online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x:0,y:1} as unknown as RunView['players'][number];
   // The round starts 30 s after `tick`; the wall (home) at the origin; a crate to gather at.
-  const runView=(tick:number,camp={coco:10,pedra:10})=>({tick,round:{index:3,total:10,phase:'prepare',phaseEndsTick:tick+30*20,remaining:0},players:[me],
+  const runView=(tick:number,camp={units:40})=>({tick,round:{index:3,total:10,phase:'prepare',phaseEndsTick:tick+30*20,remaining:0},players:[me],
     structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],camp,nodes:[{id:'n1',kind:'coco',x:-6,y:0,remaining:5}],offers:[],telegraphs:[],enemies:[],projectiles:[],pickups:[]}) as unknown as RunView;
   const sites=[{id:'s1',maxSize:3,x:10,y:1}];
   const run=(at:{x:number;y:number},over:Partial<TowerBrainView>={},tick=500,forger?:string)=>decide({view:runView(tick),selfId:'bot',at,index:0,memory:newMemory(0),
-    ...(forger===undefined?{}:{forger}),towers:view({tick,units:20,sites,...over})});
+    ...(forger===undefined?{}:{forger}),towers:view({tick,units:40,sites,...over})});
   const far=run({x:0,y:1});
   assert.equal(far.mode,'build');assert.equal(far.build,undefined,'too far to order');
   assert.ok(far.direction.x>.9,'heads for the site');
@@ -142,7 +157,7 @@ test('decide(): the builder walks to the obra (mode build), orders on arrival, a
   // Saving for the Gustavão's line holds only its reserve: the forge buys with what is above it.
   // The line's Morteiro is building (nothing to order there) and the other defense is out of reach: 'save', 24 kept.
   const line=[def('d1','morteiro','s1',{x:10,y:1,ready:false}),def('d2','vigia-do-predio','s2',{x:-50*K,y:1})];
-  const saving=(units:number)=>decide({view:runView(500,{coco:units/2,pedra:units/2}),selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),forger:'bot',
+  const saving=(units:number)=>decide({view:runView(500,{units}),selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),forger:'bot',
     towers:view({units,sites:[{id:'s1',maxSize:3,x:10,y:1},{id:'s2',maxSize:2,x:-50*K,y:1}],defenses:line,round:2})});
   assert.equal(saving(30).forge,undefined,'24 kept for the Lança-Foguetes: 6 left, no recipe fits above it');
   assert.equal(saving(22).forge,undefined);
@@ -156,40 +171,88 @@ test('person rules: the bots never repair, evolve nor push the Gustavão line on
   // A person's B defense is not the bots' line: nothing is kept aside for it, nor is it evolved.
   const personB={...def('b','morteiro','s2'),person:true},mine=def('a','vigias-armados','s1');
   assert.deepEqual(pickTowerOrder(v([mine,personB],{units:16})),{upgrade:'a'},'the A2 → A3 with all of it: no reserve for their Morteiro');
-  assert.equal(towerReserve(v([mine,personB])),6,'not their Morteiro: only a root kept, to start the bots line');
+  assert.equal(towerReserve(v([mine,personB])),40,'not their Morteiro: only a root ficha kept, to start the bots line');
   assert.equal(towerReserve(v([mine,def('b','morteiro','s2')])),24,'the bots\' own Morteiro: its Lança-Foguetes kept aside');
 });
 
-/** A real city run with `count` room bots (RoomBots builds since torres-fio), every tower order they give logged. */
+/**
+ * A real city run with `count` room bots (RoomBots builds since torres-fio), every tower order they give logged with the
+ * units before it, and every forge buy with the units after it and the towers' reserve then (decide keeps it).
+ */
 function cityRun(seed:number,count:number,untilRound:number){
   const sim=new Simulation(seed,{world:'cidade',terrain:city}),bots=new RoomBots();
   sim.botState=()=>bots.state();
   const ids=Array.from({length:count},(_,i)=>`bot-${i+1}`);
   ids.forEach((id,i)=>{sim.addBot(id,id,['cidadao-comum','clt-cansado','feirante'][i%3]);bots.add(id,i);});
   sim.resetRun();
-  const orders:string[]=[];
-  const log=<R extends {ok:boolean;kind?:string;reason?:string}>(what:string,r:R)=>{orders.push(`${sim.world.round.index}:${what} → ${r.ok?r.kind:r.reason}`);return r;};
-  const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim);
-  sim.build=(id,site,req)=>log(`build ${site}`,build(id,site,req));
-  sim.upgrade=(id,d,branch,req)=>log(`up ${d} ${branch??''}`,upgrade(id,d,branch,req));
-  sim.repair=(id,d,req)=>log(`repair ${d}`,repair(id,d,req));
+  const orders:string[]=[],units:number[]=[],forges:{recipe:RecipeId;after:number;reserve:number;needed:boolean}[]=[];
+  const st=()=>sim.run.stonewards;
+  const log=<R extends {ok:boolean;kind?:string;reason?:string}>(what:string,run:()=>R)=>{
+    const before=st().state.balance.units,r=run();
+    orders.push(`${sim.world.round.index}:${what} → ${r.ok?r.kind:r.reason}`);units.push(before);return r;
+  };
+  const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim),forge=sim.forge.bind(sim);
+  sim.build=(id,site,req)=>log(`build ${site}`,()=>build(id,site,req));
+  sim.upgrade=(id,d,branch,req)=>log(`up ${d} ${branch??''}`,()=>upgrade(id,d,branch,req));
+  sim.repair=(id,d,req)=>log(`repair ${d}`,()=>repair(id,d,req));
+  sim.forge=(id,recipe,req)=>{
+    const s=st(),wall=s.state.wall,reserve=towerReserve(towerBrainView(s.state,s.plan,sim.tick,sim.world.round.index));
+    const needed=recipe==='reparo'&&wall.hp<wall.maxHp*REPAIR_BELOW,r=forge(id,recipe,req);
+    if(r.ok)forges.push({recipe:recipe as RecipeId,after:s.state.balance.units,reserve,needed});
+    return r;
+  };
   while(!sim.outcome&&!(sim.world.round.index>=untilRound&&sim.world.round.phase==='wave')&&sim.tick<ticks(25*60)){bots.think(sim);sim.step();}
-  return {sim,orders,state:sim.run.stonewards.state};
+  return {sim,orders,units,forges,state:sim.run.stonewards.state};
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
   const a=cityRun(3,3,6);
   const list=a.state.defenses?.list??[];
   console.log(`[torres-ajustes] 3 bots, seed 3, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
-  // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE), so by round 6 the bots have the
-  // two roots and push their B line (seed 3: to the Lança-Foguetes, B4); a third root waits for what is left over.
+  // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
+  // (40 units, 3 bots gather about one an intermission), so by round 6 the bots have their roots (seed 3: one rebuilt
+  // after a ruin, BOT_MIN_DEFENSES first) and have started their B line (B2); B3 and up come in the later rounds.
   assert.ok(list.length>=2,`${list.length} defenses built`);
-  assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=3),'the B line pushed past B2');
+  assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
   const b=cityRun(3,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
+});
+
+test('D-048: the bots never start a root without a whole ficha, and a 6-bot team keeps the Gustavão\'s 3 fichas aside',()=>{
+  // Pure, across layouts, rounds and every balance 0..200: a root (a build on a site, not the rail) only with a ficha.
+  const layouts:Def[][]=[[],[def('a',ROOT_DEFENSE,'s2')],[def('a',ROOT_DEFENSE,'s2',{ruined:true}),def('b',ROOT_DEFENSE,'s3')],
+    [def('a',ROOT_DEFENSE,'s2',{ready:false}),def('b',ROOT_DEFENSE,'s3',{ready:false})],[def('a','vigias-armados','s1'),def('b','morteiro','s2',{ready:false})],
+    [def('h','obuseiro','s2'),def('x',ROOT_DEFENSE,'s3',{ready:false})]];
+  for(const defenses of layouts)for(const round of [1,4,9])for(let units=0;units<=200;units++){
+    const order=pickTowerOrder(view({units,round,defenses}));
+    if(order&&typeof order==='object'&&'build' in order&&order.build!=='trilho')assert.ok(tokensOf(units)>=1,`a root at ${units} units`);
+    if(units<UNITS_PER_TOKEN&&!defenses.length)assert.equal(order,'save',`${units} units: saving for the first root`);
+  }
+  // From the Obuseiro on, the line keeps the Gustavão's 120 (its rail is free: laying it keeps the same 120 back).
+  const howitzer=[def('h','obuseiro','s2'),def('x',ROOT_DEFENSE,'s3',{ready:false})];
+  for(const over of [{},{railLaid:true},{railLaid:true,railReady:true}])assert.equal(towerReserve(view({defenses:howitzer,...over})),GUSTAVAO_COST);
+  assert.deepEqual(pickTowerOrder(view({defenses:howitzer,units:0})),{build:'trilho'},'the free rail is laid at once');
+  // decide: the forge buys only above it (the rail being laid, nothing else to order: 'save').
+  const me={id:'bot',online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x:0,y:1} as unknown as RunView['players'][number];
+  const forgeAt=(units:number)=>decide({view:({tick:500,round:{index:3,total:10,phase:'prepare',phaseEndsTick:600,remaining:0},players:[me],
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],camp:{units},nodes:[],offers:[],telegraphs:[],enemies:[],projectiles:[],pickups:[]}) as unknown as RunView,
+    selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),towers:view({units,defenses:howitzer,railLaid:true})}).forge;
+  const chinelo=RECIPES['torre-chinelo'].cost;
+  assert.equal(forgeAt(GUSTAVAO_COST+chinelo-1),undefined,'one unit short of the 120 after the buy');
+  assert.equal(forgeAt(GUSTAVAO_COST+chinelo),'torre-chinelo','the 120 still there after it');
+  // A real 6-bot city run: no tower order short of its units, every root from a whole ficha, and no forge buy (but a
+  // needed wall repair, which goes first) takes the pile under the towers' reserve (determinism: the 3-bot run above).
+  const a=cityRun(5,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
+  console.log(`[D-048] 6 bots, seed 5, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
+    `${a.forges.length} forge buys, largest reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}\n  orders: ${a.orders.join(' | ')}`);
+  assert.ok(roots.length>=2,`${roots.length} roots`);
+  assert.ok(roots.every(([,u])=>tokensOf(u)>=1),'every root from a whole ficha');
+  assert.ok(a.orders.every(o=>!o.endsWith('→ balance')),'no order the balance could not pay');
+  assert.ok(a.forges.length>0,'the forge still buys with what is left over');
+  assert.ok(a.forges.every(f=>f.needed||f.after>=f.reserve-1e-9),'no forge buy under the towers\' reserve');
 });
 
 test('bot-gasta-material: a defense a person here built is never the bot\'s to evolve; it still counts on the map',()=>{

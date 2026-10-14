@@ -6,25 +6,36 @@ import {SIM_HZ} from '../contract/index.ts';
 
 export type ResourceKind='coco'|'pedra';
 export const RESOURCE_KINDS:readonly ResourceKind[]=['coco','pedra'];
-export type Balance=Record<ResourceKind,number>;
+/**
+ * The team's material (D-048, ficha de torre): one pile of units, whatever the node (a coconut tree or a rock) gave.
+ * Every UNITS_PER_TOKEN units are one ficha de torre (🗼): the HUD shows the fichas and a ring filling to the next.
+ */
+export interface Balance {units:number}
+/** Units of material per ficha de torre (D-048: 6p ~10 fichas a city run, 1p ~3.7, measured in balanco-cidade-so-arte). */
+export const UNITS_PER_TOKEN=40;
+/** Whole fichas in `units` (a tuned crate may leave a fraction). */
+export const tokensOf=(units:number)=>Math.max(0,Math.floor(units/UNITS_PER_TOKEN+1e-9));
+/** 0..1 of the way to the next ficha. */
+export const tokenProgress=(units:number)=>{const t=tokensOf(units),rest=units-t*UNITS_PER_TOKEN;return Math.max(0,Math.min(1,rest/UNITS_PER_TOKEN));};
 
 export type RecipeId='reparo'|'gambiarra'|'torre-chinelo';
-export interface Recipe {id:RecipeId;name:string;cost:Balance;describe:string;lines:readonly string[]}
+/** `cost`: material units (until the forge is paid in Grana, D-048). */
+export interface Recipe {id:RecipeId;name:string;cost:number;describe:string;lines:readonly string[]}
 
 export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
-  reparo:{id:'reparo',name:'Massa Corrida e Fé',cost:{coco:2,pedra:3},
+  reparo:{id:'reparo',name:'Massa Corrida e Fé',cost:5,
     describe:'Conserta 25% da muralha',
     lines:['Passou massa corrida, tá novinha (de longe).','Reparo feito com fita silver tape e oração.','O pedreiro sumiu, mas a parede voltou.']},
-  gambiarra:{id:'gambiarra',name:'Gambiarra',cost:{coco:4,pedra:2},
+  gambiarra:{id:'gambiarra',name:'Gambiarra',cost:6,
     describe:'+1 nível numa arma aleatória sua',
     lines:['Gambiarra aprovada pelo INMETRO, confia.','Prendeu com elástico de dinheiro. Funcionou.','Se tá funcionando, não mexe.']},
-  'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:{coco:3,pedra:4},
+  'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:7,
     describe:'Arremessa chinelos por 45 s',
     lines:['A vó tá de olho. E de chinelo na mão.','Torre armada: chinelada teleguiada liberada.','Ninguém escapa da Havaiana voadora.']},
 });
 export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
-export const canPay=(b:Balance,c:Balance)=>b.coco>=c.coco&&b.pedra>=c.pedra;
+export const canPay=(b:Balance,cost:number)=>b.units>=cost;
 /**
  * What a forge tap may name as its optional `target` (cidade-06): the wall or one of the city's 4 barricades
  * (sim/stonewards/barricades.ts barricadeId). The room drops a tap with any other target before the simulation.
@@ -96,7 +107,7 @@ export const FORGE_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   phase:'A forja só abre no intervalo.',
   player:'Caído não forja. Pede resgate.',
   recipe:'Essa receita não existe.',
-  balance:'Falta coco ou pedra.',
+  balance:'Falta material.',
   full:'Já tá no máximo.',
   'no-weapon':'Nenhuma arma pra gambiarra.',
   duplicate:'Esse pedido já foi.',

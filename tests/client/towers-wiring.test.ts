@@ -24,7 +24,7 @@ const defense=(id:string,kind:DefenseId,x:number,y:number,phase='pronta'):Struct
   tier:DEFENSES[kind].tier,...(DEFENSES[kind].branch?{branch:DEFENSES[kind].branch!}:{}),phase});
 function runView(structures:StructureView[],round:'prepare'|'wave'='prepare'):RunView{
   return {tick:500,team:{xp:0,level:1,nextXp:10},round:{index:2,total:10,phase:round,phaseEndsTick:900,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
-    structures,camp:{coco:7,pedra:5},players:[],offers:[],events:[]};
+    structures,camp:{units:52},players:[],offers:[],events:[]};
 }
 const project=(p:{x:number;y:number})=>({x:p.x*10,y:p.y*10+1});
 
@@ -49,7 +49,7 @@ test('sites projected to the screen, defenses matched by position (through the w
   assert.equal(v.sites[2].tower,undefined);
   assert.equal(v.standing,2,'ruins do not count against the limit');
   assert.equal(v.gustavoes,0);
-  assert.deepEqual(v.balance,{coco:7,pedra:5});
+  assert.deepEqual(v.balance,{units:52},'the one pile (D-048)');
   assert.equal(v.drawnInWorld,undefined,'default: the marker is the tower');
   assert.equal(obraViewFrom({prepare:true,view,plan:PLAN,project,drawnInWorld:true}).drawnInWorld,true);
   // A site with a ruin and a new obra on it (both in one view): the standing one is the tower.
@@ -87,7 +87,7 @@ test('the branch the room accepts: A4b/A5b as they are, every other child by its
   assert.equal(branchForWire('A2'),'A');assert.equal(branchForWire('B6'),'B');assert.equal(branchForWire('C5'),'C');
   assert.equal(branchForWire('Z9'),undefined);
   // The model's own actions (what the menu confirms) go out as the room expects.
-  const view={prepare:true,sites:[],balance:{coco:99,pedra:99},standing:1,gustavoes:0};
+  const view={prepare:true,sites:[],balance:{units:999},standing:1,gustavoes:0};
   const tree=treeFor({id:'obra-01',x:0,y:0,maxSize:3,tower:{id:'d',kind:'atiradores-do-telhado'}},view);
   assert.deepEqual(tree.branches.map(c=>c.action?.type==='upgrade'?branchForWire(c.action.branch):undefined),['A','A4b']);
 });
@@ -258,7 +258,7 @@ test('revision: the same while only the camera moves; changes with the snapshot,
   assert.equal(next({view:runView([defense('defesa-1','vigia-do-predio',10,10,'obra-1')])}),a.revision);
   for(const [why,rev] of [
     ['the obra finished',next({view:runView([defense('defesa-1','vigia-do-predio',10,10,'pronta')])})],
-    ['the balance',next({view:{...view,camp:{coco:8,pedra:5}}})],
+    ['the balance',next({view:{...view,camp:{units:53}}})],
     ['a request sent',next({pending:['obra-02']})],
     ['an obra accepted',next({done:['obra-01']})],
     ['watching',next({readOnly:true})],

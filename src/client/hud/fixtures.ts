@@ -15,7 +15,8 @@ import type {RunResult} from './model.ts';
  * with the round offer queued behind it, so "Levar os indicados" shows;
  * offer-downed / offer-open-downed: the same intermission window / combat strip with two allies down, the last of
  * the team column among them (the window and the strip must never cover SOS, the timer or the "caiu!" banner).
- * Stonewards (VGM-046B): camp-forge: the intermission with the hero in the camp (forge open, one tag short of pedra);
+ * Stonewards (VGM-046B): camp-forge: the intermission with the hero in the camp (forge open, one tag short of material:
+ * 6 units, 0 fichas de torre); the other scenarios hold 156 units (3 fichas, the ring at 90%: the "falta pouco" look);
  * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
 export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave';
@@ -83,7 +84,7 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     pickups:[],projectiles:[],telegraphs:[],
     structures:[{id:'s1',kind:'muralha',...FIXTURE_WALL,hp:scenario==='camp-wave'?132:scenario==='camp-forge'?410:540,maxHp:600},
       ...(scenario==='camp-forge'?[{id:'s2',kind:'torre-chinelo',x:13,y:14,hp:80,maxHp:80,untilTick:tick+ticks(30)}]:[])],
-    camp:{coco:scenario==='camp-forge'?5:12,pedra:scenario==='camp-forge'?3:9,
+    camp:{units:scenario==='camp-forge'?6:156,
       ...(scenario==='camp-horn'?{hornEndsTick:tick+ticks(4)}:{})},
     players:fakePlayers(playerCount,scenario),
     // Combat: the server holds level offers until the intermission (D-021, HELD_DEADLINE).

@@ -60,7 +60,7 @@ test('a city room: the target reaches the barricade (repaired) and a tap without
   assert.ok(rows?.length,'the city run raised its barricades');
   assert.equal(sim.world.round.phase,'prepare');
   const n=rows.find(b=>b.id==='barricada-N')!,p=sim.players.get(id)!;
-  n.hp=100;sw.balance={coco:9,pedra:9};p.x=n.x;p.y=n.y;
+  n.hp=100;sw.balance={units:18};p.x=n.x;p.y=n.y;
   command(room,a,{t:'forge',round,recipe:'reparo',req:1,target:'barricada-N'});
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:true});
   assert.equal(n.hp,100+Math.ceil(n.maxHp*.25));

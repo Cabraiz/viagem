@@ -1,8 +1,9 @@
 /**
  * Stonewards HUD (VGM-046B), three pieces in the zones of UX-zonas-tela:
- * - the base ficha (status, top band): the wall's life (bar + number) and the team's coco and pedra, always in a run;
+ * - the base ficha (status, top band): the wall's life (bar + number) and the team's fichas de torre (D-048: the tower
+ *   sticker in a ring filling to the next ficha, and the count), always in a run;
  * - the forge window (an intermission window, like the round offer): opens by itself while the hero stands in the camp
- *   during the intermission and no offer is open; three price tags, one tap buys for the team. Tags the team cannot
+ *   during the intermission and no offer is open; three price tags (price.ts forgePriceLabel), one tap buys for the team. Tags the team cannot
  *   buy stay readable with a padlock and say why on tap (no dead button);
  * - the horn notice (announcement slot): "Volta pra base" with the seconds left and an arrow to the base; inside the
  *   camp it says when the critters arrive. In a wave, the wall crossing 50% and 25% shows here for 3 s.
@@ -14,12 +15,13 @@
  * screen); every number comes from the room. Names always through textContent.
  */
 import type {RunView,StructureView} from '../../contract/index.ts';
-import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../../rules/index.ts';
+import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,tokenProgress,tokensOf,type Balance,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
+import {fichasText,forgePriceLabel} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
@@ -69,11 +71,27 @@ export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structur
   }
   return undefined;
 }
-/** What is missing for a recipe, "Falta 1 pedra" style (pure, tested). */
+/** What is missing for a recipe, "Falta 2 de material." (pure, tested; the price words come from forgePriceLabel). */
 export function missing(balance:Balance,recipe:RecipeId){
-  const cost=RECIPES[recipe].cost,parts:string[]=[];
-  for(const kind of ['coco','pedra'] as const){const n=cost[kind]-balance[kind];if(n>0)parts.push(`${n} ${kind}`);}
-  return parts.length?`Falta ${parts.join(' e ')}.`:'';
+  const short=Math.ceil(RECIPES[recipe].cost-balance.units-1e-9);
+  return short>0?`Falta ${forgePriceLabel(short).speech}.`:'';
+}
+/**
+ * The top bar's fichas (D-048, pure, tested): the whole fichas in the pile, the ring's fill towards the next one and the
+ * words for the screen reader. The percent rounds down: "próxima em 100%" would be a ficha the count does not show yet.
+ */
+export function tokenReadout(units:number){
+  const u=Number.isFinite(units)?Math.max(0,units):0,tokens=tokensOf(u),progress=tokenProgress(u),percent=Math.floor(progress*100+1e-9);
+  return {tokens,progress,percent,label:`${fichasText(tokens)}, próxima em ${percent}%`};
+}
+/**
+ * Its markup, one line (pure, tested): the tower sticker inside a thin ring (a 0..100 dash, from the top, clockwise) and
+ * the count. The ring's track always shows, so "0 and almost one" still reads as "falta pouco".
+ */
+export function tokenMarkup(units:number){
+  const {tokens,progress}=tokenReadout(units);
+  return `<span class="rh-camp-anel" aria-hidden="true">${icon('torre')}<svg class="rh-camp-anel-svg" viewBox="0 0 32 32" focusable="false">`
+    +`<circle class="rh-camp-anel-fundo" cx="16" cy="16" r="14"/><circle class="rh-camp-anel-cheio" cx="16" cy="16" r="14" pathLength="100" stroke-dasharray="${+(progress*100).toFixed(1)} 100"/></svg></span><b>${tokens}</b>`;
 }
 export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.kind==='muralha');
 /** Whether the hero stands in the camp (the forge works there). */
@@ -131,9 +149,9 @@ export function createCamp(options:CampOptions):CampPart{
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
   const track=el('span','rh-camp-track',wallRow),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',wallRow);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
-  const res=el('span','rh-camp-res',readout);
-  const coco=el('span','rh-camp-item',res);coco.insertAdjacentHTML('beforeend',icon('coco',{label:'Coco'}));const cocoN=el('b','',coco);
-  const pedra=el('span','rh-camp-item',res);pedra.insertAdjacentHTML('beforeend',icon('pedra',{label:'Pedra'}));const pedraN=el('b','',pedra);
+  // The team's fichas de torre (D-048): one sticker in its ring and the count; rewritten only when the pile changes.
+  const token=el('span','rh-camp-token',readout);token.setAttribute('role','img');
+  let lastUnits:number|undefined;
 
   // ---------- Horn / wall notice ----------
   const notice=el('div','rh-alert rh-horn');notice.hidden=true;notice.setAttribute('role','status');
@@ -161,10 +179,8 @@ export function createCamp(options:CampOptions):CampPart{
     const name=el('strong','rh-forge-name',body);name.textContent=r.name;
     const desc=el('span','rh-forge-desc',body);desc.textContent=r.describe;
     const price=el('span','rh-forge-price',button);
-    for(const kind of ['coco','pedra'] as const){
-      const part=el('span','rh-forge-cost',price);el('b','',part).textContent=String(r.cost[kind]);
-      part.insertAdjacentHTML('beforeend',icon(kind,{label:kind==='coco'?'coco':'pedra'}));
-    }
+    // One number and the material sticker (the tag's aria-label says the price in words).
+    el('span','rh-forge-cost',price).insertAdjacentHTML('beforeend',forgePriceLabel(r.cost).html);
     const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
     const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
@@ -224,8 +240,8 @@ export function createCamp(options:CampOptions):CampPart{
   // The window holds its own taps (VGM-040): nothing leaks to the joystick or the map.
   for(const node of [forge,readout,notice])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)node.addEventListener(type,event=>event.stopPropagation());
 
-  const label=(name:string,describe:string,cost:Balance,reason:string|undefined,recipe:RecipeId)=>
-    `${name}: ${describe}. Custa ${cost.coco} coco e ${cost.pedra} pedra.${reason?` ${refusal(reason,recipe)}`:''}`;
+  const label=(name:string,describe:string,cost:number,reason:string|undefined,recipe:RecipeId)=>
+    `${name}: ${describe}. Custa ${forgePriceLabel(cost).speech}.${reason?` ${refusal(reason,recipe)}`:''}`;
   const render=()=>{
     const view=last;
     const camp=view?.camp;
@@ -237,7 +253,7 @@ export function createCamp(options:CampOptions):CampPart{
     readout.classList.toggle('rh-camp-low',low||!!camp.wallDown);
     hp.textContent=String(Math.max(0,Math.ceil(wall?.hp??0)));
     track.setAttribute('aria-valuenow',String(Math.round(fraction*100)));
-    cocoN.textContent=String(camp.coco);pedraN.textContent=String(camp.pedra);
+    if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
     const round=view.round,prepare=round?.phase==='prepare'&&(round.index??0)>=2;
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).

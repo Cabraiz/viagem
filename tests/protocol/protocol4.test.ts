@@ -853,7 +853,7 @@ function campWorld():FrameInput{
       {id:'no-0_0-2',kind:'pedra',x:-20,y:12,remaining:2,capacity:6,value:2,progress:.5},
       {id:'no-6_0-0',kind:'pedra',x:201,y:3,remaining:6,capacity:6,value:4,progress:0},
     ],
-    camp:{coco:7,pedra:12,hornEndsTick:900},
+    camp:{units:19,hornEndsTick:900},
   };
 }
 
@@ -862,7 +862,7 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   const w=campWorld();
   const r=dec.decode(enc.encode(w));assert.ok(r.ok);
   assert.ok(PROTOCOL_VERSION>=6);
-  assert.deepEqual(r.view.camp,{coco:7,pedra:12,hornEndsTick:900});
+  assert.deepEqual(r.view.camp,{units:19,hornEndsTick:900});
   const tower=r.view.structures.find(s=>s.kind==='torre-chinelo')!;
   assert.equal(tower.untilTick,1400);assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.hp,430);
   // The far player's node (200 units away) stays out of this client's area.
@@ -870,15 +870,15 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   assert.ok(r.view.nodes!.every(n=>/^n\d+$/.test(n.id)),'client ids for nodes');
   // A unit comes out: only that node changes, and the delta is small.
   enc.ack(r.seq);
-  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={coco:8,pedra:12,hornEndsTick:900};
+  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={units:20,hornEndsTick:900};
   const bytes=enc.encode(w),r2=dec.decode(bytes);assert.ok(r2.ok);
   assert.ok(bytes.length<64,`delta ${bytes.length} B`);
-  assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.coco,8);
+  assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.units,20);
   // The wave: no nodes, no horn; the wall falls.
   enc.ack(r2.seq);
-  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={coco:8,pedra:12,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
+  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={units:20,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
   const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
-  assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{coco:8,pedra:12,wallDown:true});
+  assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{units:20,wallDown:true});
 });
 
 test('protocol 6: horn and say events; horn reaches everyone, say only who is near the source',()=>{
@@ -1046,10 +1046,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 14: a frame from a 13 (torre-contador-de-tiros) or 15 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 16 (ficha-de-torre): a frame from a 14 or 15 (chaveiro) room, or a 17, is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],14);
-  for(const version of [8,9,10,11,12,13,15]){
+  assert.equal(bytes[1],16);
+  for(const version of [8,9,10,11,12,13,14,15,17]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }

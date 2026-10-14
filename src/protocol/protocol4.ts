@@ -8,7 +8,7 @@
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
- *     camp? (u8 bits: 1 horn, 2 wall down; uvar coco, uvar pedra; svar hornEndsTick-tick if horn)
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048); svar hornEndsTick-tick if horn)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -53,9 +53,11 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * 14 since velocidade-heroi-e-projetil: the same bytes, but the hero walks 2× (maps heroSpeed) and shots fly at half
  * speed, and the phone predicts its own walk (maps/prediction.ts moveStep): a 13 client in front of a 14 room (or the
  * other way round) would be corrected on every input, so the versions must not meet.
+ * 16 since ficha-de-torre (D-048; 15 is the chaveiro's): the camp carries one uvar `units` (the team's single pile of
+ * material, the fichas de torre come from it) instead of coco and pedra.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=14;
+export const PROTOCOL_VERSION=16;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -756,7 +758,7 @@ export class FrameEncoder {
     }
     if(view.camp){
       const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
-      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(camp.coco);w.uvar(camp.pedra);
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }
     const world:World={tick:view.tick,tables:emptyTables()};
@@ -956,7 +958,7 @@ export class FrameDecoder {
       }
       if(flags&8){
         const bits=r.u8();if(bits>3)throw new FrameError('bad camp bits');
-        camp={coco:r.uvar(),pedra:r.uvar()};
+        camp={units:r.uvar()};
         if(bits&CAMP_HORN)camp.hornEndsTick=tick+r.svar();
         if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }

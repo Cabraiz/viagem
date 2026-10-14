@@ -11,8 +11,8 @@ function run(seed:number,players:number,outcome:RunRecord['outcome'],roundReache
     roundReached,diedRound:outcome==='victory'?null:roundReached,ticks:0,simMinutes:0,wallHpEnd:0,wallMaxHp:600,
     rounds:[{round:1,waveStartTick:0,endTick:10,firstInsideBaseTick:null,firstArrivalS:null,downed:0,eliminated:0,revived:0,wallHpStart:600,wallHpEnd:600,barricadesFallen:null},
       {round:2,waveStartTick:100,endTick:200,firstInsideBaseTick:300,firstArrivalS:10+seed,downed:1,eliminated:0,revived:1,wallHpStart:600,wallHpEnd:500,barricadesFallen:null}],
-    intermissions:[{round:2,startTick:10,endTick:100,seconds:4.5,balanceStart:{coco:0,pedra:0},balanceEnd:{coco:3,pedra:3},gathered:{coco:3,pedra:3+seed,units:6+seed},
-      spent:{coco:0,pedra:seed,units:seed},perPlayer:{},cratesEmptied:2,purchases:[]}],
+    intermissions:[{round:2,startTick:10,endTick:100,seconds:4.5,balanceStart:{units:0},balanceEnd:{units:6},gathered:{units:6+seed},
+      spent:{units:seed,forge:seed},perPlayer:{},cratesEmptied:2,purchases:[]}],
     forge:{count:seed,byRecipe:{},list:[]},boss:null,
     nav:{round1ArrivalS:{},tutorialArrivalS:30,modeTicks:{},stuck:0,crateTrips:0},perf:{wallSeconds:0,msPerTick:0,thinkMsPerTick:0,navMsPerTick:0},knobsApplied:false,...extra};
 }
@@ -44,6 +44,16 @@ test('city run summary: wins, death rounds, arrivals, loot and verdict per team 
   assert.equal(s.byPlayers[1].verdict.round1,'ok');
   assert.equal(s.verdict.ok,false);
   assert.equal(s.verdict.notes.length,1);
+});
+
+test('city run summary: roots and fichas de torre per run (D-048); runs without towers leave it null',()=>{
+  const towers=(roots:number,gustavao:boolean)=>({orders:roots+1,units:roots*40+(gustavao?120:0),refused:{},final:{},ruined:0,gustavao,roots,tokens:roots+(gustavao?3:0)});
+  const s=summarize([run(1,6,'victory',10,{towers:towers(3,true)}),run(2,6,'defeat',7,{towers:towers(2,false)}),run(1,1,'defeat',4)]);
+  assert.deepEqual(s.byPlayers[6].towers,{runs:2,rootsPerRun:{n:2,mean:2.5,min:2,median:2.5,max:3},tokensPerRun:{n:2,mean:4,min:2,median:4,max:6},gustavoes:1});
+  assert.equal(s.byPlayers[1].towers,null);
+  // A run from an older file (no roots/tokens) still counts, without numbers.
+  const old=summarize([run(1,3,'victory',10,{towers:{orders:1,units:6,refused:{},final:{},ruined:0,gustavao:false}})]);
+  assert.deepEqual(old.byPlayers[3].towers,{runs:1,rootsPerRun:null,tokensPerRun:null,gustavoes:0});
 });
 
 test('city run summary: a death in round 1 fails the tutorial target',()=>{

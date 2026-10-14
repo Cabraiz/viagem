@@ -25,6 +25,27 @@ jobs:
       # Full-size protocol run (6 clients, 10 s without area of interest; ~1 GB). Too heavy for the shared PC's
       # `npm test`, so only CI runs it: the wide-map 32 KB/s budget has a ~60 B/s margin that 2 clients cannot see.
       - run: npm run test:protocol:stress
+      # Production smoke (D-049, Executor-8 scripts/smoke-prod.mjs): the built dist/ under vite preview + the local rooms
+      # Worker; headless Chromium plays "Jogar sozinho" (normal and ?modo=chaveiro). A failure here fails `build`, so
+      # nothing is published: it catches bundle-only breakage (e5b34e5: a chunk cycle left top-level constants undefined).
+      - id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.63.0-${{ runner.os }}
+      - run: npm install --no-save playwright@1.63.0
+      - if: steps.pw.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: node scripts/smoke-prod.mjs smoke-out
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-out
+          path: smoke-out
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

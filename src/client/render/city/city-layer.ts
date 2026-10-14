@@ -9,6 +9,7 @@
  * Materials (materials.ts) swap in painted art when its textures are loaded, and fall back to the procedural look.
  * All geometry and decisions live in the pure modules (chunks, faces, occlusion, materials); this file only draws.
  */
+import {perfNow,perfSpan} from '../../dev/perf-flag.ts';
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
@@ -315,7 +316,7 @@ export class CityLayer {
     if(view!==this.view){this.view=view;this.fader.reset();this.faded.clear();this.cellColumns.clear();this.drawFog(view);}
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
-    for(const key of show)this.buildChunk(key,view);
+    for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
     this.applyOcclusion(frame,view);
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
       this.clock=(this.clock+frame.dtMs)%GLINT_PERIOD_MS;

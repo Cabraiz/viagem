@@ -42,6 +42,7 @@ const ECONOMY_TOAST_MS=9000;
 const CAMERA_HINT_MS=1500;
 const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
+import {perfEnabled} from './dev/perf-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
@@ -143,6 +144,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onEmote=note=>hud?.emote(note.player,note.id);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
+    // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): the frame meter on the phone; loaded only with the flag.
+    if(perfEnabled(location.search))void import('./dev/perf-overlay.ts').then(m=>m.startPerfOverlay());
     if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
       if(closed||!hud)return;
       // It chains net.onCommand and net.onSos (RescueBoard's) and puts them back on destroy.

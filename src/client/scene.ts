@@ -1,3 +1,4 @@
+import {perf} from './dev/perf-flag.ts';
 import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
@@ -329,6 +330,13 @@ export class IslandScene extends Phaser.Scene {
   }
   private iconsAsked=new Set<string>();
   create(){
+    // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): Phaser's logic step and its render, charged to each frame.
+    if(perf.on){
+      const ev=Phaser.Core.Events,game=this.game.events;let t=0;
+      const step=()=>{t=performance.now();},logic=()=>{const now=performance.now();perf.mark('logica',now-t);t=now;},render=()=>{perf.mark('render',performance.now()-t);};
+      game.on(ev.PRE_STEP,step);game.on(ev.PRE_RENDER,logic);game.on(ev.POST_RENDER,render);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{game.off(ev.PRE_STEP,step);game.off(ev.PRE_RENDER,logic);game.off(ev.POST_RENDER,render);});
+    }
     this.standIn();
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;

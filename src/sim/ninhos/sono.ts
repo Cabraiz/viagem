@@ -11,8 +11,7 @@
  * Ids: `z-<index>`, the body's place in the plan order (nests first, in plan order, then the loose bands), never from
  * ctx.nextId: a checkpoint rebuilds the same bodies from the seed without moving the world's counters.
  */
-import type {Point} from '../../maps/index.ts';
-import type {NestPlan} from '../../maps/nests.ts';
+import type {NestPlan,Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext,Sleepers} from '../context.ts';
 import {SpatialHash} from '../spatial.ts';

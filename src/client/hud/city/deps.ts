@@ -13,3 +13,7 @@ export {icon,type IconName} from '../../ui/icon.ts';
 export {DEFAULT_MAP as PROTOCOL_DEFAULT_MAP,type MapId} from '../../../protocol/index.ts';
 export {SIM_HZ} from '../../../contract/index.ts';
 export {FlowField,DIRS,UNREACHABLE,walkable,type FlowGrid,type FlowPoint,type CityTerrain} from '../../../maps/index.ts';
+// D-047 (chaveiro): the objective as the render reads it and the route still ahead of the moto (render/chaveiro).
+export {routeAhead,motoNeedsTeam,CAR_LOW} from '../../render/chaveiro/rules.ts';
+export {objectiveOf,type ChaveiroView,type MotoMode} from '../../render/chaveiro/view.ts';
+export {RouteMemo} from '../../render/chaveiro/tracker.ts';

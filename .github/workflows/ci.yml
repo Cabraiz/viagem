@@ -63,7 +63,7 @@ jobs:
   build:
     needs: setup
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -81,6 +81,27 @@ jobs:
       - if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci --include=optional && npm ci --prefix backend
       - run: npm run build
+      # Production smoke (Executor-8, scripts/smoke-prod.mjs): the built dist/ under vite preview + the local rooms
+      # Worker; headless Chromium plays "Jogar sozinho" (normal and ?modo=chaveiro). Catches bundle-only breakage
+      # (e.g. chunk cycles leaving top-level constants undefined) that check/test/build cannot see.
+      - id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.63.0-${{ runner.os }}
+      - run: npm install --no-save playwright@1.63.0
+      - if: steps.pw.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: node scripts/smoke-prod.mjs smoke-out
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-out
+          path: smoke-out
+          retention-days: 7
+          if-no-files-found: ignore
 
   test:
     needs: setup

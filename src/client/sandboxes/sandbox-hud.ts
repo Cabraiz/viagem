@@ -45,9 +45,9 @@
  * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
  * `pausa=escolhendo|esperando|ultimo` (D-050, card NEW-20261014-E4-levelup-pausa-hud): the team's level-up pause, 4 players
  * unless `players=`, the room's fake pause (contract RunPause) sent like the room's, at each whole second:
- * escolhendo: the combat offer open (no clock of its own, as in the pause), 10 s of 12, Zé already picked, you, Tia and
- * Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha missing; ultimo: 3 s (urgent), only
- * you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
+ * escolhendo: the pause's offer window open by itself (offer.ts data-mode=pause, no clock of its own), 10 s of 12, Zé
+ * already picked, you, Tia and Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha
+ * missing; ultimo: 3 s (urgent), only you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
@@ -203,7 +203,7 @@ function sendPause(){
   const fake=PAUSA_FAKE[pausa];
   let left=fake.leftMs-(performance.now()-pausaFrom);
   if(left<=0){pausaFrom=performance.now();left=fake.leftMs;}
-  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:6,waiting:[...fake.waiting]});
+  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting]});
 }
 if(pausa)setInterval(sendPause,200);
 let eventId=0;
@@ -253,8 +253,10 @@ function load(next:HudScenario){
     document.body.dataset.hudReady='1';
   });
   else document.body.dataset.hudReady='1';
-  // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
-  if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
+  // Combat with the compact panel open: D-050's level-up pause (the room's RunState.pause), 9 s of 12 left, the whole
+  // team still picking. Every other scenario runs unpaused.
+  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
+  // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
 }
 

@@ -630,7 +630,7 @@ export class Room {
     }
     else if(m.t==='ack'){c.encoder?.ack(m.seq);this.lateness(c,m.seq,now);}
     // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
-    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round)this.sim.tap(c.playerId,m.id);}
+    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
@@ -966,7 +966,8 @@ export class Room {
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.item!=='string'||!(CIDA_ITEM_IDS as readonly string[]).includes(m.item))return;
-    const result=this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
+    // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
+    const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */

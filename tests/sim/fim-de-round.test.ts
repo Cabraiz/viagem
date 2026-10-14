@@ -8,6 +8,9 @@ import {CATCH_UP_SPEED,LAST_CALL_NEAR,LAST_CALL_PACE,LAST_CALL_SECONDS,lastCallB
 import {ENEMIES} from '../../src/sim/enemies/catalog.ts';
 import {SPEED,clearSegment} from '../../src/maps/world.ts';
 import {ROUNDS} from '../../src/rules/waves.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 interface RoundEnd {round:number;waveTicks:number;timedOut:boolean;fled:number;spawned:number;calledAt?:number;endsAtCall?:number}
 /** Six heroes that never move (by the base, where they spawn) and take the default offers at once. */

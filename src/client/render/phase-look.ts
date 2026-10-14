@@ -45,6 +45,18 @@ export function viewPhaseLook(id:string,kind:EnemyKind,phase:number|undefined):P
 }
 
 /**
+ * The imported animation an acting enemy loops (arte-do-roster-no-render; art/horde-art.ts loopAnim): the coach (and
+ * every suporte) lectures, the motoboy (every kamikaze) aims his charge, the influencer (every refletor) poses and the
+ * invocador calls his minions. Undefined when not acting, for the chefe and for kinds with no acting pose; a piece
+ * without that sheet keeps its walk/idle loop.
+ */
+export function actAnim(id:string,kind:EnemyKind,phase:number|undefined):string|undefined{
+  if(phase!==PHASE_ACTING||kind==='chefe')return undefined;
+  if(roleOf(id)==='invocador')return 'summon';
+  return kind==='coach'?'lecture':kind==='motoboy'?'aim':kind==='influencer'?'pose':undefined;
+}
+
+/**
  * Radius (world units) of the coach's lecture: allies inside it are buffed. The client cannot import the sim, so it is
  * a copy of src/sim/enemies/catalog.ts PALESTRA.radius; tests/client/elenco-p1.test.ts pins the two equal.
  */

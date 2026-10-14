@@ -19,7 +19,7 @@ import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
-  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUMMON,SUMMON_STATE,TIO_JOKE,coachMult,createEnemy,enemyDef,hashUnit,
+  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
   hazardOwner,isCoached,isDevendo,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
@@ -333,7 +333,7 @@ export class EnemyAi implements SimSystem {
           }
           case 'swarm':{
             [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
-            if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
+            if(player&&ctx.round.index>=POOP.fromRound&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
               &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
               addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage*coachMult(e,ctx.tick),owner:hazardOwner(HAZARD_OWNERS.poop,e),kind:'coco'},POOP.delay);
               memory.actReady=ctx.tick+POOP.cooldown;
@@ -346,7 +346,7 @@ export class EnemyAi implements SimSystem {
             else if(memory.state===STATE.aim){
               if(ctx.tick>=memory.until){
                 memory.state=STATE.walk;
-                if(player&&this.throwMolotov(ctx,e,player)){memory.actReady=ctx.tick+MOLOTOV.cooldown;this.react(ctx,rng,e,def,.6);}
+                if(player&&this.throwMolotov(ctx,e,player)){memory.actReady=ctx.tick+bandCooldown(e,MOLOTOV.cooldown);this.react(ctx,rng,e,def,.6);}
                 else memory.actReady=ctx.tick+MOLOTOV.retry;
               }
             }else if(player&&best<=MOLOTOV.fireRange&&ctx.tick>=memory.actReady){
@@ -434,7 +434,7 @@ export class EnemyAi implements SimSystem {
             if(memory.state===STATE.aim&&best>AGIOTA_SHOT.fireRange){memory.state=STATE.walk;dirX=ux;dirY=uy;}
             else if(memory.state===STATE.aim){
               if(ctx.tick>=memory.until){
-                memory.state=STATE.walk;memory.actReady=ctx.tick+AGIOTA_SHOT.cooldown;
+                memory.state=STATE.walk;memory.actReady=ctx.tick+bandCooldown(e,AGIOTA_SHOT.cooldown);
                 if(ctx.projectiles.size>=(this.options.projectileCap??PROJECTILE_CAP))break;
                 const sx=e.x+ax*e.radius,sy=e.y+ay*e.radius;
                 const id=ctx.nextId('p');

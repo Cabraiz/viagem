@@ -81,6 +81,12 @@ export interface RoomOptions {
    * otherwise. A city that cannot be played here (locked, or no asset) falls back to the endless map, logged.
    */
   map?:MapId;
+  /**
+   * A person's seat id (default crypto.randomUUID). The run is a pure function of the seed, the inputs and these ids:
+   * the sim breaks ties by player id (pickup order, revives, skills, zueira), so a person's random id decides whether
+   * they come before or after the bots ('bot-1'…). Tests that compare runs pass a fixed sequence.
+   */
+  newId?:()=>string;
 }
 /** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
 export const mapMissingText=(names:string[])=>`${names.join(', ')} ${names.length>1?'precisam':'precisa'} atualizar a página antes de trocar o mapa.`;
@@ -283,6 +289,7 @@ export class Room {
   private readonly sampling:boolean;
   /** wrangler dev with ALLOW_LOCAL (and tests): lab commands such as {t:'lab',down:true} are accepted. */
   private readonly labOn:boolean;
+  private readonly newId:()=>string;
   /** Last "Me salva" ping per player (wall clock), for the room-side anti-spam (UX-resgate-e-ping). */
   private readonly sosAt=new Map<string,number>();
   /** When each player's last relayed emote went out (emote-relay-sala anti-spam). */
@@ -349,7 +356,7 @@ export class Room {
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
-    this.fixedDuration=options.durationTicks;
+    this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.onCheckpoint=options.onCheckpoint;this.log=options.log;
     // A city default starts decoding here; the Worker awaits ready() before the first join, so the welcome names it.
@@ -556,7 +563,7 @@ export class Room {
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
-        const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
+        const id=this.newId(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),knownClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
@@ -570,6 +577,8 @@ export class Room {
         run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
+      // The run's drawn enemies, so this phone fetches their art now (arte-do-roster-no-render).
+      this.pushElenco(c);
       // A reconnecting player gets its pending offers right away instead of on the next broadcast tick.
       this.pushOffers(c);
       // Back after the room restarted in the middle of a run (VGM-047): say what happened, once.
@@ -1021,6 +1030,7 @@ export class Room {
       // People away: their hero follows the team on its own until they are back (no help calls: nobody is holding the phone).
       this.autopilots.think(this.sim);
       const events=this.sim.step(now);
+      this.pushElenco();
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
       for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
@@ -1136,6 +1146,19 @@ export class Room {
   }
   /** A send that throws means the socket is gone: log it like any other end and close it, so it leaves `peers` too. */
   private sendFailed(c:Connection,now=Date.now()){if(this.connections.get(c.peer)===c)this.close(c.peer,1011,'Falha ao enviar.',now);}
+  /**
+   * {t:'elenco',ids} (protocol/room.ts ElencoMessage): to `c` (a joiner) when the run has a rotation, else to everyone
+   * when the run's rotation changed (drawn on its first step; a new run draws another). Cheap: a key compare per tick.
+   */
+  private pushElenco(c?:Connection){
+    const ids=this.sim.rotationIds();
+    if(c){if(ids.length)this.sendJson(c,{t:'elenco',ids});return;}
+    const key=ids.join(',');
+    if(key===this.elencoKey)return;
+    this.elencoKey=key;
+    if(ids.length)this.send({t:'elenco',ids});
+  }
+  private elencoKey='';
   private send(message:object){
     for(const c of [...this.connections.values()])if(c.playerId)this.sendJson(c,message);
   }

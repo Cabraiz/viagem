@@ -213,7 +213,7 @@ export class ObraHud {
     if(!tree||!layout){this.focusWindow=false;return;}
     const panel=el('section','rh-obra-janela',this.el);place(panel,layout.panel);panel.style.zIndex=String(plan.shown.length+2);
     panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);panel.tabIndex=-1;
-    panel.dataset.orientation=layout.orientation;
+    panel.dataset.orientation=layout.orientation;panel.dataset.forma=layout.form;
     const cards=cardsOf(tree),rects=[layout.head,...layout.branches];
     cards.forEach((c,i)=>this.card(panel,c,rects[i],i===0,layout.panel));
     const close=el('button','rh-obra-fechar',panel);close.type='button';place(close,layout.close,layout.panel);

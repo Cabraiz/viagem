@@ -273,8 +273,14 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(let i=0;i<n;i++)world.step();
   return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
 }
-/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11), the city and the endless map again for D-046 (wider cityVisible and spawn ring, city run-in and endless catch-up to the default zoom; the island is unchanged). */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fe207f4b6da4ec6b',ilha:'0d4d774d9e279384',infinito:'9cc409ceb12dfe2b'};
+/**
+ * Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged,
+ * before cidade-11), re-recorded for BUG-20261013-E8 (16a84cd56d5977cb before): on the hero-size planner flow, a wide
+ * body whose own disc clips a wall one step ahead now squeezes by the hero rule (grid.ts citySteer); in this run that
+ * is seven bêbados (0.32 u) for 1–4 ticks each; then the city and the endless map again for D-046 (the widest-camera
+ * contract widens cityVisible and the spawn ring; the director paces the run-in at the default camera).
+ */
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'64e36a57449dd819',ilha:'0d4d774d9e279384',infinito:'9cc409ceb12dfe2b'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

@@ -7,6 +7,9 @@ import {InputBatcher,InputTrack,DIRECTIONS,DIRECTION_BUCKETS,quantizeDirection,S
 import {SPEED,type Point} from '../../src/maps/world.ts';
 import {Room} from '../../multiplayer/room.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const at=(angle:number)=>({x:Math.cos(angle),y:Math.sin(angle)});

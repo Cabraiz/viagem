@@ -199,6 +199,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   if(cp)enemyAi.restore(cp.enemyAi);
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
+    minionKinds:()=>director?.bossMinionKinds(),
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
     // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
     ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),

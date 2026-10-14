@@ -82,6 +82,8 @@ const ATTACK_SLAM=1,ATTACK_CHARGE=2,ATTACK_SWEEP=3;
 export interface BossOptions {
   /** Creates one minion, adds it to ctx.enemies and returns it; undefined when refused (e.g. entity cap). Default: summonFromCatalog. */
   summon?:(ctx:SimContext,kind:string,at:Point)=>EnemyState|undefined;
+  /** Who the summons are (art only: the run's enemies with art, director bossMinionKinds); MINION_KINDS when it gives none. */
+  minionKinds?:()=>readonly string[]|undefined;
   /**
    * Bark through the global limiter: wire `(ctx,e,lines,key)=>enemyAi.say(ctx,e,lines,key)` (D-012).
    * Returns true when emitted. Without it the boss stays silent (it never emits bark events itself).
@@ -306,7 +308,8 @@ export function createBoss(options:BossOptions={}):BossController {
     for(let i=0;i<12&&made<tuning.summonCount&&state.minions.length+state.pending.length<tuning.minionCap;i++){
       const a=start+i/12*Math.PI*2,p={x:boss.x+Math.cos(a)*2.5,y:boss.y+Math.sin(a)*2.5};
       if(!walkable(p,enemyTerrain(ctx.terrain))||minDistance(p,present)<SUMMON_PLACE_DISTANCE)continue;
-      state.pending.push({kind:r.pick(MINION_KINDS),x:p.x,y:p.y,atTick});
+      const kinds=options.minionKinds?.();
+      state.pending.push({kind:r.pick(kinds?.length?kinds:MINION_KINDS),x:p.x,y:p.y,atTick});
       ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:1});
       made++;
     }

@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {groundAt,parseCityAsset} from '../../src/client/render/city/asset.ts';
 import {blockPieces,buildChunks,type BlockPiece,type CityChunk} from '../../src/client/render/city/chunks.ts';
 import {groundQuads,pieceGeometry,viewSide} from '../../src/client/render/city/faces.ts';
 import * as palette from '../../src/client/render/city/palette.ts';
-import {CITY_PALETTE,MATERIALS,SHADOW} from '../../src/client/render/city/palette.ts';
-import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,TRACK,groundDecor,pieceDecor,pieceShadow,shadowUnion,type DecorPrim} from '../../src/client/render/city/decor.ts';
+import {BLOCK_COLORS,CITY_PALETTE,MATERIALS,SHADOW,WALL_STONE,luminance} from '../../src/client/render/city/palette.ts';
+import {BITE_RUBBLE_MAX_HEIGHT,GLINT,ICING_PX,SHADOW_LENGTH,SPECKS,STONE_WALL,TRACK,groundDecor,pieceDecor,pieceShadow,shadowUnion,type DecorPrim} from '../../src/client/render/city/decor.ts';
 import {HEIGHT_PX,project,type Pt} from '../../src/client/render/city/projection.ts';
 
 const asset=parseCityAsset(JSON.parse(readFileSync(new URL('./fixtures/cidade-mini.json',import.meta.url),'utf8')));
@@ -273,4 +274,106 @@ test('shadowUnion: one disjoint shadow per chunk region, covering every piece sh
     }
     assert.ok(prims.every(u=>area4(u.points!)>0));
   }
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Snowy stone walls (card muros-texturizados): only with the relief ground (PieceLook.stoneWalls).
+const STONE={stoneWalls:true} as const;
+const walls=pieces.filter(p=>p.kind==='wall');
+/** Triangles Phaser makes of a primitive: earcut n-2 per polygon, a quad per 1.5 px stroke segment. */
+const tris=(ds:DecorPrim[])=>ds.reduce((s,d)=>s+(d.shape==='poly'?d.points!.length-2:d.shape==='line'?2*(d.points!.length-1):0),0);
+
+test('stone walls: ?relevo=0 (no look) is byte-identical to the plain walls of before the card',()=>{
+  const h=createHash('sha256');
+  for(const v of VIEWS)for(const c of index.chunks)for(const p of c.pieces){
+    const plain=pieceDecor(p,asset,v);
+    assert.deepEqual(pieceDecor(p,asset,v,undefined,{}),plain);
+    assert.deepEqual(pieceDecor(p,asset,v,undefined,{stoneWalls:false}),plain);
+    if(p.kind!=='wall')assert.deepEqual(pieceDecor(p,asset,v,undefined,STONE),plain,`${p.id}: only walls change`);
+    h.update(JSON.stringify(plain));
+  }
+  // Digest of every piece's decor in 4 views at origin/main 11a4003 (before stone walls).
+  assert.equal(h.digest('hex'),'19037eb815037ce1bd57aecf91b195675d5012689b9d4032c4a11294639c0730');
+});
+
+test('stone walls: deterministic, inside the faces, and the same world stones on a wall in every view',()=>{
+  assert.ok(walls.length>20);
+  for(const p of walls){
+    const perSide=new Map<string,string[]>();
+    for(const v of VIEWS){
+      const faces=pieceGeometry(p,asset,v).faces,prims=pieceDecor(p,asset,v,undefined,STONE);
+      assert.deepEqual(pieceDecor(p,asset,v,undefined,STONE),prims);
+      for(const d of prims)for(const q of ptsOf(d))
+        assert.ok(faces.some(f=>inPoly(q,f.points,TOL)),`${p.id} view ${v}: ${d.shape} #${d.color.toString(16)} at ${q.x.toFixed(1)},${q.y.toFixed(1)} outside faces`);
+      for(const side of ['n','s','e','w'] as const){
+        const vs=viewSide(side,v);
+        if(p.seams[side]||(vs!=='+x'&&vs!=='+y'))continue;
+        const face=outerFace(p,side,v)!;
+        const inside=prims.filter(d=>inPoly(centroid(ptsOf(d)),face.points,0.01)).map(sig);
+        const prev=perSide.get(side);
+        if(prev)assert.deepEqual(inside,prev,`${p.id} wall ${side} differs between views`);else perSide.set(side,inside);
+      }
+    }
+  }
+});
+
+test('stone walls: courses of stones under a ragged snow drape with a Breu eave, and a soft rim on the cap',()=>{
+  const stoneTones=new Set([...WALL_STONE.wallLight,...WALL_STONE.wallDark]),drape=new Set([MATERIALS['neve-tampa'].clara,MATERIALS['neve-tampa'].escura]);
+  for(const v of VIEWS)for(const p of walls){
+    const prims=pieceDecor(p,asset,v,undefined,STONE),faces=pieceGeometry(p,asset,v).faces.filter(f=>f.kind!=='cap').length;
+    const stones=prims.filter(d=>stoneTones.has(d.color)),drapes=prims.filter(d=>d.shape==='poly'&&drape.has(d.color)&&d.points!.length>4);
+    assert.equal(drapes.length,faces,`${p.id} view ${v}: one drape per visible face`);
+    assert.equal(prims.filter(d=>d.shape==='line'&&d.color===CITY_PALETTE.breu).length,faces,'one eave line per face');
+    // 4 courses on a 1.6 u wall, 2–4 stones (or stone parts) per course in a unit column, a few of them sunk.
+    assert.ok(stones.length>=faces*5&&stones.length<=faces*16,`${p.id} view ${v}: ${stones.length} stones on ${faces} faces`);
+    // Drape depth within the look's range (px below the top edge).
+    for(const d of drapes){
+      const [a,b,...bottom]=d.points!;
+      for(const q of bottom){const t=Math.abs(b.x-a.x)<1e-9?0:(q.x-a.x)/(b.x-a.x),drop=(q.y-(a.y+(b.y-a.y)*t))/HEIGHT_PX;
+        assert.ok(drop>=STONE_WALL.snow[0]-1e-9&&drop<=STONE_WALL.snow[1]+1e-9,`${p.id}: drape ${drop.toFixed(3)} u`);}
+    }
+    // Cap: one rim strip per non-seam side, first, in the shaded snow tone.
+    const open=(['n','e','s','w'] as const).filter(s=>!p.seams[s]).length;
+    assert.ok(prims.slice(0,open).every(d=>d.color===MATERIALS['neve-tampa'].clara&&d.points!.length===4),`${p.id}: rim strips`);
+  }
+});
+
+test('stone walls: drips and stones meet across unit columns (the same world features on both sides of a seam)',()=>{
+  let joined=0;
+  for(const p of walls){
+    const q=walls.find(o=>o.blockId===p.blockId&&o.x===p.x+1&&o.y===p.y);
+    if(!q)continue;
+    for(const v of VIEWS){
+      const eave=(o:typeof p)=>pieceDecor(o,asset,v,undefined,STONE).filter(d=>d.shape==='line');
+      for(const [la,lb] of eave(p).map((l,i)=>[l,eave(q)[i]] as const)){
+        if(!lb)continue;
+        const ends=[la.points![0],la.points!.at(-1)!],starts=[lb.points![0],lb.points!.at(-1)!];
+        if(ends.some(e=>starts.some(s=>Math.hypot(e.x-s.x,e.y-s.y)<1e-6)))joined++;
+      }
+    }
+  }
+  assert.ok(joined>=40,`joined ${joined}`);
+});
+
+test('stone walls: tones lighter than the face fill, over the 0.131 floor and 3:1 against Breu; palette values only',()=>{
+  const ratio=(a:number,b:number)=>(Math.max(luminance(a),luminance(b))+0.05)/(Math.min(luminance(a),luminance(b))+0.05);
+  for(const face of ['wallLight','wallDark'] as const)for(const c of WALL_STONE[face]){
+    assert.ok(luminance(c)>=0.131,`${face} #${c.toString(16)}`);
+    assert.ok(ratio(c,CITY_PALETTE.breu)>=3,`${face} #${c.toString(16)} vs breu`);
+    assert.ok(luminance(c)>luminance(BLOCK_COLORS.wall[face]),`${face} #${c.toString(16)}: joints read darker than the stones`);
+  }
+  assert.ok(Math.min(...WALL_STONE.wallLight.map(luminance))>Math.min(...WALL_STONE.wallDark.map(luminance)),'the sunnier face is lighter');
+  for(const v of VIEWS)for(const p of walls)for(const d of pieceDecor(p,asset,v,undefined,STONE))assert.ok(allColours.has(d.color),`#${d.color.toString(16)}`);
+});
+
+test('stone walls: triangle budget, at most 24 extra triangles per visible wall face on average (≤ 30 on any)',()=>{
+  let faces=0,extra=0,worst=0;
+  for(const v of VIEWS)for(const p of walls){
+    const n=pieceGeometry(p,asset,v).faces.filter(f=>f.kind!=='cap').length;
+    const x=tris(pieceDecor(p,asset,v,undefined,STONE))-tris(pieceDecor(p,asset,v));
+    faces+=n;extra+=x;if(n)worst=Math.max(worst,x/n);
+  }
+  assert.ok(extra/faces<=24,`${(extra/faces).toFixed(1)} extra triangles per face`);
+  assert.ok(worst<=30,`worst ${worst.toFixed(1)} per face`);
+  console.log(`stone walls: +${(extra/faces).toFixed(1)} triangles per visible face (worst +${worst.toFixed(1)})`);
 });

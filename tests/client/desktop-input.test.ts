@@ -198,8 +198,8 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   assert.match(scene,/this\.followHold\(_time,Math\.hypot\(sx,sy\)>\.05\)/);
   assert.match(scene,/this\.followHold\(time,still\|\|Math\.hypot\(sx,sy\)>\.05\)/);
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.hold\.release\(\);/);
-  // The input still leaves through net.input (input-10hz), unchanged.
-  assert.match(scene,/net\.input\(direction,!this\.paused&&!!this\.hooks\.attacking\?\.\(\),this\.attackTarget\)/);
+  // The input still leaves through net.input (input-10hz); D-051: the attack button rides it as the 4th argument.
+  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!this\.paused&&!!this\.hooks\.attacking\?\.\(\)\)/);
 });
 
 test('texts per input kind: the phone keeps its words, the desktop speaks of keys and clicks',()=>{

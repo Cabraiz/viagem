@@ -26,6 +26,7 @@ import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
 import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
 import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
+import {AttackButton} from './hud/attack-button.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
@@ -45,7 +46,7 @@ import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
-import {INPUT_TEXTS,InputKindWatch,finePointer,focusLost,hotkeyOf} from './desktop-input.ts';
+import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} from './desktop-input.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -74,6 +75,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
   let skill:SkillButton|undefined;
+  /** D-051 manual combat: the same #coop-attack as the attack button (press, hold, drag, reticle); idle otherwise. */
+  let attackBtn:AttackButton|undefined;
   /** Space on the desktop (controles-desktop): the skill button's own tap, set in a room only. */
   let castSkill:(()=>void)|undefined;
   let emotes:EmoteBar|undefined;
@@ -166,9 +169,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${inviteQuery(location.search)}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
-    const tapSkill=castSkill=()=>{pause(false);skill?.tap(()=>net.cast(),performance.now());};
-    attack.addEventListener('pointerdown',e=>{if(e.button!==0||attack.disabled)return;e.preventDefault();tapSkill();});
+    const tapSkill=castSkill=()=>{if(skill?.attackMode)return;pause(false);skill?.tap(()=>net.cast(),performance.now());};
+    attack.addEventListener('pointerdown',e=>{if(skill?.attackMode||e.button!==0||attack.disabled)return;e.preventDefault();tapSkill();});
     attack.addEventListener('click',e=>{if(e.detail===0&&!attack.disabled)tapSkill();});
+    // D-051: in the manual combat the slot is the attack button; its listeners stay idle until the welcome says 'manual'.
+    attackBtn=new AttackButton(attack,$('.explore-layout'),{
+      hero:()=>controller&&sceneReady?net.predicted:undefined,toScreen:p=>controller!.scene.locate(p).screen,
+      enemies:()=>net.feed.enemies.values(),tick:()=>net.tick,
+      chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),
+      wake:()=>pause(false),setHeld:held=>skill?.setHeld(held)});
     net.onCast=result=>skill?.answer(result,performance.now());
   }
   // Only controls overlay the map. All secondary information lives in a native
@@ -232,13 +241,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
     setMusicScene('menu');
   };
-  const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
+  const pause=(value:boolean)=>{paused=value;if(value){reset();attackBtn?.clear();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
@@ -306,7 +315,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(shell.dataset.input===kind)return;
     shell.dataset.input=kind;reset();
     // The notice keeps any later line ("Seguindo a trilha…"); only the other kind's opening words are swapped.
-    const texts=INPUT_TEXTS[kind],notice=net?texts.coopNotice:texts.soloNotice,stale=net?INPUT_TEXTS[other].coopNotice:INPUT_TEXTS[other].soloNotice;
+    const manual=net?.combat==='manual',texts=INPUT_TEXTS[kind],notice=net?coopNotice(kind,manual):texts.soloNotice,stale=net?coopNotice(other,manual):INPUT_TEXTS[other].soloNotice;
     const noticeEl=$('.explore-notice');if(noticeEl.textContent===stale)noticeEl.textContent=notice;
     const help=shell.querySelector('.explore-help-walk');if(help)help.textContent=texts.soloHelp;
     // The waiting room's etiqueta (the phase alone decides off/live; the round's flags are rewritten on the next frame).
@@ -325,6 +334,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const lost=()=>focusLost(inputWatch.kind,{pause:()=>pause(true),release:()=>{reset();controller?.scene.releaseInput();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lost();},{signal});
   window.addEventListener('blur',lost,{signal});
+  // D-051: a held attack (button or Space) never stays held without the focus, phone or desktop.
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)attackBtn?.clear();},{signal});
+  window.addEventListener('blur',()=>attackBtn?.clear(),{signal});
   // Desktop hotkeys: Q/E press the camera buttons (their lock answer included), Space the skill (never the page scroll),
   // T opens or closes the emote bar while it is on screen (a room always mounts it; solo has no room to send a laugh to,
   // so T does nothing there). Movement keys are Phaser's (scene.ts), read every frame like the stick.
@@ -336,12 +348,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(hotkey.kind==='skill')event.preventDefault();
     if(event.repeat)return;
     if(hotkey.kind==='turn'){shell.querySelector<HTMLButtonElement>(`[data-turn="${hotkey.turn}"]:not(:disabled)`)?.click();return;}
-    if(hotkey.kind==='skill'){if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;}
+    if(hotkey.kind==='skill'){
+      // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill.
+      if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true);return;}
+      if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
+    }
     if(emotes&&!emotes.root.hidden)emotes.setOpen(!emotes.open);
   },{signal});
   // A focused button is pressed by Space on its keyup: never, when Space is the skill hotkey (Phaser does the same), so a
   // focused skill button casts once (the keydown above), not twice.
   document.addEventListener('keyup',event=>{if(!closed&&hotkeyOf(event,settings.open)?.kind==='skill')event.preventDefault();},{signal});
+  // D-051: letting go of Space ends the held attack (any keyup of it, even with the settings open or a modifier down).
+  document.addEventListener('keyup',event=>{if(!closed&&event.code==='Space')attackBtn?.key(false);},{signal});
   $('.explore-pause').addEventListener('click',closeSettings,{signal});
   // Consent (VGM-053B, D7): whether this player's embarrassing moment may show on the result, for everyone in the room.
   if(net){
@@ -414,6 +432,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(closed)return;
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,
+      // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
+      attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
       position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
@@ -429,6 +449,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
+          // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
+          const manual=net.combat==='manual';
+          if(shell.dataset.combat!==net.combat){
+            shell.dataset.combat=net.combat;skill?.setCombat(net.combat);attackBtn?.setOn(manual);
+            const noticeEl=$('.explore-notice'),kind=inputWatch.kind;if(noticeEl.textContent===coopNotice(kind,!manual))noticeEl.textContent=coopNotice(kind,manual);
+          }
+          attackBtn?.frame();
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;
@@ -510,6 +537,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
             if(applyControls(shell,controls))reset();
             $<HTMLButtonElement>('#coop-attack').disabled=controls.skill!=='live';
+            if(controls.skill!=='live')attackBtn?.clear();
           }
           $('#coop-objective').textContent=net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha';
           $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`;return tag;}));
@@ -520,6 +548,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
+        if(net)attackBtn?.lastHit.note(view.events,net.id,view.tick,id=>net.feed.enemies.has(id));
         skill?.update(view.players.find(p=>p.id===net?.id),view.tick,performance.now());
         const phase=net?.run?.phase;
         // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).

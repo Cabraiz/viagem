@@ -1,6 +1,6 @@
 /**
  * Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): WASD or the arrows, Q/E to turn the camera, Space for
- * the skill, T for the emote bar, and the mouse like Warcraft 3 (click the ground to walk there, hold to follow the
+ * the skill (D-051 manual combat: held, the attack), T for the emote bar, and the mouse like Warcraft 3 (click the ground to walk there, hold to follow the
  * cursor). The phone keeps the joystick (D-009). Pure helpers only: explore.ts and scene.ts wire them to the DOM and
  * to Phaser; the input still leaves through the joystick's path (net.input, input-10hz), no protocol change.
  */
@@ -151,3 +151,10 @@ export const INPUT_TEXTS:Readonly<Record<InputKind,{soloNotice:string;soloHelp:s
   mouse:{soloNotice:'Clique na trilha para caminhar.',soloHelp:'Clique no chão ou use WASD e as setas.',
     coopNotice:'WASD, setas ou clique pra andar. A arma atira sozinha; clique num bicho para priorizar o alvo.'},
 };
+/** D-051 manual combat: the room's opening words speak of the attack button (phone) and of Space (desktop). */
+export const MANUAL_NOTICE:Readonly<Record<InputKind,string>>={
+  touch:'Arraste para andar. Segure Atacar pra bater; arraste o botão para mirar.',
+  mouse:'WASD, setas ou clique pra andar. Segure Espaço pra atacar; clique num bicho para bater nele.',
+};
+/** The room's opening words for an input kind and its combat. */
+export const coopNotice=(kind:InputKind,manual:boolean)=>manual?MANUAL_NOTICE[kind]:INPUT_TEXTS[kind].coopNotice;

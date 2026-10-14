@@ -57,6 +57,8 @@ test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and o
   // ?modo=muralha asks for the old wall mode (the city plays the chaveiro by default).
   assert.deepEqual(createOptions({objective:'muralha'}),{objective:'muralha'});
   assert.deepEqual(createOptions({objective:'torre'}),{});assert.deepEqual(createOptions({objective:true}),{});
+  // D-051: ?combate=manual asks for the attack button; any other value is dropped.
+  assert.deepEqual(createOptions({combat:'manual'}),{combat:'manual'});assert.deepEqual(createOptions({combat:'auto'}),{});
   const inits:unknown[]=[];
   const env={ALLOW_LOCAL:'false',CREATE_LIMIT:{limit:async()=>({success:true})},ROOMS:{idFromName:(n:string)=>n,get:()=>({init:async(_c:string,o:unknown)=>{inits.push(o);}})}} as any;
   // A browser's string body comes with its Content-Length (the Worker reads only a small declared one).

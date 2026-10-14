@@ -606,7 +606,9 @@ export class Room {
       c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
-        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
+        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map),
+        // D-051: the manual combat turns the skill button into the attack button (absent: the automatic weapons).
+        ...(this.combat?{combat:this.combat}:{})});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
       // The run's drawn enemies, so this phone fetches their art now (arte-do-roster-no-render).

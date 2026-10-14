@@ -4,7 +4,7 @@ import {loadCity} from './city-asset-loader.ts';
 import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,clientCatalog,parseWelcomeMap,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {RunState} from '../../contract/index.ts';
+import type {CombatMode,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
@@ -491,6 +491,7 @@ export class CoopClient {
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
+      this.combat=m.combat==='manual'?'manual':'auto';
       // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
       this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
@@ -739,6 +740,8 @@ export class CoopClient {
    */
   /** Whether this player's embarrassing moment may show on the result (settings, saved on this device). */
   private shamePref=readShamePref();
+  /** D-051: how this room fights, from its welcome ('manual': the attack button; the automatic weapons otherwise). */
+  combat:CombatMode='auto';
   setShamePref(allow:boolean){
     this.shamePref=allow;writeShamePref(allow);
     if(this.socket?.readyState===WebSocket.OPEN&&this.connected)this.out(this.socket,{t:'pref',shame:allow});

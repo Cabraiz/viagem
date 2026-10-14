@@ -34,8 +34,12 @@ export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bot
  * D-047: ?modo= in the page address asks the room for an objective: 'chaveiro' (the city's default anyway) or
  * 'muralha' (the old wall mode); anything else asks for nothing. A room Worker from before ignores the field.
  */
-export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha'}{
-  try{const m=new URLSearchParams(search??'').get('modo');return m==='chaveiro'||m==='muralha'?{objective:m}:{};}catch{return {};}
+export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';combat?:'manual'}{
+  try{
+    const q=new URLSearchParams(search??''),m=q.get('modo');
+    // D-051 (behind the flag until the E6 weapons and the balance pass): ?combate=manual opens the room with the attack button.
+    return {...(m==='chaveiro'||m==='muralha'?{objective:m}:{}),...(q.get('combate')==='manual'?{combat:'manual' as const}:{})};
+  }catch{return {};}
 }
 
 /** Our owner commands go at least this far apart (the room drops one within its OWNER_GAP_MS, 300 ms, of the last). */

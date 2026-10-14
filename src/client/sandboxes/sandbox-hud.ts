@@ -95,6 +95,10 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser):not(.hs-hero){display
 .hs-cidade .hs-world{background:repeating-linear-gradient(135deg,#eef3f6 0 22px,#e3eaef 22px 44px)}.hs-cidade .hs-world::after{display:none}
 /* The game's coach style for the joystick (explore.css .explore-stick under data-coach-stick): edge and knob in Amarelo. */
 body:has(>.rh[data-coach-stick]) .hs-stick{border-color:var(--c-amarelo,#FFD23F);color:var(--c-amarelo,#FFD23F)}
+.hs-heroi .hs-cam{display:none}
+.hs-heroi .hs-stick{left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom))}
+.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));width:var(--botao-habilidade);height:var(--botao-habilidade)}
+@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:96px;height:96px;left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}}
 .hs-hero{position:fixed;z-index:6;width:56px;height:56px;box-sizing:border-box;border-radius:50% 50% 40% 40%;background:#f4c9a8;border:3px solid #6e5198;pointer-events:none}
 `;
 document.head.append(style);
@@ -232,6 +236,23 @@ if(zueira){
   send();setInterval(send,1500);
 }
 (window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};
+
+/**
+ * `heroi=1` (BUG-20261014-ORQ-forja-cobre-heroi-retrato; the city scenes always do it): the hero's 56 px box with its body
+ * at the viewport centre, as the round's follow camera puts it (BUG-20261013-ORQ-camera-centro-heroi), and the mock
+ * joystick and skill button where the phone's shell draws them (explore.css: 112 px stick 24 px in; 96 px at 16/18 px
+ * when ≤ 370 px wide; the skill --botao-habilidade; no camera buttons), so a print shows whether a window covers the hero.
+ * `body[data-hero]` holds the box.
+ */
+if(params.get('heroi')==='1'&&!cidade){
+  const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
+  document.body.classList.add('hs-heroi');
+  const place=()=>{
+    const box={x:innerWidth/2-28,y:innerHeight/2-28,width:56,height:56};
+    Object.assign(heroEl.style,{left:`${box.x}px`,top:`${box.y}px`});document.body.dataset.hero=JSON.stringify(box);
+  };
+  place();addEventListener('resize',place);
+}
 
 if(!frozen)setInterval(()=>{
   if(scenario==='result')return;

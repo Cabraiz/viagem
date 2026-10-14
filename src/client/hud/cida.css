@@ -77,3 +77,17 @@
   .rh .rh-cida-doce{padding:17px 5px 4px}
   .rh:has(.rh-cida:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(40vw,340px) + 8px)}
 }
+/* Portrait (card forja-cobre-heroi-retrato): as the forge, the tray sits on the thumbs (its bottom THUMB_GAP over the
+   taller of the joystick and the skill button) in a tight frame, and its sweets keep their row of three with the name
+   in 2 lines at most (1 at 125%) and what it does in 2, so the hero at the viewport centre ± HERO_MARGIN stays clear at
+   100% and 125% (360x800 at 125%: the tray was 419–640 over the hero's 372–428). tests/client/forja-retrato.test.ts. */
+@media (min-height:501px) and (orientation:portrait){
+  .rh-cida{padding:0 6px 2px;gap:0;bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(112px,var(--botao-habilidade)) + 24px)}
+  /* 4 px sides: at 360 px and 125% a sweet's text gets 92 px, and "menos dano" (88 px) keeps its second line whole. */
+  .rh .rh-cida-doce{padding-left:4px;padding-right:4px}
+  .rh-cida-nome,.rh-cida-efeito{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  :root[data-texto="125"] .rh-cida-nome{-webkit-line-clamp:1}
+}
+@media (min-height:501px) and (orientation:portrait) and (max-width:370px){
+  .rh-cida{bottom:calc(max(16px,env(safe-area-inset-bottom)) + max(96px,var(--botao-habilidade)) + 24px)}
+}

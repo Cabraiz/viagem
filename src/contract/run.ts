@@ -3,6 +3,7 @@
  * lobby → countdown → combat → result. The lifecycle that drives it is src/sim/run.ts (RunLifecycle); the shame
  * moment of the result is picked by src/sim/shame.ts (ShameTracker).
  */
+import type {ObjectiveResult} from './objective.ts';
 /** Shame moment kinds of the result (VGM-053B). */
 export type ShameKey='recaida'|'apagao'|'coxinha'|'pombos'|'cedo'|'sem-boleto'|'coxinha-cheia'|'caiu';
 /** The run's most embarrassing moment, shown in the result. */
@@ -25,4 +26,6 @@ export interface RunState {
   shame?:ShameMoment;
   /** The room's owner ("dono da sala", D-025; "chefe" is the boss of the game): the only one whose kick and bot commands the room accepts. */
   owner?:string;
+  /** Result only, chaveiro objective (D-047): the bill (budget, paid, debt), the car and the chaveiro's ETA. */
+  objective?:ObjectiveResult;
 }

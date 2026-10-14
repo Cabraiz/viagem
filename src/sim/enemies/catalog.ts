@@ -258,8 +258,16 @@ export const BAND_DAMAGE='bd',BAND_CADENCE='bc';
 const bandOf=(enemy:object,key:string)=>{const v=(enemy as {memory?:Record<string,number>}).memory?.[key];return typeof v==='number'&&v>0?v:1;};
 /** `cooldown` ticks × the enemy's BAND_CADENCE (whole ticks). */
 export const bandCooldown=(enemy:object,cooldown:number)=>Math.round(cooldown*bandOf(enemy,BAND_CADENCE));
-/** × the coach's lecture buff, × a borrowed entry's band damage (BAND_DAMAGE): every hostile hit goes through it. */
-export const coachMult=(enemy:object,tick:number)=>(isCoached(enemy,tick)?PALESTRA.damageMult:1)*bandOf(enemy,BAND_DAMAGE);
+/**
+ * D-047 Dona Cida sold it a sweet (chaveiro objective): "açucarado" until `sugarUntil` (EnemyState extra, D-002):
+ * × SUGAR.damage on every hit it deals (through coachMult) and × SUGAR.speed on its walk (enemy-ai paceSpeed, still
+ * within the peak cap). Absent outside the objective.
+ */
+export const SUGAR=Object.freeze({damage:1.3,speed:1.2,duration:ticks(20)});
+export interface SugaredEnemy {sugarUntil?:number}
+export const isSugared=(enemy:object,tick:number)=>tick<((enemy as SugaredEnemy).sugarUntil??-Infinity);
+/** × the coach's lecture buff, × a borrowed entry's band damage (BAND_DAMAGE), × Dona Cida's sugar: every hostile hit goes through it. */
+export const coachMult=(enemy:object,tick:number)=>(isCoached(enemy,tick)?PALESTRA.damageMult:1)*bandOf(enemy,BAND_DAMAGE)*(isSugared(enemy,tick)?SUGAR.damage:1);
 /** Kinds the auto-aim of the weapons prefers right after the tapped target (weapons/system.ts targets()): the supports. */
 export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coach'||!isLegacyKind(enemy.kind)&&enemyDef(enemy.kind).behavior==='coach';
 

@@ -297,7 +297,7 @@ class CitySandbox extends Phaser.Scene {
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
-    const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true}:{};
+    const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},

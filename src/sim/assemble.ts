@@ -23,10 +23,12 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
-import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
+import {CityTerrain,baseHeroSpeed,cityNestPlan} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {cityRunStart} from './city/tutorial.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -83,6 +85,12 @@ export interface RunSystemsOptions {
    * the chaveiro's ETA; victory when he opens the car, defeat when it is a total loss or the team falls. Default off.
    */
   objective?:ObjectiveKind;
+  /**
+   * D-051: 'ninhos' (only with the chaveiro objective in the city; ignored elsewhere) replaces the director's waves with
+   * the nests (sim/ninhos/ninhos.ts): groups on each nest's timer, nests that fall, the boss out of the biggest live
+   * nest. Default 'rounds' (today's waves) until the D-051 bars pass.
+   */
+  mode?:'rounds'|'ninhos';
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -92,6 +100,8 @@ export interface RunSystemsState {
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
+  /** D-051, only in mode 'ninhos' (absent otherwise). */
+  ninhos?:NestsState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -103,6 +113,8 @@ export interface RunSystems {
   avenues?:AvenuePlanner;
   /** D-047: the chaveiro objective of this run (city with RunSystemsOptions.objective 'chaveiro'), else absent. */
   chaveiro?:ChaveiroSystem;
+  /** D-051: the nests of a run in mode 'ninhos', else absent. */
+  nests?:NestsSystem;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
@@ -155,6 +167,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let bossDown=false;
   // D-047: the chaveiro decides the run instead of the boss and the round count (created below, city only).
   let chaveiro:ChaveiroSystem|undefined;
+  // D-051: the nests of mode 'ninhos' (created with the chaveiro, below).
+  let nests:NestsSystem|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
@@ -164,6 +178,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
   const objective=cityWorld&&options.objective==='chaveiro'?options.objective:undefined;
+  // D-051: the nests replace the waves only for the chaveiro in the city (A5: the wall, the island and the endless keep rounds).
+  const nestMode=!!objective&&options.mode==='ninhos';
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
     if(input&&Math.hypot(input.x,input.y)>=.01)steered.add(id);
@@ -259,7 +275,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       if(chaveiro)return chaveiro.state.car;
       const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;
     },
-    ...(objective?{endlessWaves:true}:{}),
+    ...(objective?{endlessWaves:true}:{}),...(nestMode?{waves:false}:{}),
     // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
     // groups aimed at a team away from the base.
     ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
@@ -275,14 +291,29 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;
     chaveiro=createChaveiro({wallet:{get:()=>stonewards.state.grana,spend:n=>{stonewards.state.grana-=n;}},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
-      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
+      // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
+      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);}},cp?.chaveiro);
+    if(nestMode){
+      const entrances={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car={x:wall.x,y:wall.y},city=cityTerrain;
+      // The plan's keep-offs: the moto's four possible routes (one per entrance) and the run's start.
+      const routes=ENTRANCES.map(e=>planChaveiro(world.seed,openPlanner.grid,entrances,car,e).route.points);
+      nests=createNests({
+        plan:players=>cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)}),
+        players:ctx=>director!.scalePlayers(ctx),
+        maxEnemies:MAX_ENEMIES,
+        createEnemy:(ctx,kind,point,scale)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
+        roster:round=>director!.roster(round),
+        pay:n=>{stonewards.state.grana+=n;},
+      },cp?.ninhos);
+    }
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   world.clearSystems();
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot)),
-    {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
+    // D-051: the nests step in the director's slot (no new system id), right after it.
+    {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
@@ -306,10 +337,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(nests?{ninhos:nests.state}:{})}),
     dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

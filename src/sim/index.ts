@@ -18,6 +18,8 @@ export * from './stonewards/resources.ts';
 // torres-fio: what the rooms put on the wire and validate (the defenses' ids, phases and results).
 export {DEFENSES,DEFENSE_PHASES,RAIL,isDefenseId,phaseOf,type DefenseId,type DefensePhase,type Branch} from './towers/catalog.ts';
 export type {DefenseState,TowerResult,TowerRefusal} from './towers/system.ts';
+// torres-ajustes: the reach rule and the repair price (rooms and tools may read them).
+export {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 export * from './systems/players.ts';
 export * from './telegraphs.ts';
 export * from './zueira.ts';

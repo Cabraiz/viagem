@@ -8,7 +8,7 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {decide,newMemory,towerBrainView,HZ,type BrainMemory,type TowerBrainView} from '../src/sim/index.ts';
+import {decide,newMemory,towerBrainView,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {railName} from '../src/rules/index.ts';
@@ -25,6 +25,14 @@ export const BOT_FORGE_LEFT=15*HZ;
  * team's material is the people's first (a 13 s intermission left them no window when the bot went at 15 s).
  */
 export const BOT_FORGE_LEFT_WITH_PEOPLE=5*HZ;
+/**
+ * torres-ajustes: the sim takes a tower order only from next to the obra (BUILD_REACH), a 7–20 s walk from the
+ * fountain. The builder (the same first standing bot) gets the tower view this long before the end (a whole city
+ * intermission: its first trip may start at once). Alone with bots it
+ * orders as soon as it gets there; with a person only in the last BOT_FORGE_LEFT_WITH_PEOPLE (orderFrom). Either way
+ * bot-brain decide only takes a trip (there, the order, back into the base) that ends before the round.
+ */
+export const BOT_BUILD_LEFT=60*HZ;
 /**
  * Funny names, all within NICK_MAX (20). The HUD rail and the caído ficha show only the first word (railName, 9
  * letters), so every first word is its own and none is "Bot": the robot sticker already says bot.
@@ -67,21 +75,25 @@ export class RoomBots {
   thinkMs=0;thinks=0;
   /** Forge buys that went through (lab and bench). */
   forged=0;
-  /** Tower builds and upgrades that went through (torres-fio: lab and tests). */
+  /** Tower builds, upgrades and repairs that went through (torres-fio: lab and tests). */
   built=0;
+  /** Bench --no-towers (scripts/bench-city-run.ts): the builder never gets the tower view, so no bot builds. */
+  towersOff=false;
+  /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
+  readonly modes=new Map<string,Decision['mode']>();
   get ids(){return [...this.minds.keys()];}
   get size(){return this.minds.size;}
   has(id:string){return this.minds.has(id);}
   /** `slot`: the bot's number in the room (staggers the thinking and spreads the gather nodes and the orbit). */
   add(id:string,slot:number){this.minds.set(id,{id,slot,memory:newMemory(slot),req:0});}
-  remove(id:string){this.minds.delete(id);}
+  remove(id:string){this.minds.delete(id);this.modes.delete(id);}
   slotOf(id:string){return this.minds.get(id)?.slot??0;}
   /** The lowest slot no bot holds (0..5), or the first free one of from, from+step… */
   freeSlot(from=0,step=1){const used=new Set([...this.minds.values()].map(m=>m.slot));let slot=from;while(used.has(slot))slot+=step;return slot;}
   /** What decides the bots' next choices (Simulation.stateHash): each mind by slot, plain JSON. */
   state(){return [...this.minds.values()].sort((a,b)=>a.slot-b.slot).map(m=>({id:m.id,slot:m.slot,req:m.req,memory:m.memory}));}
   /** New run: fresh memories (forge refusals, offers seen, unstick), same slots. */
-  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;}}
+  reset(){for(const m of this.minds.values()){m.memory=newMemory(m.slot);m.req=0;}this.modes.clear();}
   /**
    * Before each combat step: the bots due this tick decide. Returns the bots that ask for help ("Me salva"), which
    * the room relays to the people like a phone's ping.
@@ -90,17 +102,22 @@ export class RoomBots {
     if(!this.minds.size)return [];
     const started=performance.now(),tick=sim.tick,sos:string[]=[];
     const minds=[...this.minds.values()].sort((a,b)=>a.slot-b.slot);
-    let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,towers:TowerBrainView|undefined;
+    let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,builder:string|null|undefined,towers:TowerBrainView|undefined;
+    let people:boolean|undefined;
     for(const mind of minds){
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
       if(!p)continue;
       view??=sim.botView();
-      if(forger===undefined)forger=this.forger(view,minds,view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator));
-      // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder).
-      if(forger===mind.id&&!towers){
-        const st=sim.run.stonewards,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
-        towers=towerBrainView(st.state,st.plan,view.tick,view.round?.index??0,person);
+      people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
+      if(forger===undefined)forger=this.forger(view,minds,people);
+      if(builder===undefined)builder=this.towersOff?null:this.forger(view,minds,people,BOT_BUILD_LEFT);
+      // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder); torres-ajustes: it
+      // walks to the obra first, so it gets the view earlier; with a person here it orders only in their last seconds.
+      if(builder===mind.id&&!towers){
+        const st=sim.run.stonewards,round=view.round,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
+        towers=towerBrainView(st.state,st.plan,view.tick,round?.index??0,person,
+          people?(round?.phaseEndsTick??view.tick)-BOT_FORGE_LEFT_WITH_PEOPLE:undefined);
       }
       // The person to walk with: the nearest one standing (bots follow people, never each other).
       let escort:{x:number;y:number}|undefined,near=Infinity;
@@ -110,7 +127,8 @@ export class RoomBots {
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
       const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
-        ...(forger===mind.id&&towers?{towers}:{})});
+        ...(builder===mind.id&&towers?{towers}:{})});
+      this.modes.set(mind.id,d.mode);
       sim.setBotInput(mind.id,d.direction,d.cast);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){
@@ -120,7 +138,7 @@ export class RoomBots {
       }
       if(d.build){
         const order=d.build,req=`bot-${mind.id}-${++mind.req}`;
-        const result='build' in order?sim.build(mind.id,order.build,req):sim.upgrade(mind.id,order.upgrade,order.branch,req);
+        const result='build' in order?sim.build(mind.id,order.build,req):'upgrade' in order?sim.upgrade(mind.id,order.upgrade,order.branch,req):sim.repair(mind.id,order.repair,req);
         if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);
@@ -128,10 +146,13 @@ export class RoomBots {
     if(view){this.thinkMs+=performance.now()-started;this.thinks++;}
     return sos;
   }
-  /** The bot that may buy now: the first standing bot by slot, and only in the late part of an intermission. */
-  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false):string|null{
+  /**
+   * The bot that may buy now: the first standing bot by slot, and only in the last `left` ticks of an intermission
+   * (BOT_FORGE_LEFT, or BOT_FORGE_LEFT_WITH_PEOPLE with a person here).
+   */
+  private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false,left=people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT):string|null{
     const round=view.round;
-    if(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>(people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT))return null;
+    if(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>left)return null;
     for(const m of minds){
       const p=view.players.find(q=>q.id===m.id);
       if(p&&p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)return m.id;

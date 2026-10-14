@@ -5,4 +5,4 @@
  * - The city: 16 sites around the plaza and the Gustavão's rail on the west avenue (railRect). The endless camp: per
  *   seed (cached per terrain object; never assume a count), no rail. The island: none.
  */
-export {buildPlanFor,footprint,railRect,validateBuildPlan,type BuildPlan,type BuildSite,type BuildSize,type RailSite} from '../../maps/index.ts';
+export {buildPlanFor,footprint,railRect,rectDistance,validateBuildPlan,type BuildPlan,type BuildSite,type BuildSize,type RailSite,type Rect} from '../../maps/index.ts';

@@ -86,13 +86,14 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
  * Re-measured after the siege fix (BUG-…-cerco-parado-boca-n: bodies no longer stall, so 6 bots won 7/8): with 6
  * players more bodies do nothing (the round's enemy cap), so they take more damage and face a tougher boss.
  * 8 seeds, 25 min cap (D-043): 1p 2/8, 6p 4/8.
+ * torres-ajustes (bots walk to the obra and back, towers ruin): 6p damage 1.6 → 1.45, 16 seeds: 1p 3/16, 6p 8/16.
  */
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
     1:Object.freeze({count:.5,hp:.7,damage:.45,bossHp:.45,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
-    6:Object.freeze({count:1.07,hp:1.2,damage:1.6,bossHp:1.4}),
+    6:Object.freeze({count:1.07,hp:1.2,damage:1.45,bossHp:1.4}),
   }),
 });
 

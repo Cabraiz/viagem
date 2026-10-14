@@ -8,7 +8,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '..
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,MAX_WEAPONS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -647,6 +647,7 @@ export class Room {
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
+    else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -972,6 +973,25 @@ export class Room {
    * buyer hears {t:'bought',req,item,ok,grana?|reason?}; everyone sees the Grana and the stock in the next frame and the
    * purchase as a `buy` event.
    */
+  /**
+   * D-051 inventory (manual combat): {t:'equip'|'use'|'drop',round,slot} and {t:'take',round,pickup} (the pickup's wire
+   * id, like a tap target). The answer {t:'inv',cmd,ok,reason?} says why a tap did nothing ('far', 'last-weapon', …);
+   * the frames carry the result.
+   */
+  private inventory(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    let result;
+    if(m.t==='take'){
+      const pickup=typeof m.pickup==='string'&&m.pickup.length<=12?this.ids.resolve(m.pickup):undefined;
+      if(!pickup)return;
+      result=this.sim.inventory(c.playerId!,{t:'take',pickup});
+    }else{
+      if(!Number.isSafeInteger(m.slot)||m.slot<0||m.slot>=MAX_WEAPONS)return;
+      result=this.sim.inventory(c.playerId!,{t:m.t,slot:m.slot});
+    }
+    this.sendJson(c,{t:'inv',cmd:m.t,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
+  }
   private cida(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;

@@ -1452,3 +1452,26 @@ test('D-009 with the chaveiro objective and 12 defenses firing: 6 clients x 300 
   assert.ok(withObjective['20Hz']<50_000,`20 Hz: ${withObjective['20Hz']}`);
   assert.ok(withObjective['10Hz']<30_000,`10 Hz: ${withObjective['10Hz']}`);
 });
+
+test('D-051: the manual combat inventory round-trips: the hand slot, arsenal ids, ground items and crates by rarity',()=>{
+  const w=busyWorld(new Rng(3),10);
+  const v=w.view;
+  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'rojao',level:4},{id:'coxinha',level:3},{id:'chinelo-lendario',level:5}],
+    passives:[{id:'pente',level:2},{id:'silenciador',level:1}],hand:1});
+  v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit-torre',value:2};
+  v.pickups[1]={...v.pickups[1],kind:'chest',value:4};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const res=dec.decode(enc.encode(v));
+  assert.ok(res.ok,!res.ok?res.error:'');
+  const p0=res.view.players.find(p=>p.id==='uuid-0')!;
+  assert.equal(p0.hand,1);
+  assert.deepEqual(p0.weapons,v.players[0].weapons);assert.deepEqual(p0.passives,v.players[0].passives);
+  assert.equal(res.view.players.find(p=>p.id==='uuid-1')!.hand,undefined,'the automatic game sends no hand');
+  const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit-torre',2]);
+  assert.equal(res.view.pickups.find(k=>k.kind==='chest')!.value,4);
+  // A hand change alone travels as a delta.
+  enc.ack(enc.lastSeq);
+  v.players[0]={...v.players[0],hand:3};
+  const delta=dec.decode(enc.encode(v));
+  assert.ok(delta.ok);assert.equal(delta.view.players.find(p=>p.id==='uuid-0')!.hand,3);
+});

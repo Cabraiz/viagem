@@ -135,6 +135,11 @@ export const DICT:readonly string[]=[
   // (morta/lombada/entrega are also the stop kinds), the car's parts and Dona Cida's sweets.
   'quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',
   'para-choque','retrovisor','porta','capo','brigadeiro','pacoca','cocada',
+  // D-051 (manual combat): the ground item pickup, the arsenal's weapons and legendaries, the consumables and the hand's
+  // passives (src/sim/weapons/arsenal.ts, src/rules/passives.ts).
+  'item','faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
+  'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
+  'coxinha','kit-torre','pente','silenciador',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -340,6 +345,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
     // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
     fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
+    // D-051 manual combat: the inventory's hand slot (`weapons` is the inventory); absent with the automatic weapons.
+    hand:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),

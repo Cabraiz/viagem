@@ -42,6 +42,16 @@ export const WALL_HEIGHT=1.6,EDGE_HEIGHT=1.6,RUBBLE_HEIGHT=0.3;
 export const CLIFF_LIP_HEIGHT=0.35;
 /** Prop footprint radius clamp (world units); the render drops r <= 0. */
 export const PROP_R_MIN=0.1,PROP_R_MAX=0.8;
+/**
+ * Props closer than PROP_STACK (world units) to one already kept, whatever the kind, are one doodad stacked several
+ * times in the .w3x (a stacked `prop` hashes to a different kind per copy: lamp, barrel, crate…).
+ */
+export const PROP_STACK=0.5;
+/**
+ * Same-kind props closer than this are dropped too: a lamp per street spot (2.5 u: street lamps stand farther apart;
+ * the .w3x clusters them 1–2 u apart); the rest only by PROP_STACK.
+ */
+export const PROP_DEDUP:Readonly<Record<PropKind,number>>={lamp:2.5,pine:PROP_STACK,car:PROP_STACK,rubble:PROP_STACK,crate:PROP_STACK,barrel:PROP_STACK,bench:PROP_STACK,debris:PROP_STACK};
 
 /** maps prop kind → render prop kind(s); several = chosen per prop by hash; null = not drawn as a prop. */
 const PROP_KINDS:Readonly<Record<string,readonly PropKind[]|null>>={
@@ -105,7 +115,8 @@ const COVER_NONE=0,COVER_PLAIN=1,COVER_RUBBLE=2,COVER_EDGE=3;
  *    rubble RUBBLE_HEIGHT. `ruined` on ~RUINED_PERCENT% of buildings, seeded by block id (shared by all its rects).
  * 5. Props: kinds mapped by PROP_KINDS ('prop' picks crate/barrel/bench/lamp by hash of the prop id; fountain and
  *    door are dropped; unknown kinds → debris); r clamped to [PROP_R_MIN, PROP_R_MAX]; id `p${sourceIndex}`; props
- *    whose cell is under a render block are dropped.
+ *    whose cell is under a render block are dropped; one per spot: a prop closer than PROP_STACK to one already kept,
+ *    or closer than PROP_DEDUP to one of its kind, is dropped too.
  * 6. Points: inicio, praca, spawnN/S/L/O and bocas N/S/L/O as bocaN/bocaS/bocaL/bocaO.
  * The result is already in parseCityAsset's normal form (parsing it returns an equal value).
  */
@@ -218,6 +229,11 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
     const cx=Math.floor(q.x/cell),cy=Math.floor(q.y/cell);
     if(cx<0||cy<0||cx>=W||cy>=H||cover[cy*W+cx]!==COVER_NONE)continue;
     const kind=options.length===1?options[0]:options[hash(id,'kind')%options.length];
+    // One prop per spot (proporcoes-postes-predios): the .w3x stacks doodads (5 lamps within 1 u by the start); a
+    // prop closer than PROP_STACK to one already kept, or of the same kind closer than PROP_DEDUP, is dropped (the first
+    // eligible one in source order stays).
+    const near=PROP_DEDUP[kind];
+    if(props.some(o=>{const d=Math.hypot(o.x-q.x,o.y-q.y);return d<PROP_STACK||(o.kind===kind&&d<near);}))continue;
     props.push({id,kind,x:q.x,y:q.y,r:Math.min(PROP_R_MAX,Math.max(PROP_R_MIN,q.r))});
   }
 

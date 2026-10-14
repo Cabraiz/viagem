@@ -58,6 +58,14 @@ export const PROP_FAMILIES:Readonly<Record<PropKind,readonly string[]>>={
   debris:['placa-torta','sofa-calcada','carrinho-supermercado','cone-transito','bicicleta-presa-gelo','lixeira','isopor','tronco-caido'],
 };
 export const FOUNTAIN_PIECE='chafariz-congelado';
+/**
+ * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
+ * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
+ * the car about the hero's height, barrels, crates, benches and street junk at its waist or chest, the bent sign
+ * ~1.4×; the lamp × 0.46, ~1.9× the hero (the Orquestrador's mark against the drawn houses).
+ * The pines keep theirs (≈ 3.4×, a 6 m snowy pine) and so do the rocks (rubble piles).
+ */
+export const PROP_WORLD_SCALE:Readonly<Record<PropKind,number>>={lamp:.46,car:.56,crate:.56,barrel:.56,bench:.56,debris:.56,pine:1,rubble:1};
 
 /** One texture to load: a single-page sheet of `views` frames (or more: extra rows are other states, unused). */
 export interface CitySheet {key:string;url:string;frameWidth:number;frameHeight:number;
@@ -150,8 +158,9 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
     const out:CitySheet[]=[];
     for(const fam of PROP_FAMILIES[kind])for(const {id,f} of byFamily.get(fam)??[]){
       const originY=originYOf(f,8);
+      const scale=small*PROP_WORLD_SCALE[kind];
       const s:CitySheet={key:`city:prop:${kind}/${id}`,url:groupFileUrl(props!,f.file!),frameWidth:f.cell[0],frameHeight:f.cell[1],
-        originY,height:f.cell[1]*originY*small/HEIGHT_PX,scale:small};
+        originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale};
       out.push(s);plan.sheets.push(s);
     }
     if(out.length)plan.props[kind]=out;

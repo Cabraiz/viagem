@@ -12,7 +12,7 @@ import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
   ART_CELL,CITY_ART_HEIGHT,GROUND_FROM_MANIFEST,LOT_UNIT,buildCityArtPlan,cityArtOptions,fountainLot,pieceFamily,planHasArt,planLots,
-  propSheet,sheetHeight,type CityArtPlan,
+  PROP_WORLD_SCALE,propSheet,sheetHeight,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
 import type {CityBlock} from '../../src/client/render/city/asset.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
@@ -74,7 +74,7 @@ test('demo manifest → keys, url, anchor line, height and scale per option', ()
     assert.ok(Math.abs(house.height-h)<1e-9&&Math.abs(sheetHeight(BUILDING.cell[1],house.originY,[2,1],ART_CELL,house.scale)-h)<1e-9);
     const bench=propSheet({id:'p1',kind:'bench'},plan)!;
     assert.equal(bench.key,`city:prop:bench/${PROP.id}`);
-    assert.equal(bench.scale,1/ART_SCALE,'props keep the delivered scale in both options');
+    assert.equal(bench.scale,PROP_WORLD_SCALE.bench/ART_SCALE,'props: the delivered scale × their world scale (proporcoes-postes-predios), in both options');
     assert.ok(Math.abs(bench.originY-(1-CITY_ART.propBottom/PROP.cell[1]))<1e-6);
     assert.equal(propSheet({id:'p1',kind:'lamp'},plan),undefined,'no poste piece: procedural lamp');
     assert.deepEqual(plan.ground,{},'ground stays off (D-038)');

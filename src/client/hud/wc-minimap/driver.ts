@@ -17,7 +17,8 @@ export const BASE_HIT_BLINK_MS=1500;
 
 export interface MmPlayer {id:string;x:number;y:number;online:boolean;spectator?:boolean}
 export interface MmState {downed?:unknown;eliminated?:boolean}
-export interface MmStructureView {kind:string;x:number;y:number;phase?:string}
+/** `ninho` (D-051): drawn only once `seen` (the fog: someone in the team has seen it), its roof by `size`. */
+export interface MmStructureView {kind:string;x:number;y:number;phase?:string;size?:string;seen?:boolean}
 export interface DriverInput {
   minimap:WcMinimap;terrain:TerrainField;city?:MapsCityAsset;view:number;nowMs:number;
   selfId:string;self:Pt;players:readonly MmPlayer[];states:ReadonlyMap<string,MmState>;
@@ -74,8 +75,13 @@ export class WcMinimapDriver {
     let s=0;
     const hit=input.nowMs-input.wallHitAt<BASE_HIT_BLINK_MS;
     for(const st of input.structures){
+      if(st.kind==='ninho'){
+        if(!st.seen)continue;
+        const q=this.structures[s]??={x:0,y:0,kind:'nest'};s++;q.x=st.x;q.y=st.y;q.kind='nest';q.hit=undefined;
+        q.size=st.size==='P'||st.size==='G'?st.size:'M';continue;
+      }
       const kind=st.kind==='muralha'?'base':st.kind==='barricade'||st.kind.startsWith('barricada')?'barricade':'tower';
-      const q=this.structures[s]??={x:0,y:0,kind:'tower'};s++;q.x=st.x;q.y=st.y;q.kind=kind;q.hit=kind==='base'&&hit||undefined;
+      const q=this.structures[s]??={x:0,y:0,kind:'tower'};s++;q.x=st.x;q.y=st.y;q.kind=kind;q.hit=kind==='base'&&hit||undefined;q.size=undefined;
     }
     this.structures.length=s;
     input.minimap.render({frame,terrain,border,camera:input.corners.length===4?cameraQuad(input.corners,frame):undefined,

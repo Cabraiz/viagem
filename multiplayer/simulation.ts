@@ -139,12 +139,13 @@ const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
 const pointOk=(v:unknown)=>isObject(v)&&finite(v.x)&&finite(v.y);
 /** Owned items of one kind: known ids of that kind, levels 1..maxLevel, no duplicates, at most `max`. */
-function itemsOk(list:unknown,kind:'weapon'|'passive',max:number){
+/** `repeats`: the D-051 inventory may hold two of an item (two pistolas, two coxinha stacks). */
+function itemsOk(list:unknown,kind:'weapon'|'passive',max:number,repeats=false){
   if(!Array.isArray(list)||list.length>max)return false;
   const seen=new Set<string>();
   for(const item of list){
     const def=isObject(item)&&typeof item.id==='string'?ITEMS.get(item.id):undefined;
-    if(!def||(kind==='passive')!==(def.kind==='passive')||seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
+    if(!def||(kind==='passive')!==(def.kind==='passive')||!repeats&&seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
     seen.add(def.id);
   }
   return true;
@@ -153,7 +154,11 @@ function itemsOk(list:unknown,kind:'weapon'|'passive',max:number){
 function playerRunOk(run:unknown){
   if(!isObject(run)||!finite(run.x)||!finite(run.y)||!finite(run.hp)||run.hp<0||!pointOk(run.facing))return false;
   const build=run.build;
-  if(!isObject(build)||!itemsOk(build.weapons,'weapon',MAX_WEAPONS)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
+  // D-051: an inventory (a hand slot) may repeat items, and its hand is one of its slots.
+  if(!isObject(build))return false;
+  const hand=build.hand,slots=Array.isArray(build.weapons)?build.weapons.length:0;
+  if(hand!==undefined&&!(Number.isSafeInteger(hand)&&(hand as number)>=0&&(hand as number)<Math.max(1,slots)))return false;
+  if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
   for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);

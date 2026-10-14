@@ -133,3 +133,30 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   assert.ok(got,'a prize came out');
   assert.equal(s.view('p0').players[0].hand,me.build.hand);
 });
+
+test('a manual city checkpoint keeps the inventories (repeats, the hand) and the crates, and plays on like the original',async()=>{
+  const {readFileSync}=await import('node:fs');const {fileURLToPath}=await import('node:url');const {cityTerrainFrom}=await import('../../src/maps/city/terrain.ts');
+  const {RoomBots}=await import('../../multiplayer/room-bots.ts');const {stateHash}=await import('../../src/sim/core.ts');
+  const root=(p:string)=>fileURLToPath(new URL(`../../${p}`,import.meta.url));
+  const loaded=await cityTerrainFrom(readFileSync(root('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(root('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
+  if(!loaded.ok)throw new Error(loaded.error);
+  const make=()=>{const s=new Simulation(11,{world:'cidade',terrain:loaded.terrain,cityStructures:true,combat:'manual'});for(const id of ['bot-1','bot-2'])s.addBot(id,id,'cidadao-comum');return s;};
+  const sim=make(),bots=new RoomBots();bots.add('bot-1',0);bots.add('bot-2',1);sim.botState=()=>bots.state();sim.resetRun();bots.reset();
+  for(let i=0,before=0;i<20*60*8;i++){
+    bots.think(sim);sim.step(sim.tick*50);
+    if(sim.world.round.index!==before&&sim.world.round.index===2)break;
+    before=sim.world.round.index;
+  }
+  assert.equal(sim.world.round.phase,'prepare');
+  const p=sim.players.get('bot-1')!;
+  p.build.weapons=[{id:'faca',level:1},{id:'pistola',level:1},{id:'pistola',level:3},{id:'coxinha',level:3},{id:'coxinha',level:1}];p.build.hand=2;
+  const json=JSON.stringify(sim.checkpoint());
+  const fresh=make();
+  assert.equal(fresh.resume(JSON.parse(json)),true,'the inventory and the crates resume');
+  assert.deepEqual(fresh.players.get('bot-1')!.build,p.build);
+  assert.ok((fresh.run.state() as {crates?:unknown}).crates,'the crates come back');
+  assert.equal(stateHash(fresh.run.state()),stateHash(sim.run.state()));
+  // A bad hand is refused (the room then starts the round fresh).
+  const bad=JSON.parse(json);bad.players.find((x:{id:string})=>x.id==='bot-1').run.build.hand=9;
+  assert.equal(make().resume(bad),false);
+});

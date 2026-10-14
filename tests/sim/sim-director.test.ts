@@ -419,7 +419,7 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
 });
 
 // ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
-import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_INNER,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
+import {HERO_DEFAULT_SCREEN_PX,INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_INNER,RING_OUTER,offscreenDistance,visibleAtDefault,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
 import {RECYCLE_EVERY,SPAWN_MARGIN} from '../../src/sim/director.ts';
 import {worldSpawn} from '../../src/maps/world.ts';
 
@@ -436,7 +436,7 @@ function walker(seed:number){
   };
 }
 
-test('endless: the off-screen ring follows the camera floor (56 px hero), its offset budget and every orientation and view',t=>{
+test('endless: the off-screen ring follows the widest camera (44 px hero, D-046), its offset budget and every orientation and view',t=>{
   let lo=Infinity,hi=0;
   for(let i=0;i<720;i++){
     const a=i/720*Math.PI*2,ux=Math.cos(a),uy=Math.sin(a),d=offscreenDistance(ux,uy);
@@ -445,19 +445,56 @@ test('endless: the off-screen ring follows the camera floor (56 px hero), its of
     for(const k of [0,.5,3,20])assert.ok(!visibleOffset(ux*(d+k),uy*(d+k)),`outside at ${i}+${k}`);
   }
   t.diagnostic(`off-screen distance ${lo.toFixed(1)}..${hi.toFixed(1)} u, interest ${INTEREST_RADIUS} u, recycle ${RECYCLE_DISTANCE} u`);
-  // 25.5..41.4 u since the follow camera (camera-segue) may hold the hero off the screen centre (CAMERA_OFFSET_*).
-  assert.ok(lo>24&&hi<42,`${lo} ${hi}`);
+  // 29.9..48.7 u at the widest camera (D-046: hero 44 CSS px; it was 25.5..41.4 u with the 56 px floor), the follow
+  // camera's offset budget included (camera-segue may hold the hero off the screen centre, CAMERA_OFFSET_*).
+  assert.ok(lo>29&&hi<49,`${lo} ${hi}`);
+  assert.equal(MAX_OFFSCREEN_DISTANCE,48.9);assert.equal(INTEREST_RADIUS,62);assert.equal(RECYCLE_DISTANCE,70);
   assert.ok(MAX_OFFSCREEN_DISTANCE>=hi);
   assert.ok(INTEREST_RADIUS>=MAX_OFFSCREEN_DISTANCE+RING_OUTER,'the client has every enemy before it can walk on screen');
   assert.ok(RECYCLE_DISTANCE>INTEREST_RADIUS,'recycling only takes what no client is drawing');
   // velocidade-heroi-e-projetil: the ring starts past what the 2× walk covers in the 1.5 s warning (director hiddenAhead),
-  // and moved out without moving the area of interest (protocol 4) nor the recycle distance.
+  // and moved out; the area of interest (protocol 4) and the recycle distance grow by 1 u (see offscreen.ts RING_INNER).
   assert.ok(RING_INNER>=heroSpeed()*1.5,`RING_INNER ${RING_INNER} ≥ ${heroSpeed()*1.5} u`);
-  assert.equal(INTEREST_RADIUS,54,'area of interest unchanged');assert.equal(RECYCLE_DISTANCE,62,'recycle distance unchanged');
+  assert.equal(INTEREST_RADIUS,62,'area of interest: 61 + 1 u (RING_OUTER 10.4 + RING_SLACK 1 over the old 8 + 3)');assert.equal(RECYCLE_DISTANCE,70,'recycle distance: 69 + 1');
   // The 4 views are 90° turns around the player: the region is symmetric under them.
   for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
   // A camera hint (portrait, view 0) shows much less to the side.
-  assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12);
+  assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12.5);
+});
+
+test('endless: the catch-up paces at the default zoom (D-046): it runs a body in up to the default screen, never on it; spawns stay off the widest one',t=>{
+  // Contract: the default zoom (hero 47 px) sees less than the widest legal camera (44 px), more than the 56 px framing.
+  let lo=Infinity,hi=0;
+  for(let i=0;i<720;i++){
+    const a=i/720*Math.PI*2,ux=Math.cos(a),uy=Math.sin(a),d=offscreenDistance(ux,uy,undefined,HERO_DEFAULT_SCREEN_PX);
+    assert.ok(d<=offscreenDistance(ux,uy)+1e-9&&d>=offscreenDistance(ux,uy,undefined,56)-1e-9,`direction ${i}`);
+    lo=Math.min(lo,d);hi=Math.max(hi,d);
+  }
+  for(let x=-50;x<=50;x+=2.5)for(let y=-50;y<=50;y+=2.5)if(visibleAtDefault({x:0,y:0},{x,y}))assert.ok(visibleOffset(x,y),`${x},${y}: on a default screen is on the widest one`);
+  t.diagnostic(`default zoom (hero ${HERO_DEFAULT_SCREEN_PX} px): off screen past ${lo.toFixed(1)}..${hi.toFixed(1)} u`);
+  // The director: only the catch-up moves bodies in this fake world (before the last call), so every move is one of its steps.
+  let moved=0,band=0;
+  for(const seed of [61,62,63]){
+    const ctx=fakeCtx(seed,endlessField(seed)),log=newLog(),at=worldSpawn(ctx.terrain);addPlayer(ctx,'a',at);
+    const director=createDirector(options(log,{rounds:1})),p=ctx.players.get('a')!;
+    const last=new Map<string,Point>();
+    run(ctx,director,ticks(25),c=>{
+      for(const e of c.enemies.values()){
+        const was=last.get(e.id);
+        if(e.spawnTick===c.tick)assert.ok(!visibleFrom(p,e),`seed ${seed}: ${e.id} spawned on the widest screen`);
+        // The last call (LAST_CALL_SECONDS) hurries bodies on screen too, capped by the hero's pace: not this rule.
+        else if(was&&(was.x!==e.x||was.y!==e.y)&&!director.state.called){
+          moved++;
+          assert.ok(!visibleAtDefault(p,was)&&!visibleAtDefault(p,e),`seed ${seed}: ${e.id} ran in on a default screen`);
+          if(visibleFrom(p,e))band++;
+        }
+        last.set(e.id,{x:e.x,y:e.y});
+      }
+    });
+  }
+  t.diagnostic(`${moved} catch-up steps, ${band} of them in the 44..47 px band`);
+  assert.ok(moved>100,`${moved} catch-up steps`);
+  assert.ok(band>0,'the run-in goes on past the widest camera\'s edge, up to the default one');
 });
 
 test('endless: 20 seeds, walking players, no spawn on anyone\'s screen, in water or in an obstacle',t=>{
@@ -690,10 +727,10 @@ test('endless: a camera hint brings the ring in to that one screen',()=>{
     for(const e of c.enemies.values())if(e.spawnTick===c.tick){assert.ok(!visibleFrom(p,e,hint));dist.push(Math.hypot(e.x-p.x,e.y-p.y));}
     killAfter(ticks(2))(c);
   },()=>director.state.stage==='done');
-  // camera-segue widened the screens by the hero offset budget (10.2 u sideways in portrait, ring +RING_INNER..RING_OUTER
-  // on top: 9.4..10.4 since the 2× walk, was 5..8 and under 18 u).
+  // camera-segue widened the screens by the hero offset budget (11.7 u sideways in portrait at the D-046 widest camera,
+  // ring +RING_INNER..RING_OUTER on top: 9.4..10.4 since the 2× walk, was 5..8 and under 18 u).
   const noHint=Math.min(...Array.from({length:360},(_,k)=>offscreenDistance(Math.cos(k*Math.PI/180),Math.sin(k*Math.PI/180))))+RING_INNER;
-  assert.ok(Math.min(...dist)<21,`closest ${Math.min(...dist).toFixed(1)}`);
+  assert.ok(Math.min(...dist)<11.7+RING_INNER+1.5,`closest ${Math.min(...dist).toFixed(1)}`);
   assert.ok(dist.some(d=>d<noHint),`closer than the no-hint minimum (${noHint.toFixed(1)} u)`);
 });
 

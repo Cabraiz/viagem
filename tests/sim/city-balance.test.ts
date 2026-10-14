@@ -203,13 +203,13 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
 }
 /**
  * cityRun's scenario with neutral knobs (= the city without cidade-11): first recorded on 4906ef9, re-recorded on df2bf97
- * because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool, and for velocidade-heroi-e-projetil (the city
- * spawn lead CITY_VIEW_LEAD follows the 2× walk); the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and
- * the ring 5..8 + 3 gives the previous hashes exactly. The tutorial seeds again for the same card: the city tutorial's
- * welcome follows the 2× walk (CITY_TUTORIAL welcomeArrival 40 / HERO_SPEED_MULT).
+ * because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool, again for D-046 (cityVisible follows the
+ * contract's widest camera, so the avenue spawn spots move out; late parts run in, CITY_RUN_IN_SPEED, 2 u/s since the merge with
+ * BUG-20261013-E8-tio-preso-cidade), and for velocidade-heroi-e-projetil (the city spawn lead CITY_VIEW_LEAD follows the
+ * 2× walk; the city tutorial's welcome follows it too, CITY_TUTORIAL welcomeArrival 40 / HERO_SPEED_MULT).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'383f320208f04b5e','tutorial seed 8 r4':'76f27c979e7649e4','plain seed 21 r10':'b9c32cb7ef6802a7',
+  'tutorial seed 3 r4':'180e3d8bac9b28f1','tutorial seed 8 r4':'159b49ca7e04eccd','plain seed 21 r10':'ca261ba76e3068c2',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -279,11 +279,12 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  * Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged,
  * before cidade-11), re-recorded for BUG-20261013-E8 (16a84cd56d5977cb before): on the hero-size planner flow, a wide
  * body whose own disc clips a wall one step ahead now squeezes by the hero rule (grid.ts citySteer); in this run that
- * is seven bêbados (0.32 u) for 1–4 ticks each. Re-recorded (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk
- * lead, endless spawn ring, half-speed shots, the city tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer
- * rebuilding a field after an idle tick; the island is unchanged.
+ * is seven bêbados (0.32 u) for 1–4 ticks each; then the city and the endless map again for D-046 (the widest-camera
+ * contract widens cityVisible and the spawn ring; the director paces the run-in at the default camera). Re-recorded
+ * (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk lead, endless spawn ring, half-speed shots, the city
+ * tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer rebuilding a field after an idle tick; the island is unchanged.
  */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6f0fd8cfe1de2c9f',ilha:'0d4d774d9e279384',infinito:'57aa0f03473b4f82'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6a14a5ad1c85232b',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

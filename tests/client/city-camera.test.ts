@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {CITY_VIEW_SCALE,ENDLESS_FOLLOW,FollowCamera,cityZoom,followTarget,followWorld,followZoom,hordeUiScale,lookLimit,offsetBudget,
   toScreen,worldZoom,LAG_X_PX,LAG_Y_PX,type Rect} from '../../src/client/framing.ts';
 import {projectView,rotateVector} from '../../src/client/projection.ts';
-import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,visibleOffset} from '../../src/contract/offscreen.ts';
+import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset} from '../../src/contract/offscreen.ts';
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
 import {SCALE_PROFILES,zoomFor} from '../../src/rules/index.ts';
 import {CITY_VIEW_SCALE as SIM_CITY_VIEW_SCALE,cityVisible} from '../../src/sim/city/avenues.ts';
@@ -69,6 +69,8 @@ test('city zoom (D-030): ≈1.0713 on both reference phones, ≈15.07 cells land
   for(const [w,h] of [[320,640],[360,780],[412,915],[430,932],[932,430],[1280,720],[640,320],[1080,2520],[768,1024],[1024,768]]){
     const z=cityZoom({width:w,height:h});
     assert.ok(HERO_WORLD_PX*CITY_VIEW_SCALE*z>=HERO_MIN_SCREEN_PX-1e-9,`${w}x${h}`);
+    const short=Math.min(w,h)/z/CITY_VIEW_SCALE,long=Math.max(w,h)/z/CITY_VIEW_SCALE;
+    assert.ok(short<=VISIBLE_SHORT_PX+1e-6&&long<=VISIBLE_LONG_PX+1e-6,`${w}x${h}: never more world than the contract`);
     assert.ok(z>=followZoom({width:w,height:h})/CITY_VIEW_SCALE-1e-9,`${w}x${h}: never wider than the endless camera`);
   }
 });
@@ -241,7 +243,7 @@ test('one terrain: island → city swaps the field with the re-fit; city → isl
 test('scene.ts keeps one terrain: fit, project and the walk read this.field; the city never gets the island ground, trees or landmarks',()=>{
   const src=readFileSync(fromRoot('src/client/scene.ts'),'utf8');
   assert.ok(!/cameraField|cameraTerrain/.test(src),'no second (camera) terrain');
-  assert.match(src,/worldCamera\(viewport,this\.field\)/,'fit() frames the scene\'s field');
+  assert.match(src,/worldCamera\(viewport,this\.field,this\.zoomNow\)/,'fit() frames the scene\'s field (at the player\'s zoom)');
   assert.match(src,/this\.terrainWatch\.sync\(this\.hooks\.net\?\.terrain\)\)this\.swapWorld\(\)/,'update() swaps by world, not by object');
   // The net's terrain is read in two places only: the constructor and the per-frame sync.
   assert.equal(src.match(/net\?\.terrain/g)?.length,2);

@@ -19,6 +19,7 @@ import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {RADIUS,findPath,walkable,worldBase,worldSpawn} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';
+import {VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../../src/contract/offscreen.ts';
 
 const endless=(seed:number)=>new TerrainField(seed,{world:'infinito'});
 const decode=(code:number)=>code/255*160-32;
@@ -99,14 +100,16 @@ test('trails reach the texture (blue channel) and wetness stays in range',()=>{
   assert.ok(trail>100,`trail texels ${trail}`);
 });
 
-test('ranges: visible ⊂ prefetch ⊂ keep, nearest first, and a 390×844 or 844×390 view stays under the pool',()=>{
-  for(const [w,h] of [[669,1446],[1446,669]]){
+test('ranges: visible ⊂ prefetch ⊂ keep, nearest first, and the widest legal camera (D-046) stays under the pool',()=>{
+  // renderer.ts POOL_TILES (80): the prefetch ring of the contract's widest camera, both orientations (hero 44 CSS px,
+  // 851 × 1991 world px with the 21:9 aspect; the 390×844 phone at 44 px is 851 × 1841), at most 77 tiles.
+  for(const [w,h] of [[VISIBLE_SHORT_PX,VISIBLE_LONG_PX],[VISIBLE_LONG_PX,VISIBLE_SHORT_PX],[851,1841],[1841,851]]){
     for(const x of [-100000,-17,0,128.5,99999])for(const y of [-50000,0,255.9,77777]){
       const v:Rect={x,y,w,h},vis=tileRange(v),pre=tileRange(v,PREFETCH_TILES),keep=tileRange(v,KEEP_TILES);
       const list=tilesByDistance(pre,v);
       assert.equal(list.length,(pre.ix1-pre.ix0+1)*(pre.iy1-pre.iy0+1));
       assert.ok(list.every(t=>inRange(t,keep)));assert.ok(tilesByDistance(vis,v).every(t=>inRange(t,pre)));
-      assert.ok(list.length<=60,`${list.length} tiles in the ring`);
+      assert.ok(list.length<=80,`${list.length} tiles in the ring`);
       const first=list[0],cx=x+w/2,cy=y+h/2;
       assert.ok(cx>=first.ix*TILE_PX-TILE_PX&&cx<=(first.ix+2)*TILE_PX&&cy>=first.iy*TILE_PX-TILE_PX&&cy<=(first.iy+2)*TILE_PX,'nearest first');
     }

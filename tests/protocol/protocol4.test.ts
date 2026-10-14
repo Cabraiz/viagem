@@ -1102,7 +1102,7 @@ test('N27 farEvery: critters off every legal screen go every other frame, on scr
   const rng=new Rng(13),w=farWorld(rng,0,0,0),v=w.view;
   v.players=[player('me',0,{x:0,y:0})];
   // 20 on screen (2 u away), 20 off every legal screen but inside the area of interest (40 u along a world axis,
-  // where offscreenDistance is 25.5 u), all walking.
+  // where offscreenDistance is 30.6 u at the D-046 widest camera), all walking.
   v.enemies=[...Array.from({length:20},(_,i)=>({id:`n-${i}`,kind:'bebado',x:2+i*.1,y:1,hp:40,maxHp:40})),
     ...Array.from({length:20},(_,i)=>({id:`f-${i}`,kind:'bebado',x:40+i*.1,y:0,hp:40,maxHp:40}))];
   const enc=new FrameEncoder(new WireIds(),{viewer:'me',chain:true,farEvery:2}),dec=new FrameDecoder();
@@ -1209,4 +1209,92 @@ test('torre-contador-de-tiros: the volley counter wraps at 256 in one byte, and 
     seen.push(r.view.structures.find(x=>x.kind===base.kind)!.shots!);
   }
   assert.deepEqual(seen,[254,255,0,1,44],'mod 256, the aim never moved');
+});
+
+// ---------- D-046: the widest camera's spawn ring through the room's encoder (NEW-20261013-ORQ-camera-zoom-out-e-roda) ----------
+import {MAX_OFFSCREEN_DISTANCE,RING_INNER,RING_OUTER,offscreenDistance,visibleOffset} from '../../src/contract/offscreen.ts';
+import {FAR_EVERY} from '../../multiplayer/room.ts';
+
+/**
+ * A room-shaped horde: the room's 300 critters split over the players' clusters, every one born on the director's spawn
+ * ring (offscreenDistance + RING_INNER..RING_OUTER around its cluster, so the ring grows with the contract's widest
+ * camera) and walking in at 1.4 u/s; 30 hits a tick and contact (1 u) kill them and a fresh one is born on the ring.
+ * At the start the horde is spread from the ring inwards. Pickups and shots by the players, 12 defenses turning and
+ * firing every tick (the D-009 worst case of NEW-20261013-ORQ-torres-fio).
+ */
+function ringHorde(rng:Rng,centers:{x:number;y:number}[],playersAt:number[]){
+  const view:FrameInput={tick:1000,team:{xp:340,level:12,nextXp:455},round:{index:7,total:10,phase:'wave',phaseEndsTick:2400,remaining:300},
+    players:playersAt.map((c,i)=>player(`uuid-${i}`,i,{x:centers[c].x+(i%3)*.8,y:centers[c].y+Math.floor(i/3)*.8})),
+    enemies:[],pickups:[],projectiles:[],telegraphs:[],structures:[],world:ENDLESS};
+  let n=0;
+  const per=Math.floor(300/centers.length),home=new Map<string,{x:number;y:number}>(),shotHome=new Map<string,{x:number;y:number}>();
+  const enemy=(c:{x:number;y:number},inside:boolean):EnemyView=>{
+    const a=rng.range(0,Math.PI*2),ux=Math.cos(a),uy=Math.sin(a),edge=offscreenDistance(ux,uy)+rng.range(RING_INNER,RING_OUTER),d=inside?rng.range(1.5,edge):edge;
+    const e={id:`e-${++n}`,...castEnemy(rng),x:c.x+ux*d,y:c.y+uy*d,hp:rng.range(5,80),maxHp:80};home.set(e.id,c);return e;
+  };
+  for(const c of centers){
+    for(let i=0;i<per;i++)view.enemies.push(enemy(c,true));
+    for(let i=0;i<Math.floor(150/centers.length);i++)view.pickups.push({id:`xp-${++n}`,kind:'xp',x:c.x+rng.range(-12,12),y:c.y+rng.range(-12,12),value:rng.int(1,5)});
+    for(let i=0;i<Math.floor(100/centers.length);i++){const id=`p-${++n}`;shotHome.set(id,c);
+      view.projectiles.push({id,source:'boleto',x:c.x+rng.range(-8,8),y:c.y+rng.range(-8,8),vx:rng.range(-9,9),vy:rng.range(-9,9),radius:.2});}
+  }
+  const step=():SimEvent[]=>{
+    const events:SimEvent[]=[];view.tick++;
+    for(const e of view.enemies){const c=home.get(e.id)!,dx=c.x-e.x,dy=c.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*1.4/20+rng.range(-.02,.02);e.y+=dy/d*1.4/20+rng.range(-.02,.02);churnPhase(e,rng);}
+    for(const p of view.projectiles){p.x+=p.vx/20;p.y+=p.vy/20;}
+    for(let i=0;i<30;i++){const e=rng.pick(view.enemies),amount=rng.range(1,9);e.hp-=amount;events.push({type:'damage',target:e.id,amount,source:'uuid-0',weapon:'chinelo'});}
+    view.enemies=view.enemies.map(e=>{
+      const c=home.get(e.id)!;
+      if(e.hp>0&&Math.hypot(e.x-c.x,e.y-c.y)>1)return e;
+      events.push({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y,by:'uuid-0'});home.delete(e.id);
+      return enemy(c,false);
+    });
+    view.projectiles=view.projectiles.map(p=>{
+      const c=shotHome.get(p.id)!;if(Math.hypot(p.x-c.x,p.y-c.y)<14)return p;
+      const fresh={...p,id:`p-${++n}`,x:c.x,y:c.y};shotHome.set(fresh.id,c);return fresh;
+    });
+    for(const p of view.pickups.filter((_,i)=>i%15===0)){p.x+=view.tick%40<20?.3:-.3;}
+    view.players.forEach((p,i)=>{p.x!+=Math.sin(view.tick/20+i)*.1;p.ack!++;});
+    view.structures=[{id:'muralha',kind:'muralha',x:12,y:12,hp:800,maxHp:1000},...defenses(view.tick)];
+    return events;
+  };
+  view.structures=[{id:'muralha',kind:'muralha',x:12,y:12,hp:800,maxHp:1000},...defenses(view.tick)];
+  return {view,step};
+}
+/** Bytes/s per client at 10 Hz with the room's encoder options (viewer, slot, chained frames, farEvery), acks ~150 ms late. */
+function measureRoom(world:{view:FrameInput;step:()=>SimEvent[]},farEvery:number,ticks=200){
+  const ids=new WireIds();
+  const clients=world.view.players.slice(0,CLIENTS).map((p,i)=>({id:p.id,enc:new FrameEncoder(ids,{viewer:p.id,slot:sendSlot(i),chain:true,farEvery}),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+  let bytes=0,enemies=0,onScreen=0,frames=0;
+  collect();
+  for(let i=0;i<ticks;i++){
+    const events=world.step();
+    for(const c of clients)c.enc.pushEvents(events);
+    for(const c of clients){
+      if(!c.enc.due(i))continue;
+      const frame=c.enc.encode(world.view);bytes+=frame.length;
+      const r=c.dec.decode(frame);assert.ok(r.ok,!r.ok?r.error:'');
+      const me=world.view.players.find(p=>p.id===c.id)!;
+      enemies+=r.view.enemies.length;onScreen+=world.view.enemies.filter(e=>visibleOffset(e.x-me.x!,e.y-me.y!)).length;frames++;
+      c.inFlight.push({seq:r.seq,event:r.ack.event,at:i+3});
+      while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+    }
+  }
+  return {bytesPerSecond:Math.round(bytes/clients.length/(ticks/20)),enemiesPerFrame:Math.round(enemies/frames),onScreenPerFrame:Math.round(onScreen/frames)};
+}
+
+test('D-046: the widest camera\'s ring (hero 44 px) through the room\'s encoder, 6 clients x 300 critters + 12 defenses, inside 30 KB/s at 10 Hz',t=>{
+  const spread=[0,1,2,3,4,5].map(i=>({x:12+Math.cos(i/6*Math.PI*2)*200,y:12+Math.sin(i/6*Math.PI*2)*200}));
+  const together=measureRoom(ringHorde(new Rng(61),[{x:12,y:12}],[0,0,0,0,0,0]),FAR_EVERY);
+  const togetherEvery=measureRoom(ringHorde(new Rng(61),[{x:12,y:12}],[0,0,0,0,0,0]),1);
+  const apart=measureRoom(ringHorde(new Rng(62),spread,[0,1,2,3,4,5]),FAR_EVERY);
+  t.diagnostic(`D-046 ring ${offscreenDistance(1,0).toFixed(1)}..${(MAX_OFFSCREEN_DISTANCE+RING_OUTER).toFixed(1)} u, interest ${INTEREST_RADIUS} u, room encoder (farEvery ${FAR_EVERY}): together ${JSON.stringify(together)}; together, every critter every frame ${JSON.stringify(togetherEvery)}; 6 spread 200 u ${JSON.stringify(apart)}`);
+  // Measured with 6 clients (test:protocol:stress): together 21 584 B/s (148 of 300 on the widest screen), every critter
+  // every frame 23 738, 6 spread 200 u 6 273; with the old 56 px contract (ring 25.5..49.5 u, interest 54 u) 21 509 /
+  // 23 786 / 6 279. The radius only decides how many of the room's 300 critters a client gets and how many of those wait
+  // for their farEvery frame, so the ceiling stays the D-009 test above (all 300 every frame, 12 defenses: 28.8 KB/s).
+  assert.equal(together.enemiesPerFrame,300,'the whole horde is inside the area of interest');
+  assert.ok(together.bytesPerSecond<30_000,`together ${together.bytesPerSecond}`);
+  assert.ok(apart.bytesPerSecond<30_000,`spread ${apart.bytesPerSecond}`);
+  assert.ok(together.bytesPerSecond<togetherEvery.bytesPerSecond,'farEvery saves bytes on the off-screen ring');
 });

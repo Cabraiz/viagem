@@ -23,7 +23,7 @@ import {RADIUS,SPAWN,walkable,type Point} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundState,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
-import {FLEE_CAP_SECONDS,createDirector,type DirectorOptions,type RoundSummary} from '../../src/sim/director.ts';
+import {CITY_RUN_IN_SPEED,FLEE_CAP_SECONDS,createDirector,type DirectorOptions,type RoundSummary} from '../../src/sim/director.ts';
 import {moveSafely} from '../../src/sim/enemies/ai.ts';
 import {createEnemy as catalogEnemy,enemyDef,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
@@ -348,6 +348,35 @@ test('first arrival: team at the plaza, round 1, catalog speeds: the first relea
   console.log(`[cidade-05] first arrival (round 1, team at the plaza, catalog speeds), seeds 1-6, ${within13}/6 within 13 s: ${report.join('; ')}`);
 });
 
+test('city run-in (D-046): a part late on its slot makes up time only off every default-zoom screen, never faster on one; parts on time walk at their pace',()=>{
+  const P=planner(),steer=citySteer(P),report:string[]=[];let steps=0;
+  for(let seed=1;seed<=6;seed++){
+    const ctx=fakeCtx(seed),log=newLog();team(ctx);
+    const director=createDirector(catalogOptions(log,{rounds:1,avenues:P}));
+    const last=new Map<string,Point>(),late=new Set<string>(),players=[...ctx.players.values()];let mine=0,budget=0;
+    run(ctx,director,ticks(20),c=>{
+      for(const e of c.enemies.values()){
+        const was=last.get(e.id);
+        // Only the run-in moves a body inside the director's step here (this test walks them after it).
+        if(was&&(was.x!==e.x||was.y!==e.y)){
+          mine++;
+          assert.ok(late.has(e.id),`seed ${seed}: ${e.id} ran in with no lateness to make up`);
+          assert.ok(Math.hypot(e.x-was.x,e.y-was.y)<=CITY_RUN_IN_SPEED/SIM_HZ+1e-9,`seed ${seed}: ${e.id} ran in too fast`);
+          assert.ok(P.hiddenAtDefault(players,was)&&P.hiddenAtDefault(players,e),`seed ${seed}: ${e.id} ran in on a default-zoom screen`);
+        }
+        if(e.memory?.runIn!==undefined&&e.spawnTick===c.tick)budget=Math.max(budget,e.memory.runIn);
+        walk(c,steer,e);
+        last.set(e.id,{x:e.x,y:e.y});
+        if(e.memory?.runIn!==undefined)late.add(e.id);else late.delete(e.id);
+      }
+    });
+    steps+=mine;
+    report.push(`seed ${seed}: ${mine} run-in steps, budget ${budget.toFixed(1)} u (${director.state.avenues?.open.join('')})`);
+  }
+  console.log(`[D-046] city run-in, round 1, team at the plaza: ${report.join('; ')}`);
+  assert.ok(steps>0,'the late part (avenue S) ran in');
+});
+
 // ---------- 4. nobody stuck ----------
 test('nobody stuck: 300 catalog bodies (0.2–0.7 u) placed by the planner walk to the plaza with citySteer + moveSafely for 90 s',()=>{
   const {P,ctx,state,bodies}=horde(41),steer=citySteer(P);
@@ -487,8 +516,10 @@ test('chase: a team away from the plaza is reached through the streets (players 
   const failures=[
     // away.ts: one player 15–35 u from the plaza; ≥ 90 % within 60 s.
     ...chaseReport('one player 15-35 u away (8 seeds)',[1,2,3,4,5,6,7,8].map(seed=>chase(seed,[spotAway(new Rng(seed*131),15,35)]))),
-    // Spread: three players anywhere 12–60 u out; ≥ 90 % within 60 s.
-    ...chaseReport('team spread in the city (seed 1)',[1].map(seed=>{const r=new Rng(seed*733);return chase(seed,[spotAway(r,12,60),spotAway(r,12,60),spotAway(r,12,60)]);})),
+    // Spread: three players anywhere 12–60 u out; ≥ 90 % within max(60 s, 1.25 × the body's shortest walk): with the 2×
+    // walk (velocidade-heroi-e-projetil) the planner's spawn lead doubled, so the spots sit farther out and a tio-pavê
+    // (0.95 u/s) 60 u out takes 62–66 s; the share within 60 s is logged.
+    ...chaseReport('team spread in the city (seed 1)',[1].map(seed=>{const r=new Rng(seed*733);return chase(seed,[spotAway(r,12,60),spotAway(r,12,60),spotAway(r,12,60)],{pathDeadline:true});})),
     // The field follows a player who moved: at 20 s the player is somewhere else ≥ 20 u away and is chased there.
     ...chaseReport('player moved at 20 s (seed 2)',[2].map(seed=>{
       const r=new Rng(seed*977),a=spotAway(r,15,35);let b=spotAway(r,15,35);
@@ -758,8 +789,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'f49127f250ff1fa3','infinito kill=40 seed 1':'08f91f647de5ae0f',
-  'infinito kill=Infinity seed 0':'c172222574ca7559',
+  'infinito kill=40 seed 0':'2adbb80f3277b37f','infinito kill=40 seed 1':'f9f21cc82502992f',
+  'infinito kill=Infinity seed 0':'b2a164e3ecd1080b', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

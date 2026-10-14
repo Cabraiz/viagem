@@ -13,10 +13,10 @@ import {followWorld,worldZoom,type FollowWorld,type Viewport} from './framing.ts
 export type WorldIdentity=Pick<TerrainField,'world'|'signature'>;
 export const sameWorld=(a:WorldIdentity,b:WorldIdentity)=>a.world===b.world&&a.signature===b.signature;
 
-/** What fit() gives a world: the follow zoom and the follow camera's world (scale, hero speed). */
+/** What fit() gives a world: the follow zoom (at the player's zoom `k`, camera-zoom.ts) and the follow camera's world. */
 export interface WorldCamera {zoom:number;follow:FollowWorld}
-export function worldCamera(viewport:Viewport,terrain:TerrainField):WorldCamera{
-  return {zoom:worldZoom(viewport,terrain),follow:followWorld(terrain)};
+export function worldCamera(viewport:Viewport,terrain:TerrainField,k=1):WorldCamera{
+  return {zoom:worldZoom(viewport,terrain,k),follow:followWorld(terrain)};
 }
 
 /**

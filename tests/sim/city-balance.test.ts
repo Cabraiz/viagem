@@ -207,10 +207,13 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * contract's widest camera, so the avenue spawn spots move out; late parts run in, CITY_RUN_IN_SPEED, 2 u/s since the merge with
  * BUG-20261013-E8-tio-preso-cidade), and for velocidade-heroi-e-projetil (the city spawn lead CITY_VIEW_LEAD follows the
  * 2× walk; the city tutorial's welcome follows it too, CITY_TUTORIAL welcomeArrival 40 / HERO_SPEED_MULT), and for
- * cidade-escala-1-7 (the city asset v2 at CITY_MAP_SCALE 1.7: every map length × 1.7, the people unchanged).
+ * cidade-escala-1-7 (the city asset v2 at CITY_MAP_SCALE 1.7: every map length × 1.7, the people unchanged), and for
+ * balanco-pos-1-7 part A (the tutorial seeds only: welcomeArrival back to 40 / HERO_SPEED_MULT, since the run starts
+ * down the road, cityRunStart; plain seed 21 has no tutorial and kept its digest), then plain seed 21 for its city retreat
+ * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'e22d299d0e4056cc','tutorial seed 8 r4':'64ea4f559f08765a','plain seed 21 r10':'05c9555e73d58e86',
+  'tutorial seed 3 r4':'50b3a75c468338b9','tutorial seed 8 r4':'f18c263f4e216f95','plain seed 21 r10':'8d802f55cb1a2c9c',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -289,7 +292,10 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
 // cidade re-recorded by ataque-fora-do-alcance (straight shots no longer fire into the air with nobody in reach), then for
 // cidade-escala-1-7 on top of it; all three again by ficha-de-torre (D-048: one pile {units}, the team's grana in every
 // world): with the balance read as {units} and grana deleted, the state gives the previous digests (only those fields moved).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a5d6982fdc306f33',ilha:'76d5d060612a37b7',infinito:'94ee87d72339a02b'};
+// balanco-pos-1-7 part A on top: cidade for the tutorial's welcomeArrival 34 → 20 s and the city retreat's
+// CITY_GONE_DISTANCE 25 u; all three for its enemy radius × ENEMY_RADIUS_SCALE 1.15 (enemies/catalog.ts and the boss: the
+// bodies follow their 15 % bigger drawing, every world; the only change of part A allowed to move ilha/infinito).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'08a34927d3672229',ilha:'5a56eadaae57b8e9',infinito:'f7bd28be2f6eec47'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

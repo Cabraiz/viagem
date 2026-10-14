@@ -34,17 +34,17 @@ class FakeAudio implements MusicElement {
   removeAttribute(name:string){if(name==='src')this.src='';}
 }
 class FakeEngine implements MusicEngine {
-  unlocked=false;ctx:FakeCtx|undefined;master=new FakeNode();settings={volume:.7,muted:false};
+  unlocked=false;ctx:FakeCtx|undefined;musicBus=new FakeNode();settings={music:{volume:.7,muted:false}};
   listeners=new Set<()=>void>();
   get context(){return this.ctx as unknown as AudioContext|undefined;}
-  get output(){return this.ctx?this.master as unknown as AudioNode:undefined;}
+  get musicOutput(){return this.ctx?this.musicBus as unknown as AudioNode:undefined;}
   onChange(l:()=>void){this.listeners.add(l);return ()=>{this.listeners.delete(l);};}
   attachUnlock(target:EventTarget){
     const h=()=>{if(!this.unlocked){this.unlocked=true;this.ctx=new FakeCtx();}};
     target.addEventListener('pointerup',h);
     return ()=>target.removeEventListener('pointerup',h);
   }
-  set(patch:Partial<{volume:number;muted:boolean}>){this.settings={...this.settings,...patch};for(const l of [...this.listeners])l();}
+  set(patch:Partial<{volume:number;muted:boolean}>){this.settings={music:{...this.settings.music,...patch}};for(const l of [...this.listeners])l();}
 }
 class FakePage extends EventTarget {visibilityState='visible';}
 const flush=()=>new Promise<void>(resolve=>setImmediate(resolve));

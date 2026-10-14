@@ -26,7 +26,7 @@
  * Everything is deterministic (lines from streams derived from the director's rng, spots in cell order) and the
  * director's TutorialState is JSON-safe.
  */
-import {HERO_SPEED_MULT,STRAIGHT_COST,UNREACHABLE,type FlowField,type FlowPoint,type Point} from '../../maps/index.ts';
+import {DIRS,FlowField,HERO_SPEED_MULT,RADIUS,STRAIGHT_COST,UNREACHABLE,type CityTerrain,type FlowPoint,type Point} from '../../maps/index.ts';
 import {CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
@@ -40,15 +40,59 @@ export const TUTORIAL_PLAN=Object.freeze({
   /**
    * Wave seconds when the plaza group reaches the plaza, before a novice's walk ends: tuned 40 s for the base walk
    * (slow novice in the plaza at ~62 s, the group holding it from ~41 s), divided by maps HERO_SPEED_MULT so it keeps
-   * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s), and × rules
-   * CITY_MAP_SCALE for the same share of the 1.7× longer walk (NEW-20261013-ORQ-cidade-escala-1-7: 34 s).
+   * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s). The 1.7× city
+   * made it × CITY_MAP_SCALE (34 s) for its longer walk; since the run starts down the road (cityRunStart) the walk is
+   * the tuned one again, and so is this (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro: 20 s).
    */
-  welcomeArrival:40*CITY_MAP_SCALE/HERO_SPEED_MULT,
+  welcomeArrival:40/HERO_SPEED_MULT,
   /** hp multiplier (round 1 of the table is 0.35) and speed multiplier (city bêbado 1.79 → ≈ 1.61 u/s; hero 1.99). */
   hpScale:.3,speed:.9,
   /** Hard end of the wave (s): what is still out retreats, and the round ends even if nobody reached the plaza. */
   capSeconds:90,
 });
+/**
+ * Spread (u) of the room's six spawn slots around the start (multiplayer/simulation.ts spawnSlot: three across, two
+ * rows, this far apart): cityRunStart keeps all of them on open ground.
+ */
+export const START_SLOT_SPREAD=.7;
+const startMemo=new WeakMap<object,Point>();
+/**
+ * Where a city run starts (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): on the heroes' street route from the
+ * wreck (asset `inicio`) to the plaza, at the point whose walk left is the whole route ÷ CITY_MAP_SCALE, the walk this
+ * tutorial was tuned for on the .w3x-sized city (≈ 76 of 129 u, ≈ 19 s at the city hero's walk). The 1.7× city made
+ * the walk 1.7× longer (the tutorial went from 22 to 35 s and round 1, with the group behind chasing the team the whole
+ * way, ran into its 90 s cap); the asset's points stay where they are: the wreck is still `inicio` (the minimap's start
+ * mark, the search centre of the group behind), the team starts down the road from it.
+ * Route: a flow field to the plaza point on one cell per asset cell, walkable by the hero rule at the cell centre
+ * (clearDisc, which the barricades never block for heroes). From the first route cell within that walk, the first one
+ * where all six spawn slots (START_SLOT_SPREAD) stand on open ground. Once per asset; `inicio` when no route exists.
+ */
+export function cityRunStart(city:CityTerrain):Point{
+  const known=startMemo.get(city.asset);
+  if(known)return {...known};
+  const a=city.asset,cs=a.unitsPerCell,{inicio,praca}=a.points;
+  const field=new FlowField({width:a.cells.w,height:a.cells.h,cellSize:cs,walkable:(cx,cy)=>city.clearDisc((cx+.5)*cs,(cy+.5)*cs,RADIUS)},[praca]);
+  const slotsFit=(x:number,y:number)=>{
+    for(let row=0;row<2;row++)for(let col=-1;col<=1;col++)if(!city.clearDisc(x+col*START_SLOT_SPREAD,y+row*START_SLOT_SPREAD,RADIUS))return false;
+    return true;
+  };
+  let start:Point={x:inicio.x,y:inicio.y};
+  const total=field.costAt(inicio.x,inicio.y);
+  if(total!==UNREACHABLE){
+    const walk=total/CITY_MAP_SCALE;
+    let cx=Math.floor(inicio.x/cs),cy=Math.floor(inicio.y/cs);
+    for(let i=0;i<a.cells.w*a.cells.h;i++){
+      const cost=field.cellCost(cx,cy),x=(cx+.5)*cs,y=(cy+.5)*cs;
+      if(cost<=walk&&slotsFit(x,y)){start={x,y};break;}
+      const d=cost===0?-1:field.nextCell(cx,cy);
+      if(d<0)break;
+      cx+=DIRS[d].dx;cy+=DIRS[d].dy;
+    }
+  }
+  startMemo.set(city.asset,Object.freeze(start));
+  return {...start};
+}
+
 /** Index of each tutorial group in the plan (the plan lists them in this order). */
 export const TUTORIAL_BEHIND=0,TUTORIAL_WELCOME=1;
 /** Mouths the plaza group may use: never S, the avenue the team walks in by. */

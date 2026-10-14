@@ -49,6 +49,7 @@ app.innerHTML = `
   <nav class="section-nav" aria-label="Criação">
     <a class="wordmark" href="#personagem" aria-label="viagem, início">viagem</a>
     <div class="section-tabs" role="tablist" aria-label="Seções da criação"><button type="button" role="tab" id="tab-personagem" aria-controls="personagem" aria-selected="true">Personagem</button><button type="button" role="tab" id="tab-classes" aria-controls="classes" aria-selected="false" tabindex="-1">Classes</button></div>
+    <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   </nav>
   <section id="personagem" class="journey-screen creation-window" role="tabpanel" aria-labelledby="tab-personagem">
     <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
@@ -74,6 +75,10 @@ app.innerHTML = `
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="link-button">Voltar às classes</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
+
+// The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
+const menuConfig=document.querySelector<HTMLButtonElement>('.menu-config')!;
+menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(menuConfig)).catch(e=>console.error('settings failed to load',e));});
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
 function artStyle(hero: HeroClass, detailed=false) {
@@ -353,6 +358,7 @@ if(new URLSearchParams(location.search).get('sandbox')==='voce')void import('./c
 if(new URLSearchParams(location.search).get('sandbox')==='sala')void import('./client/sandboxes/sandbox-sala.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='cidade')void import('./client/sandboxes/sandbox-cidade.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='obra')void import('./client/sandboxes/sandbox-obra.ts');
+if(new URLSearchParams(location.search).get('sandbox')==='config')void import('./client/sandboxes/sandbox-config.ts');
 // Playtest metrics (UX-playtest-metricas), dev only (exactly ?dev=1, as dev/ux-flag.ts; the menu imports nothing from
 // the game in client/ statically, menu-perf): "Métricas" of this tab's last room session after "Sair".
 if(new URLSearchParams(location.search).get('dev')==='1'&&!new URLSearchParams(location.search).get('sandbox'))void import('./client/dev/ux-metrics.ts').then(m=>m.mountHomeExport(window)).catch(()=>undefined);

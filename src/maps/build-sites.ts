@@ -41,13 +41,22 @@ export const MOUTH_KEEP_OUT=6.8;
 /** No footprint within this of the players' spawn point. */
 export const SPAWN_KEEP_OUT=1.5;
 
-// City sites as asset cells [cx, cy, maxSize] (CITY_SITE_CELL), centred on the cell centre: six north and six south of the plaza
-// block, two west and two east of it; the four avenue corridors into the mouths stay open (see the debug print).
+/*
+ * City sites as asset cells [cx, cy, maxSize] (CITY_SITE_CELL), centred on the cell centre; the four avenue corridors
+ * into the mouths stay open (the enemies' routes pass beside the footprints, never across them).
+ * First (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): a 3×3 on each side of the last stretch of the N, L and
+ * O avenues, just outside MOUTH_KEEP_OUT, interleaved N, L, O, N, L, O (the bots build the largest free site in plan
+ * order, so their first towers cover each mouth once). On the 1.7× city those mouths sit 18.7–21.5 u from the wall and
+ * the old ring of sites 12–15 u from them, out of a root's 6 u: these sit 8–10 u from the mouth point, ≤ 6.2 u (L, O
+ * 5.4 u) from where the bodies press the barricade, with the avenue's last ~10 u in range. N's kiosk (cells 92..98 of
+ * row 86) leaves its flank only north of it and at the bend west of it. Then the older ring: four 3×3 north/south of
+ * the plaza block, two 3×3 farther south and the four 2×2 west and east of it. S (4.1 u from the wall) keeps its old
+ * sites: its bodies are at the wall at once, where the team fights.
+ */
 const CITY_CELLS:readonly (readonly [number,number,BuildSize])[]=[
-  [75,84,2],[81,84,3],[87,84,3],[103,84,3],[109,84,3],[115,84,2],
-  [78,93,2],[115,93,2],
-  [78,104,2],[115,104,2],
-  [75,111,2],[81,111,3],[87,111,3],[107,111,3],[113,111,3],[118,112,2],
+  [93,84,3],[114,96,3],[76,96,3],[89,88,3],[114,100,3],[76,100,3],
+  [87,84,3],[103,84,3],[87,111,3],[107,111,3],[81,111,3],[113,111,3],
+  [78,93,2],[115,93,2],[78,104,2],[115,104,2],
 ];
 /** The rail: cells x 63..74, y 94..97 on the west avenue; its route (row 98) and rows 98..102 stay free. */
 const CITY_RAIL={x0:63,y0:94,length:12,width:4};

@@ -76,10 +76,16 @@ export const CIDADE_NEVADA_WC3=Object.freeze({
 const INF_HERO_RADIUS=.22;
 /** src/maps/world.ts:7 SPEED. */
 const INF_HERO_SPEED=3.1;
+/**
+ * The catalog's ENEMY_RADIUS_SCALE (src/sim/enemies/catalog.ts: the bodies follow their 15 % bigger drawing,
+ * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro); rules may not import the sim, so it is repeated here and the drift guard
+ * (tests/rules/scale.test.ts) checks the radii below against the catalog.
+ */
+const ENEMY_RADIUS_SCALE=1.15;
 /** src/sim/enemies/catalog.ts ENEMIES.bebado speed and radius (the common enemy, D-033). */
-const INF_COMMON_SPEED=1.4,INF_COMMON_RADIUS=.32;
+const INF_COMMON_SPEED=1.4,INF_COMMON_RADIUS=.32*ENEMY_RADIUS_SCALE;
 /** src/sim/enemies/catalog.ts ENEMIES.chefe radius (the only boss kind). */
-const INF_BOSS_RADIUS=.9;
+const INF_BOSS_RADIUS=.9*ENEMY_RADIUS_SCALE;
 /** One terrain tile is 1 world unit: src/maps/world.ts:29 project (42 px per unit on x−y, 21 on x+y). */
 const INF_CELL=1;
 /** Camera constants from the contract (src/contract/offscreen.ts): tile width, drawn hero, 56 px floor, reference phone. */

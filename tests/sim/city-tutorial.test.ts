@@ -45,10 +45,10 @@ import type {SimContext} from '../../src/sim/context.ts';
 import {FLEE_CAP_SECONDS,createDirector,type DirectorOptions,type RoundSummary} from '../../src/sim/director.ts';
 import {MOUTHS,type Mouth} from '../../src/sim/city/avenues.ts';
 import {PLAZA_HOLD_FLAG,PLAZA_HOLD_RADIUS,cityFlowGrid,cityPlanner} from '../../src/sim/city/grid.ts';
-import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_PLAN,behindCandidates} from '../../src/sim/city/tutorial.ts';
+import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,START_SLOT_SPREAD,TUTORIAL_PLAN,behindCandidates,cityRunStart} from '../../src/sim/city/tutorial.ts';
 import {BARK_MAX,CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY} from '../../src/rules/zueira-cidade.ts';
 import {ROUNDS,ROUND_NAMES,countMult} from '../../src/rules/waves.ts';
-import {SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
+import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
@@ -120,11 +120,11 @@ const CLASSES=['cidadao-comum','clt-cansado','feirante'];
 /** Seconds a run is watched by default: the opening, the cap and the retreat's liveness cap, plus a margin. */
 const WATCH=3+TUTORIAL_PLAN.capSeconds+FLEE_CAP_SECONDS+5;
 /** How each hero moves: the novice (drive), or a scripted thumb (slow: walks 3 s, stops 2 s; still: never moves). */
-type Mover='novice'|'slow'|'still';
+type Mover='novice'|'slow'|'still'|'steady';
 function script(sim:Simulation,n:Novice,mover:Mover){
   const p=sim.players.get(n.id)!,t=sim.tick;
   for(const o of sim.offers(n.id))sim.choose(n.id,o.id,0);
-  if(mover==='still'||t<ticks(READ_SECONDS)||Math.floor(t/SIM_HZ)%5>=3){sim.setBotInput(n.id,{x:0,y:0});return;}
+  if(mover==='still'||t<ticks(READ_SECONDS)||mover==='slow'&&Math.floor(t/SIM_HZ)%5>=3){sim.setBotInput(n.id,{x:0,y:0});return;}
   ROUTE.directionAt(p.x,p.y,dir);sim.setBotInput(n.id,{x:dir.x,y:dir.y});
 }
 /** A real Simulation of the city with `count` heroes, until round 1 ended (or `seconds`). */
@@ -251,6 +251,37 @@ test('ACCEPTANCE: one novice per seed (5 seeds) walks from the wreck to the plaz
   console.log(`[cidade-08] novice walk, 1 player (wave seconds), ${ok}/5 reached the plaza without a fall:\n  ${report.join('\n  ')}`);
   assert.ok(stops>=5,`the novices stopped for offers (${stops} stops in 5 walks)`);
   assert.ok(ok>=4,`${ok}/5 novices reached the plaza without falling`);
+});
+
+/*
+ * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro (part A): the 1.7× city made the wreck → plaza walk 1.7× longer (round 1's
+ * arrival 22 → 35 s; the group behind chased the team into the 90 s cap). The run now starts down the road
+ * (cityRunStart): on the route, with the walk the tutorial was tuned for (route ÷ CITY_MAP_SCALE) left.
+ */
+test('the city run starts down the road from the wreck: the tuned walk left, every spawn slot open; the room spawns the heroes there',()=>{
+  const start=cityRunStart(city),wreck=POINTS.inicio;
+  const walkLeft=(p:Point)=>ROUTE.costAt(p.x,p.y)/STRAIGHT_COST*ROUTE.cellSize;
+  assert.ok(Math.hypot(start.x-wreck.x,start.y-wreck.y)>20,`the start ${fmt(start)} is down the road from the wreck ${fmt(wreck)}`);
+  const whole=walkLeft(wreck),left=walkLeft(start);
+  assert.ok(left<=whole/CITY_MAP_SCALE+1e-6&&left>=whole/CITY_MAP_SCALE-4*city.asset.unitsPerCell,`${left.toFixed(1)} u left of ${whole.toFixed(1)}`);
+  for(let row=0;row<2;row++)for(let col=-1;col<=1;col++)assert.ok(walkable({x:start.x+col*START_SLOT_SPREAD,y:start.y+row*START_SLOT_SPREAD},city),`slot ${row},${col}`);
+  assert.deepEqual(cityRunStart(city),start,'once per asset');
+  const sim=new Simulation(1,{world:'cidade',terrain:city});
+  for(let i=0;i<6;i++)sim.addBot(`b${i}`,`b${i}`,CLASSES[i%CLASSES.length]);
+  sim.resetRun();
+  for(const p of sim.players.values())assert.ok(Math.hypot(p.x-start.x,p.y-start.y)<=1.6*START_SLOT_SPREAD,`${p.id} spawns at the start`);
+});
+test('round 1 at the tuned length: a hero who keeps walking the route is in the base ≤ 25 s into the wave and the round ends before its cap (3 seeds)',()=>{
+  const report:string[]=[];
+  for(const seed of [1,2,3]){
+    const r=walk(seed,1,WATCH,'steady'),[n]=r.novices;
+    assert.ok(n.arrived!==undefined,`seed ${seed}: arrived`);
+    report.push(`seed ${seed}: base at ${wave(r,n.arrived)}, round 1 ended ${wave(r,r.endTick)}`);
+    assert.ok(n.arrived!-r.waveTick<=ticks(25),`seed ${seed}: in the base at ${wave(r,n.arrived)}`);
+    assert.equal(n.downed,0,`seed ${seed}: no fall`);
+    assert.ok(r.endTick>=0&&!r.timedOut,`seed ${seed}: round 1 ended on its own (${wave(r,r.endTick)})`);
+  }
+  console.log(`[balanco-pos-1-7] steady walk: ${report.join('; ')}`);
 });
 
 test('the plaza group holds the plaza: a slow novice meets it in or next to the base (5 seeds); a hero who never moves never sees it leave',()=>{

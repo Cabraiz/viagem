@@ -29,7 +29,7 @@ const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.has
 async function play(map:'cidade-nevada'|'infinito',seed:number,rounds:number,cap:number){
   const messages:any[]=[],a={send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}} as Peer;
   let n=0;
-  const room=new Room(1000,seed,{cityText,cityRef:CITY,cityPlayable:true,map,newId:()=>`pessoa-${++n}`});
+  const room=new Room(1000,seed,{cityText,cityRef:CITY,cityPlayable:true,map,...(map==='cidade-nevada'?{objective:'chaveiro' as const}:{}),newId:()=>`pessoa-${++n}`});
   await room.ready();
   let t=1000;
   const say=(m:object)=>room.receive(a,JSON.stringify(m),t),round=()=>room.run.snapshot().round;
@@ -41,6 +41,8 @@ async function play(map:'cidade-nevada'|'infinito',seed:number,rounds:number,cap
   for(;room.run.snapshot().phase!=='combat';t+=50)room.advance(t);
   const sim=room.sim,city=cityTerrainOf(sim.terrain);
   assert.equal(!!city,map==='cidade-nevada',`${map}: the room plays it`);
+  // D-047: the city room plays the chaveiro objective by default (its state is in stateHash).
+  assert.equal(sim.objective,city?'chaveiro':undefined);
   const route=city?new FlowField(cityFlowGrid(city),[city.asset.points.praca]):undefined,dir={x:0,y:0},v=heroSpeed(sim.terrain)/SIM_HZ;
   const hashes:string[]=[];
   for(let i=0;i<cap&&room.run.snapshot().phase==='combat'&&sim.world.round.index<=rounds;i++){
@@ -64,7 +66,7 @@ function same(first:string[],again:string[],what:string){
   assert.equal(again.length,first.length,`${what}: same length`);
 }
 
-test('city: the same room (3 bots + a scripted person, seed 4242) plays rounds 1-3 tick for tick alike, before and after another room',async()=>{
+test('city (chaveiro objective): the same room (3 bots + a scripted person, seed 4242) plays rounds 1-3 tick for tick alike, before and after another room',async()=>{
   const first=await play('cidade-nevada',4242,3,ticks(400));
   assert.ok(first.length>ticks(150)&&first.at(-1)!.includes(' r'),`${first.length} combat ticks`);
   await play('cidade-nevada',7,2,ticks(120));

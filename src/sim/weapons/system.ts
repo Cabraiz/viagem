@@ -29,6 +29,8 @@ interface WeaponOptions {
 
 type Dir={x:number;y:number};
 
+/** How far a straight shot gets before it expires, plus its own radius: an enemy farther than this cannot be hit. */
+export const pierceReach=(w:{speed:number;durationTicks:number;area:number})=>w.speed*w.durationTicks/SIM_HZ+w.area;
 function facingOf(player:SimPlayer):Dir{
   const len=Math.hypot(player.facing.x,player.facing.y);
   return len>1e-9?{x:player.facing.x/len,y:player.facing.y/len}:{x:1,y:0};
@@ -93,9 +95,12 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   }
 
   function firePierce(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
-    const [target]=targets(ctx,player,w.range,1);
+    // Only at a live enemy the shot can really reach (BUG-20261013-ORQ-ataque-fora-do-alcance): no shot into the air and
+    // no shot at one beyond the flight distance; with none, the weapon keeps its cooldown and fires at the first in reach.
+    const [target]=targets(ctx,player,Math.min(w.range,pierceReach(w)),1);
+    if(!target)return false;
     let dir=facingOf(player);
-    if(target){const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};}
+    const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
     const returns=!!w.def.evolved?.returns;
     let spawned=0;
     for(let i=0;i<w.amount;i++){

@@ -16,6 +16,7 @@ import {Rng} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {ticks} from '../contract/index.ts';
 import {LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
+import {roleOf} from './enemy-cast.ts';
 import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
 const ROLE_BAND=new Map(ROTATION_SLOTS.map(s=>[s.role as EnemyRole,s.band]));
 
@@ -298,6 +299,32 @@ export const ROTATION_WEIGHTS:readonly Partial<Record<EnemyRole,number>>[]=[
 ];
 /** Most hp a short band's members get for the threat the body cap left out (planRound). */
 export const SHORT_HP_MAX=1.6;
+/**
+ * PlanOptions.roleCap: role by role, the members above `cap` × the round's regular bodies (pool and swarm groups)
+ * become, at the same threat, fewer entries of the round's other uncapped roles (lighter ones favoured); the rest are
+ * dropped. From the pool's end first, then the swarm groups' ends. Nothing to swap to: left as it is.
+ */
+function capRoles(pool:string[],swarms:string[][],w:Partial<Record<EnemyRole,number>>,roster:RoundRoster,cap:Readonly<Partial<Record<EnemyRole,number>>>,picks:Rng){
+  const total=pool.length+swarms.reduce((n,g)=>n+g.length,0);if(!total)return;
+  for(const [role,share] of Object.entries(cap) as [EnemyRole,number][]){
+    const others=ROTATION_ROLES.filter(r=>r!==role&&!!roster.roles[r]?.length&&cap[r]===undefined);
+    if(!others.length||!(share>=0))continue;
+    const is=(id:string)=>roleOf(id)===role;
+    const count=pool.filter(is).length+swarms.reduce((n,g)=>n+g.filter(is).length,0);
+    if(count<=share*total)continue;
+    // Threat kept: the excess becomes fewer, heavier bodies (lighter roles favoured: share ÷ threat), the rest is dropped.
+    const pull:Partial<Record<EnemyRole,number>>={};for(const r of others)pull[r]=Math.max(w[r]??0,1e-6)/ROLE_PROFILES[r].threat;
+    const sum=others.reduce((n,r)=>n+pull[r]!,0),heavy=others.reduce((n,r)=>n+pull[r]!*ROLE_PROFILES[r].threat,0)/sum;
+    // excess so the capped role is `share` of the bodies left: count−e = share×(total−e+q·e), q = its threat ÷ heavy.
+    const q=ROLE_PROFILES[role].threat/heavy,excess=Math.min(count,Math.ceil((count-share*total)/(1-share+share*q)));
+    const swaps=Math.round(excess*q);
+    const repl:string[]=[];for(const {kind,count:n} of apportion(swaps,pull,others))for(let i=0;i<n;i++)repl.push(picks.pick(roster.roles[kind]!));
+    let k=0,drop=excess;
+    const swap=(list:string[],i:number)=>{if(k<repl.length){list[i]=repl[k++];drop--;return false;}if(drop>0){drop--;return true;}return false;};
+    for(let i=pool.length-1;i>=0&&drop>0;i--)if(is(pool[i])&&swap(pool,i))pool.splice(i,1);
+    for(const g of swarms)for(let i=g.length-1;i>=0&&drop>0;i--)if(is(g[i])&&swap(g,i))g.splice(i,1);
+  }
+}
 /** Salt of the rotation's member picks (planRound), apart from the plan's own stream. */
 const ROTATION_PICK_SALT=0x40d0f1c5;
 /** Round 8's lone mini-chefe: when in the spawn window, and its hp against the elite's (eliteHp x this). */
@@ -357,7 +384,12 @@ function roleComposition(index:number,roster:RoundRoster,mod?:RoundModifier){
  * modifier's kinds read as their roles) and the count keeps the round's threat budget: the table's average threat
  * (THREAT over def.weights) over the roles' average (ROLE_PROFILES threat), times the modifier's count.
  */
-export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,roster?:RoundRoster):RoundPlan{
+/** planRound options a map adds on top of the table (the city: CityBalance.roleCap). */
+export interface PlanOptions {
+  /** A short round's (art only) most share of its regular bodies per role, swarms included; the excess becomes its other roles. */
+  roleCap?:Readonly<Partial<Record<EnemyRole,number>>>;
+}
+export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,roster?:RoundRoster,options?:PlanOptions):RoundPlan{
   const def=ROUNDS[index-1];
   if(!def)throw new Error(`no round ${index}`);
   const mod=theme.modifierId?MODIFIERS.find(m=>m.id===theme.modifierId):undefined;
@@ -396,6 +428,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   const pool:string[]=[];
   if(roles)for(const {kind:role,count} of apportion(left,roles,ROTATION_ROLES))for(let i=0;i<count;i++)pool.push(picks.pick(roster!.roles[role]!));
   else for(const {kind,count} of apportion(left,weights))for(let i=0;i<count;i++)pool.push(kind);
+  if(roles&&roster!.short&&options?.roleCap)capRoles(pool,swarmGroups,roles,roster!,options.roleCap,picks);
   for(let i=pool.length-1;i>0;i--){const j=rng.int(0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
   const regularGroups:string[][]=[];
   while(pool.length){

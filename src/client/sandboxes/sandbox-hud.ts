@@ -25,6 +25,9 @@
  * The city's first view brings round 1's banner ("Pouso Forçado", as the director sends it): a phone that already walked
  * sees the banner for its 1.8 s and then the row; with `dica=walk` the row takes the banner's slot at once (UX-1) and the
  * mock joystick (`.hs-stick`) wears the coach's Amarelo like the game's `.explore-stick`.
+ * `mapa=cidade&chaveiro=1[&moto=anda|morta|…][&rota=N|S|L|O]` (D-047, card chaveiro-render): the chaveiro objective
+ * (sandbox-chaveiro.ts, frozen 12 s into its loop): the moto's edge arrow (Cone while dead or fallen), and on the minimap
+ * the car in place of the base (its ring: hits left), the moto, the next delivery and the route still ahead.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
@@ -32,7 +35,10 @@
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
  * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe|coach|motoboy|influencer` (arte v2): with state=downed the local fall names that critter
  * (the banner's cause line), with state=result every fall does ("Te derrubou"); its icon is the imported `ui/inimigo-<id>`
- * (art/hud-art.ts). Without that piece the line is text only here (the game then shows the enemy's sprite).
+ * (art/hud-art.ts), else the still frame of its own enemy sheet (a roster id too, e.g. `bicho=rato-de-boteco`), cropped
+ * here once the sheet loads. Without any art the line is text only here (the game then shows the enemy's sprite).
+ * With `zueira=killcam` the kill-cam's critter is `bicho` (default tio-pave): its portrait in the frame, or, without art
+ * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {RunHud} from '../hud/hud.ts';
@@ -41,7 +47,7 @@ import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
 import {icon} from '../ui/icon.ts';
-import {critterIconSource} from '../art/hud-art.ts';
+import {critterIconSource,critterSheetFrame} from '../art/hud-art.ts';
 import {artReady} from '../ui/art-boot.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
@@ -128,9 +134,27 @@ const hud=new RunHud(document.body,{
   // The game passes onExit, so the result has its three buttons here too (Revanche, Arrumar a sala, Sair).
   onExit(){document.body.dataset.exit='1';},
   coachStorage:{getItem:k=>coachStore.get(k)??null,setItem:(k,v)=>{coachStore.set(k,v);}},
-  ...(bicho?{critterIcon:(kind:string)=>{const s=critterIconSource(kind);return s&&'url' in s?s.url:undefined;}}:{}),
+  ...(bicho?{critterIcon:(kind:string)=>{const s=critterIconSource(kind);return s&&'url' in s?s.url:cropped.get(kind)??(cropFrame(kind),undefined);}}:{}),
 });
 (window as unknown as {__hud:RunHud}).__hud=hud;
+/**
+ * The sandbox has no Phaser textures: a critter's still frame (art/hud-art.ts critterSheetFrame) cut from its sheet into
+ * a data URL, once; the scene is drawn again when it is in. A sheet that fails leaves the critter without a sticker.
+ */
+const cropped=new Map<string,string>(),cropping=new Set<string>();
+function cropFrame(kind:string){
+  const f=critterSheetFrame(kind);
+  if(!f||cropping.has(kind))return;
+  cropping.add(kind);
+  const img=new Image();
+  img.onload=()=>{
+    const w=img.naturalWidth/f.columns,h=img.naturalHeight/f.rows,c=document.createElement('canvas');
+    c.width=Math.round(w);c.height=Math.round(h);
+    c.getContext('2d')?.drawImage(img,f.col*w,f.row*h,w,h,0,0,c.width,c.height);
+    cropped.set(kind,c.toDataURL());load(scenario);
+  };
+  img.src=f.url;
+}
 
 let eventId=0;
 function load(next:HudScenario){
@@ -184,7 +208,7 @@ void artReady().then(ok=>{if(ok)load(scenario);});
 const zueira=params.get('zueira');
 if(zueira){
   const send=()=>{
-    const e=zueira==='killcam'?{type:'last-bicho' as const,kind:'tio-pave',x:4,y:6,round:view.round?.index??3,by:view.players[1]?.id}
+    const e=zueira==='killcam'?{type:'last-bicho' as const,kind:bicho??'tio-pave',x:4,y:6,round:view.round?.index??3,by:view.players[1]?.id}
       :{type:'happening' as const,kind:zueira as 'boletos'|'promo'|'apagao',endsTick:tick+60};
     hud.update({...view,events:[{...e,eventId:++eventId}]});
   };
@@ -232,6 +256,10 @@ if(bordas)void (async()=>{
   const {radar}=await import('../hud/radar.ts');
   const {computeZones,union}=await import('../hud/zones.ts');
   const {islandOutline,MINIMAP_RANGE}=await import('../hud/minimap.ts');
+  const {WcMinimapDriver}=await import('../hud/wc-minimap/driver.ts');
+  const {screenCorners:screenCornersOf}=await import('../hud/city/wiring.ts');
+  const maps=await import('../../maps/index.ts');
+  const wcDriver=new WcMinimapDriver(),mmTerrain=params.get('mapa')==='infinito'?new maps.TerrainField(4242,{world:'infinito'}):maps.defaultTerrain;
   const {projectView}=await import('../projection.ts');
   const {toScreen,followZoom}=await import('../framing.ts');
   const view=Math.max(0,Math.min(3,Number(params.get('vista'))||0));
@@ -246,7 +274,7 @@ if(bordas)void (async()=>{
     // The open window (offer or forge) takes its part of the field, as measureZones does in the game: the hero and
     // the arrows go to what is left (NEW-20261011-UX-janela-esconde-caido).
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
-    const shown=getComputedStyle(hud.minimap!.el).visibility!=='hidden'?rect(hud.minimap!.el):undefined;
+    const shown=rect(hud.wc!.el);
     const zones=computeZones({viewport,status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
     const area=zones.useful,zoom=followZoom(viewport),hero={x:12,y:17};
@@ -268,7 +296,11 @@ if(bordas)void (async()=>{
     // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));
-    hud.minimap!.render(hero,view,MINIMAP_RANGE.ilha[hud.minimap!.far?1:0],items,islandOutline());
+    // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the island, or the endless map with `mapa=infinito`.
+    void items;void islandOutline;void MINIMAP_RANGE;
+    wcDriver.draw({minimap:hud.wc!,terrain:mmTerrain,view,nowMs:performance.now(),selfId:'p1',self:hero,players,states:new Map(view0.players.map(p=>[p.id,p])),
+      enemies:[{x:30,y:30,boss:true},{x:20,y:24},{x:21,y:25},{x:6,y:28},{x:-4,y:10}],structures:[{kind:'muralha',x:12,y:12},{kind:'torre-chinelo',x:15,y:10}],
+      corners:screenCornersOf(locate,hero,viewport),wallHitAt:performance.now()});
     hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
   };
@@ -279,7 +311,7 @@ if(bordas)void (async()=>{
   const view0={...base,camp:base.camp??camp.camp,structures:base.structures.length?base.structures:camp.structures};
   view0.players=view0.players.map((p,i)=>i===2?{...p,hp:0,downed:{progress:0,bleedOutTick:1000+20*14}}:i===4?{...p,hp:0,online:true,downed:{progress:.45,bleedOutTick:1000+20*6}}:{...p,online:true});
   hud.setHero(FIXTURE_HERO[scenario]??FIXTURE_HERO['camp-wave']);hud.update(view0);
-  draw();addEventListener('resize',draw);hud.minimap!.el.addEventListener('click',()=>requestAnimationFrame(draw));
+  draw();addEventListener('resize',draw);
   // The game lays the arrows out every frame; the sandbox does it 4 times a second, so a window opening or moving,
   // or the fonts arriving late, never leave the arrows of an older layout on screen.
   setInterval(draw,250);
@@ -291,6 +323,8 @@ if(cidade)void (async()=>{
   const {cityTerrainFrom,cityAsField}=await import('../../maps/index.ts');
   const {CITY_ASSET_URL,CITY_MANIFEST_URL}=await import('../net/city-asset-loader.ts');
   const city=await import('../hud/city/index.ts');
+  const {WcMinimapDriver}=await import('../hud/wc-minimap/driver.ts');
+  const wcDriver=new WcMinimapDriver();
   const {pointedTargets,inView,COVERING,WINDOWS}=await import('../hud/edges.ts');
   const {computeZones,union}=await import('../hud/zones.ts');
   const {projectView}=await import('../projection.ts');
@@ -329,7 +363,12 @@ if(cidade)void (async()=>{
   const base=fakeView(scenario,people.length,tick);
   // Round 1's banner as the director sends it with the city's tutorial round (its name and line, cidade-08).
   const banner=tutorial?[{type:'round' as const,index:1,phase:'wave' as const,name:CIDADE_TUTORIAL.roundName,modifier:CIDADE_TUTORIAL.modifier,eventId:++eventId}]:[];
-  const run:RunView={...base,events:banner,structures:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+  // D-047: the fake chaveiro objective (sandbox-chaveiro.ts) at the plaza, 12 s into its loop; the car replaces the wall.
+  const chaveiro=params.get('chaveiro')==='1'?await import('./sandbox-chaveiro.ts').then(m=>{
+    const from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
+    return m.fakeChaveiro(params,map.plaza,P[`spawn${from}`],P.bocas[from]).view(12000).view;
+  }):undefined;
+  const run:RunView={...base,events:banner,structures:chaveiro?[]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
@@ -342,7 +381,7 @@ if(cidade)void (async()=>{
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
     const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open};
-    const zones=computeZones({viewport,...controls,minimap:rect(hud.cityMinimap?.element)});
+    const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
     const layout=city.cityHudLayout({viewport,windowOpen:!!open,textScale:hud.edges!.scale()>1.1?1.25:1,controls});
     const area=zones.useful;
     // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
@@ -355,18 +394,18 @@ if(cidade)void (async()=>{
     const plaza=locate(map.plaza);
     hud.setHero({x:hero.x,y:hero.y,bearing:Math.atan2(plaza.y-anchor.y,plaza.x-anchor.x)*180/Math.PI});
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
-      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous});
+      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{})});
     previous=groupKeys;
     const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
-    const big=hud.cityMap.open,side=layout.minimapBig?.width??0;
-    hud.cityMinimap!.render({map,view:vista,selfId:'p1',players:people,enemies,activeMouths:active,baseHp:{hp:380,maxHp:600},
-      ...(big?{side,screen:city.screenCorners(locate,hero,viewport),...(phase==='prepare'?{chests:[{x:70,y:118},{x:96,y:132},{x:64,y:96}]}:{})}:{}),
-      offline:params.has('offline')},big);
-    hud.cityMap.take();
+    // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
+    wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
+      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30,y:map.plaza.y-26,boss:true}],
+      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now()});
+    void layout;void active;void chaveiro; // the keymaker's marks join the WC3 minimap's extras (Executor-8)
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});
@@ -382,7 +421,6 @@ if(cidade)void (async()=>{
   draw();
   // `grande=1`: open the big minimap as a tap would (the sandbox runs no closing rules, so it stays for the screenshot).
   if(params.has('grande'))hud.cityMap.tap(performance.now(),Math.max(city.BIG_MIN_SIDE,hud.cityBig().side));
-  for(const el of [hud.cityMinimap!.element,hud.cityMinimap!.big])el.addEventListener('click',()=>requestAnimationFrame(draw));
   addEventListener('resize',draw);setInterval(draw,250);
   requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();

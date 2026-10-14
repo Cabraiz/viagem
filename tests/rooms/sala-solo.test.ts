@@ -52,6 +52,9 @@ test('an ordinary room still takes a second person',async()=>{
 test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and old clients get a plain room); the object keeps it for a restart',async()=>{
   assert.deepEqual(createOptions({map:'cidade-nevada',solo:true}),{map:'cidade-nevada',solo:true});
   assert.deepEqual(createOptions({map:'lua',solo:'yes',extra:1}),{});assert.deepEqual(createOptions(null),{});
+  // D-047: ?modo=chaveiro asks for the chaveiro objective; any other value is dropped.
+  assert.deepEqual(createOptions({map:'cidade-nevada',solo:true,objective:'chaveiro'}),{map:'cidade-nevada',solo:true,objective:'chaveiro'});
+  assert.deepEqual(createOptions({objective:'muralha'}),{});assert.deepEqual(createOptions({objective:true}),{});
   const inits:unknown[]=[];
   const env={ALLOW_LOCAL:'false',CREATE_LIMIT:{limit:async()=>({success:true})},ROOMS:{idFromName:(n:string)=>n,get:()=>({init:async(_c:string,o:unknown)=>{inits.push(o);}})}} as any;
   // A browser's string body comes with its Content-Length (the Worker reads only a small declared one).

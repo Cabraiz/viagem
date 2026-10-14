@@ -284,7 +284,8 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  * (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk lead, endless spawn ring, half-speed shots, the city
  * tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer rebuilding a field after an idle tick; the island is unchanged.
  */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6a14a5ad1c85232b',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
+// cidade re-recorded by ataque-fora-do-alcance (straight shots no longer fire into the air with nobody in reach).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'5d97144c177e44bb',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);
@@ -578,8 +579,11 @@ test('bossHp per team: × the global bossHp for the plan count at the spawn; onl
 // ---------- 8. CITY_BALANCE, the tuned default ----------
 test('CITY_BALANCE: team entries for 1, 3 and 6 players on neutral globals; cityBalanceFrom round-trips it',()=>{
   assert.deepEqual(Object.keys(CITY_BALANCE.players??{}),['1','3','6'],'team entries 1, 3 and 6');
-  const {players,...globals}=CITY_BALANCE;
+  const {players,roleCap,...globals}=CITY_BALANCE;
   assert.deepEqual(globals,NEUTRAL_CITY_BALANCE,'the global knobs are neutral');
+  // balanco-cidade-so-arte: the rats at most half of an art-only round's bodies.
+  assert.deepEqual(roleCap,{enxame:.5});
+  assert.throws(()=>cityBalanceFrom({roleCap:{rato:.5}}),/not a role/);assert.throws(()=>cityBalanceFrom({roleCap:{enxame:2}}),/0..1/);
   for(const team of [1,3,6])assert.ok(Object.keys(players![team]).length>0,`players[${team}] tunes something`);
   assert.ok(hasTeamLoot(CITY_BALANCE)&&hasTeamDamage(CITY_BALANCE)&&hasTeamBossHp(CITY_BALANCE));
   // Its JSON read back (over the neutral knobs, and over itself) gives CITY_BALANCE again.

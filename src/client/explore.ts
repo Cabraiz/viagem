@@ -5,6 +5,9 @@ import type { CoopClient } from './net/client.ts';
 import './coop.css';
 import './fun/fun.css';
 import {EmoteBar} from './fun/emotes.ts';
+
+/** The quick-emote bar (EmoteBar) is off until it comes back as a radial wheel around the hero. */
+const EMOTE_BAR=false;
 import {ZONE_WINDOWS} from './hud/zones.ts';
 /** The match windows a thumb control must not cover (the emote bar hides while one is open). */
 const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
@@ -105,9 +108,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
     $('.explore-actions').innerHTML=`${SKILL_HTML}<button class="explore-pause" aria-pressed="false">Pausar controles</button>`;
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
-    // Quick emotes (emote-relay-sala): the bar above the skill button (fun.css, zones 'emote'), shown in a match only;
-    // a tap goes to the room, which relays it to everyone, this phone included (net.onEmote: the laughing face).
-    emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;
+    // Quick emotes (emote-relay-sala): the bar above the skill button is OFF (user, 13/10: "remova esse botão"; when it
+    // comes back it is a radial wheel around the hero, like a weapon wheel). The relay and the balloons stay.
+    if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
     hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),

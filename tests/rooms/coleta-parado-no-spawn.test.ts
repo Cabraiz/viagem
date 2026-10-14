@@ -44,7 +44,8 @@ const round=(room:Room)=>room.run.snapshot().round;
 const secs=(t:number)=>`${(t/SIM_HZ).toFixed(1)} s`;
 
 test('ACCEPTANCE (BUG-20261013-E4): a person idle at the city spawn does not sound the horn early, and the two bots still gather every intermission',async()=>{
-  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada'}),a=peer();
+  // The wall mode's intermissions (the chaveiro objective, the D-047 default, is covered by city-room-chaveiro.test.ts).
+  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',objective:false}),a=peer();
   await room.ready();
   let t=1000;
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);

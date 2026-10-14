@@ -12,7 +12,7 @@ import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
   ART_CELL,CITY_ART_HEIGHT,FILL_MAX_AREA,GROUND_FROM_MANIFEST,LOT_UNIT,MOUND_HEIGHT,blockArt,buildCityArtPlan,cityArtOptions,fillLots,
-  fountainLot,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
+  fountainLot,lotCells,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
 import type {CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {blockPieces} from '../../src/client/render/city/chunks.ts';
@@ -337,4 +337,33 @@ test('a manifest with art but no building sheets keeps the procedural columns (n
   for(const b of realCity().blocks)assert.deepEqual(blockArt(b,plan),{lots:[],mounds:[]},b.id);
   assert.equal(planHasBuildingArt(repoPlan()),true);
   assert.equal(planHasBuildingArt(buildCityArtPlan(demoIndex(),{enabled:false})),false);
+});
+
+test('the praça fountain: no fill lot, planned lot or mound lands on its footprint (bug: a ruin over the basin)', ()=>{
+  const asset=realCity();
+  for(const height of ['b','a'] as const){
+    const plan=repoPlan(height),f=fountainLot(asset,plan);
+    assert.ok(f,'the repo manifest places the fountain');
+    const under=lotCells(f);
+    let touched=0,blocksNear=0;
+    for(const b of asset.blocks){
+      if(b.x+b.w<=f.x||f.x+f.w<=b.x||b.y+b.h<=f.y||f.y+f.h<=b.y)continue;
+      blocksNear++;
+      const art=blockArt(b,plan,under);
+      for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))touched++;
+      for(const m of art.mounds)if(under(m.x,m.y))touched++;
+    }
+    assert.equal(touched,0,`height ${height}: ${touched} cells of art over the fountain`);
+    // Without the reservation the old code did put art there (the bug this guards against), when a block meets it.
+    if(blocksNear){
+      let before=0;
+      for(const b of asset.blocks){const art=blockArt(b,plan);for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))before++;for(const m of art.mounds)if(under(m.x,m.y))before++;}
+      assert.ok(before>0,'the fixture reproduces the bug without the reservation');
+    }
+  }
+});
+
+test('reserved cells: blockArt without a reservation is unchanged', ()=>{
+  const asset=realCity(),plan=repoPlan();
+  for(const b of asset.blocks.slice(0,200))assert.deepEqual(blockArt(b,plan,()=>false),blockArt(b,plan));
 });

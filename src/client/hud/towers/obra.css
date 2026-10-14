@@ -45,6 +45,14 @@
 .rh-obra-nome{grid-column:2;min-width:0;font:400 var(--t-16)/1.15 var(--f-cartaz);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-efeito{grid-column:2/4;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-cost,.rh-obra-why{grid-column:3;grid-row:1;display:inline-flex;align-items:center;gap:2px;font:800 var(--t-13)/1.15 var(--f-sistema);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Compact landscape window (layout.ts 'compacta': the branches side by side under the head row): a branch card is
+   narrow, so its name takes the whole first line (clear of the punched hole) and the suit and the cost (or the reason)
+   the second; the effect line goes (it stays in the card's aria-label). */
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]){grid-template-columns:18px minmax(0,1fr);column-gap:4px;padding-left:10px}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-nome{grid-column:1/3}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-naipe{grid-row:2;width:18px;height:18px}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) :is(.rh-obra-cost,.rh-obra-why){grid-column:2;grid-row:2;justify-self:start;max-width:100%;min-width:0;overflow:hidden}
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-efeito{display:none}
 .rh-obra-why .ic{width:16px;height:16px}
 .rh-obra-why{padding:0 4px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel)}
 .rh-obra-tem{border-style:solid}

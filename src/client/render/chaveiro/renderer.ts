@@ -16,7 +16,7 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
-import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,routeHeadingAt,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
+import {CAR_LOW,PART_FALL_MS,TIO_SPOT,tioSpot,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,routeHeadingAt,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
@@ -32,6 +32,7 @@ const SMOKE_MS=380,SMOKE_LIFE_MS=1600;
 const COVER_ALPHA=.45;
 /** Heads (units over the ground) the cast's balloons stand on (card chaveiro-falas): Cida's tray, him standing, the roof. */
 const RIDERS_TOP=1.85*M,STANDING_TOP=1.75*M;
+
 
 /** Where a line of the cast stands (world units) and how high its speaker's head is (world px over the ground). */
 export interface SpeechAnchor {x:number;y:number;lift:number}
@@ -107,7 +108,7 @@ export class ChaveiroRenderer {
   /** The car's heading drawn this frame (radians, in HEADING_STEPS): the rope (fortify.ts) hooks to its bumpers. */
   carHeading=0;
   /** The drawn moto (its lap with the alarm) and the chaveiro when he stands apart (delivering, opening), last frame. */
-  private drawn={moto:{x:0,y:0,lift:0},chaveiro:{x:0,y:0,lift:0},car:{x:0,y:0,lift:0},shown:false};
+  private drawn={moto:{x:0,y:0,lift:0},chaveiro:{x:0,y:0,lift:0},car:{x:0,y:0,lift:0},tio:{x:0,y:0,lift:0},shown:false};
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,claro:0};
   /** The car, the moto and the standing chaveiro, frozen per look (FrozenFigures). */
   private frozenCar:FrozenFigures;private frozenMoto:FrozenFigures;private frozenOpener:FrozenFigures;
@@ -194,6 +195,7 @@ export class ChaveiroRenderer {
     const d=this.drawn;d.shown=true;
     d.moto.x=d.chaveiro.x=mx;d.moto.y=d.chaveiro.y=my;d.moto.lift=d.chaveiro.lift=RIDERS_TOP*HEIGHT_PX;
     d.car.x=view.car.x;d.car.y=view.car.y;d.car.lift=CAR_TOP*HEIGHT_PX;
+    const tio=tioSpot(view.car,proj.view);d.tio.x=tio.x;d.tio.y=tio.y;d.tio.lift=TIO_SPOT.top*HEIGHT_PX;
     const standing=mode==='entrega'||mode==='abrindo'||view.ended==='victory';
     if(!standing)this.frozenOpener.hide();
     if(mode==='entrega'){
@@ -226,12 +228,13 @@ export class ChaveiroRenderer {
 
   /**
    * Where `speaker`'s balloon stands this frame (card chaveiro-falas): the chaveiro where he is drawn (on the moto, or
-   * standing apart), Cida on the moto, the alarm on the car; undefined without the objective (or for the Tio: the hero).
+   * standing apart), Cida on the moto, the Tio beside the car (rules.ts tioSpot), the alarm over the car; undefined without
+   * the objective.
    */
   speechAnchor(speaker:Speaker):SpeechAnchor|undefined{
     const d=this.drawn;
     if(!d.shown)return undefined;
-    return speaker==='chaveiro'?d.chaveiro:speaker==='cida'?d.moto:speaker==='carro'?d.car:undefined;
+    return speaker==='chaveiro'?d.chaveiro:speaker==='cida'?d.moto:speaker==='tio'?d.tio:d.car;
   }
 
   destroy(){

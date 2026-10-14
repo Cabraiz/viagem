@@ -6,6 +6,9 @@ import {CHAVEIRO_LINES,END_EVENTS,LINE_EVENTS,MAX_LINE_CHARS,SPEAKER_SPOT,hash32
 import {ChaveiroTalk,DEDUPE_MS,LINE_GAP_MS,PENDING_MS,eventMoment,resultMoment,viewEndMoment,type LooseEvent} from '../../src/client/render/chaveiro/talk.ts';
 import type {ChaveiroView,MotoMode} from '../../src/client/render/chaveiro/view.ts';
 import {fakeTalkEvents,FALA_AT_MS,FALA_EVERY_MS} from '../../src/client/sandboxes/sandbox-chaveiro.ts';
+import {TIO_SPOT,tioSpot} from '../../src/client/render/chaveiro/rules.ts';
+import {CAR_HALF,CAR_TOP} from '../../src/client/render/chaveiro/figures.ts';
+import {isoOffset} from '../../src/client/render/chaveiro/iso.ts';
 
 const ALL=LINE_EVENTS.flatMap(e=>CHAVEIRO_LINES[e].map(([speaker,text])=>({event:e,speaker,text})));
 /** The balloon wraps at 280 px of 20 px bold system-ui (layers.ts BUBBLE_STYLE): ~11 px a character, 25 a row. */
@@ -42,8 +45,8 @@ test('falas: no empty line, no line twice in the whole table, a known speaker ea
     // No markup, no line breaks, no URL or handle (nothing that is not a spoken line).
     assert.doesNotMatch(text,/[<>\n\r\t@#]|https?:|www\./,`${event}: ${text}`);
   }
-  // Who speaks where: the riders over the moto, the Tio over the hero, the alarm over the car.
-  assert.deepEqual(SPEAKER_SPOT,{chaveiro:'moto',cida:'moto',tio:'hero',carro:'car'});
+  // Who speaks where: the riders over the moto, the Tio beside the car, the alarm over the car.
+  assert.deepEqual(SPEAKER_SPOT,{chaveiro:'moto',cida:'moto',tio:'car-side',carro:'car'});
 });
 
 test('falas: the picker is deterministic by seed and never says the same line twice in a row for a moment',()=>{
@@ -181,4 +184,22 @@ test('falas: the sandbox fires its fake moments once each, FALA_EVERY_MS apart',
   assert.deepEqual(fakeTalkEvents(params,FALA_AT_MS,FALA_AT_MS+2*FALA_EVERY_MS).map(e=>e.type),['sale','part']);
   assert.ok(FALA_EVERY_MS>=LINE_GAP_MS);
   assert.deepEqual(fakeTalkEvents(params,0,1e6).map(e=>eventMoment(e)),['volta','sale','part']);
+});
+
+test('falas: the Tio speaks from a fixed point beside the car, off its body and apart from the alarm over the roof',()=>{
+  assert.ok(TIO_SPOT.fwd>CAR_HALF.l&&TIO_SPOT.left>CAR_HALF.w); // a corner just off the car's body
+  assert.ok(TIO_SPOT.top>CAR_TOP); // a standing head over the roof line, like the hero's
+  const car={x:10,y:20};
+  for(let view=0;view<4;view++){
+    const p=tioSpot(car,view),dx=p.x-car.x,dy=p.y-car.y;
+    // Outside the footprint, at a corner; the same point every frame of a view (fixed, not following anyone).
+    assert.ok(Math.abs(dx)>CAR_HALF.l&&Math.abs(dy)>CAR_HALF.w,`view ${view}`);
+    assert.deepEqual(tioSpot(car,view),p);
+    // The corner nearest the viewer (lowest on screen of the four), so it is never far out to the side.
+    for(const [cx,cy] of [[1,1],[1,-1],[-1,1],[-1,-1]])assert.ok(isoOffset(dx,dy,0,view).y>=isoOffset(cx*TIO_SPOT.fwd,cy*TIO_SPOT.left,0,view).y-1e-9);
+    assert.ok(Math.abs(isoOffset(dx,dy,0,view).x)<Math.abs(isoOffset(TIO_SPOT.fwd,-TIO_SPOT.left,0,0).x));
+    // The balloon tails (Tio's head vs the roof's centre, where the alarm speaks) are apart on screen: > 40 world px.
+    const tio=isoOffset(dx,dy,TIO_SPOT.top,view),roof=isoOffset(0,0,CAR_TOP,view);
+    assert.ok(Math.hypot(tio.x-roof.x,tio.y-roof.y)>40,`view ${view}: ${Math.hypot(tio.x-roof.x,tio.y-roof.y)}`);
+  }
 });

@@ -5,11 +5,14 @@
  * (tests/client/chaveiro-falas.test.ts). Pure: the picker is deterministic from a seed (every phone shows the same line).
  */
 
-/** Who speaks: the chaveiro and Cida ride the moto, the Tio is the team's own (over the hero), 'carro' is the alarm. */
+/** Who speaks: the chaveiro and Cida ride the moto, the Tio (the car's owner) stands beside it, 'carro' is the alarm. */
 export type Speaker='chaveiro'|'cida'|'tio'|'carro';
-/** Where a speaker's balloon stands: the moto (with its riders), the local hero, the car. */
-export type Spot='moto'|'hero'|'car';
-export const SPEAKER_SPOT:Readonly<Record<Speaker,Spot>>={chaveiro:'moto',cida:'moto',tio:'hero',carro:'car'};
+/**
+ * Where a speaker's balloon stands: the moto (with its riders), a fixed point beside the car (the Tio, at a standing
+ * head's height, off the roof so his line and the alarm's never stack), over the car's roof (the alarm).
+ */
+export type Spot='moto'|'car-side'|'car';
+export const SPEAKER_SPOT:Readonly<Record<Speaker,Spot>>={chaveiro:'moto',cida:'moto',tio:'car-side',carro:'car'};
 
 /** A line of the table: who says it and what. */
 export type Line=readonly [Speaker,string];

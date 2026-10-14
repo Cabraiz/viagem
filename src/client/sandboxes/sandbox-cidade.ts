@@ -388,7 +388,7 @@ class CitySandbox extends Phaser.Scene {
     const seed=params.has('seed')?Number(params.get('seed'))>>>0:talkSeed('sandbox',0);
     // Without tele=1 the balloons get a horde renderer of their own (the lab's one otherwise), on the city's projection.
     const horde=tele?undefined:new HordeRenderer(this,{projector:this.cityProjector(),uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),
-      actorScale:()=>CITY_VIEW_SCALE,reduced:reducedMotion,city:()=>true,locate:id=>id==='self'?this.at:undefined});
+      actorScale:()=>CITY_VIEW_SCALE,reduced:reducedMotion,city:()=>true});
     horde?.push({tick:0,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[]});
     return {renderer,fake,talk:{talk:new ChaveiroTalk(seed),horde,said:[],last:-1}};
   }
@@ -403,8 +403,7 @@ class CitySandbox extends Phaser.Scene {
     if(!said||!horde)return;
     t.said.push({...said,at:time});
     const renderer=this.chaveiro!.renderer;
-    if(said.spot==='hero')horde.speak('self',said.text,undefined,said.priority);
-    else horde.speak(`chaveiro:${said.speaker}`,said.text,()=>renderer.speechAnchor(said.speaker),said.priority);
+    horde.speak(`chaveiro:${said.speaker}`,said.text,()=>renderer.speechAnchor(said.speaker),said.priority);
   }
   /** anda=: the hero pulls the car by the rope from ahead of its move (the rope's slack in the swing). */
   private pullCar(car:{x:number;y:number}){

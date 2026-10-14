@@ -2,7 +2,7 @@
  * Pure rules of the chaveiro objective's render (card NEW-20261013-ORQ-chaveiro-render): what pose, motion and effect
  * each state shows. No Phaser; the renderer (renderer.ts) calls these every frame. Times in ms of the renderer's clock.
  */
-import {M} from './iso.ts';
+import {M,isoOffset} from './iso.ts';
 import {CAR_HALF,WHEEL_TURN_STEPS,type MotoPose} from './figures.ts';
 import type {ChaveiroView,MotoMode} from './view.ts';
 import {CAR_PARTS} from './view.ts';
@@ -55,6 +55,24 @@ export function voltaCentre(moto:{x:number;y:number},car:{x:number;y:number}):{x
   if(d>=clear)return {x:moto.x,y:moto.y};
   const ux=d>1e-6?dx/d:-1,uy=d>1e-6?dy/d:0;
   return {x:car.x+ux*clear,y:car.y+uy*clear};
+}
+/**
+ * The Tio's spot (card chaveiro-falas): standing at a corner of the car, just off its body (CORNER units out), at a
+ * standing head's height (top, units); apart from the alarm's balloon over the roof, so the two never stack.
+ */
+export const TIO_SPOT={fwd:CAR_HALF.l+.35*M,left:CAR_HALF.w+.35*M,top:1.75*M} as const;
+/**
+ * Where the Tio stands for camera `view`: the car's corner nearest the viewer (lowest on screen; the car is parked at
+ * heading 0), so his balloon sits beside the car's front on screen, never pushed to the screen's edge by the car's
+ * long side, and never over its roof. World units.
+ */
+export function tioSpot(car:{x:number;y:number},view:number):{x:number;y:number}{
+  let best={x:car.x+TIO_SPOT.fwd,y:car.y+TIO_SPOT.left},bestY=-Infinity;
+  for(const sx of [1,-1])for(const sy of [1,-1]){
+    const dx=sx*TIO_SPOT.fwd,dy=sy*TIO_SPOT.left,y=isoOffset(dx,dy,0,view).y;
+    if(y>bestY+1e-9){bestY=y;best={x:car.x+dx,y:car.y+dy};}
+  }
+  return best;
 }
 /** The moto needs the team in these modes (2 to push it; it fell): its arrow and minimap mark turn Cone. */
 export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';

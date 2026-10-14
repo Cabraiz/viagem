@@ -907,7 +907,7 @@ export class IslandScene extends Phaser.Scene {
   }
   /**
    * D-047 (card chaveiro-falas): the cast's line due now, if any (talk.ts), in the zueiras' balloon: the chaveiro and
-   * Cida over the moto (or him where he stands), the alarm over the car, the Tio over the hero. The end of the run
+   * Cida over the moto (or him where he stands), the Tio beside the car, the alarm over it. The end of the run
    * comes from the result too (RunState.objective, protocol 15, read loosely).
    */
   private speakChaveiro(time:number){
@@ -917,9 +917,7 @@ export class IslandScene extends Phaser.Scene {
     const said=talk.take(time);
     if(!said)return;
     const chaveiro=this.chaveiro;
-    // The Tio: the team's own voice, a player's balloon over the local hero.
-    if(said.spot==='hero'){if(net?.id)this.horde.speak(net.id,said.text,undefined,said.priority);}
-    else this.horde.speak(`chaveiro:${said.speaker}`,said.text,()=>chaveiro.speechAnchor(said.speaker),said.priority);
+    this.horde.speak(`chaveiro:${said.speaker}`,said.text,()=>chaveiro.speechAnchor(said.speaker),said.priority);
   }
   /**
    * D-051 (ninhos-arte-render): the snapshot's nests (structures of kind 'ninho') drawn on the city ground with their

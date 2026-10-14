@@ -60,9 +60,12 @@ async function startPreview(port){
   const child=spawn(process.execPath,['node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port',String(port),'--strictPort','--outDir',dist],
     {windowsHide:true,shell:false,detached:posix,stdio:'ignore'});
   const url=`http://127.0.0.1:${port}`;
-  let up=false;
-  for(let i=0;i<120&&!up;i++){try{up=(await fetch(url)).ok;}catch{}if(!up)await sleep(250);}
-  if(!up){try{if(posix)process.kill(-child.pid,'SIGTERM');else child.kill();}catch{}throw new Infra(`vite preview não subiu em ${url}`);}
+  // Up and OURS: the port was free when picked, but another server may take it before the spawn (then --strictPort
+  // fails and the other one would answer): its /version.json must be this dist's.
+  const want=readFileSync(join(dist,'version.json'),'utf8').trim();
+  let up=false,exited=false;child.once('exit',()=>{exited=true;});
+  for(let i=0;i<120&&!up&&!exited;i++){try{const r=await fetch(`${url}/version.json`,{cache:'no-store'});up=r.ok&&(await r.text()).trim()===want;}catch{}if(!up)await sleep(250);}
+  if(!up){try{if(posix)process.kill(-child.pid,'SIGTERM');else child.kill();}catch{}throw new Infra(`vite preview não subiu em ${url}${exited?' (porta tomada?)':''}`);}
   return {url,stop:()=>{try{if(posix)process.kill(-child.pid,'SIGTERM');else child.kill();}catch{}}};
 }
 
@@ -72,8 +75,9 @@ async function smoke(chromium,base,mode){
   let browser;
   try{browser=await chromium.launch({args:process.platform==='win32'?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:[]});}
   catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
-  const ctx=await browser.newContext({viewport:{width:1335,height:620},deviceScaleFactor:1});
-  const p=await ctx.newPage(),errors=[];
+  const errors=[];let p;
+  try{p=await (await browser.newContext({viewport:{width:1335,height:620},deviceScaleFactor:1})).newPage();}
+  catch(e){await browser.close().catch(()=>{});throw new Infra(`a página não abriu: ${String(e).split('\n')[0]}`);}
   p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
   try{
     await p.goto(`${base}/${MODES[mode]}`,{waitUntil:'load',timeout:90000});
@@ -105,7 +109,14 @@ async function smoke(chromium,base,mode){
 const config=join(dist,'multiplayer.json');
 if(!existsSync(config)){console.log(`smoke: INFRA · ${config} não existe: rode npm run build antes`);process.exit(2);}
 const original=readFileSync(config,'utf8');
-let worker,preview,code=0;
+let worker,preview,code=0,restored=false;
+/** dist/multiplayer.json back as built: on every way out, before anything else (a dist pointing at 127.0.0.1 must
+ * never reach the Pages artifact). */
+const restore=()=>{if(restored)return;restored=true;try{writeFileSync(config,original);}catch{}};
+process.on('exit',restore);
+// Ctrl+C / a CI cancel: restore and stop the preview here; the Worker's own handler (local-worker.mjs) then stops it
+// and exits with 128 + the signal.
+for(const sig of ['SIGINT','SIGTERM','SIGHUP'])process.prependListener(sig,()=>{restore();preview?.stop();if(!worker)process.exit(130);});
 if(outDir)mkdirSync(outDir,{recursive:true});
 try{
   const workerPort=await freePort(),port=await previewPort();
@@ -124,8 +135,8 @@ try{
   if(!(e instanceof Infra)&&!/não subiu|ocupada|Porta|wrangler|health/i.test(String(e)))throw e;
   console.log(`smoke: INFRA · ${String(e.message??e).split('\n')[0]}`);code=2;
 }finally{
+  restore();
   preview?.stop();
   await worker?.stop();
-  writeFileSync(config,original);
 }
 process.exit(code);

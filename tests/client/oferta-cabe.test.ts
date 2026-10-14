@@ -107,8 +107,8 @@ const box=(v:string)=>{const p=v.split(/\s+/).map(px);return {top:p[0],right:p[1
 const cssVar=(selector:string,name:string,media?:string)=>px(value(selector,name,media));
 
 /**
- * The window's box with `cards` tags (and the "Levar os indicados" tile when `takeAll`) at 100% text, every name on
- * two lines (the worst case of the 2-line clamp), from the sizes in hud.css; `room` is the width the screen leaves it.
+ * The window's box with `cards` tags (and the "Levar os indicados" tile when `takeAll`) at 100% text, each tag only its
+ * sticker (image-only tags, user 13/10), from the sizes in hud.css; `room` is the width the screen leaves it.
  */
 function compact(orientation:'portrait'|'landscape',cards:number,takeAll:boolean,room:number){
   const media=orientation==='landscape'?LANDSCAPE:undefined;
@@ -120,8 +120,7 @@ function compact(orientation:'portrait'|'landscape',cards:number,takeAll:boolean
   const width=Math.min(natural,room);
   const head=px(value('.rh-offer-head','min-height'))+px(value('.rh-offer-head','margin-bottom'));
   const cp=box(value('.rh-card','padding')),icon=px(value('.rh-card-icon','height'));
-  const nameMargin=box(value('.rh-card-name','margin')).top;
-  const tag=2*border+cp.top+cp.bottom+icon+nameMargin+2*14*1.05;
+  const tag=2*border+cp.top+cp.bottom+icon;
   const height=pad.top+pad.bottom+2*border+head+tag;
   return {width,height,area:width*height,natural,card:(width-natural+cards*card)/cards};
 }

@@ -178,9 +178,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     const element=shell.querySelector(selector);if(element)settingsContent.append(element);
   }
   $('.explore-movement small').remove();
+  // The phone's minimal HUD (hud-mobile-minimo): the view buttons leave the top of the screen and turning the camera
+  // lives here, first thing in the settings (explore.css shows this row with a finger only; the desktop keeps its
+  // buttons and Q/E). The same [data-turn] buttons, so the wave lock, the compass and the answer are one logic.
+  const cameraSettings=document.createElement('div');cameraSettings.className='explore-settings-camera';cameraSettings.setAttribute('role','group');cameraSettings.setAttribute('aria-label','Girar câmera');
+  cameraSettings.innerHTML=`<span class="explore-settings-camera-title">Girar câmera</span><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only">Vista 1 de 4</span></span><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-settings-camera-note" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira no intervalo</span></span>`;
+  settingsContent.prepend(cameraSettings);
+  const cameraNote=cameraSettings.querySelector<HTMLElement>('.explore-settings-camera-note')!;
   shell.append(settings);
   $('#explorer-name').textContent=name;
-  shell.querySelector('img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
+  // The settings' title picture (not the first <img> of the shell: with the imported art the view buttons' stickers are
+  // <img> too, and the left one used to wear the hero's portrait, hud-mobile-minimo).
+  shell.querySelector<HTMLImageElement>('.explore-title img')!.src=`/art/portraits/${hero.id}-thumb.webp`;
   document.body.append(shell);shell.showModal();
   // In a room the thumbs start off (waiting room): the per-frame update below only runs once the scene is up, and on
   // a slow network the waiting room shows long before that (manifesto-enxuto-3g; lobby-dead-controls).
@@ -254,6 +263,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       if(button.getAttribute('aria-disabled')!==String(locked))button.setAttribute('aria-disabled',String(locked));
     }
     if(!locked&&!hint.hidden){hint.hidden=true;if(hintTimer)clearTimeout(hintTimer);}
+    // The settings' row (phone): dimmed with the lock's words while a wave holds the view.
+    if(cameraSettings.dataset.locked!==String(locked)){cameraSettings.dataset.locked=String(locked);cameraNote.hidden=!locked;}
   };
   // Portrait (pacote-bugs-ux design review): the top band has no free row under the camera buttons (the XP bar is 20 px
   // below), so the answer is a row of the announcement slot, "[cadeado] Gira no intervalo", ahead of the coach's hint;
@@ -267,13 +278,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     hint.hidden=false;if(hintTimer)clearTimeout(hintTimer);hintTimer=setTimeout(()=>{hint.hidden=true;},CAMERA_HINT_MS);
   };
   for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]'))button.addEventListener('click',()=>{
-    if(controller?.scene.rotationLocked()){lockedTap();return;}
-    if(!controller)return;reset();pause(false);
+    // The settings' copy (phone): the game stays paused under the open settings and the focus stays in them.
+    const inSettings=!!button.closest('.explore-settings');
+    if(controller?.scene.rotationLocked()){if(inSettings){cameraNote.classList.remove('is-beat');void cameraNote.offsetWidth;cameraNote.classList.add('is-beat');}else lockedTap();return;}
+    if(!controller)return;reset();if(!inSettings)pause(false);
     const view=controller.scene.rotateCamera(Number(button.dataset.turn));
     shell.dataset.cameraView=String(view);
     // The compass needle turns with the view (the "1 / 4" left, DSG-icones-sistema); the text stays for screen readers.
-    $('.explore-view .ic-bussola').outerHTML=compass(view,{size:32});$('.explore-view .sr-only').textContent=`Vista ${view+1} de 4`;
-    $('.explore-canvas').focus();
+    for(const spot of shell.querySelectorAll('.explore-view')){spot.querySelector('.ic-bussola')!.outerHTML=compass(view,{size:32});spot.querySelector('.sr-only')!.textContent=`Vista ${view+1} de 4`;}
+    if(!inSettings)$('.explore-canvas').focus();
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
@@ -295,8 +308,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(net)applyControls(shell,controlsFor({phase:net.run?.phase??'lobby'}));
     // The desktop has no stick to bring the controls back: a pause left by the phone's blur ends here (not the settings').
     if(kind==='mouse'&&paused&&!settings.open)pause(false);
-    // The joystick came or went: the HUD measures its zones again (useful area, thumbs).
-    hud?.layoutChanged();
+    // The joystick came or went: the HUD measures its zones again (useful area, thumbs). The phone's minimal HUD
+    // (hud-mobile-minimo) follows the same kind: a finger lays the phone's out, the mouse the desktop's.
+    hud?.setInput(kind);hud?.layoutChanged();
   };
   syncInput();
   document.addEventListener('pointerdown',event=>{if(inputWatch.pointer(event.pointerType,true))syncInput();},{capture:true,signal});

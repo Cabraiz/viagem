@@ -38,9 +38,22 @@ const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)
   nodes.last.set(key,value);write(value);
 };
 
+/** How long a teammate's name stays after a tap on their portrait, once the finger lifts (the phone's fan has no names). */
+export const NAME_TAP_MS=1600;
+
 export function createTeamStrip():HudPart{
   const root=el('div','rh-team');root.setAttribute('aria-label','Time');
   const members=new Map<string,MemberNodes>();
+  // The phone's fan (hud-mobile-minimo, fone.css) shows no names: a tap (or a held finger) on a portrait shows that
+  // one's name under it (data-nome), NAME_TAP_MS after the finger lifts. The desktop's column always shows them.
+  let named:HTMLElement|undefined,nameTimer:ReturnType<typeof setTimeout>|undefined;
+  const hideName=()=>{if(named)delete named.dataset.nome;named=undefined;};
+  root.addEventListener('pointerdown',event=>{
+    const member=(event.target as HTMLElement).closest<HTMLElement>('.rh-member');if(!member)return;
+    clearTimeout(nameTimer);if(named!==member)hideName();named=member;member.dataset.nome='';
+  });
+  const release=()=>{if(!named)return;clearTimeout(nameTimer);nameTimer=setTimeout(hideName,NAME_TAP_MS);};
+  for(const type of ['pointerup','pointercancel','pointerleave'] as const)root.addEventListener(type,release);
   const make=(player:PlayerRunView,ctx:HudContext):MemberNodes=>{
     const item=el('div','rh-member');
     const ring=el('div','rh-member-ring',item);
@@ -84,7 +97,8 @@ export function createTeamStrip():HudPart{
       if(player.downed)put(n,'timer',secondsText(secondsLeft(player.downed.bleedOutTick,view.tick)),v=>{n.timer.textContent=v;});
       put(n,'aria',`${player.name}${player.bot?' (bot)':''}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
     });
-  }};
+    if(named&&!named.isConnected)named=undefined;
+  },destroy(){clearTimeout(nameTimer);}};
 }
 
 export function createReviveAlerts():HudPart{

@@ -20,7 +20,8 @@
  */
 import './obra.css';
 import {icon} from '../../ui/icon.ts';
-import {FREE_PRICE,evolvePriceLabel,tokenPriceLabel,type PriceLabel} from '../price.ts';
+import {FREE_PRICE,evolvePriceLabel,fichasText,granaText,tokenPriceLabel,type PriceLabel} from '../price.ts';
+import {tokensOf,unitsOf} from '../../../rules/index.ts';
 import {computeZones,type ZoneInput,type Rect} from '../zones.ts';
 import {layoutObra,obraArrows,planMarkers,type MarkerPlan,type ObraPoint} from './layout.ts';
 import {arrowHalf,beakTransform,distanceText,type EdgeArrow} from '../edges.ts';
@@ -221,6 +222,11 @@ export class ObraHud {
     const panel=el('section','rh-obra-janela',this.el);place(panel,layout.panel);panel.style.zIndex=String(plan.shown.length+2);
     panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);panel.tabIndex=-1;
     panel.dataset.orientation=layout.orientation;panel.dataset.forma=layout.form;
+    // The team's wallet where it is spent (hud-mobile-minimo: the phone's top shows no R$ nor fichas): a small ficha
+    // riding the window's top edge, "R$ 120 · 2 [torre]" (obra.css .rh-obra-carteira). Not a target.
+    {const tokens=tokensOf(unitsOf(v.balance)),grana=granaText(v.grana);
+      const wallet=el('span','rh-obra-carteira',panel);wallet.setAttribute('role','img');wallet.setAttribute('aria-label',`${grana} e ${fichasText(tokens)} da turma`);
+      wallet.innerHTML=`<b>${grana}</b><span class="rh-obra-carteira-fichas">${tokenPriceLabel(tokens).html}</span>`;}
     const cards=cardsOf(tree),rects=[layout.head,...layout.branches];
     cards.forEach((c,i)=>this.card(panel,c,rects[i],i===0,layout.panel));
     const close=el('button','rh-obra-fechar',panel);close.type='button';place(close,layout.close,layout.panel);

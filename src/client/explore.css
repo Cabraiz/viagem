@@ -80,6 +80,20 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 @media (max-height:500px){
   body:has(.rh-offer:not([hidden]),.rh-forge:not([hidden])) .explore-camera .explore-camera-hint{top:calc(100% + 24px + 76px + 8px);width:min-content;padding:2px 4px;white-space:normal}
 }
+/* The phone's minimal HUD (hud-mobile-minimo): no view buttons on the screen with a finger; turning the camera is the
+   first row of the settings (explore.ts), dimmed with the lock's words while a wave holds the view. The desktop keeps
+   its buttons (and Q/E) and never shows the row. */
+.explore-shell[data-input=touch] .explore-camera{display:none}
+.explore-shell:not([data-input=touch]) .explore-settings-camera{display:none}
+.explore-settings-camera{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.explore-settings-camera-title{margin-right:auto;font-weight:800}
+.explore-settings .explore-settings-camera button{display:grid;place-items:center;width:48px;height:48px;padding:0;background:var(--c-ficha)}
+.explore-settings-camera .explore-view{display:grid;place-items:center;line-height:0}
+.explore-settings-camera[data-locked="true"] :is(button,.explore-view){opacity:.4}
+.explore-settings-camera-note{flex-basis:100%;display:inline-flex;align-items:center;gap:4px;font-size:13px}
+.explore-settings-camera-note[hidden]{display:none}
+.explore-settings-camera-note .ic{flex:none;width:20px;height:20px}
+.explore-settings-camera-note.is-beat{animation:explore-lock-beat 140ms cubic-bezier(.2,.9,.3,1.25) 1}
 .explore-exit .ic{margin-right:4px}
 /* First-run coach (VGM-056, BUG-dica-tutorial-duplicada): round 1's "andar" is this light only, no written row (the
    waiting room's label already said it): the stick wears Amarelo (edge and knob). Static (no motion, so reduced motion

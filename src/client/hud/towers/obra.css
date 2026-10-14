@@ -100,3 +100,11 @@
 .rh-obra-borda::after{content:'';position:absolute;left:-4px;right:-4px;top:-8px;bottom:-8px}
 .rh-obra-borda .rh-obra-naipe{width:24px;height:24px}
 .rh-obra-borda[aria-disabled=true]{cursor:default}
+
+/* The team's wallet where it is spent (hud-mobile-minimo): R$ and fichas de torre on a small Breu ficha riding the
+   window's top edge, right of the middle (the head card's punched hole stays clear), never a target. */
+.rh-obra-carteira{position:absolute;right:56px;top:0;z-index:3;transform:translateY(-55%);display:inline-flex;align-items:center;gap:6px;padding:1px 8px;
+  border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-papel);border:2px solid var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);
+  font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
+.rh-obra-carteira-fichas{display:inline-flex;align-items:center;gap:1px}
+.rh-obra-carteira .ic{width:18px;height:18px}

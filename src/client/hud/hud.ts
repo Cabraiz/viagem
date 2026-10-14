@@ -31,6 +31,9 @@ import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {icon} from '../ui/icon.ts';
 import type {CidaItemId} from '../../contract/index.ts';
+import {finePointer,type InputKind} from '../desktop-input.ts';
+// Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
+import './fone.css';
 
 export interface RunHudOptions {
   localId:string;
@@ -61,6 +64,11 @@ export interface RunHudOptions {
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
   heroRect?():Rect|undefined;
+  /**
+   * The input kind (D-044, desktop-input.ts): 'touch' lays the phone's minimal HUD out (hud-mobile-minimo, fone.css),
+   * 'mouse' the desktop's. Defaults to the fine-pointer query; the shell keeps it in step with setInput.
+   */
+  input?:InputKind;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -146,6 +154,8 @@ export class RunHud {
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
   /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
   private obraOpen=false;
+  /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
+  private readonly topEl:HTMLElement;private readonly teamEl:HTMLElement;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
@@ -169,7 +179,7 @@ export class RunHud {
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
     stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
-    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida];
+    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
@@ -184,7 +194,24 @@ export class RunHud {
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
       this.columnObserver.observe(team.el);}
+    this.setInput(options.input??(finePointer()?'mouse':'touch'));
   }
+
+  /**
+   * The phone's minimal HUD (card NEW-20261014-ORQ-hud-mobile-minimo, fone.css) or the desktop's (D-044): data-hud on the
+   * root. On the phone the team strip becomes a fan of small portraits inside the top band (a status row there, under the
+   * team's bar and level), so it never takes a column or a floor of the field; on the desktop it goes back to its column.
+   */
+  setInput(kind:InputKind){
+    const hud=kind==='touch'?'fone':'mesa';
+    if(this.el.dataset.hud===hud)return;
+    this.el.dataset.hud=hud;
+    if(hud==='fone'){if(this.teamEl.parentElement!==this.topEl)this.topEl.append(this.teamEl);}
+    else if(this.teamEl.parentElement!==this.el)this.stack.after(this.teamEl);
+    this.relayout();
+  }
+  /** The phone's layout is on (setInput('touch')). */
+  get phone(){return this.el.dataset.hud==='fone';}
 
   /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
   emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}

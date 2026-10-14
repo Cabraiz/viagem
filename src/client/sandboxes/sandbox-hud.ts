@@ -286,7 +286,7 @@ if(bordas)void (async()=>{
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
     const shown=rect(hud.wc!.el);
     const zones=computeZones({viewport,status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
-      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
+      team:union(all('.rh-member:not(.rh-top .rh-member)')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
     const area=zones.useful,zoom=followZoom(viewport),hero={x:12,y:17};
     // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
     const anchor={x:viewport.width/2,y:viewport.height/2+28},center=projectView(hero,view);
@@ -401,7 +401,7 @@ if(cidade)void (async()=>{
     const viewport={width:innerWidth,height:innerHeight};
     const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'))??rect(document.querySelector('.rh-cida:not([hidden])'));
     const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
-      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open,cida:rect(document.querySelector('.rh-cida-btn:not([hidden])'))};
+      team:union(all('.rh-member:not(.rh-top .rh-member)')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open,cida:rect(document.querySelector('.rh-cida-btn:not([hidden])'))};
     const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
     const area=zones.useful;
     // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.

@@ -26,7 +26,7 @@ import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
-import {carBar} from './chaveiro.ts';
+import {carBar,chaveiroClock,liveObjective} from './chaveiro.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -173,6 +173,16 @@ export function createCamp(options:CampOptions):CampPart{
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  // The phone's minimal top (hud-mobile-minimo, fone.css): the life's number and, with the chaveiro (D-047), his clock
+  // ride inside the bar, small; the round chip that carries the clock elsewhere is not on the phone. Hidden on the desktop.
+  const clock=el('span','rh-camp-relogio',track);clock.hidden=true;clock.setAttribute('aria-hidden','true');
+  let lastClock:string|undefined;
+  const paintClock=(view:RunView)=>{
+    const live=liveObjective(view),text=live?chaveiroClock(live).clock:'';
+    if(text===lastClock)return;
+    lastClock=text;clock.hidden=!text;readout.classList.toggle('rh-camp-com-relogio',!!text);
+    if(text)clock.innerHTML=`${icon('moto')}<b>${text}</b>`;else clock.textContent='';
+  };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{
     fill.style.transform=`scaleX(${bar.fraction})`;
@@ -203,6 +213,9 @@ export function createCamp(options:CampOptions):CampPart{
   const forge=el('section','rh-forge');forge.hidden=true;forge.setAttribute('aria-label','Forja');
   const head=el('div','rh-forge-head',forge);
   const title=el('h2','rh-forge-title',head);title.textContent='Forja';
+  // The team's Grana where it is spent (hud-mobile-minimo: the phone's top shows no R$): "R$ 120" beside the title.
+  const wallet=el('b','rh-forge-grana',head);wallet.setAttribute('role','img');
+  let lastWallet:string|undefined;
   const close=el('button','rh-forge-close',head);close.type='button';close.setAttribute('aria-label','Fechar a forja');close.insertAdjacentHTML('beforeend',icon('fechar',{size:32}));
   const list=el('div','rh-forge-tags',forge);
   /** A tag of the window: the forge's three recipes, plus 'barricada' (a 'reparo' with the barricade as target). */
@@ -285,7 +298,7 @@ export function createCamp(options:CampOptions):CampPart{
     readout.hidden=!camp;
     if(!view||!camp){forge.hidden=true;notice.hidden=true;return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    paintBaseBar(baseBar(view),!!camp.wallDown);
+    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view);
     const money=granaReadout(camp.grana);
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
@@ -326,6 +339,7 @@ export function createCamp(options:CampOptions):CampPart{
     const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed&&!yielded;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
+    if(money.text!==lastWallet){lastWallet=money.text;wallet.textContent=money.text;wallet.setAttribute('aria-label',money.label);}
     if(title.textContent!==place.title){title.textContent=place.title;forge.setAttribute('aria-label',place.title);close.setAttribute('aria-label',home?'Fechar a forja':'Fechar a barricada');}
     const line=fallLine(view,ctxId),quiet=note.textContent===DEFAULT_NOTE;
     if(fall.textContent!==line)writeFallLine(fall,line);

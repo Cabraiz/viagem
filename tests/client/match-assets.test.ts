@@ -4,6 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {ALBEDO_URL} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {existsSync,readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex,artIndex} from '../../src/client/art/manifest.ts';
 import {assetsParaPartida,matchAssets,matchKey,heroSheetUrl,ENDLESS_GROUND} from '../../src/client/preload/match-assets.ts';
@@ -43,7 +44,8 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   const plan=buildCityArtPlan(artIndex(),cityArtOptions(''));
   assert.ok(plan.sheets.length>0,'the manifest has city art');
   const wanted=[heroSheetUrl(A),heroSheetUrl(B),heroSheetUrl(C),thumbUrl(A),thumbUrl(B),thumbUrl(C),treeUrl('arvore-nevada'),
-    ...plan.sheets.map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url)];
+    ...plan.sheets.map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
+    ALBEDO_URL]; // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
   assert.deepEqual(new Set(all),new Set(wanted));
   for(const url of all)assert.ok(existsSync('public'+url),`${url} is served`);
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
@@ -55,6 +57,7 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   // Roster pieces load per match (arte-do-roster-no-render: the room's elenco, or the first sighting), never here.
   assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
+  assert.equal(at(ALBEDO_URL),'P0');
 });
 
 test('real manifest, endless map: no city art; a class with no sheet adds nothing; sizes are carried',()=>{

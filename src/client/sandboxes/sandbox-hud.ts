@@ -32,7 +32,7 @@
  * load. `grana=N` (default 40) and `estoque=a,b,c` (default 4,4,4) feed Dona Cida; `cida=1` puts the hero by the moto (her
  * button shows), `cida=aberta` also opens her tray. Purchases answer after 150 ms like a room (ok, or the refusal the
  * numbers give). `state=result&conta=aberto|carro|time|tempo[&divida=1]`: the result with the chaveiro's bill.
- * `bancos=1` with `chaveiro=1` (card bancos-e-veiculos): three ATMs in the objective, all off screen: Juros & Juros robbed
+ * `bancos=1` with `mapa=cidade` (card bancos-e-veiculos): three ATMs (RunView.banks), all off screen: Juros & Juros robbed
  * by a critter (its Cone arrow and the row "Bicho sacando no Juros & Juros!"), Pão-Duro full, Caixa do Posto empty.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
@@ -446,15 +446,15 @@ if(cidade)void (async()=>{
   if(chaveiro&&cidaAt)people[0]={...people[0],...hero};
   // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
   const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
-  const banks:BankView[]|undefined=chaveiro&&params.get('bancos')==='1'?[
-    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho'},
+  const banks:BankView[]|undefined=params.get('bancos')==='1'?[
+    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
     {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
     {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*20},
   ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
-    grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4),...(banks?{banks}:{})}:undefined;
+    grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;
   const run:RunView={...base,events:banner,structures:chaveiro?[{id:'quadradao',kind:'quadradao',x:map.plaza.x,y:map.plaza.y,hp:chaveiro.car.limit-chaveiro.car.hits,maxHp:chaveiro.car.limit}]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
-    ...(objective?{objective}:{}),
+    ...(objective?{objective}:{}),...(banks?{banks}:{}),
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.

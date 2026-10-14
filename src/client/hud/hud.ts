@@ -357,7 +357,7 @@ export class RunHud {
   }
   /** Bancos: a critter starts robbing a bank → one urgent row (it waits in line like the chaveiro's reason). */
   private stepBanks(view:RunView){
-    const step=this.bankAlert.step(this.el.classList.contains('rh-ended')?undefined:view.objective?.banks,performance.now());
+    const step=this.bankAlert.step(this.el.classList.contains('rh-ended')?undefined:view.banks,performance.now());
     if(!step.show)return;
     const row=this.bankRow;row.innerHTML=icon('banco');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);

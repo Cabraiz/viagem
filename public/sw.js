@@ -1,5 +1,6 @@
 /*
- * Art cache (NEW-20261013-ORQ-3g-precarga-partida): cache-first for /art/** and the hashed /assets/**, each file
+ * Art cache (NEW-20261013-ORQ-3g-precarga-partida): cache-first for /art/**, the hashed /assets/** and /audio/**
+ * (the boss music, fetched whole by src/client/audio/music.ts: the element's own Range requests skip the worker), each file
  * versioned by the short hash of its content in /art-versions.json (written at build time, vite.config.ts), so a new
  * deploy re-downloads only what changed and a second match downloads no art. Registered by src/main.ts in production
  * builds only. Non-GET, Range, cross-origin and anything else (pages, /multiplayer.json, /version.json, the rooms'
@@ -21,7 +22,8 @@ function route(request,origin){
   if(request.method!=='GET'||request.range)return 'network';
   let url;try{url=new URL(request.url);}catch{return 'network';}
   if(url.origin!==origin||url.search)return 'network';
-  return url.pathname.startsWith('/art/')||url.pathname.startsWith('/assets/')?'cache':'network';
+  const path=url.pathname;
+  return path.startsWith('/art/')||path.startsWith('/assets/')||path.startsWith('/audio/')?'cache':'network';
 }
 /**
  * Whether a stored copy may be served: its version equals the current one; a path missing from the versions file

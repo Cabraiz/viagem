@@ -1,4 +1,5 @@
-// dist/art-versions.json (NEW-20261013-ORQ-3g-precarga-partida): {"/art/…": "<8 hex>", "/assets/…": "<8 hex>"}, the
+// dist/art-versions.json (NEW-20261013-ORQ-3g-precarga-partida): {"/art/…": "<8 hex>", "/assets/…": "<8 hex>",
+// "/audio/…": "<8 hex>" (musica-do-chefe)}, the
 // first 8 hex of each file's SHA-256. The service worker (public/sw.js) keeps a cached file while its version matches,
 // so a deploy invalidates only the files whose content changed. Used by vite.config.ts at closeBundle.
 import {createHash} from 'node:crypto';
@@ -16,7 +17,7 @@ const walk=dir=>{
   return out;
 };
 /** Versions of every file under `<dist>/<folder>` for each folder, keyed by its public path, sorted. */
-export function artVersions(dist,folders=['art','assets']){
+export function artVersions(dist,folders=['art','assets','audio']){
   const map={};
   for(const folder of folders)for(const file of walk(join(dist,folder))){
     map['/'+relative(dist,file).split(sep).join('/')]=shortHash(readFileSync(file));

@@ -12,6 +12,7 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
+import {BossMusic,musicCue} from '../audio/music.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,crosses,measureZoneInput,measureZones,union,veiled,ZONE_WINDOWS_BESIDE_OBRA,type Rect,type ScreenZones,type ZoneInput} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
@@ -84,6 +85,8 @@ export class RunHud {
   readonly el:HTMLElement;
   readonly tally:RunTally=emptyTally();
   private readonly parts:HudPart[];
+  /** The boss's music (musica-do-chefe): loads late in the match, plays while the boss lives, gone with the HUD. */
+  private readonly music=new BossMusic({engine:getAudio()});
   private readonly result;
   private readonly ctx:HudContext;
   /** Who is laughing now (rostos-kkkk): fed by emote(), read by the team strip through ctx.mood. */
@@ -160,6 +163,7 @@ export class RunHud {
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
     this.el=document.createElement('div');
     this.el.className='rh';
+    this.music.attach(document);
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
     const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
@@ -259,6 +263,7 @@ export class RunHud {
   update(view:RunView){
     this.last=view;
     applyEvents(this.tally,view);
+    this.music.update(musicCue(view,this.el.classList.contains('rh-ended')));
     // On the result the run is over: no damage edge (it would frame the result screen).
     for(const part of this.parts)if(part!==this.hurt||!this.el.classList.contains('rh-ended'))part.update(view,this.ctx);
     // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
@@ -397,6 +402,7 @@ export class RunHud {
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
+    this.music.update({boss:false});
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
     this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
     this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);
@@ -569,6 +575,7 @@ export class RunHud {
     removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();this.city?.destroy();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
+    this.music.dispose();
     this.el.remove();
   }
 }

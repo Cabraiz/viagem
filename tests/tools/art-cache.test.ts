@@ -17,9 +17,10 @@ test('versions: 8 hex of the content per public path, under /art and /assets onl
     writeFileSync(join(dist,'art','lite','sprites','a.webp'),'one');
     writeFileSync(join(dist,'art','manifest.json'),'{}');
     writeFileSync(join(dist,'assets','index-abc.js'),'js');
+    mkdirSync(join(dist,'audio'));writeFileSync(join(dist,'audio','boss.webm'),'opus');
     writeFileSync(join(dist,'index.html'),'<html>');
     const map=artVersions(dist);
-    assert.deepEqual(Object.keys(map),['/art/lite/sprites/a.webp','/art/manifest.json','/assets/index-abc.js']);
+    assert.deepEqual(Object.keys(map),['/art/lite/sprites/a.webp','/art/manifest.json','/assets/index-abc.js','/audio/boss.webm']);
     assert.equal(map['/art/lite/sprites/a.webp'],shortHash('one'));
     assert.match(shortHash('one'),/^[0-9a-f]{8}$/);
     assert.notEqual(shortHash('one'),shortHash('two'));
@@ -47,9 +48,11 @@ test('service worker: only same-origin GETs of /art and /assets go through the c
   const o='https://viagem.example';
   assert.equal(sw.route({method:'GET',url:`${o}/art/lite/sprites/a.webp`},o),'cache');
   assert.equal(sw.route({method:'GET',url:`${o}/assets/index-abc.js`},o),'cache');
+  assert.equal(sw.route({method:'GET',url:`${o}/audio/boss.webm`},o),'cache');
   for(const r of [
     {method:'POST',url:`${o}/art/a.webp`},
     {method:'GET',url:`${o}/art/a.webp`,range:true},
+    {method:'GET',url:`${o}/audio/boss.webm`,range:true},
     {method:'GET',url:`${o}/multiplayer.json`},
     {method:'GET',url:`${o}/version.json`},
     {method:'GET',url:`${o}/`},

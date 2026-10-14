@@ -73,6 +73,8 @@ export class Pinch {
     this.last=span;return ratio;
   }
   up(id:number){this.at.delete(id);if(this.at.size===2)this.last=this.span();}
+  /** Forgets every finger (a lost pointerup: the page lost focus, the scene stopped). */
+  reset(){this.at.clear();this.last=0;}
   private span(){
     const [a,b]=[...this.at.values()];
     return a&&b?Math.hypot(a.x-b.x,a.y-b.y):0;

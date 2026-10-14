@@ -354,7 +354,11 @@ export class IslandScene extends Phaser.Scene {
       const up=(e:PointerEvent)=>{if(touch(e))this.pinch.up(e.pointerId);};
       canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);
       canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
-      const off=()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);};
+      // A finger whose pointerup never reached the canvas would turn the next one-finger drag into a pinch.
+      const forget=()=>this.pinch.reset();
+      globalThis.addEventListener?.('blur',forget);document.addEventListener?.('visibilitychange',forget);
+      const off=()=>{canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);
+        globalThis.removeEventListener?.('blur',forget);document.removeEventListener?.('visibilitychange',forget);this.pinch.reset();};
       this.events.once('shutdown',off);this.events.once('destroy',off);
     }
     this.cursors=this.input.keyboard?.createCursorKeys();
@@ -582,7 +586,12 @@ export class IslandScene extends Phaser.Scene {
   }
   get zoomFactor(){return this.zoomWant;}
   /** A pinch began over a tap: the walk the first finger started is dropped (the map was only being zoomed). */
-  private cancelWalk(){this.route=[];this.destination?.clear();this.hold.release();this.markerUntil=undefined;}
+  private cancelWalk(){
+    this.route=[];this.destination?.clear();this.hold.release();this.markerUntil=undefined;
+    // A first finger on an enemy targeted it; on the ground it said "Seguindo a trilha…": neither stands for a pinch.
+    if(this.attackTarget){this.attackTarget=undefined;this.horde?.setTarget(undefined);}
+    this.hooks.message('');
+  }
   /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
   goTo(target:Point,options:{markerMs?:number}={}){
     if(this.paused||!this.actor)return;

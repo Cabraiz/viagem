@@ -2,8 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {HERO_ZOOM_PX,Pinch,ZOOM_DEFAULT,ZOOM_KEY,ZOOM_MAX,ZOOM_MIN,ZOOM_SETTLED,clampZoom,easeZoom,loadZoom,saveZoom,wheelZoom} from '../../src/client/camera-zoom.ts';
-import {cityZoom,followZoom,worldZoom} from '../../src/client/framing.ts';
-import {HERO_WORLD_PX} from '../../src/contract/offscreen.ts';
+import {TODAY_SHORT_PX,cityZoom,followZoom,worldZoom} from '../../src/client/framing.ts';
+import {HERO_DEFAULT_SCREEN_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,MAX_ASPECT,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../../src/contract/offscreen.ts';
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
 
 const store=()=>{const m=new Map<string,string>();return {getItem:(k:string)=>m.get(k)??null,setItem:(k:string,v:string)=>{m.set(k,v);},m};};
@@ -63,5 +63,22 @@ test('framing: the factor scales the hero on both reference phones and the city,
     assert.equal(worldZoom(vp,{world:'cidade'} as never,1),cityZoom(vp));
     // Never a closer camera than today at any factor ≤ 1.
     assert.ok(followZoom(vp,ZOOM_MIN)<=followZoom(vp)+1e-12&&cityZoom(vp,ZOOM_MIN)<=cityZoom(vp)+1e-12);
+  }
+});
+
+test('framing on every screen (review): k = 1 is the zoom of before D-046, the default fits the default camera, the widest the contract',()=>{
+  const before=(vp:{width:number;height:number})=>{
+    const short=Math.min(vp.width,vp.height),long=Math.max(vp.width,vp.height),hero=Math.max(56,short*56/390);
+    return Math.max(hero/96,short/(96*390/56),long/(96*390/56*2.34));
+  };
+  const defShort=HERO_WORLD_PX*390/HERO_DEFAULT_SCREEN_PX;
+  assert.ok(Math.abs(TODAY_SHORT_PX-HERO_WORLD_PX*390/HERO_MIN_SCREEN_PX)<1e-9);
+  for(const [w,h] of [[390,844],[844,390],[360,640],[412,915],[1335,620],[1920,780],[2560,950],[2560,1080],[1920,600],[1080,2520],[1024,768]]){
+    const vp={width:w,height:h},short=Math.min(w,h),long=Math.max(w,h);
+    assert.ok(Math.abs(followZoom(vp,1)-before(vp))<1e-12,`${w}x${h}: k=1 is before`);
+    const zd=followZoom(vp,ZOOM_DEFAULT),zm=followZoom(vp,ZOOM_MIN);
+    assert.ok(short/zd<=defShort+1e-6&&long/zd<=defShort*MAX_ASPECT+1e-6,`${w}x${h}: default inside the default camera`);
+    assert.ok(short/zm<=VISIBLE_SHORT_PX+1e-6&&long/zm<=VISIBLE_LONG_PX+1e-6,`${w}x${h}: widest inside the contract`);
+    assert.ok(zm<zd&&zd<followZoom(vp,1),`${w}x${h}: the whole range moves`);
   }
 });

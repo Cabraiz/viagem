@@ -3,7 +3,7 @@ import {SPEED,heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../
 import {SCALE_PROFILES,zoomFor} from '../rules/index.ts';
 import {projectView,normalizeView} from './projection.ts';
 import {HERO_MARGIN} from './hud/zones.ts';
-import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
+import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,MAX_ASPECT,REFERENCE_SHORT_SIDE_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
 
 const center=project({x:12,y:12});
 export const SHORE={x:center.x,y:center.y+40,width:1290,height:710};
@@ -53,18 +53,22 @@ export const VS_HERO_SHORT_RATIO=56/800;
 export const HERO_SHORT_RATIO=HERO_MIN_SCREEN_PX/390;
 
 /**
- * Fixed zoom for one viewport (UX-camera-segue 1: one zoom per orientation, never animated). The hero is the larger
- * of the VS ratio and the floor ratio of the short side, never under 56 CSS px, and the camera never shows more world
- * than the off-screen contract allows (offscreen.ts: VISIBLE_SHORT_PX × VISIBLE_LONG_PX world px), so nothing the
- * director spawns "off screen" can pop up on this phone.
- * `k` is the player's zoom (camera-zoom.ts, D-046): a factor on that hero size, 1 = today's, < 1 shows more world —
- * still never more than the contract.
+ * Zoom for one viewport (UX-camera-segue 1: one zoom per orientation). At the player's zoom `k` = 1 (the closest,
+ * camera-zoom.ts) the hero is the larger of the VS ratio and the floor ratio of the short side, never under 56 CSS px,
+ * and the camera shows at most today's world (TODAY_SHORT_PX × MAX_ASPECT): the zoom of before D-046 on every screen.
+ * A smaller `k` (D-046: the wheel or a pinch, eased by the scene) scales that whole zoom, caps included, so a wide
+ * desktop window keeps its whole range and at the default `k` never shows more than the default camera the director
+ * paces by (offscreen.ts HERO_DEFAULT_SCREEN_PX). Never more world than the off-screen contract (the widest camera,
+ * VISIBLE_SHORT_PX × VISIBLE_LONG_PX world px), so nothing the director spawns "off screen" can pop up on this phone.
  */
 export function followZoom(viewport:Viewport,k=1){
   const short=Math.max(1,Math.min(viewport.width,viewport.height)),long=Math.max(1,viewport.width,viewport.height);
   const hero=Math.max(HERO_MIN_SCREEN_PX,short*Math.max(VS_HERO_SHORT_RATIO,HERO_SHORT_RATIO));
-  return Math.max(hero*k/HERO_WORLD_PX,short/VISIBLE_SHORT_PX,long/VISIBLE_LONG_PX);
+  const today=Math.max(hero/HERO_WORLD_PX,short/TODAY_SHORT_PX,long/(TODAY_SHORT_PX*MAX_ASPECT));
+  return Math.max(today*k,short/VISIBLE_SHORT_PX,long/VISIBLE_LONG_PX);
 }
+/** The widest short side (world px) of the camera before D-046: the hero at the 56 px floor on a 390 px short side. */
+export const TODAY_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_MIN_SCREEN_PX;
 
 /** Smoothing time constant of the follow (UX-camera-segue 3: 120-200 ms). */
 export const FOLLOW_TAU_S=.16;
@@ -108,8 +112,9 @@ export function followWorld(terrain:WorldOf):FollowWorld{
 }
 
 /**
- * City zoom (D-030): rules zoomFor (the faithful 18 / 10.5 cells, narrowed so the drawn hero is never under 56 CSS px:
- * ≈15.07 cells on 844×390, ≈6.96 on 390×844) in Phaser terms, pixelsPerUnit over the 42·√2 world px of one unit along
+ * City zoom (D-030, D-046): at the player's zoom k = 1, rules zoomFor (the faithful 18 / 10.5 cells, narrowed so the drawn
+ * hero is never under 56 CSS px: ≈15.07 cells on 844×390, ≈6.96 on 390×844) in Phaser terms; a smaller k scales it, as
+ * followZoom does, pixelsPerUnit over the 42·√2 world px of one unit along
  * screen x: ≈1.0713 on both reference phones. zoomFor is width-only, so followZoom's caps apply too, in city world px:
  * never more world than the off-screen contract scaled by CITY_VIEW_SCALE (what sim/city/avenues.ts cityVisible
  * assumes). On a wider phone that keeps the hero at the endless map's share of the short side.

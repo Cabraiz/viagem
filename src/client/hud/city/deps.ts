@@ -6,7 +6,6 @@ export {computeZones,auditBoxes,crosses,gap,inflate,union,orientationOf,right,bo
   type Rect,type ZoneInput,type ScreenZones,type AuditBox,type AuditResult} from '../zones.ts';
 export {layoutEdges,pointedTargets,arrowHalf,distanceText,MUST_POINT,MAX_ARROWS,MERGE_PX,RIM_PAD,TAG_ROOM,NAME_ROOM,
   type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions} from '../edges.ts';
-export {minimapPoint} from '../minimap.ts';
 export {rotateVector} from '../../projection.ts';
 export {railName} from '../../render/map-label-rules.ts';
 export {icon,type IconName} from '../../ui/icon.ts';
@@ -14,7 +13,7 @@ export {DEFAULT_MAP as PROTOCOL_DEFAULT_MAP,type MapId} from '../../../protocol/
 export {SIM_HZ} from '../../../contract/index.ts';
 export {CITY_MAP_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES} from '../../../rules/index.ts';
 export {FlowField,DIRS,UNREACHABLE,walkable,type FlowGrid,type FlowPoint,type CityTerrain} from '../../../maps/index.ts';
-// D-047 (chaveiro): the objective as the render reads it and the route still ahead of the moto (render/chaveiro).
-export {routeAhead,motoNeedsTeam,CAR_LOW} from '../../render/chaveiro/rules.ts';
+// D-047 (chaveiro): the objective as the render reads it and whether the moto needs the team (render/chaveiro).
+export {motoNeedsTeam} from '../../render/chaveiro/rules.ts';
 export {objectiveOf,type ChaveiroView,type MotoMode} from '../../render/chaveiro/view.ts';
 export {RouteMemo} from '../../render/chaveiro/tracker.ts';

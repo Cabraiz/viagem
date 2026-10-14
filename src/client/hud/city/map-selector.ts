@@ -5,8 +5,14 @@
  * is down (sem-linha); a reconnect or a new owner drops what was pending. Pure state machine and view first, the DOM below.
  */
 import {icon,PROTOCOL_DEFAULT_MAP,type IconName,type MapId} from './deps.ts';
-import {cityHudCss} from './minimap.ts';
 import type {Orientation} from './layout.ts';
+
+let css:Promise<void>|undefined;
+/**
+ * Loads city-hud.css once (the selector and the city's edge arrows; a failed load is swallowed, as in
+ * dev/ux-metrics.ts). The selector stays hidden until this settles, so nothing shows unstyled.
+ */
+export const cityHudCss=()=>css??=import('./city-hud.css').then(()=>undefined,()=>undefined);
 
 /** Map ids are the protocol's (src/protocol/map-select.ts), so the selector and the room never disagree. */
 export type {MapId};

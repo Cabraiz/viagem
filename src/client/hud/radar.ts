@@ -1,11 +1,11 @@
 /**
- * What the edge arrows and the minimap show (UX-bordas-fora-da-tela, ORQ-minimapa), from what the client already has:
- * players (interpolated positions + run state), the base of the world, the last RunView (boss, telegraphs, chests),
- * the spawn warnings still pending and the lit "Me salva" pings. Pure: the scene's `locate` is passed in.
+ * What the edge arrows show off the island and the endless map (UX-bordas-fora-da-tela), from what the client already
+ * has: players (interpolated positions + run state), the base of the world, the last RunView (boss, telegraphs), the
+ * spawn warnings still pending and the lit "Me salva" pings. Pure: the scene's `locate` is passed in. The minimap is
+ * the WC3 one (wc-minimap/driver.ts), fed by rescue.ts on its own.
  */
-import type {EnemyView,NodeView,PickupView,PlayerRunView,TelegraphView} from '../../contract/index.ts';
+import type {EnemyView,PlayerRunView,TelegraphView} from '../../contract/index.ts';
 import type {EdgeTarget} from './edges.ts';
-import type {MinimapItem} from './minimap.ts';
 import {secondsLeft} from './model.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
@@ -19,8 +19,6 @@ export interface RadarInput {
   selfId:string;
   /** What the camera follows (world units): distances count from here. */
   focus:Point;
-  /** The local player's own body (minimap "você"). */
-  self:Point;
   tick:number;
   players:readonly RadarPlayer[];
   states:ReadonlyMap<string,PlayerRunView>;
@@ -28,10 +26,7 @@ export interface RadarInput {
   /** Live enemies (any iterable: the client passes its map's values, no copy per frame). */
   enemies?:Iterable<EnemyView>;
   telegraphs?:readonly TelegraphView[];
-  pickups?:readonly PickupView[];
   warnings?:readonly SpawnWarning[];
-  /** Gather nodes of the intermission (VGM-046B): on the minimap only, and only the near ones (NODE_NEAR). */
-  nodes?:readonly NodeView[];
   /** A "Me salva" ping of this player is lit. */
   pinged?:(id:string)=>boolean;
   /** Screen point (CSS px, viewport) of a world point. */
@@ -40,16 +35,13 @@ export interface RadarInput {
 }
 /** A spawn warning keeps its arrow until this long after the critters arrive. */
 export const SPAWN_TAIL_TICKS=SIM_HZ;
-/** Gather nodes show on the minimap within this many units of the followed hero, the nearest one per resource (no flood of dots, design onda 6 D9 and soma S2). */
-export const NODE_NEAR=14;
 /** A telegraph this close to the boss and this close to firing marks the boss arrow as danger. */
 export const BOSS_TELEGRAPH={units:8,ticks:SIM_HZ*1.5};
 
-export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[]}{
-  const targets:EdgeTarget[]=[],items:MinimapItem[]=[];
+export function radar(input:RadarInput):{targets:EdgeTarget[]}{
+  const targets:EdgeTarget[]=[];
   const far=(p:Point)=>Math.hypot(p.x-input.focus.x,p.y-input.focus.y);
   const add=(t:Omit<EdgeTarget,'screen'|'distance'>,at:Point)=>targets.push({...t,screen:input.locate(at),distance:far(at)});
-  items.push({key:'self',kind:'voce',x:input.self.x,y:input.self.y});
   for(const p of input.players){
     if(p.id===input.selfId||p.spectator)continue;
     const st=input.states.get(p.id);
@@ -58,30 +50,21 @@ export function radar(input:RadarInput):{targets:EdgeTarget[];items:MinimapItem[
     // Someone away (offline) is no target to walk to unless caído: their body still bleeds out where it fell.
     if(!caido&&!p.online)continue;
     const ping=caido&&!!input.pinged?.(p.id);
-    items.push({key:p.id,kind:caido?'caido':'aliado',x:p.x,y:p.y,ping});
-    // Allies on their feet live on the minimap only (design onda 6 D4): an arrow each repeated it and crowded the rim.
+    // Allies on their feet get no arrow (design onda 6 D4: an arrow each crowded the rim); the minimap shows them.
     if(caido)add({key:p.id,kind:'caido',name:p.name,label:railName(p.name),portrait:input.portrait?.(p.classId),seconds:secondsLeft(st!.downed!.bleedOutTick,input.tick),ping},p);
   }
-  if(input.base){items.push({key:'base',kind:'base',x:input.base.x,y:input.base.y});add({key:'base',kind:'base',name:'Base'},input.base);}
+  if(input.base)add({key:'base',kind:'base',name:'Base'},input.base);
   for(const e of input.enemies??[]){
     if(!e.boss||e.hp<=0)continue;
     const danger=(input.telegraphs??[]).some(t=>t.fireTick>=input.tick&&t.fireTick-input.tick<=BOSS_TELEGRAPH.ticks&&Math.hypot(t.x-e.x,t.y-e.y)<=BOSS_TELEGRAPH.units);
-    items.push({key:e.id,kind:'chefe',x:e.x,y:e.y});add({key:e.id,kind:'chefe',name:'Chefe',danger},e);
+    add({key:e.id,kind:'chefe',name:'Chefe',danger},e);
   }
   (input.warnings??[]).forEach((w,i)=>{
     if(input.tick>w.atTick+SPAWN_TAIL_TICKS)return;
-    const key=`spawn:${w.atTick}:${i}`;items.push({key,kind:'spawn',x:w.x,y:w.y});add({key,kind:'spawn',name:'Bichos chegando'},w);
+    const key=`spawn:${w.atTick}:${i}`;add({key,kind:'spawn',name:'Bichos chegando'},w);
   });
-  // One mark per resource (design/UX soma S2/U3): the nearest pile that still has something. Ten marks in 76 px were a
-  // blur; "where do I gather" needs one way per resource, and piles side by side are one mark.
-  const nearest=new Map<'coco'|'pedra',NodeView>();
-  for(const n of input.nodes??[])if(n.remaining>0&&(n.kind==='coco'||n.kind==='pedra')&&far(n)<=NODE_NEAR){const best=nearest.get(n.kind);if(!best||far(n)<far(best))nearest.set(n.kind,n);}
-  for(const n of nearest.values())items.push({key:`node:${n.id}`,kind:n.kind as 'coco'|'pedra',x:n.x,y:n.y});
-  for(const p of input.pickups??[]){
-    if(p.kind!=='chest')continue;
-    items.push({key:p.id,kind:'bau',x:p.x,y:p.y});// minimap only, like the allies on their feet
-  }
-  return {targets,items};
+  // Chests and gather nodes never get an arrow.
+  return {targets};
 }
 
 /** Keeps the spawn warnings of the run's events until they are stale (pure list update, for the client). */

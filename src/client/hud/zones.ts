@@ -220,13 +220,6 @@ export function auditBoxes(boxes:readonly AuditBox[],zones:ScreenZones,hero?:Rec
     topCrossed,unpointed,offColumn,ok:!heroCrossed.length&&!thumbGaps.length&&!inPlay.length&&!escaped.length&&!topCrossed.length&&!unpointed.length&&!offColumn.length};
 }
 
-/**
- * The city's big minimap in the audit (design/cidade-hud.md §2, §7): a window over the field opened by a tap, so it may
- * sit in the useful area but never over the hero (± margin), and a touch target (≥ THUMB_GAP from the thumbs). It is not
- * a top readout: it covers the XP and the base ficha for its 4 s on purpose.
- */
-export const BIG_MINIMAP_AUDIT={selector:'.rh-minimap-grande',name:'minimapa-grande',flags:{allowedInPlay:true,overHeroFails:true,target:true}} as const satisfies {selector:string;name:string;flags:Omit<AuditBox,'name'|'rect'>};
-
 // ---------- DOM (browser only) ----------
 const rectOf=(el:Element|null|undefined):Rect|undefined=>{
   if(!el||(el as HTMLElement).closest?.('[hidden]'))return undefined;
@@ -310,7 +303,6 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
   add('#coop-sos','me-salva',{thumb:true,target:true});
   add('.rh-minimap','minimapa',{target:true,topReadout:true,edgeColumn:true});
-  add(BIG_MINIMAP_AUDIT.selector,BIG_MINIMAP_AUDIT.name,BIG_MINIMAP_AUDIT.flags);
   // The "Gira no intervalo" balloon (explore.css) never opens over the minimap or a top ficha (UX review janela-caido).
   add('.explore-camera-hint','dica-girar',{balloon:true});
   // Edge arrows ride the useful area's inner rim by contract, never over the hero.

@@ -1,10 +1,10 @@
 /**
- * City HUD layout (NEW-20261012-ORQ-cidade-ux-01, design/cidade-hud.md §0–§5): where the city minimap goes (collapsed and
- * big), the rail of the edge arrows' centres and the lobby map selector, per orientation, text scale (100/125%), notch
- * and an open offer/forge window. Mobile only (D-009). Pure geometry over the measured controls: the zones come from
- * computeZones with the collapsed minimap in them, every other number from the CSS rules the doc quotes.
+ * City HUD layout (NEW-20261012-ORQ-cidade-ux-01, design/cidade-hud.md §0–§5): where the minimap's slot goes (the WC3
+ * minimap, hud.css .rh-mm), the rail of the edge arrows' centres and the lobby map selector, per orientation, text scale
+ * (100/125%), notch and an open offer/forge window. Mobile only (D-009). Pure geometry over the measured controls: the
+ * zones come from computeZones with the minimap in them, every other number from the CSS rules the doc quotes.
  */
-import {computeZones,crosses,gap,inflate,orientationOf,right,bottom,arrowHalf,RIM_PAD,TAG_ROOM,NAME_ROOM,THUMB_GAP,EDGE_COLUMN,
+import {computeZones,orientationOf,right,bottom,arrowHalf,RIM_PAD,TAG_ROOM,NAME_ROOM,EDGE_COLUMN,
   type Rect,type ZoneInput,type ScreenZones} from './deps.ts';
 
 export type Orientation='portrait'|'landscape';
@@ -23,23 +23,15 @@ export interface CityLayoutInput {
 }
 export interface CityLayout {
   orientation:Orientation;
-  /** computeZones with the collapsed minimap included. */
+  /** computeZones with the minimap included. */
   zones:ScreenZones;
-  /** Collapsed minimap (76×76), the `.rh-minimap` slot. */
+  /** The minimap (wcMinimapSide square), the `.rh-minimap` slot. */
   minimap:Rect;
-  /** Big minimap, anchored on the collapsed one's outer corner; undefined when its side would be < BIG_MIN_SIDE. */
-  minimapBig?:Rect;
   /**
    * The announcement slot as hud.css draws it (.rh-stack): portrait right of the team column under the top band,
-   * landscape between the camera buttons and the gear's column. The big minimap stays clear of it when it can.
+   * landscape between the camera buttons and the gear's column. The minimap stays clear of it.
    */
   announce:Rect;
-  /**
-   * No big minimap of BIG_MIN_SIDE or more fits beside the slot (portrait: the slot spans the width right under the
-   * collapsed one), so `minimapBig` covers it: it never opens while a notice is up and closes when one comes in
-   * (minimap.ts blockReason / bigShouldClose with coversAnnounce).
-   */
-  bigCoversAnnounce:boolean;
   /** Where the edge arrows' centres may run (useful area minus the ficha, its pad, the tag and the caído's name). */
   arrowRail:Rect;
   /** Lobby selector box (portrait: the control in the waiting window; landscape: the small Lilás window). */
@@ -52,20 +44,12 @@ export interface CityLayout {
   selectorHint?:Rect;
 }
 
-export const MINIMAP_SIDE=76,BIG_MIN_SIDE=120;
-/**
- * The WC3 minimap's side in CSS px (hud.css .rh-mm: clamp(124px, 30vmin, 210px)), the box the slot really takes now;
- * MINIMAP_SIDE stays the old diamond drawing's unit (city/minimap.ts).
- */
+/** The WC3 minimap's side in CSS px (hud.css .rh-mm: clamp(124px, 30vmin, 210px)), the box the slot takes. */
 export function wcMinimapSide(viewport:{width:number;height:number}){return Math.round(Math.min(210,Math.max(124,.3*Math.min(viewport.width,viewport.height))));}
-/** Largest side of the big minimap (doc §2): portrait, landscape, landscape with the offer/forge open. */
-export const BIG_MAX_SIDE={portrait:232,landscape:176,window:164} as const;
-/** The hero's sprite at the follow zoom (zones.ts MIN_PLAY_SIDE), and what the big minimap keeps from its zone (± 40). */
-export const HERO_SIDE=56,BIG_HERO_GAP=8;
+/** The hero's sprite at the follow zoom (zones.ts MIN_PLAY_SIDE). */
+export const HERO_SIDE=56;
 /** The HUD's own safe-area floor (tokens.css --sa-*: max(8px, env())). */
 export const HUD_FLOOR=8;
-/** Room the big minimap keeps from the announcement slot (the same 4 px the slot keeps from the top band). */
-export const ANNOUNCE_GAP=4;
 /** Lobby selector (doc §4): control height per text scale, the landscape window and its stacked segments. */
 export const SELECTOR={height:{1:64,1.25:84},hint:{1:20,1.25:44},window:{width:112,height:144,pad:6,gap:4,segment:64}} as const;
 
@@ -73,7 +57,7 @@ const NO_INSETS:Insets={top:0,right:0,bottom:0,left:0};
 const floor8=(v:number)=>Math.max(HUD_FLOOR,v);
 
 /**
- * Collapsed minimap (hud.css .rh-minimap): portrait under the gear, top --rh-t + 64, right --rh-r; landscape top
+ * The minimap's slot (hud.css .rh-minimap, .rh-mm): portrait under the gear, top --rh-t + 64, right --rh-r; landscape top
  * --rh-t + 52, right max(14, safe); with a window open in landscape, the left column 24 px under the camera buttons
  * (48 px at max(12, safe top)), left max(14, safe).
  */
@@ -109,45 +93,6 @@ export function heroRect(useful:Rect):Rect{
   return {x:Math.floor(useful.x+(useful.width-HERO_SIDE)/2),y:Math.floor(useful.y+(useful.height-HERO_SIDE)/2),width:HERO_SIDE,height:HERO_SIDE};
 }
 
-export interface BigSideInput {
-  /** The collapsed minimap's outer top corner, where the big one is anchored. */
-  corner:{x:number;y:number};
-  /** Which way the square grows from the corner (it always grows down). */
-  toward:'left'|'right';
-  /** Smax for this case (BIG_MAX_SIDE). */
-  max:number;
-  /** Hero ± HERO_MARGIN. */
-  heroZone:Rect;
-  viewport:{width:number;height:number};
-  safe?:Insets;
-  /** Joystick, skill, emote, chip: the big minimap keeps THUMB_GAP from each. */
-  controls:readonly (Rect|undefined)[];
-  /** Team strip: the big minimap keeps 8 px from it (right of the column + 8). */
-  team?:Rect;
-  /** Boxes the square must not cross, ANNOUNCE_GAP apart (the announcement slot). */
-  avoid?:readonly Rect[];
-}
-/** The square of side `s` hanging from the corner. */
-export const bigSquare=(corner:{x:number;y:number},toward:'left'|'right',s:number):Rect=>({x:toward==='left'?corner.x-s:corner.x,y:corner.y,width:s,height:s});
-/**
- * Doc §2: S = min(Smax, max(heroZone.y − 8 − top, edge − heroZone's near side − 8)), then shrunk until it keeps 24 px
- * from the joystick, the skill, the emote and the chip, 8 px from the team strip, ANNOUNCE_GAP from what `avoid` lists
- * and stays in the viewport. Whole px.
- * A result < BIG_MIN_SIDE means the big minimap does not open.
- */
-export function bigMinimapSide(input:BigSideInput):number{
-  const {corner,toward,heroZone:hz,viewport}=input,safe=input.safe??NO_INSETS;
-  const below=hz.y-BIG_HERO_GAP-corner.y;
-  const beside=toward==='left'?corner.x-right(hz)-BIG_HERO_GAP:hz.x-BIG_HERO_GAP-corner.x;
-  const controls=input.controls.filter((r):r is Rect=>!!r&&r.width>0&&r.height>0);
-  const fits=(r:Rect)=>r.x>=safe.left&&r.y>=safe.top&&right(r)<=viewport.width-safe.right&&bottom(r)<=viewport.height-safe.bottom
-    &&!crosses(r,hz,BIG_HERO_GAP)&&controls.every(c=>gap(r,c)>=THUMB_GAP)&&!(input.team&&crosses(r,input.team,8))
-    &&(input.avoid??[]).every(a=>!crosses(r,a,ANNOUNCE_GAP));
-  let s=Math.floor(Math.min(input.max,Math.max(below,beside)));
-  while(s>0&&!fits(bigSquare(corner,toward,s)))s--;
-  return Math.max(0,s);
-}
-
 /** Centres of the edge arrows (edges.ts placeEdges): the useful area shrunk by the ficha + RIM_PAD, TAG_ROOM on top and NAME_ROOM under. */
 export function arrowRailOf(useful:Rect,textScale=1):Rect{
   const half=arrowHalf(textScale),hw=Math.min(half.w+RIM_PAD,useful.width/2),hh=Math.min(half.h+RIM_PAD,useful.height/2);
@@ -178,19 +123,10 @@ export function cityHudLayout(input:CityLayoutInput):CityLayout{
   const orientation=orientationOf(viewport),windowOpen=orientation==='landscape'&&!!input.windowOpen;
   const minimap=minimapRect(viewport,safe,windowOpen);
   const zones=computeZones({...controls,viewport,safe,minimap});
-  const hero=heroRect(zones.useful),heroZone=inflate(hero,40);
-  // Anchored on the collapsed one's outer corner: the right one grows left, the left-column one grows right.
-  const toward=minimap.x+minimap.width/2>viewport.width/2?'left':'right';
-  const corner={x:toward==='left'?right(minimap):minimap.x,y:minimap.y};
-  const max=orientation==='portrait'?BIG_MAX_SIDE.portrait:windowOpen?BIG_MAX_SIDE.window:BIG_MAX_SIDE.landscape;
+  const hero=heroRect(zones.useful);
   const announce=announceSlot(zones,safe,controls.team);
-  const big:BigSideInput={corner,toward,max,heroZone,viewport,safe,controls:[controls.joystick,controls.skill,controls.emote,controls.chip],team:controls.team};
-  // Clear of the announcement slot when a big enough square fits so; else the doc's square over it, ruled by the notices.
-  const clear=bigMinimapSide({...big,avoid:[announce]}),side=clear>=BIG_MIN_SIDE?clear:bigMinimapSide(big);
   const {selector,segments,hint}=selectorRects(viewport,safe,scale);
-  return {orientation,zones,minimap,...(side>=BIG_MIN_SIDE?{minimapBig:bigSquare(corner,toward,side)}:{}),
-    announce,bigCoversAnnounce:clear<BIG_MIN_SIDE&&side>=BIG_MIN_SIDE,
-    arrowRail:arrowRailOf(zones.useful,scale),selector,segments,hero,...(hint?{selectorHint:hint}:{})};
+  return {orientation,zones,minimap,announce,arrowRail:arrowRailOf(zones.useful,scale),selector,segments,hero,...(hint?{selectorHint:hint}:{})};
 }
 
 // ---------- Reference controls (doc §0, tests/zones.test.ts) ----------

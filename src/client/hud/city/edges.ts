@@ -7,7 +7,7 @@
  */
 import {layoutEdges,pointedTargets,railName,arrowHalf,crosses,bottom,right,MUST_POINT,MAX_ARROWS,MERGE_PX,MIN_PLAY_SIDE,type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions,type Rect} from './deps.ts';
 import {clusterEnemies,pickGroupArrows,groupCountText,type EnemyPoint} from './clusters.ts';
-import type {CityMapInfo,MouthId} from './minimap.ts';
+import type {CityMapInfo,MouthId} from './map-info.ts';
 import {motoNeedsTeam,type MotoMode} from './deps.ts';
 
 export interface CityEdgeInput {
@@ -131,7 +131,7 @@ export function mergeGroupTargets<T extends CityEdgeTarget>(targets:readonly T[]
 const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',4:'base'};
 
 /**
- * The part of `area` left beside the open windows (the big minimap is one, doc §2): for each window over it, the largest
+ * The part of `area` left beside the open windows (the offer, the forge, the minimap): for each window over it, the largest
  * band above, below, left or right of it, preferring one that holds the hero ± margin (zones.ts does the same for the
  * offer). A target behind a window then lies outside the arrows' area, so it gets its arrow glued to the window's edge.
  */

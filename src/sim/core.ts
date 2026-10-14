@@ -8,7 +8,7 @@ import type {Point} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
 import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
-import type {SimContext,SimSystem} from './context.ts';
+import type {SimContext,SimSystem,Sleepers} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
 
 export type {StampedEvent};
@@ -101,6 +101,8 @@ export class SimWorld implements SimContext {
    * endless, a neutral city) damagePlayer is exactly as before. A result that is not a finite number > 0, or 1, is ignored.
    */
   playerDamageScale?:(ctx:SimContext)=>number;
+  /** D-051 (SimContext.sleepers): set by createRunSystems for a ninhos run, cleared by its dispose; absent otherwise. */
+  sleepers?:Sleepers;
 
   constructor(options:SimWorldOptions){
     this.terrain=options.terrain;
@@ -200,8 +202,10 @@ export class SimWorld implements SimContext {
   flush(){this.lastEvents=this.queue;this.queue=[];return this.lastEvents;}
 
   damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string){
-    const enemy=this.enemies.get(enemyId);
-    if(!enemy||!(enemy.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
+    if(!Number.isFinite(amount)||amount<=0)return false;
+    // D-051: a hit on a sleeper wakes it and its band first (ninhos/sono.ts), then lands like any other.
+    const enemy=this.enemies.get(enemyId)??this.sleepers?.wake(this,enemyId,'dano');
+    if(!enemy||!(enemy.hp>0))return false;
     const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
     let might=sourcePlayer?source?.stats.might??1:1;
     // D-047 Dona Cida's paçoca (SimPlayer.mightUntil); absent everywhere else, so the product is untouched.

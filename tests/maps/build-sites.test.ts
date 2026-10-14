@@ -12,7 +12,10 @@ import {
   CITY_BUILD_CELL,CITY_SITE_CELL,MOUTH_KEEP_OUT,ENDLESS_BUILD_CELL,MIN_SITES,MAX_SITES,type BuildPlan,type BuildSite,
 } from '../../src/maps/index.ts';
 import {CITY_MAP_SCALE,scaleProfile} from '../../src/rules/index.ts';
-import {BARRICADE_MAX_R} from '../../src/sim/stonewards/barricades.ts';
+import {BARRICADE_MAX_R,sealRadii} from '../../src/sim/stonewards/barricades.ts';
+import {cityPlanner} from '../../src/sim/city/grid.ts';
+import {DEFENSES,ROOT_DEFENSE} from '../../src/sim/towers/catalog.ts';
+import {DIRS} from '../../src/maps/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const decoded=decodeCityAsset(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'));
@@ -98,4 +101,38 @@ test('a ring of builds that walls the camp in is refused: the base must stay rea
 
 test('MOUTH_KEEP_OUT is the barricade\'s largest seal (kept by hand: maps may not import the sim)',()=>{
   assert.ok(Math.abs(MOUTH_KEEP_OUT-BARRICADE_MAX_R)<1e-9,`${MOUTH_KEEP_OUT} vs ${BARRICADE_MAX_R}`);
+});
+
+// NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro (part A): on the 1.7× city the mouths N/L/O sit 18.7–21.5 u from the wall
+// and the old ring of sites 12–15 u from them, out of a root tower's range. The plan now opens with a 3×3 on each side
+// of the last stretch of those avenues, interleaved N, L, O (the bots build the largest free site in plan order).
+test('the first six city sites are 3×3 beside the N, L and O avenues, in reach of the bodies walking up to the barricade', () => {
+  const plan=buildPlanFor(city),pts=decoded.asset.points,mouths=['N','L','O','N','L','O'] as const;
+  const range=DEFENSES[ROOT_DEFENSE].range,seal=sealRadii(city),field=cityPlanner(city).plazaField,cs=field.cellSize;
+  /** The enemies' route from the avenue end to the plaza (the planner's plaza field), cell centres. */
+  const route=(m:'N'|'L'|'O')=>{
+    const at=pts[`spawn${m}`],out:{x:number;y:number}[]=[];
+    let cx=Math.floor(at.x/cs),cy=Math.floor(at.y/cs);
+    for(let i=0;i<1000;i++){
+      out.push({x:(cx+.5)*cs,y:(cy+.5)*cs});
+      if(field.cellCost(cx,cy)===0)break;
+      const d=field.nextCell(cx,cy);if(d<0)break;
+      cx+=DIRS[d].dx;cy+=DIRS[d].dy;
+    }
+    return out;
+  };
+  plan.sites.slice(0,6).forEach((s,i)=>{
+    const m=mouths[i],mouth=pts.bocas[m],fromMouth=Math.hypot(s.x-mouth.x,s.y-mouth.y);
+    assert.equal(s.maxSize,3,`${s.id} is a 3×3`);
+    assert.ok(fromMouth<10.5,`${s.id} is ${fromMouth.toFixed(1)} u from mouth ${m}`);
+    // The avenue's last 8 u outside the barricade: the bodies walk it and stand on it while they bash the barricade.
+    const stretch=route(m).filter(p=>{const d=Math.hypot(p.x-mouth.x,p.y-mouth.y);return d>=seal[m]!&&d<=8;});
+    assert.ok(stretch.length>=3,`mouth ${m}: ${stretch.length} route cells`);
+    const inRange=stretch.filter(p=>Math.hypot(p.x-s.x,p.y-s.y)<=range+.25);
+    assert.ok(inRange.length>=1,`${s.id}: a root (range ${range}) reaches the last stretch of avenue ${m}`);
+  });
+  for(const m of ['N','L','O'] as const){
+    const near=plan.sites.filter(s=>Math.hypot(s.x-pts.bocas[m].x,s.y-pts.bocas[m].y)<10.5);
+    assert.ok(near.length>=2,`mouth ${m} has ${near.length} sites within 10.5 u`);
+  }
 });

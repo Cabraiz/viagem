@@ -335,6 +335,15 @@ test('life: obra → pronta → danificada → ruina through the structures syst
 });
 
 // ---------- 5. Combat ----------
+/**
+ * The 3×3 site the radar and the determinism fight pair with obra-02: the first other 3×3 within a radar's reach of it
+ * (plan order). Was obra-03 while the plan listed the north row in order; since NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro
+ * the plan opens with the mouth pairs interleaved N, L, O, and obra-02's neighbour is the other side of its avenue.
+ */
+const NEIGHBOUR=(()=>{
+  const sites=buildPlanFor(city).sites,two=sites.find(x=>x.id==='obra-02')!;
+  return sites.find(x=>x!==two&&x.maxSize===3&&Math.hypot(x.x-two.x,x.y-two.y)<=DEFENSES['posto-de-radar'].radar!.reach)!.id;
+})();
 /** A ready defense of `kind` at the city site obra-02 (maxSize 3), in a wave. */
 function armed(kind:DefenseId,path:(string|undefined)[]){
   const {ctx,sys}=citySetup(3000);
@@ -433,7 +442,7 @@ test('combat: C4 anti-air hits only the flyers; C5 radar gives the defenses arou
   assert.equal(dmg(ctx,'walker').length,0);
   // Radar: a Vigia (range 6) next to a radar reaches 6 × 1.3.
   const r=citySetup(3000);
-  const radar=grow(r.ctx,r.sys,'obra-02',['C',undefined,undefined,undefined]),guard=grow(r.ctx,r.sys,'obra-03');
+  const radar=grow(r.ctx,r.sys,'obra-02',['C',undefined,undefined,undefined]),guard=grow(r.ctx,r.sys,NEIGHBOUR);
   assert.equal(radar.kind,'posto-de-radar');
   assert.ok(Math.hypot(radar.x-guard.x,radar.y-guard.y)<=DEFENSES['posto-de-radar'].radar!.reach);
   at(r.ctx,guard.readyTick,'wave');
@@ -463,7 +472,7 @@ test('combat: the Gustavão shells the densest crowd across the map, rarely',()=
 
 // ---------- 6. Determinism, checkpoints, the island ----------
 /**
- * Where the determinism fight happens: just south of obra-02, between it and obra-03, in the towers' (person-sized)
+ * Where the determinism fight happens: just south of obra-02, toward its NEIGHBOUR, in the towers' (person-sized)
  * range. Was the literal (72, 77) = obra-02's centre + (0.28, 2.64) on the .w3x-sized city; the sites moved with the
  * map (NEW-20261013-ORQ-cidade-escala-1-7), the offset is the towers' and stays.
  */
@@ -473,7 +482,7 @@ test('determinism: same commands, same state; a JSON checkpoint resumes identica
     const out:string[]=[];
     for(let t=from;t<ticks(40);t++){
       ctx.tick=t;ctx.round.phase=t<ticks(20)?'prepare':'wave';
-      if(t===2)out.push(JSON.stringify(sys.build(ctx,'a','obra-02')),JSON.stringify(sys.build(ctx,'a','obra-03')));
+      if(t===2)out.push(JSON.stringify(sys.build(ctx,'a','obra-02')),JSON.stringify(sys.build(ctx,'a',NEIGHBOUR)));
       if(t===ticks(8))out.push(JSON.stringify(sys.upgrade(ctx,'a','defesa-1','C')),JSON.stringify(sys.upgrade(ctx,'a','defesa-2','B')));
       if(t===ticks(20))for(let i=0;i<8;i++)ctx.enemies.set(`e${i}`,enemy(`e${i}`,NEAR_OBRA.x+i*.4,NEAR_OBRA.y,{hp:200,maxHp:200}));
       defensesStep(ctx,sys.state);
@@ -490,7 +499,7 @@ test('determinism: same commands, same state; a JSON checkpoint resumes identica
   const run=(sys:StonewardsSystem,ctx:FakeCtx,until:number,from=0)=>{
     for(let t=from;t<until;t++){
       ctx.tick=t;ctx.round.phase=t<ticks(20)?'prepare':'wave';
-      if(t===2){sys.build(ctx,'a','obra-02');sys.build(ctx,'a','obra-03');}
+      if(t===2){sys.build(ctx,'a','obra-02');sys.build(ctx,'a',NEIGHBOUR);}
       if(t===ticks(8)){sys.upgrade(ctx,'a','defesa-1','C');sys.upgrade(ctx,'a','defesa-2','B');}
       if(t===ticks(20))for(let i=0;i<8;i++)ctx.enemies.set(`e${i}`,enemy(`e${i}`,NEAR_OBRA.x+i*.4,NEAR_OBRA.y,{hp:200,maxHp:200}));
       defensesStep(ctx,sys.state);

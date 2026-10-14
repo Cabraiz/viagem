@@ -3,7 +3,7 @@ import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
 import { worldSpawn, type Point } from '../src/maps/index.ts';
-import {SimWorld,stateHash,type StampedEvent} from '../src/sim/index.ts';
+import {SimWorld,stateHash,cityRunStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions,type RunSystemsState,type WorldCheckpoint} from '../src/sim/index.ts';
@@ -367,11 +367,16 @@ export class Simulation {
         const {hp,...run}=structuredClone(s.run);
         Object.assign(p,run);refreshStats(p);
         p.hp=p.eliminated?0:Math.min(hp as number,p.stats.maxHp);
-      }else Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,attackTick:0,skillTick:0,skillReadyTick:0});
+      }else Object.assign(p,spawnSlot(slot++,this.start()),{score:0,attackTick:0,skillTick:0,skillReadyTick:0});
       p.ack=0;this.track(p.id).reset(0);this.trackReset(p.id);
     }
     return true;
   }
+  /**
+   * Where heroes spawn: in the city, the run's start down the road from the wreck (sim/city/tutorial.ts cityRunStart,
+   * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro); elsewhere the world's spawn point.
+   */
+  private start():Point{return this.city?cityRunStart(this.city):worldSpawn(this.terrain);}
   resetRun(){
     this.systems.dispose();
     // The old run's barricades go with it; the new run's stonewards raises its own.
@@ -386,7 +391,7 @@ export class Simulation {
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
     for(const p of this.players.values()){
-      this.equip(p);Object.assign(p,spawnSlot(slot++,worldSpawn(this.terrain)),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
+      this.equip(p);Object.assign(p,spawnSlot(slot++,this.start()),{score:0,ack:0,attackTick:0,skillTick:0,skillReadyTick:0});
       this.track(p.id).reset(0);this.trackReset(p.id);
     }
   }
@@ -402,8 +407,8 @@ export class Simulation {
   }
   add(id:string,name:string,classId:string){
     if(this.players.size>=MAX_PLAYERS)throw new Error('Sala cheia. Máximo de seis jogadores.');
-    const slots=Array.from({length:6},(_,i)=>spawnSlot(i,worldSpawn(this.terrain)));
-    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??worldSpawn(this.terrain);
+    const slots=Array.from({length:6},(_,i)=>spawnSlot(i,this.start()));
+    const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??this.start();
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);
     this.players.set(id,p);this.track(id).reset(0);this.trackReset(id);return p;

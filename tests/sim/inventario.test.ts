@@ -111,8 +111,8 @@ test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries 
   assert.ok(dourada.cooldownTicks<verde.cooldownTicks);
   assert.equal(getWeapon(legendaryId('chinelo'))!.evolved?.flingOnCycle,true,'the Havaianas do Caos');
   for(const w of NEW_WEAPONS)assert.ok(w.minRarity>=1&&w.levels.length===4,w.id);
-  assert.equal(weaponNoise('faca'),0);assert.equal(weaponNoise('rojao'),10);
-  assert.equal(weaponNoise('rojao',[{id:'silenciador',level:2}]),5);
+  assert.equal(weaponNoise('faca'),6);assert.equal(weaponNoise('rojao'),28);
+  assert.equal(weaponNoise('rojao',[{id:'silenciador',level:2}]),14);
 });
 
 test('city, manual combat: the crates stand on the loot points; standing by one fills the inventory; the view carries the hand',async()=>{

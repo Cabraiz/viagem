@@ -33,7 +33,7 @@ export const OPEN_REACH=1;
 /** Seconds of standing still to open, by rarity - 1 (verde 1 s .. lendária 3 s). */
 export const OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 /** From this rarity up (roxa) starting to open makes noise, heard within OPEN_NOISE_RADIUS world units. */
-export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=6;
+export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=10;
 /** Grana prizes (R$) and the team XP a lendária adds. */
 export const GRANA_VERDE=5,GRANA_DOURADA=50,LEGENDARY_TEAM_XP=50;
 /** Pickup id prefix of the crates this module places or drops (not CRATE_PREFIX 'caixa-': those are the gather nodes). */

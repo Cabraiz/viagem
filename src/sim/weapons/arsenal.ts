@@ -21,6 +21,12 @@ export const RARITY_DAMAGE:Readonly<Record<Rarity,number>>={1:1,2:1.15,3:1.3,4:1
 export const RARITY_COOLDOWN:Readonly<Record<Rarity,number>>={1:1,2:.95,3:.9,4:.85,5:.8};
 export const isRarity=(n:unknown):n is Rarity=>n===1||n===2||n===3||n===4||n===5;
 
+/**
+ * D-051 noise radii (world units; the ninhos proposal's §3 table, at the ~49 u camera and the 1.7× city), the scale the
+ * nests' sleep reads (E2: imports these, never duplicates them). The submachine gun and the blowtorch sit between their
+ * neighbours; the legendaries and any weapon the arsenal does not list, DEFAULT_NOISE.
+ */
+export const NOISE={faca:6,pistola:12,submetralhadora:15,escopeta:18,rifle:22,macarico:12,rojao:28} as const;
 export interface ArsenalWeapon extends WeaponDef {
   /** Lowest rarity a crate gives it in (the faca is the starting one, verde). */
   minRarity:Rarity;
@@ -44,27 +50,29 @@ const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{ver
  * comes azul or better starts there). The CI bench tunes them. Speeds and durations are the tuned table values (travelling patterns fly
  * PROJECTILE_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
  */
+/** Noise of a legendary and of a weapon the arsenal does not list (the automatic game's): a pistol's. */
+export const DEFAULT_NOISE=NOISE.pistola;
 export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
-  weapon({id:'faca',name:'Faca de Pão',icon:'faca',pattern:'cone',coneHalfAngle:1,minRarity:1,noise:0,
+  weapon({id:'faca',name:'Faca de Pão',icon:'faca',pattern:'cone',coneHalfAngle:1,minRarity:1,noise:NOISE.faca,
     quip:'Corta pão, corta bicho.',intro:'Golpe em arco bem de perto. Não faz barulho nenhum.',
     //           dmg  cd  amt area spd dur pierce kb  hit  range
     verde:row(12,.5,1,1.3,0,.15,1e6,.3,.2,1.3)}),
-  weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:3,
+  weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:NOISE.pistola,
     quip:'Tava guardada no armário desde 1987.',intro:'Um tiro certeiro no bicho mais perto.',
     verde:row(15,.6,1,.22,10,.7,0,.2,.5,7)}),
-  weapon({id:'escopeta',name:'Espalha-Chumbo',icon:'escopeta',pattern:'cone',coneHalfAngle:.45,minRarity:2,noise:6,
+  weapon({id:'escopeta',name:'Espalha-Chumbo',icon:'escopeta',pattern:'cone',coneHalfAngle:.45,minRarity:2,noise:NOISE.escopeta,
     quip:'Mira? Pra quê?',intro:'Leque de chumbo de perto: estrago em quem estiver na frente.',
     verde:row(28,1.1,1,4,0,.15,1e6,.6,.2,4)}),
-  weapon({id:'submetralhadora',name:'Metralhadora de Feira',icon:'submetralhadora',pattern:'pierce',minRarity:2,noise:5,
+  weapon({id:'submetralhadora',name:'Metralhadora de Feira',icon:'submetralhadora',pattern:'pierce',minRarity:2,noise:NOISE.submetralhadora,
     quip:'Três por dez, freguesa!',intro:'Rajada rápida de tiro fraquinho.',
     verde:row(6,.2,1,.18,11,.55,0,.05,.5,6)}),
-  weapon({id:'rifle',name:'Cano Longo',icon:'rifle',pattern:'pierce',minRarity:3,noise:7,
+  weapon({id:'rifle',name:'Cano Longo',icon:'rifle',pattern:'pierce',minRarity:3,noise:NOISE.rifle,
     quip:'Acerta o bicho e o vizinho dele.',intro:'Tiro de longe que atravessa a fila de bichos.',
     verde:row(36,1.1,1,.25,16,.7,3,.4,.5,11)}),
-  weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,minRarity:3,noise:4,
+  weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,minRarity:3,noise:NOISE.macarico,
     quip:'Era pra soldar o portão.',intro:'Fogo contínuo bem na frente: derrete enxame.',
     verde:row(5,.2,1,3.5,0,.15,1e6,0,.2,3.5)}),
-  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:10,
+  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:NOISE.rojao,
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
     verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];
@@ -87,7 +95,7 @@ export function legendaryWeapons(catalog:{get(id:string):WeaponDef|undefined},ba
     const from=evo??def,top=from.levels[from.levels.length-1];
     const legend={...top,damage:Math.round(top.damage*LEGENDARY_DAMAGE*10)/10};
     out.push({...from,id:legendaryId(base),kind:'weapon',name:def.name,icon:from.icon,maxLevel:5,levels:Array(5).fill(legend),
-      minRarity:5,noise:4,base:undefined,passive:undefined,describe:()=>`Lendária! ${from.describe(1)}`});
+      minRarity:5,noise:DEFAULT_NOISE,base:undefined,passive:undefined,describe:()=>`Lendária! ${from.describe(1)}`});
   }
   return out;
 }
@@ -107,8 +115,7 @@ export const CONSUMABLES:Readonly<Record<ConsumableId,ConsumableDef>>={
 };
 export const isConsumableId=(id:string):id is ConsumableId=>(CONSUMABLE_IDS as readonly string[]).includes(id);
 
-/** Noise of a weapon the arsenal does not list (the automatic game's): about a pistol's. */
-export const DEFAULT_NOISE=4;
+
 /**
  * D-051: how far a shot of `weaponId` is heard (world units), after the Silenciador de Garagem (SILENCER_PER_LEVEL a
  * level, never below 0). The D-051 nests (E1) read it on the 'fire' event's weapon.

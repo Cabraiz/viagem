@@ -882,6 +882,27 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{units:20,grana:0,wallDown:true});
 });
 
+test('inflação (D-048 balance): the camp block carries the gambiarras and chinelos bought, and leaves forge out when none',()=>{
+  const ids=new WireIds(),enc=new FrameEncoder(ids,{viewer:'me'}),dec=new FrameDecoder();
+  const w=campWorld();
+  w.camp={units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}};
+  const r=dec.decode(enc.encode(w));assert.ok(r.ok);
+  assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}},'only the bought recipe, the horn still read after');
+  // Both counts, the wall down: every field after the two counts still decodes.
+  enc.ack(r.seq);
+  w.tick++;w.camp={units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}};
+  const r2=dec.decode(enc.encode(w));assert.ok(r2.ok);
+  assert.deepEqual(r2.view.camp,{units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}});
+  // None bought (absent, or zeros): no forge key at all, as before the inflação.
+  for(const forge of [undefined,{},{gambiarra:0,'torre-chinelo':0}]){
+    enc.ack(r2.seq);
+    w.tick++;w.camp={units:21,grana:5,hornEndsTick:900,...(forge?{forge}:{})};
+    const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
+    assert.deepEqual(r3.view.camp,{units:21,grana:5,hornEndsTick:900},JSON.stringify(forge));
+    assert.equal('forge' in r3.view.camp!,false);
+  }
+});
+
 test('protocol 6: horn and say events; horn reaches everyone, say only who is near the source',()=>{
   const ids=new WireIds(),me=new FrameEncoder(ids,{viewer:'me'}),far=new FrameEncoder(ids,{viewer:'far'});
   const dm=new FrameDecoder(),df=new FrameDecoder();

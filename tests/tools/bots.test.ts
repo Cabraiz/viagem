@@ -9,6 +9,7 @@ import {decide,newMemory,pickRecipe,nodeFor,forgerId,SOS_GAP,PICK_DELAY_COMBAT,P
 import {percentile,rates,TickStitcher,freePlan,FREE_PLAN} from '../../scripts/bots/metrics.ts';
 import {Link,OrderedDelay,OUTAGE_CONNECT_FAIL_MS} from '../../scripts/bots/lab-socket.ts';
 import type {RunView,PlayerRunView,NodeView} from '../../src/contract/view.ts';
+import {RECIPES} from '../../src/rules/index.ts';
 
 const player=(id:string,x:number,y:number,extra:Partial<PlayerRunView>={}):PlayerRunView=>({id,name:id,classId:'cidadao-comum',hp:100,maxHp:100,online:true,spectator:false,weapons:[],passives:[],...extra,...{x,y}} as PlayerRunView);
 function view(extra:Partial<RunView>={}):RunView{
@@ -66,13 +67,14 @@ test('brain: intermission — gather at its own node, home on the horn',()=>{
 test('brain: the forger spends the Grana at the camp (repair first when the wall is hurt)',()=>{
   const prepare={index:3,total:10,phase:'prepare' as const,phaseEndsTick:1600,remaining:0};
   // D-048: the forge is paid in the team's Grana (R$), never the material.
-  const rich={units:0,grana:20};
+  // Prices from their source (rules RECIPES): rich pays any recipe, cheapest is the lowest price.
+  const prices=Object.values(RECIPES).map(r=>r.cost),rich={units:0,grana:prices.reduce((a,b)=>a+b,0)},cheapest=Math.min(...prices);
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:300,maxHp:600}]})),'reparo');
   assert.equal(pickRecipe(view({camp:rich})),'torre-chinelo');
   const towers=[1,2,3].map(i=>({id:'t'+i,kind:'torre-chinelo',x:i,y:0,hp:1,maxHp:1,untilTick:2000}));
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600},...towers]})),'gambiarra');
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:590,maxHp:600},...towers]}),{gambiarra:2}),'reparo','a refused gambiarra falls back to topping the wall up');
-  assert.equal(pickRecipe(view({camp:{units:2,grana:4}})),undefined,'R$ 4 buys nothing (reparo 5)');
+  assert.equal(pickRecipe(view({camp:{units:2,grana:cheapest-1}})),undefined,'one real short of the cheapest buys nothing');
   assert.equal(pickRecipe(view({camp:{units:200,grana:0}})),undefined,'material does not pay the forge');
   assert.equal(forgerId(view()),'a');
   const memory=newMemory(0),v=view({round:prepare,camp:rich});

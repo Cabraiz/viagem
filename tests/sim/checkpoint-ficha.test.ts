@@ -42,7 +42,9 @@ test('a pre-ficha checkpoint (two piles, the old fingerprint) resumes with one p
   assert.equal(legacy.systems.stonewards.grana,0,'a run without the objective had no Grana');
   assert.equal(fresh.resume(legacy),true);
   assert.equal(balanceOf(fresh).units,57);assert.equal(fresh.run.stonewards.state.grana,0);
-  assert.equal(tokensOf(57),1);assert.ok(Math.abs(tokenProgress(57)-17/UNITS_PER_TOKEN)<1e-9);
+  // The one pile reads as whole fichas and the ring's fraction of the next (whatever UNITS_PER_TOKEN is).
+  const whole=Math.floor(57/UNITS_PER_TOKEN);
+  assert.equal(tokensOf(57),whole);assert.ok(Math.abs(tokenProgress(57)-(57-whole*UNITS_PER_TOKEN)/UNITS_PER_TOKEN)<1e-9);
   // Idempotent: a second pass changes nothing.
   fresh.migrateCheckpoint(legacy);assert.deepEqual(legacy.systems.stonewards.balance,{units:57});assert.equal(legacy.systems.stonewards.grana,0);
 });

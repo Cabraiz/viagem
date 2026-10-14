@@ -10,31 +10,31 @@ import {readFileSync} from 'node:fs';
 import {granaReadout,tokenMarkup,tokenReadout} from '../../src/client/hud/camp.ts';
 import {EVOLVE_ARROW,FREE_PRICE,evolvePriceLabel,fichasText,forgePriceLabel,granaShort,granaText,reaisText,tokenPriceLabel} from '../../src/client/hud/price.ts';
 import {blockSpeech,blockText,canEvolve,selectable,treeFor,type ObraView} from '../../src/client/hud/towers/model.ts';
-import {DEFENSES,EVOLVE_PRICE,RECIPES,TOWER_TOKENS,UNITS_PER_TOKEN,priceOf,tokenProgress,tokensOf} from '../../src/rules/index.ts';
+import {DEFENSES,EVOLVE_PRICE,RECIPES,RECIPE_IDS,TOWER_TOKENS,UNITS_PER_TOKEN,forgePrice,priceOf,tokenProgress,tokensOf} from '../../src/rules/index.ts';
 import {icon} from '../../src/client/ui/icon.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 
 const read=(path:string)=>readFileSync(new URL(`../../src/client/hud/${path}`,import.meta.url),'utf8');
 
 test('the top bar counts whole fichas and fills the ring to the next one (tokensOf / tokenProgress)',()=>{
-  assert.equal(UNITS_PER_TOKEN,40,'the numbers below assume 40 units a ficha');
+  const U=UNITS_PER_TOKEN;
   assert.deepEqual(tokenReadout(0),{tokens:0,progress:0,percent:0,label:'0 fichas de torre, próxima em 0%'});
-  assert.deepEqual(tokenReadout(36),{tokens:0,progress:.9,percent:90,label:'0 fichas de torre, próxima em 90%'},'"falta pouco"');
-  assert.deepEqual(tokenReadout(40),{tokens:1,progress:0,percent:0,label:'1 ficha de torre, próxima em 0%'});
-  assert.equal(tokenReadout(150).label,'3 fichas de torre, próxima em 75%');
-  assert.equal(tokenReadout(29).percent,72,'rounds down (72.5)');
-  assert.equal(tokenReadout(39.99).percent,99,'never "próxima em 100%" before the ficha shows');
+  assert.deepEqual(tokenReadout(.9*U),{tokens:0,progress:.9,percent:90,label:'0 fichas de torre, próxima em 90%'},'"falta pouco"');
+  assert.deepEqual(tokenReadout(U),{tokens:1,progress:0,percent:0,label:'1 ficha de torre, próxima em 0%'});
+  assert.equal(tokenReadout(3.75*U).label,'3 fichas de torre, próxima em 75%');
+  assert.equal(tokenReadout(.725*U).percent,72,'rounds down (72.5)');
+  assert.equal(tokenReadout(U-.01).percent,99,'never "próxima em 100%" before the ficha shows');
   for(const bad of [Number.NaN,-5,Number.POSITIVE_INFINITY])assert.equal(tokenReadout(bad).tokens,0,String(bad));
-  for(let u=0;u<=400;u+=7){const r=tokenReadout(u);assert.equal(r.tokens,tokensOf(u),String(u));assert.equal(r.progress,tokenProgress(u),String(u));}
+  for(let u=0;u<=10*U;u+=7){const r=tokenReadout(u);assert.equal(r.tokens,tokensOf(u),String(u));assert.equal(r.progress,tokenProgress(u),String(u));}
 });
 
 test('the top bar markup: the tower sticker in its ring and the count, one line, no coco or pedra',()=>{
-  const html=tokenMarkup(36);
+  const html=tokenMarkup(.9*UNITS_PER_TOKEN);
   assert.ok(html.includes(icon('torre')),'the tower sticker (icon sprite, art when imported)');
   assert.match(html,/^<span class="rh-camp-anel" aria-hidden="true">.*<\/span><b>0<\/b>$/,'ring first, then the count');
   assert.match(html,/class="rh-camp-anel-fundo"/,'the track always shows (N=0 at 90% still reads)');
   assert.match(html,/class="rh-camp-anel-cheio"[^>]*pathLength="100" stroke-dasharray="90 100"/);
-  assert.match(tokenMarkup(0),/stroke-dasharray="0 100"/);assert.match(tokenMarkup(150),/stroke-dasharray="75 100"[^]*<b>3<\/b>$/);
+  assert.match(tokenMarkup(0),/stroke-dasharray="0 100"/);assert.match(tokenMarkup(3.75*UNITS_PER_TOKEN),/stroke-dasharray="75 100"[^]*<b>3<\/b>$/);
   // One line: only inline pieces, no line break, no block element.
   assert.doesNotMatch(html,/\n|<br|<div|<p[ >]/);
   assert.doesNotMatch(html,/coco|pedra|unidade/i);
@@ -49,13 +49,14 @@ test('the top bar markup: the tower sticker in its ring and the count, one line,
 });
 
 test('fixtures: the "falta pouco" ring outside the forge scene, R$ 23 of Grana, and one forge tag short in its scene',()=>{
-  assert.deepEqual(tokenReadout(fakeView('camp-horn',1).camp!.units),{tokens:3,progress:.9,percent:90,label:'3 fichas de torre, próxima em 90%'});
-  const camp=fakeView('camp-horn',1).camp!;
+  const camp=fakeView('camp-horn',1).camp!,ring=tokenReadout(camp.units);
+  assert.deepEqual([ring.tokens,ring.progress],[tokensOf(camp.units),tokenProgress(camp.units)]);
+  assert.ok(ring.tokens>=1&&ring.progress>=.75,`"falta pouco": some fichas and the ring nearly full (${ring.label})`);
   assert.equal(camp.grana,23);
   // R$ 23: some evolutions yes (tiers 2 and 3), some not (tiers 4 and 5).
   assert.deepEqual(([2,3,4,5] as const).map(t=>camp.grana>=EVOLVE_PRICE[t]),[true,true,false,false]);
-  const forge=fakeView('camp-forge',1).camp!.grana;
-  assert.deepEqual(Object.values(RECIPES).map(r=>forge>=r.cost),[true,true,false]);
+  const forge=fakeView('camp-forge',1).camp!,pays=RECIPE_IDS.map(id=>forge.grana>=forgePrice(id,forge.forge));
+  assert.ok(pays.includes(true)&&pays.includes(false),`the forge scene shows tags both buyable and short (R$ ${forge.grana}: ${pays})`);
 });
 
 test('the top bar\'s Grana: "R$ N" in .rh-camp-grana before the fichas, spoken "R$ N do time", always shown',()=>{
@@ -85,10 +86,11 @@ test('prices: fichas for building, "🗼⬆ R$ N" for an evolution, "R$ N" for t
   assert.equal(tokenPriceLabel(TOWER_TOKENS.gustavao).speech,'3 fichas de torre');
   assert.equal(fichasText(0),'0 fichas de torre');
   assert.deepEqual([granaText(12),reaisText(12),reaisText(1),reaisText(0)],['R$ 12','12 reais','1 real','0 reais']);
-  assert.deepEqual(forgePriceLabel(RECIPES.reparo.cost),{html:'<b>R$ 5</b>',speech:'5 reais'});
+  const reparo=RECIPES.reparo.cost;
+  assert.deepEqual(forgePriceLabel(reparo),{html:`<b>R$ ${reparo}</b>`,speech:`${reparo} reais`});
   // The evolve price: the tower sticker and the up arrow, then "R$ N"; spoken as the whole verb.
   const evolve=evolvePriceLabel(EVOLVE_PRICE[2]);
-  assert.deepEqual(evolve,{html:`<span class="rh-preco-evoluir">${icon('torre')}${EVOLVE_ARROW}</span><b>R$ 10</b>`,speech:'Evoluir por 10 reais'});
+  assert.deepEqual(evolve,{html:`<span class="rh-preco-evoluir">${icon('torre')}${EVOLVE_ARROW}</span><b>R$ ${EVOLVE_PRICE[2]}</b>`,speech:`Evoluir por ${EVOLVE_PRICE[2]} reais`});
   assert.match(EVOLVE_ARROW,/^<svg class="rh-preco-sobe"[^>]*aria-hidden="true"/,'the arrow is decorative');
   assert.ok(evolve.html.indexOf(icon('torre'))<evolve.html.indexOf('rh-preco-sobe')&&evolve.html.indexOf('rh-preco-sobe')<evolve.html.indexOf('R$'),'🗼 ⬆ R$');
   assert.equal(evolvePriceLabel(1).speech,'Evoluir por 1 real');

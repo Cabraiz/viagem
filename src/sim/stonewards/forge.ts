@@ -8,7 +8,7 @@ import {isStanding} from '../revive.ts';
 import type {StonewardsState} from './state.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {barricadeOccupied,findBarricade,setBlocking} from './barricades.ts';
-import {CAMP_RADIUS,RECIPES,TOWER_SECONDS,canPay,type RecipeId} from '../../rules/index.ts';
+import {CAMP_RADIUS,INFLATING,RECIPES,TOWER_SECONDS,canPay,forgePrice,type RecipeId} from '../../rules/index.ts';
 
 export const REPAIR_FRACTION=.25;
 export const TOWER_DURATION=ticks(TOWER_SECONDS);
@@ -67,10 +67,11 @@ function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:str
   // The forge stands in the camp (base-stonewards-mapa): what was gathered out there is spent back home.
   const site=barricade??state.wall;
   if(!(Math.hypot(player.x-site.x,player.y-site.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
-  if(!canPay(state.grana,recipe.cost))return {ok:false,reason:'balance'};
+  const price=forgePrice(recipe.id,state.forgeBought);
+  if(!canPay(state.grana,price))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.
   const line=()=>draw(ctx,state,recipe.lines);
-  const charge=()=>{state.grana-=recipe.cost;};
+  const charge=()=>{state.grana-=price;if(INFLATING.includes(recipe.id))(state.forgeBought??={})[recipe.id]=(state.forgeBought[recipe.id]??0)+1;};
   if(barricade){
     // A fallen barricade is rebuilt only on a clear mouth: never inside a body (it would trap it in the blocker).
     if(barricade.down&&barricadeOccupied(ctx,barricade))return {ok:false,reason:'blocked'};

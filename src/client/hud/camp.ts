@@ -17,7 +17,7 @@
  * screen); every number comes from the room. Names always through textContent.
  */
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
-import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
+import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
@@ -64,7 +64,7 @@ export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structur
   if(!camp)return 'phase';
   if(camp.wallDown)return 'wall-down';
   if(away)return 'away';
-  if(!canPay(camp.grana,RECIPES[recipe].cost))return 'balance';
+  if(!canPay(camp.grana,forgePrice(recipe,camp.forge)))return 'balance';
   if(recipe==='reparo'){const w=wallOf(view.structures);if(w&&w.hp>=w.maxHp)return 'full';}
   if(recipe==='torre-chinelo'&&view.structures.filter(isTower).length>=MAX_TOWERS)return 'full';
   if(recipe==='gambiarra'){
@@ -74,8 +74,8 @@ export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structur
   return undefined;
 }
 /** What is missing for a recipe in Grana, "Falta R$ 2." (pure, tested; the price as the tag shows it, price.ts granaText). */
-export function missing(camp:Pick<CampView,'grana'>,recipe:RecipeId){
-  const short=Math.ceil(RECIPES[recipe].cost-(Number.isFinite(camp.grana)?camp.grana:0)-1e-9);
+export function missing(camp:Pick<CampView,'grana'|'forge'>,recipe:RecipeId){
+  const short=Math.ceil(forgePrice(recipe,camp.forge)-(Number.isFinite(camp.grana)?camp.grana:0)-1e-9);
   return short>0?`Falta ${granaText(short)}.`:'';
 }
 /** The top bar's Grana (D-048, pure, tested): "R$ 120" on screen, "R$ 120 do time" for the screen reader (never negative). */
@@ -193,8 +193,8 @@ export function createCamp(options:CampOptions):CampPart{
     const name=el('strong','rh-forge-name',body);name.textContent=r.name;
     const desc=el('span','rh-forge-desc',body);desc.textContent=r.describe;
     const price=el('span','rh-forge-price',button);
-    // "R$ N" (the tag's aria-label says the price in words).
-    el('span','rh-forge-cost',price).insertAdjacentHTML('beforeend',forgePriceLabel(r.cost).html);
+    // "R$ N" (the tag's aria-label says the price in words); render() rewrites it when the inflação moves it.
+    const cost=el('span','rh-forge-cost',price);cost.insertAdjacentHTML('beforeend',forgePriceLabel(r.cost).html);cost.dataset.price=String(r.cost);
     const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem grana'}));lock.hidden=true;
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
     const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
@@ -313,7 +313,9 @@ export function createCamp(options:CampOptions):CampPart{
       const {button,lock,full}=tags.get(id)!,reason=blockedReason(id,view,ctxId,place.away);
       button.classList.toggle('rh-forge-blocked',!!reason);
       lock.hidden=reason!=='balance';full.hidden=reason!=='full';
-      button.setAttribute('aria-label',label(RECIPES[id].name,RECIPES[id].describe,RECIPES[id].cost,reason,id));
+      const now=forgePrice(id,view.camp?.forge),cost=button.querySelector<HTMLElement>('.rh-forge-cost');
+      if(cost&&cost.dataset.price!==String(now)){cost.dataset.price=String(now);cost.innerHTML=forgePriceLabel(now).html;}
+      button.setAttribute('aria-label',label(RECIPES[id].name,RECIPES[id].describe,now,reason,id));
     }
     // ---------- barricade tag ----------
     if(fence.button.hidden===!!spot)fence.button.hidden=!spot;

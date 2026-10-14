@@ -36,7 +36,7 @@
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
 import {telegraphHits} from './telegraphs.ts';
-import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
+import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
 import {heroSpeed,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
@@ -199,7 +199,7 @@ export function granaReserve(view:Pick<RunView,'objective'>):number{
 export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=granaReserve(view)):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
   const wall=wallOf(view),round=view.round?.index??0;
-  const ok=(id:RecipeId)=>refused[id]!==round&&canPay((camp.grana??0)-keep,RECIPES[id].cost);
+  const ok=(id:RecipeId)=>refused[id]!==round&&canPay((camp.grana??0)-keep,forgePrice(id,camp.forge));
   if(wall&&wall.hp<wall.maxHp*REPAIR_BELOW&&ok('reparo'))return 'reparo';
   // Only forge towers ('torre-*') count: the city barricades are structures too (cidade-06), never towers.
   const towers=view.structures.filter(s=>s.kind.startsWith('torre-')&&(s.untilTick===undefined||s.untilTick>view.tick)).length;
@@ -349,7 +349,7 @@ export function decide(input:BrainInput):Decision{
           if(w>0)site=spot;
           else if(tick>=from&&tick-memory.lastForgeTick>=FORGE_GAP){decision.build=order;memory.lastForgeTick=tick;}
         }
-      }else if(recipe&&(view.camp?.grana??0)-RECIPES[recipe].cost<keep+towerReserve(towers).grana)
+      }else if(recipe&&(view.camp?.grana??0)-forgePrice(recipe,view.camp?.forge)<keep+towerReserve(towers).grana)
         recipe=undefined; // saving holds only the Grana reserve (the line's next evolution, the bill): the forge spends what is above it (never material, D-048)
     }
     // Home on the horn (island), or on its own walk back. City (BUG-20261013-E4-corneta-jogador-longe): the bot keeps

@@ -23,7 +23,7 @@ import {defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {prizeBlocks} from '../../src/sim/assemble.ts';
 import {ENEMIES,enemyDef,isFlying} from '../../src/sim/enemies/catalog.ts';
-import {EVOLVE_PRICE,ROSTER} from '../../src/rules/index.ts';
+import {EVOLVE_PRICE,ROSTER,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
 import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DEFENSE,TIER_BUILD_SECONDS,TIER_COST,childrenOf,payUnits,phaseOf,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';
@@ -128,7 +128,9 @@ test('catalog: the tree of 08-TORRES §3 with its ids, parents, costs and sizes'
     assert.ok(d.hp>0&&d.cooldown>0,id);
     if(d.target!=='none')assert.ok(d.range>0&&(d.damage>0||d.slow),`${id}: it does something when it fires`);
   }
-  assert.deepEqual([TIER_COST[1],TIER_COST[2],TIER_COST[3],TIER_COST[4],TIER_COST[5],GUSTAVAO_COST,RAIL.cost],[40,10,16,24,36,120,0],'D-048: a root is 1 ficha (40 units), the Gustavão 3, the rail free; the card cost of an evolution in units');
+  assert.deepEqual(TOWER_TOKENS,{root:1,gustavao:3},'D-048: a root is 1 ficha, the Gustavão 3');
+  assert.deepEqual([TIER_COST[1],GUSTAVAO_COST,RAIL.cost],[TOWER_TOKENS.root*UNITS_PER_TOKEN,TOWER_TOKENS.gustavao*UNITS_PER_TOKEN,0],'D-048: in units, fichas × UNITS_PER_TOKEN; the rail free');
+  assert.deepEqual([TIER_COST[2],TIER_COST[3],TIER_COST[4],TIER_COST[5]],[10,16,24,36],'the card cost of an evolution in units');
   assert.deepEqual([EVOLVE_PRICE[2],EVOLVE_PRICE[3],EVOLVE_PRICE[4],EVOLVE_PRICE[5]],[10,16,25,35],'D-048: what an evolution charges, R$ from the Grana');
   assert.equal(DEFENSE_LIMIT,12);assert.equal(ROOT_DEFENSE,'vigia-do-predio');
   assert.equal(DEFENSES.gustavao.rail,true);assert.equal(DEFENSES['antiaerea-quadrupla'].hits,'air');
@@ -201,7 +203,7 @@ test('sites: the city plan and the endless camp are valid (E1 validator), the is
 
 // ---------- 3. Commands ----------
 test('build: intermission only, standing player, free site, balance, limit 12, request ids; ruins free their site',()=>{
-  const {ctx,sys}=citySetup(40+5);
+  const {ctx,sys}=citySetup(TIER_COST[1]+5);
   at(ctx,10,'wave');
   assert.deepEqual(sys.build(ctx,'a','obra-01'),{ok:false,reason:'phase'});
   at(ctx,10);
@@ -211,8 +213,8 @@ test('build: intermission only, standing player, free site, balance, limit 12, r
   assert.deepEqual(sys.build(ctx,'a','obra-99'),{ok:false,reason:'site'});
   assert.equal('defenses' in sys.state,false,'refusals create no state');
   const first=sys.build(ctx,'a','obra-01','r1');
-  assert.deepEqual(first,{ok:true,defense:'defesa-1',kind:'vigia-do-predio',cost:40});
-  assert.deepEqual(sys.state.balance,{units:5},'a root costs 1 ficha: 40 units off the one pile (45 → 5)');
+  assert.deepEqual(first,{ok:true,defense:'defesa-1',kind:'vigia-do-predio',cost:TIER_COST[1]});
+  assert.deepEqual(sys.state.balance,{units:5},'a root costs 1 ficha: TIER_COST[1] units off the one pile (TIER_COST[1]+5 → 5)');
   assert.deepEqual(sys.build(ctx,'a','obra-02','r1'),{ok:false,reason:'duplicate'},'a resent command applies once');
   assert.deepEqual(sys.build(ctx,'a','obra-01'),{ok:false,reason:'occupied'});
   assert.deepEqual(sys.build(ctx,'a','obra-02'),{ok:false,reason:'balance'});
@@ -253,7 +255,7 @@ test('upgrade: ready only, branch at the root and at A3, site size, max tier',()
   assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:false,reason:'grana'});
   assert.equal(sys.state.grana,EVOLVE_PRICE[2]-1,'nothing charged on a refusal');
   sys.state.grana=1000;
-  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:true,defense:id,kind:'vigias-armados',cost:10});
+  assert.deepEqual(sys.upgrade(ctx,'a',id,'A'),{ok:true,defense:id,kind:'vigias-armados',cost:EVOLVE_PRICE[2]});
   assert.equal(1000-sys.state.grana,EVOLVE_PRICE[2]);assert.equal(sys.state.balance.units,units,'the pile is untouched');
   assert.equal(d().hp,DEFENSES['vigias-armados'].hp,'the new tier at full hp');
   assert.equal(defensePhase(d(),ctx.tick),'obra-1','an upgrade is a new obra');
@@ -294,7 +296,7 @@ test('the Gustavão: needs the laid, finished rail, moves onto it, frees its sit
   assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:false,reason:'rail'},'the rail is still being laid');
   at(ctx,sys.state.defenses!.rail!.readyTick);
   const u1=units(),g1=sys.state.grana;
-  assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:true,defense:howitzer.id,kind:'gustavao',cost:120});
+  assert.deepEqual(sys.upgrade(ctx,'a',howitzer.id),{ok:true,defense:howitzer.id,kind:'gustavao',cost:GUSTAVAO_COST});
   assert.equal(u1-units(),GUSTAVAO_COST,'3 fichas');assert.equal(sys.state.grana,g1,'no Grana for the Gustavão');
   const g=sys.state.defenses!.list.find(d=>d.id===howitzer.id)!,rail=sys.plan.rail!;
   assert.deepEqual({site:g.site,x:g.x,y:g.y},{site:'trilho',x:rail.x,y:rail.y});

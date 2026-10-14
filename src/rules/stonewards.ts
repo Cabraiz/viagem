@@ -11,8 +11,8 @@ export const RESOURCE_KINDS:readonly ResourceKind[]=['coco','pedra'];
  * Every UNITS_PER_TOKEN units are one ficha de torre (🗼): the HUD shows the fichas and a ring filling to the next.
  */
 export interface Balance {units:number}
-/** Units of material per ficha de torre (D-048: 6p ~10 fichas a city run, 1p ~3.7, measured in balanco-cidade-so-arte). */
-export const UNITS_PER_TOKEN=40;
+/** Units of material per ficha de torre (D-048; bench of the 1.7× city, 16 seeds: 1p 3.8 towers a run, 6p 8.9, ±15% of before). */
+export const UNITS_PER_TOKEN=22;
 /** Whole fichas in `units` (a tuned crate may leave a fraction). */
 export const tokensOf=(units:number)=>Math.max(0,Math.floor(units/UNITS_PER_TOKEN+1e-9));
 /** 0..1 of the way to the next ficha. */
@@ -23,18 +23,26 @@ export type RecipeId='reparo'|'gambiarra'|'torre-chinelo';
 export interface Recipe {id:RecipeId;name:string;cost:number;describe:string;lines:readonly string[]}
 
 export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
-  reparo:{id:'reparo',name:'Massa Corrida e Fé',cost:5,
+  reparo:{id:'reparo',name:'Massa Corrida e Fé',cost:10,
     describe:'Conserta 25% da muralha',
     lines:['Passou massa corrida, tá novinha (de longe).','Reparo feito com fita silver tape e oração.','O pedreiro sumiu, mas a parede voltou.']},
-  gambiarra:{id:'gambiarra',name:'Gambiarra',cost:6,
+  gambiarra:{id:'gambiarra',name:'Gambiarra',cost:45,
     describe:'+1 nível numa arma aleatória sua',
     lines:['Gambiarra aprovada pelo INMETRO, confia.','Prendeu com elástico de dinheiro. Funcionou.','Se tá funcionando, não mexe.']},
-  'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:7,
+  'torre-chinelo':{id:'torre-chinelo',name:'Torre de Chinelo da Vó',cost:50,
     describe:'Arremessa chinelos por 45 s',
     lines:['A vó tá de olho. E de chinelo na mão.','Torre armada: chinelada teleguiada liberada.','Ninguém escapa da Havaiana voadora.']},
 });
 export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
+/**
+ * Inflação (D-048 balance): the Grana of a long run is plenty, so the weapon and tower recipes get dearer with each
+ * purchase in the run: the base × (1 + bought). The repair (wall, barricades) keeps its price: defence never inflates.
+ */
+export const INFLATING:readonly RecipeId[]=['gambiarra','torre-chinelo'];
+/** Purchases of each inflating recipe in this run (absent: none). */
+export type ForgeBought=Partial<Record<RecipeId,number>>;
+export const forgePrice=(id:RecipeId,bought?:ForgeBought)=>RECIPES[id].cost*(INFLATING.includes(id)?1+Math.max(0,bought?.[id]??0):1);
 /** The team can pay `cost` R$ from its Grana. */
 export const canPay=(grana:number,cost:number)=>grana>=cost;
 /**

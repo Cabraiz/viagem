@@ -5,12 +5,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pickRecipe} from '../../src/sim/bot-brain.ts';
 import {MAX_TOWERS} from '../../src/sim/stonewards/forge.ts';
+import {RECIPES} from '../../src/rules/index.ts';
 import type {RunView,StructureView} from '../../src/contract/view.ts';
 
 const wall:StructureView={id:'s1',kind:'muralha',x:0,y:0,hp:600,maxHp:600};
 const barricades:StructureView[]=['N','S','L','O'].map((m,i)=>({id:`s${i+2}`,kind:'barricada',x:i,y:10,hp:i===3?0:300,maxHp:300}));
 const view=(structures:StructureView[]):RunView=>({tick:1000,team:{xp:0,level:1,nextXp:5},round:{index:3,total:10,phase:'prepare',phaseEndsTick:1600,remaining:0},
-  enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,players:[],offers:[],events:[],camp:{units:0,grana:20}} as unknown as RunView);
+  enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,players:[],offers:[],events:[],camp:{units:0,grana:RECIPES['torre-chinelo'].cost+RECIPES.gambiarra.cost}} as unknown as RunView);
 
 test('bot forger: the city barricades never count as towers',()=>{
   assert.ok(barricades.length>=MAX_TOWERS,'enough barricades to have filled the cap');

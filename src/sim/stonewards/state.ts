@@ -3,7 +3,7 @@
  * Server-only; everything here is JSON-safe so rooms can checkpoint it (VGM-047).
  */
 import type {Point} from '../../maps/index.ts';
-import type {Balance,ResourceKind} from '../../rules/index.ts';
+import type {Balance,ForgeBought,ResourceKind} from '../../rules/index.ts';
 import type {TowersState} from '../towers/system.ts';
 
 export type {Balance,ResourceKind} from '../../rules/index.ts';
@@ -47,6 +47,8 @@ export interface StonewardsState {
   balance:Balance;
   /** The team's Grana, R$ (D-047; every world since D-048): kills pay it in, evolutions, the forge and repairs spend it. */
   grana:number;
+  /** Inflação: purchases of each inflating recipe this run (rules forgePrice); absent until the first. */
+  forgeBought?:ForgeBought;
   /** Nodes touched this round, in the order they were first worked. */
   nodes:ResourceNode[];
   wall:WallState;

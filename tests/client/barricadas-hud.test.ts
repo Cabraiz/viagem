@@ -12,6 +12,8 @@ import {fakeView} from '../../src/client/hud/fixtures.ts';
 
 const city=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8')) as {points:{bocas:CityBocas;praca:{x:number;y:number}}};
 const bocas=city.points.bocas;
+/** Grana that pays every forge tag (rules RECIPES; the source of truth). */
+const RICH=Object.values(RECIPES).reduce((sum,r)=>sum+r.cost,0);
 const fence=(id:string,at:{x:number;y:number},hp=300):StructureView=>({id,kind:BARRICADE_KIND,x:at.x,y:at.y,hp,maxHp:300});
 
 test('the mouth of a barricade is the nearest boca; no asset, no mouth',()=>{
@@ -47,8 +49,8 @@ test('the barricade tag: pt-BR texts, refusals in the server\'s order, the same 
     // Design checklist: no "PALAVRA — fragmento", no arrows, no shouting outside a stamp.
     for(const s of Object.values(t))assert.ok(!/[—→·]/.test(s)&&!/[A-Z]{2}/.test(s),s);
   }
-  // The forge is paid in Grana (D-048): the barricade's repair is the wall's, R$ 5.
-  const rich={units:0,grana:18},s=fence('s7',bocas.N,100);
+  // The forge is paid in Grana (D-048): the barricade's repair is the wall's (RECIPES.reparo.cost).
+  const rich={units:0,grana:RECIPES.reparo.cost},s=fence('s7',bocas.N,100);
   assert.equal(barricadeBlocked({structure:s,down:false},rich),undefined);
   assert.equal(barricadeBlocked({structure:{...s,hp:300},down:false},rich),'full');
   assert.equal(barricadeBlocked({structure:{...s,hp:0},down:true},rich),undefined,'a fallen one can be raised');
@@ -64,7 +66,7 @@ test('the window\'s place: the camp (Forja) or a barricade (Barricada); away fro
   assert.deepEqual(forgePlace(false,spot),{open:true,away:true,title:'Barricada',barricadeFirst:true,key:'barricada-N'});
   assert.deepEqual(forgePlace(true,spot),{open:true,away:false,title:'Forja',barricadeFirst:false,key:'base'});
   assert.equal(forgePlace(false,undefined).open,false);
-  const v={...fakeView('camp-forge',1),camp:{units:40,grana:40}} as RunView;
+  const v={...fakeView('camp-forge',1),camp:{units:0,grana:RICH}} as RunView;
   for(const id of ['reparo','gambiarra','torre-chinelo'] as const){
     assert.equal(blockedReason(id,v,'p1',true),'away',id);
     assert.equal(blockedReason(id,v,'p1'),undefined,`${id}: in the camp, as before`);
@@ -73,7 +75,7 @@ test('the window\'s place: the camp (Forja) or a barricade (Barricada); away fro
 });
 
 test('towers are counted only by their kind: four barricades never fill the tower cap',()=>{
-  const v={...fakeView('camp-forge',1),camp:{units:40,grana:40}} as RunView;
+  const v={...fakeView('camp-forge',1),camp:{units:0,grana:RICH}} as RunView;
   const fences=(['N','S','L','O'] as const).map((m,i)=>fence(`s${i+5}`,bocas[m]));
   assert.ok(fences.length>=MAX_TOWERS);
   assert.equal(blockedReason('torre-chinelo',{...v,structures:[...v.structures,...fences]},'p1'),undefined);

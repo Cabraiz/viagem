@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {barricadeStates,barricadesFell,classRotation,parsePlayers,parseSeeds,summarize,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
+import {RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,parsePlayers,parseSeeds,summarize,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
 
 function run(seed:number,players:number,outcome:RunRecord['outcome'],roundReached:number,extra:Partial<RunRecord>={}):RunRecord{
   return {key:`${seed}:${players}`,seed,players,classes:[],outcome,cause:outcome==='victory'?'boss':outcome==='timeout'?'timeout':'team',
@@ -37,7 +37,8 @@ test('city run summary: wins, death rounds, arrivals, loot and verdict per team 
   assert.equal(one.causes.timeout,1);assert.equal(one.causes.team,1);
   assert.deepEqual(six.firstArrivalS.all,{n:2,mean:11.5,min:11,median:11.5,max:12});
   assert.deepEqual(six.loot.unitsPerIntermission,{n:2,mean:7.5,min:7,median:7.5,max:8});
-  assert.equal(six.loot.recipesPerIntermission,1.25);
+  // The mean loot over the mean recipe price (rules RECIPES), to two places.
+  assert.equal(six.loot.recipesPerIntermission,Math.round(7.5/RECIPE_MEAN_UNITS*100)/100);
   // 2 seeds: 6p target 7–11 of 16 → 0.875–1.375 wins (1 is ok); 1p target 2–6 of 16 → 0.25–0.75 (0 is too hard).
   assert.deepEqual(winTarget(6,2),{min:.875,max:1.375});
   assert.equal(six.verdict.wins,'ok');assert.equal(one.verdict.wins,'too-hard');

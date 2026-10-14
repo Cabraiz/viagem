@@ -10,6 +10,7 @@ import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
 /** The island hero's walk (u/s): 2 × the base world.ts SPEED since velocidade-heroi-e-projetil. */
 const WALK=heroSpeed();
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../../src/rules/sos.ts';
+import {RECIPES} from '../../src/rules/stonewards.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
 /** Test peer: JSON control messages parsed in `messages`, protocol 4 frames in `frames` (in arrival order in `log`). */
@@ -447,13 +448,14 @@ test('VGM-046B: forge taps through the room respect the balance, the camp and a 
   const sw=room.sim.run.stonewards.state,round=room.run.snapshot().round;
   assert.equal(room.sim.world.round.phase,'prepare','the opening countdown is an intermission too');
   // D-048: the forge is paid in the team's Grana (R$); the pile of material stays.
-  sw.grana=9;sw.balance={units:30};sw.wall.hp=100;
+  const REPARO=RECIPES.reparo.cost;
+  sw.grana=2*REPARO-1;sw.balance={units:30};sw.wall.hp=100;
   const forged=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='forged');
   // Two taps in the same tick, money for one repair: the first one wins, the second hears why.
   command(room,a,{t:'forge',round,recipe:'reparo',req:1});command(room,b,{t:'forge',round,recipe:'reparo',req:1});
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:true});
   assert.deepEqual(forged(b).at(-1),{t:'forged',req:1,recipe:'reparo',ok:false,reason:'balance'});
-  assert.equal(sw.grana,4);assert.deepEqual(sw.balance,{units:30});assert.equal(sw.wall.hp,100+150);
+  assert.equal(sw.grana,REPARO-1);assert.deepEqual(sw.balance,{units:30});assert.equal(sw.wall.hp,100+150);
   // The same request again (a resend after a reconnect) applies once.
   sw.grana=18;sw.balance={units:41};
   command(room,a,{t:'forge',round,recipe:'reparo',req:1});

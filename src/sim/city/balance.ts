@@ -98,9 +98,9 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
-    1:Object.freeze({count:.5,hp:.7,damage:.4,bossHp:.45,lootValue:2,siegeShare:.15}),
+    1:Object.freeze({count:.5,hp:.7,damage:.35,bossHp:.45,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
-    6:Object.freeze({count:1.07,hp:1.5,damage:1.75,bossHp:1.9}),
+    6:Object.freeze({count:1.07,hp:1.5,damage:1.9,bossHp:1.9}),
   }),
   // Art-only rounds (balanco-cidade-so-arte): the rats at most half of a round's regular bodies.
   roleCap:Object.freeze({enxame:.5}),

@@ -17,7 +17,7 @@
  *   and then the theme fades back in (2 s); the run ends, both fade out (2 s). Mute or a hidden tab pause both
  *   elements; they resume where wanted. Never throws; a play() refused by the autoplay policy waits for a gesture.
  */
-import type {RunView} from '../../contract/view.ts';
+import type {RunView} from '../../contract/index.ts';
 import {UNLOCK_EVENTS} from './engine.ts';
 
 export interface TrackSpec {webm:string;m4a:string;

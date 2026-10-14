@@ -834,23 +834,36 @@ test('D-021 review: an intermission shorter than ARM_SECONDS still arms what wai
   assert.equal(queue(ctx,'a')[0].deadlineTick,next,'armed by the next one');
 });
 
-test('D-023: in the boss wave (last round) level offers use the 10 s head clock and nothing waits forever',()=>{
+test('D-050 (replaced D-023): the boss wave holds its level offers like any wave; settle() gives the pause defaults',()=>{
   const {ctx,sim,tick}=setup();
   addPlayer(ctx,'a');
   sim.grantLevelOffers(ctx,2);
   assert.ok(isHeldOffer(queue(ctx,'a')[0]),'round 1 wave: held');
   Object.assign(ctx.round,{index:10,total:10,phase:'wave',phaseEndsTick:ctx.tick+ticks(120)});
   tick(1);
-  assert.equal(queue(ctx,'a')[0].deadlineTick,ctx.tick+ticks(OFFER_SECONDS),'held offer gets the head clock in the boss wave');
   sim.grantLevelOffers(ctx,3);
+  assert.ok(queue(ctx,'a').every(isHeldOffer),'the boss wave holds them too: the room pauses the run for the picks (multiplayer/levelup-pause.ts)');
+  tick(ticks(OFFER_SECONDS)*3);
+  assert.equal(eventsOf(ctx,'upgrade').length,0,'no clock runs out in combat');
+  // The pause ends without a pick: both get their defaults at once, oldest first.
+  assert.equal(sim.settle(ctx,'a'),2);
+  assert.equal(eventsOf(ctx,'upgrade').length,2);assert.equal(ctx.offers.has('a'),false);
+  assert.equal(sim.settle(ctx,'a'),0,'nothing left');assert.equal(sim.settle(ctx,'nobody'),0);
+});
+
+test('D-050: a pick re-rolls the next card at once when it went stale (in a pause no step() runs to do it)',()=>{
+  const {ctx,sim}=setup();
+  addPlayer(ctx,'a');
+  sim.grantLevelOffers(ctx,2);sim.grantLevelOffers(ctx,3);
   const [first,second]=queue(ctx,'a');
-  assert.ok(second.deadlineTick>=first.deadlineTick+ticks(OFFER_SECONDS),'queued level offer chained after the head');
-  tick(ticks(OFFER_SECONDS));
-  assert.equal(eventsOf(ctx,'upgrade').length,1,'default after 10 s, in combat, because no intermission follows');
-  assert.ok(queue(ctx,'a')[0].deadlineTick>=ctx.tick+ticks(OFFER_SECONDS)-1,'next one rearmed with a fresh head clock');
-  tick(ticks(OFFER_SECONDS)+1);
-  assert.equal(eventsOf(ctx,'upgrade').length,2);
-  assert.equal(ctx.offers.has('a'),false);
+  // Both cards offer the same new weapon: taking it in the first makes the second's copy ineligible.
+  first.choices=[{itemId:'boleto',level:1}];first.defaultIndex=0;
+  second.choices=[{itemId:'boleto',level:1},{itemId:'cafe',level:1}];second.defaultIndex=0;
+  const staleId=second.id;
+  assert.equal(sim.choose(ctx,'a',first.id,0).ok,true);
+  const head=queue(ctx,'a')[0];
+  assert.notEqual(head.id,staleId,'re-rolled: a pick sent against the old cards is refused, not misapplied');
+  assert.equal(sim.choose(ctx,'a',head.id,head.defaultIndex).ok,true,'the fresh default is pickable right away');
 });
 
 test('offline player deadline is frozen and resumes after reconnection with the same queue',()=>{

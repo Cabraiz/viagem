@@ -265,6 +265,8 @@ export class CoopClient {
   fatal?:string;
   private badFullFrames=0;
   private resyncAt=-Infinity;
+  /** Every run state from the room (welcome, {t:'run'}): D-050's pause changes once a second with no new frame. */
+  onRun:(run:RunState)=>void=()=>{};
   onStatus:(message:string)=>void=()=>{};
   /** The room's answer to a skill tap (cast): `ok` false = not cast (cooldown, fallen, no target...). */
   onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
@@ -633,6 +635,7 @@ export class CoopClient {
     this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));
     this.victory=run.outcome==='victory';
     if(run.phase==='combat')this.roomNotice=undefined;
+    try{this.onRun(this.run);}catch(e){console.error('onRun',e);}
   }
   /** One protocol 4 frame: decode, ack, then players, prediction and the run clock. */
   private frame(ws:WebSocket,data:ArrayBuffer){
@@ -652,7 +655,9 @@ export class CoopClient {
     this.ackTimer??=setTimeout(()=>{this.ackTimer=undefined;this.flushAck();},ACK_EVERY_MS);
     const view=result.view;
     this.tick=view.tick;
-    if(this.run?.phase==='combat')this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
+    // D-050: in a level-up pause the tick stands still while the frames keep coming; measured, that would read as a
+    // backlog of the whole pause (N27 catch-up drawing one frame every 2.5 s).
+    if(this.run?.phase==='combat'&&!this.run.pause)this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
     this.players.clear();
     for(const p of view.players)this.players.set(p.id,toPlayer(p as PlayerWireView));
     // In combat elapsed/remaining move one per simulation tick; the room only pushes the run when something else changes.
@@ -701,6 +706,8 @@ export class CoopClient {
    */
   input(direction:Point,skill:boolean,target?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
+    // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
+    if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;}
     const {input,active}=this.batcher.step(direction,skill,target);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
@@ -712,7 +719,7 @@ export class CoopClient {
    * {t:'cast',seq:id,ok,readyTick} (onCast). Returns the tap id, or undefined when there is nothing to tap into.
    */
   cast(){
-    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    if(!this.connected||this.run?.phase!=='combat'||this.run.pause||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const id=++this.castId;this.out(this.socket,{t:'cast',round:this.run.round,id});return id;
   }
   /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */

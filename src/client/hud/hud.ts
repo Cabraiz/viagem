@@ -5,7 +5,7 @@
  */
 import './hud.css';
 import './you.css';
-import type {RunView} from '../../contract/index.ts';
+import type {RunPause,RunView} from '../../contract/index.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
@@ -219,6 +219,14 @@ export class RunHud {
 
   /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
   emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}
+
+  /** D-050: the room's level-up pause (net.run.pause), or undefined; the parts see it at once, on the last view. */
+  setPause(pause?:RunPause){
+    const was=this.ctx.pause;
+    if(was===pause||(!!was&&!!pause&&was.leftMs===pause.leftMs&&was.totalMs===pause.totalMs&&was.level===pause.level&&was.waiting.join()===pause.waiting.join()))return;
+    if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
+    if(this.last)this.update(this.last);
+  }
 
   update(view:RunView){
     this.last=view;

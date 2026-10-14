@@ -13,6 +13,17 @@ import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import type {Pt,Rect} from '../projection.ts';
 import {reliefTextures,type ReliefTextures} from './field.ts';
 import {RELIEF_RAY_STEPS,RELIEF_STEP_UNITS,reliefShader} from './shader.ts';
+import {ALBEDO_URL} from './albedo-meta.ts';
+
+/**
+ * The ground albedo atlas (card NEW-20261014-ORQ-chao-albedo-cidade, scripts/chao-albedo.mjs): loaded at runtime the
+ * first time a relief is made; until it is in (or when it fails, or with `?chao=0`) the relief binds a 1×1 grey stand-in
+ * and draws the procedural ground of before (albedoOn 0). Mipmapped once in, so the bake minifies it cleanly.
+ */
+export const ALBEDO_KEY='city:albedo';
+const ALBEDO_STAND_IN='city:albedo:vazio';
+/** `?chao=0`: the procedural ground (before/after prints of the card). */
+export const albedoEnabled=(search=typeof location!=='undefined'?location.search:'')=>new URLSearchParams(search).get('chao')!=='0';
 
 const SAMPLING={wrapS:'clamp_to_edge',wrapT:'clamp_to_edge',minFilter:'linear',magFilter:'linear',flipY:false};
 /** Scratch sizes are rounded up to this many texels, so chunks of nearly the same box share one target. */
@@ -33,6 +44,12 @@ export class CityRelief {
   private readonly baker:Baker;
   private readonly targets=new Map<string,{shader:Phaser.GameObjects.Shader;key:string}>();
   private readonly keys:[string,string,string];
+  /** The albedo atlas is in and mipmapped (the shader's albedoOn). */
+  private albedo=false;
+  /** The ground is final: the atlas is in, or it will not come (failed, `?chao=0`): what the modo foto waits for. */
+  albedoSettled=false;
+  /** Called once the atlas arrives: the layer bakes its live chunks again. */
+  onAlbedo?:()=>void;
   /** Textures uploaded and the restore listener on (released by release(), made again by the next bake). */
   private live=false;
   private readonly restore=()=>this.dropTargets();
@@ -59,6 +76,20 @@ export class CityRelief {
     // reuses a destroyed layer (scene.ts drops it), so that path is only a safety net.
     this.ensure();
     scene.events.once('shutdown',()=>this.release());
+    this.loadAlbedo();
+  }
+  /** Starts the atlas download (once per game: the texture stays for the next city); done → mipmaps, new targets. */
+  private loadAlbedo(){
+    const tex=this.scene.textures;
+    if(!albedoEnabled()){this.albedoSettled=true;return;}
+    const ready=()=>{if(!tex.exists(ALBEDO_KEY)){this.albedoSettled=true;return;}mipmap(this.renderer,tex.get(ALBEDO_KEY));this.albedo=true;this.dropTargets();this.onAlbedo?.();this.albedoSettled=true;};
+    if(tex.exists(ALBEDO_KEY)){ready();return;}
+    const load=this.scene.load;
+    load.image(ALBEDO_KEY,ALBEDO_URL);
+    load.once(`filecomplete-image-${ALBEDO_KEY}`,ready);
+    // A failed download keeps the procedural ground (never a black square).
+    load.on('loaderror',(file:{key?:string})=>{if(file?.key===ALBEDO_KEY)this.albedoSettled=true;});
+    if(!load.isLoading())load.start();
   }
   private get renderer(){return this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;}
   /** Uploads the textures and listens for a lost WebGL context (its scratch targets are made again on the next bake). */
@@ -69,6 +100,7 @@ export class CityRelief {
     tex.addUint8Array(this.keys[0],t.field,t.fieldWidth,t.fieldHeight);
     tex.addUint8Array(this.keys[1],t.kinds,width,height);
     tex.addUint8Array(this.keys[2],t.cover,width,height);
+    if(!tex.exists(ALBEDO_STAND_IN))tex.addUint8Array(ALBEDO_STAND_IN,new Uint8Array([128,128,128,255]),1,1);
     this.renderer.on?.(Phaser.Renderer.Events.RESTORE_WEBGL,this.restore);
     this.live=true;
   }
@@ -107,6 +139,7 @@ export class CityRelief {
       set('rayTop',top);set('raySteps',Math.max(1,Math.min(RELIEF_RAY_STEPS,Math.ceil(top/RELIEF_STEP_UNITS))));
       set('cellRect',{x:cells.x0,y:cells.y0,z:cells.x1,w:cells.y1});
       set('shadowSamples',this.shadowSamples);
+      set('albedoOn',this.albedo?1:0);
     });
     // Dev lab only: wait for the GPU so the time is the bake's own (never in the game: it would stall the frame).
     if((globalThis as {__reliefTiming?:boolean}).__reliefTiming)(this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl.finish();
@@ -122,10 +155,11 @@ export class CityRelief {
     const uniforms={areaOrigin:{type:'2f',value:{x:0,y:0}},areaSize:{type:'2f',value:{x:w,y:h}},view:{type:'1f',value:0},
       pivot:{type:'2f',value:{x:0,y:0}},gridOrigin:{type:'2f',value:{x:0,y:0}},gridSize:{type:'2f',value:{x:1,y:1}},
       cellSize:{type:'1f',value:1},maxHeight:{type:'1f',value:1},rayTop:{type:'1f',value:0},raySteps:{type:'1f',value:1},
-      cellRect:{type:'4f',value:{x:0,y:0,z:0,w:0}},shadowSamples:{type:'1f',value:RELIEF_SHADOW_SAMPLES},detail:{type:'1f',value:1}};
+      cellRect:{type:'4f',value:{x:0,y:0,z:0,w:0}},shadowSamples:{type:'1f',value:RELIEF_SHADOW_SAMPLES},detail:{type:'1f',value:1},
+      albedoOn:{type:'1f',value:0}};
     const key=`city-relief-bake-${this.id}-${size}`;
     const shader=this.scene.add.shader(new Phaser.Display.BaseShader(`city-relief-${this.id}-${size}`,reliefShader,undefined,uniforms),
-      0,0,w,h,[...this.keys],SAMPLING).removeFromDisplayList();
+      0,0,w,h,[...this.keys,this.albedo?ALBEDO_KEY:ALBEDO_STAND_IN],SAMPLING).removeFromDisplayList();
     if(this.scene.textures.exists(key))this.scene.textures.remove(key);
     shader.setRenderToTexture(key);
     t={shader,key};this.targets.set(size,t);
@@ -145,6 +179,21 @@ export class CityRelief {
     this.renderer.off?.(Phaser.Renderer.Events.RESTORE_WEBGL,this.restore);
     this.live=false;
   }
+}
+
+/**
+ * Mipmaps for a loaded texture (Phaser makes none): the bake draws the albedo at ~1 texel per 2–3 of the atlas, which
+ * shimmers without them. The atlas is a power of two (scripts/chao-albedo.mjs), so WebGL1 can.
+ */
+function mipmap(renderer:Phaser.Renderer.WebGL.WebGLRenderer,texture:Phaser.Textures.Texture){
+  const gl=renderer.gl,wrapper=texture.source[0]?.glTexture as unknown as {webGLTexture?:WebGLTexture}|undefined,t=wrapper?.webGLTexture;
+  if(!gl||!t)return;
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+  gl.bindTexture(gl.TEXTURE_2D,null);
+  // Phaser tracks the bound textures itself: let it bind again from scratch.
+  (renderer as unknown as {resetTextures?:(all?:boolean)=>void}).resetTextures?.(true);
 }
 
 /** Whether a scene can bake relief (WebGL only; `?relevo=0` keeps the flat ground for comparisons). */

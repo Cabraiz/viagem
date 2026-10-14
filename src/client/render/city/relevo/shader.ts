@@ -16,8 +16,29 @@ import {CITY_PALETTE,MATERIALS} from '../palette.ts';
 import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y} from '../projection.ts';
 import {SUN_GLSL,gradeGlsl} from '../../light.ts';
+import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS} from './albedo-meta.ts';
 
 const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toFixed(4)).join(',')})`;
+
+/**
+ * Ground albedo (card NEW-20261014-ORQ-chao-albedo-cidade): how much of each material's own colour survives the palette
+ * tint (0: only its light and shade, 1: its full colour). The palette keeps the colour; the photo brings the detail.
+ * Ice is the most saturated photo: its tint dominates (D-038 review of the delivery).
+ */
+export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7,asfalto:.5} as const;
+/**
+ * World units one photo spans (its mirrored pair twice that). Larger than life on purpose: at the game's camera a real
+ * sett (~28 in a photo of ~2.8 m) is ~4 px and reads as grain; the paving and the ice are drawn ~3× life size.
+ */
+export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4,asfalto:4.4} as const;
+/** How strongly the photo's detail shows over the palette tone (0 none .. 1 all): the snows stay quiet under the figures. */
+export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8,asfalto:.7} as const;
+/** The albedo's detail never takes a tone further than this from its palette base (the palette's contrast rule). */
+export const ALBEDO_SPAN={lo:.72,hi:1.22} as const;
+const slot=(name:typeof ALBEDO_SLOTS[number])=>ALBEDO_SLOTS.indexOf(name).toFixed(1);
+const mean=(name:typeof ALBEDO_SLOTS[number])=>`vec3(${ALBEDO_MEANS[ALBEDO_SLOTS.indexOf(name)].map(v=>v.toFixed(4)).join(',')})`;
+const albedo=(name:typeof ALBEDO_SLOTS[number])=>
+  `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${(1/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)})`;
 
 /** Coarse ray steps over the chunk's own height range; 7 bisections refine the hit below 0.1 px. */
 export const RELIEF_RAY_STEPS=48;
@@ -30,6 +51,8 @@ uniform vec2 resolution;
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
 uniform sampler2D iChannel2;
+uniform sampler2D iChannel3;
+uniform float albedoOn;
 uniform vec2 areaOrigin;
 uniform vec2 areaSize;
 uniform float view;
@@ -90,6 +113,23 @@ float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);ret
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
 float fbm(vec2 p){return n(p)*0.52+n(p*2.13+37.2)*0.27+n(p*4.37+91.7)*0.14+n(p*8.61)*0.07;}
 
+// Ground albedo (scripts/chao-albedo.mjs): a 4×2 atlas of seamless material photos, each slot padded by mirroring.
+// material() as in Crônicas (terrain/shaders.ts): two reads, the second turned and offset, blended by fbm, with mirrored
+// UVs, so the tile never shows a seam nor a repeat. One photo spans ALBEDO_SPAN_UNITS world units (per material).
+const vec2 ALBEDO_GRID=vec2(${ALBEDO_GRID.cols.toFixed(1)},${ALBEDO_GRID.rows.toFixed(1)});
+const float ALBEDO_INSET=${(ALBEDO_GRID.pad/ALBEDO_GRID.tile).toFixed(5)};
+vec2 materialUV(vec2 p){return clamp(1.0-abs(fract(p*0.5)*2.0-1.0),0.001,0.999);}
+vec3 albedoAt(float slot,vec2 uv){vec2 cell=vec2(mod(slot,ALBEDO_GRID.x),floor(slot/ALBEDO_GRID.x));return texture2D(iChannel3,(cell+ALBEDO_INSET+uv*(1.0-2.0*ALBEDO_INSET))/ALBEDO_GRID).rgb;}
+vec3 material(float slot,vec2 p){vec2 q=mat2(0.8,-0.6,0.6,0.8)*p*1.37+vec2(3.27,8.41);float blend=smoothstep(0.30,0.70,fbm(p*1.7))*0.55;return mix(albedoAt(slot,materialUV(p)),albedoAt(slot,materialUV(q)),blend);}
+// The photo's detail as a ratio around 1 over its own mean: its light and shade, and the chroma share of its own colour. The
+// caller multiplies the palette tone by it (1 when the atlas is not in: the procedural ground of before).
+vec3 albedoDetail(float slot,vec2 w,vec3 mean,float chroma,float perUnit,float strength){
+ vec3 a=material(slot,w*perUnit);
+ float l=dot(a,vec3(.299,.587,.114))/dot(mean,vec3(.299,.587,.114));
+ vec3 r=clamp(mix(vec3(l),a/mean,chroma),${ALBEDO_SPAN.lo.toFixed(2)},${ALBEDO_SPAN.hi.toFixed(2)});
+ return mix(vec3(1.0),r,albedoOn*strength);
+}
+
 // Light d relative to flat ground: d > 0 lightens toward the sun tone, d < 0 blends to the shade tone, then the deep one.
 vec3 ramp(vec3 base,vec3 sun,vec3 shade,vec3 deep,float d){
  if(d>=0.0)return mix(base,sun,clamp(d/0.14,0.0,1.0));
@@ -137,19 +177,23 @@ void main(){
  float d=diffuse*mix(1.0,shadow,0.85)-flatLit-hollow;
 
  float macro=fbm(w*0.32),grain=n(w*9.0),fine=n(w*31.0+vec2(17.0,3.0));
+ // With the albedo in, the photo carries the small detail: the procedural grain and sparkles drop to a trace.
+ float proc=detail*(1.0-0.75*albedoOn);
  float slope=length(g);
 
  // Fresh snow: soft drifts (bluer hollows of the macro noise), fine grain and a few sparkles in the sun.
  vec3 snow=snowRamp(d);
  snow=mix(snow,SNOW_SHADE,smoothstep(0.58,0.82,macro)*0.22);
  // Grain: towards the sun tone or the shade tone, never outside the pair.
- snow=mix(snow,grain>0.5?SNOW_SUN:SNOW_SHADE,abs(grain-0.5)*0.35*detail);
+ snow=mix(snow,grain>0.5?SNOW_SUN:SNOW_SHADE,abs(grain-0.5)*0.35*proc);
+ snow*=${albedo('neve')};
  snow=mix(snow,vec3(1.0),step(0.93,fine)*step(0.0,d)*0.35*detail);
  vec3 color=snow;
 
  // Trodden snow on the streets: ruts along a noise grain, ragged edges into the fresh snow.
  float rut=n(rotv(w)*vec2(0.9,7.0));
  vec3 trodden=ramp(mix(PACKED,PACKED_DETAIL,smoothstep(0.55,0.85,rut)*0.6),mix(PACKED,vec3(1.0),0.12),PACKED_DETAIL,PACKED_DETAIL,d);
+ trodden*=${albedo('neve-pisada')};
  float pm=smoothstep(0.35,0.65,kd.r+(grain-0.5)*0.35);
  color=mix(color,trodden,pm);
 
@@ -157,17 +201,21 @@ void main(){
  vec2 b=w*vec2(2.4,4.8);b.x+=floor(b.y)*0.5;vec2 bf=fract(b);
  float joint=1.0-smoothstep(0.04,0.10,min(min(bf.x,1.0-bf.x)*0.5,min(bf.y,1.0-bf.y)));
  vec3 cobble=ramp(mix(COBBLE,COBBLE_JOINT,joint*0.8),mix(COBBLE,vec3(1.0),0.12),COBBLE_JOINT,COBBLE_JOINT,d);
- cobble=mix(cobble,SNOW,smoothstep(0.62,0.85,macro+grain*0.15)*0.55);
+ // With the albedo: its own stones and joints instead of the drawn running bond.
+ cobble=mix(cobble,ramp(COBBLE,mix(COBBLE,vec3(1.0),0.12),COBBLE_JOINT,COBBLE_JOINT,d)*${albedo('calcada')},albedoOn);
+ cobble=mix(cobble,SNOW,smoothstep(0.62,0.85,macro+grain*0.15)*0.55*(1.0-0.5*albedoOn));
  color=mix(color,cobble,smoothstep(0.3,0.7,kd.g));
 
  // Broken ground: blotches of the two rubble tones under patchy snow.
  vec3 rubble=ramp(mix(RUBBLE,RUBBLE_DETAIL,smoothstep(0.4,0.7,grain)),mix(RUBBLE,vec3(1.0),0.12),RUBBLE_DETAIL,RUBBLE_DETAIL,d);
+ rubble*=${albedo('terra')};
  rubble=mix(rubble,snow,smoothstep(0.55,0.8,macro)*0.6);
  color=mix(color,rubble,smoothstep(0.3,0.7,cv.r));
 
  // Ice sheets: long streaks and a cold glint.
  float streak=n(rotv(w)*vec2(0.6,5.0)+macro*2.0);
  vec3 ice=mix(ICE,ICE_DETAIL,smoothstep(0.45,0.8,streak)*0.7);
+ ice*=${albedo('gelo')};
  ice=mix(ice,ICE_GLINT,clamp(smoothstep(0.82,0.95,fine)*0.6*detail+max(0.0,d)*1.5,0.0,1.0));
  color=mix(color,ice,smoothstep(0.3,0.7,kd.b));
 

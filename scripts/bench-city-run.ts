@@ -540,7 +540,9 @@ export class NavDriver {
   private crateFor(id:string,p:Point,inside:boolean,left:number){
     const round=this.sim.world.round.index,st=this.sim.run.stonewards.state;
     if(this.targetsRound!==round){this.targets.clear();this.targetsRound=round;}
-    const open=(c:Crate)=>remainingOf(st,c.node)>0;
+    // Bancos: the crates a bank took the place of are not in this run (BanksSystem.crates): never a target.
+    const gone=this.sim.run.banks?.crates;
+    const open=(c:Crate)=>!gone?.has(c.node.id)&&remainingOf(st,c.node)>0;
     const fits=(c:Crate)=>{
       const cost=this.nav.crateField(c.node.id,c.node).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;

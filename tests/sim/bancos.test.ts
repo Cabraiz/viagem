@@ -39,7 +39,7 @@ const OPEN=cityFlowGrid(new CityTerrain(city.asset,city.signature));
 const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city),PLAZA=PTS.praca;
 /** The bank candidates exactly as assemble.ts hands them: the city's reachable loot points. */
-const LOOT=cityLoot(city)!.crates.map(c=>({x:c.node.x,y:c.node.y}));
+const LOOT=cityLoot(city)!.crates.map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}));
 const SAQUE=ticks(BANCO.saqueS),BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
@@ -93,7 +93,7 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
       assert.deepEqual(a.map(p=>p.id),['banco-1','banco-2','banco-3']);
       assert.deepEqual([...a.map(p=>p.name)].sort(),[...BANK_IDS].sort());
       assert.equal(new Set(a.map(p=>`${p.x},${p.y}`)).size,3,'three different spots');
-      for(const p of a)assert.ok(LOOT.some(c=>c.x===p.x&&c.y===p.y),'on a loot point');
+      for(const p of a)assert.ok(LOOT.some(c=>c.x===p.x&&c.y===p.y&&c.id===p.crate),'on a loot point, in place of its crate');
       assert.ok(onePerThird(a,CAR),`one per third of the map around the car (${mode} ${seed})`);
       for(const p of a){
         const fromAnchor='route' in anchor?distanceToPolyline(p,anchor.route):dist(p,anchor.plaza);
@@ -115,6 +115,7 @@ test('placement in a run: the city has banks in both modes (route anchor with th
     assert.ok(run.banks,`banks in the city (${objective??'muralha'})`);
     const anchor=objective?{route:run.chaveiro!.route.points}:{plaza:PLAZA};
     assert.deepEqual(run.banks.places,planBanks(11,LOOT,CAR,anchor),'the run plans with the loot points, the car and the mode\'s anchor');
+    for(const p of run.banks.places)assert.ok(p.crate&&run.banks.crates.has(p.crate),`${p.id}: its crate is not in the run`);
     const views=run.bankViews()!;
     assert.equal(views.length,3);
     for(const v of views){assert.equal(v.saldo,BANCO.saldo);assert.equal(v.state,'aberto');assert.equal(v.until,undefined);assert.equal(v.drawer,undefined);}

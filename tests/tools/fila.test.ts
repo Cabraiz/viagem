@@ -130,3 +130,30 @@ test('a branch that moved after "pronto" is sent back, not merged at its new hea
     assert.ok(!existsSync(join(w.board,'fila/.lote')));
   }finally{w.cleanup();}
 });
+
+test('--suite ci: E7\'s tools/ci.mjs on the pushed fila/ branch; exit 2 falls back to the local suite; the remote branch goes away',()=>{
+  for(const [exit,expectLocal] of [[0,false],[2,true]] as const){
+    const w=world();
+    try{
+      // The fake CI records the branch it was asked about and whether that branch was on the remote.
+      mkdirSync(join(w.repo,'tools'));mkdirSync(join(w.repo,'tests'));
+      writeFileSync(join(w.repo,'tools/ci.mjs'),`import {execFileSync} from 'node:child_process';import {appendFileSync} from 'node:fs';
+const b=process.argv[3];const remote=execFileSync('git',['ls-remote','origin','refs/heads/'+b],{encoding:'utf8'}).trim();
+appendFileSync(process.env.FILA_RUNS,'ci '+b+' '+(remote?'remote':'missing')+String.fromCharCode(10));
+if(${exit}===2){console.error('rede');process.exit(2);}
+console.log(JSON.stringify({ok:true,failedFiles:[],url:'https://ci/run/1'}));`);
+      writeFileSync(join(w.repo,'tests/ok.test.ts'),"import test from 'node:test';test('ok',()=>{});\n");
+      git(w.repo,'add','-A');git(w.repo,'commit','-qm','ci tool');git(w.repo,'push','-q','origin','main');
+      w.branch('vgm/x','src/x.ts','export const x=1;\n');
+      main(['pronto','NEW-x','--branch','vgm/x',...w.opts]);
+      const opts=w.opts.map(o=>o==='node check.mjs'?'ci':o);
+      const state=main(['lote',...opts]);
+      assert.equal(state.estado,'publicado');assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-x']);
+      const runs=w.runs();
+      assert.equal(runs.length,1);assert.match(runs[0],/^ci fila\/\S+ remote$/,'ci.mjs asked about the pushed batch branch');
+      assert.equal(state.url,expectLocal?null:'https://ci/run/1',expectLocal?'exit 2: the local suite decided':'the CI run is kept');
+      git(w.repo,'fetch','-q','--prune','origin');
+      assert.equal(git(w.repo,'branch','-r','--list','origin/fila/*'),'','the batch branch is deleted from the remote');
+    }finally{w.cleanup();}
+  }
+});

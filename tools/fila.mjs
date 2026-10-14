@@ -106,7 +106,8 @@ function removeWorktree(opt,dir,branch){
   for(const j of JUNCTIONS){const p=join(dir,j);try{if(existsSync(p))rmdirSync(p);}catch{/* checked just below */}
     if(existsSync(p))throw new Error(`${p} ficou: remova a junção à mão antes de apagar o worktree ${dir}`);}
   tryGit(opt.repo,'worktree','remove','--force',dir);
-  if(branch)tryGit(opt.repo,'branch','-D',branch);
+  // The batch branch goes with its worktree, and from the remote when --suite ci pushed it.
+  if(branch){tryGit(opt.repo,'branch','-D',branch);if(opt.suite==='ci'&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
 }
 
 // ---------- the suite ----------
@@ -119,10 +120,15 @@ function runSuite(opt,dir,branch,files){
     return {ok:r.status===0,failedFiles:r.status===0?[]:failedFilesFromTap(text)};
   }
   if(opt.suite==='ci'&&!files){
+    // E7's tools/ci.mjs: the branch must be on the remote (its push runs ci.yml on fila/**); exit 0 green, 1 red,
+    // 2 = network/API/no run in time → the local suite. Without the tool yet, local too.
+    const ci=join(dir,'tools','ci.mjs');
+    if(!existsSync(ci)){log('tools/ci.mjs ainda não existe: suíte local');return runSuite({...opt,suite:'local'},dir,branch,files);}
     git(dir,'push','-f',opt.remote,`${branch}:${branch}`);
-    const r=spawnSync(process.execPath,[join(dir,'tools','ci.mjs'),'test',branch,'--json'],{cwd:dir,encoding:'utf8'});
-    try{const j=JSON.parse((r.stdout??'').trim().split('\n').pop());return {ok:!!j.ok,failedFiles:j.failedFiles??[],url:j.url};}
-    catch{return {ok:false,failedFiles:[],error:`tools/ci.mjs: ${(r.stderr||r.stdout||'').slice(-400)}`};}
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json'],{cwd:dir,encoding:'utf8'});
+    if(r.status===2||r.status===null){log(`tools/ci.mjs sem resposta (exit ${r.status}): suíte local`);return runSuite({...opt,suite:'local'},dir,branch,files);}
+    try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url};}
+    catch{return {ok:false,failedFiles:[],error:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,400)}`};}
   }
   // A shell command (also the culprit runs of --suite ci, which are local and short).
   const cmd=opt.suite==='ci'?null:opt.suite;

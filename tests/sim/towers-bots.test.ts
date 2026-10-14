@@ -23,6 +23,9 @@ import type {RunView} from '../../src/contract/index.ts';
 import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,TOWER_STAND,decide,newMemory,pickTowerOrder,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,type DefenseId} from '../../src/sim/towers/catalog.ts';
 import {TOWER_REPAIR_COST} from '../../src/sim/towers/system.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),

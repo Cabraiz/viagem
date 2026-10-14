@@ -30,6 +30,8 @@ import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
 import {ENEMY_ART_ID,queueHordeArt} from '../art/horde-art.ts';
+import {artPiece} from '../art/manifest.ts';
+import {enemyKind} from '../render/keys.ts';
 import {artReady} from '../ui/art-boot.ts';
 
 type FakeEnemy=EnemyView&{speed:number;wobble:number};
@@ -59,6 +61,15 @@ const BARKS:Record<string,string[]>={
 const PLAYER_COUNT=6;
 /** ?roster=1: one new (non-legacy) P0 roster enemy per role, in roster order, for the fallback-look line-up. */
 const rosterSample=()=>{const seen=new Set<string>(),out:string[]=[];for(const r of ROSTER)if(r.priority==='P0'&&!r.legacy&&r.role!=='chefe'&&!seen.has(r.role)){seen.add(r.role);out.push(r.id);}return out;};
+/**
+ * ?roster=arte (arte-do-roster-no-render): the new roster enemies that have imported art, in roster order, from the
+ * `de`-th one (0-based), so every imported piece can be seen in pages of the line-up's slots.
+ */
+const rosterArt=(from:number)=>ROSTER.filter(r=>!r.legacy&&r.role!=='chefe'&&artPiece('inimigos',r.id)).map(r=>r.id).slice(Math.max(0,from));
+const lineupRoster=()=>{
+  const q=new URLSearchParams(location.search),mode=q.get('roster');
+  return mode==='1'?rosterSample():mode==='arte'?rosterArt(Number(q.get('de'))||0):undefined;
+};
 /**
  * ?elenco=1 line-up: [kind, elite, screen offset x, y] of each critter's feet from the first player's feet, in world px
  * at view 0 (x right, y down), so the whole D-033 cast fits a phone in portrait and landscape.
@@ -130,19 +141,24 @@ class FakeHorde {
     this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
     // `roster=1` (papeis-de-inimigo): the same slots filled with new P0 roster enemies of different roles, drawn with
     // their role's fallback look until their art exists.
-    const roster=new URLSearchParams(location.search).get('roster')==='1'?rosterSample():undefined;
+    // `roster=arte`: the slots show the imported roster pieces instead (empty manifest: today's cast).
+    const found=lineupRoster(),roster=found?.length?found:undefined;
     for(const [i,[slotKind,elite,sx,sy]] of LINEUP.entries()){
       const kind=roster&&slotKind!=='chefe'?roster[i%roster.length]:slotKind;
       const e=this.spawn(fromScreen(me,sx,sy),kind);
       e.speed=0;e.elite=elite||undefined;e.boss=kind==='chefe'||undefined;e.phase=kind==='chefe'?1:undefined;e.hp=e.maxHp*(elite?.7:1);
     }
     const groups=this.portrait?P1_GROUPS.portrait:P1_GROUPS.landscape;
-    for(const [kind,phase,x,y,g] of P1_LINEUP){
-      const [sx,sy]=(!this.portrait&&P1_LANDSCAPE[kind])||[x,y];
+    // `roster=arte`: each acting P1 slot shows an imported roster enemy drawn on that kind (a kamikaze aiming as the
+    // motoboy, a suporte lecturing as the coach, a refletor posing as the influencer), when one exists.
+    const acting=new URLSearchParams(location.search).get('roster')==='arte';
+    for(const [slot,phase,x,y,g] of P1_LINEUP){
+      const kind=(acting&&phase===1&&ROSTER.find(r=>!r.legacy&&enemyKind(r.id)===slot&&r.role!=='invocador'&&artPiece('inimigos',r.id))?.id)||slot;
+      const [sx,sy]=(!this.portrait&&P1_LANDSCAPE[slot])||[x,y];
       const [ax,ay]=groups[g],e=this.spawn(fromScreen(me,ax+sx,ay+sy),kind);
       e.speed=0;e.phase=phase;
-      if(kind==='motoboy'){this.moto=e;this.motoHome={x:e.x,y:e.y};}
-      if(kind==='influencer')this.posing=e;
+      if(slot==='motoboy'){this.moto=e;this.motoHome={x:e.x,y:e.y};}
+      if(slot==='influencer')this.posing=e;
     }
   }
   /**

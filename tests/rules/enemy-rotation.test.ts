@@ -14,8 +14,10 @@ import {Rng} from '../../src/contract/index.ts';
 import {MAX_ROUND_ENEMIES,MINI_ROUNDS,MODIFIERS,ROLE_PROFILES,ROSTER,ROTATION_SIZE,ROTATION_SLOTS,ROTATION_WEIGHTS,THREAT,bandOf,drawRotation,isRotation,planRound,
   drawTheme,roleOf,rosterEntry,rotationIds,rotationSize,roundRoster,type EnemyRole,type RegularKind,type Rotation} from '../../src/rules/index.ts';
 
+// The whole roster (ROSTER_ONLY_WITH_ART off): the rotation's design; the art-only draw is tests/rules/enemy-art-ids.test.ts.
+const FULL={onlyWithArt:false};
 const SEEDS=Array.from({length:300},(_,i)=>i*7919+13);
-const rotations=SEEDS.map(s=>drawRotation(new Rng(s)));
+const rotations=SEEDS.map(s=>drawRotation(new Rng(s),FULL));
 
 test('size 12-18 (both ends drawn), slots within their ranges, entries of their role, no repeats',()=>{
   const sizes=new Set<number>();
@@ -60,16 +62,16 @@ test('band rules: early corredores + enxames + one palhaço; mid adds arremessad
 });
 
 test('determinism and checkpoint: same seed same rotation, JSON round-trip, isRotation refuses a tampered one',()=>{
-  assert.deepEqual(drawRotation(new Rng(77)),drawRotation(new Rng(77)));
+  assert.deepEqual(drawRotation(new Rng(77),FULL),drawRotation(new Rng(77),FULL));
   assert.ok(rotations.filter((r,i)=>i&&JSON.stringify(r)!==JSON.stringify(rotations[i-1])).length>250,'seeds differ');
   for(const r of rotations.slice(0,20)){
     const back=JSON.parse(JSON.stringify(r)) as Rotation;
-    assert.deepEqual(back,r);assert.ok(isRotation(back));
+    assert.deepEqual(back,r);assert.ok(isRotation(back,FULL));
     for(let round=1;round<=10;round++)assert.deepEqual(roundRoster(back,round),roundRoster(r,round));
   }
-  assert.ok(!isRotation(null)&&!isRotation({roles:{},mini:'x'}));
-  assert.ok(!isRotation({roles:{corredor:['tio-pave']},mini:[]}),'an entry under another role');
-  assert.ok(!isRotation({roles:{},mini:['bebado']}),'a mini-chefe that is not one');
+  assert.ok(!isRotation(null,FULL)&&!isRotation({roles:{},mini:'x'},FULL));
+  assert.ok(!isRotation({roles:{corredor:['tio-pave']},mini:[]},FULL),'an entry under another role');
+  assert.ok(!isRotation({roles:{},mini:['bebado']},FULL),'a mini-chefe that is not one');
 });
 
 const threatOf=(kind:string)=>kind in THREAT?THREAT[kind as RegularKind]:ROLE_PROFILES[roleOf(kind)!].threat;
@@ -132,22 +134,22 @@ test('round 8: the lone mini-chefe takes its threat (ROLE_PROFILES threat x the 
 test('isRotation: each slot within its min..max, two mini-chefes, no repeats; a corrupt checkpoint is refused, not planned',()=>{
   const good=rotations[0];
   const with_=(roles:Rotation['roles'],mini=good.mini):Rotation=>({roles,mini});
-  assert.ok(isRotation(good));
+  assert.ok(isRotation(good,FULL));
   for(const s of ROTATION_SLOTS){
     const roles={...good.roles};delete roles[s.role];
-    assert.equal(isRotation(with_(roles)),s.min===0,`${s.role} missing`);
+    assert.equal(isRotation(with_(roles),FULL),s.min===0,`${s.role} missing`);
     const many=ROSTER.filter(e=>e.role===s.role).slice(0,s.max+1).map(e=>e.id);
-    assert.ok(!isRotation(with_({...good.roles,[s.role]:many})),`${s.role}: ${many.length} > max ${s.max}`);
-    if(s.min>0)assert.ok(!isRotation(with_({...good.roles,[s.role]:[]})),`${s.role}: empty`);
+    assert.ok(!isRotation(with_({...good.roles,[s.role]:many}),FULL),`${s.role}: ${many.length} > max ${s.max}`);
+    if(s.min>0)assert.ok(!isRotation(with_({...good.roles,[s.role]:[]}),FULL),`${s.role}: empty`);
   }
-  assert.ok(!isRotation(with_({})),'no roles at all');
-  assert.ok(!isRotation(with_(good.roles,[good.mini[0]])),'one mini-chefe');
-  assert.ok(!isRotation(with_(good.roles,[good.mini[0],good.mini[0]])),'the same mini-chefe twice');
-  assert.ok(!isRotation(with_({...good.roles,'mini-chefe':[good.mini[0]]} as Rotation['roles'])),'a role that is not a slot');
+  assert.ok(!isRotation(with_({}),FULL),'no roles at all');
+  assert.ok(!isRotation(with_(good.roles,[good.mini[0]]),FULL),'one mini-chefe');
+  assert.ok(!isRotation(with_(good.roles,[good.mini[0],good.mini[0]]),FULL),'the same mini-chefe twice');
+  assert.ok(!isRotation(with_({...good.roles,'mini-chefe':[good.mini[0]]} as Rotation['roles']),FULL),'a role that is not a slot');
   const corredor=good.roles.corredor!;
-  if(corredor.length<ROTATION_SLOTS.find(s=>s.role==='corredor')!.max)assert.ok(!isRotation(with_({...good.roles,corredor:[corredor[0],corredor[0]]})),'repeated entry');
+  if(corredor.length<ROTATION_SLOTS.find(s=>s.role==='corredor')!.max)assert.ok(!isRotation(with_({...good.roles,corredor:[corredor[0],corredor[0]]}),FULL),'repeated entry');
   // Every drawn rotation passes, and every round of it plans.
-  for(const r of rotations){assert.ok(isRotation(r));for(let round=1;round<=10;round++)planRound(round,3,{name:'x'},new Rng(round),roundRoster(r,round));}
+  for(const r of rotations){assert.ok(isRotation(r,FULL));for(let round=1;round<=10;round++)planRound(round,3,{name:'x'},new Rng(round),roundRoster(r,round));}
 });
 
 test('giant-everyone is never drawn in round 8 (its size would push the lone mini-chefe past the neighbor reach)',()=>{

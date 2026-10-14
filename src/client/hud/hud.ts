@@ -32,6 +32,8 @@ import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
+import {createInventory,type InventoryCommand,type InventoryPart} from './inventory.ts';
+import './inventory.css';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
 import {icon} from '../ui/icon.ts';
@@ -74,6 +76,8 @@ export interface RunHudOptions {
   onCida?(item:CidaItemId):number|undefined;
   /** PIX to a friend (carteira-e-pix, hud/pix.ts): sends {t:'pix'}, resolves with the room's answer; undefined: cannot reach the room now. */
   onPix?(to:string,amount:number):Promise<PixResult>|undefined;
+  /** D-051 inventory tap (hud/inventory.ts): net.inventory; false when nothing could be sent. */
+  onInventory?(command:InventoryCommand):boolean;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
@@ -166,6 +170,8 @@ export class RunHud {
   private objectiveWant?:CityObjective;private objectiveRect?:Rect;
   /** Dona Cida's button and tray (D-047, hud/cida.ts). */
   private readonly cida:CidaPart;
+  /** The manual combat's 6 slots (D-051, hud/inventory.ts); hidden without `hand`. */
+  private readonly inventory:InventoryPart;
   /** Why the chaveiro stopped (D-047): one quiet row of the announcement slot for REASON_MS (hud/chaveiro.ts MotoReason). */
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
   /** Bancos: the row "Bicho sacando no …!" (hud/bancos.ts BankAlert). */
@@ -190,6 +196,7 @@ export class RunHud {
     const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
+    const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
@@ -200,8 +207,8 @@ export class RunHud {
     stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida,pausa];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el,pausa.live);
+    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
@@ -403,11 +410,13 @@ export class RunHud {
   get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
   /** The room's answer to a Dona Cida tap (D-047, {t:'bought'}). */
   bought(answer:CidaAnswer){this.cida.bought(answer);}
+  /** The room's answer to an inventory tap ({t:'inv'}, net.onInventory): a refusal shows as a line over the slots. */
+  inventoryAnswer(result:{cmd:string;ok:boolean;reason?:string}){this.inventory.answer(result);}
 
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
-  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.cida.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
+  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.cida.setHero(spot);this.inventory.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();

@@ -138,6 +138,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       onCida:item=>net.buyCida(item),
       // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
       onPix:(to,amount)=>net.pix(to,amount),
+      // D-051 inventory (manual combat): equip/use/drop/take; the room answers {t:'inv'} (net.onInventory below).
+      onInventory:command=>net.inventory(command),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
@@ -146,6 +148,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onRun=run=>hud?.setPause(run.phase==='combat'?run.pause:undefined);
     net.onForged=answer=>hud?.forged(answer);
     net.onBought=answer=>hud?.bought(answer);
+    net.onInventory=result=>hud?.inventoryAnswer(result);
     {
       const host=hud;
       const note=document.createElement('div');note.className='rh-obra-aviso';note.setAttribute('role','status');note.hidden=true;

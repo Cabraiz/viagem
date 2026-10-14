@@ -45,12 +45,17 @@ function peer(){
   return {messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};
 }
 type TestPeer=ReturnType<typeof peer>;
+/** Seat ids in join order (RoomOptions.newId): the run depends on them (the sim breaks ties by player id). */
+const seatIds=(prefix:string)=>{let n=0;return ()=>`${prefix}-${++n}`;};
 const say=(room:Room,p:Peer,message:object,now:number)=>room.receive(p,JSON.stringify(message),now);
 const round=(room:Room)=>room.run.snapshot().round;
 const secs=(t:number)=>`${(t/SIM_HZ).toFixed(1)} s`;
 
-test('ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an exception or a bot stuck > 5 s',async()=>{
-  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada'}),a:TestPeer=peer();
+// The run depends on the seat ids (the sim breaks ties by player id): a person's id sorts before or after 'bot-1', so
+// both orders are played (BUG-20261013-E8: with Ana first, a siege tio-pavê stood at a corner north of mouth N).
+for(const [order,prefix] of [['after','pessoa'],['before','a-pessoa']] as const)
+test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an exception or a bot stuck > 5 s (Ana's id sorts ${order} the bots')`,async()=>{
+  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',newId:seatIds(prefix)}),a:TestPeer=peer();
   await room.ready();
   let t=1000;
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);
@@ -120,7 +125,7 @@ test('ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
     }
   }
   const brains=(room as unknown as {bots:{thinkMs:number;thinks:number}}).bots;
-  console.log(`[cidade-10] city room, Ana + 3 bots, seed 4242: `
+  console.log(`[cidade-10] city room, Ana (${ana}) + 3 bots, seed 4242: `
     +rounds.map(r=>`round ${r.index} wave ${secs(r.wave!)}→${r.end===undefined?'-':`${secs(r.end)} (${secs(r.end-r.wave!)})`}`).join(', ')
     +`; Ana in the plaza ${anaArrived===undefined?'never':secs(anaArrived)}; falls ${falls.length?falls.join(', '):'none'}`
     +`\n  stuck (no critter within ${FIGHT_NEAR} u) beyond ${STUCK_SECONDS} s: ${bots.map(id=>{const w=stuck.get(id)!;return `${id} ${secs(w.worst)}${w.worst?` at ${w.at}`:''}`;}).join(', ')}`

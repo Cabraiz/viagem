@@ -52,6 +52,8 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   // Enemies the render draws (horde-art artLoads) come in as P1; the index may hold roster enemies the render does not
   // know yet (pack 04 before the roster art is wired), and those are not preloaded.
   for(const a of list)if(a.kind==='enemy')assert.equal(a.priority,'P1',a.url);
+  // Roster pieces load per match (arte-do-roster-no-render: the room's elenco, or the first sighting), never here.
+  assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
 });
 

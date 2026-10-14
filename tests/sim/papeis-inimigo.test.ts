@@ -30,6 +30,9 @@ import {CIDADE_MODIFIERS,LEGACY_KINDS,MAX_ROUND_ENEMIES,MINI_SOLO_HP,MODIFIERS,R
 import {CITY_BALANCE,applyCityBalance,isNeutralRound,roundKnobs} from '../../src/sim/city/balance.ts';
 import {walkable,SPAWN,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 const TERRAIN=new TerrainField(DEFAULT_SEED,{world:'infinito'});
 function openSpot(r:number):Point{

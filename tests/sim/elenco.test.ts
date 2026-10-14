@@ -21,6 +21,9 @@ import {downPlayer} from '../../src/sim/revive.ts';
 import {MAX_PROJECTILES,MAX_TELEGRAPHS} from '../../src/rules/budget.ts';
 import {walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 const TERRAIN=new TerrainField(DEFAULT_SEED,{world:'infinito'});
 /** First point of the endless world with a fully walkable disc of radius r around it (the island is too cluttered). */

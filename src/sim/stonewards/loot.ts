@@ -143,11 +143,12 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
  * City return estimate (ticks) of the farthest standing hero: the real walk to the plaza (distanceToPlaza at the
  * hero's real walk, maps heroSpeed: 2 × loot.speed) plus RETURN_SLACK_SECONDS, 0 for a hero already in the plaza; a
  * hero off the hero field (undefined distance) falls back to `straight(p)` (the island rule on the straight line).
+ * `skip(id)`: heroes left out (the horn's idle heroes, system.ts HORN_IDLE_RADIUS).
  */
-export function cityFarthestReturn(ctx:SimContext,loot:CityLoot,straight:(p:Point)=>number){
+export function cityFarthestReturn(ctx:SimContext,loot:CityLoot,straight:(p:Point)=>number,skip?:(id:string)=>boolean){
   let lead=0;const walk=heroSpeed(ctx.terrain);
   for(const p of ctx.players.values()){
-    if(!isStanding(p))continue;
+    if(!isStanding(p)||skip?.(p.id))continue;
     const d=loot.distanceToPlaza(p);
     lead=Math.max(lead,d===undefined?straight(p):d>0?Math.ceil((d/walk+RETURN_SLACK_SECONDS)*SIM_HZ):0);
   }

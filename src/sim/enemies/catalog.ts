@@ -212,7 +212,7 @@ export const FIRE_GROUND_LINES:readonly string[]=Object.freeze(['Pisou na cacha�
  * circle telegraph under itself, owned by `env:poop:<id>` (it falls even if the bird dies). At most `maxGlobal` at once.
  * TODO(PHASE B): the slippery puddle ("poça escorregadia") needs a ground effect / player slide field in the contract.
  */
-export const POOP=Object.freeze({range:2,chance:.04,cooldown:ticks(4),radius:.5,damage:3,delay:ticks(.8),maxGlobal:6});
+export const POOP=Object.freeze({fromRound:2,range:2,chance:.04,cooldown:ticks(4),radius:.5,damage:3,delay:ticks(.8),maxGlobal:6});
 /** Floater when a hero slips on the pombos' puddle (D-033). Used when the client/sim wires the event; nothing reads it yet. */
 export const PUDDLE_SLIP_LINES:readonly string[]=Object.freeze(['Merda dá sorte. Só que não!','Patinação artística na bosta','Pombo 1 x 0 Você','Caiu de bunda no presente','Isso não é lama. Não é.']);
 /**
@@ -250,7 +250,16 @@ export const BUFFED_LINES:readonly string[]=Object.freeze(['Eu sou o protagonist
 export interface CoachedEnemy {coachedUntil?:number}
 export const isCoached=(enemy:object,tick:number)=>tick<((enemy as CoachedEnemy).coachedUntil??-Infinity);
 /** Damage multiplier of an enemy right now (PALESTRA.damageMult while coached, else 1). */
-export const coachMult=(enemy:object,tick:number)=>isCoached(enemy,tick)?PALESTRA.damageMult:1;
+/**
+ * A borrowed entry's band numbers (decision D, rules/enemy-rotation.ts BORROW_TUNE), set by the director in its memory:
+ * × every hit it deals (BAND_DAMAGE, through coachMult) and × its attack cooldowns (BAND_CADENCE, bandCooldown).
+ */
+export const BAND_DAMAGE='bd',BAND_CADENCE='bc';
+const bandOf=(enemy:object,key:string)=>{const v=(enemy as {memory?:Record<string,number>}).memory?.[key];return typeof v==='number'&&v>0?v:1;};
+/** `cooldown` ticks × the enemy's BAND_CADENCE (whole ticks). */
+export const bandCooldown=(enemy:object,cooldown:number)=>Math.round(cooldown*bandOf(enemy,BAND_CADENCE));
+/** × the coach's lecture buff, × a borrowed entry's band damage (BAND_DAMAGE): every hostile hit goes through it. */
+export const coachMult=(enemy:object,tick:number)=>(isCoached(enemy,tick)?PALESTRA.damageMult:1)*bandOf(enemy,BAND_DAMAGE);
 /** Kinds the auto-aim of the weapons prefers right after the tapped target (weapons/system.ts targets()): the supports. */
 export const isPriorityTarget=(enemy:Pick<EnemyState,'kind'>)=>enemy.kind==='coach'||!isLegacyKind(enemy.kind)&&enemyDef(enemy.kind).behavior==='coach';
 

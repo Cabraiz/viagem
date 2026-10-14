@@ -70,17 +70,21 @@ export const INTRO_WINDOW_SECONDS=5;
  */
 export interface TutorialState {intro?:string;arrived?:string;arrivedTick?:number}
 
-/** The tutorial round's plan for `players` (1..6): the two groups, low hp, slow, the cap as its duration. */
-export function tutorialPlan(players:number,firstArrivalTicks:number):RoundPlan{
+/**
+ * The tutorial round's plan for `players` (1..6): the two groups, low hp, slow, the cap as its duration. `kinds` (art only,
+ * director): who they are, in turn; the bêbado without it.
+ */
+export function tutorialPlan(players:number,firstArrivalTicks:number,kinds?:readonly string[]):RoundPlan{
   const scale=playerScale(players),n=Math.max(1,Math.min(6,Math.round(players)));
   const size=(base:number)=>Math.max(1,Math.round(base*scale.count));
   const behindAt=ticks(TUTORIAL_PLAN.behindAt);
   // The planner aims a group at the plaza firstArrivalTicks + (its at − the round's first at, the group behind's)
   // after the wave start: this `at` puts the plaza group there welcomeArrival s into the wave.
   const welcomeAt=behindAt+Math.max(0,ticks(TUTORIAL_PLAN.welcomeArrival)-firstArrivalTicks);
+  const who=(i:number)=>kinds?.length?kinds[i%kinds.length]:'bebado';
   const groups=[
-    {at:behindAt,members:Array<string>(size(TUTORIAL_PLAN.behind)).fill('bebado')},
-    {at:welcomeAt,members:Array<string>(size(TUTORIAL_PLAN.welcome)).fill('bebado')},
+    {at:behindAt,members:Array.from({length:size(TUTORIAL_PLAN.behind)},(_,i)=>who(i))},
+    {at:welcomeAt,members:Array.from({length:size(TUTORIAL_PLAN.welcome)},(_,i)=>who(i+1))},
   ];
   return {
     index:1,players:n,groups,total:groups.reduce((t,g)=>t+g.members.length,0),durationTicks:ticks(TUTORIAL_PLAN.capSeconds),

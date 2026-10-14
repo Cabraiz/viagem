@@ -19,10 +19,10 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
-import {queueHordeArt} from './art/horde-art.ts';
+import {queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
-import {ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
+import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
@@ -100,6 +100,8 @@ const TREE_FADE_MS=220;
 
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
+  /** The last {t:'elenco'} list whose art was queued (horde-art.ts queueEnemyArt). */
+  private elenco?:readonly string[];
   private view=0;
   private landscape?:TerrainLayer;
   /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
@@ -679,6 +681,9 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up.
+    const elenco=this.hooks.net?.elenco;
+    if(elenco&&elenco!==this.elenco){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
@@ -910,7 +915,7 @@ export class IslandScene extends Phaser.Scene {
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
       const k=this.actorScale;
-      if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,46,20).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
+      if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,ALLY_RING_SIZE.width,ALLY_RING_SIZE.height).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);

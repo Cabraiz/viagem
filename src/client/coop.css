@@ -66,23 +66,26 @@
    so the etiqueta keeps to the free strip on its left, 8 px clear of the widest (owner's) window, and wraps to fit.
    Portrait, the window's height: its usual cap (100% − 300px) kept the thumbs' room; with them off it may reach down to
    8 px over the etiqueta (top max(122px, safe + 114px), the controls' 24 px bottom padding or the safe area, the
-   etiqueta's rows of 1.3 × 13 px plus 16 px of padding and border: two in the waiting room, one in the countdown). */
+   etiqueta's one row of 1.3 × 13 px plus 8 px of padding and border). */
 .coop-shell[data-controls=off] :is(.explore-stick,#coop-attack){visibility:hidden;pointer-events:none}
 .explore-movement{position:relative}
-.explore-stick-hint{position:absolute;left:0;bottom:0;box-sizing:border-box;width:max-content;max-width:min(calc(280px * var(--t-escala)),calc(100vw - 48px));margin:0;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:400 var(--t-13)/1.3 var(--f-sistema);text-align:left;pointer-events:none}
+.explore-stick-hint{position:absolute;left:0;bottom:0;box-sizing:border-box;width:max-content;max-width:min(calc(280px * var(--t-escala)),calc(100vw - 48px));margin:0;padding:2px 8px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:400 var(--t-13)/1.3 var(--f-sistema);text-align:left;pointer-events:none}
 .explore-stick-hint[hidden]{display:none}
-.explore-stick-hint span{display:block}
+/* BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (the first row only, cut with an ellipsis;
+   both rows stay in the note for a screen reader). */
+.explore-stick-hint span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.explore-stick-hint span+span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 @media(max-height:500px){.explore-stick-hint{max-width:calc((100vw - min(560px,100vw - 300px)) / 2 - max(18px,env(safe-area-inset-left)) - 8px)}}
-.coop-shell[data-controls=off]{--controls-hint-room:calc(2 * 1.3 * var(--t-13) + 16px)}
-.coop-shell[data-controls=off][data-run-phase=countdown]{--controls-hint-room:calc(1.3 * var(--t-13) + 16px)}
+.coop-shell[data-controls=off]{--controls-hint-room:calc(1.3 * var(--t-13) + 8px)}
 @media(min-height:501px){.coop-shell[data-controls=off] .coop-wait{max-height:calc(100% - max(122px,calc(env(safe-area-inset-top) + 114px)) - max(24px,env(safe-area-inset-bottom)) - var(--controls-hint-room) - 8px)}}
 /* Landscape: the etiqueta's column is ~124 px at 844 wide, so it keeps only its first line (≤ 3 rows at 125%) on a
    tighter padding. The countdown window has 100% − 64px of height and six names: the big number leaves its own row and
    stands left of the button row (a wrapping flex column of full-width rows; flex, not grid, so the sticky row below can
    still move inside the whole window, a grid item only moves inside its cell); a guest's names go two by two (below). */
 @media(max-height:500px){
-  .explore-stick-hint{padding:4px 6px}
+  .explore-stick-hint{padding:2px 6px}
   .explore-stick-hint span+span{display:none}
+  .explore-stick-hint span{white-space:normal}
   .coop-wait[data-phase=countdown]{display:flex;flex-wrap:wrap;align-items:center;column-gap:12px}
   .coop-wait[data-phase=countdown]>*{flex:0 0 100%;min-width:0}
   .coop-wait[data-phase=countdown]>.coop-wait-count{order:1;flex:none}

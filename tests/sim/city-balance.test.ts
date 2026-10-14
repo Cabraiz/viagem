@@ -275,10 +275,15 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(let i=0;i<n;i++)world.step();
   return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
 }
-/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11). */
-/** Re-recorded (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk lead, endless spawn ring, half-speed shots, the
- *  city tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer rebuilding a field after an idle tick; the island is unchanged. */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'ef460e5a6c2af618',ilha:'0d4d774d9e279384',infinito:'57aa0f03473b4f82'};
+/**
+ * Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged,
+ * before cidade-11), re-recorded for BUG-20261013-E8 (16a84cd56d5977cb before): on the hero-size planner flow, a wide
+ * body whose own disc clips a wall one step ahead now squeezes by the hero rule (grid.ts citySteer); in this run that
+ * is seven bêbados (0.32 u) for 1–4 ticks each. Re-recorded (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk
+ * lead, endless spawn ring, half-speed shots, the city tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer
+ * rebuilding a field after an idle tick; the island is unchanged.
+ */
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6f0fd8cfe1de2c9f',ilha:'0d4d774d9e279384',infinito:'57aa0f03473b4f82'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

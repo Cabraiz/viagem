@@ -8,7 +8,7 @@ import type {RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
-import {InputBatcher} from '../../protocol/index.ts';
+import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
@@ -273,9 +273,11 @@ export class CoopClient {
   onSos:(ping:SosPing)=>void=()=>{};
   /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
   onEmote:(e:EmoteNote)=>void=()=>{};
+  /** The run's drawn enemies ({t:'elenco'}, arte-do-roster-no-render): a new array per message; the scene fetches their art. */
+  elenco:readonly string[]=[];
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
-  /** The room's answer to a build or upgrade (torres-fio): the new kind, or why not. */
+  /** The room's answer to a build, upgrade or repair (torres-fio, torres-ajustes): the kind, or why not ('away': too far). */
   onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string})=>void=()=>{};
   /**
    * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
@@ -303,6 +305,11 @@ export class CoopClient {
   upgrade(defense:string,branch?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'upgrade',round:this.run.round,req,defense,...(branch===undefined?{}:{branch})});return req;
+  }
+  /** torres-ajustes: repairs a hurt defense (its structure's wire id) in the intermission, from next to it; answer in onBuilt. */
+  repair(defense:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'repair',round:this.run.round,req,defense});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -496,6 +503,7 @@ export class CoopClient {
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
     else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
+    else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);

@@ -13,6 +13,7 @@ import sharp from 'sharp';
 import {GROUPS,priorityOf} from './art-v2/spec.mjs';
 import {validatePiece,relName,SILHOUETTE} from './art-v2/validate.mjs';
 import {convertPiece,writeManifest,readManifest,manifestPath,plannedOutputs,writeIndex} from './art-v2/convert.mjs';
+import {writeEnemyArtIds} from './art-v2/enemy-art-ids.mjs';
 
 export const DEFAULT_INPUT='D:/Gits/viagem-board/arte-entrada';
 export const REPORT_NAME='relatorio-importacao.html';
@@ -182,6 +183,8 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
   }
   // The client reads one index (public/art/manifest.json): every group manifest on disk, rewritten after any change.
   if(wroteManifest)written.push(await writeIndex({...GROUPS,...selected},{outRoot}));
+  // The roster ids with art, as rules data for the rotation (ROSTER_ONLY_WITH_ART): the sim never reads the index.
+  if(wroteManifest){const ids=await writeEnemyArtIds({outRoot});if(ids)written.push(ids);}
   // Thumbnails last, for the first THUMB_LIMIT refused pieces only (keeps the HTML report small).
   const refused=pieces.filter(p=>p.status==='reprovado');
   for(const p of refused.slice(0,THUMB_LIMIT)){const files=thumbFiles.get(p);if(files)p.thumb=await thumbOf(files,p.problems,ctx);}

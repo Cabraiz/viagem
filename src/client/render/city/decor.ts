@@ -10,7 +10,7 @@ import type {CityAsset} from './asset.ts';
 import {groundAt} from './asset.ts';
 import type {BlockPiece,CityChunk} from './chunks.ts';
 import {RUIN_FLOOR,groundQuads,viewSide} from './faces.ts';
-import {CITY_PALETTE,MATERIALS,OUTLINE_PX,SHADOW} from './palette.ts';
+import {CITY_PALETTE,MATERIALS,OUTLINE_PX,SHADOW,WALL_STONE,WALL_STONE_STEPS} from './palette.ts';
 import type {Pt} from './projection.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y,VIEW_PIVOT,normalizeView,project,viewPoint} from './projection.ts';
 
@@ -252,7 +252,8 @@ export function pieceShadow(piece:BlockPiece,asset:CityAsset,view:number,pivot:P
 
 type Side='n'|'s'|'e'|'w';
 interface Wall {side:Side;face:WallFace;a0:number;a1:number;base:number;top:(a:number)=>number;
-  /** Along-position where the top steps down to the bite floor, if any. */ step?:number;at:(a:number,z:number)=>Pt;key:(i:number)=>string}
+  /** Along-position where the top steps down to the bite floor, if any. */ step?:number;at:(a:number,z:number)=>Pt;key:(i:number)=>string;
+  /** World key of the wall's line (block, side, fixed coordinate): features keyed by it and an along index match across columns. */ line:string}
 
 /** Bite (ruin) side in cells of a piece, 0 when none. */
 const biteOf=(p:BlockPiece)=>p.kind==='building'&&p.bite!==undefined&&p.bite>0?Math.min(p.bite,p.w,p.h):0;
@@ -272,7 +273,7 @@ function visibleWalls(piece:BlockPiece,asset:CityAsset,v:number,pivot:Pt):Wall[]
     const step=b>0&&side==='n'?a1-b:b>0&&side==='e'?a0+b:undefined;
     out.push({side,face:q==='+y'?'wallLight':'wallDark',a0,a1,base:piece.base,top,...(step!==undefined?{step}:{}),
       at:(a,z)=>alongX?project(X(a),Y(fixed),z,v,pivot):project(X(fixed),Y(a),z,v,pivot),
-      key:i=>`${piece.blockId}:${side}:${alongX?i:fixed-(side==='e'?1:0)},${alongX?fixed-(side==='s'?1:0):i}`});
+      key:i=>`${piece.blockId}:${side}:${alongX?i:fixed-(side==='e'?1:0)},${alongX?fixed-(side==='s'?1:0):i}`,line:`${piece.blockId}:${side}:${fixed}`});
   }
   return out;
 }
@@ -340,6 +341,96 @@ function wallCell(out:DecorPrim[],w:Wall,i:number,ruined:boolean){
   }
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Snowy stone walls (card muros-texturizados): drawn on 'wall' pieces when the relief ground is on (city-layer passes
+// PieceLook.stoneWalls); `?relevo=0` keeps the plain faces and icing above. Everything lives in the wall's world (a, z)
+// coordinates and is keyed by the wall line plus a world index, so a stone or a snow drip that crosses the edge of a
+// unit column is the same shape on both sides (each column draws its part, clipped to its cell) and fades with it.
+
+/**
+ * Stone wall look, in world units (a along the wall in cells, z in u): running-bond courses about `course` tall over the
+ * wall below `clear` from the top, stones `stone` cells long (odd courses shifted half a stone), joints 2×`joint`
+ * wide (≥ 1 CSS px at the farthest settled zoom), corners jittered by up to `jitter`; the snow drape hangs `snow`
+ * below the top with a ragged edge of `drips` points per cell, a Breu eave line under it; a `sunk` share of the stones
+ * is left as the face fill (a darker stone); on the cap a soft rim
+ * `rim` wide on the sides that are not seams.
+ */
+export const STONE_WALL=Object.freeze({course:0.36,clear:0.14,stone:0.5,wander:0.18,joint:0.03,jitter:0.03,snow:[0.13,0.3] as const,drips:5,sunk:0.12,rim:[0.1,0.16] as const});
+/** How pieceDecor draws: stoneWalls on = snowy stone walls (relief ground), off = today's plain faces with icing. */
+export interface PieceLook {readonly stoneWalls?:boolean}
+
+/** Sutherland–Hodgman clip of a polygon in wall (a, z) coordinates to the half plane dir·a ≥ dir·at. */
+function clipAlong(poly:[number,number][],at:number,dir:1|-1):[number,number][]{
+  const out:[number,number][]=[],inside=(c:[number,number])=>dir*(c[0]-at)>=-1e-12;
+  poly.forEach((c,i)=>{
+    const d=poly[(i+1)%poly.length];
+    if(inside(c))out.push(c);
+    if(inside(c)!==inside(d)){const t=(at-c[0])/(d[0]-c[0]);out.push([at,c[1]+(d[1]-c[1])*t]);}
+  });
+  return out;
+}
+
+/** Stone courses and the snow drape of one visible face of a wall piece (one unit column, cell i). */
+function stoneWall(out:DecorPrim[],w:Wall){
+  const S=STONE_WALL,top=w.top((w.a0+w.a1)/2),base=w.base,span=top-S.clear-base,tones=WALL_STONE[w.face];
+  const lo=w.a0,hi=w.a1;
+  if(span>0.1){
+    const n=Math.max(1,Math.round(span/S.course)),h=span/n,g=S.joint,J=S.jitter;
+    for(let k=0;k<n;k++){
+      const z0=base+k*h,z1=z0+h,off=k%2?S.stone/2:0;
+      // Course tone bias: the lower courses a touch darker (snow-bounce aside, the foot is in the wall's own shade).
+      const bias=(k/(Math.max(1,n-1))-0.5)*0.9;
+      // Head joints wander by up to ±`wander` of a stone (keyed by the joint, so both stones beside it agree).
+      const joint=(j:number)=>off+j*S.stone+(seeded(`${w.line}|joint|${k}|${j}`)()-0.5)*2*S.wander*S.stone;
+      for(let j=Math.floor((lo-off)/S.stone)-1;joint(j)<hi-1e-9;j++){
+        const s0=joint(j),s1=joint(j+1);
+        if(s1<=lo+1e-9)continue;
+        const r=seeded(`${w.line}|stone|${k}|${j}`);
+        // A `sunk` share of the stones is not drawn: the face fill shows, a darker stone merged with its joints (and
+        // fewer triangles: every frame writes them, tri-band.ts).
+        if(r()<S.sunk)continue;
+        const jit=()=>(r()-0.5)*2*J;
+        // Full stone (world), corners BL, BR, TR, TL, inset by the joint and jittered; then clipped to this column.
+        const q:[number,number][]=[[s0+g+jit(),z0+g+jit()],[s1-g+jit(),z0+g+jit()],[s1-g+jit(),z1-g+jit()],[s0+g+jit(),z1-g+jit()]];
+        const tone=tones[Math.max(0,Math.min(WALL_STONE_STEPS.length-1,Math.round(2+(r()-0.5)*4.4+bias)))];
+        const part=clipAlong(clipAlong(q,lo,1),hi,-1);
+        if(part.length<3||Math.max(...part.map(c=>c[0]))-Math.min(...part.map(c=>c[0]))<0.02)continue;
+        out.push(poly(tone,part.map(([a,z])=>w.at(a,z))));
+      }
+    }
+  }
+  // Snow drape: a ragged hang below the top, each drip point keyed by its world along index (shared column edges match).
+  const steps=S.drips,cap=Math.min(1,(top-base)/(S.snow[1]*2)),bottom:Pt[]=[];
+  const i0=Math.round(lo*steps),i1=Math.round(hi*steps);
+  for(let i=i0;i<=i1;i++){
+    const r=seeded(`${w.line}|drape|${i}`),wave=0.5+0.5*Math.sin(i*1.7+r()*0.8);
+    const d=(S.snow[0]+(S.snow[1]-S.snow[0])*(0.55*r()+0.45*wave))*cap;
+    bottom.push(w.at(Math.min(hi,Math.max(lo,i/steps)),top-d));
+  }
+  out.push(poly(ICING[w.face],[w.at(lo,top),w.at(hi,top),...[...bottom].reverse()]));
+  out.push(line(C.breu,bottom,OUTLINE_PX.block));
+}
+
+/** Soft snow rim on a wall piece's cap: a band in the shaded snow tone along each side that is not a seam. */
+function capRim(out:DecorPrim[],piece:BlockPiece,asset:CityAsset,v:number,pivot:Pt){
+  const {cell,origin}=asset,z=piece.base+piece.height,S=STONE_WALL;
+  const x0=piece.x,y0=piece.y,x1=piece.x+piece.w,y1=piece.y+piece.h;
+  // Inset of one side at one world corner, keyed by both (a corner shared by two columns gets the same inset).
+  const ins=(side:Side,cx:number,cy:number)=>piece.seams[side]?0:between(seeded(`${piece.blockId}|rim|${side}|${cx},${cy}`),S.rim[0],S.rim[1]);
+  const corner=(cx:number,cy:number,sx:Side,sy:Side):Pt=>{
+    const dx=ins(sx,cx,cy)*(sx==='w'?1:-1),dy=ins(sy,cx,cy)*(sy==='n'?1:-1);
+    return project(origin.x+(cx+dx)*cell,origin.y+(cy+dy)*cell,z,v,pivot);
+  };
+  const P=(cx:number,cy:number)=>project(origin.x+cx*cell,origin.y+cy*cell,z,v,pivot);
+  // One mitred strip per non-seam side, between the cap edge and the inset corners: the strips never overlap each
+  // other, so a see-through column stacks at most two layers on the cap (face + rim), as before the card.
+  const outer=[P(x0,y0),P(x1,y0),P(x1,y1),P(x0,y1)];
+  const inner=[corner(x0,y0,'w','n'),corner(x1,y0,'e','n'),corner(x1,y1,'e','s'),corner(x0,y1,'w','s')];
+  (['n','e','s','w'] as const).forEach((side,i)=>{
+    if(!piece.seams[side])out.push(poly(MATERIALS['neve-tampa'].clara,[outer[i],outer[(i+1)%4],inner[(i+1)%4],inner[i]]));
+  });
+}
+
 /** Mini box (rubble chunk) in world space: cap + the walls that face the camera + a Breu silhouette. */
 function rubbleBox(out:DecorPrim[],asset:CityAsset,v:number,pivot:Pt,x0:number,y0:number,x1:number,y1:number,z0:number,z1:number){
   const P=(x:number,y:number,z:number)=>project(x,y,z,v,pivot);
@@ -362,8 +453,14 @@ function rubbleBox(out:DecorPrim[],asset:CityAsset,v:number,pivot:Pt,x0:number,y
  * chunks (≤ 0.3 u, snow on top) at the foot of the bite, shown when the bite opens toward the camera (both its
  * world sides face the camera; otherwise the roof hides most of the floor). Nothing on seams or other bite faces.
  */
-export function pieceDecor(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):DecorPrim[]{
+export function pieceDecor(piece:BlockPiece,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT,look:PieceLook={}):DecorPrim[]{
   const v=normalizeView(view),out:DecorPrim[]=[],building=piece.kind==='building',ruined=!!piece.ruined;
+  // Snowy stone walls (relief on): cap rim, stone courses and the ragged snow drape instead of the icing.
+  if(look.stoneWalls&&piece.kind==='wall'){
+    capRim(out,piece,asset,v,pivot);
+    for(const w of visibleWalls(piece,asset,v,pivot))if(w.step===undefined)stoneWall(out,w);else icing(out,w);
+    return out;
+  }
   const b=biteOf(piece);
   if(b>0){
     const front=(s:Side)=>{const q=viewSide(s,v);return q==='+x'||q==='+y';};

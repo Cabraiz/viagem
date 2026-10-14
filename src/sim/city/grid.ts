@@ -407,7 +407,17 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
       if(follow(narrow.field,e,out,ctx,terrain)){if(terrain)out.fit=RADIUS;return true;}
     }
     baseFlow(ctx,e,out);
-    if(out.x!==0||out.y!==0)return true;
+    if(out.x!==0||out.y!==0){
+      // BUG-20261013-E8: the planner's fields are hero-size. A wide body (siege) whose own disc would clip a wall one
+      // NUDGE along them is led where only the hero fits: on the strip between two blocks north of mouth N it crept up
+      // the corner ever slower and stood there for good. There it squeezes by the hero rule, like on a players field
+      // narrower than it (E1).
+      if(!hero&&e.radius>RADIUS){
+        const t=cityTerrainOf(field);
+        if(t&&t.clearDisc(e.x,e.y,e.radius)&&!t.clearDisc(e.x+out.x*NUDGE,e.y+out.y*NUDGE,e.radius))out.fit=RADIUS;
+      }
+      return true;
+    }
     // BUG-20261013-E1: inside the plaza (its flow is zero there) a siege body walked straight at the wall or a player
     // and stood against the fountain. Its own field instead: the players field for a player, the structure's field
     // for the wall, both hero-size (a wide body squeezes by the hero rule, like the boss).

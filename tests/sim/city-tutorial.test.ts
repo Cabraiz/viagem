@@ -50,6 +50,9 @@ import {BARK_MAX,CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY} from '../../src/rules/zuei
 import {ROUNDS,ROUND_NAMES,countMult} from '../../src/rules/waves.ts';
 import {SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 // ---------- The real city ----------
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));

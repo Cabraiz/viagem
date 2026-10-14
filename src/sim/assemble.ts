@@ -144,8 +144,16 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
   // D-017 (E8-wall-siege-single-path): the enemy-ai is the only path that hurts the wall. It walks siege enemies to it
   // and its contact hit goes to damageWall; the Stonewards contact siege (siegeStep) stays off.
+  // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
+  // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
+  const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  const takeInput=cityWorld?(id:string)=>{
+    const input=options.takeInput(id);
+    if(input&&Math.hypot(input.x,input.y)>=.01)steered.add(id);
+    return input;
+  }:options.takeInput;
   const stonewards=createStonewardsSystem({
-    terrain:world.terrain,siegeContact:false,barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
+    terrain:world.terrain,siegeContact:false,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
     // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
     barricadesLater:options.cityTutorial??true,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
@@ -192,6 +200,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   if(cp)enemyAi.restore(cp.enemyAi);
   const boss=createBoss({
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
+    minionKinds:()=>director?.bossMinionKinds(),
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
     // hero-size players field (steer.hero: no size class, which would send it the long way round), at the city speed.
     ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),
@@ -232,7 +241,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    playersSystem(options.takeInput,options.autopilot),
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot)),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),

@@ -9,7 +9,7 @@ import {coastalSpawnPoints} from '../src/sim/index.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions,type RunSystemsState,type WorldCheckpoint} from '../src/sim/index.ts';
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
-import {classBonusOf,startingBuild} from '../src/rules/index.ts';
+import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
@@ -239,6 +239,8 @@ export class Simulation {
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}
+  /** The current run's rotation (D-040) as roster ids; [] until the director draws it on the run's first step. */
+  rotationIds():string[]{const r=this.systems.director.state.rotation;return r?rotationIds(r):[];}
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
   /**
@@ -509,6 +511,12 @@ export class Simulation {
     const p=this.players.get(id);
     if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
     return this.systems.stonewards.upgrade(this.world,id,defenseId,branch,requestId);
+  }
+  /** torres-ajustes: repairs a standing defense below its maxHp (the sim's rule: reach, intermission, material). */
+  repair(id:string,defenseId:string,requestId?:string):TowerResult{
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
+    return this.systems.stonewards.repair(this.world,id,defenseId,requestId);
   }
   /**
    * Gather nodes near any player with a body, only in a real intermission (round 1+): the union of every client's area

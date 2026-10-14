@@ -4,8 +4,16 @@
  * step calls `defensesStep`, and its single structure damage path (`hit`, D-017) reaches `damageDefense`.
  *
  * - Where: only on the build sites of the room's terrain (sites.ts: the city and the endless map; none on the island).
- * - When: building and upgrading only in the intermission (round phase 'prepare'), by a standing player, while the
- *   wall stands. No reach rule yet: the build menu (torres-hud) works from anywhere; torres-fio may add one.
+ * - When: building, upgrading and repairing only in the intermission (round phase 'prepare'), by a standing player,
+ *   while the wall stands.
+ * - Reach (torres-ajustes): only a player within BUILD_REACH of what the order names may give it: the site's largest
+ *   footprint (build), the rail's rectangle (laying it, a Gustavão on it), the footprint of the defense's site
+ *   (upgrade, repair); 'away' otherwise. A sim rule, so the offline run and the rooms obey it alike; the build menu
+ *   (torres-hud) may still offer any site, the sim refuses from afar.
+ * - Repair (torres-ajustes): `repair` mirrors the forge's barricade repair ('reparo' with a target): REPAIR_FRACTION of
+ *   the defense's maxHp per order (rounded up, capped at maxHp), at once, for TOWER_REPAIR_COST units paid like the
+ *   towers (payUnits). Any standing defense under its maxHp (under construction too); a ruin never (it already frees
+ *   its site: build a new Vigia there).
  * - Limits: DEFENSE_LIMIT standing defenses (ruins do not count) and GUSTAVAO_LIMIT Gustavão per run.
  * - Fire: only in combat (phase 'wave'), instant hits through ctx.damageEnemy (the central path), no source player (the
  *   defenses belong to the team, so no hero's might scales them; the weapon id is the defense id). The radar's bonus,
@@ -26,7 +34,9 @@ import {isStanding} from '../revive.ts';
 import {isFlying} from '../enemies/catalog.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
-import type {BuildPlan} from './sites.ts';
+import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
+import {REPAIR_FRACTION} from '../stonewards/forge.ts';
+import {RECIPES} from '../../rules/index.ts';
 
 export interface DefenseState extends Point {
   id:string;kind:DefenseId;
@@ -59,8 +69,16 @@ export interface TowersState {
   gustavoes:number;
 }
 
-export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate';
+export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate'|'away'|'full';
 export type TowerResult={ok:true;defense:string;kind:DefenseId|typeof RAIL.id;cost:number}|{ok:false;reason:TowerRefusal};
+
+/**
+ * Reach (u): a player builds, evolves or repairs only within this distance of the footprint's edge (the site's largest
+ * footprint, the rail's rectangle). About an arm and a step: the hero stands next to the obra, not across the plaza.
+ */
+export const BUILD_REACH=3;
+/** A repair order costs what the forge's 'reparo' costs (5 units), paid from either pile (payUnits). */
+export const TOWER_REPAIR_COST=RECIPES.reparo.cost.coco+RECIPES.reparo.cost.pedra;
 
 const ID_PREFIX='defesa';
 /** Remembered request ids share the forge's list (stonewards handled), under this prefix. */
@@ -72,6 +90,17 @@ const towersOf=(state:StonewardsState):TowersState=>state.defenses??=({list:[],g
 export const standingDefenses=(state:StonewardsState)=>(state.defenses?.list??[]).filter(d=>!d.ruined);
 export function defensePhase(d:DefenseState,tick:number):DefensePhase{return phaseOf(d,tick);}
 export const railReady=(state:StonewardsState,tick:number)=>!!state.defenses?.rail&&tick>=state.defenses.rail.readyTick;
+
+/** Where an order is given from: the site's largest footprint, the rail's rectangle, a defense's site (or its own disc). */
+export function siteRect(plan:BuildPlan,siteId:string):Rect|undefined{
+  if(plan.rail&&siteId===plan.rail.id)return railRect(plan.rail,plan.cell);
+  const site=plan.sites.find(s=>s.id===siteId);
+  return site?footprint(site,site.maxSize,plan.cell):undefined;
+}
+const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>siteRect(plan,d.site)??{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
+/** True when the player stands within BUILD_REACH of `rect` (the reach rule). */
+export function withinReach(rect:Rect,p:Point):boolean{return rectDistance(rect,p)<=BUILD_REACH;}
+const near=(ctx:SimContext,playerId:string,rect:Rect)=>{const p=ctx.players.get(playerId);return !!p&&withinReach(rect,p);};
 
 function common(ctx:SimContext,state:StonewardsState,playerId:string):TowerRefusal|undefined{
   if(state.wallDown)return 'wall-down';
@@ -103,6 +132,7 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
     if(no)return {ok:false,reason:no};
     if(plan.rail&&siteId===plan.rail.id){
       if(state.defenses?.rail)return {ok:false,reason:'occupied'};
+      if(!near(ctx,playerId,railRect(plan.rail,plan.cell)))return {ok:false,reason:'away'};
       if(!payUnits(state.balance,RAIL.cost))return {ok:false,reason:'balance'};
       towersOf(state).rail={owner:playerId,startTick:ctx.tick,readyTick:ctx.tick+ticks(RAIL.buildSeconds)};
       return {ok:true,defense:plan.rail.id,kind:RAIL.id,cost:RAIL.cost};
@@ -114,6 +144,7 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
     const root=DEFENSES[ROOT_DEFENSE];
     if(root.size!>site.maxSize)return {ok:false,reason:'size'};
     if(standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limit'};
+    if(!near(ctx,playerId,footprint(site,site.maxSize,plan.cell)))return {ok:false,reason:'away'};
     if(!payUnits(state.balance,root.cost))return {ok:false,reason:'balance'};
     const towers=towersOf(state);
     towers.list=towers.list.filter(d=>d.site!==site.id);
@@ -149,6 +180,8 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
       const site=plan.sites.find(s=>s.id===d.site);
       if(!site||next.size!>site.maxSize)return {ok:false,reason:'size'};
     }
+    // The Gustavão is ordered from the Obuseiro's site (where the hero stands with it), not from the rail.
+    if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
     if(!payUnits(state.balance,next.cost))return {ok:false,reason:'balance'};
     if(next.rail){
       const rail=plan.rail!;
@@ -157,6 +190,26 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
     }else d.r=radiusOn(plan,next.size!);
     d.kind=next.id;d.owner=playerId;d.hp=d.maxHp=next.hp;d.startTick=ctx.tick;d.readyTick=ctx.tick+ticks(next.buildSeconds);d.fireTick=d.readyTick;
     return {ok:true,defense:d.id,kind:d.kind,cost:next.cost};
+  });
+}
+
+/**
+ * Repairs a standing defense below its maxHp (torres-ajustes): +REPAIR_FRACTION of maxHp (rounded up, capped), at once,
+ * for TOWER_REPAIR_COST units; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
+ * too ('full'), and so is a player out of reach ('away').
+ */
+export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,requestId?:string):TowerResult{
+  return once(state,playerId,requestId,()=>{
+    const no=common(ctx,state,playerId);
+    if(no)return {ok:false,reason:no};
+    const d=state.defenses?.list.find(x=>x.id===defenseId);
+    if(!d)return {ok:false,reason:'defense'};
+    if(d.ruined)return {ok:false,reason:'ruined'};
+    if(d.hp>=d.maxHp)return {ok:false,reason:'full'};
+    if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
+    if(!payUnits(state.balance,TOWER_REPAIR_COST))return {ok:false,reason:'balance'};
+    d.hp=Math.min(d.maxHp,d.hp+Math.ceil(d.maxHp*REPAIR_FRACTION));
+    return {ok:true,defense:d.id,kind:d.kind,cost:TOWER_REPAIR_COST};
   });
 }
 

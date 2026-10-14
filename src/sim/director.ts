@@ -20,7 +20,7 @@
  */
 import type {TerrainField} from '../maps/index.ts';
 import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
-import {MAX_ENEMIES} from '../rules/index.ts';
+import {MAX_ENEMIES,roleOf} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
@@ -31,7 +31,7 @@ import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,ty
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawRotation,drawTheme,isRotation,planRound,roundRoster,
   type RoundPlan,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
-import {SUMMON,hashUnit} from './enemies/catalog.ts';
+import {BAND_CADENCE,BAND_DAMAGE,SUMMON,enemyDef,hashUnit} from './enemies/catalog.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
@@ -198,6 +198,8 @@ export interface Director extends SimSystem {
   summon(ctx:SimContext,kind:string,at:Point):EnemyState|undefined;
   /** Kinds an invocador calls this round: the rotation's corredores and enxames of the round; undefined without a rotation. */
   minionKinds():readonly string[]|undefined;
+  /** The chefe's summons when the rotation is art only (short): its shooters, rats and brutamontes; undefined otherwise. */
+  bossMinionKinds():readonly string[]|undefined;
 }
 
 const BAND_MAX=2.2;
@@ -745,6 +747,17 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
         if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
       }
+      // BUG-20261013-E8: the exit fields are hero-size; a body wider than the hero (an elite tio-pavê, 0.78) whose own
+      // disc does not fit their way out (the strip north of mouth N) stood there until the liveness cap and held the
+      // round open. Still stuck, it squeezes by the hero rule (like the steer's `fit`, E1), the same two ways.
+      if(e.radius>RADIUS&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+        e.x=x0;e.y=y0;planner!.retreatDirection(e,retreatDir);via=planner!;
+        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),RADIUS);
+        if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
+          e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
+          if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,RADIUS);
+        }
+      }
       const end=avenueEnd(ctx,via.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.
@@ -931,7 +944,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(let i=0;i<count;i++){
       // City: the planner's exact spot (walkable, hidden, outside the base); no jitter.
       const p=isCity&&entry.points?.[i]?entry.points[i]:placeInGroup(ctx,center,i);
-      const enemy=options.createEnemy(ctx,entry.members[i],p,entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp);
+      // A borrowed entry (art only, decision D) plays at its band's numbers: hp here, damage and cadence via its memory.
+      const tune=!entry.elite&&!entry.solo&&plan.borrowed?.roles.includes(roleOf(entry.members[i])!)?plan.borrowed.tune:undefined;
+      const enemy=options.createEnemy(ctx,entry.members[i],p,(entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp)*(tune?.hp??1));
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
       enemy.speed*=plan.speed;enemy.radius*=plan.size*(entry.elite?ELITE_SIZE:1);
@@ -940,7 +955,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(entry.elite)enemy.elite=true;
       // Tutorial (cidade-08): the plaza group holds the plaza until a hero comes (citySteer PLAZA_HOLD_FLAG).
       const holds=entry.group===TUTORIAL_WELCOME&&tutorialRound(ctx);
-      enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{}),...(holds?{[PLAZA_HOLD_FLAG]:1}:{})};
+      enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{}),...(holds?{[PLAZA_HOLD_FLAG]:1}:{}),
+        ...(tune?{[BAND_DAMAGE]:tune.damage,[BAND_CADENCE]:tune.cadence}:{})};
       state.tracked.push(enemy.id);state.spawned++;
     }
     // Enemy cap reached: the rest comes a second later, with a fresh warning.
@@ -962,7 +978,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const index=ctx.round.index,theme=state.theme!;
     const tutorial=tutorialRound(ctx);
     const roster=state.rotation?roundRoster(state.rotation,index):undefined;
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
+    const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    // The tutorial's pace is the bêbado's (TUTORIAL_PLAN.speed on his catalog speed): other fodder walks at it too.
+    if(tutorial&&fodder?.length)plan={...plan,speed:plan.speed*enemyDef('bebado').speed/enemyDef(fodder[0]).speed};
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
     // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
     if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
@@ -1119,6 +1139,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       enemy.memory={...enemy.memory,round:plan.index};
       state.tracked.push(enemy.id);state.spawned++;
       return enemy;
+    },
+    bossMinionKinds(){
+      const r=state.rotation;if(!r||!roundRoster(r,ROUND_COUNT).short)return undefined;
+      const kinds=[...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]];
+      return kinds.length?kinds:undefined;
     },
     minionKinds(){
       if(!state.rotation)return undefined;

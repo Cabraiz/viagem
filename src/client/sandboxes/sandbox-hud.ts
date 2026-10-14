@@ -224,8 +224,9 @@ function load(next:HudScenario){
     document.body.dataset.hudReady='1';
   });
   else document.body.dataset.hudReady='1';
-  // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
-  if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
+  // Combat with the compact panel open: D-050's level-up pause (the room's RunState.pause), 9 s of 12 left, the whole
+  // team still picking. Every other scenario runs unpaused.
+  hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
 }
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).

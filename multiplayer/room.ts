@@ -95,10 +95,14 @@ export interface RoomOptions {
   objective?:ObjectiveKind|false;
 }
 /**
- * D-047: the city rooms' objective when RoomOptions.objective is absent. Off (the wall mode) until the chaveiro is
- * balanced: the first calibrated bench (8 seeds) won 2/8 with 1 player but 1/8 with 6 (minimum to turn it on: 2/8).
+ * D-047: the city rooms' objective when RoomOptions.objective is absent: the chaveiro, since it is balanced
+ * (balanco-pos-1-7 part B, CI bench, 16 seeds, 30 min cap): the car v1 (alarm per contact, boss 2 hits, solo ETA) won
+ * 1p 6/16 and 6p 11/16 with no car lost (from 1/16 and 6/16), Executor-6's economy (eco-v9: bill R$ 25 + 3 per hit,
+ * bots keep 1.3× it) brought the victories with debt under a third. It had been off (the wall mode) until then: the
+ * first calibrated bench (8 seeds) won 2/8 with 1 player but 1/8 with 6. false (RoomOptions.objective) still plays the
+ * wall mode.
  */
-export const CITY_OBJECTIVE_DEFAULT:ObjectiveKind|false=false;
+export const CITY_OBJECTIVE_DEFAULT:ObjectiveKind|false='chaveiro';
 /** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
 export const mapMissingText=(names:string[])=>`${names.join(', ')} ${names.length>1?'precisam':'precisa'} atualizar a página antes de trocar o mapa.`;
 /**

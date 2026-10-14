@@ -17,8 +17,8 @@
  *   the Gustavão's line holds only that reserve from the forge; without `towers` (the protocol bots) nothing changes;
  * - money (D-048): roots and the Gustavão are paid in material (fichas de torre: CampView.units), evolutions, tower
  *   repairs and the forge in the team's Grana (CampView.grana). With the chaveiro objective the Grana also pays his
- *   bill at the end, so no Grana is spent below granaReserve (CHAVEIRO_KEEP_SHARE of the bill, the whole bill from
- *   CHAVEIRO_SAVE_ETA on);
+ *   bill at the end, so no Grana is spent below granaReserve (always CHAVEIRO_KEEP_SHARE = 1.3 × the bill; the
+ *   CHAVEIRO_SAVE_ETA "whole bill near the end" branch is off at −1);
  * - offers: picks the default card after a human-ish reaction (longer in combat, where the offer is a chip);
  * - fallen: asks for help ("Me salva") every few seconds.
  * In the city (cidade-10, terrain.world === 'cidade') the long walks (home, the crate, a fallen friend, the person
@@ -29,7 +29,8 @@
  * when its pulls cancel out (HOLD_BELOW), and a roamer hunts the wave's last few critters (HUNT_LEFT). Everywhere else
  * the bot is the same as before, byte for byte.
  * Chaveiro objective (D-047, the room bots: BrainInput.teamBots, view.objective): home is the car ('quadradao'); with
- * the moto dead ('morta') the PUSH_BOTS standing bots nearest to it walk over and stand by it (the tranco); with a
+ * the moto dead ('morta') and at least PUSH_BOTS players standing, the PUSH_BOTS standing bots nearest to it walk over
+ * and stand by it (the tranco; a bot alone keeps the car, the moto starts by itself); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
  */
@@ -82,12 +83,13 @@ type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal';
 /** D-047: bots that push a dead moto, and how close (u) they stand to it (inside the sim's PUSH_RADIUS, 2.5). */
 export const PUSH_BOTS=2,PUSH_STAND=1.5;
 /**
- * D-048, the chaveiro's bill (paid = min(Grana, budget) when he opens the car; the rest is debt): the bots keep
- * CHAVEIRO_KEEP_SHARE of the bill from the start (the early evolutions still go through: 36 R$ of a fresh 120 kept, a
- * wave pays more), and the whole bill once the ETA is CHAVEIRO_SAVE_ETA or less (the last ~third of a ~9-10 min ride,
- * when the Grana of the waves left would not cover what an evolution there takes out).
+ * D-048, the chaveiro's bill (paid = min(Grana, budget) when he opens the car; the rest is debt): the bots always keep
+ * CHAVEIRO_KEEP_SHARE × the bill, from the start (1.3: the bill itself plus a margin for the hits still to come, 33 R$
+ * of a fresh R$ 25 bill; balanco-pos-1-7 eco-v9, Executor-6). CHAVEIRO_SAVE_ETA is the ETA (s) from which the reserve
+ * would be the whole bill instead; −1 turns that branch off (an ETA is never negative), since the share already holds
+ * more than the bill.
  */
-export const CHAVEIRO_KEEP_SHARE=.3,CHAVEIRO_SAVE_ETA=180;
+export const CHAVEIRO_KEEP_SHARE=1.3,CHAVEIRO_SAVE_ETA=-1;
 
 export interface BrainMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
@@ -164,7 +166,10 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p));
   const byDistance=(to:Point,list:readonly PlayerRunView[])=>[...list].sort((a,b)=>dist(positionOf(a)!,to)-dist(positionOf(b)!,to)||(a.id<b.id?-1:a.id>b.id?1:0));
   const moto={x:o.moto.x,y:o.moto.y};
-  const pushers=o.moto.mode==='morta'?byDistance(moto,ready).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  // Only a crew can push (PUSH_BOTS standing players, people included): a bot alone would leave the car for nothing
+  // while the moto starts by itself anyway (balanco-pos-1-7 part B: a solo bot stood ~75 s at each dead moto).
+  const crew=view.players.filter(standing).length>=PUSH_BOTS;
+  const pushers=crew&&o.moto.mode==='morta'?byDistance(moto,ready).slice(0,PUSH_BOTS).map(p=>p.id):[];
   if(pushers.includes(selfId))return {kind:'push',at:moto};
   const d=o.delivery;
   if(d&&d.etaS<=DELIVERY_MARK_SECONDS){
@@ -180,8 +185,8 @@ export function forgerId(view:RunView):string|undefined{
 }
 
 /**
- * The Grana (R$) the bots never spend below (D-048): with the chaveiro objective running, the share of his bill kept
- * (CHAVEIRO_KEEP_SHARE, rounded up), or the whole bill once his ETA is CHAVEIRO_SAVE_ETA or less; the bill grows with
+ * The Grana (R$) the bots never spend below (D-048): with the chaveiro objective running, CHAVEIRO_KEEP_SHARE × his
+ * bill (rounded up; 1.3, more than the bill), or the whole bill once his ETA is CHAVEIRO_SAVE_ETA or less (off at −1); the bill grows with
  * the car's hits (budget), the reserve with it. 0 without the objective (no bill in the other worlds) or once it ended.
  * Deterministic: the view's objective only.
  */

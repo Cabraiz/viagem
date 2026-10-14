@@ -1,6 +1,9 @@
 /** Port of the simulation sector: the server's core and systems, as the rooms (multiplayer/) use them. */
 export * from './assemble.ts';
 export * from './bot-brain.ts';
+// D-047: the chaveiro objective (state, numbers, system) and its route.
+export * from './chaveiro/system.ts';
+export {buildRoute,pointAt,type Route} from './chaveiro/route.ts';
 export * from './context.ts';
 export * from './core.ts';
 export * from './director.ts';

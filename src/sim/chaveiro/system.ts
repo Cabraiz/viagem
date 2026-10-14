@@ -1,0 +1,385 @@
+/**
+ * D-047, the match objective "esperar o chaveiro" (card NEW-20261013-ORQ-objetivo-chaveiro, approved proposal
+ * viagem-board/plans/objetivo-chaveiro-proposta.md). City only, on with RunSystemsOptions.objective === 'chaveiro'.
+ *
+ * - The car (CAR_ID, 'quadradao') stands where the wall stands and replaces it as the siege target (D-017 path: the
+ *   enemy-ai's hitStructure, the boss's siege). Each contact is CAR_HIT_UNITS hits (normal 1, elite 3, boss 3), adds
+ *   BUDGET_PER_HIT to the budget and ALARM_PER_HIT of alarm (at most ALARM_MAX ahead); CAR_LIMIT hits = perda total
+ *   (defeat). Parts fall at CAR_PART_AT of the limit.
+ * - The moto rides a route built once from the run seed and the asset (route.ts): entrance = one avenue end drawn with
+ *   the run's stream, length / MOTO_RIDE_SECONDS u/s. Stops in route order: 'morta' at MORTA_AT (two standing players
+ *   within PUSH_RADIUS for PUSH_SECONDS accumulated, or MORTA_ALONE_SECONDS by itself), LOMBADAS speed bumps
+ *   (LOMBADA_SECONDS at LOMBADA_PACE), ENTREGAS deliveries (ENTREGA_SECONDS, ENTREGA_CLEAN_SECONDS when no enemy is within ENTREGA_RADIUS
+ *   on arrival). While the alarm sounds he rides around the block ('volta': nothing advances, except a dead moto). An
+ *   enemy touching the riding moto knocks it over (TOMBO_SECONDS, then TOMBO_GAP_SECONDS without another). At the car:
+ *   ABRINDO_SECONDS 'abrindo', then victory.
+ * - Dona Cida sells the team's sweets (buy) and, every SALE_GAP_SECONDS, one to an enemy near the moto ("açucarado").
+ * - Team Grana: GRANA_PER_KILL per kill. The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
+ * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
+ * span and the boss's spawn are fractions of the route length; radii around bodies (push, Cida, lure, the delivery's
+ * clean check, the car) stay in u.
+ * Everything in ChaveiroState is JSON-safe (systems.state(), checkpoints, stateHash); the route is rebuilt.
+ */
+import type {FlowGrid,Point} from '../../maps/index.ts';
+import {CAR_ID,CAR_PARTS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
+  type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type SimPlayer} from '../../contract/index.ts';
+import {SIM_HZ} from '../../contract/index.ts';
+import type {SimContext} from '../context.ts';
+import {isStanding} from '../revive.ts';
+import {SUGAR} from '../enemies/catalog.ts';
+import {buildRoute,pointAt,type Route} from './route.ts';
+
+// ---------- Numbers (proposal §2; E6 calibrates) ----------
+/** Riding time of the whole route without stops: speed = route length / this (time-based, not heroSpeed). */
+export const MOTO_RIDE_SECONDS=420;
+export const CAR_LIMIT=120,BUDGET_BASE=120,BUDGET_PER_HIT=8;
+export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:3});
+export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
+/** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
+export const CAR_PART_AT:readonly number[]=Object.freeze([.25,.5,.75,.9]);
+export const CAR_RADIUS=1,MOTO_RADIUS=.5;
+/** The moto stops this far (u) before the car's centre. */
+export const CAR_STOP=CAR_RADIUS+MOTO_RADIUS+.3;
+export const MORTA_AT:readonly number[]=Object.freeze([.25,.55,.8]);
+export const PUSH_PLAYERS=2,PUSH_RADIUS=2.5,PUSH_SECONDS=4,MORTA_ALONE_SECONDS=75;
+/**
+ * Speed bumps, relative to the map (a scaled city keeps the same timings): crawled at LOMBADA_PACE × the moto's speed
+ * for LOMBADA_SECONDS, so each spans LOMBADA_PACE × LOMBADA_SECONDS / MOTO_RIDE_SECONDS of the route. (The proposal's
+ * "3 u at 0.28 u/s" was faster than the moto itself on the real city, whose route is 78-91 u: ~0.19-0.22 u/s.)
+ */
+export const LOMBADAS=3,LOMBADA_PACE=.5,LOMBADA_SECONDS=11;
+export const ENTREGAS=3,ENTREGA_SECONDS=25,ENTREGA_CLEAN_SECONDS=6,ENTREGA_RADIUS=6;
+export const TOMBO_SECONDS=4,TOMBO_GAP_SECONDS=6;
+/** Siege enemies within this (u) of the riding moto, and nearer than every player, go for it (enemy-ai reach). */
+export const MOTO_LURE_REACH=6;
+export const ABRINDO_SECONDS=15;
+export const CIDA_HANDLED_LIMIT=64;
+export const CIDA_STOCK=4,CIDA_REACH=3,SALE_GAP_SECONDS=20,SALE_RADIUS=3;
+export const GRANA_PER_KILL=Object.freeze({normal:1,elite:5,boss:50});
+export const BOSS_ETA_SECONDS=60;
+/** The boss appears on the route this fraction of its length back from the car and marches to it. */
+export const BOSS_SPAWN_BACK=.3;
+/** Stops (and a bump's span) keep at least this fraction of the route from each other, when the route allows. */
+export const STOP_GAP=.06;
+/** Span (u) of a speed bump on a route of `length` u. */
+export const lombadaLength=(length:number)=>length*LOMBADA_PACE*LOMBADA_SECONDS/MOTO_RIDE_SECONDS;
+
+export type Entrance='N'|'S'|'L'|'O';
+export const ENTRANCES:readonly Entrance[]=Object.freeze(['N','S','L','O']);
+type Task='anda'|'lombada'|'entrega'|'morta'|'abrindo';
+export interface ChaveiroStop {kind:ObjectiveStopKind;s:number}
+/** JSON-safe objective state (RunSystemsState.chaveiro). */
+export interface ChaveiroState {
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number};
+  /**
+   * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
+   * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
+   * abrindo); stop: index of the next stop; push: tranco ticks accumulated; tomboUntil / tomboReady: the fall's end and
+   * the first tick another fall may happen.
+   */
+  moto:{s:number;mode:MotoMode;task:Task;left:number;stop:number;push:number;tomboUntil:number;tomboReady:number};
+  route:{from:Entrance};
+  grana:number;budget:number;
+  cida:{stock:number[];nextSaleTick:number};
+  /** `playerId:requestId` of purchases already applied (a resent {t:'cida'} applies once), the last CIDA_HANDLED_LIMIT. */
+  handled:string[];
+  /** Tick of the first step (the chaveiro left); null before it. */
+  startTick:number|null;
+  bossCalled:boolean;
+  ended?:'victory'|'defeat';
+  endTick?:number;
+  /** Seconds he still needed when it ended. */
+  endEta?:number;
+}
+
+export interface ChaveiroOptions {
+  /** The run seed: the entrance and the stops are drawn from Rng(seed).fork('chaveiro'). */
+  seed:number;
+  /** Hero-walkability grid of the city without barricades (the moto rides through the plaza mouths). */
+  grid:FlowGrid;
+  /** The avenue ends (asset points spawnN/S/L/O). */
+  entrances:Readonly<Record<Entrance,Point>>;
+  /** Where the car stands (the wall's spot). */
+  car:Point;
+  onOutcome(outcome:'victory'|'defeat'):void;
+  /** The run already ended some other way (the team fell): no outcome is reported then. */
+  runEnded?():boolean;
+  /** Calls the boss once, when the ETA drops below BOSS_ETA_SECONDS, at this point of the route. */
+  spawnBoss?(ctx:SimContext,at:Point):void;
+}
+
+export interface ChaveiroSystem {
+  readonly state:ChaveiroState;
+  readonly route:Route;
+  readonly stops:readonly ChaveiroStop[];
+  /** Runs once a tick (assemble.ts: right after the 'structures' system). */
+  step(ctx:SimContext):void;
+  /** Siege targets: the car until the end, the moto while it rides (with MOTO_LURE_REACH). */
+  targets():{id:string;x:number;y:number;radius:number;reach?:number}[];
+  /** An enemy's (or the boss's) contact with the car. */
+  hitCar(ctx:SimContext,enemy:EnemyState):void;
+  /** A team purchase from Dona Cida (room command). */
+  buy(ctx:SimContext,playerId:string,item:string,requestId?:string):CidaBuyResult;
+  onKill(enemy:EnemyState):void;
+  /** Seconds until the car is open at the planned stops. */
+  eta(tick:number):number;
+  view(tick:number):ObjectiveView;
+  /**
+   * The bill for the result screen: the chaveiro's own end (opened: victory; car: defeat) or, when the run ended some
+   * other way, `outcome` (the room's: 'defeat' = the team fell, 'timeout' = the D-043 cap). Undefined while nothing ended.
+   */
+  result(tick:number,round:{index:number;total:number},outcome?:'victory'|'defeat'|'timeout'):ObjectiveResult|undefined;
+  /** The moto's position now. */
+  moto():Point;
+}
+
+const SALE_GAP=ticks(SALE_GAP_SECONDS),PUSH_TICKS=ticks(PUSH_SECONDS);
+const unitsOf=(e:EnemyState)=>e.boss?'boss':e.elite?'elite':'normal';
+const retreating=(e:EnemyState)=>e.memory?.retreat===1;
+
+/** The entrance and the stops of a run: a pure function of the seed and the route (the entrance is drawn first). */
+export function planChaveiro(seed:number,grid:FlowGrid,entrances:Readonly<Record<Entrance,Point>>,car:Point,from?:Entrance){
+  const rng=new Rng(seed>>>0).fork('chaveiro');
+  const drawn=rng.pick(ENTRANCES),entrance=from??drawn;
+  const route=buildRoute(grid,entrances[entrance],car,CAR_STOP),L=route.length,bump=lombadaLength(L);
+  const lengthOf=(k:ObjectiveStopKind)=>k==='lombada'?bump:0;
+  const stops:ChaveiroStop[]=MORTA_AT.map(f=>({kind:'morta' as const,s:f*L}));
+  const fits=(s:number,kind:ObjectiveStopKind,gap:number)=>stops.every(o=>s>=o.s+lengthOf(o.kind)+gap||s+lengthOf(kind)+gap<=o.s);
+  const place=(kind:ObjectiveStopKind)=>{
+    const lo=.08*L,hi=Math.max(lo,.92*L-lengthOf(kind));
+    let s=lo;
+    for(const gap of [STOP_GAP*L,STOP_GAP*L/2]){
+      for(let t=0;t<40;t++){s=rng.range(lo,hi);if(fits(s,kind,gap)){stops.push({kind,s});return;}}
+    }
+    stops.push({kind,s});
+  };
+  for(let i=0;i<ENTREGAS;i++)place('entrega');
+  for(let i=0;i<LOMBADAS;i++)place('lombada');
+  stops.sort((a,b)=>a.s-b.s||(a.kind<b.kind?-1:a.kind>b.kind?1:0));
+  return {from:entrance,route,stops};
+}
+
+export function createChaveiroState(car:Point,from:Entrance):ChaveiroState{
+  return {
+    car:{x:car.x,y:car.y,hits:0,limit:CAR_LIMIT,parts:0,alarmUntil:0},
+    moto:{s:0,mode:'anda',task:'anda',left:0,stop:0,push:0,tomboUntil:0,tomboReady:0},
+    route:{from},grana:0,budget:BUDGET_BASE,
+    cida:{stock:CIDA_ITEMS.map(()=>CIDA_STOCK),nextSaleTick:0},handled:[],
+    startTick:null,bossCalled:false,
+  };
+}
+
+/** `restore`: a checkpointed ChaveiroState (deep-copied by the caller); the route comes back from the seed and its `from`. */
+export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):ChaveiroSystem{
+  const plan=planChaveiro(options.seed,options.grid,options.entrances,options.car,restore?.route.from);
+  const {route,stops}=plan,L=route.length;
+  const state=restore??createChaveiroState(options.car,plan.from);
+  const speed=L/(MOTO_RIDE_SECONDS*SIM_HZ);
+  const bumpSpeed=speed*LOMBADA_PACE,bump=lombadaLength(L);
+  const pos:Point={x:0,y:0},at=(s:number)=>pointAt(route,s,pos);
+  const near:EnemyState[]=[];
+  const moto=state.moto,car=state.car;
+
+  const alarmed=(tick:number)=>tick<car.alarmUntil&&moto.task!=='morta';
+  const fallen=(tick:number)=>tick<moto.tomboUntil;
+  const shown=(tick:number):MotoMode=>alarmed(tick)?'volta':fallen(tick)?'tombo':moto.task;
+  const riding=()=>moto.task==='anda'||moto.task==='lombada';
+
+  function end(ctx:SimContext,outcome:'victory'|'defeat'){
+    if(state.ended)return;
+    state.endEta=outcome==='victory'?0:Math.ceil(eta(ctx.tick));
+    state.ended=outcome;state.endTick=ctx.tick;
+    if(!options.runEnded?.())options.onOutcome(outcome);
+  }
+  /** Seconds of riding from `s` to the end of the route (speed bumps ahead at their pace). */
+  function rideTicks(s:number,from:number){
+    let t=0,cur=s;
+    for(let i=from;i<stops.length;i++){
+      const o=stops[i];if(o.kind!=='lombada'||o.s+bump<=cur)continue;
+      const start=Math.max(cur,o.s),stop=Math.min(L,o.s+bump);
+      t+=Math.max(0,start-cur)/speed+Math.max(0,stop-start)/bumpSpeed;cur=Math.max(cur,stop);
+    }
+    return t+Math.max(0,L-cur)/speed;
+  }
+  function eta(tick:number){
+    if(state.ended)return 0;
+    let t=0;
+    if(alarmed(tick))t+=car.alarmUntil-tick;
+    if(fallen(tick))t+=moto.tomboUntil-tick;
+    let next=moto.stop;
+    switch(moto.task){
+      case 'abrindo':return (t+moto.left)/SIM_HZ;
+      case 'morta':t+=Math.min(moto.left,PUSH_TICKS-moto.push);next++;break;
+      case 'entrega':t+=moto.left;next++;break;
+      case 'lombada':next++;break;
+    }
+    // A bump being ridden counts in rideTicks (from its own index).
+    t+=rideTicks(moto.s,moto.task==='lombada'?moto.stop:next);
+    for(let i=next;i<stops.length;i++){
+      const k=stops[i].kind;
+      if(k==='morta')t+=PUSH_TICKS;else if(k==='entrega')t+=ticks(ENTREGA_SECONDS);
+    }
+    return (t+ticks(ABRINDO_SECONDS))/SIM_HZ;
+  }
+  /** The moto reaches stop `i`. */
+  function begin(ctx:SimContext,stop:ChaveiroStop){
+    if(stop.kind==='morta'){moto.task='morta';moto.left=ticks(MORTA_ALONE_SECONDS);moto.push=0;return;}
+    if(stop.kind==='lombada'){moto.task='lombada';return;}
+    const p=at(stop.s);
+    ctx.enemyIndex.query(p.x,p.y,ENTREGA_RADIUS+1,near);
+    const dirty=near.some(e=>e.hp>0&&ctx.enemies.has(e.id)&&!retreating(e)&&Math.hypot(e.x-p.x,e.y-p.y)<=ENTREGA_RADIUS);
+    moto.task='entrega';moto.left=ticks(dirty?ENTREGA_SECONDS:ENTREGA_CLEAN_SECONDS);
+  }
+  function next(){moto.task='anda';moto.stop++;moto.left=0;moto.push=0;}
+  function ride(ctx:SimContext){
+    switch(moto.task){
+      case 'anda':{
+        moto.s+=speed;
+        const stop=stops[moto.stop];
+        if(stop&&moto.s>=stop.s){moto.s=stop.s;begin(ctx,stop);}
+        else if(moto.s>=L){
+          moto.s=L;moto.task='abrindo';moto.left=ticks(ABRINDO_SECONDS);
+          ctx.emit({type:'moto',mode:'chegou'});
+        }
+        return;
+      }
+      case 'lombada':{
+        const stop=stops[moto.stop];
+        moto.s=Math.min(L,moto.s+bumpSpeed);
+        if(moto.s>=stop.s+bump||moto.s>=L)next();
+        return;
+      }
+      case 'morta':{
+        const p=at(moto.s);let pushing=0;
+        for(const player of ctx.players.values())if(isStanding(player)&&Math.hypot(player.x-p.x,player.y-p.y)<=PUSH_RADIUS)pushing++;
+        if(pushing>=PUSH_PLAYERS)moto.push++;
+        moto.left--;
+        if(moto.push>=PUSH_TICKS){next();ctx.emit({type:'moto',mode:'tranco'});}
+        else if(moto.left<=0){next();ctx.emit({type:'moto',mode:'tranco',alone:true});}
+        return;
+      }
+      case 'entrega':if(--moto.left<=0)next();return;
+      case 'abrindo':if(--moto.left<=0)end(ctx,'victory');return;
+    }
+  }
+  function tombo(ctx:SimContext){
+    if(!riding()||ctx.tick<moto.tomboReady)return;
+    const p=at(moto.s);
+    ctx.enemyIndex.query(p.x,p.y,MOTO_RADIUS+1.5,near);
+    for(const e of near){
+      if(!(e.hp>0)||!ctx.enemies.has(e.id)||retreating(e)||e.boss)continue;
+      if(!(Math.hypot(e.x-p.x,e.y-p.y)<=e.radius+MOTO_RADIUS+.05))continue;
+      moto.tomboUntil=ctx.tick+ticks(TOMBO_SECONDS);moto.tomboReady=moto.tomboUntil+ticks(TOMBO_GAP_SECONDS);
+      return;
+    }
+  }
+  function sale(ctx:SimContext){
+    if(ctx.tick<state.cida.nextSaleTick)return;
+    const p=at(moto.s);
+    const buyer=ctx.enemyIndex.nearest(p.x,p.y,SALE_RADIUS,e=>e.hp>0&&ctx.enemies.has(e.id)&&!e.boss&&!retreating(e));
+    if(!buyer)return;
+    (buyer as EnemyState&{sugarUntil?:number}).sugarUntil=ctx.tick+SUGAR.duration;
+    state.cida.nextSaleTick=ctx.tick+SALE_GAP;
+    ctx.emit({type:'sale',enemy:buyer.id});
+  }
+
+  const system:ChaveiroSystem={
+    state,route,stops,eta,
+    moto:()=>({...at(moto.s)}),
+    step(ctx){
+      if(state.ended)return;
+      state.startTick??=ctx.tick;
+      const before=moto.mode;
+      if(!alarmed(ctx.tick)){
+        if(!fallen(ctx.tick))tombo(ctx);
+        if(!fallen(ctx.tick))ride(ctx);
+      }
+      if(state.ended)return;
+      sale(ctx);
+      if(!state.bossCalled&&eta(ctx.tick)<BOSS_ETA_SECONDS){
+        state.bossCalled=true;
+        options.spawnBoss?.(ctx,{...pointAt(route,L*(1-BOSS_SPAWN_BACK))});
+      }
+      moto.mode=shown(ctx.tick);
+      if(moto.mode!==before&&moto.mode!=='anda')ctx.emit({type:'moto',mode:moto.mode});
+    },
+    targets(){
+      if(state.ended)return [];
+      const out:{id:string;x:number;y:number;radius:number;reach?:number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS}];
+      if(riding()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
+      return out;
+    },
+    hitCar(ctx,enemy){
+      if(state.ended)return;
+      // The last blow counts only the hits left to the limit (the bill stays base + R$ 8 per hit taken).
+      const units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)],car.limit-car.hits);
+      car.hits+=units;state.budget+=BUDGET_PER_HIT*units;
+      const silent=ctx.tick>=car.alarmUntil;
+      car.alarmUntil=Math.min(ctx.tick+ticks(ALARM_MAX_SECONDS),Math.max(car.alarmUntil,ctx.tick)+ticks(ALARM_PER_HIT_SECONDS)*units);
+      if(silent)ctx.emit({type:'alarm',untilTick:car.alarmUntil});
+      ctx.emit({type:'structure',id:CAR_ID,hp:car.limit-car.hits,maxHp:car.limit});
+      CAR_PART_AT.forEach((f,i)=>{
+        if(car.parts&1<<i||car.hits<f*car.limit)return;
+        car.parts|=1<<i;ctx.emit({type:'part',name:CAR_PARTS[i]});
+      });
+      if(car.hits>=car.limit)end(ctx,'defeat');
+    },
+    buy(ctx,playerId,itemId,requestId){
+      const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
+      if(key!==undefined&&state.handled.includes(key))return {ok:false,reason:'duplicate'};
+      const index=CIDA_ITEMS.findIndex(i=>i.id===itemId);
+      if(index<0)return {ok:false,reason:'item'};
+      const item=CIDA_ITEMS[index],player=ctx.players.get(playerId);
+      if(state.ended||!player||!isStanding(player))return {ok:false,reason:'phase'};
+      const p=at(moto.s);
+      if(!(Math.hypot(player.x-p.x,player.y-p.y)<=CIDA_REACH))return {ok:false,reason:'away'};
+      if(state.cida.stock[index]<=0)return {ok:false,reason:'stock'};
+      if(state.grana<item.price)return {ok:false,reason:'grana'};
+      state.grana-=item.price;state.cida.stock[index]--;
+      if(key!==undefined){state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);}
+      const field=item.effect==='speed'?'fastUntil':item.effect==='damage'?'mightUntil':'guardUntil';
+      const p2=player as SimPlayer;
+      p2[field]=Math.max(p2[field]??0,ctx.tick+ticks(item.seconds));
+      ctx.emit({type:'buy',player:playerId,item:item.id as CidaItemId});
+      return {ok:true,item:item.id,grana:state.grana};
+    },
+    onKill(enemy){state.grana+=GRANA_PER_KILL[unitsOf(enemy)];},
+    view(tick){
+      const p=at(moto.s);
+      let delivery:ObjectiveView['delivery'];
+      const first=moto.task==='entrega'?moto.stop:stops.findIndex((o,i)=>i>=moto.stop&&o.kind==='entrega');
+      if(first>=0&&stops[first]?.kind==='entrega'){
+        const o=stops[first],q=pointAt(route,o.s);
+        // The ride (with bumps) and the stops before it, as the ETA counts them.
+        let t=alarmed(tick)?car.alarmUntil-tick:0;
+        if(fallen(tick))t+=moto.tomboUntil-tick;
+        if(moto.task!=='entrega'){
+          if(moto.task==='morta')t+=Math.min(moto.left,PUSH_TICKS-moto.push);
+          t+=rideTicks(moto.s,moto.stop)-rideTicks(o.s,first);
+          for(let i=moto.task==='morta'?moto.stop+1:moto.stop;i<first;i++)if(stops[i].kind==='morta')t+=PUSH_TICKS;else if(stops[i].kind==='entrega')t+=ticks(ENTREGA_SECONDS);
+        }
+        delivery={x:q.x,y:q.y,etaS:Math.ceil(Math.max(0,t)/SIM_HZ)};
+      }
+      return {
+        kind:'chaveiro',
+        moto:{x:p.x,y:p.y,mode:moto.mode,...(moto.task==='morta'?{push:Math.min(1,moto.push/PUSH_TICKS)}:{})},
+        route:route.points.map(q=>({x:q.x,y:q.y})),
+        stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
+        etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:state.grana,budget:state.budget,stock:[...state.cida.stock],
+        ...(delivery?{delivery}:{}),
+        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts},
+        ...(state.ended?{ended:state.ended}:{}),
+      };
+    },
+    result(tick,round,outcome){
+      const own=state.ended;
+      if(!own&&!outcome)return undefined;
+      const out=own??outcome!,cause:ObjectiveCause=own?(own==='victory'?'opened':'car'):outcome==='timeout'?'timeout':'team';
+      const endTick=state.endTick??tick,paid=Math.min(state.grana,state.budget);
+      return {kind:'chaveiro',outcome:out,cause,wave:round.index,extraWaves:Math.max(0,round.index-round.total),
+        eta:own?state.endEta??0:Math.ceil(eta(tick)),seconds:(endTick-(state.startTick??endTick))/SIM_HZ,
+        hits:car.hits,limit:car.limit,budget:state.budget,grana:state.grana,paid,debt:Math.max(0,state.budget-state.grana),parts:car.parts};
+    },
+  };
+  return system;
+}

@@ -9,7 +9,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,decodeCityAsset,worldBase,CITY_NEST_POOL,cityNestPlan,drawNests,validateNestPlan,routeDistance,quadrantOf,
-  NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_SLEEPERS,NEST_YARD_RADIUS,LOOSE_TOTAL,LOOSE_NEAR_ROUTE,TRAINING_FROM_CAR,
+  buildingNestSize,scaleSleepers,NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_SLEEPERS,NEST_YARD_RADIUS,LOOSE_TOTAL,LOOSE_NEAR_ROUTE,TRAINING_FROM_CAR,
   type NestPlan,
 } from '../../src/maps/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
@@ -37,7 +37,11 @@ test('every pool spot is a nest the city can hold: far from the car and all four
     assert.ok(Math.hypot(s.x-car.x,s.y-car.y)>=NEST_FROM_CAR,`${s.id} a ≥ ${NEST_FROM_CAR} u do carro`);
     for(const r of ROUTES)assert.ok(routeDistance(s,r)>=NEST_FROM_ROUTE,`${s.id} a ≥ ${NEST_FROM_ROUTE} u das rotas`);
     if(s.kind==='terreno')assert.ok(city.clearDisc(s.x,s.y,NEST_YARD_RADIUS[s.maxSize]),`${s.id}: o pátio cabe ${s.maxSize}`);
-    else assert.ok(city.asset.blocks.some(b=>b.id===s.block&&b.kind==='building'),`${s.id}: ${s.block} é prédio`);
+    else{
+      const b=city.asset.blocks.find(k=>k.id===s.block&&k.kind==='building');
+      assert.ok(b,`${s.id}: ${s.block} é prédio`);
+      assert.equal(buildingNestSize(b!.bbox[2],b!.bbox[3]),s.maxSize,`${s.id}: o tamanho do prédio`);
+    }
   }
   const quads=new Set(CITY_NEST_POOL.filter(s=>Math.hypot(s.x-start.x,s.y-start.y)>=NEST_FROM_START).map(s=>quadrantOf(s,car)));
   assert.equal(quads.size,4,'with the start keep-out, every quadrant still has a spot');
@@ -57,6 +61,23 @@ test('the population: 110 asleep in the nests and 60 loose for one player, ≤ 3
     assert.equal(looseOf(one),LOOSE_TOTAL,`seed ${seed}: soltos`);
     assert.ok(sleepersOf(six)+looseOf(six)<=320,`seed ${seed}: 6 jogadores ≤ 320 (${sleepersOf(six)+looseOf(six)})`);
     assert.ok(sleepersOf(six)+looseOf(six)>sleepersOf(one)+looseOf(one),`seed ${seed}: mais gente, mais bicho`);
+  }
+});
+
+test('2 to 5 players: the exact scaled totals, still a valid plan', () => {
+  for(const seed of SEEDS.slice(0,6))for(const players of [2,3,4,5]){
+    const plan=cityNestPlan(city,seed,{players,routes:ROUTES,start});
+    assert.deepEqual(validateNestPlan(plan,city,{routes:ROUTES,start}),[],`seed ${seed}, ${players} jogadores`);
+    assert.equal(looseOf(plan),scaleSleepers(LOOSE_TOTAL,players),`seed ${seed}, ${players}: soltos`);
+  }
+});
+
+test('a start in a corner (no eligible spot left in its quadrant) still draws 8 nests, all clear of it', () => {
+  const corner={x:60,y:50};
+  for(const seed of SEEDS.slice(0,8)){
+    const nests=drawNests(seed,car,corner);
+    assert.equal(nests.length,NEST_COUNT);
+    assert.ok(nests.every(n=>Math.hypot(n.spot.x-corner.x,n.spot.y-corner.y)>=NEST_FROM_START),`seed ${seed}`);
   }
 });
 
@@ -90,4 +111,12 @@ test('the validator catches a nest on the moto\'s route, one by the car and a ba
   const reasons=validateNestPlan(broken,city,{routes:ROUTES,start}).map(p=>p.reason).join(' | ');
   assert.match(reasons,/rota da moto/);
   assert.match(reasons,/do carro/);
+  const big=plan.nests.find(n=>n.kind==='predio'&&n.size==='P');
+  if(big){
+    const swollen:NestPlan={...plan,nests:plan.nests.map(n=>n===big?{...n,size:'G' as const}:n)};
+    assert.match(validateNestPlan(swollen,city,{routes:ROUTES,start}).map(p=>p.reason).join(' | '),/não cabe um ninho G/);
+  }
+  const lonely:NestPlan={...plan,loose:plan.loose.map((b,i)=>i===plan.loose.length-1?{...b,members:b.members.slice(0,1)}:b)};
+  const why=validateNestPlan(lonely,city,{routes:ROUTES,start}).map(p=>p.reason).join(' | ');
+  assert.match(why,/bando de um só/);assert.match(why,/soltos \(quero/);
 });

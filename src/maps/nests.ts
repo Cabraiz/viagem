@@ -56,7 +56,7 @@ const SLEEPER_GAP=1.2;
 
 /*
  * The pool (u), measured on the asset v2 with the four possible chaveiro routes (scan of 14/10): each centre ≥ 60 u from
- * the car and ≥ 35 u from every route; a building is a nest by its bbox (its min side: ≥ 15 u G, ≥ 8 u M, else P), a
+ * the car and ≥ 35 u from every route; a building is a nest by its bbox (buildingNestSize: its shorter side ≥ 14.5 u G, ≥ 8 u M, else P), a
  * yard by the disc it holds (NEST_YARD_RADIUS). Pairs closer than NEST_SPACING never come out together (the draw skips).
  */
 const POOL_ROWS:readonly (readonly [NestKind,number,number,NestSize,string?])[]=[
@@ -74,6 +74,8 @@ export const CITY_NEST_POOL:readonly NestSpot[]=Object.freeze(POOL_ROWS.map(([ki
   Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})})));
 
 const RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
+/** A building hosts a nest of up to this size by its bbox's shorter side (u): ≥ 14.5 G (10 asset cells), ≥ 8 M, else P. */
+export const buildingNestSize=(w:number,h:number):NestSize=>Math.min(w,h)>=14.5?'G':Math.min(w,h)>=8?'M':'P';
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 /** The quadrant of `p` around the car: N/S by y, O/E (oeste/leste) by x. */
 export const quadrantOf=(p:Point,car:Point)=>`${p.y<car.y?'N':'S'}${p.x<car.x?'O':'E'}` as 'NO'|'NE'|'SO'|'SE';
@@ -101,15 +103,17 @@ function shuffle<T>(items:readonly T[],rng:Rng):T[]{
 export function drawNests(seed:number,car:Point,start?:Point,all:readonly NestSpot[]=CITY_NEST_POOL):{spot:NestSpot;size:NestSize}[]{
   // The whole pool is shuffled and the spots too near the start skipped while picking: the start never changes the dice.
   const rng=new Rng(seed>>>0).fork('ninhos'),pool=all,eligible=(s:NestSpot)=>!start||dist(s,start)>=NEST_FROM_START;
+  // Every quadrant that still has an eligible spot gets a nest (all four with today's start).
+  const quads=(['NO','NE','SO','SE'] as const).filter(q=>pool.some(s=>eligible(s)&&quadrantOf(s,car)===q));
   for(let attempt=0;attempt<256;attempt++){
     const order=shuffle(pool,rng),chosen:NestSpot[]=[];
     // One per quadrant first (in the shuffled order), then the rest.
-    for(const q of ['NO','NE','SO','SE'] as const){
+    for(const q of quads){
       const s=order.find(o=>eligible(o)&&quadrantOf(o,car)===q&&chosen.every(c=>dist(c,o)>=NEST_SPACING));
       if(s)chosen.push(s);
     }
     for(const s of order)if(eligible(s)&&chosen.length<NEST_COUNT&&!chosen.includes(s)&&chosen.every(c=>dist(c,s)>=NEST_SPACING))chosen.push(s);
-    if(chosen.length<NEST_COUNT||new Set(chosen.map(c=>quadrantOf(c,car))).size<4)continue;
+    if(chosen.length<NEST_COUNT||new Set(chosen.map(c=>quadrantOf(c,car))).size<quads.length)continue;
     // Sizes: G to G-capable spots, M to M-or-better, P to the rest (shuffled picks).
     const sized=new Map<NestSpot,NestSize>(),free=shuffle(chosen,rng);
     for(const size of ['G','M','P'] as const)for(let k=0;k<NEST_MIX[size];k++){
@@ -119,17 +123,18 @@ export function drawNests(seed:number,car:Point,start?:Point,all:readonly NestSp
     if(sized.size<NEST_COUNT)continue;
     return chosen.map(spot=>({spot,size:sized.get(spot)!}));
   }
-  throw new Error('ninhos: pool cannot give 8 spaced nests over the 4 quadrants');
+  throw new Error('ninhos: pool cannot give 8 spaced nests over the quadrants');
 }
 
 /** `count` spots for bodies around `centre` within [inner, outer] u, on ground that fits a body and reaches the car, spaced. */
-function scatter(city:CityTerrain,reach:FlowField,rng:Rng,centre:Point,inner:number,outer:number,count:number,out:Point[]=[]):Point[]{
+function scatter(city:CityTerrain,reach:FlowField,rng:Rng,centre:Point,inner:number,outer:number,count:number,taken:Point[]):Point[]{
+  const out:Point[]=[];
   for(let tries=0;out.length<count&&tries<count*80;tries++){
     const a=rng.range(0,Math.PI*2),r=rng.range(inner,outer);
     const p={x:Math.round((centre.x+r*Math.cos(a))*100)/100,y:Math.round((centre.y+r*Math.sin(a))*100)/100};
     if(!city.clearDisc(p.x,p.y,SLEEPER_CLEAR)||!walkable(p,city)||!reach.reachable(p.x,p.y))continue;
-    if(out.some(o=>dist(o,p)<SLEEPER_GAP))continue;
-    out.push(p);
+    if(taken.some(o=>dist(o,p)<SLEEPER_GAP))continue;
+    out.push(p);taken.push(p);
   }
   return out;
 }
@@ -141,12 +146,12 @@ const half=(r:{w:number;h:number})=>Math.hypot(r.w,r.h)/2;
  */
 export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOptions={}):NestPlan{
   const players=Math.max(1,Math.min(6,options.players??1)),car=worldBase(city),rng=new Rng(seed>>>0).fork('ninhos-corpos');
-  const grid=cityGrid(city),reach=new FlowField(grid,[car],{wallPenalty:0});
+  const grid=cityGrid(city),reach=new FlowField(grid,[car],{wallPenalty:0}),taken:Point[]=[];
   const nests:Nest[]=drawNests(seed,car,options.start).map(({spot,size})=>{
     const box=bboxOf(city,spot.block),count=scaleSleepers(NEST_SLEEPERS[size],players);
     const radius=box?half(box):NEST_YARD_RADIUS[size];
     // A building's sleepers lie around its walls (1.5–6 u out); a yard's inside its disc.
-    const sleepers=box?scatter(city,reach,rng,spot,radius+1.5,radius+6,count):scatter(city,reach,rng,spot,1,radius-1,count);
+    const sleepers=box?scatter(city,reach,rng,spot,radius+1.5,radius+6,count,taken):scatter(city,reach,rng,spot,1,radius-1,count,taken);
     return Object.freeze({id:spot.id,kind:spot.kind,x:spot.x,y:spot.y,size,...(spot.block?{block:spot.block}:{}),radius,sleepers:Object.freeze(sleepers)});
   });
   const loose:LooseBand[]=[];
@@ -156,7 +161,7 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
     const far=rng.range(TRAINING_FROM_CAR[0],TRAINING_FROM_CAR[1]),out=new FlowField(grid,[P[`spawn${k}`]],{wallPenalty:0});
     const p={...P.bocas[k]},d={x:0,y:0};
     for(let step=0;step<400&&dist(p,car)<far;step++){out.directionAt(p.x,p.y,d);p.x+=d.x*.5;p.y+=d.y*.5;}
-    const members=scatter(city,reach,rng,p,0,2.5,scaleSleepers(TRAINING_MEMBERS,players));
+    const members=scatter(city,reach,rng,p,0,2.5,scaleSleepers(TRAINING_MEMBERS,players),taken);
     loose.push(Object.freeze({x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,training:true,members:Object.freeze(members)}));
   }
   // The rest on the loot points first, then on open ground (every LOOSE_SCAN u): far from the car, the nests and each
@@ -170,7 +175,9 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
     if(nests.some(n=>dist(p,n)<n.radius+LOOSE_FROM_NEST)||loose.some(b=>dist(p,b)<LOOSE_SPACING))continue;
     const near=routes.map((r,i)=>routeDistance(p,r)<LOOSE_NEAR_ROUTE?i:-1).filter(i=>i>=0);
     if(near.some(i=>nearRoute[i]>=1))continue;
-    const members=scatter(city,reach,rng,p,0,2.5,Math.min(left,rng.int(2,4)));
+    // Bands of 2–4: never leave a last band of one behind.
+    let want=Math.min(left,rng.int(2,4));if(left-want===1)want+=want<4?1:-1;
+    const members=scatter(city,reach,rng,p,0,2.5,want,taken);
     if(!members.length)continue;
     near.forEach(i=>nearRoute[i]++);left-=members.length;
     loose.push(Object.freeze({x:p.x,y:p.y,training:false,members:Object.freeze(members)}));
@@ -215,7 +222,9 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     for(const r of routes)if(routeDistance(n,r)<NEST_FROM_ROUTE)bad(n.id,`a ${routeDistance(n,r).toFixed(1)} u de uma rota da moto`);
     for(let j=i+1;j<plan.nests.length;j++)if(dist(n,plan.nests[j])<NEST_SPACING)bad(n.id,`perto de ${plan.nests[j].id}`);
     if(n.kind==='terreno'&&!city.clearDisc(n.x,n.y,NEST_YARD_RADIUS[n.size]))bad(n.id,`o pátio não cabe um ninho ${n.size}`);
-    if(n.kind==='predio'&&!bboxOf(city,n.block))bad(n.id,`prédio ${n.block} não existe`);
+    const box=n.kind==='predio'?bboxOf(city,n.block):undefined;
+    if(n.kind==='predio'&&!box)bad(n.id,`prédio ${n.block} não existe`);
+    if(box&&RANK[buildingNestSize(box.w,box.h)]<RANK[n.size])bad(n.id,`o prédio ${n.block} não cabe um ninho ${n.size}`);
     const want=scaleSleepers(NEST_SLEEPERS[n.size],plan.players);
     if(n.sleepers.length!==want)bad(n.id,`${n.sleepers.length} dormindo (quero ${want})`);
   });
@@ -229,6 +238,16 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     if(b.training&&(d<TRAINING_FROM_CAR[0]-1||d>TRAINING_FROM_CAR[1]+1))bad(id,`treino a ${d.toFixed(1)} u do carro`);
     if(!b.training&&d<LOOSE_FROM_CAR)bad(id,`a ${d.toFixed(1)} u do carro`);
     if(plan.nests.some(n=>dist(b,n)<n.radius+LOOSE_FROM_NEST))bad(id,'em cima de um ninho');
+  });
+  const loose=plan.loose.reduce((k,b)=>k+b.members.length,0),wantLoose=scaleSleepers(LOOSE_TOTAL,plan.players);
+  if(loose!==wantLoose)bad('plano',`${loose} soltos (quero ${wantLoose})`);
+  const training=plan.loose.filter(b=>b.training),wantTraining=scaleSleepers(TRAINING_MEMBERS,plan.players);
+  if(training.length!==TRAINING_BANDS)bad('plano',`${training.length} bandos de treino (quero ${TRAINING_BANDS})`);
+  training.forEach(b=>{if(b.members.length!==wantTraining)bad('treino',`${b.members.length} no bando de treino (quero ${wantTraining})`);});
+  plan.loose.forEach((b,i)=>{if(!b.training&&b.members.length<2)bad(`bando-${i+1}`,'bando de um só');});
+  routes.forEach((r,k)=>{
+    const near=plan.loose.filter(b=>!b.training&&routeDistance(b,r)<LOOSE_NEAR_ROUTE).length;
+    if(near>1)bad('plano',`${near} bandos perto da rota ${k+1} (quero ≤ 1)`);
   });
   if(start)plan.loose.forEach((b,i)=>{if(!b.training&&dist(b,start)<LOOSE_FROM_START)bad(`bando-${i+1}`,'perto de onde o time nasce');});
   return problems;

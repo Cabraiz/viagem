@@ -64,9 +64,6 @@ async function workerHealth(endpoint){
   try{const r=await fetch(`${endpoint}/health`,{signal:AbortSignal.timeout(5000)});return {ok:r.ok,ms:Date.now()-t0};}
   catch{return {ok:false,ms:Date.now()-t0};}
 }
-/** The entries that hang their page on purpose (--travar, see the header), and the entries so far. */
-const HANG=new Set(String(arg('travar','')).split(',').map(Number).filter(n=>n>0));
-let entries=0;
 /** A page poll that never hangs: undefined after EVAL_TIMEOUT_MS (answered: false), or when the page threw/reloaded. */
 const poll=(p,fn,arg,ms=EVAL_TIMEOUT_MS)=>Promise.race([p.evaluate(fn,arg).then(v=>({v,answered:true}),()=>({v:undefined,answered:true})),new Promise(r=>setTimeout(()=>r({v:undefined,answered:false}),ms))]);
 /** The page's event-loop probe (added before any script): a PROBE_MS timer counting its fires since the last read. */
@@ -77,6 +74,9 @@ const MODES={normal:'',chaveiro:'?modo=chaveiro'};
 const modes=arg('modes','normal,chaveiro').split(',').filter(m=>m in MODES);
 /** --upgrade-from <checkout>: the returning-player run (see the upgrade mode below); its dist/ must be built. */
 const upgradeFrom=arg('upgrade-from',undefined);
+/** The entries that hang their page on purpose (--travar, see the header), and the entries so far. */
+const HANG=new Set(String(arg('travar','')).split(',').map(Number).filter(n=>n>0));
+let entries=0;
 const outDir=process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')));
 /** A failure of the machine, not of the game: exit 2. */
 class Infra extends Error {}

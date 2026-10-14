@@ -10,6 +10,7 @@ import {forgePriceLabel,granaText} from '../../src/client/hud/price.ts';
 import {FIXTURE_HERO,fakeView} from '../../src/client/hud/fixtures.ts';
 import {RECIPES,RECIPE_IDS,forgePrice,type RecipeId} from '../../src/rules/index.ts';
 import type {CampView,RunView} from '../../src/contract/view.ts';
+import {CAR_ID} from '../../src/contract/index.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
 
 const G=RECIPES.gambiarra.cost,C=RECIPES['torre-chinelo'].cost,R=RECIPES.reparo.cost;
@@ -103,4 +104,17 @@ test('the tag locks and the refusal names the shortfall at the inflated price',(
   assert.equal(blockedReason('gambiarra',view({units:0,grana:2*G,forge:bought}),'p1'),undefined,'exactly the inflated price');
   assert.equal(missing({grana:G,forge:bought},'gambiarra'),`Falta ${granaText(G)}.`);
   assert.equal(missing({grana:0,forge:{gambiarra:4}},'reparo'),`Falta ${granaText(R)}.`,'the repair at its base');
+});
+
+test('chaveiro mode (D-047): no wall in the view, the car stands at the base: the forge still opens there (E4\'s finding)',()=>{
+  withDom(()=>{
+    const part=createCamp({onForge:()=>1});
+    const base=fakeView('camp-forge',1),wall=base.structures.find(s=>s.kind==='muralha')!;
+    const view:RunView={...base,camp:{units:0,grana:1000},
+      structures:[...base.structures.filter(s=>s.kind!=='muralha'),{id:CAR_ID,kind:CAR_ID,x:wall.x,y:wall.y,hp:120,maxHp:120}]};
+    part.setHero(FIXTURE_HERO['camp-forge']);
+    part.update(view,{localId:'p1'} as HudContext);
+    assert.equal((part.forge as unknown as FakeEl).hidden,false,'the forge window opens at the car');
+    part.destroy();
+  });
 });

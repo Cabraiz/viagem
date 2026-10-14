@@ -16,6 +16,7 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
+import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
@@ -280,7 +281,8 @@ export function createCamp(options:CampOptions):CampPart{
     lastFraction=fraction;
     // ---------- notice ----------
     const me=view.players.find(p=>p.id===ctxId),standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed;
-    home=inCamp(hero,wall);
+    // Chaveiro mode (D-047): the car stands where the wall was (the sim's forge checks that spot), and there is no wall.
+    home=inCamp(hero,wall??view.structures.find(s=>s.kind===CAR_ID));
     if(warning&&performance.now()<warning.until){
       notice.hidden=false;notice.dataset.kind='wall';noticeText.textContent=warning.text;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
     }else if(prepare&&camp.hornEndsTick!==undefined&&standing){

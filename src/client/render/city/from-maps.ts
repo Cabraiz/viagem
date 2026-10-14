@@ -43,11 +43,15 @@ export const CLIFF_LIP_HEIGHT=0.35;
 /** Prop footprint radius clamp (world units); the render drops r <= 0. */
 export const PROP_R_MIN=0.1,PROP_R_MAX=0.8;
 /**
- * Same-kind props closer than this (world units) are one doodad stacked several times in the .w3x: a lamp per
- * street spot (2.5 u: street lamps stand farther apart; the .w3x clusters them 1–2 u apart), the rest only when they
- * truly overlap.
+ * Props closer than PROP_STACK (world units) to one already kept, whatever the kind, are one doodad stacked several
+ * times in the .w3x (a stacked `prop` hashes to a different kind per copy: lamp, barrel, crate…).
  */
-export const PROP_DEDUP:Readonly<Record<PropKind,number>>={lamp:2.5,pine:0.3,car:0.3,rubble:0.3,crate:0.3,barrel:0.3,bench:0.3,debris:0.3};
+export const PROP_STACK=0.5;
+/**
+ * Same-kind props closer than this are dropped too: a lamp per street spot (2.5 u: street lamps stand farther apart;
+ * the .w3x clusters them 1–2 u apart); the rest only by PROP_STACK.
+ */
+export const PROP_DEDUP:Readonly<Record<PropKind,number>>={lamp:2.5,pine:PROP_STACK,car:PROP_STACK,rubble:PROP_STACK,crate:PROP_STACK,barrel:PROP_STACK,bench:PROP_STACK,debris:PROP_STACK};
 
 /** maps prop kind → render prop kind(s); several = chosen per prop by hash; null = not drawn as a prop. */
 const PROP_KINDS:Readonly<Record<string,readonly PropKind[]|null>>={
@@ -225,9 +229,10 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
     if(cx<0||cy<0||cx>=W||cy>=H||cover[cy*W+cx]!==COVER_NONE)continue;
     const kind=options.length===1?options[0]:options[hash(id,'kind')%options.length];
     // One prop per spot (proporcoes-postes-predios): the .w3x stacks doodads (5 lamps within 1 u by the start); a
-    // prop of the same kind closer than PROP_DEDUP to one already kept is dropped (the first in source order stays).
+    // prop closer than PROP_STACK to one already kept, or of the same kind closer than PROP_DEDUP, is dropped (the first
+    // in source order stays).
     const near=PROP_DEDUP[kind];
-    if(props.some(o=>o.kind===kind&&Math.hypot(o.x-q.x,o.y-q.y)<near))continue;
+    if(props.some(o=>{const d=Math.hypot(o.x-q.x,o.y-q.y);return d<PROP_STACK||(o.kind===kind&&d<near);}))continue;
     props.push({id,kind,x:q.x,y:q.y,r:Math.min(PROP_R_MAX,Math.max(PROP_R_MIN,q.r))});
   }
 

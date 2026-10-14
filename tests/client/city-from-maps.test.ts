@@ -5,7 +5,7 @@ import {CityTerrain,decodeCityAsset,type CityAsset as MapsCityAsset} from '../..
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {HEIGHT_PX} from '../../src/client/render/city/projection.ts';
 import {
-  AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_DEDUP,PROP_R_MAX,PROP_R_MIN,
+  AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_DEDUP,PROP_STACK,PROP_R_MAX,PROP_R_MIN,
   RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,
 } from '../../src/client/render/city/from-maps.ts';
 
@@ -221,12 +221,18 @@ test('props: kinds mapped, radius clamped, ids stable, none inside a block',()=>
   for(const k of ['crate','barrel','bench','lamp'])assert.ok(kinds.has(k),`generic props spread over ${k}`);
 });
 
-test('props (proporcoes-postes-predios): one per spot — no two of a kind closer than PROP_DEDUP; a stacked doodad keeps its first copy',()=>{
-  for(const a of city.props)for(const b of city.props)
-    if(a!==b&&a.kind===b.kind)assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
+test('props (proporcoes-postes-predios): one per spot — no two closer than PROP_STACK, none of a kind closer than PROP_DEDUP; a stacked doodad keeps its first copy',()=>{
+  for(const a of city.props)for(const b of city.props){
+    if(a===b)continue;
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    assert.ok(d>=PROP_STACK,`${a.id} (${a.kind}) and ${b.id} (${b.kind}) stacked`);
+    if(a.kind===b.kind)assert.ok(d>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
+  }
   // The .w3x stacks 5 lamps within 1 u by the start: one stays, the one first in source order.
   const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3,p.y-160)<1.25);
   assert.equal(lamps.length,1);
+  // The same stack also hashes copies to barrel, crate and bench: those go with it.
+  assert.deepEqual(city.props.filter(p=>Math.hypot(p.x-lamps[0].x,p.y-lamps[0].y)<PROP_STACK).map(p=>p.id),[lamps[0].id]);
   const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3,p.y-160)<1.5&&p.kind==='prop');
   assert.ok(sources.length>=3,'the source does stack them');
 });

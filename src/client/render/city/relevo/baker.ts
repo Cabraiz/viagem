@@ -92,17 +92,19 @@ export class CityRelief {
     if(tex.exists(ALBEDO_KEY)){ready();return;}
     const load=this.scene.load;
     // A failed download keeps the procedural ground (never a black square).
-    const failed=(file:{key?:string})=>{if(file?.key===ALBEDO_KEY){this.albedoSettled=true;load.off('loaderror',failed);}};
+    const failed=(file:{key?:string})=>{if(file?.key===ALBEDO_KEY){this.albedoSettled=true;load.off('loaderror',failed);load.off(`filecomplete-image-${ALBEDO_KEY}`);}};
     const start=()=>{
       if(tex.exists(ALBEDO_KEY)){ready();return;}
       load.image(ALBEDO_KEY,ALBEDO_URL);
-      load.once(`filecomplete-image-${ALBEDO_KEY}`,()=>{load.off('loaderror',failed);ready();});
+      const done=()=>{load.off('loaderror',failed);ready();};
+      load.once(`filecomplete-image-${ALBEDO_KEY}`,done);
       load.on('loaderror',failed);
       load.start();
     };
-    // Its own batch, after whatever the loader is doing (the city's building sheets on a map switch): joining that batch
-    // would hold its COMPLETE (the sheets' refresh) for the atlas's ~0.5 MB.
-    if(load.isLoading())load.once(Phaser.Loader.Events.COMPLETE,start);else start();
+    // Its own batch, after whatever the loader does now or in this frame (on a map switch the scene queues the city's
+    // building sheets right after making the layer: joining that batch would hold its COMPLETE, the sheets' refresh,
+    // for the atlas's ~0.4 MB). So: decided on the next update, then started at once or after that batch.
+    this.scene.events.once(Phaser.Scenes.Events.UPDATE,()=>{if(load.isLoading())load.once(Phaser.Loader.Events.COMPLETE,start);else start();});
   }
   private get renderer(){return this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;}
   /** Uploads the textures and listens for a lost WebGL context (its scratch targets are made again on the next bake). */

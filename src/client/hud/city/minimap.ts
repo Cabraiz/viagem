@@ -6,7 +6,7 @@
  * carry the meaning with the colour (UX B8): clover = group, disc = person, ring = caído, tent = base, wave = active
  * mouth, skull = boss. Pure geometry and marks first, one DOM class below.
  */
-import {CIDADE_NEVADA_WC3,CITY_MAP_SCALE,SCALE_PROFILES,minimapPoint,crosses,icon,type Rect} from './deps.ts';
+import {CIDADE_NEVADA_WC3,CITY_MAP_SCALE,SCALE_PROFILES,minimapPoint,crosses,icon,routeAhead,motoNeedsTeam,CAR_LOW,type Rect,type ChaveiroView} from './deps.ts';
 import {clusterEnemies,GROUP_SHOW,groupCountText,type EnemyPoint} from './clusters.ts';
 import {MINIMAP_SIDE} from './layout.ts';
 
@@ -45,7 +45,8 @@ export function cityMinimapPoint(p:{x:number;y:number},view:CityView,side=MINIMA
   return {x:q.x,y:q.y};
 }
 
-export type CityMarkKind='voce'|'aliado'|'caido'|'base'|'boca'|'boca-ativa'|'grupo'|'chefe'|'inicio';
+/** D-047 (chaveiro): 'carro' (the Quadradão at the plaza, in place of the base), 'moto' and the next 'entrega'. */
+export type CityMarkKind='voce'|'aliado'|'caido'|'base'|'boca'|'boca-ativa'|'grupo'|'chefe'|'inicio'|'carro'|'moto'|'entrega';
 export interface CityMark {key:string;kind:CityMarkKind;
   /** Minimap px from the box centre. */
   x:number;y:number;
@@ -58,7 +59,9 @@ export interface CityMark {key:string;kind:CityMarkKind;
   /** Caído: a "Me salva" ping is lit (Papel halo). */
   ping?:boolean;
   /** Boca: the avenue's direction at the mouth (radians on the minimap), so its tick crosses the avenue. */
-  angle?:number}
+  angle?:number;
+  /** Moto: it needs the team (dead: 2 to push; fallen): Cone. */
+  danger?:boolean}
 export interface CityMinimapInput {
   map:CityMapInfo;view:CityView;
   /** Box side in px (76 collapsed; the big one's side when open). */
@@ -74,15 +77,17 @@ export interface CityMinimapInput {
   screen?:readonly {x:number;y:number}[];
   /** Reconnecting (B13): marks stay still at 50% with `sem-linha` in a corner. */
   offline?:boolean;
+  /** D-047: the chaveiro objective (ObjectiveView): the car replaces the base's mark; the moto, its route ahead and the next delivery. */
+  chaveiro?:Pick<ChaveiroView,'moto'|'car'|'route'|'delivery'|'ended'>;
 }
 
 /** Bottom to top (doc §1 table); você always on top. */
-export const CITY_DRAW_ORDER:Readonly<Record<CityMarkKind,number>>={inicio:0,boca:1,grupo:2,aliado:3,base:4,'boca-ativa':5,chefe:6,caido:7,voce:8};
+export const CITY_DRAW_ORDER:Readonly<Record<CityMarkKind,number>>={inicio:0,boca:1,grupo:2,aliado:3,base:4,carro:4,entrega:4.3,moto:4.6,'boca-ativa':5,chefe:6,caido:7,voce:8};
 /**
  * Smallest outer size per mark in the collapsed box (px, stroke included); the big box draws them 1.5× (not to map scale).
  * At this size an ally stays a dot, never a face avatar (rostos-hud: a face does not read under ~24 px).
  */
-export const CITY_MARK_SIZE:Readonly<Record<Exclude<CityMarkKind,'grupo'>,number>>={inicio:5,boca:5,aliado:6,base:16,'boca-ativa':12,chefe:11,caido:11,voce:9};
+export const CITY_MARK_SIZE:Readonly<Record<Exclude<CityMarkKind,'grupo'>,number>>={inicio:5,boca:5,aliado:6,base:16,'boca-ativa':12,chefe:11,caido:11,voce:9,carro:14,moto:11,entrega:7};
 /** Clover size by count: 8 (3–9), 10 (10–24), 12 (25+); below 8 px the three dots read as one dot in the 76 px box. */
 export const groupMarkSize=(count:number)=>count>=25?12:count>=10?10:8;
 /** Marks scale in the big box. */
@@ -104,12 +109,29 @@ export function cityMinimapMarks(input:CityMinimapInput):CityMark[]{
   for(const g of clusterEnemies(input.enemies.filter(e=>!e.boss)))if(g.count>=GROUP_SHOW)add(`grupo:${g.key}`,'grupo',g,groupMarkSize(g.count),{count:g.count});
   for(const p of input.players)if(p.id!==input.selfId&&!p.downed)add(`p:${p.id}`,'aliado',p,CITY_MARK_SIZE.aliado);
   const hp=input.baseHp?Math.min(1,Math.max(0,input.baseHp.hp/Math.max(1,input.baseHp.maxHp))):undefined;
-  add('base','base',map.plaza,CITY_MARK_SIZE.base,hp===undefined?{}:{hp});
+  const ch=input.chaveiro;
+  if(ch){
+    // The car stands where the base was; its ring is the hits left of the limit.
+    const life=ch.car.limit>0?Math.min(1,Math.max(0,1-ch.car.hits/ch.car.limit)):undefined;
+    add('carro','carro',ch.car,CITY_MARK_SIZE.carro,life===undefined?{}:{hp:life});
+    if(ch.delivery&&!ch.ended)add('entrega','entrega',ch.delivery,CITY_MARK_SIZE.entrega);
+    if(!ch.ended)add('moto','moto',ch.moto,CITY_MARK_SIZE.moto,motoNeedsTeam(ch.moto.mode)?{danger:true}:{});
+  }else add('base','base',map.plaza,CITY_MARK_SIZE.base,hp===undefined?{}:{hp});
   for(const e of input.enemies)if(e.boss)add(`chefe:${e.id}`,'chefe',e,CITY_MARK_SIZE.chefe);
   for(const p of input.players)if(p.id!==input.selfId&&p.downed)add(`p:${p.id}`,'caido',p,CITY_MARK_SIZE.caido,p.ping?{ping:true}:{});
   const self=input.players.find(p=>p.id===input.selfId);
   if(self)add('voce','voce',self,CITY_MARK_SIZE.voce);
   return out.sort((a,b)=>CITY_DRAW_ORDER[a.kind]-CITY_DRAW_ORDER[b.kind]||(a.key<b.key?-1:a.key>b.key?1:0));
+}
+
+/**
+ * D-047: the moto's route still ahead (from the moto to the car), in minimap px; empty without the objective, its route
+ * or once it ended.
+ */
+export function cityMinimapRoute(input:CityMinimapInput):{x:number;y:number}[]{
+  const ch=input.chaveiro,side=input.side??MINIMAP_SIDE;
+  if(!ch||ch.ended||!ch.route||ch.route.length<2)return [];
+  return routeAhead(ch.route,ch.moto).map(p=>cityMinimapPoint(p,input.view,side));
 }
 
 /** Groups this big get their count beside the clover in the big minimap. */
@@ -220,6 +242,14 @@ function markShape(m:CityMark):string{
     case 'chefe':return `<g transform="scale(${(s/11).toFixed(2)})"><circle cy="-1" r="4.6"/><rect x="-2.8" y="1.6" width="5.6" height="4" rx="1"/><circle class="ch-mm-eye" cx="-1.7" cy="-1.2" r="1.2"/><circle class="ch-mm-eye" cx="1.7" cy="-1.2" r="1.2"/></g>`;
     case 'boca':{const a=(m.angle??0)+Math.PI/2,dx=Math.cos(a)*s/2,dy=Math.sin(a)*s/2;return `<path d="M${f(-dx)} ${f(-dy)}L${f(dx)} ${f(dy)}"/>`;}
     case 'inicio':return `<rect x="${f(-s/2+.5)}" y="${f(-s/2+.5)}" width="${f(s-1)}" height="${f(s-1)}" transform="rotate(45)"/>`;
+    case 'carro':{
+      // The Quadradão: a square hatch from the side, inside the life ring (hits left).
+      const r=(s-2.5)/2,hp=m.hp,k=s/14;
+      const ring=hp===undefined?'':`<circle class="ch-mm-track" r="${f(r)}"/><circle class="ch-mm-life${hp<CAR_LOW?' ch-mm-low':''}" r="${f(r)}" pathLength="100" stroke-dasharray="${f(hp*100)} 100" transform="rotate(-90)"/>`;
+      return `${ring}<g transform="scale(${f(k)})"><path d="M-4.5 2L-4.5 -.5L-2.5 -.8L-1.5 -3L2.5 -3L3.2 -.8L4.5 -.5L4.5 2Z"/><circle class="ch-mm-roda" cx="-2.4" cy="2.2" r="1.2"/><circle class="ch-mm-roda" cx="2.4" cy="2.2" r="1.2"/></g>`;
+    }
+    case 'moto':{const k=s/11;return `<g transform="scale(${f(k)})"><circle class="ch-mm-roda" cx="-3.2" cy="2" r="2"/><circle class="ch-mm-roda" cx="3.2" cy="2" r="2"/><path d="M-3.5 .5L-1 -2L2 -2L3.5 -3.8L4.6 -3.2L3 1Z"/><rect x="-3.6" y="-5" width="3.4" height="3.4" rx=".6"/></g>`;}
+    case 'entrega':return `<rect x="${f(-s/2+.5)}" y="${f(-s/2+.5)}" width="${f(s-1)}" height="${f(s-1)}" rx="1"/>`;
   }
 }
 
@@ -309,8 +339,11 @@ export class CityMinimap {
     let html='';
     if(big&&input.screen&&input.screen.length>2)html+=`<polygon class="ch-mm-screen" points="${input.screen.map(p=>{const q=at(p);return `${f(q.x)},${f(q.y)}`;}).join(' ')}"/>`;
     if(big)for(const c of (input.chests??[]).slice(0,8)){const q=at(c);html+=`<rect class="ch-mm-bau" x="${f(q.x-3)}" y="${f(q.y-3)}" width="6" height="6"/>`;}
+    // D-047: the moto's route still ahead, under every mark (dashed Papel over a Breu edge).
+    const route=cityMinimapRoute(input);
+    if(route.length>1){const pts=route.map(p=>`${f(p.x)},${f(p.y)}`).join(' ');html+=`<polyline class="ch-mm-rota-borda" points="${pts}"/><polyline class="ch-mm-rota" points="${pts}"/>`;}
     const marks=cityMinimapMarks(input);
-    for(const m of marks)html+=`<g class="ch-mm ch-mm-${m.kind}${m.ping?' ch-mm-ping':''}" transform="translate(${f(m.x)} ${f(m.y)})">${markShape(m)}</g>`;
+    for(const m of marks)html+=`<g class="ch-mm ch-mm-${m.kind}${m.ping?' ch-mm-ping':''}${m.danger?' ch-mm-perigo':''}" transform="translate(${f(m.x)} ${f(m.y)})">${markShape(m)}</g>`;
     // The big one writes the counts of groups of 10 or more (13 px, tnum) in a last layer, over every mark.
     if(big)for(const l of cityMinimapLabels(marks,side))html+=`<text class="ch-mm-num" x="${f(l.x)}" y="${f(l.y)}" text-anchor="${l.anchor}" dominant-baseline="central">${l.text}</text>`;
     face.marks.innerHTML=html;

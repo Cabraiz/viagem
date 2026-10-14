@@ -21,12 +21,13 @@
  * - 'a': every building/rubble sheet is shown twice as large (ART_SCALE/2 instead of 1/ART_SCALE): 1 storey ≈ 2.4 u,
  *   and one footprint cell of the art covers 2×2 city cells (a "1x1" takes a 2×2 lot).
  * - 'b': as delivered (one art cell = one city cell).
- * Blocks are cut into lots (planLots) that each show one sheet; cells no lot covers keep the procedural columns.
+ * Blocks are cut into lots (planLots) that each show one sheet; the cells no lot covers are filled with small pieces,
+ * rubble or a low mound (fillLots): with the art on no building is drawn as the procedural brick column.
  */
 import type {ArtFile,ArtGroup,ArtIndex,ArtPiece} from '../../art/manifest.ts';
 import {groupFileUrl} from '../../art/manifest.ts';
 import type {CityAsset,CityBlock,CityProp,GroundKind,PropKind} from './asset.ts';
-import {hashId} from './chunks.ts';
+import {hashId,type BlockPiece} from './chunks.ts';
 import {ART_SCALE} from './materials.ts';
 import {HEIGHT_PX,TILE_Y} from './projection.ts';
 
@@ -35,7 +36,7 @@ export type CityArtHeight='a'|'b';
  * Building scale in use (see above); `?altura=a|b` overrides it for comparisons. Chosen with prints: 'b'. In the city
  * the hero is drawn at CITY_VIEW_SCALE (≈ 52 px ≈ 1.24 u tall), so the delivered storey (≈ 1.2 u) already reads as "about
  * a hero", which is what D-037 asks; 'a' makes a storey twice the hero and, since a 2×2-cell lot fits in no 1-cell-deep
- * block, leaves about a third of the building cells procedural (mixed looks side by side).
+ * block, leaves about a third of the building cells without a lot (low mounds, fillLots).
  */
 export const CITY_ART_HEIGHT:CityArtHeight='b';
 /** City cells per art footprint cell for each option. */
@@ -191,6 +192,15 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
 
 /** True when the plan paints anything (an empty manifest, or `arte=0`, gives false). */
 export const planHasArt=(plan:CityArtPlan|undefined)=>!!plan&&plan.sheets.length>0;
+/**
+ * True when the plan has building or rubble sheets (any lot pool). Without them (a manifest of props, ground or the
+ * fountain only) the blocks keep the procedural columns: no fill, no mounds (a whole city of mounds would read as
+ * invisible walls).
+ */
+export const planHasBuildingArt=(plan:CityArtPlan|undefined)=>{
+  const b=plan?.buildings;
+  return !!b&&b.intact.length+b.ruin.length+b.rubble.length>0;
+};
 
 /** One sheet on a rectangle of a block (cells), turned by `turns` quarter turns (materials.ts buildingFrame). */
 export interface CityLot {id:string;blockId:string;x:number;y:number;w:number;h:number;sheet:CitySheet;
@@ -207,21 +217,34 @@ export function lotPool(block:Pick<CityBlock,'kind'|'ruined'>,plan:CityArtPlan):
   return block.ruined&&b.ruin.length?b.ruin:b.intact;
 }
 
+/** Footprint shapes of a pool in both orientations (art cells), largest area first, then widest. */
+function poolShapes(pool:readonly CitySheet[]):{w:number;h:number}[]{
+  const shapes=new Map<string,{w:number;h:number}>();
+  for(const s of pool){const [a,b]=s.footprint!;shapes.set(`${a}x${b}`,{w:a,h:b});shapes.set(`${b}x${a}`,{w:b,h:a});}
+  return [...shapes.values()].sort((p,q)=>q.w*q.h-p.w*p.h||q.w-p.w);
+}
+/** A lot of `shape` (art cells, as laid on the block) at cell (x,y): a seeded variant of that footprint and its turns. */
+function seededLot(block:CityBlock,pool:readonly CitySheet[],shape:{w:number;h:number},seed:number,x:number,y:number,u:number,id:string):CityLot{
+  const variants=pool.filter(s=>{const [a,b]=s.footprint!;return (a===shape.w&&b===shape.h)||(a===shape.h&&b===shape.w);});
+  const sheet=variants[(seed>>>3)%variants.length],[a,b]=sheet.footprint!;
+  const turns=a===b?(seed>>>7)%4:a===shape.w?2*((seed>>>7)%2):1+2*((seed>>>7)%2);
+  return {id,blockId:block.id,x,y,w:shape.w*u,h:shape.h*u,sheet,a,b,turns,height:Math.max(block.height,sheet.height)};
+}
+
 /**
  * Cuts a block into lots (the city's lot planner): the block is a grid of floor(w/unit) × floor(h/unit) lot units,
  * filled row by row; each free unit takes, among the pool footprints (either orientation) that fit in the free space,
  * one seeded by the block id and position among those at least half the area of the largest fit; then a variant of
  * that footprint seeded the same way, and its turns (exact orientation → 0 or 2, swapped → 1 or 3, square → 0..3).
- * Leftover cells (the last unit < `unit` cells, or units no footprint fits) stay procedural. Pure and deterministic.
+ * Leftover cells (the last unit < `unit` cells, or units no footprint fits) are for the fill pass (fillLots). Pure and
+ * deterministic.
  */
 export function planLots(block:CityBlock,plan:CityArtPlan):CityLot[]{
   const pool=lotPool(block,plan),u=plan.unit;
   if(!pool.length)return [];
   const W=Math.floor(block.w/u),H=Math.floor(block.h/u);
   if(W<1||H<1)return [];
-  const shapes=new Map<string,{w:number;h:number}>();
-  for(const s of pool){const [a,b]=s.footprint!;shapes.set(`${a}x${b}`,{w:a,h:b});shapes.set(`${b}x${a}`,{w:b,h:a});}
-  const fits=[...shapes.values()].sort((p,q)=>q.w*q.h-p.w*p.h||q.w-p.w);
+  const fits=poolShapes(pool);
   const used=new Uint8Array(W*H),out:CityLot[]=[];
   const free=(i:number,j:number,w:number,h:number)=>{
     if(i+w>W||j+h>H)return false;
@@ -235,14 +258,85 @@ export function planLots(block:CityBlock,plan:CityArtPlan):CityLot[]{
     const seed=hashId(`${block.id}@${i},${j}`),max=ok[0].w*ok[0].h,pick=ok.filter(f=>f.w*f.h*2>=max);
     const shape=pick[seed%pick.length];
     for(let y=j;y<j+shape.h;y++)for(let x=i;x<i+shape.w;x++)used[y*W+x]=1;
-    const variants=pool.filter(s=>{const [a,b]=s.footprint!;return (a===shape.w&&b===shape.h)||(a===shape.h&&b===shape.w);});
-    const sheet=variants[(seed>>>3)%variants.length],[a,b]=sheet.footprint!;
-    const turns=a===b?(seed>>>7)%4:a===shape.w?2*((seed>>>7)%2):1+2*((seed>>>7)%2);
-    out.push({id:`${block.id}/${out.length}`,blockId:block.id,x:block.x+i*u,y:block.y+j*u,w:shape.w*u,h:shape.h*u,sheet,a,b,turns,
-      height:Math.max(block.height,sheet.height)});
+    out.push(seededLot(block,pool,shape,seed,block.x+i*u,block.y+j*u,u,`${block.id}/${out.length}`));
   }
   return out;
 }
+
+/** Largest footprint (art cells) a fill lot may take: the 1×1 and 1×2 pieces (BUG-20261013-ORQ-predios-procedurais-fora). */
+export const FILL_MAX_AREA=2;
+/**
+ * Height (world units) of the low snow-and-debris mound a building or rubble cell is drawn as when no art shows on
+ * it: a cell no piece fits (last resort of fillLots), or a lot whose texture has not arrived yet. As low as the maps'
+ * rubble blocks (from-maps.ts RUBBLE_HEIGHT), whatever the cell size: the procedural brick column is never drawn
+ * with the art on. The collision does not change (the cell stays solid; the mound marks it).
+ */
+export const MOUND_HEIGHT=0.3;
+
+/** What a block shows with the art on: its lots (planLots, then the fill lots) and the cells left as low mounds. */
+export interface BlockArt {lots:CityLot[];
+  /** Cells (grid x, y) no lot covers: drawn as the low mound (MOUND_HEIGHT), never as the procedural building. */
+  mounds:{x:number;y:number}[]}
+
+/**
+ * Fill pass over the cells planLots leaves (BUG-20261013-ORQ-predios-procedurais-fora), in grid cells (a lot of an
+ * a×b footprint takes a·unit × b·unit cells, whatever the cell size in world units). Each free cell, row by row,
+ * takes the first pool with a piece that fits with its top-left corner there (in a pool the largest such footprint,
+ * ties seeded by block id and cell):
+ * 1. a building piece of at most FILL_MAX_AREA art cells (any turn), the block's own look first (the ruin pool for
+ *    ruins, the intact one for buildings), then the other building pool — buildings only;
+ * 2. a rubble (`entulho`) piece of at most FILL_MAX_AREA art cells, low — buildings and rubble blocks;
+ * 3. else the cell is a mound (MOUND_HEIGHT).
+ * Walls, cliffs and gates get nothing (they keep their procedural look), and so does every block of a plan without
+ * building art (planHasBuildingArt). The planLots lots are kept as they are.
+ * Pure and deterministic.
+ */
+export function fillLots(block:CityBlock,plan:CityArtPlan,lots:readonly CityLot[]):BlockArt{
+  const out:BlockArt={lots:[...lots],mounds:[]};
+  if((block.kind!=='building'&&block.kind!=='rubble')||!planHasBuildingArt(plan))return out;
+  const u=plan.unit,{x:bx,y:by,w:W,h:H}=block,used=new Uint8Array(W*H);
+  for(const l of lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)used[(y-by)*W+(x-bx)]=1;
+  const small=(pool:readonly CitySheet[])=>pool.filter(s=>s.footprint![0]*s.footprint![1]<=FILL_MAX_AREA);
+  const b=plan.buildings,own=block.kind==='building'?(block.ruined?b.ruin:b.intact):[];
+  const other=block.kind==='building'?(block.ruined?b.intact:b.ruin):[];
+  // Pools in order: the block's own look, the other building look, rubble.
+  const stages=[small(own),small(other),small(b.rubble)].filter(p=>p.length).map(pool=>({pool,shapes:poolShapes(pool)}));
+  const free=(i:number,j:number,w:number,h:number)=>{
+    if(i+w>W||j+h>H)return false;
+    for(let y=j;y<j+h;y++)for(let x=i;x<i+w;x++)if(used[y*W+x])return false;
+    return true;
+  };
+  let n=0;
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){
+    if(used[j*W+i])continue;
+    const seed=hashId(`${block.id}@f${i},${j}`);
+    let placed=false;
+    for(const stage of stages){
+      const pool=stage.pool,shapes=stage.shapes.filter(f=>free(i,j,f.w*u,f.h*u));
+      if(!shapes.length)continue;
+      const max=shapes[0].w*shapes[0].h,pick=shapes.filter(f=>f.w*f.h===max),shape=pick[seed%pick.length];
+      for(let y=j;y<j+shape.h*u;y++)for(let x=i;x<i+shape.w*u;x++)used[y*W+x]=1;
+      out.lots.push(seededLot(block,pool,shape,seed,bx+i,by+j,u,`${block.id}/f${n++}`));
+      placed=true;break;
+    }
+    if(!placed){used[j*W+i]=1;out.mounds.push({x:bx+i,y:by+j});}
+  }
+  return out;
+}
+
+/**
+ * A building or rubble piece as the low mound (BlockArt.mounds, or a lot whose texture is still loading): the rubble
+ * look (palette entulho, snow icing from pieceDecor) at MOUND_HEIGHT (never above the block), no ruin roof steps or
+ * bite. `seams` = which sides touch another mound of the same block (no wall face there); the sides toward an art lot
+ * keep their wall.
+ */
+export function moundPiece(piece:BlockPiece,seams:BlockPiece['seams']):BlockPiece{
+  return {id:piece.id,blockId:piece.blockId,kind:'rubble',x:piece.x,y:piece.y,w:piece.w,h:piece.h,
+    height:Math.min(piece.height,MOUND_HEIGHT),base:piece.base,seams:{...seams}};
+}
+
+/** A block's art with the art on: planLots, then the fill pass (fillLots). */
+export const blockArt=(block:CityBlock,plan:CityArtPlan):BlockArt=>fillLots(block,plan,planLots(block,plan));
 
 /** Prop sheet of a prop (variant seeded by its id), or undefined (procedural / the approved pine sheet). */
 export function propSheet(prop:Pick<CityProp,'id'|'kind'>,plan:CityArtPlan):CitySheet|undefined{

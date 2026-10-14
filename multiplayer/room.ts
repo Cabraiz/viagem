@@ -600,7 +600,7 @@ export class Room {
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
     else if(m.t==='forge')this.forge(c,m);
-    else if(m.t==='build'||m.t==='upgrade')this.tower(c,m);
+    else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -881,8 +881,9 @@ export class Room {
   }
   /**
    * torres-fio: {t:'build',round,req,site} (a build site id 'obra-NN' or the rail 'trilho') or {t:'upgrade',round,req,
-   * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative). Anything malformed is
-   * dropped here; the sim says no with a reason. The sender hears {t:'built',req,ok,reason?,kind?}.
+   * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative), and since torres-ajustes
+   * {t:'repair',round,req,defense} (same label). Anything malformed is dropped here; the sim says no with a reason (e.g.
+   * 'away' when the hero is not next to the obra). The sender hears {t:'built',req,ok,reason?,kind?}.
    */
   private tower(c:Connection,m:any){
     const state=this.run.snapshot();
@@ -894,8 +895,12 @@ export class Room {
       result=this.sim.build(c.playerId!,m.site,`p:${m.req}`);
     }else{
       const id=typeof m.defense==='string'&&m.defense.length<=12?this.ids.resolve(m.defense):undefined;
-      if(!id||!branchOk(m.branch))return;
-      result=this.sim.upgrade(c.playerId!,id,m.branch,`p:${m.req}`);
+      if(!id)return;
+      if(m.t==='repair')result=this.sim.repair(c.playerId!,id,`p:${m.req}`);
+      else{
+        if(!branchOk(m.branch))return;
+        result=this.sim.upgrade(c.playerId!,id,m.branch,`p:${m.req}`);
+      }
     }
     this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind}:{reason:result.reason})});
   }

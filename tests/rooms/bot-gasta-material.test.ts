@@ -6,6 +6,7 @@ import {Room,type Peer} from '../../multiplayer/room.ts';
 import {BOT_FORGE_LEFT_WITH_PEOPLE} from '../../multiplayer/room-bots.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {SIM_HZ} from '../../src/contract/index.ts';
+import {buildPlanFor} from '../../src/maps/index.ts';
 
 function peer(){
   const messages:any[]=[];
@@ -30,6 +31,9 @@ test('1 person + 2 bots, a 13 s intermission: the person builds first; the bot s
   // 3 s in: the bots have not touched the material; Ana builds.
   for(let i=0;i<3*SIM_HZ;i++)tick();
   assert.equal(room.bots.built+room.bots.forged,0,'nothing spent by the bots 10 s before the end (they gather meanwhile)');
+  // Ana steps next to the site first (the sim's reach rule, torres-ajustes).
+  const hero=room.sim.players.get(ana)!,site=buildPlanFor(room.sim.terrain).sites.find(x=>x.id==='obra-01')!;
+  hero.x=site.x;hero.y=site.y;
   say(room,a,{t:'build',round:room.run.snapshot().round,req:1,site:'obra-01'},t);
   assert.equal(a.messages.findLast(m=>m.t==='built')?.ok,true,'the person builds inside the short intermission');
   const mine=room.sim.defenses().find(d=>d.owner===ana)!;

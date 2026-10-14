@@ -275,7 +275,7 @@ export class CoopClient {
   onEmote:(e:EmoteNote)=>void=()=>{};
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
-  /** The room's answer to a build or upgrade (torres-fio): the new kind, or why not. */
+  /** The room's answer to a build, upgrade or repair (torres-fio, torres-ajustes): the kind, or why not ('away': too far). */
   onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string})=>void=()=>{};
   /**
    * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
@@ -303,6 +303,11 @@ export class CoopClient {
   upgrade(defense:string,branch?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'upgrade',round:this.run.round,req,defense,...(branch===undefined?{}:{branch})});return req;
+  }
+  /** torres-ajustes: repairs a hurt defense (its structure's wire id) in the intermission, from next to it; answer in onBuilt. */
+  repair(defense:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'repair',round:this.run.round,req,defense});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};

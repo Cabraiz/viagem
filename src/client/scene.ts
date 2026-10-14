@@ -335,6 +335,8 @@ export class IslandScene extends Phaser.Scene {
       const ev=Phaser.Core.Events,game=this.game.events;let t=0;
       const step=()=>{t=performance.now();},logic=()=>{const now=performance.now();perf.mark('logica',now-t);t=now;},render=()=>{perf.mark('render',performance.now()-t);};
       game.on(ev.PRE_STEP,step);game.on(ev.PRE_RENDER,logic);game.on(ev.POST_RENDER,render);
+      // The display list for window.__perf.inventario() (dev/perf-overlay.ts): what the render draws.
+      (window as unknown as {__perfScene?:Phaser.Scene}).__perfScene=this;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{game.off(ev.PRE_STEP,step);game.off(ev.PRE_RENDER,logic);game.off(ev.POST_RENDER,render);});
     }
     this.standIn();
@@ -352,7 +354,7 @@ export class IslandScene extends Phaser.Scene {
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
     this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112*HERO_DRAW_SCALE,112*HERO_DRAW_SCALE));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
-    this.destination=this.add.graphics().setDepth(100000);
+    this.destination=this.add.graphics().setDepth(100000).setName('destino');
     this.artMarks=new SceneMarks(this,p=>this.project(p));
     // Released with the scene (stop → 'shutdown', game.destroy → 'destroy'), with or without a server.
     const marks=this.artMarks,dropMarks=()=>{marks.destroy();if(this.artMarks===marks)this.artMarks=undefined;};
@@ -1000,7 +1002,7 @@ export class IslandScene extends Phaser.Scene {
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
     const smooth=this.steps.at(this.accumulator/STEP);
     const view=net.view(),old=this.position;
-    const effects=this.skillEffects??=this.add.graphics().setDepth(90000);effects.clear();
+    const effects=this.skillEffects??=this.add.graphics().setDepth(90000).setName('efeitos');effects.clear();
     for(const player of view.players){
       const age=net.tick-(player.skillTick??0);
       if(!player.skillTick||age<0||age>=10||net.run?.phase!=='combat')continue;
@@ -1107,7 +1109,7 @@ export class IslandScene extends Phaser.Scene {
   }
   private labelPhase(){const phase=this.hooks.net?.run?.phase;return phase==='combat'&&this.roundPhase==='prepare'?'interval':phase;}
   private drawTreeShadows(){
-    const g=this.treeShadows??=this.add.graphics().setDepth(-9990);g.clear();
+    const g=this.treeShadows??=this.add.graphics().setDepth(-9990).setName('sombras-arvores');g.clear();
     for(const prop of this.props){
       if(!prop.tree)continue;
       const radius=Math.max(.16,Math.min(.48,prop.tree.height/500));

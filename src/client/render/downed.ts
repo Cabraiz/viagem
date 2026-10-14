@@ -27,7 +27,7 @@ export class DownedLayer {
   private readonly scene:Phaser.Scene;
   constructor(scene:Phaser.Scene,project:(p:Pt)=>Pt,depth:(p:Pt)=>number,scale:()=>number=()=>1){
     this.project=project;this.depth=depth;this.scale=scale;this.scene=scene;this.art=new FramesPool(scene);
-    this.ground=scene.add.graphics();this.light=scene.add.graphics();
+    this.ground=scene.add.graphics().setName('caido-chao');this.light=scene.add.graphics().setName('caido-luz');
   }
   /**
    * One frame with every caído (any view, any zoom): `css` = world px per CSS px, for edges that stay ≥ 2 px.

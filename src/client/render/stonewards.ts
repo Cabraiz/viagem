@@ -24,6 +24,7 @@ export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from './light.ts';
 import {objectiveOf} from './chaveiro/view.ts';
+import {TriBand} from './city/tri-band.ts';
 
 const LIGHT=lightEnabled();
 
@@ -67,6 +68,12 @@ export class StonewardsRenderer {
   private towers=new Map<string,Phaser.GameObjects.Graphics>();
   /** City barricades (procedural pile and bar), each at its own depth. */
   private barricades=new Map<string,Phaser.GameObjects.Graphics>();
+  /**
+   * The procedural piles frozen into triangles (city/tri-band.ts), one per barricade, rebuilt only when its look changes
+   * (stage, flash, ends, scale): a pile is ~1 500 Graphics commands that Phaser replayed and triangulated every frame, even
+   * off camera (BUG-20261014-ORQ-engasgo-andando-celular). The bar stays on the live Graphics.
+   */
+  private piles=new Map<string,TriBand>();private pileKeys=new Map<string,string>();
   /** Imported base art: by structure id (wall, barricades) or `node:<id>` (crates); created only when the art exists. */
   private images=new Map<string,Phaser.GameObjects.Image>();
   /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
@@ -87,8 +94,8 @@ export class StonewardsRenderer {
 
   constructor(scene:Phaser.Scene,options:StonewardsRendererOptions){
     this.scene=scene;this.options=options;
-    this.ground=scene.add.graphics().setDepth(-9980);
-    this.wall=scene.add.graphics();
+    this.ground=scene.add.graphics().setDepth(-9980).setName('base-chao');
+    this.wall=scene.add.graphics().setName('base-muralha');
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.lilas=tokenColor('--c-lilas');
     c.cartolina=tokenColor('--c-cartolina');c.cone=tokenColor('--c-cone');
@@ -121,7 +128,8 @@ export class StonewardsRenderer {
     this.lastHp=new Map(this.structures.map(s=>[s.id,s.hp]));
     for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
     const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
-    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));
+    prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));
+    for(const id of [...this.pileKeys.keys()])if(!this.piles.has(id))this.pileKeys.delete(id);
     prune(this.images,new Set([...this.lastHp.keys(),...[...this.marks.keys()].map(id=>`node:${id}`)]));
   }
 
@@ -147,6 +155,7 @@ export class StonewardsRenderer {
     this.ground.destroy();this.wall.destroy();
     for(const g of this.towers.values())g.destroy();this.towers.clear();
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
+    for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
@@ -279,19 +288,28 @@ export class StonewardsRenderer {
    */
   private drawBarricade(s:StructureView,wall:StructureView|undefined,k:number,u:number){
     let g=this.barricades.get(s.id);
-    if(!g){g=this.scene.add.graphics();this.barricades.set(s.id,g);}
+    if(!g){g=this.scene.add.graphics().setName('base-barricada');this.barricades.set(s.id,g);}
     g.clear();
     const down=s.hp<=0,ratio=s.maxHp>0?s.hp/s.maxHp:0,stage=damageStage(ratio,down),flash=this.flashing(s.id);
     const span=barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
     const p=this.project(s.x,s.y),x=p.x,y=p.y;
     g.setDepth(depth);
     const img=this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);
+    const pile=this.piles.get(s.id);
     if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
       if(flash)img.setTintFill(this.c.claro);else img.clearTint();
+      pile?.setVisible(false);
     }else{
-      const a=this.project(span.ax,span.ay),ax=a.x,ay=a.y,b=this.project(span.bx,span.by);
-      this.drawPile(g,ax,ay,b.x,b.y,stage,flash,u,k);
+      const a=this.project(span.ax,span.ay),ax=a.x,ay=a.y,b=this.project(span.bx,span.by),bx=b.x,by=b.y;
+      const key=`${stage}|${flash?1:0}|${Math.round(ax)},${Math.round(ay)},${Math.round(bx)},${Math.round(by)}|${u.toFixed(3)}|${k.toFixed(2)}`;
+      let band=pile;
+      if(!band||this.pileKeys.get(s.id)!==key){
+        band?.destroy();
+        band=TriBand.make(this.scene,gr=>this.drawPile(gr,ax,ay,bx,by,stage,flash,u,k));
+        this.piles.set(s.id,band);this.pileKeys.set(s.id,key);
+      }
+      band.setDepth(depth).setVisible(true);
     }
     const bar=barricadeBar(s.hp,s.maxHp);
     if(!bar.show)return;
@@ -369,7 +387,7 @@ export class StonewardsRenderer {
   /** Chinelo tower: a small stand with a sandal on top and a Papel bar of the time it has left (`u`, `k`: as drawWall). */
   private drawTower(s:StructureView,k:number,u:number){
     let g=this.towers.get(s.id);
-    if(!g){g=this.scene.add.graphics();this.towers.set(s.id,g);}
+    if(!g){g=this.scene.add.graphics().setName('base-torre');this.towers.set(s.id,g);}
     g.clear();
     const p=this.project(s.x,s.y),c=this.c,x=p.x,y=p.y;
     g.setDepth(this.options.projector.depth(s.x,s.y));

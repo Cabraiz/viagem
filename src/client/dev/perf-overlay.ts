@@ -26,6 +26,23 @@ function hookUploads(){
 }
 
 type Heap={usedJSHeapSize:number};
+interface Listed {type:string;visible:boolean;depth:number;x:number;y:number;alpha:number;name:string;commandBuffer?:unknown[];list?:Listed[]}
+/**
+ * What the game scene draws (scene.ts sets window.__perfScene with the flag on): objects by type, and the Graphics with
+ * the most commands (each one is re-triangulated every frame by Phaser's WebGL renderer: the cost to look for).
+ */
+function inventario(){
+  const scene=(window as unknown as {__perfScene?:{children:{list:Listed[]}}}).__perfScene;
+  if(!scene)return undefined;
+  const byType:Record<string,number>={},graphics:{depth:number;commands:number;visible:boolean;name:string;x:number;y:number;head:string}[]=[];
+  const walk=(list:Listed[])=>{for(const o of list){byType[o.type]=(byType[o.type]??0)+1;
+    if(o.type==='Graphics')graphics.push({depth:Math.round(o.depth),commands:o.commandBuffer?.length??0,visible:o.visible,name:o.name,x:Math.round(o.x),y:Math.round(o.y),
+      head:(o.commandBuffer??[]).slice(0,24).map(v=>typeof v==='number'?Math.round(v):'?').join(',')});
+    if(o.list)walk(o.list);}};
+  walk(scene.children.list);
+  graphics.sort((a,b)=>b.commands-a.commands);
+  return {byType,graphics:graphics.length,commands:graphics.reduce((s,g)=>s+(g.visible?g.commands:0),0),top:graphics.slice(0,15)};
+}
 /** Starts the meter and its panel (idempotent). */
 export function startPerfOverlay(){
   const w=window as unknown as {__perf?:unknown};
@@ -54,6 +71,6 @@ export function startPerfOverlay(){
     if(!more.hidden)more.textContent=[`DPR ${devicePixelRatio} · canvas ${canvas?.width??0}×${canvas?.height??0}`,
       ...meter.stalls.slice(-STALLS_KEPT).reverse().map(t=>`${Math.round(t.ms)} ms há ${Math.round((now-t.at)/1000)} s: ${causesText(t)}`)].join('\n');
   };
-  w.__perf={meter,kinds:PERF_KINDS,stats:()=>meter.stats(performance.now())};
+  w.__perf={meter,kinds:PERF_KINDS,stats:()=>meter.stats(performance.now()),inventario};
   requestAnimationFrame(step);
 }

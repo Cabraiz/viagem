@@ -112,6 +112,9 @@ export function queueCityArt(scene:Phaser.Scene,plan:CityArtPlan|undefined):numb
  * Unit columns of one block that share a depth key, drawn as one object pair: they never overlap each other on
  * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
  */
+/** The chunk tracker's margins (screen px): built from this far ahead, dropped only this far behind. */
+export const CHUNK_SHOW_PX=384,CHUNK_KEEP_PX=1024;
+
 interface Band {blockId:string;key:number;body:TriBand;outline:TriBand;
   /** Fade id of each unit column, in part order. */
   ids:string[]}
@@ -187,7 +190,10 @@ export class CityLayer {
     const drawn=relief?withoutCliffs(asset):asset;
     if(relief){this.cliffs=cliffCells(asset);this.pieceLook={stoneWalls:true};}
     this.index=buildChunks(drawn);
-    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
+    // One chunk built per frame, from a ring well ahead of the screen (CHUNK_SHOW_PX), and the ones walked away from kept
+    // much longer (CHUNK_KEEP_PX): four builds in one frame, and the rebuild of a street walked back over, were the
+    // walk's stalls on a phone (BUG-20261014-ORQ-engasgo-andando-celular).
+    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot,showMarginPx:CHUNK_SHOW_PX,keepMarginPx:CHUNK_KEEP_PX,maxShowPerUpdate:1});
     for(const b of drawn.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){

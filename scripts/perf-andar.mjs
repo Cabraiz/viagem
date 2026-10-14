@@ -5,7 +5,7 @@
 // with the joystick (real touch events): a zigzag into areas it has not seen ("nova"), then the same legs back ("vista").
 // Per pass: frame p50/p95/p99, frames > 50 and > 100 ms, travadas/min; the stalls with their causes (dev/perf-meter.ts:
 // bake, chunk, upload, rede, hud, logica, render, gc?, ?) summed; and the relief baker's counters.
-//   node scripts/perf-andar.mjs [--dpr 3] [--cpu 4] [--perna 6] [--perfil 8] [--saida <dir>]
+//   node scripts/perf-andar.mjs [--dist dist] [--dpr 3] [--cpu 4] [--perna 6] [--perfil 8] [--saida <dir>] [--print <png>]
 // Needs `npm run build` first and a free browser slot (board locks/browser-1|2, taken here). dist/multiplayer.json is
 // restored on every way out. Prints a JSON summary; with --saida also writes it there.
 import {spawn} from 'node:child_process';
@@ -19,9 +19,12 @@ const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0
 const DPR=Number(arg('dpr','3')),CPU=Number(arg('cpu','4')),LEG_S=Number(arg('perna','6')),OUT=arg('saida');
 /** --perfil N: a CPU profile of the first N s of the "nova" pass, its self time summed by function (the top 25). */
 const PROFILE_S=Number(arg('perfil','0'));
+/** --print <file.png>: the screen at the end of the walk, with the ?perf=1 panel open (its last stalls). */
+const PRINT=arg('print');
 const PREVIEW_PORT=Number(process.env.PERF_PORT??4208),WORKER_PORT=Number(process.env.PERF_WORKER_PORT??8788);
 const BOARD=process.env.VIAGEM_BOARD??'D:/Gits/viagem-board';
-const dist=resolve('dist'),mp=join(dist,'multiplayer.json');
+/** --dist <dir>: another build (e.g. the main of before, for the before/after); default dist/. */
+const dist=resolve(arg('dist','dist')),mp=join(dist,'multiplayer.json');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const pct=(s,q)=>s.length?s[Math.min(s.length-1,Math.floor(q*s.length))]:0;
 /** The zigzag (joystick directions, screen: x right, y down) into new areas; the "vista" pass walks it back reversed. */
@@ -95,6 +98,7 @@ try{
   await p.evaluate(()=>{const m=window.__perf?.meter;if(m)m.stalls.length=0;});
   const vistaS=await walk([...LEGS].reverse().map(([x,y])=>[-x,-y]),'vista');
   const stallsVista=await p.evaluate(()=>window.__perf?.meter.stalls.map(s=>({ms:s.ms,causes:s.causes}))??[]);
+  if(PRINT){await cdp.send('Emulation.setCPUThrottlingRate',{rate:1});await p.evaluate(()=>document.querySelector('.perf-hud')?.dispatchEvent(new MouseEvent('click')));await sleep(600);await p.screenshot({path:PRINT});}
   const inventario=await p.evaluate(()=>window.__perf?.inventario?.());
   const quadros=await p.evaluate(()=>window.__quadros);
   const canvas=await p.evaluate(()=>{const c=document.querySelector('canvas');return c?`${c.width}×${c.height}`:'';});

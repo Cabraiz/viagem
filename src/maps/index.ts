@@ -1,4 +1,4 @@
-/** Port of the maps sector: terrain, collision and paths, the tree catalog, movement prediction, the city asset (D-027), the horde flow field and the build sites (D-041). */
+/** Port of the maps sector: terrain, collision and paths, the tree catalog, movement prediction, the city asset (D-027), the horde flow field, the build sites (D-041) and the nests (D-051). */
 export * from './world.ts';
 export * from './terrain/field.ts';
 export * from './terrain/chunks.ts';
@@ -10,3 +10,4 @@ export * from './city/terrain.ts';
 export * from './city/relief.ts';
 export * from './build-sites.ts';
 export * from './far-path.ts';
+export * from './nests.ts';

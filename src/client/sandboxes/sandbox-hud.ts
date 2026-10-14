@@ -32,6 +32,8 @@
  * load. `grana=N` (default 40) and `estoque=a,b,c` (default 4,4,4) feed Dona Cida; `cida=1` puts the hero by the moto (her
  * button shows), `cida=aberta` also opens her tray. Purchases answer after 150 ms like a room (ok, or the refusal the
  * numbers give). `state=result&conta=aberto|carro|time|tempo[&divida=1]`: the result with the chaveiro's bill.
+ * `mapa=cidade&ninhos=1|nevoa[&seed=N][&dormindo=1]` (D-051, mapa-vivo-ninhos): the seed's nests on the minimap (all, or
+ * the fog's 3 nearest), optionally with every sleeper as an enemy mark.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
@@ -434,6 +436,14 @@ if(cidade)void (async()=>{
   const base=fakeView(scenario,people.length,tick);
   // Round 1's banner as the director sends it with the city's tutorial round (its name and line, cidade-08).
   const banner=tutorial?[{type:'round' as const,index:1,phase:'wave' as const,name:CIDADE_TUTORIAL.roundName,modifier:CIDADE_TUTORIAL.modifier,eventId:++eventId}]:[];
+  // D-051 (mapa-vivo-ninhos): `ninhos=1` puts the seed's nests (`seed=N`, default 1) on the minimap, all seen;
+  // `ninhos=nevoa` only the 3 nearest the hero (the fog); `dormindo=1` also marks their sleepers and the loose bands.
+  // The plan is maps' cityNestPlan without the routes and the team's start (the sim passes those).
+  const nestsMode=params.get('ninhos');
+  const nestPlan=nestsMode?(await import('../../maps/index.ts')).cityNestPlan(terrain,Number(params.get('seed')??1)|0,{players:people.length}):undefined;
+  const nestNear=nestPlan?[...nestPlan.nests].sort((a,b)=>Math.hypot(a.x-hero.x,a.y-hero.y)-Math.hypot(b.x-hero.x,b.y-hero.y)).slice(0,3):[];
+  const nestMarks=(nestPlan?.nests??[]).map(n=>({kind:'ninho',x:n.x,y:n.y,size:n.size,seen:nestsMode!=='nevoa'||nestNear.includes(n)}));
+  const sleepers=params.has('dormindo')&&nestPlan?[...nestPlan.nests.flatMap(n=>n.sleepers),...nestPlan.loose.flatMap(b=>b.members)]:[];
   // D-047: the fake chaveiro objective (sandbox-chaveiro.ts) at the plaza, 12 s into its loop; the car replaces the wall.
   const chaveiro=params.get('chaveiro')==='1'?await import('./sandbox-chaveiro.ts').then(m=>{
     const from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
@@ -482,8 +492,8 @@ if(cidade)void (async()=>{
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
-      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true}],
-      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
+      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],
+      structures:[...run.structures,...nestMarks],corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});

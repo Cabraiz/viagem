@@ -203,13 +203,12 @@ export class SimWorld implements SimContext {
 
   damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string){
     if(!Number.isFinite(amount)||amount<=0)return false;
+    // D-051: a nest (a hit target of the sleepers' index) takes the hit through its own path, after the might.
+    if(!this.enemies.has(enemyId)&&this.sleepers?.isTarget(enemyId))return this.sleepers.strike(this,enemyId,amount*this.mightOf(sourcePlayer),sourcePlayer,weapon);
     // D-051: a hit on a sleeper wakes it and its band first (ninhos/sono.ts), then lands like any other.
     const enemy=this.enemies.get(enemyId)??this.sleepers?.wake(this,enemyId,'dano');
     if(!enemy||!(enemy.hp>0))return false;
-    const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
-    let might=sourcePlayer?source?.stats.might??1:1;
-    // D-047 Dona Cida's paçoca (SimPlayer.mightUntil); absent everywhere else, so the product is untouched.
-    if(source?.mightUntil!==undefined&&this.tick<source.mightUntil)might*=CIDA_MIGHT_MULT;
+    const might=this.mightOf(sourcePlayer);
     let dealt=Math.min(enemy.hp,amount*might);
     if(!(dealt>0))return false;
     // Snap float dust to an exact kill so the event amount always equals the hp lost.
@@ -228,6 +227,14 @@ export class SimWorld implements SimContext {
       }finally{this.dispatchingKills=false;this.pendingKills=[];}
     }
     return true;
+  }
+
+  /** × of a player's hits: stats.might (D-001) and Dona Cida's paçoca (D-047 SimPlayer.mightUntil, absent elsewhere). */
+  private mightOf(sourcePlayer:string|undefined){
+    const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
+    let might=sourcePlayer?source?.stats.might??1:1;
+    if(source?.mightUntil!==undefined&&this.tick<source.mightUntil)might*=CIDA_MIGHT_MULT;
+    return might;
   }
 
   damagePlayer(playerId:string,amount:number,source?:string){

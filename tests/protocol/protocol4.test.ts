@@ -1047,10 +1047,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 15: a frame from a 14 (2× hero walk) or 16 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 16: a frame from a 15 (chaveiro) or 17 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],15);
-  for(const version of [8,9,10,11,12,13,14,16]){
+  assert.equal(bytes[1],16);
+  for(const version of [8,9,10,11,12,13,14,15,17]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }
@@ -1332,7 +1332,7 @@ function sameObjective(got:ObjectiveView|undefined,want:ObjectiveView,label:stri
 }
 
 test('protocol 15: the chaveiro strings are dictionary bytes appended after protocol 14, every older index unchanged',()=>{
-  assert.equal(PROTOCOL_VERSION,15);
+  assert.ok(PROTOCOL_VERSION>=15);
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
   assert.deepEqual(DICT.slice(161),added);

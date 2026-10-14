@@ -58,9 +58,12 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * ETA, alarm, Grana, Dona Cida, the car; its static route and stops on full frames and when they change), the car's
  * `parts` in the structures, `sugar` on the enemies, Dona Cida's buffs on the players (fastUntil drives the prediction),
  * the events alarm/part/moto/sale/buy and their strings in the DICT; a 14 decoder would refuse the flags and the masks.
+ * 16 since cidade-escala-1-7: the same bytes, but the Cidade Nevada is the 1.7× asset (MapRef version 2) and the client's
+ * HUD and render follow it; the site's deploy gate compares this number only, so a site with the v2 asset must not go
+ * live in front of a Worker that still bundles version 1 (every city join would be refused for the map).
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=15;
+export const PROTOCOL_VERSION=16;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

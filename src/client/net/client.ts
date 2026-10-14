@@ -10,6 +10,7 @@ import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
+import {MARK_ID,parseMark,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
@@ -273,6 +274,8 @@ export class CoopClient {
   onSos:(ping:SosPing)=>void=()=>{};
   /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
   onEmote:(e:EmoteNote)=>void=()=>{};
+  /** Minimap pings relayed by the room (minimapa-wc3, rules/marks.ts), this phone's own included. */
+  onMark:(m:MarkNote)=>void=()=>{};
   /** The run's drawn enemies ({t:'elenco'}, arte-do-roster-no-render): a new array per message; the scene fetches their art. */
   elenco:readonly string[]=[];
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
@@ -512,7 +515,7 @@ export class CoopClient {
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
-    else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
+    else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
@@ -748,6 +751,11 @@ export class CoopClient {
   emote(id:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
     this.out(this.socket,{t:'emote',round:this.run.round,id});return true;
+  }
+  /** Minimap ping (minimapa-wc3): {t:'emote',round,id:'marca',x,y}; an old room drops it (the ping stays local). */
+  mark(x:number,y:number){
+    if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.out(this.socket,{t:'emote',round:this.run.round,id:MARK_ID,x:Math.round(x*100)/100,y:Math.round(y*100)/100});return true;
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   /** Owner commands (D-025): the room checks owner, phase and round; a refusal comes back as a notice. */

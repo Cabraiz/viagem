@@ -4,13 +4,19 @@
  * groups make the minimap's clovers (≥ 3) and the edge arrows (≥ GROUP_MIN, near, off screen, at most GROUP_ARROWS).
  * Pure and deterministic: the result does not depend on the input order.
  */
+import {CITY_MAP_SCALE} from './deps.ts';
+
 export interface EnemyPoint {id:string;x:number;y:number;boss?:boolean}
 export interface EnemyGroup {
   /** The seed cell ("cx,cy"): stable while the group's busiest cell stays the same. */
   key:string;
   /** Mean position of its critters (world units). */
   x:number;y:number;count:number;ids:string[]}
-export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60,GROUP_ARROWS=2;
+/**
+ * GROUP_CELL (u) is a crowd's size, people-scale (the critters did not grow); GROUP_RANGE (u, how far a group still gets an
+ * arrow) is a map length: 60 u on the .w3x map × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ */
+export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60*CITY_MAP_SCALE,GROUP_ARROWS=2;
 /** Groups this big show on the minimap (clover); a shown arrow stays while its group keeps this many (hysteresis). */
 export const GROUP_SHOW=3;
 /** Hysteresis: a shown arrow stays while its group is among this many nearest. */

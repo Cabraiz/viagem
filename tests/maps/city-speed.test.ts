@@ -13,6 +13,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
+import {cityMapScale} from '../../src/maps/city/relief.ts';
 import {defaultTerrain,type TerrainField} from '../../src/maps/terrain/field.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {CITY_HERO_SPEED,HERO_SPEED_MULT,RADIUS,SPAWN,SPEED,baseHeroSpeed,clearSegment,heroSpeed,moveAlong,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
@@ -205,7 +206,10 @@ function tautRoute(from:Point,samples:Point[],to:Point):Point[]{
   return route;
 }
 
-test('real city: walking start → plaza along the streets takes 16.5–20 s at the 2× city walk (33–40 s at the base speed)',t=>{
+// NEW-20261013-ORQ-cidade-escala-1-7: the map is 1.7× the .w3x (asset version 2) while the walk stays, so the street walk
+// is the tuned 33–40 s × K at the base speed (~56–68 s), (16.5–20 s) × K at the 2× walk (~28–34 s).
+test('real city: walking start → plaza along the streets takes (16.5–20 s) × the map scale at the 2× city walk ((33–40 s) × K at the base speed)',t=>{
+  const K=cityMapScale(city.asset);assert.ok(Math.abs(K-1.7)<1e-9,'the asset is the 1.7× map');
   const samples=streetPath(inicio,praca),route=tautRoute(inicio,samples,praca);
   const routeLength=route.reduce((sum,p,i)=>sum+dist(i?route[i-1]:inicio,p),0),straight=dist(inicio,praca);
   // Walk it: the tap-to-walk step (moveAlong at heroSpeed(field)), one 20 Hz tick at a time, until the plaza.
@@ -220,8 +224,8 @@ test('real city: walking start → plaza along the streets takes 16.5–20 s at 
   assert.equal(ticks,Math.ceil(routeLength/(CITY_WALK*STEP)-1e-9));
   // The street itself is the tuned 33–40 s at the base speed; the 2× walk halves it.
   const base=routeLength/CITY_HERO_SPEED;
-  assert.ok(base>=33&&base<=40,`start → plaza at the base speed ${base.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
-  assert.ok(seconds>=16.5&&seconds<=20+STEP,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_WALK} u/s)`);
+  assert.ok(base>=33*K&&base<=40*K,`start → plaza at the base speed ${base.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
+  assert.ok(seconds>=16.5*K&&seconds<=20*K+STEP,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_WALK} u/s)`);
   // At the endless map's walk the same street would be a noticeably shorter walk: the city proportion is real.
   assert.ok(routeLength/WALK<seconds*.7);
 });

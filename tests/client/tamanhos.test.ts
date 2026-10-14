@@ -1,11 +1,11 @@
-// NEW-20261013-ORQ-heroi-menor-inimigos-maiores: heroes draw ×0.8, enemies ×1.15; the camera keeps the reference hero.
+// NEW-20261013-ORQ-heroi-menor-inimigos-maiores: heroes draw ×0.8, enemies ×1.15; the zoom keeps the reference hero.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE,framedHeroSize} from '../../src/client/render/draw-scale.ts';
+import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 import {HP_BAR_CSS,RING_CSS,RING_SCALE,ringSize} from '../../src/client/render/you-rules.ts';
-import {anchorOf,lookLimit} from '../../src/client/framing.ts';
+import {anchorOf} from '../../src/client/framing.ts';
 import {HERO_WORLD_PX} from '../../src/contract/offscreen.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -16,16 +16,15 @@ test('draw factors: the heroes 20% smaller, the enemies 15% bigger',()=>{
   assert.equal(ENEMY_DRAW_SCALE,1.15);
 });
 
-test('the camera frames the reference hero: the smaller drawn box gives the same anchor and look limit',()=>{
-  const viewport={width:390,height:844},useful={x:0,y:120,width:390,height:600},zoom=.58;
-  const reference={width:58*zoom,height:HERO_WORLD_PX*zoom};
-  const drawn={width:reference.width*HERO_DRAW_SCALE,height:reference.height*HERO_DRAW_SCALE};
-  const framed=framedHeroSize(drawn);
-  assert.ok(Math.abs(framed.width-reference.width)<1e-9&&Math.abs(framed.height-reference.height)<1e-9);
-  assert.deepEqual(anchorOf(viewport,zoom,useful,framed),anchorOf(viewport,zoom,useful,reference));
-  assert.deepEqual(lookLimit(viewport,zoom,useful,framed),lookLimit(viewport,zoom,useful,reference));
-  // Without the decoupling the feet would move up by a tenth of the hero (the body is centred on half its height).
-  assert.notDeepEqual(anchorOf(viewport,zoom,useful,drawn),anchorOf(viewport,zoom,useful,reference));
+test('the camera centres the drawn (smaller) body; the zoom keeps the reference hero',()=>{
+  const viewport={width:390,height:844},zoom=.58;
+  const drawn={width:58*zoom*HERO_DRAW_SCALE,height:HERO_WORLD_PX*zoom*HERO_DRAW_SCALE};
+  // Outside the lobby the body (half the drawn height above the feet) is the viewport centre (camera-centro-heroi).
+  const a=anchorOf(viewport,zoom,undefined,drawn);
+  assert.deepEqual(a,{x:viewport.width/2,y:viewport.height/2+drawn.height/2},'feet half the drawn body under the centre');
+  const scene=source('src/client/scene.ts');
+  assert.doesNotMatch(scene,/framedHeroSize/,'snap and step pass the drawn box');
+  assert.doesNotMatch(source('src/client/camera-zoom.ts'),/HERO_DRAW_SCALE/,'the zoom does not read the draw factor');
 });
 
 test('the "você" ring and the mini bar shrink with the hero; the ring\'s bands and beak keep their CSS px',()=>{
@@ -57,6 +56,5 @@ test('wiring: one place per factor (hero sheets, enemy body), the hero\'s marks 
   assert.match(scene,/private get heroScale\(\)\{return this\.actorScale\*HERO_DRAW_SCALE;\}/);
   assert.match(scene,/this\.shadow\?\.setScale\(hero\);this\.ring\?\.setScale\(hero\);/,'the hero\'s shadow follows the sprite');
   assert.match(scene,/const k=this\.heroScale;\n\s+if\(!objects\)/,'ally icon, ring, shadow and ficha offset follow the sprite');
-  assert.equal(scene.match(/framedHeroSize\(/g)?.length,2,'snap and step both frame the reference hero');
   assert.match(scene,/size=\(enemy\.elite&&kind!=='chefe'\?ELITE_SCALE:1\)\*this\.actorScale\*ENEMY_DRAW_SCALE/,'a tap finds the bigger enemy where it is drawn');
 });

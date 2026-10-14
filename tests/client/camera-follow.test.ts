@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {FollowCamera,followZoom,followTarget,anchorOf,lookLimit,offsetBudget,toScreen,edgeOf,freeAround,StepLerp,chooseWatched,
-  VS_HERO_SHORT_RATIO,LAG_X_PX,LAG_Y_PX,FOLLOW_TAU_S,type Rect} from '../../src/client/framing.ts';
+  VS_HERO_SHORT_RATIO,LAG_X_PX,LAG_Y_PX,FOLLOW_TAU_S,LOOK_AHEAD,ENDLESS_FOLLOW,CITY_VIEW_SCALE,cityZoom,type Rect} from '../../src/client/framing.ts';
+import {ZOOM_DEFAULT,ZOOM_MIN} from '../../src/client/camera-zoom.ts';
 import {projectView,unprojectView,viewDepth,rotationLocked,screenDirection,rotateVector} from '../../src/client/projection.ts';
 import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset,TILE_X,TILE_Y} from '../../src/contract/offscreen.ts';
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
@@ -35,7 +36,7 @@ test('zoom: the VS ratio is under the D-009 floor on a phone, so the hero is 56 
   }
 });
 
-test('anchor: the hero\'s body is centred in the useful area, not on the screen',()=>{
+test('anchor (lobby only, FollowCamera.beside): anchorOf/followTarget centre the hero\'s body in the area they are given',()=>{
   for(const [vp,useful] of [[PORTRAIT,USEFUL_P],[LANDSCAPE,USEFUL_L]] as const){
     const z=followZoom(vp),hero={x:1234.5,y:-678.25},c=followTarget(hero,vp,z,useful,{x:0,y:0},HERO);
     const feet=toScreen(hero,c,vp,z);
@@ -44,16 +45,64 @@ test('anchor: the hero\'s body is centred in the useful area, not on the screen'
     // Hero box ± HERO_MARGIN inside the useful area (the zones audit checks the HUD boxes against it).
     assert.ok(feet.y-HERO.height-HERO_MARGIN>=useful.y-1e-6&&feet.y+HERO_MARGIN<=useful.y+useful.height+1e-6,`${vp.width}`);
   }
-  // Without a HUD (solo, waiting room) the screen centre.
+  // Without an area the screen centre.
   const a=anchorOf(PORTRAIT,followZoom(PORTRAIT));assert.equal(a.x,195);
 });
 
-test('look-ahead: ~15% of the useful half extent, never pushing the hero box ± 40 px out of the useful area',()=>{
+// BUG-20261013-ORQ-camera-centro-heroi: "eu deveria sempre estar no centro". In the round the HUD's useful area, its
+// windows and the zoom never move the hero off the viewport centre.
+const DESKTOPS=[{width:1343,height:618},{width:1280,height:720}];
+test('in the round the hero\'s body is at the viewport centre ±0 standing, for any useful area, zoom (44..56 px), orientation and combat phase',()=>{
+  const offerTrim:Rect={x:70,y:202.6,width:320,height:217.4},corner:Rect={x:600,y:400,width:200,height:150};
+  const city={scale:CITY_VIEW_SCALE,speed:ENDLESS_FOLLOW.speed};
+  for(const vp of [PORTRAIT,LANDSCAPE,...DESKTOPS])for(const k of [ZOOM_MIN,ZOOM_DEFAULT,1])for(const world of [ENDLESS_FOLLOW,city])
+    for(const useful of [undefined,vp.width<vp.height?USEFUL_P:USEFUL_L,offerTrim,corner])
+      // wave (budget on), intermission (budget lifted) and watching a teammate (no hero box: the default body height).
+      for(const [phase,free,watching] of [['wave',false,false],['prepare',true,false],['watching',true,true]] as const){
+        const z=world===ENDLESS_FOLLOW?followZoom(vp,k):cityZoom(vp,k),px=HERO_WORLD_PX*world.scale*z,size=watching?undefined:{width:px,height:px};
+        // The player's zoom range: 44..56 px on the reference phones (a desktop scales it up).
+        if(world===ENDLESS_FOLLOW&&Math.min(vp.width,vp.height)===390)assert.ok(px>=44-1e-6&&px<=56+1e-6,`hero ${px} px`);
+        const cam=new FollowCamera();cam.world=world;cam.free=free;
+        const hero=projectView({x:5000.25,y:-1234.5},1),label=`${vp.width}×${vp.height} k ${k.toFixed(3)} scale ${world.scale.toFixed(3)} ${phase} ${JSON.stringify(useful)}`;
+        const check=(c:{x:number;y:number})=>{
+          const feet=toScreen(hero,c,vp,z);
+          assert.ok(Math.abs(feet.x-vp.width/2)<1e-6&&Math.abs(feet.y-px/2-vp.height/2)<1e-6,`${label}: body at ${feet.x},${feet.y-px/2}`);
+        };
+        check(cam.snap(hero,vp,z,useful,size));
+        for(let i=0;i<30;i++)cam.step(hero,1/60,vp,z,useful,size);
+        check(cam.center);
+      }
+});
+
+test('no look-ahead offset while walking; the hero trails the centre by ≤ speed × FOLLOW_TAU_S (+ε) and comes back to it',()=>{
+  assert.equal(LOOK_AHEAD,0);
+  assert.ok(FOLLOW_TAU_S<=.15,'card: a short smoothing, ≤ 150 ms');
+  for(const vp of [PORTRAIT,LANDSCAPE,...DESKTOPS])for(const fps of [30,60])for(const dir of [{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:-1,y:.3}]){
+    const z=followZoom(vp,ZOOM_DEFAULT),px=HERO_WORLD_PX*z,size={width:px,height:px},cam=new FollowCamera(),l=Math.hypot(dir.x,dir.y);
+    let p={x:5000,y:-3000};cam.snap(projectView(p,0),vp,z,vp.width<vp.height?USEFUL_P:USEFUL_L,size);
+    const per={x:dir.x/l*ENDLESS_FOLLOW.speed/fps,y:dir.y/l*ENDLESS_FOLLOW.speed/fps};
+    // The hero's on-screen speed (CSS px/s) at the world's walking speed (the 2× walk).
+    const a=projectView({x:0,y:0},0),b=projectView(per,0),screenSpeed=Math.hypot(b.x-a.x,b.y-a.y)*fps*z;
+    let worst=0;
+    for(let i=0;i<fps*3;i++){
+      p={x:p.x+per.x,y:p.y+per.y};const hero=projectView(p,0),c=cam.step(hero,1/fps,vp,z,USEFUL_P,size),feet=toScreen(hero,c,vp,z);
+      worst=Math.max(worst,Math.hypot(feet.x-vp.width/2,feet.y-px/2-vp.height/2));
+      assert.deepEqual(cam.look,{x:0,y:0},'no look-ahead');
+    }
+    assert.ok(worst<=screenSpeed*FOLLOW_TAU_S+.01,`${vp.width} ${fps} fps ${JSON.stringify(dir)}: trail ${worst.toFixed(2)} px > ${(screenSpeed*FOLLOW_TAU_S).toFixed(2)}`);
+    // Stopped: back on the centre within half a second (no fixed offset left).
+    const hero=projectView(p,0);for(let i=0;i<fps/2;i++)cam.step(hero,1/fps,vp,z,USEFUL_P,size);
+    const feet=toScreen(hero,cam.center,vp,z);
+    assert.ok(Math.hypot(feet.x-vp.width/2,feet.y-px/2-vp.height/2)<.5,`${vp.width}: settles on the centre`);
+  }
+});
+
+test('look-ahead limit: LOOK_AHEAD of the useful half extent (0 since camera-centro-heroi), never pushing the hero box ± 40 px out of the useful area',()=>{
   const zp=followZoom(PORTRAIT),lp=lookLimit(PORTRAIT,zp,USEFUL_P,HERO);
-  assert.ok(Math.abs(lp.x*zp-.15*160)<1e-6&&Math.abs(lp.y*zp-.15*USEFUL_P.height/2)<1e-6);
+  assert.ok(Math.abs(lp.x*zp-LOOK_AHEAD*160)<1e-6&&Math.abs(lp.y*zp-LOOK_AHEAD*USEFUL_P.height/2)<1e-6);
   const zl=followZoom(LANDSCAPE),ll=lookLimit(LANDSCAPE,zl,USEFUL_L,HERO);
-  // Landscape is ~155 px tall: what is left over the hero box and its margin.
-  assert.ok(Math.abs(ll.y*zl-(USEFUL_L.height/2-HERO.height/2-HERO_MARGIN))<1e-6,`${ll.y*zl}`);
+  // Landscape is ~155 px tall: never more than what is left over the hero box and its margin.
+  assert.ok(ll.y*zl<=USEFUL_L.height/2-HERO.height/2-HERO_MARGIN+1e-6,`${ll.y*zl}`);
   for(const [vp,useful,l] of [[PORTRAIT,USEFUL_P,lp],[LANDSCAPE,USEFUL_L,ll]] as const){
     const z=followZoom(vp);
     for(const [sx,sy] of [[1,1],[-1,1],[1,-1],[-1,-1]]){
@@ -104,7 +153,7 @@ test('stopping eases back without a jump; a teleport snaps within the contract',
   assert.ok(Math.abs(cam.look.x)<1&&Math.abs(cam.look.y)<1,'look-ahead goes back to rest');
   const far=projectView({x:40,y:40},0),c=cam.step(far,1/60,vp,z,USEFUL_P,HERO),budget=offsetBudget(vp);
   assert.ok(Math.abs(far.x-c.x)<=budget.x+LAG_X_PX+1e-6&&Math.abs(far.y-c.y)<=budget.y+LAG_Y_PX+1e-6);
-  assert.ok(FOLLOW_TAU_S>=.12&&FOLLOW_TAU_S<=.2,'UX: 120-200 ms');
+  assert.ok(FOLLOW_TAU_S>=.05&&FOLLOW_TAU_S<=.15,'card camera-centro-heroi: a short smoothing, ≤ 150 ms');
 });
 
 test('off-screen contract: every point on a follow-camera screen counts as visible for the director (4 views, offsets, lag)',()=>{
@@ -193,10 +242,14 @@ test('waiting room: the hero goes to the roomiest free band around the waiting p
 
 test('out of the round the budget is lifted (waiting panel); back in the round the camera is inside the contract at once',()=>{
   const vp=PORTRAIT,z=followZoom(vp),band:Rect={x:0,y:602,width:390,height:242},cam=new FollowCamera(),hero=projectView({x:12,y:17},0);
-  cam.free=true;cam.snap(hero,vp,z,band,HERO);
+  // Lobby and countdown (scene.ts: FollowCamera.beside): the body in the free band beside the waiting panel.
+  cam.free=true;cam.beside=true;cam.snap(hero,vp,z,band,HERO);
   const s=toScreen(hero,cam.center,vp,z);assert.ok(Math.abs(s.y-HERO.height/2-(602+121))<1e-6,'body centred in the band');
-  cam.free=false;const c=cam.step(hero,1/60,vp,z,USEFUL_P,HERO),budget=offsetBudget(vp);
+  cam.free=false;cam.beside=false;const c=cam.step(hero,1/60,vp,z,USEFUL_P,HERO),budget=offsetBudget(vp);
   assert.ok(Math.abs(hero.y-c.y)<=budget.y+LAG_Y_PX+1e-6);
+  // The round (beside off): the useful area no longer frames the hero, the camera eases to the viewport centre.
+  for(let i=0;i<60;i++)cam.step(hero,1/60,vp,z,USEFUL_P,HERO);
+  const r=toScreen(hero,cam.center,vp,z);assert.ok(Math.abs(r.x-195)<.01&&Math.abs(r.y-HERO.height/2-422)<.01,`${r.x},${r.y}`);
 });
 
 /** The scene's coop loop: the prediction advances in 20 Hz steps; returns the camera's hero screen positions per frame. */
@@ -267,8 +320,8 @@ test('an open offer window takes its part of the useful area, and over the hero 
   const open=computeZones({...base,offer:{x:70,y:420,width:310,height:260}}),closed=computeZones(base);
   assert.ok(open.useful.y+open.useful.height<=420&&open.useful.height>=MIN_PLAY_SIDE,`${JSON.stringify(open.useful)}`);
   assert.ok(closed.useful.height>open.useful.height);
-  const vp=base.viewport,z=followZoom(vp),hero={x:0,y:0},c=followTarget(hero,vp,z,open.useful,{x:0,y:0},HERO,true),feet=toScreen(hero,c,vp,z);
-  assert.ok(feet.y+HERO_MARGIN<=420+1e-6,'the hero ± 40 stays above the window');
+  // The follow camera no longer moves the hero beside the window (camera-centro-heroi): janela-caido.test.ts checks
+  // the real windows against the hero at the viewport centre.
   // The audit: the window over the hero fails now (before it was only reported).
   const heroRect={x:180,y:450,width:56,height:56},boxes=[{name:'oferta',rect:{x:70,y:420,width:310,height:260},allowedInPlay:true,overHeroFails:true}];
   assert.deepEqual(auditBoxes(boxes,open,heroRect).heroCrossed,['oferta']);

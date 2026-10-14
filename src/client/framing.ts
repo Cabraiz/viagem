@@ -70,11 +70,19 @@ export function followZoom(viewport:Viewport,k=1){
 /** The widest short side (world px) of the camera before D-046: the hero at the 56 px floor on a 390 px short side. */
 export const TODAY_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_MIN_SCREEN_PX;
 
-/** Smoothing time constant of the follow (UX-camera-segue 3: 120-200 ms). */
-export const FOLLOW_TAU_S=.16;
-/** Look-ahead: this share of the useful area's half extent, in the direction the hero walks on screen (UX: ~15%). */
-export const LOOK_AHEAD=.15;
-/** The look-ahead eases in and out over this time constant, so stopping never jerks the view. */
+/**
+ * Smoothing time constant of the follow (BUG-20261013-ORQ-camera-centro-heroi: a short smoothing ≤ 150 ms and no fixed
+ * offset; it was .16 s, UX-camera-segue 3). Walking, the hero trails the centre by about its speed × FOLLOW_TAU_S.
+ */
+export const FOLLOW_TAU_S=.09;
+/**
+ * Look-ahead: this share of the useful area's half extent, in the direction the hero walks on screen. 0 since
+ * BUG-20261013-ORQ-camera-centro-heroi (the hero stays in the centre while walking too; it was ~15%, UX-camera-segue).
+ * With it at 0, LOOK_TAU_S, lookLimit and FollowCamera's look easing are inert on the normal path; they are kept for if
+ * the look-ahead comes back (the card removed it at the user's request).
+ */
+export const LOOK_AHEAD=0;
+/** The look-ahead eases in and out over this time constant, so stopping never jerks the view (inert while LOOK_AHEAD is 0). */
 export const LOOK_TAU_S=.4;
 /** Where the hero's body sits over its feet (the figure is 96 world px tall, feet at the sprite origin): its middle. */
 export const HERO_BODY_UP_PX=HERO_WORLD_PX/2;
@@ -142,8 +150,9 @@ export function offsetBudget(viewport:Viewport,scale=1){
 }
 
 /**
- * Where the hero's feet should sit on screen (CSS px, canvas coordinates): the body centred in the useful area
- * (UX-zonas-tela), or the screen centre when there is no HUD (solo exploration, waiting room).
+ * Where the hero's feet should sit on screen (CSS px, canvas coordinates): the body centred in `useful`, or in the
+ * whole viewport without one. FollowCamera gives `useful` only beside a panel (FollowCamera.beside, framesBeside); in
+ * the round the body is at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi).
  */
 export function anchorOf(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size,scale=1):Point{
   const area=areaOf(viewport,useful);
@@ -153,6 +162,7 @@ const areaOf=(viewport:Viewport,useful?:Rect):Rect=>useful&&useful.width>0&&usef
 /**
  * Largest look-ahead (world px per screen axis): LOOK_AHEAD of the useful area's half extent, but never so much that
  * the hero's box ± HERO_MARGIN leaves the useful area (landscape: the area is ~155 px tall, so it is ~8 px there).
+ * Inert while LOOK_AHEAD is 0 (camera-centro-heroi), kept for if the look-ahead comes back.
  */
 export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size,scale=1):Point{
   const area=areaOf(viewport,useful),h=hero??{width:HERO_WORLD_PX*scale*zoom,height:HERO_WORLD_PX*scale*zoom};
@@ -174,6 +184,19 @@ export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Re
 }
 
 /**
+ * Whether the follow camera frames the hero beside a panel (FollowCamera.beside: the body centred in the useful area)
+ * rather than at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi: in the round the hero is at the centre,
+ * whatever the HUD, its windows or the zoom). Two exceptions, where centring would put the hero under a panel:
+ * - lobby and countdown: the waiting panel covers the middle of the screen; the useful area is the free band beside
+ *   it (freeAround);
+ * - the intermission while the obra (build) window is open: the player is choosing, no wave runs, and the useful area
+ *   already excludes the window, so it never covers the hero; once it closes the camera eases back to the centre.
+ */
+export function framesBeside(run:string|undefined,round:string|undefined,obraOpen:boolean){
+  return run==='lobby'||run==='countdown'||run==='combat'&&round==='prepare'&&obraOpen;
+}
+
+/**
  * The follow camera's state machine, pure (no Phaser) so node tests pin it down: exponential follow of the target
  * (frame-rate independent), hero-to-centre offset capped at the budget plus CAMERA_LAG_UNITS, look-ahead eased from
  * the hero's screen velocity.
@@ -189,6 +212,8 @@ export class FollowCamera {
    * to a band far from the screen centre (beside the waiting panel). Back in the round the camera cuts into the budget.
    */
   free=false;
+  /** Frame the hero's body in the useful area the scene gives instead of the viewport centre: see framesBeside. */
+  beside=false;
   /** The world's scale and hero speed (followWorld): set by the scene on every fit (first frame, resize, map switch). */
   world:FollowWorld=ENDLESS_FOLLOW;
   private last?:Point;
@@ -196,7 +221,7 @@ export class FollowCamera {
   get placed(){return this.ready;}
   snap(hero:Point,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     this.look={x:0,y:0};this.last={...hero};this.ready=true;
-    this.center=followTarget(hero,viewport,zoom,useful,this.look,size,this.free,this.world.scale);
+    this.center=followTarget(hero,viewport,zoom,this.beside?useful:undefined,this.look,size,this.free,this.world.scale);
     return this.center;
   }
   /** Moves the whole frame by (dx, dy) world px (a re-based projection): no visible change on screen. */
@@ -204,6 +229,9 @@ export class FollowCamera {
   step(hero:Point,seconds:number,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     if(!this.ready||!this.last)return this.snap(hero,viewport,zoom,useful,size);
     const dt=clamp(seconds,0,.25);
+    // Outside `beside` there is no useful area: lookLimit measures the whole viewport, not the HUD's useful area, which
+    // is intended since the hero is framed at the viewport centre there.
+    if(!this.beside)useful=undefined;
     const scale=this.world.scale,limit=this.lookAhead?lookLimit(viewport,zoom,useful,size,scale):{x:0,y:0};
     if(dt>0){
       // Look-ahead from the hero's screen velocity; a jump (teleport, respawn) does not count as walking.

@@ -38,7 +38,11 @@ import {hashId} from './chunks.ts';
 import {GROUND_COLORS,GROUND_LIGHTEN,GROUND_TOWARD_DETAIL} from './palette.ts';
 import {TILE_X,normalizeView,rotate} from './projection.ts';
 
-/** World units covered by one ground tile side (5 cells of 0.88 u). */
+/**
+ * World units covered by one ground tile side (5 cells of 0.88 u). Per world unit, not per cell: on the 1.7× Cidade
+ * Nevada (1.496 u cells, NEW-20261013-ORQ-cidade-escala-1-7) a tile still covers 4.4 u (~2.9 cells), so the ground's
+ * grain keeps its size next to the people and the props.
+ */
 export const GROUND_TILE_UNITS=4.4;
 /** Art pixels per game (projected) pixel for building and prop sheets. */
 export const ART_SCALE=2;

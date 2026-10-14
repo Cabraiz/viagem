@@ -27,13 +27,17 @@ import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {AvenuePlanner} from '../city/avenues.ts';
 import {cityLayoutFrom,cityTerrainOf} from '../city/grid.ts';
-import {RETURN_SLACK_SECONDS} from '../../rules/index.ts';
+import {CITY_MAP_SCALE,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
 import type {NodeInfo} from './resources.ts';
 import type {ResourceKind} from './state.ts';
 
 export type LootTier='near'|'good'|'far';
-/** Walk-time bounds (s) of the tiers: near below the first, good up to the second, far beyond. */
-export const LOOT_NEAR_SECONDS=10,LOOT_FAR_SECONDS=15;
+/**
+ * Walk-time bounds (s) of the tiers: near below the first, good up to the second, far beyond. They describe where the
+ * crates sit on the map (10 / 15 s at the base walk on the .w3x-sized city), so they grow with the map
+ * (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_MAP_SCALE, 17 / 25.5 s): the same candidates keep their tiers and values.
+ */
+export const LOOT_NEAR_SECONDS=10*CITY_MAP_SCALE,LOOT_FAR_SECONDS=15*CITY_MAP_SCALE;
 /**
  * Units a crate gives, by tier (farther pays more). Sized against the forge (recipes cost 5–7 units) and the island
  * economy (~70 units per intermission for a team): with the city's walking distances a solo hero brings back ~18

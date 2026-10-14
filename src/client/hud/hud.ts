@@ -22,6 +22,7 @@ import {MoodBoard} from './moods.ts';
 import type {EmoteId} from '../fun/emotes.ts';
 import {Coach,createCoachRow,type CoachPart,type CoachShow,type Lesson} from './coach.ts';
 import {Minimap} from './minimap.ts';
+import {WcMinimap} from './wc-minimap/minimap.ts';
 import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
@@ -119,6 +120,11 @@ export class RunHud {
   readonly edges?:EdgeArrows;
   readonly minimap?:Minimap;
   /**
+   * The Warcraft-3-style minimap (card NEW-20261013-ORQ-minimapa-wc3, wc-minimap/*): the one in the `.rh-minimap` slot,
+   * on every map (the city's whole map, the endless map around the hero, the island). Drawn by rescue.ts at ≤ 10 Hz.
+   */
+  readonly wc?:WcMinimap;
+  /**
    * The city's minimap (design/cidade-hud.md §1–§2, card cidade-04): built the first time the world is the city and put
    * in the `.rh-minimap` slot instead of `minimap` while it is (useCityMinimap). Only one of the two is in the DOM.
    */
@@ -160,14 +166,14 @@ export class RunHud {
     this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
-    if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.minimap.el,offer.el);}
+    if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.minimap.el.remove();this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.minimap?[this.minimap.el]:[])])this.observer.observe(part);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
@@ -182,6 +188,8 @@ export class RunHud {
   useCityMinimap(on:boolean){
     if(!this.minimap||on===this.cityOn)return;
     this.cityOn=on;
+    // The WC3 minimap holds the slot on every map (it picks the city's frame itself): nothing to swap in the DOM.
+    if(this.wc){if(!on)this.closeCityMap();this.relayout();return;}
     const city=on?(this.city??=this.createCityMinimap()):this.city!;
     const [from,to]=on?[this.minimap.el,city.element]:[city.element,this.minimap.el];
     if(!on){this.closeCityMap();city.big.remove();}
@@ -468,8 +476,9 @@ export class RunHud {
     if(row.classList.contains('rh-objetivo-yield')!==over)row.classList.toggle('rh-objetivo-yield',over);
   }
   /**
-   * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or
-   * the team strip (resize, a HUD box that grew): those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
+   * The hero's real box decides, not the useful area: the follow camera puts the body at the viewport centre
+   * (BUG-20261013-ORQ-camera-centro-heroi), which may sit outside the useful area (844×390: left of it). Whenever the
+   * hero is under the top band or the team strip (that, a resize, a HUD box that grew): those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
    * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
   private veil(hero:Rect,margin:number){

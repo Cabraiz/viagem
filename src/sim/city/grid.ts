@@ -12,12 +12,13 @@
  * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
 import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
-import {SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
+import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {enemyDef} from '../enemies/catalog.ts';
 import {AvenuePlanner,type AvenuePlannerOptions,type CityLayout} from './avenues.ts';
+import {blockingCity,sealRadii} from '../stonewards/barricades.ts';
 
 /**
  * FlowGrid over the city with its cached cells; `refresh` re-reads walkability inside a cell rect (inclusive, clamped)
@@ -81,11 +82,19 @@ export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
   };
 }
 
-/** Planner layout from the asset's points: spawns ← spawnN/S/L/O, mouths ← bocas, plaza (fallback seed) ← praca. */
+/**
+ * Planner layout from the asset's points: spawns ← spawnN/S/L/O, mouths ← bocas, plaza (fallback seed) ← praca; mapScale
+ * ← rules CITY_MAP_SCALE (the asset is the .w3x city × that scale since its version 2, NEW-20261013-ORQ-cidade-escala-1-7).
+ * mouthRadius (the barricade goals) ← the widest barricade disc (stonewards sealRadii) + a hero radius + half a cell:
+ * the first walkable cells past the disc. The discs grew more than the map (2.2 / 1.95 u, not 1.7 / 1.7: the slack a
+ * seal may leave is a hero's), so MOUTH_RADIUS × CITY_MAP_SCALE (2.55 u) missed the N/S avenue cells (2.81 u out).
+ */
 export function cityLayoutFrom(terrain:CityTerrain,grid:FlowGrid=cityFlowGrid(terrain)):CityLayout{
   const p=terrain.asset.points, pt=(q:{x:number;y:number}):FlowPoint=>({x:q.x,y:q.y});
+  const seals=blockingCity(terrain)?Object.values(sealRadii(terrain)).filter((r):r is number=>r!==null):[];
   return {
-    grid,plaza:pt(p.praca),
+    grid,plaza:pt(p.praca),mapScale:CITY_MAP_SCALE,
+    ...(seals.length?{mouthRadius:Math.max(...seals)+RADIUS+terrain.asset.unitsPerCell/2}:{}),
     mouths:{N:pt(p.bocas.N),S:pt(p.bocas.S),L:pt(p.bocas.L),O:pt(p.bocas.O)},
     spawns:{N:pt(p.spawnN),S:pt(p.spawnS),L:pt(p.spawnL),O:pt(p.spawnO)},
   };

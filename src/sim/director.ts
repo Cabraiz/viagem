@@ -286,9 +286,12 @@ export const CITY_ARRIVAL_SLACK=10;
  * contract HERO_DEFAULT_SCREEN_PX), along the planner's flow, until it has made up the distance it is late by
  * (late × its own speed: never ahead of its slot) or it comes on a default screen (from there on its own pace).
  * Only with the whole live team in the base (the plaza flow is then the way the steer takes); never the tutorial, the
- * boss, a retreating or frozen body. Groups on time are untouched. Same value as the endless CATCH_UP_SPEED.
+ * boss, a retreating or frozen body. Groups on time are untouched. 2 u/s (the endless CATCH_UP_SPEED is 2.5): with
+ * the wide bodies squeezing by the hero rule (BUG-20261013-E8-tio-preso-cidade) the city room bots' runs are chaotic
+ * around it — 1.5 left the B line short of B3 in towers-bots, 2.5–3 left a bot idle 5.2–5.4 s near the plaza in
+ * city-room-bots ACCEPTANCE (c), 2 passes both and keeps the plaza pace (city-director first arrival/first wave).
  */
-export const CITY_RUN_IN_SPEED=2.5;
+export const CITY_RUN_IN_SPEED=2;
 const retreatDir={x:0,y:0};
 
 export function activePlayers(ctx:SimContext){

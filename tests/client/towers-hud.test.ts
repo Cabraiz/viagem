@@ -241,32 +241,29 @@ test('obra window open (intermission): the follow camera frames the hero beside 
   // (landscape: the panel spans the middle); while it is open the camera centres the hero in the useful area it leaves.
   const {FollowCamera,followZoom,framesBeside,toScreen}=await import('../../src/client/framing.ts');
   const {ZOOM_MIN}=await import('../../src/client/camera-zoom.ts');
-  for(const portrait of [false,true]){
-    assert.equal(framesBeside('combat','prepare','obra',portrait),true);
-    assert.equal(framesBeside('combat','prepare',undefined,portrait),false,'closed: the centre');
-    assert.equal(framesBeside('combat','wave','obra',portrait),false,'a wave never frames beside the obra window');
-    assert.equal(framesBeside('lobby',undefined,undefined,portrait),true);assert.equal(framesBeside('countdown',undefined,undefined,portrait),true);
-    assert.equal(framesBeside('result','wave',undefined,portrait),false);assert.equal(framesBeside(undefined,undefined,undefined,portrait),false,'solo');
-  }
-  // BUG-20261014-ORQ-forja-cobre-heroi-retrato: the forge and Dona Cida's tray frame the hero beside them in portrait only
-  // (they sit on the thumbs from edge to edge); landscape keeps them in the right column with the hero at the centre.
+  assert.equal(framesBeside('combat','prepare','obra'),true);
+  assert.equal(framesBeside('combat','prepare',undefined),false,'closed: the centre');
+  assert.equal(framesBeside('combat','wave','obra'),false,'a wave never frames beside the obra window');
+  assert.equal(framesBeside('lobby',undefined,undefined),true);assert.equal(framesBeside('countdown',undefined,undefined),true);
+  assert.equal(framesBeside('result','wave',undefined),false);assert.equal(framesBeside(undefined,undefined,undefined),false,'solo');
+  // BUG-20261014-ORQ-forja-cobre-heroi-retrato: the forge and Dona Cida's tray, once besideFrom picked them (portrait, over
+  // the centred hero: forja-uma-linha.test.ts, camera-follow.test.ts), in the intermission and in a wave.
   for(const open of ['forja','cida'] as const)for(const round of ['prepare','wave']){
-    assert.equal(framesBeside('combat',round,open,true),true,`${open} ${round}, portrait`);
-    assert.equal(framesBeside('combat',round,open,false),false,`${open} ${round}, landscape`);
-    assert.equal(framesBeside('result',round,open,true),false,`${open}: out of the round, no`);
+    assert.equal(framesBeside('combat',round,open),true,`${open} ${round}`);
+    assert.equal(framesBeside('result',round,open),false,`${open}: out of the round, no`);
   }
   // The combat offer is none of them: the hero stays at the centre under it.
-  assert.equal(framesBeside('combat','wave',undefined,true),false,'combat offer');
+  assert.equal(framesBeside('combat','wave',undefined),false,'combat offer');
   for(const input of [LANDSCAPE,PORTRAIT,NOTCH,PORTRAIT_NOTCH])for(const scale of [1,1.25])for(const branches of [0,3])for(const k of [ZOOM_MIN,1]){
     const l=layoutObra(input,scale,branches),vp=input.viewport,z=followZoom(vp,k),px=96*z,size={width:px,height:px},heroAt={x:4321.5,y:-987.25};
-    const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare','obra',input.viewport.height>500);
+    const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare','obra');
     const box=()=>{const f=toScreen(heroAt,cam.center,vp,z);return {x:f.x-px/2,y:f.y-px,width:px,height:px};};
     cam.snap(heroAt,vp,z,l.zones.useful,size);
     const label=`${vp.width}×${vp.height} ${scale} ${branches} k ${k.toFixed(3)}: hero ${JSON.stringify(box())} panel ${JSON.stringify(l.panel)}`;
     assert.equal(crosses(box(),l.panel,0),false,label);
     if(l.fits)assert.equal(crosses(box(),l.panel,HERO_MARGIN),false,`± ${HERO_MARGIN}: ${label}`);
     // Closed: the camera eases back to the viewport centre.
-    cam.beside=framesBeside('combat','prepare',undefined,input.viewport.height>500);
+    cam.beside=framesBeside('combat','prepare',undefined);
     for(let i=0;i<60;i++)cam.step(heroAt,1/60,vp,z,l.zones.useful,size);
     const b=box();assert.ok(Math.abs(b.x+px/2-vp.width/2)<.01&&Math.abs(b.y+px/2-vp.height/2)<.01,`closed: ${label}`);
   }

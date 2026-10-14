@@ -251,18 +251,19 @@ if(zueira){
  * stands in for it in the band, as in the game.
  */
 async function heroFeet(){
-  const [{framesBeside},{besideArea,computeZones,measureZoneInput,orientationOf},{foneMinimapRect}]=await Promise.all([
+  const [{besideFrom},{besideArea,computeZones,measureZoneInput},{foneMinimapRect}]=await Promise.all([
     import('../framing.ts'),import('../hud/zones.ts'),import('../hud/fone-layout.ts')]);
   const box=(el:Element|null)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
   return ()=>{
-    const viewport={width:innerWidth,height:innerHeight},portrait=orientationOf(viewport)==='portrait';
-    const tray=document.querySelector('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
-    const kind=tray?tray.classList.contains('rh-cida')?'cida' as const:'forja' as const:undefined;
-    if(!framesBeside('combat','prepare',kind,portrait))return {x:viewport.width/2,y:viewport.height/2+28};
+    const viewport={width:innerWidth,height:innerHeight};
+    const tray=document.querySelector('.rh-forge:not([hidden]),.rh-cida:not([hidden])'),rect=box(tray);
+    const kind=tray?.classList.contains('rh-cida')?'cida' as const:'forja' as const;
+    // The game's own decision (explore.ts): beside the window only when it would cover the centred hero, in portrait.
+    if(!besideFrom({viewport,tray:rect&&{kind,rect}}))return {x:viewport.width/2,y:viewport.height/2+28};
     const input=measureZoneInput(document),phone=hud.el.dataset.hud==='fone';
     const status=[...input.status,box(document.querySelector('.hs-gear')),...(phone&&!input.minimap?[foneMinimapRect(viewport)]:[])];
     const zones=computeZones({...input,status,joystick:box(document.querySelector('.hs-stick')),skill:box(document.querySelector('.hs-attack'))});
-    const a=besideArea(zones,box(tray));
+    const a=besideArea(zones,rect);
     return {x:a.x+a.width/2,y:a.y+a.height/2+28};
   };
 }

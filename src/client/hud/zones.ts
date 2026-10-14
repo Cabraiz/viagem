@@ -7,8 +7,10 @@
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. In the round the follow
  *   camera (D-019, framing.ts FollowCamera) does not centre the hero on it: the hero's body sits at the viewport centre
  *   (BUG-20261013-ORQ-camera-centro-heroi), so it may stand outside this area and the HUD clears the hero's real box
- *   (scene.heroScreenRect: the veil, the edge arrows). Only the lobby (the free band beside the waiting panel) and an
- *   open obra window centre it on this area (IslandScene.usefulArea, framing.ts framesBeside).
+ *   (scene.heroScreenRect: the veil, the edge arrows). Only the lobby (the free band beside the waiting panel), an
+ *   open obra window and, in portrait, the forge or Dona Cida's tray when it would cover the centred hero centre it on
+ *   this area, or on a short screen on the band above the window (IslandScene.usefulArea / frameArea, framing.ts
+ *   framesBeside and besideFrom, besideArea below).
  * - minimap (ORQ-minimapa): portrait, a status readout of the top band under the gear (the band grows by it);
  *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there); while the
  *   offer or the forge holds the right column, under the camera buttons, still outside the useful area.

@@ -18,9 +18,9 @@ import {RECIPE_SHORT,barricadeText,createCamp} from '../../src/client/hud/camp.t
 import {forgePriceLabel} from '../../src/client/hud/price.ts';
 import {FIXTURE_HERO,fakeView} from '../../src/client/hud/fixtures.ts';
 import {RECIPES,RECIPE_IDS,forgePrice} from '../../src/rules/index.ts';
-import {HERO_MARGIN,THUMB_GAP,besideArea,computeZones,crosses,orientationOf,type Rect} from '../../src/client/hud/zones.ts';
+import {HERO_MARGIN,THUMB_GAP,besideArea,computeZones,crosses,type Rect} from '../../src/client/hud/zones.ts';
 import {foneLayout} from '../../src/client/hud/fone-layout.ts';
-import {FollowCamera,followZoom,framesBeside,toScreen} from '../../src/client/framing.ts';
+import {FollowCamera,besideFrom,followZoom,framesBeside,toScreen} from '../../src/client/framing.ts';
 import {HERO_SIDE} from '../../src/client/hud/city/layout.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
@@ -283,7 +283,7 @@ function heroBeside(kind:'forja'|'cida',window:Rect,s:Screen){
   const status=[l.gear,l.level,l.bar,l.fan,l.minimap];
   const zones=computeZones({viewport,status,...thumbs,minimap:l.minimap,offer:window});
   const area=besideArea(zones,window),z=followZoom(viewport),at={x:4321.5,y:-987.25},size={width:HERO_SIDE,height:HERO_SIDE};
-  const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare',kind,orientationOf(viewport)==='portrait');
+  const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare',besideFrom({viewport,tray:{kind,rect:window}}));
   cam.snap(at,viewport,z,area,size);
   const feet=toScreen(at,cam.center,viewport,z);
   return {hero:{x:feet.x-HERO_SIDE/2,y:feet.y-HERO_SIDE,width:HERO_SIDE,height:HERO_SIDE},area,zones,rows:Math.max(...status.map(r=>r.y+r.height)),beside:cam.beside};
@@ -291,9 +291,12 @@ function heroBeside(kind:'forja'|'cida',window:Rect,s:Screen){
 
 for(const size of [...PORTRAITS,...SHORT])for(const scale of SCALES)for(const [kind,tags] of [['forja',3],['forja',4],['cida',3]] as const){
   const s:Screen={...size,scale},name=`portrait ${s.width}x${s.height} at ${scale*100}%, ${kind==='cida'?'Dona Cida':`forge with ${tags} tags`}`;
-  test(`${name}: the camera frames the hero above the window, ± ${HERO_MARGIN} px clear of it and of the status rows`,()=>{
+  test(`${name}: the hero stays ± ${HERO_MARGIN} px clear of the window and of the status rows (above it when it would cover the centre)`,()=>{
     const window=openWindow(kind,tags,s),{hero,area,rows,beside}=heroBeside(kind,window,s);
-    assert.ok(beside,'portrait: beside the window');
+    const centred={x:s.width/2-HERO_SIDE/2,y:s.height/2-HERO_SIDE/2,width:HERO_SIDE,height:HERO_SIDE};
+    assert.equal(beside,crosses(centred,window,HERO_MARGIN),'beside exactly when the window would cover the centred hero');
+    // The short screens always need it.
+    if(s.height<700)assert.ok(beside,'390x664 / 360x690: beside the window');
     const label=`hero y ${hero.y.toFixed(1)}–${(hero.y+hero.height).toFixed(1)}, window ${window.y.toFixed(1)}–${(window.y+window.height).toFixed(1)}, area ${area.y.toFixed(1)}–${(area.y+area.height).toFixed(1)}`;
     assert.ok(!crosses(hero,window,HERO_MARGIN),`${name}: ${label}`);
     assert.ok(hero.y-HERO_MARGIN>=rows-.01,`${name}: under the status rows (${rows}): ${label}`);

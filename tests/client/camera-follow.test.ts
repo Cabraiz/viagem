@@ -338,12 +338,63 @@ test('portrait forge / Dona Cida open: the hero eases above the window (besideAr
   const box=(c:{x:number;y:number})=>{const f=toScreen(hero,c,vp,z);return {x:f.x-HERO.width/2,y:f.y-HERO.height,width:HERO.width,height:HERO.height};};
   const cam=new FollowCamera();cam.free=true;cam.beside=false;cam.snap(hero,vp,z,area,HERO);
   assert.ok(crosses(box(cam.center),window,HERO_MARGIN),'centred, the hero ± margin reaches the window on 390x664');
-  cam.beside=framesBeside('combat','prepare','forja',true);
+  cam.beside=framesBeside('combat','prepare','forja');
   for(let i=0;i<90;i++)cam.step(hero,1/60,vp,z,area,HERO);
   assert.ok(!crosses(box(cam.center),window,HERO_MARGIN),`beside: ${JSON.stringify(box(cam.center))}`);
   assert.ok(box(cam.center).y-HERO_MARGIN>=136-.01,'under the status rows');
   // Closed (or the combat offer, which is no beside window): back to the viewport centre.
-  cam.beside=framesBeside('combat','wave',undefined,true);
+  cam.beside=framesBeside('combat','wave',undefined);
   for(let i=0;i<90;i++)cam.step(hero,1/60,vp,z,area,HERO);
   const b=box(cam.center);assert.ok(Math.abs(b.y+HERO.height/2-vp.height/2)<.05,`back at the centre: ${b.y}`);
+});
+
+test('besideFrom: forge / Dona Cida only on a portrait screen and over the centred hero; obra first; never behind the waiting panel',async()=>{
+  // Review of 55757c8: a desktop (1343x618, 1920x1080) or a landscape tablet (1024x768) counted as portrait (height >
+  // 500) and the camera slid the hero ~140 px sideways though the right-hand window never covered it.
+  const {besideFrom,framesBeside}=await import('../../src/client/framing.ts');
+  // Where the desktop puts them (camp.css / cida.css on a landscape screen over 500 px: bottom-right, 440 px wide).
+  for(const vp of [{width:1343,height:618},{width:1920,height:1080},{width:1024,height:768}])for(const kind of ['forja','cida'] as const){
+    const rect={x:vp.width-8-440,y:vp.height-160-230,width:440,height:230};
+    assert.equal(besideFrom({viewport:vp,tray:{kind,rect}}),undefined,`${vp.width}x${vp.height} ${kind}`);
+    // Even a window over the centre: a landscape screen never frames the tray beside (its CSS keeps the right column).
+    assert.equal(besideFrom({viewport:vp,tray:{kind,rect:{x:0,y:vp.height/2-20,width:vp.width,height:200}}}),undefined);
+    const z=followZoom(vp),hero={x:1234.5,y:-678.25},cam=new FollowCamera();cam.free=true;
+    cam.beside=framesBeside('combat','prepare',besideFrom({viewport:vp,tray:{kind,rect}}));cam.snap(hero,vp,z,{x:0,y:200,width:vp.width/2,height:200},HERO);
+    const f=toScreen(hero,cam.center,vp,z);
+    assert.ok(Math.abs(f.x-vp.width/2)<.01&&Math.abs(f.y-HERO.height/2-vp.height/2)<.01,`${vp.width}x${vp.height}: the hero stays at the centre`);
+  }
+  // A tall, narrow desktop window (500x900): its forge spans the bottom like the phone's and reaches the centre: beside.
+  const tall={width:500,height:900},low={x:8,y:440,width:484,height:300};
+  assert.equal(besideFrom({viewport:tall,tray:{kind:'forja',rect:low}}),'forja');
+  assert.equal(besideFrom({viewport:tall,tray:{kind:'cida',rect:low},hero:{width:40,height:45}}),'cida','the hero\'s own size');
+  // Portrait, but the window clear of the centred hero ± margin (390x844, three tags at y 506): the hero stays centred.
+  assert.equal(besideFrom({viewport:PORTRAIT,tray:{kind:'forja',rect:{x:8,y:506,width:374,height:178}}}),undefined);
+  // The obra window wins over a tray; the waiting panel (lobby, countdown) wins over everything.
+  assert.equal(besideFrom({viewport:PORTRAIT,obra:true,tray:{kind:'forja',rect:{x:8,y:300,width:374,height:384}}}),'obra');
+  assert.equal(besideFrom({viewport:LANDSCAPE,obra:true}),'obra');
+  assert.equal(besideFrom({viewport:PORTRAIT,waiting:true,obra:true,tray:{kind:'cida',rect:{x:8,y:300,width:374,height:384}}}),undefined);
+  assert.equal(besideFrom({viewport:PORTRAIT}),undefined,'nothing open');
+});
+
+test('Dona Cida open mid-wave on 390x664: the off-screen budget gives way, the hero reaches the band above the tray',async()=>{
+  // Review of 55757c8: with follow.free false (a wave) the budget (87.5 CSS px from the centre along y here) held the hero
+  // short of the band above the window. The tray as tall as the forge's 4 tags (y 290–502), where the band's centre is
+  // 91 px over the viewport centre.
+  const {besideFrom,followFree,framesBeside}=await import('../../src/client/framing.ts');
+  const {besideArea,crosses}=await import('../../src/client/hud/zones.ts');
+  const vp={width:390,height:664},z=followZoom(vp),hero={x:812.5,y:-301.75},tray={x:8,y:290,width:374,height:212};
+  const area=besideArea({useful:{x:0,y:224,width:390,height:66},announce:{x:0,y:136,width:390,height:88}},tray);
+  // With the budget the body stops short of the band's centre (the case the review measured).
+  {const c=new FollowCamera();c.free=false;c.beside=true;c.snap(hero,vp,z,area,HERO);const f=toScreen(hero,c.center,vp,z);
+    assert.ok(f.y-HERO.height/2-(area.y+area.height/2)>1,`with the budget: ${f.y-HERO.height/2} vs ${area.y+area.height/2}`);}
+  const beside=besideFrom({viewport:vp,tray:{kind:'cida',rect:tray}});
+  assert.equal(beside,'cida');
+  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false,beside}),true,'beside a tray: no budget');
+  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false}),false,'a wave without it keeps the budget');
+  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false,beside:'obra'}),false,'the obra window is an intermission thing');
+  const cam=new FollowCamera();cam.free=followFree({net:true,run:'combat',round:'wave',watching:false,beside});cam.beside=framesBeside('combat','wave',beside);
+  cam.snap(hero,vp,z,area,HERO);for(let i=0;i<120;i++)cam.step(hero,1/60,vp,z,area,HERO);
+  const f=toScreen(hero,cam.center,vp,z),box={x:f.x-HERO.width/2,y:f.y-HERO.height,width:HERO.width,height:HERO.height};
+  assert.ok(!crosses(box,tray,HERO_MARGIN),`hero ${JSON.stringify(box)} vs tray at ${tray.y}`);
+  assert.ok(Math.abs(box.y+HERO.height/2-(area.y+area.height/2))<.05,'body at the band\'s centre');
 });

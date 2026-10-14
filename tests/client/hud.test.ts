@@ -277,6 +277,9 @@ test('D-050 (replaced D-021 in waves): a held offer shows only in the level-up p
   // like for a level (pendingOffers), and in the pause the window has no clock of its own.
   const carried={...combat,offers:[{...prep.offers[1],deadlineTick:combat.tick+ticks(4)}]};
   assert.deepEqual([offerUiState(carried).chip,offerUiState(carried).panel,offerUiState(carried,false,true).panel,offerUiState(carried,false,true).clock],[false,false,true,false]);
+  // D-051 drops the rounds: with no round info the pause still wins (window, no chip, not foldable away).
+  const roundless={...combat,round:undefined,wave:undefined};
+  assert.deepEqual([offerUiState(roundless,true,true).panel,offerUiState(roundless,true,true).chip,offerUiState(roundless,false,true).clock],[true,false,false]);
   // No round info at all (legacy feed): offers open by themselves.
   assert.equal(offerMode({...combat,round:undefined,wave:undefined}),'intermission');
   assert.equal(offerMode({...combat,round:undefined,wave:{index:2,label:'x',phase:'wave'}}),'combat');

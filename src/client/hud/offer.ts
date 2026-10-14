@@ -116,7 +116,8 @@ export function offerUiState(view:RunView,collapsed=false,paused=false){
   const mode:OfferMode=offerMode(view),offer=view.offers[0];
   const pending=view.offers.length,intermission=mode==='intermission';
   const clock=!!offer&&!paused&&!isHeldOffer(offer);
-  return {mode,pending,chip:pending>0&&intermission,panel:!!offer&&(intermission?!collapsed:paused),clock,
+  // The pause wins over the mode: with no round info (D-051 drops the rounds) offerMode says 'intermission'.
+  return {mode,pending,chip:pending>0&&intermission&&!paused,panel:!!offer&&(paused||intermission&&!collapsed),clock,
     seconds:clock&&offer?secondsLeft(offer.deadlineTick,view.tick):undefined};
 }
 
@@ -316,7 +317,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     // Taking all: the next head gets its default as soon as the previous stamp is done.
     if(takingAll&&!pending&&(state.mode==='intermission'||paused)){pick(offer.defaultIndex);return;}
     takeAll.hidden=!((state.mode==='intermission'||paused)&&offers.length>=TAKE_ALL_MIN);
-    later.hidden=state.mode!=='intermission';
+    later.hidden=state.mode!=='intermission'||paused;
     const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
     if(fall.textContent!==line){
       // "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans (the forge drops the hint in landscape).

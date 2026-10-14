@@ -4,7 +4,7 @@
  * not step the simulation while paused: every combat deadline is an absolute tick (telegraphs, the boss, bleed-outs,
  * statuses, towers, the chaveiro's alarm) and the tick only moves in SimWorld.step, so nothing has to be shifted.
  *
- *  - opens: in a wave, when a human online or a room bot has an offer, and PAUSE_GAP_TICKS of combat went by since the
+ *  - opens: in combat (anything but an intermission: D-051 drops the rounds, so it never asks for a 'wave'), when a human online or a room bot has an offer, and PAUSE_GAP_TICKS of combat went by since the
  *    last pause (levels in between wait for the next one); one pause takes every level queued;
  *  - waits for: humans online with an offer (downed ones too: a card does not need standing); room bots pick their
  *    defaults after BOT_PICK_MS (a reaction, so a pause with only bots still shows);
@@ -27,7 +27,7 @@ export const BOT_PICK_MS=1_000;
 /** What the pause needs of the room's simulation (Simulation implements it; tests use a fake). */
 export interface PauseSim {
   readonly tick:number;
-  readonly world:{round:{phase:string};team:{level:number}};
+  readonly world:{round?:{phase:string};team:{level:number}};
   readonly players:ReadonlyMap<string,{online:boolean}>;
   readonly bots:ReadonlySet<string>;
   pendingOffers():Map<string,number>;
@@ -50,7 +50,7 @@ export class LevelupPause {
    */
   update(sim:PauseSim,now:number):boolean{
     if(!this.open){
-      if(sim.world.round.phase!=='wave'||sim.tick-this.lastEndTick<PAUSE_GAP_TICKS)return false;
+      if(sim.world.round?.phase==='prepare'||sim.tick-this.lastEndTick<PAUSE_GAP_TICKS)return false;
       const pending=[...sim.pendingOffers()].filter(([id])=>this.acts(sim,id));
       if(!pending.length)return false;
       this.open={startedAt:now,totalMs:pauseMs(Math.max(...pending.map(([,n])=>n))),level:sim.world.team.level};

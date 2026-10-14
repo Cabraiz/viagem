@@ -10,7 +10,8 @@ import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} f
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
-import {createPreloader} from './preload/preloader.ts';
+import {createPreloader,preloadDone} from './preload/preloader.ts';
+import {holdMenuDownload} from './audio/menu-music.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
 import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
 
@@ -229,6 +230,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   // the members and the map (only new files are added); the ready button waits for this phone's P0 or PRELOAD_CAP_MS.
   const preloader=options.preload===false?undefined:createPreloader();
   let preloadKey='';
+  // The menu music's download yields to this one (musica-do-menu): held (aborted) while the match's files download.
+  let menuHold:(()=>void)|undefined;
+  const stopPreload=()=>{preloader?.abort();menuHold?.();menuHold=undefined;};
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
   panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button"><span class="coop-wait-share-icon" aria-hidden="true">${icon('aviao',{size:24})}</span><span class="coop-wait-share-text">Chamar a turma</span></button></div>
     <div class="coop-wait-news" role="alert" hidden><strong></strong><span></span></div>
@@ -331,7 +335,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);preloader?.abort();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
     // The match is on: a slow connection now fetches the decoration too (it held it back to give P0/P1 the bandwidth).
     if(client.run?.phase==='combat')preloader?.release();
@@ -351,9 +355,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(preloader&&selfClass){
       const room={self:selfClass,others:view.members.filter(m=>!m.self).map(m=>m.classId),map:roomMap,search:location.search};
       const key=matchKey(room);
-      if(key!==preloadKey){preloadKey=key;preloader.add(assetsParaPartida(room));}
+      if(key!==preloadKey){preloadKey=key;menuHold??=holdMenuDownload();preloader.add(assetsParaPartida(room));}
     }
     const preload=preloader?.progress();
+    if(menuHold&&preload&&preloadDone(preload)){menuHold();menuHold=undefined;}
     if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS,false);
     mapSeen=roomMap;
     if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS,false);
@@ -447,7 +452,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
   };
   const timer=setInterval(update,200);update();
-  return {panel,update,dispose(){clearInterval(timer);preloader?.abort();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
+  return {panel,update,dispose(){clearInterval(timer);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
 }
 
 /** `room` fills the code (in place of ?room=); with `autoJoin` the lobby enters it by itself (back from a version reload). */

@@ -20,6 +20,7 @@ import {baseLoads} from '../art/base-art.ts';
 import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
 import {buildCityArtPlan,cityArtOptions} from '../render/city/art-plan.ts';
+import {ALBEDO_URL} from '../render/city/relevo/albedo-meta.ts';
 
 export type AssetPriority='P0'|'P1'|'P2';
 export type AssetKind='hero'|'icon'|'ground'|'building'|'decor'|'enemy'|'base'|'effect';
@@ -60,7 +61,12 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   if(known(room.self))add(thumbUrl(room.self),'P0','icon');
   const index=artIndex();
   const city=room.map==='cidade-nevada'?buildCityArtPlan(index,cityArtOptions(room.search??'')):undefined;
-  if(city){for(const s of city.sheets)if(s.key.startsWith('city:ground:'))add(s.url,'P0','ground');}
+  if(city){
+    for(const s of city.sheets)if(s.key.startsWith('city:ground:'))add(s.url,'P0','ground');
+    // The relief's ground albedo (relevo/baker.ts; not with ?chao=0): in before the first frame, so the ground does not
+    // change under the players mid-match on a slow link.
+    if(new URLSearchParams(room.search??'').get('chao')!=='0')add(ALBEDO_URL,'P0','ground');
+  }
   else for(const url of ENDLESS_GROUND)add(url,'P0','ground');
   // P1: teammates (sheet and class icon), enemies, buildings, base pieces.
   for(const id of new Set(room.others)){

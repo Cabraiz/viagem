@@ -13,6 +13,7 @@ import {ZONE_WINDOWS} from './hud/zones.ts';
 const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
+import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
@@ -232,6 +233,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
+    // Back on the creation screens: the menu music returns.
+    setMusicScene('menu');
   };
   const pause=(value:boolean)=>{paused=value;if(value)reset();controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
   const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
@@ -426,6 +429,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             // The version watch reads the phase from the shell (update-toast.ts inMatchOf): out of countdown/combat, an
             // update that waited reloads now; any other change moves the notice to where it shows (HUD slot or top).
             if(previous!==run.phase){if(leftMatch(previous,run.phase))matchEnded();else if(updateSlot)setMatchSlot(updateSlot);}
+            // Menu music (musica-do-menu): the waiting room keeps it; combat and the result hand over to the match's.
+            if(previous!==run.phase)setMusicScene(sceneOfPhase(run.phase));
             if(hud){
               // Shown by runView once it holds this run's state; until then the DOM may still show the last run's falls.
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;

@@ -5,6 +5,7 @@ import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
+import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -19,6 +20,8 @@ linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fe
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
 // the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
 void startArt();
+// Menu music (NEW-20261014-ORQ-musica-do-menu): after load + idle, low priority, never on 2g/Save-Data; plays from the first tap.
+startMenuMusic();
 // Art cache (NEW-20261013-ORQ-3g-precarga-partida): public/sw.js keeps /art and /assets by content version, so a second
 // match downloads no art. Production builds only: the dev server never gets a worker.
 if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});

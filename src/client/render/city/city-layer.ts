@@ -214,7 +214,11 @@ export class CityLayer {
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
     };
     this.materials=new CityMaterials(lookup);
-    if(relief)this.relief=new CityRelief(scene,asset,this.pivot);
+    if(relief){
+      this.relief=new CityRelief(scene,asset,this.pivot);
+      // The ground albedo arrived (relevo/baker.ts): the live chunks bake again with it.
+      this.relief.onAlbedo=()=>this.refresh();
+    }
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
@@ -222,6 +226,8 @@ export class CityLayer {
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
+  /** The ground drawn is final (no albedo still on its way): the modo foto waits for it. */
+  groundSettled(){return !this.relief||this.relief.albedoSettled;}
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 

@@ -67,18 +67,22 @@ function loadVersions(force){
 /** Downloads of the same file at once (the room's pre-download and Phaser's) share one network fetch. */
 const inflight=new Map();
 function download(request,path,version){
-  let job=inflight.get(path);
+  // Music (/audio/): low priority and the page's own signal, so a download the page aborts (the menu music yielding to
+  // the match's pre-download, src/client/audio/menu-music.ts) stops here too; never shared, so an aborted one cannot
+  // fail a later ask.
+  const music=path.startsWith('/audio/');
+  let job=music?undefined:inflight.get(path);
   if(!job){
     job=(async()=>{
-      const response=await fetch(request.url,{credentials:'same-origin'});
+      const response=await fetch(request.url,music?{credentials:'same-origin',priority:'low',signal:request.signal}:{credentials:'same-origin'});
       if(!storable(response))return {response};
       const body=await response.blob(),headers=new Headers(response.headers);
       if(version)headers.set(VERSION_HEADER,version);else headers.set(VERSION_HEADER,'-');
       const init={status:response.status,statusText:response.statusText,headers};
       try{await (await caches.open(CACHE)).put(path,new Response(body,init));}catch{/* quota: served, not kept */}
       return {body,init};
-    })().finally(()=>inflight.delete(path));
-    inflight.set(path,job);
+    })();
+    if(!music){job=job.finally(()=>inflight.delete(path));inflight.set(path,job);}
   }
   return job.then(r=>r.response?r.response.clone():new Response(r.body,r.init));
 }

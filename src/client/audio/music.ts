@@ -16,6 +16,7 @@
  *   the boss comes, the theme fades out (1.5 s) as the boss fades in (1 s); the boss dies, its music fades out (2 s)
  *   and then the theme fades back in (2 s); the run ends, both fade out (2 s). Mute or a hidden tab pause both
  *   elements; they resume where wanted. Never throws; a play() refused by the autoplay policy waits for a gesture.
+ * - The menu's track (menu-music.ts) is a MusicTrack too; its download is abortable (cancelLoad) so it yields to the match.
  */
 import type {RunView} from '../../contract/index.ts';
 import {UNLOCK_EVENTS} from './engine.ts';
@@ -79,22 +80,22 @@ export interface MusicOptions {
   createElement?:(track:Readonly<TrackSpec>)=>MusicElement|undefined;
   /** Overrides the format pick per track (tests); null silences that track. */
   sources?:{boss?:string|null;theme?:string|null};
-  /** Downloads a file and gives a URL the element can read (default: low-priority fetch to a blob URL). */
-  fetchUrl?:(url:string)=>Promise<string>;
+  /** Downloads a file and gives a URL the element can read (default: low-priority fetch to a blob URL); `signal` aborts it. */
+  fetchUrl?:(url:string,signal?:AbortSignal)=>Promise<string>;
   revokeUrl?:(url:string)=>void;
   setTimer?:(fn:()=>void,ms:number)=>unknown;
   clearTimer?:(id:unknown)=>void;
 }
-interface TrackHost {
+export interface TrackHost {
   engine:MusicEngine;
-  fetchUrl:(url:string)=>Promise<string>;
+  fetchUrl:(url:string,signal?:AbortSignal)=>Promise<string>;
   revokeUrl:(url:string)=>void;
   setTimer:(fn:()=>void,ms:number)=>unknown;
   clearTimer:(id:unknown)=>void;
   /** Muted, volume 0 or a hidden tab: the elements pause. */
   quiet:()=>boolean;
 }
-type Page=EventTarget&{visibilityState?:string};
+export type Page=EventTarget&{visibilityState?:string};
 
 let silent:string|undefined;
 /** 8 samples of 8-bit silence, ~70 bytes: enough for iOS to count the element as played in a gesture. */
@@ -108,13 +109,13 @@ function silentWav():string{
   return silent='data:audio/wav;base64,'+btoa(String.fromCharCode(...bytes));
 }
 
-async function fetchBlobUrl(url:string):Promise<string>{
-  const response=await fetch(url,{priority:'low'} as RequestInit);
+async function fetchBlobUrl(url:string,signal?:AbortSignal):Promise<string>{
+  const response=await fetch(url,{priority:'low',signal} as RequestInit);
   if(!response.ok)throw new Error(String(response.status));
   return URL.createObjectURL(await response.blob());
 }
 
-function defaultElement():MusicElement|undefined{
+export function defaultElement():MusicElement|undefined{
   const audio=globalThis.document?.createElement('audio');
   if(!audio||typeof audio.canPlayType!=='function')return undefined;
   audio.preload='none';
@@ -139,6 +140,9 @@ export class MusicTrack {
   private objectUrl:string|undefined;
   private timer:unknown;
   private disposed=false;
+  /** Bumped by cancelLoad: a download that answers after it is dropped. */
+  private loadGen=0;
+  private loadAbort:AbortController|undefined;
 
   constructor(spec:Readonly<TrackSpec>,host:TrackHost,el:MusicElement|undefined,source?:string|null){
     this.spec=spec;this.host=host;
@@ -158,16 +162,26 @@ export class MusicTrack {
   load(){
     if(!this.el||this.disposed||this.st!=='idle')return;
     this.st='loading';
-    const url=this.url!;
+    const url=this.url!,gen=this.loadGen;
+    const abort=this.loadAbort=typeof AbortController==='function'?new AbortController():undefined;
     let job:Promise<string>;
-    try{job=this.host.fetchUrl(url);}catch(error){job=Promise.reject(error);}
+    try{job=this.host.fetchUrl(url,abort?.signal);}catch(error){job=Promise.reject(error);}
     void job.then(found=>found,()=>url).then(found=>{
-      if(this.disposed||!this.el){if(found!==url)this.host.revokeUrl(found);return;}
+      if(gen!==this.loadGen||this.disposed||!this.el){if(found!==url)this.host.revokeUrl(found);return;}
+      this.loadAbort=undefined;
       if(found!==url)this.objectUrl=found;
       try{this.el.loop=true;this.el.preload='auto';this.el.src=found;}catch{return;}
       this.realSrc=true;this.st='ready';
       if(this.want)this.start();
     });
+  }
+
+  /** Gives the bandwidth back: a download still running is aborted and the track is idle again (load() restarts it). */
+  cancelLoad(){
+    if(this.st!=='loading')return;
+    this.loadGen++;this.st='idle';
+    const abort=this.loadAbort;this.loadAbort=undefined;
+    try{abort?.abort();}catch{/* ignored */}
   }
 
   /** Fades in over `fadeS` after `delayS` (now, or as soon as the file arrives). */
@@ -215,6 +229,7 @@ export class MusicTrack {
 
   dispose(){
     if(this.disposed)return;
+    this.cancelLoad();
     this.disposed=true;
     this.cancelTimer();
     const el=this.el;
@@ -288,6 +303,30 @@ export class MusicTrack {
   }
 }
 
+/** The tracks' shared plumbing: the defaults, and quiet = muted, volume 0 or `page()` hidden. */
+export function musicHost(opts:MusicOptions,page:()=>Page|undefined):TrackHost{
+  const engine=opts.engine;
+  return {engine,
+    fetchUrl:opts.fetchUrl??fetchBlobUrl,
+    revokeUrl:opts.revokeUrl??(url=>{try{URL.revokeObjectURL(url);}catch{/* ignored */}}),
+    setTimer:opts.setTimer??((fn,ms)=>setTimeout(fn,ms)),
+    clearTimer:opts.clearTimer??(id=>clearTimeout(id as ReturnType<typeof setTimeout>)),
+    quiet:()=>{const s=engine.settings;return s.muted||s.volume<=0||page()?.visibilityState==='hidden';}};
+}
+
+/** The engine's unlock, `onGesture` on every gesture and `onVisible` on visibilitychange; returns a detach function. */
+export function bindPage(engine:MusicEngine,page:Page,onGesture:()=>void,onVisible:()=>void):()=>void{
+  // The engine's listener first: the tracks' gesture needs the context it creates.
+  const offEngine=engine.attachUnlock(page);
+  for(const type of UNLOCK_EVENTS)page.addEventListener(type,onGesture,{passive:true});
+  page.addEventListener('visibilitychange',onVisible);
+  return ()=>{
+    offEngine();
+    for(const type of UNLOCK_EVENTS)page.removeEventListener(type,onGesture);
+    page.removeEventListener('visibilitychange',onVisible);
+  };
+}
+
 /** The match's two tracks: the theme from the start, the boss's while it lives, crossfaded. */
 export class GameMusic {
   readonly boss:MusicTrack;
@@ -302,12 +341,7 @@ export class GameMusic {
 
   constructor(opts:MusicOptions){
     const engine=opts.engine;
-    this.host={engine,
-      fetchUrl:opts.fetchUrl??fetchBlobUrl,
-      revokeUrl:opts.revokeUrl??(url=>{try{URL.revokeObjectURL(url);}catch{/* ignored */}}),
-      setTimer:opts.setTimer??((fn,ms)=>setTimeout(fn,ms)),
-      clearTimer:opts.clearTimer??(id=>clearTimeout(id as ReturnType<typeof setTimeout>)),
-      quiet:()=>{const s=engine.settings;return s.muted||s.volume<=0||this.page?.visibilityState==='hidden';}};
+    this.host=musicHost(opts,()=>this.page);
     const make=(spec:Readonly<TrackSpec>,source:string|null|undefined)=>{
       let el:MusicElement|undefined;
       try{el=(opts.createElement??defaultElement)(spec);}catch{el=undefined;}
@@ -324,15 +358,7 @@ export class GameMusic {
   attach(page:Page):()=>void{
     if(!this.enabled||this.disposed)return ()=>{};
     this.page=page;
-    const offEngine=this.host.engine.attachUnlock(page);
-    const onGesture=()=>{this.boss.gesture();this.theme.gesture();},onVisible=()=>this.follow();
-    for(const type of UNLOCK_EVENTS)page.addEventListener(type,onGesture,{passive:true});
-    page.addEventListener('visibilitychange',onVisible);
-    const detach=()=>{
-      offEngine();
-      for(const type of UNLOCK_EVENTS)page.removeEventListener(type,onGesture);
-      page.removeEventListener('visibilitychange',onVisible);
-    };
+    const detach=bindPage(this.host.engine,page,()=>{this.boss.gesture();this.theme.gesture();},()=>this.follow());
     this.detachers.push(detach);
     return detach;
   }

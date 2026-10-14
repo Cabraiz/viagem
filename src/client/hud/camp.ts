@@ -146,13 +146,14 @@ export function barricadeBlocked(spot:Pick<BarricadeSpot<StructureView>,'structu
   return undefined;
 }
 /**
- * The barricade tag's texts: its name, its line, the one-line form's short effect (RECIPE_SHORT) and the stamp's note
- * once the room says yes (pure, tested).
+ * The barricade tag's texts: its name on the tag (the verb and the gate: "Reparar barricada Norte" lost the gate to the
+ * ellipsis at 125%, and the tag's sticker already says barricade), the whole one for the aria-label, its line, the
+ * one-line form's short effect (RECIPE_SHORT) and the stamp's note once the room says yes (pure, tested).
  */
 export function barricadeText(spot:Pick<BarricadeSpot,'name'|'down'>){
   return spot.down
-    ?{name:`Reerguer barricada ${spot.name}`,describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:`Barricada ${spot.name} de pé!`}
-    :{name:`Reparar barricada ${spot.name}`,describe:'Conserta 25% da barricada',short:'+25%',done:`Barricada ${spot.name} consertada!`};
+    ?{name:`Reerguer ${spot.name}`,full:`Reerguer barricada ${spot.name}`,describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:`Barricada ${spot.name} de pé!`}
+    :{name:`Reparar ${spot.name}`,full:`Reparar barricada ${spot.name}`,describe:'Conserta 25% da barricada',short:'+25%',done:`Barricada ${spot.name} consertada!`};
 }
 /**
  * Where the window stands (pure, tested): open in the camp or at a barricade; the title names the place; away from the
@@ -390,7 +391,7 @@ export function createCamp(options:CampOptions):CampPart{
       fence.button.dataset.target=spot.target;
       fence.button.classList.toggle('rh-forge-blocked',!!reason);
       fence.lock.hidden=reason!=='balance';fence.full.hidden=reason!=='full';
-      fence.button.setAttribute('aria-label',label(text.name,text.describe,RECIPES.reparo.cost,reason,'reparo'));
+      fence.button.setAttribute('aria-label',label(text.full,text.describe,RECIPES.reparo.cost,reason,'reparo'));
       // Away from the wall it is why the window opened: first. In the camp it follows the forge's own tags.
       if(place.barricadeFirst&&list.firstElementChild!==fence.button)list.prepend(fence.button);
       else if(!place.barricadeFirst&&list.lastElementChild!==fence.button)list.append(fence.button);

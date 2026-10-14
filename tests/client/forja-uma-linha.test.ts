@@ -26,7 +26,9 @@ import type {HudContext} from '../../src/client/hud/model.ts';
 type Decl={selector:string;prop:string;value:string;line:number};
 const css=(file:string)=>readFileSync(new URL(`../../${file}`,import.meta.url),'utf8');
 const CAMP=declarations(css('src/client/hud/camp.css')) as Decl[],CIDA=declarations(css('src/client/hud/cida.css')) as Decl[];
-const FONE=declarations(css('src/client/hud/fone.css')) as Decl[];
+const FONE=declarations(css('src/client/hud/fone.css')) as Decl[],COOP=declarations(css('src/client/coop.css')) as Decl[];
+// (explore.css writes "@media(" with no space: the same prelude as the others for `split`)
+const EXPLORE=(declarations(css('src/client/explore.css')) as Decl[]).map(d=>({...d,selector:d.selector.replace(/^@media\(/,'@media (')}));
 const TOKENS_CSS=css('src/client/ui/tokens.css'),TOKENS=declarations(TOKENS_CSS) as Decl[];
 
 interface Screen {width:number;height:number;scale:1|1.25}
@@ -99,14 +101,20 @@ const lineBox=(font:string,s:Screen)=>{const m=/(var\(--t-\d+\))\/([\d.]+)/.exec
 /** The widest tilt of a forge tag at `s` (camp.css --tilt on the odd and the even ones), in degrees. */
 const tilt=(s:Screen)=>Math.max(...['.rh .rh-forge-tag','.rh .rh-forge-tag:nth-child(even)'].map(t=>Math.abs(parseFloat(cascade(t,'--tilt',s)))));
 const portrait=(s:Screen)=>s.height>500&&s.height>s.width;
-/** How far a tag's tap area (::after, inset -N px 0) reaches past its box, at `s`. */
-const reachOf=(s:Screen)=>{const after=maybe('.rh-forge-tag::after','inset',s);return after?-box(after,s).top:0;};
+/** How far a tag's tap area (::after, inset -N px 0) reaches past its border box, at `s`: an absolute box's inset counts
+ * from the tag's padding box, inside its 2 px edge (inset -2px reached 0 px past the tag). */
+const reachOf=(s:Screen)=>{
+  const after=maybe('.rh-forge-tag::after','inset',s);if(!after)return 0;
+  return -box(after,s).top-length(cascade('.rh .rh-forge-tag','border',s).split(' ')[0],s);
+};
 
 /** The forge window at `s` with three tags: its height, its cap, and how far the last tag's tilt reaches past the list. */
 function forgeBox(s:Screen){
   const win=box(cascade('.rh-forge','padding',s),s),edge=length(cascade('.rh-forge','border',s).split(' ')[0],s);
-  // The head row: the close button, the title cell (title + the R$ under it), the note on one line.
-  const close=length(cascade('.rh .rh-forge-close','height',s),s);
+  // The head row: the close button (its margin box: landscape and portrait lift it 4 px), the title cell (title + the R$
+  // under it), the note.
+  const closeMargin=box(cascade('.rh .rh-forge-close','margin',s),s),closeHeight=length(cascade('.rh .rh-forge-close','height',s),s);
+  const close=closeMargin.top+closeHeight+closeMargin.bottom;
   const title=lineBox(cascade('.rh-forge-title','font',s),s)+length(cascade('.rh-forge-titulo','gap',s),s)+lineBox(cascade('.rh-forge-grana','font',s),s);
   // The note: one line in landscape (nowrap) and on the desktop, 2 at most in portrait (-webkit-line-clamp).
   const noteLines=Number(maybe('.rh-forge-note','-webkit-line-clamp',s)??1);
@@ -126,7 +134,14 @@ function forgeBox(s:Screen){
     :length(cascade('.rh-forge','max-width',s),s);
   const tagWidth=width-2*edge-win.left-win.right-margin.left-margin.right-list.left-list.right;
   const poke=tagWidth/2*Math.sin(tilt(s)*Math.PI/180); // half the tag's width, tilted, below its box
-  return {height,cap,tag,gap,cells,tagPad,tagEdge,listBottom:list.bottom,poke};
+  // The tap band (::after, `reach` px over and under the tag) tilts with its tag: its corner reaches
+  // reach·cos θ + (w/2)·sin θ past the tag's box.
+  const reach=reachOf(s),theta=tilt(s)*Math.PI/180,band=reach?reach*Math.cos(theta)+tagWidth/2*Math.sin(theta):0;
+  // Inside the window's padding box, from its top: the close button's box and where the first tag's taps start (its
+  // band, or its own tilted corner, whichever is higher).
+  const closeBox={top:closeMargin.top,bottom:closeMargin.top+closeHeight};
+  const firstTap=head+margin.top+list.top-Math.max(band,poke);
+  return {height,cap,tag,gap,cells,tagPad,tagEdge,listTop:list.top,listBottom:list.bottom,poke,reach,band,closeBox,firstTap};
 }
 
 for(const size of [...SIZES,...PORTRAITS])for(const scale of SCALES){
@@ -135,16 +150,22 @@ for(const size of [...SIZES,...PORTRAITS])for(const scale of SCALES){
     const b=forgeBox(s);
     assert.ok(b.height<=b.cap,`${name}: window ${b.height.toFixed(1)} px > its cap ${b.cap.toFixed(1)} px (the third tag scrolls)`);
     assert.ok(b.cells+b.tagPad.top+b.tagPad.bottom+2*b.tagEdge<=b.tag+.01,`${name}: one row of text holds in the tag`);
-    // The tilted last tag and its tap area stay inside the list's bottom padding (both count as scrollable overflow).
+    // The tilted last tag and its tap band stay inside the list's bottom padding (both count as scrollable overflow).
     assert.ok(b.poke<=b.listBottom+.01,`${name}: the tilt pokes ${b.poke.toFixed(1)} px past a ${b.listBottom} px padding`);
-    assert.ok(reachOf(s)<=b.listBottom,`${name}: the last tap reaches ${reachOf(s)} px past a ${b.listBottom} px padding`);
+    assert.ok(b.band<=b.listBottom+.01,`${name}: the last tap reaches ${b.band.toFixed(2)} px past a ${b.listBottom} px padding`);
   });
   test(`${name}: every tag is a 44 px tap, and the taps never overlap`,()=>{
-    const b=forgeBox(s);
-    const reach=reachOf(s);
+    const b=forgeBox(s),reach=b.reach;
     assert.ok(b.tag+2*reach>=44,`${name}: ${b.tag} px tag + ${reach} px each side`);
     assert.ok(2*reach<=b.gap,`${name}: the reach (${reach} px) stays in its half of the ${b.gap} px gap`);
+    // The list clips its top: the first tag's band must fit its top padding, or that tag's tap is short of 44 px.
+    assert.ok(b.band<=b.listTop+.01,`${name}: the first tap reaches ${b.band.toFixed(2)} px over a ${b.listTop} px padding`);
     if(reach)assert.equal(cascade('.rh-forge-tag::after','position',s),'absolute');
+  });
+  test(`${name}: the close button's box ends where the first tag's tap starts`,()=>{
+    const b=forgeBox(s);
+    assert.ok(b.closeBox.bottom<=b.firstTap+.01,`${name}: the close button (to ${b.closeBox.bottom} px) over the first tap (from ${b.firstTap.toFixed(2)} px)`);
+    assert.ok(b.closeBox.bottom-b.closeBox.top>=44,'the close button keeps 44 px');
   });
 }
 
@@ -160,11 +181,12 @@ test('the one-line form on every screen: name, short effect and price on one row
   }
 });
 
-/** The thumbs' tops as the phone's shell draws them (explore.css: a 112 px stick 24 px in, 96 px at 16/18 px when
- * ≤ 370 px wide; the skill button --botao-habilidade at the same insets), as hud-mobile-minimo.test.ts. */
+/** The thumbs' top as the phone's shell draws them: the controls' bottom padding, the stick (explore.css) and the skill
+ * button (coop.css #coop-attack, --botao-habilidade) at the same inset; the taller one. */
 function thumbs(s:Screen){
-  const tight=s.width<=370,stick=tight?96:112,pad=tight?16:24,skill=length('var(--botao-habilidade)',s);
-  return Math.min(s.height-pad-stick,s.height-pad-skill);
+  const pad=box(cascade('.explore-controls','padding',s,EXPLORE),s).bottom,stick=length(cascade('.explore-stick','height',s,EXPLORE),s);
+  const skill=length(cascade('#coop-attack','height',s,COOP),s);
+  return s.height-pad-Math.max(stick,skill);
 }
 /** The hero's box: the round's camera puts its body at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi). */
 const heroAt=(s:Screen):Rect=>({x:s.width/2-HERO_SIDE/2,y:s.height/2-HERO_SIDE/2,width:HERO_SIDE,height:HERO_SIDE});
@@ -219,7 +241,7 @@ for(const size of PORTRAITS)for(const scale of SCALES){
   });
 }
 
-test('portrait: a smaller tilt than the landscape\'s; the stamp waits for a purchase; the fall note is one line',()=>{
+test('portrait: a smaller tilt than the desktop\'s; the stamp waits for a purchase; the fall note is one line',()=>{
   for(const size of PORTRAITS)for(const scale of SCALES){
     const s:Screen={...size,scale};
     assert.ok(tilt(s)<1,`${tilt(s)}deg`);
@@ -228,8 +250,9 @@ test('portrait: a smaller tilt than the landscape\'s; the stamp waits for a purc
     assert.equal(cascade('.rh-forge-fall','white-space',s),'nowrap');
     assert.equal(cascade('.rh-forge','max-height',s),'32svh');
   }
-  // Landscape and the desktop keep theirs.
-  for(const size of SIZES)assert.equal(tilt({...size,scale:1}),1);
+  // The desktop (no tap band) keeps its tilt; the landscape phone's band needs the smaller one too.
+  assert.equal(tilt({width:1343,height:618,scale:1}),1);
+  for(const size of SIZES.filter(z=>z.height<=500))assert.ok(tilt({...size,scale:1})<1);
 });
 
 test('the short effects: a few pt-BR characters each, never the long line, no arrows or emoji',()=>{

@@ -142,8 +142,8 @@
    Every screen: two-line tags left the third one under the fold in landscape and on the desktop (135–150 px of list for
    163–189 px of tags), and in portrait the window reached over the hero at the viewport centre. Each tag is one row:
    sticker, name, short effect (camp.ts RECIPE_SHORT) and price; the long effect stays in the aria-label. Only the name
-   gives way (an ellipsis); the short effect and the price are always whole. tests/client/forja-uma-linha.test.ts and
-   forja-retrato.test.ts sum the budgets below. */
+   gives way (an ellipsis); the short effect and the price are always whole. tests/client/forja-uma-linha.test.ts sums
+   the budgets below. */
 .rh .rh-forge-tag{grid-template-columns:28px minmax(0,1fr) auto auto;grid-template-areas:'icon name curto price';column-gap:6px;padding-left:22px}
 .rh-forge-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-forge-curto{grid-area:curto;display:block;white-space:nowrap;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
@@ -154,13 +154,18 @@
 .rh-forge-done .rh-forge-stamp{display:block}
 /* Landscape phone: a 40 px tag whose tap area reaches 2 px into each 4 px gap (::after), so every tag still takes a 44 px
    tap and the three fit at 125% in 667x375. The window ends 8 px over the skill button (was 24 px: the 16 px that make
-   the third tag fit there), its top padding goes to the close button's own box. */
+   the third tag fit there), its top padding goes to the close button's own box. The list rides 4 px up into the head
+   row, so the close button's box rides 4 px up too (its margins keep the row's height). The tap band tilts with its tag
+   and the list clips it (top) or scrolls for it (bottom): a smaller tilt keeps the band's corners, 2 px + (w/2)·sin θ,
+   in the list's 3 px paddings, and the first tag's tap starts where the close button ends. */
 @media (max-height:500px){
   .rh-forge{padding:0 6px 2px;
     max-height:calc(100vh - var(--rh-t) - 48px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 8px))}
-  .rh-forge-tags{padding:2px 8px 3px}
-  .rh .rh-forge-tag{min-height:40px}
-  .rh-forge-tag::after{content:'';position:absolute;inset:-2px 0}
+  .rh .rh-forge-close{margin:-4px 0 4px}
+  .rh-forge-tags{padding:3px 8px}
+  .rh .rh-forge-tag{--tilt:-.3deg;min-height:40px}
+  .rh .rh-forge-tag:nth-child(even){--tilt:.25deg}
+  .rh-forge-tag::after{content:'';position:absolute;inset:-4px 0} /* from the padding box: the 2 px edge, then 2 px */
 }
 /* Desktop: the window may grow up to the top band (it holds three one-line tags, ~210 px; 32svh left 139 px of list). */
 @media (min-height:501px) and (orientation:landscape){
@@ -171,15 +176,18 @@
    window used to reach over it (390x844: y 446–684 against the hero's 394–450). The window now sits on the thumbs: its
    bottom THUMB_GAP (24 px) over the taller of the joystick (112 px, 24 px in; 96 px, 16 px in at ≤ 370 px, explore.css)
    and the skill button (--botao-habilidade, 114 px at 125%), and it is low: a 38 px tag whose tap reaches 3 px into each
-   6 px gap (44 px) and into the list's 3 px bottom padding (else the list scrolls), a tight frame, a smaller tilt (the
-   wider tag's corner stays in that padding), a note of 2 lines at most and the fall's one line, so the three tags and
-   the hero ± HERO_MARGIN (zones.ts) both fit at 100% and 125% (360x800 at 125%: window 470–646, hero ± 40 to 468). */
+   6 px gap (44 px); the band tilts with its tag, and the list clips it (top) or scrolls for it (bottom), so a smaller
+   tilt keeps its corners, 3 px + (w/2)·sin θ < 4 px, in the list's 4 px paddings; the close button 4 px up as in
+   landscape (off the first tag's tap), a tight frame, a note of 2 lines at most and the fall's one line, so the three
+   tags and the hero ± HERO_MARGIN (zones.ts) both fit at 100% and 125% (360x800 at 125%: window 468–646, hero ± 40 to
+   468). */
 @media (min-height:501px) and (orientation:portrait){
-  .rh-forge{padding:0 6px 1px;bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(112px,var(--botao-habilidade)) + 24px)}
-  .rh-forge-tags{gap:6px;padding:2px 8px 3px;margin:-4px -6px 0}
-  .rh .rh-forge-tag{--tilt:-.6deg;min-height:38px;padding:1px 8px 1px 22px}
-  .rh .rh-forge-tag:nth-child(even){--tilt:.5deg}
-  .rh-forge-tag::after{content:'';position:absolute;inset:-3px 0}
+  .rh-forge{padding:0 6px;bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(112px,var(--botao-habilidade)) + 24px)}
+  .rh .rh-forge-close{margin:-4px 0 4px}
+  .rh-forge-tags{gap:6px;padding:4px 8px;margin:-4px -6px 0}
+  .rh .rh-forge-tag{--tilt:-.3deg;min-height:38px;padding:1px 8px 1px 22px}
+  .rh .rh-forge-tag:nth-child(even){--tilt:.25deg}
+  .rh-forge-tag::after{content:'';position:absolute;inset:-5px 0} /* the 2 px edge, then 3 px */
   .rh-forge-note{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
   .rh-forge-fall{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rh-forge-fall .rh-window-fall-hint{display:none}

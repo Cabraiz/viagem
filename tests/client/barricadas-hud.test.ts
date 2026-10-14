@@ -42,8 +42,14 @@ test('the barricade the hero stands at: nearest within CAMP_RADIUS, by wire labe
 
 test('the barricade tag: pt-BR texts, refusals in the server\'s order, the same price as the wall repair',()=>{
   const up=barricadeText({name:'Norte',down:false}),down=barricadeText({name:'Sul',down:true});
-  assert.deepEqual(up,{name:'Reparar barricada Norte',describe:'Conserta 25% da barricada',short:'+25%',done:'Barricada Norte consertada!'});
-  assert.deepEqual(down,{name:'Reerguer barricada Sul',describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:'Barricada Sul de pé!'});
+  // The tag shows the verb and the gate (the gate never goes to the ellipsis at 125%); the aria-label says it all.
+  assert.deepEqual(up,{name:'Reparar Norte',full:'Reparar barricada Norte',describe:'Conserta 25% da barricada',short:'+25%',done:'Barricada Norte consertada!'});
+  assert.deepEqual(down,{name:'Reerguer Sul',full:'Reerguer barricada Sul',describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:'Barricada Sul de pé!'});
+  for(const gate of ['Norte','Sul','Leste','Oeste'])for(const fallen of [false,true]){
+    const t=barricadeText({name:gate,down:fallen});
+    assert.ok(t.name.endsWith(gate)&&t.name.length<=14,`"${t.name}": the gate whole in a short name`);
+    assert.ok(t.full.includes('barricada')&&t.full.endsWith(gate),t.full);
+  }
   for(const t of [up,down]){
     assert.ok(t.describe.length<=40);
     // Design checklist: no "PALAVRA — fragmento", no arrows, no shouting outside a stamp.

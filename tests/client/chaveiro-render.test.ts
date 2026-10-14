@@ -4,8 +4,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boxFaces,faceBounds,isoOffset,mix,shade,viewTurn,M,type Box} from '../../src/client/render/chaveiro/iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,partBit,standingChaveiro} from '../../src/client/render/chaveiro/figures.ts';
-import {ALARM_WAVE_LIFE_MS,ALARM_WAVE_MS,OPEN_SECONDS,VOLTA_RADIUS,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,headingOf,motoLift,motoPose,newlyFallen,openProgress,routeAhead,routeHeadingAt,trunkOpen,voltaLap} from '../../src/client/render/chaveiro/rules.ts';
+import {ALARM_WAVE_LIFE_MS,ALARM_WAVE_MS,OPEN_SECONDS,PART_FALL_MS,VOLTA_RADIUS,voltaCentre,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,headingOf,motoLift,motoPose,newlyFallen,openProgress,routeAhead,routeHeadingAt,trunkOpen,voltaLap} from '../../src/client/render/chaveiro/rules.ts';
 import {CAR_PARTS,objectiveOf,type ChaveiroView} from '../../src/client/render/chaveiro/view.ts';
+import {ChaveiroTracker,RouteMemo} from '../../src/client/render/chaveiro/tracker.ts';
 import {HEIGHT_PX} from '../../src/client/render/city/projection.ts';
 import * as city from '../../src/client/hud/city/index.ts';
 import {EDGE_ICON,EDGE_PRIORITY} from '../../src/client/hud/edges.ts';
@@ -173,4 +174,43 @@ test('objectiveOf reads RunView.objective loosely; the sandbox\'s fake objective
   assert.equal(dead.moto.mode,'morta');assert.equal(dead.moto.push,.4);
   const end=fakeChaveiro(new URLSearchParams('fim=derrota'),{x:84,y:84}).view(0).view;
   assert.equal(end.ended,'defeat');assert.equal(end.car.parts,15);assert.equal(end.car.hits,80);
+});
+
+test('tracker: parts fall from the 2nd view on (at once with reduced effects), alarm and end clocks, heading, objective gone and back',()=>{
+  const t=new ChaveiroTracker();
+  t.push(view({car:{x:84.5,y:84.5,hits:40,limit:80,parts:3}}),10,0,false);
+  assert.equal(t.falling.size,0,'the first view shows the fallen ones already down');
+  assert.equal(t.heading,Math.PI/2,'before it moved: the route\'s first leg');
+  t.push(view({moto:{x:85.5,y:40,mode:'anda'},car:{x:84.5,y:84.5,hits:60,limit:80,parts:7},alarmUntil:30}),11,100,false);
+  assert.deepEqual([...t.falling.keys()],[4]);assert.equal(t.alarmSince,100);assert.equal(t.heading,0,'moved along +x');
+  assert.equal(t.settle(200),4);assert.equal(t.settle(100+PART_FALL_MS),0);assert.equal(t.falling.size,0);
+  t.push(view({alarmUntil:30}),12,300,false);assert.equal(t.alarmSince,100,'still the same alarm');
+  t.push(view({alarmUntil:30}),30,400,false);assert.equal(t.alarmSince,undefined);
+  t.push(view({ended:'victory'}),31,500,false);t.push(view({ended:'victory'}),32,600,false);assert.equal(t.endedAt,500);
+  // Gone (a run without the objective), then back: nothing carried over.
+  t.push(undefined,33,700,false);assert.equal(t.view,undefined);assert.equal(t.endedAt,undefined);assert.equal(t.heading,0);
+  t.push(view({car:{x:84.5,y:84.5,hits:0,limit:80,parts:0}}),34,800,true);
+  t.push(view({car:{x:84.5,y:84.5,hits:40,limit:80,parts:15}}),35,900,true);
+  assert.equal(t.falling.size,0,'reduced effects: no fall animation');
+});
+
+test('route memo: route and stops (sent on the keyframe and on change) stay between views; a new one replaces them',()=>{
+  const memo=new RouteMemo(),first=view({stops:[{kind:'lombada',x:84.5,y:30,s:30}]});
+  assert.equal(memo.fill(first),first);
+  const {route:_r,stops:_s,...bare}=first;
+  const filled=memo.fill(bare as ChaveiroView)!;
+  assert.deepEqual(filled.route,first.route);assert.deepEqual(filled.stops,first.stops);
+  const other=[{x:0,y:0},{x:1,y:1}];
+  assert.deepEqual(memo.fill({...bare,route:other} as ChaveiroView)!.route,other);
+  assert.equal(memo.fill(undefined),undefined);
+  assert.equal(memo.fill(bare as ChaveiroView)!.route,undefined,'reset');
+});
+
+test('volta: the lap is centred on the moto, pushed out of the car when he rides around it from beside it',()=>{
+  const car={x:10,y:10};
+  assert.deepEqual(voltaCentre({x:20,y:10},car),{x:20,y:10});
+  const c=voltaCentre({x:10,y:11.8},car),d=Math.hypot(c.x-car.x,c.y-car.y);
+  assert.ok(d-VOLTA_RADIUS>=CAR_HALF.l,'the circle clears the car');
+  assert.ok(near(c.x,10)&&c.y>11.8,'outward, on the moto\'s side');
+  assert.ok(Number.isFinite(voltaCentre(car,car).x));
 });

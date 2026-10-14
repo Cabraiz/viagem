@@ -22,4 +22,4 @@ export {minimapMode,cityAssetOf,cityMapInfo,mouthOfWarning,trackMouths,screenCor
   type MinimapMode,type CityAssetLike} from './wiring.ts';
 export {barricadeAt,barricadeTarget,mouthOf,BARRICADE_KIND,MOUTH_NAMES,type BarricadeSpot,type CityBocas} from './barricade.ts';
 // D-047 (chaveiro): the objective of a run view, as the render reads it.
-export {objectiveOf,type ChaveiroView} from './deps.ts';
+export {objectiveOf,RouteMemo,type ChaveiroView} from './deps.ts';

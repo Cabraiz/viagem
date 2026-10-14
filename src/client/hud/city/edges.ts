@@ -8,7 +8,7 @@
 import {layoutEdges,pointedTargets,railName,arrowHalf,crosses,bottom,right,MUST_POINT,MAX_ARROWS,MERGE_PX,MIN_PLAY_SIDE,type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions,type Rect} from './deps.ts';
 import {clusterEnemies,pickGroupArrows,groupCountText,type EnemyPoint} from './clusters.ts';
 import type {CityMapInfo,MouthId} from './minimap.ts';
-import type {MotoMode} from './deps.ts';
+import {motoNeedsTeam,type MotoMode} from './deps.ts';
 
 export interface CityEdgeInput {
   /** The followed hero (world units). */
@@ -51,8 +51,7 @@ const isGroup=(t:EdgeTarget)=>t.kind==='grupo'||t.key.startsWith('grupo:'),isMou
 export function cityEdgeRank(t:EdgeTarget):number{
   return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='base'?4:9;
 }
-/** The moto needs the team in these modes (2 to push it; it fell): its arrow and minimap mark turn Cone. */
-export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
+export {motoNeedsTeam};
 
 /** The city's targets for the arrows, and the group keys picked (feed them back as `previousGroups`). */
 export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];groupKeys:Set<string>}{

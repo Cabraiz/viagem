@@ -3,7 +3,7 @@
  * each state shows. No Phaser; the renderer (renderer.ts) calls these every frame. Times in ms of the renderer's clock.
  */
 import {M} from './iso.ts';
-import type {MotoPose} from './figures.ts';
+import {CAR_HALF,type MotoPose} from './figures.ts';
 import type {ChaveiroView,MotoMode} from './view.ts';
 import {CAR_PARTS} from './view.ts';
 
@@ -46,6 +46,20 @@ export function voltaLap(now:number):{dx:number;dy:number;heading:number}{
   const a=(now%VOLTA_LAP_MS)/VOLTA_LAP_MS*Math.PI*2;
   return {dx:Math.cos(a)*VOLTA_RADIUS,dy:Math.sin(a)*VOLTA_RADIUS,heading:a+Math.PI/2};
 }
+/**
+ * Where his lap around the block is centred: on the moto, unless that lap would cross the car (the alarm also sounds
+ * while he opens it, parked beside it): then pushed out from the car until the circle clears it.
+ */
+export function voltaCentre(moto:{x:number;y:number},car:{x:number;y:number}):{x:number;y:number}{
+  const dx=moto.x-car.x,dy=moto.y-car.y,d=Math.hypot(dx,dy),clear=CAR_HALF.l+VOLTA_RADIUS+.3*M;
+  if(d>=clear)return {x:moto.x,y:moto.y};
+  const ux=d>1e-6?dx/d:-1,uy=d>1e-6?dy/d:0;
+  return {x:car.x+ux*clear,y:car.y+uy*clear};
+}
+/** The moto needs the team in these modes (2 to push it; it fell): its arrow and minimap mark turn Cone. */
+export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
+/** The car's life bar and minimap ring turn Cone under this share of hits left (as the base's BASE_LOW). */
+export const CAR_LOW=.3;
 /** The heading of a figure that moved from `a` to `b` (radians), or `old` when it barely moved. */
 export function headingOf(a:{x:number;y:number},b:{x:number;y:number},old:number):number{
   const dx=b.x-a.x,dy=b.y-a.y;

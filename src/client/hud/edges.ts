@@ -21,6 +21,7 @@ export interface Point {x:number;y:number}
  */
 export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra'|'moto';
 /** Lower is more urgent (UX card: caído > chefe > spawn > aliado; base and baú are the Stonewards and loot extras; the city's grupo goes before spawn). */
+/** moto: only the city points at it, and the city ranks it itself (hud/city/edges.ts cityEdgeRank 3.5); 8 here on purpose. */
 export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7,moto:8};
 /**
  * The ficha's sticker. grupo: the doc's new `bichos` sticker (a gosma silhouette, design/cidade-hud.md §3) has no art yet,

@@ -6,7 +6,7 @@
  * carry the meaning with the colour (UX B8): clover = group, disc = person, ring = caído, tent = base, wave = active
  * mouth, skull = boss. Pure geometry and marks first, one DOM class below.
  */
-import {minimapPoint,crosses,icon,routeAhead,type Rect,type ChaveiroView} from './deps.ts';
+import {minimapPoint,crosses,icon,routeAhead,motoNeedsTeam,CAR_LOW,type Rect,type ChaveiroView} from './deps.ts';
 import {clusterEnemies,GROUP_SHOW,groupCountText,type EnemyPoint} from './clusters.ts';
 import {MINIMAP_SIDE} from './layout.ts';
 
@@ -109,7 +109,7 @@ export function cityMinimapMarks(input:CityMinimapInput):CityMark[]{
     const life=ch.car.limit>0?Math.min(1,Math.max(0,1-ch.car.hits/ch.car.limit)):undefined;
     add('carro','carro',ch.car,CITY_MARK_SIZE.carro,life===undefined?{}:{hp:life});
     if(ch.delivery&&!ch.ended)add('entrega','entrega',ch.delivery,CITY_MARK_SIZE.entrega);
-    if(!ch.ended)add('moto','moto',ch.moto,CITY_MARK_SIZE.moto,ch.moto.mode==='morta'||ch.moto.mode==='tombo'?{danger:true}:{});
+    if(!ch.ended)add('moto','moto',ch.moto,CITY_MARK_SIZE.moto,motoNeedsTeam(ch.moto.mode)?{danger:true}:{});
   }else add('base','base',map.plaza,CITY_MARK_SIZE.base,hp===undefined?{}:{hp});
   for(const e of input.enemies)if(e.boss)add(`chefe:${e.id}`,'chefe',e,CITY_MARK_SIZE.chefe);
   for(const p of input.players)if(p.id!==input.selfId&&p.downed)add(`p:${p.id}`,'caido',p,CITY_MARK_SIZE.caido,p.ping?{ping:true}:{});
@@ -239,7 +239,7 @@ function markShape(m:CityMark):string{
     case 'carro':{
       // The Quadradão: a square hatch from the side, inside the life ring (hits left).
       const r=(s-2.5)/2,hp=m.hp,k=s/14;
-      const ring=hp===undefined?'':`<circle class="ch-mm-track" r="${f(r)}"/><circle class="ch-mm-life${hp<BASE_LOW?' ch-mm-low':''}" r="${f(r)}" pathLength="100" stroke-dasharray="${f(hp*100)} 100" transform="rotate(-90)"/>`;
+      const ring=hp===undefined?'':`<circle class="ch-mm-track" r="${f(r)}"/><circle class="ch-mm-life${hp<CAR_LOW?' ch-mm-low':''}" r="${f(r)}" pathLength="100" stroke-dasharray="${f(hp*100)} 100" transform="rotate(-90)"/>`;
       return `${ring}<g transform="scale(${f(k)})"><path d="M-4.5 2L-4.5 -.5L-2.5 -.8L-1.5 -3L2.5 -3L3.2 -.8L4.5 -.5L4.5 2Z"/><circle class="ch-mm-roda" cx="-2.4" cy="2.2" r="1.2"/><circle class="ch-mm-roda" cx="2.4" cy="2.2" r="1.2"/></g>`;
     }
     case 'moto':{const k=s/11;return `<g transform="scale(${f(k)})"><circle class="ch-mm-roda" cx="-3.2" cy="2" r="2"/><circle class="ch-mm-roda" cx="3.2" cy="2" r="2"/><path d="M-3.5 .5L-1 -2L2 -2L3.5 -3.8L4.6 -3.2L3 1Z"/><rect x="-3.6" y="-5" width="3.4" height="3.4" rx=".6"/></g>`;}

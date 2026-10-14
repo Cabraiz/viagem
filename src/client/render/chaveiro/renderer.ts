@@ -16,7 +16,8 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
-import {PART_FALL_MS,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,headingOf,motoLift,motoPose,newlyFallen,openProgress,routeHeadingAt,trunkOpen,voltaLap} from './rules.ts';
+import {CAR_LOW,PART_FALL_MS,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,routeHeadingAt,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
+import {ChaveiroTracker} from './tracker.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
 
 const LIGHT=lightEnabled();
@@ -33,7 +34,10 @@ export interface ChaveiroRendererOptions {projector:Projector;reduced:boolean;
   /** The local hero (or the watched figure): a figure covering it fades. */
   hero?:()=>Pt|undefined}
 
-interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number}
+/** A smoke puff, drawn with its figure (so a building in front hides it too). */
+interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number;moto:boolean}
+/** Car faces cached by look (parts, hazard, trunk step, wrecked, view): the car is redrawn every frame, its boxes rarely change. */
+const CAR_CACHE_MAX=48;
 
 export class ChaveiroRenderer {
   private scene:Phaser.Scene;
@@ -47,16 +51,9 @@ export class ChaveiroRenderer {
   private fx:Phaser.GameObjects.Graphics;
   private label:Phaser.GameObjects.Text;
   private deliveryText:Phaser.GameObjects.Text;
-  private view?:ChaveiroView;
-  private tick=0;
+  private state=new ChaveiroTracker();
   private now=0;
-  private parts=0;
-  /** Parts falling now: bit → when it started (renderer clock). */
-  private falling=new Map<number,number>();
-  private alarmSince?:number;
-  private endedAt?:number;
-  private motoAt?:{x:number;y:number};
-  private heading=0;
+  private carFaces=new Map<string,Face[]>();
   private puffs:Puff[]=[];
   private lastPuff=0;
   private q:Pt={x:0,y:0};
@@ -77,20 +74,7 @@ export class ChaveiroRenderer {
   }
 
   /** A new view: the objective (undefined hides it all) at the server tick. */
-  push(view:ChaveiroView|undefined,tick:number){
-    this.tick=tick;
-    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=undefined;this.endedAt=undefined;this.motoAt=undefined;return;}
-    // Parts that fell since the last view fall now (the first view shows the fallen ones already down).
-    if(this.view&&!this.options.reduced)for(const i of newlyFallen(this.parts,view.car.parts))this.falling.set(1<<i,this.now);
-    this.parts=view.car.parts;
-    const alarm=alarmOn(view,tick);
-    if(alarm&&this.alarmSince===undefined)this.alarmSince=this.now;else if(!alarm)this.alarmSince=undefined;
-    if(view.ended&&this.endedAt===undefined)this.endedAt=this.now;else if(!view.ended)this.endedAt=undefined;
-    if(this.motoAt)this.heading=headingOf(this.motoAt,view.moto,this.heading);
-    else if(view.route&&view.route.length>1)this.heading=headingOf(view.route[0],view.route[1],this.heading);
-    this.motoAt={x:view.moto.x,y:view.moto.y};
-    this.view=view;
-  }
+  push(view:ChaveiroView|undefined,tick:number){this.state.push(view,tick,this.now,this.options.reduced);}
 
   /** After a view turn or a depth re-base. */
   refresh(){this.update(this.now);}
@@ -98,13 +82,12 @@ export class ChaveiroRenderer {
   update(time:number){
     this.now=time;
     const g=this.ground;g.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
-    const view=this.view;
+    const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
     if(!view){this.puffs=[];return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
-    const alarm=alarmOn(view,this.tick),wrecked=view.ended==='defeat';
-    for(const [bit,at] of this.falling)if(time-at>=PART_FALL_MS)this.falling.delete(bit);
-    let fallingBits=0;for(const bit of this.falling.keys())fallingBits|=bit;
+    const alarm=alarmOn(view,st.tick),wrecked=view.ended==='defeat';
+    const fallingBits=st.settle(time);
 
     // Ground: speed bumps, the delivery spot, the shadows, the fallen parts.
     for(const s of view.stops??[])if(s.kind==='lombada')this.drawBump(s.x,s.y,routeHeadingAt(view.route,s));
@@ -114,19 +97,21 @@ export class ChaveiroRenderer {
     if(parts.length)this.drawFigure(g,view.car.x,view.car.y,CAR_HEADING,parts,k,1);
 
     // The car (and the parts falling off it), trembling: the engine never stops.
-    const ended=this.endedAt!==undefined?time-this.endedAt:0;
+    const ended=st.endedAt!==undefined?time-st.endedAt:0;
     const shake=engineShake(time,reduced,alarm),hazard=hazardLit(alarm,time)||(reduced&&alarm);
-    const carBox:Box[]=carBoxes({parts:view.car.parts&~fallingBits,hazard,trunk:view.ended==='victory'?trunkOpen(ended):0,wrecked});
-    for(const [bit,at] of this.falling)carBox.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
-    const carDepth=this.frontDepth(view.car.x,view.car.y,CAR_HALF.l,CAR_HALF.w,CAR_HEADING);
+    const trunk=view.ended==='victory'?Math.round(trunkOpen(ended)*20)/20:0;
+    const carFaces=this.carLook(view.car.parts&~fallingBits,hazard,trunk,wrecked,fallingBits,time);
+    // Sorted at its centre (not its front corner): critters hitting its sides and back stay in front of it, a figure
+    // behind its centre line goes under it (the car is long; the sim's critters hit it from all around).
+    const carDepth=proj.depth(view.car.x,view.car.y);
     this.car.setDepth(carDepth);
-    const carFaces=this.drawFigure(this.car,view.car.x,view.car.y,CAR_HEADING,carBox,k,1,shake);
+    this.drawFaces(this.car,view.car.x,view.car.y,carFaces,k,shake);
     this.car.setAlpha(this.covers(view.car.x,view.car.y,carFaces,carDepth)?COVER_ALPHA:1);
 
     // The moto and its riders.
     const mode=view.moto.mode;
-    let mx=view.moto.x,my=view.moto.y,heading=this.heading;
-    if(mode==='volta'&&!reduced){const lap=voltaLap(time);mx+=lap.dx;my+=lap.dy;heading=lap.heading;}
+    let mx=view.moto.x,my=view.moto.y,heading=st.heading;
+    if(mode==='volta'&&!reduced){const c=voltaCentre(view.moto,view.car),lap=voltaLap(time);mx=c.x+lap.dx;my=c.y+lap.dy;heading=lap.heading;}
     this.drawShadow(mx,my,.8*M,.3*M,heading);
     const motoDepth=proj.depth(mx,my);
     this.moto.setDepth(motoDepth);
@@ -150,7 +135,7 @@ export class ChaveiroRenderer {
 
     // Effects over everything: smoke, alarm waves, the push icon, the bars, the end label.
     this.smoke(view,mx,my,heading,alarm,time,reduced,k);
-    if(alarm)this.drawWaves(view.car.x,view.car.y,k,time);
+    if(alarm)this.drawWaves(view.car.x,view.car.y,k,time,st.alarmSince);
     if(mode==='morta')this.drawPush(mx,my,view.moto.push??0,k,time);
     if(mode==='tombo')this.drawDizzy(mx,my,heading,k,time);
     if(!view.ended)this.drawCarBar(view.car,k);
@@ -174,14 +159,18 @@ export class ChaveiroRenderer {
   private local(x:number,y:number,heading:number,fwd:number,left:number){
     return {x:x+fwd*Math.cos(heading)-left*Math.sin(heading),y:y+fwd*Math.sin(heading)+left*Math.cos(heading)};
   }
-  /** The actor depth at a footprint's front corner (the one nearest the screen in this view), like the towers. */
-  private frontDepth(x:number,y:number,hl:number,hw:number,heading:number){
-    let best={x,y},bestKey=-Infinity;
-    for(const [u,v] of [[hl,hw],[hl,-hw],[-hl,hw],[-hl,-hw]]){
-      const w=this.local(x,y,heading,u,v),r=viewTurn(w.x-x,w.y-y,this.options.projector.view);
-      if(r.x+r.y>bestKey){bestKey=r.x+r.y;best=w;}
-    }
-    return this.options.projector.depth(best.x,best.y);
+  /**
+   * The car's faces for this look: cached while no part is falling (a falling part moves every frame); the cache is
+   * small and dropped whole when full.
+   */
+  private carLook(parts:number,hazard:boolean,trunk:number,wrecked:boolean,falling:number,time:number):Face[]{
+    const view=this.options.projector.view,key=`${parts}|${hazard?1:0}|${trunk}|${wrecked?1:0}|${view}`;
+    if(!falling){const hit=this.carFaces.get(key);if(hit)return hit;}
+    const boxes:Box[]=carBoxes({parts,hazard,trunk,wrecked});
+    for(const [bit,at] of this.state.falling)boxes.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
+    const faces=boxFaces(boxes,CAR_HEADING,view);
+    if(!falling){if(this.carFaces.size>=CAR_CACHE_MAX)this.carFaces.clear();this.carFaces.set(key,faces);}
+    return faces;
   }
   /** The hero stands behind the figure and inside its screen box: it fades. */
   private covers(x:number,y:number,faces:readonly Face[],depth:number){
@@ -194,14 +183,17 @@ export class ChaveiroRenderer {
   /** Fills the boxes' faces at the world point (x, y), Breu contour in CSS px; returns the faces drawn. */
   private drawFigure(g:Phaser.GameObjects.Graphics,x:number,y:number,heading:number,boxes:readonly Box[],k:number,alpha:number,shift?:{x:number;y:number}){
     const faces=boxFaces(boxes,heading,this.options.projector.view);
-    const p=this.options.projector.project(x,y,this.q),ax=p.x+(shift?.x??0),ay=p.y+(shift?.y??0);
-    const pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+    this.drawFaces(g,x,y,faces,k,shift,alpha);
+    return faces;
+  }
+  private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+  private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number,shift?:{x:number;y:number},alpha=1){
+    const p=this.options.projector.project(x,y,this.q),ax=p.x+(shift?.x??0),ay=p.y+(shift?.y??0),pts=this.pts;
     for(const f of faces){
       for(let i=0;i<4;i++){pts[i].x=ax+f.pts[i].x;pts[i].y=ay+f.pts[i].y;}
       g.fillStyle(f.color,f.alpha*alpha).fillPoints(pts,true);
       if(f.line)g.lineStyle(1.2*k,this.c.breu,.9*alpha).strokePoints(pts,true);
     }
-    return faces;
   }
   /** A figure's cast shadow: its footprint pushed toward the lower right (away from the sun). */
   private drawShadow(x:number,y:number,hl:number,hw:number,heading:number){
@@ -236,11 +228,11 @@ export class ChaveiroRenderer {
     if(time-this.lastPuff>=SMOKE_MS){
       this.lastPuff=time;
       const pipe=this.local(view.car.x,view.car.y,CAR_HEADING,-1.95*M,-.5*M);
-      this.puffs.push({x:pipe.x,y:pipe.y,z:.3*M,born:time,dark:view.ended==='defeat'||alarm,drift:Math.sin(time)*.3});
+      this.puffs.push({x:pipe.x,y:pipe.y,z:.3*M,born:time,dark:view.ended==='defeat'||alarm,drift:Math.sin(time)*.3,moto:false});
       const mode=view.moto.mode;
       if(mode==='morta'||mode==='anda'||mode==='lombada'||mode==='volta'){
         const m=this.local(mx,my,heading,-.75*M,-.18*M);
-        this.puffs.push({x:m.x,y:m.y,z:.35*M,born:time,dark:mode==='morta',drift:Math.cos(time)*.3});
+        this.puffs.push({x:m.x,y:m.y,z:.35*M,born:time,dark:mode==='morta',drift:Math.cos(time)*.3,moto:true});
       }
     }
     this.puffs=this.puffs.filter(p=>time-p.born<SMOKE_LIFE_MS);
@@ -248,13 +240,13 @@ export class ChaveiroRenderer {
     for(const p of this.puffs){
       const t=(time-p.born)/SMOKE_LIFE_MS,s=this.options.projector.project(p.x,p.y,this.q),o=isoOffset(p.drift*t*M,0,p.z+t*1.1*M,v);
       const color=p.dark?mix(this.c.breu,this.c.papel,.25):mix(this.c.papel,0xffffff,.4);
-      this.fx.fillStyle(color,(1-t)*.55).fillCircle(s.x+o.x,s.y+o.y,(4+10*t)*Math.max(.6,k*.8));
+      (p.moto?this.moto:this.car).fillStyle(color,(1-t)*.55).fillCircle(s.x+o.x,s.y+o.y,(4+10*t)*Math.max(.6,k*.8));
     }
   }
   /** The alarm's sound waves: Cone arcs growing off the roof. */
-  private drawWaves(x:number,y:number,k:number,time:number){
+  private drawWaves(x:number,y:number,k:number,time:number,since:number|undefined){
     const top=this.at(x,y,0,0,CAR_TOP);
-    const waves=alarmWaves(this.alarmSince,time,this.options.reduced);
+    const waves=alarmWaves(since,time,this.options.reduced);
     if(!waves.length){
       // Reduced effects: one still ring says it all.
       this.fx.lineStyle(3*k,this.c.cone,.9).strokeEllipse(top.x,top.y-6*k,90*k,30*k);return;
@@ -294,7 +286,7 @@ export class ChaveiroRenderer {
   }
   /** The car's life: the hits left of the limit, the wall's bar (Cartolina, Cone and a notch when low). */
   private drawCarBar(car:ChaveiroView['car'],k:number){
-    const top=this.at(car.x,car.y,0,0,CAR_TOP),left=car.limit>0?Math.max(0,1-car.hits/car.limit):0,low=left<.25;
+    const top=this.at(car.x,car.y,0,0,CAR_TOP),left=car.limit>0?Math.max(0,1-car.hits/car.limit):0,low=left<CAR_LOW;
     const bw=72*k,bh=8*k,bx=top.x-bw/2,by=top.y-40*k,g=this.fx,c=this.c;
     g.fillStyle(c.breu,1).fillRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*left,bh);

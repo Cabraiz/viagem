@@ -30,7 +30,7 @@ import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
-import {objectiveOf,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type CityView,type MouthId,type NoticeKind,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
@@ -71,6 +71,8 @@ export class RescueBoard {
   private readonly outline=islandOutline();
   // ---------- City (design/cidade-hud.md §7) ----------
   /** The city's map info, built once per decoded asset. */
+  /** D-047: the chaveiro's last route and stops (the minimap draws the route still ahead). */
+  private chaveiroRoute=new RouteMemo();
   private cityInfo?:{asset:CityAssetLike;map:CityMapInfo};
   /** Avenue mouths lit by spawn warnings (trackMouths), and the group keys that had an arrow last frame (hysteresis). */
   private mouths=new Map<MouthId,number>();private groupKeys=new Set<string>();
@@ -230,7 +232,8 @@ export class RescueBoard {
     const city=hud.cityMinimap;
     if(!city||!(hud.cityMap.take()||now-this.minimapAt>=200))return;
     this.minimapAt=now;
-    const open=hud.cityMap.open,wall=wallOf(last.structures),chaveiro=objectiveOf(last);
+    // D-047: the route and stops come on the keyframe and when they change only: the memo keeps them between views.
+    const open=hud.cityMap.open,wall=wallOf(last.structures),chaveiro=this.chaveiroRoute.fill(objectiveOf(last));
     // Big only, in the intermission: the 8 nearest closed chests (doc §2).
     const chests=open&&phase==='prepare'?last.pickups.filter(p=>p.kind==='chest').sort((a,b)=>Math.hypot(a.x-focus.x,a.y-focus.y)-Math.hypot(b.x-focus.x,b.y-focus.y)).slice(0,8):undefined;
     city.render({map,view:scene.cameraView as CityView,...(open?{side:big.side,screen:screenCorners(locate,focus,{width:innerWidth,height:innerHeight})}:{}),

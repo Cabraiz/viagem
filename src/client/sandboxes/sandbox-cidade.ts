@@ -139,7 +139,9 @@ function mulberry(seed:number){return ()=>{seed=(seed+0x6d2b79f5)|0;let t=Math.i
 
 /** Frame times of the last seconds, for the FPS meter and scripted measurements. */
 const frames:number[]=[];
-const meter={fps:()=>frames.length?1000/(frames.reduce((s,f)=>s+f,0)/frames.length):0,
+/** objetivo=1: ms spent per frame in the fake objective and the chaveiro renderer (push + update), the last 240 frames. */
+const chaveiroMs:number[]=[];
+const meter={chaveiroMs:()=>chaveiroMs.length?chaveiroMs.reduce((s,f)=>s+f,0)/chaveiroMs.length:0,chaveiroWorstMs:()=>chaveiroMs.length?Math.max(...chaveiroMs):0,fps:()=>frames.length?1000/(frames.reduce((s,f)=>s+f,0)/frames.length):0,
   worst:()=>frames.length?1000/Math.max(...frames):0,samples:()=>frames.length};
 
 interface Wanderer {x:number;y:number;tx:number;ty:number;speed:number;image:Phaser.GameObjects.Image}
@@ -196,7 +198,7 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(objective)this.chaveiro=this.mountObjective(!start);
-    if(centre&&!start)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
+    if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
     this.layer=new CityLayer(this,this.asset,{art:this.art});
@@ -234,7 +236,10 @@ class CitySandbox extends Phaser.Scene {
     if(!stillHorde)this.moveHorde(dt);
     this.tick(dt);
     this.stone?.update(_t);
-    if(this.chaveiro){const {view,tick}=this.chaveiro.fake.view(_t);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(_t);}
+    if(this.chaveiro){
+      const t0=performance.now(),{view,tick}=this.chaveiro.fake.view(_t);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(_t);
+      chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
+    }
     this.drawLab(_t,dt);
     this.stepTowers(_t,dt);
   }

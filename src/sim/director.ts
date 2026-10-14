@@ -31,7 +31,7 @@ import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,ty
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawRotation,drawTheme,isRotation,planRound,roundRoster,
   type RoundPlan,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
-import {BAND_CADENCE,BAND_DAMAGE,SUMMON,hashUnit} from './enemies/catalog.ts';
+import {BAND_CADENCE,BAND_DAMAGE,SUMMON,enemyDef,hashUnit} from './enemies/catalog.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
@@ -967,6 +967,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
     const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
     let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    // The tutorial's pace is the bêbado's (TUTORIAL_PLAN.speed on his catalog speed): other fodder walks at it too.
+    if(tutorial&&fodder?.length)plan={...plan,speed:plan.speed*enemyDef('bebado').speed/enemyDef(fodder[0]).speed};
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
     // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
     if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));

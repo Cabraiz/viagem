@@ -211,7 +211,7 @@ export const FIRE_GROUND_LINES:readonly string[]=Object.freeze(['Pisou na cacha�
  * circle telegraph under itself, owned by `env:poop:<id>` (it falls even if the bird dies). At most `maxGlobal` at once.
  * TODO(PHASE B): the slippery puddle ("poça escorregadia") needs a ground effect / player slide field in the contract.
  */
-export const POOP=Object.freeze({range:2,chance:.04,cooldown:ticks(4),radius:.5,damage:3,delay:ticks(.8),maxGlobal:6});
+export const POOP=Object.freeze({fromRound:2,range:2,chance:.04,cooldown:ticks(4),radius:.5,damage:3,delay:ticks(.8),maxGlobal:6});
 /** Floater when a hero slips on the pombos' puddle (D-033). Used when the client/sim wires the event; nothing reads it yet. */
 export const PUDDLE_SLIP_LINES:readonly string[]=Object.freeze(['Merda dá sorte. Só que não!','Patinação artística na bosta','Pombo 1 x 0 Você','Caiu de bunda no presente','Isso não é lama. Não é.']);
 /**

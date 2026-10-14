@@ -333,7 +333,7 @@ export class EnemyAi implements SimSystem {
           }
           case 'swarm':{
             [dirX,dirY]=zigzag(ctx,e,def,ux,uy);
-            if(player&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
+            if(player&&ctx.round.index>=POOP.fromRound&&best<=POOP.range&&ctx.tick>=memory.actReady&&this.hazardRoom(ctx)
               &&countOwned(ctx,HAZARD_OWNERS.poop)<POOP.maxGlobal&&rng.chance(POOP.chance)){
               addTelegraph(ctx,{shape:'circle',x:e.x,y:e.y,radius:POOP.radius,damage:POOP.damage*coachMult(e,ctx.tick),owner:hazardOwner(HAZARD_OWNERS.poop,e),kind:'coco'},POOP.delay);
               memory.actReady=ctx.tick+POOP.cooldown;

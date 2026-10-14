@@ -71,7 +71,9 @@ test('the art-only draw: slot limits from the art entries, a band without art ke
   const short:Rotation={roles:{...full.roles,palhaco:undefined} as Rotation['roles'],mini:full.mini};
   delete (short.roles as Record<string,unknown>).palhaco;
   assert.equal(isRotation(short,{onlyWithArt:false}),false);
-  assert.equal(isRotation(short,{artIds:[]}),false,'no art at all: every band keeps today\'s draw and its minimums');
+  assert.ok(isRotation(short,{artIds:[]}),'art only: a short slot is accepted (a checkpoint keeps its cast when art arrives later)');
+  // Review: a stored art-only rotation stays valid when new art fills one of its empty roles.
+  assert.ok(isRotation(drawRotation(new Rng(3)),{artIds:[...ENEMY_ART_IDS,'bebado','tio-pave','influencer']}));
   assert.ok(ROTATION_SLOTS.find(s=>s.role==='palhaco')!.min>0);
 });
 
@@ -147,4 +149,13 @@ test('flag on, the city tutorial and the chefe\'s summons: the rotation\'s art f
     assert.ok(r10.short,'round 10 is short too: the boss summons art');
     for(const id of [...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]])assert.ok(art.has(id),id);
   }
+});
+
+test('review: the art-only tutorial walks at the bêbado\'s pace and nobody poops in round 1',async()=>{
+  const {enemyDef,POOP}=await import('../../src/sim/enemies/catalog.ts');
+  assert.equal(POOP.fromRound,2,'the poop waits for round 2, like the burp');
+  // director.ts: plan.speed × bebado / fodder, so the effective pace is the tutorial's whatever walks it.
+  const bebado=enemyDef('bebado').speed,rat=enemyDef('rato-de-boteco').speed;
+  assert.ok(rat>bebado,'the rat is faster by itself');
+  assert.ok(Math.abs(rat*(bebado/rat)-bebado)<1e-12);
 });

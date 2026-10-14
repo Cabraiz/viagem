@@ -297,7 +297,7 @@ export const ROTATION_WEIGHTS:readonly Partial<Record<EnemyRole,number>>[]=[
   {corredor:.29,enxame:.3,palhaco:.15,atirador:.15,arremessador:.05,suporte:.02,kamikaze:.02,refletor:.02},
 ];
 /** Most hp a short band's members get for the threat the body cap left out (planRound). */
-export const SHORT_HP_MAX=1.5;
+export const SHORT_HP_MAX=1.6;
 /** Salt of the rotation's member picks (planRound), apart from the plan's own stream. */
 const ROTATION_PICK_SALT=0x40d0f1c5;
 /** Round 8's lone mini-chefe: when in the spawn window, and its hp against the elite's (eliteHp x this). */
@@ -369,6 +369,8 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   let modCount=mod?.countMult??1;
   // A short band (art only) never spawns more bodies than the table's (decision D: no 1.6× of weak roles); the threat
   // that cap leaves out moves into hp instead (at most SHORT_HP_MAX), like the enemy cap's below.
+  // Borrowed roles count at their full threat here although they play weaker (BORROW_TUNE): round 1 keeps fewer bodies,
+  // on purpose (review 13/10/2026: counting them at the tune's damage gave 9 bodies and downed novices in round 1).
   const want=roles?Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgRoleThreat(roles))):1,got=roster?.short?Math.min(1,want):want;
   const shortHp=Math.min(SHORT_HP_MAX,want/got);
   if(roles)modCount*=got;

@@ -136,7 +136,7 @@ export interface BorrowRule {role:EnemyRole;fromRound:number}
 export const BORROW_ORDER:readonly BorrowRule[]=Object.freeze([
   {role:'arremessador',fromRound:1},{role:'atirador',fromRound:1},{role:'kamikaze',fromRound:2},
 ].map(r=>Object.freeze(r as BorrowRule)));
-/** A borrowed entry's numbers in a band: × hp, × damage (every hit it deals), × cadence (its cooldowns, longer = slower). */
+/** A borrowed entry's numbers in a band: × hp, × damage (every hit it deals), × cadence (the cooldown between its throws or shots). */
 export interface BandTune {hp:number;damage:number;cadence:number}
 export const BORROW_TUNE:Readonly<Record<RoundBand,BandTune>>=Object.freeze({
   early:Object.freeze({hp:.6,damage:.4,cadence:2.2}),
@@ -179,8 +179,11 @@ export function isRotation(value:unknown,options:RotationOptions={}):value is Ro
   const role=new Map(ROSTER.map(e=>[e.id,e.role]));
   if(!r.mini.every(id=>role.get(id)==='mini-chefe'))return false;
   if(!Object.keys(r.roles).every(k=>ROTATION_SLOTS.some(s=>s.role===k)))return false;
-  // A slot may hold fewer than its min when art only left it short (slotPools); never more than ROTATION_SLOTS' max.
-  const ok=slotPools(options).slots.every(({slot:s,min})=>{
+  // Art only, a slot may be short or empty (its role had no art when the rotation was drawn: a checkpoint keeps its cast
+  // after new art arrives, roundRoster marks the round short); never more than ROTATION_SLOTS' max. Whole roster: the mins.
+  const artOnly=options.onlyWithArt??onlyWithArt;
+  const ok=slotPools(options).slots.every(({slot:s,min:least})=>{
+    const min=artOnly?0:least;
     const ids=r.roles[s.role];
     if(ids===undefined)return min===0;
     return Array.isArray(ids)&&ids.length>=min&&ids.length<=s.max&&ids.every(id=>role.get(id)===s.role);

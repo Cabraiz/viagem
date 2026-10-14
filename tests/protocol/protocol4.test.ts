@@ -10,6 +10,9 @@ import {
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
 import {ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 /**
  * Size of the bandwidth measurements. The default suite uses 2 clients (bytes per client do not depend on how many

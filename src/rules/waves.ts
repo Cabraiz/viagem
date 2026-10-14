@@ -16,7 +16,8 @@ import {Rng} from '../contract/index.ts';
 import {MAX_ENEMIES} from './budget.ts';
 import {ticks} from '../contract/index.ts';
 import {LEGACY_ROLE,ROLE_PROFILES,type EnemyRole} from './enemy-roles.ts';
-import type {RoundRoster} from './enemy-rotation.ts';
+import {BORROW_TUNE,ROTATION_SLOTS,bandOf,type BandTune,type RoundRoster} from './enemy-rotation.ts';
+const ROLE_BAND=new Map(ROTATION_SLOTS.map(s=>[s.role as EnemyRole,s.band]));
 
 /** cluster: one point; line: single file at one point; surround: split across up to 4 sides at once. */
 export type Formation='cluster'|'line'|'surround';
@@ -243,6 +244,8 @@ export interface RoundPlan {
   alternate?:boolean;
   /** XP drops laid around the team at the wave start (RoundDef.crumbs). */
   crumbs?:RoundDef['crumbs'];
+  /** Roles borrowed into this short round (RoundRoster.borrowed) and their band's numbers: the director applies them. */
+  borrowed?:{roles:readonly EnemyRole[];tune:BandTune};
 }
 
 const avgThreat=(w:Partial<Record<RegularKind,number>>)=>{
@@ -293,6 +296,8 @@ export const ROTATION_WEIGHTS:readonly Partial<Record<EnemyRole,number>>[]=[
   {corredor:.11,invocador:.04,enxame:.17,voador:.08,palhaco:.1,brutamontes:.1,atirador:.2,arremessador:.08,suporte:.04,kamikaze:.04,refletor:.04},
   {corredor:.29,enxame:.3,palhaco:.15,atirador:.15,arremessador:.05,suporte:.02,kamikaze:.02,refletor:.02},
 ];
+/** Most hp a short band's members get for the threat the body cap left out (planRound). */
+export const SHORT_HP_MAX=1.6;
 /** Salt of the rotation's member picks (planRound), apart from the plan's own stream. */
 const ROTATION_PICK_SALT=0x40d0f1c5;
 /** Round 8's lone mini-chefe: when in the spawn window, and its hp against the elite's (eliteHp x this). */
@@ -305,6 +310,8 @@ const avgRoleThreat=(w:Partial<Record<EnemyRole,number>>)=>{
  * The round's role shares with the rotation: ROTATION_WEIGHTS, then the modifier's kinds read as their roles (weights
  * replace, share pins), and a role the rotation has no entry for gives its share to the corredores.
  */
+/** Who fills the swarm groups: the enxames, else the corredores, else the first role the round has. */
+const swarmIds=(roster:RoundRoster):readonly string[]=>roster.roles.enxame??roster.roles.corredor??ROTATION_ROLES.map(r=>roster.roles[r]).find(ids=>ids?.length)!;
 function roleComposition(index:number,roster:RoundRoster,mod?:RoundModifier){
   let w:Partial<Record<EnemyRole,number>>={...ROTATION_WEIGHTS[index-1]};
   const asRoles=(o:Partial<Record<RegularKind,number>>)=>{
@@ -318,8 +325,29 @@ function roleComposition(index:number,roster:RoundRoster,mod?:RoundModifier){
     const rest=ROTATION_ROLES.filter(r=>!(r in share)).reduce((n,r)=>n+(w[r]??0),0);
     for(const r of ROTATION_ROLES)w[r]=r in share?share[r]:rest>0?(w[r]??0)*(1-pinned)/rest:0;
   }
-  for(const r of ROTATION_ROLES)if((w[r]??0)>0&&!roster.roles[r]?.length&&r!=='corredor'){w.corredor=(w.corredor??0)+w[r]!;w[r]=0;}
-  if(!ROTATION_ROLES.some(r=>(w[r]??0)>0&&roster.roles[r]?.length))w={corredor:1};
+  const has=(r:EnemyRole)=>!!roster.roles[r]?.length;
+  if(roster.borrowed?.length){
+    // A short band (art only, decision D): what its missing roles would have spawned goes, evenly, to the borrowed roles
+    // and the band's own roles it has (round 1, all corredores in the table: the rats, a thrower and a shooter).
+    let moved=0;for(const r of ROTATION_ROLES)if((w[r]??0)>0&&!has(r)){moved+=w[r]!;w[r]=0;}
+    const band=bandOf(index),to=[...new Set([...ROTATION_ROLES.filter(r=>has(r)&&ROLE_BAND.get(r)===band),...roster.borrowed])];
+    for(const r of to)w[r]=(w[r]??0)+moved/to.length;
+  }else if(has('corredor')){
+    for(const r of ROTATION_ROLES)if((w[r]??0)>0&&!has(r)&&r!=='corredor'){w.corredor=(w.corredor??0)+w[r]!;w[r]=0;}
+  }else{
+    // No corredores (a rotation of art entries only, ROSTER_ONLY_WITH_ART): a missing role's share goes, evenly, to the
+    // roles of its own band the round has (the corredores' and the palhaço's to the rats: melee fodder stays fodder, the
+    // shooters do not double); with none there, it spreads over every role the round has, in proportion.
+    let spread=0;
+    for(const r of ROTATION_ROLES){
+      const v=w[r]??0;if(v<=0||has(r))continue;
+      w[r]=0;const kin=ROTATION_ROLES.filter(o=>has(o)&&ROLE_BAND.get(o)===ROLE_BAND.get(r));
+      if(kin.length)for(const o of kin)w[o]=(w[o]??0)+v/kin.length;else spread+=v;
+    }
+    const present=ROTATION_ROLES.filter(has),total=present.reduce((n,r)=>n+(w[r]??0),0);
+    if(spread>0)for(const r of present)w[r]=total>0?(w[r]??0)*(total+spread)/total:spread/present.length;
+  }
+  if(!ROTATION_ROLES.some(r=>(w[r]??0)>0&&has(r))){const first=ROTATION_ROLES.find(has);w=first?{[first]:1}:{corredor:1};}
   return w;
 }
 
@@ -339,7 +367,13 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   // without advancing it: the groups' sizes, timing and sides are the table's for the same rng and member count.
   const picks=roster?new Rng((rng.state^ROTATION_PICK_SALT)>>>0):rng;
   let modCount=mod?.countMult??1;
-  if(roles)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgRoleThreat(roles)));
+  // A short band (art only) never spawns more bodies than the table's (decision D: no 1.6× of weak roles); the threat
+  // that cap leaves out moves into hp instead (at most SHORT_HP_MAX), like the enemy cap's below.
+  // Borrowed roles count at their full threat here although they play weaker (BORROW_TUNE): round 1 keeps fewer bodies,
+  // on purpose (review 13/10/2026: counting them at the tune's damage gave 9 bodies and downed novices in round 1).
+  const want=roles?Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgRoleThreat(roles))):1,got=roster?.short?Math.min(1,want):want;
+  const shortHp=Math.min(SHORT_HP_MAX,want/got);
+  if(roles)modCount*=got;
   else if(mod?.normalizeThreat)modCount*=Math.max(.4,Math.min(1.6,avgThreat(def.weights)/avgThreat(weights)));
   // Round 8's mini-chefe comes outside the budget: the regular count gives up its threat (per player, x the count scale).
   const solo=roles?roster!.solo:undefined,soloThreat=solo?ROLE_PROFILES['mini-chefe'].threat*scale.count:0;
@@ -357,7 +391,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
   let left=regular;
   for(const _ of def.swarm?.at??[]){
     const size=Math.min(left,Math.round(rng.int(def.swarm!.size[0],def.swarm!.size[1])*scale.group*Math.min(1,regular/raw*modCount)));
-    swarmGroups.push(Array(size).fill(roles?picks.pick(roster!.roles.enxame??roster!.roles.corredor!):'pombos'));left-=size;
+    swarmGroups.push(Array(size).fill(roles?picks.pick(swarmIds(roster!)):'pombos'));left-=size;
   }
   const pool:string[]=[];
   if(roles)for(const {kind:role,count} of apportion(left,roles,ROTATION_ROLES))for(let i=0;i<count;i++)pool.push(picks.pick(roster!.roles[role]!));
@@ -384,7 +418,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
     index,players:Math.max(1,Math.min(6,Math.round(players))),groups,
     total:groups.reduce((n,g)=>n+g.members.length,0),
     durationTicks:ticks(def.maxDuration),
-    hp:def.hpScale*scale.hp*(mod?.hpMult??1)*hpComp,
+    hp:def.hpScale*scale.hp*(mod?.hpMult??1)*hpComp*shortHp,
     eliteHp:def.hpScale*scale.solo*ELITE_HP,
     ...(solo?{miniHp:def.hpScale*scale.solo*ELITE_HP*MINI_SOLO_HP}:{}),
     speed:mod?.speedMult??1,size:mod?.sizeMult??1,
@@ -392,5 +426,6 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
     side:mod?.singleSide||mod?.alternateSide?rng.range(0,Math.PI*2):undefined,
     ...(mod?.alternateSide?{alternate:true}:{}),
     ...(def.crumbs?{crumbs:def.crumbs}:{}),
+    ...(roster?.borrowed?.length?{borrowed:{roles:[...roster.borrowed],tune:BORROW_TUNE[bandOf(index)]}}:{}),
   };
 }

@@ -12,8 +12,8 @@ import type {RunView} from '../../contract/index.ts';
 import type {HappeningKind} from '../../contract/index.ts';
 import {BLACKOUT_DEPTH,blackoutAlpha} from './blackout-rules.ts';
 import {KILLCAM_MS} from '../fun/zueira.ts';
-import {ENEMY_ART,FX,enemyKind,enemyTexture,type EnemyKind} from './keys.ts';
-import {applyEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_ART,FX,enemyKind,enemyTexture,fallbackTint,type EnemyKind} from './keys.ts';
+import {applyEnemyArt,enemyArtId} from '../art/horde-art.ts';
 import {deathLine,kindStyle} from './jokes.ts';
 import {killcamFrame} from './killcam-rules.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
@@ -43,7 +43,9 @@ export const KILLCAM_DEPTH=97000;
 
 interface Killcam {kind:string;id:string;at:Pt;start:number;end:number;cam?:Phaser.Cameras.Scene2D.Camera;ghost:Phaser.GameObjects.Image;puff:Phaser.GameObjects.Image;pop:Phaser.GameObjects.Text;
   /** The copy as the horde draws it (horde-art.ts applyEnemyArt): imported idle frames when the kind has art. */
-  actor:{kind:EnemyKind;elite:boolean;phase:number}}
+  actor:{kind:EnemyKind;art:string;elite:boolean;phase:number};
+  /** Whether the ghost showed imported art last frame (undefined before the first): its accent tint follows. */
+  tinted?:boolean}
 
 export class ZueiraFx {
   private scene:Phaser.Scene;
@@ -105,7 +107,7 @@ export class ZueiraFx {
       .setOrigin(.5,.5).setDepth(depth+2).setVisible(false);
     // Only the kill-cam sees the copy: on the main screen the critter already went poof.
     this.scene.cameras.main.ignore([ghost,puff,pop]);
-    this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop,actor:{kind:k,elite:false,phase:0}};
+    this.killcam={kind,id,at,start:this.now,end:this.now+KILLCAM_MS,ghost,puff,pop,actor:{kind:k,art:enemyArtId(kind,k),elite:false,phase:0}};
   }
   private stopKillcam(){
     const k=this.killcam;if(!k)return;
@@ -140,6 +142,8 @@ export class ZueiraFx {
     // Imported art (the same helper as the horde's critters): its idle frame at today's size, turned around its middle
     // like today's copy; without art (always, with an empty manifest) today's procedural texture is left as it was.
     const imported=applyEnemyArt(k.ghost,k.actor,false,0,0,now);
+    // The reserve wears the roster accent (keys.ts fallbackTint) like the horde's; imported art its own colours.
+    if(imported!==k.tinted){k.tinted=imported;const accent=imported?undefined:fallbackTint(k.kind);if(accent===undefined)k.ghost.clearTint();else k.ghost.setTint(accent);}
     const scale=f.ghost.scale*(imported?k.ghost.scaleX:1);
     if(imported||k.ghost.originY!==.5)k.ghost.setOrigin(.5,.5);
     k.ghost.setVisible(f.ghost.visible).setPosition(f.ghost.x,f.ghost.y).setRotation(f.ghost.rotation).setScale(scale);

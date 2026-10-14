@@ -17,6 +17,9 @@ import {manageLabel} from '../../src/client/hud/result.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import type {RunState} from '../../src/sim/run.ts';
 import type {PlayerRunView} from '../../src/contract/view.ts';
+import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
+// A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
+setRosterOnlyWithArt(false);
 
 function peer(){
   const messages:any[]=[],frames:Uint8Array[]=[],closes:{code:number;reason:string}[]=[];

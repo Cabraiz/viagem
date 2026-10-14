@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Rng} from '../../src/contract/index.ts';
-import {BORROW_TUNE,ENEMY_ART_IDS,MINI_COUNT,ROSTER,ROSTER_ONLY_WITH_ART,ROTATION_SLOTS,drawRotation,isRotation,planRound,roleOf,
+import {BORROW_TUNE,ENEMY_ART_IDS,MINI_COUNT,ROLE_PROFILES,ROSTER,ROSTER_ONLY_WITH_ART,ROTATION_SLOTS,drawRotation,isRotation,planRound,roleOf,
   rosterEntry,rotationIds,roundRoster,slotPools,type Rotation} from '../../src/rules/index.ts';
 // @ts-expect-error: a plain .mjs script (no types)
 import {enemyArtIds,enemyArtIdsSource} from '../../scripts/art-v2/enemy-art-ids.mjs';
@@ -158,4 +158,20 @@ test('review: the art-only tutorial walks at the bêbado\'s pace and nobody poop
   const bebado=enemyDef('bebado').speed,rat=enemyDef('rato-de-boteco').speed;
   assert.ok(rat>bebado,'the rat is faster by itself');
   assert.ok(Math.abs(rat*(bebado/rat)-bebado)<1e-12);
+});
+
+test('city role cap (balanco-cidade-so-arte): an art-only round keeps the rats at most half its bodies, at about the same threat; no cap = as before',()=>{
+  const threat=(ids:string[])=>ids.reduce((n,id)=>n+ROLE_PROFILES[roleOf(id)!].threat,0);
+  for(const seed of SEEDS.slice(0,30))for(const round of [4,5,6]){
+    const rr=roundRoster(artRotation(seed),round);
+    const plain=planRound(round,6,{name:'x'},new Rng(seed),rr),capped=planRound(round,6,{name:'x'},new Rng(seed),rr,{roleCap:{enxame:.5}});
+    const a=regular(plain),b=regular(capped),rats=b.filter(id=>roleOf(id)==='enxame').length;
+    assert.ok(rats<=Math.ceil(.5*b.length)+1,`round ${round}: ${rats}/${b.length} rats`);
+    assert.ok(b.length<a.length,'fewer, heavier bodies');
+    assert.ok(Math.abs(threat(b)-threat(a))<=threat(a)*.06,`round ${round}: threat ${threat(b).toFixed(1)} vs ${threat(a).toFixed(1)}`);
+    assert.deepEqual(planRound(round,6,{name:'x'},new Rng(seed),rr,{}),plain,'no cap: the same plan');
+  }
+  // A full-roster round is never short: the cap does nothing there.
+  const full=drawRotation(new Rng(4),{onlyWithArt:false}),rr=roundRoster(full,5);
+  assert.deepEqual(planRound(5,6,{name:'x'},new Rng(4),rr,{roleCap:{enxame:.5}}),planRound(5,6,{name:'x'},new Rng(4),rr));
 });

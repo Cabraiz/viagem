@@ -24,7 +24,7 @@ test('a small reconcile error fades in ~150-300 ms and never moves the hero more
   }
 });
 
-test('a medium error glides at the cap (still no jump); one over 3 units is hidden (the scene puffs)',()=>{
+test('a medium error glides at the cap (still no jump); one over CORRECTION_HIDE_UNITS (3 u × the 2× walk) is hidden (the scene puffs)',()=>{
   const c=new SelfCorrection();
   c.absorb({x:0,y:0},{x:2,y:0});
   let frames=0,peak=0;
@@ -34,7 +34,8 @@ test('a medium error glides at the cap (still no jump); one over 3 units is hidd
   assert.equal(big.absorb({x:0,y:0},{x:CORRECTION_HIDE_UNITS+.5,y:0}),'hide');assert.equal(big.size,0);
   // Errors add up: two smooth ones past the limit hide too.
   const twice=new SelfCorrection();
-  assert.equal(twice.absorb({x:0,y:0},{x:2,y:0}),'smooth');assert.equal(twice.absorb({x:0,y:0},{x:1.5,y:0}),'hide');
+  const h=CORRECTION_HIDE_UNITS;
+  assert.equal(twice.absorb({x:0,y:0},{x:h*2/3,y:0}),'smooth');assert.equal(twice.absorb({x:0,y:0},{x:h/2,y:0}),'hide');
   assert.equal(new SelfCorrection().absorb({x:1,y:1},{x:1,y:1}),'none');
 });
 

@@ -26,7 +26,7 @@
  * Everything is deterministic (lines from streams derived from the director's rng, spots in cell order) and the
  * director's TutorialState is JSON-safe.
  */
-import {STRAIGHT_COST,UNREACHABLE,type FlowField,type FlowPoint,type Point} from '../../maps/index.ts';
+import {HERO_SPEED_MULT,STRAIGHT_COST,UNREACHABLE,type FlowField,type FlowPoint,type Point} from '../../maps/index.ts';
 import {ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
@@ -37,8 +37,12 @@ export const TUTORIAL_PLAN=Object.freeze({
   behind:2,welcome:3,
   /** Wave seconds when the group behind is warned (the run's 3 s opening + this: the novice read ~4 s, then walked). */
   behindAt:6,
-  /** Wave seconds when the plaza group reaches the plaza (after a novice's walk). */
-  welcomeArrival:40,
+  /**
+   * Wave seconds when the plaza group reaches the plaza, before a novice's walk ends: tuned 40 s for the base walk
+   * (slow novice in the plaza at ~62 s, the group holding it from ~41 s), divided by maps HERO_SPEED_MULT so it keeps
+   * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s).
+   */
+  welcomeArrival:40/HERO_SPEED_MULT,
   /** hp multiplier (round 1 of the table is 0.35) and speed multiplier (city bêbado 1.79 → ≈ 1.61 u/s; hero 1.99). */
   hpScale:.3,speed:.9,
   /** Hard end of the wave (s): what is still out retreats, and the round ends even if nobody reached the plaza. */

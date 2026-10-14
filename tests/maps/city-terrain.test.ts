@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom,cityAsField,cityTerrainFor} from '../../src/maps/city/terrain.ts';
 import {encodeCityAsset,decodeCityAsset,type CityAssetData,type CityBlock,type CityPoint} from '../../src/maps/city-asset.ts';
 import type {TerrainField} from '../../src/maps/terrain/field.ts';
-import {walkable,clearSegment,moveDirection,findPath,worldBase,worldSpawn,obstaclesNear,resourceObstacles,RADIUS,CITY_HERO_SPEED,type Point} from '../../src/maps/world.ts';
+import {walkable,clearSegment,moveDirection,findPath,worldBase,worldSpawn,obstaclesNear,resourceObstacles,RADIUS,CITY_HERO_SPEED,HERO_SPEED_MULT,type Point} from '../../src/maps/world.ts';
 import {simulate,reconcile,STEP} from '../../src/maps/prediction.ts';
 import {TERRAIN_VERSION} from '../../src/maps/index.ts';
 import {Rng} from '../../src/contract/rng.ts';
@@ -22,8 +22,8 @@ import {UPDATE_NEEDED} from '../../src/protocol/index.ts';
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
 const HASH=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;
-/** Longest move of one simulation tick (protocol 3: one STEP per input) at the city's faithful hero speed. */
-const MAX_STEP=CITY_HERO_SPEED*STEP+1e-9;
+/** Longest move of one simulation tick (protocol 3: one STEP per input) at the city's hero walk (2 × the faithful CITY_HERO_SPEED). */
+const MAX_STEP=CITY_HERO_SPEED*HERO_SPEED_MULT*STEP+1e-9;
 const VIEWS=[0,1,2,3] as const;
 
 /** A fresh, unregistered decode (cityTerrainFrom shares one instance per hash; determinism needs two). */
@@ -92,7 +92,7 @@ test('synthetic: a 2-sample corridor (0.44 u) fits a 0.22 disc only when centred
   assert.equal(synthetic.clearDisc(.65,CORRIDOR_Y,.22),false);
   // The hero walks the whole alley along its axis without being pushed off it.
   let p:Point={x:.7,y:CORRIDOR_Y};
-  // 48 ticks at the city speed (≈4.8 u) cover the ≈3.9 u alley and then press on its far wall.
+  // 48 ticks at the city walk (≈9.6 u) cover the ≈3.9 u alley and then press on its far wall.
   for(let i=0;i<48;i++){const q=moveDirection(p,{x:1,y:0},STEP,synthField);assert.ok(walkable(q,synthField));assert.equal(q.y,CORRIDOR_Y);p=q;}
   assert.ok(p.x>4.4&&p.x<=4.84-.22+1e-9,`reached the far end, x=${p.x}`);
 });

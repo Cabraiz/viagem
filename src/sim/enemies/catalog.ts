@@ -6,7 +6,7 @@ import type {Point} from '../../maps/index.ts';
 import type {EnemyState} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
-import {ROLE_PROFILES,entryLines,isLegacyKind,isRosterId,rosterEntry,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
+import {PROJECTILE_SPEED_MULT,ROLE_PROFILES,entryLines,isLegacyKind,isRosterId,rosterEntry,type LegacyKind,type RoleBehavior} from '../../rules/index.ts';
 
 /**
  * Any roster id (rules/enemy-roster.ts, D-040): the nine hand-tuned kinds of D-033 and the P1 trio (LegacyKind, their
@@ -156,8 +156,8 @@ export const ELITE:EliteDef=Object.freeze({
 
 /**
  * Orquestrador rule (BUG-20261012-E6-cidade-velocidades-relativas): no enemy-ai step (walk, zig-zag, approach, back-off,
- * strafe, the Tio's charge; in the city also the crowd's separation push) takes an enemy above ACTION_PEAK_MAX × the walking speed
- * of the heroes of its world, and an action's warning gives the hero time to step out (≥ 0.8 s, MIN_TELEGRAPH_TICKS).
+ * strafe, the Tio's charge; in the city also the crowd's separation push) takes an enemy above ACTION_PEAK_MAX × the BASE walking
+ * speed of the heroes of its world (maps baseHeroSpeed: the heroes now walk HERO_SPEED_MULT × it, the enemies stay), and an action's warning gives the hero time to step out (≥ 0.8 s, MIN_TELEGRAPH_TICKS).
  * Enemy speeds are converted per world (city/speed.ts citySpeed: the city's 1.99 u/s hero vs the endless 3.1; city
  * pombos walk ~1.95 u/s, ~2.17 with a 1.25 round modifier, and the Tio's ×2.6 charge would be ~3.15), so enemy-ai
  * moves at min(speed × pace, heroSpeed × ACTION_PEAK_MAX), slows on top, and in the city (EnemyAiOptions.capPush)
@@ -169,9 +169,10 @@ export const ACTION_PEAK_MAX=1.15;
 /**
  * Hostile "boleto com juros" of the agiota (source 'boleto-juros', NOT 'boleto', which is a player weapon). Projectile
  * speed is in world units per second; pierce 0 like every hostile shot (D-012). `marks` rides on the projectile (D-002):
- * projectiles.ts collideHostile marks the player it hurts (DEVENDO).
+ * projectiles.ts collideHostile marks the player it hurts (DEVENDO). Tuned 4.5 u/s for 3 s, flown through rules
+ * PROJECTILE_SPEED_MULT (2.25 u/s for 6 s): the same 13.5 u reach.
  */
-export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5,radius:.18,damage:7,life:ticks(3),cooldown:ticks(3),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
+export const AGIOTA_SHOT=Object.freeze({source:'boleto-juros',speed:4.5*PROJECTILE_SPEED_MULT,radius:.18,damage:7,life:ticks(3/PROJECTILE_SPEED_MULT),cooldown:ticks(3),aim:ticks(.5),minRange:3.5,maxRange:5.5,fireRange:6.5,marks:'devendo' as const});
 /**
  * Tio do Pavê (heavier, D-033): stops to tell a joke, then charges and shoves harder than the VGM-031 tio (1 / 0.35).
  * The joke is the warning (BUG-20261012-E6-cidade-velocidades-relativas): when it starts he locks the charge on the
@@ -286,7 +287,8 @@ export const MARMITA_BOOM_LINES:readonly string[]=Object.freeze(['Arroz, feijão
  * REFLECT.minLife more. Orbiters, follow/area zones and the instant cone still hurt him: the counterplay.
  */
 export const POSE=Object.freeze({trigger:6,duration:ticks(2),cooldown:ticks(5)});
-export const REFLECT=Object.freeze({mult:.6,minLife:ticks(1)});
+/** minLife: the tuned 1 s through PROJECTILE_SPEED_MULT (2 s), so a reflected shot flies back as far at its slower speed. */
+export const REFLECT=Object.freeze({mult:.6,minLife:ticks(1/PROJECTILE_SPEED_MULT)});
 /** memory.state of the pose (enemies/ai.ts STATE.pose). */
 export const POSE_STATE=6;
 export const POSE_LINES:readonly string[]=Object.freeze(['Ninguém atira! Tô gravando!','Pera, achei a luz boa!','Pose de bíceps: modo escudo!','Contrai o abdômen! Sorri!','Mais uma! Agora de perfil!','Para tudo: hora do pump!']);

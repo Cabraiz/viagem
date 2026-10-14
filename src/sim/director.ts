@@ -20,7 +20,7 @@
  *   helicopter to the plaza: a few slow bêbados behind the team and at the plaza, held until a hero reached it.
  */
 import type {TerrainField} from '../maps/index.ts';
-import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
+import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
 import {MAX_ENEMIES,roleOf} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleAtDefault,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
@@ -249,7 +249,7 @@ export const CATCH_UP_SPEED=2.5;
  *    all, so a team that runs away is never caught by the hurry (code review: 3.9 u/s outran the hero's 3.1).
  */
 export const LAST_CALL_SECONDS=25,LAST_CALL_NEAR=7,LAST_CALL_PACE=.9;
-/** The extra speed of a called enemy (u/s): full catch-up off screen, capped so its pace plus it stays ≤ 0.9 × SPEED on one. */
+/** The extra speed of a called enemy (u/s): full catch-up off screen, capped so its pace plus it stays ≤ 0.9 × SPEED (the BASE hero walk: enemies do not speed up with the 2× hero) on one. */
 export const lastCallBoost=(pace:number,hidden:boolean)=>hidden?CATCH_UP_SPEED:Math.max(0,Math.min(CATCH_UP_SPEED,LAST_CALL_PACE*SPEED-pace));
 /**
  * A called enemy that tried every sidestep and still could not move waits this many ticks (plus 0-7 by its id) before it
@@ -407,8 +407,11 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(const pl of ctx.players.values())if(blocking(pl)&&visibleAtDefault(pl,p,options.cameraOf?.(ctx,pl)))return false;
     return true;
   }
-  /** Units a hero covers during the warning: a spot must stay hidden even if a player walks straight at it. */
-  const lead=SPEED*warning/SIM_HZ;
+  /**
+   * Units a hero covers during the warning at its real (2×, maps heroSpeed) walk: a spot must stay hidden even if a
+   * player walks straight at it.
+   */
+  const lead=(ctx:SimContext)=>heroSpeed(ctx.terrain)*warning/SIM_HZ;
   /**
    * Hidden from everyone with `margin` to spare: the spot moved `margin` units towards each player is hidden too.
    * Every legal screen is star-shaped around its player (convex rectangles that contain it), so that is the
@@ -423,7 +426,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     }
     return true;
   }
-  const hiddenAhead=(ctx:SimContext,p:Point)=>hiddenBy(ctx,p,lead);
+  const hiddenAhead=(ctx:SimContext,p:Point)=>hiddenBy(ctx,p,lead(ctx));
   const spawnable=(ctx:SimContext,p:Point)=>walkable(p,ctx.terrain)&&ctx.terrain.chunks!.clear(p.x,p.y,SPAWN_CLEARANCE);
   function nearestOf(list:readonly SimPlayer[],p:Point){
     let best:SimPlayer|undefined,d2=Infinity;
@@ -1042,7 +1045,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const roster=state.rotation?roundRoster(state.rotation,index):undefined;
     // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
     const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster,options.cityBalance?.roleCap&&city(ctx)?{roleCap:options.cityBalance.roleCap}:undefined);
     // The tutorial's pace is the bêbado's (TUTORIAL_PLAN.speed on his catalog speed): other fodder walks at it too.
     if(tutorial&&fodder?.length)plan={...plan,speed:plan.speed*enemyDef('bebado').speed/enemyDef(fodder[0]).speed};
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.

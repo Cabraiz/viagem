@@ -516,8 +516,10 @@ test('chase: a team away from the plaza is reached through the streets (players 
   const failures=[
     // away.ts: one player 15–35 u from the plaza; ≥ 90 % within 60 s.
     ...chaseReport('one player 15-35 u away (8 seeds)',[1,2,3,4,5,6,7,8].map(seed=>chase(seed,[spotAway(new Rng(seed*131),15,35)]))),
-    // Spread: three players anywhere 12–60 u out; ≥ 90 % within 60 s.
-    ...chaseReport('team spread in the city (seed 1)',[1].map(seed=>{const r=new Rng(seed*733);return chase(seed,[spotAway(r,12,60),spotAway(r,12,60),spotAway(r,12,60)]);})),
+    // Spread: three players anywhere 12–60 u out; ≥ 90 % within max(60 s, 1.25 × the body's shortest walk): with the 2×
+    // walk (velocidade-heroi-e-projetil) the planner's spawn lead doubled, so the spots sit farther out and a tio-pavê
+    // (0.95 u/s) 60 u out takes 62–66 s; the share within 60 s is logged.
+    ...chaseReport('team spread in the city (seed 1)',[1].map(seed=>{const r=new Rng(seed*733);return chase(seed,[spotAway(r,12,60),spotAway(r,12,60),spotAway(r,12,60)],{pathDeadline:true});})),
     // The field follows a player who moved: at 20 s the player is somewhere else ≥ 20 u away and is chased there.
     ...chaseReport('player moved at 20 s (seed 2)',[2].map(seed=>{
       const r=new Rng(seed*977),a=spotAway(r,15,35);let b=spotAway(r,15,35);
@@ -555,6 +557,25 @@ test('chase: the steer exposes the players field, whose goals follow the live pl
   const steered=steer(ctx,e,p,out),plaza=P.directionFor(e,P.targetFor(e),{x:0,y:0});
   assert.ok(steered,'no live player: the plaza flow');
   assert.ok(Math.abs(out.x-plaza.x)<1e-9&&Math.abs(out.y-plaza.y)<1e-9,`plaza direction ${fmt(plaza)}, got ${fmt(out)}`);
+});
+test('chase: a players field unused for longer than refreshTicks is rebuilt on its next use, like a fresh steer (a resumed room plays on bit for bit)',()=>{
+  // NEW-20261013-ORQ-velocidade-heroi-e-projetil (checkpoint-cidade): the original run kept a field built ticks ago, a
+  // restored sim built it afresh, and the two drifted apart in the next wave.
+  const P=planner(),old=citySteer(P),ctx=fakeCtx(5),r=new Rng(56);
+  const a=spotAway(r,20,35);let b=spotAway(r,20,35);
+  while(Math.hypot(a.x-b.x,a.y-b.y)<20)b=spotAway(r,20,35);
+  addPlayer(ctx,'p',a);
+  const e=catalogEnemy(ctx,'pombos',alongRoute('N',30)),p=ctx.players.get('p')!,out={x:0,y:0},fresh={x:0,y:0};
+  ctx.tick=1;old(ctx,e,p,out);
+  // Nobody of its class is steered for a while (an intermission); the hero walks to b. Tick 23 is off the field's phase.
+  p.x=b.x;p.y=b.y;ctx.tick=23;
+  old(ctx,e,p,out);
+  const steer=citySteer(P);steer(ctx,e,p,fresh);
+  assert.ok(old.playersField!.atGoal(b.x,b.y)&&!old.playersField!.atGoal(a.x,a.y),'the idle field was rebuilt on the hero');
+  assert.deepEqual(out,fresh,'the same direction as a fresh steer');
+  // A short gap (≤ refreshTicks, a body in and out of the straight chase) keeps the throttle: tick 25 is off the phase.
+  p.x=a.x;p.y=a.y;ctx.tick=25;old(ctx,e,p,out);
+  assert.ok(old.playersField!.atGoal(b.x,b.y),'no rebuild off the phase after a 2-tick gap');
 });
 
 // ---------- 6. the boss in the plaza ----------
@@ -746,7 +767,10 @@ test('DirectorState with avenues survives a JSON round-trip mid-round; the copy 
  * (NEW-20261012-ORQ-elenco-p1-coach-motoboy-influencer: coach, motoboy and influencer in the round weights); the same
  * tree with 58762ac's round table gives the previous hashes exactly. Re-recorded for D-040
  * (NEW-20261013-ORQ-papeis-de-inimigo): giant-everyone is no longer drawn in round 8 (rules/waves.ts banRounds), which
- * changes island seed 1 only; the same tree with that ban reverted gives the previous hashes exactly.
+ * changes island seed 1 only; the same tree with that ban reverted gives the previous hashes exactly. Re-recorded for velocidade-heroi-e-projetil (the 2× walk widens
+ * the director's warning lead to heroSpeed × 1.5 s and moves the endless spawn ring to 9.4..10.4 + 1): the endless
+ * hashes change, the island ones do not; the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and the
+ * ring 5..8 + 3 gives the previous hashes exactly.
  */
 function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:AvenuePlanner){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -768,8 +792,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'a02241480faa7379','infinito kill=40 seed 1':'ff2e389867dabe71',
-  'infinito kill=Infinity seed 0':'060730a7b6e18f3e', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen)
+  'infinito kill=40 seed 0':'2adbb80f3277b37f','infinito kill=40 seed 1':'f9f21cc82502992f',
+  'infinito kill=Infinity seed 0':'b2a164e3ecd1080b', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

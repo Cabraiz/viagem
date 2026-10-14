@@ -24,7 +24,7 @@ import {ENEMY_TELEGRAPH_CAP,EnemyAi,STATE,type EnemyAiOptions} from '../../src/s
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {SCALE_PROFILES} from '../../src/rules/scale.ts';
-import {RADIUS,SPEED,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
+import {HERO_SPEED_MULT,RADIUS,SPEED,baseHeroSpeed,heroSpeed,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {STEP} from '../../src/maps/prediction.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
@@ -409,4 +409,14 @@ test('the run gives the enemy AI its world hero speed (city 1.994, endless 3.1) 
   assert.equal(endless.heroSpeed,SCALE_PROFILES.infinito.hero.speed);
   assert.equal(endless.capPush,false,'endless crowd pacing left as tuned');
   assert.equal(SCALE_PROFILES.infinito.hero.speed,SPEED);
+  // velocidade-heroi-e-projetil: the heroes walk HERO_SPEED_MULT × faster, the enemy cap stays on the BASE hero, so a
+  // capped charge (any speed above the cap) is today's peak and the heroes now outrun it.
+  for(const sim of [city,new Simulation(7,{world:'infinito'})]){
+    const ai=sim.run.enemyAi,terrain=sim.terrain;
+    assert.equal(ai.heroSpeed,baseHeroSpeed(terrain),'the cap reads the base walk');
+    assert.equal(heroSpeed(terrain),ai.heroSpeed*HERO_SPEED_MULT,'the heroes walk 2×');
+    assert.ok(Math.abs(ai.paceSpeed({speed:50},1)-baseHeroSpeed(terrain)*ACTION_PEAK_MAX)<1e-12,'a capped charge keeps today\'s peak');
+    assert.ok(ai.paceSpeed({speed:50},TIO_JOKE.chargeSpeed)<heroSpeed(terrain),'the hero outruns the capped charge');
+  }
+  assert.equal(MIN_TELEGRAPH_TICKS,Math.round(.8*SIM_HZ),'telegraphs still warn ≥ 0.8 s');
 });

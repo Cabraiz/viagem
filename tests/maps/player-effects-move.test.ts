@@ -1,17 +1,24 @@
 /**
  * D-036 movement effects (maps/prediction.ts moveStep), shared by the room's players system and the phone's replay:
- * the slow scales the walk by PLAYER_SLOW_MULT, the slip slides along `slip` at PLAYER_SLIP_SPEED ignoring the stick,
+ * the slow scales the walk by PLAYER_SLOW_MULT, the slip slides along `slip` at PLAYER_SLIP_SPEED (× the world's walk over
+ * SPEED: × HERO_SPEED_MULT on the island since the 2× walk) ignoring the stick,
  * both deterministic from (effects, tick) and collision-safe (never into the sea, a tree or a rock).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {moveStep,reconcile,simulate,slipping,slowed,STEP,type MoveEffects} from '../../src/maps/prediction.ts';
-import {moveDirection,walkable,obstacles,SPAWN,SPEED,type Point} from '../../src/maps/world.ts';
+import {HERO_SPEED_MULT,heroSpeed,moveDirection,walkable,obstacles,SPAWN,SPEED,type Point} from '../../src/maps/world.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 import {PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,type PlayerInput} from '../../src/contract/index.ts';
 import {Rng} from '../../src/contract/rng.ts';
 
 const T=defaultTerrain;
+/** The island walk (2 × SPEED) and its slip (PLAYER_SLIP_SPEED × walk / SPEED, the proportion kept). */
+const WALK=heroSpeed(T),SLIP=PLAYER_SLIP_SPEED*WALK/SPEED;
+test('the island walk is 2 × SPEED and the slip keeps its proportion to it',()=>{
+  assert.equal(WALK,SPEED*HERO_SPEED_MULT);assert.equal(HERO_SPEED_MULT,2);
+  assert.ok(Math.abs(SLIP-PLAYER_SLIP_SPEED*HERO_SPEED_MULT)<1e-12);
+});
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const input=(seq:number,x:number,y:number):PlayerInput=>({seq,x,y,attack:false});
 
@@ -24,20 +31,20 @@ test('no effects: moveStep is the plain walk (old prediction unchanged)',()=>{
 test('slow: speed × PLAYER_SLOW_MULT while tick < slowUntil, plain walk from slowUntil on',()=>{
   const e:MoveEffects={slowUntil:50};
   const slow=moveStep(SPAWN,{x:1,y:0},49,e,T),plain=moveStep(SPAWN,{x:1,y:0},50,e,T);
-  assert.ok(Math.abs(dist(SPAWN,slow)-SPEED*PLAYER_SLOW_MULT*STEP)<1e-12,`slowed step ${dist(SPAWN,slow)}`);
-  assert.ok(Math.abs(dist(SPAWN,plain)-SPEED*STEP)<1e-12);
+  assert.ok(Math.abs(dist(SPAWN,slow)-WALK*PLAYER_SLOW_MULT*STEP)<1e-12,`slowed step ${dist(SPAWN,slow)}`);
+  assert.ok(Math.abs(dist(SPAWN,plain)-WALK*STEP)<1e-12);
   assert.ok(slowed(e,49)&&!slowed(e,50)&&!slowed(undefined,0));
 });
 
-test('slip: slides along `slip` at PLAYER_SLIP_SPEED, the stick ignored, until slipUntil; then walking again',()=>{
+test('slip: slides along `slip` at the island slip speed, the stick ignored, until slipUntil; then walking again',()=>{
   const e:MoveEffects={slipUntil:20,slip:{x:0,y:-1},slowUntil:40};
   for(const stick of [{x:1,y:0},{x:0,y:1},{x:0,y:0}]){
     const q=moveStep(SPAWN,stick,10,e,T);
-    assert.ok(Math.abs(q.x-SPAWN.x)<1e-12&&Math.abs(SPAWN.y-q.y-PLAYER_SLIP_SPEED*STEP)<1e-12,'slides up whatever the stick');
+    assert.ok(Math.abs(q.x-SPAWN.x)<1e-12&&Math.abs(SPAWN.y-q.y-SLIP*STEP)<1e-12,'slides up whatever the stick');
   }
   // The slip wins over the slow; after it, the slow still applies.
   const after=moveStep(SPAWN,{x:1,y:0},20,e,T);
-  assert.ok(Math.abs(dist(SPAWN,after)-SPEED*PLAYER_SLOW_MULT*STEP)<1e-12);
+  assert.ok(Math.abs(dist(SPAWN,after)-WALK*PLAYER_SLOW_MULT*STEP)<1e-12);
   assert.equal(slipping(e,19)?.y,-1);assert.equal(slipping(e,20),undefined);
   assert.equal(slipping({slipUntil:99,slip:{x:0,y:0}},1),undefined,'a zero vector never slides');
   assert.equal(slipping({slipUntil:99,slip:{x:NaN,y:1}},1),undefined,'nor a broken one');
@@ -54,7 +61,7 @@ test('a slide never enters the sea, a tree or a rock (island, random spots and d
     for(let tick=0;tick<60;tick++){
       const q=moveStep(p,{x:-Math.cos(a),y:-Math.sin(a)},tick,e,T);
       assert.ok(walkable(q,T),`slid out of the walkable ground at ${q.x},${q.y}`);
-      assert.ok(dist(p,q)<=PLAYER_SLIP_SPEED*STEP+1e-9,'never more than one slide step');
+      assert.ok(dist(p,q)<=SLIP*STEP+1e-9,'never more than one slide step');
       if(dist(p,q)<1e-12)blocked++;
       p=q;
     }

@@ -11,14 +11,17 @@
  * - extrapolation: a late frame does not freeze the others; they go on along their last motion for at most
  *   EXTRAPOLATE_MAX_MS (dead reckoning with a ceiling).
  */
-import type {Point} from '../../maps/index.ts';
+import {HERO_SPEED_MULT,type Point} from '../../maps/index.ts';
 
 /** Time constant of the hero's correction fade (ms): ~95% of a small error is gone in 3τ ≈ 270 ms. */
 export const CORRECTION_TAU_MS=90;
 /** The visible correction never moves the hero more than this per frame (CSS px on screen). */
 export const CORRECTION_MAX_PX=4;
-/** An error larger than this (world units ≈ cells) is not glided: hidden behind a puff (a long drop, a respawn). */
-export const CORRECTION_HIDE_UNITS=3;
+/**
+ * An error larger than this (world units ≈ cells) is not glided: hidden behind a puff (a long drop, a respawn). 3 u at
+ * the base walk, × HERO_SPEED_MULT (velocidade-heroi-e-projetil): the same walking time of error.
+ */
+export const CORRECTION_HIDE_UNITS=3*HERO_SPEED_MULT;
 /** Below this the offset is gone (units). */
 const CORRECTION_EPS=1e-3;
 
@@ -60,8 +63,11 @@ export class SelfCorrection {
 export const INTERP_MIN_MS=100,INTERP_MAX_MS=250;
 /** A late frame: the others go on along their last motion for at most this long, then wait (ms). */
 export const EXTRAPOLATE_MAX_MS=150;
-/** ...and never more than this far past the newest sample (units): a dash between two frames is not a speed. */
-export const EXTRAPOLATE_MAX_UNITS=.6;
+/**
+ * ...and never more than this far past the newest sample (units): a dash between two frames is not a speed. 0.6 u at
+ * the base walk (150 ms × 3.1 u/s = 0.47), × HERO_SPEED_MULT for the 2× walk (0.93 u in 150 ms).
+ */
+export const EXTRAPOLATE_MAX_UNITS=.6*HERO_SPEED_MULT;
 /**
  * Frame arrival jitter: smoothed gap between frames and its mean deviation (RFC 6298 style), turned into the render
  * delay the others need: the usual gap plus two deviations, within INTERP_MIN_MS..INTERP_MAX_MS.

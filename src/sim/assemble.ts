@@ -23,7 +23,7 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
-import {CityTerrain,heroSpeed} from '../maps/index.ts';
+import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -185,8 +185,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
-    // The hero's real walking speed on this terrain (cidade-04: the same source as moveStep), so the cap tracks it.
-    heroSpeed:heroSpeed(world.terrain),
+    // The BASE hero walk on this terrain (maps baseHeroSpeed): the heroes walk HERO_SPEED_MULT × it, but the enemies
+    // must not get faster with them (velocidade-heroi-e-projetil), so the cap stays on today's hero.
+    heroSpeed:baseHeroSpeed(world.terrain),
     // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
     capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).

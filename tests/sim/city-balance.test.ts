@@ -203,12 +203,13 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
 }
 /**
  * cityRun's scenario with neutral knobs (= the city without cidade-11): first recorded on 4906ef9, re-recorded on df2bf97
- * because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool, and again for D-046 (cityVisible follows the
+ * because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool, again for D-046 (cityVisible follows the
  * contract's widest camera, so the avenue spawn spots move out; late parts run in, CITY_RUN_IN_SPEED, 2 u/s since the merge with
- * BUG-20261013-E8-tio-preso-cidade).
+ * BUG-20261013-E8-tio-preso-cidade), and for velocidade-heroi-e-projetil (the city spawn lead CITY_VIEW_LEAD follows the
+ * 2× walk; the city tutorial's welcome follows it too, CITY_TUTORIAL welcomeArrival 40 / HERO_SPEED_MULT).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'7badbc32c73fb9b6','tutorial seed 8 r4':'9ce86e4fcd75d16c','plain seed 21 r10':'b0ef5088ca019f51',
+  'tutorial seed 3 r4':'180e3d8bac9b28f1','tutorial seed 8 r4':'159b49ca7e04eccd','plain seed 21 r10':'ca261ba76e3068c2',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -279,9 +280,11 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  * before cidade-11), re-recorded for BUG-20261013-E8 (16a84cd56d5977cb before): on the hero-size planner flow, a wide
  * body whose own disc clips a wall one step ahead now squeezes by the hero rule (grid.ts citySteer); in this run that
  * is seven bêbados (0.32 u) for 1–4 ticks each; then the city and the endless map again for D-046 (the widest-camera
- * contract widens cityVisible and the spawn ring; the director paces the run-in at the default camera).
+ * contract widens cityVisible and the spawn ring; the director paces the run-in at the default camera). Re-recorded
+ * (cidade, infinito) for velocidade-heroi-e-projetil: 2× walk lead, endless spawn ring, half-speed shots, the city
+ * tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer rebuilding a field after an idle tick; the island is unchanged.
  */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'bfcaec506e6af1b2',ilha:'0d4d774d9e279384',infinito:'9cc409ceb12dfe2b'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'6a14a5ad1c85232b',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);
@@ -575,8 +578,11 @@ test('bossHp per team: × the global bossHp for the plan count at the spawn; onl
 // ---------- 8. CITY_BALANCE, the tuned default ----------
 test('CITY_BALANCE: team entries for 1, 3 and 6 players on neutral globals; cityBalanceFrom round-trips it',()=>{
   assert.deepEqual(Object.keys(CITY_BALANCE.players??{}),['1','3','6'],'team entries 1, 3 and 6');
-  const {players,...globals}=CITY_BALANCE;
+  const {players,roleCap,...globals}=CITY_BALANCE;
   assert.deepEqual(globals,NEUTRAL_CITY_BALANCE,'the global knobs are neutral');
+  // balanco-cidade-so-arte: the rats at most half of an art-only round's bodies.
+  assert.deepEqual(roleCap,{enxame:.5});
+  assert.throws(()=>cityBalanceFrom({roleCap:{rato:.5}}),/not a role/);assert.throws(()=>cityBalanceFrom({roleCap:{enxame:2}}),/0..1/);
   for(const team of [1,3,6])assert.ok(Object.keys(players![team]).length>0,`players[${team}] tunes something`);
   assert.ok(hasTeamLoot(CITY_BALANCE)&&hasTeamDamage(CITY_BALANCE)&&hasTeamBossHp(CITY_BALANCE));
   // Its JSON read back (over the neutral knobs, and over itself) gives CITY_BALANCE again.

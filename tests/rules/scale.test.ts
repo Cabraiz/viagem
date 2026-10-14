@@ -7,7 +7,7 @@ import {
   floorWidthUnits,
 } from '../../src/rules/scale.ts';
 import type {MapId,ScaleProfile} from '../../src/rules/scale.ts';
-import {CITY_HERO_SPEED,RADIUS,SPEED,heroSpeed} from '../../src/maps/world.ts';
+import {CITY_HERO_SPEED,HERO_SPEED_MULT,RADIUS,SPEED,baseHeroSpeed,heroSpeed} from '../../src/maps/world.ts';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
 import {CAMP_RADIUS,WALK_SPEED,returnTicks} from '../../src/rules/stonewards.ts';
 import {SIM_HZ} from '../../src/contract/index.ts';
@@ -149,13 +149,20 @@ test('infinito equals the current game code (drift guard)',()=>{
   assert.ok(inf.sizes.boss.min<=inf.sizes.boss.max);
 });
 
-test('maps walks at the profile speeds: city CITY_HERO_SPEED, island and infinito SPEED (drift guard)',()=>{
+test('maps walks at 2 × the profile speeds: base city CITY_HERO_SPEED, island and infinito SPEED (drift guard)',()=>{
   // Exact equality: maps repeats 290 × 0.006875 (it may not import rules), so any drift on either side fails here.
   assert.equal(CITY_HERO_SPEED,SCALE_PROFILES['cidade-nevada'].hero.speed,'world.ts CITY_HERO_SPEED = cidade-nevada hero.speed');
   assert.equal(SPEED,SCALE_PROFILES.infinito.hero.speed,'world.ts SPEED = infinito hero.speed');
-  assert.equal(heroSpeed({world:'cidade'} as unknown as TerrainField),city.hero.speed,'heroSpeed(city)');
-  assert.equal(heroSpeed(new TerrainField(7,{world:'infinito'})),inf.hero.speed,'heroSpeed(infinito)');
-  assert.equal(heroSpeed(new TerrainField(7)),SPEED,'heroSpeed(island)');assert.equal(heroSpeed(),SPEED,'heroSpeed(no terrain)');
+  // The profiles keep the BASE walk (enemySpeed/citySpeed multiply by it: enemies must not get faster); the heroes walk
+  // HERO_SPEED_MULT × it (velocidade-heroi-e-projetil).
+  assert.equal(baseHeroSpeed({world:'cidade'} as unknown as TerrainField),city.hero.speed,'baseHeroSpeed(city)');
+  assert.equal(baseHeroSpeed(new TerrainField(7,{world:'infinito'})),inf.hero.speed,'baseHeroSpeed(infinito)');
+  assert.equal(baseHeroSpeed(new TerrainField(7)),SPEED,'baseHeroSpeed(island)');assert.equal(baseHeroSpeed(),SPEED,'baseHeroSpeed(no terrain)');
+  assert.equal(HERO_SPEED_MULT,2);
+  assert.equal(heroSpeed({world:'cidade'} as unknown as TerrainField),city.hero.speed*HERO_SPEED_MULT,'heroSpeed(city)');
+  assert.equal(heroSpeed(new TerrainField(7,{world:'infinito'})),inf.hero.speed*HERO_SPEED_MULT,'heroSpeed(infinito)');
+  assert.equal(heroSpeed(new TerrainField(7)),SPEED*HERO_SPEED_MULT,'heroSpeed(island)');assert.equal(heroSpeed(),SPEED*HERO_SPEED_MULT,'heroSpeed(no terrain)');
+  near(enemySpeed(inf),ENEMIES.bebado.speed,1e-12,'the enemy speeds still derive from the base hero');
   // The horn's return estimate (stonewards.ts) is told the world's speed: the slower city hero gets more time.
   assert.equal(WALK_SPEED,SPEED,'stonewards WALK_SPEED = world.ts SPEED');
   assert.equal(returnTicks(150),returnTicks(150,SPEED));

@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {walkable,type Point} from '../../src/maps/world.ts';
+import {heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 import {INTEREST_RADIUS,visibleFrom} from '../../src/contract/offscreen.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
@@ -34,7 +34,9 @@ test('room simulation, endless world: 6 players 200 units apart, every horde off
       if(e.boss)continue;
       const bodies=players.filter(p=>!p.spectator&&!p.eliminated);
       if(bodies.some(p=>visibleFrom(p,e)))onScreen++;
-      const owner=bodies.find(p=>Math.hypot(p.x-e.x,p.y-e.y)<=INTEREST_RADIUS);
+      // The spot is picked inside the anchor's area of interest at the warning; a hero walking away for the 1.5 s
+      // warning at the 2× walk (heroSpeed, 9.3 u) can leave it that much outside by the landing (still far off screen).
+      const owner=bodies.find(p=>Math.hypot(p.x-e.x,p.y-e.y)<=INTEREST_RADIUS+heroSpeed(s.terrain)*1.5);
       if(owner)near.set(owner.id,near.get(owner.id)!+1);
     }
   }

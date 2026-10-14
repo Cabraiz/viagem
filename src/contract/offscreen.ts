@@ -139,16 +139,22 @@ export const MAX_OFFSCREEN_DISTANCE=(()=>{
 })();
 
 /**
- * Ring the director spawns on: `offscreenDistance` plus RING_INNER..RING_OUTER units. RING_INNER is what a hero
- * covers during the 1.5 s spawn warning (3.1 u/s × 1.5 s = 4.65 u, world.ts SPEED), so the warned spot is still
- * off screen when the group lands even if a player walks straight at it; if not, the director warns elsewhere.
- * A spot that fails (lake, tree, someone else's screen) is retried up to RING_SLACK units farther out.
+ * Ring the director spawns on: `offscreenDistance` plus RING_INNER..RING_OUTER units. RING_INNER is at least what a
+ * hero covers during the 1.5 s spawn warning (the 2× walk, world.ts heroSpeed: 6.2 u/s × 1.5 s = 9.3 u), so the warned
+ * spot is still off screen when the group lands even if a player walks straight at it (director.ts hiddenAhead
+ * rejects any closer spot); if not, the director warns elsewhere. A spot that fails (lake, tree, someone else's
+ * screen) is retried up to RING_SLACK units farther out.
+ * velocidade-heroi-e-projetil: was 5..8 + 3 for the 3.1 u/s walk (4.65 u); with the 2× walk that band made ~94% of the
+ * tries fail the lead and ~2.6% of the ring calls find no spot. RING_OUTER + RING_SLACK is 11.4 (was 8 + 3): with
+ * D-046's widest camera (48.9 u) INTEREST_RADIUS rounds to 62 u (61 on main) and RECYCLE_DISTANCE to 70 (69). A band
+ * of 9.4..10 kept them but spawned late enough that endless round-2 bodies fled (fim-de-round) and a held seat's run
+ * ended while the person was away (rede-3g).
  */
-export const RING_INNER=5,RING_OUTER=8,RING_SLACK=3;
+export const RING_INNER=9.4,RING_OUTER=10.4,RING_SLACK=1;
 /**
  * Protocol 4 area of interest (rede-mapa-grande): a client gets enemies, pickups, projectiles and telegraphs
  * within this radius of its player, so everything that can walk onto its screen is already there.
- * It covers the farthest visible point (48.7 u) and the whole spawn ring with its slack: 61 u.
+ * It covers the farthest visible point (48.7 u) and the whole spawn ring with its slack: 62 u (61 before the 2× walk's ring).
  */
 export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SLACK+1);
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */

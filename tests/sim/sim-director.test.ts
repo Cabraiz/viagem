@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
-import {SPAWN,findPath,walkable,type Point} from '../../src/maps/world.ts';
+import {SPAWN,findPath,heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,SIM_HZ,ticks,type EnemyState,type RoundState,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
@@ -419,7 +419,7 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
 });
 
 // ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
-import {HERO_DEFAULT_SCREEN_PX,INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleAtDefault,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
+import {HERO_DEFAULT_SCREEN_PX,INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_INNER,RING_OUTER,offscreenDistance,visibleAtDefault,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
 import {RECYCLE_EVERY,SPAWN_MARGIN} from '../../src/sim/director.ts';
 import {worldSpawn} from '../../src/maps/world.ts';
 
@@ -448,10 +448,14 @@ test('endless: the off-screen ring follows the widest camera (44 px hero, D-046)
   // 29.9..48.7 u at the widest camera (D-046: hero 44 CSS px; it was 25.5..41.4 u with the 56 px floor), the follow
   // camera's offset budget included (camera-segue may hold the hero off the screen centre, CAMERA_OFFSET_*).
   assert.ok(lo>29&&hi<49,`${lo} ${hi}`);
-  assert.equal(MAX_OFFSCREEN_DISTANCE,48.9);assert.equal(INTEREST_RADIUS,61);assert.equal(RECYCLE_DISTANCE,69);
+  assert.equal(MAX_OFFSCREEN_DISTANCE,48.9);assert.equal(INTEREST_RADIUS,62);assert.equal(RECYCLE_DISTANCE,70);
   assert.ok(MAX_OFFSCREEN_DISTANCE>=hi);
   assert.ok(INTEREST_RADIUS>=MAX_OFFSCREEN_DISTANCE+RING_OUTER,'the client has every enemy before it can walk on screen');
   assert.ok(RECYCLE_DISTANCE>INTEREST_RADIUS,'recycling only takes what no client is drawing');
+  // velocidade-heroi-e-projetil: the ring starts past what the 2× walk covers in the 1.5 s warning (director hiddenAhead),
+  // and moved out; the area of interest (protocol 4) and the recycle distance grow by 1 u (see offscreen.ts RING_INNER).
+  assert.ok(RING_INNER>=heroSpeed()*1.5,`RING_INNER ${RING_INNER} ≥ ${heroSpeed()*1.5} u`);
+  assert.equal(INTEREST_RADIUS,62,'area of interest: 61 + 1 u (RING_OUTER 10.4 + RING_SLACK 1 over the old 8 + 3)');assert.equal(RECYCLE_DISTANCE,70,'recycle distance: 69 + 1');
   // The 4 views are 90° turns around the player: the region is symmetric under them.
   for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
   // A camera hint (portrait, view 0) shows much less to the side.
@@ -723,9 +727,11 @@ test('endless: a camera hint brings the ring in to that one screen',()=>{
     for(const e of c.enemies.values())if(e.spawnTick===c.tick){assert.ok(!visibleFrom(p,e,hint));dist.push(Math.hypot(e.x-p.x,e.y-p.y));}
     killAfter(ticks(2))(c);
   },()=>director.state.stage==='done');
-  // camera-segue widened the screens by the hero offset budget (11.7 u sideways in portrait at the D-046 widest camera, ring +5..8 on top).
-  assert.ok(Math.min(...dist)<18,`closest ${Math.min(...dist).toFixed(1)}`);
-  assert.ok(dist.some(d=>d<29.9),'closer than the no-hint minimum (29.9 u)');
+  // camera-segue widened the screens by the hero offset budget (11.7 u sideways in portrait at the D-046 widest camera,
+  // ring +RING_INNER..RING_OUTER on top: 9.4..10.4 since the 2× walk, was 5..8 and under 18 u).
+  const noHint=Math.min(...Array.from({length:360},(_,k)=>offscreenDistance(Math.cos(k*Math.PI/180),Math.sin(k*Math.PI/180))))+RING_INNER;
+  assert.ok(Math.min(...dist)<11.7+RING_INNER+1.5,`closest ${Math.min(...dist).toFixed(1)}`);
+  assert.ok(dist.some(d=>d<noHint),`closer than the no-hint minimum (${noHint.toFixed(1)} u)`);
 });
 
 test('endless: a downed player still sees: nothing is recycled off their screen',()=>{

@@ -15,7 +15,7 @@ import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {SceneTerrain,sameWorld,worldCamera} from '../../src/client/world-swap.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
-import {CITY_HERO_SPEED,SPEED,heroSpeed} from '../../src/maps/world.ts';
+import {CITY_HERO_SPEED,HERO_SPEED_MULT,SPEED,heroSpeed} from '../../src/maps/world.ts';
 
 const PORTRAIT={width:390,height:844},LANDSCAPE={width:844,height:390};
 // Useful areas measured on the real scene (camera-follow.test.ts), CSS px: the same HUD in the city.
@@ -83,16 +83,17 @@ test('island and endless map: zoom, world and ui scale exactly as before',()=>{
     assert.equal(worldZoom(vp,city),cityZoom(vp));
   }
   assert.equal(followWorld(island),ENDLESS_FOLLOW);assert.equal(followWorld(endless),ENDLESS_FOLLOW);
-  assert.deepEqual(ENDLESS_FOLLOW,{scale:1,speed:SPEED});
+  // The look-ahead's full speed is the hero's walk: 2 × SPEED since velocidade-heroi-e-projetil.
+  assert.deepEqual(ENDLESS_FOLLOW,{scale:1,speed:SPEED*HERO_SPEED_MULT});assert.equal(ENDLESS_FOLLOW.speed,heroSpeed(endless));
   for(const z of [.3,.5833,1,2])assert.equal(hordeUiScale(z),Math.max(1,Math.min(2.5,.55/z)));
   assert.deepEqual(offsetBudget(PORTRAIT),offsetBudget(PORTRAIT,1));
 });
 
-test('city world: the hero speed comes from maps heroSpeed (≈1.99375 u/s, the rules profile), the offsets scale with CITY_VIEW_SCALE',()=>{
+test('city world: the hero speed comes from maps heroSpeed (2 × the rules profile ≈1.99375 = 3.9875 u/s), the offsets scale with CITY_VIEW_SCALE',()=>{
   const w=followWorld(city);
   assert.equal(w.scale,CITY_VIEW_SCALE);
-  assert.equal(w.speed,heroSpeed(city));assert.equal(w.speed,CITY_HERO_SPEED);
-  assert.ok(Math.abs(w.speed-SCALE_PROFILES['cidade-nevada'].hero.speed)<1e-12&&Math.abs(w.speed-1.99375)<1e-12);
+  assert.equal(w.speed,heroSpeed(city));assert.equal(w.speed,CITY_HERO_SPEED*HERO_SPEED_MULT);
+  assert.ok(Math.abs(w.speed-SCALE_PROFILES['cidade-nevada'].hero.speed*HERO_SPEED_MULT)<1e-12&&Math.abs(w.speed-3.9875)<1e-12);
   // Text and balloons: the same CSS size as the endless map (ui × zoom equal), and the horde clamp (≥ 0.5) keeps it.
   for(const vp of [PORTRAIT,LANDSCAPE]){
     const ui=hordeUiScale(cityZoom(vp),CITY_VIEW_SCALE);
@@ -127,9 +128,10 @@ test('walking in the city: full look-ahead at the city speed (same CSS px as the
     const c=walk(cityWorld,vp,useful,dir,view),e=walk(ENDLESS_FOLLOW,vp,useful,dir,view);
     // The look-ahead is a share of walking speed, so at the city hero speed it is as full as at SPEED on the endless map.
     assert.ok(Math.hypot(c.look.x*c.z-e.look.x*e.z,c.look.y*c.z-e.look.y*e.z)<1e-6,`${vp.width} view ${view} ${JSON.stringify(dir)}: same look-ahead in CSS px`);
-    // The settled spot differs only by the smoothing trail (the city hero crosses the screen ~18% faster: 2.27 vs
-    // 1.92 bodies/s); it stays a few CSS px from the endless one and the body stays in the useful area.
-    assert.ok(Math.hypot(c.screen.x-e.screen.x,c.screen.y-e.screen.y)<4,`${JSON.stringify(c.screen)} vs ${JSON.stringify(e.screen)}`);
+    // The settled spot differs only by the smoothing trail (the city hero crosses the screen ~18% faster: 4.54 vs
+    // 3.84 bodies/s with the 2× walk); it stays a few CSS px from the endless one (under 4 px at the base walk, the trail
+    // doubles with the walk) and the body stays in the useful area.
+    assert.ok(Math.hypot(c.screen.x-e.screen.x,c.screen.y-e.screen.y)<8,`${JSON.stringify(c.screen)} vs ${JSON.stringify(e.screen)}`);
     assert.ok(c.screen.x>=useful.x&&c.screen.x<=useful.x+useful.width&&c.screen.y-HERO.height>=useful.y-1e-6&&c.screen.y<=useful.y+useful.height+1e-6);
     const budget=offsetBudget(vp,CITY_VIEW_SCALE);
     for(const f of c.frames)assert.ok(Math.abs(f.hero.x-f.center.x)<=budget.x+LAG_X_PX*CITY_VIEW_SCALE+1e-6&&Math.abs(f.hero.y-f.center.y)<=budget.y+LAG_Y_PX*CITY_VIEW_SCALE+1e-6);
@@ -220,7 +222,7 @@ test('one terrain: island → city swaps the field with the re-fit; city → isl
     assert.equal(scene.sync(cityField),cityField,'another kind: the scene swaps');
     assert.equal(scene.field,cityField,'camera, projection, ground, props and the local walk now read the city');
     const inCity=worldCamera(vp,scene.field);
-    assert.equal(inCity.zoom,cityZoom(vp));assert.equal(inCity.follow.scale,CITY_VIEW_SCALE);assert.equal(inCity.follow.speed,CITY_HERO_SPEED);
+    assert.equal(inCity.zoom,cityZoom(vp));assert.equal(inCity.follow.scale,CITY_VIEW_SCALE);assert.equal(inCity.follow.speed,CITY_HERO_SPEED*HERO_SPEED_MULT);
     // project() reads the same field as the camera: the city's ground heights, not the island's hill.
     assert.deepEqual(projectView(hero,0,scene.field),projectView(hero,0,cityField));
     assert.notDeepEqual(projectView(hero,0,scene.field),projectView(hero,0,islandField));

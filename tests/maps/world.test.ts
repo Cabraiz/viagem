@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {project,unproject,findPath,clearSegment,walkable,moveAlong,moveDirection,SPAWN,SPEED,landmarks,obstacles} from '../../src/maps/world.ts';
+import {project,unproject,findPath,clearSegment,walkable,moveAlong,moveDirection,heroSpeed,HERO_SPEED_MULT,SPAWN,SPEED,landmarks,obstacles} from '../../src/maps/world.ts';
 
 test('screen picking returns the same ground point at every elevation',()=>{
   for(let x=3;x<=21;x+=.6)for(let y=3;y<=21;y+=.6){const p=unproject(project({x,y}));assert.ok(Math.hypot(p.x-x,p.y-y)<.00001);}
@@ -24,13 +24,15 @@ test('sea, occupied targets and non-finite commands cannot be reached',()=>{
   }
 });
 test('travel distance is independent of frame rate and diagonal input magnitude',()=>{
+  // Half a second at the island walk (heroSpeed = 2 × SPEED, 6.2 u/s): 3.1 u of the 4 u route.
+  const walk=heroSpeed();assert.equal(walk,SPEED*HERO_SPEED_MULT);
   for(const fps of [30,60,120]){
     let p={...SPAWN};const route=[{x:12,y:21}];
-    for(let i=0;i<fps;i++)p=moveAlong(p,route,1/fps);
-    assert.ok(Math.abs(p.y-SPAWN.y-SPEED)<.00001);
+    for(let i=0;i<fps/2;i++)p=moveAlong(p,route,1/fps);
+    assert.ok(Math.abs(p.y-SPAWN.y-walk/2)<.00001);
   }
   const a=moveDirection(SPAWN,{x:1,y:1},.1),b=moveDirection(SPAWN,{x:4,y:4},.1);
-  assert.deepEqual(a,b);assert.ok(Math.abs(Math.hypot(a.x-SPAWN.x,a.y-SPAWN.y)-SPEED*.1)<1e-8);
+  assert.deepEqual(a,b);assert.ok(Math.abs(Math.hypot(a.x-SPAWN.x,a.y-SPAWN.y)-walk*.1)<1e-8);
 });
 test('large elapsed times cannot teleport a player through obstacles or to the edge',()=>{
   let p={x:9.5,y:12};for(let i=0;i<100;i++)p=moveDirection(p,{x:1,y:0},99);

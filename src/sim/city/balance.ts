@@ -37,7 +37,7 @@
  * the team damage to the core (SimWorld.playerDamageScale) and the boss hp to the boss (tuning, BossOptions.hpScale),
  * only on a city terrain. A headless runner reads a JSON with cityBalanceFrom.
  */
-import {MAX_ROUND_ENEMIES,ROUND_COUNT,type RoundPlan,type SpawnGroup} from '../../rules/index.ts';
+import {ENEMY_ROLES,MAX_ROUND_ENEMIES,ROUND_COUNT,type EnemyRole,type RoundPlan,type SpawnGroup} from '../../rules/index.ts';
 
 /** Knobs of one round. count/hp/cadence are multipliers (1 = the table); siegeShare (0..1) replaces the director's. */
 export interface CityRoundKnobs {count:number;hp:number;cadence:number;siegeShare?:number}
@@ -67,6 +67,11 @@ export interface CityBalance {
    * and knobs are neutral.
    */
   readonly players?:Readonly<Record<number,Readonly<CityTeamKnobs>>>;
+  /**
+   * Art-only rounds short of roles (rules/waves.ts PlanOptions.roleCap): the most share of a round's regular bodies per
+   * role (balanco-cidade-so-arte: the rats at most half, so the mid rounds are not "all rats").
+   */
+  readonly roleCap?:Readonly<Partial<Record<EnemyRole,number>>>;
 }
 
 export const NEUTRAL_ROUND:Readonly<CityRoundKnobs>=Object.freeze({count:1,hp:1,cadence:1});
@@ -87,14 +92,18 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
  * players more bodies do nothing (the round's enemy cap), so they take more damage and face a tougher boss.
  * 8 seeds, 25 min cap (D-043): 1p 2/8, 6p 4/8.
  * torres-ajustes (bots walk to the obra and back, towers ruin): 6p damage 1.6 → 1.45, 16 seeds: 1p 3/16, 6p 8/16.
+ * balanco-cidade-so-arte (art-only cast, D-045, after the 2× hero speed): without changes 1p 6/16, 6p 16/16; with the rat
+ * cap (roleCap) 1p damage .45 → .4, 6p hp 1.2 → 1.5, damage 1.45 → 1.75, bossHp 1.4 → 1.9: 32 seeds 1p 7/32, 6p 17/32.
  */
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
-    1:Object.freeze({count:.5,hp:.7,damage:.45,bossHp:.45,lootValue:2,siegeShare:.15}),
+    1:Object.freeze({count:.5,hp:.7,damage:.4,bossHp:.45,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
-    6:Object.freeze({count:1.07,hp:1.2,damage:1.45,bossHp:1.4}),
+    6:Object.freeze({count:1.07,hp:1.5,damage:1.75,bossHp:1.9}),
   }),
+  // Art-only rounds (balanco-cidade-so-arte): the rats at most half of a round's regular bodies.
+  roleCap:Object.freeze({enxame:.5}),
 });
 
 /** The `players` entry for a team of `team` (an integer 1..6), or {} (neutral). */
@@ -210,7 +219,7 @@ export function cityBalanceFrom(input:unknown,base:CityBalance=CITY_BALANCE):Cit
   if(input===undefined||input===null)return base;
   if(typeof input!=='object'||Array.isArray(input))throw new Error('city balance: an object');
   const o=input as Record<string,unknown>;
-  for(const key of Object.keys(o))if(!['all','rounds','lootValue','intermissionExtraSeconds','bossHp','players'].includes(key))throw new Error(`city balance: unknown key '${key}'`);
+  for(const key of Object.keys(o))if(!['all','rounds','lootValue','intermissionExtraSeconds','bossHp','players','roleCap'].includes(key))throw new Error(`city balance: unknown key '${key}'`);
   const num=(key:string,fallback:number)=>{
     const v=o[key];
     if(v===undefined)return fallback;
@@ -237,6 +246,17 @@ export function cityBalanceFrom(input:unknown,base:CityBalance=CITY_BALANCE):Cit
     }
     players=Object.freeze(out);
   }
+  let roleCap=base.roleCap;
+  if(o.roleCap!==undefined){
+    if(!o.roleCap||typeof o.roleCap!=='object'||Array.isArray(o.roleCap))throw new Error('city balance.roleCap: an object keyed by role');
+    const out:Partial<Record<EnemyRole,number>>={};
+    for(const [role,v] of Object.entries(o.roleCap)){
+      if(!(ENEMY_ROLES as readonly string[]).includes(role))throw new Error(`city balance.roleCap: '${role}' is not a role`);
+      if(typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)throw new Error(`city balance.roleCap.${role}: a share 0..1`);
+      out[role as EnemyRole]=v;
+    }
+    roleCap=Object.freeze(out);
+  }
   return Object.freeze({
     all:o.all===undefined?base.all:Object.freeze(knobsFrom(o.all,'city balance.all')),
     rounds:Object.freeze(rounds),
@@ -244,5 +264,6 @@ export function cityBalanceFrom(input:unknown,base:CityBalance=CITY_BALANCE):Cit
     intermissionExtraSeconds:num('intermissionExtraSeconds',base.intermissionExtraSeconds),
     bossHp:num('bossHp',base.bossHp),
     ...(players?{players}:{}),
+    ...(roleCap?{roleCap}:{}),
   });
 }

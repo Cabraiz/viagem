@@ -25,7 +25,7 @@ import {ENEMY_PHASE,EnemyAi,STATE,type EnemyAiOptions} from '../../src/sim/enemi
 import {createProjectileSystem,spawnProjectile,type WeaponProjectile} from '../../src/sim/projectiles.ts';
 import {createWeaponSystem} from '../../src/sim/weapons/system.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
-import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
+import {MAX_PROJECTILES,PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
@@ -608,4 +608,21 @@ test('P1 text: frozen mechanics lists, every line 1-30 characters and unique acr
   }
   for(const line of all)assert.ok(line.trim()===line&&line.length>0&&[...line].length<=30,`"${line}"`);
   assert.equal(new Set(all).size,all.length,'no repeated line');
+});
+
+// ---------- velocidade-heroi-e-projetil: hostile shots at half speed, same reach ----------
+test('velocidade: the agiota boleto flies at half its tuned speed for twice as long (same 13.5 u reach); a reflection lives 2 s',()=>{
+  assert.equal(PROJECTILE_SPEED_MULT,.5);
+  assert.ok(near(AGIOTA_SHOT.speed,4.5*.5),`speed ${AGIOTA_SHOT.speed}`);
+  assert.equal(AGIOTA_SHOT.life,6*SIM_HZ);
+  assert.ok(near(AGIOTA_SHOT.speed*AGIOTA_SHOT.life/SIM_HZ,4.5*3),'same reach as 4.5 u/s for 3 s');
+  assert.equal(REFLECT.minLife,2*SIM_HZ);
+  const A=arena(4,3);
+  addPlayer(A.world,'p',at(6));
+  const ag=createEnemy(A.world,'agiota',at(-1));
+  let shot:WeaponProjectile|undefined,born=-1;
+  A.step(SIM_HZ*3,()=>{for(const pr of A.world.projectiles.values())if(pr.owner===ag.id&&!shot){shot={...pr} as WeaponProjectile;born=A.world.tick;}});
+  assert.ok(shot,'the agiota fired');
+  assert.ok(near(Math.hypot(shot.vx,shot.vy),AGIOTA_SHOT.speed,1e-9),`flies at ${Math.hypot(shot.vx,shot.vy)} u/s`);
+  assert.ok(Math.abs(shot.untilTick-born-AGIOTA_SHOT.life)<=1,`lives ${shot.untilTick-born} ticks`);
 });

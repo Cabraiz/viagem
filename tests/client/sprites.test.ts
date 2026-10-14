@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import {classes} from '../../src/rules/classes.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_SPEED_MULT} from '../../src/maps/world.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 
@@ -52,7 +53,7 @@ test('weapon fire events reach observers through attackTick without changing old
 
 test('all classes hold one idle pose and use half-speed walk and attack clips',()=>{
   assert.deepEqual(SPRITE_CLIPS.idle.frames,[0]);
-  assert.equal(SPRITE_CLIPS.walk.frameRate,10/2);
+  assert.equal(SPRITE_CLIPS.walk.frameRate,10/2*HERO_SPEED_MULT,'the walk cycle follows the 2× walk');
   assert.equal(SPRITE_CLIPS.attack.frameRate,12/2);
   assert.equal(ATTACK_VISUAL_MS,1000);
   assert.equal(SPRITE_CLIPS.attack.repeat,0);

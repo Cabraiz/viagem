@@ -1,9 +1,12 @@
+import {HERO_SPEED_MULT} from '../../maps/index.ts';
+
 export type Motion='idle'|'walk'|'attack';
 // Idle drawings vary in pose in the candidate atlases. Hold a single pose so
 // standing characters cannot appear to walk even when world coordinates stop.
 export const SPRITE_CLIPS={
   idle:{frames:[0],frameRate:3,repeat:-1},
-  walk:{frames:[6,7,8,9,10,11],frameRate:5,repeat:-1},
+  // 5 fps at the base walk, × HERO_SPEED_MULT (velocidade-heroi-e-projetil): the steps keep up with the 2× walk (no foot slide).
+  walk:{frames:[6,7,8,9,10,11],frameRate:5*HERO_SPEED_MULT,repeat:-1},
   attack:{frames:[12,13,14,15,16,17],frameRate:6,repeat:0},
 } as const;
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;

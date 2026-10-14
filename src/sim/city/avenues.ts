@@ -33,7 +33,7 @@
  * Deterministic: randomness only from the injected RngLike. State is JSON-safe. targetFor/directionFor/
  * retreatDirection allocate nothing (with `out`).
  */
-import {FlowField,DIRS,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
+import {FlowField,DIRS,HERO_SPEED_MULT,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
 import {HERO_DEFAULT_SCREEN_PX,HERO_WIDEST_SCREEN_PX,visibleOffset} from '../../contract/index.ts';
 import {SCALE_PROFILES} from '../../rules/index.ts';
 
@@ -64,8 +64,10 @@ const ticks=(seconds:number)=>Math.round(seconds*TICK_HZ);
 const CITY=SCALE_PROFILES['cidade-nevada'];
 /** City u per endless-map u on screen: drawn hero size of the city over the endless map's (≈0.544). */
 export const CITY_VIEW_SCALE=CITY.hero.drawnSize/SCALE_PROFILES.infinito.hero.drawnSize;
-/** Default lead margin (u): what the city hero walks during the default 1.5 s spawn warning (≈2.99). */
-export const CITY_VIEW_LEAD=CITY.hero.speed*1.5;
+/** City hero walk (u/s): the scale profile's (base) hero × the 2× walk (maps HERO_SPEED_MULT), ≈3.99. */
+const CITY_WALK=CITY.hero.speed*HERO_SPEED_MULT;
+/** Default lead margin (u): what the city hero walks during the default 1.5 s spawn warning (≈5.98). */
+export const CITY_VIEW_LEAD=CITY_WALK*1.5;
 /**
  * Visibility of an offset (dx,dy) shrunk by `lead`, against the city-scaled camera union (the widest legal camera; a
  * `heroPx` of HERO_DEFAULT_SCREEN_PX asks about the players' default zoom instead, for pacing only).
@@ -233,7 +235,7 @@ export class AvenuePlanner {
     const o=options??{}, g=layout.grid, w=g.width, h=g.height, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0;
     this.speed=pos(o.enemySpeed,1.79); this.spacing=pos(o.memberSpacing,.6);
     const warnS=nonNeg(o.warningSeconds,1.5);
-    this.warn=ticks(warnS); this.lead=nonNeg(o.leadMargin,CITY.hero.speed*warnS);
+    this.warn=ticks(warnS); this.lead=nonNeg(o.leadMargin,CITY_WALK*warnS);
     const near=nonNeg(o.minPlayerDistance,4); this.near2=near*near;
     this.radius=o.viewRadius===undefined||!Number.isFinite(o.viewRadius)?undefined:nonNeg(o.viewRadius,18); // non-finite → camera default
     this.visible=typeof o.isVisible==='function'?o.isVisible:undefined;

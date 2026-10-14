@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
 import {ticks,type EnemyState,type PickupState,type PlayerBuild,type RoundPhase,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
-import {clearSegment,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
+import {SPEED,clearSegment,heroSpeed,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {STAT_KEYS,STAT_LIMITS,computeStats} from '../../src/rules/stats.ts';
 import {WEAPON_IDS} from '../../src/sim/evolutions.ts';
 import {DEFAULT_KIT,KITS,classBonusOf,kitFor,startingBuild} from '../../src/rules/kits.ts';
@@ -138,10 +138,10 @@ test('kits: classBonusOf returns a copy, unknown class falls back, startingBuild
 });
 
 // ---------- 2. cidadao-comum ----------
-/** Where Só Estou de Passagem lands: 4 walkable steps of 0.1 s along facing (no terrain: fallback island). */
+/** Where Só Estou de Passagem lands: 4 walkable steps of 0.1 s along facing at the BASE walk SPEED (the 2× walk leaves the dash as tuned; no terrain: fallback island). */
 const stepped=(from:Point,facing:Point):Point=>{
   let at={x:from.x,y:from.y};
-  for(let i=0;i<4;i++){const next=moveDirection(at,facing,0.1);if(next===at)break;at=next;}
+  for(let i=0;i<4;i++){const next=moveDirection(at,facing,0.1,undefined,SPEED);if(next===at)break;at=next;}
   return at;
 };
 const DOWNED={downed:{sinceTick:0,bleedOutTick:999,progress:0}};
@@ -919,4 +919,15 @@ test('a refunded skill never comes back before half of the cooldown its owner pa
   const paid=ticks(kitFor('coach')!.skill.cooldown*coach.stats.cooldown);
   for(let i=0;i<10;i++){resetSkill(promo);cast(ctx,promo);}
   assert.equal(skillReadyTick(coach),100+Math.ceil(paid*REFUND_FLOOR_SHARE));
+});
+
+// ---------- velocidade-heroi-e-projetil: the dash keeps its length ----------
+test('velocidade: Só Estou de Passagem keeps its tuned 1.24 u (4 × 0.1 s at the base SPEED) while the heroes walk 2×',()=>{
+  const {fake,ctx}=makeCtx(1,100);
+  const p=addPlayer(fake,'p1','cidadao-comum',10,10);
+  const res=cast(ctx,p);
+  assert.ok(res?.movedTo,'the dash moved the caster');
+  assert.ok(near(dist({x:10,y:10},res.movedTo),4*.1*SPEED,1e-9),`dash ${dist({x:10,y:10},res.movedTo)} u`);
+  assert.equal(heroSpeed(ctx.terrain),2*SPEED,'the walk is 2×');
+  assert.ok(dist({x:10,y:10},res.movedTo)<4*.1*heroSpeed(ctx.terrain)-.5,'not stretched by the 2× walk');
 });

@@ -74,11 +74,12 @@ export interface ScreenZones {
 
 /**
  * The team strip is a bottom row (landscape phone, between the thumbs) or a side column (portrait; desktop's top-left
- * list). A lone member is taller than wide either way, so a strip centred in the lower half is a row too: a solo
- * "Você" ficha at the bottom of 844×390 must stay a floor, not a column that pushes the field right of it.
+ * list). A lone member is taller than wide either way, so a strip whose top is in the lower half is a row too: a solo
+ * "Você" ficha at the bottom of 844×390 must stay a floor, not a column that pushes the field right of it. The top, not
+ * the centre: a long column from the top (6 players on 1343×618 reaches y 564) is still a column.
  */
 export const teamIsRow=(team:Rect,viewport:{width:number;height:number}):boolean=>
-  team.width>=team.height||team.y+team.height/2>viewport.height/2;
+  team.width>=team.height||team.y>viewport.height/2;
 
 /** The zones for one layout (all CSS px, viewport coordinates). */
 export function computeZones(input:ZoneInput):ScreenZones{

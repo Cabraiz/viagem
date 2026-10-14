@@ -25,6 +25,12 @@ test('team strip: a lone member at the bottom of a landscape phone is a row (a f
   assert.equal(teamIsRow({x:8,y:120,width:54,height:380},{width:390,height:844}),false,'portrait column');
   assert.equal(teamIsRow({x:8,y:120,width:54,height:66},{width:390,height:844}),false,'portrait solo');
   assert.equal(teamIsRow({x:10,y:118,width:50,height:68},{width:1343,height:618}),false,'desktop top-left list');
+  // Long columns from the top (sandbox hud, players=5/6: 75 px per ficha) whose centre is in the lower half stay columns.
+  const desk={width:1343,height:618},six={x:8,y:120,width:65,height:444};
+  assert.equal(teamIsRow(six,desk),false,'desktop, 6 players');
+  assert.equal(teamIsRow({x:8,y:120,width:65,height:369},{width:1280,height:600}),false,'short desktop, 5 players');
+  const d=computeZones({viewport:desk,status:[{x:14,y:12,width:44,height:44},{x:560,y:8,width:220,height:46}],team:six});
+  assert.ok(d.useful.x>=six.x+six.width+8&&d.useful.height>=300,'desktop field beside the column, full height');
   const z=computeZones({viewport:land,status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40}],
     team:solo,joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}});
   assert.ok(z.useful.x<solo.x,'the field is not pushed right of the ficha');

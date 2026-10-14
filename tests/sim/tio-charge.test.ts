@@ -275,7 +275,11 @@ test('ACCEPTANCE: a hero who walks out of the line after seeing it is never touc
     let shove=0;
     C.step(end-C.world.tick+2,()=>{C.p.hp=100;});
     const hits=hitsBy(C.events,C.e.id,C.line.t.fireTick,end);
-    assert.equal(hits.length,1,`${label}: standing still is hit by the charge`);
+    // The charge hits once (it ends on that hit); with the 15 % wider bodies (ENEMY_RADIUS_SCALE, balanco-pos-1-7) the
+    // slow city Tio can walk back into contact before the charge's nominal end and land a plain contact hit, a whole
+    // contactCooldown later: never a second charge hit.
+    assert.ok(hits.length>=1,`${label}: standing still is hit by the charge`);
+    for(let i=1;i<hits.length;i++)assert.ok(hits[i].tick-hits[i-1].tick>=ENEMIES['tio-pave'].contactCooldown,`${label}: a later hit is a contact hit (${hits[i].tick-hits[i-1].tick} ticks after)`);
     shove=Math.hypot(C.p.x-start.x,C.p.y-start.y);
     assert.ok(shove>TIO_JOKE.shove*.9,`${label}: shoved ${shove.toFixed(2)}`);
   }

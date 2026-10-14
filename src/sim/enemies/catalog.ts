@@ -69,7 +69,7 @@ export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','
  * Lines are the D-033 joke pass (heavy tone, humor-reviewed). Every line is ≤ 30 characters and unique across the
  * catalog (the city's BARK_MAX). The bebado/anão/pombos/agiota reactionLines predate the pass (it wrote none for them).
  */
-export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze({
+const TUNED:Readonly<Record<LegacyKind,EnemyDef>>={
   // VGM-031 basic chaser numbers: hugs more than it hurts, 5 per second of contact (BUG round 1). The drunk wobble sways
   // on top of his walk (ai.ts stagger), so he still closes at 1.4 u/s.
   bebado:{
@@ -145,7 +145,16 @@ export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze({
     deathLines:['Registra em ata: eu morri','Meu mandato! Minhas chaves!','Quem vai cobrar a taxa extra?','Pauta encerrada... pra sempre','Aprovado... por unanimidade...','Volto como fantasma do 302'],
     reactionLines:[],
   },
-});
+};
+/**
+ * Collision/hit radius of every enemy over the tuned numbers above (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part
+ * A): the enemies draw 15 % bigger (render/draw-scale.ts ENEMY_DRAW_SCALE, 66ab092) and their bodies follow the drawing.
+ * Applied once here, so the nine kinds, every role-built roster def (rosterDef reads its base kind's radius) and the
+ * elites (ELITE.radius multiplies it) grow together; the boss's own tuning (boss.ts BOSS_TUNING) takes it too.
+ */
+export const ENEMY_RADIUS_SCALE=1.15;
+export const ENEMIES:Readonly<Record<LegacyKind,EnemyDef>>=Object.freeze(Object.fromEntries(Object.entries(TUNED).map(([id,def])=>
+  [id,{...def,radius:def.radius*ENEMY_RADIUS_SCALE}])) as Record<LegacyKind,EnemyDef>);
 
 export const ELITE:EliteDef=Object.freeze({
   name:'Funcionário do Mês',hp:8,speed:.9,damage:1.5,radius:1.5,xp:10,accent:0xffd25e,

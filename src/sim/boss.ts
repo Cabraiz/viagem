@@ -16,7 +16,7 @@ import {clearSegment,enemyTerrain,walkable,type Point} from '../maps/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {addTelegraph,cancelTelegraphs,canBeTargeted} from './telegraphs.ts';
 import {MAX_ENEMIES,hasRoom} from '../rules/index.ts';
-import {createEnemy,type EnemyKind} from './enemies/catalog.ts';
+import {ENEMY_RADIUS_SCALE,createEnemy,type EnemyKind} from './enemies/catalog.ts';
 import {SIM_HZ,ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 
@@ -36,7 +36,8 @@ export interface BossTuning {
 }
 /** Durations in ticks. Numbers are first-pass values; VGM-051 tunes them with bot runs. */
 export const BOSS_TUNING:Readonly<BossTuning>=Object.freeze({
-  baseHp:2400,hpPerExtraPlayer:.7,speed:1.6,radius:.9,xp:120,
+  // radius: 0.9 tuned, × the enemies' ENEMY_RADIUS_SCALE (its body follows its 15 % bigger drawing, like every enemy).
+  baseHp:2400,hpPerExtraPlayer:.7,speed:1.6,radius:.9*ENEMY_RADIUS_SCALE,xp:120,
   entranceTicks:ticks(2),phase2At:.5,
   slamDamage:28,slamRadius:2,slamDelay:ticks(1.2),
   fineDamage:22,fineRadius:1.8,fineDelay:ticks(1),fineTargets:3,

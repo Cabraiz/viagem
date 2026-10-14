@@ -20,7 +20,7 @@ import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '
 import type {SimContext,SimSystem} from '../context.ts';
 import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
   PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUGAR,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
-  hazardOwner,isCoached,isDevendo,isSugared,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+  hazardOwner,isCoached,isDevendo,isSugared,ENEMY_RADIUS_SCALE,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
@@ -100,8 +100,8 @@ export const SLOW_FACTOR=.5;
 export const KNOCK_DECAY=.6,KNOCK_STUN=.05;
 /** Fraction of the overlap with a neighbor resolved per tick, and the cap of that push. */
 export const SEPARATION=.5,SEPARATION_MAX=.12;
-/** Largest enemy radius a neighbor query must reach (boss). */
-const NEIGHBOR_REACH=.9;
+/** Largest enemy radius a neighbor query must reach (the boss: 0.9 × ENEMY_RADIUS_SCALE, balanco-pos-1-7). */
+const NEIGHBOR_REACH=.9*ENEMY_RADIUS_SCALE;
 const MAX_STEP=.25;
 /** An enemy touches a player when their bodies are this close (u): contact hits and the Tio's shove. */
 const CONTACT_MARGIN=.05;

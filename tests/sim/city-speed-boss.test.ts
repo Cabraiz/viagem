@@ -466,7 +466,10 @@ function bossDigest(world:'ilha'|'infinito'){
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
 // infinito re-recorded for D-046 (the widest camera moves the endless spawn ring out, the catch-up runs to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk, half-speed shots); the island is unchanged.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'e2d8811cc8c12ed9'};
+// Both re-recorded for balanco-pos-1-7's enemy radius × ENEMY_RADIUS_SCALE 1.15 (the boss's, every body's and the
+// enemy-ai's neighbour reach, which is the boss's radius; were
+// ilha 75a2225f4fc40291, infinito e2d8811cc8c12ed9), the one change allowed to move them.
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'251d5c145e1bf470',infinito:'fd3b6baaa0c4c518'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

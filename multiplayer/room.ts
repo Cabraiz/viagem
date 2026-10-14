@@ -135,8 +135,10 @@ export interface RoomRoster {
  * field that appears late in a run changes meaning: the systems' and seats' fields a fresh run holds are checked by
  * the shape fingerprint (SimCheckpoint.shape) without a bump. A stored checkpoint of another version is not resumed
  * (the lobby and the 'restarted' notice, as before).
+ * 2: balanco-pos-1-7 renumbered the city's build sites (maps/build-sites.ts CITY_CELLS): a stored defense's `site`
+ * ('obra-NN') would name another place than the x/y it stands on.
  */
-export const CHECKPOINT_V=1;
+export const CHECKPOINT_V=2;
 /**
  * The first round whose intermission is checkpointed. Round 1 has nothing to keep yet (the starting kit, level 1, a
  * whole wall: its "intermission" is the 3 s opening), so a restart there falls back to the lobby, and every run writes

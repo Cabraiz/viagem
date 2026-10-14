@@ -277,11 +277,15 @@ const STUCK_UNITS=.5,STUCK_SECONDS=2;
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
  * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
- * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap. Map lengths:
- * 2 / 25 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7) → 3.4 / 42.5 u; at the retreat
- * pace (≥ 2.25 u/s) 42.5 u is ~19 s, inside the 60 s cap.
+ * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
+ * CITY_EXIT_REACH is a map length: 2 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * CITY_GONE_DISTANCE is not (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): it only has to put the body out of the
+ * plaza block (its mouths are 18.7–21.5 u from the plaza point on the 1.7× city) and off the screens, which the hidden
+ * check already asks (the widest camera reaches 16.7 u along an avenue from a hero at the wall, which did not grow).
+ * × 1.7 (42.5 u) made every timed-out round's retreat walk ~17 u more off screen, ~19 s instead of ~11 s at the retreat
+ * pace (≥ 2.25 u/s), and the next intermission waited for it; 25 u again.
  */
-export const CITY_EXIT_REACH=2*CITY_MAP_SCALE,CITY_GONE_DISTANCE=25*CITY_MAP_SCALE;
+export const CITY_EXIT_REACH=2*CITY_MAP_SCALE,CITY_GONE_DISTANCE=25;
 /**
  * City round timer (v2): a wave that times out lasts at least until the slowest member of the last group could reach
  * the plaza (or the team, where it stood when the wave started, if that is farther), plus this many seconds to fight

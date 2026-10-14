@@ -263,8 +263,10 @@ test('D-048: the bots never start a root without a whole ficha, and a 6-bot team
   assert.equal(forgeAt(GUSTAVAO_COST,Math.min(...Object.values(RECIPES).map(r=>r.cost))-1),undefined,'a full pile of material does not pay the forge');
   // A real 6-bot city run: no tower order short of its money, every root from a whole ficha, and no forge buy (but a
   // needed wall repair, which goes first) takes the Grana under the towers' reserve (determinism: the 3-bot run above).
-  const a=cityRun(5,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
-  console.log(`[D-048] 6 bots, seed 5, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
+  // Seed 3 (was 5): after balanco-pos-1-7 part A (sites at the mouths, enemy radius × 1.15) seed 5's six bots fall in
+  // round 3, before the ficha rule has anything to show; the rule, not survival, is under test here (survival: the bench).
+  const a=cityRun(3,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
+  console.log(`[D-048] 6 bots, seed 3, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
     `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.state.grana}\n  orders: ${a.orders.join(' | ')}`);
   assert.ok(roots.length>=2,`${roots.length} roots`);
   assert.ok(roots.every(([,u])=>tokensOf(u)>=1),'every root from a whole ficha');

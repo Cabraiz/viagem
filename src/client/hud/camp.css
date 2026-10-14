@@ -84,6 +84,8 @@
 .rh-forge-body{display:contents}
 .rh-forge-name{grid-area:name;min-width:0;font:400 var(--t-16)/1.05 var(--f-cartaz)}
 .rh-forge-desc{grid-area:desc;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema)}
+/* The short effect ("+25% muralha", camp.ts RECIPE_SHORT): only the one-line form below shows it. */
+.rh-forge-curto{display:none}
 /* The price: one number and the material sticker (price.ts forgePriceLabel; Londrina number, tabular). */
 .rh-forge-price{grid-area:price;display:flex;align-items:center;gap:6px;color:var(--c-lilas)}
 .rh-forge-cost{display:flex;align-items:center;gap:1px}
@@ -99,7 +101,7 @@
   border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);color:var(--c-lilas);
   font:900 var(--t-28)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%,-50%) rotate(-8deg)}
 .rh .rh-forge-done{background:var(--c-amarelo)}
-.rh-forge-done :is(.rh-forge-icon,.rh-forge-desc,.rh-forge-price){opacity:.4}
+.rh-forge-done :is(.rh-forge-icon,.rh-forge-desc,.rh-forge-curto,.rh-forge-price){opacity:.4}
 .rh-forge-done .rh-forge-stamp{opacity:1;animation:rh-stamp 140ms cubic-bezier(.2,.9,.3,1.25) both}
 .rh-forge-note{margin:0;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
 /* The note (what a tap did, or why not) rides in the header between the title and the close button, so the three
@@ -136,4 +138,36 @@
   .rh-forge-icon .ic{width:28px;height:28px}
   /* The window takes the right column: the notices step left, as with the round offer (the one-row band ends above it). */
   .rh:has(.rh-forge:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(42vw,380px) + 8px)}
+}
+
+/* ---------- One-line tags (card forja-uma-linha-paisagem) ----------
+   Landscape phones and desktop: two-line tags left the third one under the fold (135–150 px of list for 163–189 px of
+   tags). Each tag is one row: sticker, name, short effect (camp.ts RECIPE_SHORT) and price; the long effect stays in the
+   aria-label. Only the name gives way (an ellipsis); the short effect and the price are always whole. The portrait
+   phone keeps its two-line tags (32svh holds them). tests/client/forja-uma-linha.test.ts sums the budgets below. */
+@media (max-height:500px),(orientation:landscape){
+  .rh .rh-forge-tag{grid-template-columns:28px minmax(0,1fr) auto auto;grid-template-areas:'icon name curto price';column-gap:6px;padding-left:22px}
+  .rh-forge-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-forge-desc{display:none}
+  .rh-forge-curto{grid-area:curto;display:block;white-space:nowrap;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-lilas)}
+  .rh-forge-icon .ic{width:28px;height:28px}
+  /* The stamp, as wide as its word and as tall as the tag; out of the layout until a purchase (at rest, its tilted box
+     poked under the last tag and made the list scroll). */
+  .rh-forge-stamp{display:none;width:auto;padding:0 8px;font-size:var(--t-21)}
+  .rh-forge-done .rh-forge-stamp{display:block}
+}
+/* Landscape phone: a 40 px tag whose tap area reaches 2 px into each 4 px gap (::after), so every tag still takes a 44 px
+   tap and the three fit at 125% in 667x375. The window ends 8 px over the skill button (was 24 px: the 16 px that make
+   the third tag fit there), its top padding goes to the close button's own box. */
+@media (max-height:500px){
+  .rh-forge{padding:0 6px 2px;
+    max-height:calc(100vh - var(--rh-t) - 48px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 8px))}
+  .rh-forge-tags{padding:2px 8px 3px}
+  .rh .rh-forge-tag{min-height:40px}
+  .rh-forge-tag::after{content:'';position:absolute;inset:-2px 0}
+}
+/* Desktop: the window may grow up to the top band (it holds three one-line tags, ~210 px; 32svh left 139 px of list). */
+@media (min-height:501px) and (orientation:landscape){
+  .rh-forge{max-height:calc(100svh - var(--rh-t) - 56px - (max(24px,env(safe-area-inset-bottom)) + 112px + 24px))}
+  .rh .rh-forge-tag{min-height:44px;padding:2px 8px 2px 26px}
 }

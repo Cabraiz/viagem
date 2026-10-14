@@ -42,8 +42,8 @@ test('the barricade the hero stands at: nearest within CAMP_RADIUS, by wire labe
 
 test('the barricade tag: pt-BR texts, refusals in the server\'s order, the same price as the wall repair',()=>{
   const up=barricadeText({name:'Norte',down:false}),down=barricadeText({name:'Sul',down:true});
-  assert.deepEqual(up,{name:'Reparar barricada Norte',describe:'Conserta 25% da barricada',done:'Barricada Norte consertada!'});
-  assert.deepEqual(down,{name:'Reerguer barricada Sul',describe:'Levanta de novo com 25% da vida',done:'Barricada Sul de pé!'});
+  assert.deepEqual(up,{name:'Reparar barricada Norte',describe:'Conserta 25% da barricada',short:'+25%',done:'Barricada Norte consertada!'});
+  assert.deepEqual(down,{name:'Reerguer barricada Sul',describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:'Barricada Sul de pé!'});
   for(const t of [up,down]){
     assert.ok(t.describe.length<=40);
     // Design checklist: no "PALAVRA — fragmento", no arrows, no shouting outside a stamp.

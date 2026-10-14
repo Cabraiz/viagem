@@ -12,7 +12,7 @@ export const SETTINGS_KEY='viagem:audio:v1';
 /** Simultaneous sounds; mobile speakers turn more into mush and cost CPU. */
 export const MAX_VOICES=10;
 /** Events that count as user activation for audio (a touch pointerdown does not, on iOS or per spec). */
-const UNLOCK_EVENTS=['pointerup','touchend','click','keydown'] as const;
+export const UNLOCK_EVENTS=['pointerup','touchend','click','keydown'] as const;
 const SILENT=.0001;
 /** After a gesture asks to resume, sounds may be scheduled on a still-suspended context for this long. */
 const RESUME_GRACE_MS=500;
@@ -88,6 +88,10 @@ export class AudioEngine {
 
   /** True once the context is actually producing sound. */
   get running(){return this.ctx?.state==='running';}
+
+  /** The context and the master bus (volume, mute, limiter) once unlocked: the boss music (music.ts) joins them. */
+  get context():AudioContext|undefined{return this.ctx;}
+  get output():AudioNode|undefined{return this.master;}
 
   /**
    * Unlocks on the first gesture on `target` and keeps listening: any later gesture revives a context that

@@ -1,5 +1,5 @@
 /**
- * Cidade Nevada HUD (card NEW-20261012-ORQ-cidade-ux-01): minimap, big minimap, edge arrows and the lobby map selector.
+ * Cidade Nevada HUD (card NEW-20261012-ORQ-cidade-ux-01): the minimap's slot, edge arrows and the lobby map selector.
  * Written against the API contract (scratchpad city-hud-api.md) and design/cidade-hud.md §0–§5, not the implementation.
  * Every numbered block below maps to one of the 9 assertions of §5 ("Asserções do teste"), checked in portrait 390×844
  * and landscape 844×390, at 100% and 125% text, with and without the 47 px notch, with the offer/forge window open and
@@ -19,9 +19,9 @@ import * as nodeModule from 'node:module';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {Rng} from '../../src/contract/rng.ts';
 import type {Rect,ScreenZones,AuditBox,EdgeTarget,EdgeArrow} from '../../src/client/hud/city/deps.ts';
-import type {CityLayout,CityLayoutInput,EnemyPoint,EnemyGroup,MapId,SelectorState,SelectorEvent,CityView,CityMark} from '../../src/client/hud/city/index.ts';
+import type {CityLayout,CityLayoutInput,EnemyPoint,EnemyGroup,MapId,SelectorState,SelectorEvent} from '../../src/client/hud/city/index.ts';
 
-const {computeZones,auditBoxes,crosses,gap,inflate,THUMB_GAP,HERO_MARGIN,EDGE_COLUMN,MAX_ARROWS}=deps;
+const {computeZones,auditBoxes,crosses,gap,THUMB_GAP,HERO_MARGIN,EDGE_COLUMN,MAX_ARROWS}=deps;
 
 // ---------- Geometry helpers and the doc's measured references (§0) ----------
 type Orientation='portrait'|'landscape';
@@ -78,8 +78,6 @@ const SHIFTS=[[0,0],[24,0],[-24,0],[0,24],[0,-24],[24,24],[24,-24],[-24,24],[-24
 
 const safeOf=(c:Case):Insets|undefined=>c.notch?(c.o==='portrait'?{...ZERO,top:NOTCH}:{...ZERO,left:NOTCH}):undefined;
 const insetsOf=(c:Case)=>safeOf(c)??ZERO;
-/** A status row of the doc (0 camera, 1 round chip, 2 level + XP thread, 3 base ficha) as it sits in a case (portrait notch: 39 px lower). */
-const statusOf=(c:Case,i:0|1|2|3)=>{const s=DOC[c.o].status[i];return c.o==='portrait'&&c.notch?{...s,y:s.y+DROP}:c.o==='landscape'&&c.notch&&s.x<100?{...s,x:s.x+33}:s;};
 const gearOf=(c:Case)=>c.o==='portrait'&&c.notch?{...DOC.portrait.gear,y:DOC.portrait.gear.y+DROP}:DOC[c.o].gear;
 /** The measured controls of a case: REFERENCE_CONTROLS at 100%, the doc's 125% skill/emote, the notch shifts of §0. */
 function controlsFor(c:Case):CityLayoutInput['controls']{
@@ -94,28 +92,7 @@ function controlsFor(c:Case):CityLayoutInput['controls']{
   return base;
 }
 const inputOf=(c:Case):CityLayoutInput=>({viewport:{...VIEWPORT[c.o]},safe:safeOf(c),textScale:c.scale,windowOpen:c.windowOpen,controls:controlsFor(c)});
-/**
- * The big minimap: recurso dormente desde minimapa-wc3; sai num card próprio. The game no longer opens it (a tap on the
- * minimap pings), so its layout guarantees are checked from the OLD collapsed slot it hung from (76×76: portrait
- * --rh-t + 64, landscape + 52, window open the left column), apart from the new floating collapsed one. Same rule as
- * cityHudLayout's (bigMinimapSide clear of the announcement slot, else the doc's square over it).
- */
-const legacyCollapsed=(v:{width:number;height:number},s:Insets,windowOpen:boolean):Rect=>{
-  const f=(x:number)=>Math.max(8,x),side=city.MINIMAP_SIDE;
-  if(v.height>500)return r(v.width-f(s.right)-side,f(s.top)+64,side,side);
-  return windowOpen?r(Math.max(14,s.left),Math.max(12,s.top)+72,side,side):r(v.width-Math.max(14,s.right)-side,f(s.top)+52,side,side);
-};
-type LegacyLayout=CityLayout&{legacyMinimap:Rect};
-const withLegacyBig=(input:CityLayoutInput):LegacyLayout=>{
-  const l=city.cityHudLayout(input),v=input.viewport,s=input.safe??ZERO,k=input.controls,windowOpen=l.orientation==='landscape'&&!!input.windowOpen;
-  const m=legacyCollapsed(v,s,windowOpen),toward:'left'|'right'=m.x+m.width/2>v.width/2?'left':'right',corner={x:toward==='left'?right(m):m.x,y:m.y};
-  const max=l.orientation==='portrait'?city.BIG_MAX_SIDE.portrait:windowOpen?city.BIG_MAX_SIDE.window:city.BIG_MAX_SIDE.landscape;
-  const big={corner,toward,max,heroZone:inflate(l.hero,HERO_MARGIN),viewport:v,safe:s,controls:[k.joystick,k.skill,k.emote,k.chip],team:k.team};
-  const clear=city.bigMinimapSide({...big,avoid:[l.announce]}),side=clear>=city.BIG_MIN_SIDE?clear:city.bigMinimapSide(big);
-  const {minimapBig:_,...rest}=l;
-  return {...rest,...(side>=city.BIG_MIN_SIDE?{minimapBig:city.bigSquare(corner,toward,side)}:{}),bigCoversAnnounce:clear<city.BIG_MIN_SIDE&&side>=city.BIG_MIN_SIDE,legacyMinimap:m};
-};
-const layoutOf=(c:Case):LegacyLayout=>withLegacyBig(inputOf(c));
+const layoutOf=(c:Case):CityLayout=>city.cityHudLayout(inputOf(c));
 const expectedUseful=(c:Case)=>USEFUL[c.o][`${c.notch?'notch':'n'}${c.scale===1?100:125}` as 'n100'];
 /**
  * Collapsed minimap (minimapa-wc3), floating over a corner of the field: narrow portrait in the bottom-left corner as in
@@ -123,16 +100,6 @@ const expectedUseful=(c:Case)=>USEFUL[c.o][`${c.notch?'notch':'n'}${c.scale===1?
  * window open the left column.
  */
 const expectedMinimap=(c:Case)=>c.o==='portrait'?r(8,560,MM,MM):c.windowOpen?r(c.notch?47:14,84,MM,MM):r(706,60,MM,MM);
-/**
- * Doc §5 big minimap (dormant, from the old collapsed slot). Landscape with a window open: the doc's {14,84,164,164} would
- * cross the announcement slot (x 158), so the side shrinks to keep ANNOUNCE_GAP (4 px) from it, as the coordinator's
- * review asked: 140 (notch 146). Reported.
- */
-const expectedBig=(c:Case):Rect|undefined=>{
-  if(c.o==='portrait'){if(c.windowOpen)return undefined;const s=c.notch&&c.scale>1?230:232;return r(382-s,c.notch?111:72,s,s);}
-  if(!c.windowOpen)return r(654,60,176,176);
-  const x=c.notch?47:14,side=Math.min(164,Math.max(8,insetsOf(c).left)+150-4-x);return r(x,84,side,side);
-};
 const expectedSelector=(c:Case)=>c.o==='portrait'?r(32,194+(c.notch?DROP:0),326,c.scale>1?84:64):r(718,84,112,144);
 const expectedSegments=(c:Case):[Rect,Rect]=>{
   if(c.o==='landscape')return [r(724,90,100,64),r(724,158,100,64)];
@@ -153,16 +120,14 @@ const announceOf=(c:Case,z:ScreenZones)=>{
 };
 /** The new rects of a layout, named. */
 const newRects=(l:CityLayout)=>{
-  const list:{name:string;rect:Rect}[]=[{name:'minimapa',rect:l.minimap},{name:'seletor',rect:l.selector},{name:'segmento-cidade',rect:l.segments[0]},{name:'segmento-infinito',rect:l.segments[1]}];
-  if(l.minimapBig)list.push({name:'minimapa-grande',rect:l.minimapBig});
-  return list;
+  return [{name:'minimapa',rect:l.minimap},{name:'seletor',rect:l.selector},{name:'segmento-cidade',rect:l.segments[0]},{name:'segmento-infinito',rect:l.segments[1]}];
 };
 /** Thumb controls of a case (joystick, skill, emote, chip), as the zones contract names them. */
 const thumbControls=(c:Case)=>{const k=controlsFor(c) as any;return ([['joystick',k.joystick],['habilidade',k.skill],['emote',k.emote],['chip',k.chip]] as [string,Rect|undefined][]).filter((e):e is [string,Rect]=>!!e[1]);};
 
 // ---------- Edge-arrow fixtures (§3, assertion 7) ----------
 const target=(key:string,kind:EdgeTarget['kind'],x:number,y:number,distance:number,extra:Partial<EdgeTarget>={}):EdgeTarget=>({key,kind,screen:{x,y},distance,...extra});
-/** Eleven targets around the hero: a named caído hidden behind the big minimap, the boss, 4 groups, 4 active mouths, the base. */
+/** Eleven targets around the hero: a named caído hidden behind `behind`, the boss, 4 groups, 4 active mouths, the base. */
 function cityTargets(hero:Rect,behind:Rect):EdgeTarget[]{
   const hx=hero.x+hero.width/2,hy=hero.y+hero.height/2,at=(deg:number,dist:number)=>({x:hx+Math.cos(deg*Math.PI/180)*dist,y:hy+Math.sin(deg*Math.PI/180)*dist});
   const list=[target('b','caido',behind.x+behind.width/2,behind.y+behind.height/2,18,{seconds:12,label:'Zé',name:'Zé'}),target('boss','chefe',hx-900,hy,40)];
@@ -189,7 +154,6 @@ const MUST_POINT=['caido','chefe'] as const;
 // =====================================================================================================================
 test('contract: constants and reference controls match the doc (§0, §1, §2, §3, §4)',()=>{
   assert.equal(THUMB_GAP,24);assert.equal(HERO_MARGIN,40);assert.equal(EDGE_COLUMN,120);assert.equal(MAX_ARROWS,6);
-  assert.equal(city.MINIMAP_SIDE,76);assert.equal(city.BIG_MIN_SIDE,120);assert.equal(typeof city.bigMinimapSide,'function');
   assert.equal(city.GROUP_CELL,8);assert.equal(city.GROUP_MIN,5);assert.equal(city.GROUP_RANGE,60*K);assert.equal(city.GROUP_ARROWS,2);
   assert.equal(K,1.7);assert.equal(city.CITY_SIZE,287.232);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
   for(const o of ['portrait','landscape'] as const){
@@ -214,14 +178,11 @@ test('contract: 125% controls (§0) derived by scaled(), when the helper is expo
 // =====================================================================================================================
 // §5 table: exact rects for the reference controls
 // =====================================================================================================================
-test('§5 table: collapsed minimap, big minimap, selector and segments are the exact rects of the doc',()=>{
+test('§5 table: minimap, selector and segments are the exact rects of the doc',()=>{
   for(const c of CASES){
     const l=layoutOf(c);
     assert.equal(l.orientation,c.o,c.name);
-    assert.deepEqual(l.minimap,expectedMinimap(c),`${c.name}: minimapa recolhido`);
-    const big=expectedBig(c);
-    if(big)assert.deepEqual(l.minimapBig,big,`${c.name}: minimapa grande`);
-    else assert.deepEqual(l.minimapBig,layoutOf({...c,windowOpen:false}).minimapBig,`${c.name}: portrait big minimap "pela fórmula" does not move with the window`);
+    assert.deepEqual(l.minimap,expectedMinimap(c),`${c.name}: minimapa`);
     assert.deepEqual(l.selector,expectedSelector(c),`${c.name}: seletor`);
     assert.deepEqual(l.segments,expectedSegments(c),`${c.name}: segmentos`);
   }
@@ -264,16 +225,15 @@ test('1. every new rect is inside the viewport and the safe area',()=>{
 // =====================================================================================================================
 // Assertion 2 (+ thumb-zone collisions of every new rect)
 // =====================================================================================================================
-test('2. collapsed and big minimap never cross leftThumb/rightThumb and keep ≥ 24 px from joystick, skill, emote and chip',()=>{
+test('2. the minimap never crosses leftThumb/rightThumb and keeps ≥ 24 px from joystick, skill, emote and chip',()=>{
   for(const c of ALL){
     const l=layoutOf(c),z=refZones(c);
-    for(const zones of [z,l.zones])for(const [name,rect] of [['minimapa',l.minimap],['minimapa-grande',l.minimapBig]] as [string,Rect|undefined][]){
-      if(!rect)continue;
-      if(zones.leftThumb)assert.equal(crosses(rect,zones.leftThumb),false,`${c.name}: ${name} ${fmt(rect)} × leftThumb ${fmt(zones.leftThumb)}`);
-      if(zones.rightThumb)assert.equal(crosses(rect,zones.rightThumb),false,`${c.name}: ${name} ${fmt(rect)} × rightThumb ${fmt(zones.rightThumb)}`);
+    const m=l.minimap;
+    for(const zones of [z,l.zones]){
+      if(zones.leftThumb)assert.equal(crosses(m,zones.leftThumb),false,`${c.name}: minimapa ${fmt(m)} × leftThumb ${fmt(zones.leftThumb)}`);
+      if(zones.rightThumb)assert.equal(crosses(m,zones.rightThumb),false,`${c.name}: minimapa ${fmt(m)} × rightThumb ${fmt(zones.rightThumb)}`);
     }
-    for(const [control,rect] of thumbControls(c))for(const [name,box] of [['minimapa',l.minimap],['minimapa-grande',l.minimapBig]] as [string,Rect|undefined][])
-      if(box)assert.ok(gap(box,rect)>=THUMB_GAP,`${c.name}: ${name} is ${gap(box,rect)} px from ${control}`);
+    for(const [control,rect] of thumbControls(c))assert.ok(gap(m,rect)>=THUMB_GAP,`${c.name}: minimapa is ${gap(m,rect)} px from ${control}`);
   }
 });
 
@@ -287,13 +247,10 @@ test('thumb zones: selector and segments keep ≥ 24 px from joystick, skill, em
   }
 });
 
-test('thumb zones: the documented clearances hold (landscape 125% big touches the skill zone at 24 px, window-open big ≥ 30 px above the joystick)',()=>{
-  const l125=layoutOf({o:'landscape',scale:1.25,notch:false,windowOpen:false,name:''});
-  assert.equal(gap(l125.minimapBig!,DOC.landscape.skill125),24);assert.equal(crosses(l125.minimapBig!,l125.zones.rightThumb!),false);
-  assert.equal(gap(layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''}).minimapBig!,DOC.landscape.skill),56);
+test('thumb zones: the documented clearances hold (window-open landscape minimap 70 px above the joystick, narrow portrait 24 px)',()=>{
   for(const notch of [false,true]){
     const l=layoutOf({o:'landscape',scale:1,notch,windowOpen:true,name:''}),stick=notch?r(47,278,96,96):DOC.landscape.joystick;
-    assert.ok(gap(l.minimapBig!,stick)>=30,`notch=${notch}: ${gap(l.minimapBig!,stick)} px above the joystick`);assert.equal(gap(l.minimap,stick),70,`notch=${notch}`);
+    assert.equal(gap(l.minimap,stick),70,`notch=${notch}`);
   }
   // Narrow portrait: the collapsed minimap sits 24 px above the joystick, touching (never crossing) its thumb zone.
   for(const notch of [false,true]){
@@ -310,9 +267,7 @@ test('3. no new rect crosses the hero ± 40 (centred and shifted 24 px); auditBo
     const l=layoutOf(c),z=refZones(c),k=controlsFor(c) as any;
     for(const [dx,dy] of SHIFTS){
       const hero=heroAt(z.useful,dx,dy),where=`${c.name}, herói ${dx},${dy}`;
-      // The dormant big minimap is out of this check: the game no longer opens it and card BUG-20261014-E1-minimapa-grande-sai
-      // removes it (its own distance to the centred hero is still pinned below).
-      for(const {name,rect} of newRects(l).filter(x=>x.name!=='minimapa-grande'))assert.equal(crosses(rect,hero,HERO_MARGIN),false,`${where}: ${name} ${fmt(rect)} over the hero ${fmt(hero)}`);
+      for(const {name,rect} of newRects(l))assert.equal(crosses(rect,hero,HERO_MARGIN),false,`${where}: ${name} ${fmt(rect)} over the hero ${fmt(hero)}`);
       const boxes:AuditBox[]=[{name:'joystick',rect:k.joystick,thumb:true,target:true},{name:'habilidade',rect:k.skill,thumb:true,target:true},
         {name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true,allowedInPlay:true,overHeroFails:true},{name:'seletor',rect:l.selector,target:true},
         {name:'segmento-cidade',rect:l.segments[0],target:true},{name:'segmento-infinito',rect:l.segments[1],target:true}];
@@ -325,11 +280,10 @@ test('3. no new rect crosses the hero ± 40 (centred and shifted 24 px); auditBo
   }
 });
 
-test('3. the big minimap keeps its documented distance to the hero zone (portrait 42 px, 18 px with the 24 px lag)',()=>{
+test('3. the hero box sits at the useful area\'s centre (portrait {202,386}, landscape {402,195})',()=>{
   const l=layoutOf({o:'portrait',scale:1,notch:false,windowOpen:false,name:''}),hero=heroAt(l.zones.useful,0,0);
-  assert.deepEqual(hero,r(202,386,56,56));
-  assert.equal(hero.y-HERO_MARGIN-bottom(l.minimapBig!),42);assert.equal(hero.y-24-HERO_MARGIN-bottom(l.minimapBig!),18);
-  const ls=layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''});assert.deepEqual(heroAt(ls.zones.useful,0,0),r(402,195,56,56));
+  assert.deepEqual(hero,r(202,386,56,56));assert.deepEqual(l.hero,hero);
+  const ls=layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''});assert.deepEqual(heroAt(ls.zones.useful,0,0),r(402,195,56,56));assert.deepEqual(ls.hero,r(402,195,56,56));
 });
 
 // =====================================================================================================================
@@ -354,9 +308,9 @@ test('4. the minimap floats: the useful area ignores it (portrait useful.y 186, 
 });
 
 // =====================================================================================================================
-// Assertion 5: status, gear, team, announcement slot; big: round chip, gear, team; outside topReadout
+// Assertion 5: status, gear, team, announcement slot
 // =====================================================================================================================
-test('5. collapsed minimap: off the status rows and the gear (≥ 6 px), the team and the announcement slot',()=>{
+test('5. minimap: off the status rows and the gear (≥ 6 px), the team and the announcement slot',()=>{
   for(const c of ALL){
     const l=layoutOf(c),k=controlsFor(c) as any,m=l.minimap,g=gearOf(c);
     const status=(k.status as (Rect|undefined)[]).filter((s):s is Rect=>!!s&&!(s.x===g.x&&s.width===g.width&&s.height===g.height));
@@ -373,124 +327,34 @@ test('5. collapsed minimap: off the status rows and the gear (≥ 6 px), the tea
   }
 });
 
-test('5. big minimap: never over the round chip, the gear or the team; it is not a top readout (may cover the band\'s second row for 4 s)',()=>{
-  for(const c of ALL){
-    const l=layoutOf(c),k=controlsFor(c) as any,big=l.minimapBig;
-    if(!big)continue;
-    const round=statusOf(c,1),xp=statusOf(c,2),base=statusOf(c,3);
-    assert.equal(crosses(big,round),false,`${c.name}: big ${fmt(big)} over the round chip ${fmt(round)}`);
-    assert.equal(crosses(big,gearOf(c)),false,`${c.name}: big over the gear`);
-    if(k.team)assert.equal(crosses(big,k.team),false,`${c.name}: big over the team`);
-    const audit=auditBoxes([{name:'round',rect:round,topReadout:true},{name:'xp',rect:xp,topReadout:true},{name:'base',rect:base,topReadout:true},{name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true},
-      {name:'minimapa-grande',rect:big,target:true,allowedInPlay:true,overHeroFails:true}],refZones(c));
-    assert.deepEqual(audit.topCrossed,[],c.name);
-  }
-  // Portrait: it covers the band's second row (the base ficha, where the XP bar was) on purpose, and still not the round chip.
-  const p=layoutOf({o:'portrait',scale:1,notch:false,windowOpen:false,name:''});
-  assert.equal(crosses(p.minimapBig!,DOC.portrait.status[3]),true);assert.equal(crosses(p.minimapBig!,DOC.portrait.status[1]),false);
-});
-
-const DANGER=['caido','chefe','corneta'] as const;
-test('5. big minimap vs the announcement slot: clear of it (≥ 4 px) wherever a 120 px square fits; else it covers it and any notice blocks the tap and closes it',()=>{
-  assert.equal(city.ANNOUNCE_GAP,4);assert.deepEqual([...city.DANGER_NOTICES].sort(),[...DANGER].sort());
-  for(const c of ALL){
-    const l=layoutOf(c),big=l.minimapBig!,slot=announceOf(c,l.zones),covers=l.bigCoversAnnounce;
-    assert.deepEqual(l.announce,slot,`${c.name}: announcement slot ${fmt(l.announce)}`);
-    if(crosses(big,slot)){
-      // Only the doc's portrait square (§2: no 120 px square fits between the collapsed minimap and the slot) may cover it.
-      assert.equal(c.o,'portrait',`${c.name}: big ${fmt(big)} over the announcement slot ${fmt(slot)}`);
-      assert.equal(covers,true,`${c.name}: covers the slot without bigCoversAnnounce`);
-    }else{
-      assert.equal(covers,false,c.name);assert.ok(gap(big,slot)>=city.ANNOUNCE_GAP,`${c.name}: big is ${gap(big,slot)} px from the slot`);
-    }
-    // Danger notices up: never opens, and an open one closes. Other notices only when it covers the slot.
-    for(const n of DANGER){
-      assert.equal(city.tapBlocked(undefined,n,covers),true,`${c.name}: tap with a "${n}" notice`);
-      assert.equal(city.blockReason(undefined,n,covers),'aviso');
-      assert.equal(city.bigShouldClose({openedAtMs:0,nowMs:100,phase:'wave',notice:n,coversAnnounce:covers}),true,`${c.name}: open with a "${n}" notice`);
-    }
-    assert.equal(city.tapBlocked(undefined,'outro',covers),covers,`${c.name}: other notice`);
-    assert.equal(city.bigShouldClose({openedAtMs:0,nowMs:100,phase:'prepare',notice:'outro',coversAnnounce:covers}),covers,c.name);
-    assert.equal(city.tapBlocked(undefined,undefined,covers),false,`${c.name}: no notice, no critter`);
-    assert.equal(city.blockReason(1,'caido',covers),'bicho','a critter at hand wins');
-  }
-  assert.equal(city.NOTICE_BLOCKED_LABEL,'Aviso na tela. O mapa grande abre quando sair.');
-});
-
 // =====================================================================================================================
-// Assertion 6: touch sizes; S < 120 does not open
+// Assertion 6: touch sizes
 // =====================================================================================================================
-test('6. touch targets: collapsed wcMinimapSide (124 ≥ 44), big ≥ 120 and square, segments ≥ 48 on both sides',()=>{
+test('6. touch targets: minimap wcMinimapSide (124 ≥ 44), segments ≥ 48 on both sides',()=>{
   for(const c of ALL){
     const l=layoutOf(c),side=city.wcMinimapSide(VIEWPORT[c.o]);
     assert.equal(l.minimap.width,side,c.name);assert.equal(l.minimap.height,side,c.name);assert.ok(side>=44,c.name);
-    assert.ok(l.minimapBig,`${c.name}: big minimap opens`);
-    assert.equal(l.minimapBig!.width,l.minimapBig!.height,c.name);assert.ok(l.minimapBig!.width>=city.BIG_MIN_SIDE,c.name);
     for(const s of l.segments)assert.ok(s.width>=48&&s.height>=48,`${c.name}: segment ${fmt(s)}`);
     assert.equal(crosses(l.segments[0],l.segments[1]),false,`${c.name}: segments overlap`);
     for(const s of l.segments)assert.ok(within(s,l.selector,0),`${c.name}: segment ${fmt(s)} outside the selector`);
   }
 });
 
-test('6. S < 120: the big minimap does not open (skill too close under it, or the team column too wide)',()=>{
-  const land:Case={o:'landscape',scale:1,notch:false,windowOpen:false,name:''};
-  const lowSkill=withLegacyBig({...inputOf(land),controls:{...controlsFor(land),skill:r(746,150,82,82)}});
-  assert.equal(lowSkill.minimapBig,undefined,`landscape, skill at y 150: big ${fmt(lowSkill.minimapBig)}`);
-  const port:Case={o:'portrait',scale:1,notch:false,windowOpen:false,name:''};
-  const wideTeam=withLegacyBig({...inputOf(port),controls:{...controlsFor(port),team:r(8,120,262,380)}});
-  assert.equal(wideTeam.minimapBig,undefined,`portrait, team column to x 270: big ${fmt(wideTeam.minimapBig)}`);
-  // The collapsed one never depends on it.
-  assert.deepEqual(lowSkill.minimap,r(706,60,MM,MM));assert.deepEqual(wideTeam.minimap,r(8,560,MM,MM));
-});
-
 // =====================================================================================================================
-// Assertion 7: arrows with the big minimap open as a window
+// Assertion 7: arrows in play
 // =====================================================================================================================
 /** Overlap of two rects, or undefined. */
 const overlap=(a:Rect,b:Rect):Rect|undefined=>{const x=Math.max(a.x,b.x),y=Math.max(a.y,b.y),w=Math.min(right(a),right(b))-x,h=Math.min(bottom(a),bottom(b))-y;return w>0&&h>0?r(x,y,w,h):undefined;};
 /** What hides the map on screen (edges.ts COVERING): the HUD of a case, plus its minimap(s). */
 const coveringOf=(c:Case,minimaps:(Rect|undefined)[])=>{const k=controlsFor(c) as any;return [...(k.status as (Rect|undefined)[]),gearOf(c),k.team,k.joystick,k.skill,k.emote,k.chip,...minimaps].filter((x):x is Rect=>!!x);};
-test('7. arrows with the big minimap open (a window over the field): none on it, a caído hidden under it keeps an arrow beside it, escaped/unpointed empty, ≤ 6, ≤ 2 grupo, ≤ 2 boca',()=>{
-  let hiddenInField=0;
-  for(const c of ALL){
-    const l=layoutOf(c),z=refZones(c),v=VIEWPORT[c.o];
-    assert.ok(l.minimapBig,`${c.name}: no big minimap`);const big=l.minimapBig;
-    // Laid out in the in-play useful area, with the big minimap passed as an open window and as covering (§2: it enters
-    // WINDOWS/COVERING): the layout itself must keep the arrows off it.
-    const options={windows:[big],seen:{viewport:r(0,0,v.width,v.height),covered:coveringOf(c,[l.legacyMinimap,big])},textScale:c.scale};
-    // The caído stands under the part of the big minimap that covers the field (portrait: its bottom 64 px; landscape: its
-    // left strip), i.e. inside the useful area, where only the big minimap hides it. Without such a part, under its centre.
-    const under=overlap(big,z.useful);if(under)hiddenInField++;
-    for(const [dx,dy] of SHIFTS){
-      const hero=heroAt(z.useful,dx,dy),where=`${c.name}, herói ${dx},${dy}`;
-      const targets=cityTargets(hero,under??big),arrows=city.layoutCityEdges(targets,l.zones.useful,hero,options);
-      assert.ok(arrows.length<=MAX_ARROWS,`${where}: ${arrows.length} arrows`);
-      assert.ok(arrows.filter(a=>a.key.startsWith('grupo:')).length<=2,`${where}: grupo arrows ${arrows.map(a=>a.key)}`);
-      assert.ok(arrows.filter(a=>a.key.startsWith('boca:')).length<=2,`${where}: boca arrows ${arrows.map(a=>a.key)}`);
-      const boxes:AuditBox[]=arrows.flatMap(a=>arrowBoxes(a,c.scale).map(b=>({...b,allowedInPlay:true,overHeroFails:true,withinUseful:true})));
-      for(const kind of MUST_POINT)if(!arrows.some(a=>a.kind===kind))boxes.push({name:`sem-seta-${kind}`,rect:r(0,0,0,0),unpointed:true});
-      const audit=auditBoxes(boxes,z,hero);
-      assert.deepEqual(audit.escaped,[],where);assert.deepEqual(audit.unpointed,[],where);assert.deepEqual(audit.heroCrossed,[],where);
-      for(const b of boxes)if(!b.unpointed)assert.equal(crosses(b.rect,big),false,`${where}: ${b.name} ${fmt(b.rect)} on the big minimap ${fmt(big)}`);
-      // The hidden caído: an arrow of its own, glued to the big minimap's edge (≤ 40 px), beak towards it.
-      const caido=arrows.find(a=>a.kind==='caido');
-      assert.ok(caido,`${where}: the caído under the big minimap has no arrow`);
-      const t=targets.find(x=>x.kind==='caido')!,ficha=arrowBoxes(caido!,c.scale)[0].rect;
-      assert.ok(gap(ficha,big)<=40,`${where}: caído arrow ${fmt(ficha)} is ${gap(ficha,big)} px from the big minimap`);
-      assert.ok(Math.abs(Math.atan2(t.screen.y-caido!.y,t.screen.x-caido!.x)-caido!.angle)<1e-9,`${where}: beak points at the caído`);
-    }
-  }
-  assert.ok(hiddenInField>=CASES.length,`only ${hiddenInField} cases put the caído inside the useful area under the big minimap`);
-});
-
-test('7. arrows in play (big closed), 100% and 125%: inside the useful area and the rail, off the hero ± 40, ≥ 24 px from every thumb control; a caído under the floating minimap keeps an arrow',()=>{
+test('7. arrows in play, 100% and 125%: inside the useful area and the rail, off the hero ± 40, ≥ 24 px from every thumb control; a caído under the floating minimap keeps an arrow',()=>{
   for(const c of ALL){
     const l=layoutOf(c),z=refZones(c),s=insetsOf(c),v=VIEWPORT[c.o];
     const safe=r(s.left,s.top,v.width-s.left-s.right,v.height-s.top-s.bottom);
     // The collapsed minimap floats over a corner of the field and is a window (edges.ts WINDOWS has .rh-minimap): the caído
     // stands under its part over the field (else under its centre) and keeps an arrow of its own on the rail, off the
     // minimap and the hero, with escaped/unpointed empty. The "≤ 40 px from the window" rule stays for the big windows
-    // (offer, forge, big minimap, test above); gluing the arrow to the collapsed minimap's edge is a future edges.ts improvement.
+    // (offer, forge: janela-caido.test.ts); gluing the arrow to the minimap's edge is a future edges.ts improvement.
     const options={windows:[l.minimap],seen:{viewport:r(0,0,v.width,v.height),covered:coveringOf(c,[l.minimap])},textScale:c.scale};
     const under=overlap(l.minimap,z.useful)??l.minimap;
     for(const [dx,dy] of SHIFTS){
@@ -643,79 +507,11 @@ test('9. pickGroupArrows: off-screen, ≥ 5, within GROUP_RANGE (60 u × K), nea
   assert.ok(!city.pickGroupArrows(two,HERO,offScreen,{previous:new Set(['gE'])}).some(g=>g.key==='gE'),'under 3: dropped');
 });
 
-/** projection.ts convention (rotateVector): the minimap uses the same one. */
-const rot=(p:{x:number;y:number},view:number)=>{switch(((view%4)+4)%4){case 1:return {x:-p.y,y:p.x};case 2:return {x:-p.x,y:-p.y};case 3:return {x:p.y,y:-p.x};default:return {...p};}};
-const VIEWS:CityView[]=[0,1,2,3];
-test('9. cityMinimapPoint: city corners on the diamond vertices at ±34 px; mouths at mid-sides turning 90° per view',()=>{
+test('9. DEFAULT_CITY: the whole city (CITY_SIZE), the plaza at its centre (radius 10 u × K), the 4 mouths and the start inside',()=>{
   const map=city.DEFAULT_CITY,c=map.size;
   assert.equal(c,city.CITY_SIZE);assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:143.616,y:143.616});assert.equal(map.plaza.radius,10*K);
   assert.deepEqual(map.mouths.map(m=>m.id).sort(),['L','N','O','S']);
   assert.ok(map.start.x>=0&&map.start.x<=c&&map.start.y>=0&&map.start.y<=c);
-  for(const view of VIEWS){
-    const o=city.cityMinimapPoint(map.plaza,view);
-    const corners=[{x:0,y:0},{x:c,y:0},{x:0,y:c},{x:c,y:c}].map(p=>{const q=city.cityMinimapPoint(p,view);return {x:q.x-o.x,y:q.y-o.y};});
-    for(const q of corners){
-      const ax=Math.abs(q.x),ay=Math.abs(q.y);
-      assert.ok((near(ax,0,.01)&&near(ay,34,.01))||(near(ax,34,.01)&&near(ay,0,.01)),`view ${view}: corner at (${q.x},${q.y})`);
-    }
-    assert.equal(new Set(corners.map(q=>`${Math.round(q.x)},${Math.round(q.y)}`)).size,4,`view ${view}: four distinct vertices`);
-    for(const m of map.mouths){
-      const q=city.cityMinimapPoint(m,view),dx=q.x-o.x,dy=q.y-o.y;
-      assert.ok(Math.abs(dx)+Math.abs(dy)<=34+.01&&Math.abs(dx)+Math.abs(dy)>=30,`view ${view} mouth ${m.id}: on the diamond's side (${dx},${dy})`);
-      assert.ok(Math.abs(Math.abs(dx)-Math.abs(dy))<=2,`view ${view} mouth ${m.id}: middle of the side`);
-    }
-  }
-  // View 0: the world corner (0,0) is straight up on screen (projection.ts), so it is the top vertex.
-  const o0=city.cityMinimapPoint(map.plaza,0),top=city.cityMinimapPoint({x:0,y:0},0);
-  assert.ok(near(top.x-o0.x,0,.01)&&near(top.y-o0.y,-34,.01),`view 0: (0,0) at (${top.x-o0.x},${top.y-o0.y})`);
-  // Mouths turn by 90° per view, all the same way.
-  let turn=0;
-  for(const m of map.mouths)for(const view of VIEWS){
-    const next=((view+1)%4) as CityView,p=city.cityMinimapPoint(m,view),q=city.cityMinimapPoint(m,next),op=city.cityMinimapPoint(map.plaza,view),oq=city.cityMinimapPoint(map.plaza,next);
-    const a={x:p.x-op.x,y:p.y-op.y},b={x:q.x-oq.x,y:q.y-oq.y};
-    assert.ok(near(a.x*b.x+a.y*b.y,0,.01),`mouth ${m.id}, view ${view}→${next}: not 90°`);
-    assert.ok(near(Math.hypot(a.x,a.y),Math.hypot(b.x,b.y),.01));
-    const cross=Math.sign(a.x*b.y-a.y*b.x);if(!turn)turn=cross;assert.equal(cross,turn,'same turning direction');
-  }
-  // Same box side in px: default 76.
-  assert.deepEqual(city.cityMinimapPoint({x:10,y:20},2),city.cityMinimapPoint({x:10,y:20},2,76));
-});
-
-test('9. cityMinimapPoint: up (and right) on screen is up (and right) on the minimap in all 4 views',()=>{
-  const map=city.DEFAULT_CITY;
-  for(const view of VIEWS){
-    const o=city.cityMinimapPoint(map.plaza,view);
-    // In view v the screen shows rotateVector(d, v): screen up is q = (-1,-1), screen right is q = (1,-1).
-    const up=rot({x:-5,y:-5},-view),rt=rot({x:5,y:-5},-view);
-    const u=city.cityMinimapPoint({x:map.plaza.x+up.x,y:map.plaza.y+up.y},view),w=city.cityMinimapPoint({x:map.plaza.x+rt.x,y:map.plaza.y+rt.y},view);
-    assert.ok(near(u.x-o.x,0,1e-6)&&u.y-o.y<0,`view ${view}: screen up → (${u.x-o.x},${u.y-o.y})`);
-    assert.ok(near(w.y-o.y,0,1e-6)&&w.x-o.x>0,`view ${view}: screen right → (${w.x-o.x},${w.y-o.y})`);
-  }
-});
-
-test('9. cityMinimapMarks: draw order bottom → top, você on top, doc minimum sizes, groups ≥ 3 as trevos',()=>{
-  const rnd=lcg(11);
-  const enemies=[...blob('x',25.75,33.75,12,rnd),...blob('y',121.75,41.75,26,rnd),...blob('z',73.75,121.75,4,rnd),...blob('w',145.75,9.75,2,rnd),{id:'boss',x:140,y:140,boss:true}];
-  const marks:CityMark[]=city.cityMinimapMarks({map:city.DEFAULT_CITY,view:0,selfId:'me',
-    players:[{id:'me',x:84.5,y:120},{id:'a',x:60,y:60},{id:'b',x:100,y:30,downed:true}],enemies,activeMouths:['N'],baseHp:{hp:20,maxHp:100}});
-  const RANK:Record<string,number>={boca:0,grupo:1,aliado:2,base:3,'boca-ativa':4,chefe:5,caido:6,voce:7};
-  const ranked=marks.filter(m=>m.kind!=='inicio').map(m=>RANK[m.kind]);
-  for(let i=1;i<ranked.length;i++)assert.ok(ranked[i]>=ranked[i-1],`draw order: ${marks.map(m=>m.kind).join(',')}`);
-  assert.equal(marks.at(-1)!.kind,'voce');
-  const of=(k:string)=>marks.filter(m=>m.kind===k);
-  assert.equal(of('voce').length,1);assert.equal(of('aliado').length,1);assert.equal(of('caido').length,1);assert.equal(of('base').length,1);assert.equal(of('chefe').length,1);
-  assert.equal(of('boca').length,3);assert.equal(of('boca-ativa').length,1);
-  const groups=of('grupo');
-  assert.deepEqual(groups.map(g=>g.count).sort((a,b)=>a!-b!),[4,12,26],'groups of 3 or more only (the pair is left out)');
-  const MIN:Record<string,number>={voce:9,aliado:6,caido:11,base:11,boca:5,'boca-ativa':12,chefe:10};
-  for(const m of marks){
-    assert.ok(m.size>=5,`${m.key}: ${m.size} px`);
-    if(MIN[m.kind])assert.ok(m.size>=MIN[m.kind],`${m.kind}: ${m.size} < ${MIN[m.kind]}`);
-    if(m.kind==='grupo')assert.ok(m.size>=(m.count!>=25?11:m.count!>=10?8:6),`grupo ${m.count}: ${m.size}`);
-  }
-  const me=city.cityMinimapPoint({x:84.5,y:120},0);
-  assert.ok(near(of('voce')[0].x,me.x,1e-6)&&near(of('voce')[0].y,me.y,1e-6),'você at its minimap point');
-  assert.equal(new Set(marks.map(m=>m.key)).size,marks.length,'keys are unique');
 });
 
 test('9. cityEdgeTargets: caído always, groups ≥ 5 off screen as kind grupo with groupCount, ≤ 2 active mouths, base only in prepare or after a wall hit',()=>{
@@ -739,27 +535,6 @@ test('9. cityEdgeTargets: caído always, groups ≥ 5 off screen as kind grupo w
   assert.equal(city.cityEdgeTargets({...base,phase:'prepare'}).targets.filter(t=>t.kind==='base').length,1,'base in the intermission');
   assert.equal(city.cityEdgeTargets({...base,wallHitRecently:true}).targets.filter(t=>t.kind==='base').length,1,'base after a wall hit');
   assert.deepEqual(city.cityEdgeTargets(base).targets,targets,'deterministic');
-});
-
-test('§2 big minimap closes by itself: 4 s in a wave, 8 s in the intermission, on a new notice, damage, a telegraph or a critter at 2.5 u',()=>{
-  assert.deepEqual(city.BIG_OPEN_MS,{wave:4000,prepare:8000});assert.equal(city.NEAR_BLOCK,2.5);
-  const base={openedAtMs:1000,phase:'wave' as const};
-  assert.equal(city.bigShouldClose({...base,nowMs:1000+3990}),false,'wave, under 4 s');
-  assert.equal(city.bigShouldClose({...base,nowMs:1000+4010}),true,'wave, past 4 s');
-  assert.equal(city.bigShouldClose({...base,phase:'prepare',nowMs:1000+4010}),false,'intermission keeps it 8 s');
-  assert.equal(city.bigShouldClose({...base,phase:'prepare',nowMs:1000+7990}),false);
-  assert.equal(city.bigShouldClose({...base,phase:'prepare',nowMs:1000+8010}),true,'intermission, past 8 s');
-  for(const flag of ['announced','hurt','telegraphOnHero'] as const)assert.equal(city.bigShouldClose({...base,nowMs:1100,[flag]:true}),true,flag);
-  assert.equal(city.bigShouldClose({...base,nowMs:1100,nearestEnemy:city.NEAR_BLOCK}),true,'a critter at 2.5 u');
-  assert.equal(city.bigShouldClose({...base,nowMs:1100,nearestEnemy:2.4}),true);
-  assert.equal(city.bigShouldClose({...base,nowMs:1100,nearestEnemy:2.6}),false);
-  assert.equal(city.bigShouldClose({...base,nowMs:1100}),false,'nothing happened');
-});
-
-test('§2 tap blocked while a critter is within NEAR_BLOCK (2.5 u), with the doc label',()=>{
-  assert.equal(city.tapBlocked(2.5),true);assert.equal(city.tapBlocked(0),true);assert.equal(city.tapBlocked(2.4),true);
-  assert.equal(city.tapBlocked(2.6),false);assert.equal(city.tapBlocked(undefined),false);assert.equal(city.tapBlocked(40),false);
-  assert.equal(city.BLOCKED_LABEL,'Bicho perto. O mapa grande abre quando sair.');
 });
 
 /** World → screen for the edge-target tests: the hero at the portrait useful area's centre, 41 px/u (doc §0). */
@@ -930,20 +705,6 @@ test('§4 download: the selected subtitle becomes "Baixando a cidade: 40%" (land
   assert.equal(step(step(city.initialSelector(true,'cidade-nevada'),{type:'download',text:city.downloadText(.1)}).state,{type:'tap',map:'infinito',nowMs:0}).send,'infinito');
 });
 
-test('§1 group counts on the big minimap: labels for groups of 10+, drawn clear of every mark and of each other, inside the drawing',()=>{
-  const rnd=lcg(11),side=232;
-  const enemies=[...blob('x',25.75,33.75,12,rnd),...blob('y',121.75,41.75,126,rnd),...blob('z',73.75,121.75,4,rnd),...blob('q',89.75,81.75,15,rnd)];
-  const marks=city.cityMinimapMarks({map:city.DEFAULT_CITY,view:0,side,selfId:'me',players:[{id:'me',x:84.5,y:120},{id:'a',x:88,y:84}],enemies,activeMouths:['N'],baseHp:{hp:50,maxHp:100}});
-  const labels=city.cityMinimapLabels(marks,side),box=(m:CityMark)=>r(m.x-m.size/2,m.y-m.size/2,m.size,m.size),rad=city.innerRadius(side);
-  assert.deepEqual(labels.map(l=>l.text).sort(),['12','15','99+'],'only groups of LABEL_MIN (10) or more, "99+" at the ceiling');
-  for(const l of labels){
-    for(const m of marks)assert.equal(crosses(l.box,box(m)),false,`label ${l.text} ${fmt(l.box)} over mark ${m.key} ${fmt(box(m))}`);
-    assert.ok(l.box.x>=-rad&&l.box.y>=-rad&&right(l.box)<=rad&&bottom(l.box)<=rad,`label ${l.text} ${fmt(l.box)} leaves the drawing`);
-  }
-  for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++)assert.equal(crosses(labels[i].box,labels[j].box),false,`${labels[i].text} × ${labels[j].text}`);
-  assert.deepEqual(city.cityMinimapLabels(marks,side),labels,'deterministic');
-});
-
 test('9. selectorView: one selected, pending marked, guests read-only with the owner hint, locked hint, no subtitles in landscape',()=>{
   const owner=city.initialSelector(true,'cidade-nevada'),names=city.MAP_OPTIONS.map(o=>o.name);
   for(const orientation of ['portrait','landscape'] as const){
@@ -978,18 +739,12 @@ test('§7 CityMapInfo from the real asset: plaza at praca with its farthest entr
   const terrain=await realCity(),asset=city.cityAssetOf(terrain);
   assert.ok(asset,'the city terrain carries its asset');
   const map=city.cityMapInfo(asset!),p=terrain.asset.points;
-  assert.equal(map.size,terrain.asset.size.w);assert.ok(Math.abs(map.size-city.CITY_SIZE)<.1,'the minimap scale (CITY_SIZE) fits the asset');
+  assert.equal(map.size,terrain.asset.size.w);assert.ok(Math.abs(map.size-city.CITY_SIZE)<.1,'CITY_SIZE fits the asset');
   assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:p.praca.x,y:p.praca.y});
   const radius=Math.max(...(['N','S','L','O'] as const).map(id=>Math.hypot(p.bocas[id].x-p.praca.x,p.bocas[id].y-p.praca.y)));
   assert.ok(near(map.plaza.radius,radius),`radius ${map.plaza.radius}`);assert.ok(map.plaza.radius>8*K&&map.plaza.radius<20*K,'a plaza, not the city');
   assert.deepEqual(map.mouths,(['N','S','L','O'] as const).map(id=>({id,...p[`spawn${id}`],gate:{...p.bocas[id]}})),'each avenue end with its entrance on the plaza wall as its gate');
   assert.deepEqual(map.start,{x:p.inicio.x,y:p.inicio.y});
-  // On the minimap (view 0) the mouths keep their compass: N up, S down, L right, O left, each on its side of the plaza.
-  const c=city.cityMinimapPoint(map.plaza,0),at=(id:'N'|'S'|'L'|'O')=>city.cityMinimapPoint(map.mouths.find(m=>m.id===id)!,0);
-  assert.ok(at('N').y<c.y&&at('S').y>c.y&&at('L').x>c.x&&at('O').x<c.x,JSON.stringify({c,N:at('N'),S:at('S'),L:at('L'),O:at('O')}));
-  // Every mark of a frame on the real map stays inside the collapsed drawing.
-  const marks=city.cityMinimapMarks({map,view:0,selfId:'me',players:[{id:'me',x:p.inicio.x,y:p.inicio.y}],enemies:[],activeMouths:['N','L']});
-  for(const m of marks)assert.ok(Math.abs(m.x)<=city.innerRadius()&&Math.abs(m.y)<=city.innerRadius(),`${m.key} at ${m.x},${m.y}`);
   assert.equal(city.cityAssetOf({world:'ilha'}),undefined);assert.equal(city.cityAssetOf({world:'infinito'}),undefined);
   assert.equal(city.cityAssetOf({world:'cidade'}),undefined,'a city without its asset is not guessed');
 });
@@ -1000,42 +755,13 @@ const registerHooks=(nodeModule as {registerHooks?:(hooks:object)=>unknown}).reg
 const noCss=registerHooks?(registerHooks({load(url:string,context:unknown,next:(url:string,context:unknown)=>unknown){
   return url.endsWith('.css')?{format:'module',source:'',shortCircuit:true}:next(url,context);}}),undefined):'needs node:module registerHooks (node ≥ 22.15)';
 
-test('§7 world swap: the city gets the city minimap, the endless map and the island their own',()=>{
-  assert.equal(city.minimapMode({world:'cidade'}),'cidade');
-  assert.equal(city.minimapMode({world:'cidade',chunks:undefined}),'cidade');
-  assert.equal(city.minimapMode({world:'infinito',chunks:{}}),'infinito');
-  assert.equal(city.minimapMode({world:'ilha'}),'ilha');assert.equal(city.minimapMode({}),'ilha');
-});
-
-test('§7 world swap: RunHud.useCityMinimap puts one minimap in the slot, moves the layout\'s watch to it and undoes it',{skip:noCss},async()=>{
-  const {RunHud}=await import('../../src/client/hud/hud.ts');
-  const log:string[]=[];
-  const node=(name:string)=>({name,replaceWith(to:{name:string}){log.push(`${name}→${to.name}`);},remove(){log.push(`remove ${name}`);}});
-  const island=node('ilha'),cityEl=node('cidade'),big=node('grande');
-  const cityMini={element:cityEl,big,collapse(){log.push('collapse');}};
-  const hud=Object.create(RunHud.prototype) as InstanceType<typeof RunHud>;
-  Object.assign(hud,{minimap:{el:island},cityOn:false,cityMap:new city.BigMapState(),relayout:()=>log.push('relayout'),
-    observer:{observe:(e:{name:string})=>log.push(`observe ${e.name}`),unobserve:(e:{name:string})=>log.push(`unobserve ${e.name}`)},
-    createCityMinimap:()=>{log.push('create');return cityMini;}});
-  hud.useCityMinimap(true);
-  assert.deepEqual(log,['create','ilha→cidade','unobserve ilha','observe cidade','relayout'],'the city minimap takes the slot and the layout watches it');
-  assert.equal(hud.cityMinimap,cityMini);
-  log.length=0;hud.useCityMinimap(true);assert.deepEqual(log,[],'every frame calls it: a no-op when nothing changes');
-  hud.cityMap.tap(0,400);assert.equal(hud.cityMap.open,true);
-  hud.useCityMinimap(false);
-  assert.deepEqual(log,['collapse','remove grande','cidade→ilha','unobserve cidade','observe ilha','relayout'],'back to the island: the big one closes and goes, the island minimap returns');
-  assert.equal(hud.cityMap.open,false);assert.equal(hud.cityMinimap,undefined);
-  log.length=0;hud.useCityMinimap(true);
-  assert.deepEqual(log,['ilha→cidade','unobserve ilha','observe cidade','relayout'],'built once, reused');
-});
-
 /** A RescueBoard with only what its frames read, faked (no DOM, no socket); `calls` records what it drove. */
 async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
   const {RescueBoard}=await import('../../src/client/hud/rescue.ts');
   const calls:string[]=[],area=USEFUL.portrait.n100,hero={x:84.5,y:150};
   const board=Object.create(RescueBoard.prototype) as Record<string,unknown>;
-  const hud={el:{hidden:false,classList:{contains:()=>false}},cityMap:new city.BigMapState(),
-    useCityMinimap:(on:boolean)=>calls.push(`useCityMinimap ${on}`),setCityRoute:(input:unknown)=>calls.push(`cityRoute ${input?'on':'off'}`),prewarmCity:()=>calls.push('prewarm'),closeCityMap:()=>calls.push('closeCityMap'),zones:()=>({useful:area}),
+  const hud={el:{hidden:false,classList:{contains:()=>false}},
+    setCityRoute:(input:unknown)=>calls.push(`cityRoute ${input?'on':'off'}`),prewarmCity:()=>calls.push('prewarm'),zones:()=>({useful:area}),
     edges:{clear:()=>calls.push('edges.clear'),render:(a:readonly EdgeArrow[])=>calls.push(`edges.render ${a.length}`),need:()=>calls.push('edges.need'),scale:()=>1}};
   const scene={focusPoint:()=>hero,usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),say:()=>{},cameraView:0,
     locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-hero.x)*60,y:area.y+area.height/2+(p.y-hero.y)*60}})};
@@ -1047,21 +773,21 @@ async function fakeBoard(terrain:object,phase:'lobby'|'combat'){
   return {board:board as unknown as {tick():void},calls};
 }
 
-test('§7 world swap: the driver swaps the minimap every frame, before the out-of-combat return; the city frame replaces the island radar',{skip:noCss},async()=>{
+test('§7 world swap: the driver follows the world every frame, before the out-of-combat return; the city frame replaces the island radar',{skip:noCss},async()=>{
   const cityTerrain=await realCity();
-  // In the lobby (a map switched there): the slot follows the world, nothing is drawn.
+  // In the lobby (a map switched there): the city's route is prewarmed, nothing is drawn.
   for(const [terrain,on] of [[cityTerrain,true],[{world:'ilha'},false]] as const){
     const {board,calls}=await fakeBoard(terrain,'lobby');board.tick();
     // The city's walking route (cidade-08) is built ahead of time from the lobby on, not on round 1's first frame.
-    assert.deepEqual(calls,[`useCityMinimap ${on}`,...(on?['prewarm']:[]),'cityRoute off','edges.clear'],`lobby on ${on?'the city':'the island'}`);
+    assert.deepEqual(calls,[...(on?['prewarm']:[]),'cityRoute off','edges.clear'],`lobby on ${on?'the city':'the island'}`);
   }
   // In a wave in the city: the city frame draws, never the island's radar and arrows.
   const inCity=await fakeBoard(cityTerrain,'combat');inCity.board.tick();
   // Round 1's walk to the plaza (cidade-08) reads the route in the city's runs only.
-  assert.deepEqual(inCity.calls,['useCityMinimap true','prewarm','cityRoute on','cityFrame']);
+  assert.deepEqual(inCity.calls,['prewarm','cityRoute on','cityFrame']);
   // On the island: the radar's arrows, never the city frame.
   const onIsland=await fakeBoard({world:'ilha'},'combat');onIsland.board.tick();
-  assert.deepEqual(onIsland.calls,['useCityMinimap false','cityRoute off','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
+  assert.deepEqual(onIsland.calls,['cityRoute off','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
 });
 
 test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and only re-located in between; the horn base is audited',{skip:noCss},async()=>{
@@ -1073,12 +799,12 @@ test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and 
   const feed={players:new Map(),enemies:{values:()=>{sweeps++;return enemies.values();}}};
   const scene={usefulArea:area,heroScreenRect:()=>heroAt(area,0,0),cameraView:0,
     locate:(p:{x:number;y:number})=>({screen:{x:area.x+area.width/2+(p.x-cam.x)*60,y:area.y+area.height/2+(p.y-cam.y)*60}})};
-  const hud={cityMap:new city.BigMapState(),cityBig:()=>({side:300,coversAnnounce:false}),cityNotice:()=>undefined,blockCityMap(){},cityMinimap:undefined,offline:false,
+  const hud={
     edges:{render:(a:EdgeArrow[])=>rendered.push(a),need:(t:EdgeTarget[],must?:(t:EdgeTarget)=>boolean)=>needs.push(edgesMod.needKinds(t,must)),scale:()=>1}};
   const board=Object.create(RescueBoard.prototype) as Record<string,unknown>&{cityFrame(...a:unknown[]):void;cityEnemies:object[];cityPeople:object[]};
   Object.assign(board,{net:{id:'me',feed},hud,states:new Map([['p3',{id:'p3',downed:{progress:0,bleedOutTick:1280}}]]),pings:{get:()=>undefined},
-    mouths:new Map(),groupKeys:new Set(),windows:[],wallHitAt:-Infinity,hurtAt:-Infinity,minimapAt:0,cityAt:-Infinity,
-    cityPeople:[],cityEnemies:[],cityTargets:[],cityNearest:Infinity,cityPhase:'wave',cityMouths:[],
+    mouths:new Map(),groupKeys:new Set(),windows:[],wallHitAt:-Infinity,minimapAt:0,cityAt:-Infinity,
+    cityPeople:[],cityEnemies:[],cityTargets:[],
     last:{tick:1000,round:{phase:'prepare'},camp:{hornEndsTick:1100},telegraphs:[],structures:[],pickups:[]},
     seen:()=>({viewport:{x:0,y:0,width:390,height:844},covered:[]})});
   const players=[{id:'me',name:'Você',classId:'mestre-de-obras',x:me.x,y:me.y,online:true},{id:'p3',name:'Zé do Pix',classId:'mestre-de-obras',x:118,y:142,online:true}];
@@ -1136,9 +862,7 @@ test('§7 tags: the base shows the horn seconds, a group its count in the body a
   for(const a of arrows)assert.ok(a.y-HALF_H-TAG_ROOM>=USEFUL.portrait.n100.y-1,`${a.key}: tag out of the area`);
 });
 
-test('§7 COVERING and WINDOWS: the open big minimap hides the map and is a window (targets behind it get an arrow at its edge)',()=>{
-  const big='.rh-minimap-grande:not([hidden])';
-  assert.ok(edgesMod.COVERING.split(',').includes(big));assert.ok(edgesMod.WINDOWS.split(',').includes(big));
+test('§7 COVERING and WINDOWS: the open windows and the minimap hide the map; the minimap is a window (targets behind it get an arrow beside it)',()=>{
   for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap'])assert.ok(edgesMod.COVERING.split(',').includes(sel),sel);
   // The WC3 minimap floats over a corner of the field (minimapa-wc3): the collapsed one is a window too.
   assert.ok(edgesMod.WINDOWS.split(',').includes('.rh-minimap'));
@@ -1208,7 +932,7 @@ test('cidade-04: the audit\'s must-point kinds follow the layout\'s rule: the ci
   assert.equal(audit.ok,false);assert.deepEqual(audit.unpointed,['sem-seta-base']);
 });
 
-test('§7 the big minimap: screen corners from the camera, open on tap (side ≥ 120, not blocked), closes on tap or by itself',()=>{
+test('§7 screenCorners: the camera\'s view rectangle in world units (the WC3 minimap draws it), empty for a degenerate camera',()=>{
   // An iso-like affine camera: the corners come back to the viewport exactly.
   const viewport={width:390,height:844},focus={x:80,y:120};
   const locate=(p:{x:number;y:number})=>({x:195+(p.x-focus.x-(p.y-focus.y))*45,y:441+(p.x-focus.x+p.y-focus.y)*22.5-3});
@@ -1216,17 +940,6 @@ test('§7 the big minimap: screen corners from the camera, open on tap (side ≥
   assert.equal(corners.length,4);
   for(const [i,c] of [[0,0],[390,0],[390,844],[0,844]].entries()){const s=locate(corners[i]);assert.ok(near(s.x,c[0],1e-6)&&near(s.y,c[1],1e-6),`corner ${i}: ${s.x},${s.y}`);}
   assert.deepEqual(city.screenCorners(()=>({x:1,y:1}),focus,viewport),[],'a degenerate camera gives no rectangle');
-  const big=new city.BigMapState();
-  assert.equal(big.tap(1000,119),false,'S < 120: it does not open');assert.equal(big.take(),false);
-  assert.equal(big.tap(1000,232,'bicho'),false,'a critter near blocks the tap');
-  assert.equal(big.tap(1000,232),true);assert.equal(big.take(),true,'changed once');assert.equal(big.take(),false);
-  assert.equal(big.update({nowMs:1000+3000,phase:'wave'}),false);
-  assert.equal(big.update({nowMs:1000+4000,phase:'wave'}),true,'4 s in a wave');assert.equal(big.open,false);
-  big.tap(2000,176);assert.equal(big.update({nowMs:2100,phase:'prepare',nearestEnemy:2}),true,'a critter at 2.5 u closes it');
-  big.tap(3000,176);assert.equal(big.tap(3100,176),false,'a tap on the big one closes it');
-  big.tap(4000,176);assert.equal(big.update({nowMs:4100,phase:'prepare',notice:'outro',coversAnnounce:true}),true,'any notice when it covers the slot');
-  big.tap(5000,176);assert.equal(big.update({nowMs:5100,phase:'prepare',notice:'outro'}),false,'a joke notice beside it does not');
-  assert.equal(big.update({nowMs:5100,phase:'prepare',notice:'corneta'}),true,'the horn does');
 });
 
 // =====================================================================================================================

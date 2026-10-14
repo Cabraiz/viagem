@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {THUMB_GAP,BIG_MINIMAP_AUDIT,auditBoxes,chooseSlot,computeZones,crosses,gap,orientationOf,teamIsRow,union,veiled} from '../../src/client/hud/zones.ts';
+import {THUMB_GAP,auditBoxes,chooseSlot,computeZones,crosses,gap,orientationOf,teamIsRow,union,veiled} from '../../src/client/hud/zones.ts';
 
 const portrait=computeZones({viewport:{width:390,height:844},status:[{x:14,y:12,width:44,height:44},{x:166,y:8,width:142,height:46},{x:8,y:72,width:292,height:26}],
   team:{x:8,y:120,width:54,height:380},joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82},emote:{x:301,y:666,width:48,height:48}});
@@ -91,22 +91,4 @@ test('soma: two top-band fichas crossing (round × base) fail the audit',async()
   assert.deepEqual(ok.topCrossed,[]);assert.equal(ok.ok,true);
   const bad=auditBoxes([{name:'round',rect:{x:330,y:8,width:200,height:40},topReadout:true},{name:'base',rect:{x:520,y:8,width:200,height:40},topReadout:true}],z);
   assert.deepEqual(bad.topCrossed,['round×base']);assert.equal(bad.ok,false);
-});
-
-test('city big minimap in the audit (cidade-hud §2/§7): a tapped window over the field, never over the hero, a touch target off the thumbs',()=>{
-  const {selector,name,flags}=BIG_MINIMAP_AUDIT;
-  assert.equal(selector,'.rh-minimap-grande');assert.equal(name,'minimapa-grande');
-  assert.deepEqual({...flags},{allowedInPlay:true,overHeroFails:true,target:true});
-  assert.ok(!('topReadout' in flags)&&!('edgeColumn' in flags),'it covers the XP for its 4 s on purpose; not a top ficha');
-  const thumbs=[{name:'joystick',rect:{x:24,y:708,width:112,height:112},thumb:true,target:true},{name:'habilidade',rect:{x:284,y:738,width:82,height:82},thumb:true,target:true}];
-  // Doc §5 portrait: {150,72,232,232} reaches into the useful area (y 240+): allowed there, clear of a hero at the centre.
-  const big={name,rect:{x:150,y:72,width:232,height:232},...flags},hero={x:202,y:413,width:56,height:56};
-  const ok=auditBoxes([...thumbs,big],portrait,hero);
-  assert.ok(crosses(big.rect,portrait.useful),'fixture: over the field');
-  assert.deepEqual(ok.inPlay,[]);assert.deepEqual(ok.heroCrossed,[]);assert.deepEqual(ok.allowedOverHero,[]);assert.equal(ok.ok,true);
-  // Over the hero (± 40) it fails like the offer window; next to a thumb control it fails as a touch target.
-  const over=auditBoxes([...thumbs,big],portrait,{x:202,y:300,width:56,height:56});
-  assert.deepEqual(over.heroCrossed,['minimapa-grande']);assert.equal(over.ok,false);
-  const low=auditBoxes([...thumbs,{...big,rect:{x:150,y:480,width:232,height:232}}],portrait);
-  assert.ok(low.thumbGaps.some(g=>g.a==='minimapa-grande'),JSON.stringify(low.thumbGaps));assert.equal(low.ok,false);
 });

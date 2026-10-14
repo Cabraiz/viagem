@@ -71,9 +71,14 @@ export async function abrirFoto(){
     if(scene.sandbox==='cidade')await import('../sandboxes/sandbox-cidade.ts');
     else if(scene.sandbox==='hud')await import('../sandboxes/sandbox-hud.ts');
     else await import('../sandboxes/sandbox-obra.ts');
-    // Drawn: the city sandbox publishes __cidade on its first placement; the city HUD marks body[data-cidade].
-    const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade:scene.query.includes('mapa=cidade')?()=>document.body.dataset.cidade==='1':()=>true;
+    // Drawn: the city sandbox publishes __cidade on its first placement; the HUD sandbox marks body[data-hud-ready]
+    // (and body[data-cidade] for the city's HUD). The HUD and the obra also wait for the art index: the HUD draws its
+    // scene again when it lands (icons, faces), so a print before it would miss them now and then.
+    const body=document.body.dataset;
+    const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade
+      :scene.sandbox==='hud'?()=>body.hudReady==='1'&&(!scene.query.includes('mapa=cidade')||body.cidade==='1'):()=>true;
     if(!await until(drawn,30000)){w.__fotoErro='a cena não desenhou em 30 s';return;}
+    if(scene.sandbox!=='cidade')await (await import('../ui/art-boot.ts')).artReady();
     await document.fonts?.ready;
     // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.
     await frames(scene.sandbox==='cidade'?20:4);

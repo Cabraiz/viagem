@@ -1,7 +1,7 @@
 /**
  * Critter groups of the city (doc §3): one grid of GROUP_CELL world units aligned to the city, the busiest free cell
- * becomes a seed and takes its occupied ring of 8 (one ring only, so a group spans at most 3 cells, 24 u). The same
- * groups make the minimap's clovers (≥ 3) and the edge arrows (≥ GROUP_MIN, near, off screen, at most GROUP_ARROWS).
+ * becomes a seed and takes its occupied ring of 8 (one ring only, so a group spans at most 3 cells, 24 u). The groups
+ * make the edge arrows (≥ GROUP_MIN, near, off screen, at most GROUP_ARROWS).
  * Pure and deterministic: the result does not depend on the input order.
  */
 import {CITY_MAP_SCALE} from './deps.ts';
@@ -17,7 +17,7 @@ export interface EnemyGroup {
  * arrow) is a map length: 60 u on the .w3x map × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
  */
 export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60*CITY_MAP_SCALE,GROUP_ARROWS=2;
-/** Groups this big show on the minimap (clover); a shown arrow stays while its group keeps this many (hysteresis). */
+/** A shown arrow stays while its group keeps this many critters (hysteresis). */
 export const GROUP_SHOW=3;
 /** Hysteresis: a shown arrow stays while its group is among this many nearest. */
 export const GROUP_KEEP_NEAREST=3;

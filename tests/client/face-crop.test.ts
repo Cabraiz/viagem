@@ -233,9 +233,11 @@ test('wiring: team strip, result cards, edge arrows and lobby chips draw faces t
 });
 
 test('no faces on minimap marks or emote balloons (too small / over the hero itself)',()=>{
-  for(const path of ['src/client/hud/minimap.ts','src/client/hud/city/minimap.ts','src/client/fun/emotes.ts']){
+  for(const path of ['src/client/fun/emotes.ts']){
     const code=src(path);
     assert.doesNotMatch(code,/face-crop\.ts/,path);
     assert.match(code,/rostos-hud/,`${path} says why`);
   }
+  // The WC3 minimap draws teammates as coloured dots on its canvas (wc-minimap/*), never a face.
+  for(const path of ['src/client/hud/wc-minimap/minimap.ts','src/client/hud/wc-minimap/driver.ts'])assert.doesNotMatch(src(path),/face-crop\.ts/,path);
 });

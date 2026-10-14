@@ -14,7 +14,7 @@ import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
 import {createHurtFrame} from './hurt.ts';
-import {chooseSlot,crosses,measureZoneInput,measureZones,union,veiled,ZONE_WINDOWS_BESIDE_OBRA,type Rect,type ScreenZones,type ZoneInput} from './zones.ts';
+import {chooseSlot,crosses,measureZoneInput,measureZones,veiled,ZONE_WINDOWS_BESIDE_OBRA,type Rect,type ScreenZones,type ZoneInput} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
 import type {RecipeId} from '../../rules/index.ts';
 import './zones.css';
@@ -22,9 +22,8 @@ import {EdgeArrows} from './edges.ts';
 import {MoodBoard} from './moods.ts';
 import type {EmoteId} from '../fun/emotes.ts';
 import {Coach,createCoachRow,type CoachPart,type CoachShow,type Lesson} from './coach.ts';
-import {Minimap} from './minimap.ts';
 import {WcMinimap} from './wc-minimap/minimap.ts';
-import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type NoticeKind,type BlockReason,type CityObjective,type ObjectivePart} from './city/index.ts';
+import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
@@ -125,24 +124,13 @@ export class RunHud {
   /** The hint row's box, read with the other rows of the slot (same cache: rowsKey/layoutVersion). */
   private coachRect?:Rect;
   private readonly heroRectOf?:()=>Rect|undefined;
-  /** Edge arrows and minimap (UX-bordas-fora-da-tela, ORQ-minimapa); only with worldRescue. */
+  /** Edge arrows (UX-bordas-fora-da-tela); only with worldRescue. */
   readonly edges?:EdgeArrows;
-  readonly minimap?:Minimap;
   /**
    * The Warcraft-3-style minimap (card NEW-20261013-ORQ-minimapa-wc3, wc-minimap/*): the one in the `.rh-minimap` slot,
    * on every map (the city's whole map, the endless map around the hero, the island). Drawn by rescue.ts at ≤ 10 Hz.
    */
   readonly wc?:WcMinimap;
-  /**
-   * The city's minimap (design/cidade-hud.md §1–§2, card cidade-04): built the first time the world is the city and put
-   * in the `.rh-minimap` slot instead of `minimap` while it is (useCityMinimap). Only one of the two is in the DOM.
-   */
-  private city?:CityMinimap;
-  private cityOn=false;
-  /** The big city minimap: open or closed, and whether it changed since the last draw (doc §2). */
-  readonly cityMap=new BigMapState();
-  private cityBlock?:BlockReason;
-  private cityBigCache?:{side:number;coversAnnounce:boolean};private cityBigVersion=-1;
   /**
    * The city's round-1 walk to the plaza (card cidade-08, city/route.ts): a row of the announcement slot, driven by
    * setCityRoute (rescue.ts, every frame) and by the views (round, the local hero standing).
@@ -184,7 +172,7 @@ export class RunHud {
     this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida];
     this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
-    if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.minimap.el.remove();this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
+    if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
     // round chip used to walk the hero towards the sea). Only the empty space between them reaches the game.
@@ -198,65 +186,6 @@ export class RunHud {
       this.columnObserver.observe(team.el);}
   }
 
-  /**
-   * Swaps the minimap in the `.rh-minimap` slot: the city's (whole city as a diamond, tap opens the big one) while the
-   * run's world is the city, else the island/endless one. Called every frame by the driver (rescue.ts): the room may
-   * switch maps in the lobby, and the HUD is built once (explore.ts). A no-op when nothing changes.
-   */
-  useCityMinimap(on:boolean){
-    if(!this.minimap||on===this.cityOn)return;
-    this.cityOn=on;
-    // The WC3 minimap holds the slot on every map (it picks the city's frame itself): nothing to swap in the DOM.
-    if(this.wc){if(!on)this.closeCityMap();this.relayout();return;}
-    const city=on?(this.city??=this.createCityMinimap()):this.city!;
-    const [from,to]=on?[this.minimap.el,city.element]:[city.element,this.minimap.el];
-    if(!on){this.closeCityMap();city.big.remove();}
-    from.replaceWith(to);
-    // The layout watches the minimap in the slot (its box moves the announcement slot and the useful area).
-    this.observer?.unobserve(from);this.observer?.observe(to);
-    this.relayout();
-  }
-  private createCityMinimap(){
-    const city=new CityMinimap(this.el.ownerDocument);
-    city.onTap=()=>this.cityMap.tap(performance.now(),this.cityBig().side,this.cityBlock);
-    return city;
-  }
-  /** Closes the big city minimap now (out of the wave, where no city frame redraws it). */
-  closeCityMap(){this.cityMap.close();this.city?.collapse();}
-  /** The city minimap while it holds the slot (useCityMinimap), else undefined. */
-  get cityMinimap(){return this.cityOn?this.city:undefined;}
-  /** Why a tap must not open the big city minimap now (a critter near, a notice up): the collapsed border turns Cone. */
-  blockCityMap(reason:BlockReason|undefined){this.cityBlock=reason;this.city?.setBlocked(reason);}
-  /**
-   * The big city minimap's side and whether it covers the announcement slot, for the live layout (city/layout.ts
-   * cityHudLayout over the measured controls, doc §2); cached per layout. A side under BIG_MIN_SIDE: it does not open.
-   */
-  cityBig(){
-    if(this.cityBigCache&&this.cityBigVersion===this.layoutVersion)return this.cityBigCache;
-    this.cityBigVersion=this.layoutVersion;
-    const doc=this.el.ownerDocument,rect=(el:Element|null):Rect|undefined=>{
-      if(!el||(el as HTMLElement).closest('[hidden]'))return undefined;
-      const r=el.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;
-    };
-    const one=(s:string)=>rect(doc.querySelector(s)),all=(s:string)=>[...doc.querySelectorAll(s)].map(rect);
-    const style=getComputedStyle(this.el),px=(name:string)=>parseFloat(style.getPropertyValue(name))||0;
-    const viewport={width:innerWidth,height:innerHeight},open=one('.rh-offer')??one('.rh-forge');
-    const layout=cityHudLayout({viewport,safe:{top:px('--rh-t'),right:px('--rh-r'),bottom:px('--rh-b'),left:px('--rh-l')},
-      textScale:(this.edges?.scale()??1)>1.1?1.25:1,windowOpen:!!open,
-      controls:{status:[...all('.explore-camera button'),one('.explore-config'),...all('.rh-top>*')],team:union(all('.rh-member')),
-        joystick:one('.explore-stick'),skill:one('#coop-attack')??one('#coop-sos'),emote:one('.fun-emote-toggle'),chip:one('.rh-offer-chip'),offer:open}});
-    return this.cityBigCache={side:layout.minimapBig?.width??0,coversAnnounce:layout.bigCoversAnnounce};
-  }
-  /** What the announcement slot shows now, for the big city minimap (doc §2: a danger notice blocks and closes it). */
-  cityNotice():NoticeKind|undefined{
-    if(this.stack.querySelector('.rh-horn:not([hidden])'))return 'corneta';
-    if(this.stack.querySelector('.rh-alert:not([hidden])'))return 'caido';
-    const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee:not([hidden])');
-    if(marquee)return marquee.dataset.tone==='boss'?'chefe':'outro';
-    return this.stack.querySelector('.rh-killcam:not([hidden]),.rh-row:not([hidden])')?'outro':undefined;
-  }
-  /** The connection notice is up (reconnecting): the city minimap's marks stay still at 50% with sem-linha (B13). */
-  get offline(){return !!this.ctx.network;}
   /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
   emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}
 
@@ -572,7 +501,7 @@ export class RunHud {
   destroy(){
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
-    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();this.city?.destroy();
+    removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();
     for(const part of this.parts)part.destroy?.();
     this.result.destroy();
     this.music.dispose();

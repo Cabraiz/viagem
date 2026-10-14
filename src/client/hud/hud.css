@@ -604,32 +604,11 @@
    main 5d94f26). Mesma regra que o DSG-tokens já usa a 125%: fica o 1º prêmio. */
 @media(max-height:500px){.rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}}
 
-/* ---------- Minimapa (ORQ-minimapa) ----------
-   A ficha (contador sobre o mapa: Breu 88%, borda Papel, raio 6), tocável (alterna perto/longe). Retrato: debaixo da
-   engrenagem, à direita da barra de XP, e a faixa de cima cresce até ela (zones.ts). Paisagem: debaixo da engrenagem,
-   fora da área útil e longe do botão de habilidade. Formas com sentido além da cor (UX B8). */
-.rh-minimap{position:absolute;top:calc(var(--rh-t) + 64px);right:var(--rh-r);width:76px;height:76px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-ficha);background:var(--c-ficha);box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;overflow:hidden}
-.rh-minimap svg{display:block;width:100%;height:100%}
+/* ---------- Minimapa: the slot (ORQ-minimapa) ----------
+   Where the minimap sits (the WC3 one, .rh-mm below, draws itself): portrait under the gear, landscape under the gear
+   too, out of the useful area and away from the skill button; with a window open, the left column. */
+.rh-minimap{position:absolute;top:calc(var(--rh-t) + 64px);right:var(--rh-r);pointer-events:auto}
 .rh-minimap:active{transform:translateY(2px)}
-.rh-minimap .mm-land{fill:color-mix(in srgb,var(--c-papel) 20%,transparent);stroke:color-mix(in srgb,var(--c-papel) 50%,transparent);stroke-width:1}
-.rh-minimap .mm-range{fill:none;stroke:color-mix(in srgb,var(--c-papel) 28%,transparent);stroke-width:.8}
-.rh-minimap-far .mm-range{stroke-width:.5}
-.mm-voce circle{fill:var(--c-voce);stroke:var(--c-papel);stroke-width:1.6}
-.mm-aliado circle{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
-.mm-caido circle{fill:none;stroke:var(--c-cone);stroke-width:2.6}
-.mm-caido .mm-dot{fill:var(--c-papel);stroke:none}
-.mm-caido .mm-halo{display:none}
-.mm-ping .mm-halo{display:inline;fill:none;stroke:var(--c-papel);stroke-width:1.4} /* a lit "Me salva": the Cone ring stays, a Papel ring outside it (design review janela-caido) */
-.mm-base path{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
-.mm-base .mm-flag{fill:var(--c-lilas);stroke:var(--c-papel);stroke-width:.8}
-.mm-chefe :is(circle,rect){fill:var(--c-papel);stroke:var(--c-cone);stroke-width:1.4}
-.mm-chefe .mm-eye{fill:var(--c-breu);stroke:none}
-.mm-spawn path{fill:var(--c-cone);stroke:var(--c-papel);stroke-width:1}
-.mm-bau rect{fill:none;stroke:var(--c-papel);stroke-width:1.6}
-.mm-coco path{fill:var(--c-casca);stroke:var(--c-papel);stroke-width:1;stroke-linejoin:round}
-.mm-coco .mm-polpa{fill:none;stroke:var(--c-papel);stroke-width:1.3;stroke-linecap:round}
-.mm-pedra path{fill:var(--c-pedra);stroke:var(--c-papel);stroke-width:.9;stroke-linejoin:round}
-.mm-rim{opacity:.75}
 @media (min-height:501px){
   /* The announcement slot starts under the top band, which now ends under the minimap (RunHud sets --rh-anuncio). */
   /* Doubled classes: it must also beat the base ficha's fixed slot rules (camp.css, with and without the boss bar). */

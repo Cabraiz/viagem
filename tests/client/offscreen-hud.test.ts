@@ -1,10 +1,9 @@
 /**
- * Edge arrows, minimap and rescue in the world (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping): pure parts.
+ * Edge arrows and rescue in the world (UX-bordas-fora-da-tela, UX-resgate-e-ping): pure parts.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {layoutEdges,inView,arrowHalf,beakRadius,caidoTag,distanceText,tagWidth,MAX_ARROWS,EDGE_PRIORITY,type EdgeTarget} from '../../src/client/hud/edges.ts';
-import {minimapPoint,islandOutline,MINIMAP_RADIUS,MINIMAP_RANGE} from '../../src/client/hud/minimap.ts';
 import {radar,keepWarnings,holdLine,sosButton,SPAWN_TAIL_TICKS} from '../../src/client/hud/radar.ts';
 import {computeZones,crosses,HERO_MARGIN,type Rect} from '../../src/client/hud/zones.ts';
 import {projectView,viewPoint} from '../../src/client/projection.ts';
@@ -79,15 +78,10 @@ test('arrows follow the 4 views: the arrow points where the target is on screen 
     const s=toScreen(projectView(target,view),center,viewport,zoom);
     const [a]=layoutEdges([t('x','aliado',s.x,s.y,9)],area);
     assert.ok(a,`view ${view}`);
-    // The beak points at the target, and the minimap dot is in the same screen direction.
+    // The beak points at the target.
     const dir=Math.atan2(s.y-a.y,s.x-a.x);assert.ok(Math.abs(dir-a.angle)<1e-9);
-    const m=minimapPoint({x:target.x-hero.x,y:target.y-hero.y},view,20);
-    const screenDir=Math.atan2(s.y-viewport.height/2-(center.y*0),s.x-viewport.width/2);
     const fromHero={x:s.x-toScreen(center,center,viewport,zoom).x,y:s.y-toScreen(center,center,viewport,zoom).y};
-    // Same quadrant/sign on both axes (the minimap undoes the 2:1 isometric squash only).
-    assert.equal(Math.sign(Math.round(m.x*100)),Math.sign(Math.round(fromHero.x)),`x view ${view}`);
-    assert.equal(Math.sign(Math.round(m.y*100)),Math.sign(Math.round(fromHero.y)),`y view ${view}`);
-    seenAngles.push(Math.round(Math.atan2(fromHero.y,fromHero.x)*100)/100);void screenDir;
+    seenAngles.push(Math.round(Math.atan2(fromHero.y,fromHero.x)*100)/100);
   }
   assert.equal(new Set(seenAngles).size,4,'each view puts the target somewhere else on screen');
 });
@@ -114,36 +108,21 @@ test('ficha texts and the beak radius',()=>{
   assert.deepEqual(arrowHalf(1.25),{w:42,h:18});
 });
 
-test('minimap: centred on the followed hero, turned with the view, far things on the rim',()=>{
-  assert.deepEqual(minimapPoint({x:0,y:0},0,20),{x:0,y:0,rim:false});
-  // World (-1,-1) is straight up on screen in view 0 (projection.ts).
-  const up=minimapPoint({x:-5,y:-5},0,20);assert.ok(Math.abs(up.x)<1e-9&&up.y<0);
-  const far=minimapPoint({x:200,y:0},0,20);assert.equal(far.rim,true);assert.ok(Math.hypot(far.x,far.y)<=MINIMAP_RADIUS-4+1e-9);
-  // Each view turns the minimap by 90°, as it turns the screen.
-  const p0=minimapPoint({x:4,y:-2},0,20),p1=minimapPoint({x:4,y:-2},1,20);
-  assert.ok(Math.abs(p0.x*p1.x+p0.y*p1.y)<1e-9);
-  assert.equal(islandOutline(12).length,12);assert.ok(MINIMAP_RANGE.ilha[1]>MINIMAP_RANGE.ilha[0]);
-});
-
 const player=(id:string,extra:Partial<PlayerRunView>={}):PlayerRunView=>({id,name:`N${id}`,classId:'cidadao-comum',hp:50,maxHp:100,online:true,spectator:false,weapons:[],passives:[],...extra});
-test('radar: caído with seconds and ping, base, boss with an imminent telegraph, spawns until they land, chests',()=>{
+test('radar: caído with seconds and ping, base, boss with an imminent telegraph, spawns until they land; no arrow for a chest',()=>{
   const states=new Map<string,PlayerRunView>([['me',player('me')],['b',player('b',{hp:0,downed:{progress:.2,bleedOutTick:400}})],['c',player('c',{eliminated:true})],['d',player('d',{online:false})]]);
   const players=['me','b','c','d','e'].map((id,i)=>({id,name:`N${id}`,classId:'cidadao-comum',x:10+i,y:10,online:id!=='d'}));
-  const {targets,items}=radar({selfId:'me',focus:{x:10,y:10},self:{x:10,y:10},tick:200,players,states,base:{x:12,y:12},
+  const {targets}=radar({selfId:'me',focus:{x:10,y:10},tick:200,players,states,base:{x:12,y:12},
     enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:10,maxHp:10,boss:true},{id:'g',kind:'bebado',x:1,y:1,hp:1,maxHp:1}],
-    telegraphs:[{id:'t',shape:'circle',x:31,y:30,radius:2,fireTick:220}],pickups:[{id:'ch',kind:'chest',x:5,y:5,value:1},{id:'xp',kind:'xp',x:5,y:5,value:1}],
+    telegraphs:[{id:'t',shape:'circle',x:31,y:30,radius:2,fireTick:220}],
     warnings:[{x:40,y:0,atTick:210},{x:0,y:40,atTick:100}],pinged:id=>id==='b',locate:p=>({x:p.x*10,y:p.y*10})});
   const by=(k:string)=>targets.find(x=>x.key===k);
   assert.equal(by('b')?.kind,'caido');assert.equal(by('b')?.seconds,10);assert.equal(by('b')?.ping,true);
   assert.equal(by('c'),undefined,'eliminated: no arrow');assert.equal(by('d'),undefined,'offline and standing: no arrow');
   assert.equal(by('e'),undefined,'an ally on its feet is on the minimap only (design onda 6 D4)');assert.equal(by('me'),undefined);
-  assert.equal(items.find(i=>i.key==='e')?.kind,'aliado');
   assert.equal(by('base')?.kind,'base');assert.equal(by('boss')?.danger,true);assert.equal(by('g'),undefined);
   assert.equal(targets.filter(x=>x.kind==='spawn').length,1,'the old warning is gone');
-  assert.equal(by('ch'),undefined,'chests: minimap only');assert.equal(items.find(i=>i.key==='ch')?.kind,'bau');assert.equal(by('xp'),undefined);
   assert.ok(Math.abs(by('base')!.distance-Math.hypot(2,2))<1e-9);
-  assert.deepEqual(items.find(i=>i.kind==='voce'),{key:'self',kind:'voce',x:10,y:10});
-  assert.equal(items.find(i=>i.key==='b')?.ping,true);
   const list=keepWarnings([],[{type:'spawn-warning',x:1,y:2,atTick:50},{type:'damage'}],10);
   assert.equal(list.length,1);keepWarnings(list,[],50+SPAWN_TAIL_TICKS+1);assert.equal(list.length,0);
 });
@@ -226,14 +205,6 @@ test('a caído arrow with a wide tag finds a clear corner when its side is block
   assert.ok(a.angle>0,'the beak still points down, at the caído');
   // Squeezed: the clock stays, the word goes (the ficha keeps the ping ring).
   assert.equal(caidoTag(a),a.compact?'27 s':'Me salva: 27 s');
-});
-test('soma (046B): near gather nodes go on the minimap only, as coco and pedra; far or empty ones do not',async()=>{
-  const {NODE_NEAR}=await import('../../src/client/hud/radar.ts');
-  const node=(id:string,kind:string,x:number,remaining=3)=>({id,kind,x,y:0,remaining,capacity:3,value:1,progress:0});
-  const {targets,items}=radar({selfId:'me',focus:{x:0,y:0},self:{x:0,y:0},tick:0,players:[],states:new Map(),
-    nodes:[node('a','coco',5),node('b','pedra',NODE_NEAR-1),node('c','coco',NODE_NEAR+5),node('d','pedra',3,0)],locate:p=>p});
-  assert.deepEqual(items.filter(i=>i.kind==='coco'||i.kind==='pedra').map(i=>i.key).sort(),['node:a','node:b']);
-  assert.equal(targets.length,0,'no arrow for a node');
 });
 test('two caídos on one arrow: the one bleeding out sooner owns it, the other is the "+1"',()=>{
   const tight:Rect={x:0,y:0,width:100,height:60};

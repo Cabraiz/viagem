@@ -52,7 +52,7 @@ test('an ordinary room still takes a second person',async()=>{
 test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and old clients get a plain room); the object keeps it for a restart',async()=>{
   assert.deepEqual(createOptions({map:'cidade-nevada',solo:true}),{map:'cidade-nevada',solo:true});
   assert.deepEqual(createOptions({map:'lua',solo:'yes',extra:1}),{});assert.deepEqual(createOptions(null),{});
-  // D-047: ?modo=chaveiro asks for the chaveiro objective; any other value is dropped.
+  // D-047: ?modo=chaveiro or ?modo=muralha asks for that objective; any other value is dropped.
   assert.deepEqual(createOptions({map:'cidade-nevada',solo:true,objective:'chaveiro'}),{map:'cidade-nevada',solo:true,objective:'chaveiro'});
   // ?modo=muralha asks for the old wall mode (the city plays the chaveiro by default).
   assert.deepEqual(createOptions({objective:'muralha'}),{objective:'muralha'});

@@ -13,7 +13,7 @@
  *   Errors reading /health/rooms are retried until the wait runs out.
  *   A Worker that does not answer /health/rooms yet (deployed before this card) is deployed without waiting, once.
  *   It prints the commit it publishes and passes it as BUILD_SHA; after the deploy /health must answer that build
- *   (exit 4 when it never does).
+ *   (exit 4 when it never does; in CI a warning and exit 0, since the site's protocol check is the gate).
  */
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -74,4 +74,6 @@ for(let i=0;i<6;i++){
   }catch(e){console.log(`/health não respondeu (${String(e?.message??e)}).`);}
   await sleep(10_000);
 }
+// In CI the site's own protocol check (pages.yml) is the gate: a slow edge only warns there; locally it is exit 4.
+if(process.env.CI){console.log(`::warning::o /health não confirmou o build ${sha} em 60 s (o deploy saiu).`);process.exit(0);}
 console.log(`Atenção: o /health não confirmou o build ${sha}.`);process.exit(4);

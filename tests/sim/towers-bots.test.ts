@@ -13,6 +13,7 @@
  *     Obuseiro on (its rail is free), and in a real 6-bot run no root order without the ficha nor a forge buy below the reserve.
  *  6. D-048 (Grana): evolutions, tower repairs and the forge are paid in the team's R$, each order only with its price;
  *     with the chaveiro objective no Grana is spent under granaReserve (the bill), in a sweep and in a real run.
+ *  7. chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out pushing the moto when a wave starts.
  * D-031: results only.
  */
 import test from 'node:test';
@@ -217,8 +218,16 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
     if(r.ok)forges.push({recipe:recipe as RecipeId,after:s.state.grana,reserve,keep:k,needed});
     return r;
   };
-  while(!sim.outcome&&!(sim.world.round.index>=untilRound&&sim.world.round.phase==='wave')&&sim.tick<ticks(25*60)){bots.think(sim);sim.step();}
-  return {sim,orders,units,grana,forges,state:sim.run.stonewards.state};
+  // Each wave start: the bots still out pushing a dead moto (RoomBots.modes); the pushes that started it (D-047).
+  const waves:{round:number;pushing:string[]}[]=[];let pushes=0;
+  while(!sim.outcome&&!(sim.world.round.index>=untilRound&&sim.world.round.phase==='wave')&&sim.tick<ticks(25*60)){
+    bots.think(sim);
+    for(const e of sim.step()){
+      if(e.type==='round'&&e.phase==='wave')waves.push({round:e.index,pushing:ids.filter(id=>bots.modes.get(id)==='push')});
+      else if(e.type==='moto'&&e.mode==='tranco'&&!e.alone)pushes++;
+    }
+  }
+  return {sim,orders,units,grana,forges,state:sim.run.stonewards.state,waves,pushes};
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
@@ -349,4 +358,14 @@ test('review: a wall under WALL_CRITICAL is repaired out of the chaveiro\'s rese
   assert.equal(pickRecipe(view(600*WALL_CRITICAL-1),{},keep),'reparo','critical: repaired anyway');
   assert.equal(pickRecipe(view(600*.9),{},keep),undefined,'only hurt: the bill comes first');
   assert.equal(pickRecipe(view(600*.9),{},0),'reparo','no bill: the usual top-up');
+});
+
+test('chaveiro-time-cai-onda-4: in a real 6-bot chaveiro run no bot is still out at a dead moto when a wave starts; the moto is still pushed',()=>{
+  // Seed 3 (one of the five whose team fell in wave 4): the first moto dies far out a few seconds before wave 2, and
+  // the two pushers used to be ~50 u away when it started. PUSH_TRIP_SECONDS: in the intermission only a trip back in time.
+  const r=cityRun(3,6,4,'chaveiro');
+  console.log(`[onda-4] 6 bots, seed 3, to round ${r.sim.world.round.index}: ${r.pushes} pushes; at each wave start ${r.waves.map(w=>`w${w.round}:${w.pushing.length}`).join(' ')}`);
+  assert.ok(r.waves.length>=3,`${r.waves.length} waves`);
+  assert.deepEqual(r.waves.filter(w=>w.pushing.length),[],'nobody out at the moto when a wave starts');
+  assert.ok(r.pushes>=1,'the bots still push it (in the wave)');
 });

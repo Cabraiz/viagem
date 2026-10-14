@@ -30,7 +30,8 @@
  * the bot is the same as before, byte for byte.
  * Chaveiro objective (D-047, the room bots: BrainInput.teamBots, view.objective): home is the car ('quadradao'); with
  * the moto dead ('morta') and at least PUSH_BOTS players standing, the PUSH_BOTS standing bots nearest to it walk over
- * and stand by it (the tranco; a bot alone keeps the car, the moto starts by itself); with a
+ * and stand by it (the tranco; a bot alone keeps the car, the moto starts by itself; in the intermission only on a
+ * trip that is back before the wave, PUSH_TRIP_SECONDS); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
  */
@@ -46,6 +47,7 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,unitsOf,type Branch,type DefenseId} from './towers/catalog.ts';
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
+import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 
 export const HZ=20;
@@ -82,6 +84,14 @@ export const HOLD_BELOW=.15;
 type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal';
 /** D-047: bots that push a dead moto, and how close (u) they stand to it (inside the sim's PUSH_RADIUS, 2.5). */
 export const PUSH_BOTS=2,PUSH_STAND=1.5;
+/**
+ * D-047, a dead moto in the intermission (NEW-20261014-E2-chaveiro-time-cai-onda-4): the pushers go only when the trip
+ * (to the moto, PUSH_TRIP_SECONDS there, back to the car; along the streets in the city) ends before the wave. The
+ * first moto dies far out, a few seconds before wave 2, and the two pushers were still ~50 u out when it started. CI,
+ * chaveiro 6p, 16 seeds: 10/16 → 12/16, and seeds 3, 7, 8, 11, 16 no longer lose the whole team in wave 4. In the wave
+ * the push stays as it was (the moto would start by itself only after 75 s).
+ */
+export const PUSH_TRIP_SECONDS=10;
 /**
  * D-048, the chaveiro's bill (paid = min(Grana, budget) when he opens the car; the rest is debt): the bots always keep
  * CHAVEIRO_KEEP_SHARE × the bill, from the start (1.3: the bill itself plus a margin for the hits still to come, 33 R$
@@ -160,7 +170,7 @@ export function homeOf(view:RunView,fallback:Point):Point{
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
  * (nearest to the point among the standing bots that do not push and do not forge). `at`: where to go.
  */
-export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null):{kind:'push'|'clear';at:Point}|undefined{
+export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):{kind:'push'|'clear';at:Point}|undefined{
   const o=view.objective;
   if(!o||o.ended)return undefined;
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p));
@@ -169,7 +179,20 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   // Only a crew can push (PUSH_BOTS standing players, people included): a bot alone would leave the car for nothing
   // while the moto starts by itself anyway (balanco-pos-1-7 part B: a solo bot stood ~75 s at each dead moto).
   const crew=view.players.filter(standing).length>=PUSH_BOTS;
-  const pushers=crew&&o.moto.mode==='morta'?byDistance(moto,ready).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  let pushers=crew&&o.moto.mode==='morta'?byDistance(moto,ready).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  // In the intermission, only a trip that is back at the car before the wave (PUSH_TRIP_SECONDS).
+  const round=view.round;
+  if(pushers.length&&round?.phase==='prepare'){
+    const city=cityTerrainOf(terrain),car=homeOf(view,moto),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+    const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
+    const back=walk(moto,car);
+    // A bot already at the moto owes only what is left of the push (o.moto.push, 0..1) plus the margin: the 10 s are the
+    // allowance to set out, not a toll charged again every tick (else a pair that set out with little spare gave up
+    // mid-push and walked back empty-handed).
+    const there=PUSH_TRIP_SECONDS-PUSH_SECONDS,owed=(at:Point)=>dist(at,moto)<=PUSH_RADIUS?(1-(o.moto.push??0))*PUSH_SECONDS+there:PUSH_TRIP_SECONDS;
+    const fits=(id:string)=>{const at=positionOf(ready.find(p=>p.id===id)!)!;return ((walk(at,moto)+back)/speed+owed(at))*HZ<=left;};
+    if(!pushers.every(fits))pushers=[];
+  }
   if(pushers.includes(selfId))return {kind:'push',at:moto};
   const d=o.delivery;
   if(d&&d.etaS<=DELIVERY_MARK_SECONDS){
@@ -265,7 +288,7 @@ export function decide(input:BrainInput):Decision{
     if(tick-memory.lastSosTick>=SOS_GAP){decision.sos=true;memory.lastSosTick=tick;}
     return decision;
   }
-  const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger):undefined;
+  const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead

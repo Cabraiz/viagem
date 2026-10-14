@@ -31,7 +31,8 @@ import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
   GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
-import {PUSH_BOTS,objectiveTask} from '../../src/sim/bot-brain.ts';
+import {PUSH_BOTS,PUSH_TRIP_SECONDS,objectiveTask} from '../../src/sim/bot-brain.ts';
+import {heroSpeed} from '../../src/maps/world.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -466,4 +467,32 @@ test('bots and a dead moto: two standing players make a crew and the two nearest
   assert.equal(objectiveTask(crew,'b2',['b1','b2','b3']),undefined,'only the two nearest');
   // A person standing makes the crew with one bot.
   assert.equal(objectiveTask(view([player('p',20),player('b1',5)]),'b1',['b1'])?.kind,'push');
+});
+
+test('chaveiro-time-cai-onda-4: in the intermission the bots push a dead moto only on a trip back at the car before the wave',()=>{
+  // The car at the origin, the moto dead 40 u out, the two nearest bots 5 and 2 u short of it (straight: no terrain).
+  const player=(id:string,x:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y:0});
+  const players=[player('b1',35),player('b2',38),player('b3',0)],bots=['b1','b2','b3'];
+  const view=(phase:'prepare'|'wave',left:number)=>({tick:1000,players,round:{index:2,total:10,phase,phaseEndsTick:1000+left,remaining:0},
+    structures:[{id:CAR_ID,kind:CAR_ID,x:0,y:0,hp:120,maxHp:120}],
+    objective:{moto:{x:40,y:0,mode:'morta'},etaS:300,budget:25}} as unknown as Parameters<typeof objectiveTask>[0]);
+  // The farther pusher's trip: 5 u there, 40 u back, PUSH_TRIP_SECONDS by the moto (sim ticks).
+  const trip=Math.ceil(((5+40)/heroSpeed()+PUSH_TRIP_SECONDS)*SIM_HZ);
+  assert.equal(objectiveTask(view('prepare',trip+1),'b1',bots)?.kind,'push','back in time: they go');
+  assert.equal(objectiveTask(view('prepare',trip+1),'b2',bots)?.kind,'push');
+  assert.equal(objectiveTask(view('prepare',trip-1),'b1',bots),undefined,'the wave would find them out there: they stay');
+  assert.equal(objectiveTask(view('prepare',trip-1),'b2',bots),undefined);
+  assert.equal(objectiveTask(view('wave',trip-1),'b1',bots)?.kind,'push','in the wave the push is as before');
+  assert.equal(objectiveTask(view('wave',1),'b2',bots)?.kind,'push');
+  // Already at the moto (within PUSH_RADIUS) with the push 90 % done: they owe only its rest plus the margin, not the
+  // whole allowance again (review: a pair that set out with little spare used to give up mid-push).
+  const at=[player('b1',40),player('b2',39),player('b3',0)];
+  const near=(left:number)=>({tick:1000,players:at,round:{index:2,total:10,phase:'prepare',phaseEndsTick:1000+left,remaining:0},
+    structures:[{id:CAR_ID,kind:CAR_ID,x:0,y:0,hp:120,maxHp:120}],
+    objective:{moto:{x:40,y:0,mode:'morta',push:.9},etaS:300,budget:25}} as unknown as Parameters<typeof objectiveTask>[0]);
+  const rest=Math.ceil((41/heroSpeed()+.1*PUSH_SECONDS+PUSH_TRIP_SECONDS-PUSH_SECONDS)*SIM_HZ);
+  assert.ok(rest<trip,'less than a fresh trip');
+  assert.equal(objectiveTask(near(rest+1),'b1',bots)?.kind,'push','at the moto, the rest of the push still fits: they stay on it');
+  assert.equal(objectiveTask(near(rest+1),'b2',bots)?.kind,'push');
+  assert.equal(objectiveTask(near(rest-SIM_HZ),'b1',bots),undefined,'not even the rest fits: back to the car');
 });

@@ -441,7 +441,7 @@ export class CityLayer {
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=buildingFrame(view,lot.turns,this.materials.frames(s.key));
     const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth,s.frameHeight,ART_CELL);
-    const obj=sunTint(this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key)));
+    const obj=sunTint(this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale,s.scale*(s.scaleY??1)).setDepth(this.depthOf(key)));
     const box:CityBlock={id:lot.id,kind:'building',x:lot.x,y:lot.y,w:lot.w,h:lot.h,height:lot.height};
     const fade=`l:${lot.id}`,column:ColumnRef={key,occ:occluderFor(box,this.asset,base,view,this.pivot),fade};
     // The see-through tests the sheet's own height (a ruin draws lower than its block).
@@ -471,8 +471,10 @@ export class CityLayer {
       for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
     decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
+    // A cell drawn by an art lot casts the shadow of what is drawn there (its sheet's height, stretched), not its block's.
     const casters:BlockPiece[]=[];
-    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
+    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)
+      for(const p of this.index.get(i,j)?.pieces??[]){const lot=this.lotAt.get(p.y*asset.width+p.x);casters.push(lot?{...p,height:lot.sheet.height}:p);}
     const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
 
     const box=boundsOf(quads.flatMap(q=>q.points));

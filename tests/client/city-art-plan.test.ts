@@ -12,7 +12,7 @@ import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
   ART_CELL,CITY_ART_HEIGHT,GROUND_FROM_MANIFEST,LOT_UNIT,buildCityArtPlan,cityArtOptions,fountainLot,pieceFamily,planHasArt,planLots,
-  PROP_WORLD_SCALE,propSheet,sheetHeight,type CityArtPlan,
+  BUILDING_STRETCH,PROP_WORLD_SCALE,propSheet,sheetHeight,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
 import type {CityBlock} from '../../src/client/render/city/asset.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
@@ -71,7 +71,9 @@ test('demo manifest → keys, url, anchor line, height and scale per option', ()
     assert.ok(Math.abs(house.originY-(1-CITY_ART.buildingBottom/BUILDING.cell[1]))<1e-6,'anchor line from the sheet');
     assert.equal(house.scale,unit/ART_SCALE);
     const back=(2+1)*ART_CELL*TILE_Y*ART_SCALE,h=(BUILDING.cell[1]*house.originY-back)*house.scale/HEIGHT_PX;
-    assert.ok(Math.abs(house.height-h)<1e-9&&Math.abs(sheetHeight(BUILDING.cell[1],house.originY,[2,1],ART_CELL,house.scale)-h)<1e-9);
+    // Buildings stand BUILDING_STRETCH taller, vertically only (proporcoes-postes-predios).
+    assert.ok(Math.abs(house.height-h*BUILDING_STRETCH)<1e-9&&Math.abs(sheetHeight(BUILDING.cell[1],house.originY,[2,1],ART_CELL,house.scale)-h)<1e-9);
+    assert.equal(house.scaleY,BUILDING_STRETCH);
     const bench=propSheet({id:'p1',kind:'bench'},plan)!;
     assert.equal(bench.key,`city:prop:bench/${PROP.id}`);
     assert.equal(bench.scale,PROP_WORLD_SCALE.bench/ART_SCALE,'props: the delivered scale × their world scale (proporcoes-postes-predios), in both options');

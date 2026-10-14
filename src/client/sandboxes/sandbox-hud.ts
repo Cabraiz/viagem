@@ -60,6 +60,8 @@ const longest=(list:readonly string[])=>list.reduce((a,b)=>b.length>a.length?b:a
 const ROUND_NAME=longest(ROUND_NAMES),BOSS_NAME=longest(BOSS_ROUND_NAMES),MODIFIER=longest(MODIFIERS.map(modifierLabel));
 
 const params=new URLSearchParams(location.search);
+/** `texto=125`: the 125% text scale (UX-acessibilidade, <html data-texto>), as the settings set it (modo foto: --extra texto=125). */
+if(params.get('texto')==='125')document.documentElement.dataset.texto='125';
 const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
 const requested=params.get('state') as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';

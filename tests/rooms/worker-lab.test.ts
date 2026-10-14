@@ -39,5 +39,9 @@ test('deployed Worker: rooms ignore LAB_HORDE and LAB_WORLD, and the lab RPC ans
 });
 test('/health says the current protocol (PROTOCOL_VERSION, given out by the integration queue) to anyone',async()=>{
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env('false'));
-  assert.equal((await r.json()).protocol,PROTOCOL_VERSION);
+  const h=await r.json();assert.equal(h.protocol,PROTOCOL_VERSION);
+  // The commit it was published from (deploy-rooms passes BUILD_SHA); a Worker published without it says so.
+  assert.equal(h.build,'desconhecido');
+  const built=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),{...env('false'),BUILD_SHA:'4e771dc0ffee'});
+  assert.equal((await built.json()).build,'4e771dc0ffee');
 });

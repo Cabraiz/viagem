@@ -24,7 +24,11 @@ export {RoomIndex};
  */
 /** What the room needs of a server-side WebSocket (the tests pass a fake one). */
 export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
+/**
+ * BUILD_SHA: the commit this Worker was published from (scripts/deploy-rooms.mjs passes it with `--var`); /health answers
+ * it, so a deploy from a stale checkout shows at once (after 4e771dc went up from the lote's worktree without it).
+ */
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -46,7 +50,7 @@ function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
-    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL});
+    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL,build:env.BUILD_SHA||'desconhecido'},{headers:{'Cache-Control':'no-store'}});
     // deploy-worker-sem-derrubar: rooms in a match now (a deploy restarts them all), for scripts/deploy-rooms.mjs.
     if(url.pathname==='/health/rooms'&&request.method==='GET'){
       if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});

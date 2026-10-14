@@ -20,7 +20,11 @@ function run(args:string[]){
 
 test('no match on: it publishes; matches on: it waits, gives up after --wait (0 here) and says when they end',async()=>{
   const idle=await worker(200,{rooms:3,running:0,players:0,endsBy:0});
-  try{const r=await run(['--endpoint',idle.endpoint,'--wait','0']);assert.equal(r.code,0);assert.match(r.out,/Nenhuma partida/);assert.match(r.out,/publicaria agora/);}finally{idle.close();}
+  try{
+    const r=await run(['--endpoint',idle.endpoint,'--wait','0']);assert.equal(r.code,0);assert.match(r.out,/Nenhuma partida/);assert.match(r.out,/publicaria agora/);
+    // It names the commit it would publish (BUILD_SHA, answered by /health after the deploy).
+    assert.match(r.out,/Publicando o Worker do commit [0-9a-f]{12}(-sujo)? \(/);
+  }finally{idle.close();}
   const busy=await worker(200,{rooms:3,running:2,players:5,endsBy:Date.now()+600_000});
   try{
     const r=await run(['--endpoint',busy.endpoint,'--wait','0']);

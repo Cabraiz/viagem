@@ -12,6 +12,8 @@
  *     publishes; its protocol check stops it only if the live Worker is too old).
  *   Errors reading /health/rooms are retried until the wait runs out.
  *   A Worker that does not answer /health/rooms yet (deployed before this card) is deployed without waiting, once.
+ *   It prints the commit it publishes and passes it as BUILD_SHA; after the deploy /health must answer that build
+ *   (exit 4 when it never does).
  */
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -55,6 +57,21 @@ for(;;){
   console.log(`${line} Esperando… (confiro de novo em 30 s)`);
   await sleep(30_000);
 }
+// The commit going up (BUILD_SHA, answered by /health): a deploy from the wrong checkout shows in this line and in /health.
+const git=(...a)=>{const r=spawnSync('git',a,{cwd:root,encoding:'utf8'});return r.status===0?r.stdout.trim():'';};
+const head=git('rev-parse','--short=12','HEAD')||'desconhecido',dirty=git('status','--porcelain','--untracked-files=no')?'-sujo':'';
+const sha=head+dirty;
+console.log(`Publicando o Worker do commit ${sha} (${git('rev-parse','--abbrev-ref','HEAD')||'?'} em ${root}).`);
 if(dry){console.log('dry-run: publicaria agora.');process.exit(0);}
-const deploy=spawnSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config',join(root,'multiplayer/wrangler.jsonc')],{stdio:'inherit',cwd:root});
-process.exit(deploy.status??1);
+const deploy=spawnSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'deploy','--config',join(root,'multiplayer/wrangler.jsonc'),'--var',`BUILD_SHA:${sha}`],{stdio:'inherit',cwd:root});
+if(deploy.status!==0)process.exit(deploy.status??1);
+// What the Worker now answers (a few tries: the new version takes a moment to reach every edge).
+for(let i=0;i<6;i++){
+  try{
+    const h=await (await fetch(`${endpoint}/health`,{signal:AbortSignal.timeout(10_000),headers:{'Cache-Control':'no-store'}})).json();
+    if(h.build===sha){console.log(`/health: build ${h.build}, protocolo ${h.protocol}.`);process.exit(0);}
+    console.log(`/health ainda responde build ${h.build??'(sem build)'}; confiro de novo em 10 s.`);
+  }catch(e){console.log(`/health não respondeu (${String(e?.message??e)}).`);}
+  await sleep(10_000);
+}
+console.log(`Atenção: o /health não confirmou o build ${sha}.`);process.exit(4);

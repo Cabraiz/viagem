@@ -1,4 +1,4 @@
-import {HERO_SPEED_MULT} from '../../maps/world.ts';
+import {HERO_SPEED_MULT} from '../../maps/index.ts';
 
 export type Motion='idle'|'walk'|'attack';
 // Idle drawings vary in pose in the candidate atlases. Hold a single pose so

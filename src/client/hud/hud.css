@@ -775,3 +775,12 @@
 @media (max-height:500px){
   .rh-objetivo{max-width:min(100%,400px)}
 }
+
+/* ---------- Minimap WC3 (card NEW-20261013-ORQ-minimapa-wc3, hud/wc-minimap/*) ----------
+   A square in the minimap's corner (under the gear): ~112 px on a phone, up to 210 px on a desktop. A Papel frame on
+   Breu, the terrain and the marks on one canvas, pings as pulsing rings (CSS: smooth at the 10 Hz draw rate). */
+.rh .rh-minimap.rh-mm{--mm-side:clamp(124px,30vmin,210px);width:var(--mm-side);height:var(--mm-side);padding:0;border-radius:var(--r-etiqueta);background:#2b2542;border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);overflow:hidden;cursor:crosshair;touch-action:none}
+.rh-mm-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.rh-mm-ping{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid #fff4d6;box-shadow:0 0 0 2px #1d1830;pointer-events:none;animation:rh-mm-ping 1.6s ease-out forwards}
+@keyframes rh-mm-ping{0%{transform:scale(.4);opacity:1}70%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rh-mm-ping{animation:none;transform:scale(1.6)}}

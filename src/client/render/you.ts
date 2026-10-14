@@ -13,6 +13,7 @@ import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,S
 import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
 import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
+import {HERO_DRAW_SCALE} from './draw-scale.ts';
 
 /**
  * What the markers ask of render/city-outline.ts CityOutlines: the city copy a sprite shows now, if any, and the city
@@ -110,9 +111,10 @@ export class YouMarkers {
       if(!mark.self)continue;
       selfShown=true;
       this.drawContour(top,s);
-      // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), RING_SCALE of the old size, under the hero.
+      // Ground ring: Papel outside, Lilás body, Breu inside (hard bands), RING_SCALE of the old size, under the hero;
+      // its size (not its bands nor beak) and the bar follow the hero's draw scale (HERO_DRAW_SCALE).
       const fig=this.figureOf(sprite);
-      const {w,h}=ringSize(fig.width,s),{x,y}=mark.feet,r=this.ring,ringDepth=top.depth-RING_UNDER;
+      const {w,h}=ringSize(fig.width,s,HERO_DRAW_SCALE),{x,y}=mark.feet,r=this.ring,ringDepth=top.depth-RING_UNDER;
       r.setDepth(ringDepth).setVisible(top.visible);
       // The bar, arrow and chips stay over the ring and its beak wherever the hero's depth is (island: just under SELF_DEPTH).
       const over=Math.max(MARK_DEPTH,ringDepth+.05);g.setDepth(over);
@@ -139,7 +141,7 @@ export class YouMarkers {
       const fraction=clampFraction(mark.hp,mark.maxHp),bar=hpBarStep(fraction,this.fullSince,now,mark.downed);
       this.fullSince=bar.fullSince;
       if(bar.visible){
-        const bw=HP_BAR_CSS.width*s,bh=HP_BAR_CSS.height*s,left=x-bw/2,top2=y+h/2+(RING_CSS.papel+4)*s,low=fraction<LOW_HP;
+        const bw=HP_BAR_CSS.width*s*HERO_DRAW_SCALE,bh=HP_BAR_CSS.height*s*HERO_DRAW_SCALE,left=x-bw/2,top2=y+h/2+(RING_CSS.papel+4)*s,low=fraction<LOW_HP;
         // Imported frame + fill (the critters' normal pair, same rules as theirs): the frame over today's Papel edge box,
         // the fill over the track, stretched to the hp share and tinted as today. Missing either piece: today's bar.
         const art=barArt(false);

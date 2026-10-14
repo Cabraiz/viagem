@@ -6,6 +6,7 @@ import Phaser from 'phaser';
 import type {RunView,EnemyView,PickupView,ProjectileView,TelegraphView} from '../../contract/index.ts';
 import type {SimEvent} from '../../contract/index.ts';
 import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackTint,pickupLook,projectileTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
 import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
@@ -259,6 +260,8 @@ export class HordeRenderer{
   private ui=1;
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
   private body=1;
+  /** The enemies' drawn scale: the actor scale × ENEMY_DRAW_SCALE (render/draw-scale.ts); what hangs on them follows it. */
+  private enemyBody=ENEMY_DRAW_SCALE;
   /** options.city, read once per frame; the shadows' texture follows it. */
   private cityOn=false;
   private numbersThisPush=0;
@@ -372,7 +375,7 @@ export class HordeRenderer{
     this.lead=this.snapNext?1:Math.min(glideCeiling(this.glide),glided);
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
-    this.body=this.options.actorScale?.()??1;
+    this.body=this.options.actorScale?.()??1;this.enemyBody=this.body*ENEMY_DRAW_SCALE;
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
@@ -603,7 +606,7 @@ export class HordeRenderer{
     this.poofLook(puff);puff.image.clearTint();
   }
   private spawnDeath(kind:string,id:string,x:number,y:number){
-    const k=enemyKind(kind),phase=hashPhase(id),body=this.body,lift=ENEMY_ART[k].height*.35*body;
+    const k=enemyKind(kind),phase=hashPhase(id),body=this.enemyBody,lift=ENEMY_ART[k].height*.35*body;
     // Art v2: the imported death plays on a pooled death actor where (and facing where) the enemy was last drawn,
     // instead of today's puff and stars; the death joke below stays.
     const dying=this.enemies.get(id);
@@ -621,7 +624,7 @@ export class HordeRenderer{
       for(let i=0;i<starCount;i++){
         const star=this.stars.spawn(),angle=(i/starCount+phase)*TAU,speed=170+60*((i*7+phase*10)%3)/3;
         star.born=this.now;star.x=x;star.y=y;star.lift=lift;
-        star.vx=Math.cos(angle)*speed*body;star.vy=(Math.sin(angle)*speed*.8-90)*body;star.spin=(i%2?1:-1)*(4+phase*4);
+        star.vx=Math.cos(angle)*speed*this.body;star.vy=(Math.sin(angle)*speed*.8-90)*this.body;star.spin=(i%2?1:-1)*(4+phase*4);
         star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
       }
     }
@@ -638,7 +641,7 @@ export class HordeRenderer{
     const b=this.bubbles.spawn();
     this.lastBubbleAt=this.now;
     b.text.setDepth(96000);
-    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16*this.body:110*this.body;
+    b.born=this.now;b.enemy=enemy;b.player='';b.tag=false;b.x=actor?.x??NaN;b.y=actor?.y??NaN;b.lift=actor?this.barLift(actor)+16*this.body:110*this.enemyBody;
     paint(b.text,BUBBLE_STYLE,line);
   }
   /**
@@ -670,7 +673,7 @@ export class HordeRenderer{
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
   private drawEnemy=(a:EnemyActor)=>{
-    const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.body;
+    const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
@@ -720,7 +723,7 @@ export class HordeRenderer{
     const v=this.scene.cameras.main.worldView;
     if(x<v.x-40||x>v.right+40||feetY<v.y-40||feetY>v.bottom+160)return;
     // Sizes in CSS px (EYES_CSS), so the eyes read on a phone at the follow zoom; bigger for the elite and the boss.
-    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size*this.body;
+    const art=ENEMY_ART[a.kind],c=this.css()*size*(a.boss?1.6:1),head=feetY-art.height*art.originY*(a.kind==='pombos'?.55:.62)*size*this.enemyBody;
     const gap=EYES_CSS.gap*c,w=EYES_CSS.width*c,h=EYES_CSS.height*c,edge=EYES_CSS.edge*c,alpha=Math.min(1,this.dark*1.6),g=this.eyes;
     // Imported eyes (efeitos `olhos-escuro`, art-d item 5): the pair as wide as today's, blinking on today's clock.
     const eyes=markArt('eyes');
@@ -744,7 +747,7 @@ export class HordeRenderer{
    * (x,y): feet on the ground; (bx,by): where the body is drawn (lifted for flyers).
    */
   private drawPhase(a:EnemyActor,x:number,y:number,bx:number,by:number,size:number){
-    const look=a.look,art=ENEMY_ART[a.kind],body=this.body,css=this.css(),now=this.now,reduced=this.reduced;
+    const look=a.look,art=ENEMY_ART[a.kind],body=this.enemyBody,css=this.css(),now=this.now,reduced=this.reduced;
     const height=art.height*art.originY*size*body;
     if(look.aura){
       const e=groundEllipse(PALESTRA_RADIUS,this.ellipseAxes),k=auraPulse(now,reduced);
@@ -805,11 +808,11 @@ export class HordeRenderer{
   private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
-  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.body;}
+  private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.enemyBody;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
     // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).
-    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=(a.elite&&!a.boss?Math.sqrt(this.ui/this.body):1)*this.body;
+    const ratio=Math.max(0,Math.min(1,a.hp/Math.max(1,a.maxHp))),u=(a.elite&&!a.boss?Math.sqrt(this.ui/this.enemyBody):1)*this.enemyBody;
     const w=(a.boss?170:a.elite?54:40)*u,h=(a.boss?13:7)*u,border=3*u;
     const fill=a.boss?0xb48cff:ratio>.5?0x8fe39a:ratio>.25?0xffd36e:0xff8080;
     // Imported frame + fill (9-slice) when the variant's pair is in: the fill stretches to the hp share, tinted as today.
@@ -1057,7 +1060,7 @@ export class HordeRenderer{
   private drawDeath=(d:DeathFx)=>{
     this.place(d.image,d.x,d.y,d.lift);
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
-    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.body,d.art);
+    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art);
   };
   private drawStar=(s:StarFx)=>{
     const age=this.now-s.born;if(age>=STAR_MS)return false;

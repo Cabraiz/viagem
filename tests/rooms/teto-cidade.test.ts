@@ -1,6 +1,6 @@
-// D-043: the city's combat cap is 25 min (its boss spawns at 15.6–21.9 sim minutes in the cidade-11 balance; the endless
-// map keeps 20), set by the room's map — also when the owner switches it in the lobby, never during a match — and a room
-// lives 50 min so a lobby plus a 25 min city match fit.
+// D-043: the city's combat cap is 30 min since cidade-escala-1-7 (25 before; on the 1.7× city the runs that reach the boss end
+// at 21.1–25.6 sim minutes; the endless map keeps 20), set by the room's map — also when the owner switches it in the lobby,
+// never during a match — and a room lives 50 min so a lobby plus a 30 min city match fit.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -12,8 +12,8 @@ const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
 
-test('D-043: city 25 min, endless 20 min, chosen by the room map and kept through a lobby switch',async()=>{
-  assert.equal(CITY_RUN_DURATION_TICKS,25*60*RUN_HZ);assert.equal(RUN_DURATION_TICKS,20*60*RUN_HZ);
+test('D-043: city 30 min, endless 20 min, chosen by the room map and kept through a lobby switch',async()=>{
+  assert.equal(CITY_RUN_DURATION_TICKS,30*60*RUN_HZ);assert.equal(RUN_DURATION_TICKS,20*60*RUN_HZ);
   const city=new Room(1000,7,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada'});await city.ready();
   assert.equal(city.map.id,'cidade-nevada');assert.equal(city.run.snapshot().remaining,CITY_RUN_DURATION_TICKS);
   const endless=new Room(1000,7,{cityText,cityRef:CITY,cityPlayable:true,map:'infinito'});await endless.ready();

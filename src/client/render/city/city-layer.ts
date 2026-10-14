@@ -11,7 +11,7 @@
  */
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
-import {CHUNK_CELLS,ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
+import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
 import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim,type PieceLook,type ShadowLook} from './decor.ts';
 import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.ts';
 
@@ -697,7 +697,7 @@ export class CityLayer {
     if(!Number.isFinite(cx)||!Number.isFinite(cy)||cx<0||cy<0||cx>=this.asset.width||cy>=this.asset.height)return;
     coveringColumns(this.nearColumns(cx,cy,view),f,view,out,this.pivot,this.actorBox);
     // Props: the figure's chunk and its 8 neighbours (a pine reaches ~171 px up, well under a chunk).
-    const kx=Math.floor(cx/CHUNK_CELLS),ky=Math.floor(cy/CHUNK_CELLS);
+    const kx=Math.floor(cx/this.index.size),ky=Math.floor(cy/this.index.size);
     for(let j=ky-1;j<=ky+1;j++)for(let i=kx-1;i<=kx+1;i++){
       const live=this.live.get(`${i},${j}`);
       if(live)for(const p of live.props)if(!out.has(p.fade)&&propCovers(p,f,view,this.pivot,this.actorBox))out.add(p.fade);

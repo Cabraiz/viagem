@@ -783,3 +783,17 @@
 @media (max-height:500px){
   .rh-objetivo{max-width:min(100%,400px)}
 }
+
+/* ---------- Minimap WC3 (card NEW-20261013-ORQ-minimapa-wc3, hud/wc-minimap/*) ----------
+   A square in the minimap's corner (under the gear): ~112 px on a phone, up to 210 px on a desktop. A Papel frame on
+   Breu, the terrain and the marks on one canvas, pings as pulsing rings (CSS: smooth at the 10 Hz draw rate). */
+.rh .rh-minimap.rh-mm{--mm-side:clamp(124px,30vmin,210px);width:var(--mm-side);height:var(--mm-side);padding:0;border-radius:var(--r-etiqueta);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);overflow:hidden;cursor:crosshair;touch-action:none}
+/* Narrow screens (portrait phones): no room beside the hero up top, so bottom-left as in Warcraft 3, 24 px above the
+   joystick (112 px at 24 px from the bottom: explore.css), below the hero's zone and the team column. */
+@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px)}}
+.rh-mm-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.rh-mm-ping{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu);pointer-events:none;animation:rh-mm-ping 1.6s ease-out forwards}
+@keyframes rh-mm-ping{0%{transform:scale(.4);opacity:1}70%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.rh-mm-ping{animation:none;transform:scale(1.6)}}
+/* Each teammate's colour (their dot on the WC3 minimap) as an outer ring of the portrait. */
+.rh-member:not(.rh-me) .rh-member-ring{box-shadow:0 0 0 2px var(--c-breu),0 0 0 4px var(--rh-cor,var(--c-breu)),var(--s-2)}

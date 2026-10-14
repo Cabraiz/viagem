@@ -27,7 +27,8 @@ import {moveSafely} from '../../src/sim/enemies/ai.ts';
 import {createStonewardsSystem,HORN_LEAD,HORN_LEAD_CITY,MAX_PREPARE_TICKS,type StonewardsOptions,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {GATHER_REACH,MAX_GATHER_DISTANCE,NODE_CAPACITY,WORK_PER_UNIT,nodesNear,nodeValue,type NodeInfo} from '../../src/sim/stonewards/resources.ts';
 import type {ResourceKind} from '../../src/sim/stonewards/state.ts';
-import {lootHeroSpeed} from '../../src/sim/stonewards/loot.ts';
+import {LOOT_FAR_SECONDS,LOOT_NEAR_SECONDS,lootHeroSpeed} from '../../src/sim/stonewards/loot.ts';
+import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
 import {CAMP_RADIUS,RETURN_SLACK_SECONDS,returnTicks} from '../../src/rules/stonewards.ts';
 import {STONEWARDS_INTERMISSION_SECONDS} from '../../src/sim/assemble.ts';
 import * as zueiraCidade from '../../src/rules/zueira-cidade.ts';
@@ -56,6 +57,11 @@ const realSeconds=(p:Point)=>walkSeconds(p)*BASE/HERO;
 /** Goal: the plaza center only (used to trace the way out, played backwards). */
 const centerField=new FlowField(P.grid,[P.plazaCenter]);
 const TIER_SLACK=.25;
+/**
+ * Tier bounds (s at the base walk): 10 / 15 s on the .w3x-sized city, × CITY_MAP_SCALE since the map grew 1.7×
+ * (NEW-20261013-ORQ-cidade-escala-1-7: every walk from the plaza is 1.7× longer, the crates keep their places).
+ */
+const NEAR_S=10*CITY_MAP_SCALE,FAR_S=15*CITY_MAP_SCALE;
 /** Farthest a crate may sit from its candidate: the centre of a neighbouring cell (a candidate whose own cell centre the hero rule closes). */
 const NEIGHBOUR_CELL=CS*1.5*Math.SQRT2+1e-6;
 const KINDS:readonly ResourceKind[]=['coco','pedra'];
@@ -64,7 +70,7 @@ const fmt=(p:Point)=>`(${p.x.toFixed(2)},${p.y.toFixed(2)})`;
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 /** Every crate of the city (the reach covers the whole map). */
 const allCrates=()=>nodesNear(city,P.plazaCenter,1e4);
-const goodCrates=()=>allCrates().filter(n=>{const s=walkSeconds(n);return s>10+TIER_SLACK&&s<15-TIER_SLACK;});
+const goodCrates=()=>allCrates().filter(n=>{const s=walkSeconds(n);return s>NEAR_S+TIER_SLACK&&s<FAR_S-TIER_SLACK;});
 /** A crate with no other crate within two gather reaches (a hero on it works only that one). */
 const isolated=(n:NodeInfo,all=allCrates())=>all.every(o=>o.id===n.id||dist(o,n)>2*MAX_GATHER_DISTANCE+.5);
 
@@ -129,8 +135,13 @@ function trace(field:FlowField,from:Point,done:(p:Point)=>boolean,maxTicks=ticks
   assert.ok(done(body),`walk from ${fmt(from)} stuck at ${fmt(body)}`);
   return out;
 }
-/** The walk plaza center → p: the walk p → plaza center played backwards (every step one tick at heroSpeed). */
-const pathFromPlaza=(p:Point)=>trace(centerField,p,q=>dist(q,P.plazaCenter)<.5).reverse();
+/**
+ * The walk plaza center → p: the walk p → plaza center played backwards (every step one tick at heroSpeed). Done in
+ * the centre's goal cell, where the field stops steering (was `< .5 u` of the centre, about that cell on the 0.88 u
+ * cell; the asset cell is 1.496 u since NEW-20261013-ORQ-cidade-escala-1-7, so a step can stop 0.7 u off the centre).
+ */
+const sameCell=(a:Point,b:Point)=>Math.floor(a.x/CS)===Math.floor(b.x/CS)&&Math.floor(a.y/CS)===Math.floor(b.y/CS);
+const pathFromPlaza=(p:Point)=>trace(centerField,p,q=>sameCell(q,P.plazaCenter)).reverse();
 /** Ticks a hero at p needs to walk into the base. */
 const ticksHome=(p:Point)=>trace(P.plazaField,p,q=>P.insideBase(q)).length-1;
 
@@ -217,19 +228,20 @@ test('crates: the NodeInfo shape nodeViews reads, capacity 1, on walkable cells 
 });
 
 // ---------- 3. tiers ----------
-test('tiers by walk time from the plaza at the base hero speed: value grows near → good → far, good crates exist at 10–15 s',t=>{
-  assert.equal(lootHeroSpeed(city),BASE,'the tiers stay on the base walk');assert.equal(HERO,BASE*HERO_SPEED_MULT,'the heroes walk 2×');
+test('tiers by walk time from the plaza at the base hero speed: value grows near → good → far, good crates exist at 17–25.5 s (10–15 s × CITY_MAP_SCALE)',t=>{
+  assert.equal(lootHeroSpeed(city),BASE,'the tiers stay on the base walk');
+  assert.deepEqual([LOOT_NEAR_SECONDS,LOOT_FAR_SECONDS],[NEAR_S,FAR_S],'tier bounds × CITY_MAP_SCALE');assert.equal(HERO,BASE*HERO_SPEED_MULT,'the heroes walk 2×');
   const tiers:Record<'near'|'good'|'far',NodeInfo[]>={near:[],good:[],far:[]};
   for(const n of allCrates()){
     const s=walkSeconds(n);
     assert.ok(Number.isFinite(s),n.id);
-    if(s<10-TIER_SLACK)tiers.near.push(n);
-    else if(s>10+TIER_SLACK&&s<15-TIER_SLACK)tiers.good.push(n);
-    else if(s>15+TIER_SLACK)tiers.far.push(n);
+    if(s<NEAR_S-TIER_SLACK)tiers.near.push(n);
+    else if(s>NEAR_S+TIER_SLACK&&s<FAR_S-TIER_SLACK)tiers.good.push(n);
+    else if(s>FAR_S+TIER_SLACK)tiers.far.push(n);
   }
-  assert.ok(tiers.good.length>=1,'good crates at 10–15 s of walking');
-  // At the city hero speed (cidade-04, ~1.99 u/s) the nearest candidate is already ~10 s out, so the near tier may be
-  // empty; far crates must exist.
+  assert.ok(tiers.good.length>=1,`good crates at ${NEAR_S}–${FAR_S} s of walking`);
+  // At the city hero speed (cidade-04, ~1.99 u/s) the nearest candidate is already about NEAR_S out, so the near tier
+  // may be empty; far crates must exist.
   assert.ok(tiers.far.length>=1,'the asset has far candidates too');
   const values=(l:NodeInfo[])=>l.map(n=>n.value);
   if(tiers.near.length)assert.ok(Math.max(...values(tiers.near))<Math.min(...values(tiers.good)),`near ${values(tiers.near)} < good ${values(tiers.good)}`);
@@ -332,7 +344,8 @@ test('city horn: heroes idle since the intermission started (no stick, no crate)
   // so a person left there stays idle.
   // S: the walk at the base hero speed (the spawn's distance); R: the real (2×) walk the horn times.
   const spawn=city.asset.points.inicio,S=walkSeconds(spawn),R=realSeconds(spawn);
-  assert.ok(S>30&&S<60,`the spawn is ${S.toFixed(1)} s of walk from the plaza`);
+  // 30–60 s on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7): the spawn is 1.7× farther.
+  assert.ok(S>30*CITY_MAP_SCALE&&S<60*CITY_MAP_SCALE,`the spawn is ${S.toFixed(1)} s of walk from the plaza`);
   const nearest=Math.min(...allCrates().map(n=>dist(n,spawn)-n.radius));
   assert.ok(nearest>GATHER_REACH+3,`no crate within reach of the spawn (nearest edge ${nearest.toFixed(1)} u)`);
   /** One intermission with `afk` at the spawn and a hero in the plaza; `act(hero, ticks since start)` may shove or steer afk. */

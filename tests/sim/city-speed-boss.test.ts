@@ -226,7 +226,11 @@ test('first wave: round 1, team at the plaza, real cast and converted speeds (as
   }
   console.log(`[cidade-05c] first wave at the plaza (round 1, assembled, converted speeds), ${within13}/6 within 13 s:\n  ${report.join('\n  ')}`);
   assert.deepEqual(late,[],'every seed within 14 s');
-  assert.ok(within13>=5,`${within13}/6 seeds within 13 s`);
+  // NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× map the base is 1.7× bigger and the S groups (the team stands by
+  // mouth S) walk ~2 s longer from the mouth line to the plaza: measured 13.55 / 13.00 / 13.50 s on S (mouth line 8.75 /
+  // 8.25 / 8.65 s), 12.05 / 11.90 / 11.15 s on N/O; on the .w3x-sized city 12.90 / 12.35 / 12.85 s on S, 6/6 within 13 s.
+  // Every seed still within 14 s (above); within 13 s: 4 of 6.
+  assert.ok(within13>=4,`${within13}/6 seeds within 13 s`);
 });
 
 // ---------- 4. team at inicio ----------

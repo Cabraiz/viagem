@@ -27,7 +27,7 @@
  * director's TutorialState is JSON-safe.
  */
 import {HERO_SPEED_MULT,STRAIGHT_COST,UNREACHABLE,type FlowField,type FlowPoint,type Point} from '../../maps/index.ts';
-import {ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
+import {CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
 
@@ -40,9 +40,10 @@ export const TUTORIAL_PLAN=Object.freeze({
   /**
    * Wave seconds when the plaza group reaches the plaza, before a novice's walk ends: tuned 40 s for the base walk
    * (slow novice in the plaza at ~62 s, the group holding it from ~41 s), divided by maps HERO_SPEED_MULT so it keeps
-   * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s).
+   * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s), and × rules
+   * CITY_MAP_SCALE for the same share of the 1.7× longer walk (NEW-20261013-ORQ-cidade-escala-1-7: 34 s).
    */
-  welcomeArrival:40/HERO_SPEED_MULT,
+  welcomeArrival:40*CITY_MAP_SCALE/HERO_SPEED_MULT,
   /** hp multiplier (round 1 of the table is 0.35) and speed multiplier (city bêbado 1.79 → ≈ 1.61 u/s; hero 1.99). */
   hpScale:.3,speed:.9,
   /** Hard end of the wave (s): what is still out retreats, and the round ends even if nobody reached the plaza. */
@@ -52,10 +53,16 @@ export const TUTORIAL_PLAN=Object.freeze({
 export const TUTORIAL_BEHIND=0,TUTORIAL_WELCOME=1;
 /** Mouths the plaza group may use: never S, the avenue the team walks in by. */
 export const TUTORIAL_MOUTHS:readonly Mouth[]=Object.freeze(['N','L','O'] as Mouth[]);
-/** A spot behind the team is at least this much farther from the plaza (path u) than the hero farthest from it. */
+/**
+ * A spot behind the team is at least this much farther from the plaza (path u) than the hero farthest from it: a few
+ * steps behind a hero, not a map length (kept by NEW-20261013-ORQ-cidade-escala-1-7).
+ */
 export const BEHIND_MARGIN=2;
-/** Spots behind the team are searched within this radius (u) of the wreck; members stand this far apart (u). */
-export const BEHIND_RADIUS=40,BEHIND_GAP=.8;
+/**
+ * Spots behind the team are searched within this radius (u) of the wreck (a map length: 40 u on the .w3x-sized city, ×
+ * CITY_MAP_SCALE, NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept).
+ */
+export const BEHIND_RADIUS=40*CITY_MAP_SCALE,BEHIND_GAP=.8;
 /**
  * Searches (one a second, from behindAt) for hidden spots behind the team before the members still without one are
  * dropped, so a team that keeps every candidate cell in sight does not hold the round to its cap.

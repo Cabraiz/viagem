@@ -9,6 +9,7 @@ import {railName} from '../render/map-label-rules.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
 import {artIndexVersion} from '../art/manifest.ts';
+import {teamColor} from './wc-minimap/minimap.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -56,6 +57,8 @@ export function createTeamStrip():HudPart{
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
+    // Each teammate's colour, as their dot on the minimap (wc-minimap teamColor: their place in the run's list).
+    for(const p of view.players){const nodes=members.get(p.id);if(nodes&&p.id!==ctx.localId)put(nodes,'cor',teamColor(view.players,p.id),v=>nodes.root.style.setProperty('--rh-cor',v));}
     const live=new Set(ordered.map(p=>p.id));
     for(const [id,nodes] of members)if(!live.has(id)){nodes.root.remove();members.delete(id);}
     root.dataset.count=String(ordered.length);

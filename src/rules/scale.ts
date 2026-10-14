@@ -16,6 +16,13 @@ import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,REFERENCE_SHORT_SIDE_PX,TILE_X} from '.
 export const WC3_UNIT=0.006875;
 /** WC3 units per map cell. */
 export const WC3_CELL=128;
+/**
+ * Map scale of the Cidade Nevada (NEW-20261013-ORQ-cidade-escala-1-7, opção D): the city's geometry (cells, streets,
+ * blocks, the whole map: 169 → 287 u) is this many times the .w3x proportions, while the people (hero radius, speed,
+ * drawn size), the enemies and the camera's world width stay as WC3_UNIT made them. Separate from WC3_UNIT on purpose:
+ * WC3_UNIT keeps sizing the people. The asset carries the scaled geometry (version 2, scripts/escalar-cidade.ts).
+ */
+export const CITY_MAP_SCALE=1.7;
 
 export type MapId='infinito'|'cidade-nevada';
 export type Orientation='portrait'|'landscape';
@@ -105,12 +112,14 @@ export const SCALE_PROFILES:Readonly<Record<MapId,Readonly<ScaleProfile>>>=Objec
     zoom:{portrait:fixed(infWidth(INF_SHORT_PX)),landscape:fixed(infWidth(INF_LONG_PX))},
   }),
   'cidade-nevada':freezeProfile({
-    id:'cidade-nevada',cell:WC3_CELL*WC3_UNIT,
+    // The map's cell is CITY_MAP_SCALE × the .w3x cell (1.496 u); the hero below stays on the unscaled 0.88 u cell.
+    id:'cidade-nevada',cell:WC3_CELL*WC3_UNIT*CITY_MAP_SCALE,
     hero:{radius:CIDADE_NEVADA_WC3.heroRadius*WC3_UNIT,speed:CIDADE_NEVADA_WC3.heroSpeed*WC3_UNIT,drawnSize:CIDADE_NEVADA_WC3.heroDrawnCells*WC3_CELL*WC3_UNIT},
     enemySpeedRatio:CIDADE_NEVADA_WC3.enemySpeed/CIDADE_NEVADA_WC3.heroSpeed,
     sizes:{enemy:CIDADE_NEVADA_WC3.enemyScale,boss:{min:CIDADE_NEVADA_WC3.bossScale[0],max:CIDADE_NEVADA_WC3.bossScale[1]}},
-    // Landscape copies the WC3 camera (~18 cells); portrait shows ~10–11 cells so the hero stays legible (D-009).
-    zoom:{landscape:fixed(CIDADE_NEVADA_WC3.cameraCells),portrait:[10,11]},
+    // Landscape copies the WC3 camera (~18 .w3x cells); portrait shows ~10–11 so the hero stays legible (D-009). In map
+    // cells ÷ CITY_MAP_SCALE: the camera shows the same world units around the same hero, fewer of the bigger cells.
+    zoom:{landscape:fixed(CIDADE_NEVADA_WC3.cameraCells/CITY_MAP_SCALE),portrait:[10/CITY_MAP_SCALE,11/CITY_MAP_SCALE]},
   }),
 });
 
@@ -149,7 +158,7 @@ export function cellsToUnits(cells:number,profile:ScaleProfile):number{return no
 export function unitsToCells(units:number,profile:ScaleProfile):number{return nonNegative('units',units)/checked(profile).cell;}
 
 // ---------- Bodies and speeds ----------
-/** Hero diameter in cells (cidade-nevada ≈ 0.5). */
+/** Hero diameter in map cells (cidade-nevada ≈ 0.29: half a .w3x cell ÷ CITY_MAP_SCALE). */
 export function heroWidthCells(profile:ScaleProfile):number{const p=checked(profile);return 2*p.hero.radius/p.cell;}
 /** Common enemy speed in u/s; `multiplier` scales per enemy kind (1 = common). */
 export function enemySpeed(profile:ScaleProfile,multiplier=1):number{
@@ -194,8 +203,8 @@ export function floorWidthUnits(profile:ScaleProfile,viewportWidth:number,minHer
 }
 /**
  * Camera target for a CSS viewport (D-030): the faithful D-026 width (visibleWidthUnits), narrowed when needed so the
- * drawn hero never falls under the 56 px floor. On 844×390 that is ≈15.1 cells (not 18) and on 390×844 ≈7.0 (not
- * 10.5); `floored` says the floor won. pixelsPerUnit is along screen x (screen y is half, TILE_Y); Phaser zoom =
+ * drawn hero never falls under the 56 px floor. On 844×390 that is ≈15.1 .w3x cells (not 18) and on 390×844 ≈7.0 (not
+ * 10.5); visibleCells counts map cells (÷ CITY_MAP_SCALE in the city); `floored` says the floor won. pixelsPerUnit is along screen x (screen y is half, TILE_Y); Phaser zoom =
  * pixelsPerUnit / (42·√2). heroPixels is the drawn figure, bodyPixels the collision diameter. Width-only: the camera
  * card (cidade-04) adds a height cap for near-square screens. The 'infinito' widths are snapshots of framing.ts
  * followZoom on the D-009 phones only; the endless map keeps using followZoom.

@@ -94,7 +94,14 @@ export interface CityArtPlan {
 
 export interface CityArtOptions {height?:CityArtHeight;ground?:boolean;
   /** false = no art at all (`?arte=0`). */
-  enabled?:boolean}
+  enabled?:boolean;
+  /**
+   * World units per city cell the lots stand on (the asset's unitsPerCell; default ART_CELL, the art's own cell). The
+   * footprint sheets (buildings, rubble, the fountain) are drawn cell / ART_CELL larger so one art cell still covers one
+   * city cell: on the 1.7× Cidade Nevada (1.496 u, NEW-20261013-ORQ-cidade-escala-1-7) the buildings grow 1.7×. Props
+   * keep their absolute size (PROP_WORLD_SCALE), whatever the cell.
+   */
+  cell?:number}
 
 /** `?arte=0` (no art) and `?altura=a|b` from a query string. */
 export function cityArtOptions(search:string):CityArtOptions{
@@ -124,7 +131,10 @@ export function sheetHeight(frameHeight:number,originY:number,footprint:[number,
   return Math.max(0.3,(frameHeight*originY-backPx)*scale/HEIGHT_PX);
 }
 
-/** Cell size the art is drawn for (materials.ts convention: D-026 0.88 u). */
+/**
+ * Cell size the art is drawn for (materials.ts convention: D-026 0.88 u, the .w3x cell). It converts footprints to art
+ * pixels (sheetHeight, buildingAnchor's origin), so it stays 0.88 on a bigger map; CityArtOptions.cell scales the display.
+ */
 export const ART_CELL=0.88;
 
 const empty=(height:CityArtHeight):CityArtPlan=>({height,unit:LOT_UNIT[height],sheets:[],buildings:{intact:[],ruin:[],rubble:[]},props:{},ground:{}});
@@ -133,7 +143,10 @@ const empty=(height:CityArtHeight):CityArtPlan=>({height,unit:LOT_UNIT[height],s
 export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityArtPlan{
   const height=options.height??CITY_ART_HEIGHT,plan=empty(height);
   if(options.enabled===false)return plan;
-  const unit=plan.unit,big=unit/ART_SCALE,small=1/ART_SCALE;
+  const cell=options.cell??ART_CELL;
+  if(!(cell>0))throw new RangeError(`city art cell must be > 0, got ${String(cell)}`);
+  // Footprint sheets: one art cell (ART_CELL) on `unit` city cells of `cell` u; props as delivered × PROP_WORLD_SCALE.
+  const unit=plan.unit,big=unit/ART_SCALE*cell/ART_CELL,small=1/ART_SCALE;
   const each=(g:ArtGroup|undefined)=>g?Object.keys(g.pieces).sort().map(id=>[id,g.pieces[id]] as const):[];
   const predios=index.groups.predios,props=index.groups.props,base=index.groups.base,chao=index.groups.chao;
   const footprintSheet=(group:ArtGroup,key:string,p:ArtPiece,f:ArtFile,fp:[number,number]):CitySheet=>{

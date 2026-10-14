@@ -28,6 +28,7 @@
  * can only become a Rojão or a Holofote). The Gustavão is not built on a site: it moves onto the laid rail (RailSite).
  */
 import {ticks} from '../contract/index.ts';
+import {CITY_MAP_SCALE} from './scale.ts';
 import {UNITS_PER_TOKEN} from './stonewards.ts';
 /** Site size a defense needs (structurally the maps port's BuildSize; rules may not import maps). */
 export type DefenseSize=1|2|3;
@@ -121,9 +122,10 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
     range:10,minRange:2,cooldown:s(3),damage:22,shots:4,area:1.6,hits:'ground'}),
   'obuseiro':def({id:'obuseiro',name:'Obuseiro Pesado',label:'B5',tier:5,branch:'B',from:'lanca-foguetes',footprint:[3,3],hp:1000,
     range:12,minRange:3,cooldown:s(3.5),damage:90,area:2.4,hits:'ground',target:'cluster'}),
-  // B6: fires once in a long while, with a huge area, from the rail; reaches most of the map.
+  // B6: fires once in a long while, with a huge area, from the rail; reaches most of the map. City only (the rail): its
+  // range is a map length, 60 u × CITY_MAP_SCALE since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
   'gustavao':def({id:'gustavao',name:'Gustavão',label:'B6',tier:6,branch:'B',from:'obuseiro',footprint:[12,4],hp:3000,rail:true,
-    range:60,minRange:6,cooldown:s(20),damage:600,area:6,hits:'ground',target:'cluster'}),
+    range:60*CITY_MAP_SCALE,minRange:6,cooldown:s(20),damage:600,area:6,hits:'ground',target:'cluster'}),
   // C: control and support.
   'holofote':def({id:'holofote',name:'Holofote',label:'C2',tier:2,branch:'C',from:'vigia-do-predio',footprint:[1,1],hp:400,
     range:6,cooldown:s(.5),damage:0,area:2,slow:s(1.5),dazzle:{ticks:s(.6),chance:.3}}),

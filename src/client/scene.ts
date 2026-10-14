@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import {Vignette} from './render/vignette.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -144,7 +144,6 @@ export class IslandScene extends Phaser.Scene {
   private steps=new StepLerp();
   /** The local hero's reconcile error, faded on screen (3g-rede-sem-teleporte, smoothing.ts). */
   private correction=new SelfCorrection();
-  private smooth?:Point;
   /** Out or watching (UX onda 4): the teammate the camera follows, and where it last was. */
   private watchId?:string;
   private watchPinned=false;
@@ -256,8 +255,13 @@ export class IslandScene extends Phaser.Scene {
   private zueira?:ZueiraFx;
   /** The local caído's own ficha ("Você, 18 s") under its body: the counter left the top banner. */
   private selfLabel?:MapLabel;
-  /** Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates; the follow camera centres the hero on it (D-019). */
+  /**
+   * Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates: the edge arrows
+   * ride its rim; the follow camera centres the hero on it only beside a panel (framing.ts framesBeside).
+   */
   usefulArea?:Rect;
+  /** The obra (build) window is open (explore.ts sets it every frame): the intermission frames the hero beside it. */
+  obraOpen=false;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.zoomWant=this.zoomNow=clampZoom(hooks.zoom??ZOOM_DEFAULT);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
@@ -464,7 +468,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.projector)this.projector.terrain=this.field;
     this.route=[];this.destination.clear();
     // The old world's spot means nothing here: the camera snaps to the prediction, the next frame brings the new spawn.
-    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.smooth=undefined;this.displayed=undefined;this.correction.clear();}
+    if(this.hooks.net){this.position={...this.hooks.net.predicted};this.displayed=undefined;this.correction.clear();}
     // The old world's defenses and their craters go; the next snapshot brings this world's (no volley on first sight).
     this.towers?.reset();this.towerFeed.reset();this.buildPlan=undefined;
     this.buildWorld();this.shadowLook();this.applyGrade();
@@ -495,7 +499,7 @@ export class IslandScene extends Phaser.Scene {
     const viewport=this.viewport(),camera=worldCamera(viewport,this.field,this.zoomNow);
     this.zoom=camera.zoom;this.settledZoom=this.zoom;
     this.follow.world=camera.follow;this.setActorScale(camera.follow.scale);
-    const at=this.watchPoint??this.smooth??this.position;
+    const at=this.watchPoint??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
     const c=this.follow.snap(this.project(at),viewport,this.zoom,this.useful(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
@@ -512,7 +516,7 @@ export class IslandScene extends Phaser.Scene {
     const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
     this.city.update({camera,view:this.view,dtMs:delta,hero,allies});
   }
-  /** Follows the hero every frame: smooth, look-ahead, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
+  /** Follows the hero every frame: smooth, body at the viewport centre in the round, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
     if(!this.actor)return;
     // The player's zoom eases toward the wanted one (wheel, pinch); the follow below centres at the new zoom.
@@ -523,10 +527,15 @@ export class IslandScene extends Phaser.Scene {
       if(this.zoomNow===this.zoomWant){this.settledZoom=this.zoom;this.landscape?.fit(WATER_MARGIN);}
     }
     // Out of the round, in the intermission and while following a teammate, nothing spawns against this screen: no budget.
-    // The intermission has no spawns either, so the hero may go far from the centre (beside the round offer window).
+    // The intermission has no spawns either (the budget is lifted, though the hero now stays at the centre there too).
     const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
+    // In the round (wave, intermission, watching) the body is at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi);
+    // only the lobby/countdown (waiting panel) and an open obra window frame it beside the panel (framing.ts framesBeside).
+    this.follow.beside=framesBeside(run,this.roundPhase,this.obraOpen);
     const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
-    const focus=this.project(this.watchPoint??this.smooth??this.position);
+    // The hero as drawn (the interpolated prediction plus the reconcile glide, coop), not the bare prediction: the camera
+    // centres what the player sees, so a correction slides the world, not the hero off the centre (camera-centro-heroi).
+    const focus=this.project(this.watchPoint??this.position);
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
@@ -951,7 +960,7 @@ export class IslandScene extends Phaser.Scene {
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
-    const smooth=this.smooth=this.steps.at(this.accumulator/STEP);
+    const smooth=this.steps.at(this.accumulator/STEP);
     const view=net.view(),old=this.position;
     const effects=this.skillEffects??=this.add.graphics().setDepth(90000);effects.clear();
     for(const player of view.players){
@@ -1122,7 +1131,9 @@ export class IslandScene extends Phaser.Scene {
   private cityArtPlan?:CityArtPlan;
   /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
   private cityArt():CityArtPlan{
-    return this.cityArtPlan??=buildCityArtPlan(artIndex(),cityArtOptions(typeof location==='undefined'?'':location.search));
+    // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.
+    const cell=this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined;
+    return this.cityArtPlan??=buildCityArtPlan(artIndex(),{...cityArtOptions(typeof location==='undefined'?'':location.search),...(cell?{cell}:{})});
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;

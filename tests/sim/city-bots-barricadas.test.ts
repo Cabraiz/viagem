@@ -16,6 +16,7 @@ import {LEASH,ROAM_IN,decide,newMemory} from '../../src/sim/bot-brain.ts';
 import {botRoute,botRouteDistance,dropBotRoutes} from '../../src/sim/city/bot-routes.ts';
 import {BARRICADE_MAX_R} from '../../src/sim/stonewards/barricades.ts';
 import type {RunView} from '../../src/contract/view.ts';
+import {CITY_MAP_SCALE} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -26,7 +27,12 @@ const city=loaded.terrain,P=city.asset.points;
 const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y-b.y);
 
 test('city bot: a gem past the lure band is no lure (no pacing at the band edge); one inside it still is',()=>{
-  const wall=P.praca,at={x:88.03,y:94.18},far={x:88.5,y:95.9},near={x:85,y:95};
+  // The seed-4242 spots were (88.03,94.18) for the bot, gems at (88.5,95.9) and (85,95), on the .w3x-sized city. The
+  // distances that matter are the bot's leash band around the wall (LEASH, ROAM_IN: bot lengths, not map ones), so on
+  // the 1.7× map (NEW-20261013-ORQ-cidade-escala-1-7) the spots keep those distances from the wall (5.45, 7.05 and 4.6 u),
+  // 15° south of east in the plaza's south street: the old offsets from the praca land inside a building there.
+  const wall=P.praca,at={x:wall.x+5.264,y:wall.y+1.411},far={x:wall.x+6.81,y:wall.y+1.825},near={x:wall.x+4.443,y:wall.y+1.191};
+  for(const p of [at,far,near])assert.ok(walkable(p,city),'every spot on walkable ground');
   assert.ok(dist(at,wall)>LEASH-ROAM_IN-.1&&dist(at,wall)<LEASH-ROAM_IN,'the bot stands just inside the band');
   assert.ok(dist(far,wall)>LEASH&&dist(near,wall)<LEASH-ROAM_IN,'one gem past the leash, one inside the band');
   const run=(pickups:{x:number;y:number}[])=>decide({
@@ -44,7 +50,8 @@ test('city bot: a gem past the lure band is no lure (no pacing at the band edge)
 test('bot routes walk through the barricades (blockers stop enemies only), the same on every fork',()=>{
   const fork=city.fork();
   for(const m of ['N','S','L','O'] as const)fork.setBlocker(`barricada-${m}`,{x:P.bocas[m].x,y:P.bocas[m].y,r:BARRICADE_MAX_R});
-  const from={x:P.bocas.S.x,y:P.bocas.S.y+6};
+  // 6 u south of mouth S on the .w3x-sized city (past BARRICADE_MAX_R), × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+  const from={x:P.bocas.S.x,y:P.bocas.S.y+6*CITY_MAP_SCALE};
   assert.ok(walkable(from,fork)&&walkable(P.bocas.S,fork),'heroes stand south of and on the S mouth (blockers ignored)');
   assert.equal(fork.forEnemies().clearDisc(P.bocas.S.x,P.bocas.S.y,.22),false,'the S mouth is closed to enemies');
   dropBotRoutes(city);

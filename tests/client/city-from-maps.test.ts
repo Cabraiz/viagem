@@ -5,7 +5,7 @@ import {CityTerrain,decodeCityAsset,type CityAsset as MapsCityAsset} from '../..
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {HEIGHT_PX} from '../../src/client/render/city/projection.ts';
 import {
-  AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_R_MAX,PROP_R_MIN,
+  AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_DEDUP,PROP_R_MAX,PROP_R_MIN,
   RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,
 } from '../../src/client/render/city/from-maps.ts';
 
@@ -219,6 +219,16 @@ test('props: kinds mapped, radius clamped, ids stable, none inside a block',()=>
   }
   assert.ok(city.props.length>50,`${city.props.length} props`);
   for(const k of ['crate','barrel','bench','lamp'])assert.ok(kinds.has(k),`generic props spread over ${k}`);
+});
+
+test('props (proporcoes-postes-predios): one per spot — no two of a kind closer than PROP_DEDUP; a stacked doodad keeps its first copy',()=>{
+  for(const a of city.props)for(const b of city.props)
+    if(a!==b&&a.kind===b.kind)assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
+  // The .w3x stacks 5 lamps within 1 u by the start: one stays, the one first in source order.
+  const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3,p.y-160)<1.25);
+  assert.equal(lamps.length,1);
+  const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3,p.y-160)<1.5&&p.kind==='prop');
+  assert.ok(sources.length>=3,'the source does stack them');
 });
 
 test('deterministic and already in parseCityAsset normal form',()=>{

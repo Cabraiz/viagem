@@ -19,7 +19,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // First-run coach (VGM-056): the joystick (its knob Amarelo, like the stick while the hint shows) and the XP drop.
   'dedao','gota',
   // Dono da sala e bots (D-025): a coroa de papel do chefe e o robô dos bots da sala.
-  'robo','coroa'] as const;
+  'robo','coroa',
+  // Objetivo do chaveiro (D-047): a moto 125 com a bag, na seta de borda (arte provisória até a arte do usuário).
+  'moto'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

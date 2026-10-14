@@ -177,7 +177,8 @@ test('no steady-state allocations: constant looks, caller-owned outputs and an a
   assert.match(layers,/private ringPts:Pt\[\]=Array\.from\(\{length:PHASE_RING_POINTS\}/,'scratch ring points made once');
   // The texture swap happens on a state change only (syncEnemy compares the key), never per frame.
   assert.match(layers,/a\.tex!==tex\)\{\s*a\.image\.setTexture\(tex\)/);
-  assert.match(layers,/if\(a\.look!==LOOK_NONE\)this\.drawPhase\(/,'nothing is drawn for a critter without a state');
+  // D-047: an açucarado critter (EnemyView.sugar) has a state too.
+  assert.match(layers,/if\(a\.look!==LOOK_NONE\|\|a\.sugar\)this\.drawPhase\(/,'nothing is drawn for a critter without a state');
   // The chefe keeps his boss phase; everyone else gets 1 there (no 'phase2-idle' on a buffed critter).
   assert.match(layers,/a\.bossPhase=kind==='chefe'\?view\.phase\?\?1:1;/);
 });

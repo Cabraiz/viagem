@@ -4,8 +4,7 @@
  * (the "voltar" sticker turned to the route's screen bearing, as the horn's arrow is turned to the base).
  *
  * Why the slot's quiet-row class and not the horn notice (camp.ts): the horn is an `.rh-alert`, the slot's danger class.
- * An alert hides the round banner (and its joke) and skips the next one, reads as 'corneta' to the big city minimap (a
- * danger notice: the tap is blocked and an open big map closes), and blocks every coach hint and shell row. Walking to
+ * An alert hides the round banner (and its joke) and skips the next one, and blocks every coach hint and shell row. Walking to
  * the plaza is a lesson, not a danger: like the coach's hint it waits for the banner (1.8 s), the notices and the
  * kill-cam, and only a teammate down (the coach's rescue hint) goes ahead of it. Styles live in hud.css (always loaded),
  * next to the coach's row it mirrors.

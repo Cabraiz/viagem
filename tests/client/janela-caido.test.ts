@@ -8,7 +8,6 @@ import {layoutEdges,arrowHalf,pointedTargets,caidoTag,tagWidth,MUST_POINT,HEAD_R
 import {fallLine} from '../../src/client/hud/model.ts';
 import {computeZones,auditBoxes,crosses,gap,HERO_MARGIN,type Rect,type ZoneInput} from '../../src/client/hud/zones.ts';
 import {radar} from '../../src/client/hud/radar.ts';
-import {DRAW_ORDER} from '../../src/client/hud/minimap.ts';
 
 const t=(key:string,kind:EdgeTarget['kind'],x:number,y:number,extra:Partial<EdgeTarget>={}):EdgeTarget=>({key,kind,screen:{x,y},distance:20,...extra});
 const fichaOf=(a:EdgeArrow,half=arrowHalf()):Rect=>({x:a.x-half.w,y:a.y-half.h,width:2*half.w,height:2*half.h});
@@ -81,16 +80,6 @@ test('zones: the landscape minimap in the left column (a window open) stays out 
   assert.ok(gap(minimap,LANDSCAPE.joystick!)>=24,'clear of the joystick');
 });
 
-test('minimap: one mark per resource (the nearest pile with something), base above the allies',()=>{
-  const node=(id:string,kind:string,x:number,remaining=3)=>({id,kind,x,y:0,remaining,capacity:3,value:1,progress:0});
-  const {items}=radar({selfId:'me',focus:{x:0,y:0},self:{x:0,y:0},tick:0,players:[],states:new Map(),locate:p=>p,
-    nodes:[node('c1','coco',8),node('c2','coco',3),node('c3','coco',3.4),node('c4','coco',1,0),node('p1','pedra',-6),node('p2','pedra',-5.5),node('p3','pedra',-9)]});
-  assert.deepEqual(items.filter(i=>i.kind==='coco'||i.kind==='pedra').map(i=>i.key).sort(),['node:c2','node:p2']);
-  assert.ok(DRAW_ORDER.base>DRAW_ORDER.aliado,'the tent is drawn over an ally dot');
-  assert.ok(DRAW_ORDER.voce>DRAW_ORDER.base&&DRAW_ORDER.caido>DRAW_ORDER.base);
-  assert.ok(DRAW_ORDER.coco<DRAW_ORDER.aliado&&DRAW_ORDER.pedra<DRAW_ORDER.aliado);
-});
-
 test('pointedTargets: a caído under the open window needs an arrow; one in plain view does not',()=>{
   const zones=computeZones({...LANDSCAPE,offer:FORGE.landscape}),u=zones.useful;
   const seen={viewport:{x:0,y:0,width:844,height:390},covered:[FORGE.landscape]};
@@ -151,7 +140,7 @@ test('the tag reserve follows the real "+N": a merged caído\'s tag ("Me salva: 
 
 test('caído: the first name rides under the ficha (never wider than it), the tag keeps the clock and the ping',()=>{
   assert.equal(caidoTag({seconds:30}),'30 s');assert.equal(caidoTag({seconds:16,ping:true}),'Me salva: 16 s');
-  const {targets}=radar({selfId:'me',focus:{x:0,y:0},self:{x:0,y:0},tick:0,locate:p=>({x:p.x*50,y:p.y*50}),
+  const {targets}=radar({selfId:'me',focus:{x:0,y:0},tick:0,locate:p=>({x:p.x*50,y:p.y*50}),
     players:[{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',x:30,y:0,online:true}],
     states:new Map([['cz',{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',hp:0,maxHp:100,online:true,spectator:false,downed:{progress:0,bleedOutTick:600},weapons:[],passives:[]} as never]])});
   const c=targets.find(x=>x.kind==='caido')!;assert.equal(c.label,'Concursei');
@@ -179,7 +168,7 @@ test('COVERING (game and arrows sandbox) counts the open windows; the sandbox re
   const {COVERING,WINDOWS}=await import('../../src/client/hud/edges.ts');
   for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-camp','.rh-stack>:not([hidden])','.rh-minimap'])assert.ok(COVERING.split(',').includes(sel),sel);
   // minimapa-wc3: the WC3 minimap floats over a corner of the field, so the arrows keep clear of it as of a window.
-  assert.deepEqual(WINDOWS.split(','),['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap-grande:not([hidden])','.rh-minimap'],'offer, forge, the city big minimap (cidade-hud §7) and the floating minimap');
+  assert.deepEqual(WINDOWS.split(','),['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap'],'offer, forge and the floating minimap');
   const {readFileSync}=await import('node:fs');
   const sandbox=readFileSync(new URL('../../src/client/sandboxes/sandbox-hud.ts',import.meta.url),'utf8'),rescue=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
   assert.match(sandbox,/\$\{COVERING\}/);assert.match(rescue,/boxes\(hud\.el\.ownerDocument,COVERING\)/);

@@ -1,19 +1,11 @@
 /**
  * City HUD wiring (card cidade-04, design/cidade-hud.md §7): the pure glue between the run (terrain, RunView, the spawn
- * warnings, the scene's camera) and the city minimap and arrows. Which minimap a terrain gets, the CityMapInfo of the
- * decoded asset, which avenue mouths a round opened (inferred from the spawn warnings), the world corners of what the
- * screen shows, and the big minimap's open/close state. No DOM: rescue.ts and the HUD sandbox call these.
+ * warnings, the scene's camera) and the city's arrows. The CityMapInfo of the decoded asset, which avenue mouths a round
+ * opened (inferred from the spawn warnings), the world corners of what the screen shows (the WC3 minimap's camera
+ * rectangle) and the horn's seconds. No DOM: rescue.ts and the HUD sandbox call these.
  */
 import {CITY_MAP_SCALE,SIM_HZ} from './deps.ts';
-import {bigShouldClose,type CityMapInfo,type MouthId,type BigCloseInput,type BlockReason} from './minimap.ts';
-import {BIG_MIN_SIDE} from './layout.ts';
-
-/** Which minimap the run HUD shows: the city's (the whole city as a diamond), the endless map's or the island's. */
-export type MinimapMode='cidade'|'infinito'|'ilha';
-/** The terrain's minimap: the city when its world says so (D-034), the endless map when it streams chunks, else the island. */
-export function minimapMode(terrain:{world?:string;chunks?:unknown}):MinimapMode{
-  return terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
-}
+import type {CityMapInfo,MouthId} from './map-info.ts';
 
 interface P {readonly x:number;readonly y:number}
 /** The part of the decoded city asset (src/maps/city-asset.ts CityAsset) the HUD reads. */
@@ -32,8 +24,8 @@ export function cityAssetOf(terrain:{world?:string}):CityAssetLike|undefined{
 
 export const MOUTH_IDS:readonly MouthId[]=['N','S','L','O'];
 /**
- * The minimap's map info from the asset: the plaza at `praca` with the radius of its farthest entrance (the wall's ring),
- * the 4 avenue ends (spawnN/S/L/O) as the minimap's mouths (where the critters come in, doc §1), each with its entrance
+ * The city's map info from the asset: the plaza at `praca` with the radius of its farthest entrance (the wall's ring),
+ * the 4 avenue ends (spawnN/S/L/O) as its mouths (where the critters come in, doc §1), each with its entrance
  * on the plaza wall (`bocas`) as its gate, the start at `inicio`.
  */
 export function cityMapInfo(asset:CityAssetLike):CityMapInfo{
@@ -104,7 +96,7 @@ export function trackMouths(state:Map<MouthId,number>,events:readonly {type:stri
 }
 
 /**
- * The world corners of the viewport (the big minimap's view rectangle, doc §2), from the scene's world → screen map:
+ * The world corners of the viewport (the WC3 minimap's camera rectangle), from the scene's world → screen map:
  * that map is affine on flat ground, so three points give it and its inverse takes the 4 corners back (top-left,
  * top-right, bottom-right, bottom-left). Empty when the map is degenerate.
  */
@@ -122,28 +114,3 @@ export function hornSeconds(camp:{hornEndsTick?:number}|undefined,tick:number,ph
   if(phase!=='prepare'||camp?.hornEndsTick===undefined)return undefined;
   return Math.max(0,Math.ceil((camp.hornEndsTick-tick)/SIM_HZ));
 }
-
-/**
- * The big minimap's state (doc §2): a tap on the collapsed one opens it when its side is ≥ BIG_MIN_SIDE and nothing
- * blocks the tap; a tap on it closes it; it closes by itself (bigShouldClose). `changed` tells the owner to draw now.
- */
-export class BigMapState {
-  openedAt?:number;
-  changed=false;
-  get open(){return this.openedAt!==undefined;}
-  /** A tap on either box at `now` (ms); `side` is the big square's side now, `blocked` why a tap must not open it. */
-  tap(now:number,side:number,blocked?:BlockReason){
-    if(this.open)this.close();
-    else if(side>=BIG_MIN_SIDE&&!blocked){this.openedAt=now;this.changed=true;}
-    return this.open;
-  }
-  close(){if(this.open){this.openedAt=undefined;this.changed=true;}}
-  /** Closes it when bigShouldClose says so; true when it closed now. */
-  update(input:Omit<BigCloseInput,'openedAtMs'>){
-    if(this.openedAt===undefined||!bigShouldClose({...input,openedAtMs:this.openedAt}))return false;
-    this.close();return true;
-  }
-  /** The owner drew it: `changed` goes back to false (true is returned once per change). */
-  take(){const c=this.changed;this.changed=false;return c;}
-}
-

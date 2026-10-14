@@ -1,5 +1,5 @@
 // D-047, card NEW-20261013-ORQ-chaveiro-render: the chaveiro objective's provisional art (boxes in the city's projection),
-// its pure render rules, the moto's edge arrow and the minimap's car, moto, delivery and route ahead.
+// its pure render rules, the moto's edge arrow and its marks on the WC3 minimap (chaveiro-extras).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boxFaces,faceBounds,isoOffset,mix,shade,viewTurn,M,type Box} from '../../src/client/render/chaveiro/iso.ts';
@@ -126,23 +126,6 @@ test('rules: the route ahead starts at the moto and ends at the car; the bump li
 
 const view=(extra:Partial<ChaveiroView>={}):ChaveiroView=>({moto:{x:84.5,y:40,mode:'anda'},etaS:300,alarmUntil:0,car:{x:84.5,y:84.5,hits:20,limit:80,parts:1},
   route:[{x:84.5,y:0},{x:84.5,y:74},{x:82,y:86}],...extra});
-
-test('minimap: the car takes the base\'s place with the hits left on its ring; the moto (Cone when it needs the team), the delivery, the route ahead',()=>{
-  const map=city.DEFAULT_CITY,input={map,view:0 as const,selfId:'p1',players:[{id:'p1',x:84.5,y:120}],enemies:[]};
-  const marks=city.cityMinimapMarks({...input,chaveiro:view({delivery:{x:84.5,y:60,etaS:20}})});
-  assert.ok(!marks.some(m=>m.kind==='base'));
-  const car=marks.find(m=>m.kind==='carro')!;assert.equal(car.hp,.75);
-  assert.ok(marks.some(m=>m.kind==='moto'&&!m.danger));
-  assert.ok(marks.some(m=>m.kind==='entrega'));
-  assert.ok(city.cityMinimapMarks({...input,chaveiro:view({moto:{x:84.5,y:40,mode:'morta',push:.3}})}).some(m=>m.kind==='moto'&&m.danger));
-  // Without the objective, the base as before.
-  assert.ok(city.cityMinimapMarks(input).some(m=>m.kind==='base'));
-  const route=city.cityMinimapRoute({...input,chaveiro:view()});
-  assert.equal(route.length,4);assert.deepEqual(route[0],city.cityMinimapPoint({x:84.5,y:40},0));
-  assert.deepEqual(city.cityMinimapRoute({...input,chaveiro:view({ended:'victory'})}),[]);
-  assert.ok(!city.cityMinimapMarks({...input,chaveiro:view({ended:'victory'})}).some(m=>m.kind==='moto'));
-  assert.ok(city.CITY_DRAW_ORDER.moto>city.CITY_DRAW_ORDER.carro&&city.CITY_DRAW_ORDER.moto<city.CITY_DRAW_ORDER.voce);
-});
 
 test('edges: the moto gets an arrow when out of view (Cone while dead or fallen, none at the car), ranked after the mouths',()=>{
   const map=city.DEFAULT_CITY,locate=(p:{x:number;y:number})=>({x:p.x*10,y:p.y*10});

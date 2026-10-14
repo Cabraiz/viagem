@@ -58,7 +58,7 @@ export function voltaCentre(moto:{x:number;y:number},car:{x:number;y:number}):{x
 }
 /** The moto needs the team in these modes (2 to push it; it fell): its arrow and minimap mark turn Cone. */
 export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
-/** The car's life bar and minimap ring turn Cone under this share of hits left (as the base's BASE_LOW). */
+/** The car's life bar turns Cone under this share of hits left. */
 export const CAR_LOW=.3;
 /** The heading of a figure that moved from `a` to `b` (radians), or `old` when it barely moved. */
 export function headingOf(a:{x:number;y:number},b:{x:number;y:number},old:number):number{

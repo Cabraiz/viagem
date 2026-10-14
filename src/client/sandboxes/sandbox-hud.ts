@@ -5,17 +5,16 @@
  * so overlaps are visible. Fake data only; nothing talks to the server.
  * `phaser=1` mounts a real Phaser game under the HUD whose scene walks the hero to every tap, exactly like
  * the island scene (`input.on('pointerdown')` → goTo).
- * `cenario=bordas[&vista=0..3]` (UX-bordas-fora-da-tela): edge arrows and the minimap over the mock, with 5 allies, 2 caídos
+ * `cenario=bordas[&vista=0..3][&mapa=infinito]` (UX-bordas-fora-da-tela): edge arrows and the WC3 minimap over the mock, with 5 allies, 2 caídos
  * (one pinging "Me salva"), the boss with a telegraph about to go off and a spawn warning, all off screen; the world
  * points are projected with the real camera math (projection.ts, framing.ts) in the chosen view. It proves taps on HUD panels never reach Phaser,
  * including its window-level touch listener. State: `window.__hero` ({x,y,taps}).
- * `mapa=cidade[&vista=0..3][&grande=1][&offline=1]` (card cidade-04, design/cidade-hud.md §7): the city HUD over a snow mock,
+ * `mapa=cidade[&vista=0..3]` (card cidade-04, design/cidade-hud.md §7): the city HUD over a snow mock,
  * with the real Cidade Nevada (public/maps/cidade-nevada.json, checked against its manifest hash and decoded by
- * cityTerrainFrom): the city minimap in the `.rh-minimap` slot (`grande=1` opens the big one, as a tap does; a tap toggles
- * it) and the city's arrows: two groups of critters off screen (count in the body, distance on the tag), the active mouth
- * of the east avenue, the base with the horn's seconds (state=camp-horn, the default here) and a caído pinging "Me salva"
- * (the ally on its feet shows on the minimap only). `body[data-cidade]` is '1' once drawn ('erro' if the city did not load).
- * Use state=prepare for the big minimap: in the game the horn's notice blocks it (doc §2).
+ * cityTerrainFrom): the WC3 minimap of the whole city in the `.rh-minimap` slot and the city's arrows: two groups of
+ * critters off screen (count in the body, distance on the tag), the active mouth of the east avenue, the base with the
+ * horn's seconds (state=camp-horn, the default here) and a caído pinging "Me salva" (the ally on its feet shows on the
+ * minimap only). `body[data-cidade]` is '1' once drawn ('erro' if the city did not load).
  * `mapa=cidade&state=tutorial[&ponto=inicio|travado|patio|meio|praca|X,Y][&vista=0..3][&dica=walk]` (card cidade-08):
  * round 1 of the city, the walk to the plaza. The hero stands at `ponto` (default inicio, the wreck; travado: where a
  * straight walk to the plaza parks against a block, ≈(103,154); patio: the dead-end yard inside that block ≈(104.5,149.5);
@@ -256,7 +255,6 @@ if(bordas)void (async()=>{
   const {layoutEdges,pointedTargets,COVERING,WINDOWS}=await import('../hud/edges.ts');
   const {radar}=await import('../hud/radar.ts');
   const {computeZones,union}=await import('../hud/zones.ts');
-  const {islandOutline,MINIMAP_RANGE}=await import('../hud/minimap.ts');
   const {WcMinimapDriver}=await import('../hud/wc-minimap/driver.ts');
   const {screenCorners:screenCornersOf}=await import('../hud/city/wiring.ts');
   const maps=await import('../../maps/index.ts');
@@ -266,10 +264,6 @@ if(bordas)void (async()=>{
   const view=Math.max(0,Math.min(3,Number(params.get('vista'))||0));
   const rect=(el:Element|null)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
   const all=(sel:string)=>[...document.querySelectorAll(sel)].map(rect);
-  // Gather piles around the camp as the endless map lays them (several per resource): the minimap shows only the
-  // nearest one per resource (design soma S2, DSG-polimento-onda6).
-  const NODES=[[8,15,'coco'],[9,16,'coco'],[15,13,'coco'],[16,19,'coco'],[6,20,'coco'],[14,9,'pedra'],[18,16,'pedra'],[7,11,'pedra']]
-    .map(([x,y,kind],i)=>({id:`n${i}`,kind:kind as 'coco'|'pedra',x:x as number,y:y as number,remaining:3,capacity:3,value:1,progress:0}));
   const draw=()=>{
     const viewport={width:innerWidth,height:innerHeight};
     // The open window (offer or forge) takes its part of the field, as measureZones does in the game: the hero and
@@ -285,9 +279,9 @@ if(bordas)void (async()=>{
     const states=new Map(view0.players.map(p=>[p.id,p]));
     const spots=[{x:12,y:17},{x:2,y:15},{x:13,y:2},{x:24,y:20},{x:21,y:6},{x:4,y:26}];
     const players=view0.players.map((p,i)=>({id:p.id,name:p.name,classId:p.classId,x:spots[i].x,y:spots[i].y,online:true}));
-    const {targets,items}=radar({selfId:'p1',focus:hero,self:hero,tick:view0.tick,players,states,base:{x:12,y:12},
+    const {targets}=radar({selfId:'p1',focus:hero,tick:view0.tick,players,states,base:{x:12,y:12},
       enemies:[{id:'boss',kind:'chefe',x:30,y:30,hp:900,maxHp:1000,boss:true}],telegraphs:[{id:'t',shape:'circle',x:30,y:31,radius:3,fireTick:view0.tick+10}],
-      warnings:[{x:-6,y:4,atTick:view0.tick+20}],nodes:NODES,pinged:id=>id==='p3',locate,portrait:c=>`/art/portraits/${c}-thumb.webp`});
+      warnings:[{x:-6,y:4,atTick:view0.tick+20}],pinged:id=>id==='p3',locate,portrait:c=>`/art/portraits/${c}-thumb.webp`});
     // The game's own list (edges.ts COVERING) plus the sandbox's stand-ins for the explore shell's controls: the audits
     // check the game's rule, not a copy of it (code review janela-caido).
     const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
@@ -298,7 +292,6 @@ if(bordas)void (async()=>{
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the island, or the endless map with `mapa=infinito`.
-    void items;void islandOutline;void MINIMAP_RANGE;
     wcDriver.draw({minimap:hud.wc!,terrain:mmTerrain,view,nowMs:performance.now(),selfId:'p1',self:hero,players,states:new Map(view0.players.map(p=>[p.id,p])),
       enemies:[{x:30,y:30,boss:true},{x:20,y:24},{x:21,y:25},{x:6,y:28},{x:-4,y:10}],structures:[{kind:'muralha',x:12,y:12},{kind:'torre-chinelo',x:15,y:10}],
       corners:screenCornersOf(locate,hero,viewport),wallHitAt:performance.now()});
@@ -335,7 +328,6 @@ if(cidade)void (async()=>{
   const decoded=await cityTerrainFrom(text,manifest.hash);
   if(!decoded.ok){document.body.dataset.cidade='erro';return;}
   const terrain=decoded.terrain,map=city.cityMapInfo(terrain.asset),field=cityAsField(terrain);
-  hud.useCityMinimap(true);
   // The game builds the walking route on an idle moment from the lobby on (RunHud.prewarmCity); here it is ready before the first view.
   if(tutorial)city.cityRouteOf(terrain);
   const vista=Math.max(0,Math.min(3,Number(params.get('vista'))||0)) as 0|1|2|3;
@@ -387,7 +379,6 @@ if(cidade)void (async()=>{
     const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open};
     const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
-    const layout=city.cityHudLayout({viewport,windowOpen:!!open,textScale:hud.edges!.scale()>1.1?1.25:1,controls});
     const area=zones.useful;
     // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
     const anchor={x:viewport.width/2,y:viewport.height/2+28},center=projectView(hero,vista,field);
@@ -410,7 +401,6 @@ if(cidade)void (async()=>{
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true}],
       structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
-    void layout;void active;
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});
@@ -421,11 +411,8 @@ if(cidade)void (async()=>{
     }
     hud.zones();// sets the announcement slot under the top band, as explore.ts does every layout
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
-    document.body.dataset.big=JSON.stringify(layout.minimapBig??null);
   };
   draw();
-  // `grande=1`: open the big minimap as a tap would (the sandbox runs no closing rules, so it stays for the screenshot).
-  if(params.has('grande'))hud.cityMap.tap(performance.now(),Math.max(city.BIG_MIN_SIDE,hud.cityBig().side));
   addEventListener('resize',draw);setInterval(draw,250);
   requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();

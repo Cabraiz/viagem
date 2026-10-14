@@ -5,7 +5,7 @@
  * mouth comes from the decoded city: the nearest of its 4 `bocas` (the server raises each barricade on its boca).
  * Without the city asset there is no mouth, so no target: the HUD then never offers a barricade repair. Pure.
  */
-import type {MouthId} from './minimap.ts';
+import type {MouthId} from './map-info.ts';
 import {MOUTH_IDS,type CityAssetLike} from './wiring.ts';
 
 /** The structure kind of a city barricade on the wire (multiplayer/simulation.ts structureViews). */

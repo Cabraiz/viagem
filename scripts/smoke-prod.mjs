@@ -55,7 +55,7 @@ async function roomState(endpoint,code,origin){
   }catch{return {ok:false,ms:Date.now()-t0,phase:'',tick:-1};}
 }
 /** A page poll that never hangs: undefined after EVAL_TIMEOUT_MS (answered: false), or when the page threw/reloaded. */
-const poll=(p,fn)=>Promise.race([p.evaluate(fn).then(v=>({v,answered:true}),()=>({v:undefined,answered:true})),new Promise(r=>setTimeout(()=>r({v:undefined,answered:false}),EVAL_TIMEOUT_MS))]);
+const poll=(p,fn,arg,ms=EVAL_TIMEOUT_MS)=>Promise.race([p.evaluate(fn,arg).then(v=>({v,answered:true}),()=>({v:undefined,answered:true})),new Promise(r=>setTimeout(()=>r({v:undefined,answered:false}),ms))]);
 /** The page's event-loop probe (added before any script): a PROBE_MS timer counting its fires since the last read. */
 const PROBE=`(()=>{const w=window;w.__probe={fires:0,since:performance.now()};setInterval(()=>{w.__probe.fires++;},${PROBE_MS});})();`;
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
@@ -130,22 +130,23 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
       // A build older than that signal (the upgrade mode's previous build; window.__island is dev-only): the match HUD
       // on screen — a minimap drawn (the canvas one or the city's) or the round chip ("Round 2/10"). The rest is what
       // the player sees, to tell progress from a stall (stable texts only: never the round's clock).
-      const {v:st,answered}=await poll(p,()=>{
+      const {v:st,answered}=await poll(p,(probeMs)=>{
         const q=(sel)=>document.querySelector(sel)?.textContent?.trim()||'',drawn=(sel)=>!!document.querySelector(sel)?.getBoundingClientRect().width;
         const old=window.__partidaPronta===undefined&&(drawn('.rh-mm-canvas')||drawn('.ch-minimap')||/\bRound \d+\/\d+/.test(document.body.innerText));
         const w=document.querySelector('.coop-wait'),probe=window.__probe,now=performance.now();
-        const fires=probe?probe.fires:0,dueFires=probe?(now-probe.since)/200:0;if(probe){probe.fires=0;probe.since=now;}
+        const fires=probe?probe.fires:0,dueFires=probe?(now-probe.since)/probeMs:0;if(probe){probe.fires=0;probe.since=now;}
         const loading=q('.explore-loading');
         return {entered:window.__partidaPronta===true||old,said:document.getElementById('explore-error')?.textContent||(/Não foi possível|não baixou/i.test(loading)?loading:''),
           stage:w&&!w.closest('[hidden]')?'sala':document.querySelector('.rh-top')?'partida':'?',loading,ready:q('.coop-wait-ready'),p0:w?.dataset.preloadP0??'',
           bytes:w?.dataset.preloadBytes??'',count:q('.coop-wait-count'),roundLabel:q('.rh-round-label'),code:q('.coop-wait-code strong'),fires,dueFires};
-      });
+      },PROBE_MS);
       const now=Date.now();
       if(st?.code)roomCode=st.code;
       const room=await roomState(roomEndpoint,roomCode,base);if(room)roomLast=room;
       trace.push({wallMs:now,answered,...(st??{}),roomPhase:room?.phase,roomTick:room?.tick,roomMs:room?.ms});
       if(st){({entered,said}=st);}
-      const sig=progressSignature({...(st??{}),roomPhase:room?.phase,roomTick:room?.tick});
+      // The room's tick counts as progress only before combat: in combat it advances every second like a clock.
+      const sig=progressSignature({...(st??{}),roomPhase:room?.phase,roomTick:room?.phase==='combat'?undefined:room?.tick});
       if(st&&sig!==lastSig){lastSig=sig;lastChange=now;}
       else if(now-lastChange>STALL_MS)stalled=`nada mudou em ${STALL_MS/1000} s (${st?.stage??'sem resposta'}: "${st?.ready||st?.roundLabel||st?.loading||''}", sala ${room?.phase??'?'} tick ${room?.tick??'?'})`;
     }
@@ -155,14 +156,18 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
       if(page){const out=await evidence();if(out)starved=`${page}; ${out}`;}
       console.log(`  rastro ${mode}: ${JSON.stringify(trace.slice(-3).map(t=>({s:Math.round((t.wallMs-start)/1000),stage:t.stage,ready:t.ready,round:t.roundLabel,sala:t.roomPhase,tick:t.roomTick,salaMs:t.roomMs,timer:t.dueFires?Math.round(t.fires/t.dueFires*100)+'%':undefined,resp:t.answered})))}`);
     }
-    // Every chunk the page loaded must import cleanly (a module that throws at load rejects every time).
-    const rejected=(await poll(p,async()=>{
+    // Every chunk the page loaded must import cleanly (a module that throws at load rejects every time): the reason this
+    // smoke exists (e5b34e5). Never skipped: a slow page gets a longer try, and no answer at all is a failure.
+    const importAll=async()=>{
       const out=[];
       for(const u of new Set(performance.getEntriesByType('resource').map(e=>e.name).filter(n=>/\/assets\/.*\.js(\?|$)/.test(n)))){
         try{await import(u);}catch(e){out.push(`${u.split('/').pop()}: ${e&&e.message}`);}
       }
       return out;
-    })).v??[];
+    };
+    let chunks=await poll(p,importAll);
+    if(!chunks.answered)chunks=await poll(p,importAll,undefined,60000);
+    const rejected=chunks.answered?chunks.v??[]:['chunks não verificados (a página não respondeu em 60 s)'];
     if(shot)await p.screenshot({path:shot,timeout:30000}).catch(()=>{});
     const why=[!entered&&(said?`não entrou: "${said}"`:stalled?`não entrou: ${stalled}`:`não entrou em ${ENTER_CAP_MS/1000} s`),...errors.map(e=>`pageerror: ${e}`),...rejected.map(r=>`chunk: ${r}`)].filter(Boolean);
     return {why:why.join(' | '),errors,starved};

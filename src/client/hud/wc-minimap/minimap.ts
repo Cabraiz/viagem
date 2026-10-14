@@ -10,8 +10,13 @@
 import {fromMini,imageTransform,insideMini,toMini,type MiniFrame,type Pt} from './geometry.ts';
 import {MM_COLORS,type TerrainImage} from './terrain.ts';
 
-/** Ally colours by join order (the ring colour on the minimap; the self dot is white). */
+/** Player colours by join order: the dot on the minimap and the outer ring of the portrait in the team strip (team.ts). */
 export const ALLY_COLORS=Object.freeze(['#ffd23f','#3ec1d3','#ff7aa2','#8be04e','#b38cff','#ff9f43']);
+/** A player's colour: by their place in the run's player list (join order), the same on the minimap and the strip. */
+export function teamColor(players:readonly {id:string}[],id:string):string{
+  const i=players.findIndex(p=>p.id===id);
+  return ALLY_COLORS[(i<0?0:i)%ALLY_COLORS.length];
+}
 export interface MmUnit {x:number;y:number}
 export interface MmAlly extends MmUnit {color:string;downed?:boolean}
 export interface MmEnemy extends MmUnit {boss?:boolean}
@@ -58,10 +63,16 @@ export class WcMinimap {
     if(e.pointerType==='mouse'&&!e.altKey&&e.button===0)this.onMove?.(world);
     else{this.ping(m);this.onPing?.(world);}
   }
+  /** A teammate's ping (relayed by the room): a ring in their colour, when the point is on the minimap now. */
+  pingWorld(world:Pt,color?:string){
+    const f=this.frame;if(!f)return;
+    const m=toMini(world,f);if(insideMini(m,f))this.ping(m,color);
+  }
   /** A pulsing ring at a minimap point (CSS animation: smooth whatever the draw rate). */
-  ping(m:Pt){
+  ping(m:Pt,color?:string){
     const f=this.frame;if(!f)return;
     const ring=this.el.ownerDocument.createElement('i');ring.className='rh-mm-ping';
+    if(color)ring.style.borderColor=color;
     ring.style.left=`${m.x/f.side*100}%`;ring.style.top=`${m.y/f.side*100}%`;
     this.el.append(ring);setTimeout(()=>ring.remove(),PING_MS);
   }

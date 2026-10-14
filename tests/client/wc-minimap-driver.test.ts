@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {TerrainField,decodeCityAsset} from '../../src/maps/index.ts';
 import {MM_COLORS,cityTerrainPixels,endlessTerrainPixels} from '../../src/client/hud/wc-minimap/terrain.ts';
 import {ENDLESS_REBUILD,MM_SIDE,WcMinimapDriver,type TerrainImages} from '../../src/client/hud/wc-minimap/driver.ts';
-import {ALLY_COLORS,type MmInput} from '../../src/client/hud/wc-minimap/minimap.ts';
+import {ALLY_COLORS,teamColor,type MmInput} from '../../src/client/hud/wc-minimap/minimap.ts';
 import {toMini} from '../../src/client/hud/wc-minimap/geometry.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -46,7 +46,7 @@ const IMAGES:TerrainImages={city:stub,endless:stub,island:stub};
 /** A fake minimap that keeps a copy of what it was handed (the driver reuses its mark objects between draws). */
 const fake=()=>{const got:MmInput[]=[];return {got,minimap:{render:(i:MmInput)=>got.push({...i,self:i.self&&{...i.self},allies:i.allies.map(x=>({...x})),enemies:i.enemies.map(x=>({...x})),structures:i.structures.map(x=>({...x}))})} as never};};
 
-test('the driver: the city frame, ally colours by join order kept for the run, the base blinking after a hit', () => {
+test('the driver: the city frame, ally colours as the team strip shows them, the base blinking after a hit', () => {
   const d=new WcMinimapDriver(IMAGES),{got,minimap}=fake(),terrain=new TerrainField(1);
   const base={minimap,terrain,city:asset,view:1,selfId:'a',self:{x:80,y:90},states:new Map(),enemies:[{x:10,y:10},{x:5,y:5,hp:0},{x:60,y:60,boss:true}],
     structures:[{kind:'muralha',x:84,y:90},{kind:'torre-chinelo',x:70,y:70},{kind:'barricada-N',x:84,y:70}],corners:[],extras:undefined};
@@ -54,8 +54,9 @@ test('the driver: the city frame, ally colours by join order kept for the run, t
   d.draw({...base,nowMs:9000,wallHitAt:500,players:[{id:'d',x:5,y:6,online:true},{id:'b',x:1,y:2,online:true}],self:{x:81,y:90}});
   const [first,second]=got;
   assert.equal(first.frame.side,MM_SIDE);assert.equal(first.frame.view,1);
-  assert.deepEqual(first.allies.map(a=>a.color),[ALLY_COLORS[0],ALLY_COLORS[1]],'self skipped, offline skipped');
-  assert.deepEqual(second.allies.map(a=>a.color),[ALLY_COLORS[1],ALLY_COLORS[0]],'the same colour per player, whatever the order');
+  // The colour is the player's place in the run's list (join order), as the team strip paints the portrait's ring.
+  assert.deepEqual(first.allies.map(a=>a.color),[ALLY_COLORS[1],ALLY_COLORS[3]],'self skipped, offline skipped, colours by place');
+  assert.deepEqual(second.allies.map(a=>a.color),[teamColor([{id:'d'},{id:'b'}],'d'),teamColor([{id:'d'},{id:'b'}],'b')],'the strip rule');
   assert.equal(first.enemies.length,2,'dead critters skipped');assert.equal(first.enemies.filter(e=>e.boss).length,1);
   assert.deepEqual(first.structures.map(s=>s.kind),['base','tower','barricade']);
   assert.equal(first.structures[0].hit,true,'hit 500 ms ago: blinking');assert.equal(second.structures[0].hit,undefined,'8.5 s later: steady');

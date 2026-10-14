@@ -204,6 +204,8 @@ export class RescueBoard {
   private drawWc(scene:IslandScene,players:readonly {id:string;x:number;y:number;online:boolean;spectator?:boolean}[],focus:{x:number;y:number},now:number){
     const hud=this.hud,net=this.net,wc=hud.wc!;
     wc.onMove??=p=>{this.scene()?.goTo(p,{markerMs:900});};
+    // A ping goes to the room (an old room drops it: it stays on this minimap); the team's come back through onMark.
+    if(!wc.onPing){wc.onPing=p=>{net.mark(p.x,p.y);};net.onMark=m=>{if(m.player!==net.id)wc.pingWorld(m,this.wcDriver.colorOf(m.player));};}
     const locate=(p:{x:number;y:number})=>scene.locate(p).screen;
     // The city's maps asset (the HUD's cityAssetOf is a narrow view of it): the terrain image reads its cells and blocks.
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;

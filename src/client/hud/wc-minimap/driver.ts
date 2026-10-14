@@ -5,7 +5,7 @@
  */
 import {cameraQuad,cityFrame,windowFrame,type MiniFrame,type Pt} from './geometry.ts';
 import {cityTerrainImage,endlessTerrainImage,islandTerrainImage,type TerrainImage} from './terrain.ts';
-import {ALLY_COLORS,type MmAlly,type MmEnemy,type MmExtra,type MmStructure,type WcMinimap} from './minimap.ts';
+import {teamColor,type MmAlly,type MmEnemy,type MmExtra,type MmStructure,type WcMinimap} from './minimap.ts';
 import type {CityAsset as MapsCityAsset,TerrainField} from '../../../maps/index.ts';
 
 /** Logical side of the drawing (the canvas scales it to the element's size). */
@@ -35,16 +35,12 @@ export class WcMinimapDriver {
   constructor(images:TerrainImages=IMAGES){this.images=images;}
   private endless?:{image:TerrainImage;center:Pt;terrain:TerrainField};
   private island?:{image:TerrainImage;terrain:TerrainField};
-  private readonly colors=new Map<string,string>();
   private last?:Pt;private heading={x:0,y:1};
   private readonly allies:MmAlly[]=[];private readonly enemies:MmEnemy[]=[];private readonly structures:MmStructure[]=[];
 
-  /** Ally colour by join order: kept for the whole run, the next free one for a newcomer. */
-  colorOf(id:string){
-    let c=this.colors.get(id);
-    if(!c){c=ALLY_COLORS[this.colors.size%ALLY_COLORS.length];this.colors.set(id,c);}
-    return c;
-  }
+  private players:readonly {id:string}[]=[];
+  /** A player's colour (teamColor: their place in the run's list, as the team strip shows it). */
+  colorOf(id:string){return teamColor(this.players,id);}
   frameFor(input:Pick<DriverInput,'terrain'|'city'|'view'|'self'>):{frame:MiniFrame;terrain:TerrainImage;border?:{x:number;y:number;w:number;h:number}}{
     const {terrain,city,view,self}=input;
     if(city)return {frame:cityFrame(city.size,MM_SIDE,view,city.playable),terrain:this.images.city(city),border:city.playable};
@@ -63,6 +59,7 @@ export class WcMinimapDriver {
     const {frame,terrain,border}=this.frameFor(input),me=input.self;
     if(this.last){const dx=me.x-this.last.x,dy=me.y-this.last.y;if(Math.hypot(dx,dy)>.05){const l=Math.hypot(dx,dy);this.heading={x:dx/l,y:dy/l};}}
     this.last={x:me.x,y:me.y};
+    this.players=input.players;
     let n=0;
     for(const p of input.players){
       if(p.id===input.selfId||p.spectator)continue;

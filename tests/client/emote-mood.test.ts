@@ -24,7 +24,8 @@ test('parseEmote: a well-formed relay passes; forged, oversized and unknown ones
 test('the client handles {t:emote} like {t:sos}: parsed strictly, then onEmote; it sends {t:emote,round,id} (emote-relay-sala)',()=>{
   const client=src('src/client/net/client.ts');
   assert.match(client,/onEmote:\(e:EmoteNote\)=>void=\(\)=>\{\};/);
-  assert.match(client,/else if\(m\.t==='emote'\)\{const note=parseEmote\(m\);if\(note\)this\.onEmote\(note\);\}/);
+  // A minimap ping rides the same relay (id 'marca', rules/marks.ts): it is tried first, any other emote as before.
+  assert.match(client,/else if\(m\.t==='emote'\)\{const mark=parseMark\(m\);if\(mark\)this\.onMark\(mark\);else\{const note=parseEmote\(m\);if\(note\)this\.onEmote\(note\);\}\}/);
   assert.ok(client.includes("this.out(this.socket,{t:'emote',round:this.run.round,id});"),'the room relays it (emote-relay-sala)');
 });
 

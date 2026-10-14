@@ -53,6 +53,11 @@ export interface CityLayout {
 }
 
 export const MINIMAP_SIDE=76,BIG_MIN_SIDE=120;
+/**
+ * The WC3 minimap's side in CSS px (hud.css .rh-mm: clamp(124px, 30vmin, 210px)), the box the slot really takes now;
+ * MINIMAP_SIDE stays the old diamond drawing's unit (city/minimap.ts).
+ */
+export function wcMinimapSide(viewport:{width:number;height:number}){return Math.round(Math.min(210,Math.max(124,.3*Math.min(viewport.width,viewport.height))));}
 /** Largest side of the big minimap (doc §2): portrait, landscape, landscape with the offer/forge open. */
 export const BIG_MAX_SIDE={portrait:232,landscape:176,window:164} as const;
 /** The hero's sprite at the follow zoom (zones.ts MIN_PLAY_SIDE), and what the big minimap keeps from its zone (± 40). */
@@ -73,8 +78,9 @@ const floor8=(v:number)=>Math.max(HUD_FLOOR,v);
  * (48 px at max(12, safe top)), left max(14, safe).
  */
 export function minimapRect(viewport:{width:number;height:number},safe:Insets=NO_INSETS,windowOpen=false):Rect{
-  const s=MINIMAP_SIDE;
-  if(orientationOf(viewport)==='portrait')return {x:viewport.width-floor8(safe.right)-s,y:floor8(safe.top)+64,width:s,height:s};
+  const s=wcMinimapSide(viewport);
+  // Portrait under the gear, or under the top band's two rows on a narrow phone (hud.css .rh-mm, hud-topo-uma-linha).
+  if(orientationOf(viewport)==='portrait')return {x:viewport.width-floor8(safe.right)-s,y:floor8(safe.top)+(viewport.width<600?94:64),width:s,height:s};
   if(windowOpen)return {x:Math.max(14,safe.left),y:Math.max(12,safe.top)+48+24,width:s,height:s};
   return {x:viewport.width-Math.max(14,safe.right)-s,y:floor8(safe.top)+52,width:s,height:s};
 }

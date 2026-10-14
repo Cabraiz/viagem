@@ -1,6 +1,6 @@
 /** City HUD port (NEW-20261012-ORQ-cidade-ux-01): the public API of src/client/hud/city/. */
 export {cityHudLayout,bigMinimapSide,bigSquare,minimapRect,heroRect,arrowRailOf,selectorRects,announceSlot,scaled,notched,referenceInput,skillSide,
-  MINIMAP_SIDE,BIG_MIN_SIDE,BIG_MAX_SIDE,HERO_SIDE,BIG_HERO_GAP,HUD_FLOOR,ANNOUNCE_GAP,SELECTOR,REFERENCE_CONTROLS,REFERENCE_GEAR,REFERENCE_VIEWPORT,REFERENCE_NOTCH,
+  MINIMAP_SIDE,wcMinimapSide,BIG_MIN_SIDE,BIG_MAX_SIDE,HERO_SIDE,BIG_HERO_GAP,HUD_FLOOR,ANNOUNCE_GAP,SELECTOR,REFERENCE_CONTROLS,REFERENCE_GEAR,REFERENCE_VIEWPORT,REFERENCE_NOTCH,
   type Orientation,type Insets,type CityControls,type CityLayoutInput,type CityLayout,type BigSideInput} from './layout.ts';
 export {clusterEnemies,pickGroupArrows,groupCountText,GROUP_CELL,GROUP_MIN,GROUP_RANGE,GROUP_ARROWS,GROUP_SHOW,GROUP_KEEP_NEAREST,
   type EnemyPoint,type EnemyGroup,type PickOptions} from './clusters.ts';

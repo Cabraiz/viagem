@@ -4,21 +4,23 @@
  * blocks, with a light relief shade); the endless map has no edge, so a window around a centre is built again when the
  * hero walks far from it; the island is its outline.
  *
- * Colours are a minimap palette (strong, like an RTS map): the city's art palette is pale snow and lilac, which would
- * read as one flat tone at 120 px.
+ * Colours are a minimap palette, like an RTS map: few colours and big patches (the city's art palette is pale snow and
+ * lilac, one flat tone at 120 px).
  */
 import {cityRenderAsset} from '../../render/city/from-maps.ts';
 import {isLand,trailAt,type CityAsset as MapsCityAsset,type TerrainField} from '../../../maps/index.ts';
 import type {Pt} from './geometry.ts';
 
 export const MM_COLORS=Object.freeze({
-  // Muted ground and blocks, strong lines (avenues, plaza, water): the dots must pop, as on an RTS map.
-  outside:'#2b2542',snow:'#e3e6f0',packed:'#7f7ba3',ice:'#b6e3f3',water:'#3f86d6',rubble:'#b3aab9',cobble:'#e2a95c',
-  building:'#a59fbd',wall:'#6e6690',cliff:'#c2bcd4',
+  // The city reads at a glance like an RTS map: few colours, big patches. Walkable ground light and smooth (snow, the
+  // avenues a shade darker), everything solid one flat dark tone, the plaza warm, water blue.
+  outside:'#2b2542',snow:'#eef0f7',packed:'#cfd0e2',ice:'#cfe9f5',water:'#3f86d6',rubble:'#3b3456',cobble:'#f0b45c',
+  building:'#3b3456',wall:'#3b3456',cliff:'#3b3456',
   grass:'#5f9e4c',grassDark:'#3f7a37',dry:'#a9a85a',sand:'#e3cf94',trail:'#c9a46a',tree:'#2e5a2a',rock:'#8d8f8c',sea:'#2f7fb8',
 });
+/** Share of solid cells in a 5×5 neighbourhood that makes a cell "built-up" (dark) on the city minimap. */
+export const BUILT_SHARE=.2;
 const GROUND_HEX:Record<string,string>={s:MM_COLORS.snow,p:MM_COLORS.packed,i:MM_COLORS.ice,w:MM_COLORS.water,r:MM_COLORS.rubble,c:MM_COLORS.cobble};
-const BLOCK_HEX:Record<string,string>={building:MM_COLORS.building,wall:MM_COLORS.wall,cliff:MM_COLORS.cliff,rubble:MM_COLORS.rubble};
 
 /** An image of the terrain whose pixel (u, v) is the world point origin + (u, v)·unit. */
 export interface TerrainImage {readonly canvas:HTMLCanvasElement|OffscreenCanvas;readonly origin:Pt;readonly unit:number;readonly width:number;readonly height:number}
@@ -30,25 +32,32 @@ function canvas(w:number,h:number):HTMLCanvasElement|OffscreenCanvas{
 }
 
 /**
- * The city's pixels (RGBA, one per cell): ground colour, blocks over it, and a relief shade (lighter facing the
- * upper-left sun, darker away from it). Pure: the tests read it without a DOM.
+ * The city's pixels (RGBA, one per cell): built-up (by the density of solid cells around) in one dark tone, the open
+ * ground by its kind, the plaza warm. Pure: the tests read it without a DOM.
  */
 export function cityTerrainPixels(asset:MapsCityAsset):{width:number;height:number;data:Uint8ClampedArray<ArrayBuffer>;unit:number;origin:Pt}{
-  const r=cityRenderAsset(asset),W=r.width,H=r.height,data=new Uint8ClampedArray(W*H*4);
-  const kinds:string[]=new Array(W*H);
-  for(let i=0;i<W*H;i++)kinds[i]=GROUND_HEX[r.ground[i]]??MM_COLORS.snow;
-  for(const b of r.blocks){
-    const c=BLOCK_HEX[b.kind]??MM_COLORS.building;
-    for(let y=Math.max(0,Math.floor(b.y));y<Math.min(H,Math.ceil(b.y+b.h));y++)for(let x=Math.max(0,Math.floor(b.x));x<Math.min(W,Math.ceil(b.x+b.w));x++)kinds[y*W+x]=c;
-  }
-  const h=r.heights,at=(x:number,y:number)=>h[Math.min(H-1,Math.max(0,y))*W+Math.min(W-1,Math.max(0,x))];
+  const r=cityRenderAsset(asset),W=r.width,H=r.height,data=new Uint8ClampedArray(W*H*4),cell=r.cell;
+  // 1. Solid or not, per cell: blocks, and any cell whose centre a hero cannot stand on (lots, ruins, the map's edge).
+  const solid=new Uint8Array(W*H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!asset.walkableAt(r.origin.x+(x+.5)*cell,r.origin.y+(y+.5)*cell))solid[y*W+x]=1;
+  for(const b of r.blocks)for(let y=Math.max(0,Math.floor(b.y));y<Math.min(H,Math.ceil(b.y+b.h));y++)for(let x=Math.max(0,Math.floor(b.x));x<Math.min(W,Math.ceil(b.x+b.w));x++)solid[y*W+x]=1;
+  // 2. Built-up or open, by density: a cell is "built-up" when at least BUILT_SHARE of its 5×5 neighbourhood is solid.
+  // The city is a maze of one-cell walls around snow lots; read cell by cell it is noise at 120 px. By density, the
+  // blocks of houses become dark patches and the wide streets, the avenues and the plaza stay clear (an RTS map's read).
+  const smooth=new Uint8Array(W*H),R=2,need=Math.ceil(BUILT_SHARE*(2*R+1)**2);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const i=y*W+x,[cr,cg,cb]=rgb(kinds[i]);
-    // Slope towards the upper-left sun: up to ±18% light.
-    const slope=(at(x-1,y)-at(x+1,y)+at(x,y-1)-at(x,y+1))/(2*r.cell),k=1+Math.max(-.18,Math.min(.18,slope*.35));
-    data[i*4]=cr*k;data[i*4+1]=cg*k;data[i*4+2]=cb*k;data[i*4+3]=255;
+    let n=0;
+    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){const u=x+dx,v=y+dy;n+=u<0||v<0||u>=W||v>=H?1:solid[v*W+u];}
+    smooth[y*W+x]=n>=need?1:0;
   }
-  return {width:W,height:H,data,unit:r.cell,origin:{x:r.origin.x,y:r.origin.y}};
+  // 3. Colours: solid in one dark tone; open ground by its kind (snow, the avenues, the plaza, ice, water).
+  for(let i=0;i<W*H;i++){
+    const g=r.ground[i],water=g==='w';
+    // The plaza keeps its warm tone even among the fountains and benches: it is the place to find.
+    const [cr,cg,cb]=rgb(water?MM_COLORS.water:g==='c'?MM_COLORS.cobble:smooth[i]?MM_COLORS.building:GROUND_HEX[g]??MM_COLORS.snow);
+    data[i*4]=cr;data[i*4+1]=cg;data[i*4+2]=cb;data[i*4+3]=255;
+  }
+  return {width:W,height:H,data,unit:cell,origin:{x:r.origin.x,y:r.origin.y}};
 }
 
 const cityCache=new WeakMap<object,TerrainImage>();

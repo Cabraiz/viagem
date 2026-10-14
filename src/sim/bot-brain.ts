@@ -41,7 +41,7 @@
  * before the wave, unless the crate it would work (nodeFor, by its index in teamBots) is nearer than the ATM: the crate
  * first, the ATM on the way back; at most BANK_BOTS per ATM (the nearest ones, ties by id). With more than one bot standing,
  * the first one (by teamBots order: the room's forger and tower builder) stays on the forge and the towers. In the wave
- * (the ATMs are too far for an intermission trip): with BANK_WAVE_MIN_UP standing, one bot in three (one per ATM, within
+ * (a full team): with BANK_WAVE_MIN_UP standing, one bot per BANK_WAVE_PER (one per ATM, within
  * BANK_WAVE_REACH) holds an ATM while the Grana is short. Mode 'bank'. Without banks nothing changes.
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
@@ -220,11 +220,12 @@ export const BANK_GRANA_TARGET=30;
 export const BANK_MIN_NOTES=2;
 /**
  * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
- * the decision "banco ou moto?" is made in combat. With at least BANK_WAVE_MIN_UP standing players, up to one bot in
- * three (never the builder, never one with an objective task) goes to the nearest open ATM within BANK_WAVE_REACH
- * (straight) and holds it; one bot per ATM. Alone or in pairs the bots keep the car.
+ * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
+ * the builder, never one with an objective task) goes to the nearest open ATM within BANK_WAVE_REACH
+ * (straight) and holds it, one bot per BANK_WAVE_PER standing (a full team of six: one bot). A smaller team keeps the car
+ * (CI: one bot in three left the car too thin, 6p 12/16 → 7/16).
  */
-export const BANK_WAVE_MIN_UP=3,BANK_WAVE_REACH=80;
+export const BANK_WAVE_MIN_UP=6,BANK_WAVE_PER=6,BANK_WAVE_REACH=80;
 /** How close (u) a bot stands to the ATM (inside BANCO.holdR), and the seconds it keeps for the walk back. */
 export const BANK_STAND=BANCO.holdR-1.5,BANK_MARGIN_SECONDS=2;
 
@@ -259,9 +260,14 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
     for(const b of open){const x=dist(at,b);if(x<d||x===d&&b.id<bank.id){d=x;bank=b;}}
     if(d>(wave?BANK_WAVE_REACH:BANK_REACH))continue;
     if(wave){picks.push({id:p.id,bank:bank.id,d});continue;}
-    // The crate it would work comes first when it is nearer (straight) than the ATM.
-    const crate=nodeFor(view.nodes??[],home,bots.indexOf(p.id),city&&(q=>botRouteDistance(city,q,home)));
-    if(crate&&dist(at,crate)<d)continue;
+    // A lone bot alternates: the crate in the even rounds' intermissions (the material for the towers), the ATM in the
+    // odd ones (the ATMs are near the car now, nearer than any crate). With a team, the crate it would work comes first
+    // when it is nearer (straight) than the ATM.
+    if(up.length===1){if(round.index%2===0)continue;}
+    else{
+      const crate=nodeFor(view.nodes??[],home,bots.indexOf(p.id),city&&(q=>botRouteDistance(city,q,home)));
+      if(crate&&dist(at,crate)<d)continue;
+    }
     const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
     const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
     if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
@@ -272,7 +278,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
   if(wave){
     const one=new Map<string,{id:string;bank:string;d:number}>();
     for(const x of [...picks].sort(order))if(!one.has(x.bank))one.set(x.bank,x);
-    const chosen=[...one.values()].sort(order).slice(0,Math.floor(up.length/3));
+    const chosen=[...one.values()].sort(order).slice(0,Math.floor(up.length/BANK_WAVE_PER));
     picks.splice(0,picks.length,...chosen);
   }
   const mine=picks.find(x=>x.id===selfId);
@@ -420,7 +426,7 @@ export function decide(input:BrainInput):Decision{
     return finish(decision,input);
   }
   // Bancos: a bot with no objective task may go and hold an ATM (bankTask: in the intermission when the trip fits; in
-  // the wave one bot in three, when the team is at least BANK_WAVE_MIN_UP).
+  // the wave one bot per BANK_WAVE_PER, when the team is at least BANK_WAVE_MIN_UP).
   const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';

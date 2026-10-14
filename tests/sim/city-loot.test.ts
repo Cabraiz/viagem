@@ -635,10 +635,10 @@ test('bancos: the crates at and around a bank are not in the run (no crate withi
     const banks=s.run.banks!,label=`${objective??'muralha'} seed ${seed}`;
     assert.equal(banks.places.length,BANCO.count,label);
     for(const b of banks.places){
-      assert.ok(b.crate&&banks.crates.has(b.crate),`${label}: ${b.id} took its crate's place`);
+      if(b.crate)assert.ok(banks.crates.has(b.crate),`${label}: ${b.id} took its crate's place`);
       const left=nodesNear(city,b,BANCO.holdR+GATHER_REACH+.35+1e-6,undefined,banks.crates);
       assert.deepEqual(left.map(n=>n.id),[],`${label}: no crate a hero holding ${b.id} could work`);
-      assert.ok(nodesNear(city,b,BANCO.holdR).length>=1,`${label}: without the run's hidden set the crate is there`);
+      if(b.crate)assert.ok(nodesNear(city,b,BANCO.holdR).length>=1,`${label}: without the run's hidden set the crate is there`);
     }
   }
 });

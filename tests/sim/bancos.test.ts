@@ -27,7 +27,7 @@ import {cityLoot} from '../../src/sim/stonewards/loot.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {planChaveiro} from '../../src/sim/chaveiro/system.ts';
-import {createBanks,distanceToPolyline,isPrime,planBanks,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
+import {createBanks,distanceToPolyline,isPrime,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
@@ -40,6 +40,8 @@ const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city),PLAZA=PTS.praca;
 /** The bank candidates exactly as assemble.ts hands them: the city's reachable loot points. */
 const LOOT=cityLoot(city)!.crates.map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}));
+/** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback. */
+const CANDIDATES=[...ringCandidates(CAR,(x,y,r)=>city.clearDisc(x,y,r)),...LOOT];
 const SAQUE=ticks(BANCO.saqueS),BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
@@ -48,7 +50,7 @@ interface Rig {world:SimWorld;sys:BanksSystem;purse:{grana:number};events:Got[];
 function rig(seed=7,route?:readonly Point[]):Rig{
   const world=new SimWorld({terrain:city,seed,players:new Map<string,SimPlayer>(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const purse={grana:0},events:Got[]=[];
-  const sys=createBanks({seed,candidates:LOOT,car:CAR,plaza:PLAZA,...(route?{route}:{}),wallet:{add:n=>{purse.grana+=n;}}});
+  const sys=createBanks({seed,candidates:CANDIDATES,car:CAR,plaza:PLAZA,...(route?{route}:{}),wallet:{add:n=>{purse.grana+=n;}}});
   const step=(n=1)=>{
     const got:Got[]=[];
     for(let i=0;i<n;i++){world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);for(const e of world.flush())got.push({tick:world.tick,e});}
@@ -81,23 +83,23 @@ function onePerThird(points:readonly Point[],c:Point){
 }
 
 // ---------- Placement ----------
-test('placement: 3 banks per seed, deterministic, ids and names, one per third, ≥ 35 u from the car, 20–60 u from the moto route (chaveiro) or the plaza (wall)',()=>{
+test('placement: 3 banks per seed, deterministic, ids and names, one per third, on the streets distCarro..distCarroMax from the car, desvio from the moto route (chaveiro) or the plaza (wall)',()=>{
   assert.equal(BANCO.count,3);
   const seen=new Set<string>(),relaxed:string[]=[];
   for(let seed=1;seed<=24;seed++){
     const route=planChaveiro(seed,OPEN,ENTRANCES,CAR).route.points;
     for(const [mode,anchor] of [['chaveiro',{route}],['muralha',{plaza:PLAZA}]] as const){
-      const a=planBanks(seed,LOOT,CAR,anchor),b=planBanks(seed,LOOT,CAR,anchor);
+      const a=planBanks(seed,CANDIDATES,CAR,anchor),b=planBanks(seed,CANDIDATES,CAR,anchor);
       assert.deepEqual(b,a,`same seed, same banks (${mode} ${seed})`);
       assert.equal(a.length,BANCO.count);
       assert.deepEqual(a.map(p=>p.id),['banco-1','banco-2','banco-3']);
       assert.deepEqual([...a.map(p=>p.name)].sort(),[...BANK_IDS].sort());
       assert.equal(new Set(a.map(p=>`${p.x},${p.y}`)).size,3,'three different spots');
-      for(const p of a)assert.ok(LOOT.some(c=>c.x===p.x&&c.y===p.y&&c.id===p.crate),'on a loot point, in place of its crate');
+      for(const p of a)assert.ok(city.clearDisc(p.x,p.y,1.5),'on open street ground');
       assert.ok(onePerThird(a,CAR),`one per third of the map around the car (${mode} ${seed})`);
       for(const p of a){
         const fromAnchor='route' in anchor?distanceToPolyline(p,anchor.route):dist(p,anchor.plaza);
-        if(dist(p,CAR)<BANCO.distCarro||fromAnchor<BANCO.desvio[0]||fromAnchor>BANCO.desvio[1])
+        if(dist(p,CAR)<BANCO.distCarro-1e-6||dist(p,CAR)>BANCO.distCarroMax+1e-6||fromAnchor<BANCO.desvio[0]||fromAnchor>BANCO.desvio[1])
           relaxed.push(`${mode} seed ${seed} ${p.id}: car ${dist(p,CAR).toFixed(1)} anchor ${fromAnchor.toFixed(1)}`);
       }
       seen.add(JSON.stringify(a.map(p=>[p.x,p.y])));
@@ -114,8 +116,8 @@ test('placement in a run: the city has banks in both modes (route anchor with th
     const run=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,...(objective?{objective}:{})});
     assert.ok(run.banks,`banks in the city (${objective??'muralha'})`);
     const anchor=objective?{route:run.chaveiro!.route.points}:{plaza:PLAZA};
-    assert.deepEqual(run.banks.places,planBanks(11,LOOT,CAR,anchor),'the run plans with the loot points, the car and the mode\'s anchor');
-    for(const p of run.banks.places)assert.ok(p.crate&&run.banks.crates.has(p.crate),`${p.id}: its crate is not in the run`);
+    assert.deepEqual(run.banks.places,planBanks(11,CANDIDATES,CAR,anchor),'the run plans with the street ring (then the loot points), the car and the mode\'s anchor');
+    for(const p of run.banks.places)if(p.crate)assert.ok(run.banks.crates.has(p.crate),`${p.id}: its crate is not in the run`);
     const views=run.bankViews()!;
     assert.equal(views.length,3);
     for(const v of views){assert.equal(v.saldo,BANCO.saldo);assert.equal(v.state,'aberto');assert.equal(v.until,undefined);assert.equal(v.drawer,undefined);}
@@ -333,8 +335,8 @@ for(const objective of ['chaveiro',undefined] as const){
   });
 }
 
-test('bots in the wave: with ≥ BANK_WAVE_MIN_UP standing, one bot in three holds an ATM (one per ATM, never the builder); pairs keep the car',async()=>{
-  const {bankTask,BANK_WAVE_MIN_UP,BANK_WAVE_REACH}=await import('../../src/sim/bot-brain.ts');
+test('bots in the wave: a full team (BANK_WAVE_MIN_UP standing) sends one bot per BANK_WAVE_PER to the nearest ATM, never the builder; a smaller team keeps the car',async()=>{
+  const {bankTask,BANK_WAVE_MIN_UP,BANK_WAVE_PER,BANK_WAVE_REACH}=await import('../../src/sim/bot-brain.ts');
   const bot=(id:string,x:number,y:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y});
   const bank=(id:string,x:number,y:number)=>({id,x,y,name:'juros' as const,saldo:40,state:'aberto' as const});
   // The car at the origin; three ATMs 40–50 u out (straight, no terrain); six bots, b1 the builder.
@@ -345,10 +347,10 @@ test('bots in the wave: with ≥ BANK_WAVE_MIN_UP standing, one bot in three hol
     structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}]} as any);
   assert.ok(BANK_WAVE_REACH>=45);
   const goes=ids.filter(id=>bankTask(view(players),id,ids,'b1'));
-  assert.equal(goes.length,Math.floor(players.length/3),'one in three');
+  assert.equal(goes.length,Math.floor(players.length/BANK_WAVE_PER),'one per BANK_WAVE_PER standing');
   assert.ok(!goes.includes('b1'),'the builder keeps the forge and the towers');
-  assert.deepEqual(goes.map(id=>bankTask(view(players),id,ids,'b1')!.bank).sort(),['banco-1','banco-2'],'one per ATM, the nearest ones');
-  assert.deepEqual(goes.sort(),['b2','b3']);
+  assert.deepEqual(goes.map(id=>bankTask(view(players),id,ids,'b1')!.bank),['banco-2'],'the ATM with the nearest bot (b3, 4 u)');
+  assert.deepEqual(goes,['b3']);
   // Fewer than BANK_WAVE_MIN_UP standing: nobody leaves the car in the wave.
   const pair=players.slice(0,BANK_WAVE_MIN_UP-1),pairIds=pair.map(p=>p.id);
   assert.deepEqual(pairIds.filter(id=>bankTask(view(pair),id,pairIds,'b1')),[]);

@@ -7,7 +7,7 @@
  * API (what the tests and the rooms use):
  *  - planBanks(seed, candidates, car, anchor) → BankPlace[] (pure): the BANCO.count banks of a run, drawn with
  *    Rng(seed).fork('bancos') among `candidates` (the city's loot points as cityLoot(terrain).crates place them). One
- *    per third of the map (three 120° sectors around the car, their start angle drawn), ≥ BANCO.distCarro from the car,
+ *    per third of the map (three 120° sectors around the car, their start angle drawn), BANCO.distCarro..distCarroMax from the car,
  *    and BANCO.desvio[0]..[1] from the anchor: the moto's route (anchor.route, chaveiro) or the plaza (anchor.plaza,
  *    wall mode). A sector with no candidate that fits drops the desvio rule, then the car rule. Ids 'banco-1'..,
  *    names BANK_IDS in sector order.
@@ -96,6 +96,20 @@ export function distanceToPolyline(p:Point,line:readonly Point[]){
   return best;
 }
 
+/**
+ * The bank spots on the streets around the car: a ring BANCO.distCarro..distCarroMax sampled every RING_STEP_DEG degrees
+ * and RING_STEP_U units, kept where a hero-size disc RING_CLEAR is clear (`clear`, the city terrain). Deterministic order.
+ */
+export const RING_STEP_DEG=5,RING_STEP_U=2,RING_CLEAR=1.5;
+export function ringCandidates(car:Point,clear:(x:number,y:number,r:number)=>boolean):Point[]{
+  const out:Point[]=[];
+  for(let r=BANCO.distCarro;r<=BANCO.distCarroMax+1e-9;r+=RING_STEP_U)for(let a=0;a<360;a+=RING_STEP_DEG){
+    const t=a*Math.PI/180,x=car.x+Math.cos(t)*r,y=car.y+Math.sin(t)*r;
+    if(clear(x,y,RING_CLEAR))out.push({x,y});
+  }
+  return out;
+}
+
 /** The run's banks: a pure function of the seed, the candidates, the car and the anchor (see the module doc). */
 export function planBanks(seed:number,candidates:readonly (Point&{id?:string})[],car:Point,anchor:BankAnchor):BankPlace[]{
   const rng=new Rng(seed>>>0).fork('bancos'),count=Math.max(0,Math.min(BANCO.count,BANK_IDS.length));
@@ -109,7 +123,8 @@ export function planBanks(seed:number,candidates:readonly (Point&{id?:string})[]
     const pool=candidates.map((p,i)=>({p,i})).filter(c=>!taken.has(c.i));
     const inSector=pool.filter(c=>sectorOf(c.p)===k);
     const tiers=[
-      inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
+      inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax&&fromAnchor(c.p)>=lo&&fromAnchor(c.p)<=hi),
+      inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro&&fromCar(c.p)<=BANCO.distCarroMax),
       inSector.filter(c=>fromCar(c.p)>=BANCO.distCarro),
       inSector,
       pool,

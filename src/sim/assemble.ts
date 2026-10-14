@@ -27,7 +27,7 @@ import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {createBanks,type BanksState,type BanksSystem} from './bancos/system.ts';
+import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
 import {cityLoot} from './stonewards/loot.ts';
 import type {BankView} from '../contract/index.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
@@ -291,7 +291,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
   if(cityTerrain){
     const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
-    banks=createBanks({seed:world.seed,candidates:(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y})),car:{x:wall.x,y:wall.y},
+    // The streets around the car first (an intermission trip away), the loot points as a fallback.
+    const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
+    banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
       wallet:{add:n=>{stonewards.state.grana+=n;}}},cp?.banks);
   }

@@ -43,6 +43,13 @@
  * here once the sheet loads. Without any art the line is text only here (the game then shows the enemy's sprite).
  * With `zueira=killcam` the kill-cam's critter is `bicho` (default tio-pave): its portrait in the frame, or, without art
  * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
+ * `pausa=escolhendo|esperando|ultimo` (D-050, card NEW-20261014-E4-levelup-pausa-hud): the team's level-up pause, 4 players
+ * unless `players=`, the room's fake pause (contract RunPause) sent like the room's, at each whole second:
+ * escolhendo: the combat offer open (no clock of its own, as in the pause), 10 s of 12, Zé already picked, you, Tia and
+ * Bruninha thinking; esperando: you picked (your offer closed), 7 s, Tia and Bruninha missing; ultimo: 3 s (urgent), only
+ * you missing ("Falta você!"). With `frozen=1` the pause's clock stands still (RunHudOptions.pauseClock); without it the
+ * seconds count down and start over.
+ * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
@@ -62,8 +69,11 @@ const ROUND_NAME=longest(ROUND_NAMES),BOSS_NAME=longest(BOSS_ROUND_NAMES),MODIFI
 const params=new URLSearchParams(location.search);
 /** `texto=125`: the 125% text scale (UX-acessibilidade, <html data-texto>), as the settings set it (modo foto: --extra texto=125). */
 if(params.get('texto')==='125')document.documentElement.dataset.texto='125';
-const players=Math.max(1,Math.min(6,Number(params.get('players'))||1));
-const requested=params.get('state') as HudScenario|null;
+const PAUSAS=['escolhendo','esperando','ultimo'] as const;
+const pausa=(PAUSAS as readonly string[]).includes(params.get('pausa')??'')?params.get('pausa') as typeof PAUSAS[number]:undefined;
+const players=Math.max(1,Math.min(6,Number(params.get('players'))||(pausa?4:1)));
+// The pause's base scene: the combat offer open (escolhendo, ultimo), or a wave with nothing to pick (esperando).
+const requested=(params.get('state')??(pausa?(pausa==='esperando'?'wave':'offer-open'):null)) as HudScenario|null;
 const cidade=params.get('mapa')==='cidade';
 /** Round 1 of the city (card cidade-08): a wave scene with no banner, trimmed to round 1 in the city block below. */
 const tutorial=cidade&&(requested as string|null)==='tutorial';
@@ -135,7 +145,9 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
 const hud=new RunHud(document.body,{
-  localId:'p1',worldRescue:bordas||cidade,
+  localId:'p1',worldRescue:bordas||cidade||!!pausa,
+  // The pause's frozen scenes (modo foto): its clock stands still, so the seconds and the bar print the same every time.
+  ...(pausa&&frozen?{pauseClock:()=>0}:{}),
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
   onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   // Dona Cida (D-047): the answer a room would give for the sandbox's numbers (the tray's own checks run first).
@@ -179,6 +191,21 @@ function withBill<T extends {victory:boolean}>(result:T):T{
   return {...result,objective:{kind:'chaveiro',outcome:conta==='opened'?'victory':conta==='timeout'?'timeout':'defeat',cause:conta,wave:12,extraWaves:2,eta:conta==='opened'?0:184,
     seconds:1340,hits:42,limit:120,budget,grana,paid:Math.min(grana,budget),debt,parts:3}};
 }
+/** The fake pause of `pausa=` (ids of fakePlayers: p1 you, p2 Tia Cleide, p3 Zé do Pix, p4 Bruninha). */
+const PAUSA_FAKE={escolhendo:{leftMs:9900,waiting:['p1','p2','p4']},esperando:{leftMs:6900,waiting:['p2','p4']},ultimo:{leftMs:2900,waiting:['p1']}} as const;
+const PAUSA_TOTAL=12000;let pausaFrom=performance.now();
+/**
+ * Like the room (multiplayer/levelup-pause.ts): the pause at each whole second of leftMs (rounded up), the same values in
+ * between (Hud.setPause ignores them; the HUD counts down locally). Frozen: the scene's exact leftMs, always.
+ */
+function sendPause(){
+  if(!pausa)return;
+  const fake=PAUSA_FAKE[pausa];
+  let left=fake.leftMs-(performance.now()-pausaFrom);
+  if(left<=0){pausaFrom=performance.now();left=fake.leftMs;}
+  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:6,waiting:[...fake.waiting]});
+}
+if(pausa)setInterval(sendPause,200);
 let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
@@ -189,6 +216,8 @@ function load(next:HudScenario){
   // The tutorial's round-1 banner comes with the city's first view (below), in the same frame as the walk's row, as in
   // the game; until the city is in, nothing.
   if(tutorial)view.events=[];
+  // The pause freezes the round: no banner over it.
+  if(pausa)view.events=[];
   // `barricada=1` with state=camp-forge (BUG-20261014-ORQ-forja-cobre-heroi-retrato): a damaged city barricade by the
   // camp, so the forge carries its fourth tag ("Reparar Norte"), as in the city camp. Stand-in mouths, the N one there.
   if(scenario==='camp-forge'&&params.get('barricada')==='1'){
@@ -226,7 +255,9 @@ function load(next:HudScenario){
   else document.body.dataset.hudReady='1';
   // Combat with the compact panel open: the same tap a player gives on the "+N" chip.
   if(scenario==='offer-open'||scenario==='offer-open-downed'){const chip=hud.el.querySelector<HTMLButtonElement>('.rh-offer-chip');if(chip&&chip.getAttribute('aria-expanded')!=='true')chip.click();}
+  if(pausa)sendPause();
 }
+
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
 void artReady().then(ok=>{if(ok)load(scenario);});

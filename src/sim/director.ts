@@ -1045,7 +1045,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     const roster=state.rotation?roundRoster(state.rotation,index):undefined;
     // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
     const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster,options.cityBalance?.roleCap&&city(ctx)?{roleCap:options.cityBalance.roleCap}:undefined);
     // The tutorial's pace is the bêbado's (TUTORIAL_PLAN.speed on his catalog speed): other fodder walks at it too.
     if(tutorial&&fodder?.length)plan={...plan,speed:plan.speed*enemyDef('bebado').speed/enemyDef(fodder[0]).speed};
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.

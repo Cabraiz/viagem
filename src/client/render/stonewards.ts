@@ -23,6 +23,7 @@ import {BASE_ART,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/b
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from './light.ts';
+import {objectiveOf} from './chaveiro/view.ts';
 
 const LIGHT=lightEnabled();
 
@@ -75,6 +76,8 @@ export class StonewardsRenderer {
   private pops:Pop[]=[];
   private structures:StructureView[]=[];
   private prepare=false;
+  /** D-047: the chaveiro objective runs: the Quadradão stands in the wall's place (render/chaveiro), the wall is not drawn. */
+  private objective=false;
   private tick=0;
   private now=0;
   private q:Pt={x:0,y:0};
@@ -97,7 +100,7 @@ export class StonewardsRenderer {
 
   /** A new authoritative view: structures, nodes, phase; "+N" pops for the units that came out since the last one. */
   push(view:RunView){
-    this.tick=view.tick;this.structures=view.structures;
+    this.tick=view.tick;this.structures=view.structures;this.objective=objectiveOf(view)!==undefined;
     this.prepare=view.round?.phase==='prepare'&&!view.camp?.wallDown;
     const nodes=this.prepare?view.nodes??[]:[];
     const before=new Map([...this.marks].map(([id,m])=>[id,m.view]));
@@ -132,7 +135,7 @@ export class StonewardsRenderer {
     const wall=this.structures.find(s=>structureRole(s.kind)==='wall');
     if(wall&&this.prepare)this.drawRing(wall,k);
     for(const m of this.marks.values())this.drawNode(m,k,u);
-    this.drawWall(wall,k,u);
+    this.drawWall(this.objective?undefined:wall,k,u);
     for(const s of this.structures){
       const role=structureRole(s.kind);
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);

@@ -1,3 +1,4 @@
+// test-changed: imports-only (its path strings are fixtures of a throwaway repo, not dependencies)
 // NEW-20261014-ORQ-fila-integracao-e-testes-afetados (D-049 item 3): the integration queue on a throwaway repo (a bare
 // "origin", its main checkout and a board): three branches — one with a protocol change, one that conflicts with the
 // main, one clean — give 1 suite, 1 protocol bump, the conflict sent back and 2 integrated after the Worker step; a

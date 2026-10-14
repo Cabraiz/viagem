@@ -1,3 +1,4 @@
+// test-changed: imports-only (its path strings are fixtures of a throwaway repo, not dependencies)
 // NEW-20261014-ORQ-fila-integracao-e-testes-afetados (D-049 item 2): scripts/test-changed.mjs picks the tests a change
 // can reach through imports and repo-path strings, and widens the set for the wire sectors, src/ and the build config.
 import test from 'node:test';
@@ -33,13 +34,14 @@ const run=(changed:string[])=>affectedTests({...repo(TREE),changed});
 test('references: static, dynamic, side-effect and new URL imports, and repo paths in strings',()=>{
   const refs=references("import a from './a.ts';export {b} from \"../b.ts\";import './c.ts';const d=await import('./d.ts');"
     +"new URL('../../public/x.json',import.meta.url);fromRoot('public/maps/y.json');readdirSync('src/client/hud/');const t=`src/${k}`;");
-  assert.deepEqual(refs.sort(),['../../public/x.json','../b.ts','./a.ts','./c.ts','./d.ts','/public/maps/y.json','/src','/src/client/hud'].sort(),
-    'the template `src/${k}` gives its folder');
+  assert.deepEqual(refs.imports.sort(),['../../public/x.json','../b.ts','./a.ts','./c.ts','./d.ts'].sort(),'modules (and new URL) are imports');
+  assert.deepEqual(refs.paths.sort(),['/public/maps/y.json','/src','/src/client/hud'].sort(),'data and folders are paths; `src/${k}` gives its folder');
   // The review's misses: a helper's '../../multiplayer/…', join() of literal segments, a root file, a template folder.
   const more=references("read('../../multiplayer/wrangler.jsonc');join(repo,'scripts','import-roster.mjs');readFileSync('index.html');"
-    +"load(`public/art/lite/sprites/${id}.webp`);fromRoot(`../../${path}`);fetch('https://x.y/z');'node:fs';'no slash'");
+    +"load(`public/art/lite/sprites/${id}.webp`);fromRoot(`../../${path}`);fetch('https://x.y/z');'node:fs';'no slash'").paths;
   for(const r of ['../../multiplayer/wrangler.jsonc','/scripts/import-roster.mjs','/index.html','/public/art/lite/sprites'])assert.ok(more.includes(r),r);
   assert.ok(!more.some((r:string)=>r==='/'||r==='..'||r==='../..'||r.includes('https')||r.includes('node:')),`no repo-wide folder, URL or node: ${more}`);
+  assert.deepEqual(references("// test-changed: imports-only\nimport x from './x.ts';const f='src/protocol/x.ts';").paths,[],'opted out of the string scan');
   assert.equal(resolveRef('tests/a/x.test.ts','node:fs',()=>true),undefined);
   assert.equal(resolveRef('tests/a/x.test.ts','phaser',()=>true),undefined);
   assert.equal(resolveRef('src/a/b.ts','../c',(p:string)=>p==='src/c.ts'),'src/c.ts');
@@ -70,4 +72,12 @@ test('package.json, the lockfile, a tsconfig or the script itself: the whole sui
   for(const f of ['package.json','package-lock.json','tsconfig.pure.json','scripts/test-changed.mjs']){
     const r=run([f]);assert.equal(r.all,true,f);assert.equal(r.tests.length,repo(TREE).tests.length);
   }
+});
+
+test('a reader of a file or a folder runs only when that file (or one in the folder) really changed, not when an import of it did',()=>{
+  // tools/x.mjs scans tests/ (its text); a src change that reaches tests/client/scene.test.ts must not bring tools/x.mjs.
+  const tree={...TREE,'tools/x.mjs':"const t=readdirSync('tests/client');",'tests/tools/x.test.ts':"import '../../tools/x.mjs';"};
+  const reach=(changed:string[])=>affectedTests({...repo(tree),changed}).tests;
+  assert.ok(!reach(['src/client/hud/minimap.ts']).includes('tests/tools/x.test.ts'),'not through the scene test it scans');
+  assert.ok(reach(['tests/client/scene.test.ts']).includes('tests/tools/x.test.ts'),'a file in the scanned folder changed');
 });

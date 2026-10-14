@@ -29,10 +29,12 @@ const git=(...args)=>execFileSync('git',args,{cwd:ROOT,encoding:'utf8',maxBuffer
  * literals with a `/` (or a root file name like index.html) come back as repo-root paths ('/…'); a template literal
  * gives its static prefix up to the first `${` as a folder; `join(…)` of literal segments counts as one path. Paths that
  * do not exist are dropped later (affectedTests checks them), so the net is wide on purpose: a missed test is the
- * expensive mistake.
+ * expensive mistake. Returns {imports, paths}: imports (static, dynamic, side-effect, `new URL(…, import.meta.url)`)
+ * carry a change on through whatever imports the file; paths are files read as data or text (and folders scanned):
+ * only a change to the file itself (or inside the folder) reaches the reader.
  */
 export function references(text){
-  const out=new Set();
+  const out=new Set(),imports=new Set();
   const add=(s)=>{
     s=s.trim();
     if(!s||/[\s*?<>|]/.test(s)||s.startsWith('node:')||/^[a-z]+:\/\//i.test(s))return;
@@ -40,8 +42,11 @@ export function references(text){
     else if(s.startsWith('/'))out.add(s.replace(/\/$/,''));
     else if(s.includes('/')||/^[\w.-]+\.[a-z]{1,6}$/i.test(s))out.add('/'+s.replace(/\/$/,''));
   };
-  for(const re of [/\bfrom\s*['"]([^'"\n]+)['"]/g,/\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,/\bimport\s+['"]([^'"\n]+)['"]/g])
-    for(const m of text.matchAll(re))out.add(m[1]);
+  for(const re of [/\bfrom\s*['"]([^'"\n]+)['"]/g,/\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,/\bimport\s+['"]([^'"\n]+)['"]/g,
+    /new\s+URL\(\s*['"]([^'"\n]+)['"]\s*,\s*import\.meta\.url/g])for(const m of text.matchAll(re))imports.add(m[1]);
+  const result=()=>({imports:[...imports],paths:[...out].filter(p=>!imports.has(p))});
+  // A file whose literals are fixtures, not dependencies (the tools' own tests), opts out of the string scan.
+  if(/^\/\/ test-changed: imports-only\b/m.test(text))return result();
   // Every quoted literal (no ${}).
   for(const m of text.matchAll(/'([^'\n]{1,200})'|"([^"\n]{1,200})"|`([^`$\n]{1,200})`/g))add(m[1]??m[2]??m[3]);
   // Template literals with ${}: their static prefix as a folder (`public/art/lite/sprites/${id}.webp` → that folder).
@@ -51,7 +56,7 @@ export function references(text){
     const parts=[...m[1].matchAll(/'([^'\n]+)'|"([^"\n]+)"/g)].map(x=>x[1]??x[2]);
     if(parts.length>1)add(parts.join('/'));
   }
-  return [...out];
+  return result();
 }
 
 /** A specifier of `from` as a repo-relative path (posix), or undefined for packages and node: modules. */
@@ -70,27 +75,26 @@ export function resolveRef(from,spec,exists){
  */
 export function affectedTests({files,read,exists,isDir,changed,tests}){
   if(changed.some(f=>GLOBAL.some(re=>re.test(f))))return {all:true,tests:[...tests],reasons:{'*':changed.filter(f=>GLOBAL.some(re=>re.test(f)))}};
-  // Reverse edges: target → the files that reference it; folders referenced as a prefix.
-  const users=new Map(),folders=[];
+  // Reverse edges. importers: module → the files that import it (followed transitively). readers: file → the files that
+  // read it as data/text, and folders → the files that scan them (only for the files that really changed).
+  const importers=new Map(),readers=new Map(),folders=[];
+  const edge=(m,to,f)=>{let s=m.get(to);if(!s)m.set(to,s=new Set());s.add(f);};
   for(const f of files){
-    for(const spec of references(read(f))){
-      const to=resolveRef(f,spec,exists);
-      if(!to)continue;
-      if(isDir(to))folders.push({dir:to+'/',user:f});
-      else{let s=users.get(to);if(!s)users.set(to,s=new Set());s.add(f);}
-    }
+    const {imports,paths}=references(read(f));
+    for(const spec of imports){const to=resolveRef(f,spec,exists);if(!to)continue;if(isDir(to))folders.push({dir:to==='.'?'':to+'/',user:f});else edge(importers,to,f);}
+    for(const spec of paths){const to=resolveRef(f,spec,exists);if(!to)continue;if(isDir(to))folders.push({dir:to==='.'?'':to+'/',user:f});else edge(readers,to,f);}
   }
   const testSet=new Set(tests),hit=new Map(),seen=new Set(),queue=[];
   const visit=(f,why)=>{if(seen.has(f))return;seen.add(f);queue.push([f,why]);};
   for(const c of changed){
     visit(c,c);
+    for(const r of readers.get(c)??[])visit(r,c);
     for(const {dir,user} of folders)if(c.startsWith(dir))visit(user,c);
   }
   while(queue.length){
     const [f,why]=queue.shift();
     if(testSet.has(f)&&!hit.has(f))hit.set(f,why);
-    for(const u of users.get(f)??[])visit(u,why);
-    for(const {dir,user} of folders)if(f.startsWith(dir))visit(user,why);
+    for(const u of importers.get(f)??[])visit(u,why);
   }
   if(changed.some(f=>WIRE.test(f)))for(const t of tests)if(isWireTest(t)&&!hit.has(t))hit.set(t,'protocol/determinism (contract, protocol or rules changed)');
   if(changed.some(f=>f.startsWith('src/'))&&testSet.has(ARCH_TEST)&&!hit.has(ARCH_TEST))hit.set(ARCH_TEST,'architecture (src changed)');

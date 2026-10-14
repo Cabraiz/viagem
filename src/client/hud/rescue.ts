@@ -26,7 +26,7 @@ import {defaultPortrait} from './hud.ts';
 import {EmoteGate,SosBoard,SOS_COOLDOWN_MS,type SosPing} from '../fun/emotes.ts';
 import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
-import {worldBase,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
+import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
@@ -69,7 +69,8 @@ export class RescueBoard {
   private said=new Set<string>();
   private frame=0;private minimapAt=0;
   /** The WC3 minimap's driver (wc-minimap/driver.ts): frame, terrain cache, ally colours, heading. */
-  private readonly wcDriver=new WcMinimapDriver();private timers=new Set<ReturnType<typeof setTimeout>>();
+  private readonly wcDriver=new WcMinimapDriver();
+  private farWarm?:unknown;private timers=new Set<ReturnType<typeof setTimeout>>();
   /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
   private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
   private readonly outline=islandOutline();
@@ -206,10 +207,12 @@ export class RescueBoard {
    */
   private drawWc(scene:IslandScene,players:readonly {id:string;x:number;y:number;online:boolean;spectator?:boolean}[],focus:{x:number;y:number},now:number){
     const hud=this.hud,net=this.net,wc=hud.wc!;
-    wc.onMove??=p=>{this.scene()?.goTo(p,{markerMs:900});};
+    wc.onMove??=p=>{this.scene()?.goTo(p,{markerMs:900,far:true});};
     // A ping goes to the room (an old room drops it: it stays on this minimap); the team's come back through onMark.
     if(!wc.onPing){wc.onPing=p=>{net.mark(p.x,p.y);};net.onMark=m=>{if(m.player!==net.id)wc.pingWorld(m,this.wcDriver.colorOf(m.player));};}
     const locate=(p:{x:number;y:number})=>scene.locate(p).screen;
+    // The far-walk grid of a click on the minimap, built on an idle moment once per world (maps far-path.ts).
+    if(this.farWarm!==net.terrain){this.farWarm=net.terrain;const t=net.terrain;setTimeout(()=>prewarmFarPath(t),0);}
     // The city's maps asset (the HUD's cityAssetOf is a narrow view of it): the terrain image reads its cells and blocks.
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
     this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,

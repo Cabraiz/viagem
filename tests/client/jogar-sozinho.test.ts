@@ -139,5 +139,6 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
 test('?modo=chaveiro asks the room for the chaveiro objective (D-047); anything else asks for nothing',()=>{
   assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro'});
   assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'),{objective:'chaveiro'});
-  for(const s of ['','?modo=muralha','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
+  assert.deepEqual(objectiveFromSearch('?modo=muralha'),{objective:'muralha'},'the old wall mode, on request');
+  for(const s of ['','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
 });

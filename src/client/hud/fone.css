@@ -1,0 +1,87 @@
+/* The phone's minimal HUD (card NEW-20261014-ORQ-hud-mobile-minimo; the user's words: "no mobile a pessoa vai ver
+   somente sua habilidade, o mapa (esquerda cima), as 4 pessoas em leque horizontal e 50 % menores, na direita cima a
+   engrenagem e no meio a vida do uno e o level"). RunHud.setInput('touch') sets .rh[data-hud=fone] (desktop-input.ts,
+   D-044: a finger, never the user agent); the desktop (data-hud=mesa) keeps hud.css as it is. Portrait and landscape:
+   - top-left: the WC3 minimap (tap pings, a mouse click walks: wc-minimap/minimap.ts, unchanged);
+   - top-right: the gear (explore.css, unchanged);
+   - top centre, between them: the level ("Nv N" and its XP thread) glued to the team's bar (camp.ts .rh-camp: the
+     wall's life, or the car's hits with the chaveiro, D-047), the life's number or the chaveiro's clock inside the bar;
+     under it (portrait) or beside it (landscape) the team as a fan of half-size portraits, no names (a tap shows one,
+     team.ts NAME_TAP_MS); the boss bar wraps under them during a boss fight;
+   - gone from the phone: the camera buttons (in the settings now, explore.ts), the round chip, the Grana and the fichas
+     (shown where they are spent: the forge, the obra window and Dona Cida's tray);
+   - the edge arrows keep their place on the useful area's rim (edges.ts) and are drawn smaller, inside their box.
+   The windows start at the screen's left edge in portrait (no team column any more). Tokens only (lint-design.mjs). */
+.rh[data-hud=fone]{--rh-mm:clamp(124px,30vmin,210px)}
+
+/* ---------- Minimap: top-left, both orientations (over the hud.css slots, the window-open move included) ---------- */
+.rh.rh[data-hud=fone] .rh-minimap.rh-mm{top:var(--rh-t);left:var(--rh-l);right:auto;bottom:auto}
+
+/* ---------- Top centre: level + bar, the fan under it, the boss bar last ---------- */
+.rh.rh[data-hud=fone] .rh-top{left:calc(var(--rh-l) + var(--rh-mm) + 6px);right:calc(var(--rh-r) + 66px);justify-content:center;align-items:center;flex-wrap:wrap;column-gap:0;row-gap:4px}
+.rh[data-hud=fone] .rh-top>.rh-round{display:none}
+.rh[data-hud=fone] .rh-top>.rh-xp{order:0;z-index:1;margin:0}
+.rh[data-hud=fone] .rh-top>.rh-camp{order:1;flex:1 1 88px;max-width:150px;min-width:0;min-height:34px;padding:2px 6px 2px 10px;gap:4px}
+.rh[data-hud=fone] .rh-top>.rh-team{order:2}
+.rh[data-hud=fone] .rh-top>.rh-boss{order:3;margin:0;flex:1 0 100%}
+/* The bar takes the ficha: the base sticker, then the bar with the number (or the chaveiro's clock) inside it. */
+.rh[data-hud=fone] :is(.rh-camp-grana,.rh-camp-token){display:none}
+.rh[data-hud=fone] .rh-camp-wall{position:relative;flex:1 1 auto}
+.rh[data-hud=fone] .rh-camp .rh-camp-wall>.ic{width:18px;height:18px}
+.rh[data-hud=fone] .rh-top .rh-camp-barra{flex:1 1 auto;min-width:48px}
+.rh[data-hud=fone] .rh-camp-track{flex:1 1 auto;width:100%;height:18px}
+.rh[data-hud=fone] .rh-camp-num{position:absolute;top:0;bottom:0;left:22px;right:0;justify-content:center;pointer-events:none}
+.rh[data-hud=fone] .rh-camp .rh-camp-hp,.rh[data-hud=fone] .rh-camp-relogio-ficha b{min-width:0;padding:0 4px;border-radius:var(--r-etiqueta);background:var(--c-ficha);font:400 var(--t-13)/16px var(--f-cartaz);text-align:center}
+/* A clock (camp.ts barClock: the chaveiro's, or the intermission's countdown) over the whole bar's row, not inside the
+   track (its overflow would cut it at 125 % on a 360 px phone): the base sticker gives it its room while it shows. */
+.rh[data-hud=fone] .rh-camp-relogio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.rh[data-hud=fone] .rh-camp-relogio-ficha{display:flex;align-items:center;gap:1px;line-height:0;white-space:nowrap}
+.rh[data-hud=fone] .rh-camp .rh-camp-relogio .ic{width:16px;height:16px}
+.rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic){display:none}
+/* The last 5 s of the intermission: Laranja Cone with Breu text and the round chip's pulse (topbar.ts rh-urgent). */
+.rh[data-hud=fone] .rh-camp-relogio[data-urgente] b{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
+.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:rh-pulse .6s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:none}}
+
+/* ---------- The team: a fan of half-size portraits (44 → 24 px), like cards in a hand ---------- */
+.rh.rh[data-hud=fone] .rh-top>.rh-team{position:static;transform:none;flex:0 0 100%;display:flex;flex-direction:row;justify-content:center;gap:0;padding:2px 0 0;pointer-events:none;touch-action:auto}
+/* A hand of cards: the middle ones turned a little, the ends turned more and dropped 3 px (an arc). */
+.rh.rh[data-hud=fone] .rh-member{--leque-giro:-4deg;--leque-desce:0px;width:28px;min-width:0;margin:0 -2px;gap:1px;rotate:var(--leque-giro);translate:0 var(--leque-desce);transform-origin:50% 100%}
+.rh.rh[data-hud=fone] .rh-member:nth-child(even){--leque-giro:4deg}
+.rh.rh[data-hud=fone] .rh-member:first-child:not(:last-child){--leque-giro:-10deg;--leque-desce:3px}
+.rh.rh[data-hud=fone] .rh-member:last-child:not(:first-child){--leque-giro:10deg;--leque-desce:3px}
+.rh.rh[data-hud=fone] .rh-team:is([data-count="5"],[data-count="6"]) .rh-member{margin:0 -4px}
+.rh.rh[data-hud=fone] .rh-member-ring{width:24px;height:24px;padding:2px}
+/* An invisible hit area a little past each card (a spectator taps one to watch them): where two overlap, the later
+   card, drawn on top, takes the tap. */
+.rh.rh[data-hud=fone] .rh-member::after{content:'';position:absolute;inset:-6px -4px}
+.rh.rh[data-hud=fone] .rh-member-hp{width:22px;height:4px}
+/* No names under the fan: a tap (or a held finger) on a portrait shows that one's name under it, level (team.ts). */
+.rh.rh[data-hud=fone] .rh-member-name{display:none;position:absolute;z-index:2;top:calc(100% + 2px);left:50%;transform:translateX(-50%) rotate(calc(0deg - var(--leque-giro)))}
+.rh.rh[data-hud=fone] .rh-member[data-nome] .rh-member-name{display:block}
+/* The state stickers shrink with the portrait; the caído's seconds sit where the life bar was (it hides while caído). */
+.rh.rh[data-hud=fone] .rh-member-badge{top:-6px;right:-5px}
+.rh.rh[data-hud=fone] .rh-member-bot{top:-6px;left:-5px}
+.rh.rh[data-hud=fone] .rh-member-mood{top:12px;right:-5px}
+.rh.rh[data-hud=fone] .rh-member :is(.rh-member-badge,.rh-member-bot,.rh-member-mood) .ic{width:14px;height:14px}
+.rh.rh[data-hud=fone] .rh-member-timer{top:22px;z-index:1;padding:0 3px}
+
+/* ---------- Edge arrows: a smaller ficha (64×30 instead of 76×36) centred in the box edges.ts lays out ---------- */
+.rh[data-hud=fone] .rh-edge{width:calc(32px + 32px * var(--t-escala));height:30px;margin:3px 0 0 6px;gap:3px;padding:0 4px 0 3px}
+.rh[data-hud=fone] .rh-edge-face,.rh[data-hud=fone] .rh-edge-face :is(.ic,.face){width:20px;height:20px}
+/* The beak keeps touching the ficha: drawn 6 px further in along its direction (the ficha is 6 px narrower each side). */
+.rh[data-hud=fone] .rh-edge-tip::before,.rh[data-hud=fone] .rh-edge-tip::after{left:-7px}
+
+@media (min-height:501px){
+  /* Portrait: no team column, so the announcement slot and the windows start at the screen's left edge. */
+  .rh.rh[data-hud=fone] .rh-stack{left:calc(var(--rh-l) + 8px)}
+  .rh.rh[data-hud=fone] .rh-offer{--of-left:0px}
+  /* The combat strip too: no team column to keep clear of (hud.css keeps 70–94 px for it, 125 % included). */
+  .rh.rh[data-hud=fone] .rh-offer[data-mode=combat]{max-width:calc(100vw - var(--rh-l) - var(--rh-r))}
+  .rh.rh[data-hud=fone] :is(.rh-forge,.rh-cida){left:var(--rh-l)}
+}
+@media (max-height:500px){
+  /* Landscape: one row (level + bar, then the fan beside them), the boss bar under it in a boss fight. */
+  .rh.rh[data-hud=fone] .rh-top>.rh-team{flex:0 0 auto;margin-left:12px;padding:0}
+  .rh[data-hud=fone] .rh-top>.rh-camp{flex-basis:160px;max-width:180px}
+}

@@ -21,7 +21,7 @@ import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
-import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {fallLine,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
@@ -104,6 +104,19 @@ export function tokenMarkup(units:number){
 }
 export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.kind==='muralha');
 /**
+ * The clock the phone's minimal top shows inside the team's bar (hud-mobile-minimo; the round chip that shows it on the
+ * desktop is not on the phone), pure (tested): the chaveiro's while he rides (D-047: it wins, it is the objective), else
+ * the intermission's countdown before the next wave ("12 s", urgent at 5 s and under, like the round chip); none in a
+ * wave. `aria`: the same in words, for the screen reader (the bar's picture is aria-hidden).
+ */
+export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean}
+export function barClock(view:RunView):BarClock|undefined{
+  const round=roundInfo(view);
+  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:round.chaveiro.aria,urgent:false};
+  if(round?.phase==='prepare'&&round.countdown!==undefined)return {icon:'relogio',text:`${round.countdown} s`,aria:round.detail,urgent:round.countdown<=5};
+  return undefined;
+}
+/**
  * What the base ficha's bar and number show (pure, tested): the wall's life, or, with the chaveiro objective (D-047),
  * the hits the car still takes (hud/chaveiro.ts carBar), the car standing where the wall stood. One shape for both, so
  * the swap is this function and paintBaseBar only (card chaveiro-hud; E6's .rh-camp-barra/.rh-camp-num keep it).
@@ -173,6 +186,20 @@ export function createCamp(options:CampOptions):CampPart{
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  // The phone's minimal top (hud-mobile-minimo, fone.css): the life's number, or a clock (barClock: the chaveiro's, D-047,
+  // or the intermission's countdown), rides over the bar, small; the round chip that carries them elsewhere is not on the
+  // phone. Over the bar's box, not inside the track (its overflow would cut the clock at 125 %). Hidden on the desktop,
+  // where the round chip says it; on the phone the words go to the screen reader (.rh-sr, as topbar.ts does).
+  const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
+  const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
+  let lastClock:string|undefined;
+  const paintClock=(view:RunView)=>{
+    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}`:'';
+    if(key===lastClock)return;
+    lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
+    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
+    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
+  };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{
     fill.style.transform=`scaleX(${bar.fraction})`;
@@ -202,7 +229,12 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Forge window ----------
   const forge=el('section','rh-forge');forge.hidden=true;forge.setAttribute('aria-label','Forja');
   const head=el('div','rh-forge-head',forge);
-  const title=el('h2','rh-forge-title',head);title.textContent='Forja';
+  // The title's cell holds the team's Grana where it is spent (hud-mobile-minimo: the phone's top shows no R$): "R$ 120"
+  // as a small second line under "Forja", so the head keeps its three cells (title, note, close) in a narrow window.
+  const titleCell=el('div','rh-forge-titulo',head);
+  const title=el('h2','rh-forge-title',titleCell);title.textContent='Forja';
+  const wallet=el('b','rh-forge-grana',titleCell);wallet.setAttribute('role','img');
+  let lastWallet:string|undefined;
   const close=el('button','rh-forge-close',head);close.type='button';close.setAttribute('aria-label','Fechar a forja');close.insertAdjacentHTML('beforeend',icon('fechar',{size:32}));
   const list=el('div','rh-forge-tags',forge);
   /** A tag of the window: the forge's three recipes, plus 'barricada' (a 'reparo' with the barricade as target). */
@@ -241,11 +273,12 @@ export function createCamp(options:CampOptions):CampPart{
   let lastFraction:number|undefined,warning:{text:string;until:number}|undefined,warnTimer:ReturnType<typeof setTimeout>|undefined;
 
   const say=(text:string,keep=false)=>{
-    note.textContent=text;note.hidden=false;fall.hidden=true;clearTimeout(noteTimer);
-    if(!keep)noteTimer=setTimeout(()=>{note.textContent=DEFAULT_NOTE;},2600);
+    note.textContent=text;delete note.dataset.padrao;note.hidden=false;fall.hidden=true;clearTimeout(noteTimer);
+    if(!keep)noteTimer=setTimeout(()=>{note.textContent=DEFAULT_NOTE;note.dataset.padrao='';},2600);
   };
   const DEFAULT_NOTE='A grana é da turma. Toca pra comprar.';
-  note.textContent=DEFAULT_NOTE;
+  // data-padrao: the standing line, not an answer (the landscape window leaves it out, camp.css).
+  note.textContent=DEFAULT_NOTE;note.dataset.padrao='';
   const refusal=(reason:string,recipe:RecipeId)=>reason==='balance'?(last?.camp&&missing(last.camp,recipe))||FORGE_REFUSALS.balance:FORGE_REFUSALS[reason]??'Agora não dá.';
 
   const tap=(key:TagKey)=>{
@@ -285,7 +318,7 @@ export function createCamp(options:CampOptions):CampPart{
     readout.hidden=!camp;
     if(!view||!camp){forge.hidden=true;notice.hidden=true;return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    paintBaseBar(baseBar(view),!!camp.wallDown);
+    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view);
     const money=granaReadout(camp.grana);
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
@@ -326,6 +359,7 @@ export function createCamp(options:CampOptions):CampPart{
     const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed&&!yielded;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
+    if(money.text!==lastWallet){lastWallet=money.text;wallet.textContent=money.text;wallet.setAttribute('aria-label',money.label);}
     if(title.textContent!==place.title){title.textContent=place.title;forge.setAttribute('aria-label',place.title);close.setAttribute('aria-label',home?'Fechar a forja':'Fechar a barricada');}
     const line=fallLine(view,ctxId),quiet=note.textContent===DEFAULT_NOTE;
     if(fall.textContent!==line)writeFallLine(fall,line);

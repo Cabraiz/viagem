@@ -3,6 +3,8 @@
  * minimap, hud.css .rh-mm), the rail of the edge arrows' centres and the lobby map selector, per orientation, text scale
  * (100/125%), notch and an open offer/forge window. Mobile only (D-009). Pure geometry over the measured controls: the
  * zones come from computeZones with the minimap in them, every other number from the CSS rules the doc quotes.
+ * Since NEW-20261014-ORQ-hud-mobile-minimo this is the mouse layout (data-hud=mesa, any window size); a finger lays the
+ * phone's minimal HUD out instead (hud/fone-layout.ts, fone.css: minimap top-left, no camera buttons nor round chip).
  */
 import {computeZones,orientationOf,right,bottom,arrowHalf,RIM_PAD,TAG_ROOM,NAME_ROOM,EDGE_COLUMN,
   type Rect,type ZoneInput,type ScreenZones} from './deps.ts';

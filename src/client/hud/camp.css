@@ -36,6 +36,8 @@
 .rh-camp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--c-cartolina);transition:transform .2s ease-out}
 .rh-camp-hp{min-width:2.1em;text-align:right}
 .rh-camp-low .rh-camp-fill{background:var(--c-cone)}
+/* The chaveiro's clock inside the bar (camp.ts .rh-camp-relogio): only the phone's minimal top shows it (fone.css). */
+.rh-camp-relogio{display:none}
 .rh-camp-low .rh-camp-track::after{content:'';position:absolute;left:30%;top:0;width:8px;height:6px;margin-left:-4px;background:var(--c-papel);clip-path:polygon(0 0,100% 0,50% 100%)}
 /* Portrait: the announcement slot under the band. */
 @media (min-height:501px){
@@ -104,11 +106,17 @@
    tags fit without scrolling in both orientations. */
 .rh-forge{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;grid-template-rows:auto minmax(0,1fr);column-gap:8px}
 .rh-forge-head{display:contents}
-.rh-forge-title{grid-column:1;grid-row:1;align-self:center;padding-left:4px}
+.rh-forge-titulo{grid-column:1;grid-row:1;align-self:center;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding-left:4px}
+/* The team's Grana under the title (hud-mobile-minimo: R$ shows where it is spent), a small second line in the title's
+   cell: the head keeps three cells, so the note never squeezes into a fourth one in the narrow landscape window. */
+.rh-forge-grana{font:400 var(--t-13)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap}
 .rh-forge-note{grid-column:2;grid-row:1;align-self:center}
 .rh-forge-fall{grid-column:2;grid-row:1;align-self:center;margin:0} /* in the note's cell (hud.css .rh-window-fall) */
 /* Landscape: one line ("Seu caiu, 6 s."), the hint goes; two lines reached into the first tag at 125% (pacote-bugs-ux). */
 @media (max-height:500px){.rh-forge-fall .rh-window-fall-hint{display:none}.rh-forge-fall{white-space:nowrap}}
+/* Landscape (a window ~280–380 px wide): the head stays one row as tall as the close button. The standing line goes
+   (data-padrao, camp.ts); a tap's answer ("Falta R$ 5.") is one line cut with an ellipsis (whole in the live region). */
+@media (max-height:500px){.rh-forge-note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rh-forge-note[data-padrao]{visibility:hidden}.rh-forge-fall{overflow:hidden;text-overflow:ellipsis}}
 .rh-forge-note[hidden]{display:none}
 .rh .rh-forge-close{grid-column:3;grid-row:1}
 .rh-forge-tags{grid-column:1/-1;grid-row:2;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}

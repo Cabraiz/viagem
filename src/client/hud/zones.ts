@@ -14,6 +14,11 @@
  *   offer or the forge holds the right column, under the camera buttons, still outside the useful area.
  * - edge arrows (UX-bordas-fora-da-tela): the only HUD besides the offer and the result allowed inside the useful area,
  *   on its inner rim and never over the hero (± HERO_MARGIN); not touch targets.
+ * - the phone (touch input, `.rh[data-hud=fone]`, card NEW-20261014-ORQ-hud-mobile-minimo, fone.css): no camera buttons,
+ *   no round chip, no Grana nor fichas on screen. The top band is the minimap (top-left), the team's bar with the level
+ *   and, under it, the team as a fan of small portraits (top centre), and the gear (top-right). The fan is a status row
+ *   of the band (never the team column/floor); in portrait the minimap is part of the band too (the announcement slot
+ *   starts under it); in landscape it floats in the left EDGE_COLUMN, over the joystick's column, as before.
  * Pure geometry plus one DOM reader (measureZones) and the audit the acceptance scripts run on the real scene.
  */
 
@@ -247,12 +252,16 @@ export function measureZoneInput(doc:Document=document,windows:readonly string[]
   const hud=q('.rh');
   let offer:Rect|undefined;
   for(const selector of windows){offer=rectOf(q(selector));if(offer)break;}
+  const viewport={width:innerWidth,height:innerHeight},minimap=rectOf(q('.rh-minimap'));
+  // The phone (hud-mobile-minimo): in portrait the minimap is the band's top-left corner, so the band ends under it.
+  const phonePortrait=(hud as HTMLElement|null)?.dataset.hud==='fone'&&orientationOf(viewport)==='portrait';
   return {
-    viewport:{width:innerWidth,height:innerHeight},
-    status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
-    team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
+    viewport,
+    status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*'),...(phonePortrait?[minimap]:[])],
+    // The phone's fan lives in the band (.rh-top>.rh-team, a status row above): it is not the team column nor its floor.
+    team:union(all('.rh-member:not(.rh-top .rh-member)')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),cida:rectOf(q('.rh-cida-btn')),safe:hud?safeInsets(hud):undefined,
-    offer,minimap:rectOf(q('.rh-minimap')),
+    offer,minimap,
   };
 }
 /** Zones read from the live layout (measureZoneInput, every intermission window included). */

@@ -1,0 +1,122 @@
+# Suite for executor branches (NEW-20261014-ORQ-ci-github-shards-e-bench, D-049 item 1). Publishing stays in pages.yml.
+# The executor reads the result with `node tools/ci.mjs test <branch>` (no token needed: public repo):
+# every test shard leaves one annotation `ci-ok` or `ci-failed` (JSON list of failing test files) plus `ci-timings`.
+# Shards are balanced by tests/.timings.json (longest first into the lightest shard; refresh it with
+# `node tools/ci.mjs timings <branch>`).
+name: CI
+on:
+  push:
+    branches: ['vgm/**', 'fila/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # The PC's node: bench determinism and the same type stripping as local runs.
+  NODE_VERSION: '26.9.0'
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            backend/node_modules
+          key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
+          lookup-only: true
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci --include=optional && npm ci --prefix backend
+
+  check:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            backend/node_modules
+          key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci --include=optional && npm ci --prefix backend
+      - run: npm run check
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            backend/node_modules
+          key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci --include=optional && npm ci --prefix backend
+      - run: npm run build
+
+  test:
+    needs: setup
+    name: test ${{ matrix.shard }}/6
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: deps
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            backend/node_modules
+          key: deps-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json', 'backend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci --include=optional && npm ci --prefix backend
+      - name: Test shard ${{ matrix.shard }}/6
+        run: |
+          mapfile -t files < <(node tools/ci.mjs shard ${{ matrix.shard }}/6)
+          echo "${#files[@]} test files"
+          set +e
+          node --experimental-strip-types --test --test-concurrency=4 \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=./tools/ci-reporter.mjs --test-reporter-destination=ci-report.json \
+            "${files[@]}"
+          code=$?
+          set -e
+          node tools/ci.mjs report ci-report.json --shard ${{ matrix.shard }}/6 --exit $code
+          exit $code

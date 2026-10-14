@@ -1,0 +1,162 @@
+# City run bench in parallel (NEW-20261014-ORQ-ci-github-shards-e-bench, D-049 item 5): one job per (seed, team size).
+# Started by `node tools/ci.mjs bench <branch> …`, which pushes a commit with .bench.json to bench/<branch>-<stamp>
+# (params: world, seeds, players, objective, capMin, towers, target, sha = benched commit, base = merge-base with main),
+# or by hand with workflow_dispatch.
+#
+# Early stop (target "k/n" = at least k wins per n runs, per team size): the `gate` job polls this run's finished seed
+# jobs (their `bench-outcome` annotation, built-in token) and, as soon as no remaining run can flip the result
+# (pass: wins ≥ need; fail: wins + runs left < need), cancels the run. `aggregate` has `if: always()`, so it still
+# merges the runs that finished and states the verdict.
+#
+# "Before" per commit: every complete bench uploads `bench-result-<sha>-<params hash>` (90 days). A branch bench looks
+# for `bench-result-<base>-<hash>` (any earlier run, e.g. `node tools/ci.mjs bench main …`) and prints before/after.
+# (Artifacts, not actions/cache: caches written on a bench/** ref are invisible to other bench/** refs.)
+name: Bench
+on:
+  push:
+    branches: ['bench/**']
+  workflow_dispatch:
+    inputs:
+      world: {description: 'world (cidade)', default: 'cidade'}
+      seeds: {description: 'seeds, e.g. 1-16', default: '1-16'}
+      players: {description: 'team sizes, e.g. 1,3,6', default: '1'}
+      objective: {description: "'' or chaveiro", default: ''}
+      capMin: {description: 'cap in minutes (empty: script default)', default: ''}
+      target: {description: 'early stop target k/n (empty: none)', default: ''}
+      base: {description: 'base sha for before/after (optional)', default: ''}
+permissions:
+  contents: read
+  actions: write   # gate cancels the rest of this run; aggregate finds and downloads the base result artifact
+  checks: read     # gate reads the seed jobs' annotations
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # Same node as the PC: the same seed must give the same run digest here and locally.
+  NODE_VERSION: '26.9.0'
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      hash: ${{ steps.plan.outputs.hash }}
+      sha: ${{ steps.plan.outputs.sha }}
+      base: ${{ steps.plan.outputs.base }}
+      target: ${{ steps.plan.outputs.target }}
+      args: ${{ steps.plan.outputs.args }}
+      totals: ${{ steps.plan.outputs.totals }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: plan
+        env:
+          BENCH_INPUTS: ${{ github.event_name == 'workflow_dispatch' && toJSON(github.event.inputs) || '' }}
+        run: node tools/ci.mjs bench-plan
+
+  run:
+    needs: plan
+    name: run ${{ matrix.seed }}-${{ matrix.players }}p
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # The bench imports only the repo's own TypeScript (no npm packages), so no npm ci.
+      - name: Play seed ${{ matrix.seed }}, ${{ matrix.players }} player(s)
+        run: node --experimental-strip-types scripts/bench-city-run.ts --seeds ${{ matrix.seed }} --players ${{ matrix.players }} --priority normal --out out/run-${{ matrix.seed }}-${{ matrix.players }}.json ${{ needs.plan.outputs.args }}
+      - run: node tools/ci.mjs annotate-run out/run-${{ matrix.seed }}-${{ matrix.players }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ matrix.seed }}-${{ matrix.players }}
+          path: out/run-${{ matrix.seed }}-${{ matrix.players }}.json
+          retention-days: 7
+
+  gate:
+    needs: plan
+    if: needs.plan.outputs.target != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BENCH_TARGET: ${{ needs.plan.outputs.target }}
+          BENCH_TOTALS: ${{ needs.plan.outputs.totals }}
+        run: node tools/ci.mjs gate
+      - name: Early stop (the target can no longer flip)
+        if: steps.gate.outputs.cancel == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
+
+  aggregate:
+    needs: [plan, run, gate]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: run-*
+          path: runs
+          merge-multiple: true
+      - id: base
+        if: needs.plan.outputs.base != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: bench-result-${{ needs.plan.outputs.base }}-${{ needs.plan.outputs.hash }}
+        run: |
+          id=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=$NAME&per_page=1" --jq '.artifacts[0].workflow_run.id // empty' || true)
+          echo "run_id=$id" >> "$GITHUB_OUTPUT"
+          if [ -n "$id" ]; then echo "base result: run $id"; else echo "no $NAME yet (bench the base to get a before)"; fi
+      - if: steps.base.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: bench-result-${{ needs.plan.outputs.base }}-${{ needs.plan.outputs.hash }}
+          run-id: ${{ steps.base.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: before
+      - id: summary
+        env:
+          BENCH_TARGET: ${{ needs.plan.outputs.target }}
+          BENCH_TOTALS: ${{ needs.plan.outputs.totals }}
+        run: |
+          mkdir -p runs merged
+          before=""; [ -f before/bench-result.json ] && before="--before before/bench-result.json"
+          node --experimental-strip-types scripts/bench-city-run.ts --merge runs --out merged/bench-result.json $before > summary.txt
+          node tools/ci.mjs annotate-summary summary.txt merged/bench-result.json
+          { echo '```'; cat summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # Complete benches only: a partial (early-stopped) one is no "before" for later branches.
+      - if: steps.summary.outputs.complete == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-result-${{ needs.plan.outputs.sha }}-${{ needs.plan.outputs.hash }}
+          path: merged/bench-result.json
+          retention-days: 90

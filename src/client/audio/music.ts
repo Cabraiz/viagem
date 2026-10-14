@@ -2,8 +2,8 @@
  * Match music (NEW-20261014-ORQ-musica-do-chefe), two files kept as light as possible on a phone: the theme
  * ("Radio na Floresta", looping very low through the match) and the boss's ("Static Riff", while the boss lives).
  * - Format: Opus/WebM when the browser can play it, else AAC/M4A, else that track stays silent.
- * - Streaming: each track is one `<audio loop>` routed by a MediaElementAudioSourceNode into its own gain, then into
- *   the engine's master bus, so the settings' volume and mute and the limiter apply. No decodeAudioData: the files
+ * - Streaming: each track is one `<audio loop>` routed by a MediaElementAudioSourceNode into its own gain (its relative
+ *   level), then into the engine's music bus, so the "Música" volume and mute (settings.ts) and the limiter apply. No decodeAudioData: the files
  *   stay compressed (a minute of PCM would be 11-22 MB).
  * - iOS unlock: in a gesture (the engine unlocks its context in the same one) each element plays a tiny silent WAV
  *   (a data URI, no network) at gain 0 and pauses. iOS then lets that element play() outside a gesture, after its
@@ -20,14 +20,15 @@
  */
 import type {RunView} from '../../contract/index.ts';
 import {UNLOCK_EVENTS} from './engine.ts';
+import {busQuiet,type BusSettings} from './settings.ts';
 
 export interface TrackSpec {webm:string;m4a:string;
-  /** Gain under the master bus at full fade. */
+  /** Gain under the music bus at full fade (times the "Música" volume). */
   level:number;
   /** Starts from the top every time (the boss) instead of where it stopped (the theme). */
   rewind:boolean}
 export const BOSS_TRACK:Readonly<TrackSpec>=Object.freeze({webm:'/audio/boss.webm',m4a:'/audio/boss.m4a',level:.6,rewind:true});
-/** The theme's level: ~25 % of the master, under the effects (tune by ear here). */
+/** The theme's level: ~25 % of the music bus, under the effects (tune by ear here). */
 export const THEME_LEVEL=.25;
 export const THEME_TRACK:Readonly<TrackSpec>=Object.freeze({webm:'/audio/tema.webm',m4a:'/audio/tema.m4a',level:THEME_LEVEL,rewind:false});
 export const MUSIC_WEBM=BOSS_TRACK.webm;
@@ -70,8 +71,10 @@ export interface MusicElement {
   canPlayType(type:string):string;play():Promise<void>|void;pause():void;load():void;removeAttribute(name:string):void;
 }
 export interface MusicEngine {
-  readonly unlocked:boolean;readonly context:AudioContext|undefined;readonly output:AudioNode|undefined;
-  readonly settings:{volume:number;muted:boolean};
+  readonly unlocked:boolean;readonly context:AudioContext|undefined;
+  /** The music bus ("Música" volume and mute, then the master's limiter). */
+  readonly musicOutput:AudioNode|undefined;
+  readonly settings:{music:BusSettings};
   onChange(listener:()=>void):()=>void;
   attachUnlock(target:EventTarget):()=>void;
 }
@@ -92,7 +95,7 @@ export interface TrackHost {
   revokeUrl:(url:string)=>void;
   setTimer:(fn:()=>void,ms:number)=>unknown;
   clearTimer:(id:unknown)=>void;
-  /** Muted, volume 0 or a hidden tab: the elements pause. */
+  /** Music muted, music volume 0 or a hidden tab: the elements pause. */
   quiet:()=>boolean;
 }
 export type Page=EventTarget&{visibilityState?:string};
@@ -272,10 +275,10 @@ export class MusicTrack {
     }catch{this.blocked=true;}
   }
 
-  /** Element -> track gain -> master, once the engine has a context; fades in if the track should be playing. */
+  /** Element -> track gain -> music bus, once the engine has a context; fades in if the track should be playing. */
   private route(){
     if(this.gain||!this.el)return;
-    const ctx=this.host.engine.context,out=this.host.engine.output;
+    const ctx=this.host.engine.context,out=this.host.engine.musicOutput;
     if(!ctx||!out)return;
     try{
       const gain=ctx.createGain();
@@ -303,7 +306,7 @@ export class MusicTrack {
   }
 }
 
-/** The tracks' shared plumbing: the defaults, and quiet = muted, volume 0 or `page()` hidden. */
+/** The tracks' shared plumbing: the defaults, and quiet = music muted, music volume 0 or `page()` hidden. */
 export function musicHost(opts:MusicOptions,page:()=>Page|undefined):TrackHost{
   const engine=opts.engine;
   return {engine,
@@ -311,7 +314,7 @@ export function musicHost(opts:MusicOptions,page:()=>Page|undefined):TrackHost{
     revokeUrl:opts.revokeUrl??(url=>{try{URL.revokeObjectURL(url);}catch{/* ignored */}}),
     setTimer:opts.setTimer??((fn,ms)=>setTimeout(fn,ms)),
     clearTimer:opts.clearTimer??(id=>clearTimeout(id as ReturnType<typeof setTimeout>)),
-    quiet:()=>{const s=engine.settings;return s.muted||s.volume<=0||page()?.visibilityState==='hidden';}};
+    quiet:()=>busQuiet(engine.settings.music)||page()?.visibilityState==='hidden'};
 }
 
 /** The engine's unlock, `onGesture` on every gesture and `onVisible` on visibilitychange; returns a detach function. */

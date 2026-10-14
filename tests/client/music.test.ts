@@ -39,10 +39,10 @@ class FakeAudio implements MusicElement {
   removeAttribute(name:string){if(name==='src')this.src='';}
 }
 class FakeEngine implements MusicEngine {
-  unlocked=false;ctx:FakeCtx|undefined;master=new FakeNode();settings={volume:.7,muted:false};
+  unlocked=false;ctx:FakeCtx|undefined;musicBus=new FakeNode();settings={music:{volume:.7,muted:false}};
   listeners=new Set<()=>void>();attached=0;
   get context(){return this.ctx as unknown as AudioContext|undefined;}
-  get output(){return this.ctx?this.master as unknown as AudioNode:undefined;}
+  get musicOutput(){return this.ctx?this.musicBus as unknown as AudioNode:undefined;}
   onChange(l:()=>void){this.listeners.add(l);return ()=>{this.listeners.delete(l);};}
   attachUnlock(target:EventTarget){
     this.attached++;
@@ -50,7 +50,7 @@ class FakeEngine implements MusicEngine {
     target.addEventListener('pointerup',h);
     return ()=>{this.attached--;target.removeEventListener('pointerup',h);};
   }
-  set(patch:Partial<{volume:number;muted:boolean}>){this.settings={...this.settings,...patch};for(const l of [...this.listeners])l();}
+  set(patch:Partial<{volume:number;muted:boolean}>){this.settings={music:{...this.settings.music,...patch}};for(const l of [...this.listeners])l();}
 }
 class FakePage extends EventTarget {visibilityState='visible';}
 
@@ -113,7 +113,7 @@ test('cue from the view: round index, live ETA, a living boss while the run is o
   assert.equal(musicCue({...chave,objective:{etaS:0,ended:'victory'}} as unknown as RunView,false).etaS,undefined);
 });
 
-test('unlock: the first gesture routes element -> gain -> master and plays a silent data URI, then pauses',async()=>{
+test('unlock: the first gesture routes element -> gain -> music bus and plays a silent data URI, then pauses',async()=>{
   const {audio,theme,engine,tap}=rig();
   assert.equal(engine.attached,1,'the engine unlocks on the same gestures');
   tap();
@@ -121,7 +121,7 @@ test('unlock: the first gesture routes element -> gain -> master and plays a sil
   assert.deepEqual(engine.ctx.sources,[audio,theme],'each track unlocks its own element in the gesture');
   assert.equal(theme.plays,1);assert.match(theme.src,/^data:audio\/wav;base64,/);
   assert.equal(engine.ctx.gains[0]!.gain.value,0);
-  assert.deepEqual(engine.ctx.gains[0]!.connected,[engine.master]);
+  assert.deepEqual(engine.ctx.gains[0]!.connected,[engine.musicBus]);
   assert.match(audio.src,/^data:audio\/wav;base64,/);
   assert.equal(audio.plays,1);
   await flush();

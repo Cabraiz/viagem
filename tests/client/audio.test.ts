@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SOUND_IDS,recipeLength,type SoundId} from '../../src/client/audio/types.ts';
 import {RECIPES} from '../../src/client/audio/recipes.ts';
-import {AudioEngine,DEFAULT_SETTINGS,SETTINGS_KEY} from '../../src/client/audio/engine.ts';
+import {AudioEngine,DEFAULT_SETTINGS,LEGACY_SETTINGS_KEY,SETTINGS_KEY} from '../../src/client/audio/engine.ts';
 import {soundForEvent,playEvents} from '../../src/client/audio/events.ts';
 import type {SimEvent} from '../../src/contract/types.ts';
 
@@ -82,6 +82,10 @@ function rig(opts:RigOpts={}){
   return {engine,ctxs,vibes,nodesAtVibe,get ctx(){return ctxs[0];},setNow(t:number){now=t;}};
 }
 const masterOf=(ctx:FakeCtx)=>ctx.nodes[0] as FakeGain;
+/** The buses feeding the master, in creation order: effects, then music. */
+const busesOf=(ctx:FakeCtx)=>ctx.nodes.filter((n):n is FakeGain=>n instanceof FakeGain&&n.connected[0]===masterOf(ctx));
+const effectsOf=(ctx:FakeCtx)=>busesOf(ctx)[0];
+const musicOf=(ctx:FakeCtx)=>busesOf(ctx)[1];
 const faded=(g:FakeGain,t:number)=>g.gain.calls.some(c=>c[0]==='cancel'&&c[1]===t)&&g.gain.calls.some(c=>c[0]==='target'&&c[1]===0&&c[2]===t&&c[3]===.005);
 const near=(a:number,b:number)=>Math.abs(a-b)<1e-9;
 function withDocument(run:(doc:EventTarget&{visibilityState:string})=>void){
@@ -238,11 +242,11 @@ test('suspended context only accepts sounds within the 500 ms grace window after
 
 // ---- 3. voice limit ----
 test('voice limit caps voices, fades out the oldest lowest-priority victim and drops outranked sounds',()=>{
-  const r=rig({maxVoices:3}),ctx=r.ctx,master=masterOf(ctx);
+  const r=rig({maxVoices:3}),ctx=r.ctx,bus=effectsOf(ctx);
   const play=(id:SoundId)=>{ctx.currentTime+=.01;const from=ctx.nodes.length,ok=r.engine.play(id);return {ok,at:ctx.currentTime,out:ctx.nodes[from] as FakeGain,srcs:ctx.sources(from)};};
   const golpe=play('golpe'),gema=play('gema'),buzina=play('buzina');
   assert.ok(golpe.ok&&gema.ok&&buzina.ok);
-  assert.equal(golpe.out.connected[0],master);
+  assert.equal(golpe.out.connected[0],bus,'voices go through the effects bus');
   assert.equal(r.engine.activeVoices(),3);
   const queda=play('queda');
   assert.ok(queda.ok);
@@ -313,23 +317,46 @@ test('per-sound throttle limits hit spam',()=>{
 });
 
 // ---- 5. volume / mute / vibration / persistence ----
-test('volume clamps, ignores NaN and drives the master gain as volume squared',()=>{
-  const r=rig(),master=masterOf(r.ctx);
-  assert.ok(Math.abs(master.gain.value-DEFAULT_SETTINGS.volume**2)<1e-9);
-  r.engine.setVolume(2);assert.equal(r.engine.settings.volume,1);
-  r.engine.setVolume(-1);assert.equal(r.engine.settings.volume,0);
-  r.engine.setVolume(.5);assert.equal(r.engine.settings.volume,.5);
-  r.engine.setVolume(NaN);assert.equal(r.engine.settings.volume,.5);
-  r.engine.setVolume(Infinity);assert.equal(r.engine.settings.volume,.5);
-  let last=master.gain.calls.at(-1)!;
-  assert.equal(last[0],'target');assert.ok(Math.abs(last[1]-.25)<1e-9);
-  r.engine.setMuted(true);
-  last=master.gain.calls.at(-1)!;
+test('effects volume clamps, ignores NaN and drives the effects bus as volume squared; the master stays at 1',()=>{
+  const r=rig(),master=masterOf(r.ctx),fx=effectsOf(r.ctx);
+  assert.equal(master.gain.value,1);
+  assert.ok(near(fx.gain.value,DEFAULT_SETTINGS.effects.volume**2));
+  r.engine.setVolume('effects',2);assert.equal(r.engine.settings.effects.volume,1);
+  r.engine.setVolume('effects',-1);assert.equal(r.engine.settings.effects.volume,0);
+  r.engine.setVolume('effects',.5);assert.equal(r.engine.settings.effects.volume,.5);
+  r.engine.setVolume('effects',NaN);assert.equal(r.engine.settings.effects.volume,.5);
+  r.engine.setVolume('effects',Infinity);assert.equal(r.engine.settings.effects.volume,.5);
+  let last=fx.gain.calls.at(-1)!;
+  assert.equal(last[0],'target');assert.ok(near(last[1],.25));assert.equal(last[3],.02,'a short ramp, no click');
+  r.engine.setMuted('effects',true);
+  last=fx.gain.calls.at(-1)!;
   assert.deepEqual(last.slice(0,2),['target',0]);
-  r.engine.setMuted(false);
-  assert.ok(Math.abs(master.gain.calls.at(-1)![1]-.25)<1e-9);
-  r.engine.setVolume(0);
+  r.engine.setMuted('effects',false);
+  assert.ok(near(fx.gain.calls.at(-1)![1],.25));
+  assert.equal(master.gain.calls.length,0,'the master never moves');
+  r.engine.setVolume('effects',0);
   assert.equal(r.engine.play('nivel'),false,'volume 0 plays nothing');
+});
+
+test('two buses: music and effects each have their own volume and mute',()=>{
+  const r=rig(),fx=effectsOf(r.ctx),music=musicOf(r.ctx),master=masterOf(r.ctx);
+  assert.deepEqual(music.connected,[master]);assert.deepEqual(fx.connected,[master]);
+  assert.equal(r.engine.musicOutput,music as unknown as AudioNode);
+  assert.equal(r.engine.output,master as unknown as AudioNode);
+  const fxCalls=fx.gain.calls.length;
+  r.engine.setVolume('music',.4);
+  assert.ok(near(music.gain.calls.at(-1)![1],.16));
+  r.engine.setMuted('music',true);
+  assert.deepEqual(music.gain.calls.at(-1)!.slice(0,2),['target',0]);
+  assert.equal(fx.gain.calls.length,fxCalls,'music changes leave the effects bus alone');
+  assert.equal(r.engine.play('nivel'),true,'muted music, effects still play');
+  assert.deepEqual(r.engine.settings.effects,{...DEFAULT_SETTINGS.effects});
+  const musicCalls=music.gain.calls.length;
+  r.engine.setVolume('effects',.3);r.engine.setMuted('effects',true);
+  assert.equal(music.gain.calls.length,musicCalls,'effects changes leave the music bus alone');
+  assert.deepEqual(r.engine.settings.music,{volume:.4,muted:true});
+  r.engine.setMuted('music',false);
+  assert.ok(near(music.gain.calls.at(-1)![1],.16),'unmute returns to the level');
 });
 
 test('mute fades active voices; muted or silent plays still vibrate and start the throttle window',()=>{
@@ -340,7 +367,7 @@ test('mute fades active voices; muted or silent plays still vibrate and start th
   const out=ctx.nodes[from] as FakeGain,srcs=ctx.sources(from);
   assert.equal(r.vibes.length,1);
   assert.deepEqual(r.vibes[0],[...RECIPES.chefe.vibrate!]);
-  r.engine.setMuted(true);
+  r.engine.setMuted('effects',true);
   assert.equal(r.engine.activeVoices(),0);
   assert.ok(faded(out,1));
   for(const s of srcs)assert.ok(near(s.stops.at(-1)!,1.03),'stopped on mute');
@@ -350,7 +377,7 @@ test('mute fades active voices; muted or silent plays still vibrate and start th
   assert.equal(ctx.nodes.length,n);
   assert.equal(r.vibes.length,2,'muted fall still buzzes');
   assert.deepEqual(r.vibes[1],[...RECIPES.queda.vibrate!]);
-  r.engine.setMuted(false);
+  r.engine.setMuted('effects',false);
   r.setNow(1000+RECIPES.queda.throttleMs-1);
   assert.equal(r.engine.play('queda'),false,'muted play started the throttle window');
   assert.equal(r.vibes.length,2);
@@ -359,7 +386,7 @@ test('mute fades active voices; muted or silent plays still vibrate and start th
   assert.equal(r.engine.play('queda'),true);
   assert.equal(r.vibes.length,2,'vibration off');
   r.engine.setVibration(true);
-  r.engine.setVolume(0);
+  r.engine.setVolume('effects',0);
   r.setNow(5000);
   assert.equal(r.engine.play('queda'),false,'volume 0 plays nothing');
   assert.equal(r.vibes.length,3,'but still buzzes');
@@ -379,42 +406,56 @@ test('master runs through a limiter when available and connects directly otherwi
 });
 
 test('setVolume with persist:false updates the gain without writing storage',()=>{
-  const store=memStorage(),r=rig({storage:store}),master=masterOf(r.ctx);
-  r.engine.setVolume(.4,{persist:false});
+  const store=memStorage(),r=rig({storage:store}),fx=effectsOf(r.ctx);
+  const saved=()=>JSON.parse(store.map.get(SETTINGS_KEY)!);
+  r.engine.setVolume('effects',.4,{persist:false});
   assert.equal(store.map.has(SETTINGS_KEY),false);
-  assert.equal(r.engine.settings.volume,.4);
-  assert.ok(near(master.gain.calls.at(-1)![1],.16));
-  r.engine.setVolume(.5);
-  assert.equal(JSON.parse(store.map.get(SETTINGS_KEY)!).volume,.5);
-  r.engine.setVolume(.9,{persist:false});
-  assert.equal(JSON.parse(store.map.get(SETTINGS_KEY)!).volume,.5);
-  assert.equal(new AudioEngine({storage:store}).settings.volume,.5);
-  r.engine.setVolume(.6,{persist:true});
-  assert.equal(JSON.parse(store.map.get(SETTINGS_KEY)!).volume,.6);
+  assert.equal(r.engine.settings.effects.volume,.4);
+  assert.ok(near(fx.gain.calls.at(-1)![1],.16));
+  r.engine.setVolume('effects',.5);
+  assert.equal(saved().effects.volume,.5);
+  r.engine.setVolume('effects',.9,{persist:false});
+  assert.equal(saved().effects.volume,.5);
+  assert.equal(new AudioEngine({storage:store}).settings.effects.volume,.5);
+  r.engine.setVolume('music',.6,{persist:true});
+  assert.equal(saved().music.volume,.6);
 });
 
-test('settings persist, survive corrupt or throwing storage and notify listeners',()=>{
+test('settings persist as v2, survive corrupt or throwing storage and notify listeners',()=>{
   const store=memStorage();
   const a=new AudioEngine({storage:store,createContext:()=>{throw new Error('x');}});
-  assert.deepEqual(a.settings,{...DEFAULT_SETTINGS});
+  assert.deepEqual(a.settings,DEFAULT_SETTINGS);
   let fired=0;const off=a.onChange(()=>{fired++;});
-  a.setVolume(.3);a.setMuted(true);a.setVibration(false);
+  a.setVolume('music',.3);a.setMuted('effects',true);a.setVibration(false);
   assert.equal(fired,3);
-  off();a.setVolume(.4);assert.equal(fired,3);
-  assert.deepEqual(JSON.parse(store.map.get(SETTINGS_KEY)!),{volume:.4,muted:true,vibration:false});
-  assert.equal(SETTINGS_KEY,'viagem:audio:v1');
-  assert.deepEqual(new AudioEngine({storage:store}).settings,{volume:.4,muted:true,vibration:false});
+  off();a.setVolume('effects',.4);assert.equal(fired,3);
+  const want={music:{volume:.3,muted:false},effects:{volume:.4,muted:true},vibration:false};
+  assert.deepEqual(JSON.parse(store.map.get(SETTINGS_KEY)!),want);
+  assert.equal(SETTINGS_KEY,'viagem:audio:v2');
+  assert.deepEqual(new AudioEngine({storage:store}).settings,want);
   store.map.set(SETTINGS_KEY,'{not json');
-  assert.deepEqual(new AudioEngine({storage:store}).settings,{...DEFAULT_SETTINGS});
-  store.map.set(SETTINGS_KEY,JSON.stringify({volume:9,muted:'yes',vibration:null}));
-  assert.deepEqual(new AudioEngine({storage:store}).settings,{...DEFAULT_SETTINGS,volume:1});
+  assert.deepEqual(new AudioEngine({storage:store}).settings,DEFAULT_SETTINGS);
+  store.map.set(SETTINGS_KEY,JSON.stringify({music:{volume:9,muted:'yes'},effects:null,vibration:null}));
+  assert.deepEqual(new AudioEngine({storage:store}).settings,{...DEFAULT_SETTINGS,music:{volume:1,muted:false}});
   const t=new AudioEngine({storage:throwingStorage});
-  assert.deepEqual(t.settings,{...DEFAULT_SETTINGS});
-  assert.doesNotThrow(()=>{t.setVolume(.2);t.setMuted(true);});
-  assert.equal(t.settings.volume,.2);
-  assert.deepEqual(new AudioEngine({storage:null}).settings,{...DEFAULT_SETTINGS});
+  assert.deepEqual(t.settings,DEFAULT_SETTINGS);
+  assert.doesNotThrow(()=>{t.setVolume('effects',.2);t.setMuted('music',true);});
+  assert.equal(t.settings.effects.volume,.2);
+  assert.deepEqual(new AudioEngine({storage:null}).settings,DEFAULT_SETTINGS);
   assert.equal(DEFAULT_SETTINGS.vibration,true);assert.ok(Object.isFrozen(DEFAULT_SETTINGS));
+  // The engine hands out copies: editing one never touches its state.
+  const copy=a.settings;copy.music.volume=0;assert.equal(a.settings.music.volume,.3);
 });
+
+test('a v1 save migrates on start: both buses keep the level, v2 is written',()=>{
+  const store=memStorage();
+  store.map.set(LEGACY_SETTINGS_KEY,JSON.stringify({volume:.35,muted:true,vibration:false}));
+  const e=new AudioEngine({storage:store});
+  const want={music:{volume:.35,muted:true},effects:{volume:.35,muted:true},vibration:false};
+  assert.deepEqual(e.settings,want);
+  assert.deepEqual(JSON.parse(store.map.get(SETTINGS_KEY)!),want);
+});
+
 
 // ---- 6. robustness ----
 test('a failing AudioContext never throws and plays nothing',()=>{
@@ -428,7 +469,7 @@ test('a failing AudioContext never throws and plays nothing',()=>{
   assert.equal(e.play('nivel'),false);
   assert.equal(e.play('queda'),false);
   assert.equal(vibes.length,1,'haptics still work without audio');
-  assert.doesNotThrow(()=>{e.setVolume(.1);e.setMuted(true);e.suspend();e.dispose();});
+  assert.doesNotThrow(()=>{e.setVolume('effects',.1);e.setMuted('music',true);e.suspend();e.dispose();});
   assert.equal(target.active,0);
 });
 

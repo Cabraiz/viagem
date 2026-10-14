@@ -8,6 +8,8 @@ import {SIM_HZ} from '../../contract/index.ts';
 import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
+import {chaveiroClock,liveObjective,type ChaveiroClock} from './chaveiro.ts';
+import type {ObjectiveResult} from '../../contract/index.ts';
 
 export const TOTAL_ROUNDS=10;
 
@@ -68,20 +70,25 @@ export function xpFraction(view:RunView){
   return clamp01(view.team.nextXp>0?view.team.xp/view.team.nextXp:0);
 }
 
-export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|'prepare';remaining:number;countdown?:number;detail:string}
+export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|'prepare';remaining:number;countdown?:number;detail:string;
+  /** D-047, the chaveiro objective running: the label is "Onda N" and the chip adds his clock (hud/chaveiro.ts). */
+  chaveiro?:ChaveiroClock}
 
-/** "Round N/10" plus the right-hand detail: remaining critters during a wave, countdown in the interval. */
+/**
+ * "Round N/10" plus the right-hand detail: remaining critters during a wave, countdown in the interval. With the chaveiro
+ * objective running (D-047) the rounds have no end ("Onda N": waves go on past 10) and the chip carries his clock.
+ */
 export function roundInfo(view:RunView):RoundInfo|undefined{
-  const round=view.round;
+  const round=view.round,objective=liveObjective(view),chaveiro=objective?{chaveiro:chaveiroClock(objective)}:{};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
-    const label=`Round ${round.index}/${total}`;
+    const label=objective?`Onda ${round.index}`:`Round ${round.index}/${total}`;
     if(round.phase==='prepare'){
       const countdown=secondsLeft(round.phaseEndsTick,view.tick);
-      return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo ${countdown} s`};
+      return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo ${countdown} s`,...chaveiro};
     }
     const remaining=Math.max(0,round.remaining);
-    return {index:round.index,total,label,phase:'wave',remaining,detail:remaining===1?'falta 1 bicho':`${remaining} bichos`};
+    return {index:round.index,total,label,phase:'wave',remaining,detail:remaining===1?'falta 1 bicho':`${remaining} bichos`,...chaveiro};
   }
   if(view.wave){
     const phase=view.wave.phase??'wave';
@@ -203,6 +210,8 @@ export interface RunResult {
   wall?:boolean;
   /** The run's most embarrassing moment, from the server (VGM-053B, RunState.shame). */
   shame?:ShameMoment;
+  /** D-047: the chaveiro's bill (RunState.objective): why it ended, the budget, the Grana, the debt. */
+  objective?:ObjectiveResult;
 }
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */

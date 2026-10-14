@@ -26,6 +26,7 @@ import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
+import {carBar} from './chaveiro.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -102,6 +103,18 @@ export function tokenMarkup(units:number){
     +`<circle class="rh-camp-anel-fundo" cx="16" cy="16" r="14"/><circle class="rh-camp-anel-cheio" cx="16" cy="16" r="14" pathLength="100" stroke-dasharray="${+(progress*100).toFixed(1)} 100"/></svg></span><b>${tokens}</b>`;
 }
 export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.kind==='muralha');
+/**
+ * What the base ficha's bar and number show (pure, tested): the wall's life, or, with the chaveiro objective (D-047),
+ * the hits the car still takes (hud/chaveiro.ts carBar), the car standing where the wall stood. One shape for both, so
+ * the swap is this function and paintBaseBar only (card chaveiro-hud; E6's .rh-camp-barra/.rh-camp-num keep it).
+ */
+export interface BaseBar {fraction:number;value:number;low:boolean;label:string;car:boolean}
+export function baseBar(view:Pick<RunView,'structures'|'objective'>):BaseBar{
+  const car=carBar(view.objective);
+  if(car)return {fraction:car.fraction,value:car.left,low:car.low,label:car.label,car:true};
+  const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
+  return {fraction,value:Math.max(0,Math.ceil(wall?.hp??0)),low:fraction>0&&fraction<.3,label:'Vida da muralha',car:false};
+}
 /** Whether the hero stands in the camp (the forge works there). */
 export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!hero&&!!wall&&Math.hypot(hero.x-wall.x,hero.y-wall.y)<=CAMP_RADIUS;
 
@@ -160,6 +173,15 @@ export function createCamp(options:CampOptions):CampPart{
   const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
   const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
+  /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
+  const paintBaseBar=(bar:BaseBar,down:boolean)=>{
+    fill.style.transform=`scaleX(${bar.fraction})`;
+    readout.classList.toggle('rh-camp-low',bar.low||down);
+    if(readout.classList.contains('rh-camp-carro')!==bar.car)readout.classList.toggle('rh-camp-carro',bar.car);
+    hp.textContent=String(bar.value);
+    if(track.getAttribute('aria-label')!==bar.label)track.setAttribute('aria-label',bar.label);
+    track.setAttribute('aria-valuenow',String(Math.round(bar.fraction*100)));
+  };
   // The team's Grana (D-048), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
   const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
@@ -263,18 +285,15 @@ export function createCamp(options:CampOptions):CampPart{
     readout.hidden=!camp;
     if(!view||!camp){forge.hidden=true;notice.hidden=true;return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    const low=fraction>0&&fraction<.3;
-    fill.style.transform=`scaleX(${fraction})`;
-    readout.classList.toggle('rh-camp-low',low||!!camp.wallDown);
-    hp.textContent=String(Math.max(0,Math.ceil(wall?.hp??0)));
-    track.setAttribute('aria-valuenow',String(Math.round(fraction*100)));
+    paintBaseBar(baseBar(view),!!camp.wallDown);
     const money=granaReadout(camp.grana);
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
     const round=view.round,prepare=round?.phase==='prepare'&&(round.index??0)>=2;
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
-    if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){
+    // (Only with a wall: with the chaveiro's car in its place, D-047, there is no wall to warn about.)
+    if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown&&wall)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){
       warning={text:`Muralha em ${Math.round(mark*100)}%!`,until:performance.now()+WALL_WARNING_MS};
       clearTimeout(warnTimer);warnTimer=setTimeout(render,WALL_WARNING_MS+20);
     }

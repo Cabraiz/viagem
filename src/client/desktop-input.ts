@@ -81,6 +81,29 @@ export function hotkeyOf(event:KeyLike,settingsOpen:boolean):Hotkey|undefined{
   return hotkey;
 }
 
+/** The game's own window: the whole match is a modal <dialog> (explore.ts showModal), so it never blocks a game key. */
+export const SHELL_DIALOG='.explore-shell';
+/** Dona Cida's keys (D-047, hud/cida.ts): C opens or closes her tray, 1–3 buy the sweet in that place, Esc closes. */
+export type CidaKey={kind:'toggle'}|{kind:'buy';index:0|1|2}|{kind:'close'};
+type KeyTarget={tagName?:string;isContentEditable?:boolean;closest?(selector:string):unknown};
+/**
+ * The Cida key of a keydown, or undefined when the key stays with the page: a repeat, a modifier held, typing in a
+ * field, or another window open over the match (the settings dialog: `otherDialogOpen`, or the key coming from inside
+ * a dialog that is not the game's shell). C goes by the layout's letter like Q/E/T (by the key code when there is no
+ * letter); the digits by code (top row or numpad).
+ */
+export function cidaKeyOf(event:KeyLike&{repeat?:boolean},otherDialogOpen:boolean):CidaKey|undefined{
+  if(event.repeat||otherDialogOpen||event.ctrlKey||event.altKey||event.metaKey)return undefined;
+  const target=event.target as KeyTarget|null|undefined,tag=target?.tagName?.toUpperCase();
+  if(target?.isContentEditable||tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return undefined;
+  if(target?.closest?.(`dialog[open]:not(${SHELL_DIALOG})`))return undefined;
+  const key=event.key??'';
+  if(key.length===1?key.toLowerCase()==='c':event.code==='KeyC')return {kind:'toggle'};
+  if(event.code==='Escape'||key==='Escape')return {kind:'close'};
+  const n=/^(?:Digit|Numpad)([1-3])$/.exec(event.code)?.[1];
+  return n?{kind:'buy',index:(Number(n)-1) as 0|1|2}:undefined;
+}
+
 /**
  * Focus lost (window blur, tab hidden). Touch keeps today's pause ("Controles pausados", the stick brings it back).
  * Mouse never pauses: everything held is let go (keys, stick, the held mouse button) so nothing walks on by itself, and

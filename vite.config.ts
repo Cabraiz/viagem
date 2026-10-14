@@ -17,6 +17,16 @@ const isPureSector = (id: string) => {
   const path = id.replaceAll('\\', '/').toLowerCase();
   return path.startsWith(ROOT) && PURE_SECTOR.test(path.slice(ROOT.length));
 };
+// The contract and the rules (pure, they import nothing from the client) go in one chunk of their own: shared modules
+// of the client used to be merged into a chunk with them, and the chunks then imported each other, so a client module
+// could run its top-level code before the rules had theirs (prod-only `CIDADE_NEVADA_WC3.mapCells` of undefined, and
+// map-scale constants NaN: hotfix after e5b34e5). A chunk of pure modules imports no client chunk, so no cycle runs
+// through it.
+const CORE_SECTOR = /^src\/(contract|rules)\//;
+const isCoreSector = (id: string) => {
+  const path = id.replaceAll('\\', '/').toLowerCase();
+  return path.startsWith(ROOT) && CORE_SECTOR.test(path.slice(ROOT.length));
+};
 
 // One id per build (src/client/ui/version-watch.ts): the deploy's commit on CI, VIAGEM_BUILD_ID when set, otherwise a
 // 'dev-' id, which keeps the version watch off (dev server and local builds) unless a test turns it on.
@@ -38,6 +48,7 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       treeshake: { moduleSideEffects: (id: string) => !isPureSector(id) },
+      output: { codeSplitting: { groups: [{ name: 'regras', test: (id: string) => isCoreSector(id), priority: 10 }] } },
     },
   },
 });

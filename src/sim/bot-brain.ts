@@ -39,8 +39,9 @@
  * BANK_GRANA_TARGET in the wall mode), the bots with no objective task go to the nearest open ATM when it is within
  * BANK_REACH (straight) and the trip (there, BANK_MIN_NOTES notes, back home; along the streets in the city) ends
  * before the wave, unless the crate it would work (nodeFor, by its index in teamBots) is nearer than the ATM: the crate
- * first, the ATM on the way back; at most BANK_BOTS per ATM (the nearest ones, ties by id). Mode 'bank'. Without banks
- * nothing changes.
+ * first, the ATM on the way back; at most BANK_BOTS per ATM (the nearest ones, ties by id). With more than one bot standing,
+ * the first one (by teamBots order: the room's forger and tower builder) stays on the forge and the towers. Mode 'bank'.
+ * Without banks nothing changes.
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
@@ -239,6 +240,9 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
   const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p))
     .filter(p=>!objectiveTask(view,p.id,bots,forger,terrain));
+  // The team's builder (the first standing bot, RoomBots' forger) keeps the forge and the towers when it is not alone.
+  const up=bots.filter(id=>{const p=view.players.find(q=>q.id===id);return !!p&&standing(p);});
+  if(up.length>1)ready.splice(0,ready.length,...ready.filter(p=>p.id!==up[0]));
   const picks:{id:string;bank:string;d:number}[]=[];
   for(const p of ready){
     const at=positionOf(p)!,home=homeOf(view,at);

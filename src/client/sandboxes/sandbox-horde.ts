@@ -9,6 +9,7 @@
  * lecturing (phase 1, his gold ring) with two buffed critters (phase 2) beside him, the influencer posing (phase 1,
  * reflect ring, shots bouncing back) and the motoboy aiming (phase 1, headlight) with his investida line ending in an
  * explosão; above and below the cast in portrait, left and right of it in landscape.
+ * aliado=1 (with elenco=1): the second player stands beside the first, so hero, ally and cast sizes compare at a glance.
  * arte=<kind>:<roster id>,… draws a roster enemy's imported art in that kind's slot (artist preview of pack 04…).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
@@ -139,6 +140,8 @@ class FakeHorde {
   private lineUp(){
     const me=this.players[0];me.x=12;me.y=12.5;
     this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
+    // `aliado=1`: the second player stands beside the hero (hero, ally and the cast side by side, for size checks).
+    if(new URLSearchParams(location.search).get('aliado')==='1'){const p=fromScreen(me,-95,15);this.players[1].x=p.x;this.players[1].y=p.y;}
     // `roster=1` (papeis-de-inimigo): the same slots filled with new P0 roster enemies of different roles, drawn with
     // their role's fallback look until their art exists.
     // `roster=arte`: the slots show the imported roster pieces instead (empty manifest: today's cast).

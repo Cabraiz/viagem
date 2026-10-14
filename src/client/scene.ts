@@ -30,7 +30,7 @@ import {objectiveOf} from './render/chaveiro/view.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
-import {buildPlanFor,elevation} from '../maps/index.ts';
+import {buildPlanFor,elevation,farPath} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
@@ -44,6 +44,7 @@ import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
+import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
@@ -324,11 +325,12 @@ export class IslandScene extends Phaser.Scene {
     this.buildWorld();
     // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
     this.vignette=new Vignette(this);this.applyGrade();
-    this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2);
+    // The hero's shadow, ring and stand-in follow its drawn size (HERO_DRAW_SCALE, render/draw-scale.ts).
+    this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2).setScale(HERO_DRAW_SCALE);
     this.shadowLook();
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
-    this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false);
-    this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112,112));
+    this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
+    this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112*HERO_DRAW_SCALE,112*HERO_DRAW_SCALE));
     this.you=new YouMarkers(this,this.reduced,this.outlines);this.you.showArrow(this.time.now);
     this.destination=this.add.graphics().setDepth(100000);
     this.artMarks=new SceneMarks(this,p=>this.project(p));
@@ -481,18 +483,21 @@ export class IslandScene extends Phaser.Scene {
   private shadowLook(){const look=heroShadow(this.cityMode);this.shadow?.setFillStyle(look.color,look.alpha);}
   /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
   private cityDepths(){if(this.projector)this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;}
+  /** The heroes' drawn scale: the actor scale × HERO_DRAW_SCALE (their sheets, shadows, ally rings and fichas). */
+  private get heroScale(){return this.actorScale*HERO_DRAW_SCALE;}
   /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
   private setActorScale(k:number){
     // The city's depth and fade tests use the figure's real screen box.
     this.city?.setActorScale(k);
     const old=this.actorScale;if(k===old)return;
     this.actorScale=k;this.sprites.viewScale=k;
-    this.shadow?.setScale(k);this.ring?.setScale(k);
+    const hero=this.heroScale;
+    this.shadow?.setScale(hero);this.ring?.setScale(hero);
     const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
-      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*k,icon*k);
+      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
     };
     if(this.actor)resize(this.actor,112);
-    for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(k);}
+    for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(hero);}
   }
   /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
   private fit(){
@@ -608,10 +613,12 @@ export class IslandScene extends Phaser.Scene {
     this.hooks.message('');
   }
   /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
-  goTo(target:Point,options:{markerMs?:number}={}){
+  /** `far`: an order from the minimap (minimapa-wc3): past findPath's box, a far route (maps far-path.ts). */
+  goTo(target:Point,options:{markerMs?:number;far?:boolean}={}){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
     this.route=findPath(this.position,target,this.field);
+    if(!this.route.length&&options.far)this.route=farPath(this.position,target,this.field);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');
@@ -849,7 +856,7 @@ export class IslandScene extends Phaser.Scene {
     let best:string|undefined,bestDistance=Infinity;
     for(const enemy of feed.enemies.values()){
       if(enemy.hp<=0)continue;
-      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=(enemy.elite&&kind!=='chefe'?ELITE_SCALE:1)*this.actorScale,q=this.project(enemy);
+      const kind=enemyKind(enemy.kind),art=ENEMY_ART[kind],size=(enemy.elite&&kind!=='chefe'?ELITE_SCALE:1)*this.actorScale*ENEMY_DRAW_SCALE,q=this.project(enemy);
       const cy=q.y-(art.hover+art.height*art.originY*.5)*size,distance=Math.hypot(p.x-q.x,p.y-cy);
       if(distance<=Math.max(floor,art.width*size*.6)&&distance<bestDistance){best=enemy.id;bestDistance=distance;}
     }
@@ -991,7 +998,7 @@ export class IslandScene extends Phaser.Scene {
       if(city&&player.online&&!player.spectator)this.allyFeet.push({x:player.x,y:player.y});
       // Ally ground ring in Breu: the old light cyan one vanished on sand and shallow water (D-022).
       let objects=this.remoteActors.get(player.id);
-      const k=this.actorScale;
+      const k=this.heroScale;
       if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,ALLY_RING_SIZE.width,ALLY_RING_SIZE.height).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
@@ -1014,7 +1021,7 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setCity(city).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*this.actorScale,zoomNow):q.y+15*this.actorScale,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*k,zoomNow):q.y+15*k,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -1022,7 +1029,7 @@ export class IslandScene extends Phaser.Scene {
     if(selfDown||this.selfLabel){
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,q.y+15*this.actorScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
+        .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
     this.updateWatch(view.players);
     if(!this.route.length)this.destination.clear();
@@ -1308,7 +1315,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       const cam=s.cameras.main,net=s.hooks.net;
       const screen=(q:Point)=>({x:(q.x-cam.worldView.x)*cam.zoom,y:(q.y-cam.worldView.y)*cam.zoom});
       const enemies=[...(net?.feed.enemies.values()??[])].filter(e=>e.hp>0).map(e=>{
-        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=(e.elite&&kind!=='chefe'?ELITE_SCALE:1)*s.actorScale,q=s.project(e);
+        const kind=enemyKind(e.kind),art=ENEMY_ART[kind],size=(e.elite&&kind!=='chefe'?ELITE_SCALE:1)*s.actorScale*ENEMY_DRAW_SCALE,q=s.project(e);
         return {id:e.id,...screen({x:q.x,y:q.y-(art.hover+art.height*art.originY*.5)*size})};
       });
       const players=net?[...net.players.values()].map(p=>{const at=p.id===net.id?net.predicted:p,state=net.feed.players.get(p.id);return {id:p.id,wx:at.x,wy:at.y,...screen(s.project(at)),downed:!!state?.downed,eliminated:!!state?.eliminated};}):[];

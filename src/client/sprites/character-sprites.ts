@@ -5,6 +5,7 @@ import {spriteUrl} from './art-urls.ts';
 import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
+import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 
 export type {FigureBox};
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
@@ -32,6 +33,7 @@ export class CharacterSprites {
   /**
    * World px multiplier on every sheet's 96 px figure: framing.ts CITY_VIEW_SCALE in the city, so the hero draws ≈56 CSS
    * px (≈1 cell) under the city zoom (D-030); 1 on the island and the endless map. The next animate() applies a change.
+   * animate() draws it × HERO_DRAW_SCALE on top (render/draw-scale.ts: the heroes 20% smaller, the camera unchanged).
    */
   viewScale=1;
   private requested=new Set<string>();
@@ -149,7 +151,8 @@ export class CharacterSprites {
       this.queue(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();return;
     }
     if(!sheet.single&&!sheet.facing)this.animations(sheet);
-    const scale=sheet.scale*this.viewScale;
+    // × HERO_DRAW_SCALE: heroes draw 20% under the 96 px reference figure (the camera still frames the reference).
+    const scale=sheet.scale*this.viewScale*HERO_DRAW_SCALE;
     // City mode (contorno-breu): the sheet's Breu-ring copy at screen scale, shown with the inverse scale and the
     // padded origin so the figure keeps its size and feet; its animations are made once per copy.
     if(this.city&&sheet.crop===undefined)sheet.crop=cropOf(this.figure(id),192,192)??null;

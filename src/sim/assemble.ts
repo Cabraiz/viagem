@@ -5,7 +5,7 @@
 import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,hasRoom,mergeXpGems} from '../rules/index.ts';
+import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,granaPerKill,hasRoom,mergeXpGems} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
 import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
@@ -273,7 +273,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   world.playerDamageScale=damageScale;
   if(objective&&openPlanner&&cityTerrain){
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;
-    chaveiro=createChaveiro({seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
+    chaveiro=createChaveiro({wallet:{get:()=>stonewards.state.grana,spend:n=>{stonewards.state.grana-=n;}},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
   }
@@ -297,7 +297,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
-    chaveiro?.onKill(enemy);
+    // D-047/D-048: every kill pays the team's Grana, in every world (the chaveiro only reads it for his bill).
+    stonewards.state.grana+=granaPerKill(enemy);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}

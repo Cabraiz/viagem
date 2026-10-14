@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {auditBoxes,bottom,crosses,gap,right,HERO_MARGIN,THUMB_GAP,type AuditBox,type Rect,type ZoneInput} from '../../src/client/hud/zones.ts';
 import {OBRA_BUTTON,OBRA_TARGET,cardHeight,layoutObra,markerRect} from '../../src/client/hud/towers/layout.ts';
 import {blockSpeech,blockText,canEvolve,defaultPick,railTree,selectable,treeFor,type ObraSite,type ObraView} from '../../src/client/hud/towers/model.ts';
-import {DEFENSE_LIMIT,DEFENSES,GUSTAVAO_LIMIT,RAIL,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
+import {DEFENSE_LIMIT,DEFENSES,EVOLVE_PRICE,GUSTAVAO_LIMIT,RAIL,TOWER_TOKENS,UNITS_PER_TOKEN} from '../../src/rules/index.ts';
 import * as simCatalog from '../../src/sim/towers/catalog.ts';
 
 // The live layout (hud-topo-uma-linha): the camera buttons and the gear 48 px at 12 px, the one-row band (--rh-t + 40)
@@ -111,7 +111,7 @@ test('ground markers: 48 px targets at their screen points, clamped into the use
 });
 
 const site=(over:Partial<ObraSite>={}):ObraSite=>({id:'obra-01',x:100,y:100,maxSize:3,...over});
-const view=(over:Partial<ObraView>={}):ObraView=>({prepare:true,sites:[],balance:{units:50},standing:0,gustavoes:0,...over});
+const view=(over:Partial<ObraView>={}):ObraView=>({prepare:true,sites:[],balance:{units:50},grana:50,standing:0,gustavoes:0,...over});
 
 test('empty site: the Vigia is the head to build, its 3 branches wait for it (shape + text)',()=>{
   const t=treeFor(site(),view());
@@ -124,9 +124,14 @@ test('empty site: the Vigia is the head to build, its 3 branches wait for it (sh
 
 test('affordability: a branch the team cannot pay is blocked with how much is missing',()=>{
   const s=site({tower:{id:'d1',kind:'vigia-do-predio'}});
-  const poor=treeFor(s,view({balance:{units:7}}));
-  assert.deepEqual(poor.branches.map(b=>[b.block,b.missing]),[['balance',3],['balance',3],['balance',3]]);
-  assert.equal(blockText(poor.branches[0]),'Falta 3');
+  // An evolution is paid in Grana (D-048, EVOLVE_PRICE: R$ 10 at tier 2); the material pile never pays it.
+  const poor=treeFor(s,view({balance:{units:999},grana:7}));
+  assert.deepEqual(poor.branches.map(b=>[b.grana,b.block,b.missing]),[[10,'grana',3],[10,'grana',3],[10,'grana',3]]);
+  assert.equal(blockText(poor.branches[0]),'Falta R$ 3');
+  assert.equal(blockSpeech(poor.branches[0]),'Faltam 3 reais');
+  const one=treeFor(s,view({grana:9})).branches[0];
+  assert.deepEqual([blockText(one),blockSpeech(one)],['Falta R$ 1','Falta 1 real']);
+  assert.ok(treeFor(s,view({balance:{units:0},grana:EVOLVE_PRICE[2]})).branches.every(selectable),'exactly the price, with no material');
   assert.equal(defaultPick(poor),undefined,'nothing to confirm');
   const rich=treeFor(s,view());
   assert.ok(rich.branches.every(selectable));
@@ -135,7 +140,7 @@ test('affordability: a branch the team cannot pay is blocked with how much is mi
   const vigia=treeFor(site(),view({balance:{units:UNITS_PER_TOKEN-1}})).head;
   assert.deepEqual([vigia.block,vigia.missing,vigia.tokens],['balance',1,TOWER_TOKENS.root],'the Vigia too');
   assert.equal(blockText(vigia),'Falta 1 ficha');assert.equal(blockSpeech(vigia),'Falta 1 ficha de torre');
-  assert.equal(blockSpeech(poor.branches[0]),'Falta 3 de material','an evolution misses material');
+  assert.ok(selectable(treeFor(site(),view({balance:{units:UNITS_PER_TOKEN},grana:0})).head),'the Vigia takes no Grana');
   assert.ok(selectable(treeFor(site(),view({balance:{units:UNITS_PER_TOKEN}})).head),'one whole ficha builds it');
 });
 
@@ -145,10 +150,10 @@ test('evolve arrow: only on a ready tower with an open, affordable child',()=>{
   assert.equal(canEvolve(site({tower:{id:'d',kind:'vigia-do-predio',building:true}}),v),false,'not while in obra');
   assert.equal(canEvolve(site({tower:{id:'d',kind:'vigia-do-predio',ruined:true}}),v),false,'not a ruin');
   assert.equal(canEvolve(site(),v),false,'not an empty site');
-  assert.equal(canEvolve(site({tower:{id:'d',kind:'vigia-do-predio'}}),view({balance:{units:9}})),false,'not without material');
+  assert.equal(canEvolve(site({tower:{id:'d',kind:'vigia-do-predio'}}),view({grana:9})),false,'not without Grana');
   assert.equal(canEvolve(site({tower:{id:'d',kind:'posto-de-radar'}}),v),false,'not at the top of a line');
-  assert.equal(canEvolve(site({tower:{id:'d',kind:'atiradores-do-telhado'}}),view({balance:{units:24}})),true,'A3 → A4/A4b at 24');
-  assert.equal(canEvolve(site({tower:{id:'d',kind:'atiradores-do-telhado'}}),view({balance:{units:23}})),false);
+  assert.equal(canEvolve(site({tower:{id:'d',kind:'atiradores-do-telhado'}}),view({balance:{units:0},grana:25})),true,'A3 → A4/A4b at R$ 25');
+  assert.equal(canEvolve(site({tower:{id:'d',kind:'atiradores-do-telhado'}}),view({balance:{units:999},grana:24})),false,'material never pays an evolution');
   // Building: the tree shows the branches blocked "Em obra".
   const b=treeFor(site({tower:{id:'d',kind:'vigia-do-predio',building:true}}),v);
   assert.equal(b.head.status,'obra');assert.ok(b.branches.every(x=>x.block==='building'));
@@ -189,6 +194,10 @@ test(`the Gustavão: needs the finished rail, ${GUSTAVAO_LIMIT} per run`,()=>{
   assert.deepEqual([short.tokens,short.block,short.missing],[TOWER_TOKENS.gustavao,'balance',2]);assert.equal(blockText(short),'Falta 2 fichas');
   assert.equal(treeFor(obus,view({balance:{units:3*UNITS_PER_TOKEN-1},rail:ready})).branches[0].missing,1);
   assert.equal(canEvolve(obus,view({balance:{units:3*UNITS_PER_TOKEN-1},rail:ready})),false,'the arrow counts fichas too');
+  // The Gustavão is the exception (D-048): its 3 fichas, no Grana.
+  const g=treeFor(obus,view({balance:rich,grana:0,rail:ready})).branches[0];
+  assert.deepEqual([g.tokens,g.grana,selectable(g)],[TOWER_TOKENS.gustavao,undefined,true]);
+  assert.equal(canEvolve(obus,view({balance:rich,grana:0,rail:ready})),true);
 });
 
 test('the rail: laid once for free (the Gustavão pays its fichas), its tree shows the Gustavão it unlocks',()=>{
@@ -205,7 +214,7 @@ test('the rail: laid once for free (the Gustavão pays its fichas), its tree sho
 test('A3 forks: both A4 and A4b offered, main line first; one-line effects stay short',()=>{
   const t=treeFor(site({tower:{id:'a',kind:'atiradores-do-telhado'}}),view({balance:{units:40}}));
   assert.deepEqual(t.branches.map(b=>b.label),['A4','A4b']);
-  assert.ok(t.branches.every(b=>b.tokens===undefined&&b.cost===24),'evolutions stay in material units');
+  assert.ok(t.branches.every(b=>b.tokens===undefined&&b.grana===EVOLVE_PRICE[4]),'evolutions are paid in Grana by the tier they reach');
   for(const d of Object.values(DEFENSES))assert.ok(treeFor(site({tower:{id:'x',kind:d.id}}),view()).head.effect.length<=24,`${d.id}: 1 short line`);
 });
 

@@ -288,7 +288,10 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  */
 // cidade re-recorded by ataque-fora-do-alcance (straight shots no longer fire into the air with nobody in reach); all three
 // again by ficha-de-torre (D-048): only the balance's shape moved ({units} for {coco, pedra}), checked against the old code.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'f1ecdedb6e14509c',ilha:'9f21ca75237bc017',infinito:'8777c5135c0dc37a'};
+// All three again by D-048 phase 2 (the team's Grana in every world): the stonewards state gains `grana` (R$ 12 in the
+// city run, 0 on the island and the endless map); with that one field deleted the state gives the previous digests
+// exactly (cidade f1ecdedb6e14509c, ilha 9f21ca75237bc017, infinito 8777c5135c0dc37a), so nothing else moved.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'ab74515704162c3f',ilha:'76d5d060612a37b7',infinito:'94ee87d72339a02b'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

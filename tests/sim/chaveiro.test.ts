@@ -29,7 +29,7 @@ import {BOSS_SIEGE_EVERY,BOSS_SIEGE_REACH,createBoss} from '../../src/sim/boss.t
 import {pointAt} from '../../src/sim/chaveiro/route.ts';
 import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS,BUDGET_BASE,BUDGET_PER_HIT,CAR_HIT_UNITS,CAR_LIMIT,CAR_STOP,
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
-  TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
+  GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -40,18 +40,21 @@ const OPEN=cityFlowGrid(new CityTerrain(city.asset,city.signature));
 const ENTRANCES={N:PTS.spawnN,S:PTS.spawnS,L:PTS.spawnL,O:PTS.spawnO};
 const CAR=placeWall(city);
 
-interface Rig {world:SimWorld;sys:ChaveiroSystem;outcomes:string[];bosses:{tick:number;at:Point}[];events:StampedEvent[];step(n?:number):StampedEvent[]}
+/** The team's Grana (D-048: the stonewards state's in a run): a plain number the rig's chaveiro reads and spends. */
+interface Purse {grana:number}
+const walletOf=(purse:Purse={grana:0})=>({get:()=>purse.grana,spend:(n:number)=>{purse.grana-=n;}});
+interface Rig {world:SimWorld;sys:ChaveiroSystem;purse:Purse;outcomes:string[];bosses:{tick:number;at:Point}[];events:StampedEvent[];step(n?:number):StampedEvent[]}
 function rig(seed=7):Rig{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain:city,seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const outcomes:string[]=[],bosses:{tick:number;at:Point}[]=[],events:StampedEvent[]=[];
-  const sys=createChaveiro({seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:o=>outcomes.push(o),spawnBoss:(ctx,at)=>bosses.push({tick:ctx.tick,at})});
+  const outcomes:string[]=[],bosses:{tick:number;at:Point}[]=[],events:StampedEvent[]=[],purse:Purse={grana:0};
+  const sys=createChaveiro({wallet:walletOf(purse),seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:o=>outcomes.push(o),spawnBoss:(ctx,at)=>bosses.push({tick:ctx.tick,at})});
   const step=(n=1)=>{
     const got:StampedEvent[]=[];
     for(let i=0;i<n;i++){world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);got.push(...world.flush());}
     events.push(...got);return got;
   };
-  return {world,sys,outcomes,bosses,events,step};
+  return {world,sys,purse,outcomes,bosses,events,step};
 }
 function addPlayer(world:SimWorld,id:string,p:Point){
   const player={id,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
@@ -92,7 +95,7 @@ test('route: drawn from the seed (same seed, same route and stops; restore rebui
   assert.ok(froms.size>=3,`entrances vary with the seed: ${[...froms]}`);
   // A restored system (from its state only) rebuilds the same route and stops.
   const r=rig(5);r.step(200);
-  const again=createChaveiro({seed:5,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{}},structuredClone(r.sys.state));
+  const again=createChaveiro({wallet:walletOf(),seed:5,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{}},structuredClone(r.sys.state));
   assert.deepEqual(again.route,r.sys.route);assert.deepEqual(again.stops,r.sys.stops);
   assert.ok(r.sys.state.moto.s>0,'the moto rode');
   // The view carries the static route and stops.
@@ -110,8 +113,8 @@ test('map scale: on the city scaled 1.7× the route is 1.7× longer, the stops s
     const ratio=b.route.length/a.route.length;
     assert.ok(Math.abs(ratio-K)<.05,`length ratio ${ratio}`);
     assert.deepEqual(b.stops.map(o=>[o.kind,(o.s/b.route.length).toFixed(9)]),a.stops.map(o=>[o.kind,(o.s/a.route.length).toFixed(9)]));
-    const sa=createChaveiro({seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{}});
-    const sb=createChaveiro({seed,grid,entrances:big,car:scale(CAR),onOutcome:()=>{}});
+    const sa=createChaveiro({wallet:walletOf(),seed,grid:OPEN,entrances:ENTRANCES,car:CAR,onOutcome:()=>{}});
+    const sb=createChaveiro({wallet:walletOf(),seed,grid,entrances:big,car:scale(CAR),onOutcome:()=>{}});
     assert.ok(Math.abs(sa.eta(0)-sb.eta(0))<1e-6,`ETA ${sa.eta(0)} vs ${sb.eta(0)}`);
   }
 });
@@ -230,13 +233,15 @@ test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phas
   const r=rig();r.step(2);
   const m=r.sys.moto(),p=addPlayer(r.world,'p',{x:m.x+1,y:m.y});
   assert.deepEqual(r.sys.buy(r.world,'p','brigadeiro'),{ok:false,reason:'grana'});
-  r.sys.state.grana=200;
+  r.purse.grana=200;
+  assert.equal(r.sys.view(r.world.tick).grana,200,'the view reads the team\'s Grana');
   assert.deepEqual(r.sys.buy(r.world,'p','pastel'),{ok:false,reason:'item'});
   assert.deepEqual(r.sys.buy(r.world,'ghost','pacoca'),{ok:false,reason:'phase'});
   p.x+=5;assert.deepEqual(r.sys.buy(r.world,'p','pacoca'),{ok:false,reason:'away'});p.x-=5;
   const tick=r.world.tick;
   for(const item of CIDA_ITEMS)assert.equal(r.sys.buy(r.world,'p',item.id).ok,true);
-  assert.equal(r.sys.state.grana,200-15-25-20);
+  assert.equal(r.purse.grana,200-15-25-20,'spent from the team\'s Grana');
+  assert.equal('grana' in r.sys.state,false,'D-048: no Grana of its own in the chaveiro\'s state');
   assert.equal(p.fastUntil,tick+ticks(30));assert.equal(p.mightUntil,tick+ticks(30));assert.equal(p.guardUntil,tick+ticks(30));
   assert.deepEqual(ofType(r.world.flush(),'buy').map(e=>e.type==='buy'&&e.item),['brigadeiro','pacoca','cocada']);
   for(let k=1;k<CIDA_STOCK;k++)assert.equal(r.sys.buy(r.world,'p','cocada').ok,true);
@@ -269,12 +274,24 @@ test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phas
   assert.equal(ai.paceSpeed(a,1,(a as {sugarUntil?:number}).sugarUntil!),a.speed);
 });
 
-test('the bill: kills pay Grana (1/5/50), abrindo 15 s at the car, victory with budget, paid and debt',()=>{
+test('the bill: kills pay the team\'s Grana (1/5/50), abrindo 15 s at the car, victory with budget, paid and debt',()=>{
+  // D-048: the kill pays the team's Grana (stonewards state, assemble's onKill), with or without the objective; the
+  // chaveiro reads it for his bill.
+  assert.deepEqual({...GRANA_PER_KILL},{normal:1,elite:5,boss:50});
+  for(const objective of [true,false]){
+    const world=new SimWorld({terrain:city.fork(),seed:3,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    const run=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,...(objective?{objective:'chaveiro' as const}:{})});
+    world.step();
+    const g0=run.stonewards.state.grana;
+    addEnemy(world,'k1',{x:1,y:1});addEnemy(world,'k2',{x:1,y:1},{elite:true});addEnemy(world,'k3',{x:1,y:1},{boss:true});
+    for(const id of ['k1','k2','k3'])assert.equal(world.damageEnemy(id,1e9),true,id);
+    assert.equal(run.stonewards.state.grana-g0,56,`objective ${objective}`);
+    if(objective)assert.equal(run.objectiveView()!.grana,run.stonewards.state.grana,'the chaveiro reads the team\'s Grana');
+    run.dispose();
+  }
   for(const grana of [0,500]){
     const r=rig();r.step(2);
-    r.sys.onKill(addEnemy(r.world,'k1',CAR));r.sys.onKill(addEnemy(r.world,'k2',CAR,{elite:true}));r.sys.onKill(addEnemy(r.world,'k3',CAR,{boss:true}));
-    assert.equal(r.sys.state.grana,56);
-    r.sys.state.grana=grana;
+    r.purse.grana=grana;
     for(let k=0;k<5;k++)r.sys.hitCar(r.world,addEnemy(r.world,`h${k}`,CAR));
     const m=r.sys.state.moto;m.stop=r.sys.stops.length;m.s=r.sys.route.length-1e-4;
     while(r.world.tick+1<r.sys.state.car.alarmUntil)r.step(1);
@@ -285,8 +302,8 @@ test('the bill: kills pay Grana (1/5/50), abrindo 15 s at the car, victory with 
     r.step(ticks(ABRINDO_SECONDS)-1);assert.deepEqual(r.outcomes,[]);
     r.step(1);assert.deepEqual(r.outcomes,['victory']);
     const res=r.sys.result(r.world.tick,r.world.round)!,budget=BUDGET_BASE+5*BUDGET_PER_HIT;
-    assert.deepEqual({budget:res.budget,paid:res.paid,debt:res.debt,eta:res.eta,hits:res.hits},
-      {budget,paid:Math.min(grana,budget),debt:Math.max(0,budget-grana),eta:0,hits:5});
+    assert.deepEqual({budget:res.budget,grana:res.grana,paid:res.paid,debt:res.debt,eta:res.eta,hits:res.hits},
+      {budget,grana,paid:Math.min(grana,budget),debt:Math.max(0,budget-grana),eta:0,hits:5});
     assert.equal(r.sys.view(r.world.tick).ended,'victory');
   }
 });

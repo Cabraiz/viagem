@@ -148,49 +148,51 @@ test('nodes refill once per intermission',()=>{
 test('simultaneous purchases respect the team balance',()=>{
   const a=player('a',12,17),b=player('b',12.5,17);
   const ctx=fakeCtx([a,b]),sys=system();
-  sys.state.balance={units:9};sys.state.wall.hp=100;
+  // D-048: the forge is paid in the team's Grana (R$); the pile of material is not touched.
+  sys.state.grana=9;sys.state.balance={units:80};sys.state.wall.hp=100;
   const r1=sys.buy(ctx,'a','reparo'),r2=sys.buy(ctx,'b','reparo');
   assert.equal(r1.ok,true);assert.deepEqual(r2,{ok:false,reason:'balance'});
-  assert.deepEqual(sys.state.balance,{units:4});
+  assert.equal(sys.state.grana,4);assert.deepEqual(sys.state.balance,{units:80});
+  assert.equal(FORGE_REFUSALS.balance,'Falta grana.');
 });
 
 test('a repair applies once: resent request ids are refused and not charged',()=>{
   const a=player('a',12,17);
   const ctx=fakeCtx([a]),sys=system();
-  sys.state.balance={units:20};sys.state.wall.hp=100;
+  sys.state.grana=20;sys.state.wall.hp=100;
   const first=sys.buy(ctx,'a','reparo','req-1');
   assert.equal(first.ok,true);
   assert.equal(sys.state.wall.hp,100+Math.ceil(sys.state.wall.maxHp*.25));
   assert.deepEqual(sys.buy(ctx,'a','reparo','req-1'),{ok:false,reason:'duplicate'});
-  assert.deepEqual(sys.state.balance,{units:15});
+  assert.equal(sys.state.grana,15);
   assert.equal(ctx.events.filter(e=>e.type==='structure').length,1);
   sys.state.wall.hp=sys.state.wall.maxHp;
   assert.deepEqual(sys.buy(ctx,'a','reparo','req-2'),{ok:false,reason:'full'});
-  assert.deepEqual(sys.state.balance,{units:15});
+  assert.equal(sys.state.grana,15);
 });
 
 test('purchases are refused outside the intermission, for downed players and for unknown recipes',()=>{
   const a=player('a',12,17),d=player('d',12,17);downedish(d);
   const ctx=fakeCtx([a,d],'wave'),sys=system();
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   assert.deepEqual(sys.buy(ctx,'a','torre-chinelo'),{ok:false,reason:'phase'});
   ctx.round.phase='prepare';
   assert.deepEqual(sys.buy(ctx,'d','torre-chinelo'),{ok:false,reason:'player'});
   assert.deepEqual(sys.buy(ctx,'x','torre-chinelo'),{ok:false,reason:'player'});
   for(const id of ['__proto__','constructor','toString'])assert.deepEqual(sys.buy(ctx,'a',id),{ok:false,reason:'recipe'});
-  assert.deepEqual(sys.state.balance,{units:99});
+  assert.equal(sys.state.grana,99);
 });
 
 test('gambiarra raises one weapon below max and never touches evolutions',()=>{
   const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:8},{id:'boleto-evo',level:1},{id:'cafe',level:3}],passives:[]}});
   const ctx=fakeCtx([a]),sys=system();
-  sys.state.balance={units:12};
+  sys.state.grana=12;
   const r=sys.buy(ctx,'a','gambiarra');
   assert.ok(r.ok&&r.item==='cafe'&&r.level===4);
   assert.ok((RECIPES.gambiarra.lines as readonly string[]).includes(r.ok?r.line:''));
   a.build.weapons[2].level=8;
   assert.deepEqual(sys.buy(ctx,'a','gambiarra'),{ok:false,reason:'no-weapon'});
-  assert.deepEqual(sys.state.balance,{units:6});
+  assert.equal(sys.state.grana,6);
   assert.deepEqual(ctx.events.filter(e=>e.type!=='say'),[{type:'upgrade',player:'a',item:'cafe',level:4}]);
   assert.deepEqual(ctx.events.filter(e=>e.type==='say').map(e=>e.type==='say'&&[e.source,e.key]),[['a','gambiarra']],'D-013: the forge talks once');
 });
@@ -198,7 +200,7 @@ test('gambiarra raises one weapon below max and never touches evolutions',()=>{
 test('chinelo towers shoot the nearest live enemy, respect the cap and expire',()=>{
   const a=player('a',12,17);
   const ctx=fakeCtx([a]),sys=system();
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   for(let i=0;i<MAX_TOWERS;i++)assert.equal(sys.buy(ctx,'a','torre-chinelo').ok,true);
   assert.deepEqual(sys.buy(ctx,'a','torre-chinelo'),{ok:false,reason:'full'});
   sys.state.towers.splice(1);
@@ -233,7 +235,7 @@ test('siege enemies hit the wall on a cooldown; the fall is a defeat exactly onc
   run(ctx,sys,SIEGE_HIT_COOLDOWN*3);
   assert.equal(defeats,1);
   assert.equal(damageWall(ctx,sys.state,50),false);
-  sys.state.balance={units:9};ctx.round.phase='prepare';
+  sys.state.grana=9;ctx.round.phase='prepare';
   assert.deepEqual(sys.buy(ctx,'a','reparo'),{ok:false,reason:'wall-down'});
 });
 
@@ -277,7 +279,7 @@ test('same inputs replay the same state and events',()=>{
     const a=player('a',near(0).x,near(0).y,{build:{weapons:[{id:'chinelo',level:1},{id:'cafe',level:1}],passives:[]}});
     const ctx=fakeCtx([a]),sys=system();
     run(ctx,sys,ticks(6));
-    sys.state.balance.units+=40;
+    sys.state.grana+=40;
     sys.buy(ctx,'a','gambiarra');sys.buy(ctx,'a','gambiarra');sys.buy(ctx,'a','torre-chinelo');
     return JSON.stringify([sys.state,ctx.events,a.build]);
   };
@@ -291,7 +293,7 @@ test('hardening: NaN siege enemies, odd player ids, per-player request ids, frac
   ctx.enemies.set('n2',enemy('n2',1,1,{radius:Number.NaN,memory:{[SIEGE_FLAG]:1}}));
   run(ctx,sys,5);
   assert.equal(w.hp,w.maxHp);
-  ctx.round.phase='prepare';sys.state.balance={units:99};
+  ctx.round.phase='prepare';sys.state.grana=99;
   assert.deepEqual(sys.buy(ctx,'a','gambiarra'),{ok:false,reason:'no-weapon'});
   w.hp=10;
   assert.equal(sys.buy(ctx,'a','reparo','1').ok,true);
@@ -319,7 +321,7 @@ test('two gatherers on one node split the credit evenly',()=>{
 test('the fall clears towers and is not reported again after a checkpoint restore',()=>{
   let defeats=0;
   const ctx=fakeCtx([player('a',12,17)]),sys=system({onWallDestroyed:()=>{defeats++;}});
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   const t=sys.buy(ctx,'a','torre-chinelo');assert.ok(t.ok);
   damageWall(ctx,sys.state,1e9);
   run(ctx,sys,1);
@@ -334,10 +336,10 @@ test('a checkpoint restore between purchases replays the same picks',()=>{
   const weapons=()=>({weapons:['chinelo','boleto','cafe','pombo','audio','guarda-chuva'].map(id=>({id,level:1})),passives:[]});
   const setup=()=>{const a=player('a',12,17,{build:weapons()});const ctx=fakeCtx([a]);ctx.rng=new Rng(99);return {a,ctx};};
   const straight=setup(),sys=system();
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   const picks=[1,2,3,4].map(()=>{const r=sys.buy(straight.ctx,'a','gambiarra');return r.ok?r.item+r.line:'';});
   const split=setup(),first=system();
-  first.state.balance={units:99};
+  first.state.grana=99;
   const before=[1,2].map(()=>{const r=first.buy(split.ctx,'a','gambiarra');return r.ok?r.item+r.line:'';});
   const restored=createStonewardsSystem({terrain:defaultTerrain},JSON.parse(JSON.stringify(first.state)));
   split.ctx.rng=new Rng(12345);
@@ -348,7 +350,7 @@ test('a checkpoint restore between purchases replays the same picks',()=>{
 test('reset starts a rematch from scratch, even after the wall fell',()=>{
   let defeats=0;
   const ctx=fakeCtx([player('a',12,17)]),sys=system({onWallDestroyed:()=>{defeats++;}});
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   sys.buy(ctx,'a','torre-chinelo','r1');
   damageWall(ctx,sys.state,1e9);run(ctx,sys,1);
   assert.equal(defeats,1);
@@ -356,7 +358,7 @@ test('reset starts a rematch from scratch, even after the wall fell',()=>{
   sys.reset();
   assert.equal(sys.state,state,'same object, so holders of the state see the reset');
   assert.deepEqual(sys.state,createStonewardsSystem({terrain:defaultTerrain}).state);
-  ctx.tick=0;sys.state.balance={units:9};
+  ctx.tick=0;sys.state.grana=9;
   assert.equal(sys.buy(ctx,'a','torre-chinelo','r1').ok,true);
   damageWall(ctx,sys.state,1e9);run(ctx,sys,1);
   assert.equal(defeats,2);
@@ -366,7 +368,7 @@ test('gambiarra leaves weapons of a pending upgrade card alone',()=>{
   const a=player('a',12,17,{build:{weapons:[{id:'cafe',level:3},{id:'boleto',level:2}],passives:[]}});
   const ctx=fakeCtx([a]),sys=system();
   ctx.offers.set('a',[{id:'rnd-1',playerId:'a',source:'round',level:2,choices:[{itemId:'cafe',level:4},{itemId:'tenis',level:1}],deadlineTick:999,defaultIndex:0}]);
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   for(let i=0;i<3;i++){const r=sys.buy(ctx,'a','gambiarra');assert.ok(r.ok&&r.item==='boleto');}
   assert.equal(a.build.weapons[0].level,3);
 });
@@ -447,9 +449,9 @@ test('the forge works only inside the camp',()=>{
   const sys=system(),w=sys.state.wall;
   const out=player('out',w.x,w.y+CAMP_RADIUS+.5),in_=player('in',w.x,w.y+CAMP_RADIUS-.5);
   const ctx=fakeCtx([out,in_]);
-  sys.state.balance={units:20};w.hp=10;
+  sys.state.grana=20;w.hp=10;
   assert.deepEqual(sys.buy(ctx,'out','reparo'),{ok:false,reason:'away'});
-  assert.deepEqual(sys.state.balance,{units:20});
+  assert.equal(sys.state.grana,20);
   assert.equal(sys.buy(ctx,'in','reparo').ok,true);
   assert.ok(FORGE_REFUSALS.away&&FORGE_REFUSALS.balance);
 });
@@ -457,7 +459,7 @@ test('the forge works only inside the camp',()=>{
 test('D-013: the forge says one line per player every 2 s; purchases still apply',()=>{
   const a=player('a',12,17,{build:{weapons:[{id:'chinelo',level:1}],passives:[]}}),b=player('b',12.4,17);
   const ctx=fakeCtx([a,b]),sys=system();
-  sys.state.balance={units:99};sys.state.wall.hp=10;
+  sys.state.grana=99;sys.state.wall.hp=10;
   assert.ok(sys.buy(ctx,'a','reparo').ok);assert.ok(sys.buy(ctx,'a','gambiarra').ok);assert.ok(sys.buy(ctx,'b','torre-chinelo').ok);
   let says=ctx.events.filter(e=>e.type==='say');
   assert.deepEqual(says.map(e=>e.type==='say'&&e.source),['a','b']);

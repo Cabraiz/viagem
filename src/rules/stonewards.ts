@@ -19,7 +19,7 @@ export const tokensOf=(units:number)=>Math.max(0,Math.floor(units/UNITS_PER_TOKE
 export const tokenProgress=(units:number)=>{const t=tokensOf(units),rest=units-t*UNITS_PER_TOKEN;return Math.max(0,Math.min(1,rest/UNITS_PER_TOKEN));};
 
 export type RecipeId='reparo'|'gambiarra'|'torre-chinelo';
-/** `cost`: material units (until the forge is paid in Grana, D-048). */
+/** `cost`: its price in Grana, R$ (D-048: the forge is paid in the team's Grana, not material). */
 export interface Recipe {id:RecipeId;name:string;cost:number;describe:string;lines:readonly string[]}
 
 export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
@@ -35,7 +35,14 @@ export const RECIPES:Readonly<Record<RecipeId,Recipe>>=Object.freeze({
 });
 export const RECIPE_IDS=Object.keys(RECIPES) as RecipeId[];
 export const isRecipeId=(id:unknown):id is RecipeId=>typeof id==='string'&&Object.hasOwn(RECIPES,id);
-export const canPay=(b:Balance,cost:number)=>b.units>=cost;
+/** The team can pay `cost` R$ from its Grana. */
+export const canPay=(grana:number,cost:number)=>grana>=cost;
+/**
+ * The team's Grana (D-047, every world since D-048): R$ per kill by what fell. It pays the evolutions, the forge, the
+ * tower repairs, Dona Cida's sweets and the chaveiro's bill.
+ */
+export const GRANA_PER_KILL=Object.freeze({normal:1,elite:5,boss:50});
+export const granaPerKill=(e:{boss?:boolean;elite?:boolean})=>e.boss?GRANA_PER_KILL.boss:e.elite?GRANA_PER_KILL.elite:GRANA_PER_KILL.normal;
 /**
  * What a forge tap may name as its optional `target` (cidade-06): the wall or one of the city's 4 barricades
  * (sim/stonewards/barricades.ts barricadeId). The room drops a tap with any other target before the simulation.
@@ -107,7 +114,7 @@ export const FORGE_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   phase:'A forja só abre no intervalo.',
   player:'Caído não forja. Pede resgate.',
   recipe:'Essa receita não existe.',
-  balance:'Falta material.',
+  balance:'Falta grana.',
   full:'Já tá no máximo.',
   'no-weapon':'Nenhuma arma pra gambiarra.',
   duplicate:'Esse pedido já foi.',

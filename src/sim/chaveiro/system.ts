@@ -14,7 +14,7 @@
  *   enemy touching the riding moto knocks it over (TOMBO_SECONDS, then TOMBO_GAP_SECONDS without another). At the car:
  *   ABRINDO_SECONDS 'abrindo', then victory.
  * - Dona Cida sells the team's sweets (buy) and, every SALE_GAP_SECONDS, one to an enemy near the moto ("açucarado").
- * - Team Grana: GRANA_PER_KILL per kill. The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
+ * - Team Grana: GRANA_PER_KILL per kill, in the stonewards state since D-048 (read through ChaveiroOptions.wallet). The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
  * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
  * span and the boss's spawn are fractions of the route length; radii around bodies (push, Cida, lure, the delivery's
  * clean check, the car) stay in u.
@@ -55,7 +55,8 @@ export const MOTO_LURE_REACH=6;
 export const ABRINDO_SECONDS=15;
 export const CIDA_HANDLED_LIMIT=64;
 export const CIDA_STOCK=4,CIDA_REACH=3,SALE_GAP_SECONDS=20,SALE_RADIUS=3;
-export const GRANA_PER_KILL=Object.freeze({normal:1,elite:5,boss:50});
+/** Moved to rules/stonewards.ts (D-048: the Grana is the team's in every world); kept here for the chaveiro's readers. */
+export {GRANA_PER_KILL} from '../../rules/index.ts';
 export const BOSS_ETA_SECONDS=60;
 /** The boss appears on the route this fraction of its length back from the car and marches to it. */
 export const BOSS_SPAWN_BACK=.3;
@@ -79,7 +80,8 @@ export interface ChaveiroState {
    */
   moto:{s:number;mode:MotoMode;task:Task;left:number;stop:number;push:number;tomboUntil:number;tomboReady:number};
   route:{from:Entrance};
-  grana:number;budget:number;
+  /** The bill (R$). The team's Grana lives in the stonewards state (D-048), read through ChaveiroOptions.wallet. */
+  budget:number;
   cida:{stock:number[];nextSaleTick:number};
   /** `playerId:requestId` of purchases already applied (a resent {t:'cida'} applies once), the last CIDA_HANDLED_LIMIT. */
   handled:string[];
@@ -92,7 +94,10 @@ export interface ChaveiroState {
   endEta?:number;
 }
 
+/** The team's Grana (stonewards state, D-048): what the chaveiro reads for his bill and Dona Cida's sweets spend. */
+export interface Wallet {get():number;spend(amount:number):void}
 export interface ChaveiroOptions {
+  wallet:Wallet;
   /** The run seed: the entrance and the stops are drawn from Rng(seed).fork('chaveiro'). */
   seed:number;
   /** Hero-walkability grid of the city without barricades (the moto rides through the plaza mouths). */
@@ -120,7 +125,6 @@ export interface ChaveiroSystem {
   hitCar(ctx:SimContext,enemy:EnemyState):void;
   /** A team purchase from Dona Cida (room command). */
   buy(ctx:SimContext,playerId:string,item:string,requestId?:string):CidaBuyResult;
-  onKill(enemy:EnemyState):void;
   /** Seconds until the car is open at the planned stops. */
   eta(tick:number):number;
   view(tick:number):ObjectiveView;
@@ -163,7 +167,7 @@ export function createChaveiroState(car:Point,from:Entrance):ChaveiroState{
   return {
     car:{x:car.x,y:car.y,hits:0,limit:CAR_LIMIT,parts:0,alarmUntil:0},
     moto:{s:0,mode:'anda',task:'anda',left:0,stop:0,push:0,tomboUntil:0,tomboReady:0},
-    route:{from},grana:0,budget:BUDGET_BASE,
+    route:{from},budget:BUDGET_BASE,
     cida:{stock:CIDA_ITEMS.map(()=>CIDA_STOCK),nextSaleTick:0},handled:[],
     startTick:null,bossCalled:false,
   };
@@ -334,16 +338,15 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       const p=at(moto.s);
       if(!(Math.hypot(player.x-p.x,player.y-p.y)<=CIDA_REACH))return {ok:false,reason:'away'};
       if(state.cida.stock[index]<=0)return {ok:false,reason:'stock'};
-      if(state.grana<item.price)return {ok:false,reason:'grana'};
-      state.grana-=item.price;state.cida.stock[index]--;
+      if(options.wallet.get()<item.price)return {ok:false,reason:'grana'};
+      options.wallet.spend(item.price);state.cida.stock[index]--;
       if(key!==undefined){state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);}
       const field=item.effect==='speed'?'fastUntil':item.effect==='damage'?'mightUntil':'guardUntil';
       const p2=player as SimPlayer;
       p2[field]=Math.max(p2[field]??0,ctx.tick+ticks(item.seconds));
       ctx.emit({type:'buy',player:playerId,item:item.id as CidaItemId});
-      return {ok:true,item:item.id,grana:state.grana};
+      return {ok:true,item:item.id,grana:options.wallet.get()};
     },
-    onKill(enemy){state.grana+=GRANA_PER_KILL[unitsOf(enemy)];},
     view(tick){
       const p=at(moto.s);
       let delivery:ObjectiveView['delivery'];
@@ -365,7 +368,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         moto:{x:p.x,y:p.y,mode:moto.mode,...(moto.task==='morta'?{push:Math.min(1,moto.push/PUSH_TICKS)}:{})},
         route:route.points.map(q=>({x:q.x,y:q.y})),
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
-        etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:state.grana,budget:state.budget,stock:[...state.cida.stock],
+        etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.get(),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
         car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts},
         ...(state.ended?{ended:state.ended}:{}),
@@ -375,10 +378,10 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       const own=state.ended;
       if(!own&&!outcome)return undefined;
       const out=own??outcome!,cause:ObjectiveCause=own?(own==='victory'?'opened':'car'):outcome==='timeout'?'timeout':'team';
-      const endTick=state.endTick??tick,paid=Math.min(state.grana,state.budget);
+      const endTick=state.endTick??tick,grana=options.wallet.get(),paid=Math.min(grana,state.budget);
       return {kind:'chaveiro',outcome:out,cause,wave:round.index,extraWaves:Math.max(0,round.index-round.total),
         eta:own?state.endEta??0:Math.ceil(eta(tick)),seconds:(endTick-(state.startTick??endTick))/SIM_HZ,
-        hits:car.hits,limit:car.limit,budget:state.budget,grana:state.grana,paid,debt:Math.max(0,state.budget-state.grana),parts:car.parts};
+        hits:car.hits,limit:car.limit,budget:state.budget,grana,paid,debt:Math.max(0,state.budget-grana),parts:car.parts};
     },
   };
   return system;

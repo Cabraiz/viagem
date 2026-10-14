@@ -4,9 +4,10 @@
  *   with a tower that can grow right now wears the Amarelo evolve arrow.
  * - A tap on a site opens the tree as a Janela: the head card (the Vigia to build, or what stands there) and its
  *   branches as etiquetas (suit sticker, name, price, one line). The price (D-048): "1 🗼" for the Vigia and "3 🗼" for
- *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution its material (price.ts
- *   evolvePriceLabel). A blocked branch is dashed with a lock and its reason in words ("Falta 1 ficha", "Sem trilho").
- *   The thumb confirms in the 48 px button at the bottom.
+ *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution "🗼⬆ R$ N" in Grana (price.ts
+ *   evolvePriceLabel). A blocked branch is dashed with a lock and its reason in words ("Falta 1 ficha", "Falta R$ 3",
+ *   "Sem trilho"). The thumb confirms in the 48 px button at the bottom; an evolution in Grana reads only its price there
+ *   ("🗼⬆ R$ N", spoken "Evoluir por N reais").
  * - Geometry comes from layout.ts (no scroll, clear of both thumbs and the hero); the view-model from model.ts.
  * Hidden outside the intermission. The host injects the view and gets the action: the sandbox, and the real match
  * (torres-ligar, explore.ts with wiring.ts: the view from the snapshot, build/upgrade to the room, the answer's stamp
@@ -36,8 +37,10 @@ const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
 const suitOf=(c:ObraCard)=>c.rail&&!c.label?'rail':c.branch??'root';
 const suit=(c:ObraCard)=>`<svg class="rh-obra-naipe" data-naipe="${suitOf(c)}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SUIT[suitOf(c)]}</svg>`;
 const ARROW='<svg class="rh-obra-seta" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 21 12h-5.5v10h-7V12H3z"/></svg>';
-/** A card's price: fichas for a build (the Vigia, the Gustavão), free for the rail, else the evolution's material. */
-const priceOf=(c:ObraCard):PriceLabel=>c.tokens!==undefined?tokenPriceLabel(c.tokens):c.cost===0?FREE_PRICE:evolvePriceLabel(c);
+/** A card's price: fichas for a build (the Vigia, the Gustavão), R$ for an evolution, free for the rail. */
+const priceOf=(c:ObraCard):PriceLabel=>c.tokens!==undefined?tokenPriceLabel(c.tokens):c.grana!==undefined?evolvePriceLabel(c.grana):FREE_PRICE;
+/** The price in a card's aria-label: "Grátis.", "Evoluir por 10 reais." (the phrase says it all), else "Custa 1 ficha de torre.". */
+const priceSentence=(c:ObraCard)=>{const p=priceOf(c);return p===FREE_PRICE?'Grátis.':c.grana!==undefined?`${p.speech}.`:`Custa ${p.speech}.`;};
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -229,8 +232,10 @@ export class ObraHud {
     ok.disabled=!chosen||!!v.readOnly;
     const verb=v.readOnly?'Assistindo':!chosen?'Escolha':chosen.action?.type==='upgrade'?'Evoluir':'Construir';
     const price=chosen&&priceOf(chosen);
-    ok.innerHTML=`<span>${verb}</span>${price&&!v.readOnly?`<span class="rh-obra-preco">${price.html}</span>`:''}`;
-    ok.setAttribute('aria-label',v.readOnly?'Assistindo: só quem joga constrói':chosen&&price?`${verb} ${chosen.name}, ${price.speech}`:'Escolha uma opção');
+    // An evolution in Grana reads "🗼⬆ R$ N" (the sticker and the arrow are the verb); a build or the Gustavão keep the word.
+    const bare=!!price&&!v.readOnly&&chosen?.grana!==undefined;
+    ok.innerHTML=`${bare?'':`<span>${verb}</span>`}${price&&!v.readOnly?`<span class="rh-obra-preco">${price.html}</span>`:''}`;
+    ok.setAttribute('aria-label',v.readOnly?'Assistindo: só quem joga constrói':chosen&&price?bare?`${price.speech}, ${chosen.name}`:`${verb} ${chosen.name}, ${price.speech}`:'Escolha uma opção');
     ok.addEventListener('click',()=>{
       if(!chosen?.action||this.view?.readOnly)return;
       this.options.onConfirm(chosen.action);this.close();
@@ -305,7 +310,7 @@ export class ObraHud {
       :c.status==='buy'?`<span class="rh-obra-cost">${priceOf(c).html}</span>`:c.status==='obra'?`<span class="rh-obra-why rh-obra-tem">${why}</span>`:'';
     b.innerHTML=`${suit(c)}<span class="rh-obra-nome">${c.name}</span>${side}<span class="rh-obra-efeito">${c.effect}</span>`;
     const branch=c.branch&&!c.rail?`, ramo ${c.branch}: ${BRANCH_NAME[c.branch]}`:'';
-    b.setAttribute('aria-label',`${c.name}${branch}. ${c.effect}. ${c.status==='buy'?priceOf(c)===FREE_PRICE?'Grátis.':`Custa ${priceOf(c).speech}.`:''} ${c.block?blockSpeech(c):why}`.trim());
+    b.setAttribute('aria-label',`${c.name}${branch}. ${c.effect}. ${c.status==='buy'?priceSentence(c):''} ${c.block?blockSpeech(c):why}`.trim());
     b.addEventListener('click',()=>{if(!open)return;this.pick=c.key;this.render();});
   }
 }

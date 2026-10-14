@@ -56,6 +56,22 @@ test('city run summary: roots and fichas de torre per run (D-048); runs without 
   assert.deepEqual(old.byPlayers[3].towers,{runs:1,rootsPerRun:null,tokensPerRun:null,gustavoes:0});
 });
 
+test('city run summary: Grana per run (D-048) and the chaveiro\'s victories with debt; older files without them still load',()=>{
+  const grana=(earned:number,evolutions:number,forge:number)=>({earned,spent:{evolutions,repairs:5,forge,other:0},final:earned-evolutions-5-forge});
+  const bill=(outcome:'victory'|'defeat',debt:number)=>({kind:'chaveiro',outcome,cause:outcome==='victory'?'opened':'car',wave:10,extraWaves:0,eta:0,seconds:600,
+    hits:debt/8,limit:120,budget:120+debt,grana:120,paid:120,debt,parts:0,bossCalled:true,moments:{},deliveries:{clean:3,dirty:0}}) as unknown as RunRecord['objective'];
+  const s=summarize([run(1,3,'victory',10,{grana:grana(200,60,20),objective:bill('victory',0)}),run(2,3,'victory',11,{grana:grana(300,90,10),objective:bill('victory',40)}),
+    run(3,3,'defeat',6,{grana:grana(100,40,0),objective:bill('defeat',16)}),run(4,3,'victory',10)]);
+  const t=s.byPlayers[3];
+  assert.deepEqual(t.grana?.earned,{n:3,mean:200,min:100,median:200,max:300});
+  assert.deepEqual(t.grana?.spent,{n:3,mean:78.33,min:45,median:85,max:105},'evolutions + repairs + forge (+ other)');
+  assert.equal(t.grana?.runs,3,'the run from an older file (no grana) is left out');
+  assert.deepEqual(t.chaveiro,{runs:3,wins:2,winsWithDebt:1,debt:{n:2,mean:20,min:0,median:20,max:40}},'victories with debt / victories');
+  // An older file: neither field.
+  const old=summarize([run(1,6,'victory',10)]).byPlayers[6];
+  assert.equal(old.grana,null);assert.equal(old.chaveiro,null);
+});
+
 test('city run summary: a death in round 1 fails the tutorial target',()=>{
   const bad=run(1,3,'defeat',1);
   bad.rounds[0].eliminated=1;

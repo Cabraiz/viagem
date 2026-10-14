@@ -67,10 +67,10 @@ function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:str
   // The forge stands in the camp (base-stonewards-mapa): what was gathered out there is spent back home.
   const site=barricade??state.wall;
   if(!(Math.hypot(player.x-site.x,player.y-site.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
-  if(!canPay(state.balance,recipe.cost))return {ok:false,reason:'balance'};
+  if(!canPay(state.grana,recipe.cost))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.
   const line=()=>draw(ctx,state,recipe.lines);
-  const charge=()=>{state.balance.units-=recipe.cost;};
+  const charge=()=>{state.grana-=recipe.cost;};
   if(barricade){
     // A fallen barricade is rebuilt only on a clear mouth: never inside a body (it would trap it in the blocker).
     if(barricade.down&&barricadeOccupied(ctx,barricade))return {ok:false,reason:'blocked'};

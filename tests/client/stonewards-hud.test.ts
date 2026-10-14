@@ -12,16 +12,19 @@ import {fakeView} from '../../src/client/hud/fixtures.ts';
 const view=(camp:RunView['camp'],extra:Partial<RunView>={})=>({...fakeView('camp-forge',1),camp,...extra});
 
 test('the forge tags: buyable, short of money, wall full, towers full, no weapon, wall down',()=>{
-  const rich={units:20};
+  // The forge is paid in the team's Grana (D-048): R$ 5, 6 and 7; the material pile never pays it.
+  const rich={units:0,grana:20};
   for(const id of RECIPE_IDS)assert.equal(blockedReason(id,view(rich),'p1'),undefined,id);
-  assert.equal(blockedReason('torre-chinelo',view({units:6}),'p1'),'balance');
-  assert.equal(blockedReason('torre-chinelo',view({units:7}),'p1'),undefined,'exactly the price');
-  // One pile (D-048): what is missing is material, in words, never "coco"/"pedra" nor "unidades".
-  assert.equal(missing({units:6},'torre-chinelo'),'Falta 1 de material.');
-  assert.equal(missing({units:0},'gambiarra'),'Falta 6 de material.');
-  assert.equal(missing({units:1.5},'reparo'),'Falta 4 de material.','a fraction (a tuned crate) rounds the shortfall up');
-  assert.equal(missing({units:99},'reparo'),'');
-  for(const id of RECIPE_IDS)assert.doesNotMatch(missing({units:0},id),/coco|pedra|unidade/i);
+  assert.equal(blockedReason('torre-chinelo',view({units:999,grana:6}),'p1'),'balance','R$ 6 is short of the tower');
+  assert.equal(blockedReason('torre-chinelo',view({units:0,grana:7}),'p1'),undefined,'exactly the price');
+  assert.equal(FORGE_REFUSALS.balance,'Falta grana.');
+  // What is missing is Grana, as the tag shows it ("R$ N"), never "coco"/"pedra", "unidades" nor material.
+  assert.equal(missing({grana:6},'torre-chinelo'),'Falta R$ 1.');
+  assert.equal(missing({grana:0},'gambiarra'),'Falta R$ 6.');
+  assert.equal(missing({grana:1.5},'reparo'),'Falta R$ 4.','a fraction rounds the shortfall up');
+  assert.equal(missing({grana:99},'reparo'),'');
+  assert.equal(missing({grana:Number.NaN},'reparo'),'Falta R$ 5.','a broken number is no Grana');
+  for(const id of RECIPE_IDS)assert.doesNotMatch(missing({grana:0},id),/coco|pedra|unidade|material/i);
   const v=view(rich);
   assert.equal(blockedReason('reparo',{...v,structures:v.structures.map(s=>({...s,hp:s.maxHp}))},'p1'),'full');
   const towers=Array.from({length:MAX_TOWERS},(_,i)=>({id:`t${i}`,kind:'torre-chinelo',x:0,y:0,hp:80,maxHp:80}));

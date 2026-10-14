@@ -60,7 +60,7 @@ test('a city room: the target reaches the barricade (repaired) and a tap without
   assert.ok(rows?.length,'the city run raised its barricades');
   assert.equal(sim.world.round.phase,'prepare');
   const n=rows.find(b=>b.id==='barricada-N')!,p=sim.players.get(id)!;
-  n.hp=100;sw.balance={units:18};p.x=n.x;p.y=n.y;
+  n.hp=100;sw.grana=18;p.x=n.x;p.y=n.y;
   command(room,a,{t:'forge',round,recipe:'reparo',req:1,target:'barricada-N'});
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:true});
   assert.equal(n.hp,100+Math.ceil(n.maxHp*.25));
@@ -74,4 +74,5 @@ test('a city room: the target reaches the barricade (repaired) and a tap without
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:3,recipe:'reparo',ok:true});
   assert.equal(sw.wall.hp,100+Math.ceil(sw.wall.maxHp*.25));
   assert.equal(n.hp,before,'the barricade was not touched');
+  assert.equal(sw.grana,18-5-5,'D-048: each reparo charged R$ 5 of the team Grana');
 });

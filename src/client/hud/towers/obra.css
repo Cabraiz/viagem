@@ -56,9 +56,12 @@
 .rh-obra-why .ic{width:16px;height:16px}
 .rh-obra-why{padding:0 4px;border:1px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel)}
 .rh-obra-tem{border-style:solid}
-/* The price (price.ts, D-048): the number, then the tower sticker (fichas) or the material crate (an evolution). */
+/* The price (price.ts, D-048): fichas are the number, then the tower sticker; an evolution in Grana is the tower sticker
+   with a small up arrow on its shoulder, then "R$ N" ("🗼⬆ R$ 10"); the rail "Grátis". */
 .rh-obra-preco{display:inline-flex;align-items:center;gap:2px}
 :is(.rh-obra-cost,.rh-obra-preco) .ic{width:18px;height:18px}
+.rh-preco-evoluir{display:inline-flex;align-items:center;flex:none;margin-right:2px}
+.rh-preco-sobe{flex:none;width:11px;height:11px;margin-left:-3px;align-self:flex-start;fill:var(--c-amarelo);stroke:var(--c-breu);stroke-width:2.5;stroke-linejoin:round;paint-order:stroke;overflow:visible}
 
 /* Confirm (Amarelo: a choice) and close, both 48 px. */
 .rh-obra-ok,.rh-obra-fechar{position:absolute;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;

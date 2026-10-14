@@ -13,7 +13,7 @@ import type {RunView,PlayerRunView,NodeView} from '../../src/contract/view.ts';
 const player=(id:string,x:number,y:number,extra:Partial<PlayerRunView>={}):PlayerRunView=>({id,name:id,classId:'cidadao-comum',hp:100,maxHp:100,online:true,spectator:false,weapons:[],passives:[],...extra,...{x,y}} as PlayerRunView);
 function view(extra:Partial<RunView>={}):RunView{
   return {tick:1000,team:{xp:0,level:1,nextXp:5},round:{index:2,total:10,phase:'wave',phaseEndsTick:2000,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
-    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],players:[player('a',0,3),player('b',1,3)],offers:[],events:[],camp:{units:0},...extra};
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],players:[player('a',0,3),player('b',1,3)],offers:[],events:[],camp:{units:0,grana:0},...extra};
 }
 const input=(v:RunView,at={x:0,y:3},memory=newMemory(0),selfId='a'):BrainInput=>({view:v,selfId,at,index:0,memory});
 
@@ -60,18 +60,20 @@ test('brain: intermission — gather at its own node, home on the horn',()=>{
   const v=view({round:prepare,nodes,players:[player('a',0,3),player('b',0,3)]});
   const d=decide({...input(v,{x:0,y:3},newMemory(0),'b')});
   assert.equal(d.mode,'gather');assert.ok(d.direction.x>.5);
-  const horn=decide({...input({...v,camp:{units:0,hornEndsTick:1500}},{x:8,y:1},newMemory(0),'b')});
+  const horn=decide({...input({...v,camp:{units:0,grana:0,hornEndsTick:1500}},{x:8,y:1},newMemory(0),'b')});
   assert.equal(horn.mode,'home');assert.ok(horn.direction.x<-.5);
 });
-test('brain: the forger spends the balance at the camp (repair first when the wall is hurt)',()=>{
+test('brain: the forger spends the Grana at the camp (repair first when the wall is hurt)',()=>{
   const prepare={index:3,total:10,phase:'prepare' as const,phaseEndsTick:1600,remaining:0};
-  const rich={units:20};
+  // D-048: the forge is paid in the team's Grana (R$), never the material.
+  const rich={units:0,grana:20};
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:300,maxHp:600}]})),'reparo');
   assert.equal(pickRecipe(view({camp:rich})),'torre-chinelo');
   const towers=[1,2,3].map(i=>({id:'t'+i,kind:'torre-chinelo',x:i,y:0,hp:1,maxHp:1,untilTick:2000}));
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600},...towers]})),'gambiarra');
   assert.equal(pickRecipe(view({camp:rich,structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:590,maxHp:600},...towers]}),{gambiarra:2}),'reparo','a refused gambiarra falls back to topping the wall up');
-  assert.equal(pickRecipe(view({camp:{units:2}})),undefined);
+  assert.equal(pickRecipe(view({camp:{units:2,grana:4}})),undefined,'R$ 4 buys nothing (reparo 5)');
+  assert.equal(pickRecipe(view({camp:{units:200,grana:0}})),undefined,'material does not pay the forge');
   assert.equal(forgerId(view()),'a');
   const memory=newMemory(0),v=view({round:prepare,camp:rich});
   const d=decide(input(v,{x:0,y:2},memory));

@@ -45,7 +45,7 @@
 /* The base ficha gives way first (its wall bar shrinks): the numbers never get cut. Wide screens keep one row; only the
    boss bar wraps under it. */
 .rh-top>.rh-camp{flex:0 1 auto;min-width:0}
-.rh-top .rh-camp-track{flex:0 1 auto;min-width:16px}
+.rh-top .rh-camp-barra{flex:0 1 auto;min-width:16px}
 .rh-top>:is(.rh-xp,.rh-round){flex-shrink:0}
 @media (min-width:600px){.rh-top:not(:has(>.rh-boss:not([hidden]))){flex-wrap:nowrap}}
 /* Landscape: the boss bar's row keeps 32 px more on the right, clear of the minimap under the gear. */

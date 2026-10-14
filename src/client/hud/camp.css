@@ -1,7 +1,8 @@
 /* Stonewards HUD (VGM-046B, hud/camp.ts). Only tokens (src/client/ui/tokens.css) and stickers (src/client/ui/icons.svg).
-   - .rh-camp: a ficha in the top band's one row (Breu body, Papel edge): wall life (a short bar) and the team's fichas de
-     torre (D-048: the tower sticker in a ring filling to the next ficha, and the count), after the round chip (hud.css,
-     card hud-topo-uma-linha). One line at 390 px: the token is narrower than the two piles it replaced.
+   - .rh-camp: a ficha in the top band's one row (Breu body, Papel edge), after the round chip (hud.css, card
+     hud-topo-uma-linha): the wall (.rh-camp-wall: the base sticker, .rh-camp-barra with the bar, .rh-camp-num with the
+     life), the team's Grana (.rh-camp-grana, "R$ 120") and its fichas de torre (.rh-camp-token, D-048: the tower sticker
+     in a ring filling to the next ficha, and the count). One line at 390 px: only the bar gives way (down to 16 px).
    - .rh-horn: a row of the announcement slot (.rh-alert): "Volta pra base 12 s" and an arrow to the base.
    - .rh-forge: an intermission window like the round offer (same place, never both open): price tags. */
 
@@ -11,6 +12,13 @@
   box-shadow:var(--s-2);text-shadow:var(--s-texto);color:var(--c-papel)}
 .rh-camp b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh-camp-wall,.rh-camp-token{display:flex;align-items:center;gap:4px}
+/* The wall row may shrink, and inside it only the bar's box: the sticker, the number, the Grana and the fichas never do. */
+.rh-camp-wall{flex:0 1 auto;min-width:0}
+.rh-camp-wall>.ic,.rh-camp-num{flex:none}
+.rh-camp-barra{display:flex;align-items:center;flex:0 1 auto;min-width:16px}
+.rh-camp-num{display:flex;align-items:center}
+/* Grana (D-048): "R$ 120", the number in the poster face like the other counts, never wrapping. */
+.rh-camp-grana{flex:none;display:flex;align-items:center;white-space:nowrap}
 .rh-camp .ic{width:22px;height:22px}
 /* Fichas de torre (D-048): the tower sticker (20 px) inside a 30 px ring, so the ring still reads at a 24 px glance. Its
    track always shows (faint Papel) and the fill (Cartolina, a favor, like the wall bar) runs from the top, clockwise;
@@ -24,7 +32,7 @@
 .rh-camp-anel-fundo{stroke:color-mix(in srgb,var(--c-papel) 30%,transparent)}
 .rh-camp-anel-cheio{stroke:var(--c-cartolina);stroke-linecap:butt}
 /* Wall life: a flat bar (Cartolina: a favor) on a Breu track with a Papel edge; low = Laranja Cone plus the notch. */
-.rh-camp-track{position:relative;flex:none;width:clamp(36px,6vw,110px);height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);overflow:hidden}
+.rh-camp-track{position:relative;flex:0 1 auto;min-width:0;width:clamp(36px,6vw,110px);height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel);overflow:hidden}
 .rh-camp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(1);background:var(--c-cartolina);transition:transform .2s ease-out}
 .rh-camp-hp{min-width:2.1em;text-align:right}
 .rh-camp-low .rh-camp-fill{background:var(--c-cone)}

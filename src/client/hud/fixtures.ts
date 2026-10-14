@@ -84,7 +84,9 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     pickups:[],projectiles:[],telegraphs:[],
     structures:[{id:'s1',kind:'muralha',...FIXTURE_WALL,hp:scenario==='camp-wave'?132:scenario==='camp-forge'?410:540,maxHp:600},
       ...(scenario==='camp-forge'?[{id:'s2',kind:'torre-chinelo',x:13,y:14,hp:80,maxHp:80,untilTick:tick+ticks(30)}]:[])],
-    camp:{units:scenario==='camp-forge'?6:156,
+    // Grana R$ 23 (D-048): the forge's tags all buyable; in the obra, a tier-2 or -3 evolution yes, a tier-4 (R$ 25) not.
+    // In the forge scene R$ 6: the repair and the gambiarra yes, the tower (R$ 7) one short.
+    camp:{units:scenario==='camp-forge'?6:156,grana:scenario==='camp-forge'?6:23,
       ...(scenario==='camp-horn'?{hornEndsTick:tick+ticks(4)}:{})},
     players:fakePlayers(playerCount,scenario),
     // Combat: the server holds level offers until the intermission (D-021, HELD_DEADLINE).

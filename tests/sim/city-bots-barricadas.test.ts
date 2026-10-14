@@ -33,7 +33,7 @@ test('city bot: a gem past the lure band is no lure (no pacing at the band edge)
     view:{tick:2400,team:{xp:0,level:3,nextXp:50},round:{index:2,total:10,phase:'wave',phaseEndsTick:4000,remaining:30},
       enemies:[],pickups:pickups.map((p,i)=>({id:`g${i}`,kind:'xp',x:p.x,y:p.y})),projectiles:[],telegraphs:[],
       structures:[{id:'s1',kind:'muralha',x:wall.x,y:wall.y,hp:600,maxHp:600}],
-      players:[{id:'bot-2',name:'bot-2',hp:100,maxHp:100,x:at.x,y:at.y,online:true}],offers:[],events:[],camp:{units:0}} as unknown as RunView,
+      players:[{id:'bot-2',name:'bot-2',hp:100,maxHp:100,x:at.x,y:at.y,online:true}],offers:[],events:[],camp:{units:0,grana:0}} as unknown as RunView,
     selfId:'bot-2',at,index:1,terrain:city,memory:newMemory(1)});
   const none=run([]),pastBand=run([far]),inside=run([near]);
   assert.equal(none.mode,'fight');

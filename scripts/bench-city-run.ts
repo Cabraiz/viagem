@@ -41,8 +41,10 @@
  * Per run it records: outcome and cause, round reached / died, ticks, per round (wave start, first enemy of the round
  * inside the base → first arrival s, downs, eliminations, wall hp, barricades fallen when the stonewards state has
  * `barricades` (cidade-06), else null), per intermission (balance, gathered units in all and by player, spent, crates
- * emptied, purchases; D-048: one pile of units, a ficha de torre every UNITS_PER_TOKEN), forge purchases, the boss (spawn − wave start, first time inside the base, first hit on a
- * player, first wall hit, kill) and the navigation counters. The JSON is rewritten after EVERY run (tmp + rename).
+ * emptied, purchases; D-048: one pile of units, a ficha de torre every UNITS_PER_TOKEN; the forge spends Grana, not units), forge purchases, the boss (spawn − wave start, first time inside the base, first hit on a
+ * player, first wall hit, kill), the navigation counters and the team's Grana (D-048, `grana`: earned from the kills,
+ * spent on evolutions, tower repairs and the forge, the rest (Dona Cida), and what was left at the end). The JSON is
+ * rewritten after EVERY run (tmp + rename); files written before a field existed still load (every new field is optional).
  *
  * Tower defense (torres-sim, default on; --no-towers turns it off): the room bots build themselves since torres-fio
  * (RoomBots hands the builder the tower view; bot-brain pickTowerOrder), and since torres-ajustes the sim takes an
@@ -56,7 +58,8 @@
  * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
  * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
  * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own
- * stick, like 'build'. Use --cap-min 25 for the room's D-043 cap.
+ * stick, like 'build'. Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
+ * left a debt (the bill not paid in full: the bots keep bot-brain granaReserve for it) out of the victories.
  *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
@@ -94,7 +97,10 @@ import {BOT_FORGE_LEFT,BOT_NAMES,RoomBots} from '../multiplayer/room-bots.ts';
 
 export const CARD='NEW-20261012-ORQ-cidade-11-balanco-run';
 export const HZ=20;
-/** Units of the three recipes (rules RECIPES: reparo 5, gambiarra 6, torre-chinelo 7). */
+/**
+ * Prices of the three recipes (rules RECIPES: reparo 5, gambiarra 6, torre-chinelo 7): material units before D-048, R$
+ * since (the loot no longer pays the forge; loot.recipesPerIntermission stays only to compare with older files).
+ */
 export const RECIPE_UNITS:Readonly<Record<string,number>>=Object.freeze(Object.fromEntries(Object.values(RECIPES).map(r=>[r.id,r.cost])));
 export const RECIPE_MEAN_UNITS=Object.values(RECIPE_UNITS).reduce((a,b)=>a+b,0)/Object.values(RECIPE_UNITS).length;
 /** Card targets: wins out of 16 per team size, and round 1 (tutorial) without deaths. */
@@ -123,7 +129,7 @@ export interface IntermissionRecord {
   balanceStart:Units;balanceEnd:Units|null;
   /** What came out of the crates (balance end − start + spent), in units. */
   gathered:Units;
-  /** What the forge (`forge`) and the tower orders (towerUnits) spent, in units. */
+  /** What the forge (`forge`: 0 since D-048, it takes Grana) and the tower orders (towerUnits) spent, in units. */
   spent:Units&{forge:number};
   /** Units gathered per player (stonewards `gathered` delta, rounded to 0.01). */
   perPlayer:Record<string,number>;
@@ -165,6 +171,12 @@ export interface RunRecord {
    */
   towers?:{orders:number;repairs?:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean;rail?:boolean;
     roots?:number;tokens?:number};
+  /**
+   * D-048: the team's Grana (R$) in this run: `earned` from the kills (every rise of the pile in a sim step), `spent` on
+   * evolutions, tower repairs and forge buys (what each order that went through took), `other` (Dona Cida; the bots
+   * never buy from her) and `final`. Absent in older JSON files.
+   */
+  grana?:{earned:number;spent:{evolutions:number;repairs:number;forge:number;other:number};final:number};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
   objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
 }
@@ -213,6 +225,10 @@ export interface TeamSummary {
   boss:{spawnAfterWaveS:NumStats|null;firstInsideBaseS:NumStats|null;firstPlayerHitS:NumStats|null;killAfterSpawnS:NumStats|null;kills:number;reached:number};
   /** Runs with towers: roots built and fichas de torre spent per run (D-048; runs from older files without them are left out), Gustavões. */
   towers:{runs:number;rootsPerRun:NumStats|null;tokensPerRun:NumStats|null;gustavoes:number}|null;
+  /** D-048: Grana per run (runs from older files without it are left out); null when no run recorded it. */
+  grana:{runs:number;earned:NumStats|null;spent:NumStats|null;evolutions:NumStats|null;repairs:NumStats|null;forge:NumStats|null;final:NumStats|null}|null;
+  /** D-047 (--objective chaveiro): victories, and those that left a debt (the bill not paid in full); null without the objective. */
+  chaveiro:{runs:number;wins:number;winsWithDebt:number;debt:NumStats|null}|null;
   verdict:{wins:'ok'|'too-easy'|'too-hard'|'no-target';target:{min:number;max:number}|null;round1:'ok'|'deaths'};
 }
 export interface Summary {runs:number;byPlayers:Record<string,TeamSummary>;verdict:{ok:boolean;notes:string[]}}
@@ -238,6 +254,9 @@ export function summarize(runs:readonly RunRecord[]):Summary{
     const winsVerdict=!target?'no-target':wins<target.min?'too-hard':wins>target.max?'too-easy':'ok';
     const r1Deaths=r1.reduce((s,x)=>s+x.eliminated,0)+list.filter(r=>r.outcome!=='victory'&&r.roundReached<=1).length;
     const towered=list.map(r=>r.towers).filter((t):t is NonNullable<RunRecord['towers']>=>!!t);
+    const granas=list.map(r=>r.grana).filter((g):g is NonNullable<RunRecord['grana']>=>!!g);
+    const bills=list.filter(r=>r.objective),won=bills.filter(r=>r.objective!.outcome==='victory');
+    const spentOf=(g:NonNullable<RunRecord['grana']>)=>g.spent.evolutions+g.spent.repairs+g.spent.forge+g.spent.other;
     byPlayers[n]={
       players:n,runs:list.length,wins,winRate:list.length?r2(wins/list.length):0,causes,deathRounds,
       roundReached:numStats(list.map(r=>r.roundReached)),
@@ -252,6 +271,10 @@ export function summarize(runs:readonly RunRecord[]):Summary{
         kills:bosses.filter(b=>b.killTick!==null).length,reached:bosses.length},
       towers:towered.length?{runs:towered.length,rootsPerRun:numStats(towered.map(t=>t.roots??NaN)),tokensPerRun:numStats(towered.map(t=>t.tokens??NaN)),
         gustavoes:towered.filter(t=>t.gustavao).length}:null,
+      grana:granas.length?{runs:granas.length,earned:numStats(granas.map(g=>g.earned)),spent:numStats(granas.map(spentOf)),
+        evolutions:numStats(granas.map(g=>g.spent.evolutions)),repairs:numStats(granas.map(g=>g.spent.repairs)),forge:numStats(granas.map(g=>g.spent.forge)),
+        final:numStats(granas.map(g=>g.final))}:null,
+      chaveiro:bills.length?{runs:bills.length,wins:won.length,winsWithDebt:won.filter(r=>r.objective!.debt>0).length,debt:numStats(won.map(r=>r.objective!.debt))}:null,
       verdict:{wins:winsVerdict,target,round1:r1Deaths?'deaths':'ok'},
     };
     if(target&&winsVerdict!=='ok')notes.push(`${n}p: ${wins}/${list.length} wins, target ${r2(target.min)}–${r2(target.max)} (${winsVerdict})`);
@@ -273,6 +296,7 @@ export function runLine(r:RunRecord):string{
   return `seed ${r.seed} ${r.players}p: ${r.outcome}/${r.cause} round ${r.roundReached} | ${r.simMinutes} min sim | arrival ${arrivals.length?r2(Math.min(...arrivals)):'-'}s min | `+
     `loot/int ${loot.length?r2(loot.reduce((a,b)=>a+b,0)/loot.length):'-'}u | forge ${r.forge.count} | boss ${r.boss?`+${r.boss.spawnAfterWaveS}s kill ${r.boss.killAfterSpawnS??'-'}s`:'-'} | `+
     `${r.towers?`towers ${r.towers.orders} orders ${r.towers.units}u ${r.towers.roots??'-'} roots ${r.towers.tokens??'-'} fichas end ${Object.values(r.towers.final).reduce((a,b)=>a+b,0)}${r.towers.gustavao?' +Gustavão':''} ruined ${r.towers.ruined} | `:''}`+
+    `${r.grana?`grana +${r.grana.earned} evo ${r.grana.spent.evolutions} rep ${r.grana.spent.repairs} forge ${r.grana.spent.forge}${r.grana.spent.other?` other ${r.grana.spent.other}`:''} end ${r.grana.final} | `:''}`+
     `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s`;
 }
 
@@ -532,11 +556,14 @@ function playRun(o:RunOptions):RunRecord{
   // A buy goes into the open intermission (the one before round r has round index r).
   // Tower defense (see the module doc): the room bots order through the Simulation; count what goes through.
   const tw={orders:0,repairs:0,units:0,roots:0,gustavoes:0,refused:{} as Record<string,number>};
+  // D-048: the team's Grana, what each order that went through took (see RunRecord.grana).
+  const gr={earned:0,evolutions:0,repairs:0,forge:0,other:0};
   if(!o.towers)room.towersOff=true;
   const count=(run:()=>ReturnType<Simulation['build']>,repair=false)=>{
-    const s=sim.run.stonewards,before=s.state.balance.units,r=run();
+    const s=sim.run.stonewards,before=s.state.balance.units,grana=s.state.grana,r=run();
     if(r.ok){
-      const spent=before-s.state.balance.units;
+      const spent=before-s.state.balance.units,paid=grana-s.state.grana;
+      if(repair)gr.repairs+=paid;else gr.evolutions+=paid;
       tw.orders++;if(repair)tw.repairs++;tw.units+=spent;if(curInter)curInter.towerUnits=(curInter.towerUnits??0)+spent;
       if(!repair&&r.kind===ROOT_DEFENSE)tw.roots++;else if(!repair&&r.kind==='gustavao')tw.gustavoes++;
     }else tw.refused[r.reason]=(tw.refused[r.reason]??0)+1;
@@ -547,7 +574,8 @@ function playRun(o:RunOptions):RunRecord{
   sim.upgrade=(id,defense,branch,req)=>count(()=>upgrade(id,defense,branch,req));
   sim.repair=(id,defense,req)=>count(()=>repair(id,defense,req),true);
   sim.forge=(id,recipe,req)=>{
-    const r=forge(id,recipe,req);
+    const grana=st().grana,r=forge(id,recipe,req);
+    gr.forge+=grana-st().grana;
     if(r.ok){purchases.push({tick:sim.tick,round:sim.world.round.index,recipe:r.recipe as RecipeId,by:id});curInter?.purchases.push(r.recipe as RecipeId);}
     return r;
   };
@@ -558,10 +586,11 @@ function playRun(o:RunOptions):RunRecord{
   const st=()=>sim.run.stonewards.state;
   const closeInter=(tick:number)=>{
     if(!curInter)return;
-    const s=st(),forged=curInter.purchases.reduce((a,r)=>a+RECIPES[r].cost,0),towerUnits=curInter.towerUnits??0;
+    // D-048: the forge is paid in Grana, so only the tower orders take units out of the pile.
+    const s=st(),towerUnits=curInter.towerUnits??0;
     curInter.endTick=tick;curInter.seconds=r2((tick-curInter.startTick)/HZ);curInter.balanceEnd={units:r2(s.balance.units)};
-    curInter.gathered={units:r2(s.balance.units-curInter.balanceStart.units+forged+towerUnits)};
-    curInter.spent={units:r2(forged+towerUnits),forge:forged};
+    curInter.gathered={units:r2(s.balance.units-curInter.balanceStart.units+towerUnits)};
+    curInter.spent={units:r2(towerUnits),forge:0};
     for(const id of ids)curInter.perPlayer[id]=r2((s.gathered[id]??0)-(interGathered[id]??0));
     curInter.cratesEmptied=s.nodes.filter(n=>n.remaining<=0).length;
     curInter=undefined;
@@ -578,7 +607,9 @@ function playRun(o:RunOptions):RunRecord{
   while(!sim.outcome&&sim.tick<o.capTicks){
     room.think(sim);
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
-    const events=sim.step();ticks++;
+    // The bots spend in think (the wrappers above); in the step the kills pay in, anything else (Dona Cida) takes out.
+    const grana0=st().grana,events=sim.step();ticks++;
+    {const d=st().grana-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
     const w=sim.world,tick=w.tick;
     for(const e of events as readonly SimEvent[]){
       if(e.type==='moto'){
@@ -653,6 +684,7 @@ function playRun(o:RunOptions):RunRecord{
       thinkMsPerTick:Math.round((room.thinkMs-thinkBefore)/Math.max(1,ticks)*1000)/1000,navMsPerTick:Math.round(navMs/Math.max(1,ticks)*1000)/1000},
     knobsApplied,
     ...(o.towers?{towers:towerSummary()}:{}),
+    grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(st().grana)},
     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
   };
   function towerSummary(){
@@ -743,10 +775,16 @@ async function main(){
       ` | roots/run ${s.byPlayers[n]?.towers?.rootsPerRun?.mean??'-'} fichas/run ${s.byPlayers[n]?.towers?.tokensPerRun?.mean??'-'}`);
   }
   for(const n of a.players){
+    const g=s.byPlayers[n]?.grana;
+    if(g)console.log(`grana ${n}p: earned/run ${g.earned?.mean??'-'} spent/run ${g.spent?.mean??'-'} (evolutions ${g.evolutions?.mean??'-'} repairs ${g.repairs?.mean??'-'} forge ${g.forge?.mean??'-'}) final ${g.final?.mean??'-'}`);
+  }
+  for(const n of a.players){
     const rs=file.runs.filter(r=>r.players===n&&r.objective);
     if(!rs.length)continue;
     console.log(`chaveiro ${n}p:`);
     for(const r of rs)console.log(`   ${objectiveLine(r)}`);
+    const c=s.byPlayers[n]?.chaveiro;
+    if(c)console.log(`   victories with debt ${c.winsWithDebt}/${c.wins} (of ${c.runs} runs; debt ${JSON.stringify(c.debt)})`);
   }
   console.log(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
   console.log(`written: ${a.out}`);

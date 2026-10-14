@@ -502,7 +502,8 @@ test('left behind: a hero who empties a crate in the last 2 s before the wave is
 });
 
 // ---------- 9. determinism ----------
-const ISLAND_STATE_KEYS=['balance','nodes','wall','towers','gathered','handled','refilledRound','hornRound','prepareStart','hornEndsTick','stretched','sayReady','wallDown','defeatReported','rng'];
+// D-048: the team's Grana is in every world's state (kills pay it in), so the island has it too.
+const ISLAND_STATE_KEYS=['balance','grana','nodes','wall','towers','gathered','handled','refilledRound','hornRound','prepareStart','hornEndsTick','stretched','sayReady','wallDown','defeatReported','rng'];
 
 test('state JSON round trip: a checkpoint restore anywhere replays the same state and events; island state keeps its keys',()=>{
   const goods=goodCrates().filter(n=>isolated(n));

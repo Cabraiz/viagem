@@ -68,6 +68,15 @@ export interface DefenseDef {
 export const TOWER_TOKENS=Object.freeze({root:1,gustavao:3});
 export const TIER_COST:Readonly<Record<1|2|3|4|5,number>>=Object.freeze({1:TOWER_TOKENS.root*UNITS_PER_TOKEN,2:10,3:16,4:24,5:36});
 export const GUSTAVAO_COST=TOWER_TOKENS.gustavao*UNITS_PER_TOKEN;
+/**
+ * D-048: an evolution is paid in Grana, R$ by the tier it reaches (approved by the Orquestrador, 13/10/2026: k ≈ 1 R$ per
+ * old material unit; the Gustavão is the exception, 3 fichas). A tower repair is TOWER_REPAIR_PRICE.
+ */
+export const EVOLVE_PRICE:Readonly<Record<2|3|4|5,number>>=Object.freeze({2:10,3:16,4:25,5:35});
+export const TOWER_REPAIR_PRICE=5;
+/** What building or evolving into `d` takes: fichas (the root, the Gustavão) or Grana (every other evolution). */
+export const priceOf=(d:{id:string;tier:number}):{tokens:number}|{grana:number}=>
+  d.id==='gustavao'?{tokens:TOWER_TOKENS.gustavao}:d.tier<=1?{tokens:TOWER_TOKENS.root}:{grana:EVOLVE_PRICE[d.tier as 2|3|4|5]};
 /** Build time per tier (s), split in three equal obra phases. */
 export const TIER_BUILD_SECONDS:Readonly<Record<1|2|3|4|5|6,number>>=Object.freeze({1:6,2:8,3:10,4:12,5:15,6:24});
 /** The Gustavão's rail ('linha-ferrea'): laid once per run on the plan's RailSite; free (D-048: in the Gustavão's 3 fichas). */

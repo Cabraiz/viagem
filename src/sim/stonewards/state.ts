@@ -45,6 +45,8 @@ export interface TowerState extends Point {
 
 export interface StonewardsState {
   balance:Balance;
+  /** The team's Grana, R$ (D-047; every world since D-048): kills pay it in, evolutions, the forge and repairs spend it. */
+  grana:number;
   /** Nodes touched this round, in the order they were first worked. */
   nodes:ResourceNode[];
   wall:WallState;

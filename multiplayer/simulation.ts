@@ -300,21 +300,29 @@ export class Simulation {
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
       // legacy: the same run written before the single pile of material (D-048), balance {coco, pedra}: migrateCheckpoint.
-      const before=structuredClone(capture);(before.systems.stonewards as unknown as {balance:unknown}).balance={coco:0,pedra:0};
+      // (and the Grana in the chaveiro's state, when the run has one; none at all before D-047).
+      const before=structuredClone(capture),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
+      stw.balance={coco:0,pedra:0};delete stw.grana;
+      if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
       entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
     }
     return entry;
   }
   /**
    * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
-   * with balance {coco, pedra}) keeps the team's material as two piles; it becomes {units: coco + pedra} and this code's
-   * fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   * with balance {coco, pedra}, no team Grana, the chaveiro's Grana in its own state) keeps the team's material as two
+   * piles; it becomes {units: coco + pedra}, the Grana moves to the team's state, and this code's fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const b=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>}}}).systems?.stonewards?.balance,fresh=this.freshShape();
-    if(cp.shape!==fresh.legacy||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
-    const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;cp.shape=fresh.fingerprint;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown}}}).systems;
+    const b=sys?.stonewards?.balance,fresh=this.freshShape();
+    if(cp.shape!==fresh.legacy||!sys?.stonewards||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
+    const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
+    // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
+    const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
+    if(sys.chaveiro)delete sys.chaveiro.grana;
+    sys.stonewards.grana=grana;cp.shape=fresh.fingerprint;
   }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
@@ -584,7 +592,7 @@ export class Simulation {
   }
   private campView():CampView{
     const st=this.systems.stonewards.state;
-    return {units:st.balance.units,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+    return {units:st.balance.units,grana:st.grana,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
   }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){

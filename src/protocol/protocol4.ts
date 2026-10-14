@@ -8,7 +8,7 @@
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
- *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048); svar hornEndsTick-tick if horn)
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$); svar hornEndsTick-tick if horn)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -59,7 +59,7 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * `parts` in the structures, `sugar` on the enemies, Dona Cida's buffs on the players (fastUntil drives the prediction),
  * the events alarm/part/moto/sale/buy and their strings in the DICT; a 14 decoder would refuse the flags and the masks.
  * 16 since ficha-de-torre (D-048): the camp carries one uvar `units` (the team's single pile of material, the fichas de
- * torre come from it) instead of coco and pedra.
+ * torre come from it) instead of coco and pedra, and uvar `grana` (the team's R$, every world).
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=16;
@@ -880,7 +880,7 @@ export class FrameEncoder {
     }
     if(view.camp){
       const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
-      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(camp.grana)));
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }
     if(objBits)writeObjective(w,objective!,objBits,view.tick);
@@ -1081,7 +1081,7 @@ export class FrameDecoder {
       }
       if(flags&8){
         const bits=r.u8();if(bits>3)throw new FrameError('bad camp bits');
-        camp={units:r.uvar()};
+        camp={units:r.uvar(),grana:r.uvar()};
         if(bits&CAMP_HORN)camp.hornEndsTick=tick+r.svar();
         if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }

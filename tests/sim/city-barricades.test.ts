@@ -164,10 +164,10 @@ test('a fallen barricade opens its avenue to the flow field and a rebuild seals 
   // Rebuild: a body in the mouth refuses it ('blocked', free); once clear, the repair raises the disc again.
   const a=player('a',insideNear(terrain,'N'));
   const prep=fakeCtx(terrain,[a]);
-  sys.state.balance={units:99};
+  sys.state.grana=99;
   prep.enemies.set('e1',{id:'e1',kind:'bebado',x:n.x,y:n.y+n.r+.1,hp:10,maxHp:10,speed:1,damage:1,radius:.32,xp:1,spawnTick:0,readyTick:0});
   assert.deepEqual(sys.buy(prep,'a','reparo','r1',ID('N')),{ok:false,reason:'blocked'});
-  assert.deepEqual(sys.state.balance,{units:99},'not charged');
+  assert.equal(sys.state.grana,99,'not charged');
   prep.enemies.clear();
   // A pigeon (0.2 u, narrower than the hero) just inside the hero reach also blocks the rebuild: it would end up inside.
   prep.enemies.set('p1',{id:'p1',kind:'pombos',x:n.x,y:n.y+n.r+.21,hp:5,maxHp:5,speed:1,damage:1,radius:.2,xp:1,spawnTick:0,readyTick:0});
@@ -191,19 +191,19 @@ test('two players repairing the same barricade in one tick: never above max, the
   const ctx=fakeCtx(terrain,[a,b]);
   const cost=RECIPES.reparo.cost,l=sys.state.barricades!.find(x=>x.id===ID('L'))!;
   const step=Math.ceil(BARRICADE_MAX_HP*REPAIR_FRACTION);
-  sys.state.balance={units:cost*10};
+  sys.state.grana=cost*10;
   // Room for one step and a half: the first applies a full step, the second only the rest, a third is refused.
   l.hp=BARRICADE_MAX_HP-step-10;
   const r1=sys.buy(ctx,'a','reparo','x',ID('L')),r2=sys.buy(ctx,'b','reparo','x',ID('L')),r3=sys.buy(ctx,'a','reparo','y',ID('L'));
   assert.equal(r1.ok,true);assert.equal(r2.ok,true);assert.deepEqual(r3,{ok:false,reason:'full'});
   assert.equal(l.hp,BARRICADE_MAX_HP);
-  assert.deepEqual(sys.state.balance,{units:cost*8},'two repairs applied, two charged');
+  assert.equal(sys.state.grana,cost*8,'two repairs applied, two charged');
   // Room for less than a step: the first fills it, the second is refused 'full' and not charged.
   l.hp=BARRICADE_MAX_HP-5;
   const s1=sys.buy(ctx,'a','reparo','z',ID('L')),s2=sys.buy(ctx,'b','reparo','z',ID('L'));
   assert.equal(s1.ok,true);assert.deepEqual(s2,{ok:false,reason:'full'});
   assert.equal(l.hp,BARRICADE_MAX_HP);
-  assert.deepEqual(sys.state.balance,{units:cost*7});
+  assert.equal(sys.state.grana,cost*7);
   const hps=ctx.events.filter(e=>e.type==='structure').map(e=>e.type==='structure'?e.hp:0);
   assert.ok(hps.every(h=>h<=BARRICADE_MAX_HP));
   // Eligibility: the repair is at THAT barricade, in the intermission, standing; unknown ids; the old call = the wall.
@@ -390,7 +390,7 @@ test('all 4 barricades up: a hero walks from the helicopter through a mouth to t
   assert.ok(toForge.deepest>.5,`the hero went through a barricade disc (deepest ${toForge.deepest.toFixed(2)} u)`);
   // At the forge it can buy: a repair of the wall in the intermission.
   const ctx=fakeCtx(terrain,[player('h',toForge.at)]);
-  sys.state.balance={units:99};sys.state.wall.hp=100;
+  sys.state.grana=99;sys.state.wall.hp=100;
   assert.equal(sys.buy(ctx,'h','reparo','r1').ok,true);
   // And back out to the helicopter (loot in the intermission), through a barricade again.
   const out=follow(terrain,heroField(terrain,start,1),toForge.at,hero,ticks(120));

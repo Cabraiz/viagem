@@ -225,7 +225,7 @@ test('props (proporcoes-postes-predios): one per spot — no two closer than PRO
   for(const a of city.props)for(const b of city.props){
     if(a===b)continue;
     const d=Math.hypot(a.x-b.x,a.y-b.y);
-    assert.ok(d>=PROP_STACK,`${a.id} (${a.kind}) and ${b.id} (${b.kind}) stacked`);
+    assert.ok(d>=Math.max(PROP_STACK,0.45),`${a.id} (${a.kind}) and ${b.id} (${b.kind}) stacked`);
     if(a.kind===b.kind)assert.ok(d>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
   }
   // The .w3x stacks 5 lamps within 1 u by the start: one stays, the one first in source order.

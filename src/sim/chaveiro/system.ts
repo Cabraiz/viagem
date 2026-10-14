@@ -3,8 +3,9 @@
  * viagem-board/plans/objetivo-chaveiro-proposta.md). City only, on with RunSystemsOptions.objective === 'chaveiro'.
  *
  * - The car (CAR_ID, 'quadradao') stands where the wall stands and replaces it as the siege target (D-017 path: the
- *   enemy-ai's hitStructure, the boss's siege). Each contact is CAR_HIT_UNITS hits (normal 1, elite 3, boss 3), adds
- *   BUDGET_PER_HIT to the budget and ALARM_PER_HIT of alarm (at most ALARM_MAX ahead); CAR_LIMIT hits = perda total
+ *   enemy-ai's hitStructure, the boss's siege). Each contact is CAR_HIT_UNITS hits (normal 1, elite 3, boss 2) and adds
+ *   BUDGET_PER_HIT (R$ 3) per hit to the budget (the bill: BUDGET_BASE R$ 25 + those), and ALARM_PER_HIT of alarm per contact whatever its weight (at most ALARM_MAX
+ *   ahead: the boss's blow every 3 s stalls the moto half the time, not for good); CAR_LIMIT hits = perda total
  *   (defeat). Parts fall at CAR_PART_AT of the limit.
  * - The moto rides a route built once from the run seed and the asset (route.ts): entrance = one avenue end drawn with
  *   the run's stream, length / MOTO_RIDE_SECONDS u/s. Stops in route order: 'morta' at MORTA_AT (two standing players
@@ -15,6 +16,8 @@
  *   ABRINDO_SECONDS 'abrindo', then victory.
  * - Dona Cida sells the team's sweets (buy) and, every SALE_GAP_SECONDS, one to an enemy near the moto ("açucarado").
  * - Team Grana: GRANA_PER_KILL per kill, in the stonewards state since D-048 (read through ChaveiroOptions.wallet). The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
+ * - The ETA waits for the later of the alarm and a fall (they run out together), and counts a dead moto ahead as the
+ *   push (PUSH_SECONDS) with PUSH_PLAYERS standing players, else as its by-itself time (MORTA_ALONE_SECONDS).
  * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
  * span and the boss's spawn are fractions of the route length; radii around bodies (push, Cida, lure, the delivery's
  * clean check, the car) stay in u.
@@ -32,8 +35,12 @@ import {buildRoute,pointAt,type Route} from './route.ts';
 // ---------- Numbers (proposal §2; E6 calibrates) ----------
 /** Riding time of the whole route without stops: speed = route length / this (time-based, not heroSpeed). */
 export const MOTO_RIDE_SECONDS=420;
-export const CAR_LIMIT=120,BUDGET_BASE=120,BUDGET_PER_HIT=8;
-export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:3});
+/**
+ * The car's hit limit and the bill (R$): BUDGET_BASE plus BUDGET_PER_HIT per hit taken (balanco-pos-1-7 eco-v9,
+ * Executor-6: 25 + 3/hit, so a clean run's bill is paid from the kills and a battered car still leaves a debt to joke about).
+ */
+export const CAR_LIMIT=120,BUDGET_BASE=25,BUDGET_PER_HIT=3;
+export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:2});
 export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
 /** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
 export const CAR_PART_AT:readonly number[]=Object.freeze([.25,.5,.75,.9]);
@@ -188,6 +195,21 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const fallen=(tick:number)=>tick<moto.tomboUntil;
   const shown=(tick:number):MotoMode=>alarmed(tick)?'volta':fallen(tick)?'tombo':moto.task;
   const riding=()=>moto.task==='anda'||moto.task==='lombada';
+  /**
+   * Ticks the moto still stands still for the alarm and the fall. Both are deadlines on the same clock (alarmUntil,
+   * tomboUntil) that run out together, so the wait is the later one, not their sum.
+   */
+  /**
+   * Standing players at the last step (or car hit): a dead moto ahead takes PUSH_SECONDS with PUSH_PLAYERS of them, else
+   * it starts by itself (MORTA_ALONE_SECONDS). Read from the context on every step and hit, so the ETA (and the boss's
+   * call) is the same after a checkpoint; before the first one, the team is assumed big enough.
+   */
+  let crew=PUSH_PLAYERS;
+  const countCrew=(ctx:SimContext)=>{crew=0;for(const p of ctx.players.values())if(isStanding(p))crew++;};
+  /** Ticks a dead moto still needs: the push left with a crew, else its by-itself countdown. */
+  const mortaLeft=()=>crew>=PUSH_PLAYERS?Math.min(moto.left,PUSH_TICKS-moto.push):moto.left;
+  const mortaTicks=()=>crew>=PUSH_PLAYERS?PUSH_TICKS:ticks(MORTA_ALONE_SECONDS);
+  const held=(tick:number)=>Math.max(0,alarmed(tick)?car.alarmUntil-tick:0,fallen(tick)?moto.tomboUntil-tick:0);
 
   function end(ctx:SimContext,outcome:'victory'|'defeat'){
     if(state.ended)return;
@@ -207,13 +229,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   }
   function eta(tick:number){
     if(state.ended)return 0;
-    let t=0;
-    if(alarmed(tick))t+=car.alarmUntil-tick;
-    if(fallen(tick))t+=moto.tomboUntil-tick;
+    let t=held(tick);
     let next=moto.stop;
     switch(moto.task){
       case 'abrindo':return (t+moto.left)/SIM_HZ;
-      case 'morta':t+=Math.min(moto.left,PUSH_TICKS-moto.push);next++;break;
+      case 'morta':t+=mortaLeft();next++;break;
       case 'entrega':t+=moto.left;next++;break;
       case 'lombada':next++;break;
     }
@@ -221,7 +241,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     t+=rideTicks(moto.s,moto.task==='lombada'?moto.stop:next);
     for(let i=next;i<stops.length;i++){
       const k=stops[i].kind;
-      if(k==='morta')t+=PUSH_TICKS;else if(k==='entrega')t+=ticks(ENTREGA_SECONDS);
+      if(k==='morta')t+=mortaTicks();else if(k==='entrega')t+=ticks(ENTREGA_SECONDS);
     }
     return (t+ticks(ABRINDO_SECONDS))/SIM_HZ;
   }
@@ -292,6 +312,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     moto:()=>({...at(moto.s)}),
     step(ctx){
       if(state.ended)return;
+      countCrew(ctx);
       state.startTick??=ctx.tick;
       const before=moto.mode;
       if(!alarmed(ctx.tick)){
@@ -315,11 +336,12 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     },
     hitCar(ctx,enemy){
       if(state.ended)return;
-      // The last blow counts only the hits left to the limit (the bill stays base + R$ 8 per hit taken).
+      countCrew(ctx);
+      // The last blow counts only the hits left to the limit (the bill stays BUDGET_BASE + BUDGET_PER_HIT per hit taken).
       const units=Math.min(CAR_HIT_UNITS[unitsOf(enemy)],car.limit-car.hits);
       car.hits+=units;state.budget+=BUDGET_PER_HIT*units;
       const silent=ctx.tick>=car.alarmUntil;
-      car.alarmUntil=Math.min(ctx.tick+ticks(ALARM_MAX_SECONDS),Math.max(car.alarmUntil,ctx.tick)+ticks(ALARM_PER_HIT_SECONDS)*units);
+      car.alarmUntil=Math.min(ctx.tick+ticks(ALARM_MAX_SECONDS),Math.max(car.alarmUntil,ctx.tick)+ticks(ALARM_PER_HIT_SECONDS));
       if(silent)ctx.emit({type:'alarm',untilTick:car.alarmUntil});
       ctx.emit({type:'structure',id:CAR_ID,hp:car.limit-car.hits,maxHp:car.limit});
       CAR_PART_AT.forEach((f,i)=>{
@@ -354,12 +376,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(first>=0&&stops[first]?.kind==='entrega'){
         const o=stops[first],q=pointAt(route,o.s);
         // The ride (with bumps) and the stops before it, as the ETA counts them.
-        let t=alarmed(tick)?car.alarmUntil-tick:0;
-        if(fallen(tick))t+=moto.tomboUntil-tick;
+        let t=held(tick);
         if(moto.task!=='entrega'){
-          if(moto.task==='morta')t+=Math.min(moto.left,PUSH_TICKS-moto.push);
+          if(moto.task==='morta')t+=mortaLeft();
           t+=rideTicks(moto.s,moto.stop)-rideTicks(o.s,first);
-          for(let i=moto.task==='morta'?moto.stop+1:moto.stop;i<first;i++)if(stops[i].kind==='morta')t+=PUSH_TICKS;else if(stops[i].kind==='entrega')t+=ticks(ENTREGA_SECONDS);
+          for(let i=moto.task==='morta'?moto.stop+1:moto.stop;i<first;i++)if(stops[i].kind==='morta')t+=mortaTicks();else if(stops[i].kind==='entrega')t+=ticks(ENTREGA_SECONDS);
         }
         delivery={x:q.x,y:q.y,etaS:Math.ceil(Math.max(0,t)/SIM_HZ)};
       }

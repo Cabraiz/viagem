@@ -297,12 +297,15 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
     else assert.ok(units>=price.tokens*UNITS_PER_TOKEN,`${child.id} with ${units} units`);
   }
   assert.ok(evolutions>0&&roots>0&&repairs>0,`the sweep gave orders: ${evolutions} evolutions, ${roots} roots, ${repairs} repairs`);
-  // The reserve rule: CHAVEIRO_KEEP_SHARE of the bill, the whole bill from CHAVEIRO_SAVE_ETA on; none without the objective.
+  // The reserve rule: CHAVEIRO_KEEP_SHARE of the bill (eco-v9: 1.3, always, more than the bill), the whole bill from
+  // CHAVEIRO_SAVE_ETA on (off at -1: an ETA is never negative); none without the objective.
   const objective=(etaS:number,budget=120,ended?:'victory')=>({objective:{etaS,budget,...(ended?{ended}:{})} as unknown as NonNullable<RunView['objective']>});
   assert.equal(granaReserve({}),0,'no chaveiro: no bill');
+  assert.deepEqual([CHAVEIRO_KEEP_SHARE,CHAVEIRO_SAVE_ETA],[1.3,-1]);
   assert.equal(granaReserve(objective(CHAVEIRO_SAVE_ETA+1)),Math.ceil(120*CHAVEIRO_KEEP_SHARE));
-  assert.equal(granaReserve(objective(CHAVEIRO_SAVE_ETA)),120,'the last stretch: the whole bill');
-  assert.equal(granaReserve(objective(100,200)),200,'the bill grows with the car\'s hits, the reserve with it');
+  assert.equal(granaReserve(objective(0)),Math.ceil(120*CHAVEIRO_KEEP_SHARE),'at the car too: the share, never less than the bill');
+  assert.equal(granaReserve(objective(CHAVEIRO_SAVE_ETA)),120,'the whole-bill branch (unreachable at -1)');
+  assert.equal(granaReserve(objective(100,200)),Math.ceil(200*CHAVEIRO_KEEP_SHARE),'the bill grows with the hits on the car, the reserve with it');
   assert.equal(granaReserve(objective(100,120,'victory')),0,'the run is over');
   // decide fills granaKeep from the view's objective (the room bots never set it): no evolution, no forge under the bill.
   const me={id:'bot',online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x:0,y:1} as unknown as RunView['players'][number];

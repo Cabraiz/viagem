@@ -8,7 +8,7 @@ const CREATE_BODY_MAX=256;
 export function createOptions(v:unknown):RoomCreateOptions{
   const o=v as {map?:unknown;solo?:unknown;objective?:unknown}|null;
   if(!o||typeof o!=='object')return {};
-  return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{}),...(o.objective==='chaveiro'?{objective:'chaveiro' as const}:{})};
+  return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{}),...(o.objective==='chaveiro'||o.objective==='muralha'?{objective:o.objective}:{})};
 }
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -24,7 +24,11 @@ export {RoomIndex};
  */
 /** What the room needs of a server-side WebSocket (the tests pass a fake one). */
 export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
+/**
+ * BUILD_SHA: the commit this Worker was published from (scripts/deploy-rooms.mjs passes it with `--var`); /health answers
+ * it, so a deploy from a stale checkout shows at once (after 4e771dc went up from the lote's worktree without it).
+ */
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -46,7 +50,7 @@ function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
-    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL});
+    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL,build:env.BUILD_SHA||'desconhecido'},{headers:{'Cache-Control':'no-store'}});
     // deploy-worker-sem-derrubar: rooms in a match now (a deploy restarts them all), for scripts/deploy-rooms.mjs.
     if(url.pathname==='/health/rooms'&&request.method==='GET'){
       if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});
@@ -160,8 +164,9 @@ export class GameRoom extends DurableObject<Env>{
     const onCheckpoint=(checkpoint:RoomCheckpoint)=>{void this.ctx.storage.put('checkpoint',checkpoint);this.checkpointStored=true;};
     const city=this.city?{cityText:this.city.text,cityRef:this.city.ref}:{};
     // sala-solo-privada: the map it was opened on and a solo room, as created (the defaults otherwise); D-047: the
-    // chaveiro objective when the creator asked for it (?modo=chaveiro).
-    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(this.asked.objective?{objective:this.asked.objective}:{})};
+    // objective the creator asked for: ?modo=chaveiro (the city's default anyway) or ?modo=muralha (the old wall mode).
+    const objective=this.asked.objective==='muralha'?false as const:this.asked.objective;
+    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{})};
     if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
     return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});

@@ -64,7 +64,7 @@ export interface ObjectiveView {
 /** Seconds before the moto reaches a delivery stop when the HUD and the bots start marking it. */
 export const DELIVERY_MARK_SECONDS=30;
 /**
- * The end of a chaveiro run (RunState.objective in the result). budget = base + R$ 8 per hit; paid = min(Grana, budget);
+ * The end of a chaveiro run (RunState.objective in the result). budget = BUDGET_BASE + BUDGET_PER_HIT per hit (R$ 25 + R$ 3, chaveiro/system.ts); paid = min(Grana, budget);
  * debt > 0: he opened it anyway and took the steering wheel as a guarantee.
  */
 /**

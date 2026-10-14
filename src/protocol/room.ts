@@ -65,8 +65,8 @@ export const SOLO_ROOM_REFUSED='Essa sala é de alguém jogando sozinho. Peça u
  * What a POST /rooms may ask (sala-solo-privada): the map it opens on and a solo room (one person, the bots). Read from
  * an optional JSON body; anything else is ignored, so an older client (no body) gets the room it always got.
  */
-/** objective (D-047): 'chaveiro' opens the city room with the chaveiro objective (?modo=chaveiro; off by default). */
-export interface RoomCreateOptions {map?:'infinito'|'cidade-nevada';solo?:true;objective?:'chaveiro'}
+/** objective (D-047): ?modo=chaveiro asks for the chaveiro (the city's default anyway), ?modo=muralha for the old wall mode. */
+export interface RoomCreateOptions {map?:'infinito'|'cidade-nevada';solo?:true;objective?:'chaveiro'|'muralha'}
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
 export const MAX_PLAYERS = 6;

@@ -83,6 +83,15 @@ export function bumpProtocol(checkout,protocolFile,protocolJson,cards,lote){
  * `location: '<path>:<line>:<col>'` names the file (a file that fails to load has its own path as the name). Paths come
  * back repo-relative from their `tests/` part, with forward slashes.
  */
+/**
+ * The smoke's output for a lot's reason: its verdict lines (`smoke <modo>: …`, the upgrade's notes), else the start of
+ * it. The traces come first and pushed the verdict out of a 400-character cut (review of vgm/smoke-renderer).
+ */
+export function smokeGist(text){
+  const all=String(text??'').trim(),verdict=all.split(/\r?\n/).filter(l=>/^smoke\b/.test(l));
+  return (verdict.length?verdict.join(' / '):all).slice(0,600);
+}
+
 export function failedFilesFromTap(tap){
   const out=new Set(),lines=tap.split(/\r?\n/);
   const rel=(p)=>{const s=p.replace(/\\\\/g,'/').replace(/\\/g,'/').replace(/:\d+:\d+$/,''),i=s.lastIndexOf('/tests/');return i>=0?s.slice(i+1):s.replace(/^\.\//,'');};
@@ -179,14 +188,14 @@ function runSmoke(opt,dir,prev){
     if(b.status!==0)return {ok:false,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
     log('smoke de produção…');
     const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8'});
-    if(s.status!==0)return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${(s.stdout+s.stderr).trim().slice(0,400)}`,out};
+    if(s.status!==0)return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${smokeGist(s.stdout+s.stderr)}`,out};
     // The returning player (BUG-20261014-ORQ-mapa-cache-velho): the base built, then the batch on the same browser profile.
     if(prev){
       log('smoke de upgrade (a main de antes do lote → o lote)…');
       const pb=build(prev);
       if(pb.status!==0)return {ok:false,motivo:`npm run build da base saiu com ${pb.status}: ${(pb.stderr||pb.stdout||'').trim().slice(-300)}`,out};
       const u=spawnSync(process.execPath,[script,out,'--upgrade-from',prev],{cwd:dir,encoding:'utf8'});
-      if(u.status!==0)return {ok:false,motivo:`${u.status===2?'infraestrutura do smoke de upgrade':'smoke de upgrade falhou'} (exit ${u.status}): ${(u.stdout+u.stderr).trim().slice(0,400)}`,out};
+      if(u.status!==0)return {ok:false,motivo:`${u.status===2?'infraestrutura do smoke de upgrade':'smoke de upgrade falhou'} (exit ${u.status}): ${smokeGist(u.stdout+u.stderr)}`,out};
     }
     return {ok:true,out};
   }finally{rmdirSyncSafe(slot);}

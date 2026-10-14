@@ -9,7 +9,10 @@
 // node scripts/smoke-prod.mjs [outDir] [--dist dist] [--modes normal,chaveiro]: one line per mode; a print per mode in
 // outDir when given. Exit 0 ok, 1 the game failed (no entry, pageerror, a chunk that throws at load), 2 infrastructure
 // (no dist, no Playwright, no port, the Worker or the browser did not start). Each mode runs in a fresh browser; a run
-// whose only fault is a lost WebGL context (the GPU under load, not the game) is tried once more.
+// whose only fault is a lost WebGL context or a hung renderer (the GPU under load, not the game) is tried once more,
+// in a fresh browser (the upgrade mode: both builds again, in a fresh profile).
+// --travar <n[,n…]> (the test of that verdict; a flag, so the queue never inherits it): the n-th entry of the run (1, 2, … counting every page that enters,
+// retries included) hangs its page on purpose a few seconds after "Jogar sozinho".
 // Upgrade mode (BUG-20261014-ORQ-mapa-cache-velho), --upgrade-from <previous checkout>: ONE persistent browser profile on
 // ONE origin plays solo on the previous build (its own dist/ and rooms Worker), then on this one; both must enter. Both
 // dists are served like GitHub Pages (max-age=600 + ETag), so a file fetched at an unversioned URL comes back stale,
@@ -28,7 +31,7 @@ import {startLocalWorker} from './local-worker.mjs';
 
 // Entering is judged by progress and a stall, and a failure is the machine's (exit 2) only with a starved page AND
 // outside evidence (scripts/smoke-veredito.mjs).
-import {ENTER_CAP_MS,STALL_MS,EVAL_TIMEOUT_MS,PROBE_MS,progressSignature,pageStarved,machineEvidence,isMachine,smokeExit} from './smoke-veredito.mjs';
+import {ENTER_CAP_MS,STALL_MS,EVAL_TIMEOUT_MS,PROBE_MS,CHUNKS_UNVERIFIED,progressSignature,pageStarved,rendererHung,machineEvidence,isMachine,smokeExit} from './smoke-veredito.mjs';
 import {monitorEventLoopDelay} from 'node:perf_hooks';
 import {execFileSync} from 'node:child_process';
 /** The smoke's own event loop: late when the whole machine is starved (outside evidence for a stall). */
@@ -54,6 +57,13 @@ async function roomState(endpoint,code,origin){
     return {ok:r.ok,ms:Date.now()-t0,phase:j?.phase??'',tick:j?.tick??-1};
   }catch{return {ok:false,ms:Date.now()-t0,phase:'',tick:-1};}
 }
+/** The rooms Worker's /health, when the page never gave a room code: {ok, ms}. */
+async function workerHealth(endpoint){
+  if(!endpoint)return undefined;
+  const t0=Date.now();
+  try{const r=await fetch(`${endpoint}/health`,{signal:AbortSignal.timeout(5000)});return {ok:r.ok,ms:Date.now()-t0};}
+  catch{return {ok:false,ms:Date.now()-t0};}
+}
 /** A page poll that never hangs: undefined after EVAL_TIMEOUT_MS (answered: false), or when the page threw/reloaded. */
 const poll=(p,fn,arg,ms=EVAL_TIMEOUT_MS)=>Promise.race([p.evaluate(fn,arg).then(v=>({v,answered:true}),()=>({v:undefined,answered:true})),new Promise(r=>setTimeout(()=>r({v:undefined,answered:false}),ms))]);
 /** The page's event-loop probe (added before any script): a PROBE_MS timer counting its fires since the last read. */
@@ -64,12 +74,17 @@ const MODES={normal:'',chaveiro:'?modo=chaveiro'};
 const modes=arg('modes','normal,chaveiro').split(',').filter(m=>m in MODES);
 /** --upgrade-from <checkout>: the returning-player run (see the upgrade mode below); its dist/ must be built. */
 const upgradeFrom=arg('upgrade-from',undefined);
+/** The entries that hang their page on purpose (--travar, see the header), and the entries so far. */
+const HANG=new Set(String(arg('travar','')).split(',').map(Number).filter(n=>n>0));
+let entries=0;
 const outDir=process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')));
 /** A failure of the machine, not of the game: exit 2. */
 class Infra extends Error {}
 /** A pageerror of a lost or missing WebGL context (Phaser's renderer under GPU load). */
 const glFault=(e)=>/webGLProgram|WebGL|context lost|CONTEXT_LOST/i.test(e);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+/** Closing a page, context or browser: never waits on a renderer stuck in a loop more than CLOSE_MS (it is left behind). */
+const CLOSE_MS=15000,within=(pr)=>Promise.race([pr.catch(()=>{}),sleep(CLOSE_MS)]);
 const listen=port=>new Promise(ok=>{const s=createServer();s.once('error',()=>ok(0));s.listen(port,'127.0.0.1',()=>{const got=s.address().port;s.close(()=>ok(got));});});
 /** Any free port (the Worker's). */
 const freePort=()=>listen(0);
@@ -107,9 +122,12 @@ async function startPreview(port){
   return {url,stop:()=>{try{if(posix)process.kill(-child.pid,'SIGTERM');else child.kill();}catch{}}};
 }
 
-/** The solo match in an open page: enters it, then every loaded chunk must import cleanly. {why, errors}, why '' when ok. */
+/**
+ * The solo match in an open page: enters it, then every loaded chunk must import cleanly. {why, errors, starved, hung},
+ * why '' when ok (smoke-veredito.mjs).
+ */
 async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined){
-  const start=Date.now();nodeLag.reset();
+  const start=Date.now(),entry=++entries;nodeLag.reset();
   const trace=[];let roomCode='',lastSig='',lastChange=start,roomLast;
   // Outside evidence of a starved machine, for any failure below.
   const evidence=async()=>machineEvidence({nodeLagP90:nodeLag.percentile(90)/1e6,roomMs:roomLast?.ms,roomOk:roomLast?.ok??true,browsers:browsersOnPc()});
@@ -123,6 +141,7 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
     await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Smoke';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
     await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
     await p.evaluate(()=>document.getElementById('enter-island').click());
+    if(HANG.has(entry)){console.log(`  --travar: a entrada ${entry} trava a página de propósito`);await p.evaluate(()=>{setTimeout(()=>{for(;;){}},3000);});}
     let entered=false,said='',stalled='';
     while(!entered&&!said&&!stalled&&Date.now()-start<ENTER_CAP_MS){
       await sleep(1000);
@@ -150,14 +169,19 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
       if(st&&sig!==lastSig){lastSig=sig;lastChange=now;}
       else if(now-lastChange>STALL_MS)stalled=`nada mudou em ${STALL_MS/1000} s (${st?.stage??'sem resposta'}: "${st?.ready||st?.roundLabel||st?.loading||''}", sala ${room?.phase??'?'} tick ${room?.tick??'?'})`;
     }
-    let starved='';
+    let starved='',hung='';
     if(!entered&&!said){
-      const page=pageStarved(trace,Date.now());
-      if(page){const out=await evidence();if(out)starved=`${page}; ${out}`;}
+      const now=Date.now();
+      // A page that answered nothing while the room did: a hung renderer, the machine's on its own (smoke-veredito.mjs).
+      hung=rendererHung(trace,now,roomCode?await roomState(roomEndpoint,roomCode,base):await workerHealth(roomEndpoint));
+      const page=pageStarved(trace,now);
+      if(hung)starved=hung;
+      else if(page){const out=await evidence();if(out)starved=`${page}; ${out}`;}
       console.log(`  rastro ${mode}: ${JSON.stringify(trace.slice(-3).map(t=>({s:Math.round((t.wallMs-start)/1000),stage:t.stage,ready:t.ready,round:t.roundLabel,sala:t.roomPhase,tick:t.roomTick,salaMs:t.roomMs,timer:t.dueFires?Math.round(t.fires/t.dueFires*100)+'%':undefined,resp:t.answered})))}`);
     }
     // Every chunk the page loaded must import cleanly (a module that throws at load rejects every time): the reason this
-    // smoke exists (e5b34e5). Never skipped: a slow page gets a longer try, and no answer at all is a failure.
+    // smoke exists (e5b34e5). Never skipped: a slow page gets a longer try (not a hung one), and no answer at all is a
+    // failure (the machine's only when the renderer hung or the page was starved with outside evidence).
     const importAll=async()=>{
       const out=[];
       for(const u of new Set(performance.getEntriesByType('resource').map(e=>e.name).filter(n=>/\/assets\/.*\.js(\?|$)/.test(n)))){
@@ -166,11 +190,12 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
       return out;
     };
     let chunks=await poll(p,importAll);
-    if(!chunks.answered)chunks=await poll(p,importAll,undefined,60000);
-    const rejected=chunks.answered?chunks.v??[]:['chunks não verificados (a página não respondeu em 60 s)'];
+    // A hung renderer will not answer in a minute either: no longer try then.
+    if(!chunks.answered&&!hung)chunks=await poll(p,importAll,undefined,60000);
+    const rejected=chunks.answered?chunks.v??[]:[CHUNKS_UNVERIFIED];
     if(shot)await p.screenshot({path:shot,timeout:30000}).catch(()=>{});
     const why=[!entered&&(said?`não entrou: "${said}"`:stalled?`não entrou: ${stalled}`:`não entrou em ${ENTER_CAP_MS/1000} s`),...errors.map(e=>`pageerror: ${e}`),...rejected.map(r=>`chunk: ${r}`)].filter(Boolean);
-    return {why:why.join(' | '),errors,starved};
+    return {why:why.join(' | '),errors,starved,hung};
   }catch(e){
     // A step that timed out before the room (the page load, the character screen): the machine's only with outside evidence.
     const msg=String(e).split('\n')[0],timeout=/Timeout|timed out/i.test(msg),out=timeout?await evidence():'';
@@ -180,7 +205,7 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
 
 const launchArgs=()=>process.platform==='win32'?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:[];
 
-/** One mode in a fresh browser: enters the solo match; returns {why, errors} (why '' when it passed). */
+/** One mode in a fresh browser: enters the solo match; returns enter()'s result (why '' when it passed). */
 async function smoke(chromium,base,mode,roomEndpoint){
   // On Windows the PC's GPU (as the visual checks do); elsewhere (CI) the default software GL.
   let browser;
@@ -188,10 +213,10 @@ async function smoke(chromium,base,mode,roomEndpoint){
   catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
   const errors=[];let p;
   try{p=await (await browser.newContext({viewport:{width:1335,height:620},deviceScaleFactor:1})).newPage();}
-  catch(e){await browser.close().catch(()=>{});throw new Infra(`a página não abriu: ${String(e).split('\n')[0]}`);}
+  catch(e){await within(browser.close());throw new Infra(`a página não abriu: ${String(e).split('\n')[0]}`);}
   p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
   try{return await enter(p,base,mode,errors,outDir?join(outDir,`smoke-${mode}-1335x620.png`):undefined,false,roomEndpoint);}
-  finally{await browser.close().catch(()=>{});}
+  finally{await within(browser.close());}
 }
 
 // ---------- upgrade mode (BUG-20261014-ORQ-mapa-cache-velho): the player who comes back after a deploy ----------
@@ -247,6 +272,34 @@ let restored=false;
 /** Every dist's multiplayer.json back as built: on every way out, before anything else (never ship 127.0.0.1). */
 const restore=()=>{if(restored)return;restored=true;for(const [file,text] of configs){try{writeFileSync(file,text);}catch{}}};
 
+/**
+ * The upgrade run (BUG-20261014-ORQ-mapa-cache-velho): the previous build, then this one, in ONE fresh persistent profile
+ * on one origin. The first failing entry's result (the previous build failing is never a pass), or undefined when both entered.
+ */
+async function upgrade(chromium){
+  // The same profile and the same origin (port) for both builds: what a returning player's browser keeps.
+  const previous=resolve(upgradeFrom),prevDist=join(previous,'dist'),port=await previewPort();
+  const profile=mkdtempSync(join(tmpdir(),'viagem-smoke-perfil-'));
+  let context;
+  try{context=await chromium.launchPersistentContext(profile,{args:launchArgs(),viewport:{width:1335,height:620},deviceScaleFactor:1});}
+  catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
+  try{
+    for(const [phase,checkout,distDir] of [['anterior',previous,prevDist],['novo',process.cwd(),dist]]){
+      const workerPort=await freePort();
+      worker=await startWorkerOf(checkout,workerPort);
+      pointAt(distDir,`http://127.0.0.1:${workerPort}`);
+      preview=await startPages(distDir,port);
+      const errors=[],p=await context.newPage();p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
+      const r=await enter(p,preview.url,'normal',errors,outDir?join(outDir,`smoke-upgrade-${phase}-1335x620.png`):undefined,phase==='novo',worker.endpoint);
+      await within(p.close());
+      await preview.stop();preview=undefined;await worker.stop();worker=undefined;
+      console.log(`smoke upgrade (${phase}, ${phase==='anterior'?basename(previous):'este build'}): ${r.why?`${isMachine(r)?'INFRA':'FALHOU'} · ${r.why}${r.starved?` · ${r.starved}`:''}`:'OK'}`);
+      if(r.why)return r;
+    }
+    return undefined;
+  }finally{await within(context.close());try{rmSync(profile,{recursive:true,force:true});}catch{}}
+}
+
 let worker,preview,code=0;
 process.on('exit',restore);
 // Ctrl+C / a CI cancel: restore and stop the server here; the Worker's own handler (local-worker.mjs) then stops it
@@ -257,27 +310,11 @@ try{
   if(!existsSync(join(dist,'multiplayer.json')))throw new Infra(`${join(dist,'multiplayer.json')} não existe: rode npm run build antes`);
   const {chromium}=await playwright();
   if(upgradeFrom){
-    // The same profile and the same origin (port) for both builds: what a returning player's browser keeps.
-    const previous=resolve(upgradeFrom),prevDist=join(previous,'dist'),port=await previewPort();
-    const profile=mkdtempSync(join(tmpdir(),'viagem-smoke-perfil-'));
-    let context;
-    try{context=await chromium.launchPersistentContext(profile,{args:launchArgs(),viewport:{width:1335,height:620},deviceScaleFactor:1});}
-    catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
-    try{
-      for(const [phase,checkout,distDir] of [['anterior',previous,prevDist],['novo',process.cwd(),dist]]){
-        const workerPort=await freePort();
-        worker=await startWorkerOf(checkout,workerPort);
-        pointAt(distDir,`http://127.0.0.1:${workerPort}`);
-        preview=await startPages(distDir,port);
-        const errors=[],p=await context.newPage();p.on('pageerror',e=>errors.push(String(e).slice(0,300)));
-        const r=await enter(p,preview.url,'normal',errors,outDir?join(outDir,`smoke-upgrade-${phase}-1335x620.png`):undefined,phase==='novo',worker.endpoint);
-        await p.close().catch(()=>{});
-        await preview.stop();preview=undefined;await worker.stop();worker=undefined;
-        console.log(`smoke upgrade (${phase}, ${phase==='anterior'?basename(previous):'este build'}): ${r.why?`${isMachine(r)?'INFRA':'FALHOU'} · ${r.why}${r.starved?` · ${r.starved}`:''}`:'OK'}`);
-        // The previous build failing is never a pass: the game's (1), the machine's (2), or its build is missing (2, thrown above).
-        if(r.why){code=smokeExit([r]);break;}
-      }
-    }finally{await context.close().catch(()=>{});try{rmSync(profile,{recursive:true,force:true});}catch{}}
+    let r=await upgrade(chromium);
+    // A hung renderer: both builds once more, in a fresh profile (a player's own browser would not have hung).
+    if(r?.hung){console.log('smoke upgrade: 2ª tentativa num perfil novo (o renderer travou na 1ª)');r=await upgrade(chromium);
+      if(r?.hung)console.log('smoke upgrade: travou nas 2 tentativas, em perfis novos: se repetir, pode ser um laço do jogo');}
+    code=r?smokeExit([r]):0;
   }else{
     const workerPort=await freePort(),port=await previewPort();
     worker=await startLocalWorker({port:workerPort,logPath:join(tmpdir(),`viagem-smoke-worker-${workerPort}.log`)});
@@ -286,8 +323,10 @@ try{
     const results=[];
     for(const mode of modes){
       let r=await smoke(chromium,preview.url,mode,worker.endpoint),again='';
-      // Only a lost WebGL context, nothing else wrong: the GPU, not the game. Once more, in a new browser.
+      // Only a lost WebGL context, nothing else wrong, or a hung renderer: the GPU, not the game. Once more, in a new browser.
       if(r.why&&r.errors.length&&r.errors.every(glFault)&&r.why.split(' | ').every(w=>w.startsWith('pageerror')||w.startsWith('não entrou'))){again=' (2ª tentativa: o contexto WebGL caiu na 1ª)';r=await smoke(chromium,preview.url,mode,worker.endpoint);}
+      else if(r.hung){again=' (2ª tentativa num navegador novo: o renderer travou na 1ª)';r=await smoke(chromium,preview.url,mode,worker.endpoint);
+        if(r.hung)again=' (travou nas 2 tentativas, em navegadores novos: se repetir, pode ser um laço do jogo)';}
       results.push(r);
       console.log(`smoke ${mode}: ${r.why?`${isMachine(r)?'INFRA':'FALHOU'} · ${r.why}${r.starved?` · ${r.starved}`:''}`:'OK'}${again}`);
     }

@@ -17,6 +17,7 @@ import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {citySpeed} from '../../src/sim/city/speed.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 import type {SimContext} from '../../src/sim/context.ts';
+import {syncBarricades} from '../../src/sim/stonewards/barricades.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -61,4 +62,26 @@ test('E8: a retreating elite tio-pavê at (87.5, 81.5) backs up its avenue inste
   for(let i=0;i<ticks(3)&&sim.world.enemies.has(e.id);i++)sim.step(sim.tick*50);
   const gone=!sim.world.enemies.has(e.id),after=toExit(e);
   assert.ok(gone||before-after>=2,`3 s: ${before.toFixed(1)} → ${after.toFixed(1)} u from an avenue end, from (${from.x},${from.y}) to (${e.x.toFixed(2)},${e.y.toFixed(2)})`);
+});
+
+// balanco-pos-1-7 part B: an elite Trio Elétrico (1.03 after ENEMY_RADIUS_SCALE) retreating from the plaza, bench seed 1
+// (1p, wall mode, round 5, barricade N down), shuffled in place at (133.7, 149.2) until the 60 s cap: its own disc
+// grazed a planter on the planner's way out (mouth N), the barricade-free planner then led it a step toward mouth O,
+// and the next tick the planner led it back. Now the planner's own way is tried squeezed (hero rule) before the barricade-free one.
+test('balanco-pos-1-7: a retreating elite Trio Elétrico in the plaza backs out instead of shuffling in place until the cap',()=>{
+  const sim=cityRun(),st=sim.run.stonewards.state,avenues=sim.run.avenues!;
+  // The bench's round 5: barricade N broken, the other three standing (the tutorial's round 1 has them all down).
+  for(const b of st.barricades??[]){b.down=b.id==='barricada-N';b.hp=b.down?0:b.maxHp;}
+  delete st.raiseBarricades;
+  for(const rect of syncBarricades(sim.world.terrain,st)){avenues.grid.refresh(rect);avenues.invalidate([rect]);}
+  const e=createEnemy(sim.world as unknown as SimContext,'trio-eletrico',{x:133.698,y:149.132},1,{elite:true});
+  // The bench's body (its radius there, 1.025): its own disc cannot take the planner's next step here, the hero's can.
+  e.speed=citySpeed(e.speed);e.radius=1.025271;
+  assert.ok(e.radius>1,`a widest-class body (${e.radius})`);
+  e.memory={...e.memory!,retreat:1};e.damage=0;
+  sim.run.director.state.retreating.push({id:e.id,x:e.x,y:e.y,untilTick:sim.tick+ticks(60)});
+  const from={x:e.x,y:e.y};
+  for(let i=0;i<ticks(3)&&sim.world.enemies.has(e.id);i++)sim.step(sim.tick*50);
+  const gone=!sim.world.enemies.has(e.id),moved=Math.hypot(e.x-from.x,e.y-from.y);
+  assert.ok(gone||moved>=2,`3 s: ${moved.toFixed(2)} u, from (${from.x},${from.y}) to (${e.x.toFixed(2)},${e.y.toFixed(2)})`);
 });

@@ -107,7 +107,8 @@ async function fotos(list){
     for(const cena of list)for(const [w,h] of telas){
       const free=shared?hold(await claimSlot({locks:LOCKS,prefix:'foto-pagina',count:PAGES,label:`foto ${cena}`,staleMs:PAGE_STALE_MS})):()=>{};
       const start=performance.now();
-      const ctx=await contextFor(w<h);
+      // A phone in either orientation (touch, mobile: fone.css and the phone HUD); a desktop is wider and taller than 600.
+      const ctx=await contextFor(Math.min(w,h)<=600);
       let page;
       try{
         const p=page=await ctx.newPage(),errors=[];p.on('pageerror',e=>errors.push(String(e).slice(0,200)));

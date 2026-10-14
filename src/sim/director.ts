@@ -825,29 +825,28 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     state.retreating=state.retreating.filter(r=>{
       const e=ctx.enemies.get(r.id);if(!e)return false;
       const step=Math.max(e.speed,1.5)*1.5/SIM_HZ;
-      planner!.retreatDirection(e,retreatDir);
       let via=planner!;
       const x0=e.x,y0=e.y;
-      if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),e.radius);
+      const stuck=()=>Math.hypot(e.x-x0,e.y-y0)<step*.25;
+      /** One try: back to where it stood this tick, then a step along `p`'s exit field, its disc of radius `r`. */
+      const tryWith=(p:AvenuePlanner,terrain:TerrainField,r:number)=>{
+        e.x=x0;e.y=y0;p.retreatDirection(e,retreatDir);via=p;
+        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,terrain,r);
+        return !stuck();
+      };
+      // BUG-20261013-E8: the exit fields are hero-size; a body wider than the hero (an elite tio-pavê, 0.78) whose own
+      // disc does not fit their way out (the strip north of mouth N) stood there until the liveness cap and held the
+      // round open. Still stuck, it squeezes by the hero rule (like the steer's `fit`, E1).
       // Trapped (BUG-…-recuo-parado-na-praca): no exit on the enemy grid, or the way out is a standing barricade the body
       // cannot pass. It walks out over the barricades (harmless, damage 0) on the barricade-free planner and the base
       // terrain, instead of standing in the plaza until the cap.
-      const open=options.cityOpenPlanner;
-      if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
-        e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
-        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,e.radius);
-      }
-      // BUG-20261013-E8: the exit fields are hero-size; a body wider than the hero (an elite tio-pavê, 0.78) whose own
-      // disc does not fit their way out (the strip north of mouth N) stood there until the liveness cap and held the
-      // round open. Still stuck, it squeezes by the hero rule (like the steer's `fit`, E1), the same two ways.
-      if(e.radius>RADIUS&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
-        e.x=x0;e.y=y0;planner!.retreatDirection(e,retreatDir);via=planner!;
-        if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,enemyTerrain(ctx.terrain),RADIUS);
-        if(open&&Math.hypot(e.x-x0,e.y-y0)<step*.25){
-          e.x=x0;e.y=y0;open.retreatDirection(e,retreatDir);via=open;
-          if(retreatDir.x||retreatDir.y)moveSafely(e,retreatDir.x*step,retreatDir.y*step,ctx.terrain,RADIUS);
-        }
-      }
+      // Order (balanco-pos-1-7 part B, the elite Trio Elétrico, 1.03, stuck in the plaza): the planner's own field first,
+      // at the body's radius and then squeezed, and only then the barricade-free planner. That planner may lead to
+      // ANOTHER mouth, so a wide body that grazed a planter for one tick on its way (its own disc blocked, the hero's
+      // not) was sent back the other way, then forth again: a 3-tick shuffle in place until the 60 s cap.
+      const wide=e.radius>RADIUS,open=options.cityOpenPlanner,enemies=enemyTerrain(ctx.terrain);
+      if(!tryWith(planner!,enemies,e.radius)&&!(wide&&tryWith(planner!,enemies,RADIUS))&&open
+        &&!tryWith(open,ctx.terrain,e.radius)&&wide)tryWith(open,ctx.terrain,RADIUS);
       const end=avenueEnd(ctx,via.retreatMouth(e));
       if(end){r.x=end.x;r.y=end.y;}
       // Never vanishes in sight (v2): every exit needs it hidden from every viewer; only the liveness cap ignores that.

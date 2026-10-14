@@ -592,7 +592,8 @@ export class Simulation {
   }
   private campView():CampView{
     const st=this.systems.stonewards.state;
-    return {units:st.balance.units,grana:st.grana,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+    const bought=st.forgeBought,forge=bought&&(bought.gambiarra||bought['torre-chinelo'])?{forge:{...(bought.gambiarra?{gambiarra:bought.gambiarra}:{}),...(bought['torre-chinelo']?{'torre-chinelo':bought['torre-chinelo']}:{})}}:{};
+    return {units:st.balance.units,grana:st.grana,...forge,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
   }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){

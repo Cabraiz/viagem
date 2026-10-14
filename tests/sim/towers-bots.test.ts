@@ -334,3 +334,14 @@ test('bot-gasta-material: a defense a person here built is never the bot\'s to e
   const order=pickTowerOrder(view({defenses:theirs}));
   assert.ok(!(order&&typeof order==='object'&&'upgrade' in order),'nothing of theirs evolved');
 });
+
+test('review: a wall under WALL_CRITICAL is repaired out of the chaveiro\'s reserve (a fallen wall ends the run, a debt only the joke)',async()=>{
+  const {WALL_CRITICAL,pickRecipe}=await import('../../src/sim/bot-brain.ts');
+  const {RECIPES}=await import('../../src/rules/index.ts');
+  const wall=(hp:number)=>({id:'muralha',kind:'muralha',x:0,y:0,hp,maxHp:600});
+  const view=(hp:number)=>({tick:0,round:{index:4,phase:'prepare'},camp:{units:0,grana:RECIPES.reparo.cost+5},structures:[wall(hp)],players:[]}) as never;
+  const keep=1000; // the whole bill kept: nothing else may be bought
+  assert.equal(pickRecipe(view(600*WALL_CRITICAL-1),{},keep),'reparo','critical: repaired anyway');
+  assert.equal(pickRecipe(view(600*.9),{},keep),undefined,'only hurt: the bill comes first');
+  assert.equal(pickRecipe(view(600*.9),{},0),'reparo','no bill: the usual top-up');
+});

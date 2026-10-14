@@ -43,10 +43,11 @@ export const BOT_NAMES:readonly string[]=Object.freeze([
   'Antena de Bombril','Fujão 3000','Rodinho Turbo','Zapeiro 2.0',
 ]);
 /**
- * Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). 'balance' is
- * short of Grana since D-048 (the forge is paid in R$): the kills of this intermission's leftovers rarely make it up.
+ * Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). Not 'balance'
+ * (short of Grana since D-048): pickRecipe already checks the price on the view, so such a refusal only means the view
+ * was a frame behind, and it must not lock the wall's repair out for the whole intermission (review).
  */
-const RECIPE_REFUSALS=new Set(['no-weapon','full','balance','recipe']);
+const RECIPE_REFUSALS=new Set(['no-weapon','full','recipe']);
 
 /** 32-bit mix of the room seed and a counter (cosmetic picks, never the simulation's RNG). */
 export function botHash(seed:number,n:number){

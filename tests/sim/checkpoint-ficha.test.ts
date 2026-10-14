@@ -85,3 +85,16 @@ test('only that shape is migrated: two piles under another fingerprint, or a cur
   const now=JSON.parse(JSON.stringify(cp));fresh.migrateCheckpoint(now);assert.deepEqual(now,cp,'a current checkpoint is untouched');
   assert.equal(fresh.checkpointShapeOk(now),true);
 });
+
+// Review: the fingerprints the production build before D-048 really wrote (main at e5b34e5, its code identical to the
+// origin/main this branch merged; measured by exporting that build and running its freshShape). If main changes a
+// system's shape before this branch lands, re-measure them against main's build and update both together.
+const PRE_FICHA_FINGERPRINTS={ilha:'e9cdc54b',infinito:'e9cdc54b',cidade:'1ced0520','cidade+chaveiro':'9ed0df3e'};
+test('the legacy fingerprint is exactly the one the pre-ficha production build wrote, for every world and the chaveiro',async()=>{
+  const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8')) as {hash:string};
+  const loaded=await cityTerrainFrom(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'),manifest.hash);
+  if(!loaded.ok)throw new Error(loaded.error);
+  const city={world:'cidade' as const,terrain:loaded.terrain,cityStructures:true};
+  const variants:[keyof typeof PRE_FICHA_FINGERPRINTS,ConstructorParameters<typeof Simulation>[1]][]=[['ilha',{world:'ilha'}],['infinito',{world:'infinito'}],['cidade',city],['cidade+chaveiro',{...city,objective:'chaveiro'}]];
+  for(const [name,options] of variants)assert.equal(new Simulation(4242,options).freshShape().legacy,PRE_FICHA_FINGERPRINTS[name],name);
+});

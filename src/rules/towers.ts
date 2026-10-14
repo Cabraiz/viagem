@@ -64,7 +64,7 @@ export interface DefenseDef {
 
 /**
  * D-048 (ficha de torre): building a root costs 1 ficha, the Gustavão 3 (its rail included); TOWER_TOKENS × UNITS_PER_TOKEN
- * units. An evolution (tiers 2-5) costs TIER_COST units until it is paid in Grana.
+ * units. An evolution (tiers 2-5) is paid in Grana (EVOLVE_PRICE); TIER_COST[2..5] is only the old material scale it came from.
  */
 export const TOWER_TOKENS=Object.freeze({root:1,gustavao:3});
 export const TIER_COST:Readonly<Record<1|2|3|4|5,number>>=Object.freeze({1:TOWER_TOKENS.root*UNITS_PER_TOKEN,2:10,3:16,4:24,5:36});

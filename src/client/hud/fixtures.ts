@@ -84,8 +84,8 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
     pickups:[],projectiles:[],telegraphs:[],
     structures:[{id:'s1',kind:'muralha',...FIXTURE_WALL,hp:scenario==='camp-wave'?132:scenario==='camp-forge'?410:540,maxHp:600},
       ...(scenario==='camp-forge'?[{id:'s2',kind:'torre-chinelo',x:13,y:14,hp:80,maxHp:80,untilTick:tick+ticks(30)}]:[])],
-    // Grana R$ 23 (D-048): the forge's tags all buyable; in the obra, a tier-2 or -3 evolution yes, a tier-4 (R$ 25) not.
-    // In the forge scene R$ 6: the repair and the gambiarra yes, the tower (R$ 7) one short.
+    // Grana R$ 23 (D-048): in the obra a tier-2 or -3 evolution yes, a tier-4 (R$ 25) not; 3 fichas with the ring at 90%.
+    // In the forge scene the gambiarra's price + 1: the repair and the gambiarra yes, the chinelo tower short.
     camp:{units:scenario==='camp-forge'?6:3*UNITS_PER_TOKEN+Math.round(.9*UNITS_PER_TOKEN),grana:scenario==='camp-forge'?RECIPES.gambiarra.cost+1:23,
       ...(scenario==='camp-horn'?{hornEndsTick:tick+ticks(4)}:{})},
     players:fakePlayers(playerCount,scenario),

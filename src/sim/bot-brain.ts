@@ -191,6 +191,8 @@ export function granaReserve(view:Pick<RunView,'objective'>):number{
   return o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:Math.ceil(o.budget*CHAVEIRO_KEEP_SHARE);
 }
 
+/** Wall share under which the forger repairs it even out of the chaveiro's reserve (review: the bill never beats a defeat). */
+export const WALL_CRITICAL=.5;
 /**
  * What the forger buys with the team's Grana (D-048: the forge is paid in R$, never material), or nothing: repair a
  * hurt wall, then towers up to the forge's cap, then gambiarras. A recipe the forge refused this round (`refused`:
@@ -199,7 +201,9 @@ export function granaReserve(view:Pick<RunView,'objective'>):number{
 export function pickRecipe(view:RunView,refused:Partial<Record<RecipeId,number>>={},keep=granaReserve(view)):RecipeId|undefined{
   const camp=view.camp;if(!camp||camp.wallDown)return undefined;
   const wall=wallOf(view),round=view.round?.index??0;
-  const ok=(id:RecipeId)=>refused[id]!==round&&canPay((camp.grana??0)-keep,forgePrice(id,camp.forge));
+  const ok=(id:RecipeId,reserve=keep)=>refused[id]!==round&&canPay((camp.grana??0)-reserve,forgePrice(id,camp.forge));
+  // A wall under WALL_CRITICAL is repaired whatever the chaveiro's bill: a fallen wall ends the run, a debt only the joke.
+  if(wall&&wall.hp<wall.maxHp*WALL_CRITICAL&&ok('reparo',0))return 'reparo';
   if(wall&&wall.hp<wall.maxHp*REPAIR_BELOW&&ok('reparo'))return 'reparo';
   // Only forge towers ('torre-*') count: the city barricades are structures too (cidade-06), never towers.
   const towers=view.structures.filter(s=>s.kind.startsWith('torre-')&&(s.untilTick===undefined||s.untilTick>view.tick)).length;
@@ -555,7 +559,7 @@ export const BOT_TOWER_REPAIR_BELOW=.8;
  * The Gustavão's line (torres-ajustes): the forger keeps this share of the next step of its B line (B2 → B5, the
  * Gustavão) aside (towerReserve) and evolves, builds or forges anything else only from what is left over, in that
  * step's own money (D-048): the evolutions B3–B5 in Grana (EVOLVE_PRICE), from the Obuseiro on the Gustavão's 3 fichas
- * (120 units, its rail free, laid or not) out of the material the roots take: a 6-player team (~10 fichas a run)
+ * (GUSTAVAO_COST units, its rail free, laid or not) out of the material the roots take: a 6-player team (~10 fichas a run)
  * still affords it, a smaller one never gets that far up the line.
  */
 export const BOT_GUSTAVAO_SAVE=1;

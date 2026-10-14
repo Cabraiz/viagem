@@ -1,6 +1,6 @@
-import {ALBEDO_MEANS} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {ALBEDO_MEANS} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {readFileSync} from 'node:fs';
 import {groundAt,groundZ,parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {CITY_PALETTE,MATERIALS} from '../../src/client/render/city/palette.ts';

@@ -25,14 +25,14 @@ const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toF
  * tint (0: only its light and shade, 1: its full colour). The palette keeps the colour; the photo brings the detail.
  * Ice is the most saturated photo: its tint dominates (D-038 review of the delivery).
  */
-export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7,asfalto:.5} as const;
+export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7} as const;
 /**
  * World units one photo spans (its mirrored pair twice that). Larger than life on purpose: at the game's camera a real
  * sett (~28 in a photo of ~2.8 m) is ~4 px and reads as grain; the paving and the ice are drawn ~3× life size.
  */
-export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4,asfalto:4.4} as const;
+export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4} as const;
 /** How strongly the photo's detail shows over the palette tone (0 none .. 1 all): the snows stay quiet under the figures. */
-export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8,asfalto:.7} as const;
+export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8} as const;
 /** The albedo's detail never takes a tone further than this from its palette base (the palette's contrast rule). */
 export const ALBEDO_SPAN={lo:.72,hi:1.22} as const;
 const slot=(name:typeof ALBEDO_SLOTS[number])=>ALBEDO_SLOTS.indexOf(name).toFixed(1);
@@ -124,10 +124,11 @@ vec3 material(float slot,vec2 p){vec2 q=mat2(0.8,-0.6,0.6,0.8)*p*1.37+vec2(3.27,
 // The photo's detail as a ratio around 1 over its own mean: its light and shade, and the chroma share of its own colour. The
 // caller multiplies the palette tone by it (1 when the atlas is not in: the procedural ground of before).
 vec3 albedoDetail(float slot,vec2 w,vec3 mean,float chroma,float perUnit,float strength){
+ if(albedoOn<0.5)return vec3(1.0); // uniform branch: no texture reads at all without the atlas
  vec3 a=material(slot,w*perUnit);
  float l=dot(a,vec3(.299,.587,.114))/dot(mean,vec3(.299,.587,.114));
  vec3 r=clamp(mix(vec3(l),a/mean,chroma),${ALBEDO_SPAN.lo.toFixed(2)},${ALBEDO_SPAN.hi.toFixed(2)});
- return mix(vec3(1.0),r,albedoOn*strength);
+ return mix(vec3(1.0),r,strength);
 }
 
 // Light d relative to flat ground: d > 0 lightens toward the sun tone, d < 0 blends to the shade tone, then the deep one.
@@ -187,7 +188,7 @@ void main(){
  // Grain: towards the sun tone or the shade tone, never outside the pair.
  snow=mix(snow,grain>0.5?SNOW_SUN:SNOW_SHADE,abs(grain-0.5)*0.35*proc);
  snow*=${albedo('neve')};
- snow=mix(snow,vec3(1.0),step(0.93,fine)*step(0.0,d)*0.35*detail);
+ snow=mix(snow,vec3(1.0),step(0.93,fine)*step(0.0,d)*0.35*proc);
  vec3 color=snow;
 
  // Trodden snow on the streets: ruts along a noise grain, ragged edges into the fresh snow.

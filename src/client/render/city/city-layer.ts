@@ -226,9 +226,9 @@ export class CityLayer {
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
-  /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   /** The ground drawn is final (no albedo still on its way): the modo foto waits for it. */
   groundSettled(){return !this.relief||this.relief.albedoSettled;}
+  /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
   /** Chunk keys currently drawn (for debugging and tests of the wiring). */

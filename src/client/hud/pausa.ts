@@ -207,11 +207,12 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const live=el(doc,'span','rh-sr');live.setAttribute('aria-live','polite');
   const clock=new PauseClock(),now=()=>host.now?.()??performance.now();
   let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='';
-  let timer:ReturnType<typeof setInterval>|undefined;
+  let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',paints=0;
   const render=(view:PauseView|undefined)=>{
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
-    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';bar='';secs=-1;}last=undefined;return;}
+    // Over: everything hides, and the live region empties (no stale "Falta você!" for the virtual cursor).
+    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';placed='';bar='';secs=-1;live.textContent='';}last=undefined;return;}
     if(!shown){shown=true;dim.hidden=false;box.hidden=false;}
     if(title.textContent!==view.title)title.textContent=view.title;
     if(line.textContent!==view.line)line.textContent=view.line;
@@ -222,27 +223,39 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
     if(view.seconds!==secs){secs=view.seconds;track.setAttribute('aria-valuenow',String(Math.round(view.fraction*100)));track.setAttribute('aria-valuetext',`${view.seconds} segundos`);}
     last=view;
   };
-  /** Above the offer's cards (or under the top band once its offer closed), clear of the minimap (pauseSpot). */
-  const place=()=>{
+  /**
+   * Above the offer window (or under the top band once it closed), clear of the minimap and of the announcement slot's
+   * rows (pauseSpot). Measured only when what decides it may have changed (the box's text, the window shown or not, the
+   * screen) and once a second (a window or a row resizing), never on every paint.
+   */
+  const place=(view:PauseView)=>{
+    const key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${innerWidth}x${innerHeight}`;
+    const due=++paints%5===0;// once a second at PAUSE_TICK_MS
+    if(key===placed&&!due)return;
+    placed=key;
     const rect=(node:Element|null)=>{if(!node||(node as HTMLElement).hidden)return undefined;const r=node.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
     const top=rect(host.top),minimap=rect(host.root.querySelector('.rh-minimap'));
+    const rows=[...host.root.querySelectorAll('.rh-stack>:not([hidden])')].map(rect).filter((r):r is Rect=>!!r&&r.height>0);
     const at=pauseSpot({viewport:{width:innerWidth,height:innerHeight},box:{width:box.offsetWidth,height:box.offsetHeight},
-      top:top?top.y+top.height:0,offer:rect(host.offer),avoid:minimap?[minimap]:[]});
-    const key=`${at.x},${at.y}`;if(key===spot)return;spot=key;
+      top:top?top.y+top.height:0,offer:rect(host.offer),avoid:[...(minimap?[minimap]:[]),...rows]});
+    const where=`${at.x},${at.y}`;if(where===spot)return;spot=where;
     box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;
   };
-  const paint=()=>{
-    const view=host.root.classList.contains('rh-ended')?undefined:clock.view(roster,localId,now());
-    render(view);
-    if(view)place();
-  };
   const stop=()=>{if(timer!==undefined){clearInterval(timer);timer=undefined;}};
+  const paint=()=>{
+    const ended=host.root.classList.contains('rh-ended');
+    if(ended)stop();
+    const view=ended?undefined:clock.view(roster,localId,now());
+    render(view);
+    if(view)place(view);
+  };
   return {el:box,dim,live,update(view:RunView,ctx:HudContext){
+    if(destroyed)return;
     roster=pauseRoster(view.players,ctx.localId);localId=ctx.localId;
     const pause=validPause(ctx.pause);
     clock.sync(pause,now());
-    if(pause&&timer===undefined)timer=setInterval(paint,PAUSE_TICK_MS);
+    if(pause&&timer===undefined&&!host.root.classList.contains('rh-ended'))timer=setInterval(paint,PAUSE_TICK_MS);
     if(!pause)stop();
     paint();
-  },destroy:stop};
+  },destroy(){destroyed=true;stop();}};
 }

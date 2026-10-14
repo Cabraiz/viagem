@@ -28,7 +28,7 @@
 .rh-member-escolha{position:absolute;top:24px;left:calc(50% - 31px);display:flex;line-height:0}
 .rh-member-escolha[hidden]{display:none}
 .rh-member-escolha .ic{width:20px;height:20px}
-/* Thinking: a small Papel ficha with three Breu dots, breathing slowly (still with reduced motion). */
+/* Thinking: a small Papel ficha with three Breu dots, breathing slowly (static with reduced motion). */
 .rh-member[data-escolha=pensando] .rh-member-escolha{width:20px;height:12px;border-radius:var(--r-ficha);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);
   background-image:radial-gradient(circle,var(--c-breu) 1.5px,transparent 2px);background-size:6px 12px;background-position:1px 0;background-repeat:repeat-x;
   animation:rh-pausa-pensa 1.2s ease-in-out infinite alternate}

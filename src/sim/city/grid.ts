@@ -166,6 +166,8 @@ const SEGMENT_STEP=.08;
  */
 export const WIDE_FROM=.25,WIDE_RADII:readonly number[]=Object.freeze([.35,.5,.75,1]);
 const WIDE_GOAL_RING=2,WIDE_SEGMENT_STEP=.2;
+/** Samples a segment check may pass over: those within `reach` (CityTerrain.clearReach, minus a hair) of the clear one, `gap` apart. */
+const skip=(reach:number,gap:number)=>reach>1e-6&&gap>0?Math.floor((reach-1e-6)/gap):0;
 /** Look-ahead (u) of the corner check of a players-field direction (see `follow` in citySteer). */
 const NUDGE=.15;
 /** The AI's chase targets (enemies/ai.ts `live`): only these are goals of the players fields. */
@@ -222,8 +224,13 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
   const probe={x:0,y:0};
   const view=opts.blockers===false?(ctx:SimContext)=>ctx.terrain:(ctx:SimContext)=>enemyTerrain(ctx.terrain);
   const clear=(a:Point,b:Point,terrain:TerrainField)=>{
-    const n=Math.max(1,Math.ceil(Math.hypot(a.x-b.x,a.y-b.y)/SEGMENT_STEP));
-    for(let i=0;i<=n;i++){probe.x=a.x+(b.x-a.x)*i/n;probe.y=a.y+(b.y-a.y)*i/n;if(!walkable(probe,terrain))return false;}
+    const len=Math.hypot(a.x-b.x,a.y-b.y), n=Math.max(1,Math.ceil(len/SEGMENT_STEP)), city=len>0?cityTerrainOf(terrain):undefined;
+    for(let i=0;i<=n;i++){
+      probe.x=a.x+(b.x-a.x)*i/n;probe.y=a.y+(b.y-a.y)*i/n;
+      if(!walkable(probe,terrain))return false;
+      // The samples the walls (and blockers) leave clear for sure around this one are not read (same answer).
+      if(city)i+=skip(city.clearReach(probe.x,probe.y,RADIUS),len/n);
+    }
     return true;
   };
   const grid=opts.grid??planner.grid, cityGrid=grid as Partial<CityFlowGrid>|undefined;
@@ -305,7 +312,11 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const d=Math.hypot(b.x-a.x,b.y-a.y), reach=d-radius-RADIUS;
     if(reach<=0)return true;
     const n=Math.ceil(reach/WIDE_SEGMENT_STEP), ux=(b.x-a.x)/d, uy=(b.y-a.y)/d;
-    for(let i=1;i<=n;i++){const t=reach*i/n;if(!terrain.clearDisc(a.x+ux*t,a.y+uy*t,radius))return false;}
+    for(let i=1;i<=n;i++){
+      const t=reach*i/n,x=a.x+ux*t,y=a.y+uy*t;
+      if(!terrain.clearDisc(x,y,radius))return false;
+      i+=skip(terrain.clearReach(x,y,radius),reach/n);
+    }
     return true;
   };
   /**

@@ -10,9 +10,10 @@
  * buffers). A field is a pure function of (city, goal cell), so a hit, a miss or another room's traffic never changes
  * a decision: the routes are deterministic.
  *
- * Memory: a FlowField without clearance holds 20 bytes per cell (walk, near and goal flags 1 B each, next 1 B, cost,
- * goal list and the two queue links 4 B each). The city grid is 192 × 192 = 36 864 cells: 737 280 B (720 KiB) a field,
- * so the LRU tops out at BOT_ROUTE_FIELDS × 720 KiB = 5.6 MiB per isolate, plus the grid's cells (36 KiB per city).
+ * Memory: a FlowField without clearance holds 27 bytes per cell (walk, near, goal flags and legal steps 1 B each,
+ * next 1 B, connected part 4 B and its goal stamp 2 B, cost, goal list and the two queue links 4 B each). The city grid
+ * is 192 × 192 = 36 864 cells: 995 328 B (972 KiB) a field, so the LRU tops out at BOT_ROUTE_FIELDS × 972 KiB = 7.6 MiB
+ * per isolate, plus the grid's cells (36 KiB per city).
  * Building one costs one Dial pass over the grid (a few ms); the bots ask for one when they change goals, not per tick.
  *
  * The grid is the HERO view of the city: the barricades (cidade-06) are blocker discs solid for enemies only, and the
@@ -28,7 +29,7 @@ import {cityFlowGrid,type CityFlowGrid} from './grid.ts';
 /** Flow fields the bots keep (LRU, all cities of the isolate): home, one crate per bot slot, two moving targets. */
 export const BOT_ROUTE_FIELDS=8;
 /** Bytes per cell of a bot route field (FlowField without clearance, see the module doc). */
-export const BOT_ROUTE_BYTES_PER_CELL=20;
+export const BOT_ROUTE_BYTES_PER_CELL=27;
 /** Within this (u) of the target with a clear straight segment, the bot walks straight (no field). */
 export const BOT_ROUTE_DIRECT=12;
 /** Closer than this (u) the bot always walks straight (it is there; a field would point at a cell centre). */

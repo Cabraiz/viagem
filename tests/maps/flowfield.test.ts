@@ -644,3 +644,60 @@ test('19. benchmark: 192x192 full compute and 3x3 invalidate (best median of 3 b
   assert.ok(Math.min(...res[0].full)<=25,`full compute best median ${Math.min(...res[0].full).toFixed(2)} ms > 25`);
   assert.ok(Math.min(...res[0].inv)<=5,`invalidate best median ${Math.min(...res[0].inv).toFixed(2)} ms > 5`);
 });
+
+test('20. lazy directions (NEW-20261013-ORQ-cidade-flowfield): the field reads the same whatever was asked of it before, and after any setTargets/invalidate history',()=>{
+  const m=city(),g2={x:20.5*m.cs,y:170.5*m.cs},W=m.w*m.cs;
+  const fresh=dump(new FlowField(m.grid,[m.goals[0],g2]),m);
+  // Asked out of order first: random directions (open and blocked cells, outside), then the dump.
+  const b=new FlowField(m.grid,[m.goals[0],g2]),rnd=lcg(11);
+  for(let i=0;i<2000;i++)b.directionAt(rnd()*(W+4)-2,rnd()*(W+4)-2);
+  for(let i=m.w*m.h-1;i>=0;i-=7)b.nextCell(i%m.w,Math.floor(i/m.w));
+  sameField(dump(b,m),fresh,m.w,'asked out of order');
+  // A history of other goals and a barricade, every step read in between, back to the same inputs.
+  const c=new FlowField(m.grid,[g2]),blocked={x0:30,y0:30,x1:33,y1:31},saved:number[]=[];
+  dump(c,m);
+  for(let y=30;y<=31;y++)for(let x=30;x<=33;x++){saved.push(m.open[y*m.w+x]);m.open[y*m.w+x]=0;}
+  c.invalidate(blocked);c.directionAt(31.5*m.cs,30.5*m.cs);
+  let j=0;for(let y=30;y<=31;y++)for(let x=30;x<=33;x++)m.open[y*m.w+x]=saved[j++];
+  c.invalidate(blocked);c.setTargets([m.goals[0],g2]);
+  sameField(dump(c,m),fresh,m.w,'after a history');
+});
+
+test('21. lazy field vs eager references under random histories: every answer, asked in random order between setTargets/invalidate calls, equals the heap Dijkstra cost, the reference cheapest-neighbor direction and a fresh field',()=>{
+  let asked=0;
+  for(let s=1;s<=120;s++){
+    const r=lcg(1000+s),ri=(a:number,b:number)=>a+Math.floor(r()*(b-a+1));
+    const w=ri(1,28),h=ri(1,28),open=new Uint8Array(w*h);for(let i=0;i<w*h;i++)open[i]=r()<[0,.15,.3,.45][s%4]?0:1;
+    if(s%2){const x=ri(0,w-1);for(let y=0;y<h;y++)open[y*w+x]=0;} // a wall splitting the map into parts
+    const opts:FlowFieldOptions={wallPenalty:[0,1,4,13][s%4],clearance:[0,0,1][s%3]},pen=opts.wallPenalty!,c=opts.clearance!;
+    let tg:number[]=[];const pick=()=>{tg=[];for(let k=ri(0,3);k>0;k--)tg.push(ri(0,w*h-1));};pick();
+    const m=mk(w,h,1,open,tg),pts=()=>tg.map(i=>({x:i%w+.5,y:Math.floor(i/w)+.5})),f=new FlowField(m.grid,pts(),opts);
+    let ref=refCosts(eroded(m,c),tg,pen),view=eroded(m,c);
+    const want=(x:number,y:number)=>{
+      const i=y*w+x,cost=ref[i]===Infinity?UNREACHABLE:ref[i];
+      if(!view.open[i])return {cost,next:undefined}; // blocked: escape direction, checked against a fresh field below
+      let best=-1,bc=ref[i];for(let k=0;k<8;k++)if(legal(view,x,y,k)&&ref[i+D8[k][0]+D8[k][1]*w]<bc){best=k;bc=ref[i+D8[k][0]+D8[k][1]*w];}
+      return {cost,next:best};
+    };
+    for(let step=0;step<25;step++){
+      const op=r();
+      if(op<.15){pick();f.setTargets(pts());}
+      else if(op<.35){
+        const x0=ri(-1,w-1),y0=ri(-1,h-1),rect={x0,y0,x1:x0+ri(0,3),y1:y0+ri(0,3)};
+        for(let y=Math.max(0,y0);y<=Math.min(h-1,rect.y1);y++)for(let x=Math.max(0,x0);x<=Math.min(w-1,rect.x1);x++)open[y*w+x]=r()<.5?0:1;
+        f.invalidate(rect);
+      }else{
+        for(let q=ri(1,15);q>0;q--){
+          const x=ri(0,w-1),y=ri(0,h-1),e=want(x,y);
+          if(r()<.5){const got=f.cellCost(x,y);if(got!==e.cost)assert.fail(`seed ${s} step ${step}: cost (${x},${y}) ${got} vs ${e.cost}`);}
+          else{f.directionAt(x+r(),y+r());const got=f.nextCell(x,y);if(e.next!==undefined&&got!==e.next)assert.fail(`seed ${s} step ${step}: next (${x},${y}) ${got} vs ${e.next}`);}
+          asked++;
+        }
+        continue;
+      }
+      ref=refCosts(eroded(m,c),tg,pen);view=eroded(m,c);
+    }
+    sameField(dump(f,m),dump(new FlowField(m.grid,pts(),opts),m),w,`seed ${s}: after its history vs a fresh field`);
+  }
+  assert.ok(asked>5000,`${asked} answers checked`);
+});

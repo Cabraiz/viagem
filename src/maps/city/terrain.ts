@@ -23,6 +23,40 @@ export const CITY_HEIGHT_PX_PER_UNIT=21;
 /** Overlap below this is touching, not entering: a disc exactly as wide as a corridor still fits. */
 const TOUCH_EPS=1e-6;
 
+/**
+ * Per asset (a pure memo, shared by every fork): for each walkable sample, its Chebyshev distance in samples (capped at
+ * 255) to the nearest unwalkable sample or the outside of the grid, 0 on an unwalkable one. Every sample nearer than
+ * that is walkable, so clearDisc accepts a disc whose sample box fits in that square without reading it (the city is
+ * mostly open street: the hero's 3×3 box, the wide bodies' up to 10×10, every tick for hundreds of bodies).
+ */
+const freeSquares=new WeakMap<CityAsset,Uint8Array>();
+function freeSquaresOf(asset:CityAsset):Uint8Array{
+  let f=freeSquares.get(asset);
+  if(f)return f;
+  const w=asset.samples.w,h=asset.samples.h;
+  f=new Uint8Array(w*h);
+  // Two-pass chamfer distance with unit weights on all 8 neighbors (exact for Chebyshev); outside the grid is 0.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    if(!asset.walkable(x,y))continue;
+    const up=y>0?y*w-w:-1;
+    let m=x>0&&up>=0?f[up+x-1]:0;
+    if(up>=0){m=Math.min(m,f[up+x]);m=Math.min(m,x+1<w?f[up+x+1]:0);}else m=0;
+    m=Math.min(m,x>0?f[y*w+x-1]:0);
+    f[y*w+x]=Math.min(255,m+1);
+  }
+  for(let y=h-1;y>=0;y--)for(let x=w-1;x>=0;x--){
+    const i=y*w+x;
+    if(!f[i])continue;
+    const dn=y+1<h?i+w:-1;
+    let m=dn>=0&&x>0?f[dn-1]:0;
+    if(dn>=0){m=Math.min(m,f[dn]);m=Math.min(m,x+1<w?f[dn+1]:0);}else m=0;
+    m=Math.min(m,x+1<w?f[i+1]:0);
+    if(m+1<f[i])f[i]=m+1;
+  }
+  freeSquares.set(asset,f);
+  return f;
+}
+
 /** A blocking disc on a CityTerrain fork (world units): `id` names it (e.g. 'barricada-N'). */
 export interface CityBlocker {readonly id:string;readonly x:number;readonly y:number;readonly r:number}
 
@@ -45,11 +79,15 @@ export class CityTerrain {
   /** Active blocker discs by id; `sorted` caches blockers() until the next change. */
   private readonly blocking=new Map<string,CityBlocker>();
   private sorted:readonly CityBlocker[]=Object.freeze([]);
+  /** Box around every blocker disc (world units; empty when none): `blocked` rejects a disc outside it at once. */
+  private bx0=Infinity;private by0=Infinity;private bx1=-Infinity;private by1=-Infinity;
   private version=0;
   /** The asset's relief (relief.ts), fetched on the first height query: the simulation never asks. */
   private relief:Float64Array|undefined=undefined;
   /** Cached `forEnemies()` view (created on first use). */
   private enemyView:CityTerrain|undefined=undefined;
+  /** freeSquaresOf(asset), fetched on the first disc query. */
+  private free:Uint8Array|undefined=undefined;
 
   /** `minHeight` is internal (fork): the lowest corner already scanned for this asset. */
   constructor(asset:CityAsset,hash:string,minHeight?:number){
@@ -68,7 +106,7 @@ export class CityTerrain {
   fork():CityTerrain{
     const t=new CityTerrain(this.asset,this.signature,this.minHeight);
     for(const b of this.sorted)t.blocking.set(b.id,b);
-    t.sorted=this.sorted;
+    t.sorted=this.sorted;t.bound();
     return t;
   }
   /**
@@ -86,7 +124,14 @@ export class CityTerrain {
       this.blocking.set(id,Object.freeze({id,x,y,r}));
     }
     this.sorted=Object.freeze([...this.blocking.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0));
+    this.bound();
     this.version++;
+  }
+  private bound(){
+    this.bx0=this.by0=Infinity;this.bx1=this.by1=-Infinity;
+    for(const b of this.sorted){
+      this.bx0=Math.min(this.bx0,b.x-b.r);this.by0=Math.min(this.by0,b.y-b.r);this.bx1=Math.max(this.bx1,b.x+b.r);this.by1=Math.max(this.by1,b.y+b.r);
+    }
   }
   /** Active blocker discs, sorted by id (deterministic); the same frozen array until the next change. */
   blockers():readonly CityBlocker[]{return this.sorted;}
@@ -102,6 +147,12 @@ export class CityTerrain {
     const base=this,view=Object.create(this) as CityTerrain;
     Object.defineProperties(view,{
       clearDisc:{value:(x:number,y:number,r:number)=>base.clearDisc(x,y,r)&&!(base.sorted.length&&base.blocked(x,y,r<=TOUCH_EPS?0:r))},
+      clearReach:{value:(x:number,y:number,r:number)=>{
+        let d=base.clearReach(x,y,r);
+        // A disc within d of (x,y) stays off every blocker: its centre distance only shrinks by d.
+        for(const b of base.sorted)if(d>0)d=Math.min(d,Math.hypot(x-b.x,y-b.y)-(r+b.r-TOUCH_EPS));
+        return d>0?d:0;
+      }},
       setBlocker:{value:(id:string,shape:{x:number;y:number;r:number}|undefined)=>base.setBlocker(id,shape)},
       fork:{value:()=>base.fork()},
       enemyView:{value:view},
@@ -111,8 +162,11 @@ export class CityTerrain {
   }
   /** True when a disc of radius r (≥ 0) at (x,y) overlaps a blocker disc by more than TOUCH_EPS. */
   private blocked(x:number,y:number,r:number):boolean{
-    for(const b of this.sorted){
-      const reach=r+b.r-TOUCH_EPS,dx=x-b.x,dy=y-b.y;
+    // Farther than r from the box of every disc: no overlap (it needs a centre distance under r + b.r).
+    if(x+r<this.bx0||x-r>this.bx1||y+r<this.by0||y-r>this.by1)return false;
+    const list=this.sorted;
+    for(let k=0;k<list.length;k++){
+      const b=list[k],reach=r+b.r-TOUCH_EPS,dx=x-b.x,dy=y-b.y;
       if(reach>0&&dx*dx+dy*dy<reach*reach)return true;
     }
     return false;
@@ -130,6 +184,9 @@ export class CityTerrain {
     const reach=r-TOUCH_EPS,r2=reach*reach;
     const sx0=Math.floor((x-reach)/s),sx1=Math.floor((x+reach)/s),sy0=Math.floor((y-reach)/s),sy1=Math.floor((y+reach)/s);
     if(sx0<0||sy0<0||sx1>=this.sw||sy1>=this.sh)return false;
+    // Fast accept: every sample of the box lies within the walkable square around the centre's sample.
+    const cx=Math.floor(x/s),cy=Math.floor(y/s),f=this.free??=freeSquaresOf(a);
+    if(Math.max(cx-sx0,sx1-cx,cy-sy0,sy1-cy)<f[cy*this.sw+cx])return true;
     for(let sy=sy0;sy<=sy1;sy++){
       // Nearest point of the sample row band to the centre, on y.
       const dy=y<sy*s?sy*s-y:y>(sy+1)*s?y-(sy+1)*s:0;
@@ -139,6 +196,20 @@ export class CityTerrain {
       }
     }
     return true;
+  }
+  /**
+   * A distance d ≥ 0 (u) such that clearDisc(x', y', r) is true for every (x', y') within d of (x, y), from the free
+   * square around (x, y)'s sample (freeSquaresOf); 0 when it cannot be told at once. Lets a sampled segment check skip
+   * the samples it already knows are clear (same answers, fewer reads). Walls only; the enemy view adds the blockers.
+   */
+  clearReach(x:number,y:number,r:number):number{
+    if(!(Number.isFinite(x)&&Number.isFinite(y)&&r>TOUCH_EPS))return 0;
+    const s=this.step,cx=Math.floor(x/s),cy=Math.floor(y/s);
+    if(cx<0||cy<0||cx>=this.sw||cy>=this.sh)return 0;
+    // Every sample nearer than f to (cx, cy) is walkable; a disc's sample box stays inside while it moves by at most
+    // (f − 1)·s − reach on each axis (its centre sample is within one step of (x, y) there).
+    const f=(this.free??=freeSquaresOf(this.asset))[cy*this.sw+cx],d=(f-1)*s-(r-TOUCH_EPS);
+    return d>0?d:0;
   }
   /** Island-style `land`: here "the ground under a body of radius `margin` is walkable". */
   land(x:number,y:number,margin=0){return this.clearDisc(x,y,Math.max(0,margin));}

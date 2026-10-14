@@ -182,6 +182,10 @@ export function moveSafely(body:Point,dx:number,dy:number,terrain:TerrainField,r
 const probe:Point={x:0,y:0};
 /** Same sampling as world.ts clearSegment (every 0.08), skipping the start the caller already knows is walkable. */
 function clearFrom(a:Point,dx:number,dy:number,terrain:TerrainField,radius:number){
+  // City: the whole step lies where the walls (and blockers) leave the larger of the two discs clear for sure
+  // (CityTerrain.clearReach), so every check below would pass; the same answer without reading the samples.
+  const reach=(terrain as {clearReach?:(x:number,y:number,r:number)=>number}).clearReach;
+  if(reach&&Math.hypot(dx,dy)<reach.call(terrain,a.x,a.y,Math.max(radius,PLAYER_RADIUS))-1e-6)return true;
   const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.08));
   for(let i=1;i<=n;i++){probe.x=a.x+dx*i/n;probe.y=a.y+dy*i/n;if(!walkable(probe,terrain))return false;}
   // City (mask terrain): the body's own disc must clear the walls, unless it already overlapped them at the start

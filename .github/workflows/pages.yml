@@ -38,7 +38,12 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: steps.pw.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: node scripts/smoke-prod.mjs smoke-out
+      - name: Production smoke (1 = game broken, blocks; 2 = infra, retried once, then blocks)
+        run: |
+          set +e
+          node scripts/smoke-prod.mjs smoke-out; code=$?
+          if [ "$code" -eq 2 ]; then echo "::warning::smoke infra error (exit 2), retrying once"; node scripts/smoke-prod.mjs smoke-out; code=$?; fi
+          exit $code
       - if: always()
         uses: actions/upload-artifact@v4
         with:

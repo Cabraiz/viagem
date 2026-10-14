@@ -179,6 +179,15 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
 
 /** True when the plan paints anything (an empty manifest, or `arte=0`, gives false). */
 export const planHasArt=(plan:CityArtPlan|undefined)=>!!plan&&plan.sheets.length>0;
+/**
+ * True when the plan has building or rubble sheets (any lot pool). Without them (a manifest of props, ground or the
+ * fountain only) the blocks keep the procedural columns: no fill, no mounds (a whole city of mounds would read as
+ * invisible walls).
+ */
+export const planHasBuildingArt=(plan:CityArtPlan|undefined)=>{
+  const b=plan?.buildings;
+  return !!b&&b.intact.length+b.ruin.length+b.rubble.length>0;
+};
 
 /** One sheet on a rectangle of a block (cells), turned by `turns` quarter turns (materials.ts buildingFrame). */
 export interface CityLot {id:string;blockId:string;x:number;y:number;w:number;h:number;sheet:CitySheet;
@@ -265,19 +274,20 @@ export interface BlockArt {lots:CityLot[];
  *    ruins, the intact one for buildings), then the other building pool — buildings only;
  * 2. a rubble (`entulho`) piece of at most FILL_MAX_AREA art cells, low — buildings and rubble blocks;
  * 3. else the cell is a mound (MOUND_HEIGHT).
- * Walls, cliffs and gates get nothing (they keep their procedural look). The planLots lots are kept as they are.
+ * Walls, cliffs and gates get nothing (they keep their procedural look), and so does every block of a plan without
+ * building art (planHasBuildingArt). The planLots lots are kept as they are.
  * Pure and deterministic.
  */
 export function fillLots(block:CityBlock,plan:CityArtPlan,lots:readonly CityLot[]):BlockArt{
   const out:BlockArt={lots:[...lots],mounds:[]};
-  if(block.kind!=='building'&&block.kind!=='rubble')return out;
+  if((block.kind!=='building'&&block.kind!=='rubble')||!planHasBuildingArt(plan))return out;
   const u=plan.unit,{x:bx,y:by,w:W,h:H}=block,used=new Uint8Array(W*H);
   for(const l of lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)used[(y-by)*W+(x-bx)]=1;
   const small=(pool:readonly CitySheet[])=>pool.filter(s=>s.footprint![0]*s.footprint![1]<=FILL_MAX_AREA);
   const b=plan.buildings,own=block.kind==='building'?(block.ruined?b.ruin:b.intact):[];
   const other=block.kind==='building'?(block.ruined?b.intact:b.ruin):[];
   // Pools in order: the block's own look, the other building look, rubble.
-  const stages=[small(own),small(other),small(b.rubble)].filter(p=>p.length);
+  const stages=[small(own),small(other),small(b.rubble)].filter(p=>p.length).map(pool=>({pool,shapes:poolShapes(pool)}));
   const free=(i:number,j:number,w:number,h:number)=>{
     if(i+w>W||j+h>H)return false;
     for(let y=j;y<j+h;y++)for(let x=i;x<i+w;x++)if(used[y*W+x])return false;
@@ -288,8 +298,8 @@ export function fillLots(block:CityBlock,plan:CityArtPlan,lots:readonly CityLot[
     if(used[j*W+i])continue;
     const seed=hashId(`${block.id}@f${i},${j}`);
     let placed=false;
-    for(const pool of stages){
-      const shapes=poolShapes(pool).filter(f=>free(i,j,f.w*u,f.h*u));
+    for(const stage of stages){
+      const pool=stage.pool,shapes=stage.shapes.filter(f=>free(i,j,f.w*u,f.h*u));
       if(!shapes.length)continue;
       const max=shapes[0].w*shapes[0].h,pick=shapes.filter(f=>f.w*f.h===max),shape=pick[seed%pick.length];
       for(let y=j;y<j+shape.h*u;y++)for(let x=i;x<i+shape.w*u;x++)used[y*W+x]=1;

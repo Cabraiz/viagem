@@ -12,10 +12,11 @@ import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
   ART_CELL,CITY_ART_HEIGHT,FILL_MAX_AREA,GROUND_FROM_MANIFEST,LOT_UNIT,MOUND_HEIGHT,blockArt,buildCityArtPlan,cityArtOptions,fillLots,
-  fountainLot,moundPiece,pieceFamily,planHasArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
+  fountainLot,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
 import type {CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {blockPieces} from '../../src/client/render/city/chunks.ts';
+import {shadowUnion} from '../../src/client/render/city/decor.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,CityMaterials,buildingAnchor,buildingFrame} from '../../src/client/render/city/materials.ts';
 import {TILE_X,TILE_Y,HEIGHT_PX,rotate} from '../../src/client/render/city/projection.ts';
@@ -306,4 +307,34 @@ test('mound piece: low rubble look, no ruin roof, seams as given; never above th
     assert.deepEqual(m.seams,{n:false,s:true,e:false,w:true});
   }
   assert.ok(MOUND_HEIGHT<=0.3+1e-9,'as low as the maps rubble blocks');
+});
+
+test('mound shadow: as long as the mound is tall, not the building', ()=>{
+  const asset=realCity(),b=asset.blocks.find(x=>x.kind==='building'&&x.height>1)!;
+  const [p]=blockPieces(asset,b),open={n:false,s:false,e:false,w:false},solo={...p,seams:open},m=moundPiece(p,open);
+  const region={x0:0,y0:0,x1:asset.width,y1:asset.height};
+  const area=(prims:ReturnType<typeof shadowUnion>)=>prims.reduce((n,q)=>{
+    const pts=q.points??[];
+    let a=0;for(let i=0;i<pts.length;i++){const u=pts[i],v=pts[(i+1)%pts.length];a+=u.x*v.y-v.x*u.y;}
+    return n+Math.abs(a)/2;
+  },0);
+  for(const view of [0,1,2,3]){
+    const full=area(shadowUnion([solo],asset,region,view)),low=area(shadowUnion([m],asset,region,view));
+    assert.ok(low>0&&low<full,`view ${view}: the mound (${m.height} u) casts less than the ${b.height.toFixed(2)} u building`);
+    const look={length:1,color:0,alpha:1},foot=area(shadowUnion([{...m,height:0}],asset,region,view,undefined,look));
+    // Shadow length grows with the height: the mound's extra area over the bare footprint is height × the building's / its height.
+    const extra=(h:number)=>area(shadowUnion([{...m,height:h}],asset,region,view,undefined,look))-foot;
+    assert.ok(Math.abs(extra(m.height)*b.height/m.height-extra(b.height))<1e-6*Math.max(1,extra(b.height)),'uses the mound height');
+  }
+});
+
+test('a manifest with art but no building sheets keeps the procedural columns (no fill, no mounds)', ()=>{
+  const idx=demoIndex();
+  idx.groups.predios.pieces={};
+  const plan=buildCityArtPlan(idx,{height:'b'});
+  assert.equal(planHasArt(plan),true,'props and the ground are still art');
+  assert.equal(planHasBuildingArt(plan),false);
+  for(const b of realCity().blocks)assert.deepEqual(blockArt(b,plan),{lots:[],mounds:[]},b.id);
+  assert.equal(planHasBuildingArt(repoPlan()),true);
+  assert.equal(planHasBuildingArt(buildCityArtPlan(demoIndex(),{enabled:false})),false);
 });

@@ -24,7 +24,7 @@ const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HE
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
-import {ART_CELL,blockArt,fountainLot,moundPiece,planHasArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
+import {ART_CELL,blockArt,fountainLot,moundPiece,planHasArt,planHasBuildingArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -163,6 +163,8 @@ export class CityLayer {
   private readonly art?:CityArtPlan;
   private readonly lotAt=new Map<number,CityLot>();
   private readonly fountain?:CityLot;
+  /** Building cells without art shown are low mounds (moundOf): only when the plan has building art at all. */
+  private readonly mounds:boolean=false;
   private readonly still=reducedMotion();
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
@@ -189,6 +191,7 @@ export class CityLayer {
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
+      this.mounds=planHasBuildingArt(art);
       for(const b of drawn.blocks)for(const lot of blockArt(b,art).lots){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
@@ -314,11 +317,11 @@ export class CityLayer {
   }
 
   /**
-   * With the art on, a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
+   * With building art on (planHasBuildingArt), a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
    * as the low mound; its seams stay only toward the block's other mounds. Undefined for every other piece.
    */
   private moundOf(piece:BlockPiece):BlockPiece|undefined{
-    if(!this.art||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
+    if(!this.mounds||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
     const {width}=this.asset,bare=(cx:number,cy:number)=>{
       const lot=this.lotAt.get(cy*width+cx);
       return !lot||!this.scene.textures.exists(lot.sheet.key);
@@ -490,7 +493,8 @@ export class CityLayer {
     decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
-    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)casters.push(...(this.index.get(i,j)?.pieces??[]));
+    // A mound (moundOf) casts its own low shadow, not the building's.
+    for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)for(const p of this.index.get(i,j)?.pieces??[])casters.push(this.moundOf(p)??p);
     const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
 
     const box=boundsOf(quads.flatMap(q=>q.points));

@@ -50,6 +50,21 @@ test('items walked over go to a free slot; consumables stack to 3; a full invent
   assert.ok([...world.pickups.values()].some(x=>x.kind==='item'&&x.resource==='faca'),'the faca on the ground');
 });
 
+test('"Trocar" a coxinha with six weapons swaps the last slot that is not the hand: the hand keeps its weapon',()=>{
+  const {s,step,p,world}=manual();
+  const me=p();
+  for(const id of ['pistola','escopeta','rifle','macarico','rojao'])dropItem(world,me,{id,level:4});
+  step();
+  assert.equal(me.build.weapons.length,INVENTORY_SLOTS);
+  me.build.hand=INVENTORY_SLOTS-1;
+  const cox=dropItem(world,me,{id:'coxinha',level:1});step();
+  assert.equal(s.inventory('p0',{t:'take',pickup:cox.id}).ok,true);
+  assert.equal(me.build.weapons[INVENTORY_SLOTS-1].id,'rojao','the hand keeps the rojão');
+  assert.equal(me.build.hand,INVENTORY_SLOTS-1);
+  assert.equal(me.build.weapons[INVENTORY_SLOTS-2].id,'coxinha');
+  assert.ok([...world.pickups.values()].some(x=>x.kind==='item'&&x.resource==='macarico'),'the macarico on the ground');
+});
+
 test('equip puts a weapon in the hand (a short swap), and only the hand fires',()=>{
   const {s,step,p,world}=manual();
   const me=p();

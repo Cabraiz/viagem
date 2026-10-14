@@ -136,9 +136,11 @@ export function take(ctx:SimContext,p:SimPlayer,pickupId:string):InventoryResult
   if(add(p,item)){ctx.pickups.delete(pickupId);emitTake(ctx,p,pickup);return OK;}
   // A stack that fitted in part: what is left stays on the ground (and swaps below like a whole one).
   pickup.value=item.level;
-  // Full: swap. A weapon takes the hand's slot; a consumable the last consumable slot (or the hand's, if none).
-  const inv=p.build.weapons;
-  const slot=isWeaponItem(item)?(p.build.hand??0):Math.max(inv.map(isConsumableItem).lastIndexOf(true),0);
+  // Full: swap. A weapon takes the hand's slot; a consumable the last consumable slot (with none, the last slot that is
+  // not the hand: the six are weapons then, so the hand keeps firing).
+  const inv=p.build.weapons,hand=p.build.hand??0;
+  const lastConsumable=inv.map(isConsumableItem).lastIndexOf(true);
+  const slot=isWeaponItem(item)?hand:lastConsumable>=0?lastConsumable:(hand===inv.length-1?inv.length-2:inv.length-1);
   const out=inv[slot];
   inv[slot]={id:item.id,level:item.level};
   ctx.pickups.delete(pickupId);

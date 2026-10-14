@@ -166,7 +166,13 @@ export type SimEvent=
   | {type:'part';name:string}
   | {type:'moto';mode:MotoMoment;alone?:true}
   | {type:'sale';enemy:string}
-  | {type:'buy';player:string;item:CidaItemId};
+  | {type:'buy';player:string;item:CidaItemId}
+  /**
+   * Bancos (rules/bancos.ts): a withdrawal of `amount` R$ from bank `bank` (by: a hero holding it, or a critter robbing
+   * it: `enemy`), and a critter that became a Cliente Prime there.
+   */
+  | {type:'bank-cash';bank:string;amount:number;by:'hero'|'enemy';enemy?:string}
+  | {type:'bank-prime';bank:string;enemy:string};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

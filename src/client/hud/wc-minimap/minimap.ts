@@ -20,7 +20,8 @@ export function teamColor(players:readonly {id:string}[],id:string):string{
 export interface MmUnit {x:number;y:number}
 export interface MmAlly extends MmUnit {color:string;downed?:boolean}
 export interface MmEnemy extends MmUnit {boss?:boolean}
-export interface MmStructure extends MmUnit {kind:'base'|'tower'|'site'|'barricade';hit?:boolean}
+/** `nest` (D-051): an enemy nest someone has seen, its roof sized by `size`. */
+export interface MmStructure extends MmUnit {kind:'base'|'tower'|'site'|'barricade'|'nest';hit?:boolean;size?:'P'|'M'|'G'}
 /** Extra marks of other cards (the keymaker's moto, car and route, D-047): a dot, or a dashed line through `points`. */
 export interface MmExtra {kind:string;x:number;y:number;color?:string;points?:readonly Pt[]}
 export interface MmInput {
@@ -34,6 +35,8 @@ export interface MmInput {
 }
 
 const PING_MS=1600;
+/** A nest's mark half-size (minimap px) by its size. */
+const NEST_MARK={P:3.2,M:4,G:5} as const;
 
 export class WcMinimap {
   readonly el:HTMLDivElement;
@@ -101,7 +104,15 @@ export class WcMinimap {
       ctx.beginPath();x.points.forEach((q,i)=>{toMini(q,f,p);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);});
       ctx.setLineDash([3*unit,2*unit]);ctx.lineWidth=1.6*unit;ctx.strokeStyle=x.color??'#fff4d6';ctx.stroke();ctx.setLineDash([]);
     }
+    // Nests (D-051): an enemy building's red roof (WC3), under the other marks.
+    for(const s of input.structures)if(s.kind==='nest'){
+      toMini(s,f,p);if(!insideMini(p,f))continue;
+      const r=NEST_MARK[s.size??'M']*unit;
+      ctx.beginPath();ctx.moveTo(p.x,p.y-r);ctx.lineTo(p.x+r,p.y-r*.15);ctx.lineTo(p.x+r*.75,p.y+r*.8);ctx.lineTo(p.x-r*.75,p.y+r*.8);ctx.lineTo(p.x-r,p.y-r*.15);ctx.closePath();
+      ctx.fillStyle='#b3261e';ctx.fill();ctx.lineWidth=1.2*unit;ctx.strokeStyle='#fff4d6';ctx.stroke();
+    }
     for(const s of input.structures){
+      if(s.kind==='nest')continue;
       toMini(s,f,p);if(!insideMini(p,f))continue;
       const r=(s.kind==='base'?4.5:s.kind==='site'?1.6:2.4)*unit;
       ctx.fillStyle=s.kind==='base'?'#fff4d6':s.kind==='site'?'rgba(255,244,214,.55)':s.kind==='barricade'?'#c9a46a':'#7fd1ff';

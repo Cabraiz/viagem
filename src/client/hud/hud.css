@@ -381,6 +381,8 @@
   .rh-offer:not(.rh-offer-clock){padding-top:5px}
   .rh-offer-deadline{top:2px;left:5px;right:5px}
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
+  /* D-050: the level-up pause's window is the same right column. */
+  .rh:has(.rh-offer[data-mode=pause]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
   .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);max-width:calc(50vw - 44px - var(--rh-r))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
 }

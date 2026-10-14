@@ -24,8 +24,13 @@
  * by critters and gems in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
  * when its pulls cancel out (HOLD_BELOW), and a roamer hunts the wave's last few critters (HUNT_LEFT). Everywhere else
  * the bot is the same as before, byte for byte.
+ * Chaveiro objective (D-047, the room bots: BrainInput.teamBots, view.objective): home is the car ('quadradao'); with
+ * the moto dead ('morta') the PUSH_BOTS standing bots nearest to it walk over and stand by it (the tranco); with a
+ * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
+ * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
  */
 import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
+import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,canPay,returnTicks,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
@@ -69,7 +74,9 @@ export const ROAM_IN=1;
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
 /** City, combat: a wanted move shorter than this (the pulls cancel out) is no move. */
 export const HOLD_BELOW=.15;
-type Chase='rescueGoal'|'escortGoal'|'huntGoal';
+type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal';
+/** D-047: bots that push a dead moto, and how close (u) they stand to it (inside the sim's PUSH_RADIUS, 2.5). */
+export const PUSH_BOTS=2,PUSH_STAND=1.5;
 
 export interface BrainMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
@@ -79,7 +86,7 @@ export interface BrainMemory {
   /** Recipes the forge refused, by round index (Bot fills it from {t:'forged'}): not asked again this intermission. */
   refused:Partial<Record<RecipeId,number>>;
   /** City only: the goal cells of the moving targets (fallen friend, person walked with, critter hunted) last routed to (bot-routes keep). */
-  rescueGoal?:number;escortGoal?:number;huntGoal?:number;
+  rescueGoal?:number;escortGoal?:number;huntGoal?:number;motoGoal?:number;
   /** City only: walking back to the anchor until HOME_SLACK inside the leash. */
   homing?:boolean;
 }
@@ -108,13 +115,18 @@ export interface BrainInput {
    * follows them once they leave the wall's leash; guards (even index) keep the wall. Unset: wall only (protocol bots).
    */
   escort?:Point;
+  /**
+   * D-047 (the chaveiro objective): the room's bots, so each one knows whether it is one of the pushers of a dead moto
+   * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
+   */
+  teamBots?:readonly string[];
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -123,8 +135,33 @@ const toward=(from:Point,to:Point,weight=1):Point=>{const n=norm({x:to.x-from.x,
 const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
 export function wallOf(view:RunView):StructureView|undefined{return view.structures.find(s=>s.kind==='muralha');}
-/** Home: the wall (the camp is around it); before the first frame with structures, where the run spawned us. */
-export function homeOf(view:RunView,fallback:Point):Point{const w=wallOf(view);return w?{x:w.x,y:w.y}:fallback;}
+/**
+ * Home: the wall (the camp is around it), or the car where it stands instead (D-047, kind 'quadradao'); before the
+ * first frame with structures, where the run spawned us.
+ */
+export function homeOf(view:RunView,fallback:Point):Point{
+  const w=view.structures.find(s=>s.kind==='muralha'||s.kind===CAR_ID);return w?{x:w.x,y:w.y}:fallback;
+}
+/**
+ * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
+ * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
+ * (nearest to the point among the standing bots that do not push and do not forge). `at`: where to go.
+ */
+export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null):{kind:'push'|'clear';at:Point}|undefined{
+  const o=view.objective;
+  if(!o||o.ended)return undefined;
+  const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p));
+  const byDistance=(to:Point,list:readonly PlayerRunView[])=>[...list].sort((a,b)=>dist(positionOf(a)!,to)-dist(positionOf(b)!,to)||(a.id<b.id?-1:a.id>b.id?1:0));
+  const moto={x:o.moto.x,y:o.moto.y};
+  const pushers=o.moto.mode==='morta'?byDistance(moto,ready).slice(0,PUSH_BOTS).map(p=>p.id):[];
+  if(pushers.includes(selfId))return {kind:'push',at:moto};
+  const d=o.delivery;
+  if(d&&d.etaS<=DELIVERY_MARK_SECONDS){
+    const free=byDistance(d,ready.filter(p=>!pushers.includes(p.id)&&p.id!==forger))[0];
+    if(free?.id===selfId)return {kind:'clear',at:{x:d.x,y:d.y}};
+  }
+  return undefined;
+}
 
 /** The standing bot that spends the balance: the first standing player by id (every bot computes the same one). */
 export function forgerId(view:RunView):string|undefined{
@@ -195,7 +232,9 @@ export function decide(input:BrainInput):Decision{
     if(tick-memory.lastSosTick>=SOS_GAP){decision.sos=true;memory.lastSosTick=tick;}
     return decision;
   }
-  const home=homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
+  const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger):undefined;
+  // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
+  const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
@@ -226,6 +265,22 @@ export function decide(input:BrainInput):Decision{
       if(score>bestScore){bestScore=score;best=d;}
     }
     if(best){decision.direction=best;decision.mode='dodge';return finish(decision,input);}
+  }
+  // D-047: a dead moto: walk over and stand by it until it starts (the sim counts two standing within PUSH_RADIUS).
+  if(task?.kind==='push'){
+    decision.mode='push';
+    if(dist(at,task.at)>PUSH_STAND)want=go(task.at,1,'motoGoal');
+    want=add(want,repel(view.enemies,at,.8));
+    decision.direction=norm(want);
+    return finish(decision,input);
+  }
+  // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
+  if(task?.kind==='clear'&&prepare){
+    decision.mode='clear';
+    if(dist(at,task.at)>2)want=go(task.at);
+    want=add(want,repel(view.enemies,at,.8));
+    decision.direction=norm(want);
+    return finish(decision,input);
   }
   if(prepare&&round){
     const toHome=dist(at,home),left=round.phaseEndsTick-tick,walkHome=city?botRouteDistance(city,at,home):toHome;
@@ -361,7 +416,8 @@ export function decide(input:BrainInput):Decision{
   }
   // Home pulls harder the farther out we are.
   if(out>0||homing){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
-  if(decision.mode==='fight'&&escorting)decision.mode='escort';
+  if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
+  else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&dist(at,home)>leash+2)decision.mode='home';
   // City: pulls that cancel out (a critter past the leash against the walk back, in a lane with no room to circle) hold
   // the bot where it stands, instead of a full step one way and the other each think.

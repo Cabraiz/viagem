@@ -9,9 +9,10 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,TerrainField,decodeCityAsset,worldBase,worldSpawn,buildPlanFor,validateBuildPlan,footprint,railRect,rectDistance,
-  CITY_BUILD_CELL,CITY_SITE_CELL,ENDLESS_BUILD_CELL,MIN_SITES,MAX_SITES,type BuildPlan,type BuildSite,
+  CITY_BUILD_CELL,CITY_SITE_CELL,MOUTH_KEEP_OUT,ENDLESS_BUILD_CELL,MIN_SITES,MAX_SITES,type BuildPlan,type BuildSite,
 } from '../../src/maps/index.ts';
 import {CITY_MAP_SCALE,scaleProfile} from '../../src/rules/index.ts';
+import {BARRICADE_MAX_R} from '../../src/sim/stonewards/barricades.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const decoded=decodeCityAsset(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'));
@@ -93,4 +94,8 @@ test('a ring of builds that walls the camp in is refused: the base must stay rea
   for(let i=0;i<16;i++){const a=i/16*2*Math.PI;sites.push({id:`r${i}`,x:base.x+6*Math.cos(a),y:base.y+6*Math.sin(a),maxSize:2});}
   const out=reasons({cell:ENDLESS_BUILD_CELL,sites,rail:null},t);
   assert.ok(out.some(r=>/não chega na base/.test(r)),out.join('\n'));
+});
+
+test('MOUTH_KEEP_OUT is the barricade\'s largest seal (kept by hand: maps may not import the sim)',()=>{
+  assert.ok(Math.abs(MOUTH_KEEP_OUT-BARRICADE_MAX_R)<1e-9,`${MOUTH_KEEP_OUT} vs ${BARRICADE_MAX_R}`);
 });

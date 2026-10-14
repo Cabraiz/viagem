@@ -25,6 +25,8 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
+import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -75,6 +77,12 @@ export interface RunSystemsOptions {
    * clock and round (SimWorld.load) before the first step. Deep-copied here; the caller's object is never kept.
    */
   checkpoint?:RunSystemsState;
+  /**
+   * D-047: the match objective. 'chaveiro' (city only; ignored elsewhere): the car replaces the wall, the chaveiro's moto
+   * rides to it (chaveiro/system.ts), the rounds become waves (DirectorOptions.endlessWaves) and the boss is called by
+   * the chaveiro's ETA; victory when he opens the car, defeat when it is a total loss or the team falls. Default off.
+   */
+  objective?:ObjectiveKind;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -82,6 +90,8 @@ export interface RunSystemsState {
   /** Completed revives per rescuer (ReviveSystem.revives), as entries. */
   revives:[string,number][];
   stonewards:StonewardsState;zueira:ZueiraState;
+  /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
+  chaveiro?:ChaveiroState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -91,6 +101,10 @@ export interface RunSystems {
   zueira:ZueiraSystem;
   /** City world (cidade-05): the avenue planner shared by the director and the enemy steer (cidade-06: barricades → invalidate). */
   avenues?:AvenuePlanner;
+  /** D-047: the chaveiro objective of this run (city with RunSystemsOptions.objective 'chaveiro'), else absent. */
+  chaveiro?:ChaveiroSystem;
+  /** D-047: the objective as the HUD and the bots see it; undefined without one. */
+  objectiveView():ObjectiveView|undefined;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
   state():RunSystemsState;
   dispose():void;
@@ -139,7 +153,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // D-016: once the director is done (boss down), a same-tick wipe is not a defeat. The director only reaches 'done'
   // on its next step, so the boss's killing blow also ends the run right away.
   let bossDown=false;
-  const runEnded=()=>bossDown||director!.state.stage==='done';
+  // D-047: the chaveiro decides the run instead of the boss and the round count (created below, city only).
+  let chaveiro:ChaveiroSystem|undefined;
+  const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
   // D-017 (E8-wall-siege-single-path): the enemy-ai is the only path that hurts the wall. It walks siege enemies to it
@@ -147,6 +163,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  const objective=cityWorld&&options.objective==='chaveiro'?options.objective:undefined;
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
     if(input&&Math.hypot(input.x,input.y)>=.01)steered.add(id);
@@ -191,8 +208,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // City only: the crowd's separation push is clamped to the same peak (endless/island pacing stays as tuned).
     capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
-    structures:()=>structureTargets(stonewards.state),
-    hitStructure:(ctx,id,amount)=>{stonewards.hit(ctx,id,amount);},
+    // D-047: the car (and the riding moto) instead of the wall; the car's hits go to the chaveiro, the moto takes none.
+    structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
+    hitStructure:(ctx,id,amount,enemy)=>{
+      if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
+      else if(!(chaveiro&&id===MOTO_ID))stonewards.hit(ctx,id,amount);
+    },
     // Invocador (D-040): the round's corredores and enxames, spawned and tracked by the director as round members.
     minionKinds:()=>director?.minionKinds()??MINION_KINDS,
     summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
@@ -210,8 +231,17 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(cityBalance&&hasTeamBossHp(cityBalance)?{hpScale:(ctx:SimContext)=>teamBossHp(cityBalance,director?.state.plan?.players??director?.scalePlayers(ctx))}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
-    onDefeated:()=>onOutcome('victory'),
+    onDefeated:()=>{if(!objective)onOutcome('victory');},
+    // D-047: the boss besieges the car (10 hits a blow) when no player is nearer.
+    ...(objective?{siege:()=>chaveiro?.targets().find(t=>t.id===CAR_ID),hitSiege:(ctx:SimContext,id:string,b:EnemyState)=>{if(id===CAR_ID)chaveiro?.hitCar(ctx,b);}}:{}),
   });
+  // D-047: a checkpoint keeps no live enemy, so a boss the chaveiro called that still stood at the intermission would
+  // come back as beaten (its 'defeat' line and a free chest, never called again). Forget that fight instead (its rng
+  // stream kept): the chaveiro calls it again on the first step, its ETA being under BOSS_ETA_SECONDS already.
+  if(cp&&objective&&cp.boss.bossId!==undefined&&!cp.boss.defeated){
+    cp.boss={defeated:false,lastX:0,lastY:0,minions:[],pending:[],...(cp.boss.rng!==undefined?{rng:cp.boss.rng}:{})};
+    if(cp.chaveiro)cp.chaveiro.bossCalled=false;
+  }
   if(cp)boss.restore(cp.boss);
   director=createDirector({
     maxEnemies:MAX_ENEMIES,
@@ -225,7 +255,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     intermissionSeconds:STONEWARDS_INTERMISSION_SECONDS,siegeShare:SIEGE_SHARE,siegeFromRound:SIEGE_FROM_ROUND,
     rotation:options.rotation??true,
     // The last call walks siege bodies to the wall they besiege (pacote-bugs-ux, code review).
-    siegeTarget:()=>{const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;},
+    siegeTarget:()=>{
+      if(chaveiro)return chaveiro.state.car;
+      const {wall,wallDown}=stonewards.state;return wallDown?undefined:wall;
+    },
+    ...(objective?{endlessWaves:true}:{}),
     // City: catalog speeds for the planner's estimates, converted with plan.speed by speedMap (the bodies' speeds);
     // groups aimed at a team away from the base.
     ...(avenues?{avenues,speedMap:citySpeed,enemySpeedOf:(kind:string)=>isEnemyKind(kind)?enemyDef(kind).speed:undefined,...(steer?{cityChase:steer}:{}),
@@ -237,6 +271,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // round 2. Set (or cleared) on every run; absent unless some team size has a damage knob, so damagePlayer is unchanged.
   const damageScale=cityBalance&&hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
   world.playerDamageScale=damageScale;
+  if(objective&&openPlanner&&cityTerrain){
+    const p=cityTerrain.asset.points,wall=stonewards.state.wall;
+    chaveiro=createChaveiro({seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
+      onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
+      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
+  }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   world.clearSystems();
@@ -247,7 +287,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
-    progression.progression,revive,stonewards,
+    progression.progression,revive,
+    // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
+    chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx)=>{
@@ -255,15 +297,18 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
+    chaveiro?.onKill(enemy);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
-    if(enemy.boss){bossDown=true;onOutcome('victory');}
+    if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}
   });
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),
-    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),
+    objectiveView:()=>chaveiro?.view(world.tick),
+    state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
+      ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
     dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

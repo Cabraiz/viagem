@@ -286,7 +286,9 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  * tutorial's welcome at 40 / HERO_SPEED_MULT s and citySteer rebuilding a field after an idle tick; the island is unchanged.
  * The city again for cidade-escala-1-7 (asset v2, the map × 1.7); the island and the endless map are unchanged.
  */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'1edc8e7ee1adb98a',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
+// cidade re-recorded by ataque-fora-do-alcance (straight shots no longer fire into the air with nobody in reach), then for
+// cidade-escala-1-7 on top of it.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'e2c8b551c0bb1bdb',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

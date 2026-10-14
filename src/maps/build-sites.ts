@@ -33,8 +33,11 @@ export const ENDLESS_BUILD_CELL=1.616;
 export const MIN_SITES=12,MAX_SITES=16;
 /** No footprint within this of the wall: the forge is worked from beside it and the bots come home to it. */
 export const BASE_KEEP_OUT=3;
-/** No footprint within this of a city mouth: the barricade seal grows up to 4 u (sim/stonewards/barricades.ts). */
-export const MOUTH_KEEP_OUT=4;
+/**
+ * No footprint within this of a city mouth: the barricade seal grows up to BARRICADE_MAX_R (sim/stonewards/barricades.ts),
+ * 4 u × CITY_MAP_SCALE 1.7 = 6.8 u since cidade-escala-1-7 (maps may not import rules/sim: the same value, kept by hand).
+ */
+export const MOUTH_KEEP_OUT=6.8;
 /** No footprint within this of the players' spawn point. */
 export const SPAWN_KEEP_OUT=1.5;
 

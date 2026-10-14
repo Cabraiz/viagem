@@ -11,8 +11,8 @@
  * as a type only.
  */
 import type Phaser from 'phaser';
-import {artPiece} from './manifest.ts';
-import {ENEMY_ART_ID,chooseAnim,enemyFrameAt} from './horde-art.ts';
+import {artPages,artPiece,artUrl} from './manifest.ts';
+import {ENEMY_ART_ID,chooseAnim,enemyFrameAt,liteEnemyUrl} from './horde-art.ts';
 import {markArt,markFrame,placeMark,sliceArt,type MarkArt,type SliceArt} from './frames-art.ts';
 import {uiArtUrl} from '../ui/icon.ts';
 import {ENEMY_KINDS,isEnemyKind,type EnemyKind} from '../render/keys.ts';
@@ -23,18 +23,34 @@ export const CRITTER_ICON_IDS:Readonly<Record<EnemyKind,string>>=Object.fromEntr
 
 /** Where a critter's icon comes from: an imported UI file (`url`), or a frame of a loaded enemy texture (`key`, `frame`). */
 export type CritterIconSource={url:string}|{key:string;frame:number};
+/** Art id of a critter: a legacy kind's ENEMY_ART_ID, any other id (a roster id, D-040/D-045) is its own (enemyArtId). */
+const critterArtId=(id:string)=>isEnemyKind(id)?ENEMY_ART_ID[id]:id;
 /**
- * Imported source of `kind`'s HUD icon, or undefined (today's procedural texture). Unknown kinds ('bichos') have none.
+ * Imported source of the critter `id`'s HUD icon (a legacy kind or a roster id, with its own art), or undefined (today's
+ * procedural texture). A roster id never borrows its base kind's art; unknown ids ('bichos') have none.
  * The enemy-sheet fallback is frame 0, row 0 (S: facing the camera) of the still animation chooseAnim picks.
  */
-export function critterIconSource(kind:string):CritterIconSource|undefined{
-  if(!isEnemyKind(kind))return undefined;
-  const url=uiArtUrl(CRITTER_ICON_IDS[kind]);
+export function critterIconSource(id:string):CritterIconSource|undefined{
+  const art=critterArtId(id),url=uiArtUrl(`inimigo-${art}`);
   if(url)return {url};
-  const id=ENEMY_ART_ID[kind],piece=artPiece('inimigos',id);
+  const piece=artPiece('inimigos',art);
   const anim=piece&&chooseAnim(piece,false);
-  const ref=piece&&anim?enemyFrameAt(id,piece,anim,0,0):undefined;
+  const ref=piece&&anim?enemyFrameAt(art,piece,anim,0,0):undefined;
   return ref?{key:ref.key,frame:ref.frame}:undefined;
+}
+/**
+ * The same still frame as a plain file for the DOM (no Phaser texture): the ui icon (one cell), else the frame's cell in
+ * the lite copy of the enemy sheet the horde loads (columns × rows of that page). Undefined: no art of its own.
+ */
+export interface CritterSheetFrame {url:string;cell:readonly [number,number];col:number;row:number;columns:number;rows:number}
+export function critterSheetFrame(id:string):CritterSheetFrame|undefined{
+  const art=critterArtId(id),icon=uiArtUrl(`inimigo-${art}`);
+  if(icon){const cell=artPiece('ui',`inimigo-${art}`)?.files.sheet?.cell??[128,128];return {url:icon,cell,col:0,row:0,columns:1,rows:1};}
+  const piece=artPiece('inimigos',art),anim=piece&&chooseAnim(piece,false),file=anim?piece?.files[anim]:undefined;
+  const page=file&&Array.isArray(file.cell)?artPages(file).find(p=>p.firstFrame===0&&p.frameCount>0):undefined;
+  const url=page&&artUrl('inimigos',page.file);
+  if(!file||!page||!url)return undefined;
+  return {url:liteEnemyUrl(url),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
 }
 
 /**

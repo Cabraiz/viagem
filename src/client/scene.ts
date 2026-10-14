@@ -847,19 +847,21 @@ export class IslandScene extends Phaser.Scene {
     return best;
   }
   private icons=new Map<string,string>();
-  /** Sticker of the critter `id` (any roster id) for the HUD ("what got you"): the horde atlas texture of the kind drawn for it, as a data URL, cached per drawn kind. */
+  /**
+   * Sticker of the critter `id` (a legacy kind or any roster id) for the HUD ("what got you", the kill-cam portrait), as
+   * a URL or a data URL, cached per id: its own imported art (art/hud-art.ts: the ui icon, else its sheet's still frame,
+   * by its own id: a roster id never borrows its base kind's art), else the procedural texture the horde draws for it.
+   */
   critterIcon(id:string){
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
-    // A roster entry without art (D-040) shows its role's stand-in, like the horde draws it.
     const kind=drawnKind(id);
     if(!kind)return undefined;
-    let url=this.icons.get(kind);
+    let url=this.icons.get(id);
     if(url===undefined){
-      // Imported art first (art/hud-art.ts: the ui icon, else the enemy sheet's still frame); none or not loaded: today's.
-      const art=critterIconSource(kind);
-      if(art&&'url' in art)url=art.url;
-      else{const own=art&&this.textures.exists(art.key)?art:undefined,key=enemyTexture(kind);url=own?this.textures.getBase64(own.key,own.frame):this.textures.exists(key)?this.textures.getBase64(key):'';}
-      if(url)this.icons.set(kind,url);
+      const art=critterIconSource(id),loaded=art&&!('url' in art)&&this.textures.exists(art.key)?art:undefined,key=enemyTexture(id);
+      url=art&&'url' in art?art.url:loaded?this.textures.getBase64(loaded.key,loaded.frame):this.textures.exists(key)?this.textures.getBase64(key):'';
+      // Its own sheet still loading (queued per match): today's texture for now, the art once it is in.
+      if(url&&(!art||'url' in art||loaded))this.icons.set(id,url);
     }
     return url||undefined;
   }

@@ -541,8 +541,11 @@ export class RunHud {
   }
   /** Something outside the HUD's observed parts moved (the obra window opened or closed): zones are measured again. */
   layoutChanged(){this.relayout();}
-  /** The obra window is open: the forge steps aside until it closes (they share the intermission's window place). */
-  yieldForge(obra:boolean){this.obraOpen=obra;this.camp.yieldTo(obra||this.cida.open);}
+  /**
+   * The obra window is open: the forge steps aside until it closes (they share the intermission's window place), and
+   * so does Dona Cida (D-047): her button hides and her tray closes, the last opened window wins (she cannot open over it).
+   */
+  yieldForge(obra:boolean){this.obraOpen=obra;this.cida.yieldTo(obra);this.camp.yieldTo(obra||this.cida.open);}
   /** The offer window is on screen (round offer in the intermission, or a level offer): the obra menu waits for it. */
   get offerShown(){return !this.offerEl.hidden;}
 

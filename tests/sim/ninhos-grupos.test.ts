@@ -20,7 +20,7 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,NEST_GRANA,NEST_MEMORY,RETRY_SECONDS,createNests,groupRange,isSiegeGroup,nestHp,nestPeriod,nestRound,
+import {FIRST_EXIT,NEST_GRANA,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,createNests,groupRange,isSiegeGroup,nestHp,nestPeriod,nestRound,
   type NestCause} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -155,7 +155,8 @@ test('assembled mode ninhos: no round from the director, groups out of the nests
   // The sleepers (E2's sono) come with the plan: every nest's and band's body asleep, out of ctx.enemies.
   const sono=a.sys.sono()!,plan=nests.plan()!;
   assert.ok(sono&&a.world.sleepers===sono.sleepers);
-  assert.equal(sono.sleepers.size,plan.nests.reduce((t,n)=>t+n.sleepers.length,0)+plan.loose.reduce((t,b)=>t+b.members.length,0));
+  // Plus one hit target per standing nest.
+  assert.equal(sono.sleepers.size,plan.nests.reduce((t,n)=>t+n.sleepers.length,0)+plan.loose.reduce((t,b)=>t+b.members.length,0)+plan.nests.length);
   assert.equal(a.world.enemies.size,0);
   stepRun(a,ticks(FIRST_EXIT[0])-2);
   assert.equal(a.world.enemies.size,0,'nothing before 45 s');
@@ -180,12 +181,19 @@ test('assembled mode ninhos: the first hit on a nest wakes its sleepers into the
   const car=a.sys.chaveiro!.state.car;
   addPlayer(a.world,'p1',{x:car.x+1.5,y:car.y});
   stepRun(a);
-  const nests=a.sys.nests!,sono=a.sys.sono()!,id=nests.state.nests[0].id,asleep=sono.asleepIn(id);
+  const nests=a.sys.nests!,sono=a.sys.sono()!,nest=nests.state.nests[0],id=nest.id,asleep=sono.asleepIn(id);
   assert.ok(asleep>0);
-  nests.hit(a.world,id,1);
+  // The players' damage path (damageEnemy) reaches the nest through its target in the sleepers' index.
+  assert.ok(a.world.sleepers!.has(`${NEST_TARGET}${id}`)||a.world.sleepers!.get(`${NEST_TARGET}${id}`),'the nest is a target');
+  assert.equal(a.world.damageEnemy(`${NEST_TARGET}${id}`,10,'p1'),false);
+  assert.equal(nest.hp,nest.maxHp-10);
+  assert.ok(!a.world.enemies.has(`${NEST_TARGET}${id}`),'a target never enters the world');
   assert.equal(sono.asleepIn(id),0);
   for(const b of sono.bodiesOf(id))assert.ok(a.world.enemies.has(b),`${b} awake in the world`);
   assert.ok(a.sys.state().sono,'the sleepers are in the checkpoint');
+  assert.equal(a.world.damageEnemy(`${NEST_TARGET}${id}`,1e9,'p1'),true,'the blow that fells it');
+  assert.equal(nest.down,true);
+  assert.equal(a.world.damageEnemy(`${NEST_TARGET}${id}`,10,'p1'),false,'gone from the index');
   a.sys.dispose();
   assert.equal(a.world.sleepers,undefined);
 });

@@ -55,6 +55,10 @@ export interface Sleepers extends SpatialIndex<EnemyState> {
   has(id:string):boolean;
   get(id:string):EnemyState|undefined;
   wake(ctx:SimContext,id:string,cause:'dano'):EnemyState|undefined;
+  /** A hit target (E1's nests, ninhos/sono.ts HitTarget), not a body: damageEnemy calls strike() instead of wake(). */
+  isTarget(id:string):boolean;
+  /** Lands `amount` (the might already applied) on target `id`; true when it fell. */
+  strike(ctx:SimContext,id:string,amount:number,source?:string,weapon?:string):boolean;
 }
 
 export interface SimSystem {

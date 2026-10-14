@@ -32,6 +32,7 @@ import {ticks} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {isFlying} from '../enemies/catalog.ts';
+import {queryHittable} from '../projectiles.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
@@ -290,9 +291,9 @@ function densest(pool:readonly EnemyState[],area:number):EnemyState{
   return best;
 }
 function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number){
-  const victims:EnemyState[]=[];
-  ctx.enemyIndex.query(at.x,at.y,radius,victims);
-  const list=victims.filter(e=>e.hp>0&&ctx.enemies.has(e.id)&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
+  const victims=queryHittable(ctx,at.x,at.y,radius,[]);
+  const list=victims.filter(e=>e.hp>0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
   for(const e of list)hit(ctx,def,e);
 }
 function hit(ctx:SimContext,def:DefenseDef,e:EnemyState){

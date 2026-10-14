@@ -27,8 +27,8 @@ import {CityTerrain,baseHeroSpeed,cityNestPlan,type NestPlan,type NestSize} from
 import {citySpeed} from './city/speed.ts';
 import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
-import {createSono,type Sono,type SonoState} from './ninhos/sono.ts';
+import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -242,6 +242,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // touches, here. Island and endless keep the catalog speeds untouched.
   const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
+    // D-051: where an alerta or a perdeu walks (the sleepers of a run in mode 'ninhos'; none otherwise).
+    ...(nestMode?{goal:(ctx:SimContext,e:EnemyState)=>sono?.goal(ctx,e)}:{}),
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
     // The BASE hero walk on this terrain (maps baseHeroSpeed): the heroes walk HERO_SPEED_MULT × it, but the enemies
@@ -327,8 +329,20 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
         plan:players=>{
           const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)});
-          sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed},cp?.sono);
-          world.sleepers=sono.sleepers;
+          const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed,
+            // Shots and kills are heard from the previous step's events; the alarm and the riding moto while they last.
+            events:()=>world.lastEvents,
+            ambient:ctx=>{
+              const c=chaveiro!.state,out:AmbientNoise[]=[];
+              if(ctx.tick<c.car.alarmUntil)out.push({key:'alarme',x:c.car.x,y:c.car.y,...NOISE.alarm});
+              if(c.startTick!==null&&c.ended===undefined&&c.moto.task==='anda')out.push({key:'moto',...chaveiro!.moto(),...NOISE.moto});
+              return out;
+            }},cp?.sono);
+          world.sleepers=sleep.sleepers;
+          // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
+          // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).
+          for(const n of plan.nests)if(!cp?.ninhos?.nests.find(c=>c.id===n.id)?.down)sleep.addTarget({id:`${NEST_TARGET}${n.id}`,x:n.x,y:n.y,radius:n.radius,
+            hit:(ctx,amount)=>{sleep.noise(n.id,{x:n.x,y:n.y,...NOISE.nest});return nests!.hit(ctx,n.id,amount);}});
           return plan;
         },
         wake:(ctx,id)=>{sono?.wakeNest(ctx,id,'ninho');},

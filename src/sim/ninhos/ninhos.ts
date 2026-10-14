@@ -37,6 +37,8 @@ const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 export const ROLE_WEIGHT:Readonly<Partial<Record<EnemyRole,number>>>=Object.freeze({
   corredor:4,enxame:3,palhaco:.5,arremessador:1.5,atirador:1.5,suporte:.7,voador:.7,kamikaze:.7,refletor:.7,invocador:.4,brutamontes:.6,
 });
+/** Id prefix of a nest as a hit target (sono's index): `ninho:<nest id>`. */
+export const NEST_TARGET='ninho:';
 /** Enemy memory key: the nest a body came out of (JSON-safe: its index in the plan). */
 export const NEST_MEMORY='nest';
 

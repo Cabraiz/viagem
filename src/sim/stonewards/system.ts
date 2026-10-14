@@ -77,6 +77,8 @@ export interface StonewardsOptions {
   barricadesLater?:boolean;
   /** Replaces the island's obstacles as nodes (tests). */
   obstacles?:readonly Obstacle[];
+  /** Bancos (city): the crate ids this run does not have (a bank stands on their loot point); read on every gather step. */
+  hiddenNodes?:()=>ReadonlySet<string>|undefined;
   wallMaxHp?:number;
   /** The 046A contact siege (siegeStep). The run turns it off: the enemy-ai is the only path that hurts the wall (D-017). */
   siegeContact?:boolean;
@@ -290,7 +292,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
         }
         const lootValue=loot?lootValueNow():1,before=lootValue!==1?{...state.gathered}:undefined;
         const worked=new Set<string>();
-        const got=gatherStep(ctx,state,options.obstacles,state.cityHornIdle?.length?id=>worked.add(id):undefined);
+        const got=gatherStep(ctx,state,options.obstacles,state.cityHornIdle?.length?id=>worked.add(id):undefined,options.hiddenNodes?.());
         if(before)scaleLoot(got,before,lootValue);
         for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
         horn(ctx,loot,loot?wake(worked):false);

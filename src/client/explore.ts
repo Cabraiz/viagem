@@ -124,6 +124,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
+    // D-050: the level-up pause reaches the HUD with each run state (no frame brings it: the tick stands still).
+    net.onRun=run=>hud?.setPause(run.phase==='combat'?run.pause:undefined);
     net.onForged=answer=>hud?.forged(answer);
     net.onBought=answer=>hud?.bought(answer);
     {
@@ -525,7 +527,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
         if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
           if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
-        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.
         ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined,phase==='combat');

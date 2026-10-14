@@ -210,6 +210,8 @@ export class FrameRunFeed implements RunFeed {
       nodes:v?.nodes??[],...(v?.camp?{camp:{...v.camp}}:{}),
       // D-047 (protocol 15): the chaveiro objective, as the decoder holds it (route and stops kept across frames).
       ...(v?.objective?{objective:v.objective}:{}),
+      // Bancos: the city's ATMs, as the decoder holds them (id, place and name kept across frames).
+      ...(v?.banks?{banks:v.banks}:{}),
       players:this.bots.size&&v?v.players.map(p=>this.bots.has(p.id)?{...p,bot:true}:p):v?.players??[],offers:this.offers,events,
     };
   }

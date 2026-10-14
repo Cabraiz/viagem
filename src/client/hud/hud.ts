@@ -5,7 +5,7 @@
  */
 import './hud.css';
 import './you.css';
-import type {RunView} from '../../contract/index.ts';
+import type {RunPause,RunView} from '../../contract/index.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
@@ -33,6 +33,8 @@ import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
 import {icon} from '../ui/icon.ts';
 import type {CidaItemId} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
+import './pausa.css';
+import {createPausePart} from './pausa.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -71,6 +73,8 @@ export interface RunHudOptions {
    * 'mouse' the desktop's. Defaults to the fine-pointer query; the shell keeps it in step with setInput.
    */
   input?:InputKind;
+  /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
+  pauseClock?():number;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -184,8 +188,10 @@ export class RunHud {
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
     stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
-    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el);
+    // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
+    const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
+    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida,pausa];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
@@ -223,6 +229,14 @@ export class RunHud {
 
   /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
   emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}
+
+  /** D-050: the room's level-up pause (net.run.pause), or undefined; the parts see it at once, on the last view. */
+  setPause(pause?:RunPause){
+    const was=this.ctx.pause;
+    if(was===pause||(!!was&&!!pause&&was.leftMs===pause.leftMs&&was.totalMs===pause.totalMs&&was.level===pause.level&&was.waiting.join()===pause.waiting.join()))return;
+    if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
+    if(this.last)this.update(this.last);
+  }
 
   update(view:RunView){
     this.last=view;

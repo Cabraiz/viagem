@@ -39,6 +39,10 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
+  // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.
+  'pausa-escolhendo':{sandbox:'hud',query:'pausa=escolhendo&frozen=1&heroi=1',descricao:'pausa do level-up: oferta aberta, 10 s, esperando você, Tia e Bruninha'},
+  'pausa-esperando':{sandbox:'hud',query:'pausa=esperando&frozen=1&heroi=1',descricao:'pausa do level-up: você já escolheu, esperando 2'},
+  'pausa-ultimo':{sandbox:'hud',query:'pausa=ultimo&frozen=1&heroi=1',descricao:'pausa do level-up: os 3 s finais, "Falta você!"'},
   'minimapa':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=prepare&frozen=1',descricao:'HUD da cidade: minimapa WC3, setas, chaveiro'},
   'bancos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&bancos=1&state=wave&frozen=1',descricao:'HUD da cidade com bancos: seta do roubado (Cone), "$" no minimapa, "Bicho sacando no …!"'},
   'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},

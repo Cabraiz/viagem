@@ -34,8 +34,10 @@ export const BANK_EMPTY='SEM CÉDULAS';
 /**
  * The numbers (world units, seconds, R$). The sim reads them; the bench tunes them (target: the banks give 25–35 % of a
  * run's Grana).
- * - count: banks per run, drawn by the seed among the city's loot points, one per third of the map, at least distCarro
- *   from the car and desvio[0]..desvio[1] from the moto's route.
+ * - count: banks per run, drawn by the seed on the streets around the car (a ring distCarro..distCarroMax, sampled;
+ *   the loot points only as a fallback), one per third of the map, desvio[0]..desvio[1] from the moto's route. Close
+ *   enough for an intermission trip (there, 2 notes and back in ~25 s of a 30 s intermission): on the loot points (the
+ *   nearest is 40 u from the plaza) the bots could only bank in the waves and the banks gave 6–13 % of the Grana (CI).
  * - saldo: R$ in a full ATM; nota: R$ per withdrawal; saqueS: seconds between withdrawals while a hero holds it.
  * - holdR: a hero standing this close holds it; filaR: a critter this close stops it ("tem gente na fila").
  * - iscaR, iscaS: each note lures the critters this close, for this long.
@@ -49,5 +51,5 @@ export const BANCO=Object.freeze({
   iscaR:20,iscaS:4,
   bichoR:2,bichoSaqueS:2,primeCada:10,primeVida:1.5,
   recargaS:150,
-  distCarro:35,desvio:Object.freeze([20,60] as const),
+  distCarro:18,distCarroMax:26,desvio:Object.freeze([6,60] as const),
 });

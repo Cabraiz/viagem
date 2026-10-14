@@ -10,7 +10,7 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} from '../src/sim/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
@@ -129,7 +129,8 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string}>();
+/** preBanks/banks (city): the fingerprint of the same run before the banks, and a fresh run's bank state (migrateCheckpoint). */
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string;preBanks?:string;banks?:unknown}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -304,7 +305,11 @@ export class Simulation {
       const before=structuredClone(capture),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
       stw.balance={coco:0,pedra:0};delete stw.grana;
       if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
+      // Bancos: neither the pre-ficha build nor the one before the banks had them (city only): preBanks, migrateCheckpoint.
+      delete before.systems.banks;
+      const noBanks=structuredClone(capture);delete noBanks.systems.banks;
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before),
+        ...(capture.systems.banks?{preBanks:shapeFingerprint(noBanks),banks:structuredClone(capture.systems.banks)}:{})};SHAPES.set(key,entry);
     }
     return entry;
   }
@@ -312,12 +317,16 @@ export class Simulation {
    * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
    * with balance {coco, pedra}, no team Grana, the chaveiro's Grana in its own state) keeps the team's material as two
    * piles; it becomes {units: coco + pedra}, the Grana moves to the team's state, and this code's fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   * Bancos: a city checkpoint written before the banks (this code's fingerprint without them, or the pre-ficha one) gets
+   * a fresh run's bank state (every ATM full; the places come back from the seed) and this code's fingerprint.
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown}}}).systems;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown};banks?:unknown}}).systems;
     const b=sys?.stonewards?.balance,fresh=this.freshShape();
+    if(fresh.preBanks&&cp.shape===fresh.preBanks&&isObject(sys)&&sys.banks===undefined){sys.banks=structuredClone(fresh.banks);cp.shape=fresh.fingerprint;return;}
     if(cp.shape!==fresh.legacy||!sys?.stonewards||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
+    if(fresh.banks&&sys.banks===undefined)sys.banks=structuredClone(fresh.banks);
     const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
     // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
     const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
@@ -494,6 +503,10 @@ export class Simulation {
   casts:{id:string;seq:number;ok:boolean;readyTick:number}[]=[];
   /** Clock of the step being taken (ms): the Room's wall clock, or tick × STEP_MS (tests, replays). */
   private clock=0;
+  /** D-050: how many level/round offers each player has waiting (the room's level-up pause reads it). */
+  pendingOffers():Map<string,number>{const out=new Map<string,number>();for(const [id,queue] of this.world.offers)if(queue.length)out.set(id,queue.length);return out;}
+  /** D-050: every offer of `id` gets its default now (the pause ended, or the room does not wait for this player). */
+  settleOffers(id:string){return this.systems.progression.settle(this.world,id);}
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};
@@ -585,7 +598,8 @@ export class Simulation {
     const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
     for(const p of this.players.values()){
       if(p.spectator||p.eliminated)continue;
-      for(const n of nodesNear(this.terrain,p,reach)){
+      // Bancos: the crates a bank replaced are not there.
+      for(const n of nodesNear(this.terrain,p,reach,undefined,this.systems.banks?.crates)){
         if(out.has(n.id))continue;
         const touched=touchedNode(st,n.id);
         out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,
@@ -687,6 +701,7 @@ export class Simulation {
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
   }
@@ -695,7 +710,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
+      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -709,6 +724,7 @@ export class Simulation {
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
       })),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
     };
@@ -723,7 +739,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
+      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -739,6 +755,7 @@ export class Simulation {
         };
       }),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
     };
   }
   /** sinceEventId: only events after it (the Room's broadcast cursor); omitted, the whole buffer. */

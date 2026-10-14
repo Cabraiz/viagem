@@ -223,7 +223,8 @@ test('choose applies only the oldest real offer once; forged, repeated and out-o
   }
   assert.equal(calls(),3);
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
-  assert.equal(calls(),4);assert.deepEqual(offers(a).at(-1).offers.map((o:any)=>o.id),[`lvl-3-${id}`]);
+  // The next card is lvl-3, re-rolled at once ("~tick") when the pick made it stale (D-050: no step() in a pause to do it).
+  assert.equal(calls(),4);assert.deepEqual(offers(a).at(-1).offers.map((o:any)=>o.id.split('~')[0]),[`lvl-3-${id}`]);
   assert.notEqual(build(),initial);const afterPick=build();
   command(room,a,{t:'choose',round:1,offer:`lvl-2-${id}`,index:0},4300);
   assert.equal(calls(),5);assert.equal(offers(a).at(-1).offers.length,1);assert.equal(build(),afterPick);

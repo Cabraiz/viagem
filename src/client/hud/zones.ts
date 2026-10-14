@@ -4,8 +4,11 @@
  *   for ≤ 1.8 s, fall/rescue/connection notices);
  * - team strip: left column (portrait) or bottom row between the thumbs (landscape);
  * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + THUMB_GAP;
- * - useful area: the rectangle left for play. Only the offer and the result may enter it. The follow camera
- *   (D-019, UX-camera-segue) centres the hero on it (IslandScene.usefulArea, framing.ts FollowCamera).
+ * - useful area: the rectangle left for play. Only the offer and the result may enter it. In the round the follow
+ *   camera (D-019, framing.ts FollowCamera) does not centre the hero on it: the hero's body sits at the viewport centre
+ *   (BUG-20261013-ORQ-camera-centro-heroi), so it may stand outside this area and the HUD clears the hero's real box
+ *   (scene.heroScreenRect: the veil, the edge arrows). Only the lobby (the free band beside the waiting panel) and an
+ *   open obra window centre it on this area (IslandScene.usefulArea, framing.ts framesBeside).
  * - minimap (ORQ-minimapa): portrait, a status readout of the top band under the gear (the band grows by it);
  *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there); while the
  *   offer or the forge holds the right column, under the camera buttons, still outside the useful area.

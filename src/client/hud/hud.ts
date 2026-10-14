@@ -476,8 +476,9 @@ export class RunHud {
     if(row.classList.contains('rh-objetivo-yield')!==over)row.classList.toggle('rh-objetivo-yield',over);
   }
   /**
-   * Safety net: the follow camera keeps the hero in the useful area, but if the hero ever gets under the top band or
-   * the team strip (resize, a HUD box that grew): those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
+   * The hero's real box decides, not the useful area: the follow camera puts the body at the viewport centre
+   * (BUG-20261013-ORQ-camera-centro-heroi), which may sit outside the useful area (844×390: left of it). Whenever the
+   * hero is under the top band or the team strip (that, a resize, a HUD box that grew): those passive readouts go see-through (rh-veiled) so they never hide the hero, and come back when it leaves.
    * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
   private veil(hero:Rect,margin:number){

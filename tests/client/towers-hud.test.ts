@@ -205,3 +205,28 @@ test('the catalog moved to the rules port and the sim re-exports the same object
   assert.equal(simCatalog.DEFENSES,DEFENSES);
   assert.equal(simCatalog.DEFENSES['vigia-do-predio'].size,1);
 });
+
+test('obra window open (intermission): the follow camera frames the hero beside it, never under it; closed, back to the viewport centre',async()=>{
+  // BUG-20261013-ORQ-camera-centro-heroi: in the round the hero is at the viewport centre, which the window would cover
+  // (landscape: the panel spans the middle); while it is open the camera centres the hero in the useful area it leaves.
+  const {FollowCamera,followZoom,framesBeside,toScreen}=await import('../../src/client/framing.ts');
+  const {ZOOM_MIN}=await import('../../src/client/camera-zoom.ts');
+  assert.equal(framesBeside('combat','prepare',true),true);
+  assert.equal(framesBeside('combat','prepare',false),false,'closed: the centre');
+  assert.equal(framesBeside('combat','wave',true),false,'a wave never frames beside');
+  assert.equal(framesBeside('lobby',undefined,false),true);assert.equal(framesBeside('countdown',undefined,false),true);
+  assert.equal(framesBeside('result','wave',false),false);assert.equal(framesBeside(undefined,undefined,false),false,'solo');
+  for(const input of [LANDSCAPE,PORTRAIT,NOTCH,PORTRAIT_NOTCH])for(const scale of [1,1.25])for(const branches of [0,3])for(const k of [ZOOM_MIN,1]){
+    const l=layoutObra(input,scale,branches),vp=input.viewport,z=followZoom(vp,k),px=96*z,size={width:px,height:px},heroAt={x:4321.5,y:-987.25};
+    const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare',true);
+    const box=()=>{const f=toScreen(heroAt,cam.center,vp,z);return {x:f.x-px/2,y:f.y-px,width:px,height:px};};
+    cam.snap(heroAt,vp,z,l.zones.useful,size);
+    const label=`${vp.width}×${vp.height} ${scale} ${branches} k ${k.toFixed(3)}: hero ${JSON.stringify(box())} panel ${JSON.stringify(l.panel)}`;
+    assert.equal(crosses(box(),l.panel,0),false,label);
+    if(l.fits)assert.equal(crosses(box(),l.panel,HERO_MARGIN),false,`± ${HERO_MARGIN}: ${label}`);
+    // Closed: the camera eases back to the viewport centre.
+    cam.beside=framesBeside('combat','prepare',false);
+    for(let i=0;i<60;i++)cam.step(heroAt,1/60,vp,z,l.zones.useful,size);
+    const b=box();assert.ok(Math.abs(b.x+px/2-vp.width/2)<.01&&Math.abs(b.y+px/2-vp.height/2)<.01,`closed: ${label}`);
+  }
+});

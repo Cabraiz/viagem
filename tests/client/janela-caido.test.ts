@@ -200,14 +200,26 @@ test('window header: the most urgent caído (not you), first name and live secon
   assert.equal(fallLine({tick:0,players:[]},'me'),'');
 });
 
-test('portrait, window open: the settled follow camera keeps the hero ≥ 40 px from the window (100% and 125%)',async ()=>{
-  const {anchorOf,followZoom}=await import('../../src/client/framing.ts');
-  for(const offer of [{x:70,y:416,width:312,height:268},{x:94,y:414,width:288,height:270},{x:70,y:449,width:315,height:235}]){
-    const z=computeZones({...PORTRAIT,minimap:{x:306,y:72,width:76,height:76},offer}),viewport=PORTRAIT.viewport;
-    assert.ok(z.useful.height>=136,`field ${z.useful.y}..${z.useful.y+z.useful.height}`);
-    const anchor=anchorOf(viewport,followZoom(viewport),z.useful,{width:56,height:56}),hero={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
-    assert.equal(crosses(hero,offer,HERO_MARGIN),false,`window at ${offer.y}: hero ${hero.y}..${hero.y+56}`);
+test('portrait, window open: the follow camera keeps the hero at the viewport centre, ≥ 40 px from the offer windows',async ()=>{
+  // BUG-20261013-ORQ-camera-centro-heroi: the camera no longer moves the hero beside the window. The offer windows as
+  // the HUD sandbox draws them on 390×844 (state=offer-round, offer-heal, offer-open; 100%) sit under the centred hero.
+  const {FollowCamera,followZoom,toScreen}=await import('../../src/client/framing.ts');
+  const {ZOOM_MIN}=await import('../../src/client/camera-zoom.ts');
+  const viewport=PORTRAIT.viewport,heroAt={x:1234.5,y:-678.25};
+  const box=(k:number,offer?:Rect)=>{
+    const z=followZoom(viewport,k),px=96*z,cam=new FollowCamera(),useful=computeZones({...PORTRAIT,minimap:{x:306,y:72,width:76,height:76},offer}).useful;
+    const feet=toScreen(heroAt,cam.snap(heroAt,viewport,z,useful,{width:px,height:px}),viewport,z);
+    return {x:feet.x-px/2,y:feet.y-px,width:px,height:px};
+  };
+  for(const offer of [{x:70,y:574,width:312,height:110},{x:181,y:552,width:201,height:132},{x:130,y:607,width:252,height:77}])for(const k of [ZOOM_MIN,1]){
+    const hero=box(k,offer);
+    assert.ok(Math.abs(hero.x+hero.width/2-195)<1e-6&&Math.abs(hero.y+hero.height/2-422)<1e-6,'body at the viewport centre');
+    assert.equal(crosses(hero,offer,HERO_MARGIN),false,`window at ${offer.y}: hero ${hero.y}..${hero.y+hero.height}`);
   }
+  // Accepted and reported on the card: the forge (state=camp-forge, 247 px tall above the thumbs) cannot clear a centred
+  // hero on 390×844; it covers the lowest ≤ 13 px of the hero's box (its feet), never its body.
+  const forge={x:70,y:437,width:312,height:247},near=box(1,forge);
+  assert.ok(near.y+near.height-forge.y<=13+1e-6&&forge.y>near.y+near.height/2,`forge over ${near.y+near.height-forge.y} px`);
 });
 
 test('zones audit: the "Gira no intervalo" balloon never sits on the minimap (the XP bar is its old neighbour)',()=>{

@@ -61,10 +61,11 @@ export const FOUNTAIN_PIECE='chafariz-congelado';
 /**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
- * the lamp at ~2.3× (4 m), the car about the hero's height, barrels, crates, benches and street junk at its waist or
- * chest, the bent sign ~1.4×. The pines keep theirs (≈ 3.4×, a 6 m snowy pine) and so do the rocks (rubble piles).
+ * the car about the hero's height, barrels, crates, benches and street junk at its waist or chest, the bent sign
+ * ~1.4×; the lamp × 0.46, ~1.9× the hero (the Orquestrador's mark against the drawn houses).
+ * The pines keep theirs (≈ 3.4×, a 6 m snowy pine) and so do the rocks (rubble piles).
  */
-export const PROP_WORLD_SCALE:Readonly<Record<PropKind,number>>={lamp:.56,car:.56,crate:.56,barrel:.56,bench:.56,debris:.56,pine:1,rubble:1};
+export const PROP_WORLD_SCALE:Readonly<Record<PropKind,number>>={lamp:.46,car:.56,crate:.56,barrel:.56,bench:.56,debris:.56,pine:1,rubble:1};
 
 /** One texture to load: a single-page sheet of `views` frames (or more: extra rows are other states, unused). */
 export interface CitySheet {key:string;url:string;frameWidth:number;frameHeight:number;

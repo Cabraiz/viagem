@@ -20,6 +20,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {JUNCTIONS,removeWorktreeSafe} from './wt-rm.mjs';
 
 const SELF_ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const PRIO={P0:0,P1:1,P2:2,P3:3};
@@ -97,7 +98,7 @@ export function failedFilesFromTap(tap){
 }
 
 // ---------- worktrees (the shared node_modules are junctions: always removed before the worktree, see ESCALA.md) ----------
-const JUNCTIONS=['node_modules','backend/node_modules'];
+// The links made in a batch worktree: tools/wt-rm.mjs's JUNCTIONS (imported), the same ones it drops.
 function addWorktree(opt,name,branch,at){
   const dir=join(opt.wt,name);
   git(opt.repo,'worktree','add','-B',branch,dir,at);
@@ -109,11 +110,9 @@ function addWorktree(opt,name,branch,at){
 }
 function removeWorktree(opt,dir,branch){
   if(!existsSync(dir))return;
-  // rmdirSync drops a junction itself, never its target (checked on Windows). If one cannot go, stop: `git worktree
-  // remove` would follow it into the shared packages (it emptied them twice in October 2026).
-  for(const j of JUNCTIONS){const p=join(dir,j);try{if(existsSync(p))rmdirSync(p);}catch{/* checked just below */}
-    if(existsSync(p))throw new Error(`${p} ficou: remova a junção à mão antes de apagar o worktree ${dir}`);}
-  tryGit(opt.repo,'worktree','remove','--force',dir);
+  // tools/wt-rm.mjs: the junctions dropped and CHECKED gone, nothing else pointing outside, only then the remove (the
+  // shared node_modules were emptied four times by a plain `git worktree remove`). It throws instead of removing.
+  removeWorktreeSafe(dir,{repo:opt.repo});
   // The batch branch goes with its worktree, and from the remote when --suite ci pushed it.
   if(branch){tryGit(opt.repo,'branch','-D',branch);if(opt.suite==='ci'&&branch.startsWith('fila/'))tryGit(opt.repo,'push','-q',opt.remote,'--delete',branch);}
 }

@@ -28,7 +28,13 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
  */
 export interface NodeView {id:string;kind:string;x:number;y:number;remaining:number;capacity:number;value:number;progress:number}
 /** The team's Stonewards state (VGM-046B): balance, the return horn of this intermission, and the wall down (defeat). */
-export interface CampView {coco:number;pedra:number;hornEndsTick?:number;wallDown?:boolean}
+/**
+ * `units`: the team's one pile of material (D-048); the fichas de torre and the ring come from it (rules tokensOf/tokenProgress).
+ * `grana`: the team's R$ (every world; evolutions, the forge, repairs, Dona Cida, the chaveiro's bill).
+ */
+export interface CampView {units:number;grana:number;hornEndsTick?:number;wallDown?:boolean;
+  /** Inflação: this run's purchases of the inflating recipes (rules forgePrice), absent when none. */
+  forge?:Partial<Record<'gambiarra'|'torre-chinelo',number>>}
 export interface PlayerRunView {
   id:string;name:string;classId:string;hp:number;maxHp:number;online:boolean;spectator:boolean;
   downed?:{progress:number;bleedOutTick:number};eliminated?:boolean;

@@ -16,7 +16,7 @@ import {fileURLToPath} from 'node:url';
 
 const TOKENS='src/client/ui/tokens.css';
 /** CSS lido em partida (HUD e emotes): mínimo 13 px CSS. O resto (lobby, ilha, telas de fora): 10 px. */
-const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css']);
+const MATCH_CSS=new Set(['src/client/hud/hud.css','src/client/fun/fun.css','src/client/hud/you.css','src/client/hud/zones.css','src/client/hud/zones-debug.css','src/client/hud/camp.css','src/client/hud/cida.css']);
 const MIN_MATCH=13,MIN_OTHER=10,ROOT_PX=16;
 const EMOJI=/(?![★☆])\p{Extended_Pictographic}|✦/gu;// ★/☆ are text stars, and ICU versions (Node 22 × 24) disagree on them
 const NAMED_COLORS=new Set(('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood '+

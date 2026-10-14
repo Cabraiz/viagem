@@ -12,11 +12,20 @@ import {fakeView} from '../../src/client/hud/fixtures.ts';
 const view=(camp:RunView['camp'],extra:Partial<RunView>={})=>({...fakeView('camp-forge',1),camp,...extra});
 
 test('the forge tags: buyable, short of money, wall full, towers full, no weapon, wall down',()=>{
-  const rich={coco:20,pedra:20};
+  // The forge is paid in the team's Grana (D-048, RECIPES[id].cost R$); the material pile never pays it.
+  const R=RECIPES.reparo.cost,G=RECIPES.gambiarra.cost,C=RECIPES['torre-chinelo'].cost;
+  const rich={units:0,grana:R+G+C};
   for(const id of RECIPE_IDS)assert.equal(blockedReason(id,view(rich),'p1'),undefined,id);
-  assert.equal(blockedReason('torre-chinelo',view({coco:3,pedra:3}),'p1'),'balance');
-  assert.equal(missing({coco:3,pedra:3},'torre-chinelo'),'Falta 1 pedra.');
-  assert.equal(missing({coco:0,pedra:0},'gambiarra'),'Falta 4 coco e 2 pedra.');
+  assert.equal(blockedReason('torre-chinelo',view({units:999,grana:C-1}),'p1'),'balance','one real short of the tower');
+  assert.equal(blockedReason('torre-chinelo',view({units:0,grana:C}),'p1'),undefined,'exactly the price');
+  assert.equal(FORGE_REFUSALS.balance,'Falta grana.');
+  // What is missing is Grana, as the tag shows it ("R$ N"), never "coco"/"pedra", "unidades" nor material.
+  assert.equal(missing({grana:C-1},'torre-chinelo'),'Falta R$ 1.');
+  assert.equal(missing({grana:0},'gambiarra'),`Falta R$ ${G}.`);
+  assert.equal(missing({grana:1.5},'reparo'),`Falta R$ ${R-1}.`,'a fraction rounds the shortfall up');
+  assert.equal(missing({grana:R},'reparo'),'');
+  assert.equal(missing({grana:Number.NaN},'reparo'),`Falta R$ ${R}.`,'a broken number is no Grana');
+  for(const id of RECIPE_IDS)assert.doesNotMatch(missing({grana:0},id),/coco|pedra|unidade|material/i);
   const v=view(rich);
   assert.equal(blockedReason('reparo',{...v,structures:v.structures.map(s=>({...s,hp:s.maxHp}))},'p1'),'full');
   const towers=Array.from({length:MAX_TOWERS},(_,i)=>({id:`t${i}`,kind:'torre-chinelo',x:0,y:0,hp:80,maxHp:80}));
@@ -26,7 +35,7 @@ test('the forge tags: buyable, short of money, wall full, towers full, no weapon
   assert.equal(blockedReason('gambiarra',maxed,'p1'),'no-weapon');
   assert.equal(blockedReason('reparo',view({...rich,wallDown:true}),'p1'),'wall-down');
   for(const reason of ['phase','player','recipe','balance','full','no-weapon','duplicate','wall-down','away'])assert.ok(FORGE_REFUSALS[reason],reason);
-  for(const r of Object.values(RECIPES))assert.ok(r.cost.coco>0&&r.cost.pedra>0&&r.name&&r.describe.length<=40);
+  for(const r of Object.values(RECIPES))assert.ok(Number.isInteger(r.cost)&&r.cost>0&&r.name&&r.describe.length<=40);
 });
 
 test('in the camp means within CAMP_RADIUS of the wall',()=>{

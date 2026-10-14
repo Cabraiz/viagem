@@ -92,6 +92,7 @@ import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerVi
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
 import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
+import {fotoClock} from '../dev/foto.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -123,6 +124,8 @@ const outlinesOn=params.get('contorno')!=='0';
 const cast=tele&&params.get('elenco')==='1';
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
+const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
 const ruler=params.get('regua')==='1',RULER_STEPS=5;
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -244,7 +247,7 @@ class CitySandbox extends Phaser.Scene {
     this.tick(dt);
     this.stone?.update(_t);
     if(this.chaveiro){
-      const t0=performance.now(),{view,tick}=this.chaveiro.fake.view(_t);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(_t);
+      const now=fotoT??_t,t0=performance.now(),{view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
     }
     this.drawLab(_t,dt);
@@ -293,7 +296,7 @@ class CitySandbox extends Phaser.Scene {
       {id:'caixa-0',kind:'pedra',...at(1.9,.9),remaining:1,capacity:1,value:6,progress:0},
     ];
     const view:RunView={tick,team:{xp:0,level:1,nextXp:10},round:{index:1,total:10,phase:basePhase,phaseEndsTick:tick+600,remaining:0},
-      enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{coco:4,pedra:4},
+      enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{units:76,grana:12},
       players:[],offers:[],events:[]};
     this.stone.push(view);
   }

@@ -4,8 +4,11 @@
  * Until torres-fio puts the defenses on the wire, the HUD takes an ObraView injected by its host (the sandbox drives it
  * from fake data shaped like the sim's TowersState). The refusals mirror src/sim/towers/system.ts in the same order, so
  * a card the menu offers is one the sim accepts.
+ * Prices (D-048, ficha de torre and Grana): building the Vigia costs 1 ficha and the Gustavão 3 (`tokens`, the rail
+ * comes free); every other evolution costs `grana` R$ by the tier it reaches (rules priceOf, price.ts evolvePriceLabel).
  */
-import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,unitsOf,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,TOWER_TOKENS,childrenOf,priceOf,tokensOf,unitsOf,type Balance,type Branch,type DefenseDef,type DefenseId,type DefenseSize} from '../../../rules/index.ts';
+import {fichasText,granaShort} from '../price.ts';
 
 /** A tower as the menu sees it (the sim's DefenseState, reduced). */
 export interface ObraTower {id:string;kind:DefenseId;building?:boolean;ruined?:boolean}
@@ -20,7 +23,10 @@ export interface ObraView {
   /** Round phase 'prepare' (the intermission): the only time the menu shows. */
   prepare:boolean;
   sites:readonly ObraSite[];rail?:ObraRail;
-  balance:{coco:number;pedra:number};
+  /** The team's one pile of material (CampView.units): the fichas de torre that build the Vigia and the Gustavão. */
+  balance:Balance;
+  /** The team's Grana (CampView.grana, R$): what pays every other evolution. */
+  grana:number;
   /** Standing defenses of the team (ruins do not count) and Gustavões built this run (a ruined one counts). */
   standing:number;gustavoes:number;
   /**
@@ -41,14 +47,21 @@ export interface ObraView {
   revision?:string;
 }
 
-export type ObraBlock='balance'|'limit'|'unique'|'rail'|'size'|'building'|'root'|'origin';
+/** 'balance': fichas de torre short (the Vigia, the Gustavão); 'grana': R$ short (an evolution), like the sim's refusals. */
+export type ObraBlock='balance'|'grana'|'limit'|'unique'|'rail'|'size'|'building'|'root'|'origin';
 export type ObraAction={type:'build';site:string}|{type:'upgrade';defense:string;branch:string};
 export interface ObraCard {
-  key:string;name:string;label:string;branch:Branch|null;cost:number;effect:string;
+  key:string;name:string;label:string;branch:Branch|null;effect:string;
+  /** Material units (DefenseDef.cost); 0 for the free rail. What a card pays is `tokens` or `grana` (D-048). */
+  cost:number;
+  /** Paid in fichas de torre (the Vigia 1, the Gustavão 3): what the card shows and what affordability counts. */
+  tokens?:number;
+  /** Paid in Grana, R$ (every evolution but the Gustavão: rules EVOLVE_PRICE by the tier it reaches). */
+  grana?:number;
   /** buy: an option (blocked or not); have: the defense standing there; obra: under construction. */
   status:'buy'|'have'|'obra';
   block?:ObraBlock;
-  /** Units missing when block = 'balance'. */
+  /** What is missing when block = 'balance' (fichas) or 'grana' (R$). */
   missing?:number;
   action?:ObraAction;
   rail?:true;
@@ -82,7 +95,10 @@ export const RAIL_NAME='Linha férrea',RAIL_EFFECT='Trilho do Gustavão';
  * aria-label says it in full). Short enough to leave the name its line at 125 %. */
 export function blockText(card:Pick<ObraCard,'block'|'missing'>):string{
   switch(card.block){
-    case 'balance':return `Falta ${card.missing??0}`;
+    // "Falta 1 ficha" (the lock and the dashed edge say the rest); an evolution's units stay a bare number.
+    case 'balance':return `Falta ${card.missing??0} ${card.missing===1?'ficha':'fichas'}`;
+    // "Falta R$ 3": the lock and the dashed edge say the rest.
+    case 'grana':return granaShort(card.missing??0).html;
     case 'limit':return `Limite ${DEFENSE_LIMIT}`;
     case 'unique':return `Já tem ${GUSTAVAO_LIMIT}`;
     case 'rail':return 'Sem trilho';
@@ -96,7 +112,8 @@ export function blockText(card:Pick<ObraCard,'block'|'missing'>):string{
 /** The reason in full words, for the tag's aria-label. */
 export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
   switch(card.block){
-    case 'balance':return `Falta ${card.missing??0} de material`;
+    case 'balance':return `Falta ${fichasText(card.missing??0)}`;
+    case 'grana':return granaShort(card.missing??0).speech;
     case 'limit':return `O time já tem ${DEFENSE_LIMIT} defesas`;
     case 'unique':return `Só ${GUSTAVAO_LIMIT} Gustavão por partida`;
     case 'rail':return 'Precisa da linha férrea pronta';
@@ -109,12 +126,20 @@ export function blockSpeech(card:Pick<ObraCard,'block'|'missing'>):string{
 }
 export const selectable=(card:ObraCard)=>card.status==='buy'&&!card.block&&!!card.action;
 
+/** The builds paid in fichas de torre (D-048): the Vigia and the Gustavão; every other defense is an evolution in Grana. */
+export const tokensFor=(id:DefenseId):number|undefined=>id===ROOT_DEFENSE?TOWER_TOKENS.root:id==='gustavao'?TOWER_TOKENS.gustavao:undefined;
+/** What the team has: its whole fichas (the HUD never shows the units behind them) and its Grana. */
+const walletOf=(view:Pick<ObraView,'balance'|'grana'>)=>({tokens:tokensOf(unitsOf(view.balance)),grana:Number.isFinite(view.grana)?view.grana:0});
+/** What is missing for the card (0: it is paid): fichas for a `tokens` card, R$ for a `grana` one (the free rail: 0). */
+const shortOf=(c:Pick<ObraCard,'tokens'|'grana'>,wallet:{tokens:number;grana:number})=>
+  c.tokens!==undefined?Math.max(0,c.tokens-wallet.tokens):c.grana!==undefined?Math.max(0,Math.ceil(c.grana-wallet.grana-1e-9)):0;
 function card(d:DefenseDef,status:ObraCard['status']):ObraCard{
-  return {key:d.id,name:d.name,label:d.label,branch:d.branch,cost:d.cost,effect:EFFECT[d.id],status,...(d.rail?{rail:true as const}:{})};
+  const price=priceOf(d);
+  return {key:d.id,name:d.name,label:d.label,branch:d.branch,cost:d.cost,...price,effect:EFFECT[d.id],status,...(d.rail?{rail:true as const}:{})};
 }
 function pay(c:ObraCard,view:ObraView):ObraCard{
-  const have=unitsOf(view.balance);
-  return c.block||have>=c.cost?c:{...c,block:'balance',missing:Math.ceil(c.cost-have)};
+  const short=c.block?0:shortOf(c,walletOf(view));
+  return short>0?{...c,block:c.tokens!==undefined?'balance':'grana',missing:short}:c;
 }
 /** Why `next` cannot grow out of the tower on `site` (the sim's upgrade order: rail, unique, size; then balance). */
 function childBlock(next:DefenseDef,site:ObraSite,view:ObraView):ObraBlock|undefined{
@@ -163,8 +188,8 @@ export function railTree(view:ObraView):ObraTree{
 export function canEvolve(site:ObraSite,view:ObraView):boolean{
   const t=liveTower(site);
   if(!t||t.building)return false;
-  const have=unitsOf(view.balance);
-  return childrenOf(t.kind).some(d=>!childBlock(d,site,view)&&have>=d.cost);
+  const wallet=walletOf(view);
+  return childrenOf(t.kind).some(d=>!childBlock(d,site,view)&&shortOf(priceOf(d),wallet)===0);
 }
 
 /** The card a tap on the site preselects: the head when it is buyable, else the first open branch. */

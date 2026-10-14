@@ -141,7 +141,7 @@ export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly
     if(node.work<WORK_PER_UNIT[node.kind])continue;
     for(const by of Object.keys(node.workBy).sort())bump(state.gathered,by,node.value*node.workBy[by]/node.work);
     node.work=0;node.workBy={};node.remaining--;
-    state.balance[node.kind]+=node.value;
+    state.balance.units+=node.value;
     done.push({player:id,node,emptied:node.remaining<=0});
   }
   return done;

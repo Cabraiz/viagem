@@ -91,7 +91,7 @@ test('ACCEPTANCE (b): in the intermission a bot walks to a crate and back into t
   const lines:string[]=[];
   for(let seed=1;seed<=3;seed++){
     const {sim,ids:[id],step}=cityRun(seed,1),bot=()=>sim.players.get(id)!,world=sim.world;
-    const balance=()=>{const b=sim.run.stonewards.state.balance;return b.coco+b.pedra;};
+    const balance=()=>sim.run.stonewards.state.balance.units;
     let left:number|undefined,back:number|undefined,horn:{tick:number;endsTick:number}|undefined,wave:number|undefined,far=0,gained=0;
     let before=balance(),inBaseAtWave=false,leftBehind=false;
     for(let i=0;i<ticks(400)&&wave===undefined;i++){

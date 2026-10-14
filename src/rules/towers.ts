@@ -29,6 +29,7 @@
  */
 import {ticks} from '../contract/index.ts';
 import {CITY_MAP_SCALE} from './scale.ts';
+import {UNITS_PER_TOKEN} from './stonewards.ts';
 /** Site size a defense needs (structurally the maps port's BuildSize; rules may not import maps). */
 export type DefenseSize=1|2|3;
 
@@ -61,13 +62,26 @@ export interface DefenseDef {
   rail?:true;
 }
 
-/** Card costs per tier (material units); the Gustavão has its own (GUSTAVAO_COST) plus the rail (RAIL.cost). */
-export const TIER_COST:Readonly<Record<1|2|3|4|5,number>>=Object.freeze({1:6,2:10,3:16,4:24,5:36});
-export const GUSTAVAO_COST=60;
+/**
+ * D-048 (ficha de torre): building a root costs 1 ficha, the Gustavão 3 (its rail included); TOWER_TOKENS × UNITS_PER_TOKEN
+ * units. An evolution (tiers 2-5) is paid in Grana (EVOLVE_PRICE); TIER_COST[2..5] is only the old material scale it came from.
+ */
+export const TOWER_TOKENS=Object.freeze({root:1,gustavao:3});
+export const TIER_COST:Readonly<Record<1|2|3|4|5,number>>=Object.freeze({1:TOWER_TOKENS.root*UNITS_PER_TOKEN,2:10,3:16,4:24,5:36});
+export const GUSTAVAO_COST=TOWER_TOKENS.gustavao*UNITS_PER_TOKEN;
+/**
+ * D-048: an evolution is paid in Grana, R$ by the tier it reaches (approved by the Orquestrador, 13/10/2026: k ≈ 1 R$ per
+ * old material unit; the Gustavão is the exception, 3 fichas). A tower repair is TOWER_REPAIR_PRICE.
+ */
+export const EVOLVE_PRICE:Readonly<Record<2|3|4|5,number>>=Object.freeze({2:10,3:16,4:25,5:35});
+export const TOWER_REPAIR_PRICE=5;
+/** What building or evolving into `d` takes: fichas (the root, the Gustavão) or Grana (every other evolution). */
+export const priceOf=(d:{id:string;tier:number}):{tokens:number}|{grana:number}=>
+  d.id==='gustavao'?{tokens:TOWER_TOKENS.gustavao}:d.tier<=1?{tokens:TOWER_TOKENS.root}:{grana:EVOLVE_PRICE[d.tier as 2|3|4|5]};
 /** Build time per tier (s), split in three equal obra phases. */
 export const TIER_BUILD_SECONDS:Readonly<Record<1|2|3|4|5|6,number>>=Object.freeze({1:6,2:8,3:10,4:12,5:15,6:24});
-/** The Gustavão's rail ('linha-ferrea'): laid once per run on the plan's RailSite, `cost` units, `buildSeconds`. */
-export const RAIL=Object.freeze({id:'linha-ferrea' as const,siteId:'trilho' as const,cost:12,buildSeconds:8});
+/** The Gustavão's rail ('linha-ferrea'): laid once per run on the plan's RailSite; free (D-048: in the Gustavão's 3 fichas). */
+export const RAIL=Object.freeze({id:'linha-ferrea' as const,siteId:'trilho' as const,cost:0,buildSeconds:8});
 /** Match limits (D-041): defenses standing per team (ruins do not count) and Gustavões per run (a ruined one counts). */
 export const DEFENSE_LIMIT=12,GUSTAVAO_LIMIT=1;
 /** Share of maxHp at or under which a defense is `danificada`. */
@@ -152,23 +166,11 @@ export function phaseOf(d:{hp:number;maxHp:number;startTick:number;readyTick:num
   return d.hp<=d.maxHp*DAMAGED_AT?'danificada':'pronta';
 }
 
-/** Total material units in a balance. */
-export const unitsOf=(b:{coco:number;pedra:number})=>b.coco+b.pedra;
-/**
- * Pays `units` from the two piles, one unit at a time from the larger pile (coco on a tie): the piles even out, so the
- * forge's mixed recipes stay buyable. Returns false (and charges nothing) when the piles do not add up to it.
- */
-export function payUnits(b:{coco:number;pedra:number},units:number):boolean{
-  if(!(units>=0)||unitsOf(b)<units)return false;
-  // Closed form of the unit-by-unit rule: drain the gap first, then split the rest (coco takes the odd unit).
-  let left=units;
-  const gap=Math.min(left,Math.abs(b.coco-b.pedra));
-  if(b.coco>=b.pedra)b.coco-=gap;else b.pedra-=gap;
-  left-=gap;
-  const half=Math.floor(left/2),odd=left-half*2;
-  b.coco-=half+odd;b.pedra-=half;
-  // Float piles (a tuned crate value) never go below zero from rounding.
-  if(b.coco<0){b.pedra+=b.coco;b.coco=0;}
-  if(b.pedra<0){b.coco+=b.pedra;b.pedra=0;}
+/** Material units in a balance (D-048: one pile). */
+export const unitsOf=(b:{units:number})=>b.units;
+/** Pays `units` from the pile; false (and charges nothing) when it is short. */
+export function payUnits(b:{units:number},units:number):boolean{
+  if(!(units>=0)||b.units<units)return false;
+  b.units=Math.max(0,b.units-units);
   return true;
 }

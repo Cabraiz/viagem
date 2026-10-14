@@ -247,8 +247,9 @@ export async function runScenario(endpoint:string,scenario:Scenario,log:(line:st
         for(const b of bots)b.wantReady=false;
         await until(()=>bots.every(b=>b.client.feed.peek().players.length===6),'rematch frame',5000);
         const v=bots[0].client.feed.peek(),wall=v.structures.find(s=>s.kind==='muralha');
-        const fresh=v.team.level===1&&v.players.every(p=>!p.downed&&!p.eliminated&&p.hp===p.maxHp)&&!!wall&&wall.hp===wall.maxHp&&(v.camp?.coco??0)===0&&(v.camp?.pedra??0)===0;
-        check('revanche começa zerada: nível 1, todos de pé com vida cheia, muralha inteira, saldo zero',fresh,`nível ${v.team.level}, muralha ${wall?.hp}/${wall?.maxHp}`);
+        const fresh=v.team.level===1&&v.players.every(p=>!p.downed&&!p.eliminated&&p.hp===p.maxHp)&&!!wall&&wall.hp===wall.maxHp&&(v.camp?.units??0)===0&&(v.camp?.grana??0)===0;
+        // D-048: the team's Grana is part of the run too (a rematch starts at R$ 0, like the material).
+        check('revanche começa zerada: nível 1, todos de pé com vida cheia, muralha inteira, saldo e grana zero',fresh,`nível ${v.team.level}, muralha ${wall?.hp}/${wall?.maxHp}, saldo ${v.camp?.units??0}, grana ${v.camp?.grana??0}`);
         await sleep(20000);
         check('a revanche roda (20 s de combate com seis)',bots.every(b=>b.run?.phase==='combat'&&b.client.connected));
       }else check('revanche respondida: aceita, ou recusada com o aviso de sala fechando (falta tempo para outra run)',accepted||refused,`${accepted?'aceita':refused?'recusada com aviso':'sem resposta'}, ${left} min de sala`);

@@ -22,7 +22,7 @@ export const BOT_THINK_EVERY=4;
 export const BOT_FORGE_LEFT=15*HZ;
 /**
  * With a person in the room (bot-gasta-material) the bot spends only in the last seconds of the intermission: the
- * team's material is the people's first (a 13 s intermission left them no window when the bot went at 15 s).
+ * team's material and Grana are the people's first (a 13 s intermission left them no window when the bot went at 15 s).
  */
 export const BOT_FORGE_LEFT_WITH_PEOPLE=5*HZ;
 /**
@@ -42,8 +42,12 @@ export const BOT_NAMES:readonly string[]=Object.freeze([
   'Chaleira Elétrica','Robozinho Carente','Bateria 1%','Pisca Alerta','Cafeteira Mil Grau','Controle Sem Pilha',
   'Antena de Bombril','Fujão 3000','Rodinho Turbo','Zapeiro 2.0',
 ]);
-/** Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). */
-const RECIPE_REFUSALS=new Set(['no-weapon','full','balance','recipe']);
+/**
+ * Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). Not 'balance'
+ * (short of Grana since D-048): pickRecipe already checks the price on the view, so such a refusal only means the view
+ * was a frame behind, and it must not lock the wall's repair out for the whole intermission (review).
+ */
+const RECIPE_REFUSALS=new Set(['no-weapon','full','recipe']);
 
 /** 32-bit mix of the room seed and a counter (cosmetic picks, never the simulation's RNG). */
 export function botHash(seed:number,n:number){
@@ -127,6 +131,8 @@ export class RoomBots {
       if(builder===undefined)builder=this.towersOff?null:this.forger(view,minds,people,BOT_BUILD_LEFT);
       // torres-fio: the forger also builds and evolves the tower defenses (bot-brain pickTowerOrder); torres-ajustes: it
       // walks to the obra first, so it gets the view earlier; with a person here it orders only in their last seconds.
+      // D-048: the view carries the material (roots, the Gustavão) and the Grana (evolutions, repairs); decide keeps the
+      // chaveiro's bill out of it from view.objective (granaReserve).
       if(builder===mind.id&&!towers){
         const st=sim.run.stonewards,round=view.round,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
         towers=towerBrainView(st.state,st.plan,view.tick,round?.index??0,person,

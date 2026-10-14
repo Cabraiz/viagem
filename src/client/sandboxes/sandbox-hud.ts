@@ -27,6 +27,11 @@
  * `mapa=cidade&chaveiro=1[&moto=anda|morta|…][&rota=N|S|L|O]` (D-047, card chaveiro-render): the chaveiro objective
  * (sandbox-chaveiro.ts, frozen 12 s into its loop): the moto's edge arrow (Cone while dead or fallen), and on the minimap
  * the car in place of the base (its ring: hits left), the moto, the next delivery and the route still ahead.
+ * D-047 HUD (card chaveiro-hud): with `chaveiro=1` the run carries the objective (RunView.objective): the round chip says
+ * "Onda N" with his clock, the base ficha shows the car's hits left, and a stopped `moto=` shows its reason row for 2.5 s at
+ * load. `grana=N` (default 40) and `estoque=a,b,c` (default 4,4,4) feed Dona Cida; `cida=1` puts the hero by the moto (her
+ * button shows), `cida=aberta` also opens her tray. Purchases answer after 150 ms like a room (ok, or the refusal the
+ * numbers give). `state=result&conta=aberto|carro|time|tempo[&divida=1]`: the result with the chaveiro's bill.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
  * `dica=walk|xp|chip|rescue|gather` (VGM-056): the first-run coach shows that hint (a fresh memory with the others
  * learned); without it every hint counts as learned, so the other scenes stay as they were (walk turns the scene into
@@ -119,12 +124,14 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
   if(params.get('nomes')!=='longos')return v;
   return {...v,players:v.players.map((p,i)=>({...p,name:LONG_NAMES[i%LONG_NAMES.length]}))};
 }
-let tick=1000,forgeReq=0;
+let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas||cidade,
   // Forge taps answer after 150 ms, as a room would (VGM-046B); the balance does not move in the sandbox.
   onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
+  // Dona Cida (D-047): the answer a room would give for the sandbox's numbers (the tray's own checks run first).
+  onCida(item){const req=++cidaReq;setTimeout(()=>hud.bought({req,item,ok:true,grana:view.objective?.grana??0}),150);return req;},
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
@@ -156,6 +163,14 @@ function cropFrame(kind:string){
   img.src=f.url;
 }
 
+/** `conta=aberto|carro|time|tempo[&divida=1]` (D-047): the result carries the chaveiro's bill (RunState.objective). */
+const conta=({aberto:'opened',carro:'car',time:'team',tempo:'timeout'} as const)[params.get('conta') as 'aberto']??undefined;
+function withBill<T extends {victory:boolean}>(result:T):T{
+  if(!conta)return result;
+  const debt=params.has('divida')?84:0,budget=120+8*42,grana=budget-debt;
+  return {...result,objective:{kind:'chaveiro',outcome:conta==='opened'?'victory':conta==='timeout'?'timeout':'defeat',cause:conta,wave:12,extraWaves:2,eta:conta==='opened'?0:184,
+    seconds:1340,hits:42,limit:120,budget,grana,paid:Math.min(grana,budget),debt,parts:3}};
+}
 let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
@@ -182,7 +197,7 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  if(scenario==='result')hud.showResult(tied(named(fakeResult(players,!params.has('lose'),params.has('full')))));
+  if(scenario==='result')hud.showResult(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full'))))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
   // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once
@@ -344,7 +359,9 @@ if(cidade)void (async()=>{
   const at=(x:number,y:number)=>({x:x*S,y:y*S});
   const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
-  const hero=tutorial?spot(params.get('ponto')):at(82,125);
+  // D-047: `cida=1|aberta` puts the hero by the moto (Dona Cida's reach), else the fixture's spot.
+  const cidaAt=params.get('chaveiro')==='1'&&params.has('cida');
+  let hero=tutorial?spot(params.get('ponto')):at(82,125);
   const people:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
     ?[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:P.inicio.x-1.4,y:P.inicio.y+.6},{id:'p3',name:'Zé do Pix',x:P.inicio.x+1.2,y:P.inicio.y+1}]
     :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',...at(58,100)},
@@ -365,7 +382,14 @@ if(cidade)void (async()=>{
     const from=(params.get('rota')??'N').toUpperCase() as 'N'|'S'|'L'|'O';
     return m.fakeChaveiro(params,map.plaza,P[`spawn${from}`],P.bocas[from]).view(12000).view;
   }):undefined;
-  const run:RunView={...base,events:banner,structures:chaveiro?[]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+  if(chaveiro&&cidaAt)hero={x:chaveiro.moto.x+1.3,y:chaveiro.moto.y+.9};
+  if(chaveiro&&cidaAt)people[0]={...people[0],...hero};
+  // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
+  const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
+  const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
+    grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;
+  const run:RunView={...base,events:banner,structures:chaveiro?[{id:'quadradao',kind:'quadradao',x:map.plaza.x,y:map.plaza.y,hp:chaveiro.car.limit-chaveiro.car.hits,maxHp:chaveiro.car.limit}]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
+    ...(objective?{objective}:{}),
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
@@ -375,9 +399,9 @@ if(cidade)void (async()=>{
   let previous=new Set<string>();
   const draw=()=>{
     const viewport={width:innerWidth,height:innerHeight};
-    const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'));
+    const open=rect(document.querySelector('.rh-offer:not([hidden])'))??rect(document.querySelector('.rh-forge:not([hidden])'))??rect(document.querySelector('.rh-cida:not([hidden])'));
     const controls={status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
-      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open};
+      team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open,cida:rect(document.querySelector('.rh-cida-btn:not([hidden])'))};
     const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
     const area=zones.useful;
     // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
@@ -413,6 +437,7 @@ if(cidade)void (async()=>{
     document.body.dataset.useful=JSON.stringify(area);document.body.dataset.hero=JSON.stringify(heroBox);
   };
   draw();
+  if(cidaAt&&params.get('cida')==='aberta')requestAnimationFrame(()=>hud.el.querySelector<HTMLButtonElement>('.rh-cida-btn:not([hidden])')?.click());
   addEventListener('resize',draw);setInterval(draw,250);
   requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();

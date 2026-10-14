@@ -23,7 +23,7 @@
 .rh .rh-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* ---------- Top: one row (card hud-topo-uma-linha) ----------
-   Level + XP thread | Round N/10 · bichos (or "Intervalo N s") | base ficha (wall bar, life, coco, pedra), side by side
+   Level + XP thread | Round N/10 · bichos (or "Intervalo N s") | base ficha (wall bar, life, fichas de torre), side by side
    between the camera buttons (left, 140 px) and the gear (right, 48 px); the boss bar wraps under them only in a boss
    fight. Narrow screens (portrait phones): the round chip alone between the buttons, the rest on a second row. */
 .rh-top{position:absolute;top:var(--rh-t);left:calc(var(--rh-l) + 152px);right:calc(var(--rh-r) + 60px);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}
@@ -45,20 +45,20 @@
 /* The base ficha gives way first (its wall bar shrinks): the numbers never get cut. Wide screens keep one row; only the
    boss bar wraps under it. */
 .rh-top>.rh-camp{flex:0 1 auto;min-width:0}
-.rh-top .rh-camp-track{flex:0 1 auto;min-width:16px}
+.rh-top .rh-camp-barra{flex:0 1 auto;min-width:16px}
 .rh-top>:is(.rh-xp,.rh-round){flex-shrink:0}
 @media (min-width:600px){.rh-top:not(:has(>.rh-boss:not([hidden]))){flex-wrap:nowrap}}
 /* Landscape: the boss bar's row keeps 32 px more on the right, clear of the minimap under the gear. */
 @media (max-height:500px){.rh-top>.rh-boss{flex:0 0 auto;width:min(440px,calc(100% - 64px));margin-right:32px}}
 @media (max-width:599px){
   /* Row 1: the round chip right of the camera buttons (150 px), its margin filling the row, so the level, the base and
-     the resources start row 2, from the left edge: it ends before the minimap under the gear (x ≥ width − 84). The band
+     the fichas start row 2, from the left edge: it ends before the minimap under the gear (x ≥ width − 84). The band
      itself stops left of the gear (row 1). */
   .rh-top{left:var(--rh-l);right:calc(var(--rh-r) + 58px);justify-content:flex-start}
   .rh-top>.rh-round{order:0;flex:0 0 calc(100% - 150px);margin:0 0 0 150px;padding-inline:8px}
   .rh-round-label{font-size:var(--t-16)}
   .rh-xp{order:1}
-  .rh-camp,.rh-camp-res{gap:4px}
+  .rh-camp{gap:4px}
   .rh-top>.rh-camp{padding-inline:6px}
   /* A boss fight's bar (row 3) also ends before the minimap. */
   .rh-top>.rh-boss{margin:0 26px 0 0;flex-basis:calc(100% - 26px)}
@@ -776,3 +776,33 @@
 @media (prefers-reduced-motion:reduce){.rh-mm-ping{animation:none;transform:scale(1.6)}}
 /* Each teammate's colour (their dot on the WC3 minimap) as an outer ring of the portrait. */
 .rh-member:not(.rh-me) .rh-member-ring{box-shadow:0 0 0 2px var(--c-breu),0 0 0 4px var(--rh-cor,var(--c-breu)),var(--s-2)}
+
+/* ---------- The chaveiro objective (D-047, card chaveiro-hud, hud/chaveiro.ts) ----------
+   The round chip says "Onda 3 · [moto] 9:48": his clock in the poster face, the moto sticker (the same as his edge arrow
+   and his minimap mark). While he stops, one row of the announcement slot says why for 2.5 s, one line ("Lombada",
+   "Moto morta: empurra!"): Breu ficha like the walk to the plaza, Cone when the team can help (2 to push, a critter on
+   the moto). */
+.rh-round-eta{display:inline-flex;align-items:center;white-space:nowrap}
+.rh-round-eta[hidden]{display:none}
+.rh-round-eta>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
+.rh-round-eta .ic{width:20px;height:20px}
+.rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-round-sep{font-style:normal;margin-right:2px}
+/* Portrait: the chip's slot is 166 px at 390 (beside the camera buttons): "Onda 15 · 10:00 · 123" still fits in one line. */
+@media (max-width:599px){
+  .rh .rh-round[data-objetivo=chaveiro]{gap:3px;padding-inline:4px}
+  .rh-round-eta b{font-size:var(--t-16)}
+  .rh-round[data-objetivo=chaveiro] .ic{width:16px;height:16px}
+}
+.rh-chaveiro-motivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:3px 10px;white-space:nowrap;
+  border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);
+  font:700 var(--t-13)/1.2 var(--f-sistema);pointer-events:none}
+.rh-chaveiro-motivo[hidden]{display:none}
+.rh-chaveiro-motivo .ic{flex:none;width:18px;height:18px}
+.rh-chaveiro-motivo[data-urgente=true]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+.rh-ended .rh-chaveiro-motivo{display:none}
+/* The chaveiro's bill on the result (D-047): one more stat ficha, the budget and the team's Grana; on a win he was not
+   paid in full it turns Cone and adds what was missing (the subtitle says "Vitória com dívida: abriu e levou o volante."). */
+.rh-result-conta[hidden]{display:none}
+.rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}

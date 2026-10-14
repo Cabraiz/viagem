@@ -11,8 +11,8 @@
  *   (upgrade, repair); 'away' otherwise. A sim rule, so the offline run and the rooms obey it alike; the build menu
  *   (torres-hud) may still offer any site, the sim refuses from afar.
  * - Repair (torres-ajustes): `repair` mirrors the forge's barricade repair ('reparo' with a target): REPAIR_FRACTION of
- *   the defense's maxHp per order (rounded up, capped at maxHp), at once, for TOWER_REPAIR_COST units paid like the
- *   towers (payUnits). Any standing defense under its maxHp (under construction too); a ruin never (it already frees
+ *   the defense's maxHp per order (rounded up, capped at maxHp), at once, for TOWER_REPAIR_COST R$ from the team's
+ *   Grana (D-048). Any standing defense under its maxHp (under construction too); a ruin never (it already frees
  *   its site: build a new Vigia there).
  * - Limits: DEFENSE_LIMIT standing defenses (ruins do not count) and GUSTAVAO_LIMIT Gustavão per run.
  * - Fire: only in combat (phase 'wave'), instant hits through ctx.damageEnemy (the central path), no source player (the
@@ -36,7 +36,7 @@ import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
-import {RECIPES} from '../../rules/index.ts';
+import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
 
 export interface DefenseState extends Point {
   id:string;kind:DefenseId;
@@ -69,7 +69,9 @@ export interface TowersState {
   gustavoes:number;
 }
 
-export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate'|'away'|'full';
+/** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */
+export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'grana'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate'|'away'|'full';
+/** `cost`: what was charged, in what paid it: material units (a root, the Gustavão, the rail) or R$ (an evolution, a repair). */
 export type TowerResult={ok:true;defense:string;kind:DefenseId|typeof RAIL.id;cost:number}|{ok:false;reason:TowerRefusal};
 
 /**
@@ -77,8 +79,8 @@ export type TowerResult={ok:true;defense:string;kind:DefenseId|typeof RAIL.id;co
  * footprint, the rail's rectangle). About an arm and a step: the hero stands next to the obra, not across the plaza.
  */
 export const BUILD_REACH=3;
-/** A repair order costs what the forge's 'reparo' costs (5 units), paid from either pile (payUnits). */
-export const TOWER_REPAIR_COST=RECIPES.reparo.cost.coco+RECIPES.reparo.cost.pedra;
+/** A tower repair's price in Grana, R$ (D-048). */
+export const TOWER_REPAIR_COST=TOWER_REPAIR_PRICE;
 
 const ID_PREFIX='defesa';
 /** Remembered request ids share the forge's list (stonewards handled), under this prefix. */
@@ -182,20 +184,23 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
     }
     // The Gustavão is ordered from the Obuseiro's site (where the hero stands with it), not from the rail.
     if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
-    if(!payUnits(state.balance,next.cost))return {ok:false,reason:'balance'};
+    // D-048: the Gustavão takes 3 fichas de torre; every other evolution its tier's price in Grana.
+    const cost=next.id==='gustavao'?next.cost:EVOLVE_PRICE[next.tier as 2|3|4|5];
+    if(next.id==='gustavao'){if(!payUnits(state.balance,cost))return {ok:false,reason:'balance'};}
+    else{if(!(state.grana>=cost))return {ok:false,reason:'grana'};state.grana-=cost;}
     if(next.rail){
       const rail=plan.rail!;
       d.site=rail.id;d.x=rail.x;d.y=rail.y;d.r=Math.min(rail.length,rail.width)*plan.cell/2;
       towers.gustavoes++;
     }else d.r=radiusOn(plan,next.size!);
     d.kind=next.id;d.owner=playerId;d.hp=d.maxHp=next.hp;d.startTick=ctx.tick;d.readyTick=ctx.tick+ticks(next.buildSeconds);d.fireTick=d.readyTick;
-    return {ok:true,defense:d.id,kind:d.kind,cost:next.cost};
+    return {ok:true,defense:d.id,kind:d.kind,cost};
   });
 }
 
 /**
  * Repairs a standing defense below its maxHp (torres-ajustes): +REPAIR_FRACTION of maxHp (rounded up, capped), at once,
- * for TOWER_REPAIR_COST units; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
+ * for TOWER_REPAIR_COST R$ from the Grana; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
  * too ('full'), and so is a player out of reach ('away').
  */
 export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,requestId?:string):TowerResult{
@@ -207,7 +212,7 @@ export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playe
     if(d.ruined)return {ok:false,reason:'ruined'};
     if(d.hp>=d.maxHp)return {ok:false,reason:'full'};
     if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
-    if(!payUnits(state.balance,TOWER_REPAIR_COST))return {ok:false,reason:'balance'};
+    if(!(state.grana>=TOWER_REPAIR_COST))return {ok:false,reason:'grana'};state.grana-=TOWER_REPAIR_COST;
     d.hp=Math.min(d.maxHp,d.hp+Math.ceil(d.maxHp*REPAIR_FRACTION));
     return {ok:true,defense:d.id,kind:d.kind,cost:TOWER_REPAIR_COST};
   });

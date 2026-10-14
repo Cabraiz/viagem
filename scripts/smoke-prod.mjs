@@ -4,7 +4,7 @@
 //   1. `vite preview` of dist/ and a local rooms Worker (scripts/local-worker.mjs), on free ports;
 //   2. dist/multiplayer.json points at that Worker for the run (restored after);
 //   3. headless Chromium: the character, "Jogar sozinho", in each mode (normal and ?modo=chaveiro): it must enter the
-//      city match (the HUD minimap's canvas shows) within ENTER_MS, with no pageerror and no loaded chunk that rejects
+//      city match (window.__partidaPronta: the scene drew a run view with a round) within ENTER_MS, with no pageerror and no loaded chunk that rejects
 //      when imported again (a module that throws at load).
 // node scripts/smoke-prod.mjs [outDir] [--dist dist] [--modes normal,chaveiro]: one line per mode; a print per mode in
 // outDir when given. Exit 0 ok, 1 the game failed (no entry, pageerror, a chunk that throws at load), 2 infrastructure
@@ -84,7 +84,8 @@ async function smoke(chromium,base,mode){
     let entered=false,said='';
     for(const end=Date.now()+ENTER_MS;Date.now()<end&&!entered&&!said;){
       await sleep(1000);
-      ({entered,said}=await p.evaluate(()=>({entered:!!document.querySelector('.rh-mm-canvas')?.getBoundingClientRect().width,said:document.getElementById('explore-error')?.textContent||''})));
+      // The game's own signal (scene.ts: a round in the run view, drawn): not a HUD element a HUD card may change.
+      ({entered,said}=await p.evaluate(()=>({entered:window.__partidaPronta===true,said:document.getElementById('explore-error')?.textContent||''})));
     }
     // Every chunk the page loaded must import cleanly (a module that throws at load rejects every time).
     const rejected=await p.evaluate(async()=>{

@@ -854,7 +854,7 @@ function campWorld():FrameInput{
       {id:'no-0_0-2',kind:'pedra',x:-20,y:12,remaining:2,capacity:6,value:2,progress:.5},
       {id:'no-6_0-0',kind:'pedra',x:201,y:3,remaining:6,capacity:6,value:4,progress:0},
     ],
-    camp:{coco:7,pedra:12,hornEndsTick:900},
+    camp:{units:19,grana:137,hornEndsTick:900},
   };
 }
 
@@ -863,7 +863,7 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   const w=campWorld();
   const r=dec.decode(enc.encode(w));assert.ok(r.ok);
   assert.ok(PROTOCOL_VERSION>=6);
-  assert.deepEqual(r.view.camp,{coco:7,pedra:12,hornEndsTick:900});
+  assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900},'D-048: the team Grana (R$) after the units');
   const tower=r.view.structures.find(s=>s.kind==='torre-chinelo')!;
   assert.equal(tower.untilTick,1400);assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.hp,430);
   // The far player's node (200 units away) stays out of this client's area.
@@ -871,15 +871,36 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   assert.ok(r.view.nodes!.every(n=>/^n\d+$/.test(n.id)),'client ids for nodes');
   // A unit comes out: only that node changes, and the delta is small.
   enc.ack(r.seq);
-  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={coco:8,pedra:12,hornEndsTick:900};
+  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={units:20,grana:138,hornEndsTick:900};
   const bytes=enc.encode(w),r2=dec.decode(bytes);assert.ok(r2.ok);
   assert.ok(bytes.length<64,`delta ${bytes.length} B`);
-  assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.coco,8);
+  assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.units,20);assert.equal(r2.view.camp!.grana,138);
   // The wave: no nodes, no horn; the wall falls.
   enc.ack(r2.seq);
-  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={coco:8,pedra:12,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
+  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={units:20,grana:0,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
   const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
-  assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{coco:8,pedra:12,wallDown:true});
+  assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{units:20,grana:0,wallDown:true});
+});
+
+test('inflação (D-048 balance): the camp block carries the gambiarras and chinelos bought, and leaves forge out when none',()=>{
+  const ids=new WireIds(),enc=new FrameEncoder(ids,{viewer:'me'}),dec=new FrameDecoder();
+  const w=campWorld();
+  w.camp={units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}};
+  const r=dec.decode(enc.encode(w));assert.ok(r.ok);
+  assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}},'only the bought recipe, the horn still read after');
+  // Both counts, the wall down: every field after the two counts still decodes.
+  enc.ack(r.seq);
+  w.tick++;w.camp={units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}};
+  const r2=dec.decode(enc.encode(w));assert.ok(r2.ok);
+  assert.deepEqual(r2.view.camp,{units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}});
+  // None bought (absent, or zeros): no forge key at all, as before the inflação.
+  for(const forge of [undefined,{},{gambiarra:0,'torre-chinelo':0}]){
+    enc.ack(r2.seq);
+    w.tick++;w.camp={units:21,grana:5,hornEndsTick:900,...(forge?{forge}:{})};
+    const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
+    assert.deepEqual(r3.view.camp,{units:21,grana:5,hornEndsTick:900},JSON.stringify(forge));
+    assert.equal('forge' in r3.view.camp!,false);
+  }
 });
 
 test('protocol 6: horn and say events; horn reaches everyone, say only who is near the source',()=>{
@@ -1334,7 +1355,7 @@ function sameObjective(got:ObjectiveView|undefined,want:ObjectiveView,label:stri
 }
 
 test('protocol 15: the chaveiro strings are dictionary bytes appended after protocol 14, every older index unchanged',()=>{
-  assert.ok(PROTOCOL_VERSION>=15);
+  assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
   assert.deepEqual(DICT.slice(161),added);

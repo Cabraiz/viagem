@@ -33,7 +33,7 @@ export function branchForWire(label:string):string|undefined{
   return undefined;
 }
 
-/** Why the room said no to a build or upgrade (src/sim/towers/system.ts TowerRefusal), in a few pt-BR words. */
+/** Why the room said no to a build, upgrade or repair (src/sim/towers/system.ts TowerRefusal), in a few pt-BR words. */
 export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   'wall-down':'Muralha caída',
   phase:'Só no intervalo',
@@ -51,6 +51,9 @@ export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   max:'Já tá no máximo',
   branch:'Esse ramo não existe',
   duplicate:'Esse pedido já foi',
+  // torres-ajustes: the sim's reach rule (BUILD_REACH from the obra) and a repair of a whole defense.
+  away:'Chegue mais perto',
+  full:'Já tá inteira',
 });
 export const OBRA_REFUSED='Agora não dá';
 export const OBRA_RAIL_TAKEN='O trilho já tá posto';

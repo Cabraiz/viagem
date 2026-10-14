@@ -44,12 +44,12 @@
  * crates emptied, purchases), forge purchases, the boss (spawn − wave start, first time inside the base, first hit on a
  * player, first wall hit, kill) and the navigation counters. The JSON is rewritten after EVERY run (tmp + rename).
  *
- * Tower defense (torres-sim, default on; --no-towers turns it off): the room bots do not build yet (no wire for the
- * defenses, multiplayer/ untouched), so the harness plays the forger's tower rule of the brain (bot-brain.ts
- * pickTowerOrder over towerBrainView) exactly as decide() would with BrainInput.towers: before each think, in the
- * forger's window (BOT_FORGE_LEFT, first standing bot by slot), one order per second through the structures system's
- * build/upgrade, a needed repair first; and while the rule builds or saves, the forger's other forge buys are refused
- * ('balance'), as decide() holds them. Per run: orders, units spent, refusals, the defenses at the end.
+ * Tower defense (torres-sim, default on; --no-towers turns it off): the room bots build themselves since torres-fio
+ * (RoomBots hands the builder the tower view; bot-brain pickTowerOrder), and since torres-ajustes the sim takes an
+ * order only next to the obra (BUILD_REACH), so the builder walks there (Decision.mode 'build', RoomBots.modes): the
+ * wrapper then leaves it the brain's stick (its street route). The harness only counts what went through
+ * Simulation.build/upgrade/repair. Per run: orders, repairs, units spent, refusals, the defenses at the end, the
+ * Gustavão. --no-towers hides the tower view from the bots (RoomBots.towersOff).
  *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
@@ -68,9 +68,9 @@ import {cityFlowGrid,cityPlanner} from '../src/sim/city/grid.ts';
 import {cityLoot,type Crate} from '../src/sim/stonewards/loot.ts';
 import {remainingOf} from '../src/sim/stonewards/resources.ts';
 import {createRunSystems,type RunSystemsOptions} from '../src/sim/assemble.ts';
-import {REPAIR_BELOW,homeOf,pickRecipe,pickTowerOrder,towerBrainView,type BrainMemory} from '../src/sim/bot-brain.ts';
+import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
-import {RECIPES,canPay,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
+import {RECIPES,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
@@ -146,7 +146,7 @@ export interface RunRecord {
   perf:{wallSeconds:number;msPerTick:number;thinkMsPerTick:number;navMsPerTick:number};
   knobsApplied:boolean;
   /** Tower defense (torres-sim): orders applied, units spent, refusals by reason, standing defenses by kind at the end. */
-  towers?:{orders:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean};
+  towers?:{orders:number;repairs?:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean;rail?:boolean};
 }
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -262,7 +262,7 @@ const CRATE_CACHE=24;
 export const COLLECT_SECONDS=1.5;
 const PICK_TRIES=6;
 
-type Mode='hold'|'plaza'|'crate'|'crate-near'|'brain'|'home-wall'|'unstick';
+type Mode='hold'|'plaza'|'crate'|'crate-near'|'brain'|'home-wall'|'unstick'|'build';
 interface NavBot {brain:Point;anchor:Point;anchorTick:number;pushing:number;unstickUntil:number;unstickDir:Point;side:1|-1}
 
 const norm=(v:Point):Point=>{const l=Math.hypot(v.x,v.y);return l>1e-6?{x:v.x/l,y:v.y/l}:{x:0,y:0};};
@@ -330,7 +330,8 @@ export class NavDriver {
         const reading=waveStartTick!==null&&tick-waveStartTick<READ_SECONDS*HZ;
         if(reading){mode='hold';dir={x:0,y:0};}
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
-      }else if(round.phase==='prepare'){
+      }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
+      else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);
         const home=homeOf(view,p),toHome=dist(p,home),left=round.phaseEndsTick-tick;
@@ -494,30 +495,22 @@ function playRun(o:RunOptions):RunRecord{
   const rounds:RoundRecord[]=[],inter:IntermissionRecord[]=[];
   let cur:RoundRecord|undefined,curInter:IntermissionRecord|undefined;
   // A buy goes into the open intermission (the one before round r has round index r).
-  // Tower defense (see the module doc): the forger's tower rule, as decide() plays it with BrainInput.towers.
-  const tw={orders:0,units:0,refused:{} as Record<string,number>,lastTick:-1e9};
-  const towerRule=()=>{
-    const w=sim.world,round=w.round,s=sim.run.stonewards;
-    if(!o.towers||round.phase!=='prepare'||round.index<2||round.phaseEndsTick-w.tick>BOT_FORGE_LEFT||s.state.wallDown)return undefined;
-    if(s.state.wall.hp<s.state.wall.maxHp*REPAIR_BELOW&&canPay(s.state.balance,RECIPES.reparo.cost))return undefined;
-    return pickTowerOrder(towerBrainView(s.state,s.plan,w.tick,round.index));
-  };
-  const towerPass=()=>{
-    const order=towerRule();
-    if(!order||order==='save'||sim.tick-tw.lastTick<HZ)return;
-    const minds=[...(room.state() as {id:string;slot:number}[])].sort((a,b)=>a.slot-b.slot);
-    const forger=minds.find(m=>{const p=sim.players.get(m.id);return !!p&&isStanding(p);});
-    if(!forger)return;
-    tw.lastTick=sim.tick;
-    const s=sim.run.stonewards,before=s.state.balance.coco+s.state.balance.pedra;
-    const r='build' in order?s.build(sim.world,forger.id,order.build):s.upgrade(sim.world,forger.id,order.upgrade,order.branch);
+  // Tower defense (see the module doc): the room bots order through the Simulation; count what goes through.
+  const tw={orders:0,repairs:0,units:0,refused:{} as Record<string,number>};
+  if(!o.towers)room.towersOff=true;
+  const count=(run:()=>ReturnType<Simulation['build']>,repair=false)=>{
+    const s=sim.run.stonewards,before=s.state.balance.coco+s.state.balance.pedra,r=run();
     if(r.ok){
       const spent=before-(s.state.balance.coco+s.state.balance.pedra);
-      tw.orders++;tw.units+=spent;if(curInter)curInter.towerUnits=(curInter.towerUnits??0)+spent;
+      tw.orders++;if(repair)tw.repairs++;tw.units+=spent;if(curInter)curInter.towerUnits=(curInter.towerUnits??0)+spent;
     }else tw.refused[r.reason]=(tw.refused[r.reason]??0)+1;
+    return r;
   };
+  const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim);
+  sim.build=(id,site,req)=>count(()=>build(id,site,req));
+  sim.upgrade=(id,defense,branch,req)=>count(()=>upgrade(id,defense,branch,req));
+  sim.repair=(id,defense,req)=>count(()=>repair(id,defense,req),true);
   sim.forge=(id,recipe,req)=>{
-    if(recipe!=='reparo'&&towerRule()!==undefined)return {ok:false,reason:'balance'};
     const r=forge(id,recipe,req);
     if(r.ok){purchases.push({tick:sim.tick,round:sim.world.round.index,recipe:r.recipe as RecipeId,by:id});curInter?.purchases.push(r.recipe as RecipeId);}
     return r;
@@ -548,7 +541,6 @@ function playRun(o:RunOptions):RunRecord{
   let navMs=0,ticks=0;
   const thinkBefore=room.thinkMs;
   while(!sim.outcome&&sim.tick<o.capTicks){
-    towerPass();
     room.think(sim);
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
     const events=sim.step();ticks++;
@@ -624,7 +616,8 @@ function playRun(o:RunOptions):RunRecord{
   function towerSummary(){
     const list=st().defenses?.list??[],final:Record<string,number>={};
     for(const d of list)if(!d.ruined)final[d.kind]=(final[d.kind]??0)+1;
-    return {orders:tw.orders,units:r2(tw.units),refused:tw.refused,final,ruined:list.filter(d=>d.ruined).length,gustavao:(st().defenses?.gustavoes??0)>0};
+    return {orders:tw.orders,repairs:tw.repairs,units:r2(tw.units),refused:tw.refused,final,ruined:list.filter(d=>d.ruined).length,gustavao:(st().defenses?.gustavoes??0)>0,
+      rail:!!st().defenses?.rail};
   }
 }
 

@@ -16,6 +16,7 @@ import {ENEMY_ART_ID,chooseAnim,enemyFrameAt} from './horde-art.ts';
 import {markArt,markFrame,placeMark,sliceArt,type MarkArt,type SliceArt} from './frames-art.ts';
 import {uiArtUrl} from '../ui/icon.ts';
 import {ENEMY_KINDS,isEnemyKind,type EnemyKind} from '../render/keys.ts';
+import {RING_SCALE} from '../render/you-rules.ts';
 
 /** `ui` id of each critter's HUD icon: `inimigo-<inimigos id>`, built once. */
 export const CRITTER_ICON_IDS:Readonly<Record<EnemyKind,string>>=Object.fromEntries(ENEMY_KINDS.map(k=>[k,`inimigo-${ENEMY_ART_ID[k]}`])) as Record<EnemyKind,string>;
@@ -36,8 +37,12 @@ export function critterIconSource(kind:string):CritterIconSource|undefined{
   return ref?{key:ref.key,frame:ref.frame}:undefined;
 }
 
-/** Today's ally ring: a 46×20 ellipse with a 2 px Breu edge at 0.8 alpha, × the figures' scale. */
-export const ALLY_RING_WIDTH=46+2,ALLY_RING_ALPHA=.8;
+/**
+ * The ally ring: an ellipse with a 2 px Breu edge at 0.8 alpha, × the figures' scale; RING_SCALE of the old 46×20, like
+ * the hero's (BUG-20261013-ORQ-anel-voce-atras). It already sits under its figure (depth − 1).
+ */
+export const ALLY_RING_SIZE={width:46*RING_SCALE,height:20*RING_SCALE} as const;
+export const ALLY_RING_WIDTH=ALLY_RING_SIZE.width+2,ALLY_RING_ALPHA=.8;
 /** The ally ring's imported art: the "Você" ring (no ally variant in the inventory), always tinted. */
 export const allyRingArt=():MarkArt|undefined=>markArt('you');
 

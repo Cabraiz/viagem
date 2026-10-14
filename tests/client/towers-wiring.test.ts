@@ -94,7 +94,7 @@ test('the branch the room accepts: A4b/A5b as they are, every other child by its
 
 test('every refusal code has its own short pt-BR reason',()=>{
   const CODES:Record<TowerRefusal,true>={'wall-down':true,phase:true,player:true,site:true,occupied:true,size:true,balance:true,limit:true,rail:true,
-    unique:true,defense:true,building:true,ruined:true,max:true,branch:true,duplicate:true};
+    unique:true,defense:true,building:true,ruined:true,max:true,branch:true,duplicate:true,away:true,full:true};
   assert.deepEqual(Object.keys(OBRA_REFUSALS).sort(),Object.keys(CODES).sort(),'one text per TowerRefusal, no more');
   for(const code of Object.keys(CODES)){
     const text=refusalText(code);
@@ -103,6 +103,7 @@ test('every refusal code has its own short pt-BR reason',()=>{
   assert.equal(new Set(Object.values(OBRA_REFUSALS)).size,Object.keys(OBRA_REFUSALS).length,'no two codes say the same');
   assert.deepEqual(['balance','limit','rail','unique','wall-down','phase'].map(refusalText),
     ['Falta material','Limite de 12 defesas','Precisa do trilho','Só 1 Gustavão','Muralha caída','Só no intervalo']);
+  assert.equal(refusalText('away'),'Chegue mais perto','torres-ajustes: too far from the obra');
   assert.equal(refusalText('whatever'),OBRA_REFUSED);assert.equal(refusalText(undefined),OBRA_REFUSED);assert.equal(refusalText('toString'),OBRA_REFUSED);
   assert.equal(unreachableText({connected:false,spectator:false}),OBRA_OFFLINE);
   assert.equal(unreachableText({connected:true,spectator:true}),OBRA_WATCHING);

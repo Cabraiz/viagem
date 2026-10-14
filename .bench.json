@@ -1,0 +1,31 @@
+{
+ "world": "cidade",
+ "seeds": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16
+ ],
+ "players": [
+  6
+ ],
+ "objective": null,
+ "capMin": null,
+ "towers": true,
+ "target": null,
+ "branch": "vgm/carteira-pix",
+ "sha": "86488dae463ec4535335c276ad146e8269dd9f4d",
+ "base": "a2e951fb1cdfda8ab8916f2ec58406b0ac71277f"
+}

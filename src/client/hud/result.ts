@@ -16,6 +16,7 @@ import {faceExpression,faceImg} from '../ui/face-crop.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
 import type {MapId} from '../../protocol/index.ts';
+import {objectiveBill} from './chaveiro.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -41,7 +42,9 @@ export function seedIndex(seed:string,modulo:number){
   return modulo>0?(hash>>>0)%modulo:0;
 }
 
-export function resultHeadline(result:Pick<RunResult,'victory'|'seed'|'wall'>){
+export function resultHeadline(result:Pick<RunResult,'victory'|'seed'|'wall'|'objective'>){
+  // The chaveiro (D-047): the subtitle is why it ended (aberto, perda total, time caído, timeout).
+  if(result.objective)return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:objectiveBill(result.objective).reason};
   // The wall fell (VGM-046B): the subtitle says so, with one of its jokes.
   const lines=result.victory?VICTORY_LINES:result.wall?WALL_DOWN_LINES:DEFEAT_LINES;
   return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:lines[seedIndex(result.seed,lines.length)]};
@@ -148,6 +151,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const cause=el('span','rh-result-stat rh-result-cause',stats);cause.hidden=true;
   const causeIcon=el('img','',cause);causeIcon.alt='';causeIcon.decoding='async';causeIcon.draggable=false;
   const causeText=el('span','',cause);
+  // The chaveiro's bill (D-047): one ficha, the budget and the team's Grana; on a win he was not paid in full it wears
+  // Cone and adds what was missing (the subtitle says "Vitória com dívida: abriu e levou o volante."). One more ficha of
+  // the stats line: a wide screen keeps one row; 390×844 wraps it to a second row and six cards still fit under it.
+  const bill=el('span','rh-result-stat rh-result-conta',stats);bill.hidden=true;bill.setAttribute('role','img');
 
   // "Momento mais vergonhoso" (VGM-053B): a notice on the condo board, from the server's moment; hidden without one.
   const shame=el('aside','rh-result-shame',root);shame.hidden=true;
@@ -351,7 +358,16 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
-      round.textContent=`Round ${result.round}/${result.totalRounds}`;
+      const conta=result.objective&&objectiveBill(result.objective);
+      round.textContent=conta?conta.wave:`Round ${result.round}/${result.totalRounds}`;
+      bill.hidden=!conta;root.dataset.objetivo=conta?conta.cause:'';
+      if(conta){
+        // One ficha ("Orçamento R$ 456 · Grana R$ 372"): in landscape the head is one row and two fichas made it taller.
+        bill.innerHTML=`Orçamento <b></b> · Grana <b></b>${conta.debtVictory?' · falta <b></b>':''}`;
+        const [b1,b2,b3]=bill.querySelectorAll('b');b1.textContent=conta.budget;b2.textContent=conta.grana;if(b3)b3.textContent=conta.debt??'';
+        bill.classList.toggle('rh-result-divida',conta.debtVictory);
+        bill.setAttribute('aria-label',conta.aria);
+      }
       seed.textContent=resultSeedText(result);
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;

@@ -179,7 +179,7 @@ test('COVERING (game and arrows sandbox) counts the open windows; the sandbox re
   const {COVERING,WINDOWS}=await import('../../src/client/hud/edges.ts');
   for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-camp','.rh-stack>:not([hidden])','.rh-minimap'])assert.ok(COVERING.split(',').includes(sel),sel);
   // minimapa-wc3: the WC3 minimap floats over a corner of the field, so the arrows keep clear of it as of a window.
-  assert.deepEqual(WINDOWS.split(','),['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap-grande:not([hidden])','.rh-minimap'],'offer, forge, the city big minimap (cidade-hud §7) and the floating minimap');
+  assert.deepEqual(WINDOWS.split(','),['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-cida:not([hidden])','.rh-minimap-grande:not([hidden])','.rh-minimap'],'offer, forge, the Dona Cida tray (D-047), the city big minimap (cidade-hud §7) and the floating minimap');
   const {readFileSync}=await import('node:fs');
   const sandbox=readFileSync(new URL('../../src/client/sandboxes/sandbox-hud.ts',import.meta.url),'utf8'),rescue=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
   assert.match(sandbox,/\$\{COVERING\}/);assert.match(rescue,/boxes\(hud\.el\.ownerDocument,COVERING\)/);

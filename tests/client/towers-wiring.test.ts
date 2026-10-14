@@ -193,7 +193,8 @@ test('measureZoneInput: the obra window is a window of the useful area; the obra
     const forge={x:70,y:500,width:312,height:180};
     assert.deepEqual(measureZoneInput(fakeDoc({...base,'.rh-forge':forge})).offer,forge);
   });
-  assert.deepEqual([...ZONE_WINDOWS],['.rh-offer','.rh-forge','.rh-obra-janela']);
+  // D-047: Dona Cida's tray (hud/cida.ts) is one more window, in the forge's place.
+  assert.deepEqual([...ZONE_WINDOWS],['.rh-offer','.rh-forge','.rh-obra-janela','.rh-cida']);
 });
 
 // ---------- markers on screen: off-screen sites hide (their edge arrows: obra-arrows.test.ts), crowded ones are nudged apart ----------

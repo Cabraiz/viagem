@@ -1,0 +1,79 @@
+/* Dona Cida (D-047, hud/cida.ts). Only tokens (src/client/ui/tokens.css) and stickers (src/client/ui/icons.svg).
+   - .rh-cida-btn: a right-thumb control (a circle like the offer chip), centred over the skill button, 24 px above it.
+     Papel body (her tray), Breu edge; dim (rh-cida-apagado) when the team cannot buy anything now. Hidden while the tray
+     is open (the tray's own close button takes over).
+   - .rh-cida: the tray, in the forge's place (system window: Lilás body, Breu edge, Papel inner line): the title, the
+     team's Grana, one line for what a tap did, and the three sweets as price tags in one row (one line of tags keeps the
+     window low, clear of the hero at the viewport centre). */
+
+/* ---------- Button ---------- */
+.rh .rh-cida-btn{
+  --cida:56px;
+  position:absolute;z-index:1;box-sizing:border-box;width:var(--cida);height:var(--cida);
+  right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--cida)/2);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);
+  display:grid;place-content:center;justify-items:center;gap:0;margin:0;padding:0;
+  border:2px solid var(--c-breu);border-radius:var(--r-circulo);background:var(--c-papel);color:var(--c-breu);
+  box-shadow:0 0 0 2px var(--c-papel),var(--s-1);cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.rh .rh-cida-btn[hidden]{display:none}
+.rh-cida-btn .ic{width:28px;height:28px}
+.rh-cida-btn-text{font:800 var(--t-13)/1 var(--f-sistema)}
+.rh .rh-cida-btn:active{transform:translateY(2px);box-shadow:0 0 0 2px var(--c-papel),0 1px 0 var(--c-breu)}
+.rh .rh-cida-btn.rh-cida-apagado{background:var(--c-papel-claro);opacity:.6}
+.rh-ended .rh-cida-btn,.rh-ended .rh-cida{display:none}
+@media (max-height:500px){
+  .rh .rh-cida-btn{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--cida)/2);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px)}
+}
+
+/* ---------- Tray ---------- */
+.rh-cida{position:absolute;z-index:1;box-sizing:border-box;left:calc(var(--rh-l) + max(62px,var(--rh-coluna,54px) + 8px));right:var(--rh-r);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);max-width:440px;margin:0 0 0 auto;padding:4px 8px 8px;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:2px;border-radius:var(--r-janela);
+  background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
+  pointer-events:auto;touch-action:manipulation;text-align:left}
+.rh-cida[hidden]{display:none}
+.rh-cida-head{display:grid;grid-template-columns:auto auto minmax(0,1fr) 44px;align-items:center;column-gap:8px;min-width:0}
+.rh-cida-title{flex:none;margin:0;padding-left:4px;font:400 var(--t-21)/1 var(--f-cartaz);color:var(--c-papel);white-space:nowrap}
+.rh-cida-grana{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rh .rh-cida-close{display:grid;place-items:center;width:44px;height:44px;margin:0 -4px 0 0;padding:0;border:0;background:transparent;color:var(--c-papel);cursor:pointer}
+.rh-cida-note{min-width:0;margin:0;font:700 var(--t-13)/1.15 var(--f-sistema);color:var(--c-papel);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.rh-cida-doces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:2px}
+/* A sweet: a price tag (Papel, Breu edge, punched hole), name, what it does and the price with what is left. */
+.rh .rh-cida-doce{--tilt:-1deg;position:relative;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:2px;min-width:0;min-height:0;margin:0;
+  padding:18px 6px 5px;border-radius:var(--r-etiqueta);border:2px solid var(--c-breu);background:var(--c-papel);color:var(--c-breu);
+  box-shadow:var(--s-1);text-align:left;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transform:rotate(var(--tilt));transition:transform .08s ease-out,box-shadow .08s ease-out}
+.rh .rh-cida-doce:nth-child(even){--tilt:.8deg}
+.rh-cida-doce::before{content:'';position:absolute;left:6px;top:4px;width:8px;height:8px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
+.rh .rh-cida-doce:active,.rh .rh-cida-pending{transform:rotate(var(--tilt)) translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
+.rh-cida-nome{font:400 var(--t-16)/1.05 var(--f-cartaz)}
+.rh-cida-efeito{flex:1;font:400 var(--t-13)/1.15 var(--f-sistema)}
+.rh-cida-pe{display:flex;align-items:center;gap:4px}
+.rh-cida-preco{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;color:var(--c-lilas);white-space:nowrap}
+.rh-cida-cadeado{display:grid;place-items:center}
+.rh-cida-cadeado[hidden]{display:none}
+.rh-cida-cadeado .ic{width:20px;height:20px}
+/* What is left rides the tag's top row, right of the punched hole, so the price keeps its own short line. */
+.rh-cida-estoque{position:absolute;top:3px;right:6px;font:700 var(--t-13)/1 var(--f-sistema);white-space:nowrap}
+/* Not buyable now: the price steps back, a padlock (short of Grana) or "acabou" (empty tray) says why; still readable. */
+.rh-cida-bloqueado .rh-cida-preco{opacity:.5}
+.rh-cida-doce[data-bloqueio=stock]{background:var(--c-papel-claro)}
+.rh-cida-doce[data-bloqueio=stock] :is(.rh-cida-nome,.rh-cida-efeito){opacity:.6}
+/* Bought: Amarelo tag and the "LEVEI" stamp (the forge's, hud.css keyframes). */
+.rh-cida-carimbo{position:absolute;left:50%;top:50%;z-index:2;box-sizing:border-box;width:86%;padding:2px 4px 3px;text-align:center;
+  border:3px solid var(--c-lilas);border-radius:var(--r-etiqueta);color:var(--c-lilas);
+  font:900 var(--t-21)/1 var(--f-cartaz);white-space:nowrap;pointer-events:none;opacity:0;transform:translate(-50%,-50%) rotate(-8deg)}
+.rh .rh-cida-feito{background:var(--c-amarelo)}
+.rh-cida-feito :is(.rh-cida-efeito,.rh-cida-pe){opacity:.4}
+.rh-cida-feito .rh-cida-carimbo{opacity:1;animation:rh-stamp 140ms cubic-bezier(.2,.9,.3,1.25) both}
+@media (prefers-reduced-motion:reduce){.rh-cida-feito .rh-cida-carimbo{animation:none}}
+/* Bigger text (125%): the tray steps right of the wider team column, like the forge. */
+@media (min-height:501px){:root[data-texto="125"] .rh-cida{left:calc(var(--rh-l) + max(86px,var(--rh-coluna,54px) + 8px))}}
+/* Landscape: the right column under the top band, above the skill button (its top − 24 px), like the forge; a little
+   narrower than the forge so its left edge keeps clear of the hero at the viewport centre. */
+@media (max-height:500px){
+  .rh-cida{left:auto;right:var(--rh-r);top:calc(var(--rh-t) + 48px);bottom:auto;width:min(40vw,340px);max-width:none;margin:0;padding:2px 6px 6px;
+    max-height:calc(100vh - var(--rh-t) - 48px - (max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px));overflow-y:auto;overscroll-behavior:contain}
+  .rh .rh-cida-doce{padding:17px 5px 4px}
+  .rh:has(.rh-cida:not([hidden])) .rh-stack{right:calc(var(--rh-r) + min(40vw,340px) + 8px)}
+}

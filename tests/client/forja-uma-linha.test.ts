@@ -18,7 +18,9 @@ import {RECIPE_SHORT,barricadeText,createCamp} from '../../src/client/hud/camp.t
 import {forgePriceLabel} from '../../src/client/hud/price.ts';
 import {FIXTURE_HERO,fakeView} from '../../src/client/hud/fixtures.ts';
 import {RECIPES,RECIPE_IDS,forgePrice} from '../../src/rules/index.ts';
-import {HERO_MARGIN,THUMB_GAP,crosses,type Rect} from '../../src/client/hud/zones.ts';
+import {HERO_MARGIN,THUMB_GAP,besideArea,computeZones,crosses,orientationOf,type Rect} from '../../src/client/hud/zones.ts';
+import {foneLayout} from '../../src/client/hud/fone-layout.ts';
+import {FollowCamera,followZoom,framesBeside,toScreen} from '../../src/client/framing.ts';
 import {HERO_SIDE} from '../../src/client/hud/city/layout.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
@@ -253,6 +255,64 @@ test('portrait: a smaller tilt than the desktop\'s; the stamp waits for a purcha
   // The desktop (no tap band) keeps its tilt; the landscape phone's band needs the smaller one too.
   assert.equal(tilt({width:1343,height:618,scale:1}),1);
   for(const size of SIZES.filter(z=>z.height<=500))assert.ok(tilt({...size,scale:1})<1);
+});
+
+// ---------- Beside framing in portrait (Orquestrador's option b, BUG-20261014-ORQ-forja-cobre-heroi-retrato) ----------
+// While the forge or Dona Cida's tray is open in portrait, the follow camera frames the hero above the window
+// (framing.ts framesBeside, zones.ts besideArea), as for the obra window. These cases sum the window from the CSS (3
+// tags, 4 with a city barricade, the tray), lay the phone's top band out (fone-layout.ts), take the zones the game
+// measures with the window as the open one, and snap the real FollowCamera: the hero's box ± HERO_MARGIN never crosses
+// the window, nor the status rows above it, on the tall phones and on SHORT real viewports (390x664, 360x690).
+const SHORT=[{width:390,height:664},{width:360,height:690}] as const;
+/** The thumbs as rects, as the shell draws them (explore.css, coop.css): for the zones. */
+function thumbRects(s:Screen){
+  const c=box(cascade('.explore-controls','padding',s,EXPLORE),s),stick=length(cascade('.explore-stick','height',s,EXPLORE),s);
+  const skill=length(cascade('#coop-attack','height',s,COOP),s);
+  return {joystick:{x:c.left,y:s.height-c.bottom-stick,width:stick,height:stick},skill:{x:s.width-c.right-skill,y:s.height-c.bottom-skill,width:skill,height:skill}};
+}
+/** The window open at `s`: the forge with `tags` tags (its height capped by its max-height: the rest scrolls) or the tray. */
+function openWindow(kind:'forja'|'cida',tags:number,s:Screen):Rect{
+  if(kind==='cida')return windowAt('.rh-cida',CIDA,cidaBox(s).height,s);
+  const b=forgeBox(s),height=Math.min(b.cap,b.height+(tags-3)*(b.tag+b.gap));
+  return windowAt('.rh-forge',CAMP,height,s);
+}
+/** Where the follow camera puts the hero's 56 px box with `window` open (the game's own functions, end to end). */
+function heroBeside(kind:'forja'|'cida',window:Rect,s:Screen){
+  const viewport={width:s.width,height:s.height},thumbs=thumbRects(s);
+  const l=foneLayout({viewport,players:4,...thumbs});
+  const status=[l.gear,l.level,l.bar,l.fan,l.minimap];
+  const zones=computeZones({viewport,status,...thumbs,minimap:l.minimap,offer:window});
+  const area=besideArea(zones,window),z=followZoom(viewport),at={x:4321.5,y:-987.25},size={width:HERO_SIDE,height:HERO_SIDE};
+  const cam=new FollowCamera();cam.free=true;cam.beside=framesBeside('combat','prepare',kind,orientationOf(viewport)==='portrait');
+  cam.snap(at,viewport,z,area,size);
+  const feet=toScreen(at,cam.center,viewport,z);
+  return {hero:{x:feet.x-HERO_SIDE/2,y:feet.y-HERO_SIDE,width:HERO_SIDE,height:HERO_SIDE},area,zones,rows:Math.max(...status.map(r=>r.y+r.height)),beside:cam.beside};
+}
+
+for(const size of [...PORTRAITS,...SHORT])for(const scale of SCALES)for(const [kind,tags] of [['forja',3],['forja',4],['cida',3]] as const){
+  const s:Screen={...size,scale},name=`portrait ${s.width}x${s.height} at ${scale*100}%, ${kind==='cida'?'Dona Cida':`forge with ${tags} tags`}`;
+  test(`${name}: the camera frames the hero above the window, ± ${HERO_MARGIN} px clear of it and of the status rows`,()=>{
+    const window=openWindow(kind,tags,s),{hero,area,rows,beside}=heroBeside(kind,window,s);
+    assert.ok(beside,'portrait: beside the window');
+    const label=`hero y ${hero.y.toFixed(1)}–${(hero.y+hero.height).toFixed(1)}, window ${window.y.toFixed(1)}–${(window.y+window.height).toFixed(1)}, area ${area.y.toFixed(1)}–${(area.y+area.height).toFixed(1)}`;
+    assert.ok(!crosses(hero,window,HERO_MARGIN),`${name}: ${label}`);
+    assert.ok(hero.y-HERO_MARGIN>=rows-.01,`${name}: under the status rows (${rows}): ${label}`);
+    assert.ok(Math.abs(hero.x+hero.width/2-s.width/2)<1,`${name}: across, still the middle`);
+  });
+}
+
+test('besideArea: the useful area when it holds the hero, else the band from the status rows down to the window',()=>{
+  const announce={x:0,y:136,width:390,height:88};
+  const window={x:8,y:290,width:374,height:212};
+  // Short (66 px under the slot): the band from the status rows (136) to the window (290), 154 px.
+  assert.deepEqual(besideArea({useful:{x:0,y:224,width:390,height:66},announce},window),{x:0,y:136,width:390,height:154});
+  // Tall enough: unchanged.
+  const tall={x:0,y:224,width:390,height:282};
+  assert.deepEqual(besideArea({useful:tall,announce},{...window,y:506}),tall);
+  // A useful area that does not end on the window (beside it, under it): unchanged; no window: unchanged.
+  const side={x:0,y:224,width:100,height:76};
+  assert.deepEqual(besideArea({useful:side,announce},window),side);
+  assert.deepEqual(besideArea({useful:side,announce},undefined),side);
 });
 
 test('the short effects: a few pt-BR characters each, never the long line, no arrows or emoji',()=>{

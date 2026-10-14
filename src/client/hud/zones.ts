@@ -123,6 +123,21 @@ export function computeZones(input:ZoneInput):ScreenZones{
   return {orientation,viewport,top,announce,team,leftThumb,rightThumb:thumbR,useful};
 }
 
+/**
+ * Where the follow camera frames the hero beside an open window (framing.ts framesBeside): the useful area, which
+ * already leaves the window out; when that is too short for the hero ± HERO_MARGIN (MIN_PLAY_SIDE) and it ends on the
+ * window's top (the portrait forge or Dona Cida's tray on a short screen: 390x664 leaves ~100 px under the
+ * announcement slot), the band from the top band's status rows down to the window, which holds it. The announcement
+ * rows then avoid the hero as they do anywhere (RunHud.avoidHero: the other slot, the hint and the objective step
+ * aside). BUG-20261014-ORQ-forja-cobre-heroi-retrato.
+ */
+export function besideArea(zones:Pick<ScreenZones,'useful'|'announce'>,window:Rect|undefined):Rect{
+  const u=zones.useful;
+  if(!window||u.height>=MIN_PLAY_SIDE||Math.abs(bottom(u)-window.y)>.5)return u;
+  const up={x:u.x,y:zones.announce.y,width:u.width,height:Math.max(0,window.y-zones.announce.y)};
+  return up.height>u.height?up:u;
+}
+
 /** The largest part of `area` left beside an open window (above, below, left or right of it), preferring one that fits. */
 function besideOffer(area:Rect,offer:Rect,fits:(r:Rect)=>boolean):Rect{
   if(!crosses(area,offer))return area;

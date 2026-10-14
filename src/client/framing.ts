@@ -183,17 +183,25 @@ export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Re
   return {x:hero.x-dx,y:hero.y-dy};
 }
 
+/** A window the follow camera frames the hero beside while it is open (framesBeside): the obra window, the forge, Dona Cida's tray. */
+export type BesideWindow='obra'|'forja'|'cida';
 /**
  * Whether the follow camera frames the hero beside a panel (FollowCamera.beside: the body centred in the useful area)
  * rather than at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi: in the round the hero is at the centre,
- * whatever the HUD, its windows or the zoom). Two exceptions, where centring would put the hero under a panel:
+ * whatever the HUD, its windows or the zoom). The exceptions, where centring would put the hero under a panel:
  * - lobby and countdown: the waiting panel covers the middle of the screen; the useful area is the free band beside
  *   it (freeAround);
  * - the intermission while the obra (build) window is open: the player is choosing, no wave runs, and the useful area
- *   already excludes the window, so it never covers the hero; once it closes the camera eases back to the centre.
+ *   already excludes the window, so it never covers the hero; once it closes the camera eases back to the centre;
+ * - in portrait, while the forge or Dona Cida's tray is open (BUG-20261014-ORQ-forja-cobre-heroi-retrato): the window
+ *   sits on the thumbs, from edge to edge, and on a short screen (390x664) it reaches the centre; the hero goes to the
+ *   band above it (besideArea). In landscape they keep the right column and the hero stays at the centre.
+ * The combat offer (the level-up panel opened from the chip) is none of these: the hero stays at the centre under it.
  */
-export function framesBeside(run:string|undefined,round:string|undefined,obraOpen:boolean){
-  return run==='lobby'||run==='countdown'||run==='combat'&&round==='prepare'&&obraOpen;
+export function framesBeside(run:string|undefined,round:string|undefined,open:BesideWindow|undefined,portrait=false){
+  if(run==='lobby'||run==='countdown')return true;
+  if(run!=='combat'||!open)return false;
+  return open==='obra'?round==='prepare':portrait;
 }
 
 /**

@@ -327,3 +327,23 @@ test('an open offer window takes its part of the useful area, and over the hero 
   assert.deepEqual(auditBoxes(boxes,open,heroRect).heroCrossed,['oferta']);
   assert.equal(auditBoxes(boxes,open,{x:180,y:250,width:56,height:56}).ok,true);
 });
+
+test('portrait forge / Dona Cida open: the hero eases above the window (besideArea); closed, or the combat offer, back to the centre',async()=>{
+  // BUG-20261014-ORQ-forja-cobre-heroi-retrato (option b). forja-uma-linha.test.ts sums the windows from the CSS at every
+  // size; here the camera's motion on a short phone: 390x664, the forge with 4 tags capped at 32svh (y 292–504).
+  const {framesBeside}=await import('../../src/client/framing.ts');
+  const {besideArea,crosses}=await import('../../src/client/hud/zones.ts');
+  const vp={width:390,height:664},z=followZoom(vp),hero={x:812.5,y:-301.75},window={x:8,y:292,width:374,height:212};
+  const zones={useful:{x:0,y:224,width:390,height:68},announce:{x:0,y:136,width:390,height:88}},area=besideArea(zones,window);
+  const box=(c:{x:number;y:number})=>{const f=toScreen(hero,c,vp,z);return {x:f.x-HERO.width/2,y:f.y-HERO.height,width:HERO.width,height:HERO.height};};
+  const cam=new FollowCamera();cam.free=true;cam.beside=false;cam.snap(hero,vp,z,area,HERO);
+  assert.ok(crosses(box(cam.center),window,HERO_MARGIN),'centred, the hero ± margin reaches the window on 390x664');
+  cam.beside=framesBeside('combat','prepare','forja',true);
+  for(let i=0;i<90;i++)cam.step(hero,1/60,vp,z,area,HERO);
+  assert.ok(!crosses(box(cam.center),window,HERO_MARGIN),`beside: ${JSON.stringify(box(cam.center))}`);
+  assert.ok(box(cam.center).y-HERO_MARGIN>=136-.01,'under the status rows');
+  // Closed (or the combat offer, which is no beside window): back to the viewport centre.
+  cam.beside=framesBeside('combat','wave',undefined,true);
+  for(let i=0;i<90;i++)cam.step(hero,1/60,vp,z,area,HERO);
+  const b=box(cam.center);assert.ok(Math.abs(b.y+HERO.height/2-vp.height/2)<.05,`back at the centre: ${b.y}`);
+});

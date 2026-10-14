@@ -16,7 +16,7 @@ import {RunHud} from './hud/hud.ts';
 import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
 import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
-import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
+import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
@@ -486,9 +486,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0
                 ?besideSelector(freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
                 :z.useful;
-              // An open obra window (intermission): the camera frames the hero beside it, in the useful area that already
-              // leaves the window out (framing.ts framesBeside, BUG-20261013-ORQ-camera-centro-heroi).
-              if(controller)controller.scene.obraOpen=!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela');
+              // An open obra window (intermission), or in portrait the forge or Dona Cida's tray: the camera frames the hero
+              // beside it, in the useful area that already leaves the window out, or on a short screen the band from the
+              // status rows down to it (framing.ts framesBeside, zones.ts besideArea; BUG-20261013-ORQ-camera-centro-heroi,
+              // BUG-20261014-ORQ-forja-cobre-heroi-retrato).
+              if(controller){
+                const scene=controller.scene,tray=document.querySelector<HTMLElement>('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
+                scene.besideWindow=document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela')?'obra':tray?(tray.classList.contains('rh-cida')?'cida':'forja'):undefined;
+                const r=tray&&scene.besideWindow!=='obra'?tray.getBoundingClientRect():undefined;
+                scene.frameArea=r&&!wait?besideArea(z,{x:r.left,y:r.top,width:r.width,height:r.height}):undefined;
+              }
               // Out or watching: the camera follows a teammate; the banner names who (a tap on a portrait changes it).
               hud.setWatching(controller?.scene.watching()?.name);
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));

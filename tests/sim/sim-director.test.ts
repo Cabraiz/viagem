@@ -436,7 +436,7 @@ function walker(seed:number){
   };
 }
 
-test('endless: the off-screen ring follows the camera floor (56 px hero), its offset budget and every orientation and view',t=>{
+test('endless: the off-screen ring follows the widest camera (44 px hero, D-046), its offset budget and every orientation and view',t=>{
   let lo=Infinity,hi=0;
   for(let i=0;i<720;i++){
     const a=i/720*Math.PI*2,ux=Math.cos(a),uy=Math.sin(a),d=offscreenDistance(ux,uy);
@@ -445,15 +445,17 @@ test('endless: the off-screen ring follows the camera floor (56 px hero), its of
     for(const k of [0,.5,3,20])assert.ok(!visibleOffset(ux*(d+k),uy*(d+k)),`outside at ${i}+${k}`);
   }
   t.diagnostic(`off-screen distance ${lo.toFixed(1)}..${hi.toFixed(1)} u, interest ${INTEREST_RADIUS} u, recycle ${RECYCLE_DISTANCE} u`);
-  // 25.5..41.4 u since the follow camera (camera-segue) may hold the hero off the screen centre (CAMERA_OFFSET_*).
-  assert.ok(lo>24&&hi<42,`${lo} ${hi}`);
+  // 29.9..48.7 u at the widest camera (D-046: hero 44 CSS px; it was 25.5..41.4 u with the 56 px floor), the follow
+  // camera's offset budget included (camera-segue may hold the hero off the screen centre, CAMERA_OFFSET_*).
+  assert.ok(lo>29&&hi<49,`${lo} ${hi}`);
+  assert.equal(MAX_OFFSCREEN_DISTANCE,48.9);assert.equal(INTEREST_RADIUS,61);assert.equal(RECYCLE_DISTANCE,69);
   assert.ok(MAX_OFFSCREEN_DISTANCE>=hi);
   assert.ok(INTEREST_RADIUS>=MAX_OFFSCREEN_DISTANCE+RING_OUTER,'the client has every enemy before it can walk on screen');
   assert.ok(RECYCLE_DISTANCE>INTEREST_RADIUS,'recycling only takes what no client is drawing');
   // The 4 views are 90° turns around the player: the region is symmetric under them.
   for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
   // A camera hint (portrait, view 0) shows much less to the side.
-  assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12);
+  assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12.5);
 });
 
 test('endless: 20 seeds, walking players, no spawn on anyone\'s screen, in water or in an obstacle',t=>{
@@ -686,9 +688,9 @@ test('endless: a camera hint brings the ring in to that one screen',()=>{
     for(const e of c.enemies.values())if(e.spawnTick===c.tick){assert.ok(!visibleFrom(p,e,hint));dist.push(Math.hypot(e.x-p.x,e.y-p.y));}
     killAfter(ticks(2))(c);
   },()=>director.state.stage==='done');
-  // camera-segue widened the screens by the hero offset budget (10.2 u sideways in portrait, ring +5..8 on top).
+  // camera-segue widened the screens by the hero offset budget (11.7 u sideways in portrait at the D-046 widest camera, ring +5..8 on top).
   assert.ok(Math.min(...dist)<18,`closest ${Math.min(...dist).toFixed(1)}`);
-  assert.ok(dist.some(d=>d<25.5),'closer than the no-hint minimum');
+  assert.ok(dist.some(d=>d<29.9),'closer than the no-hint minimum (29.9 u)');
 });
 
 test('endless: a downed player still sees: nothing is recycled off their screen',()=>{

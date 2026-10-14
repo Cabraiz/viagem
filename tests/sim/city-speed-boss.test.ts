@@ -458,7 +458,8 @@ function bossDigest(world:'ilha'|'infinito'){
   const json=JSON.stringify({trail,boss:rig.sys.boss.state,bodies,telegraphs:[...rig.world.telegraphs.values()],round:rig.world.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'0df5554c3395e49b'};
+// infinito re-recorded for D-046 (the widest camera moves the endless spawn ring out; the island is unchanged).
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'607c8d887da682a3'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

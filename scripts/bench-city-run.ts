@@ -571,7 +571,9 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro'}
+interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
+  /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
+  combat?:'manual'}
 
 /**
  * Barricades (cidade-06) read generically from the stonewards state: id → down, or null when the state has no
@@ -598,7 +600,7 @@ export function barricadesFell(before:ReadonlyMap<string,boolean>|null,after:Rea
 function playRun(o:RunOptions):RunRecord{
   const knobsApplied=o.knobs!==undefined&&o.route!=='none';
   const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
-    ...(o.objective?{objective:o.objective}:{})} as ConstructorParameters<typeof Simulation>[1]);
+    ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{})} as ConstructorParameters<typeof Simulation>[1]);
   if(knobsApplied&&o.route==='assemble')injectAssemble(sim,o.knobs);
   const room=new RoomBots();
   const ids:string[]=[],cls:string[]=[];
@@ -762,7 +764,7 @@ function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -773,6 +775,7 @@ function args(argv:readonly string[]){
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
     towers:!argv.includes('--no-towers'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
+    combat:get('--combat')==='manual'?'manual' as const:undefined,
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -828,7 +831,7 @@ async function main(){
   const loaded=await cityTerrainFrom(text,hash);
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
-  const config:OutFile['config']={objective:a.objective??null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){
@@ -840,7 +843,7 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective,combat:a.combat});
     run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);

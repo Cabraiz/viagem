@@ -63,9 +63,10 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * HUD and render follow it; the site's deploy gate compares this number only, so a site with the v2 asset must not go
  * live in front of a Worker that still bundles version 1 (every city join would be refused for the map).
  * 17 given by the integration queue (tools/fila.mjs, lote 20261014-051017) to: NEW-20261013-ORQ-ficha-de-torre.
+ * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=17;
+export const PROTOCOL_VERSION=18;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

@@ -94,11 +94,14 @@ export const NEUTRAL_CITY_BALANCE:CityBalance=Object.freeze({
  * torres-ajustes (bots walk to the obra and back, towers ruin): 6p damage 1.6 → 1.45, 16 seeds: 1p 3/16, 6p 8/16.
  * balanco-cidade-so-arte (art-only cast, D-045, after the 2× hero speed): without changes 1p 6/16, 6p 16/16; with the rat
  * cap (roleCap) 1p damage .45 → .4, 6p hp 1.2 → 1.5, damage 1.45 → 1.75, bossHp 1.4 → 1.9: 32 seeds 1p 7/32, 6p 17/32.
+ * balanco-pos-1-7 part B (city 1.7×, CI bench the reference, 30 min cap): 1p wall mode won 8/16, every solo run that
+ * reached round 10 killed the boss (in 8–64 s). 1p bossHp .45 → 2.2 only touches that fight: 4/16 (half the round-10
+ * fights lost); the chaveiro 1p, whose boss is rarely fought to the end, stays at 6/16.
  */
 export const CITY_BALANCE:CityBalance=Object.freeze({
   ...NEUTRAL_CITY_BALANCE,
   players:Object.freeze({
-    1:Object.freeze({count:.5,hp:.7,damage:.35,bossHp:.45,lootValue:2,siegeShare:.15}),
+    1:Object.freeze({count:.5,hp:.7,damage:.35,bossHp:2.2,lootValue:2,siegeShare:.15}),
     3:Object.freeze({count:.8,hp:.85,damage:.55,bossHp:.5,lootValue:1.3}),
     6:Object.freeze({count:1.07,hp:1.5,damage:1.9,bossHp:1.9}),
   }),

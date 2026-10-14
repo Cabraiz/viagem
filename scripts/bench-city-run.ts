@@ -53,8 +53,8 @@
  * Simulation.build/upgrade/repair. Per run: orders, repairs, units spent, refusals, the defenses at the end, the
  * Gustavão, and the fichas de torre spent (D-048: a root is TOWER_TOKENS.root, the Gustavão TOWER_TOKENS.gustavao). --no-towers hides the tower view from the bots (RoomBots.towersOff).
  *
- * Chaveiro objective (D-047, --objective chaveiro; opt-in (RoomOptions.objective, ?modo=chaveiro), off here unless asked so older baselines
- * replay): the run is the room's objective mode (the car, the moto, Dona Cida, waves past 10, the boss at ETA < 60 s);
+ * Chaveiro objective (D-047, --objective chaveiro): the rooms play it by default since balanco-pos-1-7 part B
+ * (CITY_OBJECTIVE_DEFAULT), but the bench keeps the wall mode unless asked, so older baselines replay: the run is the room's objective mode (the car, the moto, Dona Cida, waves past 10, the boss at ETA < 60 s);
  * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
  * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
  * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own

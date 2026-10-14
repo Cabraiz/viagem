@@ -146,6 +146,42 @@ function runSuite(opt,dir,branch,files){
   return {ok:r.status===0,failedFiles:m?JSON.parse(m[1]):[]};
 }
 
+// ---------- the production smoke ----------
+const sleep=(ms)=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
+/**
+ * `npm run build` and E8's scripts/smoke-prod.mjs in the batch checkout (exit 0 ok, 1 broken, 2 infrastructure), holding
+ * one of the PC's two headless-browser slots (board locks/browser-1|2, ESCALA.md). `--smoke "<cmd>"` replaces it (tests),
+ * `--smoke off` skips it; a checkout without the script yet skips it with a log line.
+ */
+function runSmoke(opt,dir){
+  if(opt.smoke==='off')return {ok:true,skipped:true};
+  if(opt.smoke){
+    const r=spawnSync(opt.smoke,{cwd:dir,shell:true,encoding:'utf8'});
+    return r.status===0?{ok:true}:{ok:false,motivo:`${opt.smoke} saiu com ${r.status}: ${(r.stdout+r.stderr).trim().slice(0,300)}`};
+  }
+  const script=join(dir,'scripts','smoke-prod.mjs');
+  if(!existsSync(script)){log('smoke de produção: scripts/smoke-prod.mjs ainda não existe na main; pulado');return {ok:true,skipped:true};}
+  let slot;
+  for(let waited=0;!slot;waited+=5000){
+    for(const n of [1,2]){try{mkdirSync(join(opt.board,'locks',`browser-${n}`));slot=join(opt.board,'locks',`browser-${n}`);break;}catch{/* taken */}}
+    if(slot)break;
+    if(waited>=10*60_000)return {ok:false,motivo:'nenhuma vaga de navegador em 10 min (locks/browser-1 e 2)'};
+    if(waited===0)log('smoke: esperando uma vaga de navegador (locks/browser-1|2)…');
+    sleep(5000);
+  }
+  try{
+    writeFileSync(join(slot,'owner.txt'),`fila ${new Date().toISOString()}`);
+    const out=join(opt.board,'fila','smoke');mkdirSync(out,{recursive:true});
+    const npm=process.platform==='win32'?'npm.cmd':'npm';
+    const b=spawnSync(npm,['run','build'],{cwd:dir,encoding:'utf8',shell:process.platform==='win32'});
+    if(b.status!==0)return {ok:false,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
+    log('smoke de produção…');
+    const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8'});
+    if(s.status===0)return {ok:true,out};
+    return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${(s.stdout+s.stderr).trim().slice(0,400)}`,out};
+  }finally{rmdirSyncSafe(slot);}
+}
+
 // ---------- commands ----------
 function pronto(opt){
   const [card]=opt._.slice(1);
@@ -263,15 +299,22 @@ function lote(opt){
       candidates=batch.ok.filter(e=>e!==culprit);
     }
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
+    // The production build, opened in a browser (the 14/10 outage: the source suite never loads the bundle).
+    const smoke=runSmoke(opt,result.dir);
+    if(!smoke.ok){
+      log(`lote ${id} abortado: o smoke de produção falhou (${smoke.motivo}); as entradas continuam na fila`);
+      return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};
+    }
     const sha=git(result.dir,'rev-parse','HEAD'),needsWorker=result.ok.some(e=>e.worker);
     const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,suites,
-      integrados:result.ok,devolvidos,url:result.suite.url??null,estado:needsWorker?'aguardando-worker':'pronto-para-push'};
+      integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',estado:needsWorker?'aguardando-worker':'pronto-para-push'};
     writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
     kept=true;made.length=0;// the batch worktree and the lock now belong to the lote state (publicar/cancelar)
     log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
     if(!needsWorker)return publicar({...opt,_:['publicar',id]});
-    log(`Orquestrador: publique o Worker a partir de ${sha.slice(0,7)}: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
-    log(`depois: node tools/fila.mjs publicar ${id}`);
+    // Executors never deploy the Worker (D-029): the queue stops before the push and calls the Orquestrador.
+    log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). Orquestrador: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
+    log(`depois, com FILA_ORQ=1: node tools/fila.mjs publicar ${id}`);
     return state;
   }finally{
     // A crash or an early return: no worktree is left with live junctions, and the lock goes unless a lote state holds it.
@@ -287,6 +330,8 @@ function publicar(opt){
   if(!existsSync(p))throw new Error(`lote ${id} não existe`);
   const state=readJson(p);
   if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);
+  // A lote that needs the Worker is pushed only by the Orquestrador, after his deploy (executors never run wrangler).
+  if(state.needsWorker&&process.env.FILA_ORQ!=='1')throw new Error(`Worker pendente: SHA ${state.sha.slice(0,7)} (lote ${id}) — só o Orquestrador publica este lote, depois do deploy:rooms (FILA_ORQ=1)`);
   git(opt.repo,'fetch','-q',opt.remote);
   const remoteBase=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
   if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}) depois do lote: `

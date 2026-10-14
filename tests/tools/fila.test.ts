@@ -44,6 +44,9 @@ function world(){
     cleanup:()=>rmSync(root,{recursive:true,force:true})};
 }
 
+/** Runs `fn` as the Orquestrador (FILA_ORQ=1), the only one who publishes a lote that needs the Worker. */
+function orq<T>(fn:()=>T):T{process.env.FILA_ORQ='1';try{return fn();}finally{delete process.env.FILA_ORQ;}}
+
 test('ordered: P0 first, then arrival',()=>{
   const e=(card:string,prio:string,at:string)=>({card,prio,at});
   assert.deepEqual(ordered([e('c','P1','2'),e('a','P0','3'),e('b','P1','1')]).map((x:{card:string})=>x.card),['a','b','c']);
@@ -80,8 +83,10 @@ test('ACCEPTANCE: protocol + conflict + clean → 1 suite, 1 bump, the conflict 
     assert.equal(back.status,'devolvido');assert.deepEqual(back.arquivos,['notas.txt']);
     assert.ok(!existsSync(join(w.board,'fila/NEW-conflito.json')),'out of the queue until it is queued again');
     assert.throws(()=>main(['lote',...w.opts]),/lote aberto/,'one batch at a time');
+    // An executor cannot push a lote that needs the Worker: only the Orquestrador, after his deploy (FILA_ORQ=1).
+    assert.throws(()=>main(['publicar',state.lote,...w.opts]),/Worker pendente/);
     // The Orquestrador published the Worker: push once.
-    main(['publicar',state.lote,...w.opts]);
+    orq(()=>main(['publicar',state.lote,...w.opts]));
     git(w.repo,'fetch','-q','origin');
     assert.equal(git(w.repo,'rev-parse','origin/main'),state.sha);
     const proto=git(w.repo,'show','origin/main:src/protocol/protocol4.ts');
@@ -213,16 +218,29 @@ test('review: a newer pronto while the lote waits for the Worker stays queued; p
     const state=main(['lote',...w.opts]);assert.equal(state.estado,'aguardando-worker');
     git(w.repo,'checkout','-q','vgm/n');writeFileSync(join(w.repo,'src/n.ts'),'export const n=2;\n');git(w.repo,'commit','-qam','n2');git(w.repo,'checkout','-q','main');
     const newer=main(['pronto','NEW-n','--branch','vgm/n','--protocol',...w.opts]);
-    main(['publicar',state.lote,...w.opts]);
+    orq(()=>main(['publicar',state.lote,...w.opts]));
     const r=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-n.json'),'utf8'));
     assert.equal(r.status,'integrado');assert.equal(r.sha,state.sha);
     assert.equal(JSON.parse(readFileSync(join(w.board,'fila/NEW-n.json'),'utf8')).sha,newer.sha,'the newer SHA is still queued');
-    assert.throws(()=>main(['publicar',state.lote,...w.opts]),/publicado/,'a published lote is not pushed again');
+    assert.throws(()=>orq(()=>main(['publicar',state.lote,...w.opts])),/publicado/,'a published lote is not pushed again');
     // The tool resolves the main checkout from any worktree of the repository.
     // @ts-expect-error -- .mjs
     const {mainCheckout}=await import('../../tools/fila.mjs');
     const other=join(w.root,'wt','outro');git(w.repo,'worktree','add','-q','-b','vgm/outro',other,'main');
     const norm=(p:string)=>p.split(String.fromCharCode(92)).join('/').toLowerCase();
     assert.equal(norm(mainCheckout(other)),norm(w.repo));
+  }finally{w.cleanup();}
+});
+
+test('the production smoke runs after a green suite and before the push: a failing smoke aborts the lote, everyone stays queued',()=>{
+  const w=world();
+  try{
+    w.branch('vgm/s','src/s.ts','export const s=1;'+String.fromCharCode(10));
+    main(['pronto','NEW-s','--branch','vgm/s',...w.opts]);
+    const red=main(['lote',...w.opts,'--smoke','node -e "process.exit(1)"']);
+    assert.equal(red.abortado,'smoke');assert.ok(existsSync(join(w.board,'fila/NEW-s.json')),'still queued');
+    git(w.repo,'fetch','-q','origin');assert.throws(()=>git(w.repo,'show','origin/main:src/s.ts'),'nothing pushed');
+    const green=main(['lote',...w.opts,'--smoke','node -e "process.exit(0)"']);
+    assert.equal(green.estado,'publicado');assert.equal(green.smoke,'ok');
   }finally{w.cleanup();}
 });

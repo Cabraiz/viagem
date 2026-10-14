@@ -6,12 +6,15 @@
  * carry the meaning with the colour (UX B8): clover = group, disc = person, ring = caído, tent = base, wave = active
  * mouth, skull = boss. Pure geometry and marks first, one DOM class below.
  */
-import {minimapPoint,crosses,icon,routeAhead,motoNeedsTeam,CAR_LOW,type Rect,type ChaveiroView} from './deps.ts';
+import {CIDADE_NEVADA_WC3,CITY_MAP_SCALE,SCALE_PROFILES,minimapPoint,crosses,icon,routeAhead,motoNeedsTeam,CAR_LOW,type Rect,type ChaveiroView} from './deps.ts';
 import {clusterEnemies,GROUP_SHOW,groupCountText,type EnemyPoint} from './clusters.ts';
 import {MINIMAP_SIDE} from './layout.ts';
 
-/** World units: the city spans [0, CITY_SIZE] on x and y (row 0 = north, x west to east), the plaza at its centre. */
-export const CITY_SIZE=169;
+/**
+ * World units: the city spans [0, CITY_SIZE] on x and y (row 0 = north, x west to east), the plaza at its centre. The
+ * asset's size: 192 cells × the map cell (1.496 u since the 1.7× map, NEW-20261013-ORQ-cidade-escala-1-7) = 287.232 u.
+ */
+export const CITY_SIZE=Math.round(CIDADE_NEVADA_WC3.mapCells*SCALE_PROFILES['cidade-nevada'].cell*1000)/1000;
 /** Camera view (90° steps), the convention of src/client/projection.ts. */
 export type CityView=0|1|2|3;
 export type MouthId='N'|'S'|'L'|'O';
@@ -21,9 +24,12 @@ export type MouthId='N'|'S'|'L'|'O';
  */
 export interface CityMapInfo {size:number;plaza:{x:number;y:number;radius:number};mouths:{id:MouthId;x:number;y:number;gate?:{x:number;y:number}}[];start:{x:number;y:number}}
 const C=CITY_SIZE/2;
-/** Until the importer's asset exists: plaza in the centre, the 4 avenue ends, the start in the south district. */
-export const DEFAULT_CITY:CityMapInfo={size:CITY_SIZE,plaza:{x:C,y:C,radius:10},
-  mouths:[{id:'N',x:C,y:0},{id:'S',x:C,y:CITY_SIZE},{id:'L',x:CITY_SIZE,y:C},{id:'O',x:0,y:C}],start:{x:C,y:CITY_SIZE-14}};
+/**
+ * Until the importer's asset exists: plaza in the centre, the 4 avenue ends, the start in the south district. Plaza
+ * radius and start offset are map lengths (10 and 14 u on the .w3x map) × CITY_MAP_SCALE.
+ */
+export const DEFAULT_CITY:CityMapInfo={size:CITY_SIZE,plaza:{x:C,y:C,radius:10*CITY_MAP_SCALE},
+  mouths:[{id:'N',x:C,y:0},{id:'S',x:C,y:CITY_SIZE},{id:'L',x:CITY_SIZE,y:C},{id:'O',x:0,y:C}],start:{x:C,y:CITY_SIZE-14*CITY_MAP_SCALE}};
 
 /** Half the inside of a minimap box of side `side` (2 px border): r. */
 export const innerRadius=(side=MINIMAP_SIDE)=>side/2-2;

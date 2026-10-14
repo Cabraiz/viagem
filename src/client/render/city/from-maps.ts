@@ -8,6 +8,7 @@
  */
 import type {CityAsset as MapsCityAsset,CityBlock as MapsCityBlock} from '../../../maps/index.ts';
 import {CITY_HEIGHT_PX_PER_UNIT,cityRelief} from '../../../maps/index.ts';
+import {CITY_MAP_SCALE} from '../../../rules/index.ts';
 import type {BlockKind,CityAsset,CityBlock,CityPointName,CityProp,PropKind} from './asset.ts';
 import {HEIGHT_PX} from './projection.ts';
 
@@ -32,26 +33,32 @@ export const PLAZA_RADIUS_CELLS=3;
 export const AVENUE_HALF_WIDTH_CELLS=2;
 /** Ring road (packed snow): cells 1..RING_BAND_CELLS cells (Chebyshev) away from the map's 'edge' blocks. */
 export const RING_BAND_CELLS=4;
-/** Building height in render units, seeded by block id inside [min, max] and rounded to 0.01. */
-export const BUILDING_HEIGHT_MIN=2.2,BUILDING_HEIGHT_MAX=3.8;
+/** Block heights grow with the map (NEW-20261013-ORQ-cidade-escala-1-7): the .w3x-scale value × CITY_MAP_SCALE, to 0.01. */
+const mapHeight=(v:number)=>Math.round(v*CITY_MAP_SCALE*100)/100;
+/** Building height in render units, seeded by block id inside [min, max] and rounded to 0.01 (2.2–3.8 × 1.7 = 3.74–6.46). */
+export const BUILDING_HEIGHT_MIN=mapHeight(2.2),BUILDING_HEIGHT_MAX=mapHeight(3.8);
 /** Share of buildings drawn as ruins (seeded by block id): the city is in ruins. */
 export const RUINED_PERCENT=60;
-/** Fixed heights (render units) of the other block kinds. */
-export const WALL_HEIGHT=1.6,EDGE_HEIGHT=1.6,RUBBLE_HEIGHT=0.3;
-/** Cliffs are terrain steps whose relief already lives in the height grid: a low lip, not a second step. */
+/** Fixed heights (render units) of the other block kinds, × CITY_MAP_SCALE like the buildings (1.6 → 2.72, 0.3 → 0.51). */
+export const WALL_HEIGHT=mapHeight(1.6),EDGE_HEIGHT=mapHeight(1.6),RUBBLE_HEIGHT=mapHeight(0.3);
+/**
+ * Cliffs are terrain steps whose relief already lives in the height grid: a low lip, not a second step (kept as is:
+ * the step itself grew with the asset's heights).
+ */
 export const CLIFF_LIP_HEIGHT=0.35;
-/** Prop footprint radius clamp (world units); the render drops r <= 0. */
+/** Prop footprint radius clamp (world units); the render drops r <= 0. Props keep their absolute size (not × the map scale). */
 export const PROP_R_MIN=0.1,PROP_R_MAX=0.8;
 /**
  * Props closer than PROP_STACK (world units) to one already kept, whatever the kind, are one doodad stacked several
- * times in the .w3x (a stacked `prop` hashes to a different kind per copy: lamp, barrel, crate…).
+ * times in the .w3x (a stacked `prop` hashes to a different kind per copy: lamp, barrel, crate…). A distance between
+ * the asset's prop positions, so 0.5 u of the .w3x × CITY_MAP_SCALE (the same props survive on the 1.7× map).
  */
-export const PROP_STACK=0.5;
+export const PROP_STACK=0.5*CITY_MAP_SCALE;
 /**
- * Same-kind props closer than this are dropped too: a lamp per street spot (2.5 u: street lamps stand farther apart;
- * the .w3x clusters them 1–2 u apart); the rest only by PROP_STACK.
+ * Same-kind props closer than this are dropped too: a lamp per street spot (2.5 u of the .w3x × CITY_MAP_SCALE: street
+ * lamps stand farther apart; the .w3x clusters them 1–2 u apart); the rest only by PROP_STACK.
  */
-export const PROP_DEDUP:Readonly<Record<PropKind,number>>={lamp:2.5,pine:PROP_STACK,car:PROP_STACK,rubble:PROP_STACK,crate:PROP_STACK,barrel:PROP_STACK,bench:PROP_STACK,debris:PROP_STACK};
+export const PROP_DEDUP:Readonly<Record<PropKind,number>>={lamp:2.5*CITY_MAP_SCALE,pine:PROP_STACK,car:PROP_STACK,rubble:PROP_STACK,crate:PROP_STACK,barrel:PROP_STACK,bench:PROP_STACK,debris:PROP_STACK};
 
 /** maps prop kind → render prop kind(s); several = chosen per prop by hash; null = not drawn as a prop. */
 const PROP_KINDS:Readonly<Record<string,readonly PropKind[]|null>>={
@@ -97,7 +104,7 @@ const COVER_NONE=0,COVER_PLAIN=1,COVER_RUBBLE=2,COVER_EDGE=3;
  * terrain uses as its zero (CityTerrain computes it as the minimum over all corners, which is also the default here).
  *
  * Rules:
- * 1. Grid: same cells (width × height), cell = unitsPerCell (0.88), origin (0,0): D-027 puts the origin at the NW
+ * 1. Grid: same cells (width × height), cell = unitsPerCell (1.496 since cidade-escala-1-7), origin (0,0): D-027 puts the origin at the NW
  *    corner of the cell grid with x east and y south, and actors/terrain use those world units directly, which is
  *    exactly what the render projects.
  * 2. Heights: corners = (corner height - minHeight) * HEIGHT_SCALE for every grid corner, so the ground is drawn at

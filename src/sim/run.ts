@@ -7,8 +7,10 @@ export const RUN_DURATION_TICKS=20*60*RUN_HZ;
 /**
  * D-043: the city's combat cap. Its 10 rounds stretch for the walk and the crate intermissions: in the cidade-11 balance
  * the boss spawned at 15.6–21.9 sim minutes and runs ended by 22.2, so the endless map's 20 min cut them before the boss.
+ * 30 min since cidade-escala-1-7 (D-043 amended): on the 1.7× city the runs that reach the boss end at 21.1–25.6 sim
+ * minutes (bench 8 seeds, 1 and 6 players; 14.5–17.9 before), the longer walks and crate intermissions.
  */
-export const CITY_RUN_DURATION_TICKS=25*60*RUN_HZ;
+export const CITY_RUN_DURATION_TICKS=30*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 /**
  * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,

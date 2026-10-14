@@ -1131,7 +1131,9 @@ export class IslandScene extends Phaser.Scene {
   private cityArtPlan?:CityArtPlan;
   /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
   private cityArt():CityArtPlan{
-    return this.cityArtPlan??=buildCityArtPlan(artIndex(),cityArtOptions(typeof location==='undefined'?'':location.search));
+    // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.
+    const cell=this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined;
+    return this.cityArtPlan??=buildCityArtPlan(artIndex(),{...cityArtOptions(typeof location==='undefined'?'':location.search),...(cell?{cell}:{})});
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;

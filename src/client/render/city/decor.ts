@@ -21,6 +21,16 @@ export interface DecorPrim {shape:'poly'|'circle'|'line';color:number;alpha:numb
 
 /** Detail specks per cell (inclusive count ranges) and their screen radius in px. */
 export const SPECKS=Object.freeze({snow:[3,6],packed:[2,4],rubble:[1,2],px:[1,1.8]} as const);
+/** The cell (u) the SPECKS counts are for: the .w3x 0.88 u cell. */
+export const SPECK_CELL=0.88;
+/**
+ * A SPECKS count range on a cell of `cell` u: × (cell / SPECK_CELL)², so the specks keep their density per world unit
+ * on a bigger cell (the 1.7× Cidade Nevada, 1.496 u: snow 3–6 → 9–17; NEW-20261013-ORQ-cidade-escala-1-7).
+ */
+export function specksFor(range:readonly [number,number],cell:number):readonly [number,number]{
+  const k=cell>0&&Number.isFinite(cell)?(cell/SPECK_CELL)**2:1;
+  return Math.abs(k-1)<1e-9?range:[Math.round(range[0]*k),Math.round(range[1]*k)];
+}
 /** Street ruts: chance a lane (row or column) has a pair, chance a cell breaks it, line width in px. */
 export const TRACK=Object.freeze({lane:0.6,gap:0.12,width:1.6,alpha:0.85});
 /** Fountain: a glint on a water cell with this chance, at most this many per chunk (picked in world order). */
@@ -132,7 +142,7 @@ function ice(out:DecorPrim[],at:At,r:()=>number){
   }
 }
 
-function rubbleGround(out:DecorPrim[],at:At,r:()=>number){
+function rubbleGround(out:DecorPrim[],at:At,r:()=>number,speckRange:readonly [number,number]=SPECKS.rubble){
   const n=count(r,[3,5]);
   for(let i=0;i<n;i++){
     const u=between(r,0.2,0.8),v=between(r,0.2,0.8),rad=between(r,0.05,0.09),rot=r()*Math.PI*2,pts:Pt[]=[];
@@ -140,7 +150,7 @@ function rubbleGround(out:DecorPrim[],at:At,r:()=>number){
     out.push(poly(C['entulho-chao-detalhe'],pts));
     if(r()<0.4){const p=at(u,v-rad*0.3);out.push({shape:'circle',color:C.neve,alpha:1,cx:p.x,cy:p.y,r:1});}
   }
-  specks(out,at,r,SPECKS.rubble,C['entulho-chao-detalhe']);
+  specks(out,at,r,speckRange,C['entulho-chao-detalhe']);
 }
 
 /** Fountain water (bible §8.7): shallow tone, ice rim and foam ring on edges that touch non-water; glint picked per chunk. */
@@ -170,14 +180,15 @@ export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt
   // Glints are chosen in world row-major order, so the cap picks the same cells in every view.
   for(let cy=chunk.y0;cy<chunk.y1&&glints.size<GLINT.perChunk;cy++)for(let cx=chunk.x0;cx<chunk.x1&&glints.size<GLINT.perChunk;cx++)
     if(groundAt(asset,cx,cy)==='water'&&seeded(`glint|${cx},${cy}`)()<GLINT.chance)glints.add(`${cx},${cy}`);
+  const snow=specksFor(SPECKS.snow,asset.cell),packed=specksFor(SPECKS.packed,asset.cell),rubble=specksFor(SPECKS.rubble,asset.cell);
   for(const q of groundQuads(chunk,asset,v,pivot)){
     const [nw,ne,se,sw]=q.points,at:At=(u,w)=>lerp(lerp(nw,ne,u),lerp(sw,se,u),w),r=seeded(`${q.kind}|${q.cx},${q.cy}`);
     switch(q.kind){
-      case 'snow':specks(out,at,r,SPECKS.snow,C['neve-detalhe']);break;
-      case 'packed':tracks(out,asset,q.cx,q.cy,at);specks(out,at,r,SPECKS.packed,C['neve-pisada-detalhe']);break;
+      case 'snow':specks(out,at,r,snow,C['neve-detalhe']);break;
+      case 'packed':tracks(out,asset,q.cx,q.cy,at);specks(out,at,r,packed,C['neve-pisada-detalhe']);break;
       case 'cobble':cobble(out,q.cy,at,r);break;
       case 'ice':ice(out,at,r);break;
-      case 'rubble':rubbleGround(out,at,r);break;
+      case 'rubble':rubbleGround(out,at,r,rubble);break;
       case 'water':water(out,asset,q.cx,q.cy,at,glints.has(`${q.cx},${q.cy}`));break;
     }
   }

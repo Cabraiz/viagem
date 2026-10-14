@@ -6,7 +6,8 @@
  *  - barricadeField: goal = cells around each mouth; used once barricades cut an enemy off the plaza (`targetFor`);
  *  - exitField: goal = the 4 avenue ends (spawns); retreat.
  *
- * The base: each mouth has a "mouth line", the cells within mouthHalfWidth (default 2.6 u) of the mouth point. The
+ * The base: each mouth has a "mouth line", the cells within mouthHalfWidth (default 2.6 u × layout.mapScale: 4.42 u on
+ * the real city, NEW-20261013-ORQ-cidade-escala-1-7) of the mouth point. The
  * plaza goal is a flood fill (8-neighborhood, no corner cutting) over walkable cells from the plaza center (default:
  * centroid of the 4 mouths), never entering a mouth line and never farther from the center than the farthest mouth
  * (nor than layout.plazaRadius when given). So a closed barricade really cuts the plaza off its avenue, even when the
@@ -51,6 +52,17 @@ export interface CityLayout {
   plazaCenter?:FlowPoint;              // flood seed of the plaza goal; default: centroid of the 4 mouths
   plaza?:FlowPoint;                    // fallback seed when the center's cell is not walkable
   plazaRadius?:number;                 // extra cap (u from the plaza center) of the plaza flood
+  /**
+   * The map's scale over the .w3x proportions (default 1; city/grid.ts cityLayoutFrom: rules CITY_MAP_SCALE,
+   * NEW-20261013-ORQ-cidade-escala-1-7). Multiplies the planner's MAP lengths — the mouthHalfWidth default,
+   * MOUTH_RADIUS — and none of its body or camera lengths (spacing, lanes, OUTSIDE_MOUTH, minPlayerDistance, views).
+   */
+  mapScale?:number;
+  /**
+   * Radius (u) of the barricade goals around each mouth (default MOUTH_RADIUS × mapScale). cityLayoutFrom derives it
+   * from the real barricade discs, which did not grow exactly with the map (their slack is a hero's).
+   */
+  mouthRadius?:number;
   mouths:Readonly<Record<Mouth,FlowPoint>>;  // barricade spots at the plaza's 4 entrances
   spawns:Readonly<Record<Mouth,FlowPoint>>;  // avenue ends (far spawn points)
 }
@@ -118,7 +130,7 @@ export interface AvenuePlannerOptions {
   minPlayerDistance?:number; // default 4
   firstArrivalSeconds?:number; // arrival of the first group at the plaza after the round's first nominal at, default 12
   memberSpacing?:number;     // u between group members along the avenue, default 0.6
-  mouthHalfWidth?:number;    // u, radius of each mouth line, default 2.6
+  mouthHalfWidth?:number;    // u, radius of each mouth line, default 2.6 × layout.mapScale
   clearance?:number;         // flow-field clearance (cells, floored) for the planner's fields, default 0
 }
 /**
@@ -164,14 +176,27 @@ const BARRICADE=Object.freeze({
 }) as Readonly<Record<Mouth,Target>>;
 /** Scan step (u) when walking a group back from the plaza toward the spawn. */
 const SCAN_STEP=.5;
-/** Members stand at least this far (u, along the route) past the route's outermost base cell. */
+/**
+ * Members stand at least this far (u, along the route) past the route's outermost base cell. Not × layout.mapScale
+ * (NEW-20261013-ORQ-cidade-escala-1-7): the base edge it is measured from already moved out with the mouth lines, and
+ * 2 u past a 4.42 u line keeps members 6.4 u from the mouth, clear of its 2.2 u barricade disc and the bodies at it;
+ * × 1.7 (3.4 u) only made the first group of city-director seed 5 land at 16.8 s (bound 16 s).
+ */
 export const OUTSIDE_MOUTH=2;
-/** Members of groups released within STACK_TICKS of each other stay at least STACK_GAP u apart. */
+/** Members of groups released within STACK_TICKS of each other stay at least STACK_GAP u apart (bodies: not scaled). */
 const STACK_TICKS=2*TICK_HZ, STACK_GAP=.8;
-/** Lateral lanes (u from the route) used when single file does not fit; jitter (u) of each member around its lane. */
+/**
+ * Lateral lanes (u from the route) used when single file does not fit; jitter (u) of each member around its lane. Body
+ * spacing (about two common enemies side by side), not a fraction of the avenue: not scaled with the map.
+ */
 const LANES=[0,.9,-.9,1.8,-1.8], JITTER=.35;
-/** Barricade goals: every cell within this radius (u) of each mouth (active while walkable), fixed for the planner's life. */
+/**
+ * Barricade goals: every cell within this radius (u) of each mouth (active while walkable), fixed for the planner's
+ * life; × layout.mapScale unless layout.mouthRadius says otherwise (it must reach past the barricade disc).
+ */
 const MOUTH_RADIUS=1.5;
+/** Default mouth line half width (u) on the .w3x-sized city; × layout.mapScale. */
+const MOUTH_HALF_WIDTH=2.6;
 const NO_LABEL=255, MOUTH_LINE=1, PLAZA_CELL=2;
 
 /** Traced route; `cum[i]` = distance (u) from the spawn to points[i]; `minS` = first allowed distance from the plaza end. */
@@ -240,7 +265,8 @@ export class AvenuePlanner {
     this.radius=o.viewRadius===undefined||!Number.isFinite(o.viewRadius)?undefined:nonNeg(o.viewRadius,18); // non-finite → camera default
     this.visible=typeof o.isVisible==='function'?o.isVisible:undefined;
     this.firstArrival=ticks(nonNeg(o.firstArrivalSeconds,12));
-    const halfWidth=pos(o.mouthHalfWidth,2.6), opts={clearance:Math.floor(nonNeg(o.clearance,0))};
+    const k=layout.mapScale??1;
+    const halfWidth=pos(o.mouthHalfWidth,MOUTH_HALF_WIDTH*k), opts={clearance:Math.floor(nonNeg(o.clearance,0))};
     const scratch=new Int32Array(w*h), base=this.base=new Uint8Array(w*h);
     const cellOf=(p:FlowPoint)=>{const cx=Math.floor((p.x-ox)/cs), cy=Math.floor((p.y-oy)/cs);return cx>=0&&cy>=0&&cx<w&&cy<h?cx+cy*w:-1;};
     for(const m of MOUTHS)for(const i of this.disc(layout.mouths[m],halfWidth))base[i]=MOUTH_LINE;
@@ -259,7 +285,7 @@ export class AvenuePlanner {
     for(let i=0;i<w*h;i++)if(inside[i]){base[i]=PLAZA_CELL;goals.push({x:ox+(i%w+.5)*cs,y:oy+(((i/w)|0)+.5)*cs});}
     const cellPt=(i:number)=>({x:ox+(i%w+.5)*cs,y:oy+(((i/w)|0)+.5)*cs});
     this.plazaField=new FlowField(g,goals,opts);
-    this.barricadeField=new FlowField(g,MOUTHS.flatMap(m=>this.disc(layout.mouths[m],MOUTH_RADIUS).map(cellPt)),opts);
+    this.barricadeField=new FlowField(g,MOUTHS.flatMap(m=>this.disc(layout.mouths[m],layout.mouthRadius??MOUTH_RADIUS*k).map(cellPt)),opts);
     this.exitField=new FlowField(g,MOUTHS.map(m=>this.walkableNear(layout.spawns[m])),opts);
     this.plazaMemo=new GoalMemo(this.plazaField,()=>0,scratch);
     this.mouthMemo=new GoalMemo(this.barricadeField,(cx,cy)=>this.nearest(layout.mouths,cx,cy),scratch);
@@ -632,4 +658,6 @@ function checkLayout(l:CityLayout){
   for(const m of MOUTHS){point(`mouths.${m}`,l.mouths?.[m]);point(`spawns.${m}`,l.spawns?.[m]);}
   point('plaza',l.plaza,true); point('plazaCenter',l.plazaCenter,true);
   if(l.plazaRadius!==undefined&&!(finite(l.plazaRadius)&&l.plazaRadius>=0))throw new RangeError('layout.plazaRadius must be a finite number >= 0');
+  if(l.mapScale!==undefined&&!(finite(l.mapScale)&&l.mapScale>0))throw new RangeError('layout.mapScale must be a finite number > 0');
+  if(l.mouthRadius!==undefined&&!(finite(l.mouthRadius)&&l.mouthRadius>=0))throw new RangeError('layout.mouthRadius must be a finite number >= 0');
 }

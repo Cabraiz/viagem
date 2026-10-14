@@ -78,7 +78,8 @@ test('route: drawn from the seed (same seed, same route and stops; restore rebui
     const p=planChaveiro(seed,OPEN,ENTRANCES,CAR);froms.add(p.from);
     const first=p.route.points[0],last=p.route.points[p.route.points.length-1],start=ENTRANCES[p.from];
     assert.deepEqual(first,{x:start.x,y:start.y});
-    assert.ok(Math.abs(Math.hypot(last.x-CAR.x,last.y-CAR.y)-CAR_STOP)<.6,`ends next to the car: ${Math.hypot(last.x-CAR.x,last.y-CAR.y)}`);
+    // Within 0.6 of a city cell (0.6 u at 0.88 u; the route ends in a grid cell: cidade-escala-1-7's 1.496 u cell).
+    assert.ok(Math.abs(Math.hypot(last.x-CAR.x,last.y-CAR.y)-CAR_STOP)<.6*city.asset.unitsPerCell/.88,`ends next to the car: ${Math.hypot(last.x-CAR.x,last.y-CAR.y)}`);
     // Map-relative (the city may scale): the streets are longer than the straight line, but not a maze.
     const line=Math.hypot(start.x-CAR.x,start.y-CAR.y);
     assert.ok(p.route.length>=line-CAR_STOP-.6&&p.route.length<line*2,`route ${p.route.length} u for ${line} u straight`);
@@ -256,17 +257,19 @@ test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phas
   assert.deepEqual(ofType(got,'sale').map(e=>e.type==='sale'&&e.enemy),['a']);
   assert.equal((a as EnemyState&{sugarUntil?:number}).sugarUntil,r.world.tick+SUGAR.duration);
   assert.deepEqual(r.sys.state.cida.stock,stock);
+  // Sugar: × 1.3 on every hit (coachMult) and × 1.2 on the walk (enemy-ai paceSpeed, under the peak cap), checked right
+  // after a's own sale: 20 s later it has worn off unless a wins the next sale too (cidade-escala-1-7: the moto runs the
+  // 1.7× route in the same 420 s, so a is out of reach by then).
+  assert.equal(coachMult(a,r.world.tick),SUGAR.damage);
+  const ai=createEnemyAi({heroSpeed:10});
+  assert.equal(ai.paceSpeed(a,1,r.world.tick),a.speed*SUGAR.speed);
+  assert.equal(ai.paceSpeed(a,1,(a as {sugarUntil?:number}).sugarUntil!),a.speed);
   const b=addEnemy(r.world,'b',{x:near.x,y:near.y+2});
   let sales=0;
   for(let k=0;k<ticks(SALE_GAP_SECONDS)-1;k++){const mm=r.sys.moto();b.x=mm.x;b.y=mm.y+2;sales+=ofType(r.step(1),'sale').length;}
   assert.equal(sales,0,'one sale per 20 s');
   const mm=r.sys.moto();b.x=mm.x;b.y=mm.y+2;
   assert.equal(ofType(r.step(1),'sale').length,1);
-  // Sugar: × 1.3 on every hit (coachMult) and × 1.2 on the walk (enemy-ai paceSpeed, under the peak cap).
-  assert.equal(coachMult(a,r.world.tick),SUGAR.damage);
-  const ai=createEnemyAi({heroSpeed:10});
-  assert.equal(ai.paceSpeed(a,1,r.world.tick),a.speed*SUGAR.speed);
-  assert.equal(ai.paceSpeed(a,1,(a as {sugarUntil?:number}).sugarUntil!),a.speed);
 });
 
 test('the bill: kills pay Grana (1/5/50), abrindo 15 s at the car, victory with budget, paid and debt',()=>{

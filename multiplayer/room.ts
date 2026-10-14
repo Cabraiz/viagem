@@ -187,7 +187,7 @@ export const ROSTER_BOTS_MS=1000;
  */
 export const nameKey=(name:string)=>name.normalize('NFD').replace(/[^\p{L}\p{N}]/gu,'').toLocaleLowerCase('pt-BR');
 /** A room accepts connections for this long after creation (the Worker's alarm deletes it a minute later). */
-/** 50 min (D-043): a lobby plus the city's 25 min combat cap fit, with room for a rematch's countdown. */
+/** 50 min (D-043): a lobby plus the city's 30 min combat cap (cidade-escala-1-7) fit, with room for a rematch's countdown. */
 /** No room emits this many events per ms (20 ticks/s: 2 500 per tick): the floor of event ids after a restart. */
 const EVENTS_PER_MS_CEIL=50;
 export const ROOM_LIFETIME_MS=50*60_000;

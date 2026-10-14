@@ -377,3 +377,12 @@ test('stone walls: triangle budget, at most 24 extra triangles per visible wall 
   assert.ok(worst<=30,`worst ${worst.toFixed(1)} per face`);
   console.log(`stone walls: +${(extra/faces).toFixed(1)} triangles per visible face (worst +${worst.toFixed(1)})`);
 });
+
+// NEW-20261013-ORQ-cidade-escala-1-7: speck counts are per 0.88 u cell, × the cell area on a bigger cell.
+test('cidade-escala-1-7: specks keep their density per world unit on the 1.496 u cell',async()=>{
+  const {SPECK_CELL,specksFor}=await import('../../src/client/render/city/decor.ts');
+  assert.equal(SPECK_CELL,.88);
+  assert.deepEqual(specksFor(SPECKS.snow,.88),SPECKS.snow);
+  assert.deepEqual(specksFor(SPECKS.snow,1.496),[9,17]);assert.deepEqual(specksFor(SPECKS.packed,1.496),[6,12]);
+  assert.deepEqual(specksFor(SPECKS.snow,Number.NaN),SPECKS.snow);
+});

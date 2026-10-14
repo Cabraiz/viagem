@@ -8,8 +8,16 @@ import {cellOf,groundZ,heightAt} from './asset.ts';
 import type {Pt,Rect} from './projection.ts';
 import {HEIGHT_PX,VIEW_PIVOT,boundsOf,normalizeView,project,rectsOverlap} from './projection.ts';
 
-/** Chunk side in cells. */
+/** Chunk side in cells on the art's 0.88 u cell (the sample city; chunkCellsFor scales it to an asset's cell). */
 export const CHUNK_CELLS=16;
+/** Chunk side in world units: CHUNK_CELLS cells of 0.88 u (14.08 u), what a baked ground texture was sized for. */
+export const CHUNK_UNITS=CHUNK_CELLS*0.88;
+/**
+ * Chunk side in cells for a cell size: the whole cells nearest CHUNK_UNITS, so a chunk (and its baked ground render
+ * texture) keeps about the same world size and texel density on a bigger map: 16 at 0.88 u, 9 on the 1.7× Cidade Nevada
+ * (1.496 u, 13.5 u; NEW-20261013-ORQ-cidade-escala-1-7).
+ */
+export const chunkCellsFor=(cell:number)=>cell>0&&Number.isFinite(cell)?Math.max(1,Math.round(CHUNK_UNITS/cell)):CHUNK_CELLS;
 /**
  * Every block is cut into 1×1-cell pieces: a unit column sorts by its centre against other columns and against
  * point actors, which a whole building cannot (review of cidade-03a). The layer draws
@@ -78,7 +86,10 @@ export interface BlockPiece {id:string;blockId:string;kind:BlockKind;x:number;y:
 export interface CityChunk {key:string;cx:number;cy:number;x0:number;y0:number;x1:number;y1:number;
   pieces:BlockPiece[];props:CityProp[];minBase:number;maxTop:number}
 
-export interface ChunkIndex {cols:number;rows:number;chunks:CityChunk[];get(cx:number,cy:number):CityChunk|undefined}
+export interface ChunkIndex {cols:number;rows:number;
+  /** Chunk side in cells. */
+  size:number;
+  chunks:CityChunk[];get(cx:number,cy:number):CityChunk|undefined}
 
 const byId=(a:{id:string},b:{id:string})=>a.id<b.id?-1:a.id>b.id?1:0;
 const clamp=(v:number,lo:number,hi:number)=>v<lo?lo:v>hi?hi:v;
@@ -123,7 +134,7 @@ export function blockPieces(asset:CityAsset,b:CityBlock):BlockPiece[]{
 }
 
 /** Buckets the asset into chunks: a piece goes to the chunk of its footprint centre cell, a prop to the chunk of its cell. */
-export function buildChunks(asset:CityAsset,chunkCells=CHUNK_CELLS):ChunkIndex{
+export function buildChunks(asset:CityAsset,chunkCells=chunkCellsFor(asset.cell)):ChunkIndex{
   const size=Math.max(1,Math.floor(chunkCells));
   const cols=Math.ceil(asset.width/size),rows=Math.ceil(asset.height/size);
   const chunks:CityChunk[]=[];
@@ -154,7 +165,7 @@ export function buildChunks(asset:CityAsset,chunkCells=CHUNK_CELLS):ChunkIndex{
     for(const p of c.pieces)hi=Math.max(hi,p.base+p.height);
     c.minBase=lo;c.maxTop=hi;
   }
-  return {cols,rows,chunks,get:(cx,cy)=>cx>=0&&cy>=0&&cx<cols&&cy<rows?chunks[cy*cols+cx]:undefined};
+  return {cols,rows,size,chunks,get:(cx,cy)=>cx>=0&&cy>=0&&cx<cols&&cy<rows?chunks[cy*cols+cx]:undefined};
 }
 
 /**

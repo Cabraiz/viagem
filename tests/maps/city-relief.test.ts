@@ -9,13 +9,18 @@ import assert from 'node:assert/strict';
 import {readFileSync,readdirSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
-import {CityTerrain,cityRelief,cityReliefAt,decodeCityAsset,UNDULATION_HEIGHT,type CityAsset} from '../../src/maps/index.ts';
+import {CityTerrain,cityMapScale,cityRelief,cityReliefAt,decodeCityAsset,undulationHeight,UNDULATION_HEIGHT,type CityAsset} from '../../src/maps/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
 const decode=():CityAsset=>{const r=decodeCityAsset(TEXT);if(!r.ok)throw new Error(r.error);return r.asset;};
 const asset=decode(),R=cityRelief(asset),W=asset.cells.w,H=asset.cells.h,hw=W+1,cell=asset.unitsPerCell;
 const src=(i:number)=>asset.heightsCenti[i]/100;
+/**
+ * NEW-20261013-ORQ-cidade-escala-1-7: the asset's heights are the .w3x ones × CITY_MAP_SCALE (version 2) and the
+ * undulation scales with them, so every height threshold below is the version-1 one × K.
+ */
+const K=cityMapScale(asset),PEAK=undulationHeight(asset);
 const cellsOf=(kinds:readonly string[])=>{
   const out=new Set<number>();
   for(const b of asset.blocks)if(kinds.includes(b.kind))for(const r of b.rects){
@@ -39,21 +44,22 @@ test('walls stay walls: buildings, walls and the map edge keep their corners (on
   assert.ok(locked.length>1000);
   const shift=R[locked[0]]-src(locked[0]);
   for(const i of locked)assert.ok(Math.abs(R[i]-src(i)-shift)<1e-9,`corner ${i}: ${src(i)} → ${R[i]}`);
-  assert.ok(Math.abs(shift)<1,'a small shift');
+  assert.ok(Math.abs(shift)<K,'a small shift');
 });
 
-test('terraces become ramps: no terrace-sized step left between open-ground neighbours (a terrace is 0.88 u)', () => {
+test('terraces become ramps: no terrace-sized step left between open-ground neighbours (a terrace is 0.88 u × K)', () => {
+  assert.ok(Math.abs(K-1.7)<1e-9,'the asset is the 1.7× map');assert.ok(Math.abs(PEAK-UNDULATION_HEIGHT*1.7)<1e-9);
   const locked=cornersOf(cellsOf(['building','wall','edge']));
   let srcBig=0,big=0,steps=0;
   for(let y=1;y<H;y++)for(let x=1;x<W;x++){
     const i=y*hw+x,j=i+1;
     if(locked.has(i)||locked.has(j))continue;
     steps++;
-    if(Math.abs(src(j)-src(i))>=.85)srcBig++;
-    if(Math.abs(R[j]-R[i])>=.85)big++;
+    if(Math.abs(src(j)-src(i))>=.85*K)srcBig++;
+    if(Math.abs(R[j]-R[i])>=.85*K)big++;
   }
   assert.ok(srcBig>100,`the source has terrace steps (${srcBig})`);
-  assert.ok(big<srcBig/10,`ramps: ${big} terrace-sized steps (≥ 0.85 u) left of ${srcBig} (${steps} pairs)`);
+  assert.ok(big<srcBig/10,`ramps: ${big} terrace-sized steps (≥ 0.85 u × K) left of ${srcBig} (${steps} pairs)`);
 });
 
 test('snow undulation on open ground, none in the plaza', () => {
@@ -63,12 +69,12 @@ test('snow undulation on open ground, none in the plaza', () => {
   for(let y=pc.y-1;y<=pc.y+1;y++)for(let x=pc.x-1;x<=pc.x+1;x++){
     const i=y*hw+x;plazaMax=Math.max(plazaMax,Math.abs(R[i+1]-R[i]),Math.abs(R[i+hw]-R[i]));
   }
-  assert.ok(plazaMax<.02,`plaza is flat (${plazaMax.toFixed(4)} u between neighbours)`);
+  assert.ok(plazaMax<.02*K,`plaza is flat (${plazaMax.toFixed(4)} u between neighbours)`);
   const locked=cornersOf(cellsOf(['building','wall','edge']));
   let moved=0,open=0;
-  for(let i=0;i<R.length;i++){if(locked.has(i))continue;open++;if(R[i]-src(i)>UNDULATION_HEIGHT*.3)moved++;}
+  for(let i=0;i<R.length;i++){if(locked.has(i))continue;open++;if(R[i]-src(i)>PEAK*.3)moved++;}
   assert.ok(moved>open*.05,`snow bumps on ${moved} of ${open} open corners`);
-  for(let i=0;i<R.length;i++)assert.ok(R[i]-src(i)<UNDULATION_HEIGHT+2.5,'no corner flies off');
+  for(let i=0;i<R.length;i++)assert.ok(R[i]-src(i)<PEAK+2.5*K,'no corner flies off');
 });
 
 test('CityTerrain stands actors on the relief, bilinear, the lowest corner at 0', () => {

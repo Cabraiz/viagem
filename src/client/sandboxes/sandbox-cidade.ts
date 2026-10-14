@@ -73,7 +73,7 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {TOWER_SECONDS} from '../../rules/index.ts';
+import {SCALE_PROFILES,TOWER_SECONDS} from '../../rules/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
@@ -179,7 +179,8 @@ class CitySandbox extends Phaser.Scene {
   private art?:CityArtPlan;
   preload(){
     this.load.spritesheet(PINE_TEXTURE,'/art/lite/trees/arvore-nevada.webp',{frameWidth:256,frameHeight:384});
-    this.art=buildCityArtPlan(artIndex(),cityArtOptions(location.search));
+    // The real asset's cell (1.496 u, cidade-escala-1-7) is the profile's; the sample city keeps the art's 0.88 u.
+    this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{})});
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');

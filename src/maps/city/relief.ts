@@ -1,6 +1,6 @@
 /**
  * Cidade Nevada relief (cidade-relevo-pseudo-realista, data part): the asset's corner heights are WC3 terraces — flat
- * shelves 0.88 u apart, joined by cliff cells. The ground the client draws and the actors stand on (CityTerrain.bed,
+ * shelves one .w3x cell (0.88 u) × the map scale apart (1.496 u since cidade-escala-1-7), joined by cliff cells. The ground the client draws and the actors stand on (CityTerrain.bed,
  * render/city/from-maps.ts corners) reads this instead: terraces relaxed into ramps, a low snow undulation on open
  * ground, while buildings, walls and the map edge keep their corners (walls stay walls) and the plaza and the avenues get
  * no undulation (nearly flat streets).
@@ -10,13 +10,22 @@
  * by every fork and view of it. Pure and deterministic (no Math.random, integer hash), the same on every client.
  */
 import type {CityAsset,CityRect} from '../city-asset.ts';
+import {UNITS_PER_CELL} from '../city-asset.ts';
 
 /** Relaxation passes (damped Jacobi: half the corner, half its 4-neighbour mean; damping also kills checkerboards) over the free corners: a 0.88 u step becomes a ramp a few cells long. */
 export const RELIEF_PASSES=16;
 /** Extra passes on the streets and the plaza only (their source has 0.88 u row steps too): nearly flat, not rippled. */
 export const STREET_PASSES=40;
-/** Snow undulation: peak height (u, never below the source ground) and wavelength (cells). */
+/**
+ * Snow undulation: peak height (u, never below the source ground) and wavelength (cells). The height is for the .w3x
+ * cell (UNITS_PER_CELL 0.88 u); undulationHeight scales it with the asset's map scale like the asset's own heights
+ * (NEW-20261013-ORQ-cidade-escala-1-7: version 2 is × 1.7), so the bumps keep their slope.
+ */
 export const UNDULATION_HEIGHT=2.4,UNDULATION_CELLS=14;
+/** Map scale of an asset: its cell over the .w3x cell (1 for a version-1 import, 1.7 for the Cidade Nevada version 2). */
+export const cityMapScale=(asset:Pick<CityAsset,'unitsPerCell'>)=>asset.unitsPerCell/UNITS_PER_CELL;
+/** Peak snow undulation (u) on this asset: UNDULATION_HEIGHT × its map scale. */
+export const undulationHeight=(asset:Pick<CityAsset,'unitsPerCell'>)=>UNDULATION_HEIGHT*cityMapScale(asset);
 /** Undulation fades in over this many cells away from walls/buildings, the streets and the water. */
 export const UNDULATION_FADE_CELLS=8;
 /** Street zones, same shape as render/city/from-maps.ts draws them ('c' plaza, 'p' avenues and the ring road). */
@@ -101,9 +110,10 @@ function buildRelief(asset:CityAsset):Float64Array{
       if(y<hh-1)dist[i]=Math.min(dist[i],dist[i+hw]+1);
     }
   }
+  const peak=undulationHeight(asset);
   for(let y=0;y<hh;y++)for(let x=0;x<hw;x++){
     const i=y*hw+x,f=Math.min(1,dist[i]/UNDULATION_FADE_CELLS),fade=f*f*(3-2*f);
-    if(fade>0)a[i]+=UNDULATION_HEIGHT*fade*snowNoise(x/UNDULATION_CELLS,y/UNDULATION_CELLS);
+    if(fade>0)a[i]+=peak*fade*snowNoise(x/UNDULATION_CELLS,y/UNDULATION_CELLS);
   }
   // 3. Same lowest corner as the source (a relaxed pit rises a little): the terrain's zero and minHeight stay valid.
   let srcMin=Infinity,min=Infinity;

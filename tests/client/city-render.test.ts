@@ -378,3 +378,15 @@ test('relief: chunk bounds cover corner heights and props at their groundZ (no e
     assert.deepEqual([c.minBase,c.maxTop],[lo,hi],`chunk ${c.key}`);
   }
 });
+
+// NEW-20261013-ORQ-cidade-escala-1-7: a chunk keeps about CHUNK_UNITS of world (its baked ground keeps its texel size).
+test('cidade-escala-1-7: chunk side follows the cell: 16 cells of 0.88 u, 9 of the 1.7× city\'s 1.496 u',async()=>{
+  const {CHUNK_UNITS,chunkCellsFor}=await import('../../src/client/render/city/chunks.ts');
+  assert.ok(Math.abs(CHUNK_UNITS-14.08)<1e-9);
+  assert.equal(chunkCellsFor(.88),CHUNK_CELLS);assert.equal(chunkCellsFor(1.496),9);
+  assert.ok(Math.abs(chunkCellsFor(1.496)*1.496-CHUNK_UNITS)<1,'about the same world size');
+  for(const bad of [0,-1,Number.NaN])assert.equal(chunkCellsFor(bad),CHUNK_CELLS);
+  assert.equal(index.size,CHUNK_CELLS,'the 0.88 u sample city keeps 16');
+  const big=buildChunks({...asset,cell:1.496});
+  assert.equal(big.size,9);assert.equal(big.cols,Math.ceil(asset.width/9));
+});

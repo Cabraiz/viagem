@@ -24,7 +24,7 @@ const defense=(id:string,kind:DefenseId,x:number,y:number,phase='pronta'):Struct
   tier:DEFENSES[kind].tier,...(DEFENSES[kind].branch?{branch:DEFENSES[kind].branch!}:{}),phase});
 function runView(structures:StructureView[],round:'prepare'|'wave'='prepare'):RunView{
   return {tick:500,team:{xp:0,level:1,nextXp:10},round:{index:2,total:10,phase:round,phaseEndsTick:900,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
-    structures,camp:{coco:7,pedra:5},players:[],offers:[],events:[]};
+    structures,camp:{units:52,grana:17},players:[],offers:[],events:[]};
 }
 const project=(p:{x:number;y:number})=>({x:p.x*10,y:p.y*10+1});
 
@@ -49,7 +49,10 @@ test('sites projected to the screen, defenses matched by position (through the w
   assert.equal(v.sites[2].tower,undefined);
   assert.equal(v.standing,2,'ruins do not count against the limit');
   assert.equal(v.gustavoes,0);
-  assert.deepEqual(v.balance,{coco:7,pedra:5});
+  assert.deepEqual(v.balance,{units:52},'the one pile (D-048)');
+  assert.equal(v.grana,17,'the Grana of the team, from view.camp.grana');
+  assert.equal(obraViewFrom({prepare:false,view,plan:PLAN,project}).grana,17,'closed too');
+  assert.equal(obraViewFrom({prepare:true,view:undefined,plan:PLAN,project}).grana,0,'no view yet: no Grana');
   assert.equal(v.drawnInWorld,undefined,'default: the marker is the tower');
   assert.equal(obraViewFrom({prepare:true,view,plan:PLAN,project,drawnInWorld:true}).drawnInWorld,true);
   // A site with a ruin and a new obra on it (both in one view): the standing one is the tower.
@@ -87,13 +90,13 @@ test('the branch the room accepts: A4b/A5b as they are, every other child by its
   assert.equal(branchForWire('A2'),'A');assert.equal(branchForWire('B6'),'B');assert.equal(branchForWire('C5'),'C');
   assert.equal(branchForWire('Z9'),undefined);
   // The model's own actions (what the menu confirms) go out as the room expects.
-  const view={prepare:true,sites:[],balance:{coco:99,pedra:99},standing:1,gustavoes:0};
+  const view={prepare:true,sites:[],balance:{units:999},grana:999,standing:1,gustavoes:0};
   const tree=treeFor({id:'obra-01',x:0,y:0,maxSize:3,tower:{id:'d',kind:'atiradores-do-telhado'}},view);
   assert.deepEqual(tree.branches.map(c=>c.action?.type==='upgrade'?branchForWire(c.action.branch):undefined),['A','A4b']);
 });
 
 test('every refusal code has its own short pt-BR reason',()=>{
-  const CODES:Record<TowerRefusal,true>={'wall-down':true,phase:true,player:true,site:true,occupied:true,size:true,balance:true,limit:true,rail:true,
+  const CODES:Record<TowerRefusal,true>={'wall-down':true,phase:true,player:true,site:true,occupied:true,size:true,balance:true,grana:true,limit:true,rail:true,
     unique:true,defense:true,building:true,ruined:true,max:true,branch:true,duplicate:true,away:true,full:true};
   assert.deepEqual(Object.keys(OBRA_REFUSALS).sort(),Object.keys(CODES).sort(),'one text per TowerRefusal, no more');
   for(const code of Object.keys(CODES)){
@@ -101,8 +104,9 @@ test('every refusal code has its own short pt-BR reason',()=>{
     assert.ok(text&&text!==OBRA_REFUSED&&text.length<=24,`${code}: "${text}"`);
   }
   assert.equal(new Set(Object.values(OBRA_REFUSALS)).size,Object.keys(OBRA_REFUSALS).length,'no two codes say the same');
-  assert.deepEqual(['balance','limit','rail','unique','wall-down','phase'].map(refusalText),
-    ['Falta material','Limite de 12 defesas','Precisa do trilho','Só 1 Gustavão','Muralha caída','Só no intervalo']);
+  // D-048: 'balance' is fichas short (a Vigia, the Gustavão), 'grana' is R$ short (an evolution, a repair).
+  assert.deepEqual(['balance','grana','limit','rail','unique','wall-down','phase'].map(refusalText),
+    ['Falta ficha de torre','Falta grana','Limite de 12 defesas','Precisa do trilho','Só 1 Gustavão','Muralha caída','Só no intervalo']);
   assert.equal(refusalText('away'),'Chegue mais perto','torres-ajustes: too far from the obra');
   assert.equal(refusalText('whatever'),OBRA_REFUSED);assert.equal(refusalText(undefined),OBRA_REFUSED);assert.equal(refusalText('toString'),OBRA_REFUSED);
   assert.equal(unreachableText({connected:false,spectator:false}),OBRA_OFFLINE);
@@ -129,7 +133,7 @@ test('a request spins until the room answers: ok stamps the marker, a refusal co
   assert.deepEqual(r.doneSites(),[],'the stamp is short');
   r.send({type:'upgrade',defense:'defesa-1',branch:'B2'},'obra-01',net,LIVE);
   assert.deepEqual(net.calls.at(-1),['upgrade','defesa-1','B'],'the model\'s label goes out as the room\'s branch');
-  assert.equal(r.answer({req:42,ok:false,reason:'balance'},500),'Falta material');
+  assert.equal(r.answer({req:42,ok:false,reason:'grana'},500),'Falta grana','an evolution without R$');
   assert.deepEqual(r.pendingSites(),[]);
   assert.equal(r.answer({req:999,ok:false,reason:'balance'},500),undefined,'someone else\'s (or a forgotten) req: ignored');
 });
@@ -259,7 +263,8 @@ test('revision: the same while only the camera moves; changes with the snapshot,
   assert.equal(next({view:runView([defense('defesa-1','vigia-do-predio',10,10,'obra-1')])}),a.revision);
   for(const [why,rev] of [
     ['the obra finished',next({view:runView([defense('defesa-1','vigia-do-predio',10,10,'pronta')])})],
-    ['the balance',next({view:{...view,camp:{coco:8,pedra:5}}})],
+    ['the balance',next({view:{...view,camp:{units:53,grana:17}}})],
+    ['the Grana',next({view:{...view,camp:{units:52,grana:18}}})],
     ['a request sent',next({pending:['obra-02']})],
     ['an obra accepted',next({done:['obra-01']})],
     ['watching',next({readOnly:true})],

@@ -129,7 +129,7 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string}>();
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -299,12 +299,34 @@ export class Simulation {
       const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city,...objective}):new Simulation(DEFAULT_SEED,{world:kind,...objective});
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture)};SHAPES.set(key,entry);
+      // legacy: the same run written before the single pile of material (D-048), balance {coco, pedra}: migrateCheckpoint.
+      // (and the Grana in the chaveiro's state, when the run has one; none at all before D-047).
+      const before=structuredClone(capture),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
+      stw.balance={coco:0,pedra:0};delete stw.grana;
+      if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
     }
     return entry;
   }
+  /**
+   * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
+   * with balance {coco, pedra}, no team Grana, the chaveiro's Grana in its own state) keeps the team's material as two
+   * piles; it becomes {units: coco + pedra}, the Grana moves to the team's state, and this code's fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   */
+  migrateCheckpoint(cp:unknown){
+    if(!isObject(cp))return;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown}}}).systems;
+    const b=sys?.stonewards?.balance,fresh=this.freshShape();
+    if(cp.shape!==fresh.legacy||!sys?.stonewards||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
+    const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
+    // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
+    const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
+    if(sys.chaveiro)delete sys.chaveiro.grana;
+    sys.stonewards.grana=grana;cp.shape=fresh.fingerprint;
+  }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
+    this.migrateCheckpoint(cp);
     if(!isObject(cp))return false;
     const fresh=this.freshShape();
     const {shape,...rest}=cp;
@@ -325,6 +347,7 @@ export class Simulation {
    * run (resetRun) when a system cannot take its stored state.
    */
   resume(cp:unknown):boolean{
+    this.migrateCheckpoint(cp);
     if(!simCheckpointOk(cp,this.seed)||!this.checkpointShapeOk(cp))return false;
     const saved=new Map(cp.players.map(p=>[p.id,p]));
     for(const p of this.players.values()){const s=saved.get(p.id);if(s&&s.classId!==p.classId)return false;}
@@ -569,7 +592,8 @@ export class Simulation {
   }
   private campView():CampView{
     const st=this.systems.stonewards.state;
-    return {coco:st.balance.coco,pedra:st.balance.pedra,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+    const bought=st.forgeBought,forge=bought&&(bought.gambiarra||bought['torre-chinelo'])?{forge:{...(bought.gambiarra?{gambiarra:bought.gambiarra}:{}),...(bought['torre-chinelo']?{'torre-chinelo':bought['torre-chinelo']}:{})}}:{};
+    return {units:st.balance.units,grana:st.grana,...forge,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
   }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){

@@ -293,7 +293,7 @@ class CitySandbox extends Phaser.Scene {
       {id:'caixa-0',kind:'pedra',...at(1.9,.9),remaining:1,capacity:1,value:6,progress:0},
     ];
     const view:RunView={tick,team:{xp:0,level:1,nextXp:10},round:{index:1,total:10,phase:basePhase,phaseEndsTick:tick+600,remaining:0},
-      enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{coco:4,pedra:4},
+      enemies:[],pickups:[],projectiles:[],telegraphs:[],structures,nodes:basePhase==='prepare'?nodes:[],camp:{units:76,grana:12},
       players:[],offers:[],events:[]};
     this.stone.push(view);
   }

@@ -288,7 +288,7 @@ test('brain (room bots): a roamer walks with the person who left the wall, a gua
   const person={id:'ana',name:'Ana',classId:'cidadao-comum',hp:100,maxHp:100,online:true,spectator:false,weapons:[],passives:[],x:20,y:0};
   const me={...person,id:'bot-1',name:'Pamonha 3000',x:2,y:0};
   const view:any={tick:1000,team:{xp:0,level:1,nextXp:5},round:{index:2,total:10,phase:'wave',phaseEndsTick:2000,remaining:0},enemies:[],pickups:[],projectiles:[],telegraphs:[],
-    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],players:[person,me],offers:[],events:[],camp:{coco:0,pedra:0}};
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}],players:[person,me],offers:[],events:[],camp:{units:0}};
   const roamer=decide({view,selfId:'bot-1',at:{x:2,y:0},index:1,memory:newMemory(1),escort:{x:20,y:0}});
   assert.equal(roamer.mode,'escort');assert.ok(roamer.direction.x>.8,`goes to Ana (x ${roamer.direction.x})`);
   const guard=decide({view,selfId:'bot-1',at:{x:2,y:0},index:0,memory:newMemory(0),escort:{x:20,y:0}});

@@ -1,9 +1,12 @@
 /**
  * Stonewards HUD (VGM-046B), three pieces in the zones of UX-zonas-tela:
- * - the base ficha (status, top band): the wall's life (bar + number) and the team's coco and pedra, always in a run;
+ * - the base ficha (status, top band), one line, always in a run: the wall's life (.rh-camp-barra, the bar, and
+ *   .rh-camp-num, the number), the team's Grana ("R$ 120", .rh-camp-grana) and its fichas de torre (D-048: the tower
+ *   sticker in a ring filling to the next ficha, and the count, .rh-camp-token);
  * - the forge window (an intermission window, like the round offer): opens by itself while the hero stands in the camp
- *   during the intermission and no offer is open; three price tags, one tap buys for the team. Tags the team cannot
- *   buy stay readable with a padlock and say why on tap (no dead button);
+ *   during the intermission and no offer is open; three price tags in Grana (price.ts forgePriceLabel, "R$ N"), one tap
+ *   buys for the team. Tags the team cannot buy stay readable with a padlock and say why on tap ("Falta R$ 2.", no dead
+ *   button);
  * - the horn notice (announcement slot): "Volta pra base" with the seconds left and an arrow to the base; inside the
  *   camp it says when the critters arrive. In a wave, the wall crossing 50% and 25% shows here for 3 s.
  * City barricades (card NEW-20261012-E5-cidade-barricadas-cliente): standing within CAMP_RADIUS of a barricade in the
@@ -13,13 +16,15 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
-import type {RunView,StructureView} from '../../contract/index.ts';
-import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,type Balance,type RecipeId} from '../../rules/index.ts';
+import {CAR_ID} from '../../contract/index.ts';
+import type {CampView,RunView,StructureView} from '../../contract/index.ts';
+import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
+import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 import {carBar} from './chaveiro.ts';
 
@@ -61,7 +66,7 @@ export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structur
   if(!camp)return 'phase';
   if(camp.wallDown)return 'wall-down';
   if(away)return 'away';
-  if(!canPay(camp,RECIPES[recipe].cost))return 'balance';
+  if(!canPay(camp.grana,forgePrice(recipe,camp.forge)))return 'balance';
   if(recipe==='reparo'){const w=wallOf(view.structures);if(w&&w.hp>=w.maxHp)return 'full';}
   if(recipe==='torre-chinelo'&&view.structures.filter(isTower).length>=MAX_TOWERS)return 'full';
   if(recipe==='gambiarra'){
@@ -70,11 +75,32 @@ export function blockedReason(recipe:RecipeId,view:Pick<RunView,'camp'|'structur
   }
   return undefined;
 }
-/** What is missing for a recipe, "Falta 1 pedra" style (pure, tested). */
-export function missing(balance:Balance,recipe:RecipeId){
-  const cost=RECIPES[recipe].cost,parts:string[]=[];
-  for(const kind of ['coco','pedra'] as const){const n=cost[kind]-balance[kind];if(n>0)parts.push(`${n} ${kind}`);}
-  return parts.length?`Falta ${parts.join(' e ')}.`:'';
+/** What is missing for a recipe in Grana, "Falta R$ 2." (pure, tested; the price as the tag shows it, price.ts granaText). */
+export function missing(camp:Pick<CampView,'grana'|'forge'>,recipe:RecipeId){
+  const short=Math.ceil(forgePrice(recipe,camp.forge)-(Number.isFinite(camp.grana)?camp.grana:0)-1e-9);
+  return short>0?`Falta ${granaText(short)}.`:'';
+}
+/** The top bar's Grana (D-048, pure, tested): "R$ 120" on screen, "R$ 120 do time" for the screen reader (never negative). */
+export function granaReadout(grana:number){
+  const text=granaText(grana);
+  return {text,label:`${text} do time`};
+}
+/**
+ * The top bar's fichas (D-048, pure, tested): the whole fichas in the pile, the ring's fill towards the next one and the
+ * words for the screen reader. The percent rounds down: "próxima em 100%" would be a ficha the count does not show yet.
+ */
+export function tokenReadout(units:number){
+  const u=Number.isFinite(units)?Math.max(0,units):0,tokens=tokensOf(u),progress=tokenProgress(u),percent=Math.floor(progress*100+1e-9);
+  return {tokens,progress,percent,label:`${fichasText(tokens)}, próxima em ${percent}%`};
+}
+/**
+ * Its markup, one line (pure, tested): the tower sticker inside a thin ring (a 0..100 dash, from the top, clockwise) and
+ * the count. The ring's track always shows, so "0 and almost one" still reads as "falta pouco".
+ */
+export function tokenMarkup(units:number){
+  const {tokens,progress}=tokenReadout(units);
+  return `<span class="rh-camp-anel" aria-hidden="true">${icon('torre')}<svg class="rh-camp-anel-svg" viewBox="0 0 32 32" focusable="false">`
+    +`<circle class="rh-camp-anel-fundo" cx="16" cy="16" r="14"/><circle class="rh-camp-anel-cheio" cx="16" cy="16" r="14" pathLength="100" stroke-dasharray="${+(progress*100).toFixed(1)} 100"/></svg></span><b>${tokens}</b>`;
 }
 export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.kind==='muralha');
 /**
@@ -96,7 +122,7 @@ export const inCamp=(hero:HeroSpot|undefined,wall:StructureView|undefined)=>!!he
 export function barricadeBlocked(spot:Pick<BarricadeSpot<StructureView>,'structure'|'down'>,camp:RunView['camp']):string|undefined{
   if(!camp)return 'phase';
   if(camp.wallDown)return 'wall-down';
-  if(!canPay(camp,RECIPES.reparo.cost))return 'balance';
+  if(!canPay(camp.grana,RECIPES.reparo.cost))return 'balance';
   if(!spot.down&&spot.structure.hp>=spot.structure.maxHp)return 'full';
   return undefined;
 }
@@ -142,7 +168,10 @@ export function createCamp(options:CampOptions):CampPart{
   const wallRow=el('span','rh-camp-wall',readout);
   // The base has one symbol everywhere (design onda 6 D10): the tent with its flag, as on the map, the arrows and the minimap.
   wallRow.insertAdjacentHTML('beforeend',icon('base',{label:'Base'}));
-  const track=el('span','rh-camp-track',wallRow),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',wallRow);
+  // The bar and the number each in their own box (.rh-camp-barra, .rh-camp-num): the chaveiro's car bar takes these
+  // places later (Executor-4), the order unchanged. The bar is what gives way on a narrow screen.
+  const barra=el('span','rh-camp-barra',wallRow),num=el('span','rh-camp-num',wallRow);
+  const track=el('span','rh-camp-track',barra),fill=el('i','rh-camp-fill',track),hp=el('b','rh-camp-hp',num);
   track.setAttribute('role','progressbar');track.setAttribute('aria-label','Vida da muralha');
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{
@@ -153,9 +182,13 @@ export function createCamp(options:CampOptions):CampPart{
     if(track.getAttribute('aria-label')!==bar.label)track.setAttribute('aria-label',bar.label);
     track.setAttribute('aria-valuenow',String(Math.round(bar.fraction*100)));
   };
-  const res=el('span','rh-camp-res',readout);
-  const coco=el('span','rh-camp-item',res);coco.insertAdjacentHTML('beforeend',icon('coco',{label:'Coco'}));const cocoN=el('b','',coco);
-  const pedra=el('span','rh-camp-item',res);pedra.insertAdjacentHTML('beforeend',icon('pedra',{label:'Pedra'}));const pedraN=el('b','',pedra);
+  // The team's Grana (D-048), "R$ 120", always shown, before the fichas; rewritten only when it changes.
+  const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
+  const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
+  let lastGrana:string|undefined;
+  // The team's fichas de torre (D-048): one sticker in its ring and the count; rewritten only when the pile changes.
+  const token=el('span','rh-camp-token',readout);token.setAttribute('role','img');
+  let lastUnits:number|undefined;
 
   // ---------- Horn / wall notice ----------
   const notice=el('div','rh-alert rh-horn');notice.hidden=true;notice.setAttribute('role','status');
@@ -183,11 +216,9 @@ export function createCamp(options:CampOptions):CampPart{
     const name=el('strong','rh-forge-name',body);name.textContent=r.name;
     const desc=el('span','rh-forge-desc',body);desc.textContent=r.describe;
     const price=el('span','rh-forge-price',button);
-    for(const kind of ['coco','pedra'] as const){
-      const part=el('span','rh-forge-cost',price);el('b','',part).textContent=String(r.cost[kind]);
-      part.insertAdjacentHTML('beforeend',icon(kind,{label:kind==='coco'?'coco':'pedra'}));
-    }
-    const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem saldo'}));lock.hidden=true;
+    // "R$ N" (the tag's aria-label says the price in words); render() rewrites it when the inflação moves it.
+    const cost=el('span','rh-forge-cost',price);cost.insertAdjacentHTML('beforeend',forgePriceLabel(r.cost).html);cost.dataset.price=String(r.cost);
+    const lock=el('span','rh-forge-lock',price);lock.insertAdjacentHTML('beforeend',icon('cadeado',{label:'Sem grana'}));lock.hidden=true;
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
     const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
     el('span','rh-forge-stamp',button).textContent='LEVEI';
@@ -213,7 +244,7 @@ export function createCamp(options:CampOptions):CampPart{
     note.textContent=text;note.hidden=false;fall.hidden=true;clearTimeout(noteTimer);
     if(!keep)noteTimer=setTimeout(()=>{note.textContent=DEFAULT_NOTE;},2600);
   };
-  const DEFAULT_NOTE='O saldo é da turma. Toca pra comprar.';
+  const DEFAULT_NOTE='A grana é da turma. Toca pra comprar.';
   note.textContent=DEFAULT_NOTE;
   const refusal=(reason:string,recipe:RecipeId)=>reason==='balance'?(last?.camp&&missing(last.camp,recipe))||FORGE_REFUSALS.balance:FORGE_REFUSALS[reason]??'Agora não dá.';
 
@@ -246,8 +277,8 @@ export function createCamp(options:CampOptions):CampPart{
   // The window holds its own taps (VGM-040): nothing leaks to the joystick or the map.
   for(const node of [forge,readout,notice])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)node.addEventListener(type,event=>event.stopPropagation());
 
-  const label=(name:string,describe:string,cost:Balance,reason:string|undefined,recipe:RecipeId)=>
-    `${name}: ${describe}. Custa ${cost.coco} coco e ${cost.pedra} pedra.${reason?` ${refusal(reason,recipe)}`:''}`;
+  const label=(name:string,describe:string,cost:number,reason:string|undefined,recipe:RecipeId)=>
+    `${name}: ${describe}. Custa ${forgePriceLabel(cost).speech}.${reason?` ${refusal(reason,recipe)}`:''}`;
   const render=()=>{
     const view=last;
     const camp=view?.camp;
@@ -255,7 +286,9 @@ export function createCamp(options:CampOptions):CampPart{
     if(!view||!camp){forge.hidden=true;notice.hidden=true;return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
     paintBaseBar(baseBar(view),!!camp.wallDown);
-    cocoN.textContent=String(camp.coco);pedraN.textContent=String(camp.pedra);
+    const money=granaReadout(camp.grana);
+    if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
+    if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
     const round=view.round,prepare=round?.phase==='prepare'&&(round.index??0)>=2;
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
@@ -267,7 +300,8 @@ export function createCamp(options:CampOptions):CampPart{
     lastFraction=fraction;
     // ---------- notice ----------
     const me=view.players.find(p=>p.id===ctxId),standing=!!me&&!me.spectator&&!me.eliminated&&!me.downed;
-    home=inCamp(hero,wall);
+    // Chaveiro mode (D-047): the car stands where the wall was (the sim's forge checks that spot), and there is no wall.
+    home=inCamp(hero,wall??view.structures.find(s=>s.kind===CAR_ID));
     if(warning&&performance.now()<warning.until){
       notice.hidden=false;notice.dataset.kind='wall';noticeText.textContent=warning.text;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
     }else if(prepare&&camp.hornEndsTick!==undefined&&standing){
@@ -300,7 +334,9 @@ export function createCamp(options:CampOptions):CampPart{
       const {button,lock,full}=tags.get(id)!,reason=blockedReason(id,view,ctxId,place.away);
       button.classList.toggle('rh-forge-blocked',!!reason);
       lock.hidden=reason!=='balance';full.hidden=reason!=='full';
-      button.setAttribute('aria-label',label(RECIPES[id].name,RECIPES[id].describe,RECIPES[id].cost,reason,id));
+      const now=forgePrice(id,view.camp?.forge),cost=button.querySelector<HTMLElement>('.rh-forge-cost');
+      if(cost&&cost.dataset.price!==String(now)){cost.dataset.price=String(now);cost.innerHTML=forgePriceLabel(now).html;}
+      button.setAttribute('aria-label',label(RECIPES[id].name,RECIPES[id].describe,now,reason,id));
     }
     // ---------- barricade tag ----------
     if(fence.button.hidden===!!spot)fence.button.hidden=!spot;

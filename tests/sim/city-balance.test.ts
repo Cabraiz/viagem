@@ -287,8 +287,9 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
  * The city again for cidade-escala-1-7 (asset v2, the map × 1.7); the island and the endless map are unchanged.
  */
 // cidade re-recorded by ataque-fora-do-alcance (straight shots no longer fire into the air with nobody in reach), then for
-// cidade-escala-1-7 on top of it.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'e2c8b551c0bb1bdb',ilha:'0d4d774d9e279384',infinito:'7fffc4bb4a41528d'};
+// cidade-escala-1-7 on top of it; all three again by ficha-de-torre (D-048: one pile {units}, the team's grana in every
+// world): with the balance read as {units} and grana deleted, the state gives the previous digests (only those fields moved).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'a5d6982fdc306f33',ilha:'76d5d060612a37b7',infinito:'94ee87d72339a02b'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);
@@ -358,13 +359,12 @@ test('lootValue pays whole units per crate (balance and credits); intermissionEx
   const emptied=plain.sys.state.nodes.filter(n=>n.remaining<=0);
   assert.ok(emptied.length>=spots.length,'each hero emptied a crate');
   assert.deepEqual(rich.sys.state.nodes.map(n=>n.id),plain.sys.state.nodes.map(n=>n.id),'the same crates worked');
-  for(const kind of ['coco','pedra'] as const){
-    const raw=emptied.filter(n=>n.kind===kind).reduce((s,n)=>s+n.value,0),paid=emptied.filter(n=>n.kind===kind).reduce((s,n)=>s+cityCrateValue(n.value,1.5),0);
-    assert.equal(plain.sys.state.balance[kind],raw,`${kind}: neutral pays the crates' values`);
-    assert.equal(rich.sys.state.balance[kind],paid,`${kind}: ×1.5 pays whole units per crate`);
-  }
+  // D-048: coco and pedra crates alike pay into the one pile.
+  const raw=emptied.reduce((s,n)=>s+n.value,0),paid=emptied.reduce((s,n)=>s+cityCrateValue(n.value,1.5),0);
+  assert.equal(plain.sys.state.balance.units,raw,"neutral pays the crates' values");
+  assert.equal(rich.sys.state.balance.units,paid,'×1.5 pays whole units per crate');
   const total=(g:Record<string,number>)=>Object.values(g).reduce((a,b)=>a+b,0);
-  assert.ok(Math.abs(total(rich.sys.state.gathered)-(rich.sys.state.balance.coco+rich.sys.state.balance.pedra))<1e-9,'credits add up to the balance');
+  assert.ok(Math.abs(total(rich.sys.state.gathered)-rich.sys.state.balance.units)<1e-9,'credits add up to the balance');
   console.log(`[cidade-11] city loot ×1.5: balance ${JSON.stringify(plain.sys.state.balance)} → ${JSON.stringify(rich.sys.state.balance)}`);
   // Timing with the team home (no horn stretch for a straggler): the trip-sized intermission plus the extra seconds.
   const home=intermission(city,[P.plazaCenter],2),later=intermission(city,[P.plazaCenter],2,{lootValue:1,intermissionExtraSeconds:7});
@@ -374,7 +374,7 @@ test('lootValue pays whole units per crate (balance and credits); intermissionEx
   // The island: the same state, keys and intermission with or without the knobs.
   const near=[{x:obstacles[12].x+obstacles[12].radius+.3,y:obstacles[12].y}];
   const i0=intermission(defaultTerrain,near,ticks(35)),i1=intermission(defaultTerrain,near,ticks(35),{lootValue:3,intermissionExtraSeconds:20});
-  assert.ok(i0.sys.state.balance.coco+i0.sys.state.balance.pedra>0,'the island hero gathered');
+  assert.ok(i0.sys.state.balance.units>0,'the island hero gathered');
   assert.equal(JSON.stringify(i1.sys.state),JSON.stringify(i0.sys.state),'island state untouched');
   assert.deepEqual(Object.keys(i1.sys.state),Object.keys(i0.sys.state));
   assert.equal(i1.firstEnd,i0.firstEnd,'island intermission untouched');
@@ -435,13 +435,12 @@ test('loot by team size: × players[n].lootValue × the global lootValue, n = he
   const spot=(i:number)=>({x:crates[i].x,y:crates[i].y});
   const spots3=[spot(0),spot(Math.floor(crates.length/2)),spot(crates.length-1)];
   const knobs:StonewardsOptions['cityBalance']={lootValue:1,intermissionExtraSeconds:0,players:{1:{lootValue:2},3:{lootValue:1.5}}};
-  const balanceOf=(sys:StonewardsSystem)=>({coco:sys.state.balance.coco,pedra:sys.state.balance.pedra});
+  const balanceOf=(sys:StonewardsSystem)=>sys.state.balance.units;
   /** What the emptied crates pay at `mult` (whole units per crate). */
   const paidAt=(sys:StonewardsSystem,mult:number)=>{
     const emptied=sys.state.nodes.filter(n=>n.remaining<=0);
     assert.ok(emptied.length>0,'a crate was emptied');
-    const of=(kind:'coco'|'pedra')=>emptied.filter(n=>n.kind===kind).reduce((s,n)=>s+cityCrateValue(n.value,mult),0);
-    return {coco:of('coco'),pedra:of('pedra')};
+    return emptied.reduce((s,n)=>s+cityCrateValue(n.value,mult),0);
   };
   // 3 standing: ×1.5; 1 standing: ×2; 2 standing (no entry): the crates' own values, as without knobs.
   const t3=intermission(city,spots3,ticks(6),knobs).sys;

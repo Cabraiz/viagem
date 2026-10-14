@@ -258,14 +258,12 @@ test('a crate is collected once per intermission, even with two heroes standing 
   const ctx=fakeCtx([a,b]),sys=createStonewardsSystem({terrain:city});
   ctx.tick=40;openPrepare(ctx,2,30);
   drive(ctx,sys,ticks(10));
-  const other=c.kind==='coco'?'pedra':'coco';
-  assert.equal(sys.state.balance[c.kind],c.value,'its value, once');
-  assert.equal(sys.state.balance[other],0);
+  assert.deepEqual(sys.state.balance,{units:c.value},'its value, once, into the one pile (D-048)');
   assert.ok(Math.abs((sys.state.gathered.a??0)+(sys.state.gathered.b??0)-c.value)<1e-9,JSON.stringify(sys.state.gathered));
   assert.equal(record(sys,c.id)?.remaining,0);
   assert.deepEqual(sys.state.nodes.map(n=>n.id),[c.id]);
   drive(ctx,sys,ticks(10));
-  assert.deepEqual(sys.state.balance,{[c.kind]:c.value,[other]:0} as Record<ResourceKind,number>,'standing on it longer gives nothing more');
+  assert.deepEqual(sys.state.balance,{units:c.value},'standing on it longer gives nothing more');
 });
 
 // ---------- 5. crates come back ----------
@@ -275,16 +273,16 @@ test('crates come back the next intermission (same crates, full again)',()=>{
   const a=player('a',c),ctx=fakeCtx([a]),sys=createStonewardsSystem({terrain:city});
   openPrepare(ctx,2,30);
   drive(ctx,sys,ticks(5));
-  assert.equal(sys.state.balance[c.kind],c.value);
+  assert.equal(sys.state.balance.units,c.value);
   drive(ctx,sys,ctx.round.phaseEndsTick-ctx.tick+ticks(3));
   assert.equal(ctx.round.phase,'wave');
-  assert.equal(sys.state.balance[c.kind],c.value,'nothing in the wave');
+  assert.equal(sys.state.balance.units,c.value,'nothing in the wave');
   openPrepare(ctx,3,30);
   drive(ctx,sys,1);
   const r=record(sys,c.id);
   assert.ok(!r||r.remaining===1,'full again');
   drive(ctx,sys,ticks(5));
-  assert.equal(sys.state.balance[c.kind],2*c.value,'collected again, once');
+  assert.equal(sys.state.balance.units,2*c.value,'collected again, once');
   assert.equal(record(sys,c.id)?.remaining,0);
   assert.deepEqual(allCrates(),before,'the same crates every intermission');
 });
@@ -440,7 +438,7 @@ test('the city intermission fits the trip to the farthest good crate: out at her
   assert.ok(length>=need,`sized on the first tick: ${length/SIM_HZ} s ≥ 2 × ${S.toFixed(2)} s + collect`);
   if(need>ticks(STONEWARDS_INTERMISSION_SECONDS))assert.equal(calls[0],start,'extended once, on the first tick');
   assert.ok(length<=MAX_PREPARE_TICKS,'within the cap');
-  assert.equal(sys.state.balance[far.kind]>=far.value,true);
+  assert.equal(sys.state.balance.units>=far.value,true);
   t.diagnostic(`farthest good crate ${far.id} at ${S.toFixed(2)} s; intermission ${(length/SIM_HZ).toFixed(2)} s; collected at +${((collected-start)/SIM_HZ).toFixed(2)} s, home at +${((home-start)/SIM_HZ).toFixed(2)} s`);
   // The island is not resized: nobody out, no stretch.
   const ictx=fakeCtx([player('h',{x:12,y:17})],defaultTerrain),icalls:number[]=[];
@@ -517,7 +515,8 @@ test('left behind: a hero who empties a crate in the last 2 s before the wave is
 });
 
 // ---------- 9. determinism ----------
-const ISLAND_STATE_KEYS=['balance','nodes','wall','towers','gathered','handled','refilledRound','hornRound','prepareStart','hornEndsTick','stretched','sayReady','wallDown','defeatReported','rng'];
+// D-048: the team's Grana is in every world's state (kills pay it in), so the island has it too.
+const ISLAND_STATE_KEYS=['balance','grana','nodes','wall','towers','gathered','handled','refilledRound','hornRound','prepareStart','hornEndsTick','stretched','sayReady','wallDown','defeatReported','rng'];
 
 test('state JSON round trip: a checkpoint restore anywhere replays the same state and events; island state keeps its keys',()=>{
   const goods=goodCrates().filter(n=>isolated(n));
@@ -601,8 +600,8 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   }
   const before={...st.balance},gotBefore={...st.gathered};
   for(let i=0;i<Math.max(...KINDS.map(k=>WORK_PER_UNIT[k]))+2;i++)step();
-  const sum=(k:ResourceKind)=>picked.filter(n=>n.kind===k).reduce((a,n)=>a+n.value,0);
-  for(const k of KINDS)assert.equal(st.balance[k]-before[k],sum(k),`${k}: the sum of the six crates, once`);
+  const sum=picked.reduce((a,n)=>a+n.value,0);
+  assert.equal(st.balance.units-before.units,sum,'the sum of the six crates (coco and pedra alike), once');
   heroes.forEach((p,i)=>assert.ok(Math.abs((st.gathered[p.id]??0)-(gotBefore[p.id]??0)-picked[i].value)<1e-9,`${p.id} got its own crate`));
   for(const n of picked)assert.equal(s.frame().nodes.find(x=>x.id===n.id)?.remaining,0,`${n.id} empty in the view`);
   const after={...st.balance};

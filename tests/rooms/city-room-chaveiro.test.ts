@@ -122,7 +122,7 @@ test('ACCEPTANCE (D-047): a city room with three bots and a person plays the cha
 test('Dona Cida through the room: {t:\'cida\'} answers {t:\'bought\'} with the sim\'s refusals, and a resent req applies once',async()=>{
   const {room,a,ana,t:t0}=await cityRoom(77,0);
   let t=t0;
-  const sim=room.sim,chaveiro=sim.run.chaveiro!;
+  const sim=room.sim,chaveiro=sim.run.chaveiro!,team=sim.run.stonewards.state;
   for(let i=0;i<5;i++)room.advance(t+=50);
   const answers=()=>a.messages.filter(m=>m.t==='bought');
   const buy=(req:number,item='brigadeiro',r=round(room))=>say(room,a,{t:'cida',round:r,req,item},t+=10);
@@ -130,13 +130,14 @@ test('Dona Cida through the room: {t:\'cida\'} answers {t:\'bought\'} with the s
   p.x=moto.x+1;p.y=moto.y;
   buy(1);
   assert.deepEqual(answers().at(-1),{t:'bought',req:1,item:'brigadeiro',ok:false,reason:'grana'});
-  chaveiro.state.grana=100;
+  // D-048: Dona Cida is paid from the team's Grana (stonewards state), not the chaveiro's own.
+  team.grana=100;
   buy(2);
   assert.deepEqual(answers().at(-1),{t:'bought',req:2,item:'brigadeiro',ok:true,grana:85});
   assert.ok((p.fastUntil??0)>sim.tick,'the brigadeiro runs');
   buy(2);
   assert.deepEqual(answers().at(-1),{t:'bought',req:2,item:'brigadeiro',ok:false,reason:'duplicate'},'a resend applies once');
-  assert.equal(chaveiro.state.grana,85);
+  assert.equal(team.grana,85);
   // Malformed or stale taps are dropped by the room (no answer).
   const before=answers().length;
   buy(3,'pastel');buy(0);buy(4,'pacoca',round(room)+1);
@@ -145,9 +146,9 @@ test('Dona Cida through the room: {t:\'cida\'} answers {t:\'bought\'} with the s
   assert.deepEqual(answers().at(-1),{t:'bought',req:5,item:'pacoca',ok:false,reason:'away'});
   // The purchase is an event of the next step, and the frames carry the Grana.
   room.advance(t+=50);
-  const dec=new FrameDecoder();let grana:number|undefined;
-  for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective)grana=r.view.objective.grana;}
-  assert.equal(grana,85);
+  const dec=new FrameDecoder();let grana:number|undefined,camp:number|undefined;
+  for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective)grana=r.view.objective.grana;if(r.ok&&r.view.camp)camp=r.view.camp.grana;}
+  assert.equal(grana,85);assert.equal(camp,85,'the camp block carries the same Grana');
 });
 
 test('city checkpoint with the chaveiro objective: the round-2 intermission resumes on a fresh room simulation and plays on alike',async()=>{

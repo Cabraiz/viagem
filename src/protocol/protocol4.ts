@@ -8,7 +8,8 @@
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
- *     camp? (u8 bits: 1 horn, 2 wall down; uvar coco, uvar pedra; svar hornEndsTick-tick if horn)
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$), uvar gambiarras bought, uvar chinelos
+ *       bought (inflação); svar hornEndsTick-tick if horn)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -881,7 +882,8 @@ export class FrameEncoder {
     }
     if(view.camp){
       const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
-      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(camp.coco);w.uvar(camp.pedra);
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(camp.grana)));
+        w.uvar(Math.max(0,Math.floor(camp.forge?.gambiarra??0)));w.uvar(Math.max(0,Math.floor(camp.forge?.['torre-chinelo']??0)));
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }
     if(objBits)writeObjective(w,objective!,objBits,view.tick);
@@ -1082,7 +1084,9 @@ export class FrameDecoder {
       }
       if(flags&8){
         const bits=r.u8();if(bits>3)throw new FrameError('bad camp bits');
-        camp={coco:r.uvar(),pedra:r.uvar()};
+        camp={units:r.uvar(),grana:r.uvar()};
+        const gambiarra=r.uvar(),chinelo=r.uvar();
+        if(gambiarra||chinelo)camp.forge={...(gambiarra?{gambiarra}:{}),...(chinelo?{'torre-chinelo':chinelo}:{})};
         if(bits&CAMP_HORN)camp.hornEndsTick=tick+r.svar();
         if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }

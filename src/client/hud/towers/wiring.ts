@@ -41,7 +41,9 @@ export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   site:'Esse ponto não existe',
   occupied:'Ponto já ocupado',
   size:'Não cabe neste ponto',
-  balance:'Falta material',
+  // D-048: 'balance' is fichas de torre short (a Vigia, the Gustavão); 'grana' is R$ short (an evolution, a repair).
+  balance:'Falta ficha de torre',
+  grana:'Falta grana',
   limit:`Limite de ${DEFENSE_LIMIT} defesas`,
   rail:'Precisa do trilho',
   unique:`Só ${GUSTAVAO_LIMIT} Gustavão`,
@@ -87,14 +89,14 @@ export interface ObraSource {
 }
 
 /** What one snapshot says about one plan (computed once per RunView, not per frame). */
-interface Snapshot {plan:BuildPlan;towers:(ObraTower|undefined)[];onRail:boolean;balance:{coco:number;pedra:number};standing:number;gustavoes:number;sig:string}
+interface Snapshot {plan:BuildPlan;towers:(ObraTower|undefined)[];onRail:boolean;balance:{units:number};grana:number;standing:number;gustavoes:number;sig:string}
 const snapshots=new WeakMap<RunView,Snapshot>();
 const planIds=new WeakMap<BuildPlan,number>();let nextPlan=0;
 const EMPTY_VIEW={structures:[]} as unknown as RunView;
 function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
   const key=view??EMPTY_VIEW,hit=snapshots.get(key);
   if(hit&&hit.plan===plan)return hit;
-  const camp=view?.camp,balance={coco:camp?.coco??0,pedra:camp?.pedra??0};
+  const balance={units:view?.camp?.units??0},grana=view?.camp?.grana??0;
   const defenses=defensesOf(view);
   const towers=plan.sites.map(site=>{
     // One defense per site (a new obra clears the ruin); a standing one wins over a ruin if both ever show.
@@ -106,8 +108,8 @@ function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
   const onRail=!!plan.rail&&defenses.some(d=>d.kind==='gustavao'&&near(d,plan.rail!));
   const standing=defenses.filter(d=>!ruinedOf(d)).length,gustavoes=defenses.filter(d=>d.kind==='gustavao').length;
   if(!planIds.has(plan))planIds.set(plan,++nextPlan);
-  const sig=`${planIds.get(plan)}|${balance.coco},${balance.pedra}|${standing},${gustavoes},${onRail?1:0}|${towers.map(t=>t?`${t.id}:${t.kind}:${t.building?'o':''}${t.ruined?'r':''}`:'').join(';')}`;
-  const snap={plan,towers,onRail,balance,standing,gustavoes,sig};
+  const sig=`${planIds.get(plan)}|${balance.units},${grana}|${standing},${gustavoes},${onRail?1:0}|${towers.map(t=>t?`${t.id}:${t.kind}:${t.building?'o':''}${t.ruined?'r':''}`:'').join(';')}`;
+  const snap={plan,towers,onRail,balance,grana,standing,gustavoes,sig};
   snapshots.set(key,snap);
   return snap;
 }
@@ -118,19 +120,19 @@ function snapshotOf(view:RunView|undefined,plan:BuildPlan):Snapshot{
  * did, so the HUD rebuilds its DOM only then (no per-frame comparison of the whole view).
  */
 export function obraViewFrom(src:ObraSource):ObraView{
-  const snap=snapshotOf(src.view,src.plan),{balance,standing,gustavoes}=snap;
+  const snap=snapshotOf(src.view,src.plan),{balance,grana,standing,gustavoes}=snap;
   const extra={...(src.drawnInWorld?{drawnInWorld:true}:{}),...(src.pending?.length?{pending:src.pending}:{}),...(src.done?.length?{done:src.done}:{}),
     ...(src.readOnly?{readOnly:true}:{})};
   const rail=src.prepare&&src.plan.rail?{laid:snap.onRail||!!src.rail?.laid,ready:snap.onRail||!!src.rail?.ready}:undefined;
   const revision=`${src.prepare?1:0}|${snap.sig}|${rail?`${rail.laid?1:0}${rail.ready?1:0}`:'-'}|${src.pending?.join(',')??''}|${src.done?.join(',')??''}|${src.drawnInWorld?1:0}${src.readOnly?1:0}`;
-  if(!src.prepare)return {prepare:false,sites:[],balance,standing,gustavoes,revision,...extra};
+  if(!src.prepare)return {prepare:false,sites:[],balance,grana,standing,gustavoes,revision,...extra};
   const hero=src.hero,far=(p:{x:number;y:number})=>hero?{distance:Math.hypot(p.x-hero.x,p.y-hero.y)}:{};
   const sites:ObraSite[]=src.plan.sites.map((site,i)=>{
     const at=src.project(site),tower=snap.towers[i];
     return {id:site.id,x:at.x,y:at.y,maxSize:site.maxSize,...(tower?{tower}:{}),...far(site)};
   });
   const railAt=rail&&src.project(src.plan.rail!);
-  return {prepare:true,sites,...(rail&&railAt?{rail:{x:railAt.x,y:railAt.y,...rail,...far(src.plan.rail!)}}:{}),balance,standing,gustavoes,revision,...extra};
+  return {prepare:true,sites,...(rail&&railAt?{rail:{x:railAt.x,y:railAt.y,...rail,...far(src.plan.rail!)}}:{}),balance,grana,standing,gustavoes,revision,...extra};
 }
 
 /** The site an action is about (the upgrade names the defense: its site in the view). */

@@ -26,7 +26,7 @@ test('1 person + 2 bots, a 13 s intermission: the person builds first; the bot s
   for(let i=0;i<20_000&&!(w.round.phase==='prepare'&&w.round.index>=1&&w.round.phaseEndsTick-w.tick>20);i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
   assert.equal(w.round.phase,'prepare');
   // A short intermission (13 s) and a full camp.
-  w.round.phaseEndsTick=w.tick+13*SIM_HZ;st.balance.coco=80;st.balance.pedra=80;
+  w.round.phaseEndsTick=w.tick+13*SIM_HZ;st.balance.units=160;
   let n=0;const tick=()=>{room.advance(t+=50);if(++n%20===0)say(room,a,{t:'ack',seq:0},t);};
   // 3 s in: the bots have not touched the material; Ana builds.
   for(let i=0;i<3*SIM_HZ;i++)tick();

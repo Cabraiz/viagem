@@ -1,14 +1,15 @@
 /**
  * The team's level-up pause on the HUD (D-050, card NEW-20261014-E4-levelup-pausa-hud, src/client/hud/pausa.ts): the
  * pure model (title, deadline bar, who is missing, the strip's marks, what the screen reader hears), the local clock
- * between the room's messages, and the title's place: never over the combat offer's cards, the minimap or the hero at
- * the four reference screens (boxes measured on the photo-mode scenes pausa-*, 100 % and 125 % text).
+ * between the room's messages, and the title's place: never over the pause's offer window or the minimap, nor over
+ * the hero but its feet on the shortest phone (boxes measured on the photo-mode scenes pausa-*, 100 % and 125 % text).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PAUSE_GAP,PAUSE_URGENT_MS,PauseClock,namesList,pauseAnnouncement,pauseLeftMs,pauseSpot,pauseView,pauseRoster,pickMarks,spotCrosses,validPause,type PauseMember,type RunPause} from '../../src/client/hud/pausa.ts';
 import {FOTO_CENAS} from '../../src/client/dev/foto.ts';
+import type {Rect} from '../../src/client/hud/zones.ts';
 
 const ROSTER:PauseMember[]=[
   {id:'p1',name:'Mateus',online:true},{id:'p2',name:'Tia Cleide',online:true},
@@ -117,32 +118,43 @@ test('the screen reader hears the start and "Falta você!", never every second',
 });
 
 /**
- * Boxes measured on the photo-mode scenes (pausa-escolhendo/esperando/ultimo, the HUD sandbox with its minimap slot,
- * 4 players; tools/foto.mjs phones with touch: the fone HUD): the top band, the minimap, the combat offer and the
- * title box's size. `box` is the widest of the three states (and 125 % text where it is wider).
+ * Boxes measured on the photo-mode scenes (pausa-escolhendo/esperando/ultimo: the HUD sandbox with its minimap slot, 4
+ * players, the pause's whole offer window of offer.ts, data-mode=pause; tools/foto.mjs phones with touch: the fone HUD),
+ * at 100 % and 125 % text: the top band's bottom, the minimap, the offer window and the title box's sizes (offer open,
+ * and this phone picked with its window closed).
  */
-const SCREENS=[
-  {name:'390x844',viewport:{width:390,height:844},top:77,minimap:{x:8,y:8,width:124,height:124},offer:{x:130,y:625,width:252,height:59},boxes:[{width:230,height:75},{width:188,height:75},{width:281,height:86}],picked:[{width:306,height:75},{width:360,height:107}]},
-  {name:'360x690',viewport:{width:360,height:690},top:77,minimap:{x:8,y:8,width:124,height:124},offer:{x:100,y:471,width:252,height:59},boxes:[{width:230,height:75},{width:188,height:75},{width:281,height:86}],picked:[{width:306,height:75},{width:344,height:107}]},
-  {name:'844x390',viewport:{width:844,height:390},top:42,minimap:{x:8,y:8,width:124,height:124},offer:{x:596,y:197,width:240,height:59},boxes:[{width:226,height:62},{width:184,height:62},{width:277,height:72}],picked:[{width:302,height:62},{width:360,height:92}]},
-  {name:'1343x618',viewport:{width:1343,height:618},top:48,minimap:{x:1150,y:72,width:185,height:185},offer:{x:1083,y:399,width:252,height:59},boxes:[{width:230,height:75},{width:188,height:75},{width:281,height:86}],picked:[{width:306,height:75},{width:360,height:107}]},
-] as const;
+interface Box {width:number;height:number}
+/** `heroSlack`: how many px of the hero's feet the title may cover (0: none). */
+interface Screen {name:string;viewport:Box;top:number;minimap:Rect;offer:Rect;boxes:Box[];picked:Box[];heroSlack:number}
+const MM={x:8,y:8,width:124,height:124},MM_DESK={x:1150,y:72,width:185,height:185};
+const SCREENS:Screen[]=[
+  {name:'390x844',viewport:{width:390,height:844},top:77,minimap:MM,offer:{x:41,y:592,width:341,height:92},boxes:[{width:230,height:75},{width:188,height:75}],picked:[{width:306,height:75}],heroSlack:0},
+  {name:'390x844@125',viewport:{width:390,height:844},top:81,minimap:MM,offer:{x:41,y:578,width:341,height:106},boxes:[{width:281,height:86},{width:210,height:86}],picked:[{width:360,height:107}],heroSlack:0},
+  // The shortest phone: the window's top is 65 px under the hero's feet; the title, right above it, touches the feet
+  // (≤ 6 px; ~50 px at 125 %). The world is dimmed and paused there, the cards and the title stay whole.
+  {name:'360x690',viewport:{width:360,height:690},top:77,minimap:MM,offer:{x:11,y:438,width:341,height:92},boxes:[{width:226,height:62},{width:184,height:62}],picked:[{width:302,height:62}],heroSlack:6},
+  {name:'360x690@125',viewport:{width:360,height:690},top:81,minimap:MM,offer:{x:11,y:424,width:341,height:106},boxes:[{width:277,height:72},{width:184,height:72}],picked:[{width:344,height:92}],heroSlack:50},
+  {name:'844x390',viewport:{width:844,height:390},top:42,minimap:MM,offer:{x:513,y:60,width:323,height:90},boxes:[{width:226,height:62},{width:184,height:62}],picked:[{width:302,height:62}],heroSlack:0},
+  {name:'844x390@125',viewport:{width:844,height:390},top:46,minimap:MM,offer:{x:513,y:60,width:323,height:104},boxes:[{width:277,height:72},{width:184,height:72}],picked:[{width:360,height:92}],heroSlack:0},
+  {name:'1343x618',viewport:{width:1343,height:618},top:48,minimap:MM_DESK,offer:{x:994,y:366,width:341,height:92},boxes:[{width:226,height:62},{width:184,height:62}],picked:[{width:302,height:62}],heroSlack:0},
+  {name:'1343x618@125',viewport:{width:1343,height:618},top:48,minimap:MM_DESK,offer:{x:994,y:352,width:341,height:106},boxes:[{width:277,height:72},{width:184,height:72}],picked:[{width:360,height:92}],heroSlack:0},
+];
 /** The hero's box where the round's camera puts it: body at the viewport centre, feet 28 px under it (56 px box). */
-const heroOf=(v:{width:number;height:number})=>({x:v.width/2-28,y:v.height/2+28-56,width:56,height:56});
+const heroOf=(v:Box)=>({x:v.width/2-28,y:v.height/2+28-56,width:56,height:56});
 
-test('layout: the title and bar sit above the combat offer, never over its cards, the minimap or the hero',()=>{
+test('layout: the title and bar never cover the pause window or the minimap; the hero at most at its feet on 360x690',()=>{
   for(const s of SCREENS){
     for(const box of s.boxes){
       const spot=pauseSpot({viewport:s.viewport,box,top:s.top,offer:s.offer,avoid:[s.minimap]});
       const at=`${s.name} ${box.width}x${box.height}`;
-      assert.ok(!spotCrosses(spot,box,s.offer),`${at}: over the offer`);
-      assert.ok(spot.y+box.height<=s.offer.y-PAUSE_GAP+1,`${at}: above the cards, ${PAUSE_GAP} px clear`);
+      assert.ok(!spotCrosses(spot,box,s.offer),`${at}: over the offer window`);
       assert.ok(!spotCrosses(spot,box,s.minimap),`${at}: over the minimap`);
-      assert.ok(!spotCrosses(spot,box,heroOf(s.viewport)),`${at}: over the hero`);
+      const hero=heroOf(s.viewport),feet=spotCrosses(spot,box,hero)?hero.y+hero.height-spot.y:0;
+      assert.ok(feet<=s.heroSlack,`${at}: ${feet} px over the hero (at most ${s.heroSlack})`);
       assert.ok(spot.x>=PAUSE_GAP&&spot.x+box.width<=s.viewport.width-PAUSE_GAP,`${at}: inside the screen`);
       assert.ok(spot.y>=s.top+PAUSE_GAP,`${at}: under the top band`);
     }
-    // This phone picked: its offer closed, the title goes under the top band, clear of the minimap and the hero.
+    // This phone picked: its window closed, the title goes under the top band, clear of the minimap and the hero.
     for(const box of s.picked){
       const spot=pauseSpot({viewport:s.viewport,box,top:s.top,avoid:[s.minimap]});
       const at=`${s.name} picked ${box.width}x${box.height}`;
@@ -153,8 +165,18 @@ test('layout: the title and bar sit above the combat offer, never over its cards
   }
 });
 
+test('layout: above the window in portrait and on the desktop, left of it in landscape (the right column)',()=>{
+  const port=SCREENS[0],land=SCREENS[4],desk=SCREENS[6],box={width:226,height:62};
+  const up=pauseSpot({viewport:port.viewport,box,top:port.top,offer:port.offer,avoid:[port.minimap]});
+  assert.equal(up.y,port.offer.y-PAUSE_GAP-box.height,'portrait: right above the window');
+  const side=pauseSpot({viewport:land.viewport,box,top:land.top,offer:land.offer,avoid:[land.minimap]});
+  assert.deepEqual(side,{x:land.offer.x-PAUSE_GAP-box.width,y:land.offer.y},'landscape: left of the window, at its top');
+  const desktop=pauseSpot({viewport:desk.viewport,box,top:desk.top,offer:desk.offer,avoid:[desk.minimap]});
+  assert.equal(desktop.y,desk.offer.y-PAUSE_GAP-box.height,'desktop: above the window');
+});
+
 test('layout: beside the minimap when it fits (landscape), under it when it does not (portrait)',()=>{
-  const land=SCREENS[2],box={width:302,height:62};
+  const land=SCREENS[4],box={width:302,height:62};
   const spot=pauseSpot({viewport:land.viewport,box,top:land.top,avoid:[land.minimap]});
   assert.equal(spot.y,land.top+PAUSE_GAP,'landscape: right under the top band');
   const port=SCREENS[0],wide={width:306,height:75};

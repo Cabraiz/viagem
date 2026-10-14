@@ -131,25 +131,31 @@ export function pauseAnnouncement(before:PauseView|undefined,now:PauseView|undef
 }
 
 /**
- * Where the title box goes (left/top, CSS px): centred over the offer's cards and PAUSE_GAP above them while the offer
- * is open; else (this phone picked, its offer closed) centred under the top band. Always inside the screen's edges and
- * under the top band. `avoid` (the minimap) pushes it aside: right or left of it, whichever stays nearer the centre and
- * fits, else (no offer) under it. If the box does not fit above the offer it sits under the top band (a screen shorter
- * than any of the four reference ones); the layout test checks the reference sizes never come to that.
+ * Where the title box goes (left/top, CSS px), the first of these places that stays on screen, under the top band and
+ * clear of the offer window and of `avoid` (the minimap):
+ * 1. centred over the offer and PAUSE_GAP above it (portrait and desktop: the window sits over the thumbs); with no
+ *    offer (this phone picked, its window closed) centred under the top band;
+ * 2. beside an `avoid` box at that height (right or left, nearer the centre first), or under it;
+ * 3. left of the offer at its top (landscape: the window is the right column under the top band), right of it, under it.
+ * None fits (a screen smaller than the four reference ones): the first place anyway.
  */
 export function pauseSpot(input:{viewport:{width:number;height:number};box:{width:number;height:number};top:number;offer?:Rect;avoid?:readonly Rect[]}):{x:number;y:number}{
-  const {viewport,box,top,offer,avoid=[]}=input,g=PAUSE_GAP;
-  const fits=(x:number)=>x>=g&&x+box.width<=viewport.width-g;
+  const {viewport,box,top,offer,avoid=[]}=input,g=PAUSE_GAP,minY=top+g;
   const clampX=(x:number)=>Math.max(g,Math.min(viewport.width-box.width-g,x));
   const want=offer?offer.x+offer.width/2-box.width/2:(viewport.width-box.width)/2;
-  let x=clampX(want),y=offer?Math.max(top+g,offer.y-g-box.height):top+g;
-  for(const o of avoid){
-    if(!crosses({x,y,...box},o))continue;
-    const side=[o.x+o.width+g,o.x-g-box.width].filter(fits).sort((a,b)=>Math.abs(a-want)-Math.abs(b-want))[0];
-    if(side!==undefined)x=side;
-    else if(!offer)y=o.y+o.height+g;
+  const first={x:clampX(want),y:offer?offer.y-g-box.height:minY};
+  const places=[first];
+  const near=(y:number,o:Rect)=>[o.x+o.width+g,o.x-g-box.width].sort((a,b)=>Math.abs(a-want)-Math.abs(b-want)).map(x=>({x,y}));
+  for(const o of avoid)places.push(...near(first.y,o),{x:first.x,y:o.y+o.height+g});
+  if(offer){
+    const y=Math.max(minY,offer.y);
+    places.push({x:offer.x-g-box.width,y},{x:offer.x+offer.width+g,y},{x:first.x,y:offer.y+offer.height+g});
+    for(const o of avoid)places.push(...near(y,o));
   }
-  return {x:Math.round(x),y:Math.round(y)};
+  const fits=(p:{x:number;y:number})=>p.x>=g&&p.x+box.width<=viewport.width-g&&p.y>=minY&&p.y+box.height<=viewport.height-g
+    &&[...(offer?[offer]:[]),...avoid].every(o=>!crosses({...p,...box},o));
+  const spot=places.find(fits)??{x:first.x,y:Math.max(minY,first.y)};
+  return {x:Math.round(spot.x),y:Math.round(spot.y)};
 }
 /** The title's box at a spot crosses the offer (the layout test, and a guard for the sandbox). */
 export const spotCrosses=(spot:{x:number;y:number},box:{width:number;height:number},other:Rect)=>crosses({...spot,...box},other);

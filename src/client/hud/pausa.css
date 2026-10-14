@@ -18,8 +18,8 @@
 .rh-pausa[data-urgente] .rh-pausa-titulo{animation:rh-pulse .6s ease-in-out infinite alternate}
 .rh-pausa[data-urgente] .rh-pausa-prazo-fill{background:var(--c-breu)}
 .rh-pausa[data-urgente] .rh-pausa-prazo{background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)}
-/* Landscape: a lower box (the offer sits higher above the thumbs there). */
-@media (max-height:500px){
+/* Landscape and short portrait phones (360×690: the window's top is ~85 px under the hero's feet): a lower box. */
+@media (max-height:740px){
   .rh-pausa{gap:3px;padding:4px 10px 5px}
   .rh-pausa-titulo{font-size:var(--t-21)}
 }

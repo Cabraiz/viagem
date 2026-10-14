@@ -24,13 +24,33 @@ export const ARCH_TEST='tests/arquitetura.test.ts';
 
 const git=(...args)=>execFileSync('git',args,{cwd:ROOT,encoding:'utf8',maxBuffer:64<<20}).split('\n').map(s=>s.trim()).filter(Boolean);
 
-/** Import specifiers and repo-path string literals of a source text. */
+/**
+ * Import specifiers and path-like string literals of a source text: `./`/`../` strings stay relative to the file; other
+ * literals with a `/` (or a root file name like index.html) come back as repo-root paths ('/…'); a template literal
+ * gives its static prefix up to the first `${` as a folder; `join(…)` of literal segments counts as one path. Paths that
+ * do not exist are dropped later (affectedTests checks them), so the net is wide on purpose: a missed test is the
+ * expensive mistake.
+ */
 export function references(text){
   const out=new Set();
-  for(const re of [/\bfrom\s*['"]([^'"\n]+)['"]/g,/\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,/\bimport\s+['"]([^'"\n]+)['"]/g,
-    /new\s+URL\(\s*['"]([^'"\n]+)['"]\s*,\s*import\.meta\.url/g])for(const m of text.matchAll(re))out.add(m[1]);
-  // Repo paths in any string literal (fromRoot('public/…'), readFileSync('src/…'), readdirSync of a folder): no ${}.
-  for(const m of text.matchAll(/['"`]\.{0,2}\/?((?:public|src|scripts|multiplayer|tests|backend|tools)\/[^'"`$\s]*)['"`]/g))out.add('/'+m[1].replace(/\/$/,''));
+  const add=(s)=>{
+    s=s.trim();
+    if(!s||/[\s*?<>|]/.test(s)||s.startsWith('node:')||/^[a-z]+:\/\//i.test(s))return;
+    if(s.startsWith('./')||s.startsWith('../'))out.add(s.replace(/\/$/,''));
+    else if(s.startsWith('/'))out.add(s.replace(/\/$/,''));
+    else if(s.includes('/')||/^[\w.-]+\.[a-z]{1,6}$/i.test(s))out.add('/'+s.replace(/\/$/,''));
+  };
+  for(const re of [/\bfrom\s*['"]([^'"\n]+)['"]/g,/\bimport\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g,/\bimport\s+['"]([^'"\n]+)['"]/g])
+    for(const m of text.matchAll(re))out.add(m[1]);
+  // Every quoted literal (no ${}).
+  for(const m of text.matchAll(/'([^'\n]{1,200})'|"([^"\n]{1,200})"|`([^`$\n]{1,200})`/g))add(m[1]??m[2]??m[3]);
+  // Template literals with ${}: their static prefix as a folder (`public/art/lite/sprites/${id}.webp` → that folder).
+  for(const m of text.matchAll(/`([^`$\n]{1,200})\$\{/g)){const p=m[1].slice(0,m[1].lastIndexOf('/')+1);if(/[^./]/.test(p))add(p);}
+  // join(repo,'scripts','x.mjs') and the like: the literal segments as one path.
+  for(const m of text.matchAll(/\bjoin\(([^()\n]{1,300})\)/g)){
+    const parts=[...m[1].matchAll(/'([^'\n]+)'|"([^"\n]+)"/g)].map(x=>x[1]??x[2]);
+    if(parts.length>1)add(parts.join('/'));
+  }
   return [...out];
 }
 
@@ -81,7 +101,8 @@ export function affectedTests({files,read,exists,isDir,changed,tests}){
 /** Changed files of the checkout against `base`: commits since the merge-base, the working tree, untracked files. */
 export function changedFiles(base){
   const mb=git('merge-base',base,'HEAD')[0];
-  return [...new Set([...git('diff','--name-only',mb),...git('ls-files','--others','--exclude-standard')])].map(f=>f.replace(/\\/g,'/'));
+  // --no-renames: a moved file counts at its old path too (its old importers must run).
+  return [...new Set([...git('diff','--name-only','--no-renames',mb),...git('ls-files','--others','--exclude-standard')])].map(f=>f.replace(/\\/g,'/'));
 }
 
 function main(argv){

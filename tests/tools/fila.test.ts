@@ -98,7 +98,7 @@ test('ACCEPTANCE: protocol + conflict + clean → 1 suite, 1 bump, the conflict 
   }finally{w.cleanup();}
 });
 
-test('a branch that breaks the suite is found alone and sent back; the rest goes in on the second suite',()=>{
+test('a branch that breaks the suite is found (main checked first, then the batch rebuilt one branch at a time) and sent back; the rest goes in on the second suite',()=>{
   const w=world();
   try{
     w.branch('vgm/boa','src/boa.ts','export const boa=1;\n');
@@ -111,8 +111,8 @@ test('a branch that breaks the suite is found alone and sent back; the rest goes
     assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-boa']);
     assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-quebrada']);
     const back=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-quebrada.json'),'utf8'));
-    assert.equal(back.motivo,'a suíte falha com a branch');assert.deepEqual(back.falhas,['tests/a.test.ts']);
-    assert.deepEqual(w.runs().filter(r=>r!=='*'),['tests/a.test.ts','tests/a.test.ts'],'the culprit search runs only the failing files, per branch');
+    assert.match(back.motivo,/a suíte falha com a branch/);assert.deepEqual(back.falhas,['tests/a.test.ts']);
+    assert.deepEqual(w.runs().filter(r=>r!=='*'),['tests/a.test.ts','tests/a.test.ts','tests/a.test.ts'],'only the failing files: on the main, + boa, + boa + quebrada');
     git(w.repo,'fetch','-q','origin');
     assert.ok(git(w.repo,'show','origin/main:src/boa.ts'));
     assert.throws(()=>git(w.repo,'show','origin/main:src/quebrada.ts'));
@@ -156,4 +156,72 @@ console.log(JSON.stringify({ok:true,failedFiles:[],url:'https://ci/run/1'}));`);
       assert.equal(git(w.repo,'branch','-r','--list','origin/fila/*'),'','the batch branch is deleted from the remote');
     }finally{w.cleanup();}
   }
+});
+
+test('review: an empty queue and a crash mid-lote leave no lock and no worktree behind',()=>{
+  const w=world();
+  try{
+    main(['lote',...w.opts]);main(['lote',...w.opts]);
+    assert.ok(!existsSync(join(w.board,'fila/.lote')),'an empty queue twice: the lock is gone');
+    w.branch('vgm/p','src/p.ts','export const p=1;\n');
+    main(['pronto','NEW-p','--branch','vgm/p','--protocol',...w.opts]);
+    // The bump cannot find the protocol file: the lote throws after its worktree exists.
+    assert.throws(()=>main(['lote',...w.opts,'--protocol-file','src/protocol/nao-existe.ts']));
+    assert.ok(!existsSync(join(w.board,'fila/.lote')),'the lock is released');
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'the batch worktree is removed');
+    assert.ok(existsSync(join(w.board,'fila/NEW-p.json')),'the entry is still queued');
+  }finally{w.cleanup();}
+});
+
+test('review: a suite with no list of failures, or a red main, aborts the lote and keeps every entry queued',()=>{
+  const w=world();
+  try{
+    w.branch('vgm/a','src/a.ts','export const a=1;\n');
+    main(['pronto','NEW-a','--branch','vgm/a',...w.opts]);
+    const infra=main(['lote',...w.opts.map(o=>o==='node check.mjs'?'node -e "process.exit(1)"':o)]);
+    assert.equal(infra.abortado,'sem lista de falhas');assert.deepEqual(infra.devolvidos,[]);
+    assert.ok(existsSync(join(w.board,'fila/NEW-a.json')));
+    // The main itself breaks the failing files.
+    writeFileSync(join(w.repo,'src/base.ts'),'export const base="QUEBRADO";\n');git(w.repo,'commit','-qam','main vermelha');git(w.repo,'push','-q','origin','main');
+    const red=main(['lote',...w.opts]);
+    assert.equal(red.abortado,'a main falha');assert.deepEqual(red.devolvidos,[]);
+    assert.ok(existsSync(join(w.board,'fila/NEW-a.json')),'not blamed');
+    assert.ok(!existsSync(join(w.board,'fila/.lote')));
+  }finally{w.cleanup();}
+});
+
+test('review: a failure only two branches make together goes back to the second one; the first goes in',()=>{
+  const w=world();
+  try{
+    writeFileSync(join(w.repo,'par.mjs'),"import {existsSync} from 'node:fs';import {appendFileSync} from 'node:fs';appendFileSync(process.env.FILA_RUNS,(process.env.FILA_FILES||'*')+String.fromCharCode(10));\n"
+      +"if(existsSync('src/p1.ts')&&existsSync('src/p2.ts')){console.log('FILA-FAILED: '+JSON.stringify(['tests/par.test.ts']));process.exit(1);}\n");
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','par');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/p1','src/p1.ts','export const p1=1;\n');w.branch('vgm/p2','src/p2.ts','export const p2=1;\n');
+    main(['pronto','NEW-p1','--branch','vgm/p1',...w.opts]);main(['pronto','NEW-p2','--branch','vgm/p2',...w.opts]);
+    const state=main(['lote',...w.opts.map(o=>o==='node check.mjs'?'node par.mjs':o)]);
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-p1']);
+    assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-p2']);
+  }finally{w.cleanup();}
+});
+
+test('review: a newer pronto while the lote waits for the Worker stays queued; pronto from a worktree finds the main checkout',async()=>{
+  const w=world();
+  try{
+    w.branch('vgm/n','src/n.ts','export const n=1;\n');
+    main(['pronto','NEW-n','--branch','vgm/n','--protocol',...w.opts]);
+    const state=main(['lote',...w.opts]);assert.equal(state.estado,'aguardando-worker');
+    git(w.repo,'checkout','-q','vgm/n');writeFileSync(join(w.repo,'src/n.ts'),'export const n=2;\n');git(w.repo,'commit','-qam','n2');git(w.repo,'checkout','-q','main');
+    const newer=main(['pronto','NEW-n','--branch','vgm/n','--protocol',...w.opts]);
+    main(['publicar',state.lote,...w.opts]);
+    const r=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-n.json'),'utf8'));
+    assert.equal(r.status,'integrado');assert.equal(r.sha,state.sha);
+    assert.equal(JSON.parse(readFileSync(join(w.board,'fila/NEW-n.json'),'utf8')).sha,newer.sha,'the newer SHA is still queued');
+    assert.throws(()=>main(['publicar',state.lote,...w.opts]),/publicado/,'a published lote is not pushed again');
+    // The tool resolves the main checkout from any worktree of the repository.
+    // @ts-expect-error -- .mjs
+    const {mainCheckout}=await import('../../tools/fila.mjs');
+    const other=join(w.root,'wt','outro');git(w.repo,'worktree','add','-q','-b','vgm/outro',other,'main');
+    const norm=(p:string)=>p.split(String.fromCharCode(92)).join('/').toLowerCase();
+    assert.equal(norm(mainCheckout(other)),norm(w.repo));
+  }finally{w.cleanup();}
 });

@@ -17,7 +17,7 @@
 // any other string is a shell command run in the batch checkout (exit 0 = green; it may print `FILA-FAILED: [...]`, and
 // gets the files to run in FILA_FILES when the queue looks for the culprit).
 import {execFileSync,spawnSync} from 'node:child_process';
-import {existsSync,mkdirSync,readFileSync,readdirSync,rmSync,writeFileSync,rmdirSync,statSync} from 'node:fs';
+import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFileSync,rmdirSync} from 'node:fs';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -34,7 +34,8 @@ function parse(argv){
     if(['worker','protocol','no-modules','dry'].includes(k))o.flags.add(k);
     else o[k]=argv[++i];
   }
-  const repo=resolve(o.repo??SELF_ROOT);
+  // The main checkout, also when the tool runs from a worktree (D:/Gits/viagem-wt/x): the parent of git's common dir.
+  const repo=resolve(o.repo??mainCheckout(SELF_ROOT));
   return {...o,repo,board:resolve(o.board??join(repo,'..','viagem-board')),wt:resolve(o.wt??join(repo,'..','viagem-wt')),
     remote:o.remote??'origin',base:o.base??'main',protocolFile:o['protocol-file']??'src/protocol/protocol4.ts',
     protocolJson:o['protocol-json']??'public/multiplayer.json',modules:!o.flags.has('no-modules'),suite:o.suite??'local'};
@@ -45,7 +46,13 @@ const sh=(cwd,cmd,args,opts={})=>execFileSync(cmd,args,{cwd,encoding:'utf8',stdi
 const git=(cwd,...args)=>sh(cwd,'git',args);
 const tryGit=(cwd,...args)=>{const r=spawnSync('git',args,{cwd,encoding:'utf8'});return {ok:r.status===0,out:(r.stdout??'').trim(),err:(r.stderr??'').trim()};};
 const readJson=(p)=>JSON.parse(readFileSync(p,'utf8'));
-const writeJson=(p,v)=>{mkdirSync(dirname(p),{recursive:true});writeFileSync(p,JSON.stringify(v,null,2)+'\n');};
+/** Atomic: a reader (a running lote, `lista`) never sees half a file. */
+const writeJson=(p,v)=>{mkdirSync(dirname(p),{recursive:true});const tmp=`${p}.${process.pid}.tmp`;writeFileSync(tmp,JSON.stringify(v,null,2)+'\n');renameSync(tmp,p);};
+/** The main checkout of the repository `dir` belongs to (the parent of its common .git dir). */
+export function mainCheckout(dir){
+  const r=spawnSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:dir,encoding:'utf8'});
+  return r.status===0?dirname(r.stdout.trim()):dir;
+}
 const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'').replace('T','-');
 const log=(...a)=>console.log('[fila]',...a);
 
@@ -65,7 +72,8 @@ export function bumpProtocol(checkout,protocolFile,protocolJson,cards,lote){
   const line=` * ${next} given by the integration queue (tools/fila.mjs, lote ${lote}) to: ${cards.join(', ')}.\n`;
   const doc=text.replace(/( \* The join handshake refuses other versions)/,`${line}$1`);
   writeFileSync(pf,(doc===text?text:doc).replace(m[0],`export const PROTOCOL_VERSION=${next};`));
-  const jf=join(checkout,protocolJson),cfg=readJson(jf);cfg.protocol=next;writeFileSync(jf,JSON.stringify(cfg));
+  const jf=join(checkout,protocolJson),raw=readFileSync(jf,'utf8'),cfg=JSON.parse(raw);cfg.protocol=next;
+  writeFileSync(jf,JSON.stringify(cfg)+(raw.endsWith('\n')?'\n':''));
   return next;
 }
 
@@ -154,83 +162,122 @@ function pronto(opt){
 function queued(opt){
   const dir=join(opt.board,'fila');
   if(!existsSync(dir))return [];
-  return readdirSync(dir).filter(f=>f.endsWith('.json')).map(f=>readJson(join(dir,f)));
+  const out=[];
+  for(const f of readdirSync(dir).filter(f=>f.endsWith('.json'))){
+    try{out.push(readJson(join(dir,f)));}catch(e){log(`ignorado ${f}: ${e.message}`);}
+  }
+  return out;
 }
 
+/**
+ * The answer to the owner, and the entry out of the queue — only when it is still the one the lote took: a `pronto`
+ * of a newer SHA in the meantime stays queued (its answer comes from the next lote).
+ */
 function answer(opt,entry,result){
   writeJson(join(opt.board,'fila','resultados',`${entry.card}.json`),{...entry,...result,em:new Date().toISOString()});
-  rmSync(join(opt.board,'fila',`${entry.card}.json`),{force:true});
-}
-
-/** Merges `entries` on a fresh batch branch from the remote base; conflicts and moved branches are sent back. */
-function mergeBatch(opt,lote,entries,sendBack){
-  const branch=`fila/${lote}`,baseRef=`${opt.remote}/${opt.base}`;
-  const base=git(opt.repo,'rev-parse',baseRef);
-  const dir=addWorktree(opt,`fila-${lote}`,branch,base);
-  const merged=[];
-  for(const e of entries){
-    const now=tryGit(opt.repo,'rev-parse',e.branch);
-    if(!now.ok||now.out!==e.sha){sendBack(e,{motivo:'branch mudou depois do pronto (rode pronto de novo)',agora:now.out||null});continue;}
-    const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${lote}: ${e.card}`,e.sha);
-    if(!r.ok){
-      const files=tryGit(dir,'diff','--name-only','--diff-filter=U').out.split('\n').filter(Boolean);
-      tryGit(dir,'merge','--abort');
-      sendBack(e,{motivo:'conflito',arquivos:files,base:base.slice(0,7)});continue;
-    }
-    merged.push(e);
-  }
-  return {dir,branch,base,merged};
+  const q=join(opt.board,'fila',`${entry.card}.json`);
+  let now;try{now=readJson(q);}catch{now=undefined;}
+  if(now&&now.sha===entry.sha)rmSync(q,{force:true});
+  else if(now)log(`${entry.card}: há um pronto mais novo (${String(now.sha).slice(0,7)}) na fila; ele fica`);
 }
 
 function lote(opt){
   const lockDir=join(opt.board,'fila','.lote');
   mkdirSync(join(opt.board,'fila'),{recursive:true});
-  try{mkdirSync(lockDir);}catch{throw new Error(`há um lote aberto (${lockDir}): publicar ou cancelar antes`);}
+  try{mkdirSync(lockDir);}catch{
+    let open='?';try{open=readFileSync(join(lockDir,'lote.txt'),'utf8').trim();}catch{/* no id */}
+    throw new Error(`há um lote aberto (${open}): node tools/fila.mjs publicar ${open} ou cancelar ${open}`);
+  }
   const id=stamp(),entries=ordered(queued(opt));
   writeFileSync(join(lockDir,'lote.txt'),id);
-  if(!entries.length){rmdirSync(lockDir);log('fila vazia');return {lote:id,integrados:[],devolvidos:[]};}
-  git(opt.repo,'fetch','-q',opt.remote);
-  const devolvidos=[],sendBack=(e,why)=>{devolvidos.push({card:e.card,...why});answer(opt,e,{status:'devolvido',lote:id,...why});log(`devolvido: ${e.card} — ${why.motivo}`);};
-  let candidates=entries,suites=0,result;
-  for(let round=0;round<3;round++){
-    const batch=mergeBatch(opt,id,candidates,sendBack);
-    if(!batch.merged.length){removeWorktree(opt,batch.dir,batch.branch);result=undefined;break;}
-    const withProtocol=batch.merged.filter(e=>e.protocol);
-    let protocol;
-    if(withProtocol.length){
-      protocol=bumpProtocol(batch.dir,opt.protocolFile,opt.protocolJson,withProtocol.map(e=>e.card),id);
-      git(batch.dir,'commit','-q','-am',`fila ${id}: protocolo ${protocol} (${withProtocol.map(e=>e.card).join(', ')})`);
-    }
-    suites++;log(`suíte do lote (${batch.merged.map(e=>e.card).join(', ')})…`);
-    const s=runSuite(opt,batch.dir,batch.branch);
-    if(s.ok){result={...batch,protocol,suite:s};break;}
-    log(`suíte falhou: ${s.failedFiles.join(', ')||s.error||'(sem lista)'}`);
-    // The culprit: each merged branch alone on the base, running only the failing files.
-    const culprits=[];
-    if(s.failedFiles.length){
-      for(const e of batch.merged){
-        const alone=addWorktree(opt,`fila-${id}-teste`,`fila/${id}-teste`,batch.base);
-        try{
-          const m=tryGit(alone,'merge','--no-ff','--no-edit',e.sha);
-          if(m.ok&&!runSuite({...opt,suite:opt.suite==='ci'?'local':opt.suite},alone,`fila/${id}-teste`,s.failedFiles).ok)culprits.push(e);
-        }finally{removeWorktree(opt,alone,`fila/${id}-teste`);}
+  const made=[],wt=(name,branch,at)=>{const dir=addWorktree(opt,name,branch,at);made.push({dir,branch});return dir;};
+  const drop=(dir,branch)=>{removeWorktree(opt,dir,branch);const k=made.findIndex(m=>m.dir===dir);if(k>=0)made.splice(k,1);};
+  let kept=false;
+  try{
+    if(!entries.length){log('fila vazia');return {lote:id,integrados:[],devolvidos:[],suites:0};}
+    git(opt.repo,'fetch','-q',opt.remote);
+    const base=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
+    const devolvidos=[],sendBack=(e,why)=>{devolvidos.push({card:e.card,...why});answer(opt,e,{status:'devolvido',lote:id,...why});log(`devolvido: ${e.card} — ${why.motivo}`);};
+    /** The base + `list` merged in order (+ the bump when one of them changes the protocol), in a fresh worktree. */
+    const build=(name,branch,list,commit)=>{
+      const dir=wt(name,branch,base),merged=[];
+      for(const e of list){
+        const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${id}: ${e.card}`,e.sha);
+        if(!r.ok){
+          const files=tryGit(dir,'diff','--name-only','--diff-filter=U').out.split('\n').filter(Boolean);
+          tryGit(dir,'merge','--abort');merged.push({e,conflict:files});continue;
+        }
+        merged.push({e});
       }
+      const ok=merged.filter(m=>!m.conflict).map(m=>m.e),withProtocol=ok.filter(e=>e.protocol);
+      let protocol;
+      if(withProtocol.length){
+        protocol=bumpProtocol(dir,opt.protocolFile,opt.protocolJson,withProtocol.map(e=>e.card),id);
+        if(commit)git(dir,'commit','-q','-am',`fila ${id}: protocolo ${protocol} (${withProtocol.map(e=>e.card).join(', ')})`);
+      }
+      return {dir,merged,ok,protocol};
+    };
+    let candidates=[];
+    for(const e of entries){
+      const now=tryGit(opt.repo,'rev-parse',e.branch);
+      if(!now.ok||now.out!==e.sha)sendBack(e,{motivo:'branch mudou depois do pronto (rode pronto de novo)',agora:now.out||null});
+      else candidates.push(e);
     }
-    removeWorktree(opt,batch.dir,batch.branch);
-    const blamed=culprits.length?culprits:batch.merged;
-    for(const e of blamed)sendBack(e,{motivo:culprits.length?'a suíte falha com a branch':'a suíte falha só com o lote junto (nenhuma sozinha): devolvido para rodar de novo',falhas:s.failedFiles,url:s.url});
-    candidates=batch.merged.filter(e=>!blamed.includes(e));
-    if(!candidates.length){result=undefined;break;}
+    let suites=0,result;
+    while(candidates.length){
+      const batch=build(`fila-${id}`,`fila/${id}`,candidates,true);
+      for(const m of batch.merged)if(m.conflict)sendBack(m.e,{motivo:'conflito',arquivos:m.conflict,base:base.slice(0,7)});
+      if(!batch.ok.length){drop(batch.dir,`fila/${id}`);break;}
+      suites++;log(`suíte do lote (${batch.ok.map(e=>e.card).join(', ')})…`);
+      const s=runSuite(opt,batch.dir,`fila/${id}`);
+      if(s.ok){result={...batch,branch:`fila/${id}`,suite:s};break;}
+      log(`suíte falhou: ${s.failedFiles.join(', ')||s.error||'(sem lista de arquivos)'}`);
+      drop(batch.dir,`fila/${id}`);
+      const local={...opt,suite:opt.suite==='ci'?'local':opt.suite};
+      // No list (a CI or machine failure, a killed run): nobody is to blame; everything stays queued.
+      if(s.error||!s.failedFiles.length){
+        log(`lote ${id} abortado: a suíte não disse quais testes falharam (${s.error??'sem lista'}); as entradas continuam na fila`);
+        return {lote:id,abortado:'sem lista de falhas',integrados:[],devolvidos,suites};
+      }
+      // The main itself red in those files: not the branches' fault.
+      const bare=wt(`fila-${id}-base`,`fila/${id}-base`,base);
+      const baseRed=!runSuite(local,bare,`fila/${id}-base`,s.failedFiles).ok;
+      drop(bare,`fila/${id}-base`);
+      if(baseRed){
+        log(`lote ${id} abortado: a ${opt.base} já falha em ${s.failedFiles.join(', ')}; as entradas continuam na fila`);
+        return {lote:id,abortado:`a ${opt.base} falha`,falhas:s.failedFiles,integrados:[],devolvidos,suites};
+      }
+      // The culprit: the batch rebuilt one branch at a time (with the bump), running only the failing files; the first
+      // branch whose addition makes them fail goes back, the rest gets another suite.
+      let culprit;
+      for(let k=1;k<=batch.ok.length&&!culprit;k++){
+        const step=build(`fila-${id}-c`,`fila/${id}-c`,batch.ok.slice(0,k),false);
+        if(!runSuite(local,step.dir,`fila/${id}-c`,s.failedFiles).ok)culprit=batch.ok[k-1];
+        drop(step.dir,`fila/${id}-c`);
+      }
+      if(!culprit){
+        log(`lote ${id} abortado: a falha não se repete ao refazer o lote passo a passo (instável?); as entradas continuam na fila`);
+        return {lote:id,abortado:'falha não reproduzida',falhas:s.failedFiles,integrados:[],devolvidos,suites};
+      }
+      sendBack(culprit,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null});
+      candidates=batch.ok.filter(e=>e!==culprit);
+    }
+    if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
+    const sha=git(result.dir,'rev-parse','HEAD'),needsWorker=result.ok.some(e=>e.worker);
+    const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,suites,
+      integrados:result.ok,devolvidos,url:result.suite.url??null,estado:needsWorker?'aguardando-worker':'pronto-para-push'};
+    writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
+    kept=true;made.length=0;// the batch worktree and the lock now belong to the lote state (publicar/cancelar)
+    log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
+    if(!needsWorker)return publicar({...opt,_:['publicar',id]});
+    log(`Orquestrador: publique o Worker a partir de ${sha.slice(0,7)}: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
+    log(`depois: node tools/fila.mjs publicar ${id}`);
+    return state;
+  }finally{
+    // A crash or an early return: no worktree is left with live junctions, and the lock goes unless a lote state holds it.
+    for(const m of [...made].reverse()){try{removeWorktree(opt,m.dir,m.branch);}catch(e){log(`ATENÇÃO: ${e.message}`);}}
+    if(!kept)rmdirSyncSafe(lockDir);
   }
-  if(!result){rmdirSyncSafe(lockDir);log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
-  const sha=git(result.dir,'rev-parse','HEAD'),needsWorker=result.merged.some(e=>e.worker);
-  const state={lote:id,branch:result.branch,dir:result.dir,base:result.base,sha,protocol:result.protocol??null,needsWorker,suites,
-    integrados:result.merged,devolvidos,url:result.suite.url??null,estado:needsWorker?'aguardando-worker':'pronto-para-push'};
-  writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
-  log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
-  if(needsWorker)log(`Orquestrador: publique o Worker a partir de ${sha.slice(0,7)} (cd ${result.dir} && npm run deploy:rooms) e rode: node tools/fila.mjs publicar ${id}`);
-  else return publicar({...opt,_:['publicar',id]});
-  return state;
 }
 
 function rmdirSyncSafe(dir){try{for(const f of readdirSync(dir))rmSync(join(dir,f),{force:true});rmdirSync(dir);}catch{/* already gone */}}
@@ -239,13 +286,17 @@ function publicar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
   if(!existsSync(p))throw new Error(`lote ${id} não existe`);
   const state=readJson(p);
+  if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);
   git(opt.repo,'fetch','-q',opt.remote);
   const remoteBase=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
-  if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}): cancele e rode o lote de novo`);
+  if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}) depois do lote: `
+    +(state.needsWorker?`o Worker publicado é o DESTE lote e o site ainda é o anterior — rode já "cancelar ${id}", depois "lote", e publique o Worker a partir do lote novo`
+      :`rode "cancelar ${id}" e depois "lote" de novo`));
   git(opt.repo,'push',opt.remote,`${state.sha}:refs/heads/${opt.base}`);
   // The main checkout follows by fast-forward only, when it is on the base branch and clean.
   const cur=tryGit(opt.repo,'rev-parse','--abbrev-ref','HEAD').out,clean=tryGit(opt.repo,'status','--porcelain').out==='';
-  if(cur===opt.base&&clean)tryGit(opt.repo,'merge','--ff-only',state.sha);
+  if(cur===opt.base&&clean&&tryGit(opt.repo,'merge','--ff-only',state.sha).ok){/* followed */}
+  else log(`o checkout ${opt.repo} não acompanhou (${cur!==opt.base?`está em ${cur}`:clean?'ff recusado':'tem mudanças'}): faça git -C ${opt.repo.replace(/\\/g,'/')} merge --ff-only ${opt.remote}/${opt.base}`);
   for(const e of state.integrados){
     answer(opt,e,{status:'integrado',lote:id,sha:state.sha,protocolo:state.protocol});
     mkdirSync(join(opt.board,'integrated'),{recursive:true});writeFileSync(join(opt.board,'integrated',e.card),'');
@@ -262,8 +313,8 @@ function cancelar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
   if(existsSync(p)){
     const state=readJson(p);removeWorktree(opt,state.dir,state.branch);
-    // The integrated-to-be go back to the queue as they were.
-    for(const e of state.integrados)writeJson(join(opt.board,'fila',`${e.card}.json`),e);
+    // The integrated-to-be go back to the queue as they were, unless their owner queued a newer SHA meanwhile.
+    for(const e of state.integrados){const q=join(opt.board,'fila',`${e.card}.json`);if(!existsSync(q))writeJson(q,e);}
     writeJson(p,{...state,estado:'cancelado'});
   }
   rmdirSyncSafe(join(opt.board,'fila','.lote'));

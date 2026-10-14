@@ -33,7 +33,13 @@ const run=(changed:string[])=>affectedTests({...repo(TREE),changed});
 test('references: static, dynamic, side-effect and new URL imports, and repo paths in strings',()=>{
   const refs=references("import a from './a.ts';export {b} from \"../b.ts\";import './c.ts';const d=await import('./d.ts');"
     +"new URL('../../public/x.json',import.meta.url);fromRoot('public/maps/y.json');readdirSync('src/client/hud/');const t=`src/${k}`;");
-  assert.deepEqual(refs.sort(),['../../public/x.json','../b.ts','./a.ts','./c.ts','./d.ts','/public/maps/y.json','/src/client/hud'].sort());
+  assert.deepEqual(refs.sort(),['../../public/x.json','../b.ts','./a.ts','./c.ts','./d.ts','/public/maps/y.json','/src','/src/client/hud'].sort(),
+    'the template `src/${k}` gives its folder');
+  // The review's misses: a helper's '../../multiplayer/…', join() of literal segments, a root file, a template folder.
+  const more=references("read('../../multiplayer/wrangler.jsonc');join(repo,'scripts','import-roster.mjs');readFileSync('index.html');"
+    +"load(`public/art/lite/sprites/${id}.webp`);fromRoot(`../../${path}`);fetch('https://x.y/z');'node:fs';'no slash'");
+  for(const r of ['../../multiplayer/wrangler.jsonc','/scripts/import-roster.mjs','/index.html','/public/art/lite/sprites'])assert.ok(more.includes(r),r);
+  assert.ok(!more.some((r:string)=>r==='/'||r==='..'||r==='../..'||r.includes('https')||r.includes('node:')),`no repo-wide folder, URL or node: ${more}`);
   assert.equal(resolveRef('tests/a/x.test.ts','node:fs',()=>true),undefined);
   assert.equal(resolveRef('tests/a/x.test.ts','phaser',()=>true),undefined);
   assert.equal(resolveRef('src/a/b.ts','../c',(p:string)=>p==='src/c.ts'),'src/c.ts');

@@ -33,8 +33,8 @@
  * Deterministic: randomness only from the injected RngLike. State is JSON-safe. targetFor/directionFor/
  * retreatDirection allocate nothing (with `out`).
  */
-import {FlowField,DIRS,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
-import {visibleOffset} from '../../contract/index.ts';
+import {FlowField,DIRS,HERO_SPEED_MULT,type FlowGrid,type FlowPoint,type CellRect} from '../../maps/index.ts';
+import {HERO_DEFAULT_SCREEN_PX,HERO_WIDEST_SCREEN_PX,visibleOffset} from '../../contract/index.ts';
 import {SCALE_PROFILES} from '../../rules/index.ts';
 
 export type Mouth='N'|'S'|'L'|'O';
@@ -64,14 +64,19 @@ const ticks=(seconds:number)=>Math.round(seconds*TICK_HZ);
 const CITY=SCALE_PROFILES['cidade-nevada'];
 /** City u per endless-map u on screen: drawn hero size of the city over the endless map's (≈0.544). */
 export const CITY_VIEW_SCALE=CITY.hero.drawnSize/SCALE_PROFILES.infinito.hero.drawnSize;
-/** Default lead margin (u): what the city hero walks during the default 1.5 s spawn warning (≈2.99). */
-export const CITY_VIEW_LEAD=CITY.hero.speed*1.5;
-/** Visibility of an offset (dx,dy) shrunk by `lead`, against the city-scaled camera union. */
-function seen(dx:number,dy:number,lead:number){
+/** City hero walk (u/s): the scale profile's (base) hero × the 2× walk (maps HERO_SPEED_MULT), ≈3.99. */
+const CITY_WALK=CITY.hero.speed*HERO_SPEED_MULT;
+/** Default lead margin (u): what the city hero walks during the default 1.5 s spawn warning (≈5.98). */
+export const CITY_VIEW_LEAD=CITY_WALK*1.5;
+/**
+ * Visibility of an offset (dx,dy) shrunk by `lead`, against the city-scaled camera union (the widest legal camera; a
+ * `heroPx` of HERO_DEFAULT_SCREEN_PX asks about the players' default zoom instead, for pacing only).
+ */
+function seen(dx:number,dy:number,lead:number,heroPx=HERO_WIDEST_SCREEN_PX){
   const d=Math.sqrt(dx*dx+dy*dy);
   if(d<=lead)return true;
   const f=(d-lead)/d/CITY_VIEW_SCALE;
-  return visibleOffset(dx*f,dy*f);
+  return visibleOffset(dx*f,dy*f,undefined,heroPx);
 }
 /**
  * True when p may show on the screen of a player at `viewer` within the next `lead` u of walking (default
@@ -230,7 +235,7 @@ export class AvenuePlanner {
     const o=options??{}, g=layout.grid, w=g.width, h=g.height, cs=g.cellSize, ox=g.originX??0, oy=g.originY??0;
     this.speed=pos(o.enemySpeed,1.79); this.spacing=pos(o.memberSpacing,.6);
     const warnS=nonNeg(o.warningSeconds,1.5);
-    this.warn=ticks(warnS); this.lead=nonNeg(o.leadMargin,CITY.hero.speed*warnS);
+    this.warn=ticks(warnS); this.lead=nonNeg(o.leadMargin,CITY_WALK*warnS);
     const near=nonNeg(o.minPlayerDistance,4); this.near2=near*near;
     this.radius=o.viewRadius===undefined||!Number.isFinite(o.viewRadius)?undefined:nonNeg(o.viewRadius,18); // non-finite → camera default
     this.visible=typeof o.isVisible==='function'?o.isVisible:undefined;
@@ -386,6 +391,24 @@ export class AvenuePlanner {
   /** True when p is not visible to any viewer (offline included) and ≥ minPlayerDistance from all (same rule as planGroups). */
   hiddenFrom(players:readonly PlayerLike[],p:FlowPoint):boolean{
     for(const pl of players)if(isViewer(pl)&&!this.hiddenFor(pl,p.x,p.y))return false;
+    return true;
+  }
+
+  /**
+   * Pacing only (the director's city run-in, NEW-20261013-ORQ-camera-zoom-out-e-roda): true when p is off every viewer's
+   * screen at the players' DEFAULT zoom (contract HERO_DEFAULT_SCREEN_PX, city-scaled, no lead) and ≥ minPlayerDistance
+   * from all. With viewRadius or isVisible the planner's own visibility rule decides, without the lead. Spawns keep
+   * hiddenFrom (the widest legal camera, with the lead).
+   */
+  hiddenAtDefault(players:readonly PlayerLike[],p:FlowPoint):boolean{
+    for(const pl of players){
+      if(!isViewer(pl))continue;
+      const dx=p.x-pl.x, dy=p.y-pl.y, d2=dx*dx+dy*dy;
+      if(!(d2>=this.near2))return false;
+      if(this.visible){const q=this.probe;q.x=p.x;q.y=p.y;if(this.visible(pl,q))return false;continue;}
+      if(this.radius!==undefined){if(d2<=this.radius*this.radius)return false;continue;}
+      if(seen(dx,dy,0,HERO_DEFAULT_SCREEN_PX))return false;
+    }
     return true;
   }
 

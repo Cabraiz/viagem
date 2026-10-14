@@ -55,8 +55,9 @@ export function nodeValue(distanceFromBase:number){
 }
 
 /**
- * Hero walking speed on the island and in the endless world (world.ts SPEED, units per second); copied so this module
- * stays import-free. The city hero is slower (world.ts CITY_HERO_SPEED ≈ 1.99): callers pass world.ts heroSpeed(terrain).
+ * BASE hero walking speed on the island and in the endless world (world.ts SPEED, units per second); copied so this
+ * module stays import-free. The heroes really walk world.ts heroSpeed(terrain) (2 × the base since
+ * velocidade-heroi-e-projetil; the city's base is CITY_HERO_SPEED ≈ 1.99): callers pass it; this is the fallback.
  */
 export const WALK_SPEED=3.1;
 /** Return estimate: straight-line time × this factor (trees, lakes) plus the slack, in seconds. */

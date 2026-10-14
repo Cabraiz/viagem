@@ -9,6 +9,7 @@
  *  - `hero=cx,cy`: hero start in cells.
  *  - `class=id`: the hero's class sheet (default cidadao-comum).
  *  - `cells=N`: visible width in cells instead of the game's city zoom.
+ *  - `zoom=k`: the player's zoom factor (camera-zoom.ts, ZOOM_MIN..1); default ZOOM_DEFAULT like the game, 1 = the old framing.
  *  - `base=1`: mounts the game's StonewardsRenderer (render/stonewards.ts) with fake, fixed views around the plaza
  *    (asset point `praca`; else the hero start), in a compact layout that fits a 390×844 screen (not the real mouth
  *    positions): the wall at the centre (70% life), the 4 barricades at 2.2 u — N whole (inteira, 100%), L damaged
@@ -60,13 +61,14 @@
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
+import {ZOOM_DEFAULT,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
-import {CITY_HERO_SPEED,CityTerrain,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
+import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {TOWER_SECONDS} from '../../rules/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
@@ -88,6 +90,8 @@ const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
 const heroParam=params.get('hero');
 const cellsOverride=Number(params.get('cells'))||undefined;
+/** `zoom=k`: the player's zoom factor (camera-zoom.ts; default the game's ZOOM_DEFAULT, `zoom=1` the old framing). */
+const zoomK=clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
 const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
@@ -190,7 +194,7 @@ class CitySandbox extends Phaser.Scene {
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;
-    this.camera.world={scale:CITY_VIEW_SCALE,speed:CITY_HERO_SPEED};
+    this.camera.world={scale:CITY_VIEW_SCALE,speed:CITY_HERO_SPEED*HERO_SPEED_MULT}; // the game's city walk (maps heroSpeed)
     this.shadow=this.add.ellipse(0,0,42,17,CITY_PALETTE.breu,.38).setScale(CITY_VIEW_SCALE);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
@@ -371,7 +375,7 @@ class CitySandbox extends Phaser.Scene {
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
     const viewport={width:this.scale.width,height:this.scale.height};
-    const zoom=cellsOverride?viewport.width/(cellsOverride*this.asset.cell*TILE_X*Math.SQRT2):cityZoom(viewport);
+    const zoom=cellsOverride?viewport.width/(cellsOverride*this.asset.cell*TILE_X*Math.SQRT2):cityZoom(viewport,zoomK);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(zoom);
     this.place();
   }

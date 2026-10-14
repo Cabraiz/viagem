@@ -9,6 +9,13 @@ import type {PickupState} from '../contract/index.ts';
 export const MAX_ENEMIES=300;
 /** Player and hostile projectiles together. */
 export const MAX_PROJECTILES=400;
+/**
+ * The user's slower shots (velocidade-heroi-e-projetil, D-0xx not yet): every TRAVELLING projectile (the heroes' pierce
+ * and homing weapons, the orbit's flung sandals, the agiota's boleto) flies at this × its tuned speed and lives
+ * 1 / this × its tuned time, so it reaches the same distance. Lasting ones (orbit, zone, shield) keep their time.
+ * Longer lives mean more shots alive at once; MAX_PROJECTILES is unchanged.
+ */
+export const PROJECTILE_SPEED_MULT=.5;
 /** All pickups; XP gems merge above this, other kinds are never removed. */
 export const MAX_PICKUPS=250;
 export const MAX_TELEGRAPHS=24;

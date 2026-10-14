@@ -5,10 +5,10 @@ export type {Point};
 /** `art` (tree-catalog id) only comes on obstacles of the endless world; the island picks art in scene.ts. */
 export type Obstacle = Point & { radius: number; kind: 'palm' | 'tree' | 'rock'; art?: string };
 export const SPAWN: Point = { x: 12, y: 17 };
-/** Hero walking speed (u/s) on the island and in the endless world (rules/scale.ts 'infinito' hero.speed). */
+/** BASE hero walking speed (u/s) on the island and in the endless world (rules/scale.ts 'infinito' hero.speed); the hero walks heroSpeed = this × HERO_SPEED_MULT. */
 export const SPEED = 3.1;
 /**
- * Hero walking speed (u/s) in Cidade Nevada: the .w3x hero's 290 WC3 u/s × 0.006875 u per WC3 unit ≈ 1.99375 (D-026).
+ * BASE hero walking speed (u/s) in Cidade Nevada (heroSpeed walks HERO_SPEED_MULT × it): the .w3x hero's 290 WC3 u/s × 0.006875 u per WC3 unit ≈ 1.99375 (D-026).
  * maps may not import rules, so this repeats rules/scale.ts SCALE_PROFILES['cidade-nevada'].hero.speed
  * (CIDADE_NEVADA_WC3.heroSpeed × WC3_UNIT, same expression, same double); tests/rules/scale.test.ts guards the drift.
  */
@@ -155,13 +155,24 @@ export function findPath(start:Point,target:Point,terrain?:TerrainField):Point[]
   return [];
 }
 /**
- * The hero's walking speed (u/s) on `terrain`: CITY_HERO_SPEED in the city, SPEED on the island and in the endless world.
+ * The user's 2× hero walk (velocidade-heroi-e-projetil, D-0xx not yet): heroSpeed = baseHeroSpeed × this in every
+ * world. SPEED, CITY_HERO_SPEED and rules/scale.ts hero.speed stay the BASE (today's) walk, because the enemy speeds
+ * (enemySpeed/citySpeed), the enemy-ai's ACTION_PEAK_MAX cap, the dash length and the city loot tiers are measured
+ * against it: enemies do not get faster.
+ */
+export const HERO_SPEED_MULT=2;
+/** The base (pre-2×) hero walk on `terrain`: CITY_HERO_SPEED in the city, SPEED on the island and in the endless world. */
+export function baseHeroSpeed(terrain?:TerrainField):number{
+  return terrain?.world==='cidade'?CITY_HERO_SPEED:SPEED;
+}
+/**
+ * The hero's walking speed (u/s) on `terrain`: baseHeroSpeed × HERO_SPEED_MULT (city ≈3.99, island/endless 6.2).
  * moveDirection/moveAlong use it, so the room (sim/systems/players.ts) and the phone's prediction (prediction.ts, the
- * scene's local walk) move a city hero the same faithful distance per tick; everything built on them (the dash in
- * sim/skills.ts) scales with the world too.
+ * scene's local walk) move a hero the same faithful distance per tick. The dash (sim/skills.ts) and the enemy side
+ * read baseHeroSpeed instead.
  */
 export function heroSpeed(terrain?:TerrainField):number{
-  return terrain?.world==='cidade'?CITY_HERO_SPEED:SPEED;
+  return baseHeroSpeed(terrain)*HERO_SPEED_MULT;
 }
 export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:TerrainField):Point {
   let result={...position},remaining=heroSpeed(terrain)*Math.min(.1,Math.max(0,seconds));
@@ -175,7 +186,7 @@ export function moveAlong(position:Point,path:Point[],seconds:number,terrain?:Te
   }
   return result;
 }
-/** One walking step along `direction` (any length; normalized), sliding along walls. `speed`: world units/s (D-036 slow and slip); defaults to the world's hero speed (city 1.99, else 3.1). */
+/** One walking step along `direction` (any length; normalized), sliding along walls. `speed`: world units/s (D-036 slow and slip); defaults to the world's hero speed (city 3.99, else 6.2). */
 export function moveDirection(position:Point,direction:Point,seconds:number,terrain?:TerrainField,speed=heroSpeed(terrain)):Point {
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return position;

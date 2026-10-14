@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
-import {reconcile} from '../../src/maps/prediction.ts';
+import {STEP,reconcile} from '../../src/maps/prediction.ts';
+import {heroSpeed} from '../../src/maps/world.ts';
 import {ROOM_PROTOCOL,type Input} from '../../src/protocol/room.ts';
 import {createEnemy,ENEMY_KINDS} from '../../src/sim/enemies/catalog.ts';
 /** The sim's basic chaser, whatever the cast calls it (D-033 renames it): these tests need a critter, not a kind. */
@@ -93,7 +94,8 @@ test('a dash lands where the server says: the event carries the landing and the 
   const acked=self.ack??0;
   const later:Input[]=[{seq:acked+1,x:1,y:0,attack:false}];
   const predicted=reconcile({x:self.x!,y:self.y!},later.filter(i=>i.seq>acked),room.sim.terrain);
-  assert.ok(Math.hypot(predicted.x-moto.x,predicted.y-moto.y)<.2,'prediction starts from the landing, not from before the dash');
+  // One replayed walking step (the 2× walk: heroSpeed × STEP ≈ 0.31 u) from the landing, never from before the dash.
+  assert.ok(Math.hypot(predicted.x-moto.x,predicted.y-moto.y)<=heroSpeed(room.sim.terrain)*STEP+.05,'prediction starts from the landing, not from before the dash');
   assert.ok(Math.hypot(predicted.x-before.x,predicted.y-before.y)>3);
 });
 

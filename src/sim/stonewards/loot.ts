@@ -21,7 +21,7 @@
  * beyond. Value LOOT_VALUE by tier (units of the crate's kind); kinds alternate coco/pedra inside each tier (asset
  * order), so every tier pays both. A good crate (2 units) is part of a repair (rules RECIPES.reparo: 2 coco + 3 pedra).
  */
-import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,heroSpeed,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
+import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,baseHeroSpeed,heroSpeed,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
@@ -45,11 +45,11 @@ export const CRATE_RADIUS=.35;
 export const CRATE_PREFIX='caixa-';
 
 /**
- * The hero's walking speed (u/s) in this terrain: the one place the loot tiers, the city intermission and the city
- * horn read it. It is the movement code's own speed (maps `heroSpeed`, cidade-04: ~1.99 u/s in the city), so the
- * tiers follow it.
+ * The hero's walking speed (u/s) the loot tiers and the city intermission are measured at: the BASE walk (maps
+ * `baseHeroSpeed`, cidade-04: ~1.99 u/s in the city), not the 2× walk (HERO_SPEED_MULT) the heroes now have, so the
+ * crate tiers and the intermission length stay as tuned. The horn (cityFarthestReturn) times the real walk back.
  */
-export function lootHeroSpeed(terrain:TerrainField|undefined):number{return heroSpeed(terrain);}
+export function lootHeroSpeed(terrain:TerrainField|undefined):number{return baseHeroSpeed(terrain);}
 
 export interface Crate {
   node:NodeInfo;tier:LootTier;
@@ -140,17 +140,17 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
 }
 
 /**
- * City return estimate (ticks) of the farthest standing hero: the real walk to the plaza (distanceToPlaza at
- * loot.speed) plus RETURN_SLACK_SECONDS, 0 for a hero already in the plaza; a hero off the hero field (undefined
- * distance) falls back to `straight(p)` (the island rule on the straight line). `skip(id)`: heroes left out (the
- * horn's idle heroes, system.ts HORN_IDLE_RADIUS).
+ * City return estimate (ticks) of the farthest standing hero: the real walk to the plaza (distanceToPlaza at the
+ * hero's real walk, maps heroSpeed: 2 × loot.speed) plus RETURN_SLACK_SECONDS, 0 for a hero already in the plaza; a
+ * hero off the hero field (undefined distance) falls back to `straight(p)` (the island rule on the straight line).
+ * `skip(id)`: heroes left out (the horn's idle heroes, system.ts HORN_IDLE_RADIUS).
  */
 export function cityFarthestReturn(ctx:SimContext,loot:CityLoot,straight:(p:Point)=>number,skip?:(id:string)=>boolean){
-  let lead=0;
+  let lead=0;const walk=heroSpeed(ctx.terrain);
   for(const p of ctx.players.values()){
     if(!isStanding(p)||skip?.(p.id))continue;
     const d=loot.distanceToPlaza(p);
-    lead=Math.max(lead,d===undefined?straight(p):d>0?Math.ceil((d/loot.speed+RETURN_SLACK_SECONDS)*SIM_HZ):0);
+    lead=Math.max(lead,d===undefined?straight(p):d>0?Math.ceil((d/walk+RETURN_SLACK_SECONDS)*SIM_HZ):0);
   }
   return lead;
 }

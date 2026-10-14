@@ -442,6 +442,9 @@ test('boss.ts steer hook: a true answer replaces the straight walk with its dire
  * Island/endless assembled run (director, enemy AI, boss, telegraphs...) with the boss spawned at the start next to a
  * standing and a wandering player: the boss's per-tick trail, the controller state and the bodies at the end as a
  * short sha256. BOSS_BASELINE was recorded with this function on the base commit a595d33 (before cidade-05c).
+ * velocidade-heroi-e-projetil re-recorded the endless one (its director's spawn ring and warning lead follow the 2× walk;
+ * the island's is unchanged); the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and the ring 5..8 + 3
+ * gives the previous hash exactly.
  */
 function bossDigest(world:'ilha'|'infinito'){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -458,7 +461,8 @@ function bossDigest(world:'ilha'|'infinito'){
   const json=JSON.stringify({trail,boss:rig.sys.boss.state,bodies,telegraphs:[...rig.world.telegraphs.values()],round:rig.world.round});
   return createHash('sha256').update(json).digest('hex').slice(0,16);
 }
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'0df5554c3395e49b'};
+// infinito re-recorded for D-046 (the widest camera moves the endless spawn ring out, the catch-up runs to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk, half-speed shots); the island is unchanged.
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'75a2225f4fc40291',infinito:'e2d8811cc8c12ed9'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);
@@ -732,10 +736,12 @@ test('chaseCost in the director: one live player in the base keeps the groups ai
   for(let seed=1;seed<=3;seed++){
     const w=firstWave(seed,[INICIO,PLAN.plazaCenter]);
     report.push(`seed ${seed}: ${w.text}`);
-    if(!(w.spawned&&w.arrival>=ticks(9)&&w.arrival<=ticks(14)))bad.push(`seed ${seed}: ${w.text}`);
+    // 9–14 s, 9–16 s since velocidade-heroi-e-projetil: the 2× walk doubles the spawn lead (CITY_VIEW_LEAD), the first
+    // group starts farther out and lands ~1.8 s later (13.25 / 11.65 / 13.0 s → 15.05 / 12.45 / 14.95 s; option (a)).
+    if(!(w.spawned&&w.arrival>=ticks(9)&&w.arrival<=ticks(16)))bad.push(`seed ${seed}: ${w.text}`);
   }
   console.log(`[cidade-05c] one player in the base, one at inicio (round 1, assembled):\n  ${report.join('\n  ')}`);
-  assert.deepEqual(bad,[],'the first group reaches the plaza in 9-14 s');
+  assert.deepEqual(bad,[],'the first group reaches the plaza in 9-16 s');
 });
 
 test('incremental refresh: random grid.refresh edits → every citySteer field (players + size classes, the boss\'s hero steer) and the director\'s team field equal a fresh build within ≤ 9 ticks',()=>{

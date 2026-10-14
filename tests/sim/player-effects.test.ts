@@ -17,7 +17,7 @@ import {SLIP_GRID,SLIP_TICKS,SLOW_TICKS,activeMoveEffects,applyTelegraphEffect,c
 import {MAX_PROJECTILES} from '../../src/rules/budget.ts';
 import {Simulation,telegraphView} from '../../multiplayer/simulation.ts';
 import {VEL_SCALE} from '../../src/protocol/index.ts';
-import {SPEED,walkable,type Point} from '../../src/maps/world.ts';
+import {HERO_SPEED_MULT,SPEED,walkable,type Point} from '../../src/maps/world.ts';
 import {STEP} from '../../src/maps/prediction.ts';
 import {DEFAULT_SEED,TerrainField,defaultTerrain} from '../../src/maps/terrain/field.ts';
 
@@ -186,6 +186,7 @@ test('falling, getting up and a rematch clear slow and slip',()=>{
 // ---------- Movement in the room ----------
 test('the room walks a slowed player at × PLAYER_SLOW_MULT and slides a slipping one whatever the stick; standing, no slide',()=>{
   const sim=new Simulation(11);sim.add('a','Ana','cidadao-comum');sim.resetRun();
+  // The island hero walks HERO_SPEED_MULT × SPEED (velocidade-heroi-e-projetil); the slip keeps its ratio to the walk.
   const p=sim.players.get('a')!;
   const clean=()=>{for(const e of [...sim.world.enemies.values()])sim.world.enemies.delete(e.id);p.hp=p.stats.maxHp;};
   let seq=0;
@@ -193,13 +194,13 @@ test('the room walks a slowed player at × PLAYER_SLOW_MULT and slides a slippin
   walk(1,0);
   p.slowUntil=sim.tick+5;
   const slow=walk(1,0);
-  assert.ok(Math.abs(Math.hypot(slow.to.x-slow.from.x,slow.to.y-slow.from.y)-SPEED*PLAYER_SLOW_MULT*STEP)<1e-9,'slowed step');
+  assert.ok(Math.abs(Math.hypot(slow.to.x-slow.from.x,slow.to.y-slow.from.y)-SPEED*HERO_SPEED_MULT*PLAYER_SLOW_MULT*STEP)<1e-9,'slowed step');
   for(let i=0;i<5;i++)walk(1,0);
   const after=walk(1,0);
-  assert.ok(Math.abs(Math.hypot(after.to.x-after.from.x,after.to.y-after.from.y)-SPEED*STEP)<1e-9,'plain once it ends');
+  assert.ok(Math.abs(Math.hypot(after.to.x-after.from.x,after.to.y-after.from.y)-SPEED*HERO_SPEED_MULT*STEP)<1e-9,'plain once it ends');
   p.slipUntil=sim.tick+4;p.slip={x:0,y:-1};p.facing={x:0,y:-1};
   const slide=walk(1,0);
-  assert.ok(Math.abs(slide.to.x-slide.from.x)<1e-9&&Math.abs(slide.from.y-slide.to.y-PLAYER_SLIP_SPEED*STEP)<1e-9,'slides, stick ignored');
+  assert.ok(Math.abs(slide.to.x-slide.from.x)<1e-9&&Math.abs(slide.from.y-slide.to.y-PLAYER_SLIP_SPEED*HERO_SPEED_MULT*STEP)<1e-9,'slides, stick ignored');
   assert.deepEqual(p.facing,{x:0,y:-1},'facing kept while sliding');
   // The stick let go (a stop segment): no step, so no slide, like walking.
   clean();sim.input('a',{seq:++seq,x:0,y:0,attack:false});const still={x:p.x,y:p.y};sim.step();

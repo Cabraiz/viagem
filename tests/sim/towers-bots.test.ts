@@ -19,6 +19,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {ticks} from '../../src/contract/types.ts';
+import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
 import type {RunView} from '../../src/contract/index.ts';
 import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,TOWER_STAND,decide,newMemory,pickTowerOrder,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,type DefenseId} from '../../src/sim/towers/catalog.ts';
@@ -120,15 +121,16 @@ test('decide(): the builder walks to the obra (mode build), orders on arrival, a
   const near=run({x:10-TOWER_STAND+.2,y:1});
   assert.equal(near.mode,'build');assert.deepEqual(near.build,{build:'s1'},'no person here: it orders as soon as it is there');
   assert.deepEqual(near.direction,{x:0,y:0},'stands there');
-  // The way back counts: a site 30 u out fits (there, back into the camp, TOWER_MARGIN), one 40 u out does not.
-  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30,y:1}]}).mode,'build');
-  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40,y:1}]}).mode,'build','the walk there fits, there and back does not');
-  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:200,y:1}]}).mode,'build');
+  // The way back counts: a site 30 u out fits (there, back into the camp, TOWER_MARGIN), one 40 u out does not. The
+  // distances at the base walk, × K (maps HERO_SPEED_MULT, velocidade-heroi-e-projetil): the bot times the real walk.
+  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30*K,y:1}]}).mode,'build');
+  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40*K,y:1}]}).mode,'build','the walk there fits, there and back does not');
+  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:200*K,y:1}]}).mode,'build');
   // Standing at an obra whose way back no longer fits: no order, it heads home.
-  const late=run({x:80,y:1},{sites:[{id:'s1',maxSize:3,x:80,y:1}]});
+  const late=run({x:80*K,y:1},{sites:[{id:'s1',maxSize:3,x:80*K,y:1}]});
   assert.equal(late.build,undefined);assert.ok(late.direction.x<-.9,'home');
   // An unreachable obra does not block the rest: the next site that fits is taken.
-  const two=[{id:'s1',maxSize:3,x:200,y:1},{id:'s2',maxSize:2,x:-8,y:1}];
+  const two=[{id:'s1',maxSize:3,x:200*K,y:1},{id:'s2',maxSize:2,x:-8,y:1}];
   assert.deepEqual(run({x:-8,y:1},{sites:two}).build,{build:'s2'});
   // With a person here (orderFrom: their last 5 s): it waits at the obra and orders from then, if the way back fits.
   const home={id:'s1',maxSize:3,x:4,y:1};
@@ -139,9 +141,9 @@ test('decide(): the builder walks to the obra (mode build), orders on arrival, a
   assert.equal(run({x:0,y:1},{sites:[home],orderFrom:1000}).mode,'gather','keeps gathering until the walk there ends near the window');
   // Saving for the Gustavão's line holds only its reserve: the forge buys with what is above it.
   // The line's Morteiro is building (nothing to order there) and the other defense is out of reach: 'save', 24 kept.
-  const line=[def('d1','morteiro','s1',{x:10,y:1,ready:false}),def('d2','vigia-do-predio','s2',{x:-50,y:1})];
+  const line=[def('d1','morteiro','s1',{x:10,y:1,ready:false}),def('d2','vigia-do-predio','s2',{x:-50*K,y:1})];
   const saving=(units:number)=>decide({view:runView(500,{coco:units/2,pedra:units/2}),selfId:'bot',at:{x:0,y:1},index:0,memory:newMemory(0),forger:'bot',
-    towers:view({units,sites:[{id:'s1',maxSize:3,x:10,y:1},{id:'s2',maxSize:2,x:-50,y:1}],defenses:line,round:2})});
+    towers:view({units,sites:[{id:'s1',maxSize:3,x:10,y:1},{id:'s2',maxSize:2,x:-50*K,y:1}],defenses:line,round:2})});
   assert.equal(saving(30).forge,undefined,'24 kept for the Lança-Foguetes: 6 left, no recipe fits above it');
   assert.equal(saving(22).forge,undefined);
   assert.equal(saving(40).forge,'torre-chinelo','40 − 7 still leaves the 24');

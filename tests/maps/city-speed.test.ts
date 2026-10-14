@@ -1,10 +1,11 @@
 /**
- * cidade-04: the hero walks at the city's faithful speed (world.ts CITY_HERO_SPEED ≈ 1.99375 u/s, rules/scale.ts
- * 'cidade-nevada') on the real city terrain, and at SPEED (3.1) on the island and the endless map. moveDirection and
+ * cidade-04 + velocidade-heroi-e-projetil: the hero walks at HERO_SPEED_MULT (2) × the world's base speed: 2 × the
+ * city's faithful CITY_HERO_SPEED (≈ 1.99375 u/s, rules/scale.ts 'cidade-nevada') = 3.9875 on the real city terrain,
+ * and 2 × SPEED (3.1) = 6.2 on the island and the endless map. moveDirection and
  * prediction.ts moveStep are what both the room (sim/systems/players.ts movePlayer) and the phone's prediction
  * (simulate/reconcile) call, so one step here is one step on both sides (tests/sim/city-hero-speed.test.ts checks the
  * room's side). D-036 effects scale with the world: slowed = heroSpeed × PLAYER_SLOW_MULT, slip =
- * PLAYER_SLIP_SPEED × heroSpeed / SPEED (island and endless: exactly PLAYER_SLIP_SPEED). Results only, no wall clock (D-031).
+ * PLAYER_SLIP_SPEED × heroSpeed / SPEED (island and endless: PLAYER_SLIP_SPEED × HERO_SPEED_MULT). Results only, no wall clock (D-031).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {defaultTerrain,type TerrainField} from '../../src/maps/terrain/field.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
-import {CITY_HERO_SPEED,RADIUS,SPAWN,SPEED,clearSegment,heroSpeed,moveAlong,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
+import {CITY_HERO_SPEED,HERO_SPEED_MULT,RADIUS,SPAWN,SPEED,baseHeroSpeed,clearSegment,heroSpeed,moveAlong,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
 import {STEP,moveStep,reconcile,simulate,type MoveEffects} from '../../src/maps/prediction.ts';
 import {PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,type PlayerInput} from '../../src/contract/index.ts';
 
@@ -30,6 +31,8 @@ const near=(actual:number,expected:number,tol:number,what:string)=>
   assert.ok(Math.abs(actual-expected)<=tol,`${what}: ${actual} not within ${tol} of ${expected}`);
 const input=(seq:number,d:Point):PlayerInput=>({seq,x:d.x,y:d.y,attack:false});
 const ENDLESS=new TerrainField(DEFAULT_SEED,{world:'infinito'});
+/** The walks the heroes have now: 2 × the base (city ≈3.9875, island and endless 6.2). */
+const CITY_WALK=CITY_HERO_SPEED*HERO_SPEED_MULT,WALK=SPEED*HERO_SPEED_MULT;
 
 /** A direction out of the plaza with at least `length` units of free, swept ground ahead. */
 function openDirection(from:Point,length:number,terrain:TerrainField=field):Point{
@@ -48,44 +51,48 @@ function endlessSpot(length:number):{at:Point;d:Point}{
   throw new Error('no open endless spot');
 }
 
-test('heroSpeed: the city walks at CITY_HERO_SPEED (≈1.99375), every other world at SPEED',()=>{
+test('heroSpeed: every world walks 2 × its base (city 2 × CITY_HERO_SPEED ≈3.9875, every other world 2 × SPEED = 6.2)',()=>{
   near(CITY_HERO_SPEED,1.99375,1e-12,'290 WC3 u/s × 0.006875');
-  assert.equal(heroSpeed(field),CITY_HERO_SPEED);assert.equal(heroSpeed(defaultTerrain),SPEED);assert.equal(heroSpeed(),SPEED);
-  assert.ok(CITY_HERO_SPEED<SPEED,'the city hero is slower: faithful proportions, not the endless map speed');
+  assert.equal(HERO_SPEED_MULT,2,"the user's 2× walk");
+  assert.equal(baseHeroSpeed(field),CITY_HERO_SPEED);assert.equal(baseHeroSpeed(defaultTerrain),SPEED);assert.equal(baseHeroSpeed(ENDLESS),SPEED);assert.equal(baseHeroSpeed(),SPEED);
+  assert.equal(heroSpeed(field),CITY_WALK);assert.equal(heroSpeed(defaultTerrain),WALK);assert.equal(heroSpeed(ENDLESS),WALK);assert.equal(heroSpeed(),WALK);
+  near(heroSpeed(field),3.9875,1e-12,'city walk');near(heroSpeed(),6.2,1e-12,'island/endless walk');
+  for(const t of [field,defaultTerrain,ENDLESS,undefined])assert.equal(heroSpeed(t),2*baseHeroSpeed(t),'exactly twice the base walk');
+  assert.ok(CITY_WALK<WALK,'the city hero is still slower: faithful proportions, not the endless map speed');
 });
 
-test('real city: a free step is exactly heroSpeed × STEP (moveDirection, simulate, reconcile); the island keeps SPEED × STEP',()=>{
-  const d=openDirection(praca,CITY_HERO_SPEED+1);
+test('real city: a free step is exactly heroSpeed × STEP (moveDirection, simulate, reconcile); the island 2 × SPEED × STEP',()=>{
+  const d=openDirection(praca,CITY_WALK+1);
   const from={x:praca.x,y:praca.y};
   const q=moveDirection(from,d,STEP,field);
   near(dist(from,q),heroSpeed(field)*STEP,1e-12,'moveDirection city step');
   // A joystick at any magnitude moves the same distance (direction only).
-  near(dist(from,simulate(from,{seq:0,x:d.x*.3,y:d.y*.3,attack:false},field)),CITY_HERO_SPEED*STEP,1e-12,'simulate city step');
-  // One second of free walking (20 ticks) covers CITY_HERO_SPEED units, on the room's replay as on the phone.
+  near(dist(from,simulate(from,{seq:0,x:d.x*.3,y:d.y*.3,attack:false},field)),CITY_WALK*STEP,1e-12,'simulate city step');
+  // One second of free walking (20 ticks) covers CITY_WALK units, on the room's replay as on the phone.
   const inputs=Array.from({length:Math.round(1/STEP)},(_,seq)=>({seq,x:d.x,y:d.y,attack:false}));
-  near(dist(from,reconcile(from,inputs,field)),CITY_HERO_SPEED,1e-9,'1 s of walking in the city');
-  // Island, same code path: the old speed is untouched.
-  near(dist(SPAWN,moveDirection(SPAWN,{x:1,y:0},STEP,defaultTerrain)),SPEED*STEP,1e-12,'island step');
+  near(dist(from,reconcile(from,inputs,field)),CITY_WALK,1e-9,'1 s of walking in the city');
+  // Island, same code path: 2 × SPEED.
+  near(dist(SPAWN,moveDirection(SPAWN,{x:1,y:0},STEP,defaultTerrain)),WALK*STEP,1e-12,'island step');
 });
 
 test('real city: moveAlong (tap-to-walk) advances heroSpeed × seconds along a free route',()=>{
-  const d=openDirection(praca,CITY_HERO_SPEED+1),from={x:praca.x,y:praca.y};
-  const route=[{x:from.x+d.x*(CITY_HERO_SPEED+.5),y:from.y+d.y*(CITY_HERO_SPEED+.5)}];
+  const d=openDirection(praca,CITY_WALK+1),from={x:praca.x,y:praca.y};
+  const route=[{x:from.x+d.x*(CITY_WALK+.5),y:from.y+d.y*(CITY_WALK+.5)}];
   let p=from;
   for(let i=0;i<10;i++)p=moveAlong(p,route,.1,field);
   assert.equal(route.length,1,'not arrived yet');
-  near(dist(from,p),CITY_HERO_SPEED,1e-9,'1 s of tap-to-walk in the city');
+  near(dist(from,p),CITY_WALK,1e-9,'1 s of tap-to-walk in the city');
 });
 
 /**
  * D-036 effects through the real step (moveStep, simulate with tick/effects) in every world: free walk = heroSpeed × STEP,
  * slowed = × PLAYER_SLOW_MULT, slip = PLAYER_SLIP_SPEED × heroSpeed / SPEED along the slide with the stick ignored.
  */
-test('every world: free, slowed and slipping steps scale with the world\'s hero speed (city 1.99375, island and endless 3.1)',()=>{
+test('every world: free, slowed and slipping steps scale with the world\'s hero speed (city 3.9875, island and endless 6.2)',()=>{
   const worlds=[
-    {name:'city',terrain:field,at:{x:praca.x,y:praca.y},d:openDirection(praca,1),walk:CITY_HERO_SPEED,slip:PLAYER_SLIP_SPEED*CITY_HERO_SPEED/SPEED},
-    {name:'island',terrain:defaultTerrain,at:SPAWN,d:openDirection(SPAWN,1,defaultTerrain),walk:SPEED,slip:PLAYER_SLIP_SPEED},
-    {name:'endless',terrain:ENDLESS,...(()=>{const e=endlessSpot(1);return {at:e.at,d:e.d};})(),walk:SPEED,slip:PLAYER_SLIP_SPEED},
+    {name:'city',terrain:field,at:{x:praca.x,y:praca.y},d:openDirection(praca,1),walk:CITY_WALK,slip:PLAYER_SLIP_SPEED*CITY_WALK/SPEED},
+    {name:'island',terrain:defaultTerrain,at:SPAWN,d:openDirection(SPAWN,1,defaultTerrain),walk:WALK,slip:PLAYER_SLIP_SPEED*HERO_SPEED_MULT},
+    {name:'endless',terrain:ENDLESS,...(()=>{const e=endlessSpot(1);return {at:e.at,d:e.d};})(),walk:WALK,slip:PLAYER_SLIP_SPEED*HERO_SPEED_MULT},
   ];
   for(const w of worlds){
     assert.equal(heroSpeed(w.terrain),w.walk,`${w.name}: hero speed`);
@@ -112,7 +119,12 @@ test('every world: free, slowed and slipping steps scale with the world\'s hero 
 });
 
 test('real city: the phone\'s replay (reconcile with tick and effects) lands where stepping the room\'s moveStep tick by tick does',()=>{
-  const d=openDirection(praca,3),from={x:praca.x,y:praca.y};
+  // A direction whose side (the slip along `turn`, ~0.8 u) is free and then ~2.5 u of walking ahead of that spot (2× walk).
+  const from={x:praca.x,y:praca.y},ahead=(o:Point,u:Point,l:number)=>clearSegment(o,{x:o.x+u.x*l,y:o.y+u.y*l},field);
+  const d=Array.from({length:16},(_,k)=>({x:Math.cos(k*Math.PI/8),y:Math.sin(k*Math.PI/8)})).find(u=>{
+    const side={x:-u.y,y:u.x};return ahead(from,side,.9)&&ahead({x:from.x+side.x*.9,y:from.y+side.y*.9},u,2.8);
+  });
+  assert.ok(d,'an open direction out of the plaza');
   const turn={x:-d.y,y:d.x},frameTick=40;
   // Slipping on ticks 41..43 along `turn` (the stick says d), slowed 44..48, then walking free.
   const effects:MoveEffects={slipUntil:44,slip:turn,slowUntil:49};
@@ -126,9 +138,9 @@ test('real city: the phone\'s replay (reconcile with tick and effects) lands whe
   // Ticks 41..43 slip, 44..48 slowed (47 is a stand-still input), then free (54 stands still).
   const expected=inputs.map((i,k)=>{
     const t=frameTick+1+k;
-    if(t<44)return PLAYER_SLIP_SPEED*CITY_HERO_SPEED/SPEED*STEP;
+    if(t<44)return PLAYER_SLIP_SPEED*CITY_WALK/SPEED*STEP;
     if(i.x===0&&i.y===0)return 0;
-    return (t<49?CITY_HERO_SPEED*PLAYER_SLOW_MULT:CITY_HERO_SPEED)*STEP;
+    return (t<49?CITY_WALK*PLAYER_SLOW_MULT:CITY_WALK)*STEP;
   });
   assert.ok(expected.some(e=>e===0)&&new Set(expected).size===4,'slip, slowed, free and standing all covered');
   steps.forEach((s,k)=>near(s,expected[k],1e-9,`tick ${frameTick+1+k}`));
@@ -193,7 +205,7 @@ function tautRoute(from:Point,samples:Point[],to:Point):Point[]{
   return route;
 }
 
-test('real city: walking start → plaza along the streets takes 33–40 s at the city speed',t=>{
+test('real city: walking start → plaza along the streets takes 16.5–20 s at the 2× city walk (33–40 s at the base speed)',t=>{
   const samples=streetPath(inicio,praca),route=tautRoute(inicio,samples,praca);
   const routeLength=route.reduce((sum,p,i)=>sum+dist(i?route[i-1]:inicio,p),0),straight=dist(inicio,praca);
   // Walk it: the tap-to-walk step (moveAlong at heroSpeed(field)), one 20 Hz tick at a time, until the plaza.
@@ -204,9 +216,12 @@ test('real city: walking start → plaza along the streets takes 33–40 s at th
   const seconds=ticks*STEP;
   t.diagnostic(`start → plaza: walked ${routeLength.toFixed(1)} u in ${ticks} ticks = ${seconds.toFixed(1)} s (street samples ${samples.length}, taut route ${route.length} legs, ${straight.toFixed(1)} u straight)`);
   assert.ok(routeLength>=straight-1e-9,'the streets are never shorter than the straight line');
-  // Each tick covered the city speed × STEP of route (the last one the remainder): the time is the city speed's.
-  assert.equal(ticks,Math.ceil(routeLength/(CITY_HERO_SPEED*STEP)-1e-9));
-  assert.ok(seconds>=33&&seconds<=40,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
-  // At the endless map's speed the same street would be a noticeably shorter walk: the change is real.
-  assert.ok(routeLength/SPEED<seconds*.7);
+  // Each tick covered the city walk × STEP of route (the last one the remainder): the time is the city walk's.
+  assert.equal(ticks,Math.ceil(routeLength/(CITY_WALK*STEP)-1e-9));
+  // The street itself is the tuned 33–40 s at the base speed; the 2× walk halves it.
+  const base=routeLength/CITY_HERO_SPEED;
+  assert.ok(base>=33&&base<=40,`start → plaza at the base speed ${base.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
+  assert.ok(seconds>=16.5&&seconds<=20+STEP,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_WALK} u/s)`);
+  // At the endless map's walk the same street would be a noticeably shorter walk: the city proportion is real.
+  assert.ok(routeLength/WALK<seconds*.7);
 });

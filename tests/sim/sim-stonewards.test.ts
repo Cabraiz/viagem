@@ -5,7 +5,7 @@ import {BASE_STATS,ticks} from '../../src/contract/types.ts';
 import type {EnemyState,RoundPhase,SimEvent,SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
 import {DEFAULT_SEED,defaultTerrain,TerrainField} from '../../src/maps/terrain/field.ts';
-import {moveDirection,obstacles,walkable} from '../../src/maps/world.ts';
+import {heroSpeed,moveDirection,obstacles,walkable} from '../../src/maps/world.ts';
 import {createStonewardsSystem,HORN_LEAD,HORN_LINES,MAX_PREPARE_TICKS,MAX_STRETCH_PER_RUN,SAY_GAP,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {campNodes,CAMP_PILES} from '../../src/sim/stonewards/resources.ts';
 import {ROUNDS} from '../../src/rules/waves.ts';
@@ -384,8 +384,10 @@ test('the horn sounds as early as the farthest hero needs to walk back, never la
   const out=player('out',12,12+CAMP_RADIUS+24),home=player('home',12,17);
   const ctx=fakeCtx([out,home]),sys=system();
   ctx.round.index=3;ctx.round.phaseEndsTick=ticks(30);
-  const lead=returnTicks(Math.hypot(out.x-sys.state.wall.x,out.y-sys.state.wall.y));
+  // The horn times the hero's real walk (maps heroSpeed: the 2× walk, 6.2 u/s on the island).
+  const lead=returnTicks(Math.hypot(out.x-sys.state.wall.x,out.y-sys.state.wall.y),heroSpeed(defaultTerrain));
   assert.ok(lead>HORN_LEAD&&lead<ticks(30),`lead ${lead}`);
+  assert.ok(lead<returnTicks(Math.hypot(out.x-sys.state.wall.x,out.y-sys.state.wall.y)),'shorter than at the base walk');
   run(ctx,sys,ticks(30)-lead-1);
   assert.equal(ctx.events.filter(e=>e.type==='horn').length,0);
   run(ctx,sys,1);
@@ -399,15 +401,15 @@ test('the horn sounds as early as the farthest hero needs to walk back, never la
   run(ctx2,sys2,1);assert.equal(ctx2.events.filter(e=>e.type==='horn').length,1);
 });
 
-test('a hero 150 units out who leaves on the horn is back in the camp before the round (endless map)',()=>{
+test('a hero 300 units out (≈55 s at the 2× walk) who leaves on the horn is back in the camp before the round (endless map)',()=>{
   const terrain=new TerrainField(4242,{world:'infinito'});
   const sys=createStonewardsSystem({terrain,extendPrepare:(c,endsTick)=>{c.round.phaseEndsTick=endsTick;}});
   const w=sys.state.wall;
   // A straight way home (no lake on the line), so the test measures the horn, not the pathing.
   let start:{x:number;y:number}|undefined;
   for(let deg=0;deg<360&&!start;deg+=5){
-    const a=deg*Math.PI/180,ok=Array.from({length:600},(_,i)=>({x:w.x+Math.cos(a)*(150-i*.25),y:w.y+Math.sin(a)*(150-i*.25)})).every(p=>walkable(p,terrain));
-    if(ok)start={x:w.x+Math.cos(a)*150,y:w.y+Math.sin(a)*150};
+    const a=deg*Math.PI/180,ok=Array.from({length:1200},(_,i)=>({x:w.x+Math.cos(a)*(300-i*.25),y:w.y+Math.sin(a)*(300-i*.25)})).every(p=>walkable(p,terrain));
+    if(ok)start={x:w.x+Math.cos(a)*300,y:w.y+Math.sin(a)*300};
   }
   assert.ok(start,'a clear line home');
   const hero=player('far',start!.x,start!.y),ctx=fakeCtx([hero]);
@@ -427,7 +429,8 @@ test('a hero 150 units out who leaves on the horn is back in the camp before the
 
 test('the horn never stretches past the cap, nor in the opening, nor twice',()=>{
   const sys=createStonewardsSystem({terrain:defaultTerrain,extendPrepare:(c,endsTick)=>{c.round.phaseEndsTick=endsTick;}});
-  const far=player('far',12,12+400),ctx=fakeCtx([far]);
+  // 800 u at the 2× walk (6.2 u/s): ≈144 s back, past the 75 s cap.
+  const far=player('far',12,12+800),ctx=fakeCtx([far]);
   ctx.round.index=1;ctx.round.phaseEndsTick=ticks(3);
   run(ctx,sys,ticks(3));
   assert.equal(ctx.round.phaseEndsTick,ticks(3),'opening countdown: no horn, no stretch');

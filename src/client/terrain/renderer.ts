@@ -146,11 +146,13 @@ interface Slot extends Target,PoolSlot {
 }
 /**
  * Render targets made with the scene: making one later means a framebuffer status check, a full round trip to the GPU
- * process that waits for everything queued (hundreds of ms on a busy phone, measured in the lab). 60 covers the ring
- * of a 390×844 or 844×390 phone at the follow zoom (6×9 tiles) with room to spare, and 24 water layers (a lake spans 2-4
- * tiles; lab seeds showed up to 20 in the ring); a bigger screen or a lake district grows the pool once.
+ * process that waits for everything queued (hundreds of ms on a busy phone, measured in the lab). 80 covers the prefetch
+ * ring of the widest legal camera (D-046, hero 44 CSS px: the contract's VISIBLE_SHORT_PX × VISIBLE_LONG_PX, 851 × 1991
+ * world px, 21:9 included; at most 77 tiles, 54 at the old 56 px floor), and 32 water layers (a lake spans 2-4 tiles;
+ * 10 seeds × 30 spots at 44 px: median 10, p95 25, max 34 wet tiles in the ring); a bigger screen or a lake district
+ * grows the pool once.
  */
-const POOL_TILES=60,POOL_WATER=24;
+const POOL_TILES=80,POOL_WATER=32;
 /** Bisection steps over ENDLESS_MAX_HEIGHT: 40/2¹² ≈ 0.01 px of height, the island's 128/2¹⁸ is 0.0005. */
 const ENDLESS_STEPS=12;
 /** Measurements for the lab and the done/ report (probe in dev). */

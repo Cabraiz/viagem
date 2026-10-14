@@ -11,7 +11,8 @@
  *   come from off screen around the base, on their way to it. Timed-out hordes flee off screen.
  * - city (cidade-05, with options.avenues): at the avenue tips through the AvenuePlanner (city/avenues.ts). The round is
  *   planned once at its start for the warning ticks; each group is planned again just in time at its warning, at
- *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s). The round's timer
+ *   exact hidden points (no jitter), and arrives at the plaza on the plan's cadence (first ≈ 12 s; a part that cannot be
+ *   released early enough runs in off the default-zoom screens, CITY_RUN_IN_SPEED). The round's timer
  *   covers the slowest member's walk (CITY_ARRIVAL_SLACK). With the team away from the base (options.cityChase,
  *   cidade-05c) the mouths and spots are aimed at the team instead of the plaza. The boss lands in the plaza itself (D-026). Timed-out
  *   hordes walk back up the avenues (exit flow field) and vanish out of everyone's sight, at the avenue end or far
@@ -19,9 +20,9 @@
  *   helicopter to the plaza: a few slow bêbados behind the team and at the plaza, held until a hero reached it.
  */
 import type {TerrainField} from '../maps/index.ts';
-import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
+import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
 import {MAX_ENEMIES,roleOf} from '../rules/index.ts';
-import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleFrom,type CameraHint} from '../contract/index.ts';
+import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleAtDefault,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
 import {Rng} from '../contract/index.ts';
@@ -133,9 +134,11 @@ export interface DirectorOptions {
  */
 interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;solo?:boolean;siege?:boolean;anchor?:string;retry?:boolean;side?:number;x:number;y:number;atTick:number;
   group?:number;points?:Point[];warnTick?:number;
+  /** City: ticks this part lands behind its group's cadence slot (cityWarn); its bodies run in by that much (CITY_RUN_IN_SPEED). */
+  late?:number;
   /** City tutorial (cidade-08): searches the group behind the team already made without a hidden spot (BEHIND_TRIES). */
   tries?:number}
-type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'|'points'|'warnTick'>;
+type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'|'points'|'warnTick'|'late'>;
 /** capTick (endless): hard end of a flight that keeps being extended while someone sees the enemy. */
 interface Retreat {id:string;x:number;y:number;untilTick:number;capTick?:number}
 /** JSON-safe director state, so a room checkpoint (VGM-047) can store and restore it. */
@@ -203,6 +206,8 @@ export interface Director extends SimSystem {
 }
 
 const BAND_MAX=2.2;
+/** Enemy memory key of the city run-in budget, in u (CITY_RUN_IN_SPEED). JSON-safe number. */
+const RUN_IN='runIn';
 /** Salt of the rotation's stream (DirectorState.rotation), apart from every other stream of the director. */
 const ROTATION_SALT=0x0d040a11;
 const LINE_GAP=ticks(.3);
@@ -220,9 +225,14 @@ export const SPAWN_MARGIN=.5;
 export const FLEE_CAP_SECONDS=60;
 /**
  * Endless world: an enemy no one can see walks this much faster towards the nearest player, so a horde born on the
- * off-screen ring (25.5-41.4 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
+ * off-screen ring (29.9-48.7 u away, offscreen.ts) reaches the edge of the screen in a few seconds, as in VS,
  * instead of the ~21 s a bêbado needs at 1.4 u/s. On screen it is back to its own pace. Never siege enemies; the boss
  * only while walking.
+ * "No one can see" is judged at the players' DEFAULT zoom (contract HERO_DEFAULT_SCREEN_PX, D-046,
+ * NEW-20261013-ORQ-camera-zoom-out-e-roda): the ring is out of the WIDEST legal camera (hero 44 px), so with the old
+ * test the run-in stopped at that wider edge and the horde walked the 44..47 px band at its own pace, later than with the
+ * 56 px framing. Now it runs in up to the default screen's edge; only a player zoomed out past the default (the thin
+ * 44..47 px band) may see it walk fast.
  */
 export const CATCH_UP_SPEED=2.5;
 /**
@@ -234,12 +244,12 @@ export const CATCH_UP_SPEED=2.5;
  *  - the round gets at least LAST_CALL_SECONDS more before its timeout (the HUD shows no wave clock, only bichos);
  *  - each enemy still farther than LAST_CALL_NEAR from the team (siege ones: from the wall they besiege) hurries in,
  *    sidestepping trees and rocks; inside LAST_CALL_NEAR it is back to its own pace, so nobody standing still is hit by
- *    a body that arrived faster than it could be seen. Off every screen it closes in at CATCH_UP_SPEED on top of its
+ *    a body that arrived faster than it could be seen. Off every screen (at the default zoom, see CATCH_UP_SPEED) it closes in at CATCH_UP_SPEED on top of its
  *    pace (as before the last call); where someone may see it, never faster than LAST_CALL_PACE × the hero's speed in
  *    all, so a team that runs away is never caught by the hurry (code review: 3.9 u/s outran the hero's 3.1).
  */
 export const LAST_CALL_SECONDS=25,LAST_CALL_NEAR=7,LAST_CALL_PACE=.9;
-/** The extra speed of a called enemy (u/s): full catch-up off screen, capped so its pace plus it stays ≤ 0.9 × SPEED on one. */
+/** The extra speed of a called enemy (u/s): full catch-up off screen, capped so its pace plus it stays ≤ 0.9 × SPEED (the BASE hero walk: enemies do not speed up with the 2× hero) on one. */
 export const lastCallBoost=(pace:number,hidden:boolean)=>hidden?CATCH_UP_SPEED:Math.max(0,Math.min(CATCH_UP_SPEED,LAST_CALL_PACE*SPEED-pace));
 /**
  * A called enemy that tried every sidestep and still could not move waits this many ticks (plus 0-7 by its id) before it
@@ -267,6 +277,21 @@ export const CITY_EXIT_REACH=2,CITY_GONE_DISTANCE=25;
  * it, so no group retreats before it arrived (planCity; it never shortens the plan's time; not the boss round).
  */
 export const CITY_ARRIVAL_SLACK=10;
+/**
+ * City run-in (NEW-20261013-ORQ-camera-zoom-out-e-roda, Orquestrador's option A of D-046). The planner places every group
+ * off the WIDEST legal camera (hero 44 px), farther out than with the 56 px framing, and a group cannot be released
+ * before the round starts (plus the warning), so a group whose route is long (the team on the praça point, on mouth line
+ * S) reached the plaza ~1.4 s later than its cadence slot. Such a late part (PendingSpawn.late) runs in at its own pace
+ * plus CITY_RUN_IN_SPEED (u/s) while it is off every viewer's screen at the DEFAULT zoom (planner.hiddenAtDefault,
+ * contract HERO_DEFAULT_SCREEN_PX), along the planner's flow, until it has made up the distance it is late by
+ * (late × its own speed: never ahead of its slot) or it comes on a default screen (from there on its own pace).
+ * Only with the whole live team in the base (the plaza flow is then the way the steer takes); never the tutorial, the
+ * boss, a retreating or frozen body. Groups on time are untouched. 2 u/s (the endless CATCH_UP_SPEED is 2.5): with
+ * the wide bodies squeezing by the hero rule (BUG-20261013-E8-tio-preso-cidade) the city room bots' runs are chaotic
+ * around it — 1.5 left the B line short of B3 in towers-bots, 2.5–3 left a bot idle 5.2–5.4 s near the plaza in
+ * city-room-bots ACCEPTANCE (c), 2 passes both and keeps the plaza pace (city-director first arrival/first wave).
+ */
+export const CITY_RUN_IN_SPEED=2;
 const retreatDir={x:0,y:0};
 
 export function activePlayers(ctx:SimContext){
@@ -374,8 +399,19 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     for(const pl of ctx.players.values())if(blocking(pl)&&visibleFrom(pl,p,options.cameraOf?.(ctx,pl)))return false;
     return true;
   }
-  /** Units a hero covers during the warning: a spot must stay hidden even if a player walks straight at it. */
-  const lead=SPEED*warning/SIM_HZ;
+  /**
+   * Pacing only (CATCH_UP_SPEED): off every player's screen at the DEFAULT zoom (contract visibleAtDefault). Spawns,
+   * recycling and fleeing bodies vanishing keep `hidden` (the widest legal camera).
+   */
+  function hiddenAtDefault(ctx:SimContext,p:Point){
+    for(const pl of ctx.players.values())if(blocking(pl)&&visibleAtDefault(pl,p,options.cameraOf?.(ctx,pl)))return false;
+    return true;
+  }
+  /**
+   * Units a hero covers during the warning at its real (2×, maps heroSpeed) walk: a spot must stay hidden even if a
+   * player walks straight at it.
+   */
+  const lead=(ctx:SimContext)=>heroSpeed(ctx.terrain)*warning/SIM_HZ;
   /**
    * Hidden from everyone with `margin` to spare: the spot moved `margin` units towards each player is hidden too.
    * Every legal screen is star-shaped around its player (convex rectangles that contain it), so that is the
@@ -390,7 +426,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     }
     return true;
   }
-  const hiddenAhead=(ctx:SimContext,p:Point)=>hiddenBy(ctx,p,lead);
+  const hiddenAhead=(ctx:SimContext,p:Point)=>hiddenBy(ctx,p,lead(ctx));
   const spawnable=(ctx:SimContext,p:Point)=>walkable(p,ctx.terrain)&&ctx.terrain.chunks!.clear(p.x,p.y,SPAWN_CLEARANCE);
   function nearestOf(list:readonly SimPlayer[],p:Point){
     let best:SimPlayer|undefined,d2=Infinity;
@@ -470,7 +506,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         if(d<=LAST_CALL_NEAR)continue;
         const m=e.memory??={};
         if(ctx.tick<(m.blockedUntil??-1))continue;
-        const boost=lastCallBoost(e.speed,hidden(ctx,e))/SIM_HZ;
+        const boost=lastCallBoost(e.speed,hiddenAtDefault(ctx,e))/SIM_HZ;
         if(boost<=0)continue;
         // Once a second: a body that did not get anywhere squeezes through for a while (STUCK_SECONDS).
         if(m.callTick===undefined||ctx.tick-m.callTick>=SIM_HZ){
@@ -480,13 +516,13 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         if(!hurry(ctx,e,dx/d*boost,dy/d*boost,ctx.tick<(m.squeezeUntil??-1)))m.blockedUntil=ctx.tick+BLOCKED_WAIT+(Math.floor((m.seed??0)*8)&7);
         continue;
       }
-      if(!hidden(ctx,e))continue;
+      if(!hiddenAtDefault(ctx,e))continue;
       const {player,d2}=nearestOf(anchors,e);
       if(!player||d2<1)continue;
       const d=Math.sqrt(d2),x=e.x,y=e.y;
       moveSafely(e,(player.x-e.x)/d*step,(player.y-e.y)/d*step,enemyTerrain(ctx.terrain),e.radius);
-      // The extra step never carries it onto a screen: the last stretch in is at its own pace.
-      if(!hidden(ctx,e)){e.x=x;e.y=y;}
+      // The extra step never carries it onto a (default-zoom) screen: the last stretch in is at its own pace.
+      if(!hiddenAtDefault(ctx,e)){e.x=x;e.y=y;}
     }
   }
   /**
@@ -507,6 +543,31 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       if(Math.hypot(e.x-x,e.y-y)>=want*.5)return true;
     }
     e.x=x;e.y=y;return false;
+  }
+  /** City run-in (CITY_RUN_IN_SPEED): late bodies off every default-zoom screen make up their lateness along the planner's flow. */
+  const runInDir={x:0,y:0};
+  function cityRunIn(ctx:SimContext){
+    let team=0;
+    for(const p of ctx.players.values()){
+      if(!(p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0))continue;
+      if(!planner!.insideBase(p))return;
+      team++;
+    }
+    if(!team)return;
+    const players=viewers(ctx),terrain=enemyTerrain(ctx.terrain),most=CITY_RUN_IN_SPEED/SIM_HZ;
+    for(const id of state.tracked){
+      const e=ctx.enemies.get(id),m=e?.memory,budget=m?.[RUN_IN];
+      if(!e||!m||budget===undefined)continue;
+      if(e.hp<=0||e.boss||m.retreat===1||ctx.tick<e.readyTick||e.frozenUntil!==undefined&&ctx.tick<e.frozenUntil)continue;
+      if(!(budget>1e-6)||!planner!.hiddenAtDefault(players,e)){delete m[RUN_IN];continue;}
+      planner!.directionFor(e,planner!.targetFor(e),runInDir);
+      if(runInDir.x===0&&runInDir.y===0)continue;
+      const x=e.x,y=e.y,step=Math.min(most,budget);
+      moveSafely(e,runInDir.x*step,runInDir.y*step,terrain,e.radius);
+      // Never onto a default-zoom screen: from its edge on, its own pace.
+      if(!planner!.hiddenAtDefault(players,e)){e.x=x;e.y=y;delete m[RUN_IN];continue;}
+      m[RUN_IN]=budget-Math.hypot(e.x-x,e.y-y);
+    }
   }
   /** VS recycling: enemies far from every player come back on a ring next to one, same id and hp, no kill. */
   function recycle(ctx:SimContext){
@@ -660,6 +721,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       return;
     }
     const index=spawn.group??0,at=state.plan!.groups[index]?.at??cityAt0(),now=ctx.tick-state.roundStart;
+    // The group's cadence slot: the arrival the planner aims at (firstArrivalSeconds after the round's first nominal at).
+    const slotArrival=planner!.firstArrivalTicks+Math.round(at-cityAt0());
     // Tutorial: the group behind the team comes out of the wreck (behindWarn); the other one is aimed at the plaza.
     const tutorial=tutorialRound(ctx);
     if(tutorial&&index===TUTORIAL_BEHIND){behindWarn(ctx,spawn,delay);return;}
@@ -673,6 +736,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       used+=members.length;
       const p=part.points[0],atTick=Math.max(state.roundStart+part.releaseTick,ctx.tick+delay+warning),warnTick=atTick-warning;
       const entry:PendingSpawn={...spawn,members,x:p.x,y:p.y,atTick,points:part.points.slice(0,members.length).map(q=>({x:q.x,y:q.y}))};
+      // Behind its slot (released at the earliest tick and still late): its bodies run in (CITY_RUN_IN_SPEED).
+      const late=atTick-state.roundStart+part.arrivalTick-part.releaseTick-slotArrival;
+      if(late>0&&!chaseCost&&!tutorial)entry.late=late;
       if(warnTick>ctx.tick)entry.warnTick=warnTick;
       else ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:members.length});
       state.pending.push(entry);
@@ -953,6 +1019,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       // Tutorial (cidade-08): the plaza group holds the plaza until a hero comes (citySteer PLAZA_HOLD_FLAG).
       const holds=entry.group===TUTORIAL_WELCOME&&tutorialRound(ctx);
       enemy.memory={...enemy.memory,round:plan.index,...(entry.siege?{[SIEGE_FLAG]:1}:{}),...(holds?{[PLAZA_HOLD_FLAG]:1}:{}),
+        // City run-in budget (u): what its own pace covers in the ticks the part is late (CITY_RUN_IN_SPEED).
+        ...(isCity&&entry.late&&enemy.speed>0?{[RUN_IN]:entry.late/SIM_HZ*enemy.speed}:{}),
         ...(tune?{[BAND_DAMAGE]:tune.damage,[BAND_CADENCE]:tune.cadence}:{})};
       state.tracked.push(enemy.id);state.spawned++;
     }
@@ -1104,6 +1172,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       }
       recycle(ctx);catchUp(ctx);
     }
+    if(order&&!tutorialRound(ctx))cityRunIn(ctx);
     save();
     const alive=()=>{state.tracked=state.tracked.filter(id=>ctx.enemies.has(id));};
     alive();

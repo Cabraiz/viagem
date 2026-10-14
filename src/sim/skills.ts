@@ -7,7 +7,7 @@
  */
 import {ticks,type EnemyState,type PickupKind,type SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
-import {clearSegment,moveDirection,type Point} from '../maps/index.ts';
+import {baseHeroSpeed,clearSegment,moveDirection,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {BLEED_OUT_TICKS,REVIVE_RADIUS} from './revive.ts';
@@ -104,10 +104,13 @@ const hpRatio=(p:SimPlayer)=>p.hp/Math.max(1,p.stats.maxHp);
 
 // ---------- Effects from VGM-044A, now parameterized and reused ----------
 interface AdvanceSpec {steps:number;pushRadius:number;damage:number;knock:number;shield:{radius:number;base:number;perEnemy:number;max:number}}
-/** Steps along facing (walkable only), hits and pushes the enemies around the landing spot, shields allies; more enemies = longer shield. */
+/**
+ * Steps along facing (walkable only), hits and pushes the enemies around the landing spot, shields allies; more enemies = longer shield.
+ * Each step is 0.1 s at the BASE hero walk (maps baseHeroSpeed), so the 2× walk (HERO_SPEED_MULT) leaves the dash length as tuned.
+ */
 const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
-  let at:Point={x:player.x,y:player.y};
-  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ctx.terrain);if(next===at)break;at=next;}
+  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain);
+  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ctx.terrain,speed);if(next===at)break;at=next;}
   const moved=at.x!==player.x||at.y!==player.y;
   player.x=at.x;player.y=at.y;
   const enemies=enemiesNear(ctx,player,area(player,spec.pushRadius)),hits:string[]=[];

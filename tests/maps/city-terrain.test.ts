@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom,cityAsField,cityTerrainFor} from '../../src/maps/city/terrain.ts';
 import {encodeCityAsset,decodeCityAsset,type CityAssetData,type CityBlock,type CityPoint} from '../../src/maps/city-asset.ts';
 import type {TerrainField} from '../../src/maps/terrain/field.ts';
-import {walkable,clearSegment,moveDirection,findPath,worldBase,worldSpawn,obstaclesNear,resourceObstacles,RADIUS,CITY_HERO_SPEED,type Point} from '../../src/maps/world.ts';
+import {walkable,clearSegment,moveDirection,findPath,worldBase,worldSpawn,obstaclesNear,resourceObstacles,RADIUS,CITY_HERO_SPEED,HERO_SPEED_MULT,type Point} from '../../src/maps/world.ts';
 import {simulate,reconcile,STEP} from '../../src/maps/prediction.ts';
 import {TERRAIN_VERSION} from '../../src/maps/index.ts';
 import {Rng} from '../../src/contract/rng.ts';
@@ -22,8 +22,8 @@ import {UPDATE_NEEDED} from '../../src/protocol/index.ts';
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
 const HASH=(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash;
-/** Longest move of one simulation tick (protocol 3: one STEP per input) at the city's faithful hero speed. */
-const MAX_STEP=CITY_HERO_SPEED*STEP+1e-9;
+/** Longest move of one simulation tick (protocol 3: one STEP per input) at the city's hero walk (2 × the faithful CITY_HERO_SPEED). */
+const MAX_STEP=CITY_HERO_SPEED*HERO_SPEED_MULT*STEP+1e-9;
 const VIEWS=[0,1,2,3] as const;
 
 /** A fresh, unregistered decode (cityTerrainFrom shares one instance per hash; determinism needs two). */
@@ -92,7 +92,7 @@ test('synthetic: a 2-sample corridor (0.44 u) fits a 0.22 disc only when centred
   assert.equal(synthetic.clearDisc(.65,CORRIDOR_Y,.22),false);
   // The hero walks the whole alley along its axis without being pushed off it.
   let p:Point={x:.7,y:CORRIDOR_Y};
-  // 48 ticks at the city speed (≈4.8 u) cover the ≈3.9 u alley and then press on its far wall.
+  // 48 ticks at the city walk (≈9.6 u) cover the ≈3.9 u alley and then press on its far wall.
   for(let i=0;i<48;i++){const q=moveDirection(p,{x:1,y:0},STEP,synthField);assert.ok(walkable(q,synthField));assert.equal(q.y,CORRIDOR_Y);p=q;}
   assert.ok(p.x>4.4&&p.x<=4.84-.22+1e-9,`reached the far end, x=${p.x}`);
 });
@@ -334,4 +334,30 @@ test("'cidade' only exists with the decoded city: no seed-built city, no silent 
   // cidade-06: the room plays on its own fork of the decoded city (same asset and signature, its own blockers).
   assert.ok(sim.terrain instanceof CityTerrain&&sim.terrain!==field&&sim.terrain.asset===real.asset);
   assert.equal(sim.terrain.signature,field.signature);assert.equal(sim.terrain.world,'cidade');
+});
+
+test('clearDisc fast accept (NEW-20261013-ORQ-cidade-flowfield): the same answer as reading every sample of the disc, the enemy view too',()=>{
+  const city=build(TEXT,HASH),a=city.asset,s=a.samples.step,sw=a.samples.w,sh=a.samples.h;
+  /** The rule read sample by sample (the pre-memo clearDisc). */
+  const every=(x:number,y:number,r:number)=>{
+    if(r<=1e-6)return a.walkableAt(x,y);
+    const reach=r-1e-6,r2=reach*reach,sx0=Math.floor((x-reach)/s),sx1=Math.floor((x+reach)/s),sy0=Math.floor((y-reach)/s),sy1=Math.floor((y+reach)/s);
+    if(sx0<0||sy0<0||sx1>=sw||sy1>=sh)return false;
+    for(let sy=sy0;sy<=sy1;sy++){const dy=y<sy*s?sy*s-y:y>(sy+1)*s?y-(sy+1)*s:0;
+      for(let sx=sx0;sx<=sx1;sx++){const dx=x<sx*s?sx*s-x:x>(sx+1)*s?x-(sx+1)*s:0;if(dx*dx+dy*dy<r2&&!a.walkable(sx,sy))return false;}}
+    return true;
+  };
+  const fork=city.fork(),discs=[{id:'barricada-N',x:84.15,y:79.53,r:1},{id:'b',x:30,y:40,r:2}];
+  for(const d of discs)fork.setBlocker(d.id,d);
+  const enemy=fork.forEnemies(),rng=new Rng(5),R=[0,.22,.25,.32,.5,.52,.75,.78,.9,1,2.5];
+  let clear=0;
+  for(let i=0;i<200000;i++){
+    const edge=i%4===0,x=edge?rng.int(0,sw)*s:rng.range(-1,sw*s+1),y=edge?rng.int(0,sh)*s:rng.range(-1,sh*s+1),r=R[i%R.length];
+    const want=every(x,y,r);
+    assert.equal(city.clearDisc(x,y,r),want,`clearDisc(${x},${y},${r})`);
+    const hit=discs.some(d=>{const reach=r+d.r-1e-6;return reach>0&&(x-d.x)**2+(y-d.y)**2<reach*reach;});
+    assert.equal(enemy.clearDisc(x,y,r),want&&!hit,`enemy clearDisc(${x},${y},${r})`);
+    if(want)clear++;
+  }
+  assert.ok(clear>20000,`${clear} clear discs sampled`);
 });

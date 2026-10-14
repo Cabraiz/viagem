@@ -207,9 +207,9 @@ interface PlayersLayer {
  * steered as above.
  * Retreating enemies are never steered. Each players field is built on its first call and rebuilt (setTargets, the
  * only O(cells) work) at most once every refreshTicks ticks (a fixed phase per field), when a live player's cell
- * changed (and `refresh(ctx)` rebuilds `playersField` on demand for the director's plans), so it depends on ctx.tick
- * and the players only (deterministic in a run). A restored sim builds them afresh on the first
- * call: up to refreshTicks − 1 ticks of a slightly fresher field than the original run had.
+ * changed (and `refresh(ctx)` rebuilds `playersField` on demand for the director's plans), and on the first use after a
+ * tick nobody used it, so it depends on ctx.tick, the players and the ticks bodies of its class were steered only: a
+ * restored sim (fields built on their first call) plays on bit for bit like the original (checkpoint-cidade).
  * Barricades (cidade-06): when the city grid's `version` moves (CityFlowGrid.refresh), every field — the players
  * field and each class's centre and corner fields — re-reads the changed cells (CityFlowGrid.changedSince, grown by
  * its class radius; the whole grid when the grid cannot tell) and recomputes once, lazily: on its first use on one of
@@ -256,8 +256,10 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
    */
   const update=(ctx:SimContext,l:PlayersLayer,force=false)=>{
     if(ctx.tick===l.checked&&!force)return;
+    // A field nobody used last tick holds the players of its last use: rebuild it now, like a fresh (restored) sim does.
+    const idle=l.checked!==ctx.tick-1;
     l.checked=ctx.tick;
-    const due=force||!l.ready||(ctx.tick-l.phase)%every===0;
+    const due=force||!l.ready||idle||(ctx.tick-l.phase)%every===0;
     if(!due)return;
     const v=cityGrid?.version??0, field=l.field, ox=field.originX, oy=field.originY, cs=field.cellSize;
     if(v!==l.gridVersion){

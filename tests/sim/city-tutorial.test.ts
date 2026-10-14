@@ -11,7 +11,9 @@
  *     critters never appear on the road ahead of the team.
  *  1b. The plaza group holds the plaza (citySteer PLAZA_HOLD_FLAG): with a slow novice (walks 3 s, stops 2 s) the first
  *     contact with it is in or next to the base on every seed, and with a hero who never moves it stays in the plaza
- *     until the cap (it never walks down to the wreck).
+ *     until the cap (it never walks down to the wreck). "In the plaza" for the hold is in the base (insideBase): with
+ *     the hero 2× (NEW-20261013-ORQ-velocidade-heroi-e-projetil) the last of a group squeezed in by a mouth can stop a
+ *     cell short of the plaza goal cells, which the Orquestrador accepted.
  *  2. The `round` events of round 1 carry CIDADE_TUTORIAL's name and line; the intro and arrival `say` lines are emitted
  *     once each, from the tables, by a hero; the wave ends only after a hero reached the plaza.
  *  3. Island and endless untouched: the director with cityTutorial on gives the digests recorded before cidade-05
@@ -99,10 +101,11 @@ function drive(sim:Simulation,n:Novice){
  * holds: a plaza-group body (memory PLAZA_HOLD_FLAG at birth); plaza: first tick inside the base (its mouth line
  * counts); square: first tick on the plaza itself (a plaza-field goal cell); released: the tick its hold dropped and
  * the nearest hero then; contact: first tick within CONTACT u of a hero, and that hero's place; strayed: farthest path
- * distance (u) from the plaza after it first stood on it, while holding it.
+ * distance (u) from the plaza after it first stood on it, while holding it; leftBase: it stepped out of the base after
+ * entering it, while holding it.
  */
 interface Spawned {id:string;tick:number;x:number;y:number;behind:boolean;mouth:Mouth;killed?:number;killedAt?:Point;holds:boolean;
-  plaza?:number;square?:number;released?:number;releasedHero?:{toPlaza:number;inBase:boolean;distance:number};
+  plaza?:number;square?:number;leftBase?:boolean;released?:number;releasedHero?:{toPlaza:number;inBase:boolean;distance:number};
   contact?:number;contactHero?:{at:Point;toPlaza:number;inBase:boolean};strayed:number}
 /** A body this close to a hero (u) touches it (bêbado .32 + hero .3, with room for the zig-zag). */
 const CONTACT=1.2;
@@ -155,6 +158,7 @@ function walk(seed:number,count:number,seconds=WATCH,mover:Mover='novice'):RunRe
       if(s.plaza===undefined&&JUDGE.insideBase(e))s.plaza=sim.tick;
       if(s.square===undefined&&toPlaza(e)===0)s.square=sim.tick;
       if(s.square!==undefined&&s.released===undefined&&e.memory?.retreat!==1)s.strayed=Math.max(s.strayed,toPlaza(e));
+      if(s.plaza!==undefined&&s.released===undefined&&e.memory?.retreat!==1&&!JUDGE.insideBase(e))s.leftBase=true;
       let near:SimPlayer|undefined;
       for(const p of heroes)if(!near||Math.hypot(p.x-e.x,p.y-e.y)<Math.hypot(near.x-e.x,near.y-e.y))near=p;
       if(!near)continue;
@@ -253,7 +257,7 @@ test('the plaza group holds the plaza: a slow novice meets it in or next to the 
     lines.push(`seed ${seed} slow: plaza at ${wave(r,r.novices[0].arrived)}; ${plazaGroup(r)}`);
     assert.equal(g.length,TUTORIAL_PLAN.welcome,`seed ${seed}: the plaza group holds (${PLAZA_HOLD_FLAG})`);
     for(const s of g){
-      assert.ok(s.square!==undefined&&(s.released===undefined||s.square<=s.released),`seed ${seed}: ${s.id} stood on the plaza before it engaged`);
+      assert.ok(s.plaza!==undefined&&(s.released===undefined||s.plaza<=s.released),`seed ${seed}: ${s.id} was in the base before it engaged`);
       if(s.released!==undefined){
         const h=s.releasedHero!;
         assert.ok(h.inBase||h.distance<=PLAZA_HOLD_RADIUS+.5,`seed ${seed}: ${s.id} engaged a hero ${h.distance.toFixed(1)} u away, ${h.toPlaza.toFixed(1)} u from the plaza`);
@@ -263,6 +267,7 @@ test('the plaza group holds the plaza: a slow novice meets it in or next to the 
         assert.ok(h.inBase||h.toPlaza<=PLAZA_HOLD_RADIUS,`seed ${seed}: ${s.id} first touched the hero at ${fmt(h.at)}, ${h.toPlaza.toFixed(1)} u down the road`);
       }
       assert.ok(s.strayed<=PLAZA_HOLD_RADIUS,`seed ${seed}: ${s.id} strayed ${s.strayed.toFixed(1)} u from the plaza`);
+      assert.ok(!s.leftBase,`seed ${seed}: ${s.id} left the base while holding it`);
     }
   }
   // A hero who never leaves the wreck: the plaza group waits in the plaza until the cap, then walks away.
@@ -272,10 +277,11 @@ test('the plaza group holds the plaza: a slow novice meets it in or next to the 
   assert.equal(n.arrived,undefined,'the hero never moved');
   assert.equal(g.length,TUTORIAL_PLAN.welcome,'the plaza group came');
   for(const s of g){
-    assert.ok(s.square!==undefined,`${s.id} reached the plaza`);
+    assert.ok(s.plaza!==undefined,`${s.id} reached the base`);
     assert.equal(s.released,undefined,`${s.id} never left its hold`);
     assert.equal(s.contact,undefined,`${s.id} never reached the hero at the wreck`);
     assert.ok(s.strayed<=PLAZA_HOLD_RADIUS,`${s.id} strayed ${s.strayed.toFixed(1)} u from the plaza`);
+    assert.ok(!s.leftBase,`${s.id} left the base while holding it`);
   }
   assert.ok(r.timedOut,'round 1 timed out at its cap');
   checkRound1(1,r);

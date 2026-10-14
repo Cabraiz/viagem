@@ -527,6 +527,22 @@ test('chase: the steer exposes the players field, whose goals follow the live pl
   assert.ok(steered,'no live player: the plaza flow');
   assert.ok(Math.abs(out.x-plaza.x)<1e-9&&Math.abs(out.y-plaza.y)<1e-9,`plaza direction ${fmt(plaza)}, got ${fmt(out)}`);
 });
+test('chase: a players field unused for a tick is rebuilt on its next use, like a fresh steer (a resumed room plays on bit for bit)',()=>{
+  // NEW-20261013-ORQ-velocidade-heroi-e-projetil (checkpoint-cidade): the original run kept a field built ticks ago, a
+  // restored sim built it afresh, and the two drifted apart in the next wave.
+  const P=planner(),old=citySteer(P),ctx=fakeCtx(5),r=new Rng(56);
+  const a=spotAway(r,20,35);let b=spotAway(r,20,35);
+  while(Math.hypot(a.x-b.x,a.y-b.y)<20)b=spotAway(r,20,35);
+  addPlayer(ctx,'p',a);
+  const e=catalogEnemy(ctx,'pombos',alongRoute('N',30)),p=ctx.players.get('p')!,out={x:0,y:0},fresh={x:0,y:0};
+  ctx.tick=1;old(ctx,e,p,out);
+  // Nobody of its class is steered for a while (an intermission); the hero walks to b. Tick 23 is off the field's phase.
+  p.x=b.x;p.y=b.y;ctx.tick=23;
+  old(ctx,e,p,out);
+  const steer=citySteer(P);steer(ctx,e,p,fresh);
+  assert.ok(old.playersField!.atGoal(b.x,b.y)&&!old.playersField!.atGoal(a.x,a.y),'the idle field was rebuilt on the hero');
+  assert.deepEqual(out,fresh,'the same direction as a fresh steer');
+});
 
 // ---------- 6. the boss in the plaza ----------
 test('boss round in the city: the round-10 boss appears in the plaza goal, ≥ 4 u from the team, warned 1.5 s before, not on an avenue',()=>{

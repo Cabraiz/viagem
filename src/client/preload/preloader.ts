@@ -16,6 +16,8 @@ export const slowConnection=(connection:{effectiveType?:string}|undefined)=>SLOW
 /** `fraction`: 0..1, each file weighing the same, a file in flight by its bytes so far (Content-Length) when known. */
 export interface PriorityProgress {done:number;total:number;failed:number;fraction:number}
 export interface PreloadProgress {P0:PriorityProgress;P1:PriorityProgress;P2:PriorityProgress;bytes:number;slow:boolean}
+/** Every queued file answered (failed ones too): nothing of the match is downloading. */
+export const preloadDone=(p:PreloadProgress)=>p.P0.done>=p.P0.total&&p.P1.done>=p.P1.total&&p.P2.done>=p.P2.total;
 interface BodyLike {ok:boolean;headers?:{get(name:string):string|null};body?:{getReader():{read():Promise<{done:boolean;value?:{byteLength:number}}>}}|null;blob():Promise<{size:number}>}
 type FetchLike=(url:string,init:{signal:AbortSignal;priority:'high'|'auto'|'low';credentials:'same-origin'})=>Promise<BodyLike>;
 export interface PreloaderOptions {

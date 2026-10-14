@@ -104,7 +104,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           BENCH_TARGET: ${{ needs.plan.outputs.target }}
           BENCH_TOTALS: ${{ needs.plan.outputs.totals }}
-        run: node tools/ci.mjs gate
+        # Authenticated with the run token (5000 req/h): a 5 s poll stops a wave of ~20 s seeds in time.
+        run: node tools/ci.mjs gate --poll 5
       - name: Early stop (the target can no longer flip)
         if: steps.gate.outputs.cancel == 'true'
         env:

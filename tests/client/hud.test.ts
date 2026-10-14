@@ -257,26 +257,29 @@ test('rematch: tally restarts but late events of the old run still dedupe (monot
   assert.equal(awards.find(a=>a.id==='mais-caiu')?.playerId,'p2');
 });
 
-test('D-021: in combat a held offer is a chip, opened only by a tap; in the intermission it opens by itself with a clock',()=>{
+test('D-050 (replaced D-021 in waves): a held offer shows only in the level-up pause, by itself, with no chip and no clock; the intermission opens by itself with a clock',()=>{
   const combat=fakeView('offer',6);
   assert.equal(offerMode(combat),'combat');
   assert.ok(combat.offers.every(o=>o.deadlineTick===HELD_DEADLINE),'fixture mirrors the server hold');
-  assert.deepEqual(offerUiState(combat,false),{mode:'combat',pending:2,chip:true,panel:false,clock:false,seconds:undefined});
-  assert.equal(offerUiState(combat,true).panel,true,'the chip opens the compact panel');
-  assert.equal(offerUiState(combat,true).clock,false,'no countdown while the server holds it');
+  assert.deepEqual(offerUiState(combat),{mode:'combat',pending:2,chip:false,panel:false,clock:false,seconds:undefined},'a wave outside a pause: nothing (the next pause opens it)');
+  assert.deepEqual(offerUiState(combat,false,true),{mode:'combat',pending:2,chip:false,panel:true,clock:false,seconds:undefined},'the pause opens it, the pause HUD has the clock');
   const wave=fakeView('wave',6);
-  assert.deepEqual(offerUiState(wave,true),{mode:'combat',pending:0,chip:false,panel:false,clock:false,seconds:undefined});
+  assert.deepEqual(offerUiState(wave,false,true),{mode:'combat',pending:0,chip:false,panel:false,clock:false,seconds:undefined});
   const prep=fakeView('offer-prepare',6);
-  const state=offerUiState(prep,false);
+  const state=offerUiState(prep);
   assert.equal(state.mode,'intermission');assert.equal(state.panel,true);
   assert.equal(state.chip,true,'the chip stays in the intermission: it folds the window away');
-  assert.equal(offerUiState(prep,false,true).panel,false,'folded: the island and the fallen are visible');
-  assert.equal(offerUiState(prep,false,true).chip,true,'and one tap brings it back');
+  assert.equal(offerUiState(prep,true).panel,false,'folded: the island and the fallen are visible');
+  assert.equal(offerUiState(prep,true).chip,true,'and one tap brings it back');
   assert.ok(prep.offers.length>=TAKE_ALL_MIN,'two waiting: "Levar os indicados" shows');
   assert.equal(state.clock,true);assert.equal(state.seconds,FIXTURE_INTERMISSION_SECONDS);
-  // A round offer the offline freeze carried into a wave keeps its real clock, behind the chip like the rest.
+  // A round offer the offline freeze carried into a wave keeps its real clock on the server; the room pauses for it
+  // like for a level (pendingOffers), and in the pause the window has no clock of its own.
   const carried={...combat,offers:[{...prep.offers[1],deadlineTick:combat.tick+ticks(4)}]};
-  assert.deepEqual([offerUiState(carried,false).chip,offerUiState(carried,false).panel,offerUiState(carried,true).clock],[true,false,true]);
+  assert.deepEqual([offerUiState(carried).chip,offerUiState(carried).panel,offerUiState(carried,false,true).panel,offerUiState(carried,false,true).clock],[false,false,true,false]);
+  // D-051 drops the rounds: with no round info the pause still wins (window, no chip, not foldable away).
+  const roundless={...combat,round:undefined,wave:undefined};
+  assert.deepEqual([offerUiState(roundless,true,true).panel,offerUiState(roundless,true,true).chip,offerUiState(roundless,false,true).clock],[true,false,false]);
   // No round info at all (legacy feed): offers open by themselves.
   assert.equal(offerMode({...combat,round:undefined,wave:undefined}),'intermission');
   assert.equal(offerMode({...combat,round:undefined,wave:{index:2,label:'x',phase:'wave'}}),'combat');

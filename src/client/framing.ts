@@ -78,9 +78,11 @@ export const FOLLOW_TAU_S=.09;
 /**
  * Look-ahead: this share of the useful area's half extent, in the direction the hero walks on screen. 0 since
  * BUG-20261013-ORQ-camera-centro-heroi (the hero stays in the centre while walking too; it was ~15%, UX-camera-segue).
+ * With it at 0, LOOK_TAU_S, lookLimit and FollowCamera's look easing are inert on the normal path; they are kept for if
+ * the look-ahead comes back (the card removed it at the user's request).
  */
 export const LOOK_AHEAD=0;
-/** The look-ahead eases in and out over this time constant, so stopping never jerks the view. */
+/** The look-ahead eases in and out over this time constant, so stopping never jerks the view (inert while LOOK_AHEAD is 0). */
 export const LOOK_TAU_S=.4;
 /** Where the hero's body sits over its feet (the figure is 96 world px tall, feet at the sprite origin): its middle. */
 export const HERO_BODY_UP_PX=HERO_WORLD_PX/2;
@@ -160,6 +162,7 @@ const areaOf=(viewport:Viewport,useful?:Rect):Rect=>useful&&useful.width>0&&usef
 /**
  * Largest look-ahead (world px per screen axis): LOOK_AHEAD of the useful area's half extent, but never so much that
  * the hero's box ± HERO_MARGIN leaves the useful area (landscape: the area is ~155 px tall, so it is ~8 px there).
+ * Inert while LOOK_AHEAD is 0 (camera-centro-heroi), kept for if the look-ahead comes back.
  */
 export function lookLimit(viewport:Viewport,zoom:number,useful?:Rect,hero?:Size,scale=1):Point{
   const area=areaOf(viewport,useful),h=hero??{width:HERO_WORLD_PX*scale*zoom,height:HERO_WORLD_PX*scale*zoom};
@@ -226,6 +229,8 @@ export class FollowCamera {
   step(hero:Point,seconds:number,viewport:Viewport,zoom:number,useful?:Rect,size?:Size){
     if(!this.ready||!this.last)return this.snap(hero,viewport,zoom,useful,size);
     const dt=clamp(seconds,0,.25);
+    // Outside `beside` there is no useful area: lookLimit measures the whole viewport, not the HUD's useful area, which
+    // is intended since the hero is framed at the viewport centre there.
     if(!this.beside)useful=undefined;
     const scale=this.world.scale,limit=this.lookAhead?lookLimit(viewport,zoom,useful,size,scale):{x:0,y:0};
     if(dt>0){

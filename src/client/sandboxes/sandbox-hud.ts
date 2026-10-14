@@ -41,6 +41,7 @@
  * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
+import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {RunHud} from '../hud/hud.ts';
 import type {RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
@@ -404,8 +405,8 @@ if(cidade)void (async()=>{
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30,y:map.plaza.y-26,boss:true}],
-      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now()});
-    void layout;void active;void chaveiro; // the keymaker's marks join the WC3 minimap's extras (Executor-8)
+      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
+    void layout;void active;
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});

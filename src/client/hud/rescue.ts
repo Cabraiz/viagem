@@ -31,6 +31,7 @@ import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
+import {chaveiroExtras} from './chaveiro-extras.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type CityView,type MouthId,type NoticeKind,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 
@@ -213,7 +214,9 @@ export class RescueBoard {
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
     this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,
       selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
-      corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt});
+      corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt,
+      // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
+      extras:chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last)))});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){

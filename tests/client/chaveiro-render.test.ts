@@ -12,6 +12,7 @@ import * as city from '../../src/client/hud/city/index.ts';
 import {EDGE_ICON,EDGE_PRIORITY} from '../../src/client/hud/edges.ts';
 import {ICON_NAMES} from '../../src/client/ui/icon.ts';
 import {fakeChaveiro} from '../../src/client/sandboxes/sandbox-chaveiro.ts';
+import {CHAVEIRO_MM_COLORS,chaveiroExtras} from '../../src/client/hud/chaveiro-extras.ts';
 
 const box=(extra:Partial<Box>={}):Box=>({x:0,y:0,z:0,l:2,w:1,h:1,color:0x808080,...extra});
 const near=(a:number,b:number,eps=1e-6)=>Math.abs(a-b)<=eps;
@@ -213,4 +214,15 @@ test('volta: the lap is centred on the moto, pushed out of the car when he rides
   assert.ok(d-VOLTA_RADIUS>=CAR_HALF.l,'the circle clears the car');
   assert.ok(near(c.x,10)&&c.y>11.8,'outward, on the moto\'s side');
   assert.ok(Number.isFinite(voltaCentre(car,car).x));
+});
+
+test('WC3 minimap extras: the route ahead (dashed), the delivery, the car and the moto (Cone when it needs the team); none once ended',()=>{
+  assert.deepEqual(chaveiroExtras(undefined),[]);
+  assert.deepEqual(chaveiroExtras(view({ended:'victory'})),[]);
+  const x=chaveiroExtras(view({delivery:{x:84.5,y:60,etaS:20}}));
+  assert.deepEqual(x.map(e=>e.kind),['rota','entrega','carro','moto']);
+  assert.equal(x[0].points!.length,4);assert.deepEqual(x[0].points![0],{x:84.5,y:40});
+  assert.equal(x[3].color,CHAVEIRO_MM_COLORS.moto);
+  assert.equal(chaveiroExtras(view({moto:{x:84.5,y:40,mode:'morta',push:.2}})).at(-1)!.color,CHAVEIRO_MM_COLORS.motoHelp);
+  assert.deepEqual(chaveiroExtras(view({route:undefined})).map(e=>e.kind),['carro','moto'],'no route yet: no line');
 });

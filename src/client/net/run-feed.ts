@@ -208,6 +208,8 @@ export class FrameRunFeed implements RunFeed {
       tick:v?.tick??0,team:v?{...v.team}:{xp:0,level:1,nextXp:1},round:v?.round?{...v.round}:undefined,...(v?.wave?{wave:{...v.wave}}:{}),
       enemies:v?.enemies??[],pickups:v?.pickups??[],projectiles:v?.projectiles??[],telegraphs:v?.telegraphs??[],structures:v?.structures??[],
       nodes:v?.nodes??[],...(v?.camp?{camp:{...v.camp}}:{}),
+      // D-047 (protocol 15): the chaveiro objective, as the decoder holds it (route and stops kept across frames).
+      ...(v?.objective?{objective:v.objective}:{}),
       players:this.bots.size&&v?v.players.map(p=>this.bots.has(p.id)?{...p,bot:true}:p):v?.players??[],offers:this.offers,events,
     };
   }

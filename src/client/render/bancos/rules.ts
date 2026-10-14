@@ -90,7 +90,8 @@ export class BankTracker {
       if(count){
         const n=this.heroNotes.get(b.id)??0;this.heroNotes.set(b.id,n+count);
         this.balloons=this.balloons.filter(x=>x.bank!==b.id);
-        const line=lineAt(b.id,n);
+        // The line falls on a multiple of LINE_EVERY among this view's notes (n..n+count-1), not only on n itself.
+        const at=Math.ceil(n/LINE_EVERY)*LINE_EVERY,line=at<n+count?lineAt(b.id,at):undefined;
         this.balloons.push(line?{bank:b.id,born:now,text:line,beep:false}:{bank:b.id,born:now,text:BANK_BEEP,beep:true});
       }
       this.last.set(b.id,b);

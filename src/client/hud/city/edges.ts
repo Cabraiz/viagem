@@ -49,11 +49,11 @@ export const MOUTH_ARROWS=2;
 
 const isGroup=(t:EdgeTarget)=>t.kind==='grupo'||t.key.startsWith('grupo:'),isMouth=(t:EdgeTarget)=>t.key.startsWith('boca:');
 /**
- * Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > a bank 3.8 (bancos) >
- * base 4; anything else never gets an arrow in the city (9).
+ * Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > a robbed bank 3.8 (bancos) >
+ * base 4 > a bank with notes 4.2 (the way back in the intermission goes first); anything else never gets an arrow in the city (9).
  */
 export function cityEdgeRank(t:EdgeTarget):number{
-  return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='banco'?3.8:t.kind==='base'?4:9;
+  return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='banco'?(t.danger?3.8:4.2):t.kind==='base'?4:9;
 }
 /**
  * The bank that gets an arrow (one at most, out of view): the one a critter robs (Cone: "corre lá"), else the nearest
@@ -145,7 +145,7 @@ export function mergeGroupTargets<T extends CityEdgeTarget>(targets:readonly T[]
 // layoutEdges folds a crowded arrow into one of the same kind ("+N"): during layout each city class rides the kind of
 // its rank (caído, chefe, grupo, boca as 'spawn', base), in edges.ts's priority order, so a group and a mouth never fold
 // into each other.
-const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',3.8:'banco',4:'base'};
+const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',3.8:'banco',4:'base',4.2:'banco'};
 
 /**
  * The part of `area` left beside the open windows (the offer, the forge, the minimap): for each window over it, the largest

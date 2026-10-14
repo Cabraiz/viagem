@@ -41,6 +41,8 @@ test('the arrow: the robbed bank first, else the nearest with notes; never an em
   assert.equal(bankForArrow([near,empty],hero,off)?.id,'near');
   assert.equal(bankForArrow([empty],hero,off),undefined);
   assert.equal(bankForArrow([near],hero,()=>true),undefined);
-  assert.equal(cityEdgeRank({key:'banco:a',kind:'banco',screen:{x:0,y:0},distance:1}),3.8);
+  assert.equal(cityEdgeRank({key:'banco:a',kind:'banco',screen:{x:0,y:0},distance:1,danger:true}),3.8,'a robbed bank before the base');
+  assert.equal(cityEdgeRank({key:'banco:a',kind:'banco',screen:{x:0,y:0},distance:1}),4.2,'an idle one after it (review 1, L8)');
+  assert.ok(cityEdgeRank({key:'base',kind:'base',screen:{x:0,y:0},distance:1})<4.2);
   assert.equal(EDGE_ICON.banco,'banco');assert.ok((ICON_NAMES as readonly string[]).includes('banco'));
 });

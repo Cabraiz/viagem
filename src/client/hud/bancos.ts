@@ -8,9 +8,16 @@
 import type {BankView} from '../../contract/index.ts';
 import {BANK_SHORT} from '../../rules/index.ts';
 import type {MmExtra} from './wc-minimap/minimap.ts';
+import {token} from '../ui/tokens.ts';
+
+/** a over b at `t` of b (#rrggbb), as the render's dim colour (Papel 45 % over Breu). */
+const over=(a:string,b:string,t:number)=>{
+  const x=parseInt(a.slice(1),16),y=parseInt(b.slice(1),16),ch=(s:number)=>Math.round((x>>s&255)*(1-t)+(y>>s&255)*t);
+  return '#'+((ch(16)<<16|ch(8)<<8|ch(0))>>>0).toString(16).padStart(6,'0').toUpperCase();
+};
 
 /** Token colours (ui/tokens.css): Cartolina (a favor), Cone (perigo), and Papel over Breu for an empty one. */
-export const BANK_MM_COLORS=Object.freeze({cheio:'#7ED957',bicho:'#FF7A1F',vazio:'#8A7F95'});
+export const BANK_MM_COLORS=Object.freeze({cheio:token('--c-cartolina'),bicho:token('--c-cone'),vazio:over(token('--c-papel'),token('--c-breu'),.55)});
 /** How long the robbery row stays (ms), and the quiet time before the same bank can call again. */
 export const BANK_ALERT_MS=3500,BANK_ALERT_REPEAT_MS=20000;
 

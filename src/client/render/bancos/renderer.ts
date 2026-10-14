@@ -28,7 +28,9 @@ const COVER_ALPHA=.45;
 
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
 
-interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string}
+interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
+  /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
+  figKey:string}
 
 export class BankRenderer {
   private scene:Phaser.Scene;
@@ -40,6 +42,10 @@ export class BankRenderer {
   private now=0;
   private q:Pt={x:0,y:0};
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+  /** Reused every frame (no allocation per frame): the saldo ring's points, the shadow's corners, the banks in view. */
+  private ring:Pt[]=[];private corners=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];private live=new Set<string>();
+  /** The ATM's faces per name, screen look and view (boxFaces is pure). */
+  private faces=new Map<string,readonly Face[]>();
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0};
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
@@ -49,7 +55,8 @@ export class BankRenderer {
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
-    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setStyle(this.balloonStyle(false));}});
+    // The fonts came: the tag and the balloon take their style again on the next frame (the balloon by its text).
+    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}});
   }
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
@@ -64,18 +71,18 @@ export class BankRenderer {
     const st=this.state;st.settle(time);
     this.ground.clear();this.fx.clear();
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
-    const live=new Set<string>();
+    const live=this.live;live.clear();
     for(const b of st.banks){
       live.add(b.id);
       const d=this.drawOf(b.id);
       const screen=screenOf(b,st.tick,time,reduced);
       this.drawArea(b,k);
       this.drawShadow(b.x,b.y);
-      d.figure.clear();
       const depth=proj.depth(b.x,b.y);
       d.figure.setDepth(depth);
-      const faces=boxFaces(atmBoxes(b.name,screen.look),HEADING,proj.view);
-      this.drawFaces(d.figure,b.x,b.y,faces,k);
+      const faces=this.facesOf(b.name,screen.look,proj.view),p=proj.project(b.x,b.y,this.q);
+      const key=`${screen.look}|${proj.view}|${k}|${p.x}|${p.y}`;
+      if(d.figKey!==key){d.figKey=key;d.figure.clear();this.drawFaces(d.figure,b.x,b.y,faces,k);}
       d.figure.setAlpha(this.covers(b.x,b.y,faces,depth)?COVER_ALPHA:1);
       this.drawTag(b,d,k);
       this.drawBalloon(b,d,k);
@@ -93,8 +100,13 @@ export class BankRenderer {
   private tagStyle(look:'normal'|'bicho'|'vazio'){
     return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},
       color:look==='bicho'?token('--c-breu'):token('--c-papel'),
-      backgroundColor:look==='bicho'?token('--c-cone'):look==='vazio'?token('--c-breu'):token('--c-ficha')};
+      backgroundColor:look==='bicho'?token('--c-cone'):look==='vazio'?token('--c-breu'):this.ficha()};
   }
+  /**
+   * --c-ficha (Breu at 88 %) as rgba: the token is a color-mix(), which a canvas fillStyle may not take (the tag's body
+   * would go transparent).
+   */
+  private ficha(){const c=this.c.breu;return `rgba(${c>>16&255},${c>>8&255},${c&255},0.88)`;}
   private balloonStyle(beep:boolean){
     return {fontFamily:beep?token('--f-cartaz'):token('--f-sistema'),fontSize:beep?'15px':'13px',padding:{x:7,y:3},
       color:token('--c-breu'),backgroundColor:beep?token('--c-cone'):token('--c-papel'),align:'center',wordWrap:{width:200}};
@@ -106,10 +118,15 @@ export class BankRenderer {
       d={figure:s.add.graphics(),
         tag:s.add.text(0,0,'',this.tagStyle('normal')).setOrigin(.5,1).setDepth(FX_DEPTH+1),
         balloon:s.add.text(0,0,'',this.balloonStyle(false)).setOrigin(.5,1).setDepth(FX_DEPTH+2).setVisible(false),
-        tagText:'',tagLook:''};
+        tagText:'',tagLook:'',figKey:''};
       this.draws.set(id,d);
     }
     return d;
+  }
+  private facesOf(name:BankView['name'],look:string,view:number):readonly Face[]{
+    const key=`${name}|${look}|${view}`;let faces=this.faces.get(key);
+    if(!faces){faces=boxFaces(atmBoxes(name,look as Parameters<typeof atmBoxes>[1]),HEADING,view);this.faces.set(key,faces);}
+    return faces;
   }
   /** Screen point of the bank plus a local offset (forward, left, up in units). */
   private at(x:number,y:number,fwd:number,left:number,z:number):Pt{
@@ -127,15 +144,18 @@ export class BankRenderer {
     const r=1.25*M*42,share=saldoShare(b),pulse=paying&&!this.options.reduced?1+Math.sin(this.now*.01)*.04:1;
     g.lineStyle(7*k,c.breu,.55).strokeEllipse(p.x,p.y,r*2*pulse,r*pulse);
     if(share<=0)return;
-    const color=b.state==='bicho'?c.cone:c.cartolina,n=Math.max(2,Math.ceil(48*share)),pts:Pt[]=[];
-    for(let i=0;i<=n;i++){const a=-Math.PI/2+share*Math.PI*2*i/n;pts.push({x:p.x+Math.cos(a)*r*pulse,y:p.y+Math.sin(a)*r*.5*pulse});}
-    g.lineStyle(4*k,color,1).strokePoints(pts,false);
+    const color=b.state==='bicho'?c.cone:c.cartolina,n=Math.max(2,Math.ceil(48*share)),pts=this.ring;
+    while(pts.length<n+1)pts.push({x:0,y:0});
+    for(let i=0;i<=n;i++){const a=-Math.PI/2+share*Math.PI*2*i/n;pts[i].x=p.x+Math.cos(a)*r*pulse;pts[i].y=p.y+Math.sin(a)*r*.5*pulse;}
+    g.lineStyle(4*k,color,1).strokePoints(pts,false,false,n+1);
   }
   private drawShadow(x:number,y:number){
     const v=this.options.projector.view,p=this.options.projector.project(x,y,this.q),ax=p.x+8,ay=p.y+3;
-    const corners=[[ATM_HALF.l,ATM_HALF.w],[-ATM_HALF.l,ATM_HALF.w],[-ATM_HALF.l,-ATM_HALF.w],[ATM_HALF.l,-ATM_HALF.w]].map(([u,w])=>{
-      const o=isoOffset(u,w,0,v);return {x:ax+o.x*1.15,y:ay+o.y*1.15};
-    });
+    const corners=this.corners;
+    for(let i=0;i<4;i++){
+      const o=isoOffset(i===0||i===3?ATM_HALF.l:-ATM_HALF.l,i<2?ATM_HALF.w:-ATM_HALF.w,0,v);
+      corners[i].x=ax+o.x*1.15;corners[i].y=ay+o.y*1.15;
+    }
     this.ground.fillStyle(LIGHT?LIT_SHADOW.color:this.c.breu,LIGHT?LIT_SHADOW.alpha:.25).fillPoints(corners,true);
   }
   private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number){

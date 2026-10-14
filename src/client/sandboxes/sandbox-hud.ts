@@ -59,7 +59,7 @@ import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type Hud
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {bankExtras} from '../hud/bancos.ts';
 import {RunHud} from '../hud/hud.ts';
-import type {BankView,RunView} from '../../contract/index.ts';
+import {SIM_HZ,type BankView,type RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
@@ -492,7 +492,7 @@ if(cidade)void (async()=>{
   const banks:BankView[]|undefined=params.get('bancos')==='1'?[
     {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
     {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
-    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*20},
+    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ},
   ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
     grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;

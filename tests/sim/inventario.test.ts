@@ -114,3 +114,22 @@ test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries 
   assert.equal(weaponNoise('faca'),0);assert.equal(weaponNoise('rojao'),10);
   assert.equal(weaponNoise('rojao',[{id:'silenciador',level:2}]),5);
 });
+
+test('city, manual combat: the crates stand on the loot points; standing by one fills the inventory; the view carries the hand',async()=>{
+  const {readFileSync}=await import('node:fs');const {fileURLToPath}=await import('node:url');const {cityTerrainFrom}=await import('../../src/maps/city/terrain.ts');
+  const root=(p:string)=>fileURLToPath(new URL(`../../${p}`,import.meta.url));
+  const loaded=await cityTerrainFrom(readFileSync(root('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(root('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
+  if(!loaded.ok)throw new Error(loaded.error);
+  const s=new Simulation(11,{world:'cidade',terrain:loaded.terrain,cityStructures:true,combat:'manual'});
+  s.add('p0','Ana','cidadao-comum');s.resetRun();
+  let now=1000;s.step(now+=50);
+  const crates=s.view('p0').pickups.filter(k=>k.kind==='chest');
+  assert.equal(crates.length,12,'MAX_CRATES on the map');
+  assert.ok(crates.every(k=>k.value>=1&&k.value<=4),'placed ones verde..dourada (lendária only drops)');
+  const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
+  for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
+  assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');
+  const got=me.build.weapons.length>1||s.view('p0').pickups.some(k=>k.kind==='item')||(s as any).systems.stonewards.state.grana>0;
+  assert.ok(got,'a prize came out');
+  assert.equal(s.view('p0').players[0].hand,me.build.hand);
+});

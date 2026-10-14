@@ -17,6 +17,8 @@ import {createProgression,type Progression,type ProgressionState} from './progre
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {UNITS_PER_TOKEN,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
+import {createCrates,type Crates,type CratesState} from './crates.ts';
+import {cityLoot} from './stonewards/loot.ts';
 import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
@@ -99,6 +101,8 @@ export interface RunSystemsState {
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
+  /** D-051, manual combat only: the crates on the map (sim/crates.ts). */
+  crates?:CratesState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -112,6 +116,8 @@ export interface RunSystems {
   chaveiro?:ChaveiroSystem;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
+  /** D-051 manual combat's crates (sim/crates.ts): dropCrate for the nests, opening() for the HUD; absent otherwise. */
+  crates?:Crates;
   /** D-051 manual combat's inventory commands (sim/inventory.ts); absent with the automatic weapons. */
   inventory?:{
     equip(playerId:string,slot:number):InventoryResult;use(playerId:string,slot:number):InventoryResult;
@@ -236,7 +242,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
   });
   if(cp)enemyAi.restore(cp.enemyAi);
+  // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. Its
+  // Grana goes to the team pot until the E5 wallet; a ficha prize to the team's tower units; the noise to the nests (E1).
+  const crates:Crates|undefined=manual?createCrates({seed:world.seed,
+    points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
+    hooks:{addGrana:(_ctx,_p,amount)=>{stonewards.state.grana+=amount;},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
+    ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
+    ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
     minionKinds:()=>director?.bossMinionKinds(),
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
@@ -312,6 +325,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
       // run (a join, a rematch); items walked over go to it.
       if(inventory){for(const p of ctx.players.values())if(!hasInventory(p)&&!p.spectator){p.build=manualStartingBuild();refreshStats(p);}inventory.step(ctx);}
+      crates?.step(ctx);
     }},
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
@@ -334,6 +348,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
+    ...(crates?{crates}:{}),
     ...(inventory?{inventory:{
       equip:(id,slot)=>{const p=world.players.get(id);return p?equipSlot(world,p,slot):{ok:false,reason:'player'};},
       use:(id,slot)=>{const p=world.players.get(id);return p?useSlot(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
@@ -341,7 +356,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       take:(id,pickup)=>{const p=world.players.get(id);return p?takeItem(world,p,pickup):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{})}),
     dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

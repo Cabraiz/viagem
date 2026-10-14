@@ -9,7 +9,7 @@ export const ARROW_MS=2000;
 export const HP_LINGER_MS=2000;
 /** Below this fraction of max hp the hero is "low" (bar turns Laranja Cone, the screen keeps a static edge). */
 export const LOW_HP=.3;
-/** Smallest on-screen size of the mini health bar, in CSS px (card: ≥ 28×4). */
+/** On-screen size of the mini health bar, in CSS px (card: ≥ 28×4), before the hero's draw scale (×0.8: 28.8×4.8). */
 export const HP_BAR_CSS={width:36,height:6} as const;
 /**
  * Smallest on-screen ground ring, in CSS px; it grows with the sprite when the camera zooms in (D-019).
@@ -24,10 +24,13 @@ export const RING_CSS={width:52,height:26,breu:2,voce:4,papel:2,beak:8} as const
 export const RING_SCALE=.7;
 /** The ring sits this far under the sprite on top (its sticker contour is at −0.2/−0.1, its shadow at −1). */
 export const RING_UNDER=.3;
-/** Ellipse (world px) of the ring for a drawn figure `figWidth` wide at `s` world px per CSS px. */
-export function ringSize(figWidth:number,s:number):{w:number;h:number}{
-  const w=Math.max(RING_CSS.width*s,figWidth*.8);
-  return {w:w*RING_SCALE,h:Math.max(RING_CSS.height*s,w*.5)*RING_SCALE};
+/**
+ * Ellipse (world px) of the ring for a drawn figure `figWidth` wide at `s` world px per CSS px. `k`: the hero's draw
+ * scale (render/draw-scale.ts HERO_DRAW_SCALE) on the CSS floor too, so the ring shrinks with the sprite.
+ */
+export function ringSize(figWidth:number,s:number,k=1):{w:number;h:number}{
+  const w=Math.max(RING_CSS.width*s*k,figWidth*.8);
+  return {w:w*RING_SCALE,h:Math.max(RING_CSS.height*s*k,w*.5)*RING_SCALE};
 }
 /** Sticker contour on the hero's sprite (§2.4): Papel 2 px, then Breu 1 px outside, hard (no blur). */
 export const STICKER_CSS={papel:2,breu:3} as const;

@@ -15,6 +15,7 @@ import {ELITE_ART_SCALE,applyEnemyArt,enemyArtKey,enemyDrawScale} from '../../sr
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {CITY_VIEW_SCALE,cityZoom} from '../../src/client/framing.ts';
 import type {CityAsset} from '../../src/client/render/city/asset.ts';
+import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 
 afterEach(()=>setArtIndex(parseArtIndex({version:2,groups:{}})));
 
@@ -359,7 +360,8 @@ test('M3 off the city (inactive host): no copy is ever built and every draw site
   const sprites=new CharacterSprites(f.scene,out),hero=fakeSprite('hero',sizeIn(out));
   sprites.viewScale=CITY_VIEW_SCALE;
   for(let i=0;i<5;i++){f.next();sprites.animate(hero as never,'porteiro',i,0);}
-  const scale=96/spriteCatalog.porteiro.height*CITY_VIEW_SCALE;
+  // × HERO_DRAW_SCALE: the heroes draw 20% under the reference figure (render/draw-scale.ts).
+  const scale=96/spriteCatalog.porteiro.height*CITY_VIEW_SCALE*HERO_DRAW_SCALE;
   assert.deepEqual([hero.texture.key,hero.originX,hero.originY,hero.scaleX,hero.scaleY],['sprite:porteiro',.5,.88,scale,scale]);
   assert.equal(out.built,0);assert.equal(out.stats().count,0);
   // City on: the copies; city off again (a world swap): both draw sites back on their base, origin and scale.

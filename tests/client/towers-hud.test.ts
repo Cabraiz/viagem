@@ -62,6 +62,16 @@ for(const [name,input] of [['retrato',PORTRAIT],['retrato com notch',PORTRAIT_NO
   });
 }
 
+test('landscape solo: the lone "Você" ficha at the bottom is the team row, so the window stays above it',()=>{
+  // One member: the strip is taller than wide (the 844×390 print had the ficha over "Vigias Armados / Rojão de Festa").
+  const SOLO:ZoneInput={...LANDSCAPE,team:{x:398,y:314,width:46,height:68}};
+  for(const scale of [1,1.25])for(const n of [1,2,3]){
+    const L=layoutObra(SOLO,scale,n);
+    assert.equal(crosses(L.panel,SOLO.team!),false,`${scale*100}% ${n} branches: the panel clears the ficha`);
+    assert.ok(L.fits,`${scale*100}% ${n} branches still fits`);
+  }
+});
+
 test('the window sits where the thumb reaches: bottom of the column in portrait, right side in landscape',()=>{
   const p=layoutObra(PORTRAIT,1,3);
   assert.equal(p.form,'coluna');

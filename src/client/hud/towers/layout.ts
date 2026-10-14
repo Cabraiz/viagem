@@ -16,7 +16,7 @@
  * - Sites off screen get edge arrows (obraArrows, card E4-obras-visiveis-da-base): the 1–3 nearest, laid out by the edge
  *   arrows' layoutEdges around the arrows already on the rim (the base's ficha), so they never cover it nor each other.
  */
-import {MIN_PLAY_SIDE,bottom,computeZones,crosses,right,type Orientation,type Rect,type ScreenZones,type ZoneInput} from '../zones.ts';
+import {MIN_PLAY_SIDE,bottom,computeZones,crosses,right,teamIsRow,type Orientation,type Rect,type ScreenZones,type ZoneInput} from '../zones.ts';
 import {arrowHalf,layoutEdges,type EdgeArrow,type EdgeTarget} from '../edges.ts';
 
 export const OBRA_PAD=8,OBRA_GAP=6,OBRA_BUTTON=48,OBRA_TARGET=44,OBRA_MARKER=48,OBRA_EDGE=8;
@@ -69,7 +69,7 @@ export function layoutObra(input:ZoneInput,scale:number,branches:number):ObraLay
     const leftEdge=base.leftThumb?right(base.leftThumb):safe.left;
     const w=Math.max(0,Math.min(OBRA_MAX_WIDTH,vw-safe.right-leftEdge-MIN_PLAY_SIDE-OBRA_EDGE));
     const yBottomAt=(px:number,pw:number)=>{
-      const team=input.team&&input.team.width>=input.team.height&&right(input.team)>px&&input.team.x<px+pw?input.team.y-8:Infinity;
+      const team=input.team&&teamIsRow(input.team,input.viewport)&&right(input.team)>px&&input.team.x<px+pw?input.team.y-8:Infinity;
       return Math.min(floor,team,...thumbTops.filter(t=>right(t)>px&&t.x<px+pw).map(t=>t.y));
     };
     const places:{x:number;w:number}[]=[{x:vw-safe.right-w,w}];

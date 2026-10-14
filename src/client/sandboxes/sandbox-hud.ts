@@ -32,7 +32,10 @@
  * state=wave (xp adds drops, rescue downs Zé do Pix), chip with state=offer, gather with state=prepare.
  * `bicho=bebado|anao-molotov|pombos|tio-pave|agiota|chefe|coach|motoboy|influencer` (arte v2): with state=downed the local fall names that critter
  * (the banner's cause line), with state=result every fall does ("Te derrubou"); its icon is the imported `ui/inimigo-<id>`
- * (art/hud-art.ts). Without that piece the line is text only here (the game then shows the enemy's sprite).
+ * (art/hud-art.ts), else the still frame of its own enemy sheet (a roster id too, e.g. `bicho=rato-de-boteco`), cropped
+ * here once the sheet loads. Without any art the line is text only here (the game then shows the enemy's sprite).
+ * With `zueira=killcam` the kill-cam's critter is `bicho` (default tio-pave): its portrait in the frame, or, without art
+ * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {RunHud} from '../hud/hud.ts';
@@ -41,7 +44,7 @@ import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
 import {icon} from '../ui/icon.ts';
-import {critterIconSource} from '../art/hud-art.ts';
+import {critterIconSource,critterSheetFrame} from '../art/hud-art.ts';
 import {artReady} from '../ui/art-boot.ts';
 
 /** Longest real copy, so the marquee is tested with the worst case the director can draw. */
@@ -128,9 +131,27 @@ const hud=new RunHud(document.body,{
   // The game passes onExit, so the result has its three buttons here too (Revanche, Arrumar a sala, Sair).
   onExit(){document.body.dataset.exit='1';},
   coachStorage:{getItem:k=>coachStore.get(k)??null,setItem:(k,v)=>{coachStore.set(k,v);}},
-  ...(bicho?{critterIcon:(kind:string)=>{const s=critterIconSource(kind);return s&&'url' in s?s.url:undefined;}}:{}),
+  ...(bicho?{critterIcon:(kind:string)=>{const s=critterIconSource(kind);return s&&'url' in s?s.url:cropped.get(kind)??(cropFrame(kind),undefined);}}:{}),
 });
 (window as unknown as {__hud:RunHud}).__hud=hud;
+/**
+ * The sandbox has no Phaser textures: a critter's still frame (art/hud-art.ts critterSheetFrame) cut from its sheet into
+ * a data URL, once; the scene is drawn again when it is in. A sheet that fails leaves the critter without a sticker.
+ */
+const cropped=new Map<string,string>(),cropping=new Set<string>();
+function cropFrame(kind:string){
+  const f=critterSheetFrame(kind);
+  if(!f||cropping.has(kind))return;
+  cropping.add(kind);
+  const img=new Image();
+  img.onload=()=>{
+    const w=img.naturalWidth/f.columns,h=img.naturalHeight/f.rows,c=document.createElement('canvas');
+    c.width=Math.round(w);c.height=Math.round(h);
+    c.getContext('2d')?.drawImage(img,f.col*w,f.row*h,w,h,0,0,c.width,c.height);
+    cropped.set(kind,c.toDataURL());load(scenario);
+  };
+  img.src=f.url;
+}
 
 let eventId=0;
 function load(next:HudScenario){
@@ -184,7 +205,7 @@ void artReady().then(ok=>{if(ok)load(scenario);});
 const zueira=params.get('zueira');
 if(zueira){
   const send=()=>{
-    const e=zueira==='killcam'?{type:'last-bicho' as const,kind:'tio-pave',x:4,y:6,round:view.round?.index??3,by:view.players[1]?.id}
+    const e=zueira==='killcam'?{type:'last-bicho' as const,kind:bicho??'tio-pave',x:4,y:6,round:view.round?.index??3,by:view.players[1]?.id}
       :{type:'happening' as const,kind:zueira as 'boletos'|'promo'|'apagao',endsTick:tick+60};
     hud.update({...view,events:[{...e,eventId:++eventId}]});
   };

@@ -43,10 +43,14 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'config-menu':{sandbox:'config',query:'cena=menu',descricao:'engrenagem do menu: Música, Efeitos e vibração'},
 });
 
-/** The scene's page query: the sandbox, its parameters, `foto=<cena>`, then the caller's extras (they win). */
+/**
+ * The scene's page query: the sandbox, its parameters, `foto=<cena>`, then the caller's extras (they win). The HUD
+ * sandbox prints without its row of state buttons (`clean=1`): it covered the phone's team fan and the offer.
+ */
 export function fotoSearch(cena:string,search:string):string|undefined{
   const scene=FOTO_CENAS[cena];if(!scene)return undefined;
   const out=new URLSearchParams(`sandbox=${scene.sandbox}&${scene.query}`);
+  if(scene.sandbox==='hud')out.set('clean','1');
   out.set('foto',cena);
   for(const [k,v] of new URLSearchParams(search))if(k!=='foto'&&k!=='sandbox')out.set(k,v);
   return `?${out.toString()}`;
@@ -58,6 +62,17 @@ export const fotoClock=(search:string)=>{const t=Number(new URLSearchParams(sear
 type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=>void;ground?:()=>boolean}};
 const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
 const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
+
+/**
+ * Waits for the finite animations running now (delays included) to finish, up to `ms`: one pass, so a banner's own
+ * exit, which starts later, does not take it off the print.
+ */
+async function settleAnimations(ms:number){
+  const running=document.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getComputedTiming().endTime??Infinity));
+  if(!running.length)return;
+  await Promise.race([Promise.all(running.map(a=>a.finished.catch(()=>undefined))),new Promise(r=>setTimeout(r,ms))]);
+  await frames(2);
+}
 
 /**
  * `?foto=<cena>`: rewrites the address to the scene's sandbox query (the sandboxes read location.search when they load),
@@ -87,6 +102,9 @@ export async function abrirFoto(){
     await document.fonts?.ready;
     // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.
     await frames(scene.sandbox==='cidade'?20:4);
+    // Entrances (the result's cards, a banner sliding in, an arrow gliding to its edge) end before the print: finite CSS
+    // animations and transitions run to their end (the looping ones, a pulse or a marquee, stay where they are).
+    await settleAnimations(5000);
     w.__cidade?.freeze?.();
     w.__fotoPronta=true;
   }catch(e){w.__fotoErro=String(e);}

@@ -92,6 +92,8 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser):not(.hs-hero){display
 .hs-bar{position:fixed;z-index:20;left:50%;bottom:2px;transform:translateX(-50%);display:flex;gap:4px;opacity:.85}
 .hs-bar button{font:600 10px system-ui;padding:2px 5px;border-radius:6px;border:1px solid #fff8;background:#302536cc;color:#fff}
 .hs-bar[hidden]{display:none}
+body:has(.rh[data-hud=fone]) .hs-cam{display:none} /* the phone's camera buttons live in the settings (fone.css) */
+body:has(.rh-result:not([hidden])) .hs-hero{display:none} /* the game's hero is under the HUD (Phaser), not over the result */
 .hs-cidade .hs-world{background:repeating-linear-gradient(135deg,#eef3f6 0 22px,#e3eaef 22px 44px)}.hs-cidade .hs-world::after{display:none}
 /* The game's coach style for the joystick (explore.css .explore-stick under data-coach-stick): edge and knob in Amarelo. */
 body:has(>.rh[data-coach-stick]) .hs-stick{border-color:var(--c-amarelo,#FFD23F);color:var(--c-amarelo,#FFD23F)}

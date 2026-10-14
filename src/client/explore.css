@@ -121,6 +121,8 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .economy-toast-icon{flex:none;display:grid;place-items:center}
 .economy-toast-text{display:block;min-width:0;margin:0;padding:2px 0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-13)/1.2 var(--f-sistema);text-align:left}
 .economy-toast-text strong+span::before{content:' · '}
+/* A portrait phone has room for the news only: "Tava engasgando" was cut to "Tava engas…" (varredura do celular). */
+@media (max-width:420px){.economy-toast-text strong+span{display:none}}
 .economy-toast-text strong{font-weight:800}
 .economy-toast-off{position:relative;align-self:stretch;flex:none;min-width:44px;min-height:24px;margin:0;padding:0 10px;border:0;border-left:2px solid var(--c-papel);border-radius:0 var(--r-ficha) var(--r-ficha) 0;background:var(--c-lilas-escuro);color:var(--c-papel);font:800 var(--t-13)/1 var(--f-sistema);cursor:pointer}
 .economy-toast-off::before{content:'';position:absolute;inset:-10px 0}

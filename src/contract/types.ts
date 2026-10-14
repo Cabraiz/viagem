@@ -172,7 +172,10 @@ export type SimEvent=
    * it: `enemy`), and a critter that became a Cliente Prime there.
    */
   | {type:'bank-cash';bank:string;amount:number;by:'hero'|'enemy';enemy?:string}
-  | {type:'bank-prime';bank:string;enemy:string};
+  | {type:'bank-prime';bank:string;enemy:string}
+  /** A bank ran dry ('SEM CÉDULAS' until its refill) and when it is back with cash. */
+  | {type:'bank-empty';bank:string;until:number}
+  | {type:'bank-refill';bank:string};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

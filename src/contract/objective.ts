@@ -41,13 +41,15 @@ export type CidaBuyResult={ok:true;item:CidaItemId;grana:number}|{ok:false;reaso
 /**
  * A bank (rules/bancos.ts, card bancos-e-veiculos): an ATM at a fixed point of the run. state: 'aberto' (full or
  * partly, nobody at it), 'sacando' (a hero holds it and it pays), 'bicho' (a critter is withdrawing), 'sem-cedulas'
- * (empty until `until`, a tick). saldo: R$ left in it. x, y, name are static per run (sent on keyframes).
+ * (empty until `until`, a tick). saldo: R$ left in it. drawer: the critter withdrawing (state 'bicho'). id, x, y, name
+ * are static per run (the protocol sends them on keyframes); saldo, state, until, drawer change. In the city, both
+ * modes (chaveiro and the wall): RunView.banks, not the objective.
  */
 export type BankState='aberto'|'sacando'|'bicho'|'sem-cedulas';
 /** The banks' names (their text and numbers: rules/bancos.ts); never a real brand. */
 export const BANK_IDS=['pao-duro','juros','posto'] as const;
 export type BankName=typeof BANK_IDS[number];
-export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number}
+export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string}
 
 /** The objective as the HUD and the bots see it (ObjectiveView; seconds rounded up, ticks absolute). */
 export interface ObjectiveView {
@@ -70,8 +72,6 @@ export interface ObjectiveView {
   /** The next delivery stop ahead (DELIVERY_MARK_SECONDS: when the HUD and the bots mark it), with the moto's ETA to it. */
   delivery?:{x:number;y:number;etaS:number};
   car:{x:number;y:number;hits:number;limit:number;parts:number};
-  /** The run's banks (BankView), absent when the run has none. */
-  banks?:BankView[];
   ended?:'victory'|'defeat';
 }
 /** Seconds before the moto reaches a delivery stop when the HUD and the bots start marking it. */

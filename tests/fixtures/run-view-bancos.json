@@ -1,0 +1,20 @@
+{
+  "_comment": "card bancos-e-veiculos: the bank fields of a RunView (src/contract/view.ts RunView.banks, EnemyView.prime, SimEvent bank-*). Positions are on the 1.7x Cidade Nevada; tick 6000 = 5 min. The render and the HUD draw on this until the sim fills it.",
+  "tick": 6000,
+  "banks": [
+    {"id": "banco-1", "x": 92.4, "y": 63.1, "name": "pao-duro", "saldo": 28, "state": "sacando"},
+    {"id": "banco-2", "x": 214.7, "y": 140.2, "name": "juros", "saldo": 12, "state": "bicho", "drawer": "e-412"},
+    {"id": "banco-3", "x": 151.0, "y": 238.6, "name": "posto", "saldo": 0, "state": "sem-cedulas", "until": 7800}
+  ],
+  "enemies": [
+    {"id": "e-412", "kind": "agiota", "x": 215.6, "y": 141.0, "hp": 54, "maxHp": 60},
+    {"id": "e-377", "kind": "bebado", "x": 210.9, "y": 136.4, "hp": 45, "maxHp": 45, "prime": true}
+  ],
+  "events": [
+    {"type": "bank-cash", "bank": "banco-1", "amount": 2, "by": "hero", "eventId": 901},
+    {"type": "bank-cash", "bank": "banco-2", "amount": 2, "by": "enemy", "enemy": "e-412", "eventId": 902},
+    {"type": "bank-prime", "bank": "banco-2", "enemy": "e-377", "eventId": 903},
+    {"type": "bank-empty", "bank": "banco-3", "until": 7800, "eventId": 904},
+    {"type": "bank-refill", "bank": "banco-3", "eventId": 905}
+  ]
+}

@@ -158,7 +158,7 @@ export function cellsToUnits(cells:number,profile:ScaleProfile):number{return no
 export function unitsToCells(units:number,profile:ScaleProfile):number{return nonNegative('units',units)/checked(profile).cell;}
 
 // ---------- Bodies and speeds ----------
-/** Hero diameter in cells (cidade-nevada ≈ 0.5). */
+/** Hero diameter in map cells (cidade-nevada ≈ 0.29: half a .w3x cell ÷ CITY_MAP_SCALE). */
 export function heroWidthCells(profile:ScaleProfile):number{const p=checked(profile);return 2*p.hero.radius/p.cell;}
 /** Common enemy speed in u/s; `multiplier` scales per enemy kind (1 = common). */
 export function enemySpeed(profile:ScaleProfile,multiplier=1):number{
@@ -203,8 +203,8 @@ export function floorWidthUnits(profile:ScaleProfile,viewportWidth:number,minHer
 }
 /**
  * Camera target for a CSS viewport (D-030): the faithful D-026 width (visibleWidthUnits), narrowed when needed so the
- * drawn hero never falls under the 56 px floor. On 844×390 that is ≈15.1 cells (not 18) and on 390×844 ≈7.0 (not
- * 10.5); `floored` says the floor won. pixelsPerUnit is along screen x (screen y is half, TILE_Y); Phaser zoom =
+ * drawn hero never falls under the 56 px floor. On 844×390 that is ≈15.1 .w3x cells (not 18) and on 390×844 ≈7.0 (not
+ * 10.5); visibleCells counts map cells (÷ CITY_MAP_SCALE in the city); `floored` says the floor won. pixelsPerUnit is along screen x (screen y is half, TILE_Y); Phaser zoom =
  * pixelsPerUnit / (42·√2). heroPixels is the drawn figure, bodyPixels the collision diameter. Width-only: the camera
  * card (cidade-04) adds a height cap for near-square screens. The 'infinito' widths are snapshots of framing.ts
  * followZoom on the D-009 phones only; the endless map keeps using followZoom.

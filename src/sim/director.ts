@@ -21,7 +21,7 @@
  */
 import type {TerrainField} from '../maps/index.ts';
 import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
-import {MAX_ENEMIES,roleOf} from '../rules/index.ts';
+import {CITY_MAP_SCALE,MAX_ENEMIES,roleOf} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleAtDefault,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
@@ -268,9 +268,11 @@ const STUCK_UNITS=.5,STUCK_SECONDS=2;
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
  * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
- * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
+ * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap. Map lengths:
+ * 2 / 25 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7) → 3.4 / 42.5 u; at the retreat
+ * pace (≥ 2.25 u/s) 42.5 u is ~19 s, inside the 60 s cap.
  */
-export const CITY_EXIT_REACH=2,CITY_GONE_DISTANCE=25;
+export const CITY_EXIT_REACH=2*CITY_MAP_SCALE,CITY_GONE_DISTANCE=25*CITY_MAP_SCALE;
 /**
  * City round timer (v2): a wave that times out lasts at least until the slowest member of the last group could reach
  * the plaza (or the team, where it stood when the wave started, if that is farther), plus this many seconds to fight

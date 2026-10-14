@@ -52,6 +52,13 @@ const halfW=(scale:number)=>(44+32*scale)/2,HALF_H=18,RIM_PAD=8,TAG_ROOM=16,NAME
 const railOf=(u:Rect,scale:number)=>{const hw=halfW(scale)+RIM_PAD,hh=HALF_H+RIM_PAD;return r(u.x+hw,u.y+hh+TAG_ROOM,u.width-2*hw,u.height-2*hh-TAG_ROOM-NAME_ROOM);};
 const within=(a:Rect,box:Rect,eps=.5)=>a.x>=box.x-eps&&a.y>=box.y-eps&&right(a)<=right(box)+eps&&bottom(a)<=bottom(box)+eps;
 const near=(a:number,b:number,eps=1e-6)=>Math.abs(a-b)<=eps;
+/**
+ * NEW-20261013-ORQ-cidade-escala-1-7: the city is 1.7× the .w3x map (287.232 u, asset version 2); map lengths (the city,
+ * the plaza, GROUP_RANGE, the avenue match) are × K, people lengths (danger radii, GROUP_CELL, NEAR_BLOCK) are not.
+ * MID shifts the old fixtures (built around the 169 u map's centre 84.5) onto the new centre by whole 8 u cells, so a
+ * blob keeps its group cell.
+ */
+const K=deps.CITY_MAP_SCALE,MID=Math.round((287.232/2-84.5)/8)*8;
 const fmt=(a:Rect|undefined)=>a?`{${a.x},${a.y},${a.width},${a.height}}`:'undefined';
 const lcg=(seed:number)=>{let s=seed>>>0;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};};
 
@@ -150,8 +157,8 @@ const MUST_POINT=['caido','chefe'] as const;
 test('contract: constants and reference controls match the doc (§0, §1, §2, §3, §4)',()=>{
   assert.equal(THUMB_GAP,24);assert.equal(HERO_MARGIN,40);assert.equal(EDGE_COLUMN,120);assert.equal(MAX_ARROWS,6);
   assert.equal(city.MINIMAP_SIDE,76);assert.equal(city.BIG_MIN_SIDE,120);assert.equal(typeof city.bigMinimapSide,'function');
-  assert.equal(city.GROUP_CELL,8);assert.equal(city.GROUP_MIN,5);assert.equal(city.GROUP_RANGE,60);assert.equal(city.GROUP_ARROWS,2);
-  assert.equal(city.CITY_SIZE,169);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
+  assert.equal(city.GROUP_CELL,8);assert.equal(city.GROUP_MIN,5);assert.equal(city.GROUP_RANGE,60*K);assert.equal(city.GROUP_ARROWS,2);
+  assert.equal(K,1.7);assert.equal(city.CITY_SIZE,287.232);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
   for(const o of ['portrait','landscape'] as const){
     const k=city.REFERENCE_CONTROLS[o] as any,d=DOC[o];
     assert.deepEqual(k.joystick,d.joystick,`${o} joystick`);assert.deepEqual(k.skill,d.skill,`${o} skill`);assert.deepEqual(k.team,d.team,`${o} team`);
@@ -569,8 +576,8 @@ test('9. clusterEnemies: a long line splits into groups of one ring at most (spr
 const G=(key:string,x:number,y:number,count:number):EnemyGroup=>({key,x,y,count,ids:Array.from({length:count},(_,i)=>`${key}-${i}`)});
 const HERO={x:84.5,y:84.5};
 const offScreen=(p:{x:number;y:number})=>Math.hypot(p.x-HERO.x,p.y-HERO.y)<8;
-test('9. pickGroupArrows: off-screen, ≥ 5, within 60 u, nearest first, at most 2, ties by count then key, hysteresis',()=>{
-  const groups=[G('far',HERO.x+70,HERO.y,8),G('small',HERO.x,HERO.y+15,4),G('a',HERO.x+20,HERO.y,6),G('b',HERO.x-30,HERO.y,12),G('c',HERO.x,HERO.y-40,9),G('seen',HERO.x+5,HERO.y,20)];
+test('9. pickGroupArrows: off-screen, ≥ 5, within GROUP_RANGE (60 u × K), nearest first, at most 2, ties by count then key, hysteresis',()=>{
+  const groups=[G('far',HERO.x+city.GROUP_RANGE+10,HERO.y,8),G('small',HERO.x,HERO.y+15,4),G('a',HERO.x+20,HERO.y,6),G('b',HERO.x-30,HERO.y,12),G('c',HERO.x,HERO.y-40,9),G('seen',HERO.x+5,HERO.y,20)];
   assert.deepEqual(city.pickGroupArrows(groups,HERO,offScreen).map(g=>g.key),['a','b']);
   assert.deepEqual(city.pickGroupArrows(groups,HERO,offScreen,{max:5}).map(g=>g.key),['a','b','c'],'never on screen, never under 5, never past 60 u');
   assert.deepEqual(city.pickGroupArrows(groups,HERO,offScreen,{max:5,min:3}).map(g=>g.key),['small','a','b','c']);
@@ -592,7 +599,7 @@ const rot=(p:{x:number;y:number},view:number)=>{switch(((view%4)+4)%4){case 1:re
 const VIEWS:CityView[]=[0,1,2,3];
 test('9. cityMinimapPoint: city corners on the diamond vertices at ±34 px; mouths at mid-sides turning 90° per view',()=>{
   const map=city.DEFAULT_CITY,c=map.size;
-  assert.equal(c,city.CITY_SIZE);assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:84.5,y:84.5});
+  assert.equal(c,city.CITY_SIZE);assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:143.616,y:143.616});assert.equal(map.plaza.radius,10*K);
   assert.deepEqual(map.mouths.map(m=>m.id).sort(),['L','N','O','S']);
   assert.ok(map.start.x>=0&&map.start.x<=c&&map.start.y>=0&&map.start.y<=c);
   for(const view of VIEWS){
@@ -713,23 +720,23 @@ const edgeWorld=(hero:{x:number;y:number},onScreen:boolean)=>{
 };
 test('§3 group ficha turns Cone (danger) within 8 u of the hero or 12 u of the wall, never otherwise',()=>{
   assert.equal(city.GROUP_DANGER_HERO,8);assert.equal(city.GROUP_DANGER_WALL,12);
-  const hero={x:84.5,y:150},rnd=lcg(8),map=city.DEFAULT_CITY;
+  const hero={x:84.5+MID,y:150+MID},rnd=lcg(8),map=city.DEFAULT_CITY;
   const base={hero,selfId:'me',players:[{id:'me',...hero}],activeMouths:[] as ('N'|'S'|'L'|'O')[],map,phase:'wave' as const,...edgeWorld(hero,false)};
-  // Near the hero (≈ 6.8 u) and far from both (≈ 43 u from the hero, ≈ 65 u from the wall).
-  const near=blob('n',89.75,145.75,6,rnd),far=blob('f',41.75,145.75,7,rnd);
+  // Near the hero (≈ 6.8 u) and far from both (≈ 43 u from the hero, ≈ 57 u from the wall).
+  const near=blob('n',89.75+MID,145.75+MID,6,rnd),far=blob('f',41.75+MID,145.75+MID,7,rnd);
   const {targets}=city.cityEdgeTargets({...base,enemies:[...near,...far]});
   const byIds=(ids:EnemyPoint[])=>targets.find(t=>t.key.startsWith('grupo:')&&Math.abs(t.distance-Math.hypot(ids.reduce((s,e)=>s+e.x,0)/ids.length-hero.x,ids.reduce((s,e)=>s+e.y,0)/ids.length-hero.y))<1e-6);
   assert.equal(byIds(near)?.danger,true,'≤ 8 u from the hero');
   assert.ok(byIds(far)&&!byIds(far)!.danger,'far from the hero and the wall');
-  // Near the wall: ≈ 8.7 u from the plaza's rim (radius 10), ≈ 54 u from the hero.
-  const wall=blob('w',97.75,97.75,6,rnd),w=city.cityEdgeTargets({...base,enemies:wall}).targets.filter(t=>t.key.startsWith('grupo:'));
+  // Near the wall: just inside the plaza's rim (radius 17), ≈ 54 u from the hero.
+  const wall=blob('w',97.75+MID,97.75+MID,6,rnd),w=city.cityEdgeTargets({...base,enemies:wall}).targets.filter(t=>t.key.startsWith('grupo:'));
   const g={x:wall.reduce((s,e)=>s+e.x,0)/6,y:wall.reduce((s,e)=>s+e.y,0)/6};
   assert.ok(Math.hypot(g.x-map.plaza.x,g.y-map.plaza.y)-map.plaza.radius<=12&&Math.hypot(g.x-hero.x,g.y-hero.y)>8,'fixture: near the wall only');
   assert.equal(w.length,1);assert.equal(w[0].danger,true,'≤ 12 u from the wall');
 });
 
 test('§3 base after the horn: Cone with the seconds in the intermission; plain before it; no horn in a wave',()=>{
-  const hero={x:84.5,y:150},map=city.DEFAULT_CITY;
+  const hero={x:84.5+MID,y:150+MID},map=city.DEFAULT_CITY;
   const base={hero,selfId:'me',players:[{id:'me',...hero}],enemies:[],map,...edgeWorld(hero,true)};
   const plain=city.cityEdgeTargets({...base,phase:'prepare'}).targets.find(t=>t.kind==='base');
   assert.ok(plain);assert.ok(!plain!.danger);assert.equal(plain!.seconds,undefined);
@@ -738,7 +745,7 @@ test('§3 base after the horn: Cone with the seconds in the intermission; plain 
   const wave=city.cityEdgeTargets({...base,phase:'wave',wallHitRecently:true,hornSeconds:5}).targets.find(t=>t.kind==='base');
   assert.ok(wave,'a wall hit shows the base in a wave');assert.equal(wave!.seconds,undefined,'the horn belongs to the intermission');
   // Plaza in plain view: no base arrow even in the intermission.
-  const seen=city.cityEdgeTargets({...base,hero:{x:84.5,y:90},phase:'prepare',...edgeWorld({x:84.5,y:90},true)}).targets;
+  const seen=city.cityEdgeTargets({...base,hero:{x:84.5+MID,y:90+MID},phase:'prepare',...edgeWorld({x:84.5+MID,y:90+MID},true)}).targets;
   assert.ok(!seen.some(t=>t.kind==='base'));
 });
 
@@ -925,7 +932,7 @@ test('§7 CityMapInfo from the real asset: plaza at praca with its farthest entr
   assert.equal(map.size,terrain.asset.size.w);assert.ok(Math.abs(map.size-city.CITY_SIZE)<.1,'the minimap scale (CITY_SIZE) fits the asset');
   assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:p.praca.x,y:p.praca.y});
   const radius=Math.max(...(['N','S','L','O'] as const).map(id=>Math.hypot(p.bocas[id].x-p.praca.x,p.bocas[id].y-p.praca.y)));
-  assert.ok(near(map.plaza.radius,radius),`radius ${map.plaza.radius}`);assert.ok(map.plaza.radius>8&&map.plaza.radius<20,'a plaza, not the city');
+  assert.ok(near(map.plaza.radius,radius),`radius ${map.plaza.radius}`);assert.ok(map.plaza.radius>8*K&&map.plaza.radius<20*K,'a plaza, not the city');
   assert.deepEqual(map.mouths,(['N','S','L','O'] as const).map(id=>({id,...p[`spawn${id}`],gate:{...p.bocas[id]}})),'each avenue end with its entrance on the plaza wall as its gate');
   assert.deepEqual(map.start,{x:p.inicio.x,y:p.inicio.y});
   // On the minimap (view 0) the mouths keep their compass: N up, S down, L right, O left, each on its side of the plaza.
@@ -1099,7 +1106,7 @@ test('§7 active mouths: a spawn warning lights the mouth of its avenue (real ma
     assert.equal(city.mouthOfWarning(p,map),m.id,`${m.id} at t=${t} off=${off}: ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
   }
   assert.equal(city.mouthOfWarning(plaza,map),undefined,'the boss lands in the plaza: no mouth');
-  for(const corner of [{x:20,y:20},{x:150,y:20},{x:150,y:150},{x:20,y:150}])assert.equal(city.mouthOfWarning(corner,map),undefined,'a block between avenues');
+  for(const corner of [{x:20,y:20},{x:150,y:20},{x:150,y:150},{x:20,y:150}].map(c=>({x:c.x*K,y:c.y*K})))assert.equal(city.mouthOfWarning(corner,map),undefined,'a block between avenues');
   assert.equal(city.mouthOfWarning({x:NaN,y:3},map),undefined);
   const state=new Map<'N'|'S'|'L'|'O',number>(),end=(id:string)=>map.mouths.find(m=>m.id===id)!;
   const warn=(id:string,atTick:number)=>({type:'spawn-warning',x:end(id).x,y:end(id).y,atTick,count:6});
@@ -1115,9 +1122,9 @@ test('cidade-04: every point the real planner spawns a group at lights that grou
   // The plaza is no circle: its south gate is 2.4 u from praca, the east and west ones 12 u. A radius for all (12.66 u)
   // dropped the south groups planned right outside their gate (5.9 u from praca, cidade-04 review).
   const gateS=map.mouths.find(m=>m.id==='S')!.gate!;
-  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<3&&map.plaza.radius>12);
+  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<3*K&&map.plaza.radius>12*K);
   // Players at the plaza, east of it, at the start, on each avenue and at its end; with the team chase (cidade-05c) and without.
-  const spots=[P.praca,{x:P.praca.x+20,y:P.praca.y},P.inicio,{x:84,y:40},{x:40,y:88},{x:130,y:88},{x:84,y:130},P.spawnN,P.spawnL,P.spawnO];
+  const spots=[P.praca,{x:P.praca.x+20*K,y:P.praca.y},P.inicio,...[{x:84,y:40},{x:40,y:88},{x:130,y:88},{x:84,y:130}].map(q=>({x:q.x*K,y:q.y*K})),P.spawnN,P.spawnL,P.spawnO];
   let total=0,south=0,nearPlaza=0;const wrong:string[]=[];
   for(const mode of ['cerco','normal','alternado','excursao'] as const)for(let seed=1;seed<=3;seed++)for(const s of spots)for(const chase of [false,true]){
     const state=planner.openRound(2+seed,mode,new Rng(seed));
@@ -1133,7 +1140,7 @@ test('cidade-04: every point the real planner spawns a group at lights that grou
   assert.deepEqual(wrong,[],`${total} points`);
   assert.ok(total>5000&&south>500&&nearPlaza>0,`the scenes reach the case: ${total} points, ${south} south, ${nearPlaza} within the old radius`);
   // Inside the plaza (the boss lands there, its minions 2.5 u around it, D-026) nothing lights, even beside a gate.
-  for(const c of [map.plaza,{x:84.1,y:86.5}])for(let a=0;a<12;a++){
+  for(const c of [map.plaza,{x:84.1*K,y:86.5*K}])for(let a=0;a<12;a++){
     const p={x:c.x+Math.cos(a*Math.PI/6)*2.5,y:c.y+Math.sin(a*Math.PI/6)*2.5};
     assert.equal(city.mouthOfWarning(p,map),undefined,`a minion at ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
   }
@@ -1278,10 +1285,11 @@ test('cidade-04: the base after the horn is never dropped, in every view; in lan
 });
 
 test('cidade-04: groups fold with their counts summed; one past GROUP_RANGE (the sandbox 12 at 85 u) gets no arrow, so the 7 stays 7',()=>{
-  const hero={x:82,y:125},rnd=lcg(7),blob=(p:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${p}${i}`,x:cx+(rnd()*2-1)*2,y:cy+(rnd()*2-1)*2}));
-  const enemies=[...blob('n',84,40,12),...blob('o',40,88,7)],map={size:169,plaza:{x:84,y:84,radius:12},mouths:[],start:{x:84,y:84}};
+  // The sandbox scene × K (the 1.7× map): the 12 at 85 × K u, the 7 at 56 × K u.
+  const hero={x:82*K,y:125*K},rnd=lcg(7),blob=(p:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${p}${i}`,x:cx*K+(rnd()*2-1)*2,y:cy*K+(rnd()*2-1)*2}));
+  const enemies=[...blob('n',84,40,12),...blob('o',40,88,7)],map={size:169*K,plaza:{x:84*K,y:84*K,radius:12*K},mouths:[],start:{x:84*K,y:84*K}};
   const {targets}=city.cityEdgeTargets({hero,selfId:'p1',players:[],enemies,map,phase:'wave',locate:p=>({x:(p.x-hero.x)*60,y:(p.y-hero.y)*60}),isOnScreen:()=>false});
-  assert.deepEqual(targets.filter(t=>t.kind==='grupo').map(countOf),[7],'only the 7 within 60 u');
+  assert.deepEqual(targets.filter(t=>t.kind==='grupo').map(countOf),[7],'only the 7 within GROUP_RANGE');
   // Two groups that cannot both fit on a short rim fold into one arrow, the critters summed (never "+1").
   const folded=city.layoutCityEdges([target('grupo:a','grupo',900,-20,20,{label:'6',groupCount:6} as Partial<EdgeTarget>),target('grupo:b','grupo',900,140,25,{label:'9',groupCount:9} as Partial<EdgeTarget>)],r(0,0,300,110));
   const g=folded.filter(a=>a.kind==='grupo');

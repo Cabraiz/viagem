@@ -9,15 +9,25 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,TerrainField,decodeCityAsset,worldBase,worldSpawn,buildPlanFor,validateBuildPlan,footprint,railRect,rectDistance,
-  CITY_BUILD_CELL,ENDLESS_BUILD_CELL,MIN_SITES,MAX_SITES,type BuildPlan,type BuildSite,
+  CITY_BUILD_CELL,CITY_SITE_CELL,ENDLESS_BUILD_CELL,MIN_SITES,MAX_SITES,type BuildPlan,type BuildSite,
 } from '../../src/maps/index.ts';
+import {CITY_MAP_SCALE,scaleProfile} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const decoded=decodeCityAsset(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'));
 if(!decoded.ok)throw new Error(decoded.error);
 const city=new CityTerrain(decoded.asset,'test');
 const endless=(seed:number)=>new TerrainField(seed,{world:'infinito'});
-const cellSite=(id:string,cx:number,cy:number,maxSize:1|2|3=1):BuildSite=>({id,x:(cx+.5)*CITY_BUILD_CELL,y:(cy+.5)*CITY_BUILD_CELL,maxSize});
+/** A site on the centre of asset cell (cx, cy): asset cells are CITY_SITE_CELL wide (the towers' own unit is CITY_BUILD_CELL). */
+const cellSite=(id:string,cx:number,cy:number,maxSize:1|2|3=1):BuildSite=>({id,x:(cx+.5)*CITY_SITE_CELL,y:(cy+.5)*CITY_SITE_CELL,maxSize});
+
+// NEW-20261013-ORQ-cidade-escala-1-7: the map grew 1.7× (asset version 2) while the towers kept the people's size.
+test('the site rows are written in the asset cell (= the scale profile map cell); the towers keep the 0.88 u person cell', () => {
+  assert.equal(CITY_SITE_CELL,decoded.asset.unitsPerCell,'build-sites CITY_SITE_CELL = asset unitsPerCell');
+  assert.ok(Math.abs(scaleProfile('cidade-nevada').cell-CITY_SITE_CELL)<1e-12,'= rules cidade-nevada cell');
+  assert.ok(Math.abs(CITY_BUILD_CELL*CITY_MAP_SCALE-CITY_SITE_CELL)<1e-12,'site cell = build cell × CITY_MAP_SCALE');
+  assert.equal(CITY_BUILD_CELL,.88);
+});
 const reasons=(plan:BuildPlan,terrain:CityTerrain|TerrainField)=>validateBuildPlan(plan,terrain).map(p=>`${p.id}: ${p.reason}`);
 
 test('the city has 12–16 build sites around the plaza and a 12×4 rail on the west avenue, all valid', () => {
@@ -27,7 +37,8 @@ test('the city has 12–16 build sites around the plaza and a 12×4 rail on the 
   assert.deepEqual(reasons(plan,city),[]);
   assert.deepEqual([...new Set(plan.sites.map(s=>s.maxSize))].sort(),[2,3],'footprints from 2×2 to 3×3');
   const base=worldBase(city);
-  for(const s of plan.sites)assert.ok(Math.hypot(s.x-base.x,s.y-base.y)<25,`${s.id} is around the plaza`);
+  // 25 u around the plaza on the .w3x map, × CITY_MAP_SCALE on the 1.7× one.
+  for(const s of plan.sites)assert.ok(Math.hypot(s.x-base.x,s.y-base.y)<25*CITY_MAP_SCALE,`${s.id} is around the plaza`);
   const rail=plan.rail!;
   assert.equal(rail.length,12);assert.equal(rail.width,4);assert.equal(rail.axis,'x');
   const r=railRect(rail,plan.cell),west=decoded.asset.points.bocas.O;

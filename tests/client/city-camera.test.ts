@@ -9,7 +9,7 @@ import {CITY_VIEW_SCALE,ENDLESS_FOLLOW,FollowCamera,cityZoom,followTarget,follow
 import {projectView,rotateVector} from '../../src/client/projection.ts';
 import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset} from '../../src/contract/offscreen.ts';
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
-import {SCALE_PROFILES,zoomFor} from '../../src/rules/index.ts';
+import {CITY_MAP_SCALE,SCALE_PROFILES,zoomFor} from '../../src/rules/index.ts';
 import {CITY_VIEW_SCALE as SIM_CITY_VIEW_SCALE,cityVisible} from '../../src/sim/city/avenues.ts';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {SceneTerrain,sameWorld,worldCamera} from '../../src/client/world-swap.ts';
@@ -32,8 +32,13 @@ function realCity():CityTerrain{
   return new CityTerrain(r.asset,hash);
 }
 const city=realCity(),island=new TerrainField(424242),endless=new TerrainField(424242,{world:'infinito'});
-const cell=SCALE_PROFILES['cidade-nevada'].cell;
-/** Visible world width in cells along screen x for a zoom. */
+/**
+ * The .w3x cell (0.88 u = the drawn hero): the camera pins below count these, unchanged by NEW-20261013-ORQ-cidade-escala-1-7,
+ * which made the map's own cell CITY_MAP_SCALE × wider (1.496 u) and kept the camera's world width and the people.
+ */
+const cell=SCALE_PROFILES['cidade-nevada'].hero.drawnSize;
+assert.ok(Math.abs(cell*CITY_MAP_SCALE-SCALE_PROFILES['cidade-nevada'].cell)<1e-12,'map cell = CITY_MAP_SCALE .w3x cells');
+/** Visible world width in .w3x cells along screen x for a zoom. */
 const cellsAt=(width:number,zoom:number)=>width/zoom/UNIT_X/cell;
 
 test('CITY_VIEW_SCALE: the city drawn hero over the endless one (0.88/1.616), recomputed from the rules and equal to the sim',t=>{
@@ -53,7 +58,7 @@ test('city zoom (D-030): ≈1.0713 on both reference phones, ≈15.07 cells land
     assert.ok(Math.abs(z-r.pixelsPerUnit/UNIT_X)<1e-9,'the rules zoomFor, in Phaser terms');
     assert.equal(r.floored,true,'the 56 px floor wins over the faithful 18 / 10.5 cells');
     assert.ok(Math.abs(cellsAt(vp.width,z)-cells)<.01,`${vp.width}: ${cellsAt(vp.width,z)} cells`);
-    assert.ok(Math.abs(cellsAt(vp.width,z)-r.visibleCells)<1e-6);
+    assert.ok(Math.abs(cellsAt(vp.width,z)-r.visibleCells*CITY_MAP_SCALE)<1e-6,'rules visibleCells counts map cells');
     // The sheet is 96 world px tall (CharacterSprites scale 96/height), times viewScale = CITY_VIEW_SCALE.
     const hero=HERO_WORLD_PX*CITY_VIEW_SCALE*z;
     assert.ok(Math.abs(hero-HERO_MIN_SCREEN_PX)<1e-6,`${vp.width}: hero ${hero}`);

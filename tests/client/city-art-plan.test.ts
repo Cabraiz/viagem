@@ -200,3 +200,27 @@ test('the repo manifest (codex-706 delivery, eca61ed) gives the city art', ()=>{
   assert.equal(planHasArt(plan),true);
   assert.ok(plan.sheets.length>0);
 });
+
+// NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× Cidade Nevada (asset cell 1.496 u) a footprint sheet still covers its
+// city cells, so buildings, rubble and the fountain draw 1.7× larger; props keep their absolute size; the anchor's
+// origin is in art pixels (ART_CELL), the same on any map.
+test('cidade-escala-1-7: the asset cell scales the footprint sheets (buildings 1.7×), never the props', ()=>{
+  const decoded=decodeCityAsset(readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8'));
+  if(!decoded.ok)throw new Error(decoded.error);
+  const cell=decoded.asset.unitsPerCell,k=cell/ART_CELL;
+  assert.equal(cell,1.496);assert.ok(Math.abs(k-1.7)<1e-9);
+  for(const height of ['a','b'] as const){
+    const base=buildCityArtPlan(demoIndex(),{height}),big=buildCityArtPlan(demoIndex(),{height,cell});
+    const [h0]=base.buildings.ruin,[h1]=big.buildings.ruin;
+    assert.ok(Math.abs(h1.scale-h0.scale*k)<1e-12,'the house sheet is drawn × cell / ART_CELL');
+    assert.ok(Math.abs(h1.height-h0.height*k)<1e-9,'and stands that much taller');
+    assert.ok(Math.abs(sheetHeight(BUILDING.cell[1],h1.originY,[2,1],ART_CELL,h1.scale)-h1.height)<1e-9,'heights stay in art px of ART_CELL');
+    // The house's 2×1 footprint on screen: art px × scale = the lot's 2×1 city cells projected (TILE_X px per u).
+    const lotPx=(2+1)*cell*TILE_X,artPx=(2+1)*ART_CELL*TILE_X*ART_SCALE;
+    assert.ok(Math.abs(artPx*h1.scale/LOT_UNIT[height]-lotPx)<1e-6,'one art cell on one city cell');
+    assert.deepEqual(propSheet({id:'p1',kind:'bench'},big),propSheet({id:'p1',kind:'bench'},base),'props: today\'s absolute size');
+    assert.deepEqual(h1.originY,h0.originY);
+  }
+  assert.deepEqual(buildCityArtPlan(demoIndex(),{cell:ART_CELL}),buildCityArtPlan(demoIndex()),'ART_CELL is the default');
+  assert.throws(()=>buildCityArtPlan(demoIndex(),{cell:0}),RangeError);
+});

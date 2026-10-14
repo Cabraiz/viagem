@@ -29,7 +29,7 @@ import {createStonewardsState,createStonewardsSystem,structureTargets,type Stone
 import {BARRICADE_MAX_HP,BARRICADE_MAX_R,BARRICADE_MIN_R,barricadeCells,sealRadii} from '../../src/sim/stonewards/barricades.ts';
 import {REPAIR_FRACTION} from '../../src/sim/stonewards/forge.ts';
 import {SIEGE_FLAG,WALL_RADIUS} from '../../src/sim/stonewards/wall.ts';
-import {CAMP_RADIUS,RECIPES} from '../../src/rules/index.ts';
+import {CAMP_RADIUS,CITY_MAP_SCALE,RECIPES} from '../../src/rules/index.ts';
 
 // ---------- The real city ----------
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -235,8 +235,9 @@ function aiWorld(){
 }
 /** On the N avenue, `d` u out from mouth N. */
 const upN=(t:CityTerrain,d:number)=>walkableNear(t,{x:P.bocas.N.x,y:P.bocas.N.y-d});
+// Map spots (NEW-20261013-ORQ-cidade-escala-1-7): the .w3x-sized city's (76.5, 91) and 8 / 10 u up the avenue, × CITY_MAP_SCALE.
 /** Inside the plaza, far from mouth N (beyond every keep-distance range). */
-const plazaFarFromN=(t:CityTerrain)=>walkableNear(t,{x:76.5,y:91});
+const plazaFarFromN=(t:CityTerrain)=>walkableNear(t,{x:76.5*CITY_MAP_SCALE,y:91*CITY_MAP_SCALE});
 
 test('D-017 on a barricade: one hit = one damage, one hit per contact cooldown, siege or not; the contact siege stays off',()=>{
   const {sys,world,hits,terrain}=aiWorld();
@@ -264,7 +265,7 @@ test('bêbado and anão steered up a sealed avenue both bash its barricade; a re
   for(const kind of ['bebado','anao-molotov'] as const){
     const {sys,world,hits,terrain}=aiWorld();
     world.players.set('p',player('p',plazaFarFromN(terrain)));
-    const e=createEnemy(world,kind,upN(terrain,8));
+    const e=createEnemy(world,kind,upN(terrain,8*CITY_MAP_SCALE));
     for(let t=0;t<ticks(60)&&!hits.length;t++)world.step();
     assert.deepEqual(hits.slice(0,1).map(h=>[h.enemy,h.id,h.amount]),[[e.id,ID('N'),e.damage]],`the ${kind} walked the N avenue to its barricade and hit it`);
   }
@@ -272,8 +273,8 @@ test('bêbado and anão steered up a sealed avenue both bash its barricade; a re
   const {sys,world,hits,terrain}=aiWorld();
   world.players.set('p',player('p',plazaFarFromN(terrain)));
   const n=sys.state.barricades!.find(b=>b.id===ID('N'))!;
-  const bebado=createEnemy(world,'bebado',upN(terrain,8));
-  const anao=createEnemy(world,'anao-molotov',upN(terrain,10));
+  const bebado=createEnemy(world,'bebado',upN(terrain,8*CITY_MAP_SCALE));
+  const anao=createEnemy(world,'anao-molotov',upN(terrain,10*CITY_MAP_SCALE));
   // Pressed against barricade L from its avenue (out of the N avenue's way): neither may ever hit it.
   const l=sys.state.barricades!.find(b=>b.id===ID('L'))!;
   const retreat=createEnemy(world,'bebado',{x:l.x+l.r+.3,y:l.y-.4});retreat.memory!.retreat=1;
@@ -378,15 +379,19 @@ function follow(t:CityTerrain,field:FlowField,from:Point,move:(at:Point,dir:Poin
 test('all 4 barricades up: a hero walks from the helicopter through a mouth to the forge at the fountain and back out; an enemy cannot',()=>{
   const {terrain,sys}=cityBase();
   assert.deepEqual(blockerIds(terrain),MOUTHS.map(ID).sort());
-  // The plaza's middle (the centroid of its 4 mouths): the fountain's mouth S is only 2.4 u from the wall, so the camp
-  // radius alone reaches past barricade S; the hero must get into the plaza proper.
+  // The forge, in the plaza proper. On the .w3x-sized city the goal was the cells within 3.5 u of the plaza's middle
+  // (the centroid of its 4 mouths), because mouth S was only 2.4 u from the wall and the camp radius alone reached past
+  // barricade S. On the 1.7× map (NEW-20261013-ORQ-cidade-escala-1-7) the middle sits inside the fountain, and 3.5 ×
+  // CITY_MAP_SCALE around it takes in the fountain's inner gaps, 9 u from the wall (out of the camp). The goal is now
+  // the cells within min(CAMP_RADIUS, wall → mouth S) of the wall: in the camp, and on the plaza side of mouth S, so a
+  // hero from the helicopter has to cross barricade S's disc (or another one) to get there.
   const b=P.bocas,wall=sys.state.wall,start=walkableNear(terrain,P.inicio);
-  const middle={x:(b.N.x+b.S.x+b.L.x+b.O.x)/4,y:(b.N.y+b.S.y+b.L.y+b.O.y)/4};
+  const forge=(t:CityTerrain)=>heroField(t,wall,Math.min(CAMP_RADIUS,Math.hypot(b.S.x-wall.x,b.S.y-wall.y)));
   // Players move with moveDirection (players system, client prediction): the barricades are not in their way.
   const hero=(at:Point,dir:Point)=>moveDirection(at,dir,1/30,terrain);
-  const toForge=follow(terrain,heroField(terrain,middle,3.5),start,hero,ticks(120));
+  const toForge=follow(terrain,forge(terrain),start,hero,ticks(120));
   assert.ok(toForge.arrived,`the hero reached the forge (at ${toForge.at.x.toFixed(2)},${toForge.at.y.toFixed(2)})`);
-  assert.ok(Math.hypot(toForge.at.x-wall.x,toForge.at.y-wall.y)<=CAMP_RADIUS);
+  assert.ok(Math.hypot(toForge.at.x-wall.x,toForge.at.y-wall.y)<=CAMP_RADIUS,`at the forge: ${Math.hypot(toForge.at.x-wall.x,toForge.at.y-wall.y).toFixed(2)} u from the wall (${toForge.at.x.toFixed(2)},${toForge.at.y.toFixed(2)}), camp ${CAMP_RADIUS}`);
   assert.ok(toForge.deepest>.5,`the hero went through a barricade disc (deepest ${toForge.deepest.toFixed(2)} u)`);
   // At the forge it can buy: a repair of the wall in the intermission.
   const ctx=fakeCtx(terrain,[player('h',toForge.at)]);
@@ -400,7 +405,7 @@ test('all 4 barricades up: a hero walks from the helicopter through a mouth to t
   // never gets into a disc nor the plaza.
   for(const radius of [RADIUS,.32]){
     const enemy=(at:Point,dir:Point)=>{const b={x:at.x,y:at.y};moveSafely(b,dir.x*.1,dir.y*.1,enemyTerrain(terrain),radius);return b;};
-    const e=follow(terrain,heroField(terrain,middle,3.5),start,enemy,ticks(120));
+    const e=follow(terrain,forge(terrain),start,enemy,ticks(120));
     assert.equal(e.arrived,false,`radius ${radius}: the enemy did not reach the forge`);
     assert.ok(e.deepest<=-radius+1e-6,`radius ${radius}: the enemy never overlapped a barricade (deepest ${e.deepest.toFixed(3)} u)`);
   }

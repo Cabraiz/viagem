@@ -14,10 +14,13 @@
  * lobby on), never inside a frame; per frame it is O(1): the field's directionAt, and the route length memoised per cell.
  * No DOM: the HUD row is in hud/objective.ts.
  */
-import {FlowField,DIRS,UNREACHABLE,walkable,rotateVector,type FlowGrid,type FlowPoint,type CityTerrain} from './deps.ts';
+import {CITY_MAP_SCALE,FlowField,DIRS,UNREACHABLE,walkable,rotateVector,type FlowGrid,type FlowPoint,type CityTerrain} from './deps.ts';
 
-/** The planner's mouth line half width (avenues.ts AvenuePlannerOptions.mouthHalfWidth default, 2.6 u). */
-export const MOUTH_HALF_WIDTH=2.6;
+/**
+ * The planner's mouth line half width (avenues.ts AvenuePlannerOptions.mouthHalfWidth default, 2.6 u × layout.mapScale:
+ * rules CITY_MAP_SCALE on the city, 4.42 u; NEW-20261013-ORQ-cidade-escala-1-7).
+ */
+export const MOUTH_HALF_WIDTH=2.6*CITY_MAP_SCALE;
 const MOUTH_LINE=1,PLAZA_CELL=2;
 const BOCAS=['N','S','L','O'] as const;
 

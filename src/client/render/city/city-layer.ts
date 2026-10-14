@@ -24,7 +24,7 @@ const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HE
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
-import {ART_CELL,fountainLot,planHasArt,planLots,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
+import {ART_CELL,blockArt,fountainLot,moundPiece,planHasArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -89,7 +89,8 @@ export interface CityLayerOptions {
   groundResolution?:number;
   /**
    * Imported art (art-plan.ts): buildings and rubble cut into lots that each show a sheet, prop and fountain sheets.
-   * A lot draws its sheet once the texture is loaded (queueCityArt), else its cells stay procedural.
+   * A lot draws its sheet once the texture is loaded (queueCityArt); until then, and on the building cells no lot
+   * covers (art-plan.ts fillLots), the cell is a low mound (moundPiece), never the procedural building.
    */
   art?:CityArtPlan;
 }
@@ -188,7 +189,7 @@ export class CityLayer {
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
       const art=this.art=options.art!;
-      for(const b of drawn.blocks)for(const lot of planLots(b,art)){
+      for(const b of drawn.blocks)for(const lot of blockArt(b,art).lots){
         for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)this.lotAt.set(j*asset.width+i,lot);
       }
       this.fountain=fountainLot(asset,art);
@@ -369,8 +370,10 @@ export class CityLayer {
     }
     // Group the chunk's procedural columns by (block, depth key); draw each band back-to-front.
     const groups=new Map<string,{blockId:string;key:number;items:{piece:BlockPiece;geo:PieceGeometry}[]}>();
-    for(const piece of chunk.pieces){
-      if(painted.has(piece.blockId)||paintedCells.has(piece.y*this.asset.width+piece.x))continue;
+    for(const raw of chunk.pieces){
+      if(painted.has(raw.blockId)||paintedCells.has(raw.y*this.asset.width+raw.x))continue;
+      // With the art on, a building or rubble cell without its art shown is a low mound (art-plan.ts moundPiece).
+      const piece=this.moundOf(raw)??raw;
       const geo=pieceGeometry(piece,this.asset,view,this.pivot),id=`${piece.blockId}|${geo.depthKey}`;
       const g=groups.get(id);
       if(g)g.items.push({piece,geo});else groups.set(id,{blockId:piece.blockId,key:geo.depthKey,items:[{piece,geo}]});
@@ -411,6 +414,21 @@ export class CityLayer {
       cells.push(cellIndex);
     }
     this.live.set(key,{chunk,ground,glints,bands,sprites,props,cells});
+  }
+
+  /**
+   * With the art on, a building or rubble piece whose cell shows no art (no lot, or the lot's texture not loaded yet)
+   * as the low mound; its seams stay only toward the block's other mounds. Undefined for every other piece.
+   */
+  private moundOf(piece:BlockPiece):BlockPiece|undefined{
+    if(!this.art||(piece.kind!=='building'&&piece.kind!=='rubble'))return undefined;
+    const {width}=this.asset,bare=(cx:number,cy:number)=>{
+      const lot=this.lotAt.get(cy*width+cx);
+      return !lot||!this.scene.textures.exists(lot.sheet.key);
+    };
+    if(!bare(piece.x,piece.y))return undefined;
+    const s=piece.seams;
+    return moundPiece(piece,{n:s.n&&bare(piece.x,piece.y-1),s:s.s&&bare(piece.x,piece.y+1),w:s.w&&bare(piece.x-1,piece.y),e:s.e&&bare(piece.x+1,piece.y)});
   }
 
   /**

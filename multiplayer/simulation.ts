@@ -498,10 +498,6 @@ export class Simulation {
   pendingOffers():Map<string,number>{const out=new Map<string,number>();for(const [id,queue] of this.world.offers)if(queue.length)out.set(id,queue.length);return out;}
   /** D-050: every offer of `id` gets its default now (the pause ended, or the room does not wait for this player). */
   settleOffers(id:string){return this.systems.progression.settle(this.world,id);}
-  /**
-   * D-050: the run resumes after a pause (the sim did not step): the confirmed-step bookkeeping starts over, as after a
-   * reconnect, so the steps a phone held during the pause are not judged against ticks that never ran.
-   */
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};

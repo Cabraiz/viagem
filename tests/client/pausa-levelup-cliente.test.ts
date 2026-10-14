@@ -38,6 +38,7 @@ test('CoopClient through a level-up pause: stands, no cast, no backlog, then wal
   (performance as any).now=()=>now;
   const room=new Room(now);
   const client=new CoopClient('http://sala','PAUSA00001','Ana','cidadao-comum');
+  const heard:(number|undefined)[]=[];client.onRun=run=>heard.push(run.pause?.leftMs);
   try{
     const joined=client.join();
     socket!.readyState=1;room.connect(socket!.peer,now);socket!.onopen!();
@@ -88,6 +89,10 @@ test('CoopClient through a level-up pause: stands, no cast, no backlog, then wal
     assert.equal(castInPause,undefined,'no skill tap in the pause');
     assert.ok(maxBacklog<600,`no N27 backlog from the frozen tick (max ${maxBacklog} ms)`);
     assert.deepEqual(snaps.filter(s=>s>EPS),[],'no snap-back');
+    // onRun (the HUD's only way to hear the pause: no frame brings it) fires once a second through the pause, then without.
+    const lefts=heard.filter((v):v is number=>v!==undefined);
+    assert.ok(lefts.length>=5&&lefts.every((v,i)=>!i||v<lefts[i-1]),`the clock counts down in onRun: ${lefts}`);
+    assert.equal(heard.at(-1),undefined,'and the last run state has no pause');
   }finally{
     client.leave();
     (performance as any).now=realNow;
@@ -122,4 +127,11 @@ test('CoopClient in a pause: the hero the room holds does not move while the pho
     client.leave();
     (performance as any).now=realNow;
   }
+});
+
+test('production wiring: explore.ts hands every run state to Hud.setPause (the offer only opens in the pause)',async()=>{
+  const fs=await import('node:fs');
+  const explore=fs.readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
+  assert.ok(explore.includes(`net.onRun=run=>hud?.setPause(run.phase==='combat'?run.pause:undefined);`),'every {t:run} (the pause ticks once a second with no frame)');
+  assert.ok(explore.includes(`hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(`),'and every view');
 });

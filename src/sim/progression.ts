@@ -8,8 +8,9 @@
  * - a round offer is due at the end of its intermission (grantRoundOffers);
  * - in combat every pending offer is held, whatever its source (an offline freeze may carry armed ones into a wave);
  * - when the intermission ends, every due offer gets its visible default once, oldest first (stale cards re-rolled).
- * The last round (the boss wave, D-023) has no intermission after it, and without a director (ctx.round.total 0)
- * there is none at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
+ * D-050 (replaced D-023's boss clock): in combat the room pauses the run for the picks (multiplayer/levelup-pause.ts)
+ * and gives the defaults through settle(); the boss wave holds like any wave. Without a director (ctx.round.total 0)
+ * there is no intermission at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
  */
 import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks} from '../contract/index.ts';
@@ -259,6 +260,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const choice=head.choices[index];
     if(!isEligible(catalog,player.build,choice))return {ok:false,reason:'ineligible'};
     resolve(ctx,player,queue,index);
+    // The next card is fresh at once (D-050: in a pause the sim does not step, and step() is where stale heads re-roll).
+    if(queue[0])reroll(ctx,player,queue[0]);
     return {ok:true,itemId:choice.itemId,level:choice.level};
   }
 

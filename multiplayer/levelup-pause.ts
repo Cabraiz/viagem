@@ -28,7 +28,7 @@ export const BOT_PICK_MS=1_000;
 export interface PauseSim {
   readonly tick:number;
   readonly world:{round?:{phase:string};team:{level:number}};
-  readonly players:ReadonlyMap<string,{online:boolean}>;
+  readonly players:ReadonlyMap<string,{online:boolean;spectator?:boolean;eliminated?:boolean}>;
   readonly bots:ReadonlySet<string>;
   pendingOffers():Map<string,number>;
   settleOffers(id:string):number;
@@ -49,6 +49,7 @@ export class LevelupPause {
    * room's wall clock (ms).
    */
   update(sim:PauseSim,now:number):boolean{
+    this.drop(sim);
     if(!this.open){
       if(sim.world.round?.phase==='prepare'||sim.tick-this.lastEndTick<PAUSE_GAP_TICKS)return false;
       const pending=[...sim.pendingOffers()].filter(([id])=>this.acts(sim,id));
@@ -63,14 +64,19 @@ export class LevelupPause {
     this.close(sim);
     return false;
   }
-  /** Humans online with a card left: who the pause waits for. */
+  /** Humans online, in the game, with a card left: who the pause waits for. */
   waiting(sim:PauseSim):string[]{
     const out:string[]=[];
-    for(const id of sim.pendingOffers().keys()){const p=sim.players.get(id);if(p&&p.online&&!sim.bots.has(id))out.push(id);}
+    for(const id of sim.pendingOffers().keys()){const p=sim.players.get(id);if(p&&p.online&&!p.spectator&&!p.eliminated&&!sim.bots.has(id))out.push(id);}
     return out.sort();
   }
-  /** A player the pause acts on: a room bot, or a human online (an offline one keeps its offers held). */
-  private acts(sim:PauseSim,id:string){const p=sim.players.get(id);return !!p&&(sim.bots.has(id)||p.online);}
+  /** A player the pause acts on: a room bot, or a human online in the game (an offline one keeps its offers held). */
+  private acts(sim:PauseSim,id:string){const p=sim.players.get(id);return !!p&&!p.spectator&&!p.eliminated&&(sim.bots.has(id)||p.online);}
+  /**
+   * Offers nobody can pick (a spectator, someone eliminated: progression runs before revive, so a level and a bleed-out
+   * on one tick leave one that choose() refuses) are dropped (settle() does) rather than opening or holding a pause.
+   */
+  private drop(sim:PauseSim){for(const id of [...sim.pendingOffers().keys()]){const p=sim.players.get(id);if(p&&(p.spectator||p.eliminated))sim.settleOffers(id);}}
   /**
    * Ends the pause: the humans online who did not pick and the bots get the defaults. Input tracks stay as they are: the
    * tick did not move, so the steps queued before the pause are taken on the very ticks the phones predicted them for.

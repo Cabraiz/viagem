@@ -97,6 +97,10 @@ body:has(.rh-result:not([hidden])) .hs-hero{display:none} /* the game's hero is 
 .hs-cidade .hs-world{background:repeating-linear-gradient(135deg,#eef3f6 0 22px,#e3eaef 22px 44px)}.hs-cidade .hs-world::after{display:none}
 /* The game's coach style for the joystick (explore.css .explore-stick under data-coach-stick): edge and knob in Amarelo. */
 body:has(>.rh[data-coach-stick]) .hs-stick{border-color:var(--c-amarelo,#FFD23F);color:var(--c-amarelo,#FFD23F)}
+.hs-heroi .hs-cam,.hs-heroi .hs-world::after{display:none}
+.hs-heroi .hs-stick{left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom))}
+.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));width:var(--botao-habilidade);height:var(--botao-habilidade)}
+@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:96px;height:96px;left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}}
 .hs-hero{position:fixed;z-index:6;width:56px;height:56px;box-sizing:border-box;border-radius:50% 50% 40% 40%;background:#f4c9a8;border:3px solid #6e5198;pointer-events:none}
 `;
 document.head.append(style);
@@ -185,6 +189,12 @@ function load(next:HudScenario){
   // The tutorial's round-1 banner comes with the city's first view (below), in the same frame as the walk's row, as in
   // the game; until the city is in, nothing.
   if(tutorial)view.events=[];
+  // `barricada=1` with state=camp-forge (BUG-20261014-ORQ-forja-cobre-heroi-retrato): a damaged city barricade by the
+  // camp, so the forge carries its fourth tag ("Reparar Norte"), as in the city camp. Stand-in mouths, the N one there.
+  if(scenario==='camp-forge'&&params.get('barricada')==='1'){
+    (hud as unknown as {camp:{setBocas(b:unknown):void}}).camp.setBocas({N:{x:12,y:17},S:{x:12,y:-60},L:{x:70,y:15},O:{x:-60,y:15}});
+    view={...view,structures:[...view.structures,{id:'s9',kind:'barricada',x:12,y:16.5,hp:60,maxHp:200}]};
+  }
   // Result: feed falls, rescues and pickups through events so the joke awards reflect a tally.
   if(scenario==='result')view.events=ties?[]:fakeResultEvents(players,()=>++eventId);
   // `bicho`: who got them (the downed banner's cause line and the result's "Te derrubou").
@@ -234,6 +244,49 @@ if(zueira){
   send();setInterval(send,1500);
 }
 (window as unknown as {__hudSandbox:{load:typeof load}}).__hudSandbox={load};
+
+/**
+ * Where the round's follow camera puts the hero's feet (body 28 px over them): the viewport centre
+ * (BUG-20261013-ORQ-camera-centro-heroi), or, in portrait with the forge or Dona Cida's tray open, the middle of the band
+ * the game frames it in beside the window (framing.ts framesBeside, zones.ts besideArea, the same functions the game
+ * runs), from the live HUD and the mock thumbs. Off the city the sandbox has no minimap: the phone's (fone-layout.ts)
+ * stands in for it in the band, as in the game.
+ */
+async function heroFeet(){
+  const [{besideFrom},{besideArea,computeZones,measureZoneInput},{foneMinimapRect}]=await Promise.all([
+    import('../framing.ts'),import('../hud/zones.ts'),import('../hud/fone-layout.ts')]);
+  const box=(el:Element|null)=>{if(!el)return undefined;const r=el.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
+  return ()=>{
+    const viewport={width:innerWidth,height:innerHeight};
+    const tray=document.querySelector('.rh-forge:not([hidden]),.rh-cida:not([hidden])'),rect=box(tray);
+    const kind=tray?.classList.contains('rh-cida')?'cida' as const:'forja' as const;
+    // The game's own decision (explore.ts): beside the window only when it would cover the centred hero, in portrait.
+    if(!besideFrom({viewport,tray:rect&&{kind,rect}}))return {x:viewport.width/2,y:viewport.height/2+28};
+    const input=measureZoneInput(document),phone=hud.el.dataset.hud==='fone';
+    const status=[...input.status,box(document.querySelector('.hs-gear')),...(phone&&!input.minimap?[foneMinimapRect(viewport)]:[])];
+    const zones=computeZones({...input,status,joystick:box(document.querySelector('.hs-stick')),skill:box(document.querySelector('.hs-attack'))});
+    const a=besideArea(zones,rect);
+    return {x:a.x+a.width/2,y:a.y+a.height/2+28};
+  };
+}
+
+/**
+ * `heroi=1` (BUG-20261014-ORQ-forja-cobre-heroi-retrato): the hero's 56 px box where the round's camera puts it
+ * (heroFeet; the city scenes always draw it), and the mock joystick and skill button where the phone's shell draws them
+ * (explore.css: 112 px stick 24 px in; 96 px at 16/18 px when ≤ 370 px wide; the skill --botao-habilidade; no camera
+ * buttons), so a print shows whether a window covers the hero. `body[data-hero]` holds the box.
+ */
+const heroi=params.get('heroi')==='1';
+if(heroi)document.body.classList.add('hs-heroi');
+if(heroi&&!cidade)void heroFeet().then(feet=>{
+  const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
+  const place=()=>{
+    const f=feet(),box={x:f.x-28,y:f.y-56,width:56,height:56};
+    Object.assign(heroEl.style,{left:`${box.x}px`,top:`${box.y}px`});document.body.dataset.hero=JSON.stringify(box);
+  };
+  // The forge's window lays out with the HUD: placed again 4 times a second, as the city's draw.
+  place();addEventListener('resize',place);setInterval(place,250);
+});
 
 if(!frozen)setInterval(()=>{
   if(scenario==='result')return;
@@ -400,6 +453,7 @@ if(cidade)void (async()=>{
   view=run;hud.update(run);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
   const heroEl=document.createElement('div');heroEl.className='hs-hero';document.body.append(heroEl);
+  const feet=await heroFeet();
   let previous=new Set<string>();
   const draw=()=>{
     const viewport={width:innerWidth,height:innerHeight};
@@ -408,8 +462,9 @@ if(cidade)void (async()=>{
       team:union(all('.rh-member:not(.rh-top .rh-member)')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),offer:open,cida:rect(document.querySelector('.rh-cida-btn:not([hidden])'))};
     const zones=computeZones({viewport,...controls,minimap:rect(hud.wc?.el)});
     const area=zones.useful;
-    // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
-    const anchor={x:viewport.width/2,y:viewport.height/2+28},center=projectView(hero,vista,field);
+    // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi),
+    // feet 28 px under it; beside Dona Cida's tray in portrait (heroFeet).
+    const anchor=feet(),center=projectView(hero,vista,field);
     const locate=(p:{x:number;y:number})=>{const q=toScreen(projectView(p,vista,field),center,viewport,zoom);return {x:q.x-viewport.width/2+anchor.x,y:q.y-viewport.height/2+anchor.y};};
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     Object.assign(heroEl.style,{left:`${heroBox.x}px`,top:`${heroBox.y}px`});

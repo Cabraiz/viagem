@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import {Vignette} from './render/vignette.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -267,8 +267,14 @@ export class IslandScene extends Phaser.Scene {
    * ride its rim; the follow camera centres the hero on it only beside a panel (framing.ts framesBeside).
    */
   usefulArea?:Rect;
-  /** The obra (build) window is open (explore.ts sets it every frame): the intermission frames the hero beside it. */
-  obraOpen=false;
+  /**
+   * The open window the camera may frame the hero beside (framing.ts besideFrom, framesBeside): the obra window in the
+   * intermission, the forge or Dona Cida's tray when it would cover the centred hero (portrait). explore.ts sets it with
+   * the useful area, at the position hook's rate (~10 Hz), not every frame.
+   */
+  besideWindow?:BesideWindow;
+  /** Where the camera frames the hero beside that window (zones.ts besideArea), CSS px; the useful area without it. */
+  frameArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.zoomWant=this.zoomNow=clampZoom(hooks.zoom??ZOOM_DEFAULT);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
@@ -431,6 +437,11 @@ export class IslandScene extends Phaser.Scene {
     const u=this.usefulArea;if(!u)return undefined;
     return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
   }
+  /** Where the follow camera frames the hero beside a panel, in canvas coordinates: frameArea, else the useful area. */
+  private framed():Rect|undefined{
+    const u=this.frameArea;if(!u)return this.useful();
+    return {x:u.x-this.canvasOffset.x,y:u.y-this.canvasOffset.y,width:u.width,height:u.height};
+  }
   /**
    * What depends on the field and is drawn once per world: background, ground, and the island's trees, rocks and
    * landmarks (the endless world's come chunk by chunk, syncProps). Run by create() and by a world swap.
@@ -513,7 +524,7 @@ export class IslandScene extends Phaser.Scene {
     const at=this.watchPoint??this.position;
     const rect=this.game.canvas?.getBoundingClientRect();this.canvasOffset={x:rect?.left??0,y:rect?.top??0};
     const b=this.actor?this.heroWorldBox():undefined;
-    const c=this.follow.snap(this.project(at),viewport,this.zoom,this.useful(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
+    const c=this.follow.snap(this.project(at),viewport,this.zoom,this.framed(),b&&!this.watchPoint?{width:b.width*this.zoom,height:b.height*this.zoom}:undefined);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(this.zoom).centerOn(c.x,c.y);
     this.landscape?.fit(WATER_MARGIN);this.syncProps();this.updateCity(0);
   }
@@ -539,15 +550,18 @@ export class IslandScene extends Phaser.Scene {
     }
     // Out of the round, in the intermission and while following a teammate, nothing spawns against this screen: no budget.
     // The intermission has no spawns either (the budget is lifted, though the hero now stays at the centre there too).
+    // In a wave the budget holds beside a window too (Dona Cida's tray may stay open there): it is the off-screen contract
+    // (contract/offscreen.ts sizes MAX_OFFSCREEN_DISTANCE and INTEREST_RADIUS with it), so the camera goes as far as it lets.
     const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
     // In the round (wave, intermission, watching) the body is at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi);
-    // only the lobby/countdown (waiting panel) and an open obra window frame it beside the panel (framing.ts framesBeside).
-    this.follow.beside=framesBeside(run,this.roundPhase,this.obraOpen);
+    // only the lobby/countdown (waiting panel), an open obra window and, in portrait, the forge or Dona Cida's tray frame
+    // it beside the panel (framing.ts framesBeside).
+    this.follow.beside=framesBeside(run,this.roundPhase,this.besideWindow);
     const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
     // The hero as drawn (the interpolated prediction plus the reconcile glide, coop), not the bare prediction: the camera
     // centres what the player sees, so a correction slides the world, not the hero off the centre (camera-centro-heroi).
     const focus=this.project(this.watchPoint??this.position);
-    const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.useful(),size);
+    const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
     this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);

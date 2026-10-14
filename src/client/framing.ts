@@ -2,7 +2,7 @@ import type {TerrainField} from '../maps/index.ts';
 import {heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../maps/index.ts';
 import {SCALE_PROFILES,zoomFor} from '../rules/index.ts';
 import {projectView,normalizeView} from './projection.ts';
-import {HERO_MARGIN} from './hud/zones.ts';
+import {HERO_MARGIN,crosses} from './hud/zones.ts';
 import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,MAX_ASPECT,REFERENCE_SHORT_SIDE_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
 
 const center=project({x:12,y:12});
@@ -183,17 +183,46 @@ export function followTarget(hero:Point,viewport:Viewport,zoom:number,useful?:Re
   return {x:hero.x-dx,y:hero.y-dy};
 }
 
+/** A window the follow camera frames the hero beside while it is open (framesBeside): the obra window, the forge, Dona Cida's tray. */
+export type BesideWindow='obra'|'forja'|'cida';
+/** The hero's box on screen when the scene has none yet (zones.ts MIN_PLAY_SIDE's 56 px). */
+const HERO_BOX_PX=56;
+/**
+ * Which open window the camera frames the hero beside (scene.besideWindow), from what is on screen (pure, tested; the
+ * game's explore.ts and the HUD sandbox's heroFeet both ask it):
+ * - nothing while the waiting panel is up (lobby, countdown: framesBeside frames the free band beside the panel);
+ * - the obra window, whenever it is open (framesBeside keeps it to the intermission);
+ * - the forge or Dona Cida's tray only on a portrait screen (height > 500 and taller than wide, as the HUD's portrait
+ *   CSS) and only when the window would cover the hero at the viewport centre ± HERO_MARGIN: a desktop or a landscape
+ *   tablet (1343x618, 1024x768) keeps the window in the right column, clear of the hero, and the hero at the centre.
+ * `hero`: the hero's box size on screen (scene.heroScreenRect), else 56 px.
+ */
+export function besideFrom(input:{viewport:Viewport;waiting?:boolean;obra?:boolean;tray?:{kind:'forja'|'cida';rect:Rect};hero?:Size}):BesideWindow|undefined{
+  const {viewport:v,tray}=input;
+  if(input.waiting)return undefined;
+  if(input.obra)return 'obra';
+  if(!tray||!(v.height>500&&v.height>v.width))return undefined;
+  const w=input.hero?.width??HERO_BOX_PX,h=input.hero?.height??HERO_BOX_PX;
+  const centred={x:v.width/2-w/2,y:v.height/2-h/2,width:w,height:h};
+  return crosses(centred,tray.rect,HERO_MARGIN)?tray.kind:undefined;
+}
 /**
  * Whether the follow camera frames the hero beside a panel (FollowCamera.beside: the body centred in the useful area)
  * rather than at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi: in the round the hero is at the centre,
- * whatever the HUD, its windows or the zoom). Two exceptions, where centring would put the hero under a panel:
+ * whatever the HUD, its windows or the zoom). The exceptions, where centring would put the hero under a panel:
  * - lobby and countdown: the waiting panel covers the middle of the screen; the useful area is the free band beside
  *   it (freeAround);
  * - the intermission while the obra (build) window is open: the player is choosing, no wave runs, and the useful area
- *   already excludes the window, so it never covers the hero; once it closes the camera eases back to the centre.
+ *   already excludes the window, so it never covers the hero; once it closes the camera eases back to the centre;
+ * - the forge or Dona Cida's tray, when besideFrom picked it (BUG-20261014-ORQ-forja-cobre-heroi-retrato): on a portrait
+ *   screen the window sits on the thumbs, from edge to edge, and on a short one (390x664) it reaches the centre; the
+ *   hero goes to the band above it (besideArea). Elsewhere (landscape, desktop) besideFrom never picks it.
+ * The combat offer (the level-up panel opened from the chip) is none of these: the hero stays at the centre under it.
  */
-export function framesBeside(run:string|undefined,round:string|undefined,obraOpen:boolean){
-  return run==='lobby'||run==='countdown'||run==='combat'&&round==='prepare'&&obraOpen;
+export function framesBeside(run:string|undefined,round:string|undefined,open:BesideWindow|undefined){
+  if(run==='lobby'||run==='countdown')return true;
+  if(run!=='combat'||!open)return false;
+  return open==='obra'?round==='prepare':true;
 }
 
 /**

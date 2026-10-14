@@ -43,9 +43,9 @@ const MAX_WEAPON_LEVEL=8;
 /** The tower throws the same Chinelo da Mãe the run offers, so it wears that item's sticker (DSG-adesivos-itens). */
 export const RECIPE_ICON:Readonly<Record<RecipeId,IconName|{sticker:StickerName}>>={reparo:'muralha',gambiarra:'fita','torre-chinelo':{sticker:'chinelo'}};
 /**
- * The short effect of a tag in the one-line form (landscape and desktop, camp.css, card forja-uma-linha-paisagem), next
- * to the sticker that says what it acts on: a few characters, so the name keeps the row (667 px landscape leaves ~130 px
- * for both). The long one (RECIPES describe) stays in the tag's aria-label and on the portrait phone's two-line tag.
+ * The short effect of a tag (one row on every screen, camp.css, cards forja-uma-linha-paisagem and
+ * forja-cobre-heroi-retrato), next to the sticker that says what it acts on: a few characters, so the name keeps the row
+ * (667 px landscape leaves ~130 px for both). The long one (RECIPES describe) stays in the tag's aria-label.
  */
 export const RECIPE_SHORT:Readonly<Record<RecipeId,string>>={reparo:'+25%',gambiarra:'+1 nível','torre-chinelo':'45 s'};
 const recipeArt=(art:IconName|{sticker:StickerName})=>typeof art==='string'?icon(art,{size:32}):sticker(art.sticker,{size:32});
@@ -146,13 +146,14 @@ export function barricadeBlocked(spot:Pick<BarricadeSpot<StructureView>,'structu
   return undefined;
 }
 /**
- * The barricade tag's texts: its name, its line, the one-line form's short effect (RECIPE_SHORT) and the stamp's note
- * once the room says yes (pure, tested).
+ * The barricade tag's texts: its name on the tag (the verb and the gate: "Reparar barricada Norte" lost the gate to the
+ * ellipsis at 125%, and the tag's sticker already says barricade), the whole one for the aria-label, its line, the
+ * one-line form's short effect (RECIPE_SHORT) and the stamp's note once the room says yes (pure, tested).
  */
 export function barricadeText(spot:Pick<BarricadeSpot,'name'|'down'>){
   return spot.down
-    ?{name:`Reerguer barricada ${spot.name}`,describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:`Barricada ${spot.name} de pé!`}
-    :{name:`Reparar barricada ${spot.name}`,describe:'Conserta 25% da barricada',short:'+25%',done:`Barricada ${spot.name} consertada!`};
+    ?{name:`Reerguer ${spot.name}`,full:`Reerguer barricada ${spot.name}`,describe:'Levanta de novo com 25% da vida',short:'Com 25%',done:`Barricada ${spot.name} de pé!`}
+    :{name:`Reparar ${spot.name}`,full:`Reparar barricada ${spot.name}`,describe:'Conserta 25% da barricada',short:'+25%',done:`Barricada ${spot.name} consertada!`};
 }
 /**
  * Where the window stands (pure, tested): open in the camp or at a barricade; the title names the place; away from the
@@ -248,15 +249,14 @@ export function createCamp(options:CampOptions):CampPart{
   const list=el('div','rh-forge-tags',forge);
   /** A tag of the window: the forge's three recipes, plus 'barricada' (a 'reparo' with the barricade as target). */
   type TagKey=RecipeId|'barricada';
-  interface Tag {button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement;name:HTMLElement;desc:HTMLElement;short:HTMLElement}
+  interface Tag {button:HTMLButtonElement;lock:HTMLElement;full:HTMLElement;name:HTMLElement;short:HTMLElement}
   const tags=new Map<TagKey,Tag>();
   const makeTag=(key:TagKey,art:IconName|{sticker:StickerName},recipe:RecipeId):Tag=>{
     const r=RECIPES[recipe],button=el('button','rh-forge-tag',list);button.type='button';button.dataset.recipe=recipe;
     button.insertAdjacentHTML('beforeend',`<span class="rh-forge-icon">${recipeArt(art)}</span>`);
     const body=el('span','rh-forge-body',button);
     const name=el('strong','rh-forge-name',body);name.textContent=r.name;
-    const desc=el('span','rh-forge-desc',body);desc.textContent=r.describe;
-    // The one-line form shows this one instead (camp.css): name, short effect and price on one row.
+    // One row (camp.css): name, short effect and price; the long effect is in the aria-label.
     const short=el('span','rh-forge-curto',body);short.textContent=RECIPE_SHORT[recipe];
     const price=el('span','rh-forge-price',button);
     // "R$ N" (the tag's aria-label says the price in words); render() rewrites it when the inflação moves it.
@@ -265,7 +265,7 @@ export function createCamp(options:CampOptions):CampPart{
     // Nothing to do (wall already full, three towers up): a check, not only a paler tag (review onda 6, B8).
     const full=el('span','rh-forge-full',price);full.insertAdjacentHTML('beforeend',icon('pronto',{label:'Já tá no máximo'}));full.hidden=true;
     el('span','rh-forge-stamp',button).textContent='LEVEI';
-    const tag={button,lock,full,name,desc,short};tags.set(key,tag);return tag;
+    const tag={button,lock,full,name,short};tags.set(key,tag);return tag;
   };
   for(const id of RECIPE_IDS)makeTag(id,RECIPE_ICON[id],id);
   // The city barricade's repair: the wall repair's price (one recipe), hidden until the hero stands at a barricade.
@@ -387,11 +387,11 @@ export function createCamp(options:CampOptions):CampPart{
     if(fence.button.hidden===!!spot)fence.button.hidden=!spot;
     if(spot){
       const text=barricadeText(spot),reason=barricadeBlocked(spot,camp);
-      if(fence.name.textContent!==text.name){fence.name.textContent=text.name;fence.desc.textContent=text.describe;fence.short.textContent=text.short;}
+      if(fence.name.textContent!==text.name){fence.name.textContent=text.name;fence.short.textContent=text.short;}
       fence.button.dataset.target=spot.target;
       fence.button.classList.toggle('rh-forge-blocked',!!reason);
       fence.lock.hidden=reason!=='balance';fence.full.hidden=reason!=='full';
-      fence.button.setAttribute('aria-label',label(text.name,text.describe,RECIPES.reparo.cost,reason,'reparo'));
+      fence.button.setAttribute('aria-label',label(text.full,text.describe,RECIPES.reparo.cost,reason,'reparo'));
       // Away from the wall it is why the window opened: first. In the camp it follows the forge's own tags.
       if(place.barricadeFirst&&list.firstElementChild!==fence.button)list.prepend(fence.button);
       else if(!place.barricadeFirst&&list.lastElementChild!==fence.button)list.append(fence.button);

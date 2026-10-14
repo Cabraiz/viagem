@@ -7,8 +7,10 @@
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. In the round the follow
  *   camera (D-019, framing.ts FollowCamera) does not centre the hero on it: the hero's body sits at the viewport centre
  *   (BUG-20261013-ORQ-camera-centro-heroi), so it may stand outside this area and the HUD clears the hero's real box
- *   (scene.heroScreenRect: the veil, the edge arrows). Only the lobby (the free band beside the waiting panel) and an
- *   open obra window centre it on this area (IslandScene.usefulArea, framing.ts framesBeside).
+ *   (scene.heroScreenRect: the veil, the edge arrows). Only the lobby (the free band beside the waiting panel), an
+ *   open obra window and, in portrait, the forge or Dona Cida's tray when it would cover the centred hero centre it on
+ *   this area, or on a short screen on the band above the window (IslandScene.usefulArea / frameArea, framing.ts
+ *   framesBeside and besideFrom, besideArea below).
  * - minimap (ORQ-minimapa): portrait, a status readout of the top band under the gear (the band grows by it);
  *   landscape, under the gear beside the right thumb, outside the useful area (never part of the band there); while the
  *   offer or the forge holds the right column, under the camera buttons, still outside the useful area.
@@ -121,6 +123,21 @@ export function computeZones(input:ZoneInput):ScreenZones{
   // An open offer window takes its part of the field: the camera centres the hero in what is left (UX onda 4).
   const useful=input.offer?besideOffer(playable,input.offer,fits):playable;
   return {orientation,viewport,top,announce,team,leftThumb,rightThumb:thumbR,useful};
+}
+
+/**
+ * Where the follow camera frames the hero beside an open window (framing.ts framesBeside): the useful area, which
+ * already leaves the window out; when that is too short for the hero ± HERO_MARGIN (MIN_PLAY_SIDE) and it ends on the
+ * window's top (the portrait forge or Dona Cida's tray on a short screen: 390x664 leaves ~100 px under the
+ * announcement slot), the band from the top band's status rows down to the window, which holds it. The announcement
+ * rows then avoid the hero as they do anywhere (RunHud.avoidHero: the other slot, the hint and the objective step
+ * aside). BUG-20261014-ORQ-forja-cobre-heroi-retrato.
+ */
+export function besideArea(zones:Pick<ScreenZones,'useful'|'announce'>,window:Rect|undefined):Rect{
+  const u=zones.useful;
+  if(!window||u.height>=MIN_PLAY_SIDE||Math.abs(bottom(u)-window.y)>.5)return u;
+  const up={x:u.x,y:zones.announce.y,width:u.width,height:Math.max(0,window.y-zones.announce.y)};
+  return up.height>u.height?up:u;
 }
 
 /** The largest part of `area` left beside an open window (above, below, left or right of it), preferring one that fits. */

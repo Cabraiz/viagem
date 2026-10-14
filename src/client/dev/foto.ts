@@ -43,10 +43,14 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'config-menu':{sandbox:'config',query:'cena=menu',descricao:'engrenagem do menu: Música, Efeitos e vibração'},
 });
 
-/** The scene's page query: the sandbox, its parameters, `foto=<cena>`, then the caller's extras (they win). */
+/**
+ * The scene's page query: the sandbox, its parameters, `foto=<cena>`, then the caller's extras (they win). The HUD
+ * sandbox prints without its row of state buttons (`clean=1`): it covered the phone's team fan and the offer.
+ */
 export function fotoSearch(cena:string,search:string):string|undefined{
   const scene=FOTO_CENAS[cena];if(!scene)return undefined;
   const out=new URLSearchParams(`sandbox=${scene.sandbox}&${scene.query}`);
+  if(scene.sandbox==='hud')out.set('clean','1');
   out.set('foto',cena);
   for(const [k,v] of new URLSearchParams(search))if(k!=='foto'&&k!=='sandbox')out.set(k,v);
   return `?${out.toString()}`;
@@ -58,6 +62,24 @@ export const fotoClock=(search:string)=>{const t=Number(new URLSearchParams(sear
 type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=>void;ground?:()=>boolean}};
 const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
 const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
+
+/**
+ * An entrance lasts up to this (ms, delay included): the result's cards ≤ 0.95 s, the defeat's title droop 1.4 s, an
+ * arrow's bump 0.44 s; the minimap's ping (1.6 s) and the round's banner (1.8 s) are lives, not entrances.
+ */
+const ENTRANCE_MS=1500;
+/**
+ * Waits for the entrances running now to finish, up to `ms`. Longer finite animations are a thing's whole life and end
+ * invisible (the round's banner 1.8 s, the confetti, the minimap's ping): they are left where they are, like the loops.
+ */
+async function settleAnimations(ms:number){
+  const running=document.getAnimations().filter(a=>a.playState==='running'&&(a.effect?.getComputedTiming().endTime as number??Infinity)<=ENTRANCE_MS);
+  if(!running.length)return;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  await Promise.race([Promise.all(running.map(a=>a.finished.catch(()=>undefined))),new Promise(r=>{timer=setTimeout(r,ms);})]);
+  clearTimeout(timer);
+  await frames(2);
+}
 
 /**
  * `?foto=<cena>`: rewrites the address to the scene's sandbox query (the sandboxes read location.search when they load),
@@ -87,6 +109,8 @@ export async function abrirFoto(){
     await document.fonts?.ready;
     // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.
     await frames(scene.sandbox==='cidade'?20:4);
+    // Entrances (the result's cards, an arrow's bump) end before the print.
+    await settleAnimations(3000);
     w.__cidade?.freeze?.();
     w.__fotoPronta=true;
   }catch(e){w.__fotoErro=String(e);}

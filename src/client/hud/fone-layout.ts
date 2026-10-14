@@ -24,6 +24,8 @@ export const FONE={
   bar:{portrait:{min:88,max:150},landscape:{min:160,max:180}},
   /** Gap between the band's rows (.rh-top row-gap) and, in landscape, between the bar and the fan (margin-left). */
   rowGap:4,fanGap:12,
+  /** The boss bar's own margin over the row gap (fone.css: clear of a caído's seconds under its portrait). */
+  bossGap:6,
   /** The fan: a 24 px portrait ring (half the desktop's 44) in a 28 px card, overlapping its neighbours 2 px a side (4 with 5–6). */
   ring:24,card:28,overlap:{upTo4:2,more:4},
   /** The fan's height: the card (ring + 1 px + the 4 px life bar), the ends dropped 3 px and turned (measured ≤ 34). */
@@ -92,7 +94,7 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
     fanRect={x:right(bar)+FONE.fanGap,y:band.y,width:fan,height:FONE.fanHeight};
     bottomY=band.y+Math.max(FONE.row,FONE.fanHeight);
   }
-  const boss=input.boss?{x:band.x,y:bottomY+FONE.rowGap,width:band.width,height:40}:undefined;
+  const boss=input.boss?{x:band.x,y:bottomY+FONE.rowGap+FONE.bossGap,width:band.width,height:40}:undefined;
   band.height=(boss?boss.y+boss.height:bottomY)-band.y;
   // Portrait: the minimap is a status row of the band (the slot under it); landscape: it floats (trims nothing).
   const status=[gear,level,bar,fanRect,boss,...(orientation==='portrait'?[minimap]:[])];

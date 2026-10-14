@@ -23,7 +23,7 @@
 .rh[data-hud=fone] .rh-top>.rh-xp{order:0;z-index:1;margin:0}
 .rh[data-hud=fone] .rh-top>.rh-camp{order:1;flex:1 1 88px;max-width:150px;min-width:0;min-height:34px;padding:2px 6px 2px 10px;gap:4px}
 .rh[data-hud=fone] .rh-top>.rh-team{order:2}
-.rh[data-hud=fone] .rh-top>.rh-boss{order:3;margin:0;flex:1 0 100%}
+.rh[data-hud=fone] .rh-top>.rh-boss{order:3;margin:6px 0 0;flex:1 0 100%} /* clear of a caído's seconds under its portrait (fone-layout.ts bossGap) */
 /* The bar takes the ficha: the base sticker, then the bar with the number (or the chaveiro's clock) inside it. */
 .rh[data-hud=fone] :is(.rh-camp-grana,.rh-camp-token){display:none}
 .rh[data-hud=fone] .rh-camp-wall{position:relative;flex:1 1 auto}
@@ -66,11 +66,12 @@
 .rh.rh[data-hud=fone] .rh-member :is(.rh-member-badge,.rh-member-bot,.rh-member-mood) .ic{width:14px;height:14px}
 .rh.rh[data-hud=fone] .rh-member-timer{top:22px;z-index:1;padding:0 3px}
 
-/* ---------- Edge arrows: a smaller ficha (64×30 instead of 76×36) centred in the box edges.ts lays out ---------- */
-.rh[data-hud=fone] .rh-edge{width:calc(32px + 32px * var(--t-escala));height:30px;margin:3px 0 0 6px;gap:3px;padding:0 4px 0 3px}
+/* ---------- Edge arrows: a lower ficha (76×30 instead of 76×36) centred in the box edges.ts lays out ---------- */
+/* The box's whole width (arrowHalf): narrower, "149 m" at the 13 px floor ran out of the ficha (varredura do celular). */
+.rh[data-hud=fone] .rh-edge{height:30px;margin:3px 0 0;gap:2px;padding:0 3px 0 2px}
 .rh[data-hud=fone] .rh-edge-face,.rh[data-hud=fone] .rh-edge-face :is(.ic,.face){width:20px;height:20px}
-/* The beak keeps touching the ficha: drawn 6 px further in along its direction (the ficha is 6 px narrower each side). */
-.rh[data-hud=fone] .rh-edge-tip::before,.rh[data-hud=fone] .rh-edge-tip::after{left:-7px}
+/* The beak keeps touching the ficha: drawn 2 px further in along its direction (the ficha is 3 px lower each side). */
+.rh[data-hud=fone] .rh-edge-tip::before,.rh[data-hud=fone] .rh-edge-tip::after{left:-3px}
 
 @media (min-height:501px){
   /* Portrait: no team column, so the announcement slot and the windows start at the screen's left edge. */

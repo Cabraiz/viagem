@@ -12,7 +12,7 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
-import {BossMusic,musicCue} from '../audio/music.ts';
+import {GameMusic,musicCue} from '../audio/music.ts';
 import {createHurtFrame} from './hurt.ts';
 import {chooseSlot,crosses,measureZoneInput,measureZones,union,veiled,ZONE_WINDOWS_BESIDE_OBRA,type Rect,type ScreenZones,type ZoneInput} from './zones.ts';
 import {createCamp,type CampPart,type ForgeAnswer,type HeroSpot} from './camp.ts';
@@ -85,8 +85,8 @@ export class RunHud {
   readonly el:HTMLElement;
   readonly tally:RunTally=emptyTally();
   private readonly parts:HudPart[];
-  /** The boss's music (musica-do-chefe): loads late in the match, plays while the boss lives, gone with the HUD. */
-  private readonly music=new BossMusic({engine:getAudio()});
+  /** The match music (musica-do-chefe): the low theme from the start, the boss's while it lives; gone with the HUD. */
+  private readonly music=new GameMusic({engine:getAudio()});
   private readonly result;
   private readonly ctx:HudContext;
   /** Who is laughing now (rostos-kkkk): fed by emote(), read by the team strip through ctx.mood. */
@@ -402,7 +402,7 @@ export class RunHud {
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
-    this.music.update({boss:false});
+    this.music.update({boss:false,ended:true});
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
     this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
     this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);

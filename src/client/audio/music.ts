@@ -1,43 +1,59 @@
 /**
- * Boss music (NEW-20261014-ORQ-musica-do-chefe), the game's one audio file, kept as light as possible on a phone.
- * - Format: Opus/WebM (226 KB) when the browser can play it, else AAC/M4A (359 KB), else no music.
- * - Streaming: one `<audio loop>` routed by a MediaElementAudioSourceNode into a music gain, then into the engine's
- *   master bus, so the settings' volume and mute and the limiter apply. No decodeAudioData: the compressed file
- *   stays compressed (59 s of PCM would be 11-22 MB).
- * - iOS unlock: in a gesture (the engine unlocks its context in the same one) the element plays a tiny silent WAV
- *   (a data URI, no network) at gain 0 and pauses. iOS then lets the same element play() outside a gesture, after its
- *   src changes too, which is what the boss needs: it shows up without a tap.
- * - Loading: only once the match is far along (round >= 6, the chaveiro's ETA under 3 min, or the boss already there),
- *   one low-priority fetch of the whole file. It is a plain GET, so the service worker keeps it for the next matches
- *   (the element's own Range requests skip the worker); the element then reads a blob URL. A failed fetch falls back
- *   to streaming the URL.
- * - States: idle -> loading -> ready -> playing (fade-in 1 s) -> stopping (fade-out 2 s) -> ready. Mute or a hidden
- *   tab pause the element, unmute or visible resume it while the boss is there. Never throws; a play() refused by
- *   the autoplay policy waits for the next gesture.
+ * Match music (NEW-20261014-ORQ-musica-do-chefe), two files kept as light as possible on a phone: the theme
+ * ("Radio na Floresta", looping very low through the match) and the boss's ("Static Riff", while the boss lives).
+ * - Format: Opus/WebM when the browser can play it, else AAC/M4A, else that track stays silent.
+ * - Streaming: each track is one `<audio loop>` routed by a MediaElementAudioSourceNode into its own gain, then into
+ *   the engine's master bus, so the settings' volume and mute and the limiter apply. No decodeAudioData: the files
+ *   stay compressed (a minute of PCM would be 11-22 MB).
+ * - iOS unlock: in a gesture (the engine unlocks its context in the same one) each element plays a tiny silent WAV
+ *   (a data URI, no network) at gain 0 and pauses. iOS then lets that element play() outside a gesture, after its
+ *   src changes too, which is what the music needs: the boss shows up without a tap.
+ * - Loading: one low-priority fetch of the whole file, a plain GET, so the service worker keeps it for the next
+ *   matches (the element's own Range requests skip the worker); the element then reads a blob URL. A failed fetch
+ *   falls back to streaming the URL. The theme waits a few seconds into the match (never the 3G entry); the boss
+ *   waits for round 6, the chaveiro's ETA under 3 min, or the boss itself. Silence until a file arrives.
+ * - Each track: idle -> loading -> ready -> playing (fade-in) -> stopping (fade-out) -> ready. GameMusic decides:
+ *   the boss comes, the theme fades out (1.5 s) as the boss fades in (1 s); the boss dies, its music fades out (2 s)
+ *   and then the theme fades back in (2 s); the run ends, both fade out (2 s). Mute or a hidden tab pause both
+ *   elements; they resume where wanted. Never throws; a play() refused by the autoplay policy waits for a gesture.
  */
 import type {RunView} from '../../contract/view.ts';
 import {UNLOCK_EVENTS} from './engine.ts';
 
-export const MUSIC_WEBM='/audio/boss.webm';
-export const MUSIC_M4A='/audio/boss.m4a';
+export interface TrackSpec {webm:string;m4a:string;
+  /** Gain under the master bus at full fade. */
+  level:number;
+  /** Starts from the top every time (the boss) instead of where it stopped (the theme). */
+  rewind:boolean}
+export const BOSS_TRACK:Readonly<TrackSpec>=Object.freeze({webm:'/audio/boss.webm',m4a:'/audio/boss.m4a',level:.6,rewind:true});
+/** The theme's level: ~25 % of the master, under the effects (tune by ear here). */
+export const THEME_LEVEL=.25;
+export const THEME_TRACK:Readonly<TrackSpec>=Object.freeze({webm:'/audio/tema.webm',m4a:'/audio/tema.m4a',level:THEME_LEVEL,rewind:false});
+export const MUSIC_WEBM=BOSS_TRACK.webm;
+export const MUSIC_M4A=BOSS_TRACK.m4a;
+export const MUSIC_LEVEL=BOSS_TRACK.level;
+
 export const LOAD_FROM_ROUND=6;
 export const LOAD_ETA_S=180;
+/** The theme's download starts this long after the first match view: the entry's own downloads go first. */
+export const THEME_LOAD_DELAY_MS=3000;
 export const FADE_IN_S=1;
 export const FADE_OUT_S=2;
-/** Music gain under the master: the effects stay readable over it. */
-export const MUSIC_LEVEL=.6;
+export const THEME_OUT_S=1.5;
+export const THEME_IN_S=2;
+export const END_OUT_S=2;
 
 export type MusicState='idle'|'loading'|'ready'|'playing'|'stopping';
-/** What the music needs from a view: how far the match is and whether the boss is alive (and the run not over). */
-export interface MusicCue {round?:number;etaS?:number;boss:boolean}
+/** What the music needs from a view: how far the match is, whether the boss is alive and whether the run is over. */
+export interface MusicCue {round?:number;etaS?:number;boss:boolean;ended?:boolean}
 
-/** The file this browser should stream, or null when it plays neither. */
-export function pickMusicSource(canPlay:(type:string)=>string):string|null{
+/** The file of `track` this browser should stream, or null when it plays neither. */
+export function pickMusicSource(canPlay:(type:string)=>string,track:{webm:string;m4a:string}=BOSS_TRACK):string|null{
   const ok=(type:string)=>{try{const answer=canPlay(type);return answer==='probably'||answer==='maybe';}catch{return false;}};
-  return ok('audio/webm; codecs="opus"')?MUSIC_WEBM:ok('audio/mp4; codecs="mp4a.40.2"')?MUSIC_M4A:null;
+  return ok('audio/webm; codecs="opus"')?track.webm:ok('audio/mp4; codecs="mp4a.40.2"')?track.m4a:null;
 }
 
-/** Far enough from the start that the download cannot compete with the match's entrance (3G, D-preload). */
+/** The boss file: far enough from the start that the download cannot compete with the match's entrance. */
 export function shouldLoad(cue:MusicCue):boolean{
   return cue.boss||(cue.round??0)>=LOAD_FROM_ROUND||(cue.etaS!==undefined&&cue.etaS>0&&cue.etaS<LOAD_ETA_S);
 }
@@ -45,7 +61,7 @@ export function shouldLoad(cue:MusicCue):boolean{
 export function musicCue(view:RunView,ended:boolean):MusicCue{
   const objective=view.objective,over=ended||!!objective?.ended;
   return {round:view.round?.index??view.wave?.index,etaS:objective&&!objective.ended?objective.etaS:undefined,
-    boss:!over&&view.enemies.some(enemy=>enemy.boss&&enemy.hp>0)};
+    boss:!over&&view.enemies.some(enemy=>enemy.boss&&enemy.hp>0),ended:over};
 }
 
 export interface MusicElement {
@@ -60,14 +76,23 @@ export interface MusicEngine {
 }
 export interface MusicOptions {
   engine:MusicEngine;
-  createElement?:()=>MusicElement|undefined;
-  /** Overrides the format pick (tests). */
-  source?:string|null;
-  /** Downloads the file and gives a URL the element can read (default: low-priority fetch to a blob URL). */
+  createElement?:(track:Readonly<TrackSpec>)=>MusicElement|undefined;
+  /** Overrides the format pick per track (tests); null silences that track. */
+  sources?:{boss?:string|null;theme?:string|null};
+  /** Downloads a file and gives a URL the element can read (default: low-priority fetch to a blob URL). */
   fetchUrl?:(url:string)=>Promise<string>;
   revokeUrl?:(url:string)=>void;
   setTimer?:(fn:()=>void,ms:number)=>unknown;
   clearTimer?:(id:unknown)=>void;
+}
+interface TrackHost {
+  engine:MusicEngine;
+  fetchUrl:(url:string)=>Promise<string>;
+  revokeUrl:(url:string)=>void;
+  setTimer:(fn:()=>void,ms:number)=>unknown;
+  clearTimer:(id:unknown)=>void;
+  /** Muted, volume 0 or a hidden tab: the elements pause. */
+  quiet:()=>boolean;
 }
 type Page=EventTarget&{visibilityState?:string};
 
@@ -96,97 +121,48 @@ function defaultElement():MusicElement|undefined{
   return audio;
 }
 
-export class BossMusic {
+/** One looping file: its element, its gain and its state; GameMusic says when it plays. */
+export class MusicTrack {
   private st:MusicState='idle';
   private readonly el:MusicElement|undefined;
   private readonly url:string|null;
-  private readonly engine:MusicEngine;
-  private readonly fetchUrl:(url:string)=>Promise<string>;
-  private readonly revokeUrl:(url:string)=>void;
-  private readonly setTimer:(fn:()=>void,ms:number)=>unknown;
-  private readonly clearTimer:(id:unknown)=>void;
+  private readonly spec:Readonly<TrackSpec>;
+  private readonly host:TrackHost;
   private gain:GainNode|undefined;
   private node:AudioNode|undefined;
-  private page:Page|undefined;
   private want=false;
+  private fadeS=FADE_IN_S;
+  private delayS=0;
   private blocked=false;
   private unlockedEl=false;
   private realSrc=false;
   private objectUrl:string|undefined;
   private timer:unknown;
   private disposed=false;
-  private detachers:(()=>void)[]=[];
-  private readonly offChange:()=>void;
 
-  constructor(opts:MusicOptions){
-    this.engine=opts.engine;
-    this.fetchUrl=opts.fetchUrl??fetchBlobUrl;
-    this.revokeUrl=opts.revokeUrl??(url=>{try{URL.revokeObjectURL(url);}catch{/* ignored */}});
-    this.setTimer=opts.setTimer??((fn,ms)=>setTimeout(fn,ms));
-    this.clearTimer=opts.clearTimer??(id=>clearTimeout(id as ReturnType<typeof setTimeout>));
-    let el:MusicElement|undefined,url:string|null=null;
-    try{
-      el=(opts.createElement??defaultElement)();
-      if(el){const audio=el;url=opts.source!==undefined?opts.source:pickMusicSource(type=>audio.canPlayType(type));}
-    }catch{el=undefined;}
+  constructor(spec:Readonly<TrackSpec>,host:TrackHost,el:MusicElement|undefined,source?:string|null){
+    this.spec=spec;this.host=host;
+    let url:string|null=null;
+    try{if(el)url=source!==undefined?source:pickMusicSource(type=>el.canPlayType(type),spec);}catch{url=null;}
     this.url=url;this.el=url?el:undefined;
-    this.offChange=this.el?this.engine.onChange(()=>this.follow()):()=>{};
   }
 
   get state():MusicState{return this.st;}
   get source(){return this.url;}
-  /** Whether the element is actually producing (or fading) the music right now. */
+  get wanted(){return this.want;}
+  /** Playing or fading out. */
+  get active(){return this.st==='playing'||this.st==='stopping';}
+  /** Whether the element is actually producing the music right now. */
   get sounding(){return !!this.el&&!this.el.paused&&this.realSrc;}
 
-  /** Gestures (unlock and retries) and visibilitychange on `page` (the document); returns a detach function. */
-  attach(page:Page):()=>void{
-    if(!this.el||this.disposed)return ()=>{};
-    this.page=page;
-    const offEngine=this.engine.attachUnlock(page);
-    const onGesture=()=>this.gesture(),onVisible=()=>this.follow();
-    for(const type of UNLOCK_EVENTS)page.addEventListener(type,onGesture,{passive:true});
-    page.addEventListener('visibilitychange',onVisible);
-    const detach=()=>{
-      offEngine();
-      for(const type of UNLOCK_EVENTS)page.removeEventListener(type,onGesture);
-      page.removeEventListener('visibilitychange',onVisible);
-    };
-    this.detachers.push(detach);
-    return detach;
-  }
-
-  /** Every view (or a run's end with boss:false). */
-  update(cue:MusicCue){
-    if(this.disposed||!this.el)return;
-    this.want=cue.boss;
-    if(this.st==='idle'&&shouldLoad(cue))this.load();
-    if(cue.boss&&(this.st==='ready'||this.st==='stopping'))this.start();
-    else if(!cue.boss&&this.st==='playing')this.stop();
-  }
-
-  dispose(){
-    if(this.disposed)return;
-    this.disposed=true;
-    for(const detach of this.detachers.splice(0))detach();
-    this.offChange();
-    this.cancelTimer();
-    const el=this.el;
-    if(el){try{el.pause();el.removeAttribute('src');el.load();}catch{/* ignored */}}
-    try{this.node?.disconnect();this.gain?.disconnect();}catch{/* ignored */}
-    this.node=this.gain=undefined;
-    if(this.objectUrl){this.revokeUrl(this.objectUrl);this.objectUrl=undefined;}
-    this.st='idle';
-  }
-
-  // ---- internals ----
-
-  private load(){
+  load(){
+    if(!this.el||this.disposed||this.st!=='idle')return;
     this.st='loading';
     const url=this.url!;
     let job:Promise<string>;
-    try{job=this.fetchUrl(url);}catch(error){job=Promise.reject(error);}
+    try{job=this.host.fetchUrl(url);}catch(error){job=Promise.reject(error);}
     void job.then(found=>found,()=>url).then(found=>{
-      if(this.disposed||!this.el){if(found!==url)this.revokeUrl(found);return;}
+      if(this.disposed||!this.el){if(found!==url)this.host.revokeUrl(found);return;}
       if(found!==url)this.objectUrl=found;
       try{this.el.loop=true;this.el.preload='auto';this.el.src=found;}catch{return;}
       this.realSrc=true;this.st='ready';
@@ -194,52 +170,76 @@ export class BossMusic {
     });
   }
 
-  private start(){
-    this.cancelTimer();
-    this.st='playing';
-    this.ramp(MUSIC_LEVEL,FADE_IN_S);
-    this.follow();
+  /** Fades in over `fadeS` after `delayS` (now, or as soon as the file arrives). */
+  play(fadeS:number,delayS=0){
+    if(!this.el||this.disposed||this.want)return;
+    this.want=true;this.fadeS=fadeS;this.delayS=delayS;
+    if(this.st==='ready'||this.st==='stopping')this.start();
   }
 
-  private stop(){
+  /** Fades out over `fadeS`, then pauses (and rewinds, for the boss). */
+  stop(fadeS:number){
+    if(!this.el||this.disposed||!this.want)return;
+    this.want=false;
+    if(this.st!=='playing')return;
     this.st='stopping';
-    this.ramp(0,FADE_OUT_S);
-    this.timer=this.setTimer(()=>{this.timer=undefined;this.finishStop();},FADE_OUT_S*1000);
-    this.follow();
-  }
-
-  /** Paused and rewound: the next boss starts the song from the top. */
-  private finishStop(){
+    this.ramp(0,fadeS);
     this.cancelTimer();
-    if(this.st==='stopping')this.st='ready';
-    const ctx=this.engine.context,param=this.gain?.gain;
-    if(ctx&&param){try{param.cancelScheduledValues(ctx.currentTime);param.setValueAtTime(0,ctx.currentTime);}catch{/* ignored */}}
-    if(this.el){try{this.el.pause();this.el.currentTime=0;}catch{/* ignored */}}
+    this.timer=this.host.setTimer(()=>{this.timer=undefined;this.finishStop();},fadeS*1000);
+    this.follow();
   }
 
   /** Brings the element in line with the state, the settings and the tab. */
-  private follow(){
+  follow(){
     const el=this.el;
     if(!el||this.disposed)return;
-    const settings=this.engine.settings,quiet=settings.muted||settings.volume<=0||this.page?.visibilityState==='hidden';
+    const quiet=this.host.quiet();
     if(this.st==='stopping'&&quiet){this.finishStop();return;}
-    const on=(this.st==='playing'||this.st==='stopping')&&this.realSrc&&!quiet;
-    if(on){if(el.paused&&!this.blocked)this.attempt();}
+    if(this.active&&this.realSrc&&!quiet){if(el.paused&&!this.blocked)this.attempt();}
     else if(!el.paused){try{el.pause();}catch{/* ignored */}}
   }
 
   /** Inside a gesture: unlocks the element once, or retries a play the autoplay policy refused. */
-  private gesture(){
+  gesture(){
     const el=this.el;
     if(this.disposed||!el)return;
     this.route();
     if(this.unlockedEl&&!this.blocked)return;
     const first=!this.unlockedEl;
     this.unlockedEl=true;this.blocked=false;
-    if((this.st==='playing'||this.st==='stopping')&&this.realSrc){this.follow();return;}
+    if(this.active&&this.realSrc){this.follow();return;}
     if(!first)return;
     try{if(!this.realSrc)el.src=silentWav();}catch{return;}
     this.attempt(()=>{if(this.st!=='playing'||!this.realSrc)try{el.pause();}catch{/* ignored */}});
+  }
+
+  dispose(){
+    if(this.disposed)return;
+    this.disposed=true;
+    this.cancelTimer();
+    const el=this.el;
+    if(el){try{el.pause();el.removeAttribute('src');el.load();}catch{/* ignored */}}
+    try{this.node?.disconnect();this.gain?.disconnect();}catch{/* ignored */}
+    this.node=this.gain=undefined;
+    if(this.objectUrl){this.host.revokeUrl(this.objectUrl);this.objectUrl=undefined;}
+    this.st='idle';
+  }
+
+  // ---- internals ----
+
+  private start(){
+    this.cancelTimer();
+    this.st='playing';
+    this.ramp(this.spec.level,this.fadeS,this.delayS);
+    this.follow();
+  }
+
+  private finishStop(){
+    this.cancelTimer();
+    if(this.st==='stopping')this.st='ready';
+    const ctx=this.host.engine.context,param=this.gain?.gain;
+    if(ctx&&param){try{param.cancelScheduledValues(ctx.currentTime);param.setValueAtTime(0,ctx.currentTime);}catch{/* ignored */}}
+    if(this.el){try{this.el.pause();if(this.spec.rewind)this.el.currentTime=0;}catch{/* ignored */}}
   }
 
   private attempt(after?:()=>void){
@@ -257,10 +257,10 @@ export class BossMusic {
     }catch{this.blocked=true;}
   }
 
-  /** Element -> music gain -> master, once the engine has a context; fades in if the boss is already there. */
+  /** Element -> track gain -> master, once the engine has a context; fades in if the track should be playing. */
   private route(){
     if(this.gain||!this.el)return;
-    const ctx=this.engine.context,out=this.engine.output;
+    const ctx=this.host.engine.context,out=this.host.engine.output;
     if(!ctx||!out)return;
     try{
       const gain=ctx.createGain();
@@ -269,17 +269,97 @@ export class BossMusic {
       node.connect(gain);gain.connect(out);
       this.gain=gain;this.node=node;
     }catch{return;}
-    if(this.st==='playing')this.ramp(MUSIC_LEVEL,FADE_IN_S);
+    if(this.st==='playing')this.ramp(this.spec.level,this.fadeS);
   }
 
-  private ramp(to:number,seconds:number){
-    const ctx=this.engine.context,param=this.gain?.gain;
+  private ramp(to:number,seconds:number,delay=0){
+    const ctx=this.host.engine.context,param=this.gain?.gain;
     if(!ctx||!param)return;
-    const t=ctx.currentTime;
-    try{param.cancelScheduledValues(t);param.setValueAtTime(param.value,t);param.linearRampToValueAtTime(to,t+seconds);}catch{/* ignored */}
+    const t=ctx.currentTime,from=param.value;
+    try{
+      param.cancelScheduledValues(t);param.setValueAtTime(from,t);
+      if(delay>0)param.setValueAtTime(from,t+delay);
+      param.linearRampToValueAtTime(to,t+delay+seconds);
+    }catch{/* ignored */}
   }
 
   private cancelTimer(){
-    if(this.timer!==undefined){this.clearTimer(this.timer);this.timer=undefined;}
+    if(this.timer!==undefined){this.host.clearTimer(this.timer);this.timer=undefined;}
   }
+}
+
+/** The match's two tracks: the theme from the start, the boss's while it lives, crossfaded. */
+export class GameMusic {
+  readonly boss:MusicTrack;
+  readonly theme:MusicTrack;
+  private readonly host:TrackHost;
+  private page:Page|undefined;
+  private started=false;
+  private loadTimer:unknown;
+  private disposed=false;
+  private detachers:(()=>void)[]=[];
+  private readonly offChange:()=>void;
+
+  constructor(opts:MusicOptions){
+    const engine=opts.engine;
+    this.host={engine,
+      fetchUrl:opts.fetchUrl??fetchBlobUrl,
+      revokeUrl:opts.revokeUrl??(url=>{try{URL.revokeObjectURL(url);}catch{/* ignored */}}),
+      setTimer:opts.setTimer??((fn,ms)=>setTimeout(fn,ms)),
+      clearTimer:opts.clearTimer??(id=>clearTimeout(id as ReturnType<typeof setTimeout>)),
+      quiet:()=>{const s=engine.settings;return s.muted||s.volume<=0||this.page?.visibilityState==='hidden';}};
+    const make=(spec:Readonly<TrackSpec>,source:string|null|undefined)=>{
+      let el:MusicElement|undefined;
+      try{el=(opts.createElement??defaultElement)(spec);}catch{el=undefined;}
+      return new MusicTrack(spec,this.host,el,source);
+    };
+    this.boss=make(BOSS_TRACK,opts.sources?.boss);
+    this.theme=make(THEME_TRACK,opts.sources?.theme);
+    this.offChange=this.enabled?engine.onChange(()=>this.follow()):()=>{};
+  }
+
+  get enabled(){return !!(this.boss.source||this.theme.source);}
+
+  /** Gestures (unlock and retries) and visibilitychange on `page` (the document); returns a detach function. */
+  attach(page:Page):()=>void{
+    if(!this.enabled||this.disposed)return ()=>{};
+    this.page=page;
+    const offEngine=this.host.engine.attachUnlock(page);
+    const onGesture=()=>{this.boss.gesture();this.theme.gesture();},onVisible=()=>this.follow();
+    for(const type of UNLOCK_EVENTS)page.addEventListener(type,onGesture,{passive:true});
+    page.addEventListener('visibilitychange',onVisible);
+    const detach=()=>{
+      offEngine();
+      for(const type of UNLOCK_EVENTS)page.removeEventListener(type,onGesture);
+      page.removeEventListener('visibilitychange',onVisible);
+    };
+    this.detachers.push(detach);
+    return detach;
+  }
+
+  /** Every match view (the HUD only gets them once the match is on), and the run's end. */
+  update(cue:MusicCue){
+    if(this.disposed||!this.enabled)return;
+    if(!this.started){
+      this.started=true;
+      this.loadTimer=this.host.setTimer(()=>{this.loadTimer=undefined;this.theme.load();},THEME_LOAD_DELAY_MS);
+    }
+    if(shouldLoad(cue))this.boss.load();
+    if(cue.ended){this.boss.stop(END_OUT_S);this.theme.stop(END_OUT_S);return;}
+    if(cue.boss){this.theme.stop(THEME_OUT_S);this.boss.play(FADE_IN_S);return;}
+    this.boss.stop(FADE_OUT_S);
+    // After the boss's fade-out, not over it.
+    this.theme.play(THEME_IN_S,this.boss.active?FADE_OUT_S:0);
+  }
+
+  dispose(){
+    if(this.disposed)return;
+    this.disposed=true;
+    for(const detach of this.detachers.splice(0))detach();
+    this.offChange();
+    if(this.loadTimer!==undefined){this.host.clearTimer(this.loadTimer);this.loadTimer=undefined;}
+    this.boss.dispose();this.theme.dispose();
+  }
+
+  private follow(){this.boss.follow();this.theme.follow();}
 }

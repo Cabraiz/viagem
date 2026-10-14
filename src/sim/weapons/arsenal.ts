@@ -10,7 +10,7 @@
  */
 import type {ItemDef} from '../../contract/index.ts';
 import type {WeaponDef,WeaponLevel} from './catalog.ts';
-import {SILENCER_PER_LEVEL} from '../../rules/passives.ts';
+import {SILENCER_PER_LEVEL} from '../../rules/index.ts';
 
 export type Rarity=1|2|3|4|5;
 export const RARITIES:readonly Rarity[]=[1,2,3,4,5];

@@ -28,4 +28,5 @@ export * from './telegraphs.ts';
 export * from './zueira.ts';
 // E5-checkpoint-por-round: the item catalog, so a room validates a checkpoint's builds.
 export {ITEMS} from './items.ts';
+export type {InventoryResult,InventoryRefusal} from './inventory.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';

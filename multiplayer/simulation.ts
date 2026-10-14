@@ -15,7 +15,7 @@ import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PlayerBuild,SimPlayer} from '../src/contract/index.ts';
-import type {InventoryResult} from '../src/sim/inventory.ts';
+import type {InventoryResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';

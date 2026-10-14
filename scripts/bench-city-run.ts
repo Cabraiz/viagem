@@ -87,6 +87,8 @@ import {remainingOf} from '../src/sim/stonewards/resources.ts';
 import {createRunSystems,type RunSystemsOptions} from '../src/sim/assemble.ts';
 import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
+import {OPEN_SECONDS} from '../src/sim/crates.ts';
+import {CRATE_STAND} from '../src/sim/bot-loot.ts';
 import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
@@ -417,6 +419,9 @@ export class NavDriver {
   trips=0;
   private targets=new Map<string,Crate>();
   private targetsRound=-1;
+  /** D-051: the arsenal crate (pickup id) each bot is heading for, this round. */
+  private boxes=new Map<string,string>();
+  private boxesRound=-1;
   private readonly loot:NonNullable<ReturnType<typeof cityLoot>>;
   private readonly speed:number;
   readonly nav:CityNavigator;readonly sim:Simulation;readonly room:RoomBots;
@@ -459,8 +464,14 @@ export class NavDriver {
         const walk=this.loot.distanceToPlaza(p);
         const goHome=view.camp?.hornEndsTick!==undefined||left<=returnTicks(toHome,this.speed)+4*HZ||
           walk!==undefined&&left<=Math.ceil((walk/this.speed+HOME_MARGIN)*HZ);
-        const node=recipe||goHome?undefined:this.crateFor(mind.id,p,inside,left)?.node;
-        if(!node){
+        // D-051 (--combat manual): the arsenal's crates come before the gather nodes (a weapon beats a pile of bricks).
+        const box=recipe||goHome?undefined:this.boxFor(mind.id,p,left);
+        const node=recipe||goHome||box?undefined:this.crateFor(mind.id,p,inside,left)?.node;
+        if(box){
+          const d=dist(p,box);
+          if(d<=CRATE_NEAR&&clearSegment(p,box,sim.terrain)){mode='crate-near';dir=d>CRATE_STAND?norm({x:box.x-p.x,y:box.y-p.y}):{x:0,y:0};}
+          else{mode='crate';dir=this.field(this.nav.crateField(box.id,box),p,b.brain);}
+        }else if(!node){
           if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
           else if(recipe)mode='brain';
           else{mode='home-wall';dir=toHome>4?norm({x:home.x-p.x,y:home.y-p.y}):{x:0,y:0};}
@@ -510,6 +521,34 @@ export class NavDriver {
     const list=this.loot.crates.filter(c=>open(c)&&!taken.has(c.node.id))
       .sort(inside?(a,b)=>a.seconds-b.seconds||a.node.id.localeCompare(b.node.id):(a,b)=>dist(a.node,p)-dist(b.node,p)||a.node.id.localeCompare(b.node.id));
     for(const c of list.slice(0,PICK_TRIES))if(fits(c)){this.targets.set(id,c);this.trips++;return c;}
+    return undefined;
+  }
+  /**
+   * D-051 (--combat manual): the arsenal crate (sim/crates.ts) a person who knows the way opens in the intermission:
+   * the bot keeps its crate while it is there and the trip (there on its field + the opening + the walk back to the
+   * plaza + HOME_MARGIN) fits; else the nearest crate nobody else is heading for that fits. Undefined: none, or no
+   * manual combat.
+   */
+  private boxFor(id:string,p:Point,left:number):(Point&{id:string})|undefined{
+    const crates=this.sim.run.crates;
+    if(!crates)return undefined;
+    const round=this.sim.world.round.index;
+    if(this.boxesRound!==round){this.boxes.clear();this.boxesRound=round;}
+    const pickups=this.sim.world.pickups;
+    const at=(cid:string)=>{const k=pickups.get(cid);return k&&crates.state.crates[cid]?{x:k.x,y:k.y,id:cid}:undefined;};
+    const fits=(c:Point&{id:string})=>{
+      const cost=this.nav.crateField(c.id,c).costAt(p.x,p.y);
+      if(cost===UNREACHABLE)return false;
+      const there=cost/STRAIGHT_COST*this.nav.grid.cellSize/this.speed,back=this.loot.distanceToPlaza(c)??0;
+      return (there+OPEN_SECONDS[crates.state.crates[c.id].rarity-1]+back/this.speed+HOME_MARGIN)*HZ<=left;
+    };
+    const mineId=this.boxes.get(id),mine=mineId?at(mineId):undefined;
+    if(mine&&fits(mine))return mine;
+    this.boxes.delete(id);
+    const taken=new Set(this.boxes.values());
+    const list=Object.keys(crates.state.crates).map(at).filter((c):c is Point&{id:string}=>!!c&&!taken.has(c.id))
+      .sort((a,b)=>dist(a,p)-dist(b,p)||a.id.localeCompare(b.id));
+    for(const c of list.slice(0,PICK_TRIES))if(fits(c)){this.boxes.set(id,c.id);this.trips++;return c;}
     return undefined;
   }
   private field(f:FlowField,p:Point,fallback:Point):Point{
@@ -612,8 +651,10 @@ function playRun(o:RunOptions):RunRecord{
   sim.resetRun();room.reset();
   // Capture the brain's sticks (think → setBotInput) and the forge buys; the wrapper sets the final stick.
   const setStick=sim.setBotInput.bind(sim),forge=sim.forge.bind(sim);
-  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d));
-  sim.setBotInput=(id,d,skill=false)=>{driver.brainSaid(id,d);setStick(id,d,skill);};
+  // D-051: the brain's attack button (manual combat) is held through the wrapper's re-aimed sticks.
+  const attacks=new Map<string,boolean>();
+  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d,false,attacks.get(id)??false));
+  sim.setBotInput=(id,d,skill=false,attack=false)=>{driver.brainSaid(id,d);attacks.set(id,attack);setStick(id,d,skill,attack);};
   const purchases:RunRecord['forge']['list']=[];
   const rounds:RoundRecord[]=[],inter:IntermissionRecord[]=[];
   let cur:RoundRecord|undefined,curInter:IntermissionRecord|undefined;

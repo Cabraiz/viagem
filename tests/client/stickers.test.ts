@@ -48,9 +48,27 @@ test('sticker() is a decorative <use> unless labelled, with the icon sizes',()=>
   assert.ok(isStickerName('pombo'));assert.ok(!isStickerName('🐦'));
 });
 
+/**
+ * D-051 arsenal art the user is drawing (design/proximos/10-CENARIO-WC3-E-MENU.md §6): these show the mystery sticker
+ * until it arrives. Take an id off the list when its sticker lands (the test fails while it is listed with real art).
+ */
+const ART_PENDING=new Set(['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador']);
+/** Drawings shared on purpose: a legendary is the old weapon (or its evolution) at its best, with its art; the inventory's coxinha is the heal's. */
+const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal'};
+const sharesArt=(id:string)=>id.endsWith('-lendario')?id.slice(0,-'-lendario'.length):SAME_ART[id];
+
 test('every item the run can offer has its own sticker, the same id the sim names (no emoji, no shared drawing)',()=>{
-  const items=allItemDisplays();
-  for(const item of items)assert.ok(isStickerName(item.icon),`${item.id}: ${item.icon}`);
+  const all=allItemDisplays();
+  for(const item of all)assert.ok(isStickerName(item.icon),`${item.id}: ${item.icon}`);
+  for(const id of ART_PENDING)assert.equal(itemDisplay(id).icon,UNKNOWN_ITEM_STICKER,`${id}: its art arrived, take it off ART_PENDING`);
+  for(const item of all){
+    const from=sharesArt(item.id);
+    if(from===undefined)continue;
+    // A legendary of a weapon with an evolution is its evolution (sim/weapons/arsenal.ts legendaryWeapons).
+    const art=item.id.endsWith('-lendario')&&isStickerName(`${from}-evo`)?`${from}-evo`:itemDisplay(from).icon;
+    assert.equal(item.icon,art,`${item.id}: the same drawing as ${from}`);
+  }
+  const items=all.filter(item=>!ART_PENDING.has(item.id)&&sharesArt(item.id)===undefined);
   assert.equal(new Set(items.map(item=>item.icon)).size,items.length,'one drawing per item');
   for(const def of ITEMS.all()){
     assert.equal(def.icon,itemDisplay(def.id).icon,`${def.id}: the sim and the HUD name the same sticker`);

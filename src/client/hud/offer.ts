@@ -288,14 +288,15 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       // again, and "levar os indicados" only runs inside the intermission (or pause) it began in.
       const mode=offerMode(view);
       collapsed=false;takingAll=false;
-      lastMode=mode;lastPaused=paused;root.dataset.mode=mode;root.classList.toggle('rh-offer-paused',paused);
+      // The pause's window is the whole one (title, names, effects: the game stands still), not the combat strip.
+      lastMode=mode;lastPaused=paused;root.dataset.mode=paused?'pause':mode;
     }
     const state=offerUiState(view,collapsed,paused);
     if(!state.pending)takingAll=false;
     // The chosen offer is no longer "waiting", even before the server drops it.
     const waiting=offers.filter(offer=>offer.id!==pending?.id).length;
     const chipWas=chip.hidden;
-    chip.hidden=waiting<=0;
+    chip.hidden=!state.chip||waiting<=0;
     chip.dataset.mode=state.mode;
     if(waiting!==lastPending&&waiting>0){
       if(chipWas||waiting>lastPending)beat();

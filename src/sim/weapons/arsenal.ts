@@ -39,32 +39,34 @@ const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{ver
 };
 
 /**
- * The seven weapons (proposal §1). Speeds and durations are the tuned table values (travelling patterns fly
+ * The seven weapons (proposal §1). Every verde row deals about 25 a second to one target (the crowd patterns to each one
+ * in their cone or blast): reach, pierce and the crowd make the difference, and the rarity scales it (a weapon that only
+ * comes azul or better starts there). The CI bench tunes them. Speeds and durations are the tuned table values (travelling patterns fly
  * PROJECTILE_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
  */
 export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
   weapon({id:'faca',name:'Faca de Pão',icon:'faca',pattern:'cone',coneHalfAngle:1,minRarity:1,noise:0,
     quip:'Corta pão, corta bicho.',intro:'Golpe em arco bem de perto. Não faz barulho nenhum.',
     //           dmg  cd  amt area spd dur pierce kb  hit  range
-    verde:row(14,.45,1,1.3,0,.15,1e6,.3,.2,1.3)}),
+    verde:row(12,.5,1,1.3,0,.15,1e6,.3,.2,1.3)}),
   weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:3,
     quip:'Tava guardada no armário desde 1987.',intro:'Um tiro certeiro no bicho mais perto.',
-    verde:row(16,.55,1,.22,10,.7,0,.2,.5,7)}),
+    verde:row(15,.6,1,.22,10,.7,0,.2,.5,7)}),
   weapon({id:'escopeta',name:'Espalha-Chumbo',icon:'escopeta',pattern:'cone',coneHalfAngle:.45,minRarity:2,noise:6,
     quip:'Mira? Pra quê?',intro:'Leque de chumbo de perto: estrago em quem estiver na frente.',
-    verde:row(22,1.1,1,4,0,.15,1e6,.6,.2,4)}),
+    verde:row(28,1.1,1,4,0,.15,1e6,.6,.2,4)}),
   weapon({id:'submetralhadora',name:'Metralhadora de Feira',icon:'submetralhadora',pattern:'pierce',minRarity:2,noise:5,
     quip:'Três por dez, freguesa!',intro:'Rajada rápida de tiro fraquinho.',
-    verde:row(7,.15,1,.18,11,.55,0,.05,.5,6)}),
+    verde:row(6,.2,1,.18,11,.55,0,.05,.5,6)}),
   weapon({id:'rifle',name:'Cano Longo',icon:'rifle',pattern:'pierce',minRarity:3,noise:7,
     quip:'Acerta o bicho e o vizinho dele.',intro:'Tiro de longe que atravessa a fila de bichos.',
-    verde:row(34,1,1,.25,16,.7,3,.4,.5,11)}),
+    verde:row(36,1.1,1,.25,16,.7,3,.4,.5,11)}),
   weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,minRarity:3,noise:4,
     quip:'Era pra soldar o portão.',intro:'Fogo contínuo bem na frente: derrete enxame.',
-    verde:row(6,.2,1,3.5,0,.15,1e6,0,.2,3.5)}),
+    verde:row(5,.2,1,3.5,0,.15,1e6,0,.2,3.5)}),
   weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:10,
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
-    verde:row(70,2.6,1,2,0,.3,1e6,1,1,9)}),
+    verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];
 
 /** The legendaries' extra damage over the weapon (or its evolution) they come from. */

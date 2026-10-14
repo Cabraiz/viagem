@@ -54,6 +54,7 @@ import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
+import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */
@@ -155,10 +156,12 @@ export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
   attack?:boolean;
+  /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
+  inventory?:LootCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -171,8 +174,8 @@ const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminat
  * with base stats: the room's aim decides the real shot). The enemy's radius counts for the patterns that touch, when
  * the view carries it (the room bots see the live enemies).
  */
-export function attackReach(me:Pick<PlayerRunView,'weapons'>,at:Point,enemies:readonly EnemyView[]):boolean{
-  const owned=equippedWeapon({weapons:me.weapons,passives:[]}),def=owned?weaponCatalog.get(owned.id):undefined;
+export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
+  const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
   const {reach,pad}=manualReach(resolveWeapon(def,owned.level,BASE_STATS));
   return enemies.some(e=>e.hp>0&&dist(e,at)<=reach+(pad?(e as EnemyView&{radius?:number}).radius??0:0));
@@ -352,6 +355,20 @@ export function decide(input:BrainInput):Decision{
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
     return finish(decision,input);
+  }
+  // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
+  // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
+  // friend before them all (planLoot only loots in a lull).
+  if(input.combat==='manual'){
+    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:LOOT_RADIUS);
+    if(loot.command)decision.inventory=loot.command;
+    if(loot.goal){
+      decision.mode='loot';
+      const close=dist(at,loot.goal.at)<=(loot.goal.stand?CRATE_STAND:.25);
+      if(!close)want=go(loot.goal.at);
+      decision.direction=close?{x:0,y:0}:norm(want);
+      return finish(decision,input);
+    }
   }
   // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
   if(task?.kind==='clear'&&prepare){

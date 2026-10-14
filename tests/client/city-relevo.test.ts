@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {ALBEDO_MEANS} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {readFileSync} from 'node:fs';
 import {groundAt,groundZ,parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {CITY_PALETTE,MATERIALS} from '../../src/client/render/city/palette.ts';
@@ -84,7 +85,9 @@ test('relief shader: GLSL ES 1.00 safe (no reserved words, constant loop bounds)
     assert.ok(code.includes(`vec3(${hex(c)})`),`palette colour #${c.toString(16)}`);
   // Every colour constant is a palette tone: none invented in the shader.
   const palette=new Set([...Object.values(CITY_PALETTE),...Object.values(MATERIALS).flatMap(m=>Object.values(m))].map(c=>hex(c as number)));
-  for(const m of code.matchAll(/vec3\((\d\.\d{4},\d\.\d{4},\d\.\d{4})\)/g))assert.ok(palette.has(m[1]),`vec3(${m[1]}) is not a palette tone`);
+  // ...but the albedo atlas's mean colours (albedo-meta.ts): divisors of the photo's detail ratio, never painted.
+  const means=new Set(ALBEDO_MEANS.map(m=>m.map(v=>v.toFixed(4)).join(',')));
+  for(const m of code.matchAll(/vec3\((\d\.\d{4},\d\.\d{4},\d\.\d{4})\)/g))assert.ok(palette.has(m[1])||means.has(m[1]),`vec3(${m[1]}) is not a palette tone`);
 });
 
 test('preview hills (sandbox only) leave streets, plaza, water and blocks at their height and only ever raise snow',()=>{

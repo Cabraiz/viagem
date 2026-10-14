@@ -53,7 +53,7 @@ export function fotoSearch(cena:string,search:string):string|undefined{
 /** The fixed clock of a scene (ms): `t` from the page, else 2000. */
 export const fotoClock=(search:string)=>{const t=Number(new URLSearchParams(search).get('t'));return Number.isFinite(t)&&t>=0&&new URLSearchParams(search).has('t')?t:2000;};
 
-type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=>void}};
+type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=>void;ground?:()=>boolean}};
 const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
 const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
 
@@ -75,7 +75,8 @@ export async function abrirFoto(){
     // (and body[data-cidade] for the city's HUD). The HUD and the obra also wait for the art index: the HUD draws its
     // scene again when it lands (icons, faces), so a print before it would miss them now and then.
     const body=document.body.dataset;
-    const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade
+    // The city also waits for its ground albedo (or its failure): the chunks bake again when it lands.
+    const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade&&w.__cidade.ground?.()!==false
       :scene.sandbox==='hud'?()=>body.hudReady==='1'&&(!scene.query.includes('mapa=cidade')||body.cidade==='1'):()=>true;
     if(!await until(drawn,30000)){w.__fotoErro='a cena não desenhou em 30 s';return;}
     if(scene.sandbox!=='cidade')await (await import('../ui/art-boot.ts')).artReady();

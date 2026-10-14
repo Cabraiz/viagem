@@ -1,0 +1,83 @@
+/**
+ * Modo foto (D-049, card NEW-20261014-ORQ-modo-foto-navegador-compartilhado): `?foto=<cena>` opens one named scene from
+ * fake data, renders it and says so: `window.__fotoPronta === true` once the frame is final (fonts in, art loaded, the
+ * city's chunks baked, the fade warmed), then the clock stops so nothing moves under the screenshot. No room, no sim.
+ * A scene is a sandbox (sandbox-cidade, sandbox-hud, sandbox-obra) with fixed parameters and, in the city, a fixed clock
+ * (`t`, ms; the chaveiro's animations read it), so a scene prints the same every time.
+ * tools/foto.mjs asks a shared browser for these pages (ESCALA.md "como pedir uma foto"); any extra query parameter
+ * (view=1, zoom=0.79, t=4000, hero=…) passes through to the sandbox.
+ */
+
+export type FotoSandbox='cidade'|'hud'|'obra';
+export interface FotoCena {
+  sandbox:FotoSandbox;
+  /** The sandbox's own parameters (without `sandbox=`). */
+  query:string;
+  /** What it shows (the list in tools/foto.mjs --lista). */
+  descricao:string;
+}
+
+const chaveiro=(moto:string,extra='')=>({sandbox:'cidade' as const,query:`mapa=real&objetivo=1&${moto}${extra}`,descricao:''});
+/** The scenes. Names are kebab-case Portuguese, as the cards call them. */
+export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
+  'chaveiro-anda':{...chaveiro('moto=anda','&t=6000'),descricao:'chaveiro: a moto andando na avenida'},
+  'chaveiro-lombada':{...chaveiro('moto=lombada'),descricao:'chaveiro: a moto na lombada'},
+  'chaveiro-volta':{...chaveiro('moto=volta','&alarme=1&pecas=1'),descricao:'chaveiro: volta no quarteirão com o alarme'},
+  'chaveiro-morta':{...chaveiro('moto=morta','&empurra=.6'),descricao:'chaveiro: moto morta, "2 empurrando" com o progresso'},
+  'chaveiro-entrega':{...chaveiro('moto=entrega'),descricao:'chaveiro: entrega (ele em pé com a bag)'},
+  'chaveiro-tombo':{...chaveiro('moto=tombo'),descricao:'chaveiro: a moto caída, os dois na neve'},
+  'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
+  'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
+  'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
+  'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
+  'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
+  'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
+  'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
+  'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
+  'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
+  'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
+  'minimapa':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=prepare&frozen=1',descricao:'HUD da cidade: minimapa WC3, setas, chaveiro'},
+  'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},
+});
+
+/** The scene's page query: the sandbox, its parameters, `foto=<cena>`, then the caller's extras (they win). */
+export function fotoSearch(cena:string,search:string):string|undefined{
+  const scene=FOTO_CENAS[cena];if(!scene)return undefined;
+  const out=new URLSearchParams(`sandbox=${scene.sandbox}&${scene.query}`);
+  out.set('foto',cena);
+  for(const [k,v] of new URLSearchParams(search))if(k!=='foto'&&k!=='sandbox')out.set(k,v);
+  return `?${out.toString()}`;
+}
+
+/** The fixed clock of a scene (ms): `t` from the page, else 2000. */
+export const fotoClock=(search:string)=>{const t=Number(new URLSearchParams(search).get('t'));return Number.isFinite(t)&&t>=0&&new URLSearchParams(search).has('t')?t:2000;};
+
+type FotoWindow={__fotoPronta?:boolean;__fotoErro?:string;__cidade?:{freeze?:()=>void}};
+const frames=(n:number)=>new Promise<void>(r=>{const step=(k:number)=>k<=0?r():requestAnimationFrame(()=>step(k-1));step(n);});
+const until=async(test:()=>boolean,ms:number)=>{for(const end=performance.now()+ms;performance.now()<end;){if(test())return true;await frames(1);}return false;};
+
+/**
+ * `?foto=<cena>`: rewrites the address to the scene's sandbox query (the sandboxes read location.search when they load),
+ * loads it, waits for the scene to be drawn and sets window.__fotoPronta (or __fotoErro with the reason).
+ */
+export async function abrirFoto(){
+  const w=window as unknown as FotoWindow;
+  const cena=new URLSearchParams(location.search).get('foto')??'',search=fotoSearch(cena,location.search);
+  if(!search){w.__fotoErro=`cena desconhecida: ${cena} (conhecidas: ${Object.keys(FOTO_CENAS).join(', ')})`;return;}
+  history.replaceState(null,'',`${location.pathname}${search}`);
+  const scene=FOTO_CENAS[cena];
+  try{
+    if(scene.sandbox==='cidade')await import('../sandboxes/sandbox-cidade.ts');
+    else if(scene.sandbox==='hud')await import('../sandboxes/sandbox-hud.ts');
+    else await import('../sandboxes/sandbox-obra.ts');
+    // Drawn: the city sandbox publishes __cidade on its first placement; the city HUD marks body[data-cidade].
+    const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade:scene.query.includes('mapa=cidade')?()=>document.body.dataset.cidade==='1':()=>true;
+    if(!await until(drawn,30000)){w.__fotoErro='a cena não desenhou em 30 s';return;}
+    await document.fonts?.ready;
+    // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.
+    await frames(scene.sandbox==='cidade'?20:4);
+    w.__cidade?.freeze?.();
+    w.__fotoPronta=true;
+  }catch(e){w.__fotoErro=String(e);}
+}

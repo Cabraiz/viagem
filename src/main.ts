@@ -341,6 +341,8 @@ document.fonts?.addEventListener('loadingdone',refitNames);
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
+// Modo foto (D-049): one named scene from fake data, drawn once, window.__fotoPronta (src/client/dev/foto.ts).
+if(new URLSearchParams(location.search).has('foto'))void import('./client/dev/foto.ts').then(m=>m.abrirFoto());
 if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./client/sandboxes/sandbox-horde.ts').then(m=>m.openHordeSandbox());
 if(new URLSearchParams(location.search).get('sandbox')==='fun')void import('./client/sandboxes/sandbox-fun.ts');
 if(new URLSearchParams(location.search).get('sandbox')==='hud')void import('./client/sandboxes/sandbox-hud.ts');

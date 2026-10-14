@@ -5,7 +5,7 @@
 import type {EmoteId} from '../fun/emotes.ts';
 import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
-import type {OfferView,PlayerRunView,RunView} from '../../contract/index.ts';
+import type {OfferView,PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 import {chaveiroClock,liveObjective,type ChaveiroClock} from './chaveiro.ts';
@@ -34,6 +34,11 @@ export interface HudContext {
   critterIcon?(kind:string):string|undefined;
   /** The emote a player is showing now (rostos-kkkk: KKKK puts the `rindo` face on the team strip); undefined = none. */
   mood?(playerId:string):EmoteId|undefined;
+  /**
+   * D-050: the team's level-up pause (RunState.pause from the room's {t:'run'}), set by Hud.setPause; undefined when
+   * the run is not paused. The offer opens by itself in it; the pause's own HUD (clock, who is picking) reads it too.
+   */
+  pause?:RunPause;
 }
 
 /** Common shape of every DOM part of the HUD. */

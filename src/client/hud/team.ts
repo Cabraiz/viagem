@@ -10,6 +10,7 @@ import {icon,type IconName} from '../ui/icon.ts';
 import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
 import {artIndexVersion} from '../art/manifest.ts';
 import {teamColor} from './wc-minimap/minimap.ts';
+import {pickMarks,validPause} from './pausa.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -30,7 +31,7 @@ export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>;art:number}
+interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;escolha:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>;art:number}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -64,9 +65,11 @@ export function createTeamStrip():HudPart{
     const bot=el('span','rh-member-bot',item);bot.hidden=true;
     // KKKK (rostos-kkkk): the laugh sticker at the portrait's foot while ring[data-mood=rindo] (2.2 s, CSS shows it).
     const mood=el('span','rh-member-mood',item);mood.innerHTML=icon('risada');mood.setAttribute('aria-hidden','true');
+    // The level-up pause (D-050, pausa.ts/pausa.css): a "pronto" sticker on who picked, a thinking ficha on who has not.
+    const escolha=el('span','rh-member-escolha',item);escolha.hidden=true;escolha.setAttribute('aria-hidden','true');
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
-    return {root:item,face,ring,fill,badge,bot,mood,name,timer,classId:player.classId,last:new Map(),art:artIndexVersion};
+    return {root:item,face,ring,fill,badge,bot,mood,escolha,name,timer,classId:player.classId,last:new Map(),art:artIndexVersion};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -75,6 +78,8 @@ export function createTeamStrip():HudPart{
     const live=new Set(ordered.map(p=>p.id));
     for(const [id,nodes] of members)if(!live.has(id)){nodes.root.remove();members.delete(id);}
     root.dataset.count=String(ordered.length);
+    // The level-up pause (D-050, ctx.pause): who picked and who the room still waits for.
+    const marks=pickMarks(validPause(ctx.pause),view.players);
     ordered.forEach((player,index)=>{
       let nodes=members.get(player.id);
       if(!nodes){nodes=make(player,ctx);nodes.root.dataset.id=player.id;members.set(player.id,nodes);}
@@ -95,7 +100,9 @@ export function createTeamStrip():HudPart{
       const progress=player.downed?clamp01(player.downed.progress):0;
       put(n,'rescue',`${Math.round(progress*360)}deg`,v=>n.ring.style.setProperty('--rh-rescue',v));
       if(player.downed)put(n,'timer',secondsText(secondsLeft(player.downed.bleedOutTick,view.tick)),v=>{n.timer.textContent=v;});
-      put(n,'aria',`${player.name}${player.bot?' (bot)':''}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}`,v=>n.root.setAttribute('aria-label',v));
+      const pick=marks.get(player.id)??'';
+      put(n,'escolha',pick,v=>{if(v)n.root.dataset.escolha=v;else delete n.root.dataset.escolha;n.escolha.innerHTML=v==='escolheu'?icon('pronto'):'';n.escolha.hidden=!v;});
+      put(n,'aria',`${player.name}${player.bot?' (bot)':''}: ${state==='downed'?'caído':state==='eliminated'?'fora':`${player.hp} de ${player.maxHp} de vida`}${pick==='escolheu'?', já escolheu':pick==='pensando'?', escolhendo':''}`,v=>n.root.setAttribute('aria-label',v));
     });
     if(named&&!named.isConnected)named=undefined;
   },destroy(){clearTimeout(nameTimer);}};

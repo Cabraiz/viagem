@@ -97,6 +97,7 @@ import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
 const CLEAN_DELIVERY_TICKS=ENTREGA_CLEAN_SECONDS*20;
 import {BOT_FORGE_LEFT,BOT_NAMES,RoomBots} from '../multiplayer/room-bots.ts';
+import {LevelupPause,PAUSE_FIRST_MS} from '../multiplayer/levelup-pause.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Pure helpers (tested in tests/tools/city-run-summary.test.ts)
@@ -186,6 +187,12 @@ export interface RunRecord {
   grana?:{earned:number;spent:{evolutions:number;repairs:number;forge:number;other:number};final:number};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
   objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
+  /**
+   * D-050: the level-up pauses, emulated like the room does (LevelupPause on a 50 ms clock, no think nor step while
+   * paused). Bots settle after BOT_PICK_MS, so `botSeconds` is what the bench paused; `humanShare` is the worst case for
+   * people (every pause to PAUSE_FIRST_MS) over the wave seconds. Absent in older JSON files.
+   */
+  pause?:{count:number;botSeconds:number;waveSeconds:number;humanShare:number};
   /** runDigest: the same seed and code give the same digest on any machine (CI determinism check). */
   digest?:string;
 }
@@ -321,6 +328,8 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
     const list=runs.filter(r=>r.players===t.players);
     out.push(`${t.players}p: ${t.wins}/${t.runs} wins (${t.verdict.wins}${t.verdict.target?` ${r2(t.verdict.target.min)}–${r2(t.verdict.target.max)}`:''}) causes ${JSON.stringify(t.causes)} deaths by round ${JSON.stringify(t.deathRounds)}`);
     out.push(`   sim minutes mean ${mean(list.map(r=>r.simMinutes))} | ms/tick mean ${mean(list.map(r=>r.perf.msPerTick))}`);
+    const paused=list.filter(r=>r.pause);
+    if(paused.length)out.push(`   D-050 pauses/run ${mean(paused.map(r=>r.pause!.count))} | wave min/run ${mean(paused.map(r=>r.pause!.waveSeconds/60))} | worst-case human share ${mean(paused.map(r=>r.pause!.humanShare))} (max ${Math.max(...paused.map(r=>r.pause!.humanShare))})`);
     out.push(`   first arrival s ${JSON.stringify(t.firstArrivalS.all)} | loot/intermission ${JSON.stringify(t.loot.unitsPerIntermission)} ≈ ${t.loot.recipesPerIntermission} recipes (mean ${r2(RECIPE_MEAN_UNITS)} u) | forge/run ${t.loot.purchasesPerRun?.mean??'-'}`);
     out.push(`   round 1: downed ${t.round1.downed} eliminated ${t.round1.eliminated} defeats ${t.round1.defeats} (${t.verdict.round1}) tutorial arrival ${JSON.stringify(t.round1.tutorialArrivalS)} | boss reached ${t.boss.reached} killed ${t.boss.kills}`);
   }
@@ -666,7 +675,13 @@ function playRun(o:RunOptions):RunRecord{
   const started=performance.now();
   let navMs=0,ticks=0;
   const thinkBefore=room.thinkMs;
+  // D-050: the room's level-up pause (multiplayer/room.ts advance), on a clock of one STEP_MS per loop.
+  const levelup=new LevelupPause(),pause={count:0,loops:0,waveTicks:0};let clock=0;
   while(!sim.outcome&&sim.tick<o.capTicks){
+    clock+=STEP_MS;
+    const was=levelup.paused,paused=levelup.update(sim,clock);
+    if(paused){if(!was)pause.count++;pause.loops++;continue;}
+    if(sim.world.round.phase==='wave')pause.waveTicks++;
     room.think(sim);
     const n0=performance.now();driver.step(waveStart);navMs+=performance.now()-n0;
     // The bots spend in think (the wrappers above); in the step the kills pay in, anything else (Dona Cida) takes out.
@@ -746,6 +761,7 @@ function playRun(o:RunOptions):RunRecord{
       thinkMsPerTick:Math.round((room.thinkMs-thinkBefore)/Math.max(1,ticks)*1000)/1000,navMsPerTick:Math.round(navMs/Math.max(1,ticks)*1000)/1000},
     knobsApplied,
     ...(o.towers?{towers:towerSummary()}:{}),
+    pause:{count:pause.count,botSeconds:r2(pause.loops*STEP_MS/1000),waveSeconds:r2(pause.waveTicks/HZ),humanShare:pause.waveTicks?r2(pause.count*PAUSE_FIRST_MS/1000/(pause.waveTicks/HZ+pause.count*PAUSE_FIRST_MS/1000)):0},
     grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(st().grana)},
     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
   };

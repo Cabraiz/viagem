@@ -85,6 +85,8 @@ test('ACCEPTANCE (D-047): a city room with three bots and a person plays the cha
       if(e.type==='round'&&e.phase==='wave')waves=e.index;
       if(e.type==='moto')moments.push(`${e.mode}${e.alone?'(sozinho)':''} ${secs(sim.tick)}`);
     }
+    // D-050: a level-up pause stops the sim (Ana never picks: each lasts its deadline); nobody is stuck in it.
+    if(room.levelup.paused)continue;
     for(const id of bots){
       const mode=brains.modes.get(id);if(mode)modes[mode]=(modes[mode]??0)+1;
       const b=sim.players.get(id)!,s=stick.get(id)??{x:0,y:0},h=trail.get(id)!;

@@ -82,8 +82,11 @@ test('the window sits where the thumb reaches: bottom of the column in portrait,
 });
 
 test('portrait with a notch: one column leaves the hero no field under the announcement slot, so the branches go two by two',()=>{
+  // A top band as tall as the old one with the minimap in it (the WC3 minimap now floats, minimapa-wc3): the tight case.
+  const TALL:ZoneInput={...PORTRAIT_NOTCH,status:[...PORTRAIT_NOTCH.status,{x:306,y:111,width:76,height:76}]};
+  assert.equal(layoutObra(PORTRAIT_NOTCH,1,3).form,'coluna','the floating minimap leaves room for one column');
   for(const scale of [1,1.25]){
-    const L=layoutObra(PORTRAIT_NOTCH,scale,3),[a,b,c]=L.branches;
+    const L=layoutObra(TALL,scale,3),[a,b,c]=L.branches;
     assert.equal(L.form,'compacta');
     assert.ok(a.y===b.y&&b.x>right(a)&&c.y>bottom(a)&&c.x===a.x,'two per row');
     assert.ok(L.zones.useful.height>=136&&L.zones.useful.y>=bottom(L.zones.announce),'the field between the slot and the window');

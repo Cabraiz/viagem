@@ -170,17 +170,17 @@ test('with the world rescue the fall/rescue banners leave the top band; connecti
   assert.equal(reviveBanner(out,self.id,undefined,undefined,undefined,true)?.text,OUT_TEXT);
 });
 
-test('zones: the minimap is part of the top band in portrait and stays out of the field in landscape',()=>{
+test('zones: the minimap floats over a corner of the field (minimapa-wc3): it neither grows the top band nor trims the field',()=>{
   const p={viewport:{width:390,height:844},status:[{x:14,y:12,width:44,height:44},{x:166,y:8,width:142,height:46},{x:8,y:72,width:292,height:26}],
     team:{x:8,y:120,width:54,height:380},joystick:{x:24,y:708,width:112,height:112},skill:{x:284,y:738,width:82,height:82}};
   const without=computeZones(p),withMap=computeZones({...p,minimap:{x:306,y:72,width:76,height:76}});
-  assert.equal(withMap.announce.y,148+4);assert.ok(withMap.useful.y>without.useful.y);
-  assert.equal(crosses(withMap.useful,{x:306,y:72,width:76,height:76}),false);
+  // The same zones with or without it: the edge arrows and the buttons keep clear of it instead (edges.ts WINDOWS).
+  assert.deepEqual(withMap.announce,without.announce);assert.deepEqual(withMap.useful,without.useful);
   const l={viewport:{width:844,height:390},status:[{x:14,y:12,width:44,height:44},{x:330,y:8,width:180,height:40},{x:212,y:52,width:420,height:20}],
     team:{x:258,y:318,width:328,height:64},joystick:{x:18,y:278,width:96,height:96},skill:{x:746,y:292,width:82,height:82}};
   const lw=computeZones({...l,minimap:{x:754,y:64,width:76,height:76}});
   assert.equal(lw.top.height,computeZones(l).top.height,'the landscape band does not grow');
-  assert.equal(crosses(lw.useful,{x:754,y:64,width:76,height:76}),false);
+  assert.deepEqual(lw.useful,computeZones(l).useful,'nor does the field shrink');
 });
 
 test('the rescue ring is the real revive range and starts at the top of the screen in every view',()=>{

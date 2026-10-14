@@ -59,7 +59,11 @@ export interface ZoneInput {
   chip?:Rect;
   /** Safe-area insets (notch), CSS px. */
   safe?:{top:number;right:number;bottom:number;left:number};
-  /** The minimap ficha (ORQ-minimapa): part of the top band in portrait; in landscape it only trims the useful area. */
+  /**
+   * The minimap (ORQ-minimapa, then minimapa-wc3): it FLOATS over a corner of the field (Orquestrador, 13/10): it never
+   * joins the top band nor trims the useful area; the edge arrows and the buttons keep clear of it (edges.ts COVERING)
+   * and the follow camera keeps the hero in the middle, away from the corner. Kept here for the audits.
+   */
   minimap?:Rect;
   /** The open offer window (round offer in the intermission, or a level offer opened from the chip). */
   offer?:Rect;
@@ -73,7 +77,7 @@ export interface ScreenZones {
 export function computeZones(input:ZoneInput):ScreenZones{
   const {viewport}=input,orientation=orientationOf(viewport),safe=input.safe??{top:0,right:0,bottom:0,left:0};
   const portrait=orientation==='portrait';
-  const status=union([...input.status,portrait?input.minimap:undefined])??{x:0,y:0,width:viewport.width,height:safe.top};
+  const status=union(input.status)??{x:0,y:0,width:viewport.width,height:safe.top};
   const announceTop=bottom(status)+4,announce={x:safe.left,y:announceTop,width:viewport.width-safe.left-safe.right,height:ANNOUNCE_HEIGHT[orientation]};
   const top={x:0,y:0,width:viewport.width,height:bottom(announce)};
   const leftThumb=input.joystick&&inflate(input.joystick,THUMB_GAP);
@@ -84,11 +88,7 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const team=input.team,column=!!team&&team.height>team.width;
   let left=safe.left,rightEdge=viewport.width-safe.right;
   if(team&&column){if(team.x<viewport.width/2)left=Math.max(left,right(team)+8);else rightEdge=Math.min(rightEdge,team.x-8);}
-  // Landscape minimap below the top band on the right: the field stops before it (it normally already sits past the right thumb).
-  const mm=!portrait&&input.minimap&&bottom(input.minimap)>bottom(top)?input.minimap:undefined;
-  // With a window open it moves to the left column (NEW-20261011-UX-janela-esconde-caido): the field starts after it.
-  // Only an edge column trims the field; a minimap anywhere else is a layout bug the audit reports (offColumn).
-  if(mm){if(mm.x>=viewport.width-EDGE_COLUMN)rightEdge=Math.min(rightEdge,mm.x-8);else if(right(mm)<=EDGE_COLUMN)left=Math.max(left,right(mm)+8);}
+  // The minimap floats over a corner of the field (see ZoneInput.minimap): it trims nothing.
   const floor=Math.min(viewport.height-safe.bottom,team&&!column?team.y-8:Infinity);
   const yTop=bottom(top);
   let aBottom=floor;for(const thumb of [leftThumb,thumbR])if(thumb)aBottom=Math.min(aBottom,thumb.y);

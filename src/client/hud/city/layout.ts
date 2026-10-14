@@ -79,8 +79,12 @@ const floor8=(v:number)=>Math.max(HUD_FLOOR,v);
  */
 export function minimapRect(viewport:{width:number;height:number},safe:Insets=NO_INSETS,windowOpen=false):Rect{
   const s=wcMinimapSide(viewport);
-  // Portrait under the gear, or under the top band's two rows on a narrow phone (hud.css .rh-mm, hud-topo-uma-linha).
-  if(orientationOf(viewport)==='portrait')return {x:viewport.width-floor8(safe.right)-s,y:floor8(safe.top)+(viewport.width<600?94:64),width:s,height:s};
+  // Portrait under the gear; on a narrow phone bottom-left, 24 px above the joystick (112 px, 24 px from the bottom):
+  // no room beside the hero up top (hud.css .rh-mm, Warcraft 3's corner).
+  if(orientationOf(viewport)==='portrait'){
+    if(viewport.width<600)return {x:Math.max(8,safe.left),y:viewport.height-Math.max(24,safe.bottom)-112-24-s,width:s,height:s};
+    return {x:viewport.width-floor8(safe.right)-s,y:floor8(safe.top)+64,width:s,height:s};
+  }
   if(windowOpen)return {x:Math.max(14,safe.left),y:Math.max(12,safe.top)+48+24,width:s,height:s};
   return {x:viewport.width-Math.max(14,safe.right)-s,y:floor8(safe.top)+52,width:s,height:s};
 }
@@ -96,7 +100,8 @@ export function announceSlot(zones:ScreenZones,safe:Insets=NO_INSETS,team?:Rect)
     return {x,y:zones.announce.y,width:Math.max(0,viewport.width-floor8(safe.right)-8-x),height:h};
   }
   const x=floor8(safe.left)+150;
-  return {x,y:floor8(safe.top)+82,width:Math.max(0,viewport.width-floor8(safe.right)-290-x),height:h};
+  // Right under the one-row top band (hud-topo-uma-linha: hud.css .rh-stack top var(--rh-anuncio, --rh-t + 56)).
+  return {x,y:floor8(safe.top)+56,width:Math.max(0,viewport.width-floor8(safe.right)-290-x),height:h};
 }
 
 /** The hero's box at the centre of the useful area (whole px, as the follow camera rounds it). */
@@ -195,11 +200,16 @@ export const REFERENCE_GEAR={portrait:r(324,18,48,48),landscape:r(782,12,48,48)}
 export const REFERENCE_VIEWPORT={portrait:{width:390,height:844},landscape:{width:844,height:390}} as const;
 /** The notch of the doc's cases: 47 px on top in portrait, on the left in landscape. */
 export const REFERENCE_NOTCH={portrait:{top:47,right:0,bottom:0,left:0},landscape:{top:0,right:0,bottom:0,left:47}} as const;
-/** Controls at 100% without a notch: status = camera button, round chip, XP, gear. */
+/**
+ * Controls at 100% without a notch: status = camera button, round chip, level (badge + 5 px XP thread), base ficha, gear.
+ * The top band (hud.css .rh-top, hud-topo-uma-linha): landscape one row centred in --rh-l + 152 … width − (--rh-r + 60);
+ * portrait (< 600 px wide) two rows, the round chip at --rh-l + 150 up to the gear's column, the level and the base
+ * ficha from the left edge on row 2 (y 54…94).
+ */
 export const REFERENCE_CONTROLS:{readonly portrait:CityControls;readonly landscape:CityControls}={
-  portrait:{status:[r(14,12,44,44),r(166,8,142,46),r(8,72,292,26),REFERENCE_GEAR.portrait],team:r(8,120,54,380),
+  portrait:{status:[r(14,12,44,44),r(158,8,166,40),r(8,56,56,36),r(70,54,204,40),REFERENCE_GEAR.portrait],team:r(8,120,54,380),
     joystick:r(24,708,112,112),skill:r(284,738,82,82),emote:r(301,666,48,48)},
-  landscape:{status:[r(14,12,44,44),r(330,8,180,40),r(212,52,420,20),REFERENCE_GEAR.landscape],team:r(258,318,328,64),
+  landscape:{status:[r(14,12,44,44),r(296,8,170,40),r(234,10,56,36),r(472,8,230,40),REFERENCE_GEAR.landscape],team:r(258,318,328,64),
     joystick:r(18,278,96,96),skill:r(746,292,82,82)},
 };
 /** --botao-habilidade (tokens.css): 14 + 80 × --t-escala. */

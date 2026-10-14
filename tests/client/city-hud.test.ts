@@ -21,7 +21,7 @@ import {Rng} from '../../src/contract/rng.ts';
 import type {Rect,ScreenZones,AuditBox,EdgeTarget,EdgeArrow} from '../../src/client/hud/city/deps.ts';
 import type {CityLayout,CityLayoutInput,EnemyPoint,EnemyGroup,MapId,SelectorState,SelectorEvent,CityView,CityMark} from '../../src/client/hud/city/index.ts';
 
-const {computeZones,auditBoxes,crosses,gap,THUMB_GAP,HERO_MARGIN,EDGE_COLUMN,MAX_ARROWS}=deps;
+const {computeZones,auditBoxes,crosses,gap,inflate,THUMB_GAP,HERO_MARGIN,EDGE_COLUMN,MAX_ARROWS}=deps;
 
 // ---------- Geometry helpers and the doc's measured references (§0) ----------
 type Orientation='portrait'|'landscape';
@@ -32,18 +32,23 @@ const ZERO:Insets={top:0,right:0,bottom:0,left:0};
 const NOTCH=47,DROP=39;
 const VIEWPORT={portrait:{width:390,height:844},landscape:{width:844,height:390}} as const;
 const DOC={
-  portrait:{gear:r(324,18,48,48),status:[r(14,12,44,44),r(166,8,142,46),r(8,72,292,26)],team:r(8,120,54,380),
+  portrait:{gear:r(324,18,48,48),status:[r(14,12,44,44),r(158,8,166,40),r(8,56,56,36),r(70,54,204,40)],team:r(8,120,54,380),
     joystick:r(24,708,112,112),skill:r(284,738,82,82),emote:r(301,666,48,48),skill125:r(252,706,114,114),emote125:r(285,634,48,48),
     chip:r(284-THUMB_GAP-52,753,52,52)},
-  landscape:{gear:r(782,12,48,48),status:[r(14,12,44,44),r(330,8,180,40),r(212,52,420,20)],team:r(258,318,328,64),
+  landscape:{gear:r(782,12,48,48),status:[r(14,12,44,44),r(296,8,170,40),r(234,10,56,36),r(472,8,230,40)],team:r(258,318,328,64),
     joystick:r(18,278,96,96),skill:r(746,292,82,82),emote:undefined as Rect|undefined,skill125:r(714,260,114,114),emote125:undefined as Rect|undefined,
     chip:r(746-THUMB_GAP-52,307,52,52)},
 };
-/** Useful area per case (§0; the 125% + notch ones follow from the same formula). */
+/**
+ * Useful area per case (§0 formula on the hud-topo-uma-linha band, under its announcement slot; the minimap floats over a
+ * corner of the field and trims nothing; the 125% + notch ones follow from the same formula).
+ */
 const USEFUL={
-  portrait:{n100:r(70,240,320,402),n125:r(70,240,320,370),notch100:r(70,279,320,363),notch125:r(70,279,320,331)},
-  landscape:{n100:r(138,148,584,162),n125:r(138,148,552,162),notch100:r(167,148,555,162),notch125:r(167,148,523,162)},
+  portrait:{n100:r(70,186,320,456),n125:r(70,186,320,424),notch100:r(70,225,320,417),notch125:r(70,225,320,385)},
+  landscape:{n100:r(138,136,584,174),n125:r(138,136,552,174),notch100:r(167,136,555,174),notch125:r(167,136,523,174)},
 };
+/** The WC3 minimap's side at both reference viewports (hud.css .rh-mm clamp(124px, 30vmin, 210px): 30vmin = 117). */
+const MM=124;
 /** Owner's lobby window in landscape ({150,…,544,…}): only its x span matters, so it takes the full height. */
 const OWNER_WINDOW=r(150,0,544,390);
 /** Arrow ficha half size at a text scale (76×36, 84×36 at 125%) and the room layoutEdges keeps on the rim. */
@@ -66,8 +71,8 @@ const SHIFTS=[[0,0],[24,0],[-24,0],[0,24],[0,-24],[24,24],[24,-24],[-24,24],[-24
 
 const safeOf=(c:Case):Insets|undefined=>c.notch?(c.o==='portrait'?{...ZERO,top:NOTCH}:{...ZERO,left:NOTCH}):undefined;
 const insetsOf=(c:Case)=>safeOf(c)??ZERO;
-/** A status row of the doc (0 camera, 1 round chip, 2 XP) as it sits in a case (portrait notch: 39 px lower). */
-const statusOf=(c:Case,i:0|1|2)=>{const s=DOC[c.o].status[i];return c.o==='portrait'&&c.notch?{...s,y:s.y+DROP}:c.o==='landscape'&&c.notch&&s.x<100?{...s,x:s.x+33}:s;};
+/** A status row of the doc (0 camera, 1 round chip, 2 level + XP thread, 3 base ficha) as it sits in a case (portrait notch: 39 px lower). */
+const statusOf=(c:Case,i:0|1|2|3)=>{const s=DOC[c.o].status[i];return c.o==='portrait'&&c.notch?{...s,y:s.y+DROP}:c.o==='landscape'&&c.notch&&s.x<100?{...s,x:s.x+33}:s;};
 const gearOf=(c:Case)=>c.o==='portrait'&&c.notch?{...DOC.portrait.gear,y:DOC.portrait.gear.y+DROP}:DOC[c.o].gear;
 /** The measured controls of a case: REFERENCE_CONTROLS at 100%, the doc's 125% skill/emote, the notch shifts of §0. */
 function controlsFor(c:Case):CityLayoutInput['controls']{
@@ -82,15 +87,42 @@ function controlsFor(c:Case):CityLayoutInput['controls']{
   return base;
 }
 const inputOf=(c:Case):CityLayoutInput=>({viewport:{...VIEWPORT[c.o]},safe:safeOf(c),textScale:c.scale,windowOpen:c.windowOpen,controls:controlsFor(c)});
-const layoutOf=(c:Case):CityLayout=>city.cityHudLayout(inputOf(c));
-const expectedUseful=(c:Case)=>USEFUL[c.o][`${c.notch?'notch':'n'}${c.scale===1?100:125}` as 'n100'];
-const expectedMinimap=(c:Case)=>c.o==='portrait'?r(306,c.notch?111:72,76,76):c.windowOpen?r(c.notch?47:14,84,76,76):r(754,60,76,76);
 /**
- * Doc §5 big minimap. Landscape with a window open: the doc's {14,84,164,164} would cross the announcement slot (x 158), so
- * the side shrinks to keep ANNOUNCE_GAP (4 px) from it, as the coordinator's review asked: 140 (notch 146). Reported.
+ * The big minimap: recurso dormente desde minimapa-wc3; sai num card próprio. The game no longer opens it (a tap on the
+ * minimap pings), so its layout guarantees are checked from the OLD collapsed slot it hung from (76×76: portrait
+ * --rh-t + 64, landscape + 52, window open the left column), apart from the new floating collapsed one. Same rule as
+ * cityHudLayout's (bigMinimapSide clear of the announcement slot, else the doc's square over it).
+ */
+const legacyCollapsed=(v:{width:number;height:number},s:Insets,windowOpen:boolean):Rect=>{
+  const f=(x:number)=>Math.max(8,x),side=city.MINIMAP_SIDE;
+  if(v.height>500)return r(v.width-f(s.right)-side,f(s.top)+64,side,side);
+  return windowOpen?r(Math.max(14,s.left),Math.max(12,s.top)+72,side,side):r(v.width-Math.max(14,s.right)-side,f(s.top)+52,side,side);
+};
+type LegacyLayout=CityLayout&{legacyMinimap:Rect};
+const withLegacyBig=(input:CityLayoutInput):LegacyLayout=>{
+  const l=city.cityHudLayout(input),v=input.viewport,s=input.safe??ZERO,k=input.controls,windowOpen=l.orientation==='landscape'&&!!input.windowOpen;
+  const m=legacyCollapsed(v,s,windowOpen),toward:'left'|'right'=m.x+m.width/2>v.width/2?'left':'right',corner={x:toward==='left'?right(m):m.x,y:m.y};
+  const max=l.orientation==='portrait'?city.BIG_MAX_SIDE.portrait:windowOpen?city.BIG_MAX_SIDE.window:city.BIG_MAX_SIDE.landscape;
+  const big={corner,toward,max,heroZone:inflate(l.hero,HERO_MARGIN),viewport:v,safe:s,controls:[k.joystick,k.skill,k.emote,k.chip],team:k.team};
+  const clear=city.bigMinimapSide({...big,avoid:[l.announce]}),side=clear>=city.BIG_MIN_SIDE?clear:city.bigMinimapSide(big);
+  const {minimapBig:_,...rest}=l;
+  return {...rest,...(side>=city.BIG_MIN_SIDE?{minimapBig:city.bigSquare(corner,toward,side)}:{}),bigCoversAnnounce:clear<city.BIG_MIN_SIDE&&side>=city.BIG_MIN_SIDE,legacyMinimap:m};
+};
+const layoutOf=(c:Case):LegacyLayout=>withLegacyBig(inputOf(c));
+const expectedUseful=(c:Case)=>USEFUL[c.o][`${c.notch?'notch':'n'}${c.scale===1?100:125}` as 'n100'];
+/**
+ * Collapsed minimap (minimapa-wc3), floating over a corner of the field: narrow portrait in the bottom-left corner as in
+ * WC3, 24 px above the joystick (x max(8, safe left), y H − max(24, safe bottom) − 112 − 24 − side); landscape --rh-t + 52,
+ * window open the left column.
+ */
+const expectedMinimap=(c:Case)=>c.o==='portrait'?r(8,560,MM,MM):c.windowOpen?r(c.notch?47:14,84,MM,MM):r(706,60,MM,MM);
+/**
+ * Doc §5 big minimap (dormant, from the old collapsed slot). Landscape with a window open: the doc's {14,84,164,164} would
+ * cross the announcement slot (x 158), so the side shrinks to keep ANNOUNCE_GAP (4 px) from it, as the coordinator's
+ * review asked: 140 (notch 146). Reported.
  */
 const expectedBig=(c:Case):Rect|undefined=>{
-  if(c.o==='portrait')return c.windowOpen?undefined:r(150,c.notch?111:72,232,232);
+  if(c.o==='portrait'){if(c.windowOpen)return undefined;const s=c.notch&&c.scale>1?230:232;return r(382-s,c.notch?111:72,s,s);}
   if(!c.windowOpen)return r(654,60,176,176);
   const x=c.notch?47:14,side=Math.min(164,Math.max(8,insetsOf(c).left)+150-4-x);return r(x,84,side,side);
 };
@@ -104,12 +136,13 @@ const refZones=(c:Case):ScreenZones=>computeZones({viewport:{...VIEWPORT[c.o]},s
 const heroAt=(u:Rect,dx:number,dy:number)=>r(u.x+u.width/2-28+dx,u.y+u.height/2-28+dy,56,56);
 /**
  * Announcement slot as hud.css draws it (.rh-stack, insets floored at the HUD's 8 px): portrait at the zones' announce y,
- * from left + max(70, team column + 16) to right + 8; landscape at top + 82, from left + 150 to right + 290.
+ * from left + max(70, team column + 16) to right + 8; landscape at top + 56 (right under the one-row band), from left + 150
+ * to right + 290.
  */
 const announceOf=(c:Case,z:ScreenZones)=>{
   const s=insetsOf(c),f=(v:number)=>Math.max(8,v),k=controlsFor(c) as any,v=VIEWPORT[c.o];
   if(c.o==='portrait'){const x=f(s.left)+Math.max(70,(k.team&&k.team.height>k.team.width?k.team.width:54)+16);return r(x,z.announce.y,v.width-f(s.right)-8-x,z.announce.height);}
-  const x=f(s.left)+150;return r(x,f(s.top)+82,v.width-f(s.right)-290-x,z.announce.height);
+  const x=f(s.left)+150;return r(x,f(s.top)+56,v.width-f(s.right)-290-x,z.announce.height);
 };
 /** The new rects of a layout, named. */
 const newRects=(l:CityLayout)=>{
@@ -158,6 +191,7 @@ test('contract: constants and reference controls match the doc (§0, §1, §2, �
     if(d.emote)assert.deepEqual(k.emote,d.emote,`${o} emote`);
     for(const s of d.status)assert.ok(k.status.some((x:Rect|undefined)=>x&&x.x===s.x&&x.y===s.y&&x.width===s.width&&x.height===s.height),`${o} status has ${fmt(s)}`);
     assert.equal(k.minimap,undefined,'the layout places the minimap itself');
+    assert.equal(city.wcMinimapSide(VIEWPORT[o]),MM,`${o} minimap side`);
   }
 });
 
@@ -188,9 +222,9 @@ test('§5 table: collapsed minimap, big minimap, selector and segments are the e
 
 test('§5 table: arrow rail of centres (with tag and name) and the useful area per case',()=>{
   // The literal values of the table.
-  const lit:[Partial<Case>,Rect][]=[[{o:'portrait',scale:1,notch:false},r(116,282,228,318)],[{o:'portrait',scale:1.25,notch:false},r(120,282,220,286)],
-    [{o:'portrait',scale:1,notch:true},r(116,321,228,279)],[{o:'landscape',scale:1,notch:false},r(184,190,492,78)],
-    [{o:'landscape',scale:1.25,notch:false},r(188,190,452,78)],[{o:'landscape',scale:1,notch:true},r(213,190,463,78)]];
+  const lit:[Partial<Case>,Rect][]=[[{o:'portrait',scale:1,notch:false},r(116,228,228,372)],[{o:'portrait',scale:1.25,notch:false},r(120,228,220,340)],
+    [{o:'portrait',scale:1,notch:true},r(116,267,228,333)],[{o:'landscape',scale:1,notch:false},r(184,178,492,90)],
+    [{o:'landscape',scale:1.25,notch:false},r(188,178,452,90)],[{o:'landscape',scale:1,notch:true},r(213,178,463,90)]];
   for(const [p,rail] of lit){const c={windowOpen:false,name:'',...p} as Case;assert.deepEqual(layoutOf(c).arrowRail,rail,`${c.o} ${c.scale} notch=${c.notch}`);}
   for(const c of CASES){
     const l=layoutOf(c),u=expectedUseful(c);
@@ -252,7 +286,12 @@ test('thumb zones: the documented clearances hold (landscape 125% big touches th
   assert.equal(gap(layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''}).minimapBig!,DOC.landscape.skill),56);
   for(const notch of [false,true]){
     const l=layoutOf({o:'landscape',scale:1,notch,windowOpen:true,name:''}),stick=notch?r(47,278,96,96):DOC.landscape.joystick;
-    assert.ok(gap(l.minimapBig!,stick)>=30,`notch=${notch}: ${gap(l.minimapBig!,stick)} px above the joystick`);assert.equal(gap(l.minimap,stick),118,`notch=${notch}`);
+    assert.ok(gap(l.minimapBig!,stick)>=30,`notch=${notch}: ${gap(l.minimapBig!,stick)} px above the joystick`);assert.equal(gap(l.minimap,stick),70,`notch=${notch}`);
+  }
+  // Narrow portrait: the collapsed minimap sits 24 px above the joystick, touching (never crossing) its thumb zone.
+  for(const notch of [false,true]){
+    const l=layoutOf({o:'portrait',scale:1,notch,windowOpen:false,name:''});
+    assert.equal(gap(l.minimap,DOC.portrait.joystick),THUMB_GAP,`notch=${notch}`);assert.equal(crosses(l.minimap,l.zones.leftThumb!),false,`notch=${notch}`);
   }
 });
 
@@ -264,46 +303,46 @@ test('3. no new rect crosses the hero ± 40 (centred and shifted 24 px); auditBo
     const l=layoutOf(c),z=refZones(c),k=controlsFor(c) as any;
     for(const [dx,dy] of SHIFTS){
       const hero=heroAt(z.useful,dx,dy),where=`${c.name}, herói ${dx},${dy}`;
-      for(const {name,rect} of newRects(l))assert.equal(crosses(rect,hero,HERO_MARGIN),false,`${where}: ${name} ${fmt(rect)} over the hero ${fmt(hero)}`);
+      // The dormant big minimap is out of this check: the game no longer opens it and card BUG-20261014-E1-minimapa-grande-sai
+      // removes it (its own distance to the centred hero is still pinned below).
+      for(const {name,rect} of newRects(l).filter(x=>x.name!=='minimapa-grande'))assert.equal(crosses(rect,hero,HERO_MARGIN),false,`${where}: ${name} ${fmt(rect)} over the hero ${fmt(hero)}`);
       const boxes:AuditBox[]=[{name:'joystick',rect:k.joystick,thumb:true,target:true},{name:'habilidade',rect:k.skill,thumb:true,target:true},
-        {name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true},{name:'seletor',rect:l.selector,target:true},
+        {name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true,allowedInPlay:true,overHeroFails:true},{name:'seletor',rect:l.selector,target:true},
         {name:'segmento-cidade',rect:l.segments[0],target:true},{name:'segmento-infinito',rect:l.segments[1],target:true}];
-      if(l.minimapBig)boxes.push({name:'minimapa-grande',rect:l.minimapBig,target:true,allowedInPlay:true,overHeroFails:true});
       if(k.emote)boxes.push({name:'emote',rect:k.emote,target:true});
       if(k.chip)boxes.push({name:'chip',rect:k.chip,target:true});
       const audit=auditBoxes(boxes,z,hero);
       assert.deepEqual(audit.heroCrossed,[],where);assert.deepEqual(audit.thumbGaps,[],where);
       assert.ok(audit.minThumbGap>=THUMB_GAP,`${where}: minThumbGap ${audit.minThumbGap}`);
-      assert.ok(!audit.inPlay.includes('minimapa'),`${where}: the collapsed minimap is over the field`);
     }
   }
 });
 
-test('3. the big minimap keeps its documented distance to the hero zone (portrait 69 px, 45 px with the 24 px lag)',()=>{
+test('3. the big minimap keeps its documented distance to the hero zone (portrait 42 px, 18 px with the 24 px lag)',()=>{
   const l=layoutOf({o:'portrait',scale:1,notch:false,windowOpen:false,name:''}),hero=heroAt(l.zones.useful,0,0);
-  assert.deepEqual(hero,r(202,413,56,56));
-  assert.equal(hero.y-HERO_MARGIN-bottom(l.minimapBig!),69);assert.equal(hero.y-24-HERO_MARGIN-bottom(l.minimapBig!),45);
-  const ls=layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''});assert.deepEqual(heroAt(ls.zones.useful,0,0),r(402,201,56,56));
+  assert.deepEqual(hero,r(202,386,56,56));
+  assert.equal(hero.y-HERO_MARGIN-bottom(l.minimapBig!),42);assert.equal(hero.y-24-HERO_MARGIN-bottom(l.minimapBig!),18);
+  const ls=layoutOf({o:'landscape',scale:1,notch:false,windowOpen:false,name:''});assert.deepEqual(heroAt(ls.zones.useful,0,0),r(402,195,56,56));
 });
 
 // =====================================================================================================================
-// Assertion 4: landscape edge column (offColumn) and out of the field; portrait useful.y 240 / 279
+// Assertion 4: the minimap floats over a corner of the field (Orquestrador, 13/10): the useful area does not change for
+// it, and it never covers a button, the HUD or the hero zone; landscape: in an edge column (offColumn); useful.y 186 / 225
+// portrait, 136 landscape
 // =====================================================================================================================
-test('4. landscape: minimap ends ≤ 120 px from the safe edge (offColumn empty) and stays off the useful area; portrait: useful.y 240 (279 notch)',()=>{
+test('4. the minimap floats: the useful area ignores it (portrait useful.y 186, 225 notch; landscape 136), and it never covers a button, the HUD or the hero ± 40',()=>{
   for(const c of ALL){
-    const l=layoutOf(c),z=refZones(c),s=insetsOf(c),v=VIEWPORT[c.o];
-    if(c.o==='landscape'){
-      const m=l.minimap,fromRight=v.width-s.right-m.x,fromLeft=right(m)-s.left;
-      assert.ok(Math.min(fromRight,fromLeft)<=EDGE_COLUMN,`${c.name}: minimap ${fmt(m)} is ${Math.min(fromRight,fromLeft)} px from the safe edge`);
-      assert.deepEqual(auditBoxes([{name:'minimapa',rect:m,target:true,topReadout:true,edgeColumn:true}],z).offColumn,[],c.name);
-      assert.equal(crosses(m,z.useful),false,`${c.name}: minimap over the useful area`);assert.equal(crosses(m,l.zones.useful),false,c.name);
-      assert.equal(l.zones.useful.y,148,c.name);
-    }else{
-      const expected=c.notch?279:240;
-      assert.equal(l.zones.useful.y,expected,c.name);
-      assert.equal(computeZones({viewport:{...v},safe:safeOf(c),...controlsFor(c),minimap:l.minimap}).useful.y,expected,`${c.name}: computeZones with the minimap`);
-      assert.equal(crosses(l.minimap,l.zones.useful),false,c.name);
-    }
+    const l=layoutOf(c),z=refZones(c),v=VIEWPORT[c.o],m=l.minimap,k=controlsFor(c) as any;
+    const without=computeZones({viewport:{...v},safe:safeOf(c),...controlsFor(c)});
+    assert.deepEqual(l.zones.useful,without.useful,`${c.name}: the useful area changes for the minimap`);
+    assert.deepEqual(z.useful,without.useful,`${c.name}: computeZones with the minimap`);
+    assert.equal(l.zones.useful.y,c.o==='landscape'?136:c.notch?225:186,c.name);
+    if(c.o==='landscape')assert.deepEqual(auditBoxes([{name:'minimapa',rect:m,target:true,topReadout:true,edgeColumn:true}],z).offColumn,[],c.name);
+    // Buttons (camera and the top band's rows, gear, joystick, skill / "Me salva" #coop-sos in its place, emote, chip) and HUD (team, announcement slot).
+    const covered:[string,Rect|undefined][]=[...(k.status as (Rect|undefined)[]).map((s,i)=>[`status ${i}`,s] as [string,Rect|undefined]),['engrenagem',gearOf(c)],
+      ['time',k.team],['anúncio',l.announce],['joystick',k.joystick],['habilidade / me-salva',k.skill],['emote',k.emote],['chip',k.chip]];
+    for(const [name,box] of covered)if(box)assert.equal(crosses(m,box),false,`${c.name}: minimap ${fmt(m)} over ${name} ${fmt(box)}`);
+    for(const [dx,dy] of SHIFTS){const hero=heroAt(z.useful,dx,dy);assert.equal(crosses(m,hero,HERO_MARGIN),false,`${c.name}, herói ${dx},${dy}: minimap ${fmt(m)} over the hero ${fmt(hero)}`);}
   }
 });
 
@@ -315,7 +354,7 @@ test('5. collapsed minimap: off the status rows and the gear (≥ 6 px), the tea
     const l=layoutOf(c),k=controlsFor(c) as any,m=l.minimap,g=gearOf(c);
     const status=(k.status as (Rect|undefined)[]).filter((s):s is Rect=>!!s&&!(s.x===g.x&&s.width===g.width&&s.height===g.height));
     for(const s of status)assert.ok(gap(m,s)>=6,`${c.name}: minimap ${fmt(m)} is ${gap(m,s)} px from status ${fmt(s)}`);
-    // Landscape {754,60} sits right under the gear {782,12,48,48} (gap 0): the city keeps the island's .rh-minimap slot
+    // Landscape {706,60} sits right under the gear {782,12,48,48} (gap 0): the city keeps the island's .rh-minimap slot
     // unchanged on purpose (doc §1: "o mesmo slot do minimapa atual ... continuam valendo sem mexer em nada"; hud.css
     // landscape .rh-minimap top --rh-t + 52), so landscape inherits that slot and is held to "never crosses" the gear.
     // Portrait keeps the ≥ 6 px of §5 assertion 5.
@@ -327,21 +366,21 @@ test('5. collapsed minimap: off the status rows and the gear (≥ 6 px), the tea
   }
 });
 
-test('5. big minimap: never over the round chip, the gear or the team; it is not a top readout (may cover the XP for 4 s)',()=>{
+test('5. big minimap: never over the round chip, the gear or the team; it is not a top readout (may cover the band\'s second row for 4 s)',()=>{
   for(const c of ALL){
     const l=layoutOf(c),k=controlsFor(c) as any,big=l.minimapBig;
     if(!big)continue;
-    const round=statusOf(c,1),xp=statusOf(c,2);
+    const round=statusOf(c,1),xp=statusOf(c,2),base=statusOf(c,3);
     assert.equal(crosses(big,round),false,`${c.name}: big ${fmt(big)} over the round chip ${fmt(round)}`);
     assert.equal(crosses(big,gearOf(c)),false,`${c.name}: big over the gear`);
     if(k.team)assert.equal(crosses(big,k.team),false,`${c.name}: big over the team`);
-    const audit=auditBoxes([{name:'round',rect:round,topReadout:true},{name:'xp',rect:xp,topReadout:true},{name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true},
+    const audit=auditBoxes([{name:'round',rect:round,topReadout:true},{name:'xp',rect:xp,topReadout:true},{name:'base',rect:base,topReadout:true},{name:'minimapa',rect:l.minimap,target:true,topReadout:true,edgeColumn:true},
       {name:'minimapa-grande',rect:big,target:true,allowedInPlay:true,overHeroFails:true}],refZones(c));
     assert.deepEqual(audit.topCrossed,[],c.name);
   }
-  // Portrait: it covers the XP bar on purpose (and still not the round chip).
+  // Portrait: it covers the band's second row (the base ficha, where the XP bar was) on purpose, and still not the round chip.
   const p=layoutOf({o:'portrait',scale:1,notch:false,windowOpen:false,name:''});
-  assert.equal(crosses(p.minimapBig!,DOC.portrait.status[2]),true);
+  assert.equal(crosses(p.minimapBig!,DOC.portrait.status[3]),true);assert.equal(crosses(p.minimapBig!,DOC.portrait.status[1]),false);
 });
 
 const DANGER=['caido','chefe','corneta'] as const;
@@ -374,10 +413,10 @@ test('5. big minimap vs the announcement slot: clear of it (≥ 4 px) wherever a
 // =====================================================================================================================
 // Assertion 6: touch sizes; S < 120 does not open
 // =====================================================================================================================
-test('6. touch targets: collapsed 76, big ≥ 120 and square, segments ≥ 48 on both sides',()=>{
+test('6. touch targets: collapsed wcMinimapSide (124 ≥ 44), big ≥ 120 and square, segments ≥ 48 on both sides',()=>{
   for(const c of ALL){
-    const l=layoutOf(c);
-    assert.equal(l.minimap.width,city.MINIMAP_SIDE,c.name);assert.equal(l.minimap.height,city.MINIMAP_SIDE,c.name);
+    const l=layoutOf(c),side=city.wcMinimapSide(VIEWPORT[c.o]);
+    assert.equal(l.minimap.width,side,c.name);assert.equal(l.minimap.height,side,c.name);assert.ok(side>=44,c.name);
     assert.ok(l.minimapBig,`${c.name}: big minimap opens`);
     assert.equal(l.minimapBig!.width,l.minimapBig!.height,c.name);assert.ok(l.minimapBig!.width>=city.BIG_MIN_SIDE,c.name);
     for(const s of l.segments)assert.ok(s.width>=48&&s.height>=48,`${c.name}: segment ${fmt(s)}`);
@@ -388,13 +427,13 @@ test('6. touch targets: collapsed 76, big ≥ 120 and square, segments ≥ 48 on
 
 test('6. S < 120: the big minimap does not open (skill too close under it, or the team column too wide)',()=>{
   const land:Case={o:'landscape',scale:1,notch:false,windowOpen:false,name:''};
-  const lowSkill=city.cityHudLayout({...inputOf(land),controls:{...controlsFor(land),skill:r(746,150,82,82)}});
+  const lowSkill=withLegacyBig({...inputOf(land),controls:{...controlsFor(land),skill:r(746,150,82,82)}});
   assert.equal(lowSkill.minimapBig,undefined,`landscape, skill at y 150: big ${fmt(lowSkill.minimapBig)}`);
   const port:Case={o:'portrait',scale:1,notch:false,windowOpen:false,name:''};
-  const wideTeam=city.cityHudLayout({...inputOf(port),controls:{...controlsFor(port),team:r(8,120,262,380)}});
+  const wideTeam=withLegacyBig({...inputOf(port),controls:{...controlsFor(port),team:r(8,120,262,380)}});
   assert.equal(wideTeam.minimapBig,undefined,`portrait, team column to x 270: big ${fmt(wideTeam.minimapBig)}`);
   // The collapsed one never depends on it.
-  assert.deepEqual(lowSkill.minimap,r(754,60,76,76));assert.deepEqual(wideTeam.minimap,r(306,72,76,76));
+  assert.deepEqual(lowSkill.minimap,r(706,60,MM,MM));assert.deepEqual(wideTeam.minimap,r(8,560,MM,MM));
 });
 
 // =====================================================================================================================
@@ -402,8 +441,8 @@ test('6. S < 120: the big minimap does not open (skill too close under it, or th
 // =====================================================================================================================
 /** Overlap of two rects, or undefined. */
 const overlap=(a:Rect,b:Rect):Rect|undefined=>{const x=Math.max(a.x,b.x),y=Math.max(a.y,b.y),w=Math.min(right(a),right(b))-x,h=Math.min(bottom(a),bottom(b))-y;return w>0&&h>0?r(x,y,w,h):undefined;};
-/** What hides the map on screen (edges.ts COVERING): the HUD of a case, plus the open big minimap. */
-const coveringOf=(c:Case,l:CityLayout)=>{const k=controlsFor(c) as any;return [...(k.status as (Rect|undefined)[]),gearOf(c),k.team,k.joystick,k.skill,k.emote,k.chip,l.minimap,l.minimapBig].filter((x):x is Rect=>!!x);};
+/** What hides the map on screen (edges.ts COVERING): the HUD of a case, plus its minimap(s). */
+const coveringOf=(c:Case,minimaps:(Rect|undefined)[])=>{const k=controlsFor(c) as any;return [...(k.status as (Rect|undefined)[]),gearOf(c),k.team,k.joystick,k.skill,k.emote,k.chip,...minimaps].filter((x):x is Rect=>!!x);};
 test('7. arrows with the big minimap open (a window over the field): none on it, a caído hidden under it keeps an arrow beside it, escaped/unpointed empty, ≤ 6, ≤ 2 grupo, ≤ 2 boca',()=>{
   let hiddenInField=0;
   for(const c of ALL){
@@ -411,7 +450,7 @@ test('7. arrows with the big minimap open (a window over the field): none on it,
     assert.ok(l.minimapBig,`${c.name}: no big minimap`);const big=l.minimapBig;
     // Laid out in the in-play useful area, with the big minimap passed as an open window and as covering (§2: it enters
     // WINDOWS/COVERING): the layout itself must keep the arrows off it.
-    const options={windows:[big],seen:{viewport:r(0,0,v.width,v.height),covered:coveringOf(c,l)},textScale:c.scale};
+    const options={windows:[big],seen:{viewport:r(0,0,v.width,v.height),covered:coveringOf(c,[l.legacyMinimap,big])},textScale:c.scale};
     // The caído stands under the part of the big minimap that covers the field (portrait: its bottom 64 px; landscape: its
     // left strip), i.e. inside the useful area, where only the big minimap hides it. Without such a part, under its centre.
     const under=overlap(big,z.useful);if(under)hiddenInField++;
@@ -437,14 +476,24 @@ test('7. arrows with the big minimap open (a window over the field): none on it,
   assert.ok(hiddenInField>=CASES.length,`only ${hiddenInField} cases put the caído inside the useful area under the big minimap`);
 });
 
-test('7. arrows in play (big closed), 100% and 125%: inside the useful area and the rail, off the hero ± 40, ≥ 24 px from every thumb control',()=>{
+test('7. arrows in play (big closed), 100% and 125%: inside the useful area and the rail, off the hero ± 40, ≥ 24 px from every thumb control; a caído under the floating minimap keeps an arrow',()=>{
   for(const c of ALL){
     const l=layoutOf(c),z=refZones(c),s=insetsOf(c),v=VIEWPORT[c.o];
     const safe=r(s.left,s.top,v.width-s.left-s.right,v.height-s.top-s.bottom);
+    // The collapsed minimap floats over a corner of the field and is a window (edges.ts WINDOWS has .rh-minimap): the caído
+    // stands under its part over the field (else under its centre) and keeps an arrow of its own on the rail, off the
+    // minimap and the hero, with escaped/unpointed empty. The "≤ 40 px from the window" rule stays for the big windows
+    // (offer, forge, big minimap, test above); gluing the arrow to the collapsed minimap's edge is a future edges.ts improvement.
+    const options={windows:[l.minimap],seen:{viewport:r(0,0,v.width,v.height),covered:coveringOf(c,[l.minimap])},textScale:c.scale};
+    const under=overlap(l.minimap,z.useful)??l.minimap;
     for(const [dx,dy] of SHIFTS){
       const hero=heroAt(z.useful,dx,dy),where=`${c.name}, herói ${dx},${dy}`;
-      const arrows=city.layoutCityEdges(cityTargets(hero,l.minimapBig??l.minimap),l.zones.useful,hero,{textScale:c.scale});
+      const targets=cityTargets(hero,under),arrows=city.layoutCityEdges(targets,l.zones.useful,hero,options);
       assert.ok(arrows.some(a=>a.kind==='caido')&&arrows.some(a=>a.kind==='chefe'),`${where}: caído and chefe keep their arrows`);
+      const boxes:AuditBox[]=arrows.flatMap(a=>arrowBoxes(a,c.scale).map(b=>({...b,allowedInPlay:true,overHeroFails:true,withinUseful:true})));
+      for(const kind of MUST_POINT)if(!arrows.some(a=>a.kind===kind))boxes.push({name:`sem-seta-${kind}`,rect:r(0,0,0,0),unpointed:true});
+      const audit=auditBoxes(boxes,z,hero);
+      assert.deepEqual(audit.escaped,[],where);assert.deepEqual(audit.unpointed,[],where);assert.deepEqual(audit.heroCrossed,[],where);
       for(const a of arrows){
         // At the case's text scale (84 px fichas at 125%), every centre rides the §5 rail.
         assert.ok(a.x>=l.arrowRail.x-.5&&a.x<=right(l.arrowRail)+.5&&a.y>=l.arrowRail.y-.5&&a.y<=bottom(l.arrowRail)+.5,`${where}: ${a.key} centre (${a.x},${a.y}) off the rail ${fmt(l.arrowRail)}`);
@@ -1084,8 +1133,8 @@ test('§7 COVERING and WINDOWS: the open big minimap hides the map and is a wind
   const big='.rh-minimap-grande:not([hidden])';
   assert.ok(edgesMod.COVERING.split(',').includes(big));assert.ok(edgesMod.WINDOWS.split(',').includes(big));
   for(const sel of ['.rh-offer:not([hidden])','.rh-forge:not([hidden])','.rh-minimap'])assert.ok(edgesMod.COVERING.split(',').includes(sel),sel);
-  // The big minimap's class is not `.rh-minimap`: the zones still read the collapsed slot only.
-  assert.ok(!edgesMod.WINDOWS.split(',').includes('.rh-minimap'));
+  // The WC3 minimap floats over a corner of the field (minimapa-wc3): the collapsed one is a window too.
+  assert.ok(edgesMod.WINDOWS.split(',').includes('.rh-minimap'));
 });
 
 test('§7 active mouths: a spawn warning lights the mouth of its avenue (real map) until 3 s after its critters come out',async()=>{

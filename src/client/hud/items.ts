@@ -30,6 +30,28 @@ const items:ItemDisplay[]=[
   {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.
   {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'coxinha',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
+  // D-051 arsenal (sim/weapons/arsenal.ts, manual combat): the new weapons wait for their stickers (the user's art), the
+  // legendaries wear the old weapons' ones; the consumables and the hand's passives.
+  {id:'faca',kind:'weapon',name:'Faca de Pão',icon:'misterio',blurb:'Golpe em arco, bem de perto.',joke:'Corta pão e bicho.'},
+  {id:'pistola',kind:'weapon',name:'Trinta-e-Oitão do Vô',icon:'misterio',blurb:'Tiro certeiro no mais perto.',joke:'Guardada desde 87.'},
+  {id:'escopeta',kind:'weapon',name:'Espalha-Chumbo',icon:'misterio',blurb:'Leque de chumbo de perto.',joke:'Mira? Pra quê?'},
+  {id:'submetralhadora',kind:'weapon',name:'Metralhadora de Feira',icon:'misterio',blurb:'Rajada rápida e fraquinha.',joke:'Três por dez!'},
+  {id:'rifle',kind:'weapon',name:'Cano Longo',icon:'misterio',blurb:'De longe, atravessa a fila.',joke:'E o vizinho dele.'},
+  {id:'macarico',kind:'weapon',name:'Maçarico do Tio',icon:'misterio',blurb:'Fogo na frente: derrete enxame.',joke:'Era pro portão.'},
+  {id:'rojao',kind:'weapon',name:'Rojão de Réveillon',icon:'misterio',blurb:'Explode em área onde cair.',joke:'Feliz ano novo!'},
+  {id:'chinelo-lendario',kind:'weapon',name:'Chinelo da Mãe',icon:'chinelo-evo',blurb:'Lendária: chinelos voando longe.',joke:'Mãe em fúria.'},
+  {id:'boleto-lendario',kind:'weapon',name:'Boleto Vencido',icon:'boleto-evo',blurb:'Lendária: carnês que voltam.',joke:'Parcela eterna.'},
+  {id:'cafe-lendario',kind:'weapon',name:'Café Derramado',icon:'cafe-evo',blurb:'Lendária: poça gigante te segue.',joke:'Expresso na cara.'},
+  {id:'guarda-chuva-lendario',kind:'weapon',name:'Guarda-chuva da Vó',icon:'guarda-chuva',blurb:'Lendária: bloqueia e empurra.',joke:'A vó tá certa.'},
+  {id:'pombo-lendario',kind:'weapon',name:'Pombo da Praça',icon:'pombo',blurb:'Lendária: revoada que persegue.',joke:'O bando inteiro.'},
+  {id:'audio-lendario',kind:'weapon',name:'Áudio de 5 Minutos',icon:'audio',blurb:'Lendária: áudio que ninguém aguenta.',joke:'Parte 3 de 7.'},
+  {id:'coxinha',kind:'snack',name:'Coxinha',icon:'coxinha',blurb:'Cura 30 de vida.',joke:'Com catupiry.'},
+  {id:'brigadeiro',kind:'snack',name:'Brigadeiro',icon:'misterio',blurb:'Mais rápido por 30 s.',joke:'De panela.'},
+  {id:'pacoca',kind:'snack',name:'Paçoca',icon:'misterio',blurb:'Mais dano por 30 s.',joke:'Prensada.'},
+  {id:'cocada',kind:'snack',name:'Cocada',icon:'misterio',blurb:'Toma menos dano por 30 s.',joke:'Dura que dói.'},
+  {id:'kit-torre',kind:'snack',name:'Kit de Torre',icon:'misterio',blurb:'Vira 1 ficha de torre do time.',joke:'Monte você mesmo.'},
+  {id:'pente',kind:'passive',name:'Pente Estendido',icon:'misterio',blurb:'+1 projétil por disparo.',joke:'Sempre cabe mais um.'},
+  {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'misterio',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
 ];
 const byId=new Map(items.map(item=>[item.id,item]));
 

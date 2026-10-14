@@ -12,7 +12,7 @@
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {CHUNK_CELLS,ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
-import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim,type ShadowLook} from './decor.ts';
+import {GLINT,groundDecor,pieceDecor,shadowUnion,type DecorPrim,type PieceLook,type ShadowLook} from './decor.ts';
 import {BUILDING_TINT,LIT_SHADOW,SHADOW_PER_HEIGHT,lightEnabled} from '../light.ts';
 
 /**
@@ -167,6 +167,8 @@ export class CityLayer {
   private readonly relief?:CityRelief;
   /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
   private readonly cliffs?:Uint8Array;
+  /** Piece decor look: snowy stone walls with the relief ground (muros-texturizados); `?relevo=0` keeps the plain walls. */
+  private readonly pieceLook:PieceLook={};
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -179,7 +181,7 @@ export class CityLayer {
     // keeps them.
     const relief=reliefEnabled(scene);
     const drawn=relief?withoutCliffs(asset):asset;
-    if(relief)this.cliffs=cliffCells(asset);
+    if(relief){this.cliffs=cliffCells(asset);this.pieceLook={stoneWalls:true};}
     this.index=buildChunks(drawn);
     this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
     for(const b of drawn.blocks)this.blocks.set(b.id,b);
@@ -380,8 +382,8 @@ export class CityLayer {
       const body=TriBand.make(this.scene,g.items.map(({piece,geo})=>(gr:Phaser.GameObjects.Graphics)=>{
         const colors=BLOCK_COLORS[piece.kind];
         for(const face of geo.faces)gr.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
-        // Icing, windows, plaster and icicles fade with the block (same object).
-        for(const prim of pieceDecor(piece,this.asset,view,this.pivot))drawPrim(gr,prim);
+        // Icing, windows, plaster and icicles (with the relief: the walls' snowy stones) fade with the column (same part).
+        for(const prim of pieceDecor(piece,this.asset,view,this.pivot,this.pieceLook))drawPrim(gr,prim);
       }));
       const outline=TriBand.make(this.scene,g.items.map(({geo})=>(gr:Phaser.GameObjects.Graphics)=>{
         gr.lineStyle(OUTLINE_PX.block,CITY_PALETTE.breu,1);

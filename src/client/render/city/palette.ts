@@ -8,6 +8,7 @@
  */
 import type {BlockKind,GroundKind,PropKind} from './asset.ts';
 import type {FaceKind} from './faces.ts';
+import {GRADES,SUN_VIEW,gradeColor,lightEnabled,rgbOf} from '../light.ts';
 
 const hex=(v:string)=>parseInt(v.slice(1),16);
 
@@ -80,6 +81,29 @@ export const SHADOW=Object.freeze({color:CITY_PALETTE.breu,alpha:0.22});
 export const OUTSIDE_CITY=hex('#2B2542');
 /** Outline widths from the art bible: 1.5 px on block edges, 2 px on props. */
 export const OUTLINE_PX=Object.freeze({block:1.5,prop:2});
+
+/**
+ * Snowy stone walls (card muros-texturizados, relief on): stone tones per wall face, darkest first. Not new paint: each
+ * is a blend of the measured pedra tones (escura → clara → luz) lit by the scene's one sun (render/light.ts SUN_VIEW,
+ * half-Lambert on the face's view-space normal: the +qy face, screen left-down, gets more of it than the +qx face) and
+ * then the city grade (warm lights, cool shades; identity with `?luz=0`). Stones sit above the face fill (the joints
+ * are the face colour showing through), so every tone is lighter than its face and keeps the 0.131 floor.
+ */
+export const WALL_STONE_STEPS=Object.freeze([-0.22,-0.11,0,0.1,0.2] as const);
+export const WALL_STONE:Readonly<Record<'wallLight'|'wallDark',readonly number[]>>=(()=>{
+  const p=MATERIALS.pedra,on=lightEnabled();
+  const ramp=(t:number)=>{const k=Math.max(0,Math.min(1,t));return k<0.5?mixColor(p.escura,p.clara,k*2):mixColor(p.clara,p.luz,k*2-1);};
+  const grade=(c:number)=>{
+    if(!on)return c;
+    const [r,g,b]=gradeColor(rgbOf(c),GRADES.cidade,0,false),q=(v:number)=>Math.round(v*255);
+    return (q(r)<<16)|(q(g)<<8)|q(b);
+  };
+  // Half-Lambert of the face normal (view space: +qy for the light face, +qx for the dark one), stretched to the ramp,
+  // plus the lift that keeps stones above the joints.
+  const lit=(n:readonly [number,number])=>Math.max(0,Math.min(1,(0.5+0.5*(n[0]*SUN_VIEW[0]+n[1]*SUN_VIEW[1])-0.1)*2.2))+0.25;
+  const tones=(t:number)=>Object.freeze(WALL_STONE_STEPS.map(s=>grade(ramp(t+s))));
+  return Object.freeze({wallLight:tones(lit([0,1])),wallDark:tones(lit([1,0]))});
+})();
 
 /** Linear RGB mix of two colours, t in [0,1]. */
 export function mixColor(a:number,b:number,t:number):number{

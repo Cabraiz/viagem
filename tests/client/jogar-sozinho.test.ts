@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BOTS_DEFAULT,BOTS_KEY,SOLO_FAILED,SOLO_GAP_MS,SOLO_MAP,SOLO_RETRY_MS,botsLabel,clampBots,islandFlag,readBots,saveBots,soloErrorText,
-  soloMemory,soloNext,soloPlan,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
+  objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloMemory,type SoloRoom} from '../../src/client/ui/solo-plan.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
@@ -131,7 +131,13 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
 
 test('sala-solo-privada: openSolo asks the room for the solo map and a private room, in a plain-text body (no CORS preflight)',()=>{
   const lobby=read('src/client/lobby.ts'),solo=lobby.slice(lobby.indexOf('export async function openSolo'));
-  assert.ok(solo.includes('const body:RoomCreateOptions={map:plan.map,solo:true};'),'map and solo');
+  assert.ok(solo.includes('const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};'),'map, solo and the asked objective');
   assert.ok(solo.includes("fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),"),'the body, no Content-Type header');
   assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('client=new CoopClient'))),'no JSON content type: a simple request');
+});
+
+test('?modo=chaveiro asks the room for the chaveiro objective (D-047); anything else asks for nothing',()=>{
+  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro'});
+  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'),{objective:'chaveiro'});
+  for(const s of ['','?modo=muralha','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
 });

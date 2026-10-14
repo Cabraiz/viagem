@@ -20,6 +20,8 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   'dedao','gota',
   // Dono da sala e bots (D-025): a coroa de papel do chefe e o robô dos bots da sala.
   'robo','coroa',
+  // Objetivo do chaveiro (D-047): a moto 125 com a bag, na seta de borda (arte provisória até a arte do usuário).
+  'moto',
   // Ficha de torre (D-048): the team's one material pile shows as fichas (torre) and a price in material (material, a crate).
   'torre','material'] as const;
 export type IconName=typeof ICON_NAMES[number];

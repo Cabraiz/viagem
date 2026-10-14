@@ -45,6 +45,10 @@ export function applyTelegraphEffect(p:SimPlayer,t:Pick<Telegraph,'kind'|'x'|'y'
 /** Drops every D-036 effect (fall, revive, rematch): an absolute tick must not outlive the moment it belongs to. */
 export function clearMoveEffects(p:SimPlayer){
   delete p.slowUntil;delete p.slipUntil;delete p.slip;
+  // D-047 Dona Cida's sweets end too (a fall, a rematch: their absolute ticks belong to that moment and that run).
+  if(p.fastUntil!==undefined)delete p.fastUntil;
+  if(p.mightUntil!==undefined)delete p.mightUntil;
+  if(p.guardUntil!==undefined)delete p.guardUntil;
 }
 
 /** The effect fields worth sending for `p` on `tick`: only the ones still active (a finished effect costs no bytes). */

@@ -2,9 +2,12 @@
  * Client-side view model of a horde run. Protocol 4 (VGM-041) decodes into these shapes;
  * renderers (VGM-039) and HUD (VGM-040) consume them and must not import server-only modules.
  */
+import type {ObjectiveView} from './objective.ts';
 import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState,TelegraphKind} from './types.ts';
 
-export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number}
+export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number;
+  /** D-047: Dona Cida sold it a sweet ("açucarado": more damage and speed) and it still lasts. */
+  sugar?:true}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean}
 export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx?:number;dy?:number;width?:number;fireTick:number;kind?:TelegraphKind}
@@ -16,7 +19,9 @@ export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;
 export interface StructureView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;untilTick?:number;
   tier?:number;branch?:string;phase?:string;aim?:number;
   /** A defense's volleys, mod 256 (torre-contador-de-tiros): a change is a shot. */
-  shots?:number}
+  shots?:number;
+  /** D-047, the car ('quadradao'): its fallen parts (bit i = CAR_PARTS[i]); hp = limit − hits, maxHp = limit. */
+  parts?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.
@@ -40,6 +45,8 @@ export interface PlayerRunView {
   bot?:boolean;
   /** D-036 movement effects (see SimPlayer): the client's prediction applies them so movement never snaps back. */
   slowUntil?:number;slipUntil?:number;slip?:{x:number;y:number};
+  /** D-047 Dona Cida's sweets while they last (fastUntil also drives the prediction, maps/prediction.ts). */
+  fastUntil?:number;mightUntil?:number;guardUntil?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,
@@ -62,6 +69,8 @@ export interface RunView {
   /** Stonewards balance, horn and wall state (protocol 6); absent before the run is wired. */
   camp?:CampView;
   players:PlayerRunView[];
+  /** D-047: the chaveiro objective (moto, ETA, alarm, Grana, Dona Cida, the car); absent when the run has none. */
+  objective?:ObjectiveView;
   /** Pending offers for the local player only, oldest first. */
   offers:OfferView[];
   /** Events since the previous view, each with a monotonic id for de-duplication. */

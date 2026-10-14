@@ -116,7 +116,16 @@ export interface BossOptions {
    * Absent (island, endless): the authored speeds.
    */
   speedMap?:(speed:number)=>number;
+  /**
+   * D-047 (chaveiro objective): the structure the boss besieges (the car). While no player is closer to it than the
+   * car's edge, it walks to the car and, in reach (BOSS_SIEGE_REACH from its centre), hits it every BOSS_SIEGE_EVERY
+   * through hitSiege (no telegraph: no player is in it). Absent (every other run): the boss only hunts players.
+   */
+  siege?:(ctx:SimContext)=>(Point&{id:string;radius:number})|undefined;
+  hitSiege?:(ctx:SimContext,id:string,boss:EnemyState)=>void;
 }
+/** D-047: the boss hits a besieged structure within this distance of its centre (u), once every BOSS_SIEGE_EVERY ticks. */
+export const BOSS_SIEGE_REACH=2.6,BOSS_SIEGE_EVERY=ticks(3);
 /** JSON-safe controller state, enough to resume after a checkpoint. */
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
 /** A key line (spawn, phase, enrage, defeat) the global limiter refused; retried each tick until `until`. */
@@ -164,6 +173,7 @@ const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math.min(m,dist(p,q)),Infinity);
 
 export function createBoss(options:BossOptions={}):BossController {
+  const siegeOf=options.siege,hitSiege=options.hitSiege;
   const tuning:Readonly<BossTuning>=Object.freeze({...BOSS_TUNING,...options.tuning});
   /** Ticks of a dash: tuning.dashTicks, or with speedMap the time the full charge takes at its mapped speed. */
   const dashTicks=(()=>{
@@ -344,6 +354,15 @@ export function createBoss(options:BossOptions={}):BossController {
       return;
     }
     if(m.act===ACT_SWEEP){sweep(ctx,boss);return;}
+    const besieged=siegeOf?.(ctx);
+    if(besieged){
+      const edge=dist(boss,besieged)-besieged.radius;
+      if(targets.every(p=>dist(boss,p)>=edge)){
+        if(dist(boss,besieged)>BOSS_SIEGE_REACH){walk(ctx,boss,besieged);return;}
+        if(ctx.tick>=(m.siegeAt??0)){m.siegeAt=ctx.tick+BOSS_SIEGE_EVERY;hitSiege?.(ctx,besieged.id,boss);say(ctx,boss,'slam');}
+        return;
+      }
+    }
     if(!targets.length)return;
     const nearest=targets.reduce((a,b)=>dist(boss,b)<dist(boss,a)?b:a);
     if(ctx.tick<m.next){walk(ctx,boss,nearest);return;}

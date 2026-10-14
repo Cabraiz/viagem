@@ -50,6 +50,10 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
       if(p.slowUntil!==undefined&&ctx.tick>=p.slowUntil)delete p.slowUntil;
       if(p.slipUntil!==undefined&&ctx.tick>=p.slipUntil){delete p.slipUntil;delete p.slip;}
+      // D-047 Dona Cida's sweets: an expired one goes away too.
+      if(p.fastUntil!==undefined&&ctx.tick>=p.fastUntil)delete p.fastUntil;
+      if(p.mightUntil!==undefined&&ctx.tick>=p.mightUntil)delete p.mightUntil;
+      if(p.guardUntil!==undefined&&ctx.tick>=p.guardUntil)delete p.guardUntil;
       const auto=!p.online&&!!autopilot?.(p.id);
       if((!p.online&&!auto)||p.spectator)continue;
       const input=takeInput(p.id);

@@ -720,7 +720,8 @@ test('protocol 12: the wide-map budget holds with a D-040 rotation horde (every 
 test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 (every older index unchanged), within the escape',()=>{
   assert.ok(PROTOCOL_VERSION>=12);
   // 96 (protocol 11) + 'tiro' + 64 P0 pack ids = 161; 255 is the inline escape, so 94 slots are left.
-  assert.equal(DICT.length,161);
+  // Protocol 15 (D-047) appends after these 161 (its own test below).
+  assert.ok(DICT.length>=161);
   assert.ok(DICT.length<=255,'255 is the inline escape');
   assert.deepEqual(DICT.slice(68,71),['coach','motoboy','influencer'],'protocol 10 indexes unchanged');
   assert.equal(DICT.indexOf('vigia-do-predio'),71,'protocol 11 (torres-fio) indexes unchanged');assert.equal(DICT[95],'C');
@@ -728,9 +729,9 @@ test('protocol 12: the P0 roster is dictionary bytes appended after protocol 11 
   // The P0 pack entries come in roster order right after 'tiro'; the nine legacy kinds were in the DICT already.
   const p0=ROSTER.filter(e=>!e.legacy&&e.priority==='P0').map(e=>e.id),inline=ROSTER.filter(e=>e.priority!=='P0');
   assert.equal(ROSTER.filter(e=>!e.legacy).length,164);assert.equal(p0.length,64);
-  assert.deepEqual(DICT.slice(97),p0);
+  assert.deepEqual(DICT.slice(97,161),p0);
   // The new strings are unique, in the whole DICT too ('heal' is the one protocol-6 duplicate, never a roster id).
-  for(const s of DICT.slice(96))assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  for(const s of DICT.slice(96,161))assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   for(const e of ROSTER)if(e.priority==='P0')assert.equal(DICT.lastIndexOf(e.id),DICT.indexOf(e.id),`${e.id} once`);
   for(const e of ROSTER)assert.equal(DICT.includes(e.id),e.priority==='P0',`${e.id} (${e.priority})`);
   assert.equal(inline.length,100,'the 71 P1 and 29 P2 ids travel inline');
@@ -1297,4 +1298,134 @@ test('D-046: the widest camera\'s ring (hero 44 px) through the room\'s encoder,
   assert.ok(together.bytesPerSecond<30_000,`together ${together.bytesPerSecond}`);
   assert.ok(apart.bytesPerSecond<30_000,`spread ${apart.bytesPerSecond}`);
   assert.ok(together.bytesPerSecond<togetherEvery.bytesPerSecond,'farEvery saves bytes on the off-screen ring');
+});
+
+// ---------- Protocol 15 (D-047): the chaveiro objective ----------
+import type {ObjectiveView} from '../../src/contract/objective.ts';
+import {CAR_PARTS,CIDA_ITEM_IDS} from '../../src/contract/objective.ts';
+import {OBJECTIVE_POS_SCALE} from '../../src/protocol/protocol4.ts';
+/** A chaveiro objective at `tick`: the moto rides its route (0.19 u/s), the ETA counts down, the alarm and Grana move. */
+function objectiveAt(tick:number,extra:Partial<ObjectiveView>={}):ObjectiveView{
+  const route=Array.from({length:16},(_,i)=>({x:10+i*5.37,y:20+Math.sin(i)*7.13}));
+  const s=Math.min(80,(tick-1000)*.0095),seg=Math.min(14,Math.floor(s/5.6)),f=s/5.6-seg;
+  const moto={x:route[seg].x+(route[seg+1].x-route[seg].x)*f,y:route[seg].y+(route[seg+1].y-route[seg].y)*f};
+  return {kind:'chaveiro',moto:{...moto,mode:tick%400<40?'volta':'anda'},route,
+    stops:[{kind:'morta',x:30.1,y:22.2,s:20.3},{kind:'lombada',x:41,y:19,s:31.7},{kind:'entrega',x:55.5,y:24.4,s:46.1}],
+    etaS:Math.ceil(540-(tick-1000)/20),alarmUntil:tick%400<40?tick-tick%400+40:0,grana:Math.floor((tick-1000)/37),budget:120+8*Math.floor((tick-1000)/200),
+    stock:[4,3,4],delivery:{x:55.5,y:24.4,etaS:Math.max(0,Math.ceil(30-(tick-1000)/20))},
+    car:{x:83.93,y:90.53,hits:Math.floor((tick-1000)/200),limit:80,parts:0},...extra};
+}
+const carAt=(tick:number):StructureView=>({id:'quadradao',kind:'quadradao',x:83.93,y:90.53,hp:80-Math.floor((tick-1000)/200),maxHp:80,
+  ...(tick>1400?{parts:1}:{})});
+const near16=(a:number,b:number)=>Math.abs(a-b)<=.5/OBJECTIVE_POS_SCALE+1e-9;
+function sameObjective(got:ObjectiveView|undefined,want:ObjectiveView,label:string){
+  assert.ok(got,label);
+  assert.ok(near16(got.moto.x,want.moto.x)&&near16(got.moto.y,want.moto.y),`${label}: moto`);
+  assert.equal(got.moto.mode,want.moto.mode);assert.equal(got.etaS,want.etaS);assert.equal(got.alarmUntil,want.alarmUntil);
+  assert.equal(got.grana,want.grana);assert.equal(got.budget,want.budget);assert.deepEqual(got.stock,want.stock);
+  assert.equal(got.route.length,want.route.length);
+  got.route.forEach((p,i)=>assert.ok(near16(p.x,want.route[i].x)&&near16(p.y,want.route[i].y),`${label}: route ${i}`));
+  assert.deepEqual(got.stops.map(o=>o.kind),want.stops.map(o=>o.kind));
+  got.stops.forEach((o,i)=>assert.ok(near16(o.s,want.stops[i].s)&&near16(o.x,want.stops[i].x),`${label}: stop ${i}`));
+  assert.equal(got.delivery?.etaS,want.delivery?.etaS);assert.equal(got.car.hits,want.car.hits);assert.equal(got.car.parts,want.car.parts);
+  assert.equal(got.moto.push===undefined,want.moto.push===undefined);assert.equal(got.ended,want.ended);
+}
+
+test('protocol 15: the chaveiro strings are dictionary bytes appended after protocol 14, every older index unchanged',()=>{
+  assert.equal(PROTOCOL_VERSION,15);
+  assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
+  const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
+  assert.deepEqual(DICT.slice(161),added);
+  for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+});
+
+test('protocol 15: the objective block round-trips (1/16 u), goes only when it changes, the route only on full frames, and clears',()=>{
+  const view=busyWorld(new Rng(4),20).view,plain={...busyWorld(new Rng(4),20).view};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  view.objective=objectiveAt(view.tick);
+  const full=enc.encode(view),first=dec.decode(full);assert.ok(first.ok);sameObjective(first.view.objective,view.objective,'full frame');
+  assert.ok(full.length>new FrameEncoder().encode(plain).length+16*2*2,'the full frame carries the route');
+  enc.ack(first.seq,first.ack.event);
+  // Unchanged: the block stays out (the decoder keeps the baseline's): the same frame without it costs the same.
+  const bare=new FrameEncoder(),bareDec=new FrameDecoder(),b1=bareDec.decode(bare.encode(plain));assert.ok(b1.ok);bare.ack(b1.seq,b1.ack.event);
+  const same=enc.encode(view),again=dec.decode(same);assert.ok(again.ok);sameObjective(again.view.objective,view.objective,'unchanged');
+  assert.equal(same.length,bare.encode(plain).length,'no objective bytes when nothing changed');
+  // A moving objective: every frame decodes to it, and the static part is not resent.
+  let moving=0;const deltas:number[]=[];
+  for(let t=2;t<=400;t+=2){
+    view.tick=1000+t;
+    view.objective=objectiveAt(view.tick,t>200?{moto:{...objectiveAt(view.tick).moto,mode:'morta',push:t/400}}:{});
+    const bytes=enc.encode(view),r=dec.decode(bytes);assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    sameObjective(r.view.objective,view.objective,`tick ${view.tick}`);moving++;deltas.push(bytes.length);
+  }
+  assert.ok(Math.max(...deltas)<full.length,'deltas never carry the route again');
+  assert.equal(moving,200);
+  // Ended, then cleared (a new run without the objective).
+  view.tick+=2;view.objective=objectiveAt(view.tick,{ended:'defeat'});
+  let r=dec.decode(enc.encode(view));assert.ok(r.ok);assert.equal(r.view.objective?.ended,'defeat');enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.objective=undefined;
+  r=dec.decode(enc.encode(view));assert.ok(r.ok);assert.equal(r.view.objective,undefined,'cleared');
+  // A resync (full frame) sends it whole again.
+  view.objective=objectiveAt(view.tick);enc.resync();
+  r=new FrameDecoder().decode(enc.encode(view));assert.ok(r.ok);sameObjective(r.view.objective,view.objective,'after a resync');
+});
+
+test('protocol 15: the car (kind quadradao, parts), sugar on the enemies, Dona Cida\'s buffs on the players and the five events round-trip',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.structures=[carAt(1500)];
+  view.enemies[0]={...view.enemies[0],sugar:true};
+  view.players[0]={...view.players[0],fastUntil:1600,mightUntil:1550,guardUntil:1700};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  enc.pushEvents([{type:'alarm',untilTick:1030},{type:'part',name:'retrovisor'},{type:'moto',mode:'tranco',alone:true},{type:'moto',mode:'chegou'},
+    {type:'sale',enemy:view.enemies[0].id},{type:'buy',player:'uuid-0',item:'pacoca'}]);
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  const car=r.view.structures[0];
+  assert.deepEqual({kind:car.kind,hp:car.hp,maxHp:car.maxHp,parts:car.parts},{kind:'quadradao',hp:78,maxHp:80,parts:1});
+  assert.equal(r.view.enemies.filter(e=>e.sugar).length,1,'only the sugared one');
+  const me=r.view.players.find(p=>p.id==='uuid-0')!;
+  assert.deepEqual([me.fastUntil,me.mightUntil,me.guardUntil],[1600,1550,1700]);
+  const ev=r.view.events.map(e=>{const {eventId:_,...rest}=e as typeof e&{eventId:number};return rest as Record<string,unknown>;});
+  assert.deepEqual(ev.filter(e=>e.type!=='sale'),[{type:'alarm',untilTick:1030},{type:'part',name:'retrovisor'},{type:'moto',mode:'tranco',alone:true},
+    {type:'moto',mode:'chegou'},{type:'buy',player:'uuid-0',item:'pacoca'}]);
+  assert.match(String(ev.find(e=>e.type==='sale')!.enemy),/^e\d+$/,'the sale names the critter by its wire id');
+  // A field that goes away is gone on the phone too (the sugar wore off, the brigadeiro ended).
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.enemies[0]={...view.enemies[0]};delete view.enemies[0].sugar;view.players[0]={...view.players[0],fastUntil:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  assert.equal(r2.view.enemies.filter(e=>e.sugar).length,0);assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.fastUntil,undefined);
+});
+
+test('D-009 with the chaveiro objective and 12 defenses firing: 6 clients x 300 enemies stay inside the 4G budget at 10 and 20 Hz',t=>{
+  const withObjective:Record<string,number>={},wallMode:Record<string,number>={};
+  for(const hz of [10,20])for(const on of [false,true]){
+    const rng=new Rng(8),w=busyWorld(rng);
+    const clients=Array.from({length:CLIENTS},()=>({enc:new FrameEncoder(),dec:new FrameDecoder(),inFlight:[] as {seq:number;event:number;at:number}[]}));
+    const seconds=10,every=20/hz;
+    let bytes=0;
+    for(let i=0;i<seconds*20;i++){
+      const events=stepWorld(w,rng);
+      w.view.structures=[on?carAt(w.view.tick):w.view.structures[0],...defenses(w.view.tick)];
+      if(on){
+        // Worse than real: the dynamic block changes on every frame (the ETA every tick, not every second); an alarm and a
+        // moto moment every second (the sim sends them on a change only); a sale (and its sugared critter) every 5 s
+        // (Dona Cida sells at most every 20 s); a part and a purchase every 5 s (a run has 4 parts and 12 sweets).
+        w.view.objective={...objectiveAt(w.view.tick),etaS:100000-w.view.tick,grana:w.view.tick};
+        if(i%20===0)events.push({type:'moto',mode:i%40?'volta':'tombo'},{type:'alarm',untilTick:w.view.tick+30});
+        if(i%100===0){const e=w.view.enemies[i%50];e.sugar=true;events.push({type:'sale',enemy:e.id},{type:'part',name:'porta'},{type:'buy',player:'uuid-1',item:'brigadeiro'});}
+      }
+      for(const c of clients)c.enc.pushEvents(events);
+      if(i%every)continue;
+      for(const c of clients){
+        const frame=c.enc.encode(w.view);bytes+=frame.length;
+        const res=c.dec.decode(frame);assert.ok(res.ok,!res.ok?res.error:'');
+        c.inFlight.push({seq:res.seq,event:res.ack.event,at:i+3});
+        while(c.inFlight.length&&c.inFlight[0].at<=i){const a=c.inFlight.shift()!;c.enc.ack(a.seq,a.event);}
+      }
+    }
+    (on?withObjective:wallMode)[`${hz}Hz`]=Math.round(bytes/clients.length/seconds);
+  }
+  t.diagnostic(`protocol 15 bytes/s per client, 12 defenses firing: chaveiro ${JSON.stringify(withObjective)}, wall mode ${JSON.stringify(wallMode)}`);
+  assert.ok(withObjective['20Hz']<50_000,`20 Hz: ${withObjective['20Hz']}`);
+  assert.ok(withObjective['10Hz']<30_000,`10 Hz: ${withObjective['10Hz']}`);
 });

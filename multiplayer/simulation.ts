@@ -10,10 +10,11 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects} from '../src/sim/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
-import {BASE_STATS,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
+import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
+import type {CidaBuyResult,ObjectiveKind,ObjectiveResult,ObjectiveView,SimPlayer} from '../src/contract/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -150,7 +151,7 @@ function playerRunOk(run:unknown){
   const build=run.build;
   if(!isObject(build)||!itemsOk(build.weapons,'weapon',MAX_WEAPONS)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
-  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
 }
 /** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
@@ -210,6 +211,11 @@ export class Simulation {
   /** D-040 rotation override (undefined: the run's default, on). */
   private readonly rotation?:boolean;
   /**
+   * D-047: the match objective of every run (RunSystemsOptions.objective; 'chaveiro' only matters in the city). The
+   * Room turns it on for its city rooms (RoomOptions.objective); a Simulation built directly (tests, tools) has none.
+   */
+  readonly objective?:ObjectiveKind;
+  /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
@@ -220,12 +226,14 @@ export class Simulation {
    */
   constructor(seed=DEFAULT_SEED,options:{world?:WorldKind;terrain?:TerrainField;cityStructures?:boolean;cityBalance?:RunSystemsOptions['cityBalance'];
     /** D-040 rotation (RunSystemsOptions.rotation, default on); false plays the round table's nine kinds. */
-    rotation?:boolean}={}){
+    rotation?:boolean;
+    /** D-047: the match objective (city only; default none). */
+    objective?:ObjectiveKind}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;this.rotation=options.rotation;
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -268,6 +276,7 @@ export class Simulation {
       zueiraLab:this.zueiraLab,
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
+      ...(this.objective?{objective:this.objective}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }
@@ -283,10 +292,11 @@ export class Simulation {
    * is refused without a manual CHECKPOINT_V bump. Fields that only appear later in a run are not in it (see conforms).
    */
   freshShape(){
-    const kind=worldDescriptor(this.terrain).kind,key=kind==='cidade'?`cidade:${this.terrain.signature}`:kind;
+    const kind=worldDescriptor(this.terrain).kind,key=(kind==='cidade'?`cidade:${this.terrain.signature}`:kind)+(this.objective?`:${this.objective}`:'');
     let entry=SHAPES.get(key);
     if(!entry){
-      const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city}):new Simulation(DEFAULT_SEED,{world:kind});
+      const objective=this.objective?{objective:this.objective}:{};
+      const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city,...objective}):new Simulation(DEFAULT_SEED,{world:kind,...objective});
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
       // legacy: the same run written before the single pile of material (D-048), balance {coco, pedra}: migrateCheckpoint.
@@ -443,7 +453,7 @@ export class Simulation {
     const p=this.players.get(id);
     if(!p)return own;
     const from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
-    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity);
+    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity);
     const touched=end>-Infinity&&(from===undefined||end>from);
     const liveAck=this.liveAck.get(id);
     if(touched||liveAck!==undefined&&own.ack<liveAck){this.liveAck.set(id,Math.max(liveAck??0,p.ack));return undefined;}
@@ -487,12 +497,31 @@ export class Simulation {
     if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
     return this.systems.stonewards.buy(this.world,id,recipeId,requestId,targetId);
   }
+  /**
+   * D-047 Dona Cida (the chaveiro objective): a team purchase for `id`, validated by the sim (near the moto, stock,
+   * Grana, standing). `requestId` makes a resent tap apply once. Refused once the run is decided, without the
+   * objective, or for an offline or spectating player ('phase').
+   */
+  buyCida(id:string,item:string,requestId?:string):CidaBuyResult{
+    const p=this.players.get(id),chaveiro=this.systems.chaveiro;
+    if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'phase'};
+    return chaveiro.buy(this.world,id,item,requestId);
+  }
+  /** D-047: the objective as the HUD sees it (undefined without one). */
+  objectiveView():ObjectiveView|undefined{return this.systems.objectiveView();}
+  /** D-047: the objective's bill for a run that ended with `outcome` (the room's), or undefined without the objective. */
+  objectiveResult(outcome?:'victory'|'defeat'|'timeout'):ObjectiveResult|undefined{
+    return this.systems.chaveiro?.result(this.world.tick,this.world.round,outcome);
+  }
   /** Node ids of the last frame (the Room prunes the wire ids of the rest). */
   nodeIds:string[]=[];
   /** The wall and the towers as the client sees them, plus the city barricades (hp 0 once down) behind `cityStructures`. */
   private structureViews():StructureView[]{
-    const st=this.systems.stonewards.state,w=st.wall;
-    const out:StructureView[]=[{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp},...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
+    const st=this.systems.stonewards.state,w=st.wall,car=this.systems.chaveiro?.state.car;
+    // D-047: with the chaveiro objective the car stands where the wall stood (hp = limit − hits, its fallen parts).
+    const base:StructureView=car?{id:CAR_ID,kind:CAR_ID,x:car.x,y:car.y,hp:car.limit-car.hits,maxHp:car.limit,...(car.parts?{parts:car.parts}:{})}
+      :{id:w.id,kind:'muralha',x:w.x,y:w.y,hp:w.hp,maxHp:w.maxHp};
+    const out:StructureView[]=[base,...st.towers.map(t=>({id:t.id,kind:t.kind,x:t.x,y:t.y,hp:t.hp,maxHp:t.maxHp,untilTick:t.untilTick}))];
     if(this.cityStructures&&this.city){
       const rows=(st as {barricades?:readonly BarricadeRow[]}).barricades??[];
       for(const b of rows)out.push({id:b.id,kind:'barricada',x:b.x,y:b.y,hp:b.down?0:b.hp,maxHp:b.maxHp});
@@ -567,7 +596,7 @@ export class Simulation {
     const events=this.world.step();
     // D-036: remember how far each slow or slip ran (the players system drops it once it is over; confirmed needs it).
     for(const p of this.players.values()){
-      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity);
+      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity);
       if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
     }
     // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.
@@ -643,6 +672,7 @@ export class Simulation {
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
+      ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
   }
@@ -651,7 +681,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase})),
+      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -662,8 +692,9 @@ export class Simulation {
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
-        ...activeMoveEffects(p,w.tick),
+        ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
       })),
+      ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
     };
@@ -678,7 +709,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase})),
+      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -690,9 +721,10 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
-          ...activeMoveEffects(p,w.tick),
+          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
         };
       }),
+      ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
     };
   }
   /** sinceEventId: only events after it (the Room's broadcast cursor); omitted, the whole buffer. */
@@ -712,6 +744,15 @@ export class Simulation {
 }
 
 export type {SimEvent};
+
+/** D-047 Dona Cida's sweets still running on `tick` (a finished one costs no bytes). */
+export function activeBuffs(p:SimPlayer,tick:number):{fastUntil?:number;mightUntil?:number;guardUntil?:number}{
+  const out:{fastUntil?:number;mightUntil?:number;guardUntil?:number}={};
+  if(tick<(p.fastUntil??-Infinity))out.fastUntil=p.fastUntil;
+  if(tick<(p.mightUntil??-Infinity))out.mightUntil=p.mightUntil;
+  if(tick<(p.guardUntil??-Infinity))out.guardUntil=p.guardUntil;
+  return out;
+}
 
 /** A tower defense as the client sees it (torres-fio): its kind, tier, branch, building phase and aim in turns. */
 export function defenseView(d:DefenseState,tick:number):StructureView{

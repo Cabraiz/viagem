@@ -7,7 +7,7 @@ import type {SimContext,SimSystem} from '../../src/sim/context.ts';
 import type {TerrainField} from '../../src/maps/terrain/field.ts';
 import {WEAPON_IDS,EVOLUTION_IDS,PIERCE_INFINITE,MAX_AMOUNT,MIN_COOLDOWN_TICKS,getWeapon,weaponCatalog,weaponLevel,resolveWeapon} from '../../src/sim/weapons/catalog.ts';
 import type {WeaponDef} from '../../src/sim/weapons/catalog.ts';
-import {createWeaponSystem} from '../../src/sim/weapons/system.ts';
+import {createWeaponSystem,pierceReach} from '../../src/sim/weapons/system.ts';
 import {PROJECTILE_CAP,spawnProjectile,createProjectileSystem,takeAreaHit} from '../../src/sim/projectiles.ts';
 import {EVOLUTIONS,WEAPON_IDS as EVO_WEAPON_IDS,itemMaxLevel} from '../../src/sim/evolutions.ts';
 import type {ProjectileInit,WeaponProjectile} from '../../src/sim/projectiles.ts';
@@ -246,11 +246,12 @@ test('evolution: chinelo-evo flings linear sandals that chinelo lv8 never does',
 test('evolution: boleto-evo returns, has infinite pierce, and hits once per pass',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto-evo',1]]);
   const w=R('boleto-evo',1);
-  run(ctx,systems(),1);
+  // An enemy ahead (+x) triggers the volley (no shot into the air) and leaves, so the boomerang flies free.
+  addEnemy(ctx,'ahead',14,12);run(ctx,systems(),1);ctx.enemies.delete('ahead');
   const [first]=projs(ctx,'boleto-evo');
-  assert.ok(first,'boleto-evo fired along facing with no enemies');
+  assert.ok(first,'boleto-evo fired at the enemy ahead');
   assert.ok(first.pierce>=PIERCE_INFINITE&&first.returnTick===1+w.durationTicks,`pierce ${first.pierce} return ${first.returnTick}`);
-  assert.ok(first.vx>0,'fired along facing (+x)');
+  assert.ok(first.vx>0,'fired at the enemy (+x)');
   ctx.players.get('p1')!.weaponReady['boleto-evo']=1e9;
   const xs:number[]=[first.x];
   run(ctx,systems(),2*w.durationTicks,c=>{const q=c.projectiles.get(first.id);if(q)xs.push(q.x);});
@@ -415,13 +416,11 @@ test('targeting: valid tapped target wins over nearer enemies; invalid/dead/out-
   }
 });
 
-test('facing: boleto fires along facing with no enemies; pombo/cafe/audio hold fire without spending cooldown',()=>{
-  const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto',1]],{facing:{x:0,y:-1}});
-  run(ctx,systems(),1);
-  const f=fires(ctx,'boleto')[0].event as {dx:number;dy:number};
-  assert.ok(Math.abs(f.dx)<1e-9&&f.dy<-.99);
-  assert.ok(projs(ctx,'boleto').every(q=>q.vy<0));
-  for(const id of ['pombo','cafe','audio']){
+test('facing: with nobody in reach boleto/pombo/cafe/audio hold fire without spending cooldown (no shot into the air)',()=>{
+  const lone=makeCtx();addPlayer(lone,'p1',12,12,[['boleto',1]],{facing:{x:0,y:-1}});
+  run(lone,systems(),5);
+  assert.equal(fires(lone,'boleto').length,0,'boleto fired into the air');assert.equal(projs(lone,'boleto').length,0);
+  for(const id of ['boleto','pombo','cafe','audio']){
     const w=R(id,1),reach=Math.max(w.range,w.area)+3;
     const c=makeCtx(),p=addPlayer(c,'p1',12,12,[[id,1]]);const e=addEnemy(c,'e',12+reach,12);
     run(c,systems(),5);
@@ -759,9 +758,9 @@ test('velocidade: pierce and homing shots resolve to PROJECTILE_SPEED_MULT × th
 test('velocidade: a fired boleto flies at half speed and still covers its tuned reach before it expires',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto',1]]);
   const w=R('boleto',1),row=weaponLevel(def('boleto'),1);
-  run(ctx,systems(),1);
+  addEnemy(ctx,'ahead',14,12);run(ctx,systems(),1);ctx.enemies.delete('ahead');
   const [b]=projs(ctx,'boleto');
-  assert.ok(b,'fired along facing');
+  assert.ok(b,'fired at the enemy ahead');
   assert.ok(Math.abs(Math.hypot(b.vx,b.vy)-row.speed/2)<1e-9,`speed ${Math.hypot(b.vx,b.vy)}`);
   assert.equal(b.untilTick-ctx.tick,w.durationTicks);
   const from={x:b.x,y:b.y};let last={...from},ticksAlive=0;
@@ -795,4 +794,23 @@ test('velocidade: the offer text shows the real flight seconds of a travelling w
   assert.ok(lines.includes('Velocidade +11%'),lines);
   // A lasting pattern still shows its table seconds (café lv2: +0,5 s).
   assert.ok(def('cafe').describe(2).includes('Duração +0,5 s'),def('cafe').describe(2));
+});
+
+test('alcance: a straight shot fires only at an enemy within its real reach; out of reach it keeps the cooldown (BUG ataque-fora-do-alcance)',()=>{
+  for(const [id,level] of [['boleto',1],['boleto',8],['boleto-evo',1]] as [string,number][]){
+    const w=R(id,level),reach=Math.min(w.range,pierceReach(w));
+    // Just out of reach: no projectile, no fire event, cooldown untouched.
+    const far=makeCtx(),pf=addPlayer(far,'p1',12,12,[[id,level]]);addEnemy(far,'e',12+reach+.5,12);
+    run(far,systems(),10);
+    assert.equal(projs(far,id).length,0,`${id} L${level} shot at an enemy ${(reach+.5).toFixed(2)} u away (reach ${reach.toFixed(2)})`);
+    assert.equal(fires(far,id).length,0);assert.equal(pf.weaponReady[id]??0,0,`${id} spent its cooldown with nothing in reach`);
+    // Just inside: it fires on the first tick, at the enemy.
+    const near=makeCtx();addPlayer(near,'p1',12,12,[[id,level]]);addEnemy(near,'e',12+reach-.5,12);
+    run(near,systems(),1);
+    assert.ok(fires(near,id).length===1&&projs(near,id).some(q=>q.vx>0),`${id} L${level} did not fire at an enemy in reach`);
+  }
+  // A tapped target out of reach is not shot at either.
+  const tap=makeCtx(),w=R('boleto',1);addPlayer(tap,'p1',12,12,[['boleto',1]],{target:'e'});
+  addEnemy(tap,'e',12+Math.min(w.range,pierceReach(w))+1,12);
+  run(tap,systems(),5);assert.equal(fires(tap,'boleto').length,0,'boleto shot at a tapped target out of reach');
 });

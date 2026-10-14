@@ -143,8 +143,9 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
  * What the enemy-ai may hit (EnemyAiOptions.structures): the wall while it stands, then the standing city barricades,
  * flagged `blocking` (any body pressed against one bashes it, siege or not). Off the city: exactly the wall, as before.
  */
-export function structureTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
-  const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
+export function structureTargets(state:StonewardsState,wall=true):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
+  // `wall` false (D-047, the chaveiro objective): the car stands where the wall was and is the target instead.
+  const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown||!wall?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
   for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
   // Tower defenses (torres-sim): non-blocking siege targets, like the wall; none until the first build.
   if(state.defenses)out.push(...defenseTargets(state));

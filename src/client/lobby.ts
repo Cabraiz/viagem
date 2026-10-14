@@ -12,7 +12,7 @@ import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,download
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader} from './preload/preloader.ts';
 import {preloadBlock,preloadRing,p0Fraction} from './preload/ready-gate.ts';
-import {soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
+import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './ui/solo-plan.ts';
 
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
@@ -488,7 +488,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=codeInput.value.trim().toUpperCase();
-      if(create){status.textContent='Criando sua sala…';const r=await fetch(new URL('/rooms',endpoint),{method:'POST',signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=code;}
+      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',...(asked.objective?{body:JSON.stringify(asked)}:{}),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=code;}
       if(closed)return;
       if(!/^[A-F0-9]{10}$/.test(code))throw new Error('O código deve ter 10 letras e números.');
       const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
@@ -552,7 +552,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
   try{
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a
     // room Worker from before reads none and opens the usual room, which the solo plan still switches to the city).
-    const body:RoomCreateOptions={map:plan.map,solo:true};
+    const body:RoomCreateOptions={map:plan.map,solo:true,...objectiveFromSearch(location.search)};
     const r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});const data=await r.json();
     if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');
     client=new CoopClient(endpoint,data.code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=loadManifest;await client.join();

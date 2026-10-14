@@ -51,6 +51,13 @@
  * Simulation.build/upgrade/repair. Per run: orders, repairs, units spent, refusals, the defenses at the end, the
  * Gustavão, and the fichas de torre spent (D-048: a root is TOWER_TOKENS.root, the Gustavão TOWER_TOKENS.gustavao). --no-towers hides the tower view from the bots (RoomBots.towersOff).
  *
+ * Chaveiro objective (D-047, --objective chaveiro; opt-in (RoomOptions.objective, ?modo=chaveiro), off here unless asked so older baselines
+ * replay): the run is the room's objective mode (the car, the moto, Dona Cida, waves past 10, the boss at ETA < 60 s);
+ * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
+ * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
+ * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own
+ * stick, like 'build'. Use --cap-min 25 for the room's D-043 cap.
+ *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
@@ -75,6 +82,10 @@ import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {Simulation} from '../multiplayer/simulation.ts';
+import type {ObjectiveResult} from '../src/contract/index.ts';
+import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
+/** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
+const CLEAN_DELIVERY_TICKS=ENTREGA_CLEAN_SECONDS*20;
 import {BOT_FORGE_LEFT,BOT_NAMES,RoomBots} from '../multiplayer/room-bots.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -91,7 +102,8 @@ export const WIN_TARGETS:Readonly<Record<number,readonly [number,number]>>=Objec
 export const TARGET_SEEDS=16;
 
 export type Outcome='victory'|'defeat'|'timeout';
-export type Cause='boss'|'team'|'wall'|'timeout';
+/** 'opened': the chaveiro opened the car (objective victory); 'car': it was a total loss (objective defeat). */
+export type Cause='boss'|'team'|'wall'|'timeout'|'opened'|'car';
 /** Material (D-048: one pile of units since the coco/pedra piles merged; older JSON files had coco and pedra too). */
 export interface Units {units:number}
 export interface RoundRecord {
@@ -153,6 +165,8 @@ export interface RunRecord {
    */
   towers?:{orders:number;repairs?:number;units:number;refused:Record<string,number>;final:Record<string,number>;ruined:number;gustavao:boolean;rail?:boolean;
     roots?:number;tokens?:number};
+  /** D-047 (--objective chaveiro): the bill and the moto's moments. */
+  objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
 }
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -208,7 +222,7 @@ export function summarize(runs:readonly RunRecord[]):Summary{
   const sizes=[...new Set(runs.map(r=>r.players))].sort((a,b)=>a-b),byPlayers:Record<string,TeamSummary>={},notes:string[]=[];
   for(const n of sizes){
     const list=runs.filter(r=>r.players===n),wins=list.filter(r=>r.outcome==='victory').length;
-    const causes:Record<Cause,number>={boss:0,team:0,wall:0,timeout:0};
+    const causes:Record<Cause,number>={boss:0,team:0,wall:0,timeout:0,opened:0,car:0};
     const deathRounds:Record<string,number>={};
     for(const r of list){causes[r.cause]++;if(r.outcome!=='victory')deathRounds[r.roundReached]=(deathRounds[r.roundReached]??0)+1;}
     const rounds=list.flatMap(r=>r.rounds),roundIds=[...new Set(rounds.map(x=>x.round))].sort((a,b)=>a-b);
@@ -244,6 +258,13 @@ export function summarize(runs:readonly RunRecord[]):Summary{
     if(r1Deaths)notes.push(`${n}p: ${r1Deaths} death(s) in round 1`);
   }
   return {runs:runs.length,byPlayers,verdict:{ok:!notes.length,notes}};
+}
+/** D-047: one line of a chaveiro run's bill (outcome/cause, ETA left, car, Grana and the waves). */
+export function objectiveLine(r:RunRecord):string{
+  const o=r.objective;if(!o)return '';
+  return `seed ${r.seed} ${r.players}p: ${o.outcome}/${o.cause} at ${r2(o.seconds/60)} min | ETA left ${o.eta}s | hits ${o.hits}/${o.limit} parts ${o.parts.toString(2).padStart(4,'0')} | `+
+    `Grana ${o.grana} budget ${o.budget} paid ${o.paid} debt ${o.debt} | wave ${o.wave} (+${o.extraWaves} extra) | boss ${o.bossCalled?'called':'-'} | `+
+    `moto ${Object.entries(o.moments).map(([k,v])=>`${k} ${v}`).join(', ')||'-'} | deliveries clean ${o.deliveries.clean} dirty ${o.deliveries.dirty}`;
 }
 /** One line per run for the console. */
 export function runLine(r:RunRecord):string{
@@ -342,6 +363,8 @@ export class NavDriver {
         if(reading){mode='hold';dir={x:0,y:0};}
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
+      // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase.
+      else if(this.room.modes.get(mind.id)==='push'||this.room.modes.get(mind.id)==='clear'){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);
@@ -462,7 +485,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean}
+interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro'}
 
 /**
  * Barricades (cidade-06) read generically from the stonewards state: id → down, or null when the state has no
@@ -488,7 +511,8 @@ export function barricadesFell(before:ReadonlyMap<string,boolean>|null,after:Rea
 
 function playRun(o:RunOptions):RunRecord{
   const knobsApplied=o.knobs!==undefined&&o.route!=='none';
-  const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{})} as ConstructorParameters<typeof Simulation>[1]);
+  const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
+    ...(o.objective?{objective:o.objective}:{})} as ConstructorParameters<typeof Simulation>[1]);
   if(knobsApplied&&o.route==='assemble')injectAssemble(sim,o.knobs);
   const room=new RoomBots();
   const ids:string[]=[],cls:string[]=[];
@@ -528,6 +552,7 @@ function playRun(o:RunOptions):RunRecord{
     return r;
   };
   let interGathered:Record<string,number>={},boss:BossRecord|undefined,bossId:string|undefined;
+  const moments:Record<string,number>={},deliveries={clean:0,dirty:0};
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
   const r1Arrival:Record<string,number|null>=Object.fromEntries(ids.map(id=>[id,null]));
   const st=()=>sim.run.stonewards.state;
@@ -556,6 +581,10 @@ function playRun(o:RunOptions):RunRecord{
     const events=sim.step();ticks++;
     const w=sim.world,tick=w.tick;
     for(const e of events as readonly SimEvent[]){
+      if(e.type==='moto'){
+        const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
+        if(e.mode==='entrega'){const left=sim.run.chaveiro?.state.moto.left??0;if(left>CLEAN_DELIVERY_TICKS)deliveries.dirty++;else deliveries.clean++;}
+      }
       if(e.type==='round'){
         if(e.phase==='prepare'&&e.index>1){
           closeRound(tick);
@@ -608,7 +637,9 @@ function playRun(o:RunOptions):RunRecord{
     boss.firstWallHitS=since(boss.firstWallHitTick);boss.killAfterSpawnS=since(boss.killTick);
   }
   const outcome:Outcome=sim.outcome==='victory'?'victory':sim.outcome==='defeat'?'defeat':'timeout';
-  const cause:Cause=outcome==='victory'?'boss':outcome==='timeout'?'timeout':st().wallDown?'wall':'team';
+  const bill=sim.objectiveResult(outcome);
+  const cause:Cause=bill?bill.cause==='opened'||bill.cause==='car'?bill.cause:bill.cause==='timeout'?'timeout':'team'
+    :outcome==='victory'?'boss':outcome==='timeout'?'timeout':st().wallDown?'wall':'team';
   const wallSeconds=(performance.now()-started)/1000;
   const byRecipe:Record<string,number>={};for(const p of purchases)byRecipe[p.recipe]=(byRecipe[p.recipe]??0)+1;
   const tut=sim.run.director.state.tutorial,r1=rounds.find(x=>x.round===1);
@@ -622,6 +653,7 @@ function playRun(o:RunOptions):RunRecord{
       thinkMsPerTick:Math.round((room.thinkMs-thinkBefore)/Math.max(1,ticks)*1000)/1000,navMsPerTick:Math.round(navMs/Math.max(1,ticks)*1000)/1000},
     knobsApplied,
     ...(o.towers?{towers:towerSummary()}:{}),
+    ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
   };
   function towerSummary(){
     const list=st().defenses?.list??[],final:Record<string,number>={};
@@ -636,7 +668,7 @@ function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -646,6 +678,7 @@ function args(argv:readonly string[]){
     out:path.resolve(get('--out')??path.join(ROOT,'evidence',CARD,'balanco.json')),
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
     towers:!argv.includes('--no-towers'),
+    objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
   };
 }
 function writeAtomic(file:string,data:unknown){
@@ -676,7 +709,7 @@ async function main(){
   const loaded=await cityTerrainFrom(text,hash);
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
-  const config:OutFile['config']={seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){
@@ -688,11 +721,12 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective});
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);
     writeAtomic(a.out,file);
     console.log(runLine(run));
+    if(run.objective)console.log(`   ${objectiveLine(run)}`);
   }
   const s=summarize(file.runs);
   console.log('\n== summary ==');
@@ -707,6 +741,12 @@ async function main(){
     const mean=(f:(r:RunRecord)=>number)=>r2(rs.reduce((x,r)=>x+f(r),0)/rs.length);
     console.log(`towers ${n}p: orders/run ${mean(r=>r.towers!.orders)} units/run ${mean(r=>r.towers!.units)} standing at end ${mean(r=>Object.values(r.towers!.final).reduce((a,b)=>a+b,0))} ruined ${mean(r=>r.towers!.ruined)} gustavão ${rs.filter(r=>r.towers!.gustavao).length}/${rs.length}`+
       ` | roots/run ${s.byPlayers[n]?.towers?.rootsPerRun?.mean??'-'} fichas/run ${s.byPlayers[n]?.towers?.tokensPerRun?.mean??'-'}`);
+  }
+  for(const n of a.players){
+    const rs=file.runs.filter(r=>r.players===n&&r.objective);
+    if(!rs.length)continue;
+    console.log(`chaveiro ${n}p:`);
+    for(const r of rs)console.log(`   ${objectiveLine(r)}`);
   }
   console.log(s.verdict.ok?'verdict: on target':`verdict: ${s.verdict.notes.join('; ')}`);
   console.log(`written: ${a.out}`);

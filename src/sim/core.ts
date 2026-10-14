@@ -6,7 +6,7 @@
 import type {TerrainField} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
-import {SYSTEM_ORDER} from '../contract/index.ts';
+import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
@@ -202,7 +202,10 @@ export class SimWorld implements SimContext {
   damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string){
     const enemy=this.enemies.get(enemyId);
     if(!enemy||!(enemy.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
-    const might=sourcePlayer?this.players.get(sourcePlayer)?.stats.might??1:1;
+    const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
+    let might=sourcePlayer?source?.stats.might??1:1;
+    // D-047 Dona Cida's paçoca (SimPlayer.mightUntil); absent everywhere else, so the product is untouched.
+    if(source?.mightUntil!==undefined&&this.tick<source.mightUntil)might*=CIDA_MIGHT_MULT;
     let dealt=Math.min(enemy.hp,amount*might);
     if(!(dealt>0))return false;
     // Snap float dust to an exact kill so the event amount always equals the hp lost.
@@ -229,6 +232,8 @@ export class SimWorld implements SimContext {
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
+    // D-047 Dona Cida's cocada (SimPlayer.guardUntil), before armor like the agiota's mark.
+    if(player.guardUntil!==undefined&&this.tick<player.guardUntil)amount*=CIDA_GUARD_MULT;
     if(this.playerDamageScale){
       const scale=this.playerDamageScale(this);
       if(scale!==1&&scale>0&&Number.isFinite(scale))amount*=scale;

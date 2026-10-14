@@ -30,6 +30,13 @@ export const botsLabel=(n:number)=>n===0?'Sem bots':n===1?'1 bot':`${n} bots`;
 
 export interface SoloPlan {map:typeof SOLO_MAP;bots:number}
 export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bots)});
+/**
+ * D-047: ?modo=chaveiro in the page address asks the room for the chaveiro objective (off by default while it is being
+ * balanced); anything else asks for nothing. A room Worker from before ignores the field.
+ */
+export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'}{
+  try{return new URLSearchParams(search??'').get('modo')==='chaveiro'?{objective:'chaveiro'}:{};}catch{return {};}
+}
 
 /** Our owner commands go at least this far apart (the room drops one within its OWNER_GAP_MS, 300 ms, of the last). */
 export const SOLO_GAP_MS=450;

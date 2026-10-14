@@ -12,7 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {BASE_STATS,type SimEvent,type SimPlayer,type Telegraph} from '../../src/contract/types.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
-import {AGIOTA_SHOT,BURP,DEVENDO,DEVENDO_LINES,MOLOTOV,POOP,createEnemy,hazardKind,markDevendo,type DevendoPlayer,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
+import {AGIOTA_SHOT,BAND_CADENCE,BAND_DAMAGE,BURP,DEVENDO,DEVENDO_LINES,MOLOTOV,POOP,createEnemy,hazardKind,markDevendo,type DevendoPlayer,type EnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {BARK_GAP,ENEMY_TELEGRAPH_CAP,EnemyAi,type EnemyAiOptions} from '../../src/sim/enemies/ai.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {createProjectileSystem} from '../../src/sim/projectiles.ts';
@@ -364,6 +364,8 @@ test('B2: the last anão of a round explodes into the intermission without hurti
     const anao=w.enemies.get(ids[0])!,other=keepAnother?w.enemies.get(ids[1])!:undefined;
     for(const id of ids.slice(keepAnother?2:1))w.damageEnemy(id,1e6,'a');
     anao.kind='anao-molotov';anao.x=p.x+.8;anao.y=p.y;
+    // A round-1 body carries the tutorial's numbers (TUTORIAL_ART_TUNE, waves.ts); the anão blasts at full damage.
+    if(anao.memory){delete anao.memory[BAND_DAMAGE];delete anao.memory[BAND_CADENCE];}
     // The one left alive (wave case) stays far and frozen, so the round goes on and only the blast can hurt.
     if(other){other.x=p.x+12;other.y=p.y;other.frozenUntil=1e9;}
     p.invulnerableUntil=0;

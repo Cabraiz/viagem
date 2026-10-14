@@ -5,7 +5,7 @@
  * flies up green with the "RETIRE SEU DINHEIRO" beep, a critter's flies away dark.
  */
 import {SIM_HZ,type BankView} from '../../../contract/index.ts';
-import {BANCO,BANK_BEEP,BANK_LINES} from '../../../rules/bancos.ts';
+import {BANCO,BANK_BEEP,BANK_LINES} from '../../../rules/index.ts';
 
 /** A note's flight (ms); the beep's and the screen line's balloons (ms). */
 export const NOTE_MS=1100,BEEP_MS=1400,LINE_MS=2600;

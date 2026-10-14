@@ -218,8 +218,8 @@ const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
 const PHASE_RING_POINTS=32,PHASE_GOLD=0xf6c84a;
 /** D-047 açucarado: Dona Cida's sweets glow pink on a critter. */
 const SUGAR_PINK=0xff8fc8;
-/** Bancos: the Cliente Prime's crown. */
-const PRIME_GOLD=0xf2c14e;
+/** Bancos: the Cliente Prime's crown, and its outline (x, up) in its half width and height: three points. */
+const PRIME_GOLD=0xf2c14e,CROWN_SHAPE=[-1,0,-1,.55,-.5,.15,0,1,.5,.15,1,.55,1,0] as const;
 const MOTOBOY_LAMP={x:29,y:38} as const;
 /** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
 const DECOR_ELLIPSE_SEGMENTS=20;
@@ -745,6 +745,8 @@ export class HordeRenderer{
       g.fillStyle(PALETTE.breu,alpha).fillCircle(ex+lx,head+ly,EYES_CSS.pupil*c);
     }
   }
+  /** Bancos: the Cliente Prime's crown (7 points, reused every frame). */
+  private crownPts:Pt[]=Array.from({length:7},()=>({x:0,y:0}));
   /**
    * Elenco P1 state cues (phase-look.ts), drawn with Graphics calls on scratch points only (no allocation): the coach's
    * lecture ring on the ground (PALESTRA_RADIUS world units, gold: a buff zone, never the orange of danger), the golden
@@ -795,7 +797,8 @@ export class HordeRenderer{
     if(a.prime){
       // Cliente Prime (bancos): a gold crown with three points over the head, and a Breu edge.
       const g=this.overlay,s=body*size,cx=bx,top=by-height-5*s,w=19*s,h=14*s,bob=reduced?0:Math.sin(now*.006+a.phase*TAU)*1.5*s;
-      const crown=[{x:cx-w,y:top+bob},{x:cx-w,y:top-h*.55+bob},{x:cx-w*.5,y:top-h*.15+bob},{x:cx,y:top-h+bob},{x:cx+w*.5,y:top-h*.15+bob},{x:cx+w,y:top-h*.55+bob},{x:cx+w,y:top+bob}];
+      const crown=this.crownPts,shape=CROWN_SHAPE;
+      for(let i=0;i<7;i++){crown[i].x=cx+shape[i*2]*w;crown[i].y=top+bob-shape[i*2+1]*h;}
       g.fillStyle(PRIME_GOLD,1).fillPoints(crown,true);
       g.lineStyle(1.6*css,PALETTE.breu,1).strokePoints(crown,true);
       g.fillStyle(PALETTE.breu,1).fillCircle(cx,top-h*.3+bob,2.6*s);

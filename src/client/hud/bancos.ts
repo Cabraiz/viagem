@@ -6,7 +6,7 @@
  *   robbery, and not again for the same bank within BANK_ALERT_REPEAT_MS).
  */
 import type {BankView} from '../../contract/index.ts';
-import {BANK_SHORT} from '../../rules/bancos.ts';
+import {BANK_SHORT} from '../../rules/index.ts';
 import type {MmExtra} from './wc-minimap/minimap.ts';
 
 /** Token colours (ui/tokens.css): Cartolina (a favor), Cone (perigo), and Papel over Breu for an empty one. */

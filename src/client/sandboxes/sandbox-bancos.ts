@@ -7,7 +7,7 @@
  * `banco=aberto|sacando|bicho|vazio` puts all three in that state instead. Deterministic from the clock only.
  */
 import {SIM_HZ,type BankState,type BankView,type EnemyView} from '../../contract/index.ts';
-import {BANCO} from '../../rules/bancos.ts';
+import {BANCO} from '../../rules/index.ts';
 
 type Pt={x:number;y:number};
 const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacando',bicho:'bicho',vazio:'sem-cedulas'};

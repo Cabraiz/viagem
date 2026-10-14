@@ -851,6 +851,21 @@ test('D-050 (replaced D-023): the boss wave holds its level offers like any wave
   assert.equal(sim.settle(ctx,'a'),0,'nothing left');assert.equal(sim.settle(ctx,'nobody'),0);
 });
 
+test('D-050: a pick re-rolls the next card at once when it went stale (in a pause no step() runs to do it)',()=>{
+  const {ctx,sim}=setup();
+  addPlayer(ctx,'a');
+  sim.grantLevelOffers(ctx,2);sim.grantLevelOffers(ctx,3);
+  const [first,second]=queue(ctx,'a');
+  // Both cards offer the same new weapon: taking it in the first makes the second's copy ineligible.
+  first.choices=[{itemId:'boleto',level:1}];first.defaultIndex=0;
+  second.choices=[{itemId:'boleto',level:1},{itemId:'cafe',level:1}];second.defaultIndex=0;
+  const staleId=second.id;
+  assert.equal(sim.choose(ctx,'a',first.id,0).ok,true);
+  const head=queue(ctx,'a')[0];
+  assert.notEqual(head.id,staleId,'re-rolled: a pick sent against the old cards is refused, not misapplied');
+  assert.equal(sim.choose(ctx,'a',head.id,head.defaultIndex).ok,true,'the fresh default is pickable right away');
+});
+
 test('offline player deadline is frozen and resumes after reconnection with the same queue',()=>{
   const {ctx,tick}=setup();
   const b=addPlayer(ctx,'b',{online:false});

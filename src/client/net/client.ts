@@ -265,6 +265,8 @@ export class CoopClient {
   fatal?:string;
   private badFullFrames=0;
   private resyncAt=-Infinity;
+  /** Every run state from the room (welcome, {t:'run'}): D-050's pause changes once a second with no new frame. */
+  onRun:(run:RunState)=>void=()=>{};
   onStatus:(message:string)=>void=()=>{};
   /** The room's answer to a skill tap (cast): `ok` false = not cast (cooldown, fallen, no target...). */
   onCast:(result:{seq:number;ok:boolean;readyTick:number})=>void=()=>{};
@@ -633,6 +635,7 @@ export class CoopClient {
     this.feed.setBots(run.members.filter(m=>m.bot).map(m=>m.id));
     this.victory=run.outcome==='victory';
     if(run.phase==='combat')this.roomNotice=undefined;
+    try{this.onRun(this.run);}catch(e){console.error('onRun',e);}
   }
   /** One protocol 4 frame: decode, ack, then players, prediction and the run clock. */
   private frame(ws:WebSocket,data:ArrayBuffer){

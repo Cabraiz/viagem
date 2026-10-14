@@ -492,7 +492,7 @@ export class Room {
     if(!this.sim.checkpointShapeOk(cp.sim))return fallback('shape');
     if(!this.sim.resume(cp.sim))return fallback('sim');
     if(!this.run.resume(run,new Set(cp.sim!.players.map(p=>p.id)))){this.sim.resetRun();return fallback('run');}
-    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();
+    this.ids.reset();this.sosAt.clear();this.emoteAt.clear();this.markAt.clear();this.bots.reset();this.autopilots.reset();this.levelup.reset();
     this.syncSpectators();
     // This round is the one stored: no new checkpoint until the next round, and the roster says running again.
     this.rosterRound=this.sim.world.round.index;this.checkpointRef=ref;this.rosterDirty=true;
@@ -600,7 +600,7 @@ export class Room {
       c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
-        run:this.run.snapshot(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
+        run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
       // The run's drawn enemies, so this phone fetches their art now (arte-do-roster-no-render).
@@ -983,9 +983,13 @@ export class Room {
    * once per second). In combat `elapsed`/`remaining` move one per simulation tick, so the client derives them
    * from the frame tick against `tick` here.
    */
-  private pushRun(force=false){
+  /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
+  private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    const run=pause?{...snap,pause}:snap;
+    return pause?{...snap,pause}:snap;
+  }
+  private pushRun(force=false){
+    const run=this.runForClients(),pause=run.pause;
     // A pause goes out once per second of its clock (and when who is waiting changes), like the countdown.
     const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
     if(!force&&key===this.runKey)return;

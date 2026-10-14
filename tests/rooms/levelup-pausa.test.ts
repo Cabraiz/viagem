@@ -57,7 +57,8 @@ test('the pause ends when everybody picked; then PAUSE_GAP_TICKS of combat befor
   // Another level right away waits for the gap.
   room.sim.run.progression.grantLevelOffers(room.sim.world,3);
   for(let i=0;i<PAUSE_GAP_TICKS-5&&room.sim.world.round.phase==='wave';i++){step(room,t+=50);assert.equal(room.levelup.paused,false,`tick ${i}: inside the gap`);}
-  if(room.sim.world.round.phase==='wave'){for(let i=0;i<10;i++)step(room,t+=50);assert.equal(room.levelup.paused,true,'after the gap the held level opens a pause');}
+  assert.equal(room.sim.world.round.phase,'wave','the wave outlasts the gap (else this test checks nothing)');
+  for(let i=0;i<10;i++)step(room,t+=50);assert.equal(room.levelup.paused,true,'after the gap the held level opens a pause');
 });
 
 test('the deadline: nobody picks, everyone online gets the default and the run goes on; several levels give a longer pause',()=>{
@@ -103,8 +104,26 @@ test('the intermission keeps D-021: offers there do not pause (the game is not r
     const o=room.sim.offers(welcome(a).id)[0];if(o)pick(room,a,welcome(a).id,t);
     step(room,t);
   }
-  if(room.sim.world.round.phase!=='prepare')return; // the run ended first: nothing to check
+  assert.equal(room.sim.world.round.phase,'prepare','the first wave ends in an intermission');
   room.sim.run.progression.grantLevelOffers(room.sim.world,room.sim.world.team.level+1);
   step(room,t+=50);
   assert.equal(room.levelup.paused,false);
+});
+
+test('reconnecting mid-pause: the welcome already carries the pause (the phone stands at once)',()=>{
+  let {room,b,t}=paused();
+  const token=welcome(b).token;
+  b.gone=true;room.disconnect(b,t);
+  const back=peer();peers.get(room)!.push(back);room.connect(back,t+=50);say(room,back,{t:'join',protocol:ROOM_PROTOCOL,token},t);
+  assert.equal(room.levelup.paused,true);
+  const w=welcome(back);
+  assert.ok(w.run.pause,'welcome.run.pause');assert.equal(w.run.pause.totalMs,pauseMs(1));
+});
+
+test('someone eliminated with a card never holds the pause; their offer is dropped',()=>{
+  let {room,a,t,ida,idb}=paused();
+  room.sim.players.get(idb)!.eliminated=true;
+  pick(room,a,ida,t);step(room,t+=50);
+  assert.equal(room.levelup.paused,false,'only Ana could pick, and she did');
+  assert.equal(room.sim.offers(idb).length,0,'the eliminated player holds nothing');
 });

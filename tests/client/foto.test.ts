@@ -25,7 +25,7 @@ test('the scenes: the 9 chaveiro states, the city with the ruler, the HUD, the o
   for(const s of ['anda','lombada','volta','morta','entrega','tombo','abrindo','vitoria','derrota'])assert.ok(names.includes(`chaveiro-${s}`),s);
   for(const s of ['cidade-regua','oferta','forja','resultado','minimapa','obra','hud-topo','config-jogo','config-menu'])assert.ok(names.includes(s),s);
   for(const [name,s] of Object.entries(FOTO_CENAS)){
-    assert.match(name,/^[a-z0-9-]+$/);assert.ok(['cidade','hud','obra','config'].includes(s.sandbox));assert.ok(s.descricao.length>3,name);
+    assert.match(name,/^[a-z0-9-]+$/);assert.ok(['cidade','hud','obra','config','elenco'].includes(s.sandbox));assert.ok(s.descricao.length>3,name);
     assert.doesNotMatch(s.query,/(^|&)(sandbox|foto)=/,`${name}: the registry adds them`);
   }
   // tools/foto.mjs lists the scenes with this pattern over the source: one `'name':{` per line, in this order.

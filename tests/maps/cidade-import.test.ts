@@ -7,6 +7,8 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {scaleCity} from '../../scripts/escalar-cidade.ts';
 
 const ASSET='public/maps/cidade-nevada.json';
 // The source .w3x never enters the repo (D-026); the re-import check runs only where W3X_MAP points to it.
@@ -28,7 +30,7 @@ const walk=decodeBits(asset.walkable),water=decodeBits(asset.water);
 const pix=(p:P)=>Math.floor(p.y/STEP)*PW+Math.floor(p.x/STEP);
 const isWalk=(i:number)=>walk[i]===1;
 
-/** A hero body (radius 0.22 u = 1 sample) fits where the sample and its 4 neighbours are walkable. */
+/** A hero body (radius 0.22 u, under 1 sample of 0.374 u since the 1.7× map) fits where the sample and its 4 neighbours are walkable. */
 const roomy=new Uint8Array(PW*PH);
 for(let y=1;y<PH-1;y++)for(let x=1;x<PW-1;x++){const i=y*PW+x;roomy[i]=walk[i]&walk[i-1]&walk[i+1]&walk[i-PW]&walk[i+PW];}
 /** BFS distances (in samples, 4-neighbour) from a point over samples where a hero body fits. */
@@ -49,11 +51,14 @@ const DIRS={N:[0,-1],S:[0,1],L:[1,0],O:[-1,0]} as const;
 const fromPraca=bfs(points.praca);
 const units=(px:number)=>px*STEP;
 
-test('asset header uses the D-026 scale: 1 cell = 0.88 u, whole 192-cell city ≈ 169 u',()=>{
-  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,1);assert.equal(asset.id,'cidade-nevada');
-  assert.equal(asset.unitsPerCell,.88);assert.equal(asset.cells.w,192);assert.equal(asset.cells.h,192);
-  assert.ok(Math.abs(asset.size.w-168.96)<1e-6&&Math.abs(asset.size.h-168.96)<1e-6);
-  assert.equal(PW,768);assert.ok(Math.abs(STEP-.22)<1e-9);
+// NEW-20261013-ORQ-cidade-escala-1-7: version 2 is the .w3x import (version 1: 0.88 u cells, 169 u) × CITY_MAP_SCALE 1.7
+// (scripts/escalar-cidade.ts): same 192 cells and 768 samples per side, each 1.7× wider.
+test('asset header uses the D-026 scale × CITY_MAP_SCALE: 1 cell = 1.496 u, whole 192-cell city ≈ 287 u',()=>{
+  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,2);assert.equal(asset.id,'cidade-nevada');
+  assert.equal(CITY_MAP_SCALE,1.7);
+  assert.equal(asset.unitsPerCell,1.496);assert.equal(asset.cells.w,192);assert.equal(asset.cells.h,192);
+  assert.ok(Math.abs(asset.size.w-287.232)<1e-6&&Math.abs(asset.size.h-287.232)<1e-6);
+  assert.equal(PW,768);assert.ok(Math.abs(STEP-.374)<1e-9);
   assert.equal(asset.heights.w,193);assert.equal(asset.heights.encoding,'i16le-centi-base64');
   assert.equal(Buffer.from(asset.heights.data,'base64').length,193*193*2);
   const blocked=walk.reduce((n,c)=>n+(c?0:1),0)/walk.length;
@@ -124,17 +129,18 @@ test('asset stays small and carries no names or texts from the source map (D-026
 test('manifest carries id, version and the sha256 of the exact asset bytes',async()=>{
   const manifest=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
   const bytes=readFileSync(ASSET);
-  assert.deepEqual(manifest,{id:'cidade-nevada',version:1,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
+  assert.deepEqual(manifest,{id:'cidade-nevada',version:2,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
 });
 
 test('heights keep the source orientation: the hill is east, the flooded pit centre-north',()=>{
   const b=Buffer.from(asset.heights.data,'base64'),h=new Int16Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.length));
   let hi=0,lo=0;for(let i=1;i<h.length;i++){if(h[i]>h[hi])hi=i;if(h[i]<h[lo])lo=i;}
-  const at=(i:number)=>({x:(i%193)*.88,y:Math.floor(i/193)*.88});
+  // Positions and heights in .w3x-import lengths (version 1) × CITY_MAP_SCALE.
+  const K=CITY_MAP_SCALE,at=(i:number)=>({x:(i%193)*asset.unitsPerCell,y:Math.floor(i/193)*asset.unitsPerCell});
   const top=at(hi),pit=at(lo);
-  assert.ok(top.x>120&&top.y<84,`highest corner east/north (${top.x},${top.y})`);
-  assert.ok(pit.x>84&&pit.x<120&&pit.y<60,`lowest corner centre-north (${pit.x},${pit.y})`);
-  assert.ok(h[hi]/100>5&&h[lo]/100<-1,'height range in u');
+  assert.ok(top.x>120*K&&top.y<84*K,`highest corner east/north (${top.x},${top.y})`);
+  assert.ok(pit.x>84*K&&pit.x<120*K&&pit.y<60*K,`lowest corner centre-north (${pit.x},${pit.y})`);
+  assert.ok(h[hi]/100>5*K&&h[lo]/100<-1*K,'height range in u');
 });
 
 test('closing the 4 mouths seals the plaza from every spawn (the base can be walled)',()=>{
@@ -147,13 +153,19 @@ test('closing the 4 mouths seals the plaza from every spawn (the base can be wal
   for(const s of SPAWNS)assert.equal(sealed[pix(points[s])],-1,`${s} must not reach the walled plaza`);
 });
 
-test('two separate importer runs reproduce the committed asset and manifest byte for byte',{skip:!(MAP&&existsSync(MAP))&&'set W3X_MAP to the source .w3x to run'},()=>{
+// The importer writes version 1 (the .w3x proportions); the committed asset is that × CITY_MAP_SCALE (cidade-escala-1-7),
+// so each run goes through scripts/escalar-cidade.ts scaleCity before the byte comparison, and the two runs must agree.
+test('two separate importer runs, scaled by CITY_MAP_SCALE, reproduce the committed asset and manifest byte for byte',{skip:!(MAP&&existsSync(MAP))&&'set W3X_MAP to the source .w3x to run'},()=>{
   const dir=mkdtempSync(join(tmpdir(),'cidade-'));
   try{
     for(const run of ['a','b'])execFileSync(process.execPath,['scripts/import-w3x.mjs',MAP!,join(dir,`${run}.json`)],{stdio:'pipe'});
+    const committed=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
     for(const run of ['a','b']){
-      assert.equal(readFileSync(join(dir,`${run}.json`),'utf8'),text,`run ${run} asset`);
-      assert.equal(readFileSync(join(dir,`${run}.manifest.json`),'utf8'),readFileSync('public/maps/cidade-nevada.manifest.json','utf8'),`run ${run} manifest`);
+      const v1=readFileSync(join(dir,`${run}.json`),'utf8'),scaled=JSON.stringify(scaleCity(JSON.parse(v1),CITY_MAP_SCALE));
+      assert.equal(JSON.parse(v1).version,1,`run ${run} imports version 1`);
+      assert.equal(scaled,text,`run ${run} asset × CITY_MAP_SCALE`);
+      assert.equal(readFileSync(join(dir,`${run}.json`),'utf8'),readFileSync(join(dir,'a.json'),'utf8'),`run ${run} = run a`);
+      assert.deepEqual({id:committed.id,version:committed.version,hash:createHash('sha256').update(scaled).digest('hex'),bytes:Buffer.byteLength(scaled)},committed,`run ${run} manifest`);
     }
   }finally{rmSync(dir,{recursive:true,force:true});}
 });

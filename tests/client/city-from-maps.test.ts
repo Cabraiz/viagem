@@ -8,12 +8,15 @@ import {
   AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_DEDUP,PROP_STACK,PROP_R_MAX,PROP_R_MIN,
   RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,
 } from '../../src/client/render/city/from-maps.ts';
+import {CITY_MAP_SCALE} from '../../src/rules/index.ts';
 
 const decoded=decodeCityAsset(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'));
 if(!decoded.ok)throw new Error(decoded.error);
 const maps:MapsCityAsset=decoded.asset;
 const city:CityAsset=cityRenderAsset(maps);
 const W=city.width,H=city.height,CELL=city.cell;
+/** NEW-20261013-ORQ-cidade-escala-1-7: the asset (version 2) is the .w3x map × K; map lengths and block heights below are × K. */
+const K=CITY_MAP_SCALE;
 
 /** Deterministic LCG in [0,1). */
 const rng=(seed:number)=>()=>((seed=Math.imul(seed,1664525)+1013904223>>>0)/0x100000000);
@@ -30,9 +33,9 @@ const samplesIn=(cx:number,cy:number,fn:(sx:number,sy:number)=>boolean)=>{
   return n;
 };
 
-test('grid: same cells, 0.88 u per cell, origin at the NW corner like the maps asset and the terrain',()=>{
+test('grid: same cells, 1.496 u (0.88 × K) per cell, origin at the NW corner like the maps asset and the terrain',()=>{
   assert.equal(W,maps.cells.w);assert.equal(H,maps.cells.h);
-  assert.equal(CELL,maps.unitsPerCell);assert.equal(CELL,0.88);
+  assert.equal(CELL,maps.unitsPerCell);assert.equal(CELL,1.496);assert.equal(K,1.7);
   assert.deepEqual(city.origin,{x:0,y:0});
   assert.equal(city.heights.length,W*H);assert.equal(city.ground.length,W*H);
   assert.equal(city.corners?.length,(W+1)*(H+1));
@@ -123,7 +126,9 @@ test('blocks: kinds and heights follow the rules; ~60% of buildings are ruined, 
   assert.ok(all.length>=20,`${all.length} buildings drawn`);
   assert.ok(ruined/all.length>0.35&&ruined/all.length<0.85,`${ruined}/${all.length} ruined`);
   assert.ok(new Set(all.map(g=>g.height)).size>5,'building heights vary');
-  assert.ok(WALL_HEIGHT<=1.6&&CLIFF_LIP_HEIGHT<=1.6&&RUBBLE_HEIGHT<=0.3,'art bible limits');
+  // Art bible limits at the .w3x scale (1.6 / 0.3), × K for the 1.7× blocks; the lip stays low.
+  assert.ok(WALL_HEIGHT<=1.6*K+1e-9&&CLIFF_LIP_HEIGHT<=1.6&&RUBBLE_HEIGHT<=0.3*K+1e-9,'art bible limits');
+  assert.equal(BUILDING_HEIGHT_MIN,3.74);assert.equal(BUILDING_HEIGHT_MAX,6.46);assert.equal(WALL_HEIGHT,2.72);assert.equal(EDGE_HEIGHT,2.72);assert.equal(RUBBLE_HEIGHT,.51);
 });
 
 test('ground: water from the samples, rubble on blocked ground, no street or cobble under blocks',()=>{
@@ -228,12 +233,12 @@ test('props (proporcoes-postes-predios): one per spot — no two closer than PRO
     assert.ok(d>=Math.max(PROP_STACK,0.45),`${a.id} (${a.kind}) and ${b.id} (${b.kind}) stacked`);
     if(a.kind===b.kind)assert.ok(d>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
   }
-  // The .w3x stacks 5 lamps within 1 u by the start: one stays, the one first in source order.
-  const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3,p.y-160)<1.25);
+  // The .w3x stacks 5 lamps within 1 u by the start (× K on the 1.7× map): one stays, the one first in source order.
+  const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3*K,p.y-160*K)<1.25*K);
   assert.equal(lamps.length,1);
   // The same stack also hashes copies to barrel, crate and bench: those go with it.
   assert.deepEqual(city.props.filter(p=>Math.hypot(p.x-lamps[0].x,p.y-lamps[0].y)<PROP_STACK).map(p=>p.id),[lamps[0].id]);
-  const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3,p.y-160)<1.5&&p.kind==='prop');
+  const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3*K,p.y-160*K)<1.5*K&&p.kind==='prop');
   assert.ok(sources.length>=3,'the source does stack them');
 });
 

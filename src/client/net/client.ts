@@ -10,6 +10,7 @@ import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
+import {MARK_ID,parseMark,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
@@ -273,6 +274,8 @@ export class CoopClient {
   onSos:(ping:SosPing)=>void=()=>{};
   /** Quick emotes relayed by the room (rostos-kkkk), the local player's own included: the team strip's KKKK face. */
   onEmote:(e:EmoteNote)=>void=()=>{};
+  /** Minimap pings relayed by the room (minimapa-wc3, rules/marks.ts), this phone's own included. */
+  onMark:(m:MarkNote)=>void=()=>{};
   /** The run's drawn enemies ({t:'elenco'}, arte-do-roster-no-render): a new array per message; the scene fetches their art. */
   elenco:readonly string[]=[];
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
@@ -310,6 +313,16 @@ export class CoopClient {
   repair(defense:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'repair',round:this.run.round,req,defense});return req;
+  }
+  /** D-047: the room's answer to a Dona Cida purchase: the team's Grana left, or why not ('away' from the moto, 'stock', 'grana', 'phase'). */
+  onBought:(result:{req:number;item:string;ok:boolean;grana?:number;reason?:string})=>void=()=>{};
+  /**
+   * D-047 Dona Cida (the chaveiro objective): buys `item` ('brigadeiro' | 'pacoca' | 'cocada') for the team's Grana from
+   * next to the moto; the room answers {t:'bought'} (onBought). Same request ids as forge().
+   */
+  buyCida(item:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'cida',round:this.run.round,req,item});return req;
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -502,9 +515,11 @@ export class CoopClient {
     else if(m.t==='replaced')this.replaced(ws);
     else if(m.t==='cast'&&Number.isSafeInteger(m.seq)&&typeof m.ok==='boolean'){this.lastCast={seq:m.seq,ok:m.ok,readyTick:Number(m.readyTick)||0};this.onCast(this.lastCast);}
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
-    else if(m.t==='emote'){const note=parseEmote(m);if(note)this.onEmote(note);}
+    else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
+      ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
     // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.
@@ -648,7 +663,7 @@ export class CoopClient {
     }
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
-    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip}:{};
+    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil}:{};
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
       this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};
@@ -736,6 +751,11 @@ export class CoopClient {
   emote(id:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
     this.out(this.socket,{t:'emote',round:this.run.round,id});return true;
+  }
+  /** Minimap ping (minimapa-wc3): {t:'emote',round,id:'marca',x,y}; an old room drops it (the ping stays local). */
+  mark(x:number,y:number){
+    if(!this.connected||this.run?.phase!=='combat'||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.out(this.socket,{t:'emote',round:this.run.round,id:MARK_ID,x:Math.round(x*100)/100,y:Math.round(y*100)/100});return true;
   }
   ready(ready:boolean){this.runCommand({t:'ready',ready});}
   /** Owner commands (D-025): the room checks owner, phase and round; a refusal comes back as a notice. */

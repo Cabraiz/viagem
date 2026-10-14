@@ -1,5 +1,5 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
-import type {RunMember,RunOutcome,RunPhase,RunState,ShameMoment} from '../contract/index.ts';
+import type {ObjectiveResult,RunMember,RunOutcome,RunPhase,RunState,ShameMoment} from '../contract/index.ts';
 export type {RunMember,RunOutcome,RunPhase,RunState} from '../contract/index.ts';
 export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
@@ -7,8 +7,10 @@ export const RUN_DURATION_TICKS=20*60*RUN_HZ;
 /**
  * D-043: the city's combat cap. Its 10 rounds stretch for the walk and the crate intermissions: in the cidade-11 balance
  * the boss spawned at 15.6–21.9 sim minutes and runs ended by 22.2, so the endless map's 20 min cut them before the boss.
+ * 30 min since cidade-escala-1-7 (D-043 amended): on the 1.7× city the runs that reach the boss end at 21.1–25.6 sim
+ * minutes (bench 8 seeds, 1 and 6 players; 14.5–17.9 before), the longer walks and crate intermissions.
  */
-export const CITY_RUN_DURATION_TICKS=25*60*RUN_HZ;
+export const CITY_RUN_DURATION_TICKS=30*60*RUN_HZ;
 export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
 /**
  * Before a run, a member offline this long stops holding the start (VGM-047): the seat lasts the whole mobile grace,
@@ -28,6 +30,8 @@ export class RunLifecycle {
   private outcome?:RunOutcome;
   private resultId?:string;
   private shame?:ShameMoment;
+  /** D-047: the chaveiro's bill of the run that just ended (RunState.objective, result only). */
+  private objective?:ObjectiveResult;
   private owner?:string;
   private readonly roomId:string;
   private durationTicks:number;
@@ -113,7 +117,7 @@ export class RunLifecycle {
     if(this.phase!=='lobby'||!Number.isSafeInteger(run.round)||run.round<1||!Number.isSafeInteger(run.elapsed)||run.elapsed<0||run.elapsed>=this.durationTicks)return false;
     const watching=new Set(run.spectators);
     this.phase='combat';this.round=run.round;this.elapsed=run.elapsed;this.countdown=RUN_COUNTDOWN_TICKS;
-    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;
+    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;this.objective=undefined;
     for(const m of this.members.values()){m.spectator=watching.has(m.id)||!!players&&!players.has(m.id);m.ready=!m.spectator;}
     return true;
   }
@@ -125,15 +129,17 @@ export class RunLifecycle {
   /** This method accepts simulation output, never a client message. True exactly once per run (the first outcome wins). */
   finish(outcome:RunOutcome,shame?:ShameMoment){
     if(this.phase!=='combat')return false;
-    this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;this.shame=shame&&{...shame};
+    this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;this.shame=shame&&{...shame};this.objective=undefined;
     for(const member of this.members.values())member.ready=!!member.bot;
     return true;
   }
+  /** D-047: the objective's bill for the result just decided (simulation output, never a client message); result phase only. */
+  setObjective(result:ObjectiveResult|undefined){if(this.phase==='result')this.objective=result&&structuredClone(result);}
   /** Guard with the round from the request so duplicate clicks cannot reset twice. */
   rematch(id:string,round:number){
     if(this.phase!=='result'||round!==this.round||!this.members.get(id)?.online)return false;
     this.round++;this.phase='lobby';this.elapsed=0;this.countdown=RUN_COUNTDOWN_TICKS;
-    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;
+    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;this.objective=undefined;
     for(const member of this.members.values()){member.ready=!!member.bot;member.spectator=false;}
     return true;
   }
@@ -141,6 +147,7 @@ export class RunLifecycle {
     return {round:this.round,phase:this.phase,elapsed:this.elapsed,
       remaining:this.phase==='countdown'?this.countdown:Math.max(0,this.durationTicks-this.elapsed),
       members:[...this.members.values()].map(m=>({...m})),outcome:this.outcome,resultId:this.resultId,
-      ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{}),...(this.owner?{owner:this.owner}:{})};
+      ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{}),...(this.owner?{owner:this.owner}:{}),
+      ...(this.phase==='result'&&this.objective?{objective:structuredClone(this.objective)}:{})};
   }
 }

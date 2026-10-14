@@ -21,7 +21,7 @@
  */
 import type {TerrainField} from '../maps/index.ts';
 import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
-import {MAX_ENEMIES,roleOf} from '../rules/index.ts';
+import {CITY_MAP_SCALE,MAX_ENEMIES,roleOf} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleAtDefault,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
@@ -30,7 +30,7 @@ import {SIM_HZ,ticks,type EnemyState,type RoundState,type SimPlayer} from '../co
 import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
-import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,drawRotation,drawTheme,isRotation,planRound,roundRoster,
+import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,ROUND_NAMES,drawRotation,drawTheme,isRotation,planRound,roundRoster,
   type RoundPlan,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
 import {BAND_CADENCE,BAND_DAMAGE,SUMMON,enemyDef,hashUnit} from './enemies/catalog.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
@@ -122,7 +122,16 @@ export interface DirectorOptions {
    * (assemble.ts) turns it on. The city's tutorial round 1 never uses it.
    */
   rotation?:boolean;
+  /**
+   * D-047 (the chaveiro objective; assemble.ts sets it with RunSystemsOptions.objective): the rounds are waves and the
+   * count is no victory. No plan has the boss (the objective calls it when the chaveiro is near), the last round never
+   * ends the run, and every wave after it repeats the last round's plan (its regular names, no modifier) with the
+   * regular count × EXTRA_WAVE_COUNT per extra wave. Absent: the round table as it is.
+   */
+  endlessWaves?:boolean;
 }
+/** D-047: count multiplier per wave after the last round (compounded: wave 11 × 1.1, wave 12 × 1.21, …). */
+export const EXTRA_WAVE_COUNT=1.1;
 
 /**
  * side: angle the group must come from (single-side, alternating and surround modifiers); kept on re-warns.
@@ -268,9 +277,11 @@ const STUCK_UNITS=.5,STUCK_SECONDS=2;
 const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
  * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
- * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
+ * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap. Map lengths:
+ * 2 / 25 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7) → 3.4 / 42.5 u; at the retreat
+ * pace (≥ 2.25 u/s) 42.5 u is ~19 s, inside the 60 s cap.
  */
-export const CITY_EXIT_REACH=2,CITY_GONE_DISTANCE=25;
+export const CITY_EXIT_REACH=2*CITY_MAP_SCALE,CITY_GONE_DISTANCE=25*CITY_MAP_SCALE;
 /**
  * City round timer (v2): a wave that times out lasts at least until the slowest member of the last group could reach
  * the plaza (or the team, where it stood when the wave started, if that is farther), plus this many seconds to fight
@@ -338,6 +349,18 @@ function nearestPlayer(ctx:SimContext,p:Point){
 
 /** Round 1 crumbs (VGM-056): tries per drop, and the gap beyond a hero's magnet radius (world units). */
 const CRUMB_TRIES=6,CRUMB_MAGNET_MARGIN=.4;
+
+/** D-047 waves (DirectorOptions.endlessWaves): the plan of `table` without its boss group, as wave `index`; it retreats on timeout. */
+function withoutBoss(plan:RoundPlan,index:number):RoundPlan{
+  if(!plan.boss&&plan.index===index)return plan;
+  const groups=plan.groups.filter(g=>!g.boss);
+  return {...plan,index,groups,total:groups.reduce((n,g)=>n+g.members.length,0),boss:false,retreat:true};
+}
+/** D-047 waves from the last round on: a regular round name not used yet this run (any when all were), no modifier. */
+function wavesTheme(rng:Rng,used:readonly string[]):RoundTheme{
+  const names=ROUND_NAMES.filter(n=>!used.includes(n));
+  return {name:rng.pick(names.length?names:ROUND_NAMES)};
+}
 
 export function createDirector(options:DirectorOptions,restore?:DirectorState):Director{
   const maxEnemies=options.maxEnemies??MAX_ENEMIES;
@@ -1032,7 +1055,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     state.stage='prepare';
     // cidade-08: the city's round 1 is the tutorial walk, with its own name and banner line (no draw).
     if(index===1&&options.cityTutorial&&city(ctx))state.tutorial??={};
-    const theme=state.theme=tutorialRound(ctx,index)?{name:CIDADE_TUTORIAL.roundName,modifierLabel:CIDADE_TUTORIAL.modifier}:drawTheme(index,random(),state.usedNames);
+    const theme=state.theme=tutorialRound(ctx,index)?{name:CIDADE_TUTORIAL.roundName,modifierLabel:CIDADE_TUTORIAL.modifier}
+      :options.endlessWaves&&index>=total?wavesTheme(random(),state.usedNames):drawTheme(index,random(),state.usedNames);
     state.usedNames.push(theme.name);if(theme.modifierId)state.usedNames.push(theme.modifierId);
     save();
     Object.assign(ctx.round,{index,total,phase:'prepare',phaseEndsTick:ctx.tick+duration,remaining:0});
@@ -1042,15 +1066,19 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function startWave(ctx:SimContext){
     const index=ctx.round.index,theme=state.theme!;
     const tutorial=tutorialRound(ctx);
-    const roster=state.rotation?roundRoster(state.rotation,index):undefined;
+    // D-047 extra waves: the last round's table (its roster, plan and knobs), with the wave's own index.
+    const table=options.endlessWaves?Math.min(index,total):index,extra=index-table;
+    const roster=state.rotation?roundRoster(state.rotation,table):undefined;
     // Art only (a short rotation): the tutorial's slow group is the round's fodder with art (the rats), not the bêbado.
     const fodder=roster?.short?roster.roles.corredor??roster.roles.enxame:undefined;
-    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(index,scalePlayers(ctx),theme,random(),roster);
+    let plan=tutorial?tutorialPlan(scalePlayers(ctx),planner!.firstArrivalTicks,fodder):planRound(table,scalePlayers(ctx),theme,random(),roster,options.cityBalance?.roleCap&&city(ctx)?{roleCap:options.cityBalance.roleCap}:undefined);
+    if(options.endlessWaves&&!tutorial)plan=withoutBoss(plan,index);
     // The tutorial's pace is the bêbado's (TUTORIAL_PLAN.speed on his catalog speed): other fodder walks at it too.
     if(tutorial&&fodder?.length)plan={...plan,speed:plan.speed*enemyDef('bebado').speed/enemyDef(fodder[0]).speed};
     // City knobs (cidade-11, city/balance.ts) on the table's plan: never the tutorial; neutral knobs keep `plan` itself.
     // The team-size knobs (CityBalance.players) are keyed by plan.players: the scalePlayers count planRound scaled with.
-    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,index,plan.players));
+    if(!tutorial&&options.cityBalance&&city(ctx))plan=applyCityBalance(plan,roundKnobs(options.cityBalance,table,plan.players));
+    if(extra>0)plan=applyCityBalance(plan,{count:EXTRA_WAVE_COUNT**extra,hp:1,cadence:1});
     save();
     Object.assign(state,{stage:'wave',plan,roundStart:ctx.tick,nextGroup:0,pending:[],tracked:[],bossId:undefined,retreating:[],spawned:0,retreated:0,timedOut:false},
       endless(ctx)?{recycled:0,served:{},called:false}:{});
@@ -1147,7 +1175,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     ctx.emit({type:'round',index:plan.index,phase:'end',name:theme.name,modifier:theme.modifierLabel});
     const summary:RoundSummary={index:plan.index,total,name:theme.name,modifier:theme.modifierLabel,spawned:state.spawned,retreated:state.retreated,timedOut:state.timedOut,
       ...(state.recycled!==undefined?{recycled:state.recycled}:{})};
-    if(plan.index>=total){state.stage='done';options.onRoundEnd?.(ctx,summary);return;}
+    if(plan.index>=total&&!options.endlessWaves){state.stage='done';options.onRoundEnd?.(ctx,summary);return;}
     // Enter the intermission first, so the round-end offers see its deadline in ctx.round and the summary.
     startPrepare(ctx,plan.index+1,intermission);
     options.onRoundEnd?.(ctx,{...summary,intermissionEndsTick:ctx.round.phaseEndsTick});

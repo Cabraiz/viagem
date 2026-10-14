@@ -20,17 +20,19 @@ import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
 import type {Rect,ScreenZones} from './zones.ts';
 import {MINIMAP_RANGE,islandOutline} from './minimap.ts';
+import {WcMinimapDriver} from './wc-minimap/driver.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
 import {defaultPortrait} from './hud.ts';
 import {EmoteGate,SosBoard,SOS_COOLDOWN_MS,type SosPing} from '../fun/emotes.ts';
 import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
-import {worldBase} from '../../maps/index.ts';
+import {worldBase,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
-import {cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+import {chaveiroExtras} from './chaveiro-extras.ts';
+import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,blockReason,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type CityView,type MouthId,type NoticeKind,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
@@ -65,12 +67,16 @@ export class RescueBoard {
   private warnings:SpawnWarning[]=[];
   private last?:RunView;
   private said=new Set<string>();
-  private frame=0;private minimapAt=0;private timers=new Set<ReturnType<typeof setTimeout>>();
+  private frame=0;private minimapAt=0;
+  /** The WC3 minimap's driver (wc-minimap/driver.ts): frame, terrain cache, ally colours, heading. */
+  private readonly wcDriver=new WcMinimapDriver();private timers=new Set<ReturnType<typeof setTimeout>>();
   /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
   private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
   private readonly outline=islandOutline();
   // ---------- City (design/cidade-hud.md §7) ----------
   /** The city's map info, built once per decoded asset. */
+  /** D-047: the chaveiro's last route and stops (the minimap draws the route still ahead). */
+  private chaveiroRoute=new RouteMemo();
   private cityInfo?:{asset:CityAssetLike;map:CityMapInfo};
   /** Avenue mouths lit by spawn warnings (trackMouths), and the group keys that had an arrow last frame (hysteresis). */
   private mouths=new Map<MouthId,number>();private groupKeys=new Set<string>();
@@ -186,12 +192,31 @@ export class RescueBoard {
     hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen,windows:this.windows}));
     // What must keep an arrow (a caído or the boss off the field): the zones audit checks it against the arrows drawn.
     hud.edges?.need(pointedTargets(targets,area,seen));
-    // The minimap at ~15 Hz is plenty (dots move a fraction of a pixel per frame at its scale).
-    if(hud.minimap&&now-this.minimapAt>=66){
+    // The WC3 minimap at 10 Hz (the old radar minimap is no longer in the slot).
+    if(hud.wc){if(now-this.minimapAt>=100){this.minimapAt=now;this.drawWc(scene,view.players,focus,now);}}
+    else if(hud.minimap&&now-this.minimapAt>=66){
       this.minimapAt=now;
       const endless=!!net.terrain.chunks,range=MINIMAP_RANGE[endless?'infinito':'ilha'][hud.minimap.far?1:0];
       hud.minimap.render(focus,scene.cameraView,range,items,endless?undefined:this.outline);
     }
+  }
+  /**
+   * The WC3 minimap (card NEW-20261013-ORQ-minimapa-wc3): the whole map or the window around the hero, the marks and the
+   * camera's view; a mouse click walks there (as a click on the ground), a touch or Alt+click pings (local for now).
+   */
+  private drawWc(scene:IslandScene,players:readonly {id:string;x:number;y:number;online:boolean;spectator?:boolean}[],focus:{x:number;y:number},now:number){
+    const hud=this.hud,net=this.net,wc=hud.wc!;
+    wc.onMove??=p=>{this.scene()?.goTo(p,{markerMs:900});};
+    // A ping goes to the room (an old room drops it: it stays on this minimap); the team's come back through onMark.
+    if(!wc.onPing){wc.onPing=p=>{net.mark(p.x,p.y);};net.onMark=m=>{if(m.player!==net.id)wc.pingWorld(m,this.wcDriver.colorOf(m.player));};}
+    const locate=(p:{x:number;y:number})=>scene.locate(p).screen;
+    // The city's maps asset (the HUD's cityAssetOf is a narrow view of it): the terrain image reads its cells and blocks.
+    const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
+    this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,
+      selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
+      corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt,
+      // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
+      extras:chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last)))});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
@@ -227,14 +252,16 @@ export class RescueBoard {
     // A telegraph about to go off within its reach (+ 1 u) of the hero touches the hero's zone.
     const telegraphOnHero=last.telegraphs.some(t=>t.fireTick>=last.tick&&Math.hypot(t.x-focus.x,t.y-focus.y)<=t.radius+1);
     hud.cityMap.update({nowMs:now,phase,announced,notice,coversAnnounce:big.coversAnnounce,hurt:this.hurtAt>(hud.cityMap.openedAt??Infinity),telegraphOnHero,nearestEnemy});
+    if(hud.wc){if(now-this.minimapAt>=100){this.minimapAt=now;this.drawWc(scene,players,focus,now);}return;}
     const city=hud.cityMinimap;
     if(!city||!(hud.cityMap.take()||now-this.minimapAt>=200))return;
     this.minimapAt=now;
-    const open=hud.cityMap.open,wall=wallOf(last.structures);
+    // D-047: the route and stops come on the keyframe and when they change only: the memo keeps them between views.
+    const open=hud.cityMap.open,wall=wallOf(last.structures),chaveiro=this.chaveiroRoute.fill(objectiveOf(last));
     // Big only, in the intermission: the 8 nearest closed chests (doc §2).
     const chests=open&&phase==='prepare'?last.pickups.filter(p=>p.kind==='chest').sort((a,b)=>Math.hypot(a.x-focus.x,a.y-focus.y)-Math.hypot(b.x-focus.x,b.y-focus.y)).slice(0,8):undefined;
     city.render({map,view:scene.cameraView as CityView,...(open?{side:big.side,screen:screenCorners(locate,focus,{width:innerWidth,height:innerHeight})}:{}),
-      selfId:net.id,players:people,enemies,activeMouths,...(wall?{baseHp:{hp:wall.hp,maxHp:wall.maxHp}}:{}),...(chests?{chests}:{}),offline:hud.offline},open);
+      selfId:net.id,players:people,enemies,activeMouths,...(wall?{baseHp:{hp:wall.hp,maxHp:wall.maxHp}}:{}),...(chests?{chests}:{}),...(chaveiro?{chaveiro}:{}),offline:hud.offline},open);
   }
   /**
    * Rebuilds the city's world picture (cityFrame): who shows (as radar.ts: nobody spectating or out; someone away only
@@ -269,7 +296,8 @@ export class RescueBoard {
     this.cityNearest=nearest;
     const phase=this.cityPhase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=this.cityMouths=trackMouths(this.mouths,[],last.tick,map);
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,
+    const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     this.cityTargets=targets;this.groupKeys=groupKeys;
   }

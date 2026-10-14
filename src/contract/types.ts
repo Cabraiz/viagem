@@ -5,6 +5,7 @@
  * Erasable TypeScript only (no enum, namespace or parameter properties): tests run with --experimental-strip-types.
  */
 import type {Rng} from './rng.ts';
+import type {CidaItemId,MotoMoment} from './objective.ts';
 
 /** A position or direction in world units (maps/world.ts re-exports it). */
 export type Point = { x: number; y: number };
@@ -61,6 +62,12 @@ export interface SimPlayer extends Point {
    * ignored (pigeon poop). Deterministic from (slipUntil, slip), so the client predicts it exactly.
    */
   slipUntil?:number; slip?:Point;
+  /**
+   * D-047 Dona Cida's sweets (objective.ts CIDA_ITEMS), absolute ticks: walking × CIDA_FAST_MULT while tick < fastUntil
+   * (shared with the client's prediction, like slowUntil), damage dealt × CIDA_MIGHT_MULT while tick < mightUntil,
+   * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
+   */
+  fastUntil?:number; mightUntil?:number; guardUntil?:number;
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
@@ -149,7 +156,17 @@ export type SimEvent=
    */
   | {type:'happening';kind:HappeningKind;endsTick:number}
   /** VGM-053B: the last critter of a round fell (kill-cam): kind, where, who closed the bill and which round. */
-  | {type:'last-bicho';kind:string;x:number;y:number;round:number;by?:string};
+  | {type:'last-bicho';kind:string;x:number;y:number;round:number;by?:string}
+  /**
+   * D-047 (chaveiro objective, src/sim/chaveiro/): the car alarm started (until untilTick), a car part fell (name: a
+   * CarPart), a moto moment (alone: the moto started again by itself, no push), Dona Cida sold a sweet to an enemy
+   * (it is "açucarado") and a player bought one for the team. Hooks for lines and HUD; not on the wire yet.
+   */
+  | {type:'alarm';untilTick:number}
+  | {type:'part';name:string}
+  | {type:'moto';mode:MotoMoment;alone?:true}
+  | {type:'sale';enemy:string}
+  | {type:'buy';player:string;item:CidaItemId};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

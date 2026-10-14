@@ -30,7 +30,8 @@
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
@@ -53,9 +54,16 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * 14 since velocidade-heroi-e-projetil: the same bytes, but the hero walks 2× (maps heroSpeed) and shots fly at half
  * speed, and the phone predicts its own walk (maps/prediction.ts moveStep): a 13 client in front of a 14 room (or the
  * other way round) would be corrected on every input, so the versions must not meet.
+ * 15 since the chaveiro objective (D-047, NEW-20261013-ORQ-objetivo-chaveiro): the objective block (flag bit 4: the moto,
+ * ETA, alarm, Grana, Dona Cida, the car; its static route and stops on full frames and when they change), the car's
+ * `parts` in the structures, `sugar` on the enemies, Dona Cida's buffs on the players (fastUntil drives the prediction),
+ * the events alarm/part/moto/sale/buy and their strings in the DICT; a 14 decoder would refuse the flags and the masks.
+ * 16 since cidade-escala-1-7: the same bytes, but the Cidade Nevada is the 1.7× asset (MapRef version 2) and the client's
+ * HUD and render follow it; the site's deploy gate compares this number only, so a site with the v2 asset must not go
+ * live in front of a Worker that still bundles version 1 (every city join would be refused for the map).
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=14;
+export const PROTOCOL_VERSION=16;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -120,6 +128,10 @@ export const DICT:readonly string[]=[
   'capivara-blindada','pombo-tres-cabecas','pernilongo-vampiro','cachorro-de-madame','furry-de-convencao',
   'poste-gambiarra','rei-do-boteco','caminhao-do-lixo','pombo-rei','trio-eletrico','rainha-das-baratas',
   'o-grande-credor','dj-do-fim-do-mundo','o-algoritmo',
+  // Protocol 15 (D-047, the chaveiro objective): the car and the moto, the objective kind, the moto's modes and moments
+  // (morta/lombada/entrega are also the stop kinds), the car's parts and Dona Cida's sweets.
+  'quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',
+  'para-choque','retrovisor','porta','capo','brigadeiro','pacoca','cocada',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -245,6 +257,8 @@ const byteCount=(v:number)=>((Math.round(finite(v))%256)+256)%256;
 const u8:Codec<number>={write:(w,v)=>w.u8(byteCount(v)),read:r=>r.u8(),norm:byteCount,eq:same};
 const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),eq:same};
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
+/** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
+const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -321,9 +335,13 @@ const SCHEMAS:Record<SectionKey,Schema>={
     name:c(str),classId:c(str),
     // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
+    // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
+    fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
+    // Protocol 15 (D-047): Dona Cida sold it a sweet.
+    sugar:c(optional(trueFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
@@ -335,7 +353,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
   structures:{prefix:'s',fields:{kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),untilTick:c(optional(tickRel)),
     tier:c(optional(count)),branch:c(optional(str)),phase:c(optional(str)),aim:c(optional(unit)),
     // torre-contador-de-tiros: the volleys mod 256, so a turret firing at a target that does not move shows every shot.
-    shots:c(optional(u8))}},
+    shots:c(optional(u8)),
+    // Protocol 15 (D-047): the car's fallen parts (bits of CAR_PARTS), only when they change.
+    parts:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
@@ -426,7 +446,16 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   // VGM-053B (protocol 7): a zueira event in the round (kind, when it stops) and the round's last critter (kill-cam).
   ['happening',[['kind','str'],['endsTick','tick']]],
   ['last-bicho',[['kind','str'],['x','pos'],['y','pos'],['round','count'],['by','ref',true]]],
+  // Protocol 15 (D-047, the chaveiro objective): the car alarm, a car part, a moto moment, Dona Cida's sale to a critter
+  // and a team purchase.
+  ['alarm',[['untilTick','tick']]],
+  ['part',[['name','str']]],
+  ['moto',[['mode','str'],['alone','count',true]]],
+  ['sale',[['enemy','ref',false,'enemies']]],
+  ['buy',[['player','ref'],['item','str']]],
 ];
+const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
+const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
 const EVENT_CODE=new Map<string,number>(EVENT_SPECS.map(([type],i)=>[type,i]));
 /** Upper bound of one event's body (a few refs, numbers and strings of at most MAX_STRING_BYTES). */
 const MAX_EVENT_BYTES=4096;
@@ -478,13 +507,16 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
       }
       case 'pos':e[name]=(name==='y'?posY:posX).read(r,f);return;
       case 'vel':e[name]=vel.read(r,f);return;
-      case 'count':e[name]=name==='crit'?r.uvar()>0:r.uvar();return;
+      case 'count':e[name]=name==='crit'||name==='alone'?r.uvar()>0:r.uvar();return;
       case 'tick':e[name]=tickRel.read(r,f);return;
       case 'str':e[name]=r.str();return;
     }
   });
   if(type==='round'&&e.phase!=='wave'&&e.phase!=='prepare'&&e.phase!=='end')throw new FrameError('bad round phase');
   if(type==='happening'&&e.kind!=='boletos'&&e.kind!=='promo'&&e.kind!=='apagao')throw new FrameError('bad happening');
+  if(type==='moto'&&!MOTO_MOMENTS.has(e.mode as string))throw new FrameError('bad moto moment');
+  if(type==='moto'&&e.alone===false)delete e.alone;
+  if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
 }
@@ -493,7 +525,95 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
 type Entity={id:string}&Record<string,unknown>;
 /** One section as the client holds it: wire id -> record with client-facing id. */
 type Table=Map<number,Entity>;
-interface World {tick:number;tables:Record<SectionKey,Table>}
+/** `objective`: the objective as the client holds it after this frame (normalized: what the wire carries). */
+interface World {tick:number;tables:Record<SectionKey,Table>;objective?:ObjectiveView}
+
+// ---------- Objective block (protocol 15, D-047) ----------
+/**
+ * Flag bit 4 of the frame: u8 bits (1 dynamic part, 2 static part, 4 cleared) | dynamic? | static?. Sent only when it
+ * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
+ *   dynamic: str kind | svar motoX*16 | svar motoY*16 | str mode | u8 has (1 push, 2 delivery, 4 victory, 8 defeat) |
+ *     uvar etaS | svar alarmUntil-tick | uvar grana | uvar budget | uvar n, uvar stock* | [u8 push 0..255] |
+ *     [svar x*16, svar y*16, uvar etaS] | svar carX*16 | svar carY*16 | uvar hits | uvar limit | uvar parts
+ *   static: uvar n, (svar x*16, svar y*16)* route | uvar m, (str kind, svar x*16, svar y*16, uvar s*16)* stops
+ */
+const OBJ_DYN=1,OBJ_STATIC=2,OBJ_CLEAR=4;
+const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8;
+/** Objective positions travel at 1/16 unit. */
+export const OBJECTIVE_POS_SCALE=16;
+const MAX_ROUTE_POINTS=512,MAX_STOPS=64,MAX_STOCK=8;
+const MOTO_MODES=new Set<string>(['anda','lombada','entrega','morta','tombo','volta','abrindo']);
+const STOP_KINDS=new Set<string>(['morta','lombada','entrega']);
+const q16=(v:number)=>Math.max(-POS_LIMIT*OBJECTIVE_POS_SCALE,Math.min(POS_LIMIT*OBJECTIVE_POS_SCALE,Math.round(finite(v)*OBJECTIVE_POS_SCALE)));
+const n16=(v:number)=>q16(v)/OBJECTIVE_POS_SCALE;
+const pt16=(p:{x:number;y:number})=>({x:n16(p.x),y:n16(p.y)});
+/** The objective as the client ends up with it (quantized), so the encoder compares like for like. */
+function normObjective(v:ObjectiveView):ObjectiveView{
+  return {
+    kind:v.kind,moto:{...pt16(v.moto),mode:v.moto.mode,...(v.moto.push!==undefined?{push:unitByte(v.moto.push)/255}:{})},
+    route:v.route.slice(0,MAX_ROUTE_POINTS).map(pt16),
+    stops:v.stops.slice(0,MAX_STOPS).map(o=>({kind:o.kind,...pt16(o),s:Math.max(0,n16(o.s))})),
+    etaS:uint(v.etaS),alarmUntil:Math.round(finite(v.alarmUntil)),grana:uint(v.grana),budget:uint(v.budget),stock:v.stock.slice(0,MAX_STOCK).map(uint),
+    ...(v.delivery?{delivery:{...pt16(v.delivery),etaS:uint(v.delivery.etaS)}}:{}),
+    car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts)},
+    ...(v.ended?{ended:v.ended}:{}),
+  };
+}
+const samePts=(a:readonly {x:number;y:number}[],b:readonly {x:number;y:number}[])=>a.length===b.length&&a.every((p,i)=>p.x===b[i].x&&p.y===b[i].y);
+const sameStatic=(a:ObjectiveView,b:ObjectiveView)=>samePts(a.route,b.route)&&a.stops.length===b.stops.length&&
+  a.stops.every((o,i)=>o.kind===b.stops[i].kind&&o.x===b.stops[i].x&&o.y===b.stops[i].y&&o.s===b.stops[i].s);
+const sameDynamic=(a:ObjectiveView,b:ObjectiveView)=>a.kind===b.kind&&a.moto.x===b.moto.x&&a.moto.y===b.moto.y&&a.moto.mode===b.moto.mode&&
+  a.moto.push===b.moto.push&&a.etaS===b.etaS&&a.alarmUntil===b.alarmUntil&&a.grana===b.grana&&a.budget===b.budget&&
+  a.stock.length===b.stock.length&&a.stock.every((n,i)=>n===b.stock[i])&&a.ended===b.ended&&
+  (a.delivery===undefined?b.delivery===undefined:b.delivery!==undefined&&a.delivery.x===b.delivery.x&&a.delivery.y===b.delivery.y&&a.delivery.etaS===b.delivery.etaS)&&
+  a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts;
+function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
+  w.u8(bits);
+  if(bits&OBJ_DYN){
+    w.str(v.kind);w.svar(q16(v.moto.x));w.svar(q16(v.moto.y));w.str(v.moto.mode);
+    w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0));
+    w.uvar(v.etaS);w.svar(v.alarmUntil-tick);w.uvar(v.grana);w.uvar(v.budget);
+    w.uvar(v.stock.length);for(const n of v.stock)w.uvar(n);
+    if(v.moto.push!==undefined)w.u8(unitByte(v.moto.push));
+    if(v.delivery){w.svar(q16(v.delivery.x));w.svar(q16(v.delivery.y));w.uvar(v.delivery.etaS);}
+    w.svar(q16(v.car.x));w.svar(q16(v.car.y));w.uvar(v.car.hits);w.uvar(v.car.limit);w.uvar(v.car.parts);
+  }
+  if(bits&OBJ_STATIC){
+    w.uvar(v.route.length);for(const p of v.route){w.svar(q16(p.x));w.svar(q16(p.y));}
+    w.uvar(v.stops.length);for(const o of v.stops){w.str(o.kind);w.svar(q16(o.x));w.svar(q16(o.y));w.uvar(q16(o.s));}
+  }
+}
+function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):ObjectiveView|undefined{
+  const bits=r.u8();
+  if(bits>7||(bits&OBJ_CLEAR&&bits!==OBJ_CLEAR))throw new FrameError('bad objective bits');
+  if(bits&OBJ_CLEAR)return undefined;
+  const pos=()=>r.svar()/OBJECTIVE_POS_SCALE;
+  let next:ObjectiveView|undefined=base?structuredClone(base):undefined;
+  if(bits&OBJ_DYN){
+    const kind=r.str(),mx=pos(),my=pos(),mode=r.str();
+    if(kind!=='chaveiro')throw new FrameError('unknown objective');
+    if(!MOTO_MODES.has(mode))throw new FrameError('bad moto mode');
+    const has=r.u8();if(has>15||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
+    const etaS=r.uvar(),alarmUntil=tick+r.svar(),grana=r.uvar(),budget=r.uvar();
+    const stock=Array.from({length:r.count(MAX_STOCK)},()=>r.uvar());
+    const push=has&OBJ_PUSH?r.u8()/255:undefined;
+    const delivery=has&OBJ_DELIVERY?{x:pos(),y:pos(),etaS:r.uvar()}:undefined;
+    const car={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
+    next={kind,moto:{x:mx,y:my,mode:mode as MotoMode,...(push!==undefined?{push}:{})},route:next?.route??[],stops:next?.stops??[],
+      etaS,alarmUntil,grana,budget,stock,...(delivery?{delivery}:{}),car,
+      ...(has&OBJ_VICTORY?{ended:'victory' as const}:has&OBJ_DEFEAT?{ended:'defeat' as const}:{})};
+  }
+  if(bits&OBJ_STATIC){
+    if(!next)throw new FrameError('objective route without its state');
+    next.route=Array.from({length:r.count(MAX_ROUTE_POINTS)},()=>({x:pos(),y:pos()}));
+    next.stops=Array.from({length:r.count(MAX_STOPS)},()=>{
+      const kind=r.str();if(!STOP_KINDS.has(kind))throw new FrameError('bad stop kind');
+      return {kind:kind as ObjectiveStopKind,x:pos(),y:pos(),s:r.uvar()/OBJECTIVE_POS_SCALE};
+    });
+  }
+  if(!next)throw new FrameError('objective without its state');
+  return next;
+}
 const emptyTables=()=>Object.fromEntries(SECTIONS.map(s=>[s,new Map()])) as Record<SectionKey,Table>;
 
 /** Copy of a baseline section as the client sees it at `tick` (linear motion applied). */
@@ -563,7 +683,9 @@ function liveIds(list:readonly Entity[],tick:number){
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
 const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
-  'happening','last-bicho']);
+  'happening','last-bicho',
+  // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
+  'alarm','part','moto','buy']);
 /** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
 const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
 /** Camp block bits. */
@@ -743,7 +865,10 @@ export class FrameEncoder {
     w.u8(MAGIC);w.u8(PROTOCOL_VERSION);w.uvar(seq);w.uvar(base?baseSeq:0);w.uvar(view.tick);w.svar(f.ox);w.svar(f.oy);
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
     const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
-    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0));
+    // Protocol 15: the objective block only when it differs from the baseline's (both parts on a full frame).
+    const objective=view.objective?normObjective(view.objective):undefined,had=base?.objective;
+    const objBits=objective?(had&&sameDynamic(had,objective)?0:OBJ_DYN)|(had&&sameStatic(had,objective)?0:OBJ_STATIC):had?OBJ_CLEAR:0;
+    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0)|(objBits?16:0));
     if(view.round){
       const r=view.round;
       w.uvar(r.index);w.uvar(r.total);w.str(r.phase);w.svar(r.phaseEndsTick-view.tick);w.uvar(r.remaining);
@@ -759,7 +884,8 @@ export class FrameEncoder {
       w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(camp.coco);w.uvar(camp.pedra);
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }
-    const world:World={tick:view.tick,tables:emptyTables()};
+    if(objBits)writeObjective(w,objective!,objBits,view.tick);
+    const world:World={tick:view.tick,tables:emptyTables(),...(objective?{objective}:{})};
     for(const section of SECTIONS){
       const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
@@ -939,7 +1065,7 @@ export class FrameDecoder {
       if(baseSeq&&!base)return {ok:false,error:'missing baseline',resync:true};
       const team={xp:r.uvar(),level:r.uvar(),nextXp:r.uvar()};
       const flags=r.u8();
-      if(flags>15)throw new FrameError('bad flags');
+      if(flags>31)throw new FrameError('bad flags');
       let round:RoundState|undefined,wave:RunView['wave'],world=this.world,camp:CampView|undefined;
       if(flags&1){
         const index=r.uvar(),total=r.uvar(),phase=r.str(),phaseEndsTick=tick+r.svar(),remaining=r.uvar();
@@ -960,7 +1086,8 @@ export class FrameDecoder {
         if(bits&CAMP_HORN)camp.hornEndsTick=tick+r.svar();
         if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }
-      const next:World={tick,tables:emptyTables()},left:string[]=[];
+      const objective=flags&16?readObjective(r,tick,base?.objective):base?.objective;
+      const next:World={tick,tables:emptyTables(),...(objective?{objective}:{})},left:string[]=[];
       for(const section of SECTIONS){
         const schema=SCHEMAS[section];
         next.tables[section]=readSection(r,schema,advance(schema,base?.tables[section],tick,base?.tick??tick),f,left);
@@ -991,7 +1118,7 @@ export class FrameDecoder {
         players:list<PlayerWireView>('players').map(p=>({...p,weapons:p.weapons??[],passives:p.passives??[]})),
         enemies:list<EnemyView>('enemies'),pickups:list<PickupView>('pickups'),
         projectiles:list<ProjectileView>('projectiles'),telegraphs:list<TelegraphView>('telegraphs'),structures:list<StructureView>('structures'),
-        nodes:list<NodeView>('nodes'),...(camp?{camp}:{}),
+        nodes:list<NodeView>('nodes'),...(camp?{camp}:{}),...(objective?{objective:structuredClone(objective)}:{}),
         offers:this.offers.map(o=>({...o,choices:o.choices.map(c=>({...c}))})),
         events,
       };

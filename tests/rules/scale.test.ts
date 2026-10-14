@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {
-  WC3_UNIT,WC3_CELL,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
+  WC3_UNIT,WC3_CELL,CITY_MAP_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
   heroWidthCells,enemySpeed,relativeRadius,traversalSeconds,convertSpeed,cameraOrientation,visibleWidthUnits,zoomFor,
   floorWidthUnits,
 } from '../../src/rules/scale.ts';
@@ -21,19 +21,27 @@ const within=(actual:number,min:number,max:number,what:string)=>
   assert.ok(actual>=min&&actual<=max,`${what}: ${actual} not in [${min},${max}]`);
 const city=scaleProfile('cidade-nevada'),inf=scaleProfile('infinito');
 const widthsPerSecond=(speed:number,p:ScaleProfile)=>speed/(2*p.hero.radius);
+/**
+ * NEW-20261013-ORQ-cidade-escala-1-7: the city's map cell is CITY_MAP_SCALE × the .w3x cell (0.88 → 1.496 u) while the
+ * people and the camera's world width stay on the .w3x cell. BASE is that people's cell: the pins in world units below
+ * (hero, speeds, camera width) are unchanged on purpose; only the map's own lengths (cells, map side, walks) grow.
+ */
+const BASE=WC3_CELL*WC3_UNIT,K=CITY_MAP_SCALE;
 
 /** Tiny stand-in for the future public/maps/cidade-nevada.json, built from the documented WC3 distances (mvp-mapa-snow.md). */
 const startToPlaza=wc3ToUnits(CIDADE_NEVADA_WC3.startToPlaza),plazaToSpawn=wc3ToUnits(CIDADE_NEVADA_WC3.plazaToSpawn);
 const centre=cellsToUnits(CIDADE_NEVADA_WC3.mapCells,city)/2;
+// The documented WC3 distances are map lengths: × CITY_MAP_SCALE in the scaled city (cidade-escala-1-7).
 const EXAMPLE_ASSET={
-  cell:.88,
-  points:{praca:{x:centre,y:centre},inicio:{x:centre,y:centre+startToPlaza*.8},spawnS:{x:centre+plazaToSpawn*.3,y:centre+plazaToSpawn*.7}},
-  paths:{'inicio-praca':startToPlaza,'praca-spawnS':plazaToSpawn},
+  cell:BASE*K,
+  points:{praca:{x:centre,y:centre},inicio:{x:centre,y:centre+startToPlaza*K*.8},spawnS:{x:centre+plazaToSpawn*K*.3,y:centre+plazaToSpawn*K*.7}},
+  paths:{'inicio-praca':startToPlaza*K,'praca-spawnS':plazaToSpawn*K},
 };
 
 test('constants: cell, WC3 round-trip, frozen profiles, lookups',()=>{
   assert.equal(WC3_CELL,128);assert.equal(WC3_UNIT,.006875);
-  near(city.cell,.88,1e-12,'cidade cell');near(WC3_CELL*WC3_UNIT,.88,1e-12,'128 × WC3_UNIT');
+  near(BASE,.88,1e-12,'128 × WC3_UNIT');assert.equal(K,1.7,'CITY_MAP_SCALE (cidade-escala-1-7)');
+  near(city.cell,.88*1.7,1e-12,'cidade map cell = 0.88 × CITY_MAP_SCALE');
   for(const v of [0,1,32,290,9600,24576])near(unitsToWc3(wc3ToUnits(v)),v,1e-9,`wc3 round-trip ${v}`);
   near(unitsToCells(cellsToUnits(7.5,city),city),7.5,1e-12,'cells round-trip');
   for(const p of Object.values(SCALE_PROFILES)){
@@ -51,8 +59,10 @@ test('constants: cell, WC3 round-trip, frozen profiles, lookups',()=>{
   for(const v of ['lua','','toString','__proto__',null,undefined,1,{}])assert.equal(isMapId(v),false,String(v));
 });
 
-test('cidade-nevada keeps the D-026 person × terrain ratios',()=>{
-  near(heroWidthCells(city),.5,.01,'hero width in cells');
+test('cidade-nevada keeps the D-026 person × terrain ratios (map lengths × CITY_MAP_SCALE)',()=>{
+  // The people did not change (cidade-escala-1-7): hero radius and drawn size in world units are the .w3x ones.
+  near(city.hero.radius,.22,1e-12,'hero radius');near(city.hero.drawnSize,BASE,1e-12,'drawn hero = one .w3x cell');
+  near(2*city.hero.radius/BASE,.5,.01,'hero width in .w3x cells');near(heroWidthCells(city),.5/K,.01,'hero width in map cells');
   near(city.hero.speed,2,.01,'hero speed');near(city.hero.speed,1.99375,1e-12,'hero speed exact');
   near(enemySpeed(city)/city.hero.speed,.9,.01,'enemy/hero speed');assert.ok(enemySpeed(city)<city.hero.speed,'enemy slower than hero');
   near(relativeRadius(city,city.sizes.enemy)/city.hero.radius,1.3,1e-12,'enemy radius ratio');
@@ -60,7 +70,7 @@ test('cidade-nevada keeps the D-026 person × terrain ratios',()=>{
   near(relativeRadius(city,city.sizes.boss.max),3.5*city.hero.radius,1e-12,'boss max radius');
   near(widthsPerSecond(city.hero.speed,city),4.53,.1,'hero widths per second');
   const side=cellsToUnits(CIDADE_NEVADA_WC3.mapCells,city);
-  near(side,169,1,'city side in units');near(traversalSeconds(side,city),85,2,'city crossing seconds');
+  near(side,169*K,1.5,'city side in units (287)');near(traversalSeconds(side,city),85*K,3,'city crossing seconds (~144 at the base walk)');
 });
 
 test('example asset: start → plaza ≈ 33 s, plaza → spawn ≈ 36 s, enemies are slower',()=>{
@@ -69,16 +79,18 @@ test('example asset: start → plaza ≈ 33 s, plaza → spawn ≈ 36 s, enemies
   const hypot=(p:{x:number;y:number},q:{x:number;y:number})=>Math.hypot(p.x-q.x,p.y-q.y);
   assert.ok(hypot(a.points.inicio,a.points.praca)<=a.paths['inicio-praca']+1e-9,'path ≥ straight line');
   assert.ok(hypot(a.points.praca,a.points.spawnS)<=a.paths['praca-spawnS']+1e-9,'path ≥ straight line');
-  near(traversalSeconds(a.paths['inicio-praca'],city),33,1.5,'inicio → praca');
-  near(traversalSeconds(a.paths['praca-spawnS'],city),36,1.5,'praca → spawnS');
+  near(traversalSeconds(a.paths['inicio-praca'],city),33*K,1.5*K,'inicio → praca');
+  near(traversalSeconds(a.paths['praca-spawnS'],city),36*K,1.5*K,'praca → spawnS');
   for(const d of Object.values(a.paths))assert.ok(traversalSeconds(d,city,enemySpeed(city))>traversalSeconds(d,city),'escape is possible');
 });
 
 test('the city asset format and the scale profile agree on the cell size (drift guard)',()=>{
-  assert.equal(UNITS_PER_CELL,city.cell,'src/maps/city-asset.ts UNITS_PER_CELL = cidade-nevada cell (0.88)');
+  // UNITS_PER_CELL is the .w3x import's cell (the encoder's default, version 1); scripts/escalar-cidade.ts scales it to the map cell.
+  assert.equal(UNITS_PER_CELL,BASE,'src/maps/city-asset.ts UNITS_PER_CELL = the .w3x cell (0.88)');
+  near(Math.round(UNITS_PER_CELL*K*1000)/1000,city.cell,1e-12,'UNITS_PER_CELL × CITY_MAP_SCALE = cidade-nevada map cell (1.496)');
 });
 
-test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is 25–38 s',t=>{
+test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is (25–38 s) × CITY_MAP_SCALE',t=>{
   const url=new URL('../../public/maps/cidade-nevada.json',import.meta.url);
   // Only a missing file skips; a present asset with a wrong scale or missing points fails.
   if(!existsSync(url)){t.skip('asset not imported yet');return;}
@@ -90,13 +102,15 @@ test('real cidade-nevada asset (when imported): same cell size, straight start �
   assert.ok(ok(start)&&ok(plaza),'asset has points.inicio and points.praca');
   // The doc's ~33 s (9,600 WC3 u) was an estimate: the real straight line already measures more.
   // The source start→boss line is ~34.4 s; the importer moves inicio ~1.9 u off the wreck for clearance (cidade-01).
-  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25,38,'asset inicio → praca seconds');
+  // × CITY_MAP_SCALE since the asset's version 2 (cidade-escala-1-7): ~61 s at the base walk (~31 s at the 2× hero walk).
+  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25*K,38*K,'asset inicio → praca seconds');
 });
 
 test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px floor (D-030)',()=>{
   assert.equal(cameraOrientation(390,844),'portrait');assert.equal(cameraOrientation(844,390),'landscape');assert.equal(cameraOrientation(500,500),'portrait');assert.equal(cameraOrientation(501,500),'landscape');
-  near(visibleWidthUnits(city,'landscape')/city.cell,18,1e-9,'landscape cells');
-  near(visibleWidthUnits(city,'portrait')/city.cell,10.5,1e-9,'portrait cells (midpoint of 10–11)');
+  // Same world width as before the map scale (cidade-escala-1-7): 18 / 10.5 .w3x cells, ÷ CITY_MAP_SCALE map cells.
+  near(visibleWidthUnits(city,'landscape'),18*BASE,1e-9,'landscape width (u)');near(visibleWidthUnits(city,'landscape')/city.cell,18/K,1e-9,'landscape map cells');
+  near(visibleWidthUnits(city,'portrait'),10.5*BASE,1e-9,'portrait width (u)');near(visibleWidthUnits(city,'portrait')/city.cell,10.5/K,1e-9,'portrait map cells (midpoint of 10–11 .w3x cells)');
   const land=zoomFor(city,844,390),port=zoomFor(city,390,844);
   assert.equal(land.orientation,'landscape');assert.equal(port.orientation,'portrait');
   near(land.pixelsPerUnit*land.visibleWidth,844,1e-9,'landscape fills the viewport width');
@@ -104,14 +118,15 @@ test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px f
   assert.ok(land.floored&&port.floored,'floor binds on both reference phones');
   near(land.heroPixels,HERO_MIN_SCREEN_PX,1e-9,'landscape hero = 56 px floor');
   near(port.heroPixels,HERO_MIN_SCREEN_PX,1e-9,'portrait hero = 56 px floor');
-  near(land.visibleCells,844/56,1e-9,'landscape ≈15.1 cells');within(land.visibleCells,13.5,15.5,'landscape ~14 cells (D-030)');
-  near(port.visibleCells,390/56,1e-9,'portrait ≈7.0 cells');within(port.visibleCells,6.5,7.5,'portrait ~7 cells (D-030)');
+  // visibleCells counts map cells: the D-030 ~15.1 / ~7.0 .w3x cells (same world width) ÷ CITY_MAP_SCALE.
+  near(land.visibleWidth,844/56*BASE,1e-9,'landscape ≈15.1 .w3x cells (u)');near(land.visibleCells*K,844/56,1e-9,'landscape ≈15.1 .w3x cells');within(land.visibleCells*K,13.5,15.5,'landscape ~14 .w3x cells (D-030)');
+  near(port.visibleWidth,390/56*BASE,1e-9,'portrait ≈7.0 .w3x cells (u)');near(port.visibleCells*K,390/56,1e-9,'portrait ≈7.0 .w3x cells');within(port.visibleCells*K,6.5,7.5,'portrait ~7 .w3x cells (D-030)');
   assert.ok(land.visibleWidth<visibleWidthUnits(city,'landscape')&&port.visibleWidth<visibleWidthUnits(city,'portrait'),'never wider than the faithful view');
   // Without the floor the faithful view gives the doc's ~45 / ~37 px (heroPixels is the drawn ~1-cell figure).
   near(zoomFor(city,844,390,1).heroPixels,844/18,1e-9,'faithful landscape ≈47 px');near(zoomFor(city,390,844,1).heroPixels,390/10.5,1e-9,'faithful portrait ≈37 px');
   assert.equal(zoomFor(city,844,390,1).floored,false);
-  near(floorWidthUnits(city,844),844*city.cell/56,1e-9,'floor width');
-  near(city.hero.drawnSize,city.cell,1e-12,'drawn hero ≈ one cell');
+  near(floorWidthUnits(city,844),844*BASE/56,1e-9,'floor width');
+  near(city.hero.drawnSize,BASE,1e-12,'drawn hero ≈ one .w3x cell');near(city.hero.drawnSize*K,city.cell,1e-12,'map cell = CITY_MAP_SCALE drawn heroes');
   near(land.bodyPixels,land.heroPixels/2,1e-9,'collision is half the drawn figure');
   // Same measure as today's camera floor: the endless map's drawn hero is exactly HERO_MIN_SCREEN_PX.
   const inf=scaleProfile('infinito');
@@ -119,7 +134,7 @@ test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px f
   near(zoomFor(inf,844,390).heroPixels,HERO_MIN_SCREEN_PX,1e-9,'infinito landscape hero = 56 px floor');
   assert.equal(zoomFor(inf,390,844).floored,false,'infinito is tuned at the floor, not narrowed by it');
   // A big tablet reaches the faithful view (floor no longer binds); a slightly bigger phone stays at the floor.
-  const big=zoomFor(city,1688,780);assert.equal(big.floored,false);near(big.visibleCells,18,1e-9,'tablet sees the faithful 18 cells');
+  const big=zoomFor(city,1688,780);assert.equal(big.floored,false);near(big.visibleCells*K,18,1e-9,'tablet sees the faithful 18 .w3x cells');
   assert.ok(big.heroPixels>HERO_MIN_SCREEN_PX);
   near(zoomFor(city,430,932).pixelsPerUnit,port.pixelsPerUnit,1e-9,'bigger phone in portrait stays at the floor scale');
   assert.throws(()=>zoomFor(city,390,844,0),RangeError,'floor must be positive');

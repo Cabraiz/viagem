@@ -34,7 +34,7 @@ export type CityPointName='spawnN'|'spawnS'|'spawnL'|'spawnO'|'praca'|'inicio'|'
 export interface CityAsset {
   version:1;
   name:string;
-  /** World units per cell (D-026: 0.88). */
+  /** World units per cell (D-026: 0.88; the Cidade Nevada asset 1.496 since its 1.7× map, cidade-escala-1-7). */
   cell:number;
   width:number;
   height:number;

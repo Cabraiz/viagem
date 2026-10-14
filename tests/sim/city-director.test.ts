@@ -340,7 +340,10 @@ test('first arrival: team at the plaza, round 1, catalog speeds: the first relea
     // avenue S ~18 u out (the nearest spot hidden from the team) and a bêbado (1.4 u/s) needs ~13.9 s more → 15.35 s.
     // 05b's single-mouth excursão corner case is ~15 s too. City speed scaling is a pending Orquestrador decision, so
     // the bound is 16 s until then and the count within 13 s is logged.
-    assert.ok(base<=arrival&&arrival<=ticks(16),`seed ${seed} (${mode}): first arrival ${secs(arrival)}`);
+    // NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× map the base is 1.7× bigger, so from mouth line S (4.42 u around the
+    // mouth) to the player on the praca point (4.1 u from the mouth) the first group of seed 5 walks 6.15 s, not 3.30 s:
+    // 16.85 s (mouth line 10.70 s), was 15.80 s (12.50 s) on the .w3x-sized city; the other seeds 11.15 s. Bound 17 s.
+    assert.ok(base<=arrival&&arrival<=ticks(17),`seed ${seed} (${mode}): first arrival ${secs(arrival)}`);
     if(arrival<=ticks(13))within13++;
     assert.ok(arrival>=ticks(9),`seed ${seed}: first arrival ${secs(arrival)} is too early (spawned too close)`);
     report.push(`${secs(arrival)} (mouth line ${secs(base)}, ${mode} ${director.state.avenues?.open.join('')})`);
@@ -455,7 +458,7 @@ interface Chase {bodies:number;within:number;late:string[];stuck:string[];times:
  * mouths), the team standing at `spots` (still). Each body walks from its release; reached = contact with a live
  * player within its deadline: 60 s after the release (or after `move`, when the first player is moved to `move.to`
  * at `move.at`, which makes every body chase it again); with `pathDeadline`, max(60 s, 1.25 × its shortest walk at its
- * own speed). Stuck = > 10 s in one cell box without contact while a player is reachable for its size class.
+ * own speed; after a move, from where it stands then to the moved player). Stuck = > 10 s in one cell box without contact while a player is reachable for its size class.
  */
 function chase(seed:number,spots:readonly Point[],opts:{move?:{at:number;to:Point};pathDeadline?:boolean}={}):Chase{
   const P=planner(),steer=citySteer(P),ctx=fakeCtx(seed),move=opts.move;
@@ -468,7 +471,7 @@ function chase(seed:number,spots:readonly Point[],opts:{move?:{at:number;to:Poin
     const walkS=opts.pathDeadline?1.25*walkU(reach(b.e.radius),b.e)/b.e.speed:0;
     deadline.set(b.e.id,Math.max(ticks(60),Math.ceil(walkS*SIM_HZ)));
   }
-  const end=Math.max(...bodies.map(b=>from(b.release)+Math.min(deadline.get(b.e.id)!,ticks(180))));
+  let end=Math.max(...bodies.map(b=>from(b.release)+Math.min(deadline.get(b.e.id)!,ticks(180))));
   const reachedAt=new Map<string,number>(),anchor=new Map<string,{x:number;y:number;since:number}>(),stuck:string[]=[];
   for(let t=0;t<=end&&reachedAt.size<bodies.length;t++){
     ctx.tick=t;
@@ -476,6 +479,12 @@ function chase(seed:number,spots:readonly Point[],opts:{move?:{at:number;to:Poin
       const p=ctx.players.get('p0')!;p.x=move.to.x;p.y=move.to.y;
       reach=reachFields([...ctx.players.values()]);
       reachedAt.clear();for(const a of anchor.values())a.since=t;
+      // With pathDeadline, the deadline after the move is max(60 s, 1.25 × the body's shortest walk from where it is
+      // then to the moved player, at its own speed).
+      if(opts.pathDeadline){
+        for(const b of bodies)deadline.set(b.e.id,Math.max(ticks(60),Math.ceil(1.25*walkU(reach(b.e.radius),b.e)/b.e.speed*SIM_HZ)));
+        end=Math.max(...bodies.map(b=>from(b.release)+Math.min(deadline.get(b.e.id)!,ticks(180))));
+      }
     }
     for(const b of bodies)if(b.release===t){ctx.enemies.set(b.e.id,b.e);anchor.set(b.e.id,{x:b.e.x,y:b.e.y,since:t});}
     for(const e of ctx.enemies.values()){
@@ -521,10 +530,14 @@ test('chase: a team away from the plaza is reached through the streets (players 
     // (0.95 u/s) 60 u out takes 62–66 s; the share within 60 s is logged.
     ...chaseReport('team spread in the city (seed 1)',[1].map(seed=>{const r=new Rng(seed*733);return chase(seed,[spotAway(r,12,60),spotAway(r,12,60),spotAway(r,12,60)],{pathDeadline:true});})),
     // The field follows a player who moved: at 20 s the player is somewhere else ≥ 20 u away and is chased there.
+    // NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× map the avenues are 1.7× apart, so the hidden route spots nearest the
+    // team are farther in u and the slow kinds walk longer: with the fixed 60 s, 84/100 (main: 96/100), the late ones
+    // tio-pavê (0.95 u/s) and anão-molotov (1.0 u/s) from the L avenue, 1.5–14 u short at the deadline. Deadline:
+    // max(60 s, 1.25 × the body's shortest walk at its speed), as for the spread team and inicio; the share within 60 s is logged.
     ...chaseReport('player moved at 20 s (seed 2)',[2].map(seed=>{
       const r=new Rng(seed*977),a=spotAway(r,15,35);let b=spotAway(r,15,35);
       while(Math.hypot(a.x-b.x,a.y-b.y)<20)b=spotAway(r,15,35);
-      return chase(seed,[a],{move:{at:ticks(20),to:b}});
+      return chase(seed,[a],{move:{at:ticks(20),to:b},pathDeadline:true});
     })),
     // real.ts 'inicio': the team at the start point, ~84 u of streets south of the plaza (~105 u from mouth N). The
     // planner times the groups for the plaza, so a bêbado from N needs ~75 s and a tio-pavê (0.95 u/s) ~110 s to get there: 60 s

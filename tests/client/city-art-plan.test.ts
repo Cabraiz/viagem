@@ -11,10 +11,12 @@ import path from 'node:path';
 import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
-  ART_CELL,CITY_ART_HEIGHT,GROUND_FROM_MANIFEST,LOT_UNIT,buildCityArtPlan,cityArtOptions,fountainLot,pieceFamily,planHasArt,planLots,
-  PROP_WORLD_SCALE,propSheet,sheetHeight,type CityArtPlan,
+  ART_CELL,CITY_ART_HEIGHT,FILL_MAX_AREA,GROUND_FROM_MANIFEST,LOT_UNIT,MOUND_HEIGHT,blockArt,buildCityArtPlan,cityArtOptions,fillLots,
+  fountainLot,lotCells,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
-import type {CityBlock} from '../../src/client/render/city/asset.ts';
+import type {CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
+import {blockPieces} from '../../src/client/render/city/chunks.ts';
+import {shadowUnion} from '../../src/client/render/city/decor.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,CityMaterials,buildingAnchor,buildingFrame} from '../../src/client/render/city/materials.ts';
 import {TILE_X,TILE_Y,HEIGHT_PX,rotate} from '../../src/client/render/city/projection.ts';
@@ -199,4 +201,194 @@ test('the repo manifest (codex-706 delivery, eca61ed) gives the city art', ()=>{
   const plan=buildCityArtPlan(parseArtIndex(JSON.parse(readFileSync(path.join(ROOT,'public/art/manifest.json'),'utf8'))));
   assert.equal(planHasArt(plan),true);
   assert.ok(plan.sheets.length>0);
+});
+
+// NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× Cidade Nevada (asset cell 1.496 u) a footprint sheet still covers its
+// city cells, so buildings, rubble and the fountain draw 1.7× larger; props keep their absolute size; the anchor's
+// origin is in art pixels (ART_CELL), the same on any map.
+test('cidade-escala-1-7: the asset cell scales the footprint sheets (buildings 1.7×), never the props', ()=>{
+  const decoded=decodeCityAsset(readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8'));
+  if(!decoded.ok)throw new Error(decoded.error);
+  const cell=decoded.asset.unitsPerCell,k=cell/ART_CELL;
+  assert.equal(cell,1.496);assert.ok(Math.abs(k-1.7)<1e-9);
+  for(const height of ['a','b'] as const){
+    const base=buildCityArtPlan(demoIndex(),{height}),big=buildCityArtPlan(demoIndex(),{height,cell});
+    const [h0]=base.buildings.ruin,[h1]=big.buildings.ruin;
+    assert.ok(Math.abs(h1.scale-h0.scale*k)<1e-12,'the house sheet is drawn × cell / ART_CELL');
+    assert.ok(Math.abs(h1.height-h0.height*k)<1e-9,'and stands that much taller');
+    assert.ok(Math.abs(sheetHeight(BUILDING.cell[1],h1.originY,[2,1],ART_CELL,h1.scale)-h1.height)<1e-9,'heights stay in art px of ART_CELL');
+    // The house's 2×1 footprint on screen: art px × scale = the lot's 2×1 city cells projected (TILE_X px per u).
+    const lotPx=(2+1)*cell*TILE_X,artPx=(2+1)*ART_CELL*TILE_X*ART_SCALE;
+    assert.ok(Math.abs(artPx*h1.scale/LOT_UNIT[height]-lotPx)<1e-6,'one art cell on one city cell');
+    assert.deepEqual(propSheet({id:'p1',kind:'bench'},big),propSheet({id:'p1',kind:'bench'},base),'props: today\'s absolute size');
+    assert.deepEqual(h1.originY,h0.originY);
+  }
+  assert.deepEqual(buildCityArtPlan(demoIndex(),{cell:ART_CELL}),buildCityArtPlan(demoIndex()),'ART_CELL is the default');
+  assert.throws(()=>buildCityArtPlan(demoIndex(),{cell:0}),RangeError);
+});
+
+// ---------- Fill pass (BUG-20261013-ORQ-predios-procedurais-fora): no building cell drawn as the procedural column ----------
+const repoPlan=(height?:'a'|'b')=>buildCityArtPlan(parseArtIndex(JSON.parse(readFileSync(path.join(ROOT,'public/art/manifest.json'),'utf8'))),height?{height}:{});
+/**
+ * The real city at the 1.7× map scale (card NEW-20261013-ORQ-cidade-escala-1-7), both ways it can land: the same grid
+ * with unitsPerCell 0.88 × 1.7 = 1.496 u, or the cell kept and every block 1.7× more cells (rounded edges: the blocks
+ * stay disjoint).
+ */
+const SCALED_CELL=1.496;
+function scaled(asset:CityAsset,k:number):{bigCell:CityAsset;bigGrid:CityAsset}{
+  const R=(v:number)=>Math.round(v*k);
+  return {bigCell:{...asset,cell:SCALED_CELL,origin:{x:asset.origin.x*k,y:asset.origin.y*k}},
+    bigGrid:{...asset,width:R(asset.width),height:R(asset.height),
+      blocks:asset.blocks.map(b=>({...b,x:R(b.x),y:R(b.y),w:Math.max(1,R(b.x+b.w)-R(b.x)),h:Math.max(1,R(b.y+b.h)-R(b.y))}))}};
+}
+/** Every cell of the block covered exactly once by its lots and mounds, inside the block; returns the mound count. */
+function exactCover(b:CityBlock,art:BlockArt):number{
+  const seen=new Set<string>(),add=(i:number,j:number)=>{
+    assert.ok(i>=b.x&&i<b.x+b.w&&j>=b.y&&j<b.y+b.h,`${b.id}: ${i},${j} outside the block`);
+    const k=`${i},${j}`;assert.ok(!seen.has(k),`${b.id}: ${k} drawn twice`);seen.add(k);
+  };
+  for(const l of art.lots)for(let j=l.y;j<l.y+l.h;j++)for(let i=l.x;i<l.x+l.w;i++)add(i,j);
+  for(const m of art.mounds)add(m.x,m.y);
+  assert.equal(seen.size,b.w*b.h,`${b.id}: every cell shows something`);
+  return art.mounds.length;
+}
+
+test('fill pass: the real city has no building cell left for the procedural column, at 0.88 u and at 1.7×', ()=>{
+  // The real asset is the 1.7× one (cidade-escala-1-7: cell 1.496 u); the 0.88 u variant is the same grid at the old cell.
+  const real=realCity(),old={...real,cell:ART_CELL},{bigGrid}=scaled(old,1.7);
+  assert.equal(real.cell,SCALED_CELL);
+  for(const [name,asset] of [['0.88 u cell',old],['1.496 u (asset v2)',real],['1.7× grid',bigGrid]] as const){
+    const plan=repoPlan();
+    let cells=0,left=0,filled=0,mounds=0;
+    for(const b of asset.blocks){
+      const lots=planLots(b,plan),art=blockArt(b,plan);
+      if(b.kind!=='building'&&b.kind!=='rubble'){assert.deepEqual(art,{lots:[],mounds:[]},'walls and cliffs: untouched');continue;}
+      cells+=b.w*b.h;left+=b.w*b.h-lots.reduce((n,l)=>n+l.w*l.h,0);
+      assert.deepEqual(art.lots.slice(0,lots.length),lots,'the planLots lots stay as they are');
+      for(const l of art.lots.slice(lots.length)){filled+=l.w*l.h;assert.ok(l.a*l.b<=FILL_MAX_AREA&&l.height>=b.height);}
+      mounds+=exactCover(b,art);
+    }
+    assert.ok(cells>1000,name);
+    assert.ok(left>0,`${name}: planLots alone leaves cells (no 1×1 intact piece)`);
+    assert.equal(filled,left,`${name}: every one gets a 1×1 / 1×2 piece`);
+    assert.equal(mounds,0,`${name}: none left even for the mound`);
+  }
+  assert.equal(old.blocks.length,real.blocks.length);
+});
+
+test('fill pass with 2×2-cell lots (option a): what no piece fits is a mound, never left bare', ()=>{
+  const real=realCity(),plan=repoPlan('a');
+  for(const asset of [real,scaled(real,1.7).bigGrid]){
+    let mounds=0,filled=0;
+    for(const b of asset.blocks){
+      if(b.kind!=='building'&&b.kind!=='rubble')continue;
+      const art=blockArt(b,plan);mounds+=exactCover(b,art);filled+=art.lots.length-planLots(b,plan).length;
+    }
+    assert.ok(mounds>0&&filled>0,'1-cell-deep strips cannot take a 2×2-cell lot: mounds; wider gaps take pieces');
+  }
+});
+
+test('fill pass order: small building pieces (own look first), then rubble, then the mound; deterministic', ()=>{
+  const piece=(id:string,meta:Record<string,unknown>)=>({kind:'views',files:{sheet:{file:`${id}.webp`,cell:[184,184],views:4,anchor:[.5,.913]}},meta});
+  const withPieces=(pieces:Record<string,unknown>)=>{
+    const idx=demoIndex();
+    Object.assign(idx.groups.predios.pieces,parseArtIndex({version:2,groups:{predios:{output:'public/art/city/buildings',pieces}}}).groups.predios.pieces);
+    return buildCityArtPlan(idx,{height:'b'});
+  };
+  // Demo: only the 2×1 ruin. A 3×1 ruin leaves one cell, nothing fits it → mound.
+  const demo=buildCityArtPlan(demoIndex(),{height:'b'}),odd=block({id:'b3',w:3,h:1});
+  const bare=blockArt(odd,demo);
+  assert.equal(bare.lots.length,1);assert.deepEqual(bare.mounds,[{x:12,y:20}]);
+  // An intact 1-cell building with no small piece at all → mound; a 1×1 rubble piece → rubble.
+  assert.deepEqual(blockArt(block({id:'i1',w:1,h:1,ruined:false}),demo).mounds,[{x:10,y:20}]);
+  const rubble=withPieces({'entulho-1x1-1':piece('entulho-1x1-1',{footprint:[1,1]})});
+  const r=blockArt(odd,rubble);
+  assert.equal(r.mounds.length,0);assert.equal(r.lots[1].sheet.key,'city:rubble:1x1/entulho-1x1-1');
+  assert.deepEqual([r.lots[1].x,r.lots[1].y,r.lots[1].w,r.lots[1].h],[12,20,1,1]);
+  // A 1×1 ruin house beats the rubble; an intact block takes an intact 1×1 before the ruin one.
+  const both=withPieces({'entulho-1x1-1':piece('entulho-1x1-1',{footprint:[1,1]}),'casa-terrea-1x1-1':piece('casa-terrea-1x1-1',{footprint:[1,1],ruin:true}),
+    'quiosque-1x1-1':piece('quiosque-1x1-1',{footprint:[1,1]}),'sobrado-2x2-1':piece('sobrado-2x2-1',{footprint:[2,2]})});
+  assert.equal(blockArt(odd,both).lots.at(-1)!.sheet.key,'city:building:1x1-ruin/casa-terrea-1x1-1');
+  const ia=fillLots(block({id:'i3',w:3,h:3,ruined:false}),both,[]);
+  assert.equal(ia.mounds.length,0);assert.equal(ia.lots.length,9);
+  assert.ok(ia.lots.every(l=>l.sheet.key==='city:building:1x1/quiosque-1x1-1'),'own look first; the 2×2 is too big for the fill');
+  // A 1×2 gap takes the 2×1 ruin turned (1 or 3), not a mound.
+  const gap=fillLots(block({id:'g',w:1,h:2}),demo,[]);
+  assert.equal(gap.lots.length,1);assert.ok([1,3].includes(gap.lots[0].turns));assert.deepEqual(gap.mounds,[]);
+  // Rubble blocks: rubble pieces only (never a house), mounds when none fits.
+  assert.deepEqual(blockArt(block({id:'rb',kind:'rubble',ruined:false,w:3,h:1}),demo),{lots:[],mounds:[{x:10,y:20},{x:11,y:20},{x:12,y:20}]});
+  for(const kind of ['wall','cliff'] as const)assert.deepEqual(blockArt(block({kind,w:3}),both),{lots:[],mounds:[]},`${kind}: untouched`);
+  const b5=block({id:'b5',w:5,h:3});
+  assert.deepEqual(blockArt(b5,both),blockArt(b5,both),'deterministic');
+});
+
+test('mound piece: low rubble look, no ruin roof, seams as given; never above the block', ()=>{
+  const asset=realCity(),b=asset.blocks.find(x=>x.kind==='building'&&x.ruined&&x.w>=3)!;
+  for(const p of blockPieces(asset,b)){
+    const m=moundPiece(p,{n:false,s:true,e:false,w:true});
+    assert.equal(m.kind,'rubble');assert.equal(m.height,Math.min(p.height,MOUND_HEIGHT));
+    assert.ok(!m.ruined&&!m.bite&&!m.drops);
+    assert.deepEqual([m.id,m.blockId,m.x,m.y,m.w,m.h,m.base],[p.id,p.blockId,p.x,p.y,p.w,p.h,p.base]);
+    assert.deepEqual(m.seams,{n:false,s:true,e:false,w:true});
+  }
+  assert.ok(MOUND_HEIGHT<=0.3+1e-9,'as low as the maps rubble blocks');
+});
+
+test('mound shadow: as long as the mound is tall, not the building', ()=>{
+  const asset=realCity(),b=asset.blocks.find(x=>x.kind==='building'&&x.height>1)!;
+  const [p]=blockPieces(asset,b),open={n:false,s:false,e:false,w:false},solo={...p,seams:open},m=moundPiece(p,open);
+  const region={x0:0,y0:0,x1:asset.width,y1:asset.height};
+  const area=(prims:ReturnType<typeof shadowUnion>)=>prims.reduce((n,q)=>{
+    const pts=q.points??[];
+    let a=0;for(let i=0;i<pts.length;i++){const u=pts[i],v=pts[(i+1)%pts.length];a+=u.x*v.y-v.x*u.y;}
+    return n+Math.abs(a)/2;
+  },0);
+  for(const view of [0,1,2,3]){
+    const full=area(shadowUnion([solo],asset,region,view)),low=area(shadowUnion([m],asset,region,view));
+    assert.ok(low>0&&low<full,`view ${view}: the mound (${m.height} u) casts less than the ${b.height.toFixed(2)} u building`);
+    const look={length:1,color:0,alpha:1},foot=area(shadowUnion([{...m,height:0}],asset,region,view,undefined,look));
+    // Shadow length grows with the height: the mound's extra area over the bare footprint is height × the building's / its height.
+    const extra=(h:number)=>area(shadowUnion([{...m,height:h}],asset,region,view,undefined,look))-foot;
+    assert.ok(Math.abs(extra(m.height)*b.height/m.height-extra(b.height))<1e-6*Math.max(1,extra(b.height)),'uses the mound height');
+  }
+});
+
+test('a manifest with art but no building sheets keeps the procedural columns (no fill, no mounds)', ()=>{
+  const idx=demoIndex();
+  idx.groups.predios.pieces={};
+  const plan=buildCityArtPlan(idx,{height:'b'});
+  assert.equal(planHasArt(plan),true,'props and the ground are still art');
+  assert.equal(planHasBuildingArt(plan),false);
+  for(const b of realCity().blocks)assert.deepEqual(blockArt(b,plan),{lots:[],mounds:[]},b.id);
+  assert.equal(planHasBuildingArt(repoPlan()),true);
+  assert.equal(planHasBuildingArt(buildCityArtPlan(demoIndex(),{enabled:false})),false);
+});
+
+test('the praça fountain: no fill lot, planned lot or mound lands on its footprint (bug: a ruin over the basin)', ()=>{
+  const asset=realCity();
+  for(const height of ['b','a'] as const){
+    const plan=repoPlan(height),f=fountainLot(asset,plan);
+    assert.ok(f,'the repo manifest places the fountain');
+    const under=lotCells(f);
+    let touched=0,blocksNear=0;
+    for(const b of asset.blocks){
+      if(b.x+b.w<=f.x||f.x+f.w<=b.x||b.y+b.h<=f.y||f.y+f.h<=b.y)continue;
+      blocksNear++;
+      const art=blockArt(b,plan,under);
+      for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))touched++;
+      for(const m of art.mounds)if(under(m.x,m.y))touched++;
+    }
+    assert.equal(touched,0,`height ${height}: ${touched} cells of art over the fountain`);
+    // Without the reservation the old code did put art there (the bug this guards against), when a block meets it.
+    if(blocksNear){
+      let before=0;
+      for(const b of asset.blocks){const art=blockArt(b,plan);for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))before++;for(const m of art.mounds)if(under(m.x,m.y))before++;}
+      assert.ok(before>0,'the fixture reproduces the bug without the reservation');
+    }
+  }
+});
+
+test('reserved cells: blockArt without a reservation is unchanged', ()=>{
+  const asset=realCity(),plan=repoPlan();
+  for(const b of asset.blocks.slice(0,200))assert.deepEqual(blockArt(b,plan,()=>false),blockArt(b,plan));
 });

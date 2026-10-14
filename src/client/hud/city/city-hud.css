@@ -36,6 +36,17 @@
 .ch-mm-caido .ch-mm-dot{fill:var(--c-papel);stroke:none}
 .ch-mm-caido .ch-mm-halo{stroke:var(--c-papel);stroke-width:1.4}
 .ch-mm-voce circle{fill:var(--c-voce);stroke:var(--c-papel);stroke-width:1.6}
+/* D-047 chaveiro: the car at the plaza (its ring: hits left), the moto (Cone when it needs the team), the next delivery and the route ahead */
+.ch-mm-carro path{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1;stroke-linejoin:round}
+.ch-mm-carro .ch-mm-track{fill:none;stroke:color-mix(in srgb,var(--c-papel) 28%,transparent);stroke-width:2.5}
+.ch-mm-carro .ch-mm-life{fill:none;stroke:var(--c-cartolina);stroke-width:2.5}
+.ch-mm-carro .ch-mm-life.ch-mm-low{stroke:var(--c-cone)}
+:is(.ch-mm-carro,.ch-mm-moto) .ch-mm-roda{fill:var(--c-breu);stroke:var(--c-papel);stroke-width:.8}
+.ch-mm-moto :is(path,rect){fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1;stroke-linejoin:round}
+.ch-mm-moto.ch-mm-perigo :is(path,rect){fill:var(--c-cone)}
+.ch-mm-entrega rect{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:1.2}
+.ch-mm-rota-borda{fill:none;stroke:var(--c-breu);stroke-width:3;stroke-linejoin:round;stroke-linecap:round;opacity:.6}
+.ch-mm-rota{fill:none;stroke:var(--c-papel);stroke-width:1.4;stroke-dasharray:3 2.5;stroke-linejoin:round;stroke-linecap:round}
 /* Big only: what the screen shows, the nearest closed chests (intermission) and the count beside groups of 10+. */
 .ch-mm-screen{fill:none;stroke:color-mix(in srgb,var(--c-papel) 60%,transparent);stroke-width:1}
 .ch-mm-bau{fill:var(--c-papel);stroke:var(--c-breu);stroke-width:.8}

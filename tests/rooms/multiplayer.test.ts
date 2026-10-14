@@ -99,14 +99,14 @@ test('older clients are rejected before joining a procedural room',()=>{
   // structures (before torres-fio), 11 the frames without the D-040 roster in the DICT (before
   // NEW-20261013-ORQ-papeis-de-inimigo) and 13 a newer page: a tab left open across the release gets a readable refusal,
   // no frames.
-  for(const version of [1,3,4,5,6,7,8,9,10,11,12,14]){
+  for(const version of [1,3,4,5,6,7,8,9,10,11,12,13,15]){
     const old=peer();room.connect(old,1000);
     room.receive(old,JSON.stringify({t:'join',protocol:version,name:'Old',classId:'cidadao-comum'}),1000);
     assert.equal(room.sim.players.size,0);assert.equal(old.closes[0].code,4003);
     assert.deepEqual(old.messages,[{t:'error',message:VERSION_REFUSED}]);assert.match(old.messages[0].message,/Atualiza a página pra entrar/);
     assert.equal(old.frames.length,0,'never a binary frame');
   }
-  assert.equal(ROOM_PROTOCOL,13);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
+  assert.equal(ROOM_PROTOCOL,14);assert.equal(ROOM_PROTOCOL,PROTOCOL_VERSION,'the handshake and the frame byte agree');
 });
 
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);

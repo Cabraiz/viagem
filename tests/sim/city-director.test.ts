@@ -558,7 +558,7 @@ test('chase: the steer exposes the players field, whose goals follow the live pl
   assert.ok(steered,'no live player: the plaza flow');
   assert.ok(Math.abs(out.x-plaza.x)<1e-9&&Math.abs(out.y-plaza.y)<1e-9,`plaza direction ${fmt(plaza)}, got ${fmt(out)}`);
 });
-test('chase: a players field unused for a tick is rebuilt on its next use, like a fresh steer (a resumed room plays on bit for bit)',()=>{
+test('chase: a players field unused for longer than refreshTicks is rebuilt on its next use, like a fresh steer (a resumed room plays on bit for bit)',()=>{
   // NEW-20261013-ORQ-velocidade-heroi-e-projetil (checkpoint-cidade): the original run kept a field built ticks ago, a
   // restored sim built it afresh, and the two drifted apart in the next wave.
   const P=planner(),old=citySteer(P),ctx=fakeCtx(5),r=new Rng(56);
@@ -573,6 +573,9 @@ test('chase: a players field unused for a tick is rebuilt on its next use, like 
   const steer=citySteer(P);steer(ctx,e,p,fresh);
   assert.ok(old.playersField!.atGoal(b.x,b.y)&&!old.playersField!.atGoal(a.x,a.y),'the idle field was rebuilt on the hero');
   assert.deepEqual(out,fresh,'the same direction as a fresh steer');
+  // A short gap (≤ refreshTicks, a body in and out of the straight chase) keeps the throttle: tick 25 is off the phase.
+  p.x=a.x;p.y=a.y;ctx.tick=25;old(ctx,e,p,out);
+  assert.ok(old.playersField!.atGoal(b.x,b.y),'no rebuild off the phase after a 2-tick gap');
 });
 
 // ---------- 6. the boss in the plaza ----------

@@ -1046,10 +1046,10 @@ test('protocol 10+: the P1 cast is dictionary bytes appended after protocol 9 (e
   }
 });
 
-test('protocol 13: a frame from a 12 (papeis-de-inimigo) or 14 room is refused at the version byte (the handshake already sent the update message)',()=>{
+test('protocol 14: a frame from a 13 (torre-contador-de-tiros) or 15 room is refused at the version byte (the handshake already sent the update message)',()=>{
   const bytes=new FrameEncoder().encode(busyWorld(new Rng(3),5).view);
-  assert.equal(bytes[1],13);
-  for(const version of [8,9,10,11,12,14]){
+  assert.equal(bytes[1],14);
+  for(const version of [8,9,10,11,12,13,15]){
     const other=bytes.slice();other[1]=version;
     assert.deepEqual(new FrameDecoder().decode(other),{ok:false,error:'protocol version mismatch'},`version ${version}`);
   }

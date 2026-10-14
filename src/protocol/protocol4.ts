@@ -50,9 +50,12 @@ import {INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from 
  * (the P1/P2 ids stay inline: 0xFF + length + UTF-8); an 11 decoder would read their indexes as unknown strings.
  * 13 since torre-contador-de-tiros: a defense's volley counter (`shots`, one byte mod 256) in the structures; a 12
  * decoder would refuse the structure field mask.
+ * 14 since velocidade-heroi-e-projetil: the same bytes, but the hero walks 2× (maps heroSpeed) and shots fly at half
+ * speed, and the phone predicts its own walk (maps/prediction.ts moveStep): a 13 client in front of a 14 room (or the
+ * other way round) would be corrected on every input, so the versions must not meet.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=13;
+export const PROTOCOL_VERSION=14;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

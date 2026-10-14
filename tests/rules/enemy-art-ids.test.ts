@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Rng} from '../../src/contract/index.ts';
 import {BORROW_TUNE,ENEMY_ART_IDS,MINI_COUNT,ROLE_PROFILES,ROSTER,ROSTER_ONLY_WITH_ART,ROTATION_SLOTS,drawRotation,isRotation,planRound,roleOf,
-  rosterEntry,rotationIds,roundRoster,slotPools,type Rotation} from '../../src/rules/index.ts';
+  rosterEntry,rotationIds,roundRoster,slotPools,TUTORIAL_ART_TUNE,type Rotation} from '../../src/rules/index.ts';
 // @ts-expect-error: a plain .mjs script (no types)
 import {enemyArtIds,enemyArtIdsSource} from '../../scripts/art-v2/enemy-art-ids.mjs';
 
@@ -88,7 +88,7 @@ const art=new Set(ENEMY_ART_IDS);
 /** D-040: a short round keeps to the table's bodies; a complete one may follow the threat up to 1.6×. */
 const bodyCap=(table:number,short:boolean|undefined)=>short?table:Math.ceil(table*1.6);
 
-test('flag on, early band (rounds 1-3): with 40 art ids the band is complete, nothing borrowed, every body has art, D-040 body count',()=>{
+test('flag on, early band (rounds 1-3): with 40 art ids the band is complete, nothing borrowed, every body has art, D-040 body count; round 1 at the tutorial tune',()=>{
   for(const seed of SEEDS.slice(0,40)){
     const r=artRotation(seed);
     for(const round of [1,2,3]){
@@ -99,7 +99,12 @@ test('flag on, early band (rounds 1-3): with 40 art ids the band is complete, no
         for(const id of members)assert.ok(art.has(id),`${id} has art`);
         const table=tableBodies(round,players,seed+round);
         assert.ok(members.length<=bodyCap(table,rr.short),`round ${round} ${players}p: ${members.length} bodies (table ${table})`);
-        assert.equal(plan.borrowed,undefined);
+        // Round 1 (the tutorial) plays its roles at the early band's numbers (TUTORIAL_ART_TUNE); rounds 2-3 at full.
+        if(round===1){
+          assert.equal(plan.borrowed?.tune,TUTORIAL_ART_TUNE);
+          for(const id of members)assert.ok(plan.borrowed!.roles.includes(roleOf(id)!),`${id} plays at the tutorial tune`);
+        }
+        else assert.equal(plan.borrowed,undefined);
       }
     }
   }

@@ -174,6 +174,8 @@ const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminat
  * with base stats: the room's aim decides the real shot). The enemy's radius counts for the patterns that touch, when
  * the view carries it (the room bots see the live enemies).
  */
+/** D-051 bots: a loot trip in the intermission counts the streets as this × the straight line, plus these seconds. */
+export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -362,7 +364,11 @@ export function decide(input:BrainInput):Decision{
   if(input.combat==='manual'){
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;
-    if(loot.goal){
+    // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
+    // the opening and a margin: LOOT_SPARE_SECONDS).
+    const late=prepare&&!!round&&!!loot.goal&&round.phaseEndsTick-tick<=
+      ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/heroSpeed(input.terrain)+LOOT_SPARE_SECONDS)*HZ;
+    if(loot.goal&&!late){
       decision.mode='loot';
       const close=dist(at,loot.goal.at)<=(loot.goal.stand?CRATE_STAND:.25);
       if(!close)want=go(loot.goal.at);

@@ -95,6 +95,8 @@ interface EnemyActor{
   look:PhaseLook;
   /** D-047: the critter bought a sweet from Dona Cida ("açucarado", EnemyView.sugar): a pink glow and pink sparkles. */
   sugar:boolean;
+  /** Bancos: it robbed an ATM and became a Cliente Prime (EnemyView.prime): a gold crown over its head. */
+  prime:boolean;
   /** Procedural texture key in use (the acting pose swaps it). */
   tex:string;
   /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
@@ -216,6 +218,8 @@ const HATCH_CSS={width:1.5,spacing:9,alpha:.18} as const;
 const PHASE_RING_POINTS=32,PHASE_GOLD=0xf6c84a;
 /** D-047 açucarado: Dona Cida's sweets glow pink on a critter. */
 const SUGAR_PINK=0xff8fc8;
+/** Bancos: the Cliente Prime's crown. */
+const PRIME_GOLD=0xf2c14e;
 const MOTOBOY_LAMP={x:29,y:38} as const;
 /** Points of a decoration ellipse (gas, splat, rims): smooth enough at phone size, cheap to triangulate. */
 const DECOR_ELLIPSE_SEGMENTS=20;
@@ -320,7 +324,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
@@ -459,6 +463,7 @@ export class HordeRenderer{
     a.look=look;a.act=actAnim(view.kind,kind,view.phase);
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
+    a.prime=view.prime===true;
     // The roster's art loads per match, the first time one of its enemies shows up (horde-art.ts queueEnemyArt).
     const art=enemyArtId(view.kind,kind);
     if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}
@@ -710,7 +715,7 @@ export class HordeRenderer{
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
-    if(a.look!==LOOK_NONE||a.sugar)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
+    if(a.look!==LOOK_NONE||a.sugar||a.prime)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
     // Last: drawEyes projects the hero through the shared scratch point (q).
     if(this.dark>0)this.drawEyes(a,eyeX,eyeY,size*fit);
   };
@@ -786,6 +791,14 @@ export class HordeRenderer{
         sparkleFrame(i,now,a.phase+.5,reduced,f);
         this.star4(g,bx-f.dx*s*1.5,top+f.dy*s*1.2,Math.max(f.r*s,2.2*css),SUGAR_PINK,f.alpha);
       }
+    }
+    if(a.prime){
+      // Cliente Prime (bancos): a gold crown with three points over the head, and a Breu edge.
+      const g=this.overlay,s=body*size,cx=bx,top=by-height-5*s,w=19*s,h=14*s,bob=reduced?0:Math.sin(now*.006+a.phase*TAU)*1.5*s;
+      const crown=[{x:cx-w,y:top+bob},{x:cx-w,y:top-h*.55+bob},{x:cx-w*.5,y:top-h*.15+bob},{x:cx,y:top-h+bob},{x:cx+w*.5,y:top-h*.15+bob},{x:cx+w,y:top-h*.55+bob},{x:cx+w,y:top+bob}];
+      g.fillStyle(PRIME_GOLD,1).fillPoints(crown,true);
+      g.lineStyle(1.6*css,PALETTE.breu,1).strokePoints(crown,true);
+      g.fillStyle(PALETTE.breu,1).fillCircle(cx,top-h*.3+bob,2.6*s);
     }
     if(look.headlight){
       const g=this.overlay,k=headlightGlow(now,a.phase,reduced),m=size>1?1.2:1;

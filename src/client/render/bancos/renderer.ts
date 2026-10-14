@@ -1,0 +1,188 @@
+/**
+ * The run's banks in the world (card NEW-20261014-ORQ-bancos-e-veiculos, provisional art: figures.ts):
+ * - the "Caixa 24 h" kiosk with its bank's sign, the screen by state (blue at rest, green paying, red blinking while a
+ *   critter robs it, dark when empty);
+ * - on the ground, the area where a hero holds it (BANCO.holdR) and a ring with the saldo left;
+ * - over it, a tag: the bank's short name and its saldo, "bicho sacando!" (Cone) or "SEM CÉDULAS m:ss";
+ * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, dark away for a critter) and the
+ *   "RETIRE SEU DINHEIRO" beep, now and then one of the screen's lines instead (rules.ts BankTracker).
+ * Each kiosk draws at its own actor depth and fades while it covers the hero, like the chaveiro's figures. Pure
+ * drawing: the scene pushes each view's banks and calls update every frame.
+ */
+import Phaser from 'phaser';
+import type {Projector,Pt} from '../projector.ts';
+import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
+import {LIT_SHADOW,lightEnabled} from '../light.ts';
+import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
+import type {BankView} from '../../../contract/index.ts';
+import {BANCO,BANK_SHORT} from '../../../rules/bancos.ts';
+import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
+import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+
+const LIGHT=lightEnabled();
+/** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
+const FX_DEPTH=94880;
+/** The kiosks face +x (the sim gives no heading). */
+const HEADING=0;
+const COVER_ALPHA=.45;
+
+export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
+
+interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string}
+
+export class BankRenderer {
+  private scene:Phaser.Scene;
+  private options:BankRendererOptions;
+  private ground:Phaser.GameObjects.Graphics;
+  private fx:Phaser.GameObjects.Graphics;
+  private draws=new Map<string,BankDraw>();
+  private state=new BankTracker();
+  private now=0;
+  private q:Pt={x:0,y:0};
+  private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
+  private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0};
+
+  constructor(scene:Phaser.Scene,options:BankRendererOptions){
+    this.scene=scene;this.options=options;
+    this.ground=scene.add.graphics().setDepth(-9978);
+    this.fx=scene.add.graphics().setDepth(FX_DEPTH);
+    const c=this.c;
+    c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
+    c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
+    whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setStyle(this.balloonStyle(false));}});
+  }
+
+  /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
+  push(banks:readonly BankView[]|undefined,tick:number){this.state.push(banks,tick,this.now);}
+
+  /** After a view turn or a depth re-base. */
+  refresh(){this.update(this.now);}
+
+  update(time:number){
+    this.now=time;
+    const st=this.state;st.settle(time);
+    this.ground.clear();this.fx.clear();
+    const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
+    const live=new Set<string>();
+    for(const b of st.banks){
+      live.add(b.id);
+      const d=this.drawOf(b.id);
+      const screen=screenOf(b,st.tick,time,reduced);
+      this.drawArea(b,k);
+      this.drawShadow(b.x,b.y);
+      d.figure.clear();
+      const depth=proj.depth(b.x,b.y);
+      d.figure.setDepth(depth);
+      const faces=boxFaces(atmBoxes(b.name,screen.look),HEADING,proj.view);
+      this.drawFaces(d.figure,b.x,b.y,faces,k);
+      d.figure.setAlpha(this.covers(b.x,b.y,faces,depth)?COVER_ALPHA:1);
+      this.drawTag(b,d,k);
+      this.drawBalloon(b,d,k);
+    }
+    for(const n of st.notes)this.drawNote(n,k);
+    for(const [id,d] of this.draws)if(!live.has(id)){d.figure.destroy();d.tag.destroy();d.balloon.destroy();this.draws.delete(id);}
+  }
+
+  destroy(){
+    this.ground.destroy();this.fx.destroy();
+    for(const d of this.draws.values()){d.figure.destroy();d.tag.destroy();d.balloon.destroy();}
+    this.draws.clear();
+  }
+
+  private tagStyle(look:'normal'|'bicho'|'vazio'){
+    return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},
+      color:look==='bicho'?token('--c-breu'):token('--c-papel'),
+      backgroundColor:look==='bicho'?token('--c-cone'):look==='vazio'?token('--c-breu'):token('--c-ficha')};
+  }
+  private balloonStyle(beep:boolean){
+    return {fontFamily:beep?token('--f-cartaz'):token('--f-sistema'),fontSize:beep?'15px':'13px',padding:{x:7,y:3},
+      color:token('--c-breu'),backgroundColor:beep?token('--c-cone'):token('--c-papel'),align:'center',wordWrap:{width:200}};
+  }
+  private drawOf(id:string):BankDraw{
+    let d=this.draws.get(id);
+    if(!d){
+      const s=this.scene;
+      d={figure:s.add.graphics(),
+        tag:s.add.text(0,0,'',this.tagStyle('normal')).setOrigin(.5,1).setDepth(FX_DEPTH+1),
+        balloon:s.add.text(0,0,'',this.balloonStyle(false)).setOrigin(.5,1).setDepth(FX_DEPTH+2).setVisible(false),
+        tagText:'',tagLook:''};
+      this.draws.set(id,d);
+    }
+    return d;
+  }
+  /** Screen point of the bank plus a local offset (forward, left, up in units). */
+  private at(x:number,y:number,fwd:number,left:number,z:number):Pt{
+    const p=this.options.projector.project(x,y,this.q),o=isoOffset(fwd,left,z,this.options.projector.view);
+    return {x:p.x+o.x,y:p.y+o.y};
+  }
+  /**
+   * The ground: a thin ring where a hero holds it (holdR), and the saldo ring around the slab (Cartolina; Cone while a
+   * critter robs it; an empty ring when it has no notes).
+   */
+  private drawArea(b:BankView,k:number){
+    const g=this.ground,p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
+    const hold=BANCO.holdR*42,paying=b.state==='sacando';
+    g.lineStyle(2*k,paying?c.cartolina:c.papel,paying?.75:.35).strokeEllipse(p.x,p.y,hold*2,hold);
+    const r=1.25*M*42,share=saldoShare(b),pulse=paying&&!this.options.reduced?1+Math.sin(this.now*.01)*.04:1;
+    g.lineStyle(7*k,c.breu,.55).strokeEllipse(p.x,p.y,r*2*pulse,r*pulse);
+    if(share<=0)return;
+    const color=b.state==='bicho'?c.cone:c.cartolina,n=Math.max(2,Math.ceil(48*share)),pts:Pt[]=[];
+    for(let i=0;i<=n;i++){const a=-Math.PI/2+share*Math.PI*2*i/n;pts.push({x:p.x+Math.cos(a)*r*pulse,y:p.y+Math.sin(a)*r*.5*pulse});}
+    g.lineStyle(4*k,color,1).strokePoints(pts,false);
+  }
+  private drawShadow(x:number,y:number){
+    const v=this.options.projector.view,p=this.options.projector.project(x,y,this.q),ax=p.x+8,ay=p.y+3;
+    const corners=[[ATM_HALF.l,ATM_HALF.w],[-ATM_HALF.l,ATM_HALF.w],[-ATM_HALF.l,-ATM_HALF.w],[ATM_HALF.l,-ATM_HALF.w]].map(([u,w])=>{
+      const o=isoOffset(u,w,0,v);return {x:ax+o.x*1.15,y:ay+o.y*1.15};
+    });
+    this.ground.fillStyle(LIGHT?LIT_SHADOW.color:this.c.breu,LIGHT?LIT_SHADOW.alpha:.25).fillPoints(corners,true);
+  }
+  private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number){
+    const p=this.options.projector.project(x,y,this.q),pts=this.pts;
+    for(const f of faces){
+      for(let i=0;i<4;i++){pts[i].x=p.x+f.pts[i].x;pts[i].y=p.y+f.pts[i].y;}
+      g.fillStyle(f.color,f.alpha).fillPoints(pts,true);
+      if(f.line)g.lineStyle(1.2*k,this.c.breu,.9).strokePoints(pts,true);
+    }
+  }
+  private covers(x:number,y:number,faces:readonly Face[],depth:number){
+    const hero=this.options.hero?.();if(!hero||!faces.length)return false;
+    if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
+    const p=this.options.projector.project(x,y,this.q),h=this.options.projector.project(hero.x,hero.y,{x:0,y:0}),b=faceBounds(faces);
+    return h.x>p.x+b.x0&&h.x<p.x+b.x1&&h.y-30>p.y+b.y0&&h.y-10<p.y+b.y1;
+  }
+  /** The tag over the sign: "Pão-Duro · R$ 32", "Pão-Duro · bicho sacando!" or "Pão-Duro · SEM CÉDULAS 2:10". */
+  private drawTag(b:BankView,d:BankDraw,k:number){
+    const short=BANK_SHORT[b.name],s=emptySeconds(b,this.state.tick);
+    const look=b.state==='bicho'?'bicho':b.state==='sem-cedulas'?'vazio':'normal';
+    const text=b.state==='bicho'?`${short} · bicho sacando!`:b.state==='sem-cedulas'?`${short} · SEM CÉDULAS${s?` ${clock(s)}`:''}`:`${short} · R$ ${b.saldo}`;
+    if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
+    if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
+    const p=this.at(b.x,b.y,-.2*M,.5*M,ATM_TOP+.15*M);
+    d.tag.setPosition(p.x,p.y).setScale(k);
+  }
+  /** The beep or the screen's line over the tag, while it lasts. */
+  private drawBalloon(b:BankView,d:BankDraw,k:number){
+    const balloon=this.state.balloons.find(x=>x.bank===b.id);
+    if(!balloon){d.balloon.setVisible(false);return;}
+    const t=(this.now-balloon.born)/(balloon.beep?BEEP_MS:LINE_MS);
+    if(d.balloon.text!==balloon.text){d.balloon.setText(balloon.text);d.balloon.setStyle(this.balloonStyle(balloon.beep));}
+    const p=this.at(b.x,b.y,0,0,ATM_TOP+.15*M),lift=(this.options.reduced?0:6*Math.min(1,t*4))*k;
+    d.balloon.setPosition(p.x,p.y-(d.tag.displayHeight+6*k)-lift).setScale(k).setAlpha(t>.8?Math.max(0,(1-t)*5):1).setVisible(true);
+  }
+  /** A R$ 2 note out of the screen: up and fading for a hero, away and down, darker, for a critter. */
+  private drawNote(n:FlyingNote,k:number){
+    const b=this.state.banks.find(x=>x.id===n.bank);if(!b)return;
+    const t=(this.now-n.born)/NOTE_MS;if(t<0||t>=1)return;
+    const start=this.at(b.x,b.y,SCREEN_AT.fwd,SCREEN_AT.left,SCREEN_AT.z),hero=n.by==='hero',reduced=this.options.reduced;
+    const dx=(hero?(n.slot-1)*14:28+n.slot*10)*k*t,dy=(hero?-70*t:-24*t+50*t*t)*k;
+    const x=start.x+dx,y=start.y+dy,w=20*k,h=11*k,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
+    const g=this.fx,cos=Math.cos(tilt),sin=Math.sin(tilt);
+    const corner=(u:number,v:number)=>({x:x+u*cos-v*sin,y:y+u*sin+v*cos});
+    const quad=[corner(-w/2,-h/2),corner(w/2,-h/2),corner(w/2,h/2),corner(-w/2,h/2)];
+    g.fillStyle(hero?BANK_COLORS.note:mix(BANK_COLORS.note,this.c.breu,.45),a).fillPoints(quad,true);
+    g.lineStyle(1.4*k,this.c.breu,a).strokePoints(quad,true);
+    // the "2" in the middle: two strokes are enough at this size
+    g.fillStyle(this.c.breu,a).fillCircle(x,y,2.6*k);
+  }
+}

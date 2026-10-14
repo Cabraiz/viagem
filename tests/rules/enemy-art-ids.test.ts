@@ -78,35 +78,36 @@ test('the art-only draw: slot limits from the art entries, a band without art ke
 });
 
 // Decision D (Orquestrador, 13/10/2026): only the artist's enemies; a band short of art borrows lighter roles at its
-// band's numbers, and no round spawns more bodies than the table's. One test per band, flag on (the default).
+// band's numbers, and a short round spawns no more bodies than the table's. A complete band follows D-040: the count
+// follows the roles' mean threat, up to 1.6× the table. With 40 art ids (importar-42-inimigos) no band is short any
+// more: nothing is borrowed. One test per band, flag on (the default).
 const artRotation=(seed:number)=>drawRotation(new Rng(seed));
 const tableBodies=(round:number,players:number,seed:number)=>planRound(round,players,{name:'x'},new Rng(seed)).groups.filter(g=>!g.elite&&!g.boss&&!g.solo).reduce((n,g)=>n+g.members.length,0);
 const regular=(p:ReturnType<typeof planRound>)=>p.groups.filter(g=>!g.elite&&!g.boss&&!g.solo).flatMap(g=>g.members);
 const art=new Set(ENEMY_ART_IDS);
+/** D-040: a short round keeps to the table's bodies; a complete one may follow the threat up to 1.6×. */
+const bodyCap=(table:number,short:boolean|undefined)=>short?table:Math.ceil(table*1.6);
 
-test('flag on, early band (rounds 1-3): the rat plus borrowed throwers and shooters (the kamikaze from round 2), weaker, no more bodies than the table',()=>{
+test('flag on, early band (rounds 1-3): with 40 art ids the band is complete, nothing borrowed, every body has art, D-040 body count',()=>{
   for(const seed of SEEDS.slice(0,40)){
     const r=artRotation(seed);
     for(const round of [1,2,3]){
       const rr=roundRoster(r,round);
-      assert.ok(rr.short&&rr.borrowed?.length,`seed ${seed} round ${round}: short and borrowing`);
-      assert.deepEqual([...rr.borrowed!],round===1?['arremessador','atirador']:['arremessador','atirador','kamikaze']);
-      for(const role of rr.borrowed!)assert.equal(rr.roles[role]!.length,1,'one entry per borrowed role');
+      assert.ok(!rr.short&&rr.borrowed===undefined,`seed ${seed} round ${round}: complete, nothing borrowed`);
       for(const players of [1,4,6]){
         const plan=planRound(round,players,{name:'x'},new Rng(seed+round),rr),members=regular(plan);
         for(const id of members)assert.ok(art.has(id),`${id} has art`);
-        assert.ok(members.length<=tableBodies(round,players,seed+round),`round ${round} ${players}p: ${members.length} bodies`);
-        assert.ok(members.some(id=>roleOf(id)==='enxame'),'the rat swarm');
-        assert.ok(members.some(id=>rr.borrowed!.includes(roleOf(id)!)),'borrowed entries play');
-        if(round===1)assert.ok(!members.some(id=>roleOf(id)==='kamikaze'),'no kamikaze in round 1');
-        assert.deepEqual(plan.borrowed,{roles:[...rr.borrowed!],tune:BORROW_TUNE.early});
+        const table=tableBodies(round,players,seed+round);
+        assert.ok(members.length<=bodyCap(table,rr.short),`round ${round} ${players}p: ${members.length} bodies (table ${table})`);
+        assert.equal(plan.borrowed,undefined);
       }
     }
   }
+  // The borrowing still exists for a band short of art (a smaller art set): it plays weaker.
   assert.ok(BORROW_TUNE.early.damage<1&&BORROW_TUNE.early.cadence>1&&BORROW_TUNE.early.hp<1,'weaker in the early band');
 });
 
-test('flag on, mid band (rounds 4-6): its own art roles, nothing borrowed, the corredores\' share spread, no more bodies than the table',()=>{
+test('flag on, mid band (rounds 4-6): its own art roles, nothing borrowed; no more bodies than the table when short, D-040\'s threat count (≤ 1.6×) when the band is complete',()=>{
   for(const seed of SEEDS.slice(0,40)){
     const r=artRotation(seed);
     for(const round of [4,5,6]){
@@ -114,7 +115,8 @@ test('flag on, mid band (rounds 4-6): its own art roles, nothing borrowed, the c
       assert.equal(rr.borrowed,undefined,'its own roles are all there');
       const plan=planRound(round,4,{name:'x'},new Rng(seed),rr),members=regular(plan);
       for(const id of members)assert.ok(art.has(id),`round ${round}: ${id}`);
-      assert.ok(members.length<=tableBodies(round,4,seed),`round ${round}: ${members.length} bodies`);
+      const table=tableBodies(round,4,seed);
+      assert.ok(members.length<=bodyCap(table,rr.short),`round ${round}: ${members.length} bodies (table ${table}, short ${!!rr.short})`);
       assert.equal(plan.borrowed,undefined);
       if(round===5)assert.ok(plan.groups.some(g=>g.elite&&roleOf(g.members[0])==='mini-chefe'),'the mini-chefe elite (today\'s draw until minis have art)');
     }
@@ -127,7 +129,8 @@ test('flag on, late band (rounds 7-9): kamikazes, invocadores and brutamontes wi
     for(const round of [7,8,9]){
       const rr=roundRoster(r,round),plan=planRound(round,4,{name:'x'},new Rng(seed),rr),members=regular(plan);
       for(const id of members)assert.ok(art.has(id),`round ${round}: ${id}`);
-      assert.ok(members.length<=tableBodies(round,4,seed),`round ${round}: ${members.length} bodies`);
+      const table=tableBodies(round,4,seed);
+      assert.ok(members.length<=bodyCap(table,rr.short),`round ${round}: ${members.length} bodies (table ${table}, short ${!!rr.short})`);
       for(const role of ['kamikaze','invocador','brutamontes'] as const)assert.ok(rr.roles[role]?.length,role);
       if(round===8)assert.equal(plan.groups.filter(g=>g.solo).length,1);
     }
@@ -145,8 +148,8 @@ test('flag on, the city tutorial and the chefe\'s summons: the rotation\'s art f
     const r=artRotation(seed),r1=roundRoster(r,1),r10=roundRoster(r,10);
     // director: tutorial fodder = the round's corredores, else its enxames; boss minions = shooters, rats, brutamontes.
     const fodder=r1.roles.corredor??r1.roles.enxame;
-    assert.ok(r1.short&&fodder?.length&&fodder.every(id=>art.has(id)),'the tutorial gets art fodder');
-    assert.ok(r10.short,'round 10 is short too: the boss summons art');
+    assert.ok(fodder?.length&&fodder.every(id=>art.has(id)),'the tutorial gets art fodder');
+    assert.ok(r10.roles&&Object.values(r10.roles).flat().every(id=>art.has(id)||id==='chefe'),'round 10: the boss summons art');
     for(const id of [...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]])assert.ok(art.has(id),id);
   }
 });
@@ -160,15 +163,14 @@ test('review: the art-only tutorial walks at the bêbado\'s pace and nobody poop
   assert.ok(Math.abs(rat*(bebado/rat)-bebado)<1e-12);
 });
 
-test('city role cap (balanco-cidade-so-arte): an art-only round keeps the rats at most half its bodies, at about the same threat; no cap = as before',()=>{
-  const threat=(ids:string[])=>ids.reduce((n,id)=>n+ROLE_PROFILES[roleOf(id)!].threat,0);
+test('city role cap (balanco-cidade-so-arte): it only acts on short rounds; with 40 art ids the rounds are complete and the cap changes nothing',()=>{
+  // capRoles needs roster.short (waves.ts). The "art-only round: rats at most half, fewer heavier bodies" case came
+  // from the 16-id art set; with the full art cast the city is back to the complete-roster behaviour (Executor-6).
   for(const seed of SEEDS.slice(0,30))for(const round of [4,5,6]){
     const rr=roundRoster(artRotation(seed),round);
-    const plain=planRound(round,6,{name:'x'},new Rng(seed),rr),capped=planRound(round,6,{name:'x'},new Rng(seed),rr,{roleCap:{enxame:.5}});
-    const a=regular(plain),b=regular(capped),rats=b.filter(id=>roleOf(id)==='enxame').length;
-    assert.ok(rats<=Math.ceil(.5*b.length)+1,`round ${round}: ${rats}/${b.length} rats`);
-    assert.ok(b.length<a.length,'fewer, heavier bodies');
-    assert.ok(Math.abs(threat(b)-threat(a))<=threat(a)*.06,`round ${round}: threat ${threat(b).toFixed(1)} vs ${threat(a).toFixed(1)}`);
+    assert.ok(!rr.short,`seed ${seed} round ${round}: complete`);
+    const plain=planRound(round,6,{name:'x'},new Rng(seed),rr);
+    assert.deepEqual(planRound(round,6,{name:'x'},new Rng(seed),rr,{roleCap:{enxame:.5}}),plain,'the cap is a no-op on a complete round');
     assert.deepEqual(planRound(round,6,{name:'x'},new Rng(seed),rr,{}),plain,'no cap: the same plan');
   }
   // A full-roster round is never short: the cap does nothing there.

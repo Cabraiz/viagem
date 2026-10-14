@@ -9,3 +9,4 @@ export * from './flowfield.ts';
 export * from './city/terrain.ts';
 export * from './city/relief.ts';
 export * from './build-sites.ts';
+export * from './far-path.ts';

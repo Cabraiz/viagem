@@ -30,7 +30,7 @@ import {objectiveOf} from './render/chaveiro/view.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
-import {buildPlanFor,elevation} from '../maps/index.ts';
+import {buildPlanFor,elevation,farPath} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
@@ -608,10 +608,12 @@ export class IslandScene extends Phaser.Scene {
     this.hooks.message('');
   }
   /** A walk to `target` (tap, click, "Seguir trilha"). markerMs: the marker shows that long (mouse), else to the end. */
-  goTo(target:Point,options:{markerMs?:number}={}){
+  /** `far`: an order from the minimap (minimapa-wc3): past findPath's box, a far route (maps far-path.ts). */
+  goTo(target:Point,options:{markerMs?:number;far?:boolean}={}){
     if(this.paused||!this.actor)return;
     this.attackTarget=undefined;
     this.route=findPath(this.position,target,this.field);
+    if(!this.route.length&&options.far)this.route=farPath(this.position,target,this.field);
     this.destination.clear();
     if(!this.route.length){this.hooks.message('Por aqui não dá. Tente a trilha ou um trecho livre.');return;}
     this.hooks.message('Seguindo a trilha…');

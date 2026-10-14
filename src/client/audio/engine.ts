@@ -1,14 +1,15 @@
 /**
  * Procedural WebAudio engine (VGM-050). No AudioContext exists before the first user gesture,
- * so nothing can play until then. Voice limit, per-sound throttle, volume, mute and optional vibration.
+ * so nothing can play until then. Voice limit, per-sound throttle, optional vibration and two buses under the master
+ * (config-audio-musica-efeitos): "effects" (these procedural sounds) and "music" (music.ts tracks), each with its own
+ * volume and mute (settings.ts); the master stays at 1 and feeds the limiter.
  */
 import type {SoundId,SoundRecipe,Tone} from './types.ts';
 import {recipeLength} from './types.ts';
 import {RECIPES} from './recipes.ts';
+import {busGain,busQuiet,clampVolume,copySettings,loadSettings,saveSettings,type AudioSettings,type Bus,type StorageLike} from './settings.ts';
 
-export interface AudioSettings {volume:number;muted:boolean;vibration:boolean}
-export const DEFAULT_SETTINGS:Readonly<AudioSettings>=Object.freeze({volume:.7,muted:false,vibration:true});
-export const SETTINGS_KEY='viagem:audio:v1';
+export {DEFAULT_SETTINGS,SETTINGS_KEY,LEGACY_SETTINGS_KEY,type AudioSettings,type Bus,type BusSettings} from './settings.ts';
 /** Simultaneous sounds; mobile speakers turn more into mush and cost CPU. */
 export const MAX_VOICES=10;
 /** Events that count as user activation for audio (a touch pointerdown does not, on iOS or per spec). */
@@ -16,8 +17,8 @@ export const UNLOCK_EVENTS=['pointerup','touchend','click','keydown'] as const;
 const SILENT=.0001;
 /** After a gesture asks to resume, sounds may be scheduled on a still-suspended context for this long. */
 const RESUME_GRACE_MS=500;
-
-type StorageLike=Pick<Storage,'getItem'|'setItem'>;
+/** Time constant of a bus's volume change: smooth while a slider drags, no clicks. */
+const BUS_RAMP_S=.02;
 interface EngineOptions {
   recipes?:Readonly<Record<SoundId,SoundRecipe>>;
   createContext?:()=>AudioContext;
@@ -41,22 +42,12 @@ function defaultContext():AudioContext{
   return new Ctor();
 }
 
-function readSettings(storage:StorageLike|null):AudioSettings{
-  const settings={...DEFAULT_SETTINGS};
-  try{
-    const saved=JSON.parse(storage?.getItem(SETTINGS_KEY)??'null');
-    if(saved&&typeof saved==='object'){
-      if(typeof saved.volume==='number'&&Number.isFinite(saved.volume))settings.volume=Math.max(0,Math.min(1,saved.volume));
-      if(typeof saved.muted==='boolean')settings.muted=saved.muted;
-      if(typeof saved.vibration==='boolean')settings.vibration=saved.vibration;
-    }
-  }catch{/* storage blocked or corrupt: defaults */}
-  return settings;
-}
-
 export class AudioEngine {
   private ctx:AudioContext|undefined;
   private master:GainNode|undefined;
+  private buses:Partial<Record<Bus,GainNode>>={};
+  /** The gain each bus is heading to (an AudioParam's value lags behind a ramp). */
+  private busTarget:Partial<Record<Bus,number>>={};
   private noise:AudioBuffer|undefined;
   private voices:Voice[]=[];
   private lastPlay=new Map<SoundId,number>();
@@ -80,18 +71,19 @@ export class AudioEngine {
     this.vibrateFn=opts.vibrate;
     this.maxVoices=Math.max(1,opts.maxVoices??MAX_VOICES);
     this.nowMs=opts.nowMs??(()=>performance.now());
-    this.state=readSettings(this.storage);
+    this.state=loadSettings(this.storage).settings;
   }
 
   get unlocked(){return this.isUnlocked;}
-  get settings():AudioSettings{return {...this.state};}
+  get settings():AudioSettings{return copySettings(this.state);}
 
   /** True once the context is actually producing sound. */
   get running(){return this.ctx?.state==='running';}
 
-  /** The context and the master bus (volume, mute, limiter) once unlocked: the boss music (music.ts) joins them. */
+  /** The context, the master (limiter) and the music bus (its volume and mute) once unlocked: music.ts tracks join it. */
   get context():AudioContext|undefined{return this.ctx;}
   get output():AudioNode|undefined{return this.master;}
+  get musicOutput():AudioNode|undefined{return this.buses.music;}
 
   /**
    * Unlocks on the first gesture on `target` and keeps listening: any later gesture revives a context that
@@ -112,13 +104,18 @@ export class AudioEngine {
     try{
       const ctx=this.ctx=this.createContext();
       this.master=ctx.createGain();
-      this.master.gain.value=this.masterGain();
+      this.master.gain.value=1;
       // A limiter keeps a boss roar plus a fall plus hits from hard-clipping on phone speakers.
       const limiter=ctx.createDynamicsCompressor?.();
       if(limiter){
         limiter.threshold.value=-6;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.003;limiter.release.value=.2;
         this.master.connect(limiter);limiter.connect(ctx.destination);
       }else this.master.connect(ctx.destination);
+      for(const bus of ['effects','music'] as const){
+        const gain=this.buses[bus]=ctx.createGain();
+        gain.gain.value=this.busTarget[bus]=busGain(this.state[bus]);
+        gain.connect(this.master);
+      }
       this.wake();
       const doc=globalThis.document;
       if(doc){
@@ -126,7 +123,7 @@ export class AudioEngine {
         doc.addEventListener('visibilitychange',onVisible);
         this.cleanups.push(()=>doc.removeEventListener('visibilitychange',onVisible));
       }
-    }catch{this.ctx=undefined;this.master=undefined;}
+    }catch{this.ctx=undefined;this.master=undefined;this.buses={};}
     this.emit();
   }
 
@@ -138,12 +135,12 @@ export class AudioEngine {
     this.emit();
   }
 
-  /** `persist:false` for live slider drags; persist on release. */
-  setVolume(volume:number,opts:{persist?:boolean}={}){
+  /** A bus's volume (0..1); `persist:false` for live slider drags, persist on release. */
+  setVolume(bus:Bus,volume:number,opts:{persist?:boolean}={}){
     if(!Number.isFinite(volume))return;
-    this.update({volume:Math.max(0,Math.min(1,volume))},opts.persist??true);
+    this.update({[bus]:{...this.state[bus],volume:clampVolume(volume)}},opts.persist??true);
   }
-  setMuted(muted:boolean){this.update({muted});}
+  setMuted(bus:Bus,muted:boolean){this.update({[bus]:{...this.state[bus],muted}});}
   setVibration(vibration:boolean){this.update({vibration});}
 
   activeVoices(){this.prune();return this.voices.length;}
@@ -157,8 +154,8 @@ export class AudioEngine {
     if(!recipe)return false;
     const now=this.nowMs(),last=this.lastPlay.get(id);
     if(last!==undefined&&now-last<recipe.throttleMs)return false;
-    const ctx=this.ctx,master=this.master;
-    if(this.state.muted||!ctx||!master||this.state.volume<=0){
+    const ctx=this.ctx,out=this.buses.effects;
+    if(busQuiet(this.state.effects)||!ctx||!out){
       // Haptics follow their own toggle, so a muted phone can still buzz on a fall.
       this.lastPlay.set(id,now);
       this.buzz(recipe);
@@ -173,12 +170,12 @@ export class AudioEngine {
     // A drop by the voice limit was never heard, so it neither starts the throttle window nor vibrates.
     if(this.voices.length>=this.maxVoices&&!this.steal(recipe.priority))return false;
     this.lastPlay.set(id,now);
-    const out=ctx.createGain();
-    out.connect(master);
+    const voice=ctx.createGain();
+    voice.connect(out);
     const start=ctx.currentTime+.005,sources:AudioScheduledSourceNode[]=[];
-    for(const tone of recipe.tones)sources.push(...this.schedule(ctx,out,tone,start));
-    releaseOnEnd(out,sources);
-    this.voices.push({id,priority:recipe.priority,startedAt:start,endsAt:start+recipeLength(recipe)+.05,out,sources});
+    for(const tone of recipe.tones)sources.push(...this.schedule(ctx,voice,tone,start));
+    releaseOnEnd(voice,sources);
+    this.voices.push({id,priority:recipe.priority,startedAt:start,endsAt:start+recipeLength(recipe)+.05,out:voice,sources});
     this.buzz(recipe);
     this.emit();
     return true;
@@ -190,7 +187,7 @@ export class AudioEngine {
     for(const voice of this.voices)this.stopVoice(voice);
     this.voices=[];
     void this.ctx?.close?.().catch(()=>{});
-    this.ctx=undefined;this.master=undefined;
+    this.ctx=undefined;this.master=undefined;this.buses={};
     this.isUnlocked=false;
     this.listeners.clear();
   }
@@ -214,16 +211,16 @@ export class AudioEngine {
     if(recipe.vibrate&&this.state.vibration&&this.vibrateFn){try{this.vibrateFn([...recipe.vibrate]);}catch{/* ignored */}}
   }
 
-  private masterGain(){
-    // Squared volume tracks loudness perception better on a 0..1 slider.
-    return this.state.muted?0:this.state.volume*this.state.volume;
-  }
-
   private update(patch:Partial<AudioSettings>,persist=true){
-    this.state={...this.state,...patch};
-    if(persist){try{this.storage?.setItem(SETTINGS_KEY,JSON.stringify(this.state));}catch{/* storage blocked */}}
-    if(this.ctx&&this.master)this.master.gain.setTargetAtTime(this.masterGain(),this.ctx.currentTime,.02);
-    if(this.state.muted||this.state.volume<=0){for(const voice of this.voices)this.stopVoice(voice);this.voices=[];}
+    this.state={...copySettings(this.state),...patch};
+    if(persist)saveSettings(this.storage,this.state);
+    const ctx=this.ctx;
+    if(ctx)for(const bus of ['effects','music'] as const){
+      const param=this.buses[bus]?.gain,to=busGain(this.state[bus]);
+      // Live: a short exponential approach (no click), only for the bus that changed.
+      if(param&&this.busTarget[bus]!==to){this.busTarget[bus]=to;try{param.setTargetAtTime(to,ctx.currentTime,BUS_RAMP_S);}catch{/* ignored */}}
+    }
+    if(busQuiet(this.state.effects)){for(const voice of this.voices)this.stopVoice(voice);this.voices=[];}
     this.emit();
   }
 

@@ -14,6 +14,8 @@ const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
 import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
+import {getAudio} from './audio/engine.ts';
+import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,measureZones,type Rect} from './hud/zones.ts';
 import {freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
@@ -373,6 +375,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Near the top of the settings (the panel scrolls on a phone): right under the title and the way back.
   settingsContent.insertBefore(economyButton,settingsContent.querySelector('.explore-top')?.nextSibling??settingsContent.firstChild);
   if(!hud)$('.explore-layout').append(economyToast);
+  // Sound (config-audio-musica-efeitos): "Música" and "Efeitos" (volume and mute each) and the vibration, under the economy.
+  const sound=document.createElement('div');sound.className='explore-sound';
+  economyButton.after(sound);
+  const unmountSound=mountAudioControls(sound,getAudio());
+  signal.addEventListener('abort',unmountSound,{once:true});
   const slow=()=>{
     const next=autoEconomy(economy);if(!next)return;
     setEconomy(next);

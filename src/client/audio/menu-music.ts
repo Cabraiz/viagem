@@ -1,6 +1,6 @@
 /**
  * Menu music (NEW-20261014-ORQ-musica-do-menu): "Escolhe Logo, Rapaz", looping on the creation, classes and waiting-room
- * screens. One MusicTrack like the match's (element -> gain -> the engine's master, the same iOS unlock, the same whole-file
+ * screens. One MusicTrack like the match's (element -> gain -> the engine's music bus, the same iOS unlock, the same whole-file
  * blob fetch the service worker keeps).
  * - Network: nothing before boot() (src/client/ui/menu-music-boot.ts calls it after the page's load, idle time and a
  *   delay, never on 2g/slow-2g or Save-Data). Then one priority:'low' fetch that yields: a hold (the waiting room's match
@@ -8,13 +8,13 @@
  *   starts again (from the worker's cache once it finished) back in the menu with no hold.
  * - Sound: only after a gesture (the engine's unlock). One owner decides menu vs match: setMusicScene (explore.ts, from
  *   the room's phase). 'menu' fades in (MENU_IN_S); 'match' fades out (MENU_OUT_S) while the HUD's GameMusic takes over
- *   (its theme waits THEME_LOAD_DELAY_MS, so the two never overlap at full volume). Mute, volume and a hidden tab apply
+ *   (its theme waits THEME_LOAD_DELAY_MS, so the two never overlap at full volume). The "Música" mute and volume and a hidden tab apply
  *   as in the match.
  */
 import {bindPage,defaultElement,musicHost,MusicTrack,type MusicOptions,type Page,type TrackSpec} from './music.ts';
 import {getAudio} from './engine.ts';
 
-/** ~35 % of the master: louder than the match's theme (0.25), there are no effects over it. */
+/** ~35 % of the music bus: louder than the match's theme (0.25), there are no effects over it. */
 export const MENU_LEVEL=.35;
 export const MENU_TRACK:Readonly<TrackSpec>=Object.freeze({webm:'/audio/menu.webm',m4a:'/audio/menu.m4a',level:MENU_LEVEL,rewind:false});
 export const MENU_IN_S=2;

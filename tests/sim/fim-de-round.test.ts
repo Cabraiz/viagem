@@ -89,7 +89,7 @@ test('code review: a hero running in a straight line on open ground after the ca
     const ran=Math.hypot(hero.x-start.x,hero.y-start.y);
     if(ran<SPEED*6*.9)continue;
     for(const {e,d0} of behind){if(!sim.world.enemies.has(e.id))continue;const d=Math.hypot(e.x-hero.x,e.y-hero.y);
-      // Off every screen (≥ 25.5 u away) the old catch-up may close in; from there on the hero only gets away.
+      // Off every screen (≥ 29.9 u away at the D-046 widest camera) the old catch-up may close in; from there on the hero only gets away.
       assert.ok(d>=Math.min(d0,25)-.5,`seed ${seed}: ${e.id} (${e.kind}) closed from ${d0.toFixed(1)} to ${d.toFixed(1)} u while the hero ran ${ran.toFixed(1)} u`);checked++;}
   }
   assert.ok(checked>=5,`only ${checked} bichos behind were checked`);

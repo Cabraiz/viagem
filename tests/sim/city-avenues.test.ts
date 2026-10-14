@@ -508,17 +508,18 @@ test('cityVisible: the camera union scaled to the city (with lead); viewRadius �
     checked++;
   }
   assert.ok(checked===1500);
-  // Shape, not a circle: ~16.9 u along the avenues (axes), farther along the diagonals.
-  const axis={x:o.x+19,y:o.y}, diag={x:o.x+23/Math.SQRT2,y:o.y-23/Math.SQRT2};
-  assert.equal(cityVisible(o,{x:o.x,y:o.y-16}),true); assert.equal(cityVisible(o,axis),false); assert.equal(cityVisible(o,diag),true);
-  const city=buildCity(), cam=new AvenuePlanner(city.layout), circle=new AvenuePlanner(city.layout,{viewRadius:18});
+  // Shape, not a circle: ~19.7 u along the avenues (axes), ~28.8 u along the diagonals (D-046 widest camera, hero 44 px;
+  // it was 16.9 / 24.8 u with the 56 px floor).
+  const axis={x:o.x+21,y:o.y}, diag={x:o.x+27/Math.SQRT2,y:o.y-27/Math.SQRT2};
+  assert.equal(cityVisible(o,{x:o.x,y:o.y-19}),true); assert.equal(cityVisible(o,axis),false); assert.equal(cityVisible(o,diag),true);
+  const city=buildCity(), cam=new AvenuePlanner(city.layout), circle=new AvenuePlanner(city.layout,{viewRadius:19});
   const viewer=[pl0('v',o)];
-  assert.equal(cam.hiddenFrom(viewer,axis),true,'default: 19 u along an axis is off camera');
-  assert.equal(cam.hiddenFrom(viewer,diag),false,'default: 23 u along a diagonal is on camera');
-  assert.equal(circle.hiddenFrom(viewer,axis),false,'viewRadius 18: circle of 18 + lead covers 19 u');
-  assert.equal(circle.hiddenFrom(viewer,diag),true,'viewRadius 18: 23 u is outside 18 + lead');
-  assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+18+LEAD-.2}),false);
-  assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+18+LEAD+.2}),true);
+  assert.equal(cam.hiddenFrom(viewer,axis),true,'default: 21 u along an axis is off camera');
+  assert.equal(cam.hiddenFrom(viewer,diag),false,'default: 27 u along a diagonal is on camera');
+  assert.equal(circle.hiddenFrom(viewer,axis),false,'viewRadius 19: circle of 19 + lead covers 21 u');
+  assert.equal(circle.hiddenFrom(viewer,diag),true,'viewRadius 19: 27 u is outside 19 + lead');
+  assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+19+LEAD-.2}),false);
+  assert.equal(circle.hiddenFrom(viewer,{x:o.x,y:o.y+19+LEAD+.2}),true);
   const override=new AvenuePlanner(city.layout,{viewRadius:100,isVisible:()=>false});
   assert.equal(override.hiddenFrom(viewer,{x:o.x+10,y:o.y}),true,'isVisible overrides viewRadius');
   assert.equal(override.hiddenFrom(viewer,{x:o.x+3,y:o.y}),false,'…but not minPlayerDistance');
@@ -876,8 +877,8 @@ test('options/layout validation: NaN, ±Infinity and negative values never disab
   assert.equal(blindNaN.hiddenFrom([pl0('a',{x:q.x+3,y:q.y})],q),false,'minPlayerDistance NaN → 4');
   assert.equal(blindNaN.hiddenFrom([pl0('a',{x:q.x+5,y:q.y})],q),true);
   const camNaN=new AvenuePlanner(city.layout,{viewRadius:NaN}), o=avenuePoint('L',40);
-  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+19,y:o.y}),true,'viewRadius NaN → camera (19 u along an axis is hidden)');
-  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+23/Math.SQRT2,y:o.y+23/Math.SQRT2}),false,'viewRadius NaN → camera (23 u diagonal is seen)');
+  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+21,y:o.y}),true,'viewRadius NaN → camera (21 u along an axis is hidden)');
+  assert.equal(camNaN.hiddenFrom([pl0('a',o)],{x:o.x+27/Math.SQRT2,y:o.y+27/Math.SQRT2}),false,'viewRadius NaN → camera (27 u diagonal is seen)');
   assert.deepEqual(plan(new AvenuePlanner(city.layout,{enemySpeed:-1})),want,'negative enemySpeed → default');
   assert.deepEqual(plan(new AvenuePlanner(city.layout,{enemySpeed:0})),want,'zero enemySpeed → default');
   for(const g of plan(new AvenuePlanner(city.layout,{warningSeconds:-2})))assert.equal(g.warnTick,g.releaseTick,'negative warning → 0');

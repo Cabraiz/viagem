@@ -9,9 +9,11 @@
  *
  * Where the numbers come from (NEW-20261009-ORQ-camera-segue, D-009):
  *   - the hero is drawn 96 world px tall (character-sprites.ts: setScale(96 / frame height));
- *   - the floor says the hero is at least 56 CSS px on a 390 px short side, i.e. 56/390 = 14.4% of the short
- *     side. The camera may only zoom IN from that floor (VS ratio ±10% must still respect it), so the widest
- *     legal camera shows a short side of 96 × 390 / 56 = 668.6 world px;
+ *   - D-046 (NEW-20261013-ORQ-camera-zoom-out-e-roda): the player may zoom out by wheel or pinch down to a hero of
+ *     HERO_WIDEST_SCREEN_PX = 44 CSS px on a 390 px short side (11.3% of it; the smallest critter, bebado 62 world
+ *     px, still draws at 28.4 CSS px), never farther. So the widest legal camera shows a short side of
+ *     96 × 390 / 44 = 850.9 world px (it was 668.6 with the 56 px floor of D-009/D-030, HERO_MIN_SCREEN_PX, which
+ *     stays the closest zoom);
  *   - the long side is the short side × MAX_ASPECT. 2.34 covers 21:9 phones (Xperia 1); the reference
  *     390×844 is 2.16, most phones are 2.16-2.22;
  *   - margins in world px: an enemy sprite rises SPRITE_UP_PX above its feet (boss hp bar 186 px; elite
@@ -26,18 +28,29 @@
  * Projection (projection.ts): screen x = 42·(x − y), screen y = 21·(x + y) − height, after rotating the
  * offset by the view. One unit along the screen's x axis is 42·√2 = 59.4 px, along its y axis 29.7 px.
  *
- * Result (tests print it): with no camera hint the off-screen distance goes from 25.5 units (near the world
- * axes, bound by landscape) to 41.4 units (the screen axes of the views, bound by the long side of a 21:9
- * portrait phone), camera offset budget included. With a camera hint (one orientation and view) a portrait phone gets 10.2 units sideways.
+ * Result (tests print it): with no camera hint the off-screen distance goes from 29.9 units (near the world
+ * axes, bound by landscape) to 48.7 units (the screen axes of the views, bound by the long side of a 21:9
+ * portrait phone), camera offset budget included (25.5..41.4 before D-046). MAX_OFFSCREEN_DISTANCE 48.9,
+ * INTEREST_RADIUS 61, RECYCLE_DISTANCE 69 (were 41.5, 54, 62). With a camera hint (one orientation and view) a
+ * portrait phone gets 11.7 units sideways.
  */
 import type {Point} from './types.ts';
 
 export const TILE_X=42,TILE_Y=21;
 export const HERO_WORLD_PX=96;
+/**
+ * Hero size of the D-009/D-030 framing: 56 CSS px on a 390 px short side. Since D-046 it is the closest the player's
+ * zoom goes (wheel/pinch between 44 and 56 px, default ~47), no longer the widest camera: that is HERO_WIDEST_SCREEN_PX.
+ */
 export const HERO_MIN_SCREEN_PX=56,REFERENCE_SHORT_SIDE_PX=390;
+/**
+ * Hero size at the widest legal camera (D-046, zoom-out by wheel or pinch): 44 CSS px on a 390 px short side, so the
+ * smallest critter (ENEMY_ART bebado, 62 world px) still draws at 62 × 44 / 96 = 28.4 ≥ 28 CSS px.
+ */
+export const HERO_WIDEST_SCREEN_PX=44;
 export const MAX_ASPECT=2.34;
 /** Widest legal camera, in world px. */
-export const VISIBLE_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_MIN_SCREEN_PX;
+export const VISIBLE_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_WIDEST_SCREEN_PX;
 export const VISIBLE_LONG_PX=VISIBLE_SHORT_PX*MAX_ASPECT;
 export const SPRITE_UP_PX=190,SPRITE_DOWN_PX=12,SPRITE_SIDE_PX=80;
 export const ELEVATION_PX=40;
@@ -108,7 +121,7 @@ export const RING_INNER=5,RING_OUTER=8,RING_SLACK=3;
 /**
  * Protocol 4 area of interest (rede-mapa-grande): a client gets enemies, pickups, projectiles and telegraphs
  * within this radius of its player, so everything that can walk onto its screen is already there.
- * It covers the farthest visible point (41.4 u) and the whole spawn ring with its slack.
+ * It covers the farthest visible point (48.7 u) and the whole spawn ring with its slack: 61 u.
  */
 export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SLACK+1);
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */

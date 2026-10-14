@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import {Vignette} from './render/vignette.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,followFree,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -550,9 +550,9 @@ export class IslandScene extends Phaser.Scene {
     }
     // Out of the round, in the intermission and while following a teammate, nothing spawns against this screen: no budget.
     // The intermission has no spawns either (the budget is lifted, though the hero now stays at the centre there too).
-    // Beside the forge or Dona Cida's tray the budget is off too (framing.ts followFree): the hero must reach the band above it.
-    const run=this.hooks.net?.run?.phase;
-    this.follow.free=followFree({net:!!this.hooks.net,run,round:this.roundPhase,watching:!!this.watchPoint,beside:this.besideWindow});
+    // In a wave the budget holds beside a window too (Dona Cida's tray may stay open there): it is the off-screen contract
+    // (contract/offscreen.ts sizes MAX_OFFSCREEN_DISTANCE and INTEREST_RADIUS with it), so the camera goes as far as it lets.
+    const run=this.hooks.net?.run?.phase;this.follow.free=!!this.hooks.net&&(run!=='combat'||!!this.watchPoint||this.roundPhase==='prepare');
     // In the round (wave, intermission, watching) the body is at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi);
     // only the lobby/countdown (waiting panel), an open obra window and, in portrait, the forge or Dona Cida's tray frame
     // it beside the panel (framing.ts framesBeside).

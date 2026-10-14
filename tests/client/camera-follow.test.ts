@@ -376,25 +376,31 @@ test('besideFrom: forge / Dona Cida only on a portrait screen and over the centr
   assert.equal(besideFrom({viewport:PORTRAIT}),undefined,'nothing open');
 });
 
-test('Dona Cida open mid-wave on 390x664: the off-screen budget gives way, the hero reaches the band above the tray',async()=>{
-  // Review of 55757c8: with follow.free false (a wave) the budget (87.5 CSS px from the centre along y here) held the hero
-  // short of the band above the window. The tray as tall as the forge's 4 tags (y 290–502), where the band's centre is
-  // 91 px over the viewport centre.
-  const {besideFrom,followFree,framesBeside}=await import('../../src/client/framing.ts');
+test('a tray open mid-wave on 390x664: the off-screen budget holds, the camera goes as far as it lets',async()=>{
+  // The budget is the off-screen contract (contract/offscreen.ts sizes MAX_OFFSCREEN_DISTANCE and INTEREST_RADIUS with
+  // CAMERA_OFFSET_*): in a wave (follow.free false) the beside framing never goes past it. Dona Cida's real tray at
+  // 390x664 (y 332–504) asks less than the budget; a window as tall as the forge's 4 tags (y 290–502) asks for its
+  // band's centre 91 px over the viewport centre, past the 87.5 px the budget allows: the hero stops at the limit.
+  const {besideFrom,framesBeside}=await import('../../src/client/framing.ts');
   const {besideArea,crosses}=await import('../../src/client/hud/zones.ts');
-  const vp={width:390,height:664},z=followZoom(vp),hero={x:812.5,y:-301.75},tray={x:8,y:290,width:374,height:212};
-  const area=besideArea({useful:{x:0,y:224,width:390,height:66},announce:{x:0,y:136,width:390,height:88}},tray);
-  // With the budget the body stops short of the band's centre (the case the review measured).
-  {const c=new FollowCamera();c.free=false;c.beside=true;c.snap(hero,vp,z,area,HERO);const f=toScreen(hero,c.center,vp,z);
-    assert.ok(f.y-HERO.height/2-(area.y+area.height/2)>1,`with the budget: ${f.y-HERO.height/2} vs ${area.y+area.height/2}`);}
-  const beside=besideFrom({viewport:vp,tray:{kind:'cida',rect:tray}});
-  assert.equal(beside,'cida');
-  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false,beside}),true,'beside a tray: no budget');
-  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false}),false,'a wave without it keeps the budget');
-  assert.equal(followFree({net:true,run:'combat',round:'wave',watching:false,beside:'obra'}),false,'the obra window is an intermission thing');
-  const cam=new FollowCamera();cam.free=followFree({net:true,run:'combat',round:'wave',watching:false,beside});cam.beside=framesBeside('combat','wave',beside);
-  cam.snap(hero,vp,z,area,HERO);for(let i=0;i<120;i++)cam.step(hero,1/60,vp,z,area,HERO);
-  const f=toScreen(hero,cam.center,vp,z),box={x:f.x-HERO.width/2,y:f.y-HERO.height,width:HERO.width,height:HERO.height};
-  assert.ok(!crosses(box,tray,HERO_MARGIN),`hero ${JSON.stringify(box)} vs tray at ${tray.y}`);
-  assert.ok(Math.abs(box.y+HERO.height/2-(area.y+area.height/2))<.05,'body at the band\'s centre');
+  const vp={width:390,height:664},z=followZoom(vp),hero={x:812.5,y:-301.75},budget=offsetBudget(vp).y*z;
+  const announce={x:0,y:136,width:390,height:88};
+  const run=(tray:Rect,useful:Rect)=>{
+    const area=besideArea({useful,announce},tray),beside=besideFrom({viewport:vp,tray:{kind:'cida',rect:tray}});
+    const cam=new FollowCamera();cam.free=false;cam.beside=framesBeside('combat','wave',beside);
+    cam.snap(hero,vp,z,area,HERO);for(let i=0;i<120;i++)cam.step(hero,1/60,vp,z,area,HERO);
+    const f=toScreen(hero,cam.center,vp,z);
+    return {beside,area,body:f.y-HERO.height/2,box:{x:f.x-HERO.width/2,y:f.y-HERO.height,width:HERO.width,height:HERO.height}};
+  };
+  // The real tray: inside the budget, the body at the band's centre, the hero ± margin clear of it.
+  const cida={x:8,y:332,width:374,height:172},a=run(cida,{x:0,y:224,width:390,height:108});
+  assert.equal(a.beside,'cida');
+  assert.ok(Math.abs(a.body-(a.area.y+a.area.height/2))<.05,`Cida: body ${a.body} at the band's centre`);
+  assert.ok(!crosses(a.box,cida,HERO_MARGIN),`Cida: hero ${JSON.stringify(a.box)}`);
+  // Past the budget: the feet stop exactly `budget` CSS px over the viewport centre, short of the band's centre.
+  const tall={x:8,y:290,width:374,height:212},b=run(tall,{x:0,y:224,width:390,height:66});
+  const feet=b.body+HERO.height/2;
+  assert.ok(Math.abs(feet-(vp.height/2-budget))<.05,`at the budget's limit: feet ${feet}, limit ${vp.height/2-budget}`);
+  assert.ok(b.body>b.area.y+b.area.height/2+1,'short of the band\'s centre');
+  assert.ok(!crosses(b.box,tall,0),'still clear of the window itself');
 });

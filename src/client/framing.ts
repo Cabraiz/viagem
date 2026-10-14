@@ -207,15 +207,6 @@ export function besideFrom(input:{viewport:Viewport;waiting?:boolean;obra?:boole
   return crosses(centred,tray.rect,HERO_MARGIN)?tray.kind:undefined;
 }
 /**
- * Whether the follow camera drops the off-screen budget (FollowCamera.free): out of the round, watching a teammate, the
- * intermission (nothing spawns), and beside the forge or Dona Cida's tray (besideFrom): the tray may stay open in a
- * wave by the moto, and on a short phone (390x664) the budget held the hero ~2.5 px short of the band above it, inside
- * HERO_MARGIN of the window.
- */
-export function followFree(input:{net:boolean;run?:string;round?:string;watching:boolean;beside?:BesideWindow}){
-  return input.net&&(input.run!=='combat'||input.watching||input.round==='prepare'||input.beside==='forja'||input.beside==='cida');
-}
-/**
  * Whether the follow camera frames the hero beside a panel (FollowCamera.beside: the body centred in the useful area)
  * rather than at the viewport centre (BUG-20261013-ORQ-camera-centro-heroi: in the round the hero is at the centre,
  * whatever the HUD, its windows or the zoom). The exceptions, where centring would put the hero under a panel:

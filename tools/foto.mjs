@@ -13,11 +13,15 @@
 import {existsSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {claimSlot} from './vaga.mjs';
 
 const BOARD=process.env.VIAGEM_BOARD??'D:/Gits/viagem-board';
 const LOCKS=join(BOARD,'locks');
 const SERVER_FILE=join(LOCKS,'foto-servidor.json');
 const PAGES=Number(process.env.FOTO_PAGINAS??2);
+if(!(Number.isInteger(PAGES)&&PAGES>=1&&PAGES<=4))throw new Error(`FOTO_PAGINAS: 1 a 4, veio ${process.env.FOTO_PAGINAS}`);
+/** A page slot whose client stopped beating this long ago (crashed, Ctrl+C) is taken back (tools/vaga.mjs). */
+const PAGE_STALE_MS=20000;
 /** GPU flags per mode (measured in the card: d3d11 is the default on this PC). */
 const GPU={
   d3d11:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist'],
@@ -47,21 +51,11 @@ function scenes(){
   return [...src.matchAll(/^\s+'([a-z0-9-]+)':\{/gm)].map(m=>m[1]);
 }
 
-/** A free page slot of the PC's queue: mkdir is atomic; a slot older than STALE_MS (a crashed run) is taken back. */
-const STALE_MS=120000;
-async function slot(prefix,count,label){
-  mkdirSync(LOCKS,{recursive:true});
-  for(;;){
-    for(let i=1;i<=count;i++){
-      const dir=join(LOCKS,`${prefix}-${i}`);
-      try{mkdirSync(dir);writeFileSync(join(dir,'owner.txt'),`${label} ${new Date().toISOString()} pid ${process.pid}\n`);return ()=>rmSync(dir,{recursive:true,force:true});}
-      catch{
-        try{const age=Date.now()-Date.parse(readFileSync(join(dir,'owner.txt'),'utf8').split(' ')[1]);if(age>STALE_MS)rmSync(dir,{recursive:true,force:true});}catch{}
-      }
-    }
-    await sleep(250);
-  }
-}
+/** Slots held by this process: released on exit and on Ctrl+C / SIGTERM (a stuck slot would hold up every client). */
+const held=new Set();
+const hold=release=>{held.add(release);return ()=>{held.delete(release);release();};};
+const releaseAll=()=>{for(const r of held)r();held.clear();};
+process.on('exit',releaseAll);
 
 async function servidor(){
   const {chromium}=await playwright();
@@ -76,7 +70,11 @@ async function servidor(){
   mkdirSync(LOCKS,{recursive:true});
   writeFileSync(SERVER_FILE,JSON.stringify({wsEndpoint:server.wsEndpoint(),pid:process.pid,gpu,startedAt:new Date().toISOString()},null,1));
   console.log(`navegador compartilhado aberto (${gpu}): ${server.wsEndpoint()}\n${SERVER_FILE}`);
-  const close=async()=>{try{rmSync(SERVER_FILE,{force:true});}catch{}await server.close().catch(()=>{});process.exit(0);};
+  const close=async()=>{
+    // Only our own record: another `servidor` started meanwhile owns the file now.
+    try{if(JSON.parse(readFileSync(SERVER_FILE,'utf8')).pid===process.pid)rmSync(SERVER_FILE,{force:true});}catch{}
+    await server.close().catch(()=>{});process.exit(0);
+  };
   process.on('SIGINT',close);process.on('SIGTERM',close);process.on('SIGHUP',close);
   // `parar` writes a stop file: polled, so it works without signals on Windows.
   for(;;){await sleep(1000);if(existsSync(`${SERVER_FILE}.parar`)){rmSync(`${SERVER_FILE}.parar`,{force:true});await close();}}
@@ -89,12 +87,15 @@ async function fotos(list){
   const saida=resolve(opt('saida','.')),extra=opt('extra','');
   mkdirSync(saida,{recursive:true});
   let browser,release=()=>{},shared=false;
+  for(const sig of ['SIGINT','SIGTERM','SIGHUP'])process.on(sig,()=>{releaseAll();process.exit(130);});
   if(existsSync(SERVER_FILE)){
-    try{browser=await chromium.connect(JSON.parse(readFileSync(SERVER_FILE,'utf8')).wsEndpoint,{timeout:5000});shared=true;}catch{}
+    try{browser=await chromium.connect(JSON.parse(readFileSync(SERVER_FILE,'utf8')).wsEndpoint,{timeout:5000});shared=true;}
+    catch(e){console.log(`navegador compartilhado não respondeu (${String(e.message??e).split('\n')[0]}): abrindo um próprio`);}
   }
   if(!browser){
-    // No shared browser: the old rule (one of the 2 browser slots of the PC) for a browser of our own.
-    release=await slot('browser',2,'tools/foto.mjs');
+    // No shared browser: the old rule (one of the 2 browser slots of the PC) for a browser of our own. Those slots are
+    // never taken back (the queue and the old scripts do not beat): we only wait.
+    release=hold(await claimSlot({locks:LOCKS,prefix:'browser',count:2,label:'tools/foto.mjs'}));
     browser=await chromium.launch({headless:true,args:GPU.d3d11});
   }
   const files=[],t0=performance.now();
@@ -104,7 +105,7 @@ async function fotos(list){
   const contextFor=async mobile=>{let c=contexts.get(mobile);if(!c){c=await browser.newContext({deviceScaleFactor:1,isMobile:mobile,hasTouch:mobile,viewport:{width:mobile?390:1335,height:mobile?844:620}});contexts.set(mobile,c);}return c;};
   try{
     for(const cena of list)for(const [w,h] of telas){
-      const free=shared?await slot('foto-pagina',PAGES,`foto ${cena}`):()=>{};
+      const free=shared?hold(await claimSlot({locks:LOCKS,prefix:'foto-pagina',count:PAGES,label:`foto ${cena}`,staleMs:PAGE_STALE_MS})):()=>{};
       const start=performance.now();
       const ctx=await contextFor(w<h);
       let page;

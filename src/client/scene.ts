@@ -106,7 +106,11 @@ const TREE_PRELOAD_UNITS=24;
 /** Endless world: a tree whose sheet arrives on screen fades in over this long (instant with reduced motion). */
 const TREE_FADE_MS=220;
 
-/** window.__partidaPronta set once per page (the smoke's "entered the match" signal). */
+/**
+ * window.__partidaPronta, set once per page: the scene drew a run view with a round at tick > 0 (the room only steps
+ * in combat). The production smoke's "entered the match" in a fresh solo room. Not a general "in combat now": a room
+ * that already played keeps its tick in the lobby or the result, and the offline island (?ilha=1) never sets it.
+ */
 let matchSignalled=false;
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;

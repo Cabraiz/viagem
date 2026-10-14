@@ -452,6 +452,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0
                 ?besideSelector(freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
                 :z.useful;
+              // An open obra window (intermission): the camera frames the hero beside it, in the useful area that already
+              // leaves the window out (framing.ts framesBeside, BUG-20261013-ORQ-camera-centro-heroi).
+              if(controller)controller.scene.obraOpen=!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela');
               // Out or watching: the camera follows a teammate; the banner names who (a tap on a portrait changes it).
               hud.setWatching(controller?.scene.watching()?.name);
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));

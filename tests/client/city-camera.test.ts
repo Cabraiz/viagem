@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CITY_VIEW_SCALE,ENDLESS_FOLLOW,FollowCamera,cityZoom,followTarget,followWorld,followZoom,hordeUiScale,lookLimit,offsetBudget,
-  toScreen,worldZoom,LAG_X_PX,LAG_Y_PX,type Rect} from '../../src/client/framing.ts';
+  toScreen,worldZoom,LAG_X_PX,LAG_Y_PX,FOLLOW_TAU_S,type Rect} from '../../src/client/framing.ts';
 import {projectView,rotateVector} from '../../src/client/projection.ts';
 import {HERO_MIN_SCREEN_PX,HERO_WORLD_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX,visibleOffset} from '../../src/contract/offscreen.ts';
 import {ENEMY_ART} from '../../src/client/render/keys.ts';
@@ -122,7 +122,7 @@ function walk(world:typeof ENDLESS_FOLLOW,vp:typeof PORTRAIT,useful:Rect,dir:{x:
   return {screen,frames,look:cam.look,z};
 }
 
-test('walking in the city: full look-ahead at the city speed (same CSS px as the endless map), hero inside the useful area, lag inside the scaled budget',t=>{
+test('walking in the city: the same look-ahead as the endless map (none since camera-centro-heroi), the body trailing the viewport centre by ≤ speed × FOLLOW_TAU_S, lag inside the scaled budget',t=>{
   const cityWorld=followWorld(city);
   for(const [vp,useful] of [[PORTRAIT,USEFUL_P],[LANDSCAPE,USEFUL_L]] as const)for(let view=0;view<4;view++)for(const dir of [{x:1,y:0},{x:0,y:1},{x:1,y:1},{x:-1,y:.3}]){
     const c=walk(cityWorld,vp,useful,dir,view),e=walk(ENDLESS_FOLLOW,vp,useful,dir,view);
@@ -130,9 +130,11 @@ test('walking in the city: full look-ahead at the city speed (same CSS px as the
     assert.ok(Math.hypot(c.look.x*c.z-e.look.x*e.z,c.look.y*c.z-e.look.y*e.z)<1e-6,`${vp.width} view ${view} ${JSON.stringify(dir)}: same look-ahead in CSS px`);
     // The settled spot differs only by the smoothing trail (the city hero crosses the screen ~18% faster: 4.54 vs
     // 3.84 bodies/s with the 2× walk); it stays a few CSS px from the endless one (under 4 px at the base walk, the trail
-    // doubles with the walk) and the body stays in the useful area.
+    // doubles with the walk) and the body stays within speed × FOLLOW_TAU_S of the viewport centre (no look-ahead).
     assert.ok(Math.hypot(c.screen.x-e.screen.x,c.screen.y-e.screen.y)<8,`${JSON.stringify(c.screen)} vs ${JSON.stringify(e.screen)}`);
-    assert.ok(c.screen.x>=useful.x&&c.screen.x<=useful.x+useful.width&&c.screen.y-HERO.height>=useful.y-1e-6&&c.screen.y<=useful.y+useful.height+1e-6);
+    const step={x:dir.x/Math.hypot(dir.x,dir.y)*cityWorld.speed,y:dir.y/Math.hypot(dir.x,dir.y)*cityWorld.speed};
+    const o=projectView({x:0,y:0},view),s1=projectView(step,view),screenSpeed=Math.hypot(s1.x-o.x,s1.y-o.y)*c.z;
+    assert.ok(Math.hypot(c.screen.x-vp.width/2,c.screen.y-HERO.height/2-vp.height/2)<=screenSpeed*FOLLOW_TAU_S+.01,`${vp.width} view ${view}: ${JSON.stringify(c.screen)}`);
     const budget=offsetBudget(vp,CITY_VIEW_SCALE);
     for(const f of c.frames)assert.ok(Math.abs(f.hero.x-f.center.x)<=budget.x+LAG_X_PX*CITY_VIEW_SCALE+1e-6&&Math.abs(f.hero.y-f.center.y)<=budget.y+LAG_Y_PX*CITY_VIEW_SCALE+1e-6);
     if(view===0&&dir.x===1&&dir.y===0)t.diagnostic(`${vp.width}: city hero settles at ${c.screen.x.toFixed(1)},${c.screen.y.toFixed(1)} CSS px (endless ${e.screen.x.toFixed(1)},${e.screen.y.toFixed(1)})`);
@@ -171,10 +173,10 @@ test('switching world re-fits: island → city → island gives the city camera,
     assert.equal(before.z,followZoom(vp));assert.equal(inCity.z,cityZoom(vp));
     assert.deepEqual(after,before,'back on the island: byte-identical camera');
     assert.equal(cam.world,ENDLESS_FOLLOW);
-    // The hero's body sits on the useful centre in both worlds (CSS px).
+    // The hero's body sits on the viewport centre in both worlds (CSS px), whatever the useful area (camera-centro-heroi).
     for(const f of [before,inCity]){
       const feet=toScreen(projectView(hero,0),f.center,vp,f.z);
-      assert.ok(Math.abs(feet.x-(useful.x+useful.width/2))<1e-6&&Math.abs(feet.y-HERO.height/2-(useful.y+useful.height/2))<1e-6);
+      assert.ok(Math.abs(feet.x-vp.width/2)<1e-6&&Math.abs(feet.y-HERO.height/2-vp.height/2)<1e-6);
     }
     // Rotation: a snap in each of the 4 views keeps the hero on the same screen spot in the city.
     const spots=[0,1,2,3].map(view=>{const c=new FollowCamera();c.world=followWorld(city);const h=projectView(hero,view),z=cityZoom(vp);return toScreen(h,c.snap(h,vp,z,useful,HERO),vp,z);});

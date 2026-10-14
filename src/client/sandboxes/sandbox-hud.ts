@@ -250,8 +250,8 @@ if(bordas)void (async()=>{
     const zones=computeZones({viewport,status:[rect(document.querySelector('.hs-cam')),rect(document.querySelector('.hs-gear')),...all('.rh-top>*')],
       team:union(all('.rh-member')),joystick:rect(document.querySelector('.hs-stick')),skill:rect(document.querySelector('.hs-attack')),minimap:shown,offer:open});
     const area=zones.useful,zoom=followZoom(viewport),hero={x:12,y:17};
-    // The camera puts the hero's body in the middle of the useful area (framing.ts anchorOf), feet 28 px under it.
-    const anchor={x:area.x+area.width/2,y:area.y+area.height/2+28},center=projectView(hero,view);
+    // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
+    const anchor={x:viewport.width/2,y:viewport.height/2+28},center=projectView(hero,view);
     const locate=(p:{x:number;y:number})=>{const q=toScreen(projectView(p,view),center,viewport,zoom);return {x:q.x-viewport.width/2+anchor.x,y:q.y-viewport.height/2+anchor.y};};
     const states=new Map(view0.players.map(p=>[p.id,p]));
     const spots=[{x:12,y:17},{x:2,y:15},{x:13,y:2},{x:24,y:20},{x:21,y:6},{x:4,y:26}];
@@ -345,8 +345,8 @@ if(cidade)void (async()=>{
     const zones=computeZones({viewport,...controls,minimap:rect(hud.cityMinimap?.element)});
     const layout=city.cityHudLayout({viewport,windowOpen:!!open,textScale:hud.edges!.scale()>1.1?1.25:1,controls});
     const area=zones.useful;
-    // The camera puts the hero's body in the middle of the useful area (framing.ts anchorOf), feet 28 px under it.
-    const anchor={x:area.x+area.width/2,y:area.y+area.height/2+28},center=projectView(hero,vista,field);
+    // The camera puts the hero's body at the viewport centre in the round (framing.ts FollowCamera, BUG-20261013-ORQ-camera-centro-heroi), feet 28 px under it.
+    const anchor={x:viewport.width/2,y:viewport.height/2+28},center=projectView(hero,vista,field);
     const locate=(p:{x:number;y:number})=>{const q=toScreen(projectView(p,vista,field),center,viewport,zoom);return {x:q.x-viewport.width/2+anchor.x,y:q.y-viewport.height/2+anchor.y};};
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     Object.assign(heroEl.style,{left:`${heroBox.x}px`,top:`${heroBox.y}px`});

@@ -34,6 +34,7 @@ import type {CidaItemId} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
+import {teamColumnVar} from './fone-layout.ts';
 
 export interface RunHudOptions {
   localId:string;
@@ -192,7 +193,7 @@ export class RunHud {
     if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
-      this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
+      this.columnObserver=new ResizeObserver(()=>this.writeColumn());
       this.columnObserver.observe(team.el);}
     this.setInput(options.input??(finePointer()?'mouse':'touch'));
   }
@@ -208,10 +209,13 @@ export class RunHud {
     this.el.dataset.hud=hud;
     if(hud==='fone'){if(this.teamEl.parentElement!==this.topEl)this.topEl.append(this.teamEl);}
     else if(this.teamEl.parentElement!==this.el)this.stack.after(this.teamEl);
-    this.relayout();
+    this.writeColumn();this.relayout();
   }
-  /** The phone's layout is on (setInput('touch')). */
-  get phone(){return this.el.dataset.hud==='fone';}
+  /** --rh-coluna from the team column's width, the desktop's only (fone-layout.ts teamColumnVar). */
+  private writeColumn(){
+    const v=teamColumnVar(this.el.dataset.hud==='fone',this.teamEl.getBoundingClientRect().width);
+    if(v===undefined)this.el.style.removeProperty('--rh-coluna');else this.el.style.setProperty('--rh-coluna',v);
+  }
 
   /** A relayed emote (net onEmote): the sender's portrait shows it for 2.2 s, starting at the next view. */
   emote(playerId:string,id:EmoteId,now=performance.now()){this.moods.record(playerId,id,now);}

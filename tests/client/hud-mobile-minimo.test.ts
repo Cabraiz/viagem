@@ -11,7 +11,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
 import {declarations} from '../../scripts/lint-design.mjs';
-import {foneLayout,fanWidth,gearRect,FONE,DESKTOP_RING} from '../../src/client/hud/fone-layout.ts';
+import {foneLayout,fanWidth,gearRect,teamColumnVar,FONE,DESKTOP_RING} from '../../src/client/hud/fone-layout.ts';
+import {barClock} from '../../src/client/hud/camp.ts';
+import {SIM_HZ,type RunView} from '../../src/contract/index.ts';
 import {auditBoxes,crosses,bottom,right,EDGE_COLUMN,HERO_MARGIN,MIN_PLAY_SIDE,THUMB_GAP,type AuditBox,type Rect} from '../../src/client/hud/zones.ts';
 import {NAME_TAP_MS} from '../../src/client/hud/team.ts';
 
@@ -56,7 +58,7 @@ test('fone.css: the user\'s list — minimap top-left, no round chip, no R$ nor 
   // The chaveiro's clock inside the bar: hidden on the desktop (camp.css), shown by the phone's rule.
   assert.equal(value(CAMP,'.rh-camp-relogio','display'),'none');
   assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-relogio','display'),'flex');
-  assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-com-relogio .rh-camp-num','display'),'none');
+  assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic)','display'),'none');
 });
 
 test('fone.css: the fan — half-size portraits overlapping like cards, names only on a tap',()=>{
@@ -121,4 +123,52 @@ test('gear: explore.css .explore-config numbers (18 px corner; 12/14 on a narrow
   assert.deepEqual(gearRect({width:360,height:800}),{x:298,y:12,width:48,height:48});
   assert.deepEqual(gearRect({width:844,height:390}),{x:782,y:12,width:48,height:48});
   assert.equal(value(EXPLORE,'.explore-config','width'),'48px');
+});
+
+test('review 1: on the phone the fan writes no --rh-coluna and the 125 % combat strip takes the width',()=>{
+  assert.equal(teamColumnVar(true,358),undefined,'the fan is not a column');
+  assert.equal(teamColumnVar(false,53.2),'54px','the desktop column keeps its width');
+  const sel='@media (min-height:501px) .rh.rh[data-hud=fone] .rh-offer[data-mode=combat]';
+  assert.equal(value(FONE_CSS,sel,'max-width'),'calc(100vw - var(--rh-l) - var(--rh-r))');
+  // hud.css's 125 % rule (0,4,0) loses to the phone's (0,5,0): the strip is never capped by a team column on the phone.
+  assert.ok(HUD.some(d=>d.selector.includes(':root[data-texto="125"] .rh-offer[data-mode=combat]')));
+});
+
+test('review 2: the forge head keeps three cells, the R$ under the title (never a fourth column)',()=>{
+  assert.equal(value(CAMP,'.rh-forge','grid-template-columns'),'auto minmax(0,1fr) 44px');
+  assert.equal(value(CAMP,'.rh-forge-titulo','grid-column'),'1');assert.equal(value(CAMP,'.rh-forge-titulo','flex-direction'),'column');
+  assert.equal(value(CAMP,'.rh-forge-note','grid-column'),'2');assert.equal(value(CAMP,'.rh .rh-forge-close','grid-column'),'3');
+  assert.ok(!CAMP.some(d=>d.selector==='.rh-forge-grana'&&d.prop==='grid-column'),"the R$ rides in the title's cell");
+  // Landscape: the head is one row (the standing line goes, an answer is one line cut with an ellipsis).
+  assert.equal(value(CAMP,'@media (max-height:500px) .rh-forge-note','white-space'),'nowrap');
+  assert.equal(value(CAMP,'@media (max-height:500px) .rh-forge-note[data-padrao]','visibility'),'hidden');
+});
+
+/** A RunView with only what roundInfo reads. */
+const viewOf=(round:Partial<NonNullable<RunView['round']>>|undefined,objective?:Partial<NonNullable<RunView['objective']>>)=>({tick:0,round:round&&{index:3,total:10,remaining:7,phase:'wave',phaseEndsTick:0,...round},objective,enemies:[],players:[],events:[],structures:[]}) as unknown as RunView;
+test("review 3–4: the bar's clock — the intermission countdown (urgent at 5 s), the chaveiro's wins, words for the screen reader",()=>{
+  assert.equal(barClock(viewOf({phase:'wave'})),undefined,'nothing in a wave');
+  const prep=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12}));
+  assert.ok(prep&&prep.icon==='relogio'&&/^\d+ s$/.test(prep.text),JSON.stringify(prep));
+  assert.equal(prep!.urgent,false);assert.match(prep!.aria,/^Intervalo \d+ s$/);
+  const late=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*4}));
+  assert.equal(late?.urgent,true,'≤ 5 s: urgent, like the round chip');
+  const moto=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12},{ended:false,etaS:532,moto:{mode:'anda'} as never}));
+  assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:'moto',text:'8:52'},"the chaveiro's clock wins");
+  assert.match(moto!.aria,/Chaveiro chega em 8:52/);
+  // On the phone the clock is shown (fone.css) and its words are an .rh-sr span (camp.ts), the picture aria-hidden.
+  const camp=readFileSync(new URL('../../src/client/hud/camp.ts',import.meta.url),'utf8');
+  assert.match(camp,/el\('span','rh-sr',clock\)/);assert.match(camp,/clockPicture\.setAttribute\('aria-hidden','true'\)/);
+  assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-relogio[data-urgente] b','background'),'var(--c-cone)');
+});
+
+test("review 5–6: each fan card has a hit area past its edge; the clock rides over the bar's row, not inside the track",()=>{
+  assert.equal(value(FONE_CSS,'.rh.rh[data-hud=fone] .rh-member::after','position'),'absolute');
+  const inset=value(FONE_CSS,'.rh.rh[data-hud=fone] .rh-member::after','inset').split(/\s+/).map(px);
+  assert.ok(inset.every(v=>v<0),'past the card on every side');
+  assert.ok(FONE.card-2*inset[1]+0>=FONE.card,'wider than the card');
+  assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-relogio','inset'),'0');
+  assert.equal(value(FONE_CSS,'.rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic)','display'),'none');
+  const camp=readFileSync(new URL('../../src/client/hud/camp.ts',import.meta.url),'utf8');
+  assert.match(camp,/el\('span','rh-camp-relogio',wallRow\)/,'not a child of the track (overflow: hidden)');
 });

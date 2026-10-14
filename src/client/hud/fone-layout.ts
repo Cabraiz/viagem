@@ -100,3 +100,10 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
   const hero={x:Math.round(viewport.width/2-HERO_SIDE/2),y:Math.round(viewport.height/2-HERO_SIDE/2),width:HERO_SIDE,height:HERO_SIDE};
   return {orientation,minimap,gear,band,level,bar,fan:fanRect,...(boss?{boss}:{}),zones,hero};
 }
+
+/**
+ * The --rh-coluna the HUD writes from the team strip's width (NEW-UX-nome-do-time-na-coluna): the desktop's column only.
+ * On the phone the strip is the fan inside the top band (as wide as the band), not a column: no value (hud.css falls
+ * back to 54 px and fone.css starts the windows at the left edge), or the 125 % combat strip would be squeezed.
+ */
+export const teamColumnVar=(phone:boolean,teamWidth:number):string|undefined=>phone?undefined:`${Math.ceil(teamWidth)}px`;

@@ -31,10 +31,17 @@
 .rh[data-hud=fone] .rh-top .rh-camp-barra{flex:1 1 auto;min-width:48px}
 .rh[data-hud=fone] .rh-camp-track{flex:1 1 auto;width:100%;height:18px}
 .rh[data-hud=fone] .rh-camp-num{position:absolute;top:0;bottom:0;left:22px;right:0;justify-content:center;pointer-events:none}
-.rh[data-hud=fone] .rh-camp .rh-camp-hp,.rh[data-hud=fone] .rh-camp-relogio b{min-width:0;padding:0 4px;border-radius:var(--r-etiqueta);background:var(--c-ficha);font:400 var(--t-13)/16px var(--f-cartaz);text-align:center}
-.rh[data-hud=fone] .rh-camp-relogio{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:1px;line-height:0;white-space:nowrap}
+.rh[data-hud=fone] .rh-camp .rh-camp-hp,.rh[data-hud=fone] .rh-camp-relogio-ficha b{min-width:0;padding:0 4px;border-radius:var(--r-etiqueta);background:var(--c-ficha);font:400 var(--t-13)/16px var(--f-cartaz);text-align:center}
+/* A clock (camp.ts barClock: the chaveiro's, or the intermission's countdown) over the whole bar's row, not inside the
+   track (its overflow would cut it at 125 % on a 360 px phone): the base sticker gives it its room while it shows. */
+.rh[data-hud=fone] .rh-camp-relogio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.rh[data-hud=fone] .rh-camp-relogio-ficha{display:flex;align-items:center;gap:1px;line-height:0;white-space:nowrap}
 .rh[data-hud=fone] .rh-camp .rh-camp-relogio .ic{width:16px;height:16px}
-.rh[data-hud=fone] .rh-camp-com-relogio .rh-camp-num{display:none}
+.rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic){display:none}
+/* The last 5 s of the intermission: Laranja Cone with Breu text and the round chip's pulse (topbar.ts rh-urgent). */
+.rh[data-hud=fone] .rh-camp-relogio[data-urgente] b{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
+.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:rh-pulse .6s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:none}}
 
 /* ---------- The team: a fan of half-size portraits (44 → 24 px), like cards in a hand ---------- */
 .rh.rh[data-hud=fone] .rh-top>.rh-team{position:static;transform:none;flex:0 0 100%;display:flex;flex-direction:row;justify-content:center;gap:0;padding:2px 0 0;pointer-events:none;touch-action:auto}
@@ -45,6 +52,9 @@
 .rh.rh[data-hud=fone] .rh-member:last-child:not(:first-child){--leque-giro:10deg;--leque-desce:3px}
 .rh.rh[data-hud=fone] .rh-team:is([data-count="5"],[data-count="6"]) .rh-member{margin:0 -4px}
 .rh.rh[data-hud=fone] .rh-member-ring{width:24px;height:24px;padding:2px}
+/* An invisible hit area a little past each card (a spectator taps one to watch them): where two overlap, the later
+   card, drawn on top, takes the tap. */
+.rh.rh[data-hud=fone] .rh-member::after{content:'';position:absolute;inset:-6px -4px}
 .rh.rh[data-hud=fone] .rh-member-hp{width:22px;height:4px}
 /* No names under the fan: a tap (or a held finger) on a portrait shows that one's name under it, level (team.ts). */
 .rh.rh[data-hud=fone] .rh-member-name{display:none;position:absolute;z-index:2;top:calc(100% + 2px);left:50%;transform:translateX(-50%) rotate(calc(0deg - var(--leque-giro)))}
@@ -66,6 +76,8 @@
   /* Portrait: no team column, so the announcement slot and the windows start at the screen's left edge. */
   .rh.rh[data-hud=fone] .rh-stack{left:calc(var(--rh-l) + 8px)}
   .rh.rh[data-hud=fone] .rh-offer{--of-left:0px}
+  /* The combat strip too: no team column to keep clear of (hud.css keeps 70–94 px for it, 125 % included). */
+  .rh.rh[data-hud=fone] .rh-offer[data-mode=combat]{max-width:calc(100vw - var(--rh-l) - var(--rh-r))}
   .rh.rh[data-hud=fone] :is(.rh-forge,.rh-cida){left:var(--rh-l)}
 }
 @media (max-height:500px){

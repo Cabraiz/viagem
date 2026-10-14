@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Room,OWNER_GAP_MS,type Peer} from '../../multiplayer/room.ts';
+import {CITY_OBJECTIVE_DEFAULT,Room,OWNER_GAP_MS,type Peer} from '../../multiplayer/room.ts';
+import {CAR_ID} from '../../src/contract/index.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import type {MapRef} from '../../src/protocol/map-select.ts';
@@ -45,7 +46,20 @@ test('a city room: frames carry the 4 barricades, and their wire ids stay the sa
   // Each barricade stands on its own boca (the client finds the mouth by the nearest one).
   const bocas=JSON.parse(cityText).points.bocas as Record<string,{x:number;y:number}>;
   for(const b of barricades.at(-1)!)assert.ok(Object.values(bocas).some(p=>Math.hypot(p.x-b.x,p.y-b.y)<.5),`${b.id} on a boca`);
-  assert.equal(seen.at(-1)!.filter(s=>s.kind==='muralha').length,1);
+  // The base's own structure: the chaveiro's car by default (CITY_OBJECTIVE_DEFAULT, D-047), where the wall stood.
+  assert.equal(CITY_OBJECTIVE_DEFAULT,'chaveiro');
+  assert.equal(seen.at(-1)!.filter(s=>s.kind===CAR_ID).length,1,'the car');
+  assert.equal(seen.at(-1)!.filter(s=>s.kind==='muralha').length,0,'no wall beside the car');
+});
+
+test('a city room in the wall mode (objective false): the 4 barricades and the wall',async()=>{
+  const room=new Room(1000,7,{cityText,cityRef:CITY,cityPlayable:true,objective:false}),a=peer();join(room,a,1000);
+  say(room,a,{t:'setMap',map:'cidade-nevada'},1000+OWNER_GAP_MS);await room.ready();
+  for(let i=0;i<40;i++)room.advance(2000+i*50);
+  const last=structuresSeen(a.frames).at(-1)!;
+  assert.equal(last.filter(s=>s.kind==='barricada').length,4);
+  assert.equal(last.filter(s=>s.kind==='muralha').length,1);
+  assert.equal(last.filter(s=>s.kind===CAR_ID).length,0);
 });
 
 test('the island and the endless rooms still send only the wall',()=>{

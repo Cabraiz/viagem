@@ -31,6 +31,7 @@ import {ABRINDO_SECONDS,ALARM_MAX_SECONDS,ALARM_PER_HIT_SECONDS,BOSS_ETA_SECONDS
   CIDA_STOCK,ENTREGA_CLEAN_SECONDS,ENTREGA_SECONDS,LOMBADAS,LOMBADA_SECONDS,MORTA_ALONE_SECONDS,lombadaLength,PUSH_SECONDS,SALE_GAP_SECONDS,
   GRANA_PER_KILL,TOMBO_GAP_SECONDS,TOMBO_SECONDS,createChaveiro,planChaveiro,type ChaveiroSystem} from '../../src/sim/chaveiro/system.ts';
 import {ROUND_COUNT,planRound} from '../../src/rules/index.ts';
+import {PUSH_BOTS,objectiveTask} from '../../src/sim/bot-brain.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -144,12 +145,18 @@ test('car hit: alarm (+1.5 s per hit, at most 8 s ahead), the moto rides around 
   assert.ok(crowd.sys.state.moto.s>s1,'the delay is bounded by real time');
 });
 
-test('car limit: elite 3 and boss 3 hits, parts at 25/50/75/90 %, perda total at the limit (defeat, once)',()=>{
+test('car limit: elite 3 and boss 2 hits (one alarm each), parts at 25/50/75/90 %, perda total at the limit (defeat, once)',()=>{
   const r=rig();r.step(2);r.world.flush();
+  const t0=r.world.tick;
   r.sys.hitCar(r.world,addEnemy(r.world,'el',CAR,{elite:true}));
-  assert.equal(r.sys.state.car.hits,3);
+  assert.equal(r.sys.state.car.hits,CAR_HIT_UNITS.elite);
+  // The alarm counts the blow, not its weight (a boss at the car stalls the moto half the time, not for good).
+  assert.equal(r.sys.state.car.alarmUntil,t0+ticks(ALARM_PER_HIT_SECONDS));
   r.sys.hitCar(r.world,addEnemy(r.world,'bo',CAR,{boss:true}));
-  assert.equal(r.sys.state.car.hits,6);assert.equal(r.sys.state.budget,BUDGET_BASE+6*BUDGET_PER_HIT);
+  const both=CAR_HIT_UNITS.elite+CAR_HIT_UNITS.boss;
+  assert.deepEqual([CAR_HIT_UNITS.elite,CAR_HIT_UNITS.boss],[3,2]);
+  assert.equal(r.sys.state.car.alarmUntil,t0+2*ticks(ALARM_PER_HIT_SECONDS));
+  assert.equal(r.sys.state.car.hits,both);assert.equal(r.sys.state.budget,BUDGET_BASE+both*BUDGET_PER_HIT);
   const normal=addEnemy(r.world,'n',CAR);
   while(r.sys.state.car.hits<CAR_LIMIT)r.sys.hitCar(r.world,normal);
   const ev=r.world.flush();
@@ -160,7 +167,7 @@ test('car limit: elite 3 and boss 3 hits, parts at 25/50/75/90 %, perda total at
   assert.deepEqual(r.outcomes,['defeat'],'reported once');assert.deepEqual(r.sys.targets(),[]);
   const res=r.sys.result(r.world.tick,r.world.round)!;assert.equal(res.cause,'car');
   assert.equal(res.outcome,'defeat');assert.equal(res.hits,CAR_LIMIT);assert.ok(res.eta>0);
-  // The last blow past the limit bills only the hits left (budget = base + R$ 8 per hit taken).
+  // The last blow past the limit bills only the hits left (budget = BUDGET_BASE + BUDGET_PER_HIT per hit taken).
   const over=rig();over.step(2);over.sys.state.car.hits=CAR_LIMIT-1;
   over.sys.hitCar(over.world,addEnemy(over.world,'el2',CAR,{elite:true}));
   assert.equal(over.sys.state.car.hits,CAR_LIMIT);assert.equal(over.sys.state.budget,BUDGET_BASE+BUDGET_PER_HIT);
@@ -228,6 +235,22 @@ test('tombo: an enemy touching the riding moto knocks it over for 4 s, then not 
   follow();r.step(1);assert.equal(r.sys.state.moto.mode,'tombo');
   // The moto is a siege target only while riding, within the lure reach.
   const t=r.sys.targets().find(x=>x.id==='moto');assert.ok(t&&t.reach===6);
+});
+
+test('ETA: the alarm and a fall run out together, so the wait is the later of the two (not their sum), in the ETA and the delivery mark',()=>{
+  const r=rig();r.step(10);
+  const tick=r.world.tick,eta0=r.sys.eta(tick),mark0=r.sys.view(tick).delivery?.etaS;
+  const m=r.sys.state.moto,car=r.sys.state.car;
+  m.tomboUntil=tick+ticks(TOMBO_SECONDS);car.alarmUntil=tick+ticks(ALARM_MAX_SECONDS);
+  assert.ok(Math.abs(r.sys.eta(tick)-(eta0+ALARM_MAX_SECONDS))<1e-9,`${r.sys.eta(tick)} vs ${eta0}+${ALARM_MAX_SECONDS}`);
+  if(mark0!==undefined)assert.equal(r.sys.view(tick).delivery!.etaS,mark0+ALARM_MAX_SECONDS);
+  // A fall that outlasts the alarm: the fall's end.
+  car.alarmUntil=tick+ticks(1);
+  assert.ok(Math.abs(r.sys.eta(tick)-(eta0+TOMBO_SECONDS))<1e-9);
+  // And the moto really stands still only until the later deadline.
+  car.alarmUntil=tick+ticks(ALARM_MAX_SECONDS);
+  const s=m.s;r.step(ticks(ALARM_MAX_SECONDS)-1);assert.equal(m.s,s);
+  r.step(2);assert.ok(m.s>s);
 });
 
 test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phase, item); she sells to an enemy every 20 s',()=>{
@@ -312,9 +335,15 @@ test('the bill: kills pay the team\'s Grana (1/5/50), abrindo 15 s at the car, v
 });
 
 test('the boss is called once, when the ETA drops below BOSS_ETA_SECONDS (60 s), on the route behind the moto',()=>{
-  const r=rig();r.step(1);
+  const r=rig();
+  // A crew of two pushes every dead moto (PUSH_SECONDS each); alone, each one counts its by-itself time.
+  addPlayer(r.world,'p1',CAR);r.step(1);
+  const solo=r.sys.eta(r.world.tick);
+  addPlayer(r.world,'p2',CAR);r.step(1);
   const eta0=r.sys.eta(r.world.tick);
   assert.ok(eta0>420&&eta0<700,`ETA at the start ${eta0} s`);
+  const mortas=r.sys.stops.filter(o=>o.kind==='morta').length;
+  assert.ok(Math.abs(solo-eta0-mortas*(MORTA_ALONE_SECONDS-PUSH_SECONDS)-1/SIM_HZ)<1e-6,`solo ${solo} vs crew ${eta0}`);
   // Skip to the last stretch: past every stop, ~100 s of riding left.
   const m=r.sys.state.moto,speed=r.sys.route.length/(420*SIM_HZ);
   m.stop=r.sys.stops.length;m.s=r.sys.route.length-speed*ticks(100-ABRINDO_SECONDS);
@@ -327,7 +356,7 @@ test('the boss is called once, when the ETA drops below BOSS_ETA_SECONDS (60 s),
   assert.ok(Math.hypot(at.x-CAR.x,at.y-CAR.y)>10,'away from the car');
 });
 
-test('the boss besieges the car when no player is nearer: one blow (3 hits) every 3 s, players first otherwise',()=>{
+test('the boss besieges the car when no player is nearer: one blow (2 hits) every 3 s, players first otherwise',()=>{
   const r=rig();
   const hits:number[]=[];
   const boss=createBoss({siege:()=>r.sys.targets().find(t=>t.id===CAR_ID),hitSiege:(ctx,id,b)=>{hits.push(ctx.tick);r.sys.hitCar(ctx,b);}});
@@ -423,4 +452,18 @@ test('a checkpoint taken while the called boss still stands forgets that fight: 
   const m=b.sys.chaveiro!.state.moto;m.stop=b.sys.chaveiro!.stops.length;m.task='anda';m.s=b.sys.chaveiro!.route.length-.01;
   for(let i=0;i<3;i++)b.world.step();
   assert.ok([...b.world.enemies.values()].some(e=>e.boss),'called again');
+});
+
+test('bots and a dead moto: two standing players make a crew and the two nearest bots push; a bot alone stays home',()=>{
+  const player=(id:string,x:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y:0});
+  const view=(players:ReturnType<typeof player>[])=>({tick:100,players,
+    objective:{moto:{x:0,y:0,mode:'morta'},etaS:300,budget:120}} as unknown as Parameters<typeof objectiveTask>[0]);
+  assert.equal(PUSH_BOTS,2);
+  assert.equal(objectiveTask(view([player('b1',5)]),'b1',['b1']),undefined,'solo: the moto starts by itself, the bot keeps the car');
+  const crew=view([player('b1',5),player('b2',9),player('b3',3)]);
+  assert.equal(objectiveTask(crew,'b3',['b1','b2','b3'])?.kind,'push');
+  assert.equal(objectiveTask(crew,'b1',['b1','b2','b3'])?.kind,'push');
+  assert.equal(objectiveTask(crew,'b2',['b1','b2','b3']),undefined,'only the two nearest');
+  // A person standing makes the crew with one bot.
+  assert.equal(objectiveTask(view([player('p',20),player('b1',5)]),'b1',['b1'])?.kind,'push');
 });

@@ -27,6 +27,10 @@ import {CityMinimap,BigMapState,cityHudLayout,CityObjectiveTracker,createObjecti
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
+import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
+import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
+import {icon} from '../ui/icon.ts';
+import type {CidaItemId} from '../../contract/index.ts';
 
 export interface RunHudOptions {
   localId:string;
@@ -51,6 +55,8 @@ export interface RunHudOptions {
    * only for a city barricade's repair ('barricada-N', camp.ts).
    */
   onForge?(recipe:RecipeId,target?:string):number|undefined;
+  /** Dona Cida tap (D-047, hud/cida.ts): sends {t:'cida'}, returns its request id (undefined: cannot reach the room now). */
+  onCida?(item:CidaItemId):number|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
@@ -143,6 +149,12 @@ export class RunHud {
   private routeInput?:CityRouteInput;
   /** What the objective wants to show now (before the slot's turn), and its box (read with the slot's other rows). */
   private objectiveWant?:CityObjective;private objectiveRect?:Rect;
+  /** Dona Cida's button and tray (D-047, hud/cida.ts). */
+  private readonly cida:CidaPart;
+  /** Why the chaveiro stopped (D-047): one quiet row of the announcement slot for REASON_MS (hud/chaveiro.ts MotoReason). */
+  private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
+  /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
+  private obraOpen=false;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
@@ -157,14 +169,16 @@ export class RunHud {
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
     const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
+    const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
+    const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
     stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
-    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp];
-    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,offer.chip,this.result.el);
+    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida];
+    this.el.append(hurt.el,top.el,stack,team.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.minimap=new Minimap(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.minimap.el.remove();this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
@@ -173,7 +187,7 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>{this.el.style.setProperty('--rh-coluna',`${Math.ceil(team.el.getBoundingClientRect().width)}px`);});
@@ -260,6 +274,7 @@ export class RunHud {
     // The intermission offer opens after the FEITO stamp (design review D2): never two stamps in the same second.
     const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
+    this.stepReason(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);
@@ -358,10 +373,27 @@ export class RunHud {
   /** The kill-cam picture (viewport CSS px) while it shows, for the scene's second camera (VGM-053B). */
   killcamRect(){return this.el.classList.contains('rh-ended')?undefined:this.killcam.rect();}
 
+  /**
+   * Why the chaveiro stopped (D-047): the view where he stops queues one row (it waits for notices, the kill-cam and the
+   * coach like the shell's rows, and moves off the hero with the slot); riding again or the end takes it out of line.
+   */
+  private stepReason(view:RunView){
+    const step=this.reason.step(this.el.classList.contains('rh-ended')?undefined:liveObjective(view)?.moto.mode);
+    if(step.show){
+      const row=this.reasonRow;row.innerHTML=icon('moto');row.append(step.show.text);
+      row.dataset.urgente=String(step.show.urgent);row.dataset.modo=step.show.mode;
+      this.queueRow(row,REASON_MS);
+    }else if(step.drop)this.dropRow(this.reasonRow);
+  }
+  /** The reason row on screen now (the sandbox and the acceptance scripts). */
+  get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
+  /** The room's answer to a Dona Cida tap (D-047, {t:'bought'}). */
+  bought(answer:CidaAnswer){this.cida.bought(answer);}
+
   /** The room's answer to a forge tap (VGM-046B). */
   forged(answer:ForgeAnswer){this.camp.forged(answer);}
   /** The hero's predicted spot and the base's bearing on screen (explore.ts), for the forge and the horn arrow. */
-  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
+  setHero(spot:HeroSpot|undefined){this.camp.setHero(spot);this.cida.setHero(spot);this.hero=spot&&{x:spot.x,y:spot.y};}
 
   showResult(result:RunResult){
     this.el.classList.add('rh-ended');this.hurt.reset();
@@ -414,7 +446,9 @@ export class RunHud {
    */
   private turnRows(now=performance.now()){
     const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
-    const busy=!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
+    // The chaveiro's stop (D-047) also waits for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
+    const banner=head===this.reasonRow&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
+    const busy=banner||!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
     const walk=!answer&&!this.objectiveRow.el.hidden;
     const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
     for(const el of hide)el.hidden=true;
@@ -508,7 +542,7 @@ export class RunHud {
   /** Something outside the HUD's observed parts moved (the obra window opened or closed): zones are measured again. */
   layoutChanged(){this.relayout();}
   /** The obra window is open: the forge steps aside until it closes (they share the intermission's window place). */
-  yieldForge(obra:boolean){this.camp.yieldTo(obra);}
+  yieldForge(obra:boolean){this.obraOpen=obra;this.camp.yieldTo(obra||this.cida.open);}
   /** The offer window is on screen (round offer in the intermission, or a level offer): the obra menu waits for it. */
   get offerShown(){return !this.offerEl.hidden;}
 
@@ -521,6 +555,7 @@ export class RunHud {
   reset(){
     resetTally(this.tally);
     this.objective.reset();
+    this.reason.reset();this.dropRow(this.reasonRow);
   }
 
   get view(){return this.last;}

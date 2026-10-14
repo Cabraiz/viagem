@@ -16,7 +16,9 @@ export function createTopBar():HudPart{
   const root=el('div','rh-top');
   // Not a live region: the countdown changes every second. Round changes are announced by the marquee.
   const chip=el('div','rh-round',root);
-  const label=el('strong','rh-round-label',chip),detail=el('span','rh-round-detail',chip);
+  const label=el('strong','rh-round-label',chip),eta=el('span','rh-round-eta',chip),detail=el('span','rh-round-detail',chip);
+  // D-047: the chaveiro's clock ("Onda 3 · [moto] 9:48"), only while the objective runs.
+  eta.hidden=true;
   const xp=el('div','rh-xp',root);
   const level=el('span','rh-xp-level',xp);
   const track=el('div','rh-xp-track',xp),fill=el('i','rh-xp-fill',track);
@@ -42,6 +44,12 @@ export function createTopBar():HudPart{
         detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
+      const clock=round.chaveiro;
+      put('eta',clock?`${clock.clock}|${clock.aria}`:'',()=>{
+        eta.hidden=!clock;
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}</span><span aria-hidden="true"><i class="rh-round-sep">·</i>${icon('moto')}<b>${clock.clock}</b></span>`;}
+        else{delete chip.dataset.objetivo;eta.textContent='';}
+      });
       chip.classList.toggle('rh-urgent',round.phase==='prepare'&&(round.countdown??99)<=5);
     }
     const fraction=xpFraction(view);
@@ -75,10 +83,10 @@ const intervalLines=[
 export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'|'evento'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
-export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10):Marquee|undefined{
+export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10,word:'Round'|'Onda'='Round'):Marquee|undefined{
   if(event.phase==='wave'){
     const boss=event.index>=total;
-    return {title:event.name||`Round ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
+    return {title:event.name||`${word} ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};
   }
   if(event.phase==='prepare')return {title:'Intervalo!',subtitle:intervalLines[Math.abs(event.index)%intervalLines.length],tone:'interval'};
   return undefined;
@@ -114,7 +122,8 @@ export function createAnnouncer():HudPart{
       if(event.type==='happening'){seen=event.eventId;const copy=HAPPENING_COPY[event.kind];if(copy)show({...copy,tone:'evento'});continue;}
       if(event.type!=='round')continue;
       seen=event.eventId;
-      const marquee=marqueeFor(event,view.round?.total);
+      // D-047: with the chaveiro the waves have no end and the boss comes by his clock, not by the round's number.
+      const marquee=view.objective?marqueeFor(event,Infinity,'Onda'):marqueeFor(event,view.round?.total);
       if(marquee)show(marquee);
     }
   },destroy(){clearTimeout(timer);}};

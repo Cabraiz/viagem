@@ -797,3 +797,33 @@
 @media (prefers-reduced-motion:reduce){.rh-mm-ping{animation:none;transform:scale(1.6)}}
 /* Each teammate's colour (their dot on the WC3 minimap) as an outer ring of the portrait. */
 .rh-member:not(.rh-me) .rh-member-ring{box-shadow:0 0 0 2px var(--c-breu),0 0 0 4px var(--rh-cor,var(--c-breu)),var(--s-2)}
+
+/* ---------- The chaveiro objective (D-047, card chaveiro-hud, hud/chaveiro.ts) ----------
+   The round chip says "Onda 3 · [moto] 9:48": his clock in the poster face, the moto sticker (the same as his edge arrow
+   and his minimap mark). While he stops, one row of the announcement slot says why for 2.5 s, one line ("Lombada",
+   "Moto morta: empurra!"): Breu ficha like the walk to the plaza, Cone when the team can help (2 to push, a critter on
+   the moto). */
+.rh-round-eta{display:inline-flex;align-items:center;white-space:nowrap}
+.rh-round-eta[hidden]{display:none}
+.rh-round-eta>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
+.rh-round-eta .ic{width:20px;height:20px}
+.rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh-round-sep{font-style:normal;margin-right:2px}
+/* Portrait: the chip's slot is 166 px at 390 (beside the camera buttons): "Onda 15 · 10:00 · 123" still fits in one line. */
+@media (max-width:599px){
+  .rh .rh-round[data-objetivo=chaveiro]{gap:3px;padding-inline:4px}
+  .rh-round-eta b{font-size:var(--t-16)}
+  .rh-round[data-objetivo=chaveiro] .ic{width:16px;height:16px}
+}
+.rh-chaveiro-motivo{display:flex;align-items:center;gap:6px;box-sizing:border-box;width:max-content;max-width:min(100%,320px);padding:3px 10px;white-space:nowrap;
+  border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:var(--s-2);color:var(--c-papel);text-shadow:var(--s-texto);
+  font:700 var(--t-13)/1.2 var(--f-sistema);pointer-events:none}
+.rh-chaveiro-motivo[hidden]{display:none}
+.rh-chaveiro-motivo .ic{flex:none;width:18px;height:18px}
+.rh-chaveiro-motivo[data-urgente=true]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none}
+.rh-ended .rh-chaveiro-motivo{display:none}
+/* The chaveiro's bill on the result (D-047): one more stat ficha, the budget and the team's Grana; on a win he was not
+   paid in full it turns Cone and adds what was missing (the subtitle says "Vitória com dívida: abriu e levou o volante."). */
+.rh-result-conta[hidden]{display:none}
+.rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+.rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}

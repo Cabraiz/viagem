@@ -3,7 +3,7 @@
  * - top band: camera buttons, round chip, gear, XP, boss bar and the announcement slot (round/boss banner ≤ 2 lines
  *   for ≤ 1.8 s, fall/rescue/connection notices);
  * - team strip: left column (portrait) or bottom row between the thumbs (landscape);
- * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + THUMB_GAP;
+ * - left thumb: joystick + THUMB_GAP; right thumb: skill + emote + offer chip (D-021) + Dona Cida (D-047) + THUMB_GAP;
  * - useful area: the rectangle left for play. Only the offer and the result may enter it. In the round the follow
  *   camera (D-019, framing.ts FollowCamera) does not centre the hero on it: the hero's body sits at the viewport centre
  *   (BUG-20261013-ORQ-camera-centro-heroi), so it may stand outside this area and the HUD clears the hero's real box
@@ -60,6 +60,8 @@ export interface ZoneInput {
   team?:Rect;joystick?:Rect;skill?:Rect;emote?:Rect;
   /** The "+N" offer chip (D-021): a right-thumb control, 24 px left of the skill button. */
   chip?:Rect;
+  /** Dona Cida's button (D-047, hud/cida.ts): a right-thumb control 24 px above the skill button, while the hero is by the moto. */
+  cida?:Rect;
   /** Safe-area insets (notch), CSS px. */
   safe?:{top:number;right:number;bottom:number;left:number};
   /**
@@ -93,7 +95,7 @@ export function computeZones(input:ZoneInput):ScreenZones{
   const announceTop=bottom(status)+4,announce={x:safe.left,y:announceTop,width:viewport.width-safe.left-safe.right,height:ANNOUNCE_HEIGHT[orientation]};
   const top={x:0,y:0,width:viewport.width,height:bottom(announce)};
   const leftThumb=input.joystick&&inflate(input.joystick,THUMB_GAP);
-  const rightThumb=union([input.skill,input.emote,input.chip]);
+  const rightThumb=union([input.skill,input.emote,input.chip,input.cida]);
   const thumbR=rightThumb&&inflate(rightThumb,THUMB_GAP);
   // Useful area: the larger of two rectangles under the top band (team column excluded in portrait):
   // (a) full width, above both thumbs (and above a team row); (b) between the thumbs, down to the team row or the bottom.
@@ -240,11 +242,11 @@ const safeInsets=(root:Element)=>{
 /**
  * The intermission windows that trim the useful area, first shown wins (they are never open together): the offer, the
  * forge (VGM-046B, in the offer's place) and the obra window (torres-ligar: the forge yields to it while it is open, and
- * an open offer closes it, explore.ts).
+ * an open offer closes it, explore.ts), and Dona Cida's tray (D-047, hud/cida.ts: in the forge's place, which yields to it).
  */
-export const ZONE_WINDOWS=['.rh-offer','.rh-forge','.rh-obra-janela'] as const;
+export const ZONE_WINDOWS=['.rh-offer','.rh-forge','.rh-obra-janela','.rh-cida'] as const;
 /** The same without the obra window: the obra HUD lays its own window out from this input (never from itself). */
-export const ZONE_WINDOWS_BESIDE_OBRA=['.rh-offer','.rh-forge'] as const;
+export const ZONE_WINDOWS_BESIDE_OBRA=['.rh-offer','.rh-forge','.rh-cida'] as const;
 
 /** The zone input read from the live layout (HUD under `.rh`, controls of the explore shell); `windows` as ZONE_WINDOWS. */
 export function measureZoneInput(doc:Document=document,windows:readonly string[]=ZONE_WINDOWS):ZoneInput{
@@ -256,7 +258,7 @@ export function measureZoneInput(doc:Document=document,windows:readonly string[]
     viewport:{width:innerWidth,height:innerHeight},
     status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*')],
     team:union(all('.rh-member')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
-    emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),safe:hud?safeInsets(hud):undefined,
+    emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),cida:rectOf(q('.rh-cida-btn')),safe:hud?safeInsets(hud):undefined,
     offer,minimap:rectOf(q('.rh-minimap')),
   };
 }
@@ -299,6 +301,10 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   // The obra window (torres-ligar): an intermission window like the forge, in the field but never on the hero.
   add('.rh-obra-janela','obra',{allowedInPlay:true,overHeroFails:true});
   add('.rh-obra-janela .rh-obra-card,.rh-obra-janela .rh-obra-ok,.rh-obra-janela .rh-obra-fechar','obra-alvo',{allowedInPlay:true,target:true,overHeroFails:true});
+  // Dona Cida's tray (D-047): a window like the forge, in the field but never on the hero; her button is a right-thumb control.
+  add('.rh-cida','cida',{allowedInPlay:true,overHeroFails:true});
+  add('.rh-cida .rh-cida-doce,.rh-cida .rh-cida-close','cida-alvo',{allowedInPlay:true,target:true,overHeroFails:true});
+  add('.rh-cida-btn','cida-botão',{target:true});
   add('.rh-offer-chip','chip',{target:true});
   add('.fun-emote-toggle','emote',{target:true});
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).

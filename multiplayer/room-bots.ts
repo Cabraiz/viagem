@@ -143,6 +143,8 @@ export class RoomBots {
         if(d<near){near=d;escort={x:at.x,y:at.y};}
       }
       const d=decide({view:{...view,offers:sim.offers(mind.id)},selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+        // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
+        ...(view.objective?{teamBots:minds.map(m=>m.id)}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
       sim.setBotInput(mind.id,d.direction,d.cast);

@@ -19,8 +19,8 @@ import {Rng} from '../../contract/index.ts';
 import {SIM_HZ,ticks,type EnemyState,type ProjectileState,type SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {ACTION_PEAK_MAX,AGIOTA_SHOT,BRUTE,BUFFED_LINES,BURP,DEVENDO,DEVENDO_LINES,ELITE,GENERIC_SHOT_SOURCE,HAZARD_OWNERS,MARMITA_BOOM_LINES,MOLOTOV,MOTOBOY,MOTOBOY_HONK_LINES,
-  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
-  hazardOwner,isCoached,isDevendo,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
+  PALESTRA,PALESTRA_LINES,POOP,POSE,POSE_LINES,POSE_STATE,REFLECT_LINES,SLAM,SLAM_STATE,SUGAR,SUMMON,SUMMON_STATE,TIO_JOKE,bandCooldown,coachMult,createEnemy,enemyDef,hashUnit,
+  hazardOwner,isCoached,isDevendo,isSugared,type CoachedEnemy,type DevendoPlayer,type EnemyDef} from './catalog.ts';
 import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '../telegraphs.ts';
 import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
@@ -41,6 +41,11 @@ export interface StructureTarget extends Point {
    * barricades cut off the plaza to the mouth they must break.
    */
   blocking?:boolean;
+  /**
+   * D-047 (the chaveiro's moto): a siege body considers this target only while its edge is within `reach` (u) and
+   * closer than every player; absent: any distance, as before.
+   */
+  reach?:number;
 }
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
@@ -286,7 +291,7 @@ export class EnemyAi implements SimSystem {
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else{
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best){best=d;structure=s;player=undefined;}}
+        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
@@ -531,7 +536,7 @@ export class EnemyAi implements SimSystem {
       // off. (The Tio still takes that first push, as tuned; in a crowd it often cancels his charge.)
       if(planted||memory.state===STATE.joke&&enemyDef(e.kind).behavior==='kamikaze'){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
-      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
+      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace,ctx.tick)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
       // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
       // shove a body past the hero; knockback, above, is the players' doing and is not capped).
       let moveX=dirX*stepLength+pushX,moveY=dirY*stepLength+pushY;
@@ -658,7 +663,11 @@ export class EnemyAi implements SimSystem {
    * Speed (u/s) of a step at `pace` × the enemy's speed, at most ACTION_PEAK_MAX × the hero speed (catalog.ts,
    * Orquestrador rule: walking included). Slows apply on top of this.
    */
-  paceSpeed(e:Pick<EnemyState,'speed'>,pace:number){return Math.min(e.speed*pace,this.heroSpeed*ACTION_PEAK_MAX);}
+  paceSpeed(e:Pick<EnemyState,'speed'>,pace:number,tick?:number){
+    // D-047: an enemy Dona Cida sold a sweet to walks × SUGAR.speed (only when the caller passes the tick).
+    const sugar=tick!==undefined&&isSugared(e,tick)?SUGAR.speed:1;
+    return Math.min(sugar===1?e.speed*pace:e.speed*pace*sugar,this.heroSpeed*ACTION_PEAK_MAX);
+  }
   /**
    * The joke starts: the charge locks on the player's position now (a, unit) and its whole sweep is drawn as an
    * 'investida' line that fires (0 damage, only a warning) when the joke ends. The line covers the band his body

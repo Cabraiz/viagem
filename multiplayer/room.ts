@@ -8,7 +8,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '..
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {TELEGRAPH_KINDS,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -87,7 +87,18 @@ export interface RoomOptions {
    * they come before or after the bots ('bot-1'…). Tests that compare runs pass a fixed sequence.
    */
   newId?:()=>string;
+  /**
+   * D-047: the match objective of the city room ('chaveiro': the car, the chaveiro's moto, Dona Cida, the waves).
+   * false plays the old wall mode (survive 10 rounds, the boss). Absent: CITY_OBJECTIVE_DEFAULT. The endless map never
+   * has one.
+   */
+  objective?:ObjectiveKind|false;
 }
+/**
+ * D-047: the city rooms' objective when RoomOptions.objective is absent. Off (the wall mode) until the chaveiro is
+ * balanced: the first calibrated bench (8 seeds) won 2/8 with 1 player but 1/8 with 6 (minimum to turn it on: 2/8).
+ */
+export const CITY_OBJECTIVE_DEFAULT:ObjectiveKind|false=false;
 /** The owner's setMap was refused because these people's builds cannot load that map (playersMissingMap). */
 export const mapMissingText=(names:string[])=>`${names.join(', ')} ${names.length>1?'precisam':'precisa'} atualizar a página antes de trocar o mapa.`;
 /**
@@ -340,6 +351,8 @@ export class Room {
   private readonly cityText?:string;
   private readonly cityRef?:MapRef;
   private readonly cityPlayable:boolean;
+  /** D-047: the city runs' objective (RoomOptions.objective), undefined for the wall mode. */
+  private readonly cityObjective?:ObjectiveKind;
   /** Each person's build catalog from join.maps (undefined: a client that sent none), for playersMissingMap. */
   private readonly catalogs=new Map<string,MapCatalog|undefined>();
   /** A city switch waiting for the asset to decode (its first use in this isolate); see ready(). */
@@ -353,6 +366,7 @@ export class Room {
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.solo=options.solo===true;
+    const objective=options.objective===undefined?CITY_OBJECTIVE_DEFAULT:options.objective;if(objective)this.cityObjective=objective;
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
@@ -612,6 +626,7 @@ export class Room {
     else if(m.t==='choose')this.choose(c,m);
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
+    else if(m.t==='cida')this.cida(c,m);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -764,7 +779,8 @@ export class Room {
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true}):new Simulation(old.seed,{world:this.baseWorld});
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{})})
+      :new Simulation(old.seed,{world:this.baseWorld});
     sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
@@ -929,6 +945,19 @@ export class Room {
       }
     }
     this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind}:{reason:result.reason})});
+  }
+  /**
+   * D-047 Dona Cida: {t:'cida',round,req,item} (item one of CIDA_ITEM_IDS). Malformed taps are dropped here; the sim
+   * says no with a reason ('away' from the moto, 'stock', 'grana', 'phase', or 'duplicate' for a resent req). The
+   * buyer hears {t:'bought',req,item,ok,grana?|reason?}; everyone sees the Grana and the stock in the next frame and the
+   * purchase as a `buy` event.
+   */
+  private cida(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.item!=='string'||!(CIDA_ITEM_IDS as readonly string[]).includes(m.item))return;
+    const result=this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
+    this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){
@@ -1135,6 +1164,8 @@ export class Room {
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){
+    // D-047: the chaveiro's bill (opened, total loss, the team fell or the D-043 cap) goes with the result.
+    this.run.setObjective(this.sim.objectiveResult(this.run.snapshot().outcome));
     const {outcome,resultId,round}=this.run.snapshot();
     this.pushRun(true);
     this.send({t:'result',outcome,resultId,round});

@@ -55,7 +55,9 @@ const secs=(t:number)=>`${(t/SIM_HZ).toFixed(1)} s`;
 // both orders are played (BUG-20261013-E8: with Ana first, a siege tio-pavê stood at a corner north of mouth N).
 for(const [order,prefix] of [['after','pessoa'],['before','a-pessoa']] as const)
 test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an exception or a bot stuck > 5 s (Ana's id sorts ${order} the bots')`,async()=>{
-  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',newId:seatIds(prefix)}),a:TestPeer=peer();
+  // The wall mode (survive 10 rounds): the chaveiro objective (D-047, the city default) has its own acceptance in
+  // city-room-chaveiro.test.ts.
+  const room=new Room(1000,4242,{cityText,cityRef:CITY,cityPlayable:true,map:'cidade-nevada',newId:seatIds(prefix),objective:false}),a:TestPeer=peer();
   await room.ready();
   let t=1000;
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);

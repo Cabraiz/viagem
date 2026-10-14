@@ -25,6 +25,8 @@ import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
+import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
+import {objectiveOf} from './render/chaveiro/view.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
@@ -215,6 +217,8 @@ export class IslandScene extends Phaser.Scene {
   private horde?:HordeRenderer;
   /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
   private stone?:StonewardsRenderer;
+  /** D-047: the chaveiro objective in the world (the car, the moto, their effects); only while a run view has one. */
+  private chaveiro?:ChaveiroRenderer;
   /**
    * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
    * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
@@ -401,7 +405,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -534,7 +538,7 @@ export class IslandScene extends Phaser.Scene {
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
     this.city?.setDepthOf(this.cityDepthOf);
-    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();}
+    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();this.chaveiro?.refresh();}
     this.towers?.refresh();
   }
   /**
@@ -784,6 +788,16 @@ export class IslandScene extends Phaser.Scene {
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
         project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});
   }
+  /**
+   * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
+   * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.
+   */
+  private pushChaveiro(view:RunView){
+    const objective=objectiveOf(view);
+    if(!objective&&!this.chaveiro)return;
+    if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
+    this.chaveiro?.push(objective,view.tick);
+  }
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
     if(!this.towers&&!hasTowers(view.structures))return; // no defense yet: nothing built, nothing walked
@@ -833,19 +847,21 @@ export class IslandScene extends Phaser.Scene {
     return best;
   }
   private icons=new Map<string,string>();
-  /** Sticker of the critter `id` (any roster id) for the HUD ("what got you"): the horde atlas texture of the kind drawn for it, as a data URL, cached per drawn kind. */
+  /**
+   * Sticker of the critter `id` (a legacy kind or any roster id) for the HUD ("what got you", the kill-cam portrait), as
+   * a URL or a data URL, cached per id: its own imported art (art/hud-art.ts: the ui icon, else its sheet's still frame,
+   * by its own id: a roster id never borrows its base kind's art), else the procedural texture the horde draws for it.
+   */
   critterIcon(id:string){
     // "bichos" (unknown hitter) has no sticker: enemyTexture would fall back to the bêbado and name the wrong critter.
-    // A roster entry without art (D-040) shows its role's stand-in, like the horde draws it.
     const kind=drawnKind(id);
     if(!kind)return undefined;
-    let url=this.icons.get(kind);
+    let url=this.icons.get(id);
     if(url===undefined){
-      // Imported art first (art/hud-art.ts: the ui icon, else the enemy sheet's still frame); none or not loaded: today's.
-      const art=critterIconSource(kind);
-      if(art&&'url' in art)url=art.url;
-      else{const own=art&&this.textures.exists(art.key)?art:undefined,key=enemyTexture(kind);url=own?this.textures.getBase64(own.key,own.frame):this.textures.exists(key)?this.textures.getBase64(key):'';}
-      if(url)this.icons.set(kind,url);
+      const art=critterIconSource(id),loaded=art&&!('url' in art)&&this.textures.exists(art.key)?art:undefined,key=enemyTexture(id);
+      url=art&&'url' in art?art.url:loaded?this.textures.getBase64(loaded.key,loaded.frame):this.textures.exists(key)?this.textures.getBase64(key):'';
+      // Its own sheet still loading (queued per match): today's texture for now, the art once it is in.
+      if(url&&(!art||'url' in art||loaded))this.icons.set(id,url);
     }
     return url||undefined;
   }
@@ -913,14 +929,14 @@ export class IslandScene extends Phaser.Scene {
       const runView=net.feed.take();
       this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){

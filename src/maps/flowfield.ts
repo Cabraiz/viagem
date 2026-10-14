@@ -1,11 +1,13 @@
 /**
  * Multi-goal flow field over a cell grid: one Dijkstra (Dial's bucket queue) from every goal cell, then each cell
  * points at its cheapest legal neighbor. Hundreds of agents share one field and ask `directionAt` every tick.
- * No imports, no allocations per recompute, deterministic (fixed DIRS tie-break order).
+ * No imports, no allocations per recompute, deterministic (fixed DIRS tie-break order). Lazy: a recompute only seeds
+ * the goals; the pass runs as far as the cells asked need, and each cell's direction is worked out on its first ask
+ * (pure functions of goals and walkability, so the answers never depend on what was asked before; see `ensure`).
  *
  * Goal pattern: the plaza is the goal. When barricades close its mouths and `reachable()` turns false for an agent,
  * the AI switches that agent to a second field whose targets are the walkable cells around the barricades.
- * Memory: ~20 bytes per cell per field (720 KiB at 192×192; +1 byte/cell when `clearance` > 0). Keep few fields —
+ * Memory: ~27 bytes per cell per field (972 KiB at 192×192; +1 byte/cell when `clearance` > 0). Keep few fields —
  * one per goal set × body size class (see `clearance`) — never one per enemy.
  */
 export interface FlowGrid {
@@ -29,6 +31,10 @@ export interface FlowFieldOptions {
 export const STRAIGHT_COST=10, DIAGONAL_COST=14;
 /** Cost of blocked, outside or goal-less cells. */
 export const UNREACHABLE=0xffffffff;
+/** Internal "no path" cost: the largest int32, so `cost` stays an Int32Array of small integers (fast typed-array reads). */
+const INF=0x7fffffff;
+/** `next` of a cell not worked out since the last recompute (see nextOf). */
+const UNSET=-128;
 /** Neighbor offsets in the fixed tie-break order. dx right, dy down (cell y grows with world y). */
 export const DIRS:readonly {dx:number;dy:number}[]=Object.freeze([
   {dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},{dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1},
@@ -47,8 +53,19 @@ export class FlowField {
   private readonly grid:FlowGrid; private readonly penalty:number;
   /** `walk`: raw grid walkability; `open`: eroded by `clearance` (same array when clearance is 0). */
   private readonly walk:Uint8Array; private readonly open:Uint8Array; private readonly near:Uint8Array; private readonly isTarget:Uint8Array;
-  private readonly cost:Uint32Array; private readonly next:Int8Array;
-  /** Bucket queue: one doubly linked list per cost mod ring size; each cell sits in at most one bucket. qNext doubles as the escape BFS queue. */
+  /** Bit d set when the step from the cell along DIRS[d] is legal: inside the grid, onto an open cell, no corner cut. Kept with `near`. */
+  private readonly legal:Uint8Array; private readonly off:Int32Array;
+  /**
+   * Lazy field (a pure memo: every answer is the exact one, whatever was asked before). A recompute only seeds the
+   * goals; the Dial pass then runs bucket by bucket as far as the asked cells need (`ensure`): every cell cheaper than
+   * `front` is final. A cell in a connected part of the grid without an active goal (`comp`, `goalComp`) is
+   * unreachable at once, without running the pass out. `next` follows: an open cell's on its first ask (nextOf), the
+   * blocked cells' all at once with their escape BFS (escape).
+   */
+  private readonly cost:Int32Array; private readonly next:Int8Array; private escaped=false; private front=0; private queued=0;
+  /** Connected part of each open cell (legal steps; -1 blocked), rebuilt after walkability changes; goalComp[part] === `stamp` when it holds an active goal. */
+  private readonly comp:Int32Array; private readonly goalComp:Uint16Array; private stamp=0; private compsDirty=true;
+  /** Bucket queue: one doubly linked list per cost mod ring size; each cell sits in at most one bucket. qNext doubles as the BFS queue of escape and of the parts. */
   private readonly qNext:Int32Array; private readonly qPrev:Int32Array; private readonly heads:Int32Array;
   private readonly targets:Int32Array; private targetCount=0; private ver=0;
   /** Bumped on every recompute (constructor = 1). */
@@ -65,7 +82,8 @@ export class FlowField {
     this.cellSize=grid.cellSize; this.originX=grid.originX??0; this.originY=grid.originY??0; this.grid=grid;
     this.penalty=intOption(options?.wallPenalty??4,4,0,255); this.clearance=intOption(options?.clearance??0,0,0,8);
     this.walk=new Uint8Array(n); this.open=this.clearance?new Uint8Array(n):this.walk; this.near=new Uint8Array(n); this.isTarget=new Uint8Array(n);
-    this.cost=new Uint32Array(n); this.next=new Int8Array(n); this.targets=new Int32Array(n);
+    this.legal=new Uint8Array(n); this.off=Int32Array.from(DIRS,d=>d.dx+d.dy*w);
+    this.cost=new Int32Array(n); this.next=new Int8Array(n); this.targets=new Int32Array(n); this.comp=new Int32Array(n); this.goalComp=new Uint16Array(n);
     this.qNext=new Int32Array(n); this.qPrev=new Int32Array(n); this.heads=new Int32Array(DIAGONAL_COST+this.penalty+1);
     this.readCells(0,0,w-1,h-1); if(this.clearance)this.erode(0,0,w-1,h-1); this.readNear(0,0,w-1,h-1);
     this.setTargets(targets);
@@ -94,7 +112,7 @@ export class FlowField {
   /** Integer cost-to-goal of the cell containing (x,y); UNREACHABLE when blocked, outside or no goal reachable. Goal cells cost 0. */
   costAt(x:number,y:number){return this.cellCost(Math.floor((x-this.originX)/this.cellSize),Math.floor((y-this.originY)/this.cellSize));}
   /** Cost by cell coordinates (same semantics). */
-  cellCost(cx:number,cy:number){const i=this.cellIndex(cx,cy);return i<0?UNREACHABLE:this.cost[i];}
+  cellCost(cx:number,cy:number){const i=this.cellIndex(cx,cy);if(i<0)return UNREACHABLE;this.ensure(i);const c=this.cost[i];return c===INF?UNREACHABLE:c;}
   /** True when the cell containing (x,y) is walkable and has a path to a goal. */
   reachable(x:number,y:number){return this.costAt(x,y)!==UNREACHABLE;}
   /** True when (x,y) lies in a goal cell. */
@@ -108,12 +126,12 @@ export class FlowField {
    * walkable neighbor, or the way out of a blocked area (see `nextCell`), so agents pushed into walls escape.
    */
   directionAt(x:number,y:number,out:FlowPoint={x:0,y:0}):FlowPoint{
-    const w=this.width, h=this.height, {open,cost,next}=this;
+    const w=this.width, h=this.height, {open,cost}=this;
     let gx=(x-this.originX)/this.cellSize, gy=(y-this.originY)/this.cellSize;
     if(gx!==gx||gy!==gy){out.x=0;out.y=0;return out;}
     gx=gx<0?0:gx>=w?w-1e-6:gx; gy=gy<0?0:gy>=h?h-1e-6:gy;
-    const cx=gx|0, cy=gy|0, i=cx+cy*w, c=cost[i], own=next[i];
-    if(!open[i]||c===0||c===UNREACHABLE||own<0){
+    const cx=gx|0, cy=gy|0, i=cx+cy*w, own=this.nextOf(i), c=cost[i]; // nextOf settles cell i
+    if(!open[i]||c===0||c===INF||own<0){
       if(own<0){out.x=0;out.y=0;}else{out.x=VX[own];out.y=VY[own];}
       return out;
     }
@@ -122,8 +140,10 @@ export class FlowField {
     for(let k=0;k<4;k++){
       const ii=i0+(k&1), jj=j0+(k>>1);
       if(ii<0||jj<0||ii>=w||jj>=h)continue;
-      const j=ii+jj*w, d=next[j];
-      if(d<0||!open[j])continue; // goal, blocked and unreachable cells are skipped
+      const j=ii+jj*w;
+      if(!open[j])continue; // goal, blocked and unreachable cells are skipped
+      const d=this.nextOf(j);
+      if(d<0)continue;
       // Watershed: a neighbor flowing against this cell (equal costs, opposite exits) would cancel the blend and park the agent.
       if(VX[d]*VX[own]+VY[d]*VY[own]<0)continue;
       const wt=(k&1?fx:1-fx)*(k>>1?fy:1-fy);
@@ -139,7 +159,7 @@ export class FlowField {
    * cell in a blocked region that touches no reachable cell). Blocked cells deep inside a blocked area point one
    * step closer (BFS layers, any of 8 directions) to a blocked cell with a legal exit.
    */
-  nextCell(cx:number,cy:number){const i=this.cellIndex(cx,cy);return i<0?-1:this.next[i];}
+  nextCell(cx:number,cy:number){const i=this.cellIndex(cx,cy);return i<0?-1:this.nextOf(i);}
 
   private cellIndex(cx:number,cy:number){
     cx=Math.floor(cx); cy=Math.floor(cy);
@@ -183,37 +203,79 @@ export class FlowField {
       open[x+y*w]=ok;
     }
   }
-  /** Near-wall flag (on eroded walkability): any 8-neighbor blocked or outside the grid. */
+  /** Near-wall flag (on eroded walkability): any 8-neighbor blocked or outside the grid. And the legal steps (see `legal`). */
   private readNear(x0:number,y0:number,x1:number,y1:number){
-    const {open,near,width:w,height:h}=this;
+    const {open,near,legal,width:w,height:h}=this;
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
       let flag=x===0||y===0||x===w-1||y===h-1?1:0;
       for(let d=0;!flag&&d<8;d++)if(!open[x+DX[d]+(y+DY[d])*w])flag=1;
       near[x+y*w]=flag;
+      let bits=0;
+      for(let d=0;d<8;d++){
+        const vx=x+DX[d], vy=y+DY[d];
+        if(vx<0||vy<0||vx>=w||vy>=h||!open[vx+vy*w]||d>=4&&(!open[vx+y*w]||!open[x+vy*w]))continue; // no corner cutting
+        bits|=1<<d;
+      }
+      legal[x+y*w]=bits;
     }
+    this.compsDirty=true;
   }
+  /** New goals or walkability: seed the active goals (cost 0) and mark their parts; the pass runs on demand (`ensure`). */
   private recompute(){
-    const {open,near,cost,next,qNext,qPrev,heads,targets,width:w,height:h,penalty}=this, ring=heads.length;
-    cost.fill(UNREACHABLE); heads.fill(-1);
+    const {open,cost,qNext,qPrev,heads,targets,comp,goalComp}=this;
+    if(this.compsDirty)this.parts();
+    cost.fill(INF); heads.fill(-1); this.next.fill(UNSET); this.escaped=false;
+    this.ver++;
+    // Part marks carry a 16-bit stamp per recompute; on wrap-around the old marks are cleared.
+    const stamp=this.stamp=this.stamp===0xffff?1:this.stamp+1;
+    if(stamp===1)goalComp.fill(0);
     let queued=0;
     for(let k=0;k<this.targetCount;k++){
       const i=targets[k];
       if(!open[i])continue; // stored but inactive while blocked
       cost[i]=0; const q=heads[0]; qNext[i]=q; qPrev[i]=-1; if(q>=0)qPrev[q]=i; heads[0]=i; queued++;
+      goalComp[comp[i]]=stamp;
     }
-    for(let c=0;queued>0;c++){
+    this.queued=queued; this.front=0;
+  }
+  /** Connected parts of the open cells over legal steps (symmetric), by BFS; qNext is free (called before seeding). */
+  private parts(){
+    const {open,legal,off,comp,qNext}=this, n=this.width*this.height;
+    comp.fill(-1);
+    let parts=0;
+    for(let s=0;s<n;s++){
+      if(!open[s]||comp[s]>=0)continue;
+      comp[s]=parts; qNext[0]=s;
+      for(let qa=0,qe=1;qa<qe;qa++){
+        const u=qNext[qa];
+        for(let m=legal[u];m!==0;m&=m-1){const v=u+off[31-Math.clz32(m&-m)];if(comp[v]<0){comp[v]=parts;qNext[qe++]=v;}}
+      }
+      parts++;
+    }
+    this.compsDirty=false;
+  }
+  /** Cell i's cost is final: blocked or in a part without a goal (unreachable), or the pass has gone past it. */
+  private ensure(i:number){
+    if(this.queued===0||this.cost[i]<this.front||!this.open[i]||this.goalComp[this.comp[i]]!==this.stamp)return;
+    do this.settle(this.cost[i]===INF?this.front:this.cost[i]);while(this.queued>0&&this.cost[i]>=this.front);
+  }
+  /**
+   * Dial's pass from `front` through bucket `until` (all of it with Infinity). The costs are the exact shortest
+   * distances, whatever order equal-cost cells come out of a bucket, so the field is a pure function of goals and
+   * walkability, and so is how far the pass has run when anything is read.
+   */
+  private settle(until:number){
+    const {near,cost,legal,off,qNext,qPrev,heads,penalty}=this, ring=heads.length;
+    let queued=this.queued, c=this.front;
+    for(;queued>0&&c<=until;c++){
       const b=c%ring;
       for(let u=heads[b];u>=0;u=heads[b]){
         const q=qNext[u]; heads[b]=q; if(q>=0)qPrev[q]=-1; queued--;
-        const ux=u%w, uy=(u-ux)/w;
-        for(let d=0;d<8;d++){
-          const vx=ux+DX[d], vy=uy+DY[d];
-          if(vx<0||vy<0||vx>=w||vy>=h)continue;
-          const v=vx+vy*w;
-          if(!open[v]||d>=4&&(!open[vx+uy*w]||!open[ux+vy*w]))continue; // no corner cutting
+        for(let m=legal[u];m!==0;m&=m-1){
+          const d=31-Math.clz32(m&-m), v=u+off[d];
           const nc=c+DC[d]+(near[v]?penalty:0), old=cost[v];
           if(nc>=old)continue;
-          if(old!==UNREACHABLE){ // still queued (settled cells can't improve): unlink from its bucket
+          if(old!==INF){ // still queued (settled cells can't improve): unlink from its bucket
             const p=qPrev[v], s=qNext[v];
             if(p<0)heads[old%ring]=s;else qNext[p]=s;
             if(s>=0)qPrev[s]=p;
@@ -222,24 +284,44 @@ export class FlowField {
         }
       }
     }
-    // Each cell points at its strictly cheapest legal neighbor (first in DIRS order on ties); blocked cells at their exit.
-    // Blocked cells with an exit seed the escape BFS (qNext is free once the bucket queue is empty).
+    this.queued=queued; this.front=c;
+  }
+  /**
+   * The cell's `next`: its strictly cheapest legal neighbor (first in DIRS order on ties); else -1 for an open cell (a
+   * goal, or unreachable), and for a blocked cell its way out through other blocked cells (`escape`).
+   */
+  private nextOf(i:number):number{
+    const known=this.next[i];
+    if(known!==UNSET)return known;
+    const {cost,off,open}=this;
+    // An open cell once settled: every neighbor cheaper than it is final. A blocked cell (cost INF): its neighbors.
+    if(open[i])this.ensure(i);else for(let m=this.legal[i];m!==0;m&=m-1)this.ensure(i+off[31-Math.clz32(m&-m)]);
+    let best=-1, bc=cost[i];
+    for(let m=this.legal[i];m!==0;m&=m-1){const d=31-Math.clz32(m&-m), c=cost[i+off[d]];if(c<bc){best=d;bc=c;}}
+    if(best<0&&!this.open[i]){this.escape();return this.next[i];}
+    this.next[i]=best;
+    return best;
+  }
+  /**
+   * Every blocked cell's `next` (once per recompute, on the first ask for a blocked cell without a cheaper legal
+   * neighbor; the pass is run out first): its cheapest legal walkable neighbor, else an escape BFS through blocked
+   * cells, one layer at a time: a new cell points (first in DIRS order, any of 8 directions, no corner rule) at a
+   * blocked cell of the previous layer. Layering makes cycles impossible. While its layer is open a cell holds -10-d
+   * (d = best direction found so far, always < -1). qNext is free (the pass is over).
+   */
+  private escape(){
+    if(this.escaped)return;
+    this.escaped=true;
+    if(this.queued>0)this.settle(Infinity);
+    const {open,cost,legal,off,next,qNext,width:w,height:h}=this;
     let qe=0;
-    for(let uy=0,i=0;uy<h;uy++)for(let ux=0;ux<w;ux++,i++){
+    for(let i=0,n=w*h;i<n;i++){
+      if(open[i])continue;
       let best=-1, bc=cost[i];
-      for(let d=0;d<8;d++){
-        const vx=ux+DX[d], vy=uy+DY[d];
-        if(vx<0||vy<0||vx>=w||vy>=h)continue;
-        const v=vx+vy*w;
-        if(cost[v]>=bc||!open[v]||d>=4&&(!open[vx+uy*w]||!open[ux+vy*w]))continue;
-        best=d; bc=cost[v];
-      }
+      for(let m=legal[i];m!==0;m&=m-1){const d=31-Math.clz32(m&-m), c=cost[i+off[d]];if(c<bc){best=d;bc=c;}}
       next[i]=best;
-      if(best>=0&&!open[i])qNext[qe++]=i;
+      if(best>=0)qNext[qe++]=i;
     }
-    // Escape BFS through blocked cells, one layer at a time: a new cell points (first in DIRS order, any of 8
-    // directions, no corner rule) at a blocked cell of the previous layer. Layering makes cycles impossible.
-    // While its layer is open a cell holds -10-d (d = best direction found so far, always < -1).
     for(let qa=0;qa<qe;){
       const lb=qe;
       for(let k=qa;k<lb;k++){
@@ -256,6 +338,5 @@ export class FlowField {
       for(let k=lb;k<qe;k++){const v=qNext[k];next[v]=-10-next[v];}
       qa=lb;
     }
-    this.ver++;
   }
 }

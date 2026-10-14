@@ -68,6 +68,8 @@ export interface SimPlayer extends Point {
    * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
    */
   fastUntil?:number; mightUntil?:number; guardUntil?:number;
+  /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
+  grana?:number;
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
@@ -121,6 +123,8 @@ export interface RoundState {index:number;total:number;phase:RoundPhase;phaseEnd
 export type SimEvent=
   | {type:'damage';target:string;amount:number;source?:string;weapon?:string;crit?:boolean}
   | {type:'kill';enemy:string;kind:string;by?:string;x:number;y:number}
+  /** A PIX between players (contract wallet.ts): memo is an index into PIX_MEMOS (the toast's description). */
+  | {type:'pix';from:string;to:string;amount:number;memo:number}
   | {type:'spawn-warning';x:number;y:number;atTick:number;count:number}
   | {type:'fire';player:string;weapon:string;x:number;y:number;dx?:number;dy?:number}
   | {type:'pickup';player:string;pickup:string;kind:PickupKind;value:number}

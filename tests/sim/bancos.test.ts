@@ -332,3 +332,26 @@ for(const objective of ['chaveiro',undefined] as const){
     a.sys.dispose();b.sys.dispose();
   });
 }
+
+test('bots in the wave: with ≥ BANK_WAVE_MIN_UP standing, one bot in three holds an ATM (one per ATM, never the builder); pairs keep the car',async()=>{
+  const {bankTask,BANK_WAVE_MIN_UP,BANK_WAVE_REACH}=await import('../../src/sim/bot-brain.ts');
+  const bot=(id:string,x:number,y:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y});
+  const bank=(id:string,x:number,y:number)=>({id,x,y,name:'juros' as const,saldo:40,state:'aberto' as const});
+  // The car at the origin; three ATMs 40–50 u out (straight, no terrain); six bots, b1 the builder.
+  const banks=[bank('banco-1',45,0),bank('banco-2',-45,0),bank('banco-3',0,50)];
+  const players=[bot('b1',44,0),bot('b2',40,0),bot('b3',-41,0),bot('b4',-30,0),bot('b5',0,2),bot('b6',2,2)],ids=players.map(p=>p.id);
+  const view=(list:typeof players,phase:'wave'|'prepare'='wave')=>({tick:1000,players:list,banks,enemies:[],
+    round:{index:3,total:10,phase,phaseEndsTick:1000+ticks(20),remaining:0},camp:{grana:0},
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}]} as any);
+  assert.ok(BANK_WAVE_REACH>=45);
+  const goes=ids.filter(id=>bankTask(view(players),id,ids,'b1'));
+  assert.equal(goes.length,Math.floor(players.length/3),'one in three');
+  assert.ok(!goes.includes('b1'),'the builder keeps the forge and the towers');
+  assert.deepEqual(goes.map(id=>bankTask(view(players),id,ids,'b1')!.bank).sort(),['banco-1','banco-2'],'one per ATM, the nearest ones');
+  assert.deepEqual(goes.sort(),['b2','b3']);
+  // Fewer than BANK_WAVE_MIN_UP standing: nobody leaves the car in the wave.
+  const pair=players.slice(0,BANK_WAVE_MIN_UP-1),pairIds=pair.map(p=>p.id);
+  assert.deepEqual(pairIds.filter(id=>bankTask(view(pair),id,pairIds,'b1')),[]);
+  // Enough Grana: nobody goes.
+  assert.equal(ids.filter(id=>bankTask({...view(players),camp:{grana:1e6}},id,ids,'b1')).length,0);
+});

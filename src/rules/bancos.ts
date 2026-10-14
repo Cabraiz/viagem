@@ -8,7 +8,7 @@
  * - Empty, it shows "SEM CÉDULAS" for recargaS, then it is full again ("24 h").
  */
 
-import type {BankName} from '../contract/objective.ts';
+import type {BankName} from '../contract/index.ts';
 
 /** The banks' display names, by BankName (contract/objective.ts BANK_IDS; the sim gives one to each bank). */
 export const BANK_NAMES:Readonly<Record<BankName,string>>=Object.freeze({

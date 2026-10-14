@@ -40,6 +40,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   'minimapa':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=prepare&frozen=1',descricao:'HUD da cidade: minimapa WC3, setas, chaveiro'},
+  'bancos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&bancos=1&state=wave&frozen=1',descricao:'HUD da cidade com bancos: seta do roubado (Cone), "$" no minimapa, "Bicho sacando no …!"'},
   'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},
   'config-jogo':{sandbox:'config',query:'cena=jogo',descricao:'engrenagem do jogo: Música, Efeitos e vibração'},
   'config-menu':{sandbox:'config',query:'cena=menu',descricao:'engrenagem do menu: Música, Efeitos e vibração'},

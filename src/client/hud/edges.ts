@@ -19,15 +19,18 @@ export interface Point {x:number;y:number}
  * `obra`: a build site off screen in the intermission (card E4-obras-visiveis-da-base): the obra HUD lays it out on top of
  * the arrows already drawn (EdgeOptions.placed) and draws it itself, as a button that opens the site's tree.
  */
-export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra'|'moto';
+export type EdgeKind='caido'|'chefe'|'grupo'|'spawn'|'base'|'aliado'|'bau'|'obra'|'moto'|'banco';
 /** Lower is more urgent (UX card: caído > chefe > spawn > aliado; base and baú are the Stonewards and loot extras; the city's grupo goes before spawn). */
-/** moto: only the city points at it, and the city ranks it itself (hud/city/edges.ts cityEdgeRank 3.5); 8 here on purpose. */
-export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7,moto:8};
+/**
+ * moto and banco: only the city points at them, and the city ranks them itself (hud/city/edges.ts cityEdgeRank 3.5 and
+ * 3.8); 8 and 9 here on purpose.
+ */
+export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,grupo:2,spawn:3,base:4,aliado:5,bau:6,obra:7,moto:8,banco:9};
 /**
  * The ficha's sticker. grupo: the doc's new `bichos` sticker (a gosma silhouette, design/cidade-hud.md §3) has no art yet,
  * so it wears `onda` ("Bichos chegando") until the art lane draws it; its count in the body tells it from a mouth.
  */
-export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto'};
+export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto',banco:'banco'};
 /** At most this many arrows on screen (UX card). */
 export const MAX_ARROWS=6;
 /** Arrows closer than this (CSS px) step aside along their side; when no spot is left they become one ("+N"). */

@@ -14,7 +14,8 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PlayerBuild,SimPlayer} from '../src/contract/index.ts';
+import type {InventoryResult} from '../src/sim/inventory.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -37,6 +38,8 @@ import type {ZueiraLab} from '../src/sim/index.ts';
  * around the camera (terreno-em-blocos). The island stays as an internal test world (Simulation default, LAB_WORLD=ilha).
  */
 export const DEFAULT_WORLD:WorldKind='infinito';
+/** D-051: the inventory's hand slot on the views (absent with the automatic weapons). */
+const handOf=(p:{build:PlayerBuild})=>p.build.hand!==undefined?{hand:p.build.hand}:{};
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   const kind=terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
@@ -537,6 +540,16 @@ export class Simulation {
     if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'phase'};
     return chaveiro.buy(this.world,id,item,requestId);
   }
+  /**
+   * D-051 inventory commands (manual combat, sim/inventory.ts): the hand's slot, a consumable, an item to the ground, an
+   * item from the ground. Refused once the run is decided, with the automatic weapons, or for an offline or spectating
+   * player ('player').
+   */
+  inventory(id:string,command:{t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}):InventoryResult{
+    const p=this.players.get(id),inv=this.systems.inventory;
+    if(this.result||!p?.online||p.spectator||!inv)return {ok:false,reason:'player'};
+    return command.t==='take'?inv.take(id,command.pickup):inv[command.t](id,command.slot);
+  }
   /** D-047: the objective as the HUD sees it (undefined without one). */
   objectiveView():ObjectiveView|undefined{return this.systems.objectiveView();}
   /** D-047: the objective's bill for a run that ended with `outcome` (the room's), or undefined without the objective. */
@@ -703,7 +716,7 @@ export class Simulation {
       enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
-        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
+        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
@@ -721,7 +734,7 @@ export class Simulation {
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
-        weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
+        weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),...handOf(p),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
@@ -751,7 +764,7 @@ export class Simulation {
         return {
           id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
-          weapons:p.build.weapons,passives:p.build.passives,stats:{...stats,damage:Math.round(stats.damage)},
+          weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
           ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
         };

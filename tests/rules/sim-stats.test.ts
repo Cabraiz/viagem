@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Rng} from '../../src/contract/rng.ts';
 import {BASE_STATS,ticks,type OwnedItem,type PickupState,type PlayerBuild,type PlayerStats,type SimEvent,type SimPlayer} from '../../src/contract/types.ts';
 import type {SimContext} from '../../src/sim/context.ts';
-import {PASSIVES,PASSIVE_IDS,PASSIVE_MAX_LEVEL,passiveDef} from '../../src/rules/passives.ts';
+import {AUTO_PASSIVE_IDS,MANUAL_PASSIVE_IDS,PASSIVES,PASSIVE_IDS,PASSIVE_MAX_LEVEL,passiveDef} from '../../src/rules/passives.ts';
 import {STAT_KEYS,STAT_LIMITS,computeStats,refreshStats,type ClassBonus,type StatKey} from '../../src/rules/stats.ts';
 import {CHEST_HEAL_LIFETIME_SECONDS,CHEST_HEAL_VALUE,EVOLUTIONS,EVOLUTION_MIN_TICKS,WEAPON_IDS,WEAPON_MAX_LEVEL,eligibleEvolutions,itemMaxLevel,openChest} from '../../src/sim/evolutions.ts';
 import {WEAPON_CATALOG,WEAPON_IDS as CATALOG_WEAPON_IDS} from '../../src/sim/weapons/catalog.ts';
@@ -34,10 +34,11 @@ const maxedBuild=():PlayerBuild=>({weapons:WEAPON_IDS.map(id=>({id,level:WEAPON_
 const inLimits=(s:PlayerStats)=>{for(const k of STAT_KEYS){const [min,max]=STAT_LIMITS[k];assert.ok(Number.isFinite(s[k])&&s[k]>=min&&s[k]<=max,`${k}=${s[k]}`);}};
 
 // ---------- 1. Passives ----------
-test('passives: exactly the 8 fixed ids with pt-BR metadata and 5 distinct descriptions',()=>{
-  assert.deepEqual([...PASSIVE_IDS],['cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao']);
+test('passives: the automatic game keeps exactly its 8 fixed ids with pt-BR metadata and 5 distinct descriptions',()=>{
+  assert.deepEqual([...AUTO_PASSIVE_IDS],['cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao']);
+  assert.deepEqual([...PASSIVE_IDS],[...AUTO_PASSIVE_IDS,...MANUAL_PASSIVE_IDS],'D-051: the manual combat adds its two at the end');
   assert.deepEqual(Object.keys(PASSIVES).sort(),[...PASSIVE_IDS].sort());
-  for(const id of PASSIVE_IDS){
+  for(const id of AUTO_PASSIVE_IDS){
     const p=PASSIVES[id];
     assert.equal(p.id,id);assert.equal(p.kind,'passive');assert.equal(p.maxLevel,5);assert.equal(PASSIVE_MAX_LEVEL,5);
     assert.ok(p.name.trim().length>0&&p.icon.trim().length>0);
@@ -50,6 +51,10 @@ test('passives: exactly the 8 fixed ids with pt-BR metadata and 5 distinct descr
     assert.equal(passiveDef(id),p);
   }
   assert.equal(passiveDef('nope'),undefined);
+  // D-051: the hand's reinforcements, with their own caps (Pente +1 projectile a level, Silenciador only noise).
+  assert.deepEqual([PASSIVES.pente.maxLevel,PASSIVES.pente.perLevel],[2,{amount:1}]);
+  assert.deepEqual([PASSIVES.silenciador.maxLevel,PASSIVES.silenciador.perLevel],[3,{}]);
+  for(const id of MANUAL_PASSIVE_IDS)assert.equal(new Set([1,2,3].map(l=>PASSIVES[id].describe(l))).size,Math.min(3,PASSIVES[id].maxLevel),id);
 });
 
 // ---------- 2. computeStats ----------

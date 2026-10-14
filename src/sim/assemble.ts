@@ -15,8 +15,9 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
-import {refreshStats} from '../rules/index.ts';
-import {ITEMS} from './items.ts';
+import {UNITS_PER_TOKEN,refreshStats} from '../rules/index.ts';
+import {ITEMS,MANUAL_ITEMS} from './items.ts';
+import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
@@ -111,6 +112,11 @@ export interface RunSystems {
   chaveiro?:ChaveiroSystem;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
+  /** D-051 manual combat's inventory commands (sim/inventory.ts); absent with the automatic weapons. */
+  inventory?:{
+    equip(playerId:string,slot:number):InventoryResult;use(playerId:string,slot:number):InventoryResult;
+    drop(playerId:string,slot:number):InventoryResult;take(playerId:string,pickupId:string):InventoryResult;
+  };
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
   state():RunSystemsState;
   dispose():void;
@@ -148,7 +154,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const {onOutcome}=options;
   // A checkpoint is copied once: every system below mutates the state it is handed.
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
-  const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}},cp?.progression);
+  // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
+  const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
+    ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
@@ -288,6 +296,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
+  // D-051 manual combat: the inventory (sim/inventory.ts); a kit de torre is one team ficha.
+  const inventory=manual?inventorySystem():undefined;
+  const inventoryHooks:InventoryHooks={addTowerToken:()=>{stonewards.state.balance.units+=UNITS_PER_TOKEN;return true;}};
+
   world.clearSystems();
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot,manual)),
@@ -295,7 +307,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
-    {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
+    {id:'pickups',step(ctx:SimContext){
+      progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);
+      // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
+      // run (a join, a rematch); items walked over go to it.
+      if(inventory){for(const p of ctx.players.values())if(!hasInventory(p)&&!p.spectator){p.build=manualStartingBuild();refreshStats(p);}inventory.step(ctx);}
+    }},
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
@@ -317,6 +334,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
+    ...(inventory?{inventory:{
+      equip:(id,slot)=>{const p=world.players.get(id);return p?equipSlot(world,p,slot):{ok:false,reason:'player'};},
+      use:(id,slot)=>{const p=world.players.get(id);return p?useSlot(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
+      drop:(id,slot)=>{const p=world.players.get(id);return p?dropSlot(world,p,slot):{ok:false,reason:'player'};},
+      take:(id,pickup)=>{const p=world.players.get(id);return p?takeItem(world,p,pickup):{ok:false,reason:'player'};},
+    } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
     dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},

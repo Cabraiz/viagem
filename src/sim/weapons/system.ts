@@ -4,8 +4,7 @@
  * Damage passed to ctx.damageEnemy is base weapon damage; the core applies might.
  *
  * D-051 manual combat (WeaponOptions.manual, RunSystemsOptions.combat 'manual'): only the EQUIPPED weapon fires
- * (equippedWeapon: the first weapon of the build, the class starting weapon until the E6 inventory; an evolution takes
- * its slot), and only on a tick its owner holds the attack (or the press the input track kept); every other weapon of
+ * (equippedWeapon: the inventory's hand slot, sim/inventory.ts; without one, the build's first weapon), and only on a tick its owner holds the attack (or the press the input track kept); every other weapon of
  * the build stays idle, its timer untouched. Targets come from rules/attack-target.ts (chosen -> who hit me in the last
  * 2 s -> nearest with the boss 30 % closer -> posing last, with hysteresis), and nothing fires without a live enemy in
  * the weapon's reach (manualReach): the weapon keeps its cooldown. The candidates are gathered here (enemyIndex plus
@@ -61,10 +60,12 @@ const rotate=(d:Dir,a:number):Dir=>({x:d.x*Math.cos(a)-d.y*Math.sin(a),y:d.x*Mat
 const orbiterRadius=(w:{area:number})=>Math.max(.25,.22*w.area);
 
 /**
- * D-051: the equipped weapon of the manual combat: the build's first weapon (the class kit's starting weapon; an
- * evolution replaces it in its slot) until the E6 inventory brings the equipped slot. Undefined: nothing to fire.
+ * D-051: the equipped weapon of the manual combat: the weapon in the inventory's hand slot (build.hand, sim/inventory.ts);
+ * a build without a hand (no inventory) fires its first weapon. Undefined: nothing to fire.
  */
 export function equippedWeapon(build:PlayerBuild,catalog:{get(id:string):WeaponDef|undefined}=weaponCatalog){
+  // D-051 inventory (sim/inventory.ts): the weapon in the hand's slot; a consumable there fires nothing.
+  if(build.hand!==undefined){const held=build.weapons[build.hand];return held&&catalog.get(held.id)?.pattern?held:undefined;}
   return build.weapons.find(o=>!!catalog.get(o.id)?.pattern);
 }
 /**

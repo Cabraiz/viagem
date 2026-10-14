@@ -39,6 +39,8 @@ export interface PlayerRunView {
   id:string;name:string;classId:string;hp:number;maxHp:number;online:boolean;spectator:boolean;
   downed?:{progress:number;bleedOutTick:number};eliminated?:boolean;
   weapons:{id:string;level:number}[];passives:{id:string;level:number}[];
+  /** D-051 manual combat: the inventory slot in the hand (`weapons` is the inventory); absent with the automatic weapons. */
+  hand?:number;
   /**
    * Class skill (E7-skill-hud-wiring): tick of the last cast and tick it is ready again (0 or absent: ready).
    * The skill button shows the cooldown from these; refunds move skillReadyTick earlier.

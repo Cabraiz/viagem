@@ -1,7 +1,9 @@
 /**
- * Upgrade offer (VGM-040, D-021, DSG-oferta-etiqueta): non-blocking, touch-only picker for the oldest pending offer.
- * - In combat (round phase "wave") nothing opens by itself: a "+N" chip waits in the right-thumb zone and a tap opens a
- *   compact panel (icon, name, price, one effect line; no joke, no clock while the server holds the offer).
+ * Upgrade offer (VGM-040, D-021, D-050, DSG-oferta-etiqueta): touch-only picker for the oldest pending offer.
+ * - In combat (round phase "wave") a team level-up pauses the run for everyone (D-050: RunState.pause, in ctx.pause):
+ *   the offer opens by itself as the compact window, with no clock of its own (the pause's HUD shows the time) and no
+ *   "Depois". Outside a pause nothing shows in a wave, not even the old "+N" chip: a level inside the gap between two
+ *   pauses (or one held while offline) waits for the next pause.
  * - In the intermission the offers open by themselves, one after the other, as a compact window: the deadline as a thin
  *   bar on its top edge, one header row (title, seconds, a clock icon labelled "vai no automático se acabar o tempo",
  *   a small "Depois") and one row of whole tags (BUG-20261013-ORQ-oferta-e-dicas-menores).
@@ -13,7 +15,7 @@ import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
-import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudPart,type OfferMode} from './model.ts';
+import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -104,17 +106,17 @@ export function chipText(pending:number){
 }
 
 /**
- * Pure view state of the offer UI, so the D-021 rules are unit-tested without a DOM:
- * - the chip shows whenever something waits (combat and intermission): in combat it opens the compact strip, in the
- *   intermission it folds the window away (`collapsed`) and back, so the island and the fallen stay reachable;
- * - the panel shows in the intermission by itself unless folded, in combat only while opened from the chip;
- * - the clock (bar, seconds, "automático" note) only when the server set a real deadline.
+ * Pure view state of the offer UI, so the D-021/D-050 rules are unit-tested without a DOM:
+ * - in a wave the panel shows only in a level-up pause (`paused`, D-050), by itself, with no chip and no clock;
+ * - in the intermission it shows by itself unless folded, and the chip folds it away (`collapsed`) and back, so the
+ *   island and the fallen stay reachable;
+ * - the clock (bar, seconds, "automático" note) only when the server set a real deadline, never in a pause.
  */
-export function offerUiState(view:RunView,open:boolean,collapsed=false){
+export function offerUiState(view:RunView,collapsed=false,paused=false){
   const mode:OfferMode=offerMode(view),offer=view.offers[0];
-  const pending=view.offers.length;
-  const clock=!!offer&&!isHeldOffer(offer);
-  return {mode,pending,chip:pending>0,panel:!!offer&&(mode==='intermission'?!collapsed:open),clock,
+  const pending=view.offers.length,intermission=mode==='intermission';
+  const clock=!!offer&&!paused&&!isHeldOffer(offer);
+  return {mode,pending,chip:pending>0&&intermission,panel:!!offer&&(intermission?!collapsed:paused),clock,
     seconds:clock&&offer?secondsLeft(offer.deadlineTick,view.tick):undefined};
 }
 
@@ -172,10 +174,10 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const guard=new OfferTapGuard();
   const now=()=>performance.now();
   let shown:OfferView|undefined;
-  let pending:{id:string;index:number;atTick?:number}|undefined;
+  let pending:{id:string;index:number;atTick?:number;atMs?:number}|undefined;
   /** The stamped offer stays on screen for STAMP_HOLD_MS, even after the server dropped it. */
   let stamp:{offer:OfferView;until:number}|undefined;
-  let open=false,collapsed=false,takingAll=false,lastMode:OfferMode|undefined,last:RunView|undefined;
+  let collapsed=false,takingAll=false,paused=false,lastPaused=false,lastMode:OfferMode|undefined,last:RunView|undefined;
   let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false;
 
   const render=(offer:OfferView)=>{
@@ -230,6 +232,8 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     options.onChoose(shown.id,index);
     // The chip counts down at once (≤ 100 ms feedback), without waiting for the next view.
     if(last)update(last);
+    // The stamp ends on its own: in a pause (D-050) no tick brings the next view to end it.
+    setTimeout(()=>{if(last)update(last);},STAMP_HOLD_MS+20);
   };
 
   cards.addEventListener('pointerdown',event=>{
@@ -254,37 +258,40 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   });
   later.addEventListener('click',()=>{if(lastMode!=='intermission')return;collapsed=true;if(last)update(last);});
   chip.addEventListener('click',()=>{
-    if(lastMode==='intermission'){collapsed=!collapsed;}
-    else open=!open;
+    if(lastMode!=='intermission')return;
+    collapsed=!collapsed;
     // Opening counts as a new render for the tap guard: the finger that opened it cannot pick blind.
-    if((open||!collapsed)&&shown)guard.rendered(shown.id,now());
+    if(!collapsed&&shown)guard.rendered(shown.id,now());
     try{options.onChipTap?.();}catch{/* the coach is best effort */}
     if(last)update(last);
   });
-  // Pressing the skill closes the compact strip: the thumb went back to fighting (DSG/UX review).
-  const onSkill=(event:Event)=>{if(open&&(event.target as Element|null)?.closest?.('#coop-attack')){open=false;if(last)update(last);}};
-  document.addEventListener('pointerdown',onSkill,true);
 
   /** One stamp-like beat on the chip when it appears or its number goes up (no loop: D-020). */
   const beat=()=>{chip.classList.remove('rh-offer-chip-beat');void chip.offsetWidth;chip.classList.add('rh-offer-chip-beat');};
 
-  function update(view:RunView){
+  function update(view:RunView,ctx?:HudContext){
     last=view;
+    if(ctx)paused=!!ctx.pause;
     const offers=view.offers;
     const ids=new Set(offers.map(offer=>offer.id));
     const startTick=trackShownAt(shownAt,offers,view.tick);
     if(pending&&!ids.has(pending.id))pending=undefined;
-    if(pending){pending.atTick??=view.tick;if(view.tick-pending.atTick>OFFER_RETRY_TICKS){pending=undefined;stamp=undefined;shown=undefined;}}
-    if(stamp&&now()>=stamp.until){stamp=undefined;root.classList.remove('rh-offer-stamping');}
-    if(lastMode!==offerMode(view)){
-      // A wave starting closes whatever was open (in combat the strip only shows after a tap on the chip); each
-      // intermission opens the window again, and "levar os indicados" only runs inside the intermission it began in.
-      const mode=offerMode(view);
-      open=false;collapsed=false;takingAll=false;
-      lastMode=mode;root.dataset.mode=mode;
+    // A pick the room never answered is tried again: after OFFER_RETRY_TICKS, or that long on the wall clock in a
+    // pause (D-050: the tick stands still there).
+    if(pending){
+      pending.atTick??=view.tick;pending.atMs??=now();
+      if(view.tick-pending.atTick>OFFER_RETRY_TICKS||paused&&now()-pending.atMs>OFFER_RETRY_TICKS*1000/SIM_HZ){pending=undefined;stamp=undefined;shown=undefined;}
     }
-    const state=offerUiState(view,open,collapsed);
-    if(!state.pending){open=false;takingAll=false;}
+    if(stamp&&now()>=stamp.until){stamp=undefined;root.classList.remove('rh-offer-stamping');}
+    if(lastMode!==offerMode(view)||lastPaused!==paused){
+      // A wave starting, or a pause opening or ending, closes whatever was open; each intermission opens the window
+      // again, and "levar os indicados" only runs inside the intermission (or pause) it began in.
+      const mode=offerMode(view);
+      collapsed=false;takingAll=false;
+      lastMode=mode;lastPaused=paused;root.dataset.mode=mode;root.classList.toggle('rh-offer-paused',paused);
+    }
+    const state=offerUiState(view,collapsed,paused);
+    if(!state.pending)takingAll=false;
     // The chosen offer is no longer "waiting", even before the server drops it.
     const waiting=offers.filter(offer=>offer.id!==pending?.id).length;
     const chipWas=chip.hidden;
@@ -306,8 +313,8 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(stamp)return;
     if(root.classList.contains('rh-offer-pending')!==(!!pending&&pending.id===offer.id))markPending();
     // Taking all: the next head gets its default as soon as the previous stamp is done.
-    if(takingAll&&!pending&&state.mode==='intermission'){pick(offer.defaultIndex);return;}
-    takeAll.hidden=!(state.mode==='intermission'&&offers.length>=TAKE_ALL_MIN);
+    if(takingAll&&!pending&&(state.mode==='intermission'||paused)){pick(offer.defaultIndex);return;}
+    takeAll.hidden=!((state.mode==='intermission'||paused)&&offers.length>=TAKE_ALL_MIN);
     later.hidden=state.mode!=='intermission';
     const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
     if(fall.textContent!==line){
@@ -331,7 +338,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(queued!==lastQueue){lastQueue=queued;queue.textContent=queueLabel(queued);queue.hidden=queued<=0;}
   }
 
-  return {el:root,chip,update,destroy(){document.removeEventListener('pointerdown',onSkill,true);}};
+  return {el:root,chip,update,destroy(){}};
 }
 
 /**

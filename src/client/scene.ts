@@ -106,6 +106,8 @@ const TREE_PRELOAD_UNITS=24;
 /** Endless world: a tree whose sheet arrives on screen fades in over this long (instant with reduced motion). */
 const TREE_FADE_MS=220;
 
+/** window.__partidaPronta set once per page (the smoke's "entered the match" signal). */
+let matchSignalled=false;
 export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   /** The last {t:'elenco'} list whose art was queued (horde-art.ts queueEnemyArt). */
@@ -944,6 +946,9 @@ export class IslandScene extends Phaser.Scene {
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
       this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
+      // The match is on (a round in the room's run view, drawn by this scene): the production smoke (scripts/smoke-prod.mjs)
+      // waits for this flag, not for a HUD element that a HUD card may move or hide.
+      if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
       this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);
       this.hooks.runView?.(runView);

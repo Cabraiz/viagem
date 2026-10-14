@@ -117,7 +117,9 @@ export function followWorld(terrain:WorldOf):FollowWorld{
 export function cityZoom(viewport:Viewport,k=1){
   const w=Math.max(1,viewport.width),h=Math.max(1,viewport.height),short=Math.min(w,h),long=Math.max(w,h);
   const floor=zoomFor(CITY_PROFILE,w,h).pixelsPerUnit/(TILE_X*Math.SQRT2);
-  return Math.max(floor*k,short/(VISIBLE_SHORT_PX*CITY_VIEW_SCALE),long/(VISIBLE_LONG_PX*CITY_VIEW_SCALE));
+  // Never more world than the endless map shows at the same factor (its hero share of the short side), scaled to the
+  // city: with the widest-camera contract (D-046) the caps alone no longer pin a wider phone to that share.
+  return Math.max(floor*k,followZoom(viewport,k)/CITY_VIEW_SCALE);
 }
 /** The follow zoom of a terrain at the player's zoom `k`: cityZoom in the city, followZoom on the island and the endless map. */
 export function worldZoom(viewport:Viewport,terrain:WorldOf,k=1){return isCityWorld(terrain)?cityZoom(viewport,k):followZoom(viewport,k);}

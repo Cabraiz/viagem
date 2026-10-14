@@ -841,7 +841,7 @@ export class IslandScene extends Phaser.Scene {
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
     if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
-    this.banks?.push(view.banks,view.tick);
+    this.banks?.push(view.banks,view.tick,view.events);
   }
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){

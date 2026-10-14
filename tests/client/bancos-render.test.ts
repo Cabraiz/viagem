@@ -47,6 +47,20 @@ test('the tracker: notes fly NOTE_MS, the hero\'s beep, a screen line on every L
   t.push([],200,7000);assert.equal(t.banks.length,0);
 });
 
+test('the tracker with the room\'s events: bank-cash says who took the note (the saldo and the state do not)',()=>{
+  const t=new BankTracker(),cash=(eventId:number,by:'hero'|'enemy',bankId='banco-0')=>({type:'bank-cash' as const,bank:bankId,amount:BANCO.nota,by,eventId});
+  t.push([bank()],0,0,[]);
+  // A critter takes the last note without the bank ever showing 'bicho': a dark note, no beep (review 1, M3).
+  t.push([bank({saldo:0,state:'sem-cedulas'})],60,1000,[cash(1,'enemy')]);
+  assert.deepEqual(t.notes.map(n=>n.by),['enemy']);assert.equal(t.balloons.length,0);
+  // The same events again (a view repeats them) fire nothing; a hero and a critter in one view: the hero's first.
+  t.push([bank({saldo:0,state:'sem-cedulas'})],61,1100,[cash(1,'enemy')]);assert.equal(t.notes.length,1);
+  t.push([bank({saldo:36,state:'sacando'})],120,2000,[cash(1,'enemy'),cash(2,'enemy'),cash(3,'hero'),cash(4,'hero','outro')]);
+  assert.deepEqual(t.notes.slice(1).map(n=>n.by),['hero','enemy']);assert.equal(t.balloons.length,1);
+  // A refill (saldo up) with no event: no note.
+  t.push([bank({saldo:40,state:'aberto'})],180,3000,[]);assert.equal(t.notes.length,3);
+});
+
 test('the kiosk: its sign in the bank\'s colour, the screen in its look, standing on the slab',()=>{
   const boxes=atmBoxes('juros','vermelho');
   assert.ok(boxes.some(b=>b.color===BANK_COLORS.sign.juros));

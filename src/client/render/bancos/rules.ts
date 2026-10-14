@@ -1,10 +1,10 @@
 /**
  * Bancos in the world (card NEW-20261014-ORQ-bancos-e-veiculos): what the render reads from the run's banks
- * (ObjectiveView.banks, contract/objective.ts), pure so it is tested. The sim sends each bank's saldo and state; a
- * withdrawal is a saldo that dropped by whole notes between two views (no event needed on the wire): a hero's note
- * flies up green with the "RETIRE SEU DINHEIRO" beep, a critter's flies away dark.
+ * (RunView.banks), pure so it is tested. A withdrawal is the room's bank-cash event (its `by` says who took the note):
+ * a hero's note flies up green with the "RETIRE SEU DINHEIRO" beep, a critter's flies away dark. Without the room's events
+ * (the sandbox's fake banks) it is a saldo that dropped by whole notes between two views.
  */
-import {SIM_HZ,type BankView} from '../../../contract/index.ts';
+import {SIM_HZ,type BankView,type StampedEvent} from '../../../contract/index.ts';
 import {BANCO,BANK_BEEP,BANK_LINES} from '../../../rules/index.ts';
 
 /** A note's flight (ms); the beep's and the screen line's balloons (ms). */
@@ -20,6 +20,15 @@ export function notesBetween(prev:Pick<BankView,'saldo'|'state'>|undefined,next:
   const by:NoteBy=next.state==='bicho'||prev?.state==='bicho'&&next.state!=='sacando'?'enemy':'hero';
   if(!prev||next.saldo>=prev.saldo)return {count:0,by};
   return {count:Math.min(NOTES_PER_VIEW,Math.max(1,Math.round((prev.saldo-next.saldo)/BANCO.nota))),by};
+}
+/** Notes per bank and withdrawer from the room's new bank-cash events (after lastEventId). */
+export function notesFromEvents(events:readonly StampedEvent[],lastEventId:number):Map<string,{hero:number;enemy:number}>{
+  const out=new Map<string,{hero:number;enemy:number}>();
+  for(const e of events){
+    if(e.eventId<=lastEventId||e.type!=='bank-cash')continue;
+    const n=out.get(e.bank)??{hero:0,enemy:0};n[e.by]++;out.set(e.bank,n);
+  }
+  return out;
 }
 /** The saldo's share of a full ATM, 0..1 (the ring on the ground). */
 export const saldoShare=(b:Pick<BankView,'saldo'>)=>Math.max(0,Math.min(1,b.saldo/BANCO.saldo));
@@ -63,14 +72,22 @@ export class BankTracker {
   balloons:Balloon[]=[];
   private last=new Map<string,BankView>();
   private heroNotes=new Map<string,number>();
-  push(banks:readonly BankView[]|undefined,tick:number,now:number){
+  private lastEventId=-1;
+  /** `events`: the room's view events (bank-cash says who took each note); undefined = guess from the saldo (sandbox). */
+  push(banks:readonly BankView[]|undefined,tick:number,now:number,events?:readonly StampedEvent[]){
     this.tick=tick;this.banks=banks?[...banks]:[];
     const seen=new Set<string>();
+    const cash=events&&notesFromEvents(events,this.lastEventId);
+    if(events)for(const e of events)if(e.eventId>this.lastEventId)this.lastEventId=e.eventId;
     for(const b of this.banks){
       seen.add(b.id);
-      const {count,by}=notesBetween(this.last.get(b.id),b);
-      for(let i=0;i<count;i++)this.notes.push({bank:b.id,born:now+i*120,by,slot:i});
-      if(count&&by==='hero'){
+      let took:{hero:number;enemy:number};
+      if(cash)took=cash.get(b.id)??{hero:0,enemy:0};
+      else{const {count,by}=notesBetween(this.last.get(b.id),b);took={hero:by==='hero'?count:0,enemy:by==='enemy'?count:0};}
+      const count=Math.min(NOTES_PER_VIEW,took.hero);
+      // The hero's notes first, then the critter's, NOTES_PER_VIEW in all.
+      for(let slot=0;slot<Math.min(NOTES_PER_VIEW,took.hero+took.enemy);slot++)this.notes.push({bank:b.id,born:now+slot*120,by:slot<count?'hero':'enemy',slot});
+      if(count){
         const n=this.heroNotes.get(b.id)??0;this.heroNotes.set(b.id,n+count);
         this.balloons=this.balloons.filter(x=>x.bank!==b.id);
         const line=lineAt(b.id,n);

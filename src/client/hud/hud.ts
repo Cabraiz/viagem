@@ -371,7 +371,11 @@ export class RunHud {
   }
   /** Bancos: a critter starts robbing a bank → one urgent row (it waits in line like the chaveiro's reason). */
   private stepBanks(view:RunView){
-    const step=this.bankAlert.step(this.el.classList.contains('rh-ended')?undefined:view.banks,performance.now());
+    const banks=this.el.classList.contains('rh-ended')?undefined:view.banks;
+    const step=this.bankAlert.step(banks,performance.now());
+    // The robbery ended (the critter left or the bank emptied) before or while its row shows: the row leaves the line.
+    const called=this.bankRow.dataset.banco;
+    if(called&&!banks?.some(b=>b.id===called&&b.state==='bicho')){delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);}
     if(!step.show)return;
     const row=this.bankRow;row.innerHTML=icon('banco');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);
@@ -438,8 +442,8 @@ export class RunHud {
    */
   private turnRows(now=performance.now()){
     const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
-    // The chaveiro's stop (D-047) also waits for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
-    const banner=head===this.reasonRow&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
+    // The chaveiro's stop (D-047) and a bank robbery also wait for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
+    const banner=(head===this.reasonRow||head===this.bankRow)&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
     const busy=banner||!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
     const walk=!answer&&!this.objectiveRow.el.hidden;
     const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
@@ -551,7 +555,7 @@ export class RunHud {
     resetTally(this.tally);
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
-    this.bankAlert.reset();this.dropRow(this.bankRow);
+    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);
   }
 
   get view(){return this.last;}

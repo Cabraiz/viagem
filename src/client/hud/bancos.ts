@@ -29,10 +29,12 @@ export class BankAlert {
     const now=new Set<string>();
     for(const b of banks??[]){
       if(b.state!=='bicho')continue;
-      now.add(b.id);
-      if(this.robbed.has(b.id))continue;
+      if(this.robbed.has(b.id)){now.add(b.id);continue;}
       const at=this.called.get(b.id);
-      if(!show&&(at===undefined||nowMs-at>=BANK_ALERT_REPEAT_MS)){show={text:robberyText(b),bank:b.id};this.called.set(b.id,nowMs);}
+      // A robbery that starts in the quiet time is let go; one that loses the frame to another bank calls next frame.
+      if(at!==undefined&&nowMs-at<BANK_ALERT_REPEAT_MS){now.add(b.id);continue;}
+      if(show)continue;
+      show={text:robberyText(b),bank:b.id};this.called.set(b.id,nowMs);now.add(b.id);
     }
     this.robbed=now;
     return show?{show}:{};

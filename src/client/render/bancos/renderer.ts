@@ -14,7 +14,7 @@ import type {Projector,Pt} from '../projector.ts';
 import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
-import type {BankView} from '../../../contract/index.ts';
+import type {BankView,StampedEvent} from '../../../contract/index.ts';
 import {BANCO,BANK_SHORT} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,saldoShare,screenOf,type FlyingNote} from './rules.ts';
@@ -53,7 +53,8 @@ export class BankRenderer {
   }
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
-  push(banks:readonly BankView[]|undefined,tick:number){this.state.push(banks,tick,this.now);}
+  /** `events`: the room's view events (bank-cash); the sandbox's fake banks have none (the saldo's drop stands in). */
+  push(banks:readonly BankView[]|undefined,tick:number,events?:readonly StampedEvent[]){this.state.push(banks,tick,this.now,events);}
 
   /** After a view turn or a depth re-base. */
   refresh(){this.update(this.now);}

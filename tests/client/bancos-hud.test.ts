@@ -30,6 +30,8 @@ test('the robbery row: when a robbery starts, once; the same bank again only aft
   // Two robberies at once: one row, the other on the next view.
   const b=new BankAlert(),two=[bank('x',{state:'bicho'}),bank('y',{state:'bicho',name:'posto'})];
   assert.equal(b.step(two,0).show?.bank,'x');
+  assert.equal(b.step(two,16).show?.bank,'y','the second robbery calls on the next view');
+  assert.equal(b.step(two,32).show,undefined);
 });
 
 test('the arrow: the robbed bank first, else the nearest with notes; never an empty one or one in view',()=>{

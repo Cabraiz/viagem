@@ -244,3 +244,24 @@ test('the production smoke runs after a green suite and before the push: a faili
     assert.equal(green.estado,'publicado');assert.equal(green.smoke,'ok');
   }finally{w.cleanup();}
 });
+
+test('the upgrade smoke (BUG-20261014-ORQ-mapa-cache-velho): the base checked out and built, the script run with --upgrade-from it, the checkout removed',()=>{
+  const w=world();
+  try{
+    // A repo whose smoke script has the upgrade mode: it records its arguments; the build only marks the checkout.
+    mkdirSync(join(w.repo,'scripts'));
+    writeFileSync(join(w.repo,'build.mjs'),"import {writeFileSync} from 'node:fs';writeFileSync('built.txt','1');");
+    writeFileSync(join(w.repo,'package.json'),JSON.stringify({scripts:{build:'node build.mjs'}}));
+    writeFileSync(join(w.repo,'scripts/smoke-prod.mjs'),"// --upgrade-from <checkout>"+String.fromCharCode(10)+"import {appendFileSync,existsSync} from 'node:fs';import {join} from 'node:path';"+String.fromCharCode(10)
+      +"const i=process.argv.indexOf('--upgrade-from');const prev=i>0?process.argv[i+1]:'';"+String.fromCharCode(10)
+      +"appendFileSync(process.env.FILA_RUNS,'smoke '+(prev?'upgrade '+(existsSync(join(prev,'built.txt'))?'base-built':'base-not-built'):'normal')+(existsSync('built.txt')?' lote-built':'')+String.fromCharCode(10));");
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','smoke script');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/u','src/u.ts','export const u=1;'+String.fromCharCode(10));
+    main(['pronto','NEW-u','--branch','vgm/u',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'publicado');
+    assert.deepEqual(w.runs().filter(r=>r.startsWith('smoke')),['smoke normal lote-built','smoke upgrade base-built lote-built']);
+    assert.equal(git(w.repo,'worktree','list').split(String.fromCharCode(10)).length,1,'the base checkout is gone too');
+    assert.ok(!existsSync(join(w.board,'locks','browser-1')),'the browser slot is released');
+  }finally{w.cleanup();}
+});

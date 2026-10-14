@@ -34,20 +34,24 @@ export function pageStarved(trace,now){
   return due>0&&fires/due<FIRE_RATIO_MIN?`a página rodou ${Math.round(fires/due*100)} % do tempo`:'';
 }
 
+/** A page silent for this many polls in a row (≈ 11 s each: the 10 s timeout and the 1 s step) has stopped. */
+export const HUNG_POLLS=3;
 /** The chunk check's reason when the page did not answer it (smoke-prod.mjs). */
 export const CHUNKS_UNVERIFIED='chunks não verificados (a página não respondeu em 60 s)';
 
 /**
- * A hung renderer: the page answered none of the polls of its last STALL_MS (at least 3) while the local room answered
- * on time. Lot 162643 failed so (resp:false in every sample, the room fine) and E5 passed the same two builds 2/2:
- * Chromium's d3d11 renderer stuck beside another headless browser, not the game. The machine's (exit 2) with no other
+ * A hung renderer: the page stopped answering — its last HUNG_POLLS polls or more, all of them since its last answer,
+ * timed out — while the local room answered on time. Lot 162643 failed so (resp:false in every sample, the room fine)
+ * and E5 passed the same two builds 2/2: Chromium's d3d11 renderer stuck beside another headless browser, not the game. The machine's (exit 2) with no other
  * evidence needed; smoke-prod.mjs tries it once more in a fresh browser. `room` is {ok, ms}; '' when not hung.
  */
 export function rendererHung(trace,now,room){
-  const tail=trace.filter(t=>t.wallMs>=now-STALL_MS);
-  if(tail.length<3||tail.some(t=>t.answered!==false))return '';
+  let silent=0;
+  for(let i=trace.length-1;i>=0&&trace[i].answered===false;i--)silent++;
+  if(silent<HUNG_POLLS)return '';
   if(!room?.ok||room.ms>ROOM_SLOW_MS)return '';
-  return `o renderer travou: nenhuma das ${tail.length} leituras respondeu e a sala respondeu em ${room.ms} ms`;
+  const since=Math.round((now-trace[trace.length-silent].wallMs)/1000);
+  return `o renderer travou: as últimas ${silent} leituras (${since} s) não responderam e a sala respondeu em ${room.ms} ms`;
 }
 
 /** Evidence from outside the page that the machine was starved: '' when there is none. */

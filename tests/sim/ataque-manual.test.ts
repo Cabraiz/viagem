@@ -73,8 +73,8 @@ test('combat off: a scripted Simulation run is byte-identical to main before D-0
 });
 
 test('combat off: a room with bots is byte-identical to main before D-051 (and combat auto is the same run)',()=>{
-  // Recorded on main a2e951f (before D-051) with this very script.
+  // Recorded on main 82893df (before D-051; the D-050 level-up pause moved it from a2e951f's eb80946b) with this very script.
   const off=offRoom(0x2b1d,1200);
-  assert.equal(off,'eb80946b');
+  assert.equal(off,'3424b518');
   assert.equal(offRoom(0x2b1d,1200,'auto'),off);
 });

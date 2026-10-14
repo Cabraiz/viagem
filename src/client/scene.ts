@@ -962,9 +962,11 @@ export class IslandScene extends Phaser.Scene {
     const phase=net.run?.phase;
     if(phase==='combat'&&this.lastPhase!=='combat')this.you?.showArrow(time);
     this.lastPhase=phase;
-    const axis=this.paused?{x:0,y:0}:this.hooks.direction(),keys=this.paused?{sx:0,sy:0}:this.keyAxis();
+    // D-050: a level-up pause holds the controls like the player's own pause (the room is not stepping).
+    const frozen=this.paused||!!net.run?.pause;
+    const axis=frozen?{x:0,y:0}:this.hooks.direction(),keys=frozen?{sx:0,sy:0}:this.keyAxis();
     const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
-    const still=this.paused||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
+    const still=frozen||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
     // No walk to follow while the hero cannot walk (no path search every 150 ms in the waiting room or while down).
     this.followHold(time,still||Math.hypot(sx,sy)>.05);
     if(still){this.attackTarget=undefined;this.route=[];}
@@ -993,13 +995,13 @@ export class IslandScene extends Phaser.Scene {
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
       if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
-      if(!this.paused&&Math.hypot(sx,sy)<=.05&&this.route.length){
+      if(!frozen&&Math.hypot(sx,sy)<=.05&&this.route.length){
         while(this.route.length&&Math.hypot(this.route[0].x-net.predicted.x,this.route[0].y-net.predicted.y)<.18)this.route.shift();
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      net.input(direction,false,this.attackTarget,!this.paused&&!!this.hooks.attacking?.());this.accumulator-=STEP;
+      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.());this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.

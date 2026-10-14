@@ -199,7 +199,8 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   assert.match(scene,/this\.followHold\(time,still\|\|Math\.hypot\(sx,sy\)>\.05\)/);
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.hold\.release\(\);/);
   // The input still leaves through net.input (input-10hz); D-051: the attack button rides it as the 4th argument.
-  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!this\.paused&&!!this\.hooks\.attacking\?\.\(\)\)/);
+  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!frozen&&!!this\.hooks\.attacking\?\.\(\)\)/);
+  assert.match(scene,/const frozen=this\.paused\|\|!!net\.run\?\.pause;/,'D-050: the level-up pause holds the controls too');
 });
 
 test('texts per input kind: the phone keeps its words, the desktop speaks of keys and clicks',()=>{

@@ -457,8 +457,8 @@ export class HordeRenderer{
       a.kind=kind;a.elite=elite;a.tex=tex;
     }
     a.look=look;a.act=actAnim(view.kind,kind,view.phase);
-    // D-047 (protocol 15): EnemyView.sugar; read loosely until the contract has the field.
-    a.sugar=(view as EnemyView&{sugar?:boolean}).sugar===true;
+    // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
+    a.sugar=view.sugar===true;
     // The roster's art loads per match, the first time one of its enemies shows up (horde-art.ts queueEnemyArt).
     const art=enemyArtId(view.kind,kind);
     if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}

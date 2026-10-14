@@ -41,6 +41,7 @@
  * (e.g. `bicho=sem-arte`), no frame at all (the caption takes the width).
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
+import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {RunHud} from '../hud/hud.ts';
 import type {RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
@@ -345,20 +346,24 @@ if(cidade)void (async()=>{
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
   // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
   const P=terrain.asset.points;
-  const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:{x:103.1,y:154.2},patio:{x:104.5,y:149.5},meio:{x:89.3,y:113},praca:P.praca};
+  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_MAP_SCALE they are the same places on the 1.7×
+  // map (NEW-20261013-ORQ-cidade-escala-1-7). The asset's points (P) are already in its units.
+  const {CITY_MAP_SCALE:S}=await import('../../rules/index.ts');
+  const at=(x:number,y:number)=>({x:x*S,y:y*S});
+  const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
-  const hero=tutorial?spot(params.get('ponto')):{x:82,y:125};
+  const hero=tutorial?spot(params.get('ponto')):at(82,125);
   const people:{id:string;name:string;x:number;y:number;downed?:boolean;seconds?:number;ping?:boolean}[]=tutorial
     ?[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:P.inicio.x-1.4,y:P.inicio.y+.6},{id:'p3',name:'Zé do Pix',x:P.inicio.x+1.2,y:P.inicio.y+1}]
-    :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',x:58,y:100},
-      {id:'p3',name:'Zé do Pix',x:118,y:142,downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',x:86,y:128}];
+    :[{id:'p1',name:'Você',x:hero.x,y:hero.y},{id:'p2',name:'Tia',...at(58,100)},
+      {id:'p3',name:'Zé do Pix',...at(118,142),downed:true,seconds:14,ping:true},{id:'p4',name:'Concursei',...at(86,128)}];
   const rnd=(()=>{let s=7;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};})();
-  const blob=(prefix:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${prefix}${i}`,x:cx+(rnd()*2-1)*2,y:cy+(rnd()*2-1)*2}));
+  const blob=(prefix:string,cx:number,cy:number,n:number)=>Array.from({length:n},(_,i)=>({id:`${prefix}${i}`,x:cx*S+(rnd()*2-1)*2,y:cy*S+(rnd()*2-1)*2}));
   // 12 coming down the north avenue, 7 on the west one, 3 (a clover on the minimap only) south-east, 1 alone (nowhere).
   // The tutorial: round 1's first group of bêbados on the novice's road (≈(89,124)).
   const enemies=tutorial?blob('b',89,124,3):[...blob('n',84,40,12),...blob('o',40,88,7),...blob('se',120,120,3),...blob('s',60,150,1)];
   const tick=1000,mouths=new Map<'N'|'S'|'L'|'O',number>();
-  const active=tutorial?[]:city.trackMouths(mouths,[{type:'spawn-warning',x:150,y:88,atTick:tick+30}],tick,map);
+  const active=tutorial?[]:city.trackMouths(mouths,[{type:'spawn-warning',...at(150,88),atTick:tick+30}],tick,map);
   // The fixture's run under it, trimmed to these 4 players, with the wall at the plaza at 63%.
   const base=fakeView(scenario,people.length,tick);
   // Round 1's banner as the director sends it with the city's tutorial round (its name and line, cidade-08).
@@ -403,9 +408,9 @@ if(cidade)void (async()=>{
     hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
-      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30,y:map.plaza.y-26,boss:true}],
-      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now()});
-    void layout;void active;void chaveiro; // the keymaker's marks join the WC3 minimap's extras (Executor-8)
+      players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true}],
+      structures:run.structures,corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
+    void layout;void active;
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});

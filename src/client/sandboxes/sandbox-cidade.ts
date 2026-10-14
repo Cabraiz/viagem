@@ -59,6 +59,8 @@
  * `objetivo=1` (D-047, card chaveiro-render): the chaveiro objective's renderer (render/chaveiro) with a fake objective at the
  *   plaza (sandbox-chaveiro.ts: `moto=`, `rota=`, `pecas=`, `cai=1`, `pancadas=`, `alarme=1`, `empurra=`, `fim=vitoria|derrota`);
  *   without `hero`, the hero stands next to the moto (or the car). `acucar=1` (with `tele=1`): both lab critters are açucarados.
+ * `regua=1` (card cidade-escala-1-7): a ruler beside the hero, in hero heights (the hero's own drawn height, 1× to 5×), to
+ *   measure a house, a sobrado or a lamp against him in a print.
  * `relevo=0` draws the flat ground (no relief shader); `relevo=morros` (with `mapa=real`) adds stand-in snow hills to the
  * real map (render/city/relevo/preview.ts) to judge the relief shader before the real height field lands.
  * Fake data only; nothing talks to the server.
@@ -121,6 +123,8 @@ const outlinesOn=params.get('contorno')!=='0';
 const cast=tele&&params.get('elenco')==='1';
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
+const ruler=params.get('regua')==='1',RULER_STEPS=5;
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');
@@ -163,6 +167,8 @@ class CitySandbox extends Phaser.Scene {
   private stone?:StonewardsRenderer;
   private projector?:Projector;
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro};
+  /** regua=1: the ruler (Graphics) and its labels. */
+  private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
   private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
   private decoded?:CityTerrain;
@@ -441,9 +447,26 @@ class CitySandbox extends Phaser.Scene {
     const c=this.camera.snap(feet,viewport,zoom);
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
+    if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
+  }
+  /**
+   * regua=1: a Breu/Papel bar standing on the ground half a hero's width left of his feet, a tick at every hero height
+   * (the sheet's drawn height: HERO_WORLD_PX × CITY_VIEW_SCALE world px) labelled 1×…5×, over everything.
+   */
+  private drawRuler(feet:{x:number;y:number},zoom:number){
+    const r=this.ruler??=(()=>({g:this.add.graphics().setDepth(100002),labels:Array.from({length:RULER_STEPS},(_,i)=>this.add.text(0,0,`${i+1}×`,
+      {fontFamily:'system-ui',fontSize:'13px',fontStyle:'bold',color:'#1E1530',backgroundColor:'#EEDDB8',padding:{x:3,y:1}}).setOrigin(1,.5).setDepth(100003))}))();
+    const unit=HERO_WORLD_PX*CITY_VIEW_SCALE,k=1/zoom,x=feet.x-unit*.55,g=r.g;g.clear();
+    g.fillStyle(0x1e1530,1).fillRect(x-3*k,feet.y-unit*RULER_STEPS,6*k,unit*RULER_STEPS);
+    for(let i=0;i<RULER_STEPS;i++){
+      const y0=feet.y-unit*(i+1),y1=feet.y-unit*i;
+      g.fillStyle(i&1?0x1e1530:0xeeddb8,1).fillRect(x-2*k,y0,4*k,y1-y0);
+      g.fillStyle(0x1e1530,1).fillRect(x-9*k,y0-1*k,18*k,2*k);
+      r.labels[i].setPosition(x-11*k,y0).setScale(k);
+    }
   }
   private tick(dt:number){
     const cam=this.cameras.main.worldView,layer=this.layer;

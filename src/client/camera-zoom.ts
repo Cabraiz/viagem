@@ -5,9 +5,14 @@
  * closer, the city's baked relief would blur). The default shows ~1.4× today's area (hero ~47 px). Changed by the
  * mouse wheel or a two-finger pinch on the map, eased on screen, saved per browser. Pure: no Phaser, no DOM.
  */
+import {HERO_DEFAULT_SCREEN_PX,HERO_MIN_SCREEN_PX,HERO_WIDEST_SCREEN_PX} from '../contract/index.ts';
+
 export const ZOOM_KEY='viagem:zoom:v1';
-/** Hero CSS px (on a 390 px short side) at the widest, default and closest zoom. */
-export const HERO_ZOOM_PX={widest:44,default:47,closest:56} as const;
+/**
+ * Hero CSS px (on a 390 px short side) at the widest, default and closest zoom, from the contract: the server spawns
+ * off the widest one and paces the horde's run-in at the default one (director.ts CATCH_UP_SPEED, CITY_RUN_IN_SPEED).
+ */
+export const HERO_ZOOM_PX={widest:HERO_WIDEST_SCREEN_PX,default:HERO_DEFAULT_SCREEN_PX,closest:HERO_MIN_SCREEN_PX} as const;
 export const ZOOM_MIN=HERO_ZOOM_PX.widest/HERO_ZOOM_PX.closest;
 export const ZOOM_MAX=1;
 export const ZOOM_DEFAULT=HERO_ZOOM_PX.default/HERO_ZOOM_PX.closest;

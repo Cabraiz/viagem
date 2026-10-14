@@ -419,7 +419,7 @@ test('pack 2: elite and boss rounds draw from their own names; new labels fit th
 });
 
 // ---------- Endless world (NEW-20261009-ORQ-spawn-em-volta) ----------
-import {INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
+import {HERO_DEFAULT_SCREEN_PX,INTEREST_RADIUS,MAX_OFFSCREEN_DISTANCE,RECYCLE_DISTANCE,RING_OUTER,offscreenDistance,visibleAtDefault,visibleFrom,visibleOffset} from '../../src/contract/offscreen.ts';
 import {RECYCLE_EVERY,SPAWN_MARGIN} from '../../src/sim/director.ts';
 import {worldSpawn} from '../../src/maps/world.ts';
 
@@ -456,6 +456,41 @@ test('endless: the off-screen ring follows the widest camera (44 px hero, D-046)
   for(const [x,y] of [[3,30],[25,2],[-17,-17],[30,-6]])assert.equal(visibleOffset(x,y),visibleOffset(-y,x));
   // A camera hint (portrait, view 0) shows much less to the side.
   assert.ok(offscreenDistance(Math.SQRT1_2,-Math.SQRT1_2,{landscape:false,view:0})<12.5);
+});
+
+test('endless: the catch-up paces at the default zoom (D-046): it runs a body in up to the default screen, never on it; spawns stay off the widest one',t=>{
+  // Contract: the default zoom (hero 47 px) sees less than the widest legal camera (44 px), more than the 56 px framing.
+  let lo=Infinity,hi=0;
+  for(let i=0;i<720;i++){
+    const a=i/720*Math.PI*2,ux=Math.cos(a),uy=Math.sin(a),d=offscreenDistance(ux,uy,undefined,HERO_DEFAULT_SCREEN_PX);
+    assert.ok(d<=offscreenDistance(ux,uy)+1e-9&&d>=offscreenDistance(ux,uy,undefined,56)-1e-9,`direction ${i}`);
+    lo=Math.min(lo,d);hi=Math.max(hi,d);
+  }
+  for(let x=-50;x<=50;x+=2.5)for(let y=-50;y<=50;y+=2.5)if(visibleAtDefault({x:0,y:0},{x,y}))assert.ok(visibleOffset(x,y),`${x},${y}: on a default screen is on the widest one`);
+  t.diagnostic(`default zoom (hero ${HERO_DEFAULT_SCREEN_PX} px): off screen past ${lo.toFixed(1)}..${hi.toFixed(1)} u`);
+  // The director: only the catch-up moves bodies in this fake world (before the last call), so every move is one of its steps.
+  let moved=0,band=0;
+  for(const seed of [61,62,63]){
+    const ctx=fakeCtx(seed,endlessField(seed)),log=newLog(),at=worldSpawn(ctx.terrain);addPlayer(ctx,'a',at);
+    const director=createDirector(options(log,{rounds:1})),p=ctx.players.get('a')!;
+    const last=new Map<string,Point>();
+    run(ctx,director,ticks(25),c=>{
+      for(const e of c.enemies.values()){
+        const was=last.get(e.id);
+        if(e.spawnTick===c.tick)assert.ok(!visibleFrom(p,e),`seed ${seed}: ${e.id} spawned on the widest screen`);
+        // The last call (LAST_CALL_SECONDS) hurries bodies on screen too, capped by the hero's pace: not this rule.
+        else if(was&&(was.x!==e.x||was.y!==e.y)&&!director.state.called){
+          moved++;
+          assert.ok(!visibleAtDefault(p,was)&&!visibleAtDefault(p,e),`seed ${seed}: ${e.id} ran in on a default screen`);
+          if(visibleFrom(p,e))band++;
+        }
+        last.set(e.id,{x:e.x,y:e.y});
+      }
+    });
+  }
+  t.diagnostic(`${moved} catch-up steps, ${band} of them in the 44..47 px band`);
+  assert.ok(moved>100,`${moved} catch-up steps`);
+  assert.ok(band>0,'the run-in goes on past the widest camera\'s edge, up to the default one');
 });
 
 test('endless: 20 seeds, walking players, no spawn on anyone\'s screen, in water or in an obstacle',t=>{

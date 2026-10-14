@@ -204,10 +204,10 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
 /**
  * cityRun's scenario with neutral knobs (= the city without cidade-11): first recorded on 4906ef9, re-recorded on df2bf97
  * because main's P1 cast (18575e8, ff1954e) changed the waves' enemy pool, and again for D-046 (cityVisible follows the
- * contract's widest camera, so the avenue spawn spots move out).
+ * contract's widest camera, so the avenue spawn spots move out; late parts run in, CITY_RUN_IN_SPEED).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'d8eca2ff40ce64c3','tutorial seed 8 r4':'ee72b0747467656c','plain seed 21 r10':'0ce00933ae15b4a7',
+  'tutorial seed 3 r4':'224f984ad711b720','tutorial seed 8 r4':'b0c3daf301168739','plain seed 21 r10':'0e5aed036890f4e0',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -273,8 +273,8 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(let i=0;i<n;i++)world.step();
   return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
 }
-/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11), the city and the endless map again for D-046 (wider cityVisible and spawn ring; the island is unchanged). */
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'73f07010bc2e657b',ilha:'0d4d774d9e279384',infinito:'035a784fb8a2bbf2'};
+/** Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged, before cidade-11), the city and the endless map again for D-046 (wider cityVisible and spawn ring, city run-in and endless catch-up to the default zoom; the island is unchanged). */
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'fe207f4b6da4ec6b',ilha:'0d4d774d9e279384',infinito:'9cc409ceb12dfe2b'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

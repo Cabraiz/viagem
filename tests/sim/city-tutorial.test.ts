@@ -423,8 +423,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number){
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'d6214d6a46ee1738','infinito kill=40 seed 1':'b5a68ca70832a8a3',
-  'infinito kill=Infinity seed 0':'32d692da07c01401', // endless re-recorded for D-046 (wider spawn ring)
+  'infinito kill=40 seed 0':'a02241480faa7379','infinito kill=40 seed 1':'ff2e389867dabe71',
+  'infinito kill=Infinity seed 0':'060730a7b6e18f3e', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen)
 };
 test('island and endless untouched: the director with cityTutorial on matches the pre-cidade-05 digests',()=>{
   const got:Record<string,string>={};

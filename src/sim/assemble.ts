@@ -5,9 +5,9 @@
 import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,granaPerKill,hasRoom,mergeXpGems} from '../rules/index.ts';
+import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,mergeXpGems,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
-import {ELITE,createEnemy,enemyDef,isEnemyKind} from './enemies/catalog.ts';
+import {ELITE,createEnemy,enemyDef,isEnemyKind,type EnemyKind} from './enemies/catalog.ts';
 import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
 import {BOSS_TUNING,createBoss,type BossController,type BossState} from './boss.ts';
 import {createWeaponSystem} from './weapons/system.ts';
@@ -23,11 +23,12 @@ import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
-import {CityTerrain,baseHeroSpeed,cityNestPlan} from '../maps/index.ts';
+import {CityTerrain,baseHeroSpeed,cityNestPlan,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
-import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {CAR_ID,MOTO_ID,Rng,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {createSono,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -100,8 +101,9 @@ export interface RunSystemsState {
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
-  /** D-051, only in mode 'ninhos' (absent otherwise). */
+  /** D-051, only in mode 'ninhos' (absent otherwise): the nests and their sleepers (absent until the first step). */
   ninhos?:NestsState;
+  sono?:SonoState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -115,6 +117,8 @@ export interface RunSystems {
   chaveiro?:ChaveiroSystem;
   /** D-051: the nests of a run in mode 'ninhos', else absent. */
   nests?:NestsSystem;
+  /** D-051: their sleepers (ninhos/sono.ts), from the first step of a run in mode 'ninhos'. */
+  sono():Sono|undefined;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
@@ -150,6 +154,28 @@ export function prizeBlocks(state:StonewardsState):{x:number;y:number;radius:num
   for(const d of defenses?.list??[])blocks.push({x:d.x,y:d.y,radius:d.r});
   return blocks;
 }
+/** Round row whose hp the sleepers carry (mid-early: they are the map's standing threat, not a late wave). */
+export const SLEEPER_ROUND=3;
+/** Round row whose roster a sleeper's kind is drawn from: loose bands and P nests early, M mid, G late. */
+export const SLEEPER_ROSTER:Readonly<Record<NestSize|'solto',number>>={solto:2,P:3,M:5,G:7};
+/**
+ * The kinds of a plan's sleepers (SonoOptions.kindOf), in plan order: from the run's rotation by ROLE_WEIGHT (the round
+ * table's kinds without one), on a stream of the seed of its own, so the director's and the nests' streams never move.
+ */
+export function sleeperKinds(plan:NestPlan,seed:number,roster:(round:number)=>RoundRoster|undefined):(i:number)=>EnemyKind{
+  const rng=new Rng(seed>>>0).fork('sono-tipos'),kinds:EnemyKind[]=[];
+  const draw=(round:number)=>{
+    const r=roster(round),weighted:[string,number][]=[];
+    if(r)for(const [role,w] of Object.entries(ROLE_WEIGHT) as [EnemyRole,number][]){const ids=r.roles[role];if(ids?.length)for(const id of ids)if(isEnemyKind(id))weighted.push([id,w/ids.length]);}
+    if(!weighted.length)for(const [kind,w] of Object.entries(ROUNDS[round-1].weights))if(w>0&&isEnemyKind(kind))weighted.push([kind,w]);
+    let x=rng.next()*weighted.reduce((t,[,w])=>t+w,0);
+    for(const [k,w] of weighted)if((x-=w)<0)return k as EnemyKind;
+    return weighted[weighted.length-1][0] as EnemyKind;
+  };
+  for(const n of plan.nests)for(let j=0;j<n.sleepers.length;j++)kinds.push(draw(SLEEPER_ROSTER[n.size]));
+  for(const b of plan.loose)for(let j=0;j<b.members.length;j++)kinds.push(draw(SLEEPER_ROSTER.solto));
+  return i=>kinds[i];
+}
 export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSystems{
   const {onOutcome}=options;
   // A checkpoint is copied once: every system below mutates the state it is handed.
@@ -168,7 +194,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // D-047: the chaveiro decides the run instead of the boss and the round count (created below, city only).
   let chaveiro:ChaveiroSystem|undefined;
   // D-051: the nests of mode 'ninhos' (created with the chaveiro, below).
-  let nests:NestsSystem|undefined;
+  let nests:NestsSystem|undefined,sono:Sono|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
@@ -298,7 +324,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // The plan's keep-offs: the moto's four possible routes (one per entrance) and the run's start.
       const routes=ENTRANCES.map(e=>planChaveiro(world.seed,openPlanner.grid,entrances,car,e).route.points);
       nests=createNests({
-        plan:players=>cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)}),
+        // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
+        plan:players=>{
+          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)});
+          sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed},cp?.sono);
+          world.sleepers=sono.sleepers;
+          return plan;
+        },
+        wake:(ctx,id)=>{sono?.wakeNest(ctx,id,'ninho');},
         players:ctx=>director!.scalePlayers(ctx),
         maxEnemies:MAX_ENEMIES,
         createEnemy:(ctx,kind,point,scale)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
@@ -313,7 +346,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
-    {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
+    // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
+    {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
@@ -337,10 +371,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),sono:()=>sono,
     objectiveView:()=>chaveiro?.view(world.tick),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(nests?{ninhos:nests.state}:{})}),
-    dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{})}),
+    dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
   };
 }

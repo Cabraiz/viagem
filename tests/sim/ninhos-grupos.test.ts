@@ -152,6 +152,11 @@ test('assembled mode ninhos: no round from the director, groups out of the nests
   assert.equal(nests.state.players,2);assert.equal(nests.state.nests.length,8);
   for(const n of nests.state.nests)assert.equal(n.maxHp,nestHp(n.size,2));
   assert.equal(a.world.round.phase,'wave');
+  // The sleepers (E2's sono) come with the plan: every nest's and band's body asleep, out of ctx.enemies.
+  const sono=a.sys.sono()!,plan=nests.plan()!;
+  assert.ok(sono&&a.world.sleepers===sono.sleepers);
+  assert.equal(sono.sleepers.size,plan.nests.reduce((t,n)=>t+n.sleepers.length,0)+plan.loose.reduce((t,b)=>t+b.members.length,0));
+  assert.equal(a.world.enemies.size,0);
   stepRun(a,ticks(FIRST_EXIT[0])-2);
   assert.equal(a.world.enemies.size,0,'nothing before 45 s');
   assert.equal(a.events.filter(e=>e.type==='round').length,0,'no round');
@@ -168,6 +173,21 @@ test('assembled mode ninhos: no round from the director, groups out of the nests
   for(const m of [a.world.enemies,a.world.projectiles,a.world.telegraphs])m.clear();
   stepRun(a,ticks(60));stepRun(b,ticks(60));
   assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}));
+});
+
+test('assembled mode ninhos: the first hit on a nest wakes its sleepers into the world; dispose lets the index go',()=>{
+  const a=assembled(7,new Map());
+  const car=a.sys.chaveiro!.state.car;
+  addPlayer(a.world,'p1',{x:car.x+1.5,y:car.y});
+  stepRun(a);
+  const nests=a.sys.nests!,sono=a.sys.sono()!,id=nests.state.nests[0].id,asleep=sono.asleepIn(id);
+  assert.ok(asleep>0);
+  nests.hit(a.world,id,1);
+  assert.equal(sono.asleepIn(id),0);
+  for(const b of sono.bodiesOf(id))assert.ok(a.world.enemies.has(b),`${b} awake in the world`);
+  assert.ok(a.sys.state().sono,'the sleepers are in the checkpoint');
+  a.sys.dispose();
+  assert.equal(a.world.sleepers,undefined);
 });
 
 test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live nest; without the objective the mode is ignored',()=>{

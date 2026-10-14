@@ -63,6 +63,17 @@ test('the driver: the city frame, ally colours as the team strip shows them, the
   assert.ok(second.self!.dx>0.99,'the heading follows the last step (east)');
 });
 
+test('the driver draws a nest only once someone has seen it (D-051 fog), its roof sized; a reused slot drops the size', () => {
+  const d=new WcMinimapDriver(IMAGES),{got,minimap}=fake(),terrain=new TerrainField(1);
+  const base={minimap,terrain,city:asset,view:1,selfId:'a',self:{x:80,y:90},states:new Map(),enemies:[],corners:[],extras:undefined,nowMs:0,wallHitAt:-1e9,
+    players:[{id:'a',x:80,y:90,online:true}]};
+  d.draw({...base,structures:[{kind:'ninho',x:30,y:30,size:'G',seen:true},{kind:'ninho',x:150,y:40,size:'P',seen:false},{kind:'ninho',x:40,y:150,size:'P'},{kind:'muralha',x:84,y:90}]});
+  d.draw({...base,structures:[{kind:'muralha',x:84,y:90}]});
+  const [first,second]=got;
+  assert.deepEqual(first.structures.map(s=>[s.kind,s.size]),[['nest','G'],['base',undefined]],'unseen nests stay off the minimap');
+  assert.deepEqual(second.structures.map(s=>[s.kind,s.size]),[['base',undefined]]);
+});
+
 test('the driver on the endless map: a window around the hero, its terrain rebuilt only after a quarter of it', () => {
   const d=new WcMinimapDriver(IMAGES),t=new TerrainField(77,{world:'infinito'});
   const a=d.frameFor({terrain:t,view:0,self:{x:0,y:0}}),b=d.frameFor({terrain:t,view:0,self:{x:ENDLESS_REBUILD*.5,y:0}}),c=d.frameFor({terrain:t,view:0,self:{x:ENDLESS_REBUILD*1.2,y:0}});

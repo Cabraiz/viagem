@@ -21,7 +21,13 @@ export interface BuildPlan {readonly cell:number;readonly sites:readonly BuildSi
 export interface Rect {x:number;y:number;w:number;h:number} // top-left corner and size, world units
 export interface BuildProblem {readonly id:string;readonly reason:string}
 
+/** A tower's footprint unit (u): a person-sized cell, not the map's (the towers stay the people's size). */
 export const CITY_BUILD_CELL=.88;
+/**
+ * The city asset's cell (u) the site rows below are written in: 0.88 × rules CITY_MAP_SCALE 1.7 since the asset's version 2
+ * (NEW-20261013-ORQ-cidade-escala-1-7); tests/maps/build-sites.test.ts checks it against the asset's unitsPerCell.
+ */
+export const CITY_SITE_CELL=1.496;
 /** 0.88 u drawn at the endless world's scale (rules/scale.ts CITY_VIEW_SCALE ≈ 0.5445): same on-screen size. */
 export const ENDLESS_BUILD_CELL=1.616;
 export const MIN_SITES=12,MAX_SITES=16;
@@ -32,7 +38,7 @@ export const MOUTH_KEEP_OUT=4;
 /** No footprint within this of the players' spawn point. */
 export const SPAWN_KEEP_OUT=1.5;
 
-// City sites as asset cells [cx, cy, maxSize], centred on the cell centre: six north and six south of the plaza
+// City sites as asset cells [cx, cy, maxSize] (CITY_SITE_CELL), centred on the cell centre: six north and six south of the plaza
 // block, two west and two east of it; the four avenue corridors into the mouths stay open (see the debug print).
 const CITY_CELLS:readonly (readonly [number,number,BuildSize])[]=[
   [75,84,2],[81,84,3],[87,84,3],[103,84,3],[109,84,3],[115,84,2],
@@ -61,9 +67,9 @@ const freezeSites=(rows:readonly (readonly [number,number,BuildSize])[],at:(a:nu
 }));
 const CITY_PLAN:BuildPlan=Object.freeze({
   cell:CITY_BUILD_CELL,
-  sites:freezeSites(CITY_CELLS,(cx,cy)=>({x:(cx+.5)*CITY_BUILD_CELL,y:(cy+.5)*CITY_BUILD_CELL})),
+  sites:freezeSites(CITY_CELLS,(cx,cy)=>({x:(cx+.5)*CITY_SITE_CELL,y:(cy+.5)*CITY_SITE_CELL})),
   rail:Object.freeze({id:'trilho',axis:'x',length:CITY_RAIL.length,width:CITY_RAIL.width,
-    x:round3((CITY_RAIL.x0+CITY_RAIL.length/2)*CITY_BUILD_CELL),y:round3((CITY_RAIL.y0+CITY_RAIL.width/2)*CITY_BUILD_CELL)}) as RailSite,
+    x:round3((CITY_RAIL.x0+CITY_RAIL.length/2)*CITY_SITE_CELL),y:round3((CITY_RAIL.y0+CITY_RAIL.width/2)*CITY_SITE_CELL)}) as RailSite,
 });
 const ISLAND_PLAN:BuildPlan=Object.freeze({cell:ENDLESS_BUILD_CELL,sites:Object.freeze([]),rail:null});
 // The 3×3 ápices (A4, A5, B5) do not fit inside that guaranteed ground, so each diagonal also tries a 3×3 just past

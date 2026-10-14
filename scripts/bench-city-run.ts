@@ -58,7 +58,7 @@
  * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
  * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
  * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own
- * stick, like 'build'. Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
+ * stick, like 'build' (and the bots' walk to an ATM, mode 'bank'). Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
  * left a debt (the bill not paid in full: the bots keep bot-brain granaReserve for it) out of the victories.
  *
  * Banks (card NEW-20261014-ORQ-bancos-e-veiculos, rules/bancos.ts BANCO): per run `banks`, from the sim's bank-* events:
@@ -492,8 +492,9 @@ export class NavDriver {
         if(reading){mode='hold';dir={x:0,y:0};}
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
-      // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase.
-      else if(this.room.modes.get(mind.id)==='push'||this.room.modes.get(mind.id)==='clear'){mode='build';dir=b.brain;}
+      // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
+      // the walk to an ATM (bancos-e-veiculos, mode 'bank').
+      else if(['push','clear','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);

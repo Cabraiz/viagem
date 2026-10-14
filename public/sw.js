@@ -70,7 +70,8 @@ function download(request,path,version){
   let job=inflight.get(path);
   if(!job){
     job=(async()=>{
-      const response=await fetch(request.url,{credentials:'same-origin'});
+      // no-cache: a version change must not be filled from the HTTP cache (max-age=600) with the previous file (BUG-20261014-ORQ-mapa-cache-velho).
+      const response=await fetch(request.url,{credentials:'same-origin',cache:'no-cache'});
       if(!storable(response))return {response};
       const body=await response.blob(),headers=new Headers(response.headers);
       if(version)headers.set(VERSION_HEADER,version);else headers.set(VERSION_HEADER,'-');

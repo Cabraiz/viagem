@@ -457,6 +457,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['moto',[['mode','str'],['alone','count',true]]],
   ['sale',[['enemy','ref',false,'enemies']]],
   ['buy',[['player','ref'],['item','str']]],
+  // D-051 (ninhos, card NEW-20261014-ORQ-ninhos-sim): sleepers woke around (x, y), n of them; heard near the spot only.
+  ['acordou',[['x','pos'],['y','pos'],['n','count']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);

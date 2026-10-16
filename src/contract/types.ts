@@ -188,7 +188,9 @@ export type SimEvent=
   | {type:'part';name:string}
   | {type:'moto';mode:MotoMoment;alone?:true}
   | {type:'sale';enemy:string}
-  | {type:'buy';player:string;item:CidaItemId};
+  | {type:'buy';player:string;item:CidaItemId}
+  /** D-051 (sim/ninhos/sono.ts): `n` sleepers woke around (x, y) (the client's "hã?" balloon); never the noise itself. */
+  | {type:'acordou';x:number;y:number;n:number};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

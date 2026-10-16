@@ -8,7 +8,7 @@ import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,queueCityArt,queueLiveArt,type CityArtPlan} from './render/city/index.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -289,6 +289,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.field instanceof CityTerrain){
       this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
       queueCityArt(this,this.cityArt()); // imported city art v2 (render/city/art-plan.ts) when the manifest has it
+      queueLiveArt(this,liveSheets(artIndex())); // cenário vivo: place loops, lit objects, nests (render/city/live)
     }
     else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
@@ -1128,7 +1129,7 @@ export class IslandScene extends Phaser.Scene {
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);
       // A map switch into the city: its sheets arrive after the first chunks, which are rebuilt with them.
-      if(queueCityArt(this,art)){
+      if(queueCityArt(this,art)+queueLiveArt(this,liveSheets(artIndex()))){
         this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});
         if(!this.load.isLoading())this.load.start();
       }

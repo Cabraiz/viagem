@@ -11,6 +11,7 @@ import Phaser from 'phaser';
 import type {ArtFile} from '../../../art/manifest.ts';
 import {ART_SCALE} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
+import type {LiveSheet} from './art.ts';
 import {
   LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decorKey,isPole,lightHead,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
   matchInsulators,NEST_SCALE,nestArtId,onCamera,polePairs,sagLine,viewIndex,
@@ -29,6 +30,13 @@ export interface CityLiveOptions {
 }
 /** A nest as the scene knows it (D-051 snapshot): world point, size letter, hp, asleep or not. */
 export interface LiveNest {id:string;x:number;y:number;size:'P'|'M'|'G';hp:number;awake?:boolean}
+
+/** Queues the live sheets (art.ts liveSheets) not loaded yet; returns how many (the caller starts the loader). */
+export function queueLiveArt(scene:Phaser.Scene,sheets:readonly LiveSheet[]):number{
+  let n=0;
+  for(const s of sheets)if(!scene.textures.exists(s.key)){scene.load.spritesheet(s.key,s.url,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});n++;}
+  return n;
+}
 
 const GLOW_KEY='city:live:glow';
 const GLOW_PX=128;

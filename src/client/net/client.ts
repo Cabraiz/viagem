@@ -816,6 +816,9 @@ export class CoopClient {
   }
   /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
   choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
+  /** D-052 "Pular" / "Rolar de novo" on the head offer; the room answers with {t:'offers'} and the run's counters. */
+  skipOffer(offer:string){this.runCommand({t:'skip',offer});}
+  rerollOffer(offer:string){this.runCommand({t:'reroll',offer});}
   /** Playtest metrics only (dev/ux-metrics.ts, ?dev=1): every run command the player taps, and whether it left. Unset otherwise. */
   onCommand?:(command:{t:string;offer?:string;index?:number},sent:boolean)=>void;
   private runCommand(command:{t:string;[key:string]:unknown}){

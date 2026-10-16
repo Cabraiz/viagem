@@ -9,7 +9,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '..
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -99,6 +99,11 @@ export interface RoomOptions {
    * equipped weapon, and {t:'cast'} is answered ok:false without a cast. Absent: the automatic weapons and the skill.
    */
   combat?:CombatMode;
+  /**
+   * D-051: 'ninhos' plays the nests instead of the waves in the city with the chaveiro (Simulation mode); ignored with
+   * the wall mode and on the endless map. Absent: the rounds, as before (the default turns after the nests' bench).
+   */
+  mode?:'ninhos';
 }
 /**
  * D-047: the city rooms' objective when RoomOptions.objective is absent: the chaveiro, since it is balanced
@@ -382,11 +387,14 @@ export class Room {
   private fixedDuration:number|undefined;
   /** D-051: the Simulation option of RoomOptions.combat (nothing for the automatic weapons, so those rooms are as before). */
   private combatOption():{combat?:CombatMode}{return this.combat?{combat:this.combat}:{};}
+  /** D-051: RoomOptions.mode, kept for the city Simulation (only with the chaveiro). */
+  private readonly cityMode?:'ninhos';
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.solo=options.solo===true;
     const objective=options.objective===undefined?CITY_OBJECTIVE_DEFAULT:options.objective;if(objective)this.cityObjective=objective;
     if(options.combat==='manual')this.combat='manual';
+    if(options.mode==='ninhos')this.cityMode='ninhos';
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
@@ -648,10 +656,12 @@ export class Room {
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
+    else if(m.t==='skip'||m.t==='reroll')this.offerAction(c,m);
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
     else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
+    else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
@@ -805,7 +815,7 @@ export class Room {
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...this.combatOption()})
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...(this.cityMode&&this.cityObjective==='chaveiro'?{mode:this.cityMode}:{}),...this.combatOption()})
       :new Simulation(old.seed,{world:this.baseWorld,...this.combatOption()});
     sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
@@ -853,6 +863,19 @@ export class Room {
     if(!Number.isInteger(m.index)||m.index<0||m.index>MAX_CHOICE_INDEX)return;
     this.sim.choose(c.playerId!,m.offer,m.index);
     this.pushOffers(c,true);
+  }
+  /**
+   * D-052: {t:'skip'|'reroll',round,offer} from the offer window ("Pular", "Rolar de novo"): the head offer closes with
+   * no prize, or gets new cards; the sim refuses a stale id or a player with none left. Answered with the queue (the
+   * new cards, or the next offer) and the run (the counters in the pause).
+   */
+  private offerAction(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
+    if(m.t==='skip')this.sim.skipOffer(c.playerId!,m.offer);else this.sim.rerollOffer(c.playerId!,m.offer);
+    this.pushOffers(c,true);
+    this.pushRun();
   }
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
@@ -1006,6 +1029,18 @@ export class Room {
     const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
   }
+  /**
+   * D-052 the car's rope: {t:'puxar',round,req,on}. Malformed taps are dropped here; outside combat or for another round
+   * it is 'fase', during the D-050 level-up pause 'pausa'; the sim says the rest ('longe', 'ocupado', 'fase', or
+   * 'duplicate' for a resent req). The puller hears {t:'puxou',req,ok,reason?}; everyone sees the rope in the next frame.
+   */
+  private puxar(c:Connection,m:any){
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.on!=='boolean')return;
+    const state=this.run.snapshot();
+    const result:PullResult=state.phase!=='combat'||m.round!==state.round?{ok:false,reason:'fase'}
+      :this.levelup.paused?{ok:false,reason:'pausa'}:this.sim.pullCar(c.playerId!,m.on,`r:${m.req}`);
+    this.sendJson(c,{t:'puxou',req:m.req,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
+  }
   /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
   private pixAt=new Map<string,{at:number;req:number}>();
   /**
@@ -1046,7 +1081,7 @@ export class Room {
   /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
   private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    return pause?{...snap,pause}:snap;
+    return pause?{...snap,pause:{...pause,...this.sim.offerCharges()}}:snap;
   }
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;
@@ -1234,13 +1269,14 @@ export class Room {
   }
   /**
    * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
-   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune. The
+   * same for the nests (D-051, a fallen one stays) and the sleeping bodies sent in the last frame (Simulation.sleeperIds).
    */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
-    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id)],nodes:this.sim.nodeIds});
+    this.ids.prune({enemies:[...ids(w.enemies),...this.sim.sleeperIds],pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id),...(this.sim.run.nests?.state.nests??[]).map(n=>n.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

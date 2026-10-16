@@ -68,7 +68,13 @@ export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:numb
   /** First tick this run's pickups ran; chest 2:00 gate fallback until ctx.runStartTick exists (never open early). */
   runStartTick?:number;
   /** D-021: level offers granted too late in the current intermission (base ids); they wait for the next one. */
-  lateHeld?:string[]}
+  lateHeld?:string[];
+  /** D-052: each player's [skips, rerolls] left this run (absent: the full OFFER_SKIPS / OFFER_REROLLS). */
+  charges?:Record<string,[number,number]>}
+/** D-052: every player starts a run with this many "Pular" (close the offer, no prize) and "Rolar de novo" (new cards). */
+export const OFFER_SKIPS=2,OFFER_REROLLS=2;
+export type OfferActionFailure='no-player'|'no-offer'|'unknown-offer'|'not-oldest'|'no-charge';
+export type OfferActionResult={ok:true;left:number}|{ok:false;reason:OfferActionFailure};
 export const createProgressionState=():ProgressionState=>({lastLevelGranted:1,lastRoundGranted:0});
 /** Pickup homing target meaning "nearest collector as soon as one exists" (drops that nobody can walk to). */
 export const HOME_ANY='*';
@@ -114,7 +120,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -270,6 +276,51 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return {ok:true,itemId:choice.itemId,level:choice.level};
   }
 
+  /** D-052: [skips, rerolls] `playerId` has left this run. */
+  function charges(playerId:string):[number,number]{return state.charges?.[playerId]??[OFFER_SKIPS,OFFER_REROLLS];}
+  /** The head offer `offerId` of `playerId`, or why a skip/reroll on it is refused (the same checks as choose). */
+  function headFor(ctx:SimContext,playerId:string,offerId:string):{reason:OfferActionFailure}|{player:SimPlayer;queue:LevelOffer[];head:LevelOffer}{
+    const player=ctx.players.get(playerId);
+    if(!player||!receivesOffers(player))return {reason:'no-player'};
+    const queue=ctx.offers.get(playerId),head=queue?.[0];
+    if(!queue||!head)return {reason:'no-offer'};
+    if(head.id!==offerId)return {reason:queue.some(offer=>offer.id===offerId)?'not-oldest':'unknown-offer'};
+    return {player,queue,head};
+  }
+  function spend(playerId:string,slot:0|1){
+    const left=charges(playerId).slice() as [number,number];left[slot]--;
+    (state.charges??={})[playerId]=left;return left[slot];
+  }
+  /**
+   * D-052 "Pular": closes the head offer with no prize, spending one skip. In a pause it counts as picked (the queue
+   * shrinks like after a choice; the next card, if any, is fresh).
+   */
+  function skip(ctx:SimContext,playerId:string,offerId:string):OfferActionResult{
+    const found=headFor(ctx,playerId,offerId);
+    if(!('head' in found))return {ok:false,reason:found.reason};
+    if(charges(playerId)[0]<=0)return {ok:false,reason:'no-charge'};
+    const left=spend(playerId,0);
+    resolve(ctx,found.player,found.queue,-1);
+    if(found.queue[0])reroll(ctx,found.player,found.queue[0]);
+    return {ok:true,left};
+  }
+  /**
+   * D-052 "Rolar de novo": new cards for this player's head offer only, spending one reroll. The offer gets a new id
+   * (a pick sent against the old cards is refused); the tick stands still in a pause, so the id counts the rerolls spent.
+   */
+  function rerollOffer(ctx:SimContext,playerId:string,offerId:string):OfferActionResult{
+    const found=headFor(ctx,playerId,offerId);
+    if(!('head' in found))return {ok:false,reason:found.reason};
+    if(charges(playerId)[1]<=0)return {ok:false,reason:'no-charge'};
+    const left=spend(playerId,1),player=found.player,head=found.head;
+    head.id=head.id.split(REROLL)[0]+REROLL+(ctx.tick*1000+(OFFER_REROLLS-left));
+    head.choices=rollChoices(catalog,player.build,player.stats.luck,rngOf(ctx));
+    head.defaultIndex=defaultIndexFor(player.build,head.choices);
+    saveRng();
+    ctx.emit({type:'offer',player:player.id,offer:head.id});
+    return {ok:true,left};
+  }
+
   const progression:SimSystem={id:'progression',step(ctx){
     const team=ctx.team;
     for(let n=0;n<MAX_LEVELS_PER_TICK&&team.xp>=team.nextXp;n++){
@@ -311,6 +362,6 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     ctx.emit({type:'offer',player:player.id,offer:head.id});
   }
 
-  return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose,settle};
+  return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose,settle,skip,rerollOffer,charges};
 }
 export type Progression=ReturnType<typeof createProgression>;

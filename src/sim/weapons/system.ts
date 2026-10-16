@@ -21,7 +21,7 @@ import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {PROJECTILE_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
-import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,spawnProjectile} from '../projectiles.ts';
+import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
 
 /** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through PROJECTILE_SPEED_MULT (4 u/s for 2 s, same reach). */
@@ -39,6 +39,8 @@ interface WeaponOptions {
   catalog?:{get(id:string):WeaponDef|undefined};
   /** D-051 manual combat: whether the player holds the attack on this tick (players system ManualCombat). Absent: automatic weapons. */
   manual?:{attacking(playerId:string):boolean};
+  /** D-052: hands busy (moving the chaveiro's car): the player does not fire this tick. */
+  busy?(playerId:string):boolean;
 }
 
 type Dir={x:number;y:number};
@@ -98,7 +100,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     if(opts.manual)return manualTargets(ctx,player,range,count);
     const out:EnemyState[]=[];
     const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range;
-    const preferred=player.target?ctx.enemies.get(player.target):undefined;
+    // D-051: a tap may pick a sleeper or a nest (ctx.sleepers): the player opens that fight; nothing else aims there.
+    const preferred=player.target?ctx.enemies.get(player.target)??ctx.sleepers?.get(player.target):undefined;
     if(preferred&&inRange(preferred))out.push(preferred);
     if(out.length>=count)return out;
     scratch.length=0;
@@ -269,7 +272,10 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       const dx=target.x-player.x,dy=target.y-player.y,dist=Math.hypot(dx,dy)||1;
       dirs=Array.from({length:w.amount},(_,i)=>rotate({x:dx/dist,y:dy/dist},2*Math.PI*i/w.amount));
     }
-    for(const e of near){
+    // The wave fires at the awake (near), and also lands on the sleepers in its cones (D-051: they wake).
+    const reach=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=w.area+e.radius;
+    const struck=ctx.sleepers?.size?queryHittable(ctx,player.x,player.y,w.area+1.5,[]).filter(reach).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0):near;
+    for(const e of struck){
       if(!inCone(e)||!isAlive(ctx,e))continue;
       const dx=e.x-player.x,dy=e.y-player.y;
       hitEnemy(ctx,e,w.damage,player.id,w.def.id,{x:dx,y:dy,force:w.knockback});
@@ -303,6 +309,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
         if(!canAct(player))continue;
         // D-051 manual combat: only the equipped weapon, only while the attack is held.
         if(manual&&!manual.attacking(player.id))continue;
+        if(opts.busy?.(player.id))continue;
         const equipped=manual?equippedWeapon(player.build,catalog):undefined;
         for(const owned of player.build.weapons){
           if(manual&&owned!==equipped)continue;
